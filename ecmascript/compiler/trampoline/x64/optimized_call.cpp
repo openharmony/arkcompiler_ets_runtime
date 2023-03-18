@@ -693,7 +693,7 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
         __ Movq(rsp, argV);
         __ Addq(SEXTUPLE_SLOT_SIZE, argV);
         __ Pushq(rbp);
-        __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_FRAME));
+        __ Pushq(static_cast<int32_t>(FrameType::ASM_BRIDGE_FRAME));
         __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
 
         if (!isNew) {
@@ -1451,7 +1451,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
 
     Register glueReg = rdi;
     __ Pushq(rbp);
-    __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_FRAME));
+    __ Pushq(static_cast<int32_t>(FrameType::ASM_BRIDGE_FRAME));
     __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
     __ Push(glueReg);
     __ PushCppCalleeSaveRegisters();

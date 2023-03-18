@@ -332,7 +332,7 @@ void LLVMIRBuilder::GenPrologue()
         reservedSlotsSize = OptimizedFrame::ComputeReservedSize(slotSize_);
         LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
                                            std::to_string(reservedSlotsSize).c_str());
-        SaveFrameTypeOnFrame(frameType);
+        SaveFrameTypeOnFrame(frameType, builder_);
     } else if (frameType == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
         reservedSlotsSize = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
         LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
@@ -344,7 +344,7 @@ void LLVMIRBuilder::GenPrologue()
             LLVMValueRef value = LLVMGetParam(function_, argth);
             if (argth == static_cast<int>(CommonArgIdx::FUNC)) {
                 SaveJSFuncOnOptJSFuncFrame(value);
-                SaveFrameTypeOnFrame(frameType);
+                SaveFrameTypeOnFrame(frameType, builder_);
             }
         }
     } else {
@@ -353,15 +353,15 @@ void LLVMIRBuilder::GenPrologue()
     }
 }
 
-void LLVMIRBuilder::SaveFrameTypeOnFrame(FrameType frameType)
+void LLVMIRBuilder::SaveFrameTypeOnFrame(FrameType frameType, LLVMBuilderRef builder)
 {
-    LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
+    LLVMValueRef llvmFpAddr = CallingFp(module_, builder, false);
 
-    LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder_, llvmFpAddr, slotType_, "cast_int_t");
-    LLVMValueRef frameTypeSlotAddr = LLVMBuildSub(builder_, frameAddr, LLVMConstInt(slotType_, slotSize_, false), "");
-    LLVMValueRef addr = LLVMBuildIntToPtr(builder_, frameTypeSlotAddr, LLVMPointerType(slotType_, 0), "frameType.Addr");
+    LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder, llvmFpAddr, slotType_, "cast_int_t");
+    LLVMValueRef frameTypeSlotAddr = LLVMBuildSub(builder, frameAddr, LLVMConstInt(slotType_, slotSize_, false), "");
+    LLVMValueRef addr = LLVMBuildIntToPtr(builder, frameTypeSlotAddr, LLVMPointerType(slotType_, 0), "frameType.Addr");
     LLVMValueRef llvmFrameType = LLVMConstInt(slotType_, static_cast<uintptr_t>(frameType), 0);
-    LLVMBuildStore(builder_, llvmFrameType, addr);
+    LLVMBuildStore(builder, llvmFrameType, addr);
 }
 
 LLVMValueRef LLVMIRBuilder::CallingFp(LLVMModuleRef &module, LLVMBuilderRef &builder, bool isCaller)
@@ -1969,6 +1969,44 @@ LLVMTypeRef LLVMIRBuilder::GetExperimentalDeoptTy()
     return fnTy;
 }
 
+LLVMValueRef LLVMModule::GetDeoptFunction()
+{
+    auto fn = LLVMGetNamedFunction(module_, Deoptimizier::GetLLVMDeoptRelocateSymbol());
+    return fn;
+}
+
+void LLVMIRBuilder::GenDeoptEntry(LLVMModuleRef &module)
+{
+    std::vector<LLVMTypeRef> paramTys = {LLVMInt64Type(), LLVMInt64Type()}; // glue type
+    auto funcType = LLVMFunctionType(LLVMInt64Type(), paramTys.data(),  paramTys.size(), 0);
+    auto function = LLVMAddFunction(module, Deoptimizier::GetLLVMDeoptRelocateSymbol(), funcType);
+    LLVMSetFunctionCallConv(function, LLVMCCallConv);
+    llvmModule_->SetFunction(LLVMModule::kDeoptEntryOffset, function);
+
+    LLVMBasicBlockRef entry = LLVMAppendBasicBlock(function, "entry");
+    LLVMBuilderRef builder = LLVMCreateBuilder();
+    LLVMPositionBuilderAtEnd(builder, entry);
+
+    auto reservedSlotsSize = OptimizedFrame::ComputeReservedSize(slotSize_);
+    LLVMAddTargetDependentFunctionAttr(function, "frame-reserved-slots", std::to_string(reservedSlotsSize).c_str());
+    SaveFrameTypeOnFrame(FrameType::OPTIMIZED_FRAME, builder);
+
+    LLVMValueRef glue = LLVMGetParam(function, 0);
+    LLVMValueRef check = LLVMGetParam(function, 1);
+
+    StubIdType stubId = RTSTUB_ID(DeoptHandlerAsm);
+    int stubIndex = static_cast<int>(std::get<RuntimeStubCSigns::ID>(stubId));
+    LLVMValueRef rtoffset = LLVMBuildAdd(builder, glue, GetRTStubOffset(glue, stubIndex), "");
+    LLVMValueRef patchAddr = LLVMBuildIntToPtr(builder, rtoffset, LLVMPointerType(LLVMInt64Type(), 0), "");
+    LLVMValueRef llvmAddr = LLVMBuildLoad(builder, patchAddr, "");
+    LLVMTypeRef rtfuncTypePtr = LLVMPointerType(funcType, 0);
+    LLVMValueRef callee = LLVMBuildIntToPtr(builder, llvmAddr, rtfuncTypePtr, "");
+    std::vector<LLVMValueRef> params = {glue, check};
+    LLVMValueRef runtimeCall = LLVMBuildCall2(builder, funcType, callee, params.data(), params.size(), "");
+    LLVMBuildRet(builder, runtimeCall);
+    LLVMPositionBuilderAtEnd(builder, entry);
+}
+
 LLVMValueRef LLVMIRBuilder::GetExperimentalDeopt(LLVMModuleRef &module)
 {
     /* 0:calling 1:its caller */
@@ -1976,6 +2014,7 @@ LLVMValueRef LLVMIRBuilder::GetExperimentalDeopt(LLVMModuleRef &module)
     if (!fn) {
         auto fnTy = GetExperimentalDeoptTy();
         fn = LLVMAddFunction(module, "llvm.experimental.deoptimize.p1i64", fnTy);
+        GenDeoptEntry(module);
     }
     return fn;
 }
@@ -2151,6 +2190,7 @@ LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodL
     name += std::string("@") + std::to_string(offsetInPandaFile) + std::string("@") + fileName;
 
     auto function = LLVMAddFunction(module_, name.c_str(), funcType);
+    ASSERT(offsetInPandaFile != LLVMModule::kDeoptEntryOffset);
     SetFunction(offsetInPandaFile, function);
     return function;
 }

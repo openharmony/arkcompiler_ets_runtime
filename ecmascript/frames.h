@@ -114,6 +114,7 @@ enum class FrameType: uintptr_t {
     OPTIMIZED_FRAME = 0,
     OPTIMIZED_ENTRY_FRAME,
     OPTIMIZED_JS_FUNCTION_FRAME,
+    ASM_BRIDGE_FRAME,
     LEAVE_FRAME,
     LEAVE_FRAME_WITH_ARGV,
     BUILTIN_CALL_LEAVE_FRAME,
@@ -222,6 +223,60 @@ private:
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedFrame), OptimizedFrame::SizeArch32, OptimizedFrame::SizeArch64);
 
+struct AsmBridgeFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
+                                                   base::AlignedPointer,
+                                                   base::AlignedPointer,
+                                                   base::AlignedPointer> {
+public:
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(AsmBridgeFrame, type);
+    }
+
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(AsmBridgeFrame, prevFp);
+    }
+
+    uintptr_t GetCallSiteSp() const
+    {
+        return ToUintPtr(this) + sizeof(AsmBridgeFrame);
+    }
+
+    FrameType GetType() const
+    {
+        return type;
+    }
+
+private:
+    enum class Index : size_t {
+        TypeIndex = 0,
+        PrevFpIndex,
+        ReturnAddrIndex,
+        NumOfMembers
+    };
+    static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
+
+    static AsmBridgeFrame* GetFrameFromSp(const JSTaggedType *sp)
+    {
+        return reinterpret_cast<AsmBridgeFrame *>(reinterpret_cast<uintptr_t>(sp) -
+            MEMBER_OFFSET(AsmBridgeFrame, prevFp));
+    }
+    inline JSTaggedType* GetPrevFrameFp()
+    {
+        return prevFp;
+    }
+    uintptr_t GetReturnAddr() const
+    {
+        return returnAddr;
+    }
+    alignas(EAS) FrameType type {0};
+    alignas(EAS) JSTaggedType *prevFp {nullptr};
+    alignas(EAS) uintptr_t returnAddr {0};
+    friend class FrameIterator;
+};
+STATIC_ASSERT_EQ_ARCH(sizeof(AsmBridgeFrame), AsmBridgeFrame::SizeArch32, AsmBridgeFrame::SizeArch64);
+
 // * OptimizedUnfoldArgVFrame layout description as the following:
 //      sp ----> |--------------------------| ---------------
 //               |       returnAddr         |               ^
@@ -286,7 +341,8 @@ private:
     alignas(EAS) uintptr_t returnAddr {0};
     friend class FrameIterator;
 };
-STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedFrame), OptimizedFrame::SizeArch32, OptimizedFrame::SizeArch64);
+STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionUnfoldArgVFrame),
+    OptimizedJSFunctionUnfoldArgVFrame::SizeArch32, OptimizedJSFunctionUnfoldArgVFrame::SizeArch64);
 
 // * The OptimizedJSFunctionArgsConfig Frame's structure is illustrated as the following:
 //          +--------------------------+

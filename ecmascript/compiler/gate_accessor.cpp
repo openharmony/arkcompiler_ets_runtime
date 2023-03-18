@@ -176,7 +176,7 @@ const ChunkVector<char>& GateAccessor::GetConstantString(GateRef gate) const
     return gatePtr->GetStringMetaData()->GetString();
 }
 
-uint32_t GateAccessor::GetPcOffset(GateRef gate) const
+uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     OpCode op = GetOpCode(gate);

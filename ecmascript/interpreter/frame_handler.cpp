@@ -194,6 +194,7 @@ JSTaggedValue FrameHandler::GetFunction() const
             case FrameType::ASM_INTERPRETER_BRIDGE_FRAME:
             case FrameType::INTERPRETER_BUILTIN_FRAME:
             case FrameType::OPTIMIZED_FRAME:
+            case FrameType::ASM_BRIDGE_FRAME:
             case FrameType::LEAVE_FRAME:
             case FrameType::LEAVE_FRAME_WITH_ARGV:
             case FrameType::BUILTIN_CALL_LEAVE_FRAME:
@@ -301,6 +302,7 @@ ARK_INLINE uintptr_t FrameHandler::GetInterpretedFrameEnd(JSTaggedType *prevSp) 
         case FrameType::BUILTIN_ENTRY_FRAME:
         case FrameType::BUILTIN_FRAME:
         case FrameType::OPTIMIZED_FRAME:
+        case FrameType::ASM_BRIDGE_FRAME:
         case FrameType::LEAVE_FRAME:
         case FrameType::LEAVE_FRAME_WITH_ARGV:
         case FrameType::BUILTIN_CALL_LEAVE_FRAME:
@@ -427,6 +429,7 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &vis
             case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
             case FrameType::OPTIMIZED_ENTRY_FRAME:
+            case FrameType::ASM_BRIDGE_FRAME:
             case FrameType::ASM_INTERPRETER_ENTRY_FRAME:
             case FrameType::ASM_INTERPRETER_BRIDGE_FRAME: {
                 break;

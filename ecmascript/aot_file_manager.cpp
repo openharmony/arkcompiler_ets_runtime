@@ -19,7 +19,6 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
-#include "ecmascript/deoptimizer/relocator.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/jspandafile/constpool_value.h"
@@ -277,41 +276,6 @@ void AnFileInfo::Save(const std::string &filename, kungfu::Triple triple)
     file.close();
 }
 
-
-void AnFileInfo::RewriteRelcateDeoptHandler([[maybe_unused]] EcmaVM *vm)
-{
-#if !WIN_OR_MAC_OR_IOS_PLATFORM
-    JSThread *thread = vm->GetJSThread();
-    uintptr_t patchAddr = thread->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
-    RewriteRelcateTextSection(LLVM_DEOPT_RELOCATE_SYMBOL, patchAddr);
-#endif
-}
-
-void AnFileInfo::RewriteRelcateTextSection([[maybe_unused]] const char* symbol,
-    [[maybe_unused]] uintptr_t patchAddr)
-{
-#if !WIN_OR_MAC_OR_IOS_PLATFORM
-    for (auto &des: des_) {
-        uint32_t relaTextSize = des.GetSecSize(ElfSecName::RELATEXT);
-        if (relaTextSize != 0) {
-            uint64_t relatextAddr = des.GetSecAddr(ElfSecName::RELATEXT);
-            uint64_t textAddr = des.GetSecAddr(ElfSecName::TEXT);
-            uint64_t symTabAddr = des.GetSecAddr(ElfSecName::SYMTAB);
-            uint32_t symTabSize = des.GetSecSize(ElfSecName::SYMTAB);
-            uint32_t strTabSize = des.GetSecSize(ElfSecName::STRTAB);
-            uint64_t strTabAddr = des.GetSecAddr(ElfSecName::STRTAB);
-            RelocateTextInfo relaText = {textAddr, relatextAddr, relaTextSize};
-            SymAndStrTabInfo symAndStrTabInfo = {symTabAddr, symTabSize, strTabAddr, strTabSize};
-            Relocator relocate(relaText, symAndStrTabInfo);
-#ifndef NDEBUG
-            relocate.DumpRelocateText();
-#endif
-            relocate.RelocateBySymbol(symbol, patchAddr);
-        }
-    }
-#endif
-}
-
 bool AnFileInfo::Load(const std::string &filename)
 {
     std::string realPath;
@@ -432,7 +396,7 @@ void AOTFileManager::LoadStubFile(const std::string &fileName)
 void AOTFileManager::LoadAnFile(const std::string &fileName)
 {
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
-    if (!anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::AOT, vm_)) {
+    if (!anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::AOT)) {
         return;
     }
 }
@@ -867,7 +831,7 @@ void AnFileDataManager::SafeDestoryAllData()
     loadedAn_.clear();
 }
 
-bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type, EcmaVM* vm)
+bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type)
 {
     os::memory::WriteLockHolder lock(lock_);
     if (type == Type::STUB) {
@@ -880,7 +844,7 @@ bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type, EcmaVM*
         if (aotFileInfo != nullptr) {
             return true;
         }
-        return UnsafeLoadFromAOT(fileName, vm);
+        return UnsafeLoadFromAOT(fileName);
     }
 }
 
@@ -915,7 +879,7 @@ void AnFileDataManager::Dump() const
     }
 }
 
-bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName, EcmaVM *vm)
+bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName)
 {
     // note: This method is not thread-safe
     // need to ensure that the instance of AnFileDataManager has been locked before use
@@ -923,7 +887,6 @@ bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName, EcmaVM *v
     if (!info->Load(fileName)) {
         return false;
     }
-    info->RewriteRelcateDeoptHandler(vm);
     std::string anBasename = JSFilePath::GetBaseName(fileName);
     anFileNameToIndexMap_.insert({anBasename, loadedAn_.size()});
     loadedAn_.emplace_back(info);

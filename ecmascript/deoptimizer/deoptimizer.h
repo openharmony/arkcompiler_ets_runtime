@@ -23,8 +23,6 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/stackmap/llvm_stackmap_type.h"
 
-// todo:place to Deoptimizier class
-#define LLVM_DEOPT_RELOCATE_SYMBOL "__llvm_deoptimize"
 namespace panda::ecmascript {
 class JSThread;
 enum class SpecVregIndex: int {
@@ -104,6 +102,11 @@ public:
     JSThread *GetThread() const
     {
         return thread_;
+    }
+
+    static const char *GetLLVMDeoptRelocateSymbol()
+    {
+        return "__llvm_deoptimize";
     }
 
 private:
