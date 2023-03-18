@@ -93,6 +93,7 @@ JSTaggedValue BuiltinsString::StringConstructor(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsString::FromCharCode(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    // std::cerr << "ycn enter c++" << std::endl;
     BUILTINS_API_TRACE(argv->GetThread(), String, FromCharCode);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -101,28 +102,26 @@ JSTaggedValue BuiltinsString::FromCharCode(EcmaRuntimeCallInfo *argv)
     if (argLength == 0) {
         return factory->GetEmptyString().GetTaggedValue();
     }
-    JSHandle<JSTaggedValue> codePointTag = BuiltinsString::GetCallArg(argv, 0);
-    uint16_t codePointValue = JSTaggedValue::ToUint16(thread, codePointTag);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<EcmaString> strHandle = factory->NewFromUtf16Literal(&codePointValue, 1);
     if (argLength == 1) {
+        JSHandle<JSTaggedValue> codePointTag = BuiltinsString::GetCallArg(argv, 0);
+        uint16_t codePointValue = JSTaggedValue::ToUint16(thread, codePointTag);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<EcmaString> strHandle = factory->NewFromUtf16Literal(&codePointValue, 1);
         return strHandle.GetTaggedValue();
     }
-    std::u16string u16str = base::StringHelper::Utf16ToU16String(&codePointValue, 1);
     CVector<uint16_t> valueTable;
-    valueTable.reserve(argLength - 1);
-    for (uint32_t i = 1; i < argLength; i++) {
+    valueTable.reserve(argLength);
+    for (uint32_t i = 0; i < argLength; i++) {
         JSHandle<JSTaggedValue> nextCp = BuiltinsString::GetCallArg(argv, i);
         uint16_t nextCv = JSTaggedValue::ToUint16(thread, nextCp);
         valueTable.emplace_back(nextCv);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
-    std::u16string nextU16str = base::StringHelper::Utf16ToU16String(valueTable.data(), argLength - 1);
-    u16str = base::StringHelper::Append(u16str, nextU16str);
-    const char16_t *constChar16tData = u16str.data();
+    std::u16string nextU16str = base::StringHelper::Utf16ToU16String(valueTable.data(), argLength);
+    const char16_t *constChar16tData = nextU16str.data();
     auto *char16tData = const_cast<char16_t *>(constChar16tData);
     auto *uint16tData = reinterpret_cast<uint16_t *>(char16tData);
-    uint32_t u16strSize = u16str.size();
+    uint32_t u16strSize = nextU16str.size();
     return factory->NewFromUtf16Literal(uint16tData, u16strSize).GetTaggedValue();
 }
 

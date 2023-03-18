@@ -36,6 +36,7 @@ public:
                           GateRef pos, GateRef max, GateRef rhsCount);
     GateRef StringIndexOf(GateRef lhs, GateRef rhs, GateRef pos);
     GateRef CreateFromEcmaString(GateRef glue, GateRef obj, GateRef index);
+    GateRef CreateFromUtf16(GateRef glue, GateRef obj);//, GateRef length
 private:
     GateRef CanBeCompressed(GateRef utf16Data, GateRef utf16Len, bool isUtf16);
     GateRef GetUtf16Date(GateRef stringData, GateRef index);

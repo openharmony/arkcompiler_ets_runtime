@@ -1057,4 +1057,77 @@ DECLARE_BUILTINS(ArrayConstructor)
     Bind(&exit);
     Return(*res);
 }
+
+DECLARE_BUILTINS(FromCharCode)
+{
+    BUILTINS_ENTRY_DEBUG_LOG();
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(codePointValue, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(pos, VariableType::INT32(), Int32(1));
+    Label exit(env);
+    Label slowPath(env);
+    Label noArg(env);
+    Label hasArg(env);
+
+    Branch(Int64Equal(numArgs, IntPtr(0)), &noArg, &hasArg);
+    Bind(&noArg);
+    {
+        res = GetGlobalConstantValue(
+                VariableType::JS_POINTER(), glue, ConstantIndex::EMPTY_STRING_OBJECT_INDEX);
+        Jump(&exit);
+    }
+    Bind(&hasArg);
+    {
+        Label hasOneArg(env);
+        Label next(env);
+        Branch(Int64Equal(numArgs, Int64(1)), &hasOneArg, &slowPath);
+        Bind(&hasOneArg);
+        {
+            GateRef codePointTag = GetCallArg0();
+            Label codePointTagIsInt(env);
+            Label codePointTagNotInt(env);
+            Branch(TaggedIsInt(codePointTag), &codePointTagIsInt, &codePointTagNotInt);
+            Bind(&codePointTagIsInt);
+            {
+                codePointValue = GetInt32OfTInt(codePointTag);
+                Jump(&next);
+            }
+            Bind(&codePointTagNotInt);
+            {
+                Label codePointTagIsDouble(env);
+                Branch(TaggedIsDouble(codePointTag), &codePointTagIsDouble, &slowPath);
+                Bind(&codePointTagIsDouble);
+                {
+                    codePointValue = DoubleToInt(glue, GetDoubleOfTDouble(codePointTag));
+                    Jump(&next);
+                }
+            }
+            Bind(&next);
+            {
+                Label noPendingException(env);
+                Label isPendingException(env);
+                Branch(HasPendingException(glue), &isPendingException, &noPendingException);
+                Bind(&isPendingException);
+                {
+                    res = Exception();
+                    Jump(&exit);
+                }
+                Bind(&noPendingException);
+                {
+                    BuiltinsStringStubBuilder stringBuilder(this);
+                    res = stringBuilder.CreateFromUtf16(glue, *codePointValue);//, *pos
+                    Jump(&exit);
+                }
+            }
+        }
+    }
+    Bind(&slowPath);
+    {
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
 }  // namespace panda::ecmascript::kungfu

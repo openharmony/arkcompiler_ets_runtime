@@ -1192,6 +1192,16 @@ Local<ArrayRef> ObjectRef::GetOwnEnumerablePropertyNames(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<ArrayRef>(jsArray);
 }
 
+Local<ArrayRef> ObjectRef::GetOwnEnumerablePropertyValues(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSObject> obj(JSNApiHelper::ToJSHandle(this));
+    JSHandle<TaggedArray> array(JSObject::EnumerableOwnPropertyNames(thread, obj, ecmascript::PropertyKind::VALUE));
+    JSHandle<JSTaggedValue> jsArray(JSArray::CreateArrayFromList(thread, array));
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    return JSNApiHelper::ToLocal<ArrayRef>(jsArray);
+}
+
 Local<JSValueRef> ObjectRef::GetPrototype(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
