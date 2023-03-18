@@ -41,6 +41,13 @@ if (is_standard_system) {
         "$ark_aot_compiler_path/arkcompiler/ets_runtime/ark_aot_compiler.exe",
       ]
 
+      # Add executable "profdump"
+      deps += [ "$js_root/ecmascript/pgo_profiler/prof_dump:profdump" ]
+      prof_dump_path =
+          get_label_info("$js_root/ecmascript/pgo_profiler/prof_dump:profdump",
+                         "root_out_dir")
+      sources += [ "$prof_dump_path/arkcompiler/ets_runtime/profdump.exe" ]
+
       # Add dynamic library "hilog"
       hilog_path =
           get_label_info("$hilog_root:libhilog_windows", "root_out_dir")
@@ -116,6 +123,13 @@ if (is_standard_system) {
               "root_out_dir")
       sources +=
           [ "$ark_aot_compiler_path/arkcompiler/ets_runtime/ark_aot_compiler" ]
+
+      # Add executable "profdump"
+      deps += [ "$js_root/ecmascript/pgo_profiler/prof_dump:profdump" ]
+      prof_dump_path =
+          get_label_info("$js_root/ecmascript/pgo_profiler/prof_dump:profdump",
+                         "root_out_dir")
+      sources += [ "$prof_dump_path/arkcompiler/ets_runtime/profdump" ]
 
       # Add dynamic library "hilog"
       hilog_path = get_label_info("$hilog_root:libhilog_linux", "root_out_dir")
