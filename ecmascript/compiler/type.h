@@ -202,6 +202,11 @@ public:
         return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::BIG_INT));
     }
 
+    bool IsNJSValueType() const
+    {
+        return type_ == NJS_VALUE;
+    }
+
     bool IsDigitablePrimitiveType() const
     {
         return IsNumberType() || IsNullType() || IsUndefinedType() || IsBooleanType() || IsBigIntType();
@@ -267,6 +272,16 @@ private:
     static_assert((SIZE_BITS + GlobalTSTypeRef::GetSizeBits()) <= VALID_BITS);
 
     uint32_t type_ {0};
+};
+
+enum class ValueType : uint8_t {
+    BOOL,
+    INT32,
+    FLOAT64,
+    TAGGED_BOOLEAN,
+    TAGGED_INT,
+    TAGGED_DOUBLE,
+    TAGGED_NUMBER,
 };
 
 class Type {

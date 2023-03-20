@@ -162,6 +162,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(Ftrunc, FTRUNC, GateFlags::NONE_FLAG, 0, 0, 1)                             \
     V(Rev, REV, GateFlags::NONE_FLAG, 0, 0, 1)                                   \
     V(TruncFloatToInt64, TRUNC_FLOAT_TO_INT64, GateFlags::NONE_FLAG, 0, 0, 1)    \
+    V(TruncFloatToInt32, TRUNC_FLOAT_TO_INT32, GateFlags::NONE_FLAG, 0, 0, 1)    \
     V(TaggedToInt64, TAGGED_TO_INT64, GateFlags::NONE_FLAG, 0, 0, 1)             \
     V(Int64ToTagged, INT64_TO_TAGGED, GateFlags::NONE_FLAG, 0, 0, 1)             \
     V(SignedIntToFloat, SIGNED_INT_TO_FLOAT, GateFlags::NONE_FLAG, 0, 0, 1)      \
@@ -246,7 +247,9 @@ std::string MachineTypeToStr(MachineType machineType);
     V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                       \
     V(Int32OverflowCheck, INT32_OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)      \
     V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                   \
-    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)
+    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                     \
+    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)            \
+    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                              \
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                                \
     V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                         \
@@ -588,6 +591,37 @@ public:
 private:
     GateType type_;
 };
+
+class ValuePairTypeAccessor {
+public:
+    // type bits shift
+    static constexpr int OPRAND_TYPE_BITS = 8;
+    explicit ValuePairTypeAccessor(uint64_t value) : bitField_(value) {}
+
+    ValueType GetSrcType() const
+    {
+        return static_cast<ValueType>(LeftBits::Get(bitField_));
+    }
+
+    ValueType GetDstType() const
+    {
+        return static_cast<ValueType>(RightBits::Get(bitField_));
+    }
+
+    static uint16_t ToValue(ValueType srcType, ValueType dstType)
+    {
+        uint8_t srcVlaue = static_cast<uint8_t>(srcType);
+        uint8_t dstVlaue = static_cast<uint8_t>(dstType);
+        return LeftBits::Encode(srcVlaue) | RightBits::Encode(dstVlaue);
+    }
+
+private:
+    using LeftBits = panda::BitField<uint8_t, 0, OPRAND_TYPE_BITS>;
+    using RightBits = LeftBits::NextField<uint8_t, OPRAND_TYPE_BITS>;
+
+    uint64_t bitField_;
+};
+
 
 class GatePairTypeAccessor {
 public:

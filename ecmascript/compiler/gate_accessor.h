@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_GATE_ACCESSOR_H
 
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/gate_meta_data.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -395,6 +396,8 @@ public:
     UseIterator ReplaceIn(const UseIterator &useIt, GateRef replaceGate);
     // Add for lowering
     GateType GetGateType(GateRef gate) const;
+    ValueType GetSrcType(GateRef gate) const;
+    ValueType GetDstType(GateRef gate) const;
     void SetGateType(GateRef gate, GateType gt);
     void DeleteIn(GateRef gate, size_t idx);
     UseIterator DeleteGate(const UseIterator &useIt);
@@ -414,6 +417,8 @@ public:
     MachineType GetMachineType(GateRef gate) const;
     void SetMachineType(GateRef gate, MachineType type);
     GateRef GetConstantGate(MachineType bitValue, BitField bitfield, GateType type) const;
+    double GetFloat64FromConstant(GateRef gate) const;
+    int GetInt32FromConstant(GateRef gate) const;
     bool IsInGateNull(GateRef gate, size_t idx) const;
     bool IsSelector(GateRef g) const;
     bool IsControlCase(GateRef gate) const;
@@ -423,6 +428,8 @@ public:
     bool IsConstant(GateRef gate) const;
     bool IsDependSelector(GateRef gate) const;
     bool IsConstantValue(GateRef gate, uint64_t value) const;
+    bool IsConstantUndefined(GateRef gate) const;
+    bool IsConstantNumber(GateRef gate) const;
     bool IsTypedOperator(GateRef gate) const;
     bool IsNotWrite(GateRef gate) const;
     bool IsDead(GateRef gate) const;
@@ -560,6 +567,7 @@ private:
     friend class ArgumentAccessor;
     friend class BytecodeCircuitBuilder;
     friend class TSInlineLowering;
+    friend class GraphVisitor;
 };
 
 class ConstGateAccessor {

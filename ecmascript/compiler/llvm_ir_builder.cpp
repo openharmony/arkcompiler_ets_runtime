@@ -184,6 +184,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::FMOD, &LLVMIRBuilder::HandleMod},
         {OpCode::DEOPT, &LLVMIRBuilder::HandleDeopt},
         {OpCode::TRUNC_FLOAT_TO_INT64, &LLVMIRBuilder::HandleTruncFloatToInt},
+        {OpCode::TRUNC_FLOAT_TO_INT32, &LLVMIRBuilder::HandleTruncFloatToInt},
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,

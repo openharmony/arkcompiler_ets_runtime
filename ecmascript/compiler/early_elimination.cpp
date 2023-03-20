@@ -362,14 +362,11 @@ void EarlyElimination::Run()
     VisitDependEntry(entry);
     VisitGraph();
 
-    for (auto gate : stateSplits_) {
-        ReplaceGate(gate, circuit_->DeadGate());
-    }
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";
         LOG_COMPILER(INFO) << "\033[34m"
                            << "===================="
-                           << " After check eliminating "
+                           << " After early eliminating "
                            << "[" << GetMethodName() << "]"
                            << "===================="
                            << "\033[0m";
@@ -703,10 +700,8 @@ GateRef EarlyElimination::TryEliminateStateSplitAndFrameState(GateRef gate)
     auto curFrameState = acc_.GetFrameState(gate);
     if (frameState != Circuit::NullGate()) {
         acc_.UpdateAllUses(curFrameState, frameState);
-        acc_.DeleteGate(curFrameState);
-        return circuit_->DeadGate();
+        return Circuit::NullGate();
     }
-    stateSplits_.insert(gate);
     dependInfo = dependInfo->UpdateFrameState(curFrameState);
     return UpdateDependInfo(gate, dependInfo);
 }

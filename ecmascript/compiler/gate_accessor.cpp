@@ -17,6 +17,7 @@
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/graph_editor.h"
+#include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript::kungfu {
 using UseIterator = GateAccessor::UseIterator;
@@ -133,6 +134,24 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();
+}
+
+ValueType GateAccessor::GetSrcType(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CONVERT ||
+           GetOpCode(gate) == OpCode::CHECK_AND_CONVERT);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    ValuePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetSrcType();
+}
+
+ValueType GateAccessor::GetDstType(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CONVERT ||
+           GetOpCode(gate) == OpCode::CHECK_AND_CONVERT);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    ValuePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetDstType();
 }
 
 GateType GateAccessor::GetLeftType(GateRef gate) const
@@ -383,6 +402,11 @@ bool GateAccessor::IsConstantValue(GateRef gate, uint64_t value) const
     return false;
 }
 
+bool GateAccessor::IsConstantUndefined(GateRef gate) const
+{
+    return IsConstantValue(gate, JSTaggedValue::VALUE_UNDEFINED);
+}
+
 bool GateAccessor::IsTypedOperator(GateRef gate) const
 {
     return GetMetaData(gate)->IsTypedOperator();
@@ -457,8 +481,12 @@ void GateAccessor::SetGateType(GateRef gate, GateType gt)
 UseIterator GateAccessor::ReplaceHirIfSuccess(const UseIterator &useIt, GateRef state)
 {
     ASSERT(GetOpCode(*useIt) == OpCode::IF_SUCCESS);
-    auto firstUse = Uses(*useIt).begin();
-    ReplaceIn(*firstUse, firstUse.GetIndex(), state);
+    auto uses = Uses(*useIt);
+    for (auto it = uses.begin(); it != uses.end();) {
+        if (IsStateIn(it)) {
+            it = ReplaceIn(it, state);
+        }
+    }
     auto next = DeleteGate(useIt);
     return next;
 }
@@ -501,6 +529,8 @@ void GateAccessor::ReplaceHirWithIfBranch(GateRef hirGate, StateDepend success,
             } else if (op == OpCode::IF_EXCEPTION) {
                 ifException = *it;
                 it = ReplaceHirIfException(it, exception);
+            } else if (op == OpCode::STATE_SPLIT) {
+                it = ReplaceIn(it, success.State());
             } else {
                 ExceptionReturn(exception.State(), exception.Depend());
                 it = ReplaceIn(it, success.State());
@@ -632,6 +662,9 @@ size_t GateAccessor::GetInValueCount(GateRef gate) const
 
 void GateAccessor::UpdateAllUses(GateRef oldIn, GateRef newIn)
 {
+    if (oldIn == newIn) {
+        return;
+    }
     auto uses = Uses(oldIn);
     for (auto useIt = uses.begin(); useIt != uses.end();) {
         useIt = ReplaceIn(useIt, newIn);
@@ -688,6 +721,35 @@ void GateAccessor::SetMachineType(GateRef gate, MachineType type)
 GateRef GateAccessor::GetConstantGate(MachineType bitValue, BitField bitfield, GateType type) const
 {
     return circuit_->GetConstantGate(bitValue, bitfield, type);
+}
+
+bool GateAccessor::IsConstantNumber(GateRef gate) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (GetGateType(gate).IsNJSValueType() ||
+        (GetOpCode(gate) != OpCode::CONSTANT)) {
+        return false;
+    }
+    JSTaggedValue value(GetConstantValue(gate));
+    return value.IsNumber();
+}
+
+double GateAccessor::GetFloat64FromConstant(GateRef gate) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    ASSERT(GetOpCode(gate) == OpCode::CONSTANT);
+    ASSERT(!GetGateType(gate).IsNJSValueType());
+    JSTaggedValue value(GetConstantValue(gate));
+    return value.GetDouble();
+}
+
+int GateAccessor::GetInt32FromConstant(GateRef gate) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    ASSERT(GetOpCode(gate) == OpCode::CONSTANT);
+    ASSERT(!GetGateType(gate).IsNJSValueType());
+    JSTaggedValue value(GetConstantValue(gate));
+    return value.GetInt();
 }
 
 bool GateAccessor::IsStateIn(const UseIterator &useIt) const
@@ -773,10 +835,13 @@ void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, Gate
     auto uses = Uses(gate);
     for (auto useIt = uses.begin(); useIt != uses.end();) {
         if (IsStateIn(useIt)) {
+            ASSERT(state != Circuit::NullGate());
             useIt = ReplaceIn(useIt, state);
         } else if (IsDependIn(useIt)) {
+            ASSERT(depend != Circuit::NullGate());
             useIt = ReplaceIn(useIt, depend);
         } else if (IsValueIn(useIt)) {
+            ASSERT(value != Circuit::NullGate());
             useIt = ReplaceIn(useIt, value);
         } else {
             LOG_ECMA(FATAL) << "this branch is unreachable";

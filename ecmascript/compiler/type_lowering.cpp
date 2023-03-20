@@ -118,6 +118,12 @@ void TypeLowering::LowerType(GateRef gate)
         case OpCode::GET_SUPER_CONSTRUCTOR:
             LowerGetSuperConstructor(gate);
             break;
+        case OpCode::CONVERT:
+            LowerConvert(gate);
+            break;
+        case OpCode::CHECK_AND_CONVERT:
+            LowerCheckAndConvert(gate);
+            break;
         default:
             break;
     }
@@ -640,7 +646,29 @@ void TypeLowering::LowerArrayLoadElement(GateRef gate)
     GateRef element =
         builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSObject::ELEMENTS_OFFSET));
     GateRef index = acc_.GetValueIn(gate, 1);
-    index = builder_.GetInt32OfTInt(index);
+    GateType indexType = acc_.GetGateType(gate);
+
+    Label midMerge(&builder_);
+    if (indexType.IsIntType()) {
+        index = builder_.GetInt32OfTInt(index);
+    } else if (indexType.IsDoubleType()) {
+        index = builder_.TruncFloatToInt32(builder_.GetDoubleOfTDouble(index));
+    } else {
+        // is number and need typecheck in runtime.
+        DEFVAlUE(idx, (&builder_), VariableType::INT32(), builder_.Int32(0));
+        Label isInt(&builder_);
+        Label isDouble(&builder_);
+        builder_.Branch(builder_.TaggedIsInt(index), &isInt, &isDouble);
+        builder_.Bind(&isInt);
+        idx = builder_.GetInt32OfTInt(index);
+        builder_.Jump(&midMerge);
+        builder_.Bind(&isDouble);
+        idx = builder_.TruncFloatToInt32(builder_.GetDoubleOfTDouble(index));
+        builder_.Jump(&midMerge);
+        builder_.Bind(&midMerge);
+        index = *idx;
+    }
+    
     GateRef res = builder_.GetValueFromTaggedArray(element, index);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), res);
     Label isHole(&builder_);
@@ -3148,5 +3176,180 @@ void TypeLowering::ReplaceHirWithPendingException(GateRef hirGate, GateRef glue,
     StateDepend success(ifFalse, sDepend);
     StateDepend exception(ifTrue, eDepend);
     acc_.ReplaceHirWithIfBranch(hirGate, success, exception, value);
+}
+
+void TypeLowering::LowerConvert(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate);
+    ValueType srcType = acc_.GetSrcType(gate);
+    ValueType dstType = acc_.GetDstType(gate);
+    GateRef result = Circuit::NullGate();
+    if (srcType == ValueType::BOOL) {
+        ASSERT(dstType == ValueType::TAGGED_BOOLEAN);
+        result = ConvertBoolToTaggedBoolean(value);
+    } else if (srcType == ValueType::INT32) {
+        ASSERT(dstType == ValueType::TAGGED_INT || dstType == ValueType::FLOAT64);
+        if (dstType == ValueType::TAGGED_INT) {
+            result = ConvertInt32ToTaggedInt(value);
+        } else {
+            result = ConvertInt32ToFloat64(value);
+        }
+    } else if (srcType == ValueType::FLOAT64) {
+        ASSERT(dstType == ValueType::TAGGED_DOUBLE || dstType == ValueType::INT32);
+        if (dstType == ValueType::TAGGED_DOUBLE) {
+            result = ConvertFloat64ToTaggedDouble(value);
+        } else {
+            result = ConvertFloat64ToInt32(value);
+        }
+    }
+    acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), result);
+}
+
+GateRef TypeLowering::ConvertTaggedNumberToInt32(GateRef gate, Label *exit)
+{
+    DEFVAlUE(result, (&builder_), VariableType::INT32(), builder_.Int32(0));
+    Label isInt(&builder_);
+    Label isDouble(&builder_);
+    builder_.Branch(builder_.TaggedIsInt(gate), &isInt, &isDouble);
+    builder_.Bind(&isInt);
+    result = ConvertTaggedIntToInt32(gate);
+    builder_.Jump(exit);
+    builder_.Bind(&isDouble);
+    result = ConvertFloat64ToInt32(ConvertTaggedDoubleToFloat64(gate));
+    builder_.Jump(exit);
+    builder_.Bind(exit);
+    return *result;
+}
+
+GateRef TypeLowering::ConvertTaggedNumberToFloat64(GateRef gate, Label *exit)
+{
+    DEFVAlUE(result, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
+    Label isInt(&builder_);
+    Label isDouble(&builder_);
+    builder_.Branch(builder_.TaggedIsInt(gate), &isInt, &isDouble);
+    builder_.Bind(&isInt);
+    result = ConvertInt32ToFloat64(ConvertTaggedIntToInt32(gate));
+    builder_.Jump(exit);
+    builder_.Bind(&isDouble);
+    result = ConvertTaggedDoubleToFloat64(gate);
+    builder_.Jump(exit);
+    builder_.Bind(exit);
+    return *result;
+}
+
+void TypeLowering::LowerCheckAndConvert(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    ValueType srcType = acc_.GetSrcType(gate);
+    switch (srcType) {
+        case ValueType::TAGGED_INT:
+            LowerCheckTaggedIntAndConvert(gate);
+            break;
+        case ValueType::TAGGED_DOUBLE:
+            LowerCheckTaggedDoubleAndConvert(gate);
+            break;
+        case ValueType::TAGGED_NUMBER:
+            LowerCheckTaggedNumberAndConvert(gate);
+            break;
+        default:
+            UNREACHABLE();
+    }
+}
+
+void TypeLowering::LowerCheckTaggedIntAndConvert(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.TaggedIsInt(value);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTINT);
+    GateRef result = Circuit::NullGate();
+    ValueType dst = acc_.GetDstType(gate);
+    ASSERT(dst == ValueType::INT32 || dst == ValueType::FLOAT64);
+    if (dst == ValueType::INT32) {
+        result = ConvertTaggedIntToInt32(value);
+    } else {
+        result = ConvertTaggedIntToFloat64(value);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TypeLowering::LowerCheckTaggedDoubleAndConvert(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.TaggedIsDouble(value);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTDOUBLE);
+    GateRef result = Circuit::NullGate();
+    ValueType dst = acc_.GetDstType(gate);
+    ASSERT(dst == ValueType::INT32 || dst == ValueType::FLOAT64);
+    if (dst == ValueType::INT32) {
+        result = ConvertTaggedDoubleToInt32(value);
+    } else {
+        result = ConvertTaggedDoubleToFloat64(value);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TypeLowering::LowerCheckTaggedNumberAndConvert(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.TaggedIsNumber(value);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTNUMBER);
+    GateRef result = Circuit::NullGate();
+    ValueType dst = acc_.GetDstType(gate);
+    ASSERT(dst == ValueType::INT32 || dst == ValueType::FLOAT64);
+    Label exit(&builder_);
+    if (dst == ValueType::INT32) {
+        result = ConvertTaggedNumberToInt32(value, &exit);
+    } else {
+        result = ConvertTaggedNumberToFloat64(value, &exit);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+GateRef TypeLowering::ConvertBoolToTaggedBoolean(GateRef gate)
+{
+    return builder_.BooleanToTaggedBooleanPtr(gate);
+}
+
+GateRef TypeLowering::ConvertInt32ToFloat64(GateRef gate)
+{
+    return builder_.ChangeInt32ToFloat64(gate);
+}
+
+GateRef TypeLowering::ConvertInt32ToTaggedInt(GateRef gate)
+{
+    return builder_.Int32ToTaggedPtr(gate);
+}
+
+GateRef TypeLowering::ConvertFloat64ToInt32(GateRef gate)
+{
+    return builder_.ChangeFloat64ToInt32(gate);
+}
+
+GateRef TypeLowering::ConvertFloat64ToTaggedDouble(GateRef gate)
+{
+    return builder_.DoubleToTaggedDoublePtr(gate);
+}
+
+GateRef TypeLowering::ConvertTaggedIntToInt32(GateRef gate)
+{
+    return builder_.GetInt32OfTInt(gate);
+}
+
+GateRef TypeLowering::ConvertTaggedIntToFloat64(GateRef gate)
+{
+    return builder_.ChangeInt32ToFloat64(builder_.GetInt32OfTInt(gate));
+}
+
+GateRef TypeLowering::ConvertTaggedDoubleToInt32(GateRef gate)
+{
+    return builder_.ChangeFloat64ToInt32(builder_.GetDoubleOfTDouble(gate));
+}
+
+GateRef TypeLowering::ConvertTaggedDoubleToFloat64(GateRef gate)
+{
+    return builder_.GetDoubleOfTDouble(gate);
 }
 }  // namespace panda::ecmascript

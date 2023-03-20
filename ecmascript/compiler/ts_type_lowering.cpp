@@ -32,8 +32,6 @@ void TSTypeLowering::RunTSTypeLowering()
         }
     }
 
-    VerifyGuard();
-
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";
         LOG_COMPILER(INFO) << "\033[34m"
@@ -512,8 +510,6 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
     GateType gateType = acc_.GetGateType(gate);
-    builder_.TryPrimitiveTypeCheck(leftType, left);
-    builder_.TryPrimitiveTypeCheck(rightType, right);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType);
@@ -536,7 +532,6 @@ void TSTypeLowering::SpeculateNumber(GateRef gate)
     GateType valueType = acc_.GetGateType(value);
     GateType gateType = acc_.GetGateType(gate);
 
-    builder_.TryPrimitiveTypeCheck(valueType, value);
     if (valueType.IsIntType() && NeedInt32OverflowCheck(Op)) {
         builder_.Int32OverflowCheck<Op>(value);
     }
@@ -563,7 +558,6 @@ void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
 {
     GateRef src = acc_.GetValueIn(gate, 0);
     GateType srcType = acc_.GetGateType(src);
-    builder_.TryPrimitiveTypeCheck(srcType, src);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.PrimitiveToNumber(src, VariableType(MachineType::I64, srcType));
@@ -789,7 +783,6 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
     }
     GateRef index = acc_.GetValueIn(gate, 1);
     builder_.IndexCheck(receiverType, receiver, index);
-    builder_.TryPrimitiveTypeCheck(valueType, value);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
@@ -826,10 +819,8 @@ void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
 
     AddProfiling(gate);
 
-    builder_.TryPrimitiveTypeCheck(GateType::IntType(), propKey);
     builder_.StableArrayCheck(receiver);
     builder_.IndexCheck(receiverType, receiver, propKey);
-
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, propKey);
 
@@ -847,8 +838,6 @@ void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
     }
 
     AddProfiling(gate);
-
-    builder_.TryPrimitiveTypeCheck(valueType, value);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
 

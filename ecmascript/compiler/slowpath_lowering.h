@@ -298,6 +298,7 @@ private:
     void LowerTypedAotCall(GateRef gate);
     void LowerUpdateHotness(GateRef gate);
     void LowerNotifyConcurrentResult(GateRef gate);
+    void DeleteStateSplit(GateRef gate);
 
     TSManager *tsManager_ {nullptr};
     const MethodLiteral *methodLiteral_ {nullptr};

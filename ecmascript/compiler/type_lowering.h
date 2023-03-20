@@ -253,6 +253,24 @@ private:
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
     GateRef ConvertNumberToBool(GateRef gate, GateType valueType);
     GateRef ConvertBooleanToBool(GateRef gate);
+
+    void LowerConvert(GateRef gate);
+    void LowerCheckAndConvert(GateRef gate);
+    void LowerCheckTaggedIntAndConvert(GateRef gate);
+    void LowerCheckTaggedDoubleAndConvert(GateRef gate);
+    void LowerCheckTaggedNumberAndConvert(GateRef gate);
+    GateRef ConvertBoolToTaggedBoolean(GateRef gate);
+    GateRef ConvertInt32ToFloat64(GateRef gate);
+    GateRef ConvertInt32ToTaggedInt(GateRef gate);
+    GateRef ConvertFloat64ToInt32(GateRef gate);
+    GateRef ConvertFloat64ToTaggedDouble(GateRef gate);
+    GateRef ConvertTaggedIntToInt32(GateRef gate);
+    GateRef ConvertTaggedIntToFloat64(GateRef gate);
+    GateRef ConvertTaggedDoubleToInt32(GateRef gate);
+    GateRef ConvertTaggedDoubleToFloat64(GateRef gate);
+    GateRef ConvertTaggedNumberToInt32(GateRef gate, Label *exit);
+    GateRef ConvertTaggedNumberToFloat64(GateRef gate, Label *exit);
+
     GateRef GetFrameState(GateRef gate) const
     {
         return acc_.GetFrameState(gate);
