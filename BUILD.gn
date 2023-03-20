@@ -20,7 +20,6 @@ group("ark_js_packages") {
   deps = []
   if (host_os != "mac") {
     deps += [
-      "$js_root/ecmascript/runtime_manager/etc:rms_etc",
       "//arkcompiler/ets_runtime:libark_jsruntime",
       "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm",
       "//arkcompiler/ets_runtime/ecmascript/quick_fix:quick_fix",
