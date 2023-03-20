@@ -15,3 +15,4 @@
 3
 success
 fail
+0
