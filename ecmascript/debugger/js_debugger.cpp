@@ -66,6 +66,11 @@ bool JSDebugger::RemoveBreakpoint(const JSPtLocation &location)
     return true;
 }
 
+void JSDebugger::RemoveAllBreakpoints()
+{
+    breakpoints_.clear();
+}
+
 void JSDebugger::BytecodePcChanged(JSThread *thread, JSHandle<Method> method, uint32_t bcOffset)
 {
     ASSERT(bcOffset < method->GetCodeSize() && "code size of current Method less then bcOffset");

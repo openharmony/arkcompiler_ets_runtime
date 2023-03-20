@@ -60,9 +60,6 @@ public:
         }
 
         isDebugMode_ = isDebugMode;
-        if (jsThread_ != nullptr && jsThread_->IsAsmInterpreter()) {
-            jsThread_->CheckSwitchDebuggerBCStub();
-        }
     }
 
     bool IsDebugMode() const
