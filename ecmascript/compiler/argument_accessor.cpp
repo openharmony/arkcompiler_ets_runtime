@@ -48,6 +48,15 @@ GateRef ArgumentAccessor::GetArgGate(const size_t currentVreg) const
     return args_.at(index);
 }
 
+bool ArgumentAccessor::ArgGateNotExisted(const size_t currentVreg)
+{
+    const size_t offsetArgs = method_->GetNumVregsWithCallField();
+    if (currentVreg < offsetArgs || currentVreg >= offsetArgs + method_->GetNumArgs()) {
+        return true;
+    }
+    return false;
+}
+
 GateRef ArgumentAccessor::GetTypedArgGate(const size_t argIndex) const
 {
     if (argIndex == static_cast<size_t>(TypedArgIdx::FUNC)) {

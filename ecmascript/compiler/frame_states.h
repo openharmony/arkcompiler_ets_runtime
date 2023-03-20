@@ -109,6 +109,7 @@ private:
     bool ComputeLiveOut(size_t bbId);
     void ComputeLiveState();
     void ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo);
+    bool IsAsyncResolveOrSusp(const BytecodeInfo &bytecodeInfo);
     bool MergeIntoPredBC(uint32_t predPc);
     bool MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb);
     FrameStateInfo *GetOrOCreateBCEndStateInfo(uint32_t bcIndex)

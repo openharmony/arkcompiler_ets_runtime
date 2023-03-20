@@ -189,6 +189,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
             kind = BytecodeKind::SUSPEND;
             break;
         case EcmaOpcode::RESUMEGENERATOR:
+        case EcmaOpcode::CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8:
             kind = BytecodeKind::RESUME;
             break;
         case EcmaOpcode::DEBUGGER:
@@ -217,6 +218,11 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
             break;
         case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
             flags |= BytecodeFlags::READ_THIS_OBJECT;
+            break;
+        case EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8:
+            flags |= BytecodeFlags::READ_THIS_OBJECT;
+            flags |= BytecodeFlags::READ_ACC;
+            kind = BytecodeKind::GENERATOR_RESOLVE;
             break;
         default:
             break;
@@ -302,6 +308,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
+        case EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8:
             flags |= BytecodeFlags::READ_FUNC;
             break;
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
@@ -325,7 +332,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
     if (kind == BytecodeKind::GENERAL ||
         kind == BytecodeKind::THROW_BC ||
         kind == BytecodeKind::RESUME ||
-        kind == BytecodeKind::SUSPEND) {
+        kind == BytecodeKind::SUSPEND ||
+        kind == BytecodeKind::GENERATOR_RESOLVE) {
         flags |= BytecodeFlags::GENERAL_BC;
     }
     auto size = inst.GetSize();
@@ -337,7 +345,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
 
 Bytecodes::Bytecodes()
 {
-    for (uint8_t pc = 0; pc < static_cast<uint8_t>(Bytecodes::LAST_OPCODE); pc++) {
+    for (uint8_t pc = 0; pc <= static_cast<uint8_t>(Bytecodes::LAST_OPCODE); pc++) {
         auto info = BytecodeMetaData::InitBytecodeMetaData(&pc);
         bytecodes_[pc] = info;
     }
@@ -1354,6 +1362,8 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t v0 = READ_INST_8_0();
             uint16_t v1 = READ_INST_8_1();
             uint16_t v2 = READ_INST_8_2();
+            uint32_t offset = builder->GetPcOffset(pc);
+            info.inputs.emplace_back(Immediate(offset)); // Save the pc offset
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(v1));
             info.inputs.emplace_back(VirtualRegister(v2));
