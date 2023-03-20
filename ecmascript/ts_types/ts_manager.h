@@ -656,6 +656,8 @@ public:
 
     void PrintNumOfTypes() const;
 
+    kungfu::GateType TryNarrowUnionType(kungfu::GateType gateType);
+
 private:
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);

@@ -1174,6 +1174,37 @@ void TSManager::ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &
     }
 }
 
+kungfu::GateType TSManager::TryNarrowUnionType(kungfu::GateType gateType)
+{
+    // for unionType like A|null B|undefined, even A|null|undefined, we will narrow it to A or B at some situations.
+    // such as ldobjbyname, stobjbyvalue etc.
+    if (IsUnionTypeKind(gateType)) {
+        JSHandle<JSTaggedValue> type = GetTSType(gateType.GetGTRef());
+        JSHandle<TSUnionType> unionType(type);
+        JSHandle<TaggedArray> components(thread_, unionType->GetComponents());
+        auto length = components->GetLength();
+        if (length > 3) { // the Maximum shrinkable union size is 3 in extreme scenario like A | null | undefined.
+            return gateType;
+        }
+        auto actualTypeNum = 0;
+        kungfu::GateType actualType = kungfu::GateType::AnyType();
+        for (uint32_t index = 0; index < length; index++) {
+            kungfu::GateType typeGt = kungfu::GateType(components->Get(index).GetInt());
+            if (!typeGt.IsNullType() && !typeGt.IsUndefinedType()) {
+                actualTypeNum++;
+                actualType = typeGt;
+                if (actualTypeNum > 1) { // if there isn't a single actual type, we can't narrow the union type.
+                    break;
+                }
+            }
+        }
+        if(actualTypeNum == 1) {
+            return actualType;
+        }
+    }
+    return gateType;
+}
+
 bool TSManager::IsBuiltinMath(kungfu::GateType funcType) const
 {
     GlobalTSTypeRef funcGT = funcType.GetGTRef();
