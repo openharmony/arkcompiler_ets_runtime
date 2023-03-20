@@ -51,7 +51,6 @@ AssertType(t || u, "union");
 AssertType(t, "T");
 AssertType(u, "U");
 
-    //let r2: T = t || u;
     let r3 = u || u;
 AssertType(r3, "U");
 AssertType(u || u, "U");
@@ -75,8 +74,6 @@ AssertType(r6, "{}");
 AssertType(u || v, "union");
 AssertType(u, "U");
 AssertType(v, "V");
-
-    //let r7: T = u || v;
 }
 
 function fn3<T extends { a: string; b: string }, U extends { a: string; b: number }>(t: T, u: U) {

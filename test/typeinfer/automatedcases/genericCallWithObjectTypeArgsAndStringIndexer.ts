@@ -81,16 +81,5 @@ AssertType(d, "Date");
 AssertType(r2['hm'], "T");
 AssertType(r2, "{ [string]: T; }");
 AssertType('hm', "string");
-
-    // BUG 821629
-    //let u: U = r2['hm']; // ok
 }
-
-//function other3<T extends U, U extends Date>(arg: T) {
-//    let b: { [x: string]: T };
-//    let r2 = foo(b);
-//    let d: Date = r2['hm']; // ok
-//    // BUG 821629
-//    //let u: U = r2['hm']; // ok
-//}
 

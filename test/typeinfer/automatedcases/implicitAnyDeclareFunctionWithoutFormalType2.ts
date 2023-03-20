@@ -34,7 +34,6 @@ AssertType(x, "any");
 AssertType(x, "any");
     return x;
 }
-// generates function fn3();
 function fn3() {
     let x: any;
 AssertType(x, "any");

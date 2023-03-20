@@ -68,18 +68,6 @@ AssertType(x.foo, "() => string");
         return a + x.foo();
     }
 }
-//class C<U extends T, T extends A> {
-//    f() {
-//        let x: U;
-//        let a = x['foo'](); // should be string
-//        return a + x.foo();
-//    }
-
-//    g(x: U) {
-//        let a = x['foo'](); // should be string
-//        return a + x.foo();
-//    }
-//}
 
 let r1 = (new C<B, A>()).f();
 AssertType(r1, "string");
@@ -188,12 +176,6 @@ AssertType(x.foo, "() => string");
         return a + x.foo();
     }
 }
-//let b = {
-//    foo: <U extends T, T extends A>(x: U, y: T) => {
-//        let a = x['foo'](); // should be string
-//        return a + x.foo();
-//    }
-//}
 
 let r4 = b.foo(aB, aB); // no inferences for T so constraint isn't satisfied, error
 AssertType(r4, "string");

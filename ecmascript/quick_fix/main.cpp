@@ -114,8 +114,8 @@ int Main(const int argc, const char **argv)
         JSNApi::SetBundle(vm, !isMergeAbc);
 
         arg_list_t entryList = base::StringHelper::SplitString(entry, ":");
-        uint32_t size = entryList.size(); 
-        if (size != 2) {
+        uint32_t size = entryList.size();
+        if (size != 2) { // 2: two entries
             std::cout << "Must include 2 entries and with ':' to spilt" << std::endl;
             JSNApi::DestroyJSVM(vm);
             return -1;

@@ -716,7 +716,7 @@ void CpuProfiler::GetNativeMethodCallPos(FrameIterator &it, FrameInfoTemp &codeE
         return ;
     }
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
-    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo(); 
+    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
     if (!extraInfoValue.IsJSNativePointer() && nextMethod->GetJSPandaFile() != nullptr) {
         DebugInfoExtractor *debugExtractor =
             JSPandaFileManager::GetInstance()->GetJSPtExtractor(nextMethod->GetJSPandaFile());

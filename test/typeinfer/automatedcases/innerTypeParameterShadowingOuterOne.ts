@@ -58,12 +58,4 @@ AssertType(x, "U");
 AssertType(x.getDate(), "number");
 AssertType(x.getDate, "() => number");
 }
-//function f2<T extends Date, U extends T>() {
-//    function g<T extends Number, U extends T>() {
-//        let x: U;
-//        x.toFixed();
-//    }
-//    let x: U;
-//    x.getDate();
-//}
 

@@ -37,8 +37,6 @@ function R3(n:number) {
 AssertType(n == 0, "boolean");
 AssertType(n, "number");
 AssertType(0, "int");
-
-		//return;
 	}
 	else {
 		R3(n--);

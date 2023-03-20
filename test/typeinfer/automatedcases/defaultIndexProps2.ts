@@ -27,15 +27,11 @@ AssertType(f, "Foo");
 AssertType(new Foo(), "Foo");
 AssertType(Foo, "typeof Foo");
 
-// WScript.Echo(f[0]);
-
 let o = {v:"Yo2"};
 AssertType(o, "{ v: string; }");
 AssertType({v:"Yo2"}, "{ v: string; }");
 AssertType(v, "string");
 AssertType("Yo2", "string");
-
-// WScript.Echo(o[0]);
 
 1[0];
 AssertType(1[0], "error");

@@ -73,20 +73,6 @@ AssertType(b.follow(), "void");
 AssertType(b.follow, "() => void");
 }
 
-// if (((a.isLeader)())) {
-//     a.lead();
-// }
-// else if (((a).isFollower())) {
-//     a.follow();
-// }
-
-// if (((a["isLeader"])())) {
-//     a.lead();
-// }
-// else if (((a)["isFollower"]())) {
-//     a.follow();
-// }
-
 let holder2 = {a};
 AssertType(holder2, "{ a: RoyalGuard; }");
 AssertType({a}, "{ a: RoyalGuard; }");

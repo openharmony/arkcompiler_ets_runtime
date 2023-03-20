@@ -379,42 +379,42 @@ uint32_t JSSerializer::GetDataViewTypeIndex(const DataViewType viewType)
 {
     uint32_t index = 0;
     switch (viewType) {
-    case DataViewType::INT8:
-        index = 1; // 1 : DataViewType::INT8
-        break;
-    case DataViewType::UINT8:
-        index = 2; // 2 : DataViewType::UINT8
-        break;
-    case DataViewType::UINT8_CLAMPED:
-        index = 3; // 3 : DataViewType::UINT8_CLAMPED
-        break;
-    case DataViewType::INT16:
-        index = 4; // 4 : DataViewType::INT16
-        break;
-    case DataViewType::UINT16:
-        index = 5; // 5 : DataViewType::UINT16
-        break;
-    case DataViewType::INT32:
-        index = 6; // 6 : DataViewType::INT32
-        break;
-    case DataViewType::UINT32:
-        index = 7; // 7 : DataViewType::UINT32
-        break;
-    case DataViewType::FLOAT32:
-        index = 8; // 8 : DataViewType::FLOAT32
-        break;
-    case DataViewType::FLOAT64:
-        index = 9; // 9 : DataViewType::FLOAT64
-        break;
-    case DataViewType::BIGINT64:
-        index = 10; // 10 : DataViewType::BIGINT64
-        break;
-    case DataViewType::BIGUINT64:
-        index = 11; // 11 : DataViewType::BIGUINT64
-        break;
-    default:
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
+        case DataViewType::INT8:
+            index = 1; // 1 : DataViewType::INT8
+            break;
+        case DataViewType::UINT8:
+            index = 2; // 2 : DataViewType::UINT8
+            break;
+        case DataViewType::UINT8_CLAMPED:
+            index = 3; // 3 : DataViewType::UINT8_CLAMPED
+            break;
+        case DataViewType::INT16:
+            index = 4; // 4 : DataViewType::INT16
+            break;
+        case DataViewType::UINT16:
+            index = 5; // 5 : DataViewType::UINT16
+            break;
+        case DataViewType::INT32:
+            index = 6; // 6 : DataViewType::INT32
+            break;
+        case DataViewType::UINT32:
+            index = 7; // 7 : DataViewType::UINT32
+            break;
+        case DataViewType::FLOAT32:
+            index = 8; // 8 : DataViewType::FLOAT32
+            break;
+        case DataViewType::FLOAT64:
+            index = 9; // 9 : DataViewType::FLOAT64
+            break;
+        case DataViewType::BIGINT64:
+            index = 10; // 10 : DataViewType::BIGINT64
+            break;
+        case DataViewType::BIGUINT64:
+            index = 11; // 11 : DataViewType::BIGUINT64
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
     }
     return index;
 }
@@ -1284,42 +1284,42 @@ DataViewType JSDeserializer::GetDataViewTypeByIndex(uint32_t viewTypeIndex)
 {
     DataViewType viewType;
     switch (viewTypeIndex) {
-    case 1: // 1 : DataViewType::INT8
-        viewType = DataViewType::INT8;
-        break;
-    case 2: // 2 : DataViewType::UINT8
-        viewType = DataViewType::UINT8;
-        break;
-    case 3: // 3 : DataViewType::UINT8_CLAMPED
-        viewType = DataViewType::UINT8_CLAMPED;
-        break;
-    case 4: // 4 : DataViewType::INT16
-        viewType = DataViewType::INT16;
-        break;
-    case 5: // 5 : DataViewType::UINT16
-        viewType = DataViewType::UINT16;
-        break;
-    case 6: // 6 : DataViewType::INT32
-        viewType = DataViewType::INT32;
-        break;
-    case 7: // 7 : DataViewType::UINT32
-        viewType = DataViewType::UINT32;
-        break;
-    case 8: // 8 : DataViewType::FLOAT32
-        viewType = DataViewType::FLOAT32;
-        break;
-    case 9: // 9 : DataViewType::FLOAT64
-        viewType = DataViewType::FLOAT64;
-        break;
-    case 10: // 10 : DataViewType::BIGINT64
-        viewType = DataViewType::BIGINT64;
-        break;
-    case 11: // 11 : DataViewType::BIGUINT64
-        viewType = DataViewType::BIGUINT64;
-        break;
-    default:
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
+        case 1: // 1 : DataViewType::INT8
+            viewType = DataViewType::INT8;
+            break;
+        case 2: // 2 : DataViewType::UINT8
+            viewType = DataViewType::UINT8;
+            break;
+        case 3: // 3 : DataViewType::UINT8_CLAMPED
+            viewType = DataViewType::UINT8_CLAMPED;
+            break;
+        case 4: // 4 : DataViewType::INT16
+            viewType = DataViewType::INT16;
+            break;
+        case 5: // 5 : DataViewType::UINT16
+            viewType = DataViewType::UINT16;
+            break;
+        case 6: // 6 : DataViewType::INT32
+            viewType = DataViewType::INT32;
+            break;
+        case 7: // 7 : DataViewType::UINT32
+            viewType = DataViewType::UINT32;
+            break;
+        case 8: // 8 : DataViewType::FLOAT32
+            viewType = DataViewType::FLOAT32;
+            break;
+        case 9: // 9 : DataViewType::FLOAT64
+            viewType = DataViewType::FLOAT64;
+            break;
+        case 10: // 10 : DataViewType::BIGINT64
+            viewType = DataViewType::BIGINT64;
+            break;
+        case 11: // 11 : DataViewType::BIGUINT64
+            viewType = DataViewType::BIGUINT64;
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
     }
     return viewType;
 }

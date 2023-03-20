@@ -213,8 +213,4 @@ AssertType(foo(y), "U");
 AssertType(foo, "<T extends Function>(T) => T");
 AssertType(y, "U");
 }
-//function foo2<T extends { (): void }, U extends T>(x: T, y: U) {
-//    foo(x);
-//    foo(y);
-//}
 
