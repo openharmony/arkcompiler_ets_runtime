@@ -158,7 +158,7 @@ private:
                                                       const JSHandle<JSTaggedValue> &exportName,
                                                       const JSHandle<SourceTextModule> &module);
     static JSHandle<JSTaggedValue> ResolveElementOfObject(JSThread *thread,
-                                                         const JSHandle<LayoutInfo> &layoutInfo,
+                                                         const JSHandle<JSHClass> &jsHClass,
                                                          const JSHandle<JSTaggedValue> &exportName,
                                                          const JSHandle<SourceTextModule> &module);
     static bool CheckCircularImport(const JSHandle<SourceTextModule> &module,

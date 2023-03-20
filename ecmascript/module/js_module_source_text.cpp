@@ -155,23 +155,23 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
 {
     // Let module be this Source Text Module Record.
     auto globalConstants = thread->GlobalConstants();
-    if (exportObject->IsJSObject()) {
-        JSHandle<JSHClass> jsHclass(thread, JSObject::Cast(exportObject.GetTaggedValue())->GetJSHClass());
-        // Get layoutInfo and compare the input and output names of files
-        JSHandle<LayoutInfo> layoutInfo(thread, jsHclass->GetLayout());
-        if (layoutInfo->NumberOfElements() != 0) {
-            JSHandle<JSTaggedValue> resolution = ResolveElementOfObject(thread, layoutInfo, exportName, module);
-            if (!resolution->IsUndefined()) {
-                return resolution;
-            }
-        }
-    }
     // For CJS, if exportObject is not JSObject, means the CJS module use default output
     JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
     if (JSTaggedValue::SameValue(exportName, defaultString)) {
         // bind with a number
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
+    }
+    if (exportObject->IsJSObject()) {
+        JSHandle<JSHClass> jsHclass(thread, JSObject::Cast(exportObject.GetTaggedValue())->GetJSHClass());
+        // Get layoutInfo and compare the input and output names of files
+        JSHandle<LayoutInfo> layoutInfo(thread, jsHclass->GetLayout());
+        if (layoutInfo->NumberOfElements() != 0) {
+            JSHandle<JSTaggedValue> resolution = ResolveElementOfObject(thread, jsHclass, exportName, module);
+            if (!resolution->IsUndefined()) {
+                return resolution;
+            }
+        }
     }
     return globalConstants->GetHandledNull();
 }
@@ -1234,13 +1234,15 @@ void SourceTextModule::AddExportName(JSThread *thread, const JSTaggedValue &expo
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::ResolveElementOfObject(JSThread *thread,
-                                                                const JSHandle<LayoutInfo> &layoutInfo,
+                                                                const JSHandle<JSHClass> &jsHClass,
                                                                 const JSHandle<JSTaggedValue> &exportName,
                                                                 const JSHandle<SourceTextModule> &module)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<LayoutInfo> layoutInfo(thread, jsHClass->GetLayout());
     int propertiesNumber = layoutInfo->NumberOfElements();
-    int idx = layoutInfo->FindElementWithCache(thread, nullptr, exportName.GetTaggedValue(), propertiesNumber);
+    int idx = layoutInfo->FindElementWithCache(thread,
+        JSHClass::Cast(jsHClass.GetTaggedValue().GetTaggedObject()), exportName.GetTaggedValue(), propertiesNumber);
     if (idx != -1) {
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, idx));
     }
