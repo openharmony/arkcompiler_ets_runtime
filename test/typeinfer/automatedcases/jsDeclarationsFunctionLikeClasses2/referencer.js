@@ -26,7 +26,3 @@ AssertType(new Point2D(0, 0), "Point2D");
 AssertType(Point2D, "typeof Point2D");
 AssertType(0, "int");
 AssertType(0, "int");
-
-// export const res = Point2D(2, 3).dot(origin); // TODO: when __proto__ works, validate this
-
-

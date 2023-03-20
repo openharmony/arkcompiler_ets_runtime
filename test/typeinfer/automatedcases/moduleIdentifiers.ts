@@ -29,6 +29,3 @@ let x1 = M.a;
 AssertType(x1, "number");
 AssertType(M.a, "number");
 
-//let x2 = m.a;
-//let q: m.P;
-

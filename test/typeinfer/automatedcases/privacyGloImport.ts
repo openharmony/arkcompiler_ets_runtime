@@ -43,22 +43,6 @@ AssertType(c1, "typeof c1");
         export let v2: c1;
     }
 
-    //export declare module "m1_M3_public" {
-    //    export function f1();
-    //    export class c1 {
-    //    }
-    //    export let v1: { new (): c1; };
-    //    export let v2: c1;
-    //}
-
-    //declare module "m1_M4_private" {
-    //    export function f1();
-    //    export class c1 {
-    //    }
-    //    export let v1: { new (): c1; };
-    //    export let v2: c1;
-    //}
-
     import m1_im1_private = m1_M1_public;
     export let m1_im1_private_v1_public = m1_im1_private.c1;
     export let m1_im1_private_v2_public = new m1_im1_private.c1();
@@ -80,30 +64,8 @@ AssertType(c1, "typeof c1");
     let m1_im2_private_v3_private = m1_im2_private.f1;
     let m1_im2_private_v4_private = m1_im2_private.f1();
 
-    //import m1_im3_private = require("m1_M3_public");
-    //export let m1_im3_private_v1_public = m1_im3_private.c1;
-    //export let m1_im3_private_v2_public = new m1_im3_private.c1();
-    //export let m1_im3_private_v3_public = m1_im3_private.f1;
-    //export let m1_im3_private_v4_public = m1_im3_private.f1();
-    //let m1_im3_private_v1_private = m1_im3_private.c1;
-    //let m1_im3_private_v2_private = new m1_im3_private.c1();
-    //let m1_im3_private_v3_private = m1_im3_private.f1;
-    //let m1_im3_private_v4_private = m1_im3_private.f1();
-
-    //import m1_im4_private = require("m1_M4_private");
-    //export let m1_im4_private_v1_public = m1_im4_private.c1;
-    //export let m1_im4_private_v2_public = new m1_im4_private.c1();
-    //export let m1_im4_private_v3_public = m1_im4_private.f1;
-    //export let m1_im4_private_v4_public = m1_im4_private.f1();
-    //let m1_im4_private_v1_private = m1_im4_private.c1;
-    //let m1_im4_private_v2_private = new m1_im4_private.c1();
-    //let m1_im4_private_v3_private = m1_im4_private.f1;
-    //let m1_im4_private_v4_private = m1_im4_private.f1();
-
     export import m1_im1_public = m1_M1_public;
     export import m1_im2_public = m1_M2_private;
-    //export import m1_im3_public = require("m1_M3_public");
-    //export import m1_im4_public = require("m1_M4_private");
 }
 
 module glo_M1_public {
@@ -144,11 +106,9 @@ declare module "use_glo_M1_public" {
     let use_glo_M2_public_v3_private: () => use_glo_M2_public.c1;
 
     module m2 {
-        //import errorImport = require("glo_M2_public");
         import nonerrorImport = glo_M1_public;
 
         module m5 {
-            //import m5_errorImport = require("glo_M2_public");
             import m5_nonerrorImport = glo_M1_public;
         }
     }
@@ -169,10 +129,8 @@ declare module "anotherParseError" {
 }
 
 module m2 {
-    //import m3 = require("use_glo_M1_public");
     module m4 {
         let a = 10;
-        //import m2 = require("use_glo_M1_public");
     }
 
 }

@@ -334,10 +334,6 @@ AssertType(true, "boolean");
 AssertType(null, "null");
 AssertType(x, "U");
 }
-//function f18<T, U extends T>(x: U) {
-//    let r18 = true ? x : null;
-//    let r18 = true ? null : x;
-//}
 
 let r19 = true ? new Object() : null;
 AssertType(r19, "Object");

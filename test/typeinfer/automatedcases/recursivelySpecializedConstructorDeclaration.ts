@@ -34,18 +34,3 @@ module MsPortal.Controls.Base.ItemList {
     export class ViewModel<TValue> extends ItemValue<TValue> {
     }
 }
-
-// Generates:
-/*
-declare module MsPortal.Controls.Base.ItemList {
-    interface Interface<TValue> {
-        options: ViewModel<TValue>;
-    }
-    class ItemValue<T> {
-        constructor(value: T);
-    }
-    class ViewModel<TValue> extends ItemValue<TValue> {
-    }
-}
-*/
-

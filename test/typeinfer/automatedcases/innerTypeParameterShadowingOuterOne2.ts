@@ -60,15 +60,4 @@ AssertType(x.getDate(), "number");
 AssertType(x.getDate, "() => number");
     }
 }
-//class C2<T extends Date, U extends T> {
-//    g<T extends Number, U extends T>() {
-//        let x: U;
-//        x.toFixed();
-//    }
-
-//    h() {
-//        let x: U;
-//        x.getDate();
-//    }
-//}
 

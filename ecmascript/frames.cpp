@@ -364,12 +364,13 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp() const
         case FrameType::INTERPRETER_BUILTIN_FRAME:
         case FrameType::INTERPRETER_ENTRY_FRAME:
         case FrameType::ASM_INTERPRETER_ENTRY_FRAME: {
-            return 0;
+            break;
         }
         default: {
             LOG_FULL(FATAL) << "frame type error!";
         }
     }
+    return 0;
 }
 
 uint32_t FrameIterator::GetBytecodeOffset() const

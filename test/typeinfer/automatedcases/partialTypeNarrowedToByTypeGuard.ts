@@ -27,11 +27,6 @@ type User = {
 
 type PartialUser = Partial<User>;
 
-// type PartialUser = {
-//   email?: string;
-//   name?: string;
-// };
-
 function isUser(obj: Obj): obj is PartialUser {
 AssertType(true, "boolean");
     return true;

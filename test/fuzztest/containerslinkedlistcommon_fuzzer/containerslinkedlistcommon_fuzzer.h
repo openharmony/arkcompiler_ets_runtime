@@ -82,7 +82,6 @@ public:
         objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::LinkedList))); // 0 means the argument
         JSTaggedValue result = containers::ContainersPrivate::Load(objCallInfo);
 
-        // JSHandle<JSTaggedValue> compareHandle(thread, compare);
         JSHandle<JSFunction> newTarget(thread, result);
         auto objCallInfo2 = CreateEcmaRuntimeCallInfo(thread, 6);
         objCallInfo2->SetFunction(newTarget.GetTaggedValue());

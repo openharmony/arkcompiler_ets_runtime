@@ -64,7 +64,6 @@ AssertType(ku, "string");
 AssertType(ke, "string");
 AssertType(ko, "string");
 
-// let _g = overEmit.a, [_h, ...y] = _g, nested2 = __rest(_h, []), _j = overEmit.b, { z } = _j, c = __rest(_j, ["z"]), rest2 = __rest(overEmit, ["a", "b"]);
 let { a: [{ ...nested2 }, ...y], b: { z, ...c }, ...rest2 } = overEmit;
 AssertType(a, "any");
 AssertType(nested2, "{ ka: string; x: string; }");

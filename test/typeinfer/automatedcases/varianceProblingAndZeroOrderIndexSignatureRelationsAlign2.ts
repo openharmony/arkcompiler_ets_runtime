@@ -101,7 +101,6 @@ AssertType(null!, "never");
 AssertType(null, "null");
 
 function tmp2<N extends NeededInfo>(n: N) {}
-// tmp2(tmp1); // uncommenting this line removes a type error from a completely unrelated line ?? (see test 1, needs to behave the same)
 
 class Server<X extends NeededInfo> {}
 export class MyServer extends Server<MyInfo> {} // not assignable error at `MyInfo`

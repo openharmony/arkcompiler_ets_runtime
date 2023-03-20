@@ -206,11 +206,11 @@ void Snapshot::WriteToFile(std::fstream &writer, const JSPandaFile *jsPandaFile,
     }
     uint32_t pandaFileBegin = RoundUp(totalObjSize + sizeof(SnapShotHeader), Constants::PAGE_SIZE_ALIGN_UP);
     SnapShotHeader hdr;
-    hdr.oldSpaceObjSize = objSizeVector[0];
-    hdr.nonMovableObjSize = objSizeVector[1];
-    hdr.machineCodeObjSize = objSizeVector[2];
-    hdr.snapshotObjSize = objSizeVector[3];
-    hdr.hugeObjSize = objSizeVector[4];
+    hdr.oldSpaceObjSize = objSizeVector[0]; // 0: oldSpaceObj
+    hdr.nonMovableObjSize = objSizeVector[1]; // 1: nonMovableObj
+    hdr.machineCodeObjSize = objSizeVector[2]; // 2: machineCodeObj
+    hdr.snapshotObjSize = objSizeVector[3]; // 3: snapshotObj
+    hdr.hugeObjSize = objSizeVector[4]; // 4: hugeObj
     hdr.stringSize = totalStringSize;
     hdr.pandaFileBegin = pandaFileBegin;
     hdr.rootObjectSize = static_cast<uint32_t>(size);

@@ -254,7 +254,7 @@ bool PGOMethodInfoMap::ProcessToBinary(uint32_t threshold, const CString &record
     }
     if (secInfo.number_ > 0) {
         secInfo.offset_ = sizeof(SectionInfo);
-        secInfo.size_ = methodStream.tellg();
+        secInfo.size_ = static_cast<uint32_t>(methodStream.tellg());
         stream << recordName << '\0';
         stream.write(reinterpret_cast<char *>(&secInfo), sizeof(SectionInfo));
         stream << methodStream.rdbuf();
