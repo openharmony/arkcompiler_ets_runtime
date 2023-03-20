@@ -182,6 +182,10 @@ private:
 class PUBLIC_API AOTFileInfo {
 public:
     using CallSignature = kungfu::CallSignature;
+    using CalleeRegAndOffsetVec = kungfu::CalleeRegAndOffsetVec;
+    using DwarfRegType = kungfu::LLVMStackMapType::DwarfRegType;
+    using OffsetType = kungfu::LLVMStackMapType::OffsetType;
+    using DwarfRegAndOffsetType = kungfu::LLVMStackMapType::DwarfRegAndOffsetType;
     AOTFileInfo() = default;
     virtual ~AOTFileInfo() = default;
 
@@ -260,7 +264,7 @@ public:
     }
 
     void AddEntry(CallSignature::TargetKind kind, bool isMainFunc, int indexInKind, uint64_t offset,
-                  uint32_t moduleIndex, int delta, uint32_t size, kungfu::CalleeRegAndOffsetVec info = {})
+                  uint32_t moduleIndex, int delta, uint32_t size, CalleeRegAndOffsetVec info = {})
     {
         FuncEntryDes des;
         if (memset_s(&des, sizeof(des), 0, sizeof(des)) != EOK) {
@@ -275,8 +279,8 @@ public:
         des.fpDeltaPrevFrameSp_ = delta;
         des.funcSize_ = size;
         des.calleeRegisterNum_ = info.size();
-        kungfu::DwarfRegType reg = 0;
-        kungfu::OffsetType regOffset = 0;
+        DwarfRegType reg = 0;
+        OffsetType regOffset = 0;
         for (size_t i = 0; i < info.size(); i ++) {
             std::tie(reg, regOffset) = info[i];
             des.CalleeReg2Offset_[2 * i] = static_cast<int32_t>(reg);
@@ -300,7 +304,7 @@ public:
         totalCodeSize_ += size;
     }
 
-    using CallSiteInfo = std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec>;
+    using CallSiteInfo = std::tuple<uint64_t, uint8_t *, int, CalleeRegAndOffsetVec>;
 
     bool CalCallSiteInfo(uintptr_t retAddr, CallSiteInfo& ret) const;
 

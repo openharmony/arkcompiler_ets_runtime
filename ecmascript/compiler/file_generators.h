@@ -46,6 +46,8 @@ public:
 
     void CollectStackMapDes(ModuleSectionDes &moduleDes) const;
 
+    Triple GetTriple() const;
+
     const CompilationConfig *GetCompilationConfig()
     {
         return llvmModule_->GetCompilationConfig();

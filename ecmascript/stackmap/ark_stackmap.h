@@ -20,67 +20,78 @@
 
 namespace panda::ecmascript::kungfu {
 struct ARKConst {
-    OffsetType offset;
+    LLVMStackMapType::IntType offset;
 };
 
-struct StackMapSecHead {
-    uint32_t totalSize;
+struct ArkStackMapHeader {
+    uint32_t secSize;
     uint32_t callsiteNum;
-    uint32_t callsitStart;
-    uint32_t callsitEnd;
 };
-struct CallsiteHead {
+
+#pragma pack(1)
+struct CallsiteHeader {
     uint32_t calliteOffset {0}; // relative text start addr
     uint32_t stackmapOffset {0}; // relative stackmap start addr
-    uint32_t arkStackMapNum {0};
     uint32_t deoptOffset {0};
-    uint32_t deoptNum {0};
+    uint16_t stackmapNum {0};
+    uint16_t deoptNum {0};
 };
+#pragma pack ()
 
-/* <deoptId, kind, value> */
+/* <vregId and kind, value> */
 struct ARKDeopt {
-    OffsetType Id; // deoptid
+    LLVMStackMapType::VRegId id; // deoptid
     LocationTy::Kind kind;
-    std::variant<OffsetType, DwarfRegAndOffsetType, LargeInt> value;
+    std::variant<LLVMStackMapType::IntType, LLVMStackMapType::LargeInt, LLVMStackMapType::DwarfRegAndOffsetType> value;
 };
 
 struct ARKCallsite {
-    CallsiteHead head;
-    CallSiteInfo stackmaps;
+    CallsiteHeader head;
+    LLVMStackMapType::CallSiteInfo stackmaps;
     std::vector<kungfu::ARKDeopt> callsite2Deopt;
     bool operator < (const ARKCallsite & x) const
     {
         return head.calliteOffset < x.head.calliteOffset;
     }
     uint32_t CalHeadSize() const;
-    uint32_t CalStackMapSize() const;
+    uint32_t CalStackMapSize(Triple triple) const;
 };
 
 struct ARKCallsiteAOTFileInfo {
-    StackMapSecHead secHead;
+    ArkStackMapHeader secHead;
     std::vector<ARKCallsite> callsites;
 };
-using ArkStackMap = CallSiteInfo;
-using CalleeRegAndOffsetVec = std::vector<DwarfRegAndOffsetType>;
-/*
-totalSize  callsiteNum callsitStart  callsitEnd
------head1--------
------head2--------
-      |
-      |
------head[N]------
-
------stackmap1----
------stackmap2----
-      |
-      |
------stackmap2[N]-
-
------deopt1-----
--<deoptid, LocationTy::Kind, LocationTy
--          CONSTANT,  <OffsetType OffsetOrSmallConstant>
--          INDIRECT   <loc.DwarfRegNum, loc.OffsetOrSmallConstant>
--          CONSTANTNDEX <LargeInt>
-*/
+using ArkStackMap = LLVMStackMapType::CallSiteInfo;
+using CalleeRegAndOffsetVec = std::vector<LLVMStackMapType::DwarfRegAndOffsetType>;
+// * ArkStackMap layout as the following:
+//               +-----------------------------------------+ ---------
+//               |                 secSize                 |         ^
+//               |-----------------------------------------|   ArkStackMapHeader
+//               |               callsiteNum               |         v
+//               +-----------------------------------------+ ---------
+//               |              calliteOffset              |         ^
+//               |-----------------------------------------|         |
+//               |             stackmapOffset              |         |
+//               |-----------------------------------------|         |
+//               |               deoptOffset               |   CallsiteHeader[0]
+//               |-----------------------------------------|         |
+//               |               stackmapNum               |         |
+//               |-----------------------------------------|         |
+//               |                deoptNum                 |         v
+//               |-----------------------------------------| ---------
+//               |                . . . . .                |
+//               +-----------------------------------------+ ---------
+//               |          dwarfRegAndOff(sleb128)        |     StackMaps[0]
+//               |-----------------------------------------| ---------
+//               |                . . . . .                |
+//               +-----------------------------------------+ ---------
+//               |          vregIdAndKind(sleb128)         |         ^
+//               |-----------------------------------------|     Deopts[0]
+//               |              value(sleb128)             |         v
+//               |-----------------------------------------| ---------
+//               |                . . . . .                |
+//               +-----------------------------------------+ ---------
+//
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_ARK_STACKMAP_H

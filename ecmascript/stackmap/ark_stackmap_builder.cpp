@@ -37,8 +37,25 @@ void BinaryBufferWriter::WriteBuffer(const uint8_t *src, uint32_t count, bool fl
     }
 }
 
+void ArkStackMapBuilder::Dump(const StackMapDumper& dumpInfo) const
+{
+    LOG_COMPILER(INFO) << "total callsite num: " << dumpInfo.callsiteNum
+                       << ", total ark stack map num: " << dumpInfo.stackmapNum
+                       << ", total deopt num: " << dumpInfo.deoptNum;
+    double callsiteHeadsSize = static_cast<double>(dumpInfo.callsiteHeadSize);
+    double stackMapsSize = static_cast<double>(dumpInfo.arkStackMapSize);
+    double deoptsSize = static_cast<double>(dumpInfo.deoptSize);
+    LOG_COMPILER(INFO) << "total callsite head size: "
+                       << std::fixed << std::setprecision(DECIMAL_LENS)
+                       << (callsiteHeadsSize / 1_KB) << "KB, total stackmap size: "
+                       << std::fixed << std::setprecision(DECIMAL_LENS)
+                       << (stackMapsSize / 1_KB) << "KB, total deopt size: "
+                       << std::fixed << std::setprecision(DECIMAL_LENS)
+                       << (deoptsSize / 1_KB) << "KB";
+}
+
 std::pair<std::shared_ptr<uint8_t>, uint32_t> ArkStackMapBuilder::Run(std::unique_ptr<uint8_t []> stackMapAddr,
-    uintptr_t hostCodeSectionAddr)
+    uintptr_t hostCodeSectionAddr, Triple triple)
 {
     LLVMStackMapParser parser;
     auto result = parser.CalculateStackMap(std::move(stackMapAddr), hostCodeSectionAddr);
@@ -49,41 +66,48 @@ std::pair<std::shared_ptr<uint8_t>, uint32_t> ArkStackMapBuilder::Run(std::uniqu
     auto pc2stackMapVec = parser.GetPc2StackMapVec();
     auto pc2DeoptVec = parser.GetPc2Deopt();
     ARKCallsiteAOTFileInfo AOTFileInfo;
-    GenArkCallsiteAOTFileInfo(pc2stackMapVec, pc2DeoptVec, AOTFileInfo);
-    uint32_t totalSize = AOTFileInfo.secHead.totalSize;
-    uint8_t *p = new(std::nothrow) uint8_t[totalSize];
+    GenArkCallsiteAOTFileInfo(pc2stackMapVec, pc2DeoptVec, AOTFileInfo, triple);
+    uint32_t secSize = AOTFileInfo.secHead.secSize;
+    uint8_t *p = new(std::nothrow) uint8_t[secSize];
     if (p == nullptr) {
-        LOG_FULL(FATAL) << "new totalSize:0x" << std::hex << totalSize << " failed";
+        LOG_FULL(FATAL) << "new secSize:0x" << std::hex << secSize << " failed";
     }
     std::shared_ptr<uint8_t> ptr(p, [](uint8_t *p) { delete []p;});
-    SaveArkCallsiteAOTFileInfo(ptr.get(), totalSize, AOTFileInfo);
-    return std::make_pair(ptr, totalSize);
+    SaveArkCallsiteAOTFileInfo(ptr.get(), secSize, AOTFileInfo, triple);
+    if (traceStackMap_) {
+        Dump(dumper_);
+    }
+    return std::make_pair(ptr, secSize);
 }
 
-void ArkStackMapBuilder::SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer)
+void ArkStackMapBuilder::SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple)
 {
     size_t n = info.callsites.size();
     for (size_t i = 0; i < n; i++) {
         auto &callSite = info.callsites.at(i);
-        CallSiteInfo stackmaps = callSite.stackmaps;
+        LLVMStackMapType::CallSiteInfo stackmaps = callSite.stackmaps;
         size_t m = stackmaps.size();
         for (size_t j = 0; j < m; j++) {
             auto &stackmap = stackmaps.at(j);
-            DwarfRegType reg = stackmap.first;
-            OffsetType offset = stackmap.second;
+            LLVMStackMapType::DwarfRegType reg = stackmap.first;
+            LLVMStackMapType::OffsetType offset = stackmap.second;
             if (j == 0) {
                 ASSERT(callSite.head.stackmapOffset == writer.GetOffset());
             }
-            writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(reg)), sizeof(DwarfRegType));
-            writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(offset)), sizeof(OffsetType));
+            std::vector<uint8_t> regOffset;
+            size_t regOffsetSize = 0;
+            LLVMStackMapType::EncodeRegAndOffset(regOffset, regOffsetSize, reg, offset, triple);
+            writer.WriteBuffer(reinterpret_cast<const uint8_t *>(regOffset.data()), regOffset.size());
+            dumper_.arkStackMapSize += regOffsetSize;
             if (j == m - 1) {
-                ASSERT((callSite.head.stackmapOffset + callSite.CalStackMapSize()) == writer.GetOffset());
+                ASSERT((callSite.head.stackmapOffset + callSite.CalStackMapSize(triple)) == writer.GetOffset());
             }
         }
     }
+    writer.AlignOffset();
 }
 
-void ArkStackMapBuilder::SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer)
+void ArkStackMapBuilder::SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple)
 {
     for (auto &it: info.callsites) {
         auto& callsite2Deopt = it.callsite2Deopt;
@@ -93,19 +117,33 @@ void ArkStackMapBuilder::SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, Binary
             if (j == 0) {
                 ASSERT(it.head.deoptOffset == writer.GetOffset());
             }
-            writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(deopt.Id)), sizeof(deopt.Id));
-            writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(deopt.kind)), sizeof(deopt.kind));
+            std::vector<uint8_t> vregsInfo;
+            size_t vregsInfoSize = 0;
+            LLVMStackMapType::EncodeVRegsInfo(vregsInfo, vregsInfoSize, deopt.id, deopt.kind);
+            writer.WriteBuffer(reinterpret_cast<const uint8_t *>(vregsInfo.data()), vregsInfoSize);
+            dumper_.deoptSize += vregsInfoSize;
             auto& value = deopt.value;
-            if (std::holds_alternative<OffsetType>(value)) {
-                OffsetType v = std::get<OffsetType>(value);
-                writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(v)), sizeof(v));
-            } else if (std::holds_alternative<LargeInt>(value)) {
-                LargeInt v = std::get<LargeInt>(value);
-                writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(v)), sizeof(v));
-            } else if (std::holds_alternative<DwarfRegAndOffsetType>(value)) {
-                DwarfRegAndOffsetType v = std::get<DwarfRegAndOffsetType>(value);
-                writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(v.first)), sizeof(v.first));
-                writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(v.second)), sizeof(v.second));
+            if (std::holds_alternative<LLVMStackMapType::IntType>(value)) {
+                LLVMStackMapType::IntType v = std::get<LLVMStackMapType::IntType>(value);
+                std::vector<uint8_t> num;
+                size_t numSize = 0;
+                LLVMStackMapType::EncodeData(num, numSize, v);
+                writer.WriteBuffer(reinterpret_cast<const uint8_t *>(num.data()), numSize);
+                dumper_.deoptSize += numSize;
+            } else if (std::holds_alternative<LLVMStackMapType::LargeInt>(value)) {
+                LLVMStackMapType::LargeInt v = std::get<LLVMStackMapType::LargeInt>(value);
+                std::vector<uint8_t> num;
+                size_t numSize = 0;
+                LLVMStackMapType::EncodeData(num, numSize, v);
+                writer.WriteBuffer(reinterpret_cast<const uint8_t *>(num.data()), numSize);
+                dumper_.deoptSize += numSize;
+            } else if (std::holds_alternative<LLVMStackMapType::DwarfRegAndOffsetType>(value)) {
+                LLVMStackMapType::DwarfRegAndOffsetType v = std::get<LLVMStackMapType::DwarfRegAndOffsetType>(value);
+                std::vector<uint8_t> regOffset;
+                size_t regOffsetSize = 0;
+                LLVMStackMapType::EncodeRegAndOffset(regOffset, regOffsetSize, v.first, v.second, triple);
+                writer.WriteBuffer(reinterpret_cast<const uint8_t *>(regOffset.data()), regOffset.size());
+                dumper_.arkStackMapSize += regOffsetSize;
             } else {
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -114,110 +152,19 @@ void ArkStackMapBuilder::SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, Binary
     }
 }
 
-void ArkStackMapParser::ParseArkStackMap(const CallsiteHead& callsiteHead, BinaryBufferParser& binBufparser,
-    uint8_t *ptr, ArkStackMap &arkStackMaps) const
-{
-    DwarfRegType reg;
-    OffsetType offsetType;
-    uint32_t offset = callsiteHead.stackmapOffset;
-    uint32_t arkStackMapNum = callsiteHead.arkStackMapNum;
-    ASSERT(arkStackMapNum % 2 == 0); // 2:base and derive
-    for (uint32_t j = 0; j < arkStackMapNum; j++) {
-        binBufparser.ParseBuffer(reinterpret_cast<uint8_t *>(&reg), sizeof(DwarfRegType), ptr + offset);
-        offset += sizeof(DwarfRegType);
-        binBufparser.ParseBuffer(reinterpret_cast<uint8_t *>(&offsetType), sizeof(OffsetType), ptr + offset);
-        offset += sizeof(OffsetType);
-        LOG_COMPILER(VERBOSE) << " reg: " << std::dec << reg << " offset:" <<  offsetType;
-        arkStackMaps.emplace_back(std::make_pair(reg, offsetType));
-    }
-}
-
-void ArkStackMapParser::ParseArkDeopt(const CallsiteHead& callsiteHead,
-    BinaryBufferParser& binBufparser, uint8_t *ptr, std::vector<kungfu::ARKDeopt> &deopts) const
-{
-    kungfu::ARKDeopt deopt;
-    uint32_t deoptOffset = callsiteHead.deoptOffset;
-    uint32_t deoptNum = callsiteHead.deoptNum;
-    OffsetType id;
-    LocationTy::Kind kind;
-    DwarfRegType reg;
-    OffsetType offsetType;
-    ASSERT(deoptNum % 2 == 0); // 2:<id, value>
-    for (uint32_t j = 0; j < deoptNum; j += 2) { // 2:<id, value>
-        binBufparser.ParseBuffer(reinterpret_cast<uint8_t *>(&id), sizeof(id), ptr + deoptOffset);
-        deoptOffset += sizeof(id);
-        deopt.Id = id;
-        binBufparser.ParseBuffer(reinterpret_cast<uint8_t *>(&kind), sizeof(kind), ptr + deoptOffset);
-        deoptOffset += sizeof(kind);
-        deopt.kind = kind;
-        switch (kind) {
-            case LocationTy::Kind::CONSTANT: {
-                OffsetType v;
-                binBufparser.ParseBuffer(reinterpret_cast<uint8_t *>(&v), sizeof(v), ptr + deoptOffset);
-                deoptOffset += sizeof(v);
-                LOG_COMPILER(VERBOSE) << "const offset:" << deoptOffset;
-                deopt.value = v;
-                break;
-            }
-            case LocationTy::Kind::CONSTANTNDEX: {
-                LargeInt v;
-                binBufparser.ParseBuffer(reinterpret_cast<uint8_t *>(&v), sizeof(v), ptr + deoptOffset);
-                deoptOffset += sizeof(v);
-                LOG_COMPILER(VERBOSE) << "large Int:" << v;
-                deopt.value = v;
-                break;
-            }
-            case LocationTy::Kind::INDIRECT: {
-                binBufparser.ParseBuffer(reinterpret_cast<uint8_t *>(&reg), sizeof(reg), ptr + deoptOffset);
-                deoptOffset += sizeof(reg);
-                binBufparser.ParseBuffer(reinterpret_cast<uint8_t *>(&offsetType),
-                    sizeof(offsetType), ptr + deoptOffset);
-                deoptOffset += sizeof(offsetType);
-                LOG_COMPILER(VERBOSE) << " reg:" << std::dec << reg << " offset:" << static_cast<int>(offsetType);
-                deopt.value = std::make_pair(reg, offsetType);
-                break;
-            }
-            default: {
-                LOG_ECMA(FATAL) << "this branch is unreachable";
-                UNREACHABLE();
-            }
-        }
-        deopts.emplace_back(deopt);
-    }
-}
-
-void ArkStackMapParser::ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) const
-{
-    CallsiteHead callsiteHead;
-    StackMapSecHead secHead;
-    BinaryBufferParser binBufparser(ptr, length);
-    binBufparser.ParseBuffer(&secHead, sizeof(StackMapSecHead));
-    for (uint32_t i = 0; i < secHead.callsiteNum; i++) {
-        binBufparser.ParseBuffer(&callsiteHead, sizeof(CallsiteHead));
-        uint32_t offset = callsiteHead.stackmapOffset;
-        uint32_t arkStackMapNum = callsiteHead.arkStackMapNum;
-        uint32_t deoptOffset = callsiteHead.deoptOffset;
-        uint32_t deoptNum = callsiteHead.deoptNum;
-        std::vector<kungfu::ARKDeopt> deopts;
-        ArkStackMap arkStackMaps;
-        LOG_COMPILER(VERBOSE) << " calliteOffset:0x" << std::hex << callsiteHead.calliteOffset
-            << " stackmap offset:0x" << std::hex << offset << " num:" << arkStackMapNum
-            <<  "  deopt Offset:0x" << deoptOffset << " num:" << deoptNum;
-        ParseArkStackMap(callsiteHead, binBufparser, ptr, arkStackMaps);
-        ParseArkDeopt(callsiteHead, binBufparser, ptr, deopts);
-    }
-}
-
-void ArkStackMapBuilder::SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t length, const ARKCallsiteAOTFileInfo& info)
+void ArkStackMapBuilder::SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t length,
+    const ARKCallsiteAOTFileInfo& info, Triple triple)
 {
     BinaryBufferWriter writer(ptr, length);
-    ASSERT(length >= info.secHead.totalSize);
-    writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(info.secHead)), sizeof(StackMapSecHead));
+    ASSERT(length >= info.secHead.secSize);
+    writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(info.secHead)), sizeof(ArkStackMapHeader));
+    dumper_.callsiteHeadSize += sizeof(ArkStackMapHeader);
     for (auto &it: info.callsites) {
-        writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(it.head)), sizeof(CallsiteHead));
+        writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(it.head)), sizeof(CallsiteHeader));
+        dumper_.callsiteHeadSize += sizeof(CallsiteHeader);
     }
-    SaveArkStackMap(info, writer);
-    SaveArkDeopt(info, writer);
+    SaveArkStackMap(info, writer, triple);
+    SaveArkDeopt(info, writer, triple);
 #ifndef NDEBUG
     ArkStackMapParser parser;
     parser.ParseArkStackMapAndDeopt(ptr, length);
@@ -241,8 +188,8 @@ void ArkStackMapBuilder::SortCallSite(
         });
 }
 
-void ArkStackMapBuilder::CalcCallsitePc(std::vector<std::pair<uintptr_t, DeoptInfoType>> &pc2Deopt,
-    std::vector<std::pair<uintptr_t, CallSiteInfo>> &pc2StackMap, std::vector<intptr_t> &callsitePcs)
+void ArkStackMapBuilder::CalcCallsitePc(std::vector<std::pair<uintptr_t, LLVMStackMapType::DeoptInfoType>> &pc2Deopt,
+    std::vector<std::pair<uintptr_t, LLVMStackMapType::CallSiteInfo>> &pc2StackMap, std::vector<intptr_t> &callsitePcs)
 {
     std::set<uintptr_t> pcSet;
     for (auto &it: pc2Deopt) {
@@ -264,31 +211,46 @@ int ArkStackMapBuilder::FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc)
     return -1;
 }
 
-void ArkStackMapBuilder::GenARKDeopt(const DeoptInfoType& deopt, std::pair<uint32_t,
-                                     std::vector<kungfu::ARKDeopt>> &sizeAndArkDeopt)
+void ArkStackMapBuilder::GenARKDeopt(const LLVMStackMapType::DeoptInfoType& deopt, std::pair<uint32_t,
+                                     std::vector<ARKDeopt>> &sizeAndArkDeopt, Triple triple)
 {
     ASSERT(deopt.size() % 2 == 0); // 2:<id, value>
     uint32_t total = 0;
     ARKDeopt v;
     for (size_t i = 0; i < deopt.size(); i += 2) { // 2:<id, value>
-        ASSERT(std::holds_alternative<OffsetType>(deopt[i]));
-        const auto &id = std::get<OffsetType>(deopt[i]);
-        total += sizeof(OffsetType);
-        v.Id = id;
-        total += sizeof(LocationTy::Kind); // derive
+        ASSERT(std::holds_alternative<LLVMStackMapType::IntType>(deopt[i]));
+        LLVMStackMapType::VRegId id = static_cast<LLVMStackMapType::VRegId>(
+            std::get<LLVMStackMapType::IntType>(deopt[i]));
+        v.id = id;
         auto value = deopt[i + 1];
-        if (std::holds_alternative<OffsetType>(value)) {
-            total += sizeof(OffsetType);
+        if (std::holds_alternative<LLVMStackMapType::IntType>(value)) {
             v.kind = LocationTy::Kind::CONSTANT;
-            v.value = std::get<OffsetType>(value);
-        } else if (std::holds_alternative<LargeInt>(value)) {
-            total += sizeof(LargeInt);
+            v.value = std::get<LLVMStackMapType::IntType>(value);
+            std::vector<uint8_t> vregsInfo;
+            size_t vregsInfoSize = 0;
+            LLVMStackMapType::EncodeVRegsInfo(vregsInfo, vregsInfoSize, v.id, v.kind);
+            size_t valueSize = panda::leb128::SignedEncodingSize(std::get<LLVMStackMapType::IntType>(value));
+            total += (vregsInfoSize + valueSize);
+        } else if (std::holds_alternative<LLVMStackMapType::LargeInt>(value)) {
             v.kind = LocationTy::Kind::CONSTANTNDEX;
-            v.value = std::get<LargeInt>(value);
-        } else if (std::holds_alternative<DwarfRegAndOffsetType>(value)) {
-            total += (sizeof(DwarfRegType) + sizeof(OffsetType));
+            v.value = std::get<LLVMStackMapType::LargeInt>(value);
+            std::vector<uint8_t> vregsInfo;
+            size_t vregsInfoSize = 0;
+            LLVMStackMapType::EncodeVRegsInfo(vregsInfo, vregsInfoSize, v.id, v.kind);
+            size_t valueSize = panda::leb128::SignedEncodingSize(std::get<LLVMStackMapType::LargeInt>(value));
+            total += (vregsInfoSize + valueSize);
+        } else if (std::holds_alternative<LLVMStackMapType::DwarfRegAndOffsetType>(value)) {
             v.kind = LocationTy::Kind::INDIRECT;
-            v.value = std::get<DwarfRegAndOffsetType>(value);
+            v.value = std::get<LLVMStackMapType::DwarfRegAndOffsetType>(value);
+            std::vector<uint8_t> vregsInfo;
+            size_t vregsInfoSize = 0;
+            LLVMStackMapType::EncodeVRegsInfo(vregsInfo, vregsInfoSize, v.id, v.kind);
+            LLVMStackMapType::DwarfRegType reg = std::get<LLVMStackMapType::DwarfRegAndOffsetType>(value).first;
+            LLVMStackMapType::OffsetType offset = std::get<LLVMStackMapType::DwarfRegAndOffsetType>(value).second;
+            std::vector<uint8_t> regOffset;
+            size_t regOffsetSize = 0;
+            LLVMStackMapType::EncodeRegAndOffset(regOffset, regOffsetSize, reg, offset, triple);
+            total += (vregsInfoSize + regOffsetSize);
         } else {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -297,54 +259,58 @@ void ArkStackMapBuilder::GenARKDeopt(const DeoptInfoType& deopt, std::pair<uint3
     }
     std::sort(sizeAndArkDeopt.second.begin(), sizeAndArkDeopt.second.end(),
         [](const ARKDeopt &a, const ARKDeopt &b) {
-            return a.Id < b.Id;
+            return a.id < b.id;
         });
     sizeAndArkDeopt.first = total;
 }
 
-void ArkStackMapBuilder::GenArkCallsiteAOTFileInfo(std::vector<Pc2CallSiteInfo> &pc2stackMapVec,
-    std::vector<Pc2Deopt>& pc2DeoptVec, ARKCallsiteAOTFileInfo &result)
+void ArkStackMapBuilder::GenArkCallsiteAOTFileInfo(std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2stackMapVec,
+    std::vector<LLVMStackMapType::Pc2Deopt>& pc2DeoptVec, ARKCallsiteAOTFileInfo &result, Triple triple)
 {
     ARKCallsite callsite;
-    uint32_t totalSize = 0;
-    std::vector<std::pair<uintptr_t, CallSiteInfo>> pc2stackMaps;
-    std::vector<std::pair<uintptr_t, DeoptInfoType>> pc2Deopts;
+    uint32_t secSize = 0;
+    std::vector<std::pair<uintptr_t, LLVMStackMapType::CallSiteInfo>> pc2StackMaps;
+    std::vector<std::pair<uintptr_t, LLVMStackMapType::DeoptInfoType>> pc2Deopts;
     std::vector<intptr_t> CallsitePcs;
-    SortCallSite(pc2stackMapVec, pc2stackMaps);
+    SortCallSite(pc2stackMapVec, pc2StackMaps);
     SortCallSite(pc2DeoptVec, pc2Deopts);
-    CalcCallsitePc(pc2Deopts, pc2stackMaps, CallsitePcs);
+    CalcCallsitePc(pc2Deopts, pc2StackMaps, CallsitePcs);
     uint32_t callsiteNum = CallsitePcs.size();
+    dumper_.callsiteNum = callsiteNum;
     result.callsites.resize(callsiteNum);
-    uint32_t stackmapOffset = sizeof(StackMapSecHead) + sizeof(CallsiteHead) * callsiteNum;
-    for (auto &x: pc2stackMaps) {
-        CallSiteInfo i = x.second;
+    uint32_t stackmapOffset = sizeof(ArkStackMapHeader) + sizeof(CallsiteHeader) * callsiteNum;
+    for (auto &x: pc2StackMaps) {
+        LLVMStackMapType::CallSiteInfo i = x.second;
         callsite.head.calliteOffset = x.first;
-        callsite.head.arkStackMapNum = i.size();
+        ASSERT(std::numeric_limits<uint16_t>::min() <= i.size() && i.size() <= std::numeric_limits<uint16_t>::max());
+        callsite.head.stackmapNum = i.size();
         callsite.head.stackmapOffset = stackmapOffset;
         callsite.head.deoptOffset = 0;
         callsite.head.deoptNum = 0;
         callsite.stackmaps = i;
-        stackmapOffset += callsite.CalStackMapSize();
+        stackmapOffset += callsite.CalStackMapSize(triple);
         int loc = FindLoc(CallsitePcs, x.first);
         ASSERT(loc >= 0 && loc < static_cast<int>(callsiteNum));
         result.callsites[static_cast<uint32_t>(loc)] = callsite;
+        dumper_.stackmapNum += i.size();
     }
-    totalSize = stackmapOffset;
+    stackmapOffset = AlignUp(stackmapOffset, LLVMStackMapType::STACKMAP_ALIGN_BYTES);
+    secSize = stackmapOffset;
     for (auto &x: pc2Deopts) {
         int loc = FindLoc(CallsitePcs, x.first);
         ASSERT(loc >= 0 && loc < static_cast<int>(callsiteNum));
-        DeoptInfoType deopt = x.second;
+        LLVMStackMapType::DeoptInfoType deopt = x.second;
         result.callsites[static_cast<uint32_t>(loc)].head.calliteOffset = x.first;
+        ASSERT(std::numeric_limits<uint16_t>::min() <= deopt.size() && deopt.size() <= std::numeric_limits<uint16_t>::max());
         result.callsites[static_cast<uint32_t>(loc)].head.deoptNum = deopt.size();
-        result.callsites[static_cast<uint32_t>(loc)].head.deoptOffset = totalSize;
-        std::pair<uint32_t, std::vector<kungfu::ARKDeopt>> sizeAndArkDeopt;
-        GenARKDeopt(deopt, sizeAndArkDeopt);
-        totalSize += sizeAndArkDeopt.first;
+        result.callsites[static_cast<uint32_t>(loc)].head.deoptOffset = secSize;
+        std::pair<uint32_t, std::vector<ARKDeopt>> sizeAndArkDeopt;
+        GenARKDeopt(deopt, sizeAndArkDeopt, triple);
+        secSize += sizeAndArkDeopt.first;
         result.callsites[static_cast<uint32_t>(loc)].callsite2Deopt = sizeAndArkDeopt.second;
+        dumper_.deoptNum += deopt.size();
     }
     result.secHead.callsiteNum = callsiteNum;
-    result.secHead.callsitStart = sizeof(StackMapSecHead);
-    result.secHead.callsitEnd = result.secHead.callsitStart + (result.secHead.callsiteNum - 1) * sizeof(CallsiteHead);
-    result.secHead.totalSize = totalSize;
+    result.secHead.secSize = secSize;
 }
 } // namespace panda::ecmascript::kungfu

@@ -100,8 +100,8 @@ public:
 
     bool ShouldDumpToAOTFile() const
     {
-         bool saveForAot = false;
-         switch (value_) {
+        bool saveForAot = false;
+        switch (value_) {
             case ElfSecName::RODATA:
             case ElfSecName::RODATA_CST4:
             case ElfSecName::RODATA_CST8:
@@ -119,8 +119,8 @@ public:
             default: {
                 break;
             }
-         }
-         return saveForAot;
+        }
+        return saveForAot;
     }
 
     ElfSecName Value() const
@@ -144,20 +144,20 @@ public:
     void InitShTypeAndFlag()
     {
         std::map<ElfSecName, std::pair<unsigned, unsigned>> nameToTypeAndFlag = {
-            {ElfSecName::RODATA, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE)},
-            {ElfSecName::RODATA_CST4, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE)},
-            {ElfSecName::RODATA_CST8, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE)},
-            {ElfSecName::RODATA_CST16, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE)},
-            {ElfSecName::RODATA_CST32, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE)},
-            {ElfSecName::TEXT, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_EXECINSTR)},
-            {ElfSecName::DATA, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_WRITE)},
-            {ElfSecName::GOT, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_WRITE)},
-            {ElfSecName::RELATEXT, std::pair<unsigned, unsigned>(llvm::ELF::SHT_RELA, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_WRITE)},
-            {ElfSecName::STRTAB, std::pair<unsigned, unsigned>(llvm::ELF::SHT_STRTAB, llvm::ELF::SHF_ALLOC)},
-            {ElfSecName::SYMTAB, std::pair<unsigned, unsigned>(llvm::ELF::SHT_SYMTAB, llvm::ELF::SHF_ALLOC)},
-            {ElfSecName::LLVM_STACKMAP, std::pair<unsigned, unsigned>(llvm::ELF::SHT_RELA, llvm::ELF::SHF_ALLOC)},
-            {ElfSecName::ARK_FUNCENTRY, std::pair<unsigned, unsigned>(llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC)},
-            {ElfSecName::ARK_STACKMAP, std::pair<unsigned, unsigned>(llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC)},
+            {ElfSecName::RODATA, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE}},
+            {ElfSecName::RODATA_CST4, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE}},
+            {ElfSecName::RODATA_CST8, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE}},
+            {ElfSecName::RODATA_CST16, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE}},
+            {ElfSecName::RODATA_CST32, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE}},
+            {ElfSecName::TEXT, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_EXECINSTR}},
+            {ElfSecName::DATA, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_WRITE}},
+            {ElfSecName::GOT, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_WRITE}},
+            {ElfSecName::RELATEXT, {llvm::ELF::SHT_RELA, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_WRITE}},
+            {ElfSecName::STRTAB, {llvm::ELF::SHT_STRTAB, llvm::ELF::SHF_ALLOC}},
+            {ElfSecName::SYMTAB, {llvm::ELF::SHT_SYMTAB, llvm::ELF::SHF_ALLOC}},
+            {ElfSecName::LLVM_STACKMAP, {llvm::ELF::SHT_RELA, llvm::ELF::SHF_ALLOC}},
+            {ElfSecName::ARK_FUNCENTRY, {llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC}},
+            {ElfSecName::ARK_STACKMAP, {llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC}},
         };
         auto it = nameToTypeAndFlag.find(value_);
         if (it == nameToTypeAndFlag.end()) {

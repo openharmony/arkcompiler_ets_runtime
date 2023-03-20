@@ -351,7 +351,6 @@ Section Headers:
 */
 void ElfBuilder::PackELFSections(std::ofstream &file)
 {
-
     std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.sectionsInfo_;
     uint32_t secNum = sections.size() + 1; // 1 : section id = 0 is null section
     std::unique_ptr<llvm::ELF::Elf64_Shdr []> shdr = std::make_unique<llvm::ELF::Elf64_Shdr []>(secNum);
@@ -440,7 +439,7 @@ void ElfBuilder::PackELFSegment(std::ofstream &file)
 {
     llvm::ELF::Elf64_Off e_phoff = file.tellp();
     long phoff = (long)offsetof(struct llvm::ELF::Elf64_Ehdr, e_phoff);
-    // write Elf32_Off e_phoff; 
+    // write Elf32_Off e_phoff
     file.seekp(phoff);
     file.write(reinterpret_cast<char *>(&e_phoff), sizeof(e_phoff));
     file.seekp(e_phoff);

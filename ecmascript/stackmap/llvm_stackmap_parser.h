@@ -26,6 +26,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
+#include "ecmascript/stackmap/ark_stackmap_builder.h"
 #include "ecmascript/stackmap/llvm_stackmap_type.h"
 
 namespace panda::ecmascript::kungfu {
@@ -40,13 +41,13 @@ public:
             llvmStackMap_.Print();
         }
     }
-    const CallSiteInfo *GetCallSiteInfoByPc(uintptr_t funcAddr) const;
+    const LLVMStackMapType::CallSiteInfo *GetCallSiteInfoByPc(uintptr_t funcAddr) const;
     bool IsLogEnabled() const
     {
         return enableLog_;
     }
 
-    void PUBLIC_API CalculateFuncFpDelta(Func2FpDelta info, uint32_t moduleIndex);
+    void PUBLIC_API CalculateFuncFpDelta(LLVMStackMapType::Func2FpDelta info, uint32_t moduleIndex);
 
     explicit LLVMStackMapParser(bool enableLog = false)
     {
@@ -67,25 +68,25 @@ public:
         fun2FpDelta_.clear();
         pc2DeoptVec_.clear();
     }
-    std::vector<Pc2CallSiteInfo> PUBLIC_API GetPc2StackMapVec() const
+    std::vector<LLVMStackMapType::Pc2CallSiteInfo> PUBLIC_API GetPc2StackMapVec() const
     {
         return pc2CallSiteInfoVec_;
     }
-    std::vector<Pc2Deopt> GetPc2Deopt() const
+    std::vector<LLVMStackMapType::Pc2Deopt> GetPc2Deopt() const
     {
         return pc2DeoptVec_;
     }
 private:
     void CalcCallSite();
     struct LLVMStackMap llvmStackMap_;
-    std::vector<Pc2CallSiteInfo> pc2CallSiteInfoVec_;
+    std::vector<LLVMStackMapType::Pc2CallSiteInfo> pc2CallSiteInfoVec_;
     std::vector<std::pair<uintptr_t, uint64_t>> fun2RecordNum_;
     std::unique_ptr<DataInfo> dataInfo_;
     bool enableLog_ {false};
     std::set<uintptr_t> funAddr_;
-    std::vector<Func2FpDelta> fun2FpDelta_;
-    std::vector<Pc2Deopt> pc2DeoptVec_;
-    std::map<uint32_t, std::vector<Func2FpDelta>> module2fun2FpDelta_;
+    std::vector<LLVMStackMapType::Func2FpDelta> fun2FpDelta_;
+    std::vector<LLVMStackMapType::Pc2Deopt> pc2DeoptVec_;
+    std::map<uint32_t, std::vector<LLVMStackMapType::Func2FpDelta>> module2fun2FpDelta_;
     std::map<uint32_t, std::set<uintptr_t>> module2funAddr_;
 };
 } // namespace panda::ecmascript::kungfu

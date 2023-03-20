@@ -90,17 +90,30 @@ struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size()
 class FrameWriter;
 class Deoptimizier {
 public:
+    using ARKDeopt = kungfu::ARKDeopt;
+    using CalleeReg = kungfu::CalleeReg;
+    using CalleeRegAndOffsetVec = kungfu::CalleeRegAndOffsetVec;
+    using CommonArgIdx = kungfu::CommonArgIdx;
+    using DeoptType = kungfu::DeoptType;
+    using DwarfRegType = kungfu::LLVMStackMapType::DwarfRegType;
+    using DwarfRegAndOffsetType = kungfu::LLVMStackMapType::DwarfRegAndOffsetType;
+    using IntType = kungfu::LLVMStackMapType::IntType;
+    using LargeInt = kungfu::LLVMStackMapType::LargeInt;
+    using LocationTy = kungfu::LocationTy;
+    using OffsetType = kungfu::LLVMStackMapType::OffsetType;
+    using VRegId = kungfu::LLVMStackMapType::VRegId;
+
     explicit Deoptimizier(JSThread *thread) : thread_(thread)
     {
-        kungfu::CalleeReg callreg;
+        CalleeReg callreg;
         numCalleeRegs_ = static_cast<size_t>(callreg.GetCallRegNum());
         JSRuntimeOptions options = thread_->GetEcmaVM()->GetJSOptions();
         traceDeopt_ = options.GetTraceDeopt();
     }
-    void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle);
-    void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
-    JSTaggedType ConstructAsmInterpretFrame(kungfu::DeoptType type);
-    static std::string DisplayItems(kungfu::DeoptType type);
+    void CollectVregs(const std::vector<ARKDeopt>& deoptBundle);
+    void CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle);
+    JSTaggedType ConstructAsmInterpretFrame(DeoptType type);
+    static std::string DisplayItems(DeoptType type);
 
     JSThread *GetThread() const
     {
@@ -113,9 +126,9 @@ public:
     }
 
 private:
-    size_t GetFrameIndex(kungfu::CommonArgIdx index)
+    size_t GetFrameIndex(CommonArgIdx index)
     {
-        return static_cast<size_t>(index) - static_cast<size_t>(kungfu::CommonArgIdx::FUNC);
+        return static_cast<size_t>(index) - static_cast<size_t>(CommonArgIdx::FUNC);
     }
     JSTaggedValue GetFrameArgv(size_t idx)
     {
@@ -123,7 +136,7 @@ private:
         ASSERT(idx < frameArgc_);
         return JSTaggedValue(frameArgvs_[idx]);
     }
-    JSTaggedValue GetFrameArgv(kungfu::CommonArgIdx index)
+    JSTaggedValue GetFrameArgv(CommonArgIdx index)
     {
         return GetFrameArgv(GetFrameIndex(index));
     }
@@ -135,24 +148,24 @@ private:
     bool CollectVirtualRegisters(Method* method, FrameWriter *frameWriter);
     bool HasDeoptValue(int32_t index) const
     {
-        return deoptVregs_.find(static_cast<kungfu::OffsetType>(index)) != deoptVregs_.end();
+        return deoptVregs_.find(static_cast<VRegId>(index)) != deoptVregs_.end();
     }
     JSTaggedValue GetDeoptValue(int32_t index) const
     {
         if (!HasDeoptValue(index)) {
             return JSTaggedValue::Undefined();
         }
-        return deoptVregs_.at(static_cast<kungfu::OffsetType>(index));
+        return deoptVregs_.at(static_cast<VRegId>(index));
     }
     Method* GetMethod(JSTaggedValue &target);
     void RelocateCalleeSave();
-    void Dump(Method* method, kungfu::DeoptType type);
+    void Dump(Method* method, DeoptType type);
     JSThread *thread_ {nullptr};
     uintptr_t *calleeRegAddr_ {nullptr};
     size_t numCalleeRegs_ {0};
     AsmStackContext stackContext_;
 
-    std::unordered_map<kungfu::OffsetType, JSTaggedValue> deoptVregs_;
+    std::unordered_map<VRegId, JSTaggedValue> deoptVregs_;
     struct Context context_ {0, 0, {}};
     uint32_t pc_ {0};
     JSTaggedValue env_ {JSTaggedValue::Undefined()};
