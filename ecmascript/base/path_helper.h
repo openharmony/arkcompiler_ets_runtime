@@ -302,7 +302,7 @@ public:
         entryPoint = NormalizePath(entryPoint);
         entryPoint = ConfirmLoadingIndexOrNot(jsPandaFile, entryPoint);
         if (!entryPoint.empty()) {
-             return entryPoint;
+            return entryPoint;
         }
         // the package name may have a '.js' suffix, try to parseThirdPartyPackage
         entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, requestName, NPM_PATH_SEGMENT);
@@ -457,7 +457,6 @@ public:
         // Import packages under the current module or project directory
         return FindPackageInTopLevelWithNamespace(jsPandaFile, requestName, recordName);
     }
-
 
     static CString ParseThirdPartyPackage(const JSPandaFile *jsPandaFile, const CString &recordName,
                                           const CString &requestName, const CString &packagePath)
