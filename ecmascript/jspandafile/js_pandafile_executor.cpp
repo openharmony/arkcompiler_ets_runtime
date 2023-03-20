@@ -122,7 +122,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
-    JSThread *thread, const void *buffer, size_t size, const CString &filename)
+    JSThread *thread, const void *buffer, size_t size, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBuffer filename " << filename;
     CString name;
@@ -139,7 +139,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     CString normalName = PathHelper::NormalizePath(filename);
     CString entry = PathHelper::ParseOhmUrl(vm, normalName, name);
     const JSPandaFile *jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), buffer, size);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
         if (thread->GetEcmaVM()->IsWorkerThread()) {
             CString mesWorker = "Excute worker's entryPoint failed: " + entry +

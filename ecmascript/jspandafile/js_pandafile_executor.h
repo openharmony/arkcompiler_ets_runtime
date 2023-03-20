@@ -31,7 +31,7 @@ public:
                                                            std::string_view entryPoint, const CString &filename = "",
                                                            bool needUpdate = false);
     static Expected<JSTaggedValue, bool> ExecuteModuleBuffer(JSThread *thread, const void *buffer, size_t size,
-                                                             const CString &filename = "");
+                                                             const CString &filename = "", bool needUpdate = false);
     static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, bool isBundle, const CString &filename,
                                                              const CString &entry, const void *buffer, size_t size);
     static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
