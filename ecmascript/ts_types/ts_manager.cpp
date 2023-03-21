@@ -512,6 +512,17 @@ bool TSManager::IsGetterSetterFunc(GlobalTSTypeRef gt) const
     return functionType->GetIsGetterSetter();
 }
 
+bool TSManager::IsAbstractMethod(GlobalTSTypeRef gt) const
+{
+    if (!IsFunctionTypeKind(gt)) {
+        return false;
+    }
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType(tsType);
+    return functionType->GetIsAbstract();
+}
+
 GlobalTSTypeRef TSManager::GetFuncReturnValueTypeGT(GlobalTSTypeRef gt) const
 {
     ASSERT(IsFunctionTypeKind(gt));

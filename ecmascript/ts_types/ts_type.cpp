@@ -89,12 +89,13 @@ JSHClass *TSObjectType::CreatePrototypeHClassByProps(JSThread *thread, JSHandle<
     uint32_t numOfProps = propType->GetNumOfProperties();
     JSHandle<JSHClass> hclass;
     if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
+        TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
         JSHandle<JSTaggedValue> ctor = globalConst->GetHandledConstructorString();
         CVector<std::pair<JSHandle<JSTaggedValue>, GlobalTSTypeRef>> sortedPrototype {{ctor, GlobalTSTypeRef()}};
         for (uint32_t index = 0; index < numOfProps; ++index) {
             auto key = propType->GetKey(index);
             auto value = GlobalTSTypeRef(propType->GetTypeId(index).GetInt());
-            if (!JSTaggedValue::SameValue(key, ctor.GetTaggedValue())) {
+            if (!JSTaggedValue::SameValue(key, ctor.GetTaggedValue()) && !tsManager->IsAbstractMethod(value)) {
                 sortedPrototype.emplace_back(std::make_pair(JSHandle<JSTaggedValue>(thread, key), value));
             }
         }
@@ -102,7 +103,6 @@ JSHClass *TSObjectType::CreatePrototypeHClassByProps(JSThread *thread, JSHandle<
         uint32_t keysLen = sortedPrototype.size();
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
         JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(keysLen);
-        TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
 
         for (uint32_t index = 0; index < keysLen; ++index) {
             key.Update(sortedPrototype[index].first);

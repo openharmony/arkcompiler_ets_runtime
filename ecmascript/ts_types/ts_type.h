@@ -191,11 +191,13 @@ public:
     static constexpr size_t ASYNC_BITS = 1;
     static constexpr size_t GENERATOR_BITS = 1;
     static constexpr size_t GETTERSETTER_BITS = 1;
+    static constexpr size_t ABSTRACT_BITS = 1;
     FIRST_BIT_FIELD(BitField, Visibility, Visibility, VISIBILITY_BITS);
     NEXT_BIT_FIELD(BitField, Static, bool, STATIC_BITS, Visibility);
     NEXT_BIT_FIELD(BitField, Async, bool, ASYNC_BITS, Static);
     NEXT_BIT_FIELD(BitField, Generator, bool, GENERATOR_BITS, Async);
     NEXT_BIT_FIELD(BitField, IsGetterSetter, bool, GETTERSETTER_BITS, Generator);
+    NEXT_BIT_FIELD(BitField, IsAbstract, bool, ABSTRACT_BITS, IsGetterSetter);
 
     DECL_VISIT_OBJECT(NAME_OFFSET, RETURN_GT_OFFSET)
     DECL_DUMP()
