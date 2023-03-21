@@ -3101,7 +3101,11 @@ void SlowPathLowering::LowerConstruct(GateRef gate)
     GateRef state = builder_.GetState();
     auto depend = builder_.GetDepend();
     GateRef constructGate = builder_.Call(cs, glue_, target, depend, args, gate);
-    ReplaceHirWithPendingException(gate, state, constructGate, constructGate);
+    GateRef ctor = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::FUNC));
+    GateRef thisObj = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::THIS_OBJECT));
+    GateRef result = builder_.CallStub(
+        glue_, gate, CommonStubCSigns::ConstructorCheck, { glue_, ctor, constructGate, thisObj });
+    ReplaceHirWithPendingException(gate, state, result, result);
 }
 
 void SlowPathLowering::LowerTypedAotCall(GateRef gate)

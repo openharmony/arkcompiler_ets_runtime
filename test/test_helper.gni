@@ -470,12 +470,24 @@ template("host_aot_test_action") {
   ts2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
-    src_js = rebase_path(_test_ts_path_)
     dst_file = rebase_path(_test_abc_path_)
     extra_args = [
       "--merge-abc",
       "--module",
     ]
+
+    if (defined(invoker.run_multi_file_tests) && invoker.run_multi_file_tests) {
+      _test_ts_source_path_ = "$target_out_dir/${_target_name_}.ts"
+      extra_args += [ "--output-proto" ]
+      run_multi_file_tests = true
+
+      # current dir is not work dir and the source code will be copied to work dir
+      src_js = rebase_path(_test_ts_source_path_)
+      src_ts = rebase_path(".")
+    } else {
+      # current dir is work dir
+      src_js = rebase_path(_test_ts_path_)
+    }
 
     in_puts = [
       _test_ts_path_,
