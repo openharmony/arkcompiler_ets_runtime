@@ -106,7 +106,7 @@ HWTEST_F_L0(JSAPIHashMapTest, HashMapSetAndGet)
     EXPECT_EQ(hashMap->IsEmpty(), JSTaggedValue::True());
 
     // test Set exception
-    key.Update(JSTaggedValue::Hole());
+    key.Update(JSTaggedValue::Undefined());
     JSAPIHashMap::Set(thread, hashMap, key, value);
     EXPECT_EXCEPTION();
 

@@ -112,7 +112,7 @@ JSTaggedValue JSAPIHashMap::Replace(JSThread *thread, JSTaggedValue key, JSTagge
 void JSAPIHashMap::Set(JSThread *thread, JSHandle<JSAPIHashMap> hashMap,
                        JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> value)
 {
-    if (!TaggedHashArray::IsKey(key.GetTaggedValue())) {
+    if (key.GetTaggedValue().IsUndefined()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
         CString errorMsg =
             "The type of \"key\" must be Key of JS. Received value is: " + ConvertToString(*result);
