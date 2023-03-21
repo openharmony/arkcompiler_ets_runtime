@@ -87,53 +87,27 @@ void SamplesRecord::AddSample(FrameStackAndInfo *frame)
 
     int sampleNodeId = previousId_ == 0 ? 1 : methodNode.id;
     int timeDelta = static_cast<int>(frame->timeStamp -
-        (threadStartTime_ == 0 ? profileInfo_->startTime : threadStartTime_));
+        (previousTimeStamp_ == 0 ? profileInfo_->startTime : previousTimeStamp_));
     StatisticStateTime(timeDelta, previousState_);
     previousState_ = nodeKey.methodKey.state;
     profileInfo_->nodes[sampleNodeId - 1].hitCount++;
     profileInfo_->samples.push_back(sampleNodeId);
     profileInfo_->timeDeltas.push_back(timeDelta);
-    threadStartTime_ = frame->timeStamp;
+    previousTimeStamp_ = frame->timeStamp;
 }
 
-void SamplesRecord::AddSampleCallNapi(uint64_t *sampleTimeStamp)
+void SamplesRecord::AddRootSample()
 {
-    NapiFrameInfoTempToMap();
-    struct NodeKey nodeKey;
-    struct CpuProfileNode methodNode;
-    int napiFrameStackLength = static_cast<int>(napiFrameStack_.size());
-    if (napiFrameStackLength == 0) {
-        return;
-    }
-    methodNode.id = 1;
-    napiFrameStackLength--;
-    for (; napiFrameStackLength >= 1; napiFrameStackLength--) {
-        nodeKey.methodKey = napiFrameStack_[napiFrameStackLength - 1];
-        methodNode.parentId = nodeKey.parentId = methodNode.id;
-        auto result = nodeMap_.find(nodeKey);
-        if (result == nodeMap_.end()) {
-            int id = static_cast<int>(nodeMap_.size() + 1);
-            nodeMap_.emplace(nodeKey, id);
-            previousId_ = methodNode.id = id;
-            methodNode.codeEntry = GetMethodInfo(nodeKey.methodKey);
-            stackTopLines_.push_back(methodNode.codeEntry.lineNumber);
-            profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
-            profileInfo_->nodes[methodNode.parentId - 1].children.push_back(id);
-        } else {
-            previousId_ = methodNode.id = result->second;
-        }
-    }
-
-    int sampleNodeId = previousId_ == 0 ? 1 : methodNode.id;
-    *sampleTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
-    int timeDelta = static_cast<int>(*sampleTimeStamp -
-        (threadStartTime_ == 0 ? profileInfo_->startTime : threadStartTime_));
+    int sampleNodeId = 1;
+    uint64_t sampleTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
+    int timeDelta = static_cast<int>(sampleTimeStamp -
+        (previousTimeStamp_ == 0 ? profileInfo_->startTime : previousTimeStamp_));
     StatisticStateTime(timeDelta, previousState_);
-    previousState_ = nodeKey.methodKey.state;
-    profileInfo_->nodes[sampleNodeId - 1].hitCount++;
+    previousState_ = RunningState::OTHER;
+    profileInfo_->nodes[0].hitCount++;
     profileInfo_->samples.push_back(sampleNodeId);
     profileInfo_->timeDeltas.push_back(timeDelta);
-    threadStartTime_ = *sampleTimeStamp;
+    previousTimeStamp_ = sampleTimeStamp;
 }
 
 void SamplesRecord::StringifySampleData()
@@ -165,15 +139,17 @@ void SamplesRecord::StringifyStateTimeStatistic()
 void SamplesRecord::StringifyNodes()
 {
     sampleData_ += "\"nodes\":[";
-    size_t nodeCount = profileInfo_->nodeCount;
+    size_t nodeCount = static_cast<size_t>(profileInfo_->nodeCount);
     for (size_t i = 0; i < nodeCount; i++) {
         struct CpuProfileNode node = profileInfo_->nodes[i];
         struct FrameInfo codeEntry = node.codeEntry;
+        std::string url = codeEntry.url;
+        replace(url.begin(), url.end(), '\\', '/');
         sampleData_ += "{\"id\":"
         + std::to_string(node.id) + ",\"callFrame\":{\"functionName\":\""
         + codeEntry.functionName + "\",\"scriptId\":\""
         + std::to_string(codeEntry.scriptId) + "\",\"url\":\""
-        + codeEntry.url + "\",\"lineNumber\":"
+        + url + "\",\"lineNumber\":"
         + std::to_string(codeEntry.lineNumber) + ",\"columnNumber\":"
         + std::to_string(codeEntry.columnNumber) + "},\"hitCount\":"
         + std::to_string(node.hitCount) + ",\"children\":[";
@@ -475,9 +451,9 @@ void SamplesRecord::SetThreadStartTime(uint64_t threadStartTime)
     profileInfo_->startTime = threadStartTime;
 }
 
-void SamplesRecord::SetThreadStopTime(uint64_t threadStopTime)
+void SamplesRecord::SetThreadStopTime()
 {
-    profileInfo_->stopTime = threadStopTime;
+    profileInfo_->stopTime = previousTimeStamp_;
 }
 
 void SamplesRecord::SetStartsampleData(std::string sampleData)
@@ -572,7 +548,7 @@ void SamplesRecord::InsertStackInfo(struct MethodKey &methodKey, struct FrameInf
 
 bool SamplesRecord::PushFrameStack(struct MethodKey &methodKey)
 {
-    if (UNLIKELY(frameStackLength_ >= MAX_ARRAY_COUNT)) {
+    if (UNLIKELY(frameStackLength_ >= MAX_STACK_SIZE)) {
         return false;
     }
     frameStack_[frameStackLength_++] = methodKey;
@@ -581,7 +557,7 @@ bool SamplesRecord::PushFrameStack(struct MethodKey &methodKey)
 
 bool SamplesRecord::PushNapiFrameStack(struct MethodKey &methodKey)
 {
-    if (UNLIKELY(napiFrameStack_.size() >= MAX_ARRAY_COUNT)) {
+    if (UNLIKELY(napiFrameStack_.size() >= MAX_STACK_SIZE)) {
         return false;
     }
     napiFrameStack_.push_back(methodKey);
@@ -637,7 +613,7 @@ void SamplesRecord::SetIsStart(bool isStart)
 
 bool SamplesRecord::PushStackInfo(const FrameInfoTemp &frameInfoTemp)
 {
-    if (UNLIKELY(frameInfoTempLength_ >= MAX_ARRAY_COUNT)) {
+    if (UNLIKELY(frameInfoTempLength_ >= MAX_STACK_SIZE)) {
         return false;
     }
     frameInfoTemps_[frameInfoTempLength_++] = frameInfoTemp;
@@ -646,7 +622,7 @@ bool SamplesRecord::PushStackInfo(const FrameInfoTemp &frameInfoTemp)
 
 bool SamplesRecord::PushNapiStackInfo(const FrameInfoTemp &frameInfoTemp)
 {
-    if (UNLIKELY(napiFrameInfoTemps_.size() == MAX_ARRAY_COUNT)) {
+    if (UNLIKELY(napiFrameInfoTemps_.size() == MAX_STACK_SIZE)) {
         return false;
     }
     napiFrameInfoTemps_.push_back(frameInfoTemp);
@@ -725,20 +701,15 @@ void SamplesRecord::PostFrame()
     samplesQueue_->PostFrame(frameInfoTemps_, frameStack_, frameInfoTempLength_, frameStackLength_);
 }
 
-void SamplesRecord::PostNapiFrame(bool isAfterCallNapi)
+void SamplesRecord::PostNapiFrame()
 {
-    samplesQueue_->PostNapiFrame(napiFrameInfoTemps_, napiFrameStack_, isAfterCallNapi);
+    samplesQueue_->PostNapiFrame(napiFrameInfoTemps_, napiFrameStack_);
 }
 
 void SamplesRecord::ResetFrameLength()
 {
     frameStackLength_ = 0;
     frameInfoTempLength_ = 0;
-}
-
-void SamplesRecord::SetFrameStackCallNapi(bool flag)
-{
-    samplesQueue_->SetFrameStackCallNapi(flag);
 }
 
 uint64_t SamplesRecord::GetCallTimeStamp()
@@ -755,9 +726,6 @@ void SamplesRecord::SetCallTimeStamp(uint64_t timeStamp)
 void SamplesQueue::PostFrame(FrameInfoTemp *frameInfoTemps, MethodKey *frameStack,
                              int frameInfoTempsLength, int frameStackLength)
 {
-    if (GetFrameStackCallNapi()) {
-        return;
-    }
     os::memory::LockHolder holder(mtx_);
     if (!IsFull()) {
         // frameInfoTemps
@@ -771,36 +739,32 @@ void SamplesQueue::PostFrame(FrameInfoTemp *frameInfoTemps, MethodKey *frameStac
                 sizeof(frames_[rear_].frameInfoTemps[i].url), frameInfoTemps[i].url);
             frames_[rear_].frameInfoTemps[i].methodKey.methodIdentifier = frameInfoTemps[i].methodKey.methodIdentifier;
             frames_[rear_].frameInfoTemps[i].methodKey.state = frameInfoTemps[i].methodKey.state;
-            frames_[rear_].frameInfoTemps[i].methodKey.napiCallCount = frameInfoTemps[i].methodKey.napiCallCount;
         }
         // frameStack
         for (int i = 0; i < frameStackLength; i++) {
             frames_[rear_].frameStack[i].methodIdentifier = frameStack[i].methodIdentifier;
             frames_[rear_].frameStack[i].state = frameStack[i].state;
-            frames_[rear_].frameStack[i].napiCallCount = frameStack[i].napiCallCount;
         }
         // frameStackLength
         frames_[rear_].frameStackLength = frameStackLength;
         // frameInfoTempsLength
         frames_[rear_].frameInfoTempsLength = frameInfoTempsLength;
         // timeStamp
-        frames_[rear_].timeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
+        frames_[rear_].timeStamp = lastPostTime_ = SamplingProcessor::GetMicrosecondsTimeStamp();
 
         rear_ = (rear_ + 1) % QUEUE_CAPACITY;
     }
 }
 
 void SamplesQueue::PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
-                                 CVector<MethodKey> &napiFrameStack,
-                                 bool isAfterCallNapi)
+                                 CVector<MethodKey> &napiFrameStack)
 {
     os::memory::LockHolder holder(mtx_);
     if (!IsFull()) {
         int frameInfoTempsLength = static_cast<int>(napiFrameInfoTemps.size());
         int frameStackLength = static_cast<int>(napiFrameStack.size());
-        int startIdx = isAfterCallNapi ? 1 : 0;
         // napiFrameInfoTemps
-        for (int i = startIdx; i < frameInfoTempsLength; i++) {
+        for (int i = 0; i < frameInfoTempsLength; i++) {
             CheckAndCopy(frames_[rear_].frameInfoTemps[i].functionName,
                 sizeof(frames_[rear_].frameInfoTemps[i].functionName), napiFrameInfoTemps[i].functionName);
             frames_[rear_].frameInfoTemps[i].columnNumber = napiFrameInfoTemps[i].columnNumber;
@@ -811,20 +775,18 @@ void SamplesQueue::PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
             frames_[rear_].frameInfoTemps[i].methodKey.methodIdentifier =
                 napiFrameInfoTemps[i].methodKey.methodIdentifier;
             frames_[rear_].frameInfoTemps[i].methodKey.state = napiFrameInfoTemps[i].methodKey.state;
-            frames_[rear_].frameInfoTemps[i].methodKey.napiCallCount = napiFrameInfoTemps[i].methodKey.napiCallCount;
         }
         // napiFrameStack
-        for (int i = startIdx; i < frameStackLength; i++) {
+        for (int i = 0; i < frameStackLength; i++) {
             frames_[rear_].frameStack[i].methodIdentifier = napiFrameStack[i].methodIdentifier;
             frames_[rear_].frameStack[i].state = napiFrameStack[i].state;
-            frames_[rear_].frameStack[i].napiCallCount = napiFrameStack[i].napiCallCount;
         }
         // frameStackLength
         frames_[rear_].frameStackLength = frameStackLength;
         // frameInfoTempsLength
         frames_[rear_].frameInfoTempsLength = frameInfoTempsLength;
         // timeStamp
-        frames_[rear_].timeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
+        frames_[rear_].timeStamp = lastPostTime_ = SamplingProcessor::GetMicrosecondsTimeStamp();
 
         rear_ = (rear_ + 1) % QUEUE_CAPACITY;
     }
@@ -856,24 +818,14 @@ int SamplesQueue::GetSize()
     return (rear_ + QUEUE_CAPACITY - front_) % QUEUE_CAPACITY;
 }
 
-int SamplesQueue::GetFront()
+int SamplesQueue::GetFrontIndex()
 {
     return front_;
 }
 
-int SamplesQueue::GetRear()
+int SamplesQueue::GetRearIndex()
 {
     return rear_;
-}
-
-void SamplesQueue::SetFrameStackCallNapi(bool flag)
-{
-    isFrameStackCallNapi.store(flag);
-}
-
-bool SamplesQueue::GetFrameStackCallNapi()
-{
-    return isFrameStackCallNapi.load();
 }
 
 bool SamplesQueue::CheckAndCopy(char *dest, size_t length, const char *src) const
@@ -885,5 +837,19 @@ bool SamplesQueue::CheckAndCopy(char *dest, size_t length, const char *src) cons
     }
     dest[srcLength] = '\0';
     return true;
+}
+
+FrameStackAndInfo SamplesQueue::GetFront()
+{
+    return frames_[front_];
+}
+
+FrameStackAndInfo SamplesQueue::GetRear()
+{
+    return frames_[rear_];
+}
+uint64_t SamplesQueue::GetLastPostTime()
+{
+    return lastPostTime_;
 }
 } // namespace panda::ecmascript

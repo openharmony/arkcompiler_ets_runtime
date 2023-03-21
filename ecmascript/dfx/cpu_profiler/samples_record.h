@@ -30,8 +30,8 @@
 #include "libpandabase/os/mutex.h"
 
 namespace panda::ecmascript {
-const int MAX_ARRAY_COUNT = 100; // 100:the maximum size of the array
-const int MAX_NODE_COUNT = 10000; // 10000:the maximum size of the array
+const int MAX_STACK_SIZE = 128; // 128:the maximum size of the js stack
+const int MAX_NODE_COUNT = 20000; // 20000:the maximum size of the array
 const int MIN_TIME_DELTA = 10; // 10: the minimum value of the time delta
 const int QUEUE_CAPACITY = 51; // the capacity of the circular queue is QUEUE_CAPACITY - 1
 const size_t NAPI_CALL_SETP = 2; // 2: step size of the variable napiCallIdx in while loop
@@ -51,16 +51,13 @@ enum class RunningState : size_t {
 struct MethodKey {
     void *methodIdentifier = nullptr;
     RunningState state = RunningState::OTHER;
-    uint32_t napiCallCount = 0;
     kungfu::DeoptType deoptType = kungfu::DeoptType::NOTCHECK;
     bool operator < (const MethodKey &methodKey) const
     {
         return state < methodKey.state ||
                (state == methodKey.state && methodIdentifier < methodKey.methodIdentifier) ||
                (state == methodKey.state && methodIdentifier == methodKey.methodIdentifier &&
-                napiCallCount < methodKey.napiCallCount) ||
-               (state == methodKey.state && methodIdentifier == methodKey.methodIdentifier &&
-                napiCallCount == methodKey.napiCallCount && deoptType < methodKey.deoptType);
+               deoptType < methodKey.deoptType);
     }
 };
 
@@ -122,8 +119,8 @@ struct FrameInfoTemp {
 };
 
 struct FrameStackAndInfo {
-    struct FrameInfoTemp frameInfoTemps[MAX_ARRAY_COUNT] = {};
-    struct MethodKey frameStack[MAX_ARRAY_COUNT] = {};
+    struct FrameInfoTemp frameInfoTemps[MAX_STACK_SIZE] = {};
+    struct MethodKey frameStack[MAX_STACK_SIZE] = {};
     int frameInfoTempsLength {};
     int frameStackLength {};
     uint64_t timeStamp {};
@@ -140,24 +137,24 @@ public:
     void PostFrame(FrameInfoTemp *frameInfoTemps, MethodKey *frameStack,
                    int frameInfoTempsLength, int frameStackLength);
     void PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
-                       CVector<MethodKey> &napiFrameStack,
-                       bool isAfterCallNapi);
+                       CVector<MethodKey> &napiFrameStack);
     FrameStackAndInfo *PopFrame();
     bool IsEmpty();
     bool IsFull();
     int GetSize();
-    int GetFront();
-    int GetRear();
-    void SetFrameStackCallNapi(bool flag);
-    bool GetFrameStackCallNapi();
+    int GetFrontIndex();
+    int GetRearIndex();
     bool CheckAndCopy(char *dest, size_t length, const char *src) const;
+    FrameStackAndInfo GetFront();
+    FrameStackAndInfo GetRear();
+    uint64_t GetLastPostTime();
 
 private:
     FrameStackAndInfo frames_[QUEUE_CAPACITY] = {};
     int front_ = 0;
     int rear_ = 0;
-    std::atomic_bool isFrameStackCallNapi = false;
     os::memory::Mutex mtx_;
+    uint64_t lastPostTime_ = 0;
 };
 
 class SamplesRecord {
@@ -166,13 +163,13 @@ public:
     virtual ~SamplesRecord();
 
     void AddSample(FrameStackAndInfo *frame);
-    void AddSampleCallNapi(uint64_t *sampleTimeStamp);
+    void AddRootSample();
     void StringifySampleData();
     int GetMethodNodeCount() const;
     int GetframeStackLength() const;
     std::string GetSampleData() const;
     void SetThreadStartTime(uint64_t threadStartTime);
-    void SetThreadStopTime(uint64_t threadStopTime);
+    void SetThreadStopTime();
     void SetStartsampleData(std::string sampleData);
     void SetFileName(std::string &fileName);
     const std::string GetFileName() const;
@@ -183,7 +180,7 @@ public:
     bool GetGcState() const;
     void SetGcState(bool gcState);
     bool GetRuntimeState() const;
-    void SetRuntimeState(bool gcState);
+    void SetRuntimeState(bool runtimeState);
     void SetIsBreakSampleFlag(bool sampleFlag);
     int SemInit(int index, int pshared, int value);
     int SemPost(int index);
@@ -211,9 +208,8 @@ public:
                                uint64_t startSampleTime, uint64_t &sampleTime);
     void FinetuneTimeDeltas(size_t idx, uint64_t napiTime, uint64_t &sampleTime, bool isEndSample);
     void PostFrame();
-    void PostNapiFrame(bool isAfterCallNapi = false);
+    void PostNapiFrame();
     void ResetFrameLength();
-    void SetFrameStackCallNapi(bool flag);
     uint64_t GetCallTimeStamp();
     void SetCallTimeStamp(uint64_t timeStamp);
     std::ofstream fileHandle_;
@@ -236,7 +232,7 @@ private:
 
     int previousId_ = 0;
     RunningState previousState_ = RunningState::OTHER;
-    uint64_t threadStartTime_ = 0;
+    uint64_t previousTimeStamp_ = 0;
     std::atomic_bool isBreakSample_ = false;
     std::atomic_bool gcState_ = false;
     std::atomic_bool runtimeState_ = false;
@@ -251,10 +247,10 @@ private:
     std::string fileName_ = "";
     sem_t sem_[3]; // 3 : sem_ size is three.
     CMap<struct MethodKey, struct FrameInfo> stackInfoMap_;
-    struct MethodKey frameStack_[MAX_ARRAY_COUNT] = {};
+    struct MethodKey frameStack_[MAX_STACK_SIZE] = {};
     int frameStackLength_ = 0;
     CMap<std::string, int> scriptIdMap_;
-    FrameInfoTemp frameInfoTemps_[MAX_ARRAY_COUNT] = {};
+    FrameInfoTemp frameInfoTemps_[MAX_STACK_SIZE] = {};
     int frameInfoTempLength_ = 0;
     // napi stack
     CVector<struct MethodKey> napiFrameStack_;

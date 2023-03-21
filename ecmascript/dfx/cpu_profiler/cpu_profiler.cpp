@@ -33,6 +33,7 @@ CMap<pthread_t, const EcmaVM *> CpuProfiler::profilerMap_ = CMap<pthread_t, cons
 CpuProfiler::CpuProfiler(const EcmaVM *vm, const int interval) : vm_(vm), interval_(interval)
 {
     generator_ = new SamplesRecord();
+    generator_->SetEnableVMTag(const_cast<EcmaVM *>(vm)->GetJSOptions().EnableCpuProfilerVMTag());
     if (generator_->SemInit(0, 0, 0) != 0) {
         LOG_ECMA(ERROR) << "sem_[0] init failed";
     }
@@ -256,16 +257,20 @@ RunningState CpuProfiler::GetRunningState(const FrameIterator &it,
                                           const JSPandaFile *jsPandaFile, bool topFrame) const
 {
     JSThread *thread = vm_->GetAssociatedJSThread();
+    JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
+
+    if (topFrame && function->IsCallNapi()) {
+        return RunningState::NAPI;
+    }
     if (topFrame && thread->GetGcState()) {
         return RunningState::GC;
     }
-    JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
+    // napi method
+    if (function->IsCallNapi()) {
+        return RunningState::NAPI;
+    }
     JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
     if (extraInfoValue.IsJSNativePointer() || jsPandaFile == nullptr) {
-        // napi method
-        if (function->IsCallNative()) {
-            return RunningState::NAPI;
-        }
         if (extraInfoValue.IsJSNativePointer()) {
             return RunningState::ARKUI_ENGINE;
         }
@@ -286,7 +291,7 @@ RunningState CpuProfiler::GetRunningState(const FrameIterator &it,
     return RunningState::CINT;
 }
 
-void CpuProfiler::GetFrameStack(FrameIterator &it)
+void CpuProfiler::GetStack(FrameIterator &it)
 {
     const CMap<struct MethodKey, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     bool topFrame = true;
@@ -299,13 +304,11 @@ void CpuProfiler::GetFrameStack(FrameIterator &it)
         const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
         struct MethodKey methodKey;
         methodKey.deoptType = method->GetDeoptType();
-        methodKey.state = GetRunningState(it, jsPandaFile, topFrame);
         if (topFrame) {
-            JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
-            if (function->IsCallNative()) {
-                methodKey.napiCallCount = napiCallCount_;
-            }
+            methodKey.state = GetRunningState(it, jsPandaFile, true);
             topFrame = false;
+        } else {
+            methodKey.state = GetRunningState(it, jsPandaFile, false);
         }
         void *methodIdentifier = GetMethodIdentifier(method, it);
         if (methodIdentifier == nullptr) {
@@ -327,14 +330,30 @@ void CpuProfiler::GetFrameStack(FrameIterator &it)
     generator_->PostFrame();
 }
 
-bool CpuProfiler::GetFrameStackCallNapi(JSThread *thread)
+void CpuProfiler::GetStackCallNapi(JSThread *thread, bool beforeCallNapi)
 {
-    [[maybe_unused]] CallNapiScope scope(generator_);
+    uint64_t tempTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
+    if (beforeCallNapi) {
+        if (tempTimeStamp - beforeCallNapiTimeStamp_ < INTERVAL_OF_ACTIVE_SAMPLING) {
+            beforeCallNapiTimeStamp_ = tempTimeStamp;
+            return;
+        }
+        beforeCallNapiTimeStamp_ = tempTimeStamp;
+    } else {
+        if (tempTimeStamp - beforeCallNapiTimeStamp_ < CPUPROFILER_DEFAULT_INTERVAL) {
+            return;
+        }
+    }
+    [[maybe_unused]] CallNapiScope scope(this);
     const CMap<struct MethodKey, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     generator_->ClearNapiStack();
     bool topFrame = true;
     auto currentFrame = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
-    for (FrameIterator it(currentFrame, thread); !it.Done(); it.Advance<GCVisitedFlag::IGNORED>()) {
+    FrameIterator it(currentFrame, thread);
+    if (!beforeCallNapi) {
+        it.Advance<GCVisitedFlag::IGNORED>();
+    }
+    for (; !it.Done(); it.Advance<GCVisitedFlag::IGNORED>()) {
         auto method = it.CheckAndGetMethod();
         if (method == nullptr) {
             continue;
@@ -343,48 +362,30 @@ bool CpuProfiler::GetFrameStackCallNapi(JSThread *thread)
         struct MethodKey methodKey;
         methodKey.deoptType = method->GetDeoptType();
         if (topFrame) {
-            methodKey.state = RunningState::NAPI;
+            if (beforeCallNapi) {
+                methodKey.state = RunningState::NAPI;
+            } else {
+                methodKey.state = GetRunningState(it, method->GetJSPandaFile(), true);
+            }
+            topFrame = false;
         } else {
             methodKey.state = GetRunningState(it, method->GetJSPandaFile(), false);
         }
-        if (topFrame) {
-            napiCallCount_++;
-            methodKey.napiCallCount = napiCallCount_;
-            topFrame = false;
-            FrameIterator itNext(it.GetSp(), thread);
-            itNext.Advance<GCVisitedFlag::IGNORED>();
-            GetRowAndColumnNumbers(itNext);
-        }
         void *methodIdentifier = GetMethodIdentifier(method, it);
         if (methodIdentifier == nullptr) {
-            return false;
+            return;
         }
         methodKey.methodIdentifier = methodIdentifier;
         if (stackInfo.count(methodKey) == 0) {
             if (UNLIKELY(!ParseMethodInfo(methodKey, it, method->GetJSPandaFile(), true))) {
-                return false;
+                return;
             }
         }
         if (UNLIKELY(!generator_->PushNapiFrameStack(methodKey))) {
-            return false;
+            return;
         }
     }
     generator_->PostNapiFrame();
-    return true;
-}
-
-bool CpuProfiler::GetFrameStackAfterCallNapi()
-{
-    [[maybe_unused]] CallNapiScope scope(generator_);
-    uint64_t callTimeStamp = generator_->GetCallTimeStamp();
-    uint64_t currentTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
-    int64_t ts = static_cast<int64_t>(interval_) - static_cast<int64_t>(currentTimeStamp - callTimeStamp);
-    if (callTimeStamp != 0 && ts > 0) {
-        return false;
-    }
-    generator_->SetCallTimeStamp(currentTimeStamp);
-    generator_->PostNapiFrame(true);
-    return true;
 }
 
 bool CpuProfiler::ParseMethodInfo(struct MethodKey &methodKey,
@@ -400,14 +401,9 @@ bool CpuProfiler::ParseMethodInfo(struct MethodKey &methodKey,
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "other")) {
             return false;
         }
-        if (isCallNapi) {
-            codeEntry.lineNumber = line_;
-            codeEntry.columnNumber = column_;
-            if (!CheckAndCopy(codeEntry.url, sizeof(codeEntry.url), url_)) {
-                return false;
-            }
-        }
-
+        FrameIterator itNext(it.GetSp(), it.GetThread());
+        itNext.Advance<GCVisitedFlag::IGNORED>();
+        GetNativeMethodCallPos(itNext, codeEntry);
         GetNativeStack(it, codeEntry.functionName, sizeof(codeEntry.functionName));
     } else {
         if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "JS")) {
@@ -432,8 +428,8 @@ bool CpuProfiler::ParseMethodInfo(struct MethodKey &methodKey,
         // source file
         DebugInfoExtractor *debugExtractor =
             JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
-        const std::string &sourceFile = debugExtractor->GetSourceFile(
-                                        reinterpret_cast<MethodLiteral *>(methodKey.methodIdentifier)->GetMethodId());
+        const std::string &sourceFile =
+            debugExtractor->GetSourceFile(reinterpret_cast<MethodLiteral *>(methodKey.methodIdentifier)->GetMethodId());
         if (sourceFile.empty()) {
             tempVariable = "";
         } else {
@@ -462,7 +458,7 @@ void CpuProfiler::GetNativeStack(const FrameIterator &it, char *functionName, si
     JSThread *thread = vm_->GetJSThread();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
-    JSHandle<JSTaggedValue> func = JSHandle<JSTaggedValue>(thread, function);
+    JSHandle<JSTaggedValue> func(thread, function);
     JSHandle<JSTaggedValue> funcNameValue = JSObject::GetProperty(thread, func, nameKey).GetValue();
     std::string methodNameStr;
     if (funcNameValue->IsString()) {
@@ -470,7 +466,7 @@ void CpuProfiler::GetNativeStack(const FrameIterator &it, char *functionName, si
         methodNameStr = EcmaStringAccessor(methodName).ToStdString();
     }
     // napi method
-    if (function->IsCallNative() && extraInfoValue.CheckIsJSNativePointer()) {
+    if (function->IsCallNapi() && extraInfoValue.CheckIsJSNativePointer()) {
         JSNativePointer *extraInfo = JSNativePointer::Cast(extraInfoValue.GetTaggedObject());
         auto cb = vm_->GetNativePtrGetter();
         if (cb != nullptr  && extraInfo != nullptr) {
@@ -494,19 +490,11 @@ void CpuProfiler::GetNativeStack(const FrameIterator &it, char *functionName, si
     CheckAndCopy(functionName, size, methodNameStr.c_str());
 }
 
-void CpuProfiler::GetStackBeforeCallNapi(JSThread *thread)
-{
-    GetFrameStackCallNapi(thread);
-}
-
-void CpuProfiler::GetStackAfterCallNapi()
-{
-    GetFrameStackAfterCallNapi();
-}
-
 void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *siginfo, void *context)
 {
-    if (signal != SIGPROF) return;
+    if (signal != SIGPROF) {
+        return;
+    }
     CpuProfiler *profiler = nullptr;
     JSThread *thread = nullptr;
     {
@@ -524,6 +512,14 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
             return;
         }
     }
+
+    if (profiler->GetBuildNapiStack()) {
+        if (profiler->generator_->SemPost(0) != 0) {
+            LOG_ECMA(ERROR) << "sem_[0] post failed";
+        }
+        return;
+    }
+
     uint64_t pc = 0;
     if (thread->IsAsmInterpreter()) {
         // If the attempt fails, the callback will be terminated directly to avoid the reentrancy deadlock,
@@ -563,14 +559,14 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
         }
         if (profiler->CheckFrameType(thread, reinterpret_cast<JSTaggedType *>(fp))) {
             FrameIterator it(reinterpret_cast<JSTaggedType *>(fp), thread);
-            profiler->GetFrameStack(it);
+            profiler->GetStack(it);
         }
     } else if (thread->IsAsmInterpreter()) {
         if (thread->GetLastLeaveFrame() != nullptr) {
             JSTaggedType *leaveFrame = const_cast<JSTaggedType *>(thread->GetLastLeaveFrame());
             if (profiler->CheckFrameType(thread, leaveFrame)) {
                 FrameIterator it(leaveFrame, thread);
-                profiler->GetFrameStack(it);
+                profiler->GetStack(it);
             }
         }
     } else {
@@ -578,7 +574,7 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
             if (profiler->CheckFrameType(thread, const_cast<JSTaggedType *>(thread->GetCurrentFrame()))) {
                 FrameHandler frameHandler(thread);
                 FrameIterator it(frameHandler.GetSp(), thread);
-                profiler->GetFrameStack(it);
+                profiler->GetStack(it);
             }
         }
     }
@@ -643,7 +639,7 @@ uint64_t CpuProfiler::GetPcFromContext(void *context)
 {
     [[maybe_unused]] ucontext_t *ucontext = reinterpret_cast<ucontext_t*>(context);
     [[maybe_unused]] mcontext_t &mcontext = ucontext->uc_mcontext;
-    [[maybe_unused]] uint64_t pc = 0;
+    uint64_t pc = 0;
 #if defined(PANDA_TARGET_AMD64)
     pc = static_cast<uint64_t>(mcontext.gregs[REG_RIP]);
 #elif defined(PANDA_TARGET_ARM64)
@@ -721,13 +717,13 @@ void CpuProfiler::RecordCallNapiInfo(const std::string &methodAddr)
     generator_->RecordCallNapiAddr(methodAddr);
 }
 
-void CpuProfiler::GetRowAndColumnNumbers(FrameIterator &itNext)
+void CpuProfiler::GetNativeMethodCallPos(FrameIterator &it, FrameInfoTemp &codeEntry)
 {
-    auto nextMethod = itNext.CheckAndGetMethod();
+    auto nextMethod = it.CheckAndGetMethod();
     if (nextMethod == nullptr) {
-        return;
+        return ;
     }
-    JSFunction* function = JSFunction::Cast(itNext.GetFunction().GetTaggedObject());
+    JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
     JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
     if (!extraInfoValue.IsJSNativePointer() && nextMethod->GetJSPandaFile() != nullptr) {
         DebugInfoExtractor *debugExtractor =
@@ -740,7 +736,7 @@ void CpuProfiler::GetRowAndColumnNumbers(FrameIterator &itNext)
         } else {
             tempVariable = sourceFile.c_str();
         }
-        if (!CheckAndCopy(url_, sizeof(url_), tempVariable)) {
+        if (!CheckAndCopy(codeEntry.url, sizeof(codeEntry.url), tempVariable)) {
             return;
         }
         int lineNumber = 0;
@@ -753,15 +749,25 @@ void CpuProfiler::GetRowAndColumnNumbers(FrameIterator &itNext)
             columnNumber += column + 1;
             return true;
         };
-        uint32_t offset = itNext.GetBytecodeOffset();
+        uint32_t offset = it.GetBytecodeOffset();
         if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset)) {
-            line_ = '?';
+            lineNumber = 0;
         }
         if (!debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
-            column_ = '?';
+            columnNumber = 0;
         }
-        line_ = lineNumber;
-        column_ = columnNumber;
+        codeEntry.lineNumber = lineNumber;
+        codeEntry.columnNumber = columnNumber;
     }
+}
+
+void CpuProfiler::SetBuildNapiStack(bool flag)
+{
+    isBuildNapiStack_.store(flag);
+}
+
+bool CpuProfiler::GetBuildNapiStack()
+{
+    return isBuildNapiStack_.load();
 }
 } // namespace panda::ecmascript

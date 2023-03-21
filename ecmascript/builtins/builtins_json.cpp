@@ -79,7 +79,7 @@ JSTaggedValue BuiltinsJson::Parse(EcmaRuntimeCallInfo *argv)
 // 24.5.2
 JSTaggedValue BuiltinsJson::Stringify(EcmaRuntimeCallInfo *argv)
 {
-    BUILTINS_API_TRACE(argv->GetThread(), Json, Parse);
+    BUILTINS_API_TRACE(argv->GetThread(), Json, Stringify);
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);

@@ -527,6 +527,11 @@ inline bool JSTaggedValue::IsJSProxy() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSProxy();
 }
 
+inline bool JSTaggedValue::CheckIsJSProxy() const
+{
+    return IsHeapObject() && GetTaggedObject() != nullptr && GetTaggedObject()->GetClass()->IsJSProxy();
+}
+
 inline bool JSTaggedValue::IsBoolean() const
 {
     return ((value_ & TAG_HEAPOBJECT_MASK) == TAG_BOOLEAN_MASK);
