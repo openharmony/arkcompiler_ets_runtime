@@ -28,7 +28,7 @@ bool SubtypingOperator::CheckBaseClass(const JSThread *thread, const JSHandle<TS
     TSObjLayoutInfo *ptLayout = TSObjLayoutInfo::Cast(pt->GetObjLayoutInfo().GetTaggedObject());
 
     // itLayout  -> local, ptLayout  -> vtable
-    if (!SubtypingCondition(thread, itLayout, ptLayout, ConditionType::NO_OVERLAP_SUB_LOCAL_SUB_VTABLE )) {
+    if (!SubtypingCondition(thread, itLayout, ptLayout, ConditionType::NO_OVERLAP_SUB_LOCAL_SUB_VTABLE)) {
         return false;
     }
 
@@ -67,7 +67,7 @@ bool SubtypingOperator::CheckSubtyping(const JSThread *thread, const JSHandle<TS
 
     // itLayout  -> local, eItLayout -> extended local
     // ptLayout  -> vtable, eVtable   -> extended vtable
-    if (!SubtypingCondition(thread, itLayout, ptLayout, ConditionType::NO_OVERLAP_SUB_LOCAL_SUB_VTABLE ) ||
+    if (!SubtypingCondition(thread, itLayout, ptLayout, ConditionType::NO_OVERLAP_SUB_LOCAL_SUB_VTABLE) ||
         !SubtypingCondition(thread, itLayout, eItLayout, ConditionType::SUB_LOCAL_CONTAIN_SUP_LOCAL) ||
         !SubtypingCondition(thread, ptLayout, eVtable, ConditionType::SUB_VTABLE_CONTAIN_SUP_VTABLE) ||
         !SubtypingCondition(thread, ptLayout, eItLayout, ConditionType::NO_OVERLAP_SUP_LOCAL_SUB_VTABLE) ||

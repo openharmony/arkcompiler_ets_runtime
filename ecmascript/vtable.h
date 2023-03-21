@@ -60,11 +60,13 @@ public:
 
     static JSHandle<VTable> Copy(const JSThread *thread, const JSHandle<VTable> &vtable);
 
-    uint32_t GetNumberOfTuples() const {
+    uint32_t GetNumberOfTuples() const
+    {
         return GetLength() / TUPLE_SIZE;
     }
 
-    JSTaggedValue GetTupleItem(uint32_t tupleIdx, TupleItem kind) const {
+    JSTaggedValue GetTupleItem(uint32_t tupleIdx, TupleItem kind) const
+    {
         return Get(tupleIdx * TUPLE_SIZE + kind);
     }
 

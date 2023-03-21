@@ -330,7 +330,7 @@ private:
     EntityId id_;
     uint32_t count_ {0};
     SampleMode mode_ {SampleMode::CALL_MODE};
-    char methodName_;
+    char methodName_ {0};
 };
 
 class PGOMethodInfoMap {

@@ -228,9 +228,9 @@ bool QuickFixManager::IsQuickFixCausedException(JSThread *thread,
 CUnorderedSet<CString> QuickFixManager::ParseStackInfo(const CString &stackInfo)
 {
     const uint32_t methodNameOffsetToFirstIndex = 5; // offset of the starting position of methodname to firstIndex.
-    uint32_t lineIndex = 0; // index of "\n".
-    uint32_t firstIndex = 0; // index of "at".
-    uint32_t nextIndex = 0; // index of "(".
+    size_t lineIndex = 0; // index of "\n".
+    size_t firstIndex = 0; // index of "at".
+    size_t nextIndex = 0; // index of "(".
 
     CUnorderedSet<CString> methodNames {}; // method names are from exception stack information.
     while (lineIndex != stackInfo.length() - 1) {

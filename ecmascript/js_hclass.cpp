@@ -599,7 +599,6 @@ PropertyLookupResult JSHClass::LookupProperty(const JSThread *thread, JSHClass *
 
     PropertyLookupResult result;
     int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
-
     // found in local
     if (entry != -1) {
         result.SetIsFound(true);

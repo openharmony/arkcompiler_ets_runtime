@@ -58,7 +58,7 @@ VTable::Tuple VTable::GetTuple(const JSThread *thread, uint32_t tupleIdx) const
 void VTable::SetByIndex(const JSThread *thread, uint32_t idx, const VTable::Tuple &tuple)
 {
     uint32_t beginIdx = idx * TUPLE_SIZE;
-    for(uint32_t i = 0; i < TUPLE_SIZE; ++i) {
+    for (uint32_t i = 0; i < TUPLE_SIZE; ++i) {
         uint32_t currIdx = beginIdx + i;
         JSTaggedValue val = tuple.GetItem(TupleItem(i)).GetTaggedValue();
         Set(thread, currIdx, val);

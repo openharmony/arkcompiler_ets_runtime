@@ -627,7 +627,8 @@ void TSManager::GenerateTSHClasses()
     collectedTypeOffsets_.clear();
 }
 
-void TSManager::RecursiveGenTSHClass(const JSHandle<TSClassType> &classType) {
+void TSManager::RecursiveGenTSHClass(const JSHandle<TSClassType> &classType)
+{
     if (!classType->IsBaseClassType()) {
         JSHandle<TSClassType> extendedClassType(GetExtendedClassType(classType));
         if (!HasTSHClass(extendedClassType)) {

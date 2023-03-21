@@ -225,6 +225,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16:
         case EcmaOpcode::POPLEXENV:
             flags |= BytecodeFlags::WRITE_ENV;
+            [[fallthrough]];
         case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
         case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
         case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:

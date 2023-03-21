@@ -340,18 +340,18 @@ bool AnFileInfo::Load(const std::string &filename)
 
 void AnFileInfo::Dump() const
 {
-     LOG_COMPILER(ERROR) << "An file loading: ";
-     int i = 0;
-     for (const ModuleSectionDes& d : des_) {
-         i++;
-         for (auto &s : d.sectionsInfo_) {
-             std::string name = d.GetSecName(s.first);
-             uint32_t size = d.GetSecSize(s.first);
-             uint64_t addr = d.GetSecAddr(s.first);
-             LOG_COMPILER(ERROR) << " - module-" << i << " <" << name << "> [0x" << std::hex << addr
-                                 << ", 0x" << std::hex << addr + size << "]";
-         }
-     }
+    LOG_COMPILER(ERROR) << "An file loading: ";
+    int i = 0;
+    for (const ModuleSectionDes& d : des_) {
+        i++;
+        for (auto &s : d.sectionsInfo_) {
+            std::string name = d.GetSecName(s.first);
+            uint32_t size = d.GetSecSize(s.first);
+            uint64_t addr = d.GetSecAddr(s.first);
+            LOG_COMPILER(ERROR) << " - module-" << i << " <" << name << "> [0x" << std::hex << addr
+                                << ", 0x" << std::hex << addr + size << "]";
+        }
+    }
 }
 
 bool AnFileInfo::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const

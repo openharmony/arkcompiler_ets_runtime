@@ -25,7 +25,8 @@ class VmThreadControl {
 public:
     static constexpr char VM_NEED_SUSPENSION = 1;
 
-    VmThreadControl(JSThread *thread) {
+    VmThreadControl(JSThread *thread)
+    {
         thread_ = thread;
     }
 
