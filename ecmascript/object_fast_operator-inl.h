@@ -136,8 +136,6 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
         // UpdateRepresentation
         if (LIKELY(!hclass->IsDictionaryMode())) {
             ASSERT(!TaggedArray::Cast(JSObject::Cast(holder)->GetProperties().GetTaggedObject())->IsDictionaryMode());
-
-
             int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
             if (entry != -1) {
                 LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());

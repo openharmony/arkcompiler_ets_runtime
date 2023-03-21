@@ -3126,7 +3126,7 @@ void SlowPathLowering::LowerUpdateHotness(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef interruptsFlag = builder_.Load(VariableType::INT8(), glue_,
-     builder_.IntPtr(JSThread::GlueData::GetInterruptVectorOffset(builder_.GetCompilationConfig()->Is32Bit())));
+        builder_.IntPtr(JSThread::GlueData::GetInterruptVectorOffset(builder_.GetCompilationConfig()->Is32Bit())));
     Label slowPath(&builder_);
     Label dispatch(&builder_);
     builder_.Branch(builder_.Int8Equal(interruptsFlag,

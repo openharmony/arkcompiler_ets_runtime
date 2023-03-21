@@ -568,7 +568,8 @@ public:
         VMNeedSuspensionBit::Set(flag, &glueData_.interruptVector_);
     }
 
-    bool VMNeedSuspension() {
+    bool VMNeedSuspension()
+    {
         return VMNeedSuspensionBit::Decode(glueData_.interruptVector_);
     }
 

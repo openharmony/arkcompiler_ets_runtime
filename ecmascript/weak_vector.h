@@ -82,7 +82,8 @@ public:
     }
 
     template <class Callback>
-    void Iterate(const Callback &cb) {
+    void Iterate(const Callback &cb)
+    {
         uint32_t end = GetEnd();
         for (uint32_t index = 0; index < end; ++index) {
             cb(Get(index));

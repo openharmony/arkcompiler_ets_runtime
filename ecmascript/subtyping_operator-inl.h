@@ -26,7 +26,7 @@ int SubtypingOperator::GetElementByKey(const JSThread *thread, T *obj, JSTaggedV
         return obj->GetElementIndexByKey(key);
     } else if constexpr(std::is_same_v<T, VTable>) {
         return obj->GetTupleIndexByName(key);
-    } else if constexpr(std::is_same_v<T, JSHClass>){
+    } else if constexpr(std::is_same_v<T, JSHClass>) {
         LayoutInfo *objLayout = LayoutInfo::Cast(obj->GetLayout().GetTaggedObject());
         return objLayout->FindElementWithCache(thread, obj, key, obj->NumberOfProps());
     }
