@@ -155,6 +155,13 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
 {
     // Let module be this Source Text Module Record.
     auto globalConstants = thread->GlobalConstants();
+    // For CJS, if exportObject is not JSObject, means the CJS module use default output
+    JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
+    if (JSTaggedValue::SameValue(exportName, defaultString)) {
+        // bind with a number
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
+    }
     if (exportObject->IsJSObject()) {
         JSHandle<JSHClass> jsHclass(thread, JSObject::Cast(exportObject.GetTaggedValue())->GetJSHClass());
         // Get layoutInfo and compare the input and output names of files
@@ -165,13 +172,6 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
                 return resolution;
             }
         }
-    }
-    // For CJS, if exportObject is not JSObject, means the CJS module use default output
-    JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
-    if (JSTaggedValue::SameValue(exportName, defaultString)) {
-        // bind with a number
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
     }
     return globalConstants->GetHandledNull();
 }
