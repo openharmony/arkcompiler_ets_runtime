@@ -31,7 +31,6 @@ if (is_enable_typeinfer_automatedcases) {
   foreach(file, ts_files) {
     host_typeinfer_test_action(file) {
       deps = []
-      is_disable_type_lowering = true
       is_enable_builtins_dts = true
     }
   }
@@ -108,6 +107,8 @@ group("ark_typeinfer_test") {
   foreach(test, test_list) {
     deps += [ "${test}:${test}AotTypeInferAction" ]
   }
+
+  deps += [ "module_test:ark_typeinfer_module_test" ]
 
   if (is_enable_typeinfer_automatedcases) {
     foreach(file, ts_files) {
