@@ -39,16 +39,16 @@ public:
                                 const JSHandle<JSTaggedValue> &name, const JSHandle<JSTaggedValue> &prefix);
     static JSHandle<JSTaggedValue> GetFunctionName(JSThread *thread, const JSHandle<JSFunctionBase> &func);
 
-    void SetCallNative(bool isCallNative)
+    void SetCallNapi(bool isCallNapi)
     {
         JSTaggedValue method = GetMethod();
-        Method::Cast(method.GetTaggedObject())->SetCallNative(isCallNative);
+        Method::Cast(method.GetTaggedObject())->SetCallNapi(isCallNapi);
     }
 
-    bool IsCallNative() const
+    bool IsCallNapi() const
     {
         JSTaggedValue method = GetMethod();
-        return Method::ConstCast(method.GetTaggedObject())->IsCallNative();
+        return Method::ConstCast(method.GetTaggedObject())->IsCallNapi();
     }
 
     FunctionKind GetFunctionKind() const

@@ -560,6 +560,7 @@ public:
     bool IsAccessor() const;
     bool IsJSGlobalEnv() const;
     bool IsJSProxy() const;
+    bool CheckIsJSProxy() const;
     bool IsJSHClass() const;
     bool IsForinIterator() const;
     bool IsStringIterator() const;
