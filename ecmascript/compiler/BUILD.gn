@@ -414,6 +414,12 @@ ohos_executable("ark_aot_compiler") {
     ]
   }
 
+  if (is_mac && !ark_standalone_build) {
+    deps += [
+      "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_mac",
+    ]
+  }
+
   if (target_os == "ios") {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",

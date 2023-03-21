@@ -292,6 +292,12 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_UNIX",
       "PANDA_TARGET_MACOS",
     ]
+
+    if (enable_hilog) {
+      defines = [ "ENABLE_HILOG" ]
+      include_dirs =
+          [ "//base/hiviewdfx/hilog/interfaces/native/innerkits/include" ]
+    }
   } else if (target_os == "android") {
     defines += [
       "PANDA_TARGET_ANDROID",
@@ -912,6 +918,11 @@ ohos_shared_library("libark_jsruntime") {
   if (is_mingw) {
     deps += [
       "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_windows",
+    ]
+  }
+  if (is_mac && !ark_standalone_build) {
+    deps += [
+      "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_mac",
     ]
   }
   if (target_os == "ios" || ark_standalone_build) {
