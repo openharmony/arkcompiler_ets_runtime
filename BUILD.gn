@@ -310,7 +310,7 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_MACOS",
     ]
 
-    if (enable_hilog && !ark_standalone_build) {
+    if (enable_hilog && !is_cross_platform_build && !ark_standalone_build) {
       defines += [ "ENABLE_HILOG" ]
       include_dirs = [ "$hilog_root/include" ]
     }
@@ -968,7 +968,7 @@ ohos_shared_library("libark_jsruntime") {
   if (is_mingw && !ark_standalone_build) {
     deps += [ "$hilog_root:libhilog_windows" ]
   }
-  if (is_mac && target_os != "ios" && !ark_standalone_build) {
+  if (is_mac && !is_cross_platform_build && !ark_standalone_build) {
     deps += [ "$hilog_root:libhilog_mac" ]
   }
   if (target_os == "ios" || ark_standalone_build) {
