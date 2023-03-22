@@ -135,14 +135,11 @@ JSTaggedValue ModuleManager::GetNativeModuleValue(JSThread *thread, JSTaggedValu
     JSHandle<JSTaggedValue> nativeExports = JSHandle<JSTaggedValue>(thread,
         SourceTextModule::Cast(resolvedModule.GetTaggedObject())->GetModuleValue(thread, 0, false));
     if (!nativeExports->IsJSObject()) {
-        ObjectFactory *factory = vm_->GetFactory();
         JSHandle<JSTaggedValue> curModuleName(thread, SourceTextModule::Cast(
             currentModule.GetTaggedObject())->GetEcmaModuleFilename());
-        CString errorMsg = "GetNativeModuleValue: currentModule" + ConvertToString(curModuleName.GetTaggedValue()) +
-                            "find requireModule" + ConvertToString(nativeModuleName.GetTaggedValue()) + "failed";
-        JSHandle<JSObject> syntaxError =
-            factory->GetJSError(base::ErrorType::SYNTAX_ERROR, errorMsg.c_str());
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, syntaxError.GetTaggedValue(), JSTaggedValue::Exception());
+        LOG_FULL(WARN) << "GetNativeModuleValue: currentModule " + ConvertToString(curModuleName.GetTaggedValue()) +
+            ", find requireModule " + ConvertToString(nativeModuleName.GetTaggedValue()) + " failed";
+        return nativeExports.GetTaggedValue();
     }
     return GetValueFromExportObject(nativeExports, binding->GetIndex());
 }
