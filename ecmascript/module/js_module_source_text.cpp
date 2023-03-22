@@ -1231,9 +1231,9 @@ void SourceTextModule::AddExportName(JSThread *thread, const JSTaggedValue &expo
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::ResolveElementOfObject(JSThread *thread,
-                                                                const JSHandle<JSHClass> &hclass,
-                                                                const JSHandle<JSTaggedValue> &exportName,
-                                                                const JSHandle<SourceTextModule> &module)
+                                                                 const JSHandle<JSHClass> &hclass,
+                                                                 const JSHandle<JSTaggedValue> &exportName,
+                                                                 const JSHandle<SourceTextModule> &module)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     int idx = JSHClass::FindPropertyEntry(thread, *hclass, exportName.GetTaggedValue());
