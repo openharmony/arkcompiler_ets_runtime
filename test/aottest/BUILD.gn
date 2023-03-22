@@ -124,6 +124,7 @@ group("ark_aot_ts_test") {
     "neg",
     "new",
     "newlexenv",
+    "newobjrange",
     "newobjspread",
     "not",
     "optimization",
