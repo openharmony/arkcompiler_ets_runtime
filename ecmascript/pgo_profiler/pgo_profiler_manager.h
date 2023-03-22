@@ -52,12 +52,18 @@ public:
     }
 
     // Factory
-    PGOProfiler *Build(EcmaVM *vm, bool isEnable)
+    PGOProfiler *Build(EcmaVM *vm)
     {
+        bool isEnable = IsEnable();
         if (isEnable) {
             isEnable = InitializeData();
         }
         return new PGOProfiler(vm, isEnable);
+    }
+
+    bool IsEnable() const
+    {
+        return saver_ && saver_->IsInitialized();
     }
 
     void Destroy(PGOProfiler *profiler)
@@ -87,7 +93,7 @@ public:
 
     void Merge(PGOProfiler *profiler)
     {
-        if (saver_) {
+        if (saver_ && profiler->isEnable_) {
             saver_->TerminateSaveTask();
             saver_->Merge(*profiler->recordInfos_);
         }

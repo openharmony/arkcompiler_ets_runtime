@@ -156,6 +156,10 @@ void EcmaVM::ResetPGOProfiler()
         LOG_ECMA(ERROR) << "ResetPGOProfiler failed. pgoProfile is null.";
         return;
     }
+    if (options_.IsWorker()) {
+        LOG_ECMA(ERROR) << "ResetPGOProfiler failed. Only available in main vm.";
+        return;
+    }
     bool isEnablePGOProfiler = IsEnablePGOProfiler();
     PGOProfilerManager::GetInstance()->Reset(pgoProfiler_, isEnablePGOProfiler);
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
@@ -169,9 +173,8 @@ bool EcmaVM::IsEnablePGOProfiler() const
 bool EcmaVM::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
-    bool isEnablePGOProfiler = IsEnablePGOProfiler();
-    pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(this, isEnablePGOProfiler);
-    thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
+    pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(this);
+    thread_->SetPGOProfilerEnable(PGOProfilerManager::GetInstance()->IsEnable());
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
     RuntimeStubs::Initialize(thread_);

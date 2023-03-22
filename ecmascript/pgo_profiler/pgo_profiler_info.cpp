@@ -407,7 +407,7 @@ bool PGORecordDetailInfos::ParseFromText(std::ifstream &stream)
         if (details.empty()) {
             continue;
         }
-        size_t blockIndex = details.find_first_of(BLOCK_START);
+        size_t blockIndex = details.find(BLOCK_AND_ARRAY_START);
         if (blockIndex == std::string::npos) {
             return false;
         }
