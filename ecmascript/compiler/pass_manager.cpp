@@ -118,6 +118,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             pipeline.RunPass<EarlyEliminationPass>();
             pipeline.RunPass<NumberSpeculativePass>();
             pipeline.RunPass<TypeLoweringPass>();
+            pipeline.RunPass<LaterEliminationPass>();
         }
         pipeline.RunPass<SlowPathLoweringPass>();
         pipeline.RunPass<VerifierPass>();

@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/early_elimination.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
+#include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
 #include "ecmascript/compiler/scheduler.h"
@@ -295,6 +296,18 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         EarlyElimination(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
+        return true;
+    }
+};
+
+class LaterEliminationPass {
+public:
+    bool Run(PassData* data)
+    {
+        TimeScope timescope("LaterEliminationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        Chunk chunk(data->GetNativeAreaAllocator());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        LaterElimination(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
         return true;
     }
 };
