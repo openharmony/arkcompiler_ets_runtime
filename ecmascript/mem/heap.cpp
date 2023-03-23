@@ -253,7 +253,6 @@ void Heap::Resume(TriggerGCType gcType)
             size_t delta = inactiveSemiSpace_->GetInitialCapacity() - activeSemiSpace_->GetInitialCapacity();
             oldSpaceMaxLimit = oldSpace_->GetMaximumCapacity() + delta * multiple;
         }
-        oldSpace_->SetMaximumCapacity(oldSpaceMaxLimit);
         inactiveSemiSpace_->SetInitialCapacity(activeSemiSpace_->GetInitialCapacity());
     }
 
