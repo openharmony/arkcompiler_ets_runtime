@@ -34,7 +34,8 @@ public:
 
     class Tuple {
     public:
-        JSHandle<JSTaggedValue> GetItem(TupleItem item) const {
+        JSHandle<JSTaggedValue> GetItem(TupleItem item) const
+        {
             return items_[item];
         }
     private:
