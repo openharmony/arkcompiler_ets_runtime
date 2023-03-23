@@ -41,13 +41,17 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
     OpCode op = acc_.GetOpCode(gate);
     switch (op) {
         case OpCode::TYPED_BINARY_OP:
-            ASSERT(acc_.GetLeftType(gate).IsNumberType() && acc_.GetRightType(gate).IsNumberType());
-            return VisitNumberBinaryOp(gate);
+            return VisitTypedBinaryOp(gate);
         case OpCode::TYPED_UNARY_OP:
+            return VisitTypedUnaryOp(gate);
+        case OpCode::INT32_OVERFLOW_CHECK:
+            return VisitOverflowCheck(gate);
         case OpCode::INDEX_CHECK:
+            return VisitIndexCheck(gate);
         case OpCode::LOAD_ELEMENT:
+            return VisitLoadElement(gate);
         case OpCode::STORE_ELEMENT:
-            return VisitNumberRelated(gate);
+            return VisitStoreElement(gate);
         case OpCode::VALUE_SELECTOR:
             return VisitPhi(gate);
         case OpCode::CONSTANT:
@@ -55,6 +59,35 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         default:
             return VisitOthers(gate);
     }
+}
+
+GateRef NumberSpeculativeRetype::VisitTypedBinaryOp(GateRef gate)
+{
+    GateType leftType = acc_.GetLeftType(gate);
+    GateType rightType = acc_.GetRightType(gate);
+    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+        return VisitNumberBinaryOp(gate);
+    } else {
+        [[maybe_unused]] GateRef left = acc_.GetValueIn(gate, 0);
+        [[maybe_unused]] GateRef right = acc_.GetValueIn(gate, 1);
+        ASSERT((acc_.IsConstantUndefined(left)) || (acc_.IsConstantUndefined(right)));
+        ASSERT(acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ);
+        return VisitUndefinedStrictEq(gate);
+    }
+}
+
+GateRef NumberSpeculativeRetype::VisitUndefinedStrictEq(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::BooleanType());
+    }
+    if (IsConvert()) {
+        GateRef left = acc_.GetValueIn(gate, 0);
+        GateRef right = acc_.GetValueIn(gate, 1);
+        acc_.ReplaceValueIn(gate, ConvertToTagged(left), 0);
+        acc_.ReplaceValueIn(gate, ConvertToTagged(right), 1);
+    }
+    return Circuit::NullGate();
 }
 
 GateRef NumberSpeculativeRetype::VisitConstant(GateRef gate)
@@ -119,6 +152,28 @@ GateRef NumberSpeculativeRetype::VisitNumberBinaryOp(GateRef gate)
         case TypedBinOp::TYPED_NOTEQ: {
             return VisitNumberCompare(gate);
         }
+        case TypedBinOp::TYPED_SHL:
+        case TypedBinOp::TYPED_SHR:
+        case TypedBinOp::TYPED_ASHR: {
+            return VisitNumberShift(gate);
+        }
+        default:
+            return VisitNumberRelated(gate);
+    }
+}
+
+GateRef NumberSpeculativeRetype::VisitTypedUnaryOp(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+    TypedUnOp Op = accessor.GetTypedUnOp();
+    switch (Op) {
+        case TypedUnOp::TYPED_INC:
+            return VisitTypedInc(gate);
+        case TypedUnOp::TYPED_NOT:
+            return VisitTypedNot(gate);
+        case TypedUnOp::TYPED_JEQZ:
+            return VisitTypedJeqz(gate);
         default:
             return VisitNumberRelated(gate);
     }
@@ -159,6 +214,117 @@ GateRef NumberSpeculativeRetype::VisitNumberCompare(GateRef gate)
         }
         acc_.ReplaceStateIn(gate, builder_.GetState());
         acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitNumberShift(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::IntType());
+    }
+    if (IsConvert()) {
+        Environment env(gate, circuit_, &builder_);
+        ConvertForIntOperator(gate);
+        acc_.ReplaceStateIn(gate, builder_.GetState());
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitTypedInc(GateRef gate)
+{
+    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+    GateType type = accessor.GetTypeValue();
+    if (type.IsIntType()) {
+        return VisitIntInc(gate);
+    } else if (type.IsNumberType()) {
+        return VisitDoubleInc(gate);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+GateRef NumberSpeculativeRetype::VisitIntInc(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::IntType());
+    }
+
+    if (IsConvert()) {
+        GateRef value = acc_.GetValueIn(gate, 0);
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, GateType::IntType()), 0);
+        acc_.ReplaceStateIn(gate, builder_.GetState());
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitDoubleInc(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::DoubleType());
+    }
+
+    if (IsConvert()) {
+        TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+        GateRef value = acc_.GetValueIn(gate, 0);
+        acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(value, accessor.GetTypeValue()), 0);
+        acc_.ReplaceStateIn(gate, builder_.GetState());
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitTypedNot(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+    GateType type = accessor.GetTypeValue();
+    if (type.IsIntType()) {
+        return VisitIntNot(gate);
+    } else {
+        return VisitNumberRelated(gate);
+    }
+}
+
+GateRef NumberSpeculativeRetype::VisitTypedJeqz(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+    GateType type = accessor.GetTypeValue();
+    if (type.IsBooleanType()) {
+        return VisitBooleanJeqz(gate);
+    } else {
+        return VisitNumberRelated(gate);
+    }
+}
+
+GateRef NumberSpeculativeRetype::VisitIntNot(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::IntType());
+    }
+    if (IsConvert()) {
+        Environment env(gate, circuit_, &builder_);
+        GateRef value = acc_.GetValueIn(gate, 0);
+        TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+        GateType valueType = accessor.GetTypeValue();
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, valueType), 0);
+        acc_.ReplaceStateIn(gate, builder_.GetState());
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitBooleanJeqz(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
+    }
+    if (IsConvert()) {
+        GateRef value = acc_.GetValueIn(gate, 0);
+        acc_.ReplaceValueIn(gate, CheckAndConvertToBool(value, GateType::BooleanType()), 0);
     }
     return Circuit::NullGate();
 }
@@ -217,6 +383,23 @@ GateRef NumberSpeculativeRetype::VisitOthers(GateRef gate)
         }
     }
     return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::CheckAndConvertToBool(GateRef gate, [[maybe_unused]]GateType gateType)
+{
+    TypeInfo output = typeInfos_[acc_.GetId(gate)];
+    switch (output) {
+        case TypeInfo::INT1:
+            return gate;
+        case TypeInfo::TAGGED: {
+            ASSERT(gateType.IsBooleanType());
+            return builder_.ConvertTaggedBooleanToBool(gate);
+        }
+        default: {
+            UNREACHABLE();
+            return Circuit::NullGate();
+        }
+    }
 }
 
 GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType gateType)
@@ -307,6 +490,92 @@ GateRef NumberSpeculativeRetype::ConvertToTagged(GateRef gate)
             UNREACHABLE();
             return Circuit::NullGate();
     }
+}
+
+GateRef NumberSpeculativeRetype::VisitOverflowCheck(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
+    }
+
+    if (IsConvert()) {
+        Environment env(gate, circuit_, &builder_);
+        GateRef value = acc_.GetValueIn(gate, 0);
+        ASSERT(acc_.GetGateType(value).IsIntType());
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, GateType::IntType()), 0);
+        acc_.ReplaceStateIn(gate, builder_.GetState());
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
+
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitIndexCheck(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
+    }
+
+    if (IsConvert()) {
+        Environment env(gate, circuit_, &builder_);
+        GateRef receiver = acc_.GetValueIn(gate, 0);
+        GateRef index = acc_.GetValueIn(gate, 1);
+        GateType receiverType = acc_.GetGateType(receiver);
+        GateType indexType = acc_.GetGateType(index);
+        if (receiverType.IsNumberType()) {
+            // IndexCheck receive length at first value input.
+            acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(receiver, receiverType), 0);
+        }
+        if (indexType.IsNumberType()) {
+            acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType), 1);
+        }
+        acc_.ReplaceStateIn(gate, builder_.GetState());
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
+
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitLoadElement(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
+    }
+
+    if (IsConvert()) {
+        Environment env(gate, circuit_, &builder_);
+        GateRef index = acc_.GetValueIn(gate, 1);
+        GateType indexType = acc_.GetGateType(index);
+        if (indexType.IsNumberType()) {
+            acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType), 1);
+        }
+        acc_.ReplaceStateIn(gate, builder_.GetState());
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
+
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitStoreElement(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
+    }
+
+    if (IsConvert()) {
+        Environment env(gate, circuit_, &builder_);
+        GateRef index = acc_.GetValueIn(gate, 1);
+        GateType indexType = acc_.GetGateType(index);
+        GateRef value = acc_.GetValueIn(gate, 2);
+        if (indexType.IsNumberType()) {
+            acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType), 1);
+        }
+        acc_.ReplaceValueIn(gate, ConvertToTagged(value), 2);   // 2: index of value to be stored.
+        acc_.ReplaceStateIn(gate, builder_.GetState());
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
+
+    return Circuit::NullGate();
 }
 
 void NumberSpeculativeRetype::Run()

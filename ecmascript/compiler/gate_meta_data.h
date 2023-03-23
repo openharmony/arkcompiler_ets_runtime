@@ -53,6 +53,7 @@ enum class TypedBinOp : uint8_t {
     TYPED_GREATEREQ,
     TYPED_EQ,
     TYPED_NOTEQ,
+    TYPED_STRICTEQ,
     TYPED_SHL,
     TYPED_SHR,
     TYPED_ASHR,
@@ -70,6 +71,8 @@ enum class TypedUnOp : uint8_t {
     TYPED_DEC,
     TYPED_ISFALSE,
     TYPED_ISTRUE,
+    TYPED_JEQZ,
+    TYPED_JNEZ,
 };
 
 enum class DeoptType : uint8_t {
@@ -136,23 +139,27 @@ enum class TypedLoadOp : uint8_t {
 
 std::string MachineTypeToStr(MachineType machineType);
 
-#define BINARY_GATE_META_DATA_CACHE_LIST(V)                         \
-    V(Add, ADD, GateFlags::NONE_FLAG, 0, 0, 2)                      \
-    V(Sub, SUB, GateFlags::NONE_FLAG, 0, 0, 2)                      \
-    V(Mul, MUL, GateFlags::NONE_FLAG, 0, 0, 2)                      \
-    V(Exp, EXP, GateFlags::NONE_FLAG, 0, 0, 2)                      \
-    V(Sdiv, SDIV, GateFlags::NONE_FLAG, 0, 0, 2)                    \
-    V(Smod, SMOD, GateFlags::NONE_FLAG, 0, 0, 2)                    \
-    V(Udiv, UDIV, GateFlags::NONE_FLAG, 0, 0, 2)                    \
-    V(Umod, UMOD, GateFlags::NONE_FLAG, 0, 0, 2)                    \
-    V(Fdiv, FDIV, GateFlags::NONE_FLAG, 0, 0, 2)                    \
-    V(Fmod, FMOD, GateFlags::NONE_FLAG, 0, 0, 2)                    \
-    V(And, AND, GateFlags::NONE_FLAG, 0, 0, 2)                      \
-    V(Xor, XOR, GateFlags::NONE_FLAG, 0, 0, 2)                      \
-    V(Or, OR, GateFlags::NONE_FLAG, 0, 0, 2)                        \
-    V(Lsl, LSL, GateFlags::NONE_FLAG, 0, 0, 2)                      \
-    V(Lsr, LSR, GateFlags::NONE_FLAG, 0, 0, 2)                      \
-    V(Asr, ASR, GateFlags::NONE_FLAG, 0, 0, 2)
+#define BINARY_GATE_META_DATA_CACHE_LIST(V)                                 \
+    V(Add, ADD, GateFlags::NONE_FLAG, 0, 0, 2)                              \
+    V(Sub, SUB, GateFlags::NONE_FLAG, 0, 0, 2)                              \
+    V(Mul, MUL, GateFlags::NONE_FLAG, 0, 0, 2)                              \
+    V(Exp, EXP, GateFlags::NONE_FLAG, 0, 0, 2)                              \
+    V(Sdiv, SDIV, GateFlags::NONE_FLAG, 0, 0, 2)                            \
+    V(Smod, SMOD, GateFlags::NONE_FLAG, 0, 0, 2)                            \
+    V(Udiv, UDIV, GateFlags::NONE_FLAG, 0, 0, 2)                            \
+    V(Umod, UMOD, GateFlags::NONE_FLAG, 0, 0, 2)                            \
+    V(Fdiv, FDIV, GateFlags::NONE_FLAG, 0, 0, 2)                            \
+    V(Fmod, FMOD, GateFlags::NONE_FLAG, 0, 0, 2)                            \
+    V(And, AND, GateFlags::NONE_FLAG, 0, 0, 2)                              \
+    V(Xor, XOR, GateFlags::NONE_FLAG, 0, 0, 2)                              \
+    V(Or, OR, GateFlags::NONE_FLAG, 0, 0, 2)                                \
+    V(Lsl, LSL, GateFlags::NONE_FLAG, 0, 0, 2)                              \
+    V(Lsr, LSR, GateFlags::NONE_FLAG, 0, 0, 2)                              \
+    V(Asr, ASR, GateFlags::NONE_FLAG, 0, 0, 2)                              \
+    V(AddWithOverflow, ADD_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 2)    \
+    V(SubWithOverflow, SUB_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 2)    \
+    V(MulWithOverflow, MUL_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 2)    \
+    V(ExtractValue, EXTRACT_VALUE, GateFlags::NONE_FLAG, 0, 0, 2)
 
 #define UNARY_GATE_META_DATA_CACHE_LIST(V)                                       \
     V(Zext, ZEXT, GateFlags::NONE_FLAG, 0, 0, 1)                                 \

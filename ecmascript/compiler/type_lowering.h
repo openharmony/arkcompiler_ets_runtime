@@ -193,6 +193,8 @@ private:
     void LowerLoadArrayLength(GateRef gate);
     void LowerStoreElement(GateRef gate, GateRef glue);
     void LowerLoadElement(GateRef gate);
+    void LowerLoadFromTaggedArray(GateRef gate);
+    void LowerStoreToTaggedArray(GateRef gate, GateRef glue);
     void LowerArrayLoadElement(GateRef gate);
     void LowerFloat32ArrayLoadElement(GateRef gate);
     void LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue);

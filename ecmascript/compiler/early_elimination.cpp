@@ -698,9 +698,12 @@ GateRef EarlyElimination::TryEliminateStateSplitAndFrameState(GateRef gate)
     }
     auto frameState = dependInfo->LookUpFrameState();
     auto curFrameState = acc_.GetFrameState(gate);
-    if (frameState != Circuit::NullGate()) {
-        acc_.UpdateAllUses(curFrameState, frameState);
-        return Circuit::NullGate();
+    if ((frameState != Circuit::NullGate())) {
+        if (curFrameState != frameState) {
+            acc_.UpdateAllUses(curFrameState, frameState);
+            acc_.DeleteGate(curFrameState);
+        }
+        return UpdateDependInfo(gate, dependInfo);
     }
     dependInfo = dependInfo->UpdateFrameState(curFrameState);
     return UpdateDependInfo(gate, dependInfo);

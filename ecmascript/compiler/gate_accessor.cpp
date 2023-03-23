@@ -394,8 +394,7 @@ bool GateAccessor::IsDependSelector(GateRef gate) const
 
 bool GateAccessor::IsConstantValue(GateRef gate, uint64_t value) const
 {
-    auto isConstant = IsConstant(gate);
-    if (isConstant) {
+    if (GetOpCode(gate) == OpCode::CONSTANT) {
         uint64_t bitField = GetConstantValue(gate);
         return bitField == value;
     }

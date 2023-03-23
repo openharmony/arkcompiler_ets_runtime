@@ -341,8 +341,8 @@ void TypeLowering::LowerArrayIndexCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
 
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef hclassIndex = builder_.GetInt32OfTInt(acc_.GetValueIn(gate, 1));
-    GateRef length =
+    GateRef hclassIndex = acc_.GetValueIn(gate, 1);
+    GateRef length = acc_.GetGateType(receiver).IsNJSValueType() ? receiver :
             builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSArray::LENGTH_OFFSET));
     GateRef lengthCheck = builder_.Int32UnsignedLessThan(hclassIndex, length);
     GateRef nonNegativeCheck = builder_.Int32LessThanOrEqual(builder_.Int32(0), hclassIndex);
@@ -357,8 +357,8 @@ void TypeLowering::LowerFloat32ArrayIndexCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
 
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef index = builder_.GetInt32OfTInt(acc_.GetValueIn(gate, 1));
-    GateRef length =
+    GateRef index = acc_.GetValueIn(gate, 1);
+    GateRef length = acc_.GetGateType(receiver).IsNJSValueType() ? receiver :
             builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET));
     GateRef nonNegativeCheck = builder_.Int32LessThanOrEqual(builder_.Int32(0), index);
     GateRef lengthCheck = builder_.Int32UnsignedLessThan(index, length);
@@ -399,9 +399,8 @@ void TypeLowering::LowerTypedIncOverflowCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
 
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateRef intVal = builder_.GetInt64OfTInt(value);
-    GateRef max = builder_.Int64(INT32_MAX);
-    GateRef rangeCheck = builder_.Int64NotEqual(intVal, max);
+    GateRef max = builder_.Int32(INT32_MAX);
+    GateRef rangeCheck = builder_.Int32NotEqual(value, max);
     builder_.DeoptCheck(rangeCheck, frameState, DeoptType::NOTINCOV);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -412,9 +411,8 @@ void TypeLowering::LowerTypedDecOverflowCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
 
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateRef intVal = builder_.GetInt64OfTInt(value);
-    GateRef min = builder_.Int64(INT32_MIN);
-    GateRef rangeCheck = builder_.Int64NotEqual(intVal, min);
+    GateRef min = builder_.Int32(INT32_MIN);
+    GateRef rangeCheck = builder_.Int32NotEqual(value, min);
     builder_.DeoptCheck(rangeCheck, frameState, DeoptType::NOTDECOV);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -425,11 +423,10 @@ void TypeLowering::LowerTypedNegOverflowCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
 
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateRef intVal = builder_.GetInt64OfTInt(value);
-    GateRef min = builder_.Int64(INT32_MIN);
-    GateRef zero = builder_.Int64(0);
-    GateRef notMin = builder_.Int64NotEqual(intVal, min);
-    GateRef notZero = builder_.Int64NotEqual(intVal, zero);
+    GateRef min = builder_.Int32(INT32_MIN);
+    GateRef zero = builder_.Int32(0);
+    GateRef notMin = builder_.Int32NotEqual(value, min);
+    GateRef notZero = builder_.Int32NotEqual(value, zero);
     GateRef rangeCheck = builder_.BoolAnd(notMin, notZero);
     builder_.DeoptCheck(rangeCheck, frameState, DeoptType::NOTNEGOV);
 
@@ -640,29 +637,6 @@ void TypeLowering::LowerArrayLoadElement(GateRef gate)
     GateRef element =
         builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSObject::ELEMENTS_OFFSET));
     GateRef index = acc_.GetValueIn(gate, 1);
-    GateType indexType = acc_.GetGateType(gate);
-
-    Label midMerge(&builder_);
-    if (indexType.IsIntType()) {
-        index = builder_.GetInt32OfTInt(index);
-    } else if (indexType.IsDoubleType()) {
-        index = builder_.TruncFloatToInt32(builder_.GetDoubleOfTDouble(index));
-    } else {
-        // is number and need typecheck in runtime.
-        DEFVAlUE(idx, (&builder_), VariableType::INT32(), builder_.Int32(0));
-        Label isInt(&builder_);
-        Label isDouble(&builder_);
-        builder_.Branch(builder_.TaggedIsInt(index), &isInt, &isDouble);
-        builder_.Bind(&isInt);
-        idx = builder_.GetInt32OfTInt(index);
-        builder_.Jump(&midMerge);
-        builder_.Bind(&isDouble);
-        idx = builder_.TruncFloatToInt32(builder_.GetDoubleOfTDouble(index));
-        builder_.Jump(&midMerge);
-        builder_.Bind(&midMerge);
-        index = *idx;
-    }
-
     GateRef res = builder_.GetValueFromTaggedArray(element, index);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), res);
     Label isHole(&builder_);
@@ -689,7 +663,6 @@ void TypeLowering::LowerFloat32ArrayLoadElement(GateRef gate)
     GateRef arrbuffer =
         builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
     GateRef index = acc_.GetValueIn(gate, 1);
-    index = builder_.GetInt32OfTInt(index);
     GateRef elementSize = builder_.Int32(4);  // 4: float32 occupy 4 bytes
     GateRef offset = builder_.PtrMul(index, elementSize);
     GateRef byteOffset =
@@ -3195,6 +3168,9 @@ void TypeLowering::LowerConvert(GateRef gate)
         } else {
             result = ConvertFloat64ToInt32(value);
         }
+    } else {
+        ASSERT((srcType == ValueType::TAGGED_BOOLEAN) && (dstType == ValueType::BOOL));
+        result = ConvertBooleanToBool(gate);
     }
     acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), result);
 }
@@ -3319,7 +3295,7 @@ GateRef TypeLowering::ConvertInt32ToTaggedInt(GateRef gate)
 
 GateRef TypeLowering::ConvertFloat64ToInt32(GateRef gate)
 {
-    return builder_.ChangeFloat64ToInt32(gate);
+    return builder_.TruncInt64ToInt32(builder_.TruncFloatToInt64(gate));
 }
 
 GateRef TypeLowering::ConvertFloat64ToTaggedDouble(GateRef gate)

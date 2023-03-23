@@ -193,8 +193,12 @@ GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.HasFrameState(currentDepend));
-    auto frameState = acc_.GetFrameState(currentDepend);
+    auto statesplit = currentDepend;
+    while (!acc_.HasFrameState(statesplit)) {
+        ASSERT(acc_.GetDependCount(statesplit) == 1);
+        statesplit = acc_.GetDep(statesplit);
+    }
+    auto frameState = acc_.GetFrameState(statesplit);
     GateRef ret = GetCircuit()->NewGate(circuit_->IndexCheck(static_cast<size_t>(type.Value())),
         MachineType::I1, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -248,8 +252,12 @@ GateRef CircuitBuilder::CheckAndConvert(GateRef gate, ValueType src, ValueType d
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.HasFrameState(currentDepend));
-    auto frameState = acc_.GetFrameState(currentDepend);
+    auto stateSplit = currentLabel->GetDepend();
+    while (!acc_.HasFrameState(stateSplit)) {
+        ASSERT(acc_.GetDependCount(stateSplit) == 1);
+        stateSplit = acc_.GetDep(stateSplit);
+    }
+    auto frameState = acc_.GetFrameState(stateSplit);
     uint64_t value = ValuePairTypeAccessor::ToValue(src, dst);
     GateRef ret = GetCircuit()->NewGate(circuit_->CheckAndConvert(value),
         machineType, {currentControl, currentDepend, gate, frameState}, gateType);
@@ -280,6 +288,11 @@ GateRef CircuitBuilder::ConvertFloat64ToInt32(GateRef gate)
 GateRef CircuitBuilder::ConvertBoolToTaggedBoolean(GateRef gate)
 {
     return Convert(gate, ValueType::BOOL, ValueType::TAGGED_BOOLEAN);
+}
+
+GateRef CircuitBuilder::ConvertTaggedBooleanToBool(GateRef gate)
+{
+    return Convert(gate, ValueType::TAGGED_BOOLEAN, ValueType::BOOL);
 }
 
 GateRef CircuitBuilder::ConvertInt32ToTaggedInt(GateRef gate)
@@ -432,6 +445,28 @@ GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, con
     uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
     ASSERT(pcOffset != 0);
     return GetCircuit()->NewGate(circuit_->TypedCall(numValueIn, pcOffset), type, args, GateType::AnyType());
+}
+
+GateRef CircuitBuilder::AddWithOverflow(GateRef left, GateRef right)
+{
+    return GetCircuit()->NewGate(circuit_->AddWithOverflow(), MachineType::I64, {left, right}, GateType::AnyType());
+}
+
+GateRef CircuitBuilder::SubWithOverflow(GateRef left, GateRef right)
+{
+    return GetCircuit()->NewGate(circuit_->SubWithOverflow(), MachineType::I64, {left, right}, GateType::AnyType());
+}
+
+GateRef CircuitBuilder::MulWithOverflow(GateRef left, GateRef right)
+{
+    return GetCircuit()->NewGate(circuit_->MulWithOverflow(), MachineType::I64, {left, right}, GateType::AnyType());
+}
+
+GateRef CircuitBuilder::ExtractValue(MachineType mt, GateRef pointer, GateRef index)
+{
+    ASSERT(acc_.GetOpCode(index) == OpCode::CONSTANT);
+    ASSERT(acc_.GetMachineType(index) == MachineType::I32);
+    return GetCircuit()->NewGate(circuit_->ExtractValue(), mt, {pointer, index}, GateType::NJSValue());
 }
 
 GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateType typeTo,
