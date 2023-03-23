@@ -1234,9 +1234,9 @@ void SourceTextModule::AddExportName(JSThread *thread, const JSTaggedValue &expo
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::ResolveElementOfObject(JSThread *thread,
-                                                                const JSHandle<JSHClass> &jsHClass,
-                                                                const JSHandle<JSTaggedValue> &exportName,
-                                                                const JSHandle<SourceTextModule> &module)
+                                                                 const JSHandle<JSHClass> &jsHClass,
+                                                                 const JSHandle<JSTaggedValue> &exportName,
+                                                                 const JSHandle<SourceTextModule> &module)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<LayoutInfo> layoutInfo(thread, jsHClass->GetLayout());
