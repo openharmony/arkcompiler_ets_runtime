@@ -26,6 +26,10 @@ public:
     // Use through ArkTools.print(msg, [obj1, obj2, ... objn]) in js
     static JSTaggedValue ObjectDump(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue ExcutePendingJob(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue GetLexicalEnv(EcmaRuntimeCallInfo *info);
+
     static JSTaggedValue CompareHClass(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue DumpHClass(EcmaRuntimeCallInfo *info);

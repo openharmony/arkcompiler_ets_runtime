@@ -40,6 +40,7 @@ group("ark_aot_ts_test") {
     "and",
     "ashr",
     "asyncgenerator",
+    "async_context",
     "await",
     "bind",
     "builtinmath",
