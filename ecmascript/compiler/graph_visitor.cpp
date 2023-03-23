@@ -21,12 +21,16 @@ namespace panda::ecmascript::kungfu {
 
 void GraphVisitor::ReplaceGate(GateRef gate, GateRef replacement)
 {
-    GateRef state = replacement;
-    GateRef depend = replacement;
-    ASSERT(acc_.GetDependCount(gate) == 1); // 1: one dep
-    ASSERT(acc_.GetStateCount(gate) == 1);  // 1: one state
-    state = acc_.GetState(gate);
-    depend = acc_.GetDep(gate);
+    GateRef depend = Circuit::NullGate();
+    if (acc_.GetDependCount(gate) > 0) {
+        ASSERT(acc_.GetDependCount(gate) == 1); // 1: one dep
+        depend = acc_.GetDep(gate);
+    }
+    GateRef state = Circuit::NullGate();
+    if (acc_.GetStateCount(gate) > 0) {
+        ASSERT(acc_.GetStateCount(gate) == 1);  // 1: one state
+        state = acc_.GetState(gate);
+    }
     return ReplaceGate(gate, StateDepend {state, depend}, replacement);
 }
 
@@ -38,11 +42,13 @@ void GraphVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef re
     auto uses = acc_.Uses(gate);
     for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetMark(*it) == MarkCode::FINISHED) {
-            PushEffectGate(*it);
+            PushChangedGate(*it);
         }
         if (acc_.IsStateIn(it)) {
+            ASSERT(state != Circuit::NullGate());
             it = acc_.ReplaceIn(it, state);
         } else if (acc_.IsDependIn(it)) {
+            ASSERT(depend != Circuit::NullGate());
             it = acc_.ReplaceIn(it, depend);
         } else {
             it = acc_.ReplaceIn(it, replacement);
@@ -57,7 +63,7 @@ void GraphVisitor::VisitGraph()
     GateRef returnList = acc_.GetReturnRoot();
     auto uses = acc_.Uses(returnList);
     for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
-        PushEffectGate(*useIt);
+        PushChangedGate(*useIt);
     }
 
     while (true) {
@@ -79,7 +85,7 @@ void GraphVisitor::VisitGraph()
 void GraphVisitor::ReVisitGate(GateRef gate)
 {
     if (acc_.GetMark(gate) == MarkCode::FINISHED) {
-        PushEffectGate(gate);
+        PushChangedGate(gate);
     }
 }
 
@@ -118,7 +124,7 @@ void GraphVisitor::VisitTopGate(Edge& current)
         auto uses = acc_.Uses(gate);
         for (auto it = uses.begin(); it != uses.end(); it++) {
             if (acc_.GetMark(*it) == MarkCode::FINISHED) {
-                PushEffectGate(*it);
+                PushChangedGate(*it);
             }
         }
     }

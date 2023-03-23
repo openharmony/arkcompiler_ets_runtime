@@ -96,6 +96,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "graph_visitor.cpp",
     "ic_stub_builder.cpp",
     "interpreter_stub.cpp",
+    "later_elimination.cpp",
     "llvm_codegen.cpp",
     "llvm_ir_builder.cpp",
     "new_object_stub_builder.cpp",

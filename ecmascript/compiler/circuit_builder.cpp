@@ -863,6 +863,17 @@ GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef pr
     return callGate;
 }
 
+GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    auto newGate = GetCircuit()->NewGate(circuit_->GetConstPool(), MachineType::I64,
+                                         { currentDepend, jsFunc },
+                                         GateType::AnyType());
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
 GateRef CircuitBuilder::HasPendingException(GateRef glue)
 {
     GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env_->IsArch32Bit()));
@@ -955,7 +966,7 @@ GateRef CircuitBuilder::GetLengthFromString(GateRef value)
     return Int32LSR(len, Int32(2));  // 2 : 2 means len must be right shift 2 bits
 }
 
-GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
+GateRef CircuitBuilder::GetConstPoolFromFunction(GateRef jsFunc)
 {
     GateRef method = GetMethodFromFunction(jsFunc);
     return Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
@@ -964,7 +975,7 @@ GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
 GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index,
                                                ConstPoolType type)
 {
-    GateRef constPool = GetConstPool(jsFunc);
+    GateRef constPool = GetConstPoolFromFunction(jsFunc);
     GateRef module = GetModuleFromFunction(jsFunc);
     return GetObjectFromConstPool(glue, hirGate, constPool, module, index, type);
 }

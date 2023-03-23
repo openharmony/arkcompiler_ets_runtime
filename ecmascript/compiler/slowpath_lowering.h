@@ -149,6 +149,7 @@ private:
     void ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow = false);
     void ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate);
     void LowerExceptionHandler(GateRef hirGate);
+    void LowerGetConstPool(GateRef hirGate);
     // environment must be initialized
     GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
     GateRef GetProfileTypeInfo(GateRef jsFunc);

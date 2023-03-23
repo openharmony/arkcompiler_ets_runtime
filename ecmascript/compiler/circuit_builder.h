@@ -458,6 +458,7 @@ public:
     GateRef TypedAotCall(GateRef hirGate, std::vector<GateRef> args);
     GateRef CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult);
     GateRef CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult, GateRef value);
+    GateRef GetConstPool(GateRef jsFunc);
 
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
@@ -499,7 +500,7 @@ public:
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
         GateRef value, GateRef attrOffset, VariableType type);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
-    GateRef GetConstPool(GateRef jsFunc);
+    GateRef GetConstPoolFromFunction(GateRef jsFunc);
     GateRef GetCodeAddr(GateRef method);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index, ConstPoolType type);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,

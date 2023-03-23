@@ -190,6 +190,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(IfSuccess, IF_SUCCESS, GateFlags::CONTROL, 1, 0, 0)                               \
     V(IfException, IF_EXCEPTION, GateFlags::CONTROL, 1, 1, 0)                           \
     V(GetException, GET_EXCEPTION, GateFlags::NONE_FLAG, 1, 1, 0)                       \
+    V(GetConstPool, GET_CONSTPOOL, GateFlags::NO_WRITE, 0, 1, 1)                        \
     V(StateSplit, STATE_SPLIT, GateFlags::CHECKABLE, 1, 1, 0)                           \
     V(Deopt, DEOPT, GateFlags::NONE_FLAG, 0, 1, 3)                                      \
     V(Load, LOAD, GateFlags::NONE_FLAG, 0, 1, 1)                                        \

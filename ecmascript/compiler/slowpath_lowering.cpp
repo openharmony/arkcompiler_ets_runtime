@@ -50,6 +50,10 @@ void SlowPathLowering::CallRuntimeLowering()
             // initialize label manager
             Environment env(gate, circuit_, &builder_);
             LowerExceptionHandler(gate);
+        } else if (op == OpCode::GET_CONSTPOOL) {
+            // initialize label manager
+            Environment env(gate, circuit_, &builder_);
+            LowerGetConstPool(gate);
         } else if (op == OpCode::CONST_DATA) {
             LowerConstPoolData(gate);
         } else if (op == OpCode::DEOPT_CHECK) {
@@ -159,7 +163,7 @@ void SlowPathLowering::ReplaceHirToThrowCall(GateRef hirGate, GateRef value)
 // labelmanager must be initialized
 GateRef SlowPathLowering::LoadObjectFromConstPool(GateRef jsFunc, GateRef index)
 {
-    GateRef constPool = builder_.GetConstPool(jsFunc);
+    GateRef constPool = builder_.GetConstPoolFromFunction(jsFunc);
     return GetValueFromTaggedArray(constPool, index);
 }
 
@@ -2482,7 +2486,7 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef jsFunc)
     GateRef literalId = acc_.GetValueIn(gate, 1);
     GateRef length = acc_.GetValueIn(gate, 2);  // 2: second arg
     GateRef lexicalEnv = acc_.GetValueIn(gate, 4); // 4: Get current env
-    GateRef constpool = builder_.GetConstPool(jsFunc);
+    GateRef constpool = builder_.GetConstPoolFromFunction(jsFunc);
     GateRef module = builder_.GetModuleFromFunction(jsFunc);
     Label isException(&builder_);
     Label isNotException(&builder_);
@@ -3058,10 +3062,18 @@ void SlowPathLowering::LowerConstPoolData(GateRef gate)
     ConstDataId dataId = acc_.GetConstDataId(gate);
     auto newGate = LoadObjectFromConstPool(jsFunc, builder_.Int32(dataId.GetId()));
     // replace newGate
-    auto uses = acc_.Uses(gate);
-    for (auto it = uses.begin(); it != uses.end();) {
-        it = acc_.ReplaceIn(it, newGate);
-    }
+    acc_.UpdateAllUses(gate, newGate);
+    // delete old gate
+    acc_.DeleteGate(gate);
+}
+
+void SlowPathLowering::LowerGetConstPool(GateRef gate)
+{
+    Environment env(0, &builder_);
+    GateRef jsFunc = acc_.GetValueIn(gate, 0); // 0: this object
+    GateRef newGate = builder_.GetConstPoolFromFunction(jsFunc);
+
+    acc_.UpdateAllUses(gate, newGate);
 
     // delete old gate
     acc_.DeleteGate(gate);

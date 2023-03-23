@@ -249,7 +249,6 @@ private:
     GateRef FastEqual(GateRef left, GateRef right);
     GateType GetLeftType(GateRef gate);
     GateType GetRightType(GateRef gate);
-    GateRef GetConstPool(GateRef jsFunc);
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
     GateRef ConvertNumberToBool(GateRef gate, GateType valueType);
     GateRef ConvertBooleanToBool(GateRef gate);

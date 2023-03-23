@@ -45,7 +45,7 @@ protected:
         acc_.SetMark(gate, MarkCode::VISITED);
     }
 
-    void PushEffectGate(GateRef gate)
+    void PushChangedGate(GateRef gate)
     {
         changedList_.push_back(gate);
         acc_.SetMark(gate, MarkCode::PREVISIT);

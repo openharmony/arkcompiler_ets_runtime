@@ -495,15 +495,9 @@ void TypeLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType src
     acc_.ReplaceGate(dst, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-GateRef TypeLowering::GetConstPool(GateRef jsFunc)
-{
-    GateRef method = builder_.GetMethodFromFunction(jsFunc);
-    return builder_.Load(VariableType::JS_ANY(), method, builder_.IntPtr(Method::CONSTANT_POOL_OFFSET));
-}
-
 GateRef TypeLowering::GetObjectFromConstPool(GateRef jsFunc, GateRef index)
 {
-    GateRef constPool = GetConstPool(jsFunc);
+    GateRef constPool = builder_.GetConstPool(jsFunc);
     return builder_.GetValueFromTaggedArray(constPool, index);
 }
 
@@ -668,7 +662,7 @@ void TypeLowering::LowerArrayLoadElement(GateRef gate)
         builder_.Bind(&midMerge);
         index = *idx;
     }
-    
+
     GateRef res = builder_.GetValueFromTaggedArray(element, index);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), res);
     Label isHole(&builder_);
