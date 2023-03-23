@@ -454,16 +454,6 @@ public:
         return options_.IsWorker();
     }
 
-    bool IsRecordWithBundleName() const
-    {
-        return options_.IsRecordWithBundleName();
-    }
-
-    void SetRecordWithBundleNameTag(bool isNewRecord)
-    {
-        options_.SetRecordWithBundleNameTag(isNewRecord);
-    }
-
     bool IsBundlePack() const
     {
         return isBundlePack_;

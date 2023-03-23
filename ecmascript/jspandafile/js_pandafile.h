@@ -266,7 +266,11 @@ public:
     }
 
     void CheckIsBundlePack();
-    void CheckIsNewRecord(EcmaVM *vm);
+    void CheckIsRecordWithBundleName(EcmaVM *vm);
+    bool IsRecordWithBundleName() const
+    {
+        return isRecordWithBundleName_;
+    }
 
     CString GetEntryPoint(const CString &recordName) const;
     CString GetNpmEntries(const CString &recordName) const;
@@ -344,6 +348,7 @@ private:
     // marge abc
     bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
     CUnorderedMap<CString, JSRecordInfo> jsRecordInfo_;
+    bool isRecordWithBundleName_ {true};
 };
 }  // namespace ecmascript
 }  // namespace panda
