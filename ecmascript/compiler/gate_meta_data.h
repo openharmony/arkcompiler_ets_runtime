@@ -239,17 +239,17 @@ std::string MachineTypeToStr(MachineType machineType);
     V(DependSelector, DEPEND_SELECTOR, GateFlags::FIXED, 1, value, 0)               \
     GATE_META_DATA_LIST_WITH_VALUE_IN(V)
 
-#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                       \
-    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)      \
-    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)            \
-    V(JSCallTargetTypeCheck, JSCALLTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)\
-    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)            \
-    V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                       \
-    V(Int32OverflowCheck, INT32_OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)      \
-    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                   \
-    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                     \
-    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)            \
-    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                              \
+#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                        \
+    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)       \
+    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)             \
+    V(JSCallTargetTypeCheck, JSCALLTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2) \
+    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)             \
+    V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                        \
+    V(Int32OverflowCheck, INT32_OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)       \
+    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                    \
+    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                      \
+    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)             \
+    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                               \
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                                \
     V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                         \
