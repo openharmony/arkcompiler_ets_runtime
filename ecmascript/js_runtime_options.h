@@ -540,16 +540,6 @@ public:
         return isWorker_;
     }
 
-    void SetRecordWithBundleNameTag(bool isNewRecord)
-    {
-        isRecordWithBundleName_ = isNewRecord;
-    }
-
-    bool IsRecordWithBundleName() const
-    {
-        return isRecordWithBundleName_;
-    }
-
     bool EnableIC() const
     {
         return enableIC_;
@@ -962,7 +952,6 @@ private:
     uint8_t deoptThreshold_ {10};
     bool optCodeProfiler_ {false};
     bool startGlobalLeakCheck_ {false};
-    bool isRecordWithBundleName_ {false};
 };
 }  // namespace panda::ecmascript
 

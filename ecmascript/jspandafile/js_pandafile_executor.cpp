@@ -68,8 +68,11 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     // If it is an old record, delete the bundleName and moduleName
-    if (!excuteFromJob && !vm->IsRecordWithBundleName()) {
-        PathHelper::CroppingRecord(entry);
+    if (!jsPandaFile->IsBundlePack() && !excuteFromJob && !vm->GetBundleName().empty()) {
+        const_cast<JSPandaFile *>(jsPandaFile)->CheckIsRecordWithBundleName(vm);
+        if (!jsPandaFile->IsRecordWithBundleName()) {
+            PathHelper::CroppingRecord(entry);
+        }
     }
     bool isModule = jsPandaFile->IsModule(thread, entry.c_str());
     if (thread->HasPendingException()) {
@@ -152,8 +155,11 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     }
     ASSERT(jsPandaFile->IsModule(thread, entry.c_str()));
     bool isBundle = jsPandaFile->IsBundlePack();
-    if (!vm->IsRecordWithBundleName()) {
-        PathHelper::CroppingRecord(entry);
+    if (!isBundle) {
+        const_cast<JSPandaFile *>(jsPandaFile)->CheckIsRecordWithBundleName(vm);
+        if (!jsPandaFile->IsRecordWithBundleName()) {
+            PathHelper::CroppingRecord(entry);
+        }
     }
     ASSERT(jsPandaFile->IsModule(thread, entry.c_str()));
     return CommonExecuteBuffer(thread, isBundle, name, entry, buffer, size);

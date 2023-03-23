@@ -310,9 +310,6 @@ const JSPandaFile *JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, con
     }
 
     CString methodName = entryPoint.data();
-    if (!newJsPandaFile->IsBundlePack() && !vm->GetBundleName().empty()) {
-        newJsPandaFile->CheckIsNewRecord(vm);
-    }
     if (newJsPandaFile->IsBundlePack()) {
         // entryPoint maybe is _GLOBAL::func_main_watch to execute func_main_watch
         auto pos = entryPoint.find_last_of("::");
