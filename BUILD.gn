@@ -293,7 +293,7 @@ config("ark_jsruntime_common_config") {
     ]
 
     if (enable_hilog) {
-      defines = [ "ENABLE_HILOG" ]
+      defines += [ "ENABLE_HILOG" ]
       include_dirs =
           [ "//base/hiviewdfx/hilog/interfaces/native/innerkits/include" ]
     }
