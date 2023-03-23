@@ -222,13 +222,13 @@ public:
         }
     }
 
-    static CString ParsePrefixBundle(JSThread *thread, [[maybe_unused]] CString &baseFileName,
-        CString moduleRequestName)
+    static CString ParsePrefixBundle(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                     [[maybe_unused]] CString &baseFileName, CString moduleRequestName)
     {
         EcmaVM *vm = thread->GetEcmaVM();
         moduleRequestName = moduleRequestName.substr(PREFIX_BUNDLE_LEN);
         CString entryPoint = moduleRequestName;
-        if (vm->IsRecordWithBundleName()) {
+        if (jsPandaFile->IsRecordWithBundleName()) {
             CVector<CString> vec;
             StringHelper::SplitString(moduleRequestName, vec, 0, SEGMENTS_LIMIT_TWO);
             if (vec.size() < SEGMENTS_LIMIT_TWO) {
@@ -257,30 +257,6 @@ public:
         } else {
             CroppingRecord(entryPoint);
         }
-        return entryPoint;
-    }
-
-    static CString ParsePreixModule([[maybe_unused]] CString &baseFilename, [[maybe_unused]] CString moduleRecordName,
-                                    [[maybe_unused]] CString moduleRequestName)
-    {
-        CString entryPoint;
-#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
-        moduleRequestName = moduleRequestName.substr(PREFIX_MODULE_LEN);
-        CVector<CString> vec;
-        StringHelper::SplitString(moduleRecordName, vec, 0, 1);
-        StringHelper::SplitString(moduleRequestName, vec, 0, 1);
-        if (vec.size() < SEGMENTS_LIMIT_TWO) {
-            LOG_ECMA(DEBUG) << "SplitString filed, please check moduleRequestName and moduleRecordName";
-            return CString();
-        }
-        CString bundleName = vec[0];
-        CString moduleName = vec[1];
-        baseFilename = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
-        entryPoint = bundleName + '/' + moduleRequestName;
-#else
-        entryPoint = PREVIEW_OF_ACROSS_HAP_FLAG;
-        LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
-#endif
         return entryPoint;
     }
 
@@ -533,9 +509,7 @@ public:
     {
         CString entryPoint;
         if (StringHelper::StringStartWith(requestName, PREFIX_BUNDLE)) {
-            entryPoint = ParsePrefixBundle(thread, baseFileName, requestName);
-        } else if (StringHelper::StringStartWith(requestName, PREFIX_MODULE)) {
-            entryPoint = ParsePreixModule(baseFileName, recordName, requestName);
+            entryPoint = ParsePrefixBundle(thread, jsPandaFile, baseFileName, requestName);
         } else if (StringHelper::StringStartWith(requestName, PREFIX_PACKAGE)) {
             entryPoint = requestName.substr(PREFIX_PACKAGE_LEN);
         } else if (IsImportFile(requestName)) { // load a relative pathname.
