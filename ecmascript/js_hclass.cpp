@@ -613,7 +613,7 @@ PropertyLookupResult JSHClass::LookupProperty(const JSThread *thread, JSHClass *
     entry = vtable->GetTupleIndexByName(key);
     if (entry != -1) {
         result.SetIsVtable();
-        uint32_t offset = entry * VTable::TUPLE_SIZE;
+        uint32_t offset = static_cast<uint32_t>(entry * VTable::TUPLE_SIZE);
         result.SetOffset(offset);
         if (vtable->IsAccessor(entry)) {
             result.SetIsAccessor(true);

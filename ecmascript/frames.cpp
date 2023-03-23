@@ -401,9 +401,10 @@ uint32_t FrameIterator::GetBytecodeOffset() const
             LOG_ECMA(FATAL) << "error: empty pcOffset in stackmap!";
         }
         default: {
-            return 0;
+            break;
         }
     }
+    return 0;
 }
 
 uintptr_t FrameIterator::GetPrevFrame() const
