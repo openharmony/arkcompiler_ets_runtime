@@ -803,7 +803,6 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
     JSTaggedValue genObject = context->GetGeneratorObject();
     std::vector<JSTaggedType> args(method->GetNumArgs() + NUM_MANDATORY_JSFUNC_ARGS,
                                    JSTaggedValue::Undefined().GetRawData());
-    func->SetLexicalEnv(thread, context->GetLexicalEnv());
     args[0] = func.GetTaggedValue().GetRawData();
     args[1] = genObject.GetRawData();
     args[2] = context->GetThis().GetRawData(); // 2: this

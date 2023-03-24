@@ -125,6 +125,31 @@ JSTaggedValue BuiltinsArkTools::HasTSSubtyping(EcmaRuntimeCallInfo *info)
     return GetTaggedBoolean(hclass->HasTSSubtyping());
 }
 
+JSTaggedValue BuiltinsArkTools::ExcutePendingJob(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    thread->GetEcmaVM()->ExecutePromisePendingJob();
+    return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsArkTools::GetLexicalEnv(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ASSERT(info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
+    if (object->IsHeapObject() && object->IsJSFunction()) {
+        JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(object);
+        return function->GetLexicalEnv();
+    }
+    return JSTaggedValue::Null();
+}
+
 JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
