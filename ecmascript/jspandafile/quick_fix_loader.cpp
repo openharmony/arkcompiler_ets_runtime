@@ -257,10 +257,11 @@ bool QuickFixLoader::ReplaceMethod(JSThread *thread,
         for (uint32_t index = 0; index < baseConstpoolSize; index++) {
             JSTaggedValue constpoolValue = baseConstpool->GetObjectFromCache(index);
             // For class inner function modified.
-            if (constpoolValue.IsTaggedArray()) {
-                JSHandle<TaggedArray> classLiteral(thread, constpoolValue);
-                for (uint32_t i = 0; i < classLiteral->GetLength(); i++) {
-                    JSTaggedValue literalItem = classLiteral->Get(thread, i);
+            if (constpoolValue.IsClassLiteral()) {
+                JSHandle<ClassLiteral> classLiteral(thread, constpoolValue);
+                JSHandle<TaggedArray> literalArray(thread, classLiteral->GetArray());
+                for (uint32_t i = 0; i < literalArray->GetLength(); i++) {
+                    JSTaggedValue literalItem = literalArray->Get(thread, i);
                     if (!literalItem.IsJSFunctionBase()) {
                         continue;
                     }
@@ -410,12 +411,13 @@ bool QuickFixLoader::UnloadPatch(JSThread *thread, const CString &patchFileName)
     for (const auto& item : reservedBaseClassInfo_) {
         uint32_t constpoolIndex = item.first;
         CUnorderedMap<uint32_t, MethodLiteral *> classLiteralInfo = item.second;
-        JSHandle<TaggedArray> classLiteral(thread, baseConstpool->GetObjectFromCache(constpoolIndex));
+        JSHandle<ClassLiteral> classLiteral(thread, baseConstpool->GetObjectFromCache(constpoolIndex));
+        JSHandle<TaggedArray> literalArray(thread, classLiteral->GetArray());
 
         for (const auto& classItem : classLiteralInfo) {
             MethodLiteral *base = classItem.second;
 
-            JSTaggedValue value = classLiteral->Get(thread, classItem.first);
+            JSTaggedValue value = literalArray->Get(thread, classItem.first);
             ASSERT(value.IsJSFunctionBase());
             JSFunctionBase *func = JSFunctionBase::Cast(value.GetTaggedObject());
             Method *method = Method::Cast(func->GetMethod().GetTaggedObject());
@@ -514,7 +516,7 @@ bool QuickFixLoader::CheckIsInvalidPatch(const JSPandaFile *baseFile, const JSPa
         ASSERT(baseRecordInfos.find(baseRecordName) != baseRecordInfos.end());
 
         JSHandle<SourceTextModule> patchModule =
-            JSHandle<SourceTextModule>::Cast(moduleManager->ResolveModuleWithMerge(thread, 
+            JSHandle<SourceTextModule>::Cast(moduleManager->ResolveModuleWithMerge(thread,
             patchFile, patchRecordName));
         JSHandle<SourceTextModule> baseModule = moduleManager->HostGetImportedModule(baseRecordName);
 

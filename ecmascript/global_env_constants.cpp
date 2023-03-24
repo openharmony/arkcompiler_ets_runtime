@@ -43,6 +43,7 @@
 #include "ecmascript/js_api/js_api_vector_iterator.h"
 #include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
+#include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_array.h"
@@ -269,6 +270,8 @@ void GlobalEnvConstants::InitRootsClass([[maybe_unused]] JSThread *thread, JSHCl
     SetConstant(ConstantIndex::OBJECT_HCLASS_INDEX, factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT));
     SetConstant(ConstantIndex::JS_METHOD_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, Method::SIZE, JSType::METHOD));
+    SetConstant(ConstantIndex::CLASS_LITERAL_HCLASS_INDEX,
+                factory->NewEcmaHClass(hClass, ClassLiteral::SIZE, JSType::CLASS_LITERAL));
 }
 
 void GlobalEnvConstants::InitGlobalConstantSpecial(JSThread *thread)
