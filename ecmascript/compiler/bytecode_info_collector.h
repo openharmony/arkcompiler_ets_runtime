@@ -541,6 +541,7 @@ private:
                                  std::vector<std::string> &classNameVec, int32_t bcIndex);
     void CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);
     void IterateLiteral(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
+    void StoreClassTypeOffset(const uint32_t typeOffset, std::vector<uint32_t> &classOffsetVector);
     void CollectClassLiteralInfo(const MethodLiteral *method, const std::vector<std::string> &classNameVec);
     void CollectFunctionTypeId(JSThread *thread, panda_file::File::EntityId fieldId);
 

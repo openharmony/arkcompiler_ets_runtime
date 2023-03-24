@@ -191,17 +191,27 @@ void BytecodeInfoCollector::IterateLiteral(const MethodLiteral *method,
             }
 
             for (auto item : offsetTypeMap) {
-                panda_file::File::EntityId offset(item.second);
-                JSHandle<TaggedArray> literal =
-                    LiteralDataExtractor::GetTypeLiteral(vm_->GetJSThread(), jsPandaFile_, offset);
-                int typeKind = literal->Get(0).GetInt();
-                if (typeKind == static_cast<int>(TSTypeKind::CLASS)) {
-                    classOffsetVector.push_back(item.second);
-                }
+                uint32_t typeOffset = item.second;
+                StoreClassTypeOffset(typeOffset, classOffsetVector);
             }
         }
     });
     classDefBCIndexes_.clear();
+}
+
+void BytecodeInfoCollector::StoreClassTypeOffset(const uint32_t typeOffset, std::vector<uint32_t> &classOffsetVector)
+{
+    panda_file::File::EntityId offset(typeOffset);
+    JSHandle<TaggedArray> literal =
+        LiteralDataExtractor::GetTypeLiteral(vm_->GetJSThread(), jsPandaFile_, offset);
+    int typeKind = literal->Get(0).GetInt();
+    if (typeKind != static_cast<int>(TSTypeKind::CLASS)) {
+        return;
+    }
+
+    if (classOffsetVector.empty() || typeOffset != classOffsetVector.back()) {
+        classOffsetVector.emplace_back(typeOffset);
+    }
 }
 
 void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
