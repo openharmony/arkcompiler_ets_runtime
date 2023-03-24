@@ -32,6 +32,11 @@ public:
 
     void PUBLIC_API Destroy();
 
+    bool IsInitialized() const
+    {
+        return isInitialized_;
+    }
+
     void SamplePandaFileInfo(uint32_t checksum);
     void Merge(const PGORecordDetailInfos &recordInfos);
     void TerminateSaveTask();

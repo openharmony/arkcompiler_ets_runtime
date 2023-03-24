@@ -37,6 +37,7 @@ public:
 
     static void TearDownTestCase()
     {
+        PGOProfilerManager::GetInstance()->Destroy();
         GTEST_LOG_(INFO) << "TearDownCase";
     }
 
@@ -264,6 +265,8 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
+    // worker vm read profile enable from PGOProfilerManager singleton
+    option.SetEnableProfile(false);
     auto vm2 = JSNApi::CreateJSVM(option);
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm2 != nullptr) << "Cannot create Runtime";
@@ -438,5 +441,75 @@ HWTEST_F_L0(PGOProfilerTest, TextToBinary)
     unlink("ark-profiler10/modules.ap");
     unlink("ark-profiler10/modules.text");
     rmdir("ark-profiler10");
+}
+
+HWTEST_F_L0(PGOProfilerTest, TextRecover)
+{
+    mkdir("ark-profiler11/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    std::ofstream file("ark-profiler11/modules.text");
+    std::string result = "Profiler Version: 0.0.0.1\n";
+    file.write(result.c_str(), result.size());
+    result = "\nPanda file sumcheck list: [ 413775942 ]\n";
+    file.write(result.c_str(), result.size());
+    result = "\n_GLOBAL::funct_main_0: [ 1232/3/CALL_MODE/hello ]\n";
+    file.write(result.c_str(), result.size());
+    result = "\nrecordName: [ 234/100/HOTNESS_MODE/h#ello1 ]\n";
+    file.write(result.c_str(), result.size());
+    file.close();
+
+    ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary("ark-profiler11/modules.text", "ark-profiler11/", 2));
+
+    ASSERT_TRUE(PGOProfilerManager::GetInstance()->BinaryToText(
+        "ark-profiler11/modules.ap", "ark-profiler11/modules_recover.text", 2));
+
+    std::ifstream fileOrigin("ark-profiler11/modules.text");
+    std::ifstream fileRecover("ark-profiler11/modules_recover.text");
+
+    std::string lineOrigin;
+    std::string lineRecover;
+    // check content from origin and recovered profile line by line.
+    while (std::getline(fileOrigin, lineOrigin)) {
+        std::getline(fileRecover, lineRecover);
+        ASSERT_EQ(lineOrigin, lineRecover);
+    }
+
+    fileOrigin.close();
+    fileRecover.close();
+    unlink("ark-profiler11/modules.ap");
+    unlink("ark-profiler11/modules.text");
+    unlink("ark-profiler11/modules_recover.text");
+    rmdir("ark-profiler11");
+}
+
+HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
+{
+    mkdir("ark-profiler12/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    RuntimeOption option;
+    // Although enableProfle is set in option, but it will not work when isWorker is set.
+    option.SetEnableProfile(true);
+    option.SetIsWorker();
+    option.SetProfileDir("ark-profiler12/");
+    // PgoProfiler is disabled as default.
+    vm_ = JSNApi::CreateJSVM(option);
+    uint32_t checksum = 304293;
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
+    ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
+
+    MethodLiteral *methodLiteral = new MethodLiteral(nullptr, EntityId(61));
+    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
+    JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
+    func->SetModule(vm_->GetJSThread(), recordName);
+    vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+    JSNApi::DestroyJSVM(vm_);
+
+    // Loader
+    PGOProfilerLoader loader("ark-profiler12/modules.ap", 2);
+    // path is empty()
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+    CString expectRecordName = "test";
+    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
+    rmdir("ark-profiler12/");
 }
 }  // namespace panda::test
