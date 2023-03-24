@@ -52,9 +52,8 @@ public:
     }
 
     // Factory
-    PGOProfiler *Build(EcmaVM *vm)
+    PGOProfiler *Build(EcmaVM *vm, bool isEnable)
     {
-        bool isEnable = IsEnable();
         if (isEnable) {
             isEnable = InitializeData();
         }
