@@ -962,7 +962,7 @@ ohos_shared_library("libark_jsruntime") {
   }
 
   if (target_os == "android") {
-    aosp_deps = [ "shared_library:liblog" ]
+    libs = [ "log" ]
     version_script = "libark_jsruntime.map"
   }
   if (is_mingw && !ark_standalone_build) {
