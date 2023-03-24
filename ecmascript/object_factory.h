@@ -372,7 +372,8 @@ public:
 
     JSHandle<TaggedArray> EmptyArray() const;
 
-    FreeObject *FillFreeObject(uintptr_t address, size_t size, RemoveSlots removeSlots = RemoveSlots::NO);
+    FreeObject *FillFreeObject(uintptr_t address, size_t size, RemoveSlots removeSlots = RemoveSlots::NO,
+                               uintptr_t hugeObjectHead = 0);
 
     TaggedObject *NewObject(const JSHandle<JSHClass> &hclass);
 
