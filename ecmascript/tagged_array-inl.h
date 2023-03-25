@@ -178,7 +178,7 @@ void TaggedArray::Trim(JSThread *thread, uint32_t newLength)
     ASSERT(oldLength > newLength);
     size_t trimBytes = (oldLength - newLength) * JSTaggedValue::TaggedTypeSize();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), newLength);
-    factory->FillFreeObject(ToUintPtr(this) + size, trimBytes, RemoveSlots::YES);
+    factory->FillFreeObject(ToUintPtr(this) + size, trimBytes, RemoveSlots::YES, ToUintPtr(this));
     SetLength(newLength);
 }
 }  // namespace panda::ecmascript
