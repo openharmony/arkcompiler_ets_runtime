@@ -52,7 +52,6 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler/");
     vm_ = JSNApi::CreateJSVM(option);
-    vm_->ResetPGOProfiler();
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
@@ -85,7 +84,6 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler1/");
     vm_ = JSNApi::CreateJSVM(option);
-    vm_->ResetPGOProfiler();
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
@@ -135,7 +133,6 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler2/");
     vm_ = JSNApi::CreateJSVM(option);
-    vm_->ResetPGOProfiler();
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
@@ -179,7 +176,6 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     option.SetEnableProfile(false);
     option.SetProfileDir("ark-profiler3/");
     vm_ = JSNApi::CreateJSVM(option);
-    vm_->ResetPGOProfiler();
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
@@ -266,7 +262,6 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     // outDir is empty
     option.SetProfileDir("ark-profiler5/");
     vm_ = JSNApi::CreateJSVM(option);
-    vm_->ResetPGOProfiler();
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
@@ -324,7 +319,6 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerLoaderNoHotMethod)
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler8/");
     vm_ = JSNApi::CreateJSVM(option);
-    vm_->ResetPGOProfiler();
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
 
@@ -357,7 +351,6 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler9/");
     vm_ = JSNApi::CreateJSVM(option);
-    vm_->ResetPGOProfiler();
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
 
@@ -496,9 +489,8 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     option.SetEnableProfile(true);
     option.SetIsWorker();
     option.SetProfileDir("ark-profiler12/");
-    vm_ = JSNApi::CreateJSVM(option);
     // PgoProfiler is disabled as default.
-    vm_->ResetPGOProfiler();
+    vm_ = JSNApi::CreateJSVM(option);
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
