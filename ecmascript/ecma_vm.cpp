@@ -152,12 +152,15 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
 
 void EcmaVM::ResetPGOProfiler()
 {
-    if (pgoProfiler_ == nullptr) {
-        LOG_ECMA(ERROR) << "ResetPGOProfiler failed. pgoProfile is null.";
-        return;
-    }
     bool isEnablePGOProfiler = IsEnablePGOProfiler();
-    PGOProfilerManager::GetInstance()->Reset(pgoProfiler_, isEnablePGOProfiler);
+    if (options_.IsWorker()) {
+        isEnablePGOProfiler = PGOProfilerManager::GetInstance()->IsEnable();
+    }
+    if (pgoProfiler_ == nullptr) {
+        pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(this, isEnablePGOProfiler);
+    } else {
+        PGOProfilerManager::GetInstance()->Reset(pgoProfiler_, isEnablePGOProfiler);
+    }
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
 }
 
@@ -169,9 +172,7 @@ bool EcmaVM::IsEnablePGOProfiler() const
 bool EcmaVM::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
-    bool isEnablePGOProfiler = IsEnablePGOProfiler();
-    pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(this, isEnablePGOProfiler);
-    thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
+    ResetPGOProfiler();
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
     RuntimeStubs::Initialize(thread_);

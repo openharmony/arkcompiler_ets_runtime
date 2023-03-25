@@ -60,6 +60,11 @@ public:
         return new PGOProfiler(vm, isEnable);
     }
 
+    bool IsEnable() const
+    {
+        return saver_ && saver_->IsInitialized();
+    }
+
     void Destroy(PGOProfiler *profiler)
     {
         if (profiler != nullptr) {
@@ -87,7 +92,7 @@ public:
 
     void Merge(PGOProfiler *profiler)
     {
-        if (saver_) {
+        if (saver_ && profiler->isEnable_) {
             saver_->TerminateSaveTask();
             saver_->Merge(*profiler->recordInfos_);
         }
