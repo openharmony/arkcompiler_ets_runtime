@@ -134,10 +134,6 @@ HWTEST_F_L0(SnapshotTest, SerializeDifferentSpace)
         constpool->SetObjectToCache(thread, i + 100, array.GetTaggedValue());
     }
     for (int i = 0; i < 100; i++) {
-        JSHandle<MachineCode> codeObj = factory->NewMachineCodeObject(0, nullptr);
-        constpool->SetObjectToCache(thread, i + 200, codeObj.GetTaggedValue());
-    }
-    for (int i = 0; i < 100; i++) {
         JSHandle<ConstantPool> constpool1 = factory->NewConstantPool(10);
         constpool->SetObjectToCache(thread, i + 300, constpool1.GetTaggedValue());
     }
@@ -156,16 +152,12 @@ HWTEST_F_L0(SnapshotTest, SerializeDifferentSpace)
               constpool1->GetClass()->SizeFromJSHClass(constpool1));
     EXPECT_TRUE(constpool1->GetObjectFromCache(0).IsTaggedArray());
     EXPECT_TRUE(constpool1->GetObjectFromCache(100).IsTaggedArray());
-    EXPECT_TRUE(constpool1->GetObjectFromCache(200).IsMachineCodeObject());
     EXPECT_TRUE(constpool1->GetObjectFromCache(300).IsTaggedArray());
+
     auto obj1 = constpool1->GetObjectFromCache(0).GetTaggedObject();
     EXPECT_TRUE(Region::ObjectAddressToRange(obj1)->InOldSpace());
     auto obj2 = constpool1->GetObjectFromCache(100).GetTaggedObject();
     EXPECT_TRUE(Region::ObjectAddressToRange(obj2)->InOldSpace());
-    auto obj3 = constpool1->GetObjectFromCache(200).GetTaggedObject();
-    auto region = Region::ObjectAddressToRange(obj3);
-    EXPECT_TRUE(region->InMachineCodeSpace());
-
     std::remove(fileName.c_str());
 }
 
@@ -183,11 +175,6 @@ HWTEST_F_L0(SnapshotTest, SerializeMultiFile)
         JSHandle<TaggedArray> array = factory->NewTaggedArray(10, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
         constpool1->SetObjectToCache(thread, i + 100, array.GetTaggedValue());
         constpool2->SetObjectToCache(thread, i + 100, array.GetTaggedValue());
-    }
-    for (int i = 0; i < 100; i++) {
-        JSHandle<MachineCode> codeObj = factory->NewMachineCodeObject(0, nullptr);
-        constpool1->SetObjectToCache(thread, i + 200, codeObj.GetTaggedValue());
-        constpool2->SetObjectToCache(thread, i + 200, codeObj.GetTaggedValue());
     }
     for (int i = 0; i < 100; i++) {
         JSHandle<ConstantPool> constpool3 = factory->NewConstantPool(10);
@@ -210,15 +197,10 @@ HWTEST_F_L0(SnapshotTest, SerializeMultiFile)
     auto constpool = reinterpret_cast<ConstantPool *>(beginRegion->GetBegin());
     EXPECT_TRUE(constpool->GetObjectFromCache(0).IsTaggedArray());
     EXPECT_TRUE(constpool->GetObjectFromCache(100).IsTaggedArray());
-    EXPECT_TRUE(constpool->GetObjectFromCache(200).IsMachineCodeObject());
     auto obj1 = constpool->GetObjectFromCache(0).GetTaggedObject();
     EXPECT_TRUE(Region::ObjectAddressToRange(obj1)->InOldSpace());
     auto obj2 = constpool->GetObjectFromCache(100).GetTaggedObject();
     EXPECT_TRUE(Region::ObjectAddressToRange(obj2)->InOldSpace());
-    auto obj3 = constpool->GetObjectFromCache(200).GetTaggedObject();
-    auto region = Region::ObjectAddressToRange(obj3);
-    EXPECT_TRUE(region->InMachineCodeSpace());
-
     std::remove(fileName1.c_str());
     std::remove(fileName2.c_str());
 }

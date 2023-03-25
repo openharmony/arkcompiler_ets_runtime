@@ -36,7 +36,7 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, bo
         mem = memMapPool_.GetMemFromCache(size);
         if (mem.GetMem() != nullptr) {
             memMapTotalSize_ += size;
-            int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
+            int prot = isMachineCode ? PAGE_PROT_EXEC_READ : PAGE_PROT_READWRITE;
             PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
             PageProtect(mem.GetMem(), mem.GetSize(), prot);
             PageTag(mem.GetMem(), size, type);
@@ -49,7 +49,7 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, bo
         mem = memMapFreeList_.GetMemFromList(size);
     }
     if (mem.GetMem() != nullptr) {
-        int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
+        int prot = isMachineCode ? PAGE_PROT_EXEC_READ : PAGE_PROT_READWRITE;
         PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
         PageProtect(mem.GetMem(), mem.GetSize(), prot);
         PageTag(mem.GetMem(), mem.GetSize(), type);

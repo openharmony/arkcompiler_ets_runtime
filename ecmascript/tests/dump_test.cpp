@@ -977,8 +977,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             }
             case JSType::MACHINE_CODE_OBJECT: {
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), MachineCode::DATA_OFFSET, 1U);
-                JSHandle<MachineCode>  machineCode = factory->NewMachineCodeObject(16, nullptr);
-                DUMP_FOR_HANDLE(machineCode)
+                GTEST_LOG_(INFO) << "MACHINE_CODE_OBJECT not support new in MachineCodeSpace";
                 break;
             }
             case JSType::CLASS_INFO_EXTRACTOR: {
