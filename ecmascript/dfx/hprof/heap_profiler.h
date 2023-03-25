@@ -22,6 +22,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
+#include "ecmascript/dfx/hprof/heap_sampling.h"
 #include "ecmascript/dfx/hprof/progress.h"
 
 namespace panda::ecmascript {
@@ -48,6 +49,9 @@ public:
                            bool traceAllocation = false, bool newThread = true) override;
     bool StopHeapTracking(Stream *stream, Progress *progress = nullptr, bool newThread = true) override;
     bool UpdateHeapTracking(Stream *stream) override;
+    bool StartHeapSampling(uint64_t samplingInterval, int stackDepth = 128) override;
+    void StopHeapSampling() override;
+    std::unique_ptr<struct SamplingInfo> GetAllocationProfile() override;
     Chunk *GetChunk() const
     {
         return const_cast<Chunk *>(&chunk_);
@@ -74,6 +78,7 @@ private:
     HeapSnapshotJSONSerializer *jsonSerializer_ {nullptr};
     std::unique_ptr<HeapTracker> heapTracker_;
     Chunk chunk_;
+    std::unique_ptr<HeapSampling> heapSampling_ {nullptr};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_HPROF_HEAP_PROFILER_H

@@ -96,19 +96,11 @@ private:
     static os::memory::Mutex synchronizationMutex_;
 
     void GetStack(FrameIterator &it);
-    bool ParseMethodInfo(struct MethodKey &methodKey, const FrameIterator &it,
-                         const JSPandaFile *jsPandaFile, bool isCallNapi);
-    void GetNativeStack(const FrameIterator &it, char *functionName, size_t size);
     static uint64_t GetPcFromContext(void *context);
     bool IsAddrAtStubOrAot(uint64_t pc) const;
-    bool CheckFrameType(JSThread *thread, JSTaggedType *sp);
     void SetProfileStart(uint64_t nowTimeStamp);
     void GetCurrentProcessInfo(struct CurrentProcessInfo &currentProcessInfo);
     bool CheckFileName(const std::string &fileName, std::string &absoluteFilePath) const;
-    bool CheckAndCopy(char *dest, size_t length, const char *src) const;
-    void GetNativeMethodCallPos(FrameIterator &it, FrameInfoTemp &codeEntry);
-    void *GetMethodIdentifier(Method *method, const FrameIterator &it);
-    RunningState GetRunningState(const FrameIterator &it, const JSPandaFile *jsPandaFile, bool topFrame) const;
     bool isProfiling_ = false;
     bool outToFile_ = false;
     std::string fileName_ = "";

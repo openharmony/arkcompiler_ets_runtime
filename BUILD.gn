@@ -314,6 +314,7 @@ config("ark_jsruntime_common_config") {
   ark_profiler_features = [
     "ECMASCRIPT_SUPPORT_CPUPROFILER",
     "ECMASCRIPT_SUPPORT_HEAPPROFILER",
+    "ECMASCRIPT_SUPPORT_HEAPSAMPLING",
     "ECMASCRIPT_SUPPORT_SNAPSHOT",
   ]
   if (ark_compile_mode != "release") {
@@ -796,10 +797,12 @@ if (!is_mingw && !is_mac && target_os != "ios") {
       "ecmascript/dfx/hprof/heap_profiler.cpp",
       "ecmascript/dfx/hprof/heap_profiler_interface.cpp",
       "ecmascript/dfx/hprof/heap_root_visitor.cpp",
+      "ecmascript/dfx/hprof/heap_sampling.cpp",
       "ecmascript/dfx/hprof/heap_snapshot.cpp",
       "ecmascript/dfx/hprof/heap_snapshot_json_serializer.cpp",
       "ecmascript/dfx/hprof/heap_tracker.cpp",
       "ecmascript/dfx/hprof/string_hashmap.cpp",
+      "ecmascript/dfx/stackinfo/js_stackgetter.cpp",
       "ecmascript/base/block_hook_scope.cpp",
     ]
   }

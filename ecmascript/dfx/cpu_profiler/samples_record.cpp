@@ -498,11 +498,6 @@ std::unique_ptr<struct ProfileInfo> SamplesRecord::GetProfileInfo()
     return std::move(profileInfo_);
 }
 
-void SamplesRecord::SetIsBreakSampleFlag(bool sampleFlag)
-{
-    isBreakSample_.store(sampleFlag);
-}
-
 void SamplesRecord::SetBeforeGetCallNapiStackFlag(bool flag)
 {
     beforeCallNapi_.store(flag);
