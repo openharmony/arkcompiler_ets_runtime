@@ -64,11 +64,13 @@ enum class PageTagType : uint8_t {
 #define PAGE_PROT_NONE 0x01
 #define PAGE_PROT_READ 0x02
 #define PAGE_PROT_READWRITE 0x04
+#define PAGE_PROT_EXEC_READ 0x20
 #define PAGE_PROT_EXEC_READWRITE 0x40
 #else
 #define PAGE_PROT_NONE 0
 #define PAGE_PROT_READ 1
 #define PAGE_PROT_READWRITE 3
+#define PAGE_PROT_EXEC_READ 5
 #define PAGE_PROT_EXEC_READWRITE 7
 #endif
 
