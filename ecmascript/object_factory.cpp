@@ -3312,7 +3312,7 @@ JSHandle<TSTypeTable> ObjectFactory::NewTSTypeTable(uint32_t length)
 
     JSHandle<TSTypeTable> table(thread_, header);
     table->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length + TSTypeTable::RESERVE_TABLE_LENGTH);
-    table->SetNumberOfTypes(thread_, length);
+    table->SetNumberOfTypes(thread_);
 
     return table;
 }

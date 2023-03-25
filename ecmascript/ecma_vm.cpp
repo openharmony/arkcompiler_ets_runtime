@@ -229,7 +229,6 @@ bool EcmaVM::Initialize()
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
     moduleManager_ = new ModuleManager(this);
     tsManager_ = new TSManager(this);
-    tsManager_->Initialize();
     quickFixManager_ = new QuickFixManager();
     snapshotEnv_ = new SnapshotEnv(this);
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {

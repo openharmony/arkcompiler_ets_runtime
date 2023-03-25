@@ -122,17 +122,31 @@ public:
                         << " localId: " << localId;
     }
 
-    static constexpr int GetSizeBits()
+    static constexpr uint32_t GetSizeBits()
     {
         return SIZE_BITS;
     }
 
-    static constexpr int LOCAL_ID_BITS = 16;
-    static constexpr int MODULE_ID_BITS = 12;
-    static constexpr int SIZE_BITS = LOCAL_ID_BITS + MODULE_ID_BITS;
+    static constexpr uint32_t LOCAL_ID_BITS = 14;
+    static constexpr uint32_t MODULE_ID_BITS = 14;
+    static constexpr uint32_t SIZE_BITS = LOCAL_ID_BITS + MODULE_ID_BITS;
+    // MAX_LOCAL_ID types in one ts file can be stored in TSTypeTable
+    static constexpr uint64_t MAX_LOCAL_ID = (1LLU << LOCAL_ID_BITS) - 1;
+    // (MAX_MODULE_ID - TSModuleTable::DEFAULT_NUMBER_OF_TABLES) ts files with types can be stored in TSModuleTable
+    static constexpr uint64_t MAX_MODULE_ID = (1LLU << MODULE_ID_BITS) - 1;
 
     FIRST_BIT_FIELD(Type, LocalId, uint32_t, LOCAL_ID_BITS);
     NEXT_BIT_FIELD(Type, ModuleId, uint32_t, MODULE_ID_BITS, LocalId);
+
+    static inline bool IsVaildLocalId(uint32_t localId)
+    {
+        return (static_cast<uint64_t>(localId) & ~MAX_LOCAL_ID) == 0;
+    }
+
+    static inline bool IsVaildModuleId(uint32_t moduleId)
+    {
+        return (static_cast<uint64_t>(moduleId) & ~MAX_MODULE_ID) == 0;
+    }
 
 private:
     uint32_t type_ {0};

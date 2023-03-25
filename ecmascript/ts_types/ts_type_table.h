@@ -24,7 +24,6 @@ public:
     static constexpr size_t RESERVE_TABLE_LENGTH = 2; // for reserve length and exportTable
     static constexpr size_t NUMBER_OF_TYPES_INDEX = 0;
     static constexpr size_t INCREASE_CAPACITY_RATE = 2;
-    static constexpr size_t DEFAULT_NUM_TYPES = 0;
     static constexpr const char* PRIMITIVE_TABLE_NAME = "primitiveTypes";
     static constexpr const char* BUILTINS_TABLE_NAME = "lib_ark_builtins.d";
     static constexpr const char* INFER_TABLE_NAME = "inferTypes";
@@ -46,7 +45,7 @@ public:
         return TaggedArray::Get(NUMBER_OF_TYPES_INDEX).GetInt();
     }
 
-    inline void SetNumberOfTypes(JSThread *thread, uint32_t num)
+    inline void SetNumberOfTypes(JSThread *thread, uint32_t num = 0)
     {
         TaggedArray::Set(thread, NUMBER_OF_TYPES_INDEX, JSTaggedValue(num));
     }

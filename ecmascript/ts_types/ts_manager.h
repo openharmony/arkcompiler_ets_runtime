@@ -131,17 +131,17 @@ struct LocalModuleInfo {
 
 class TSModuleTable : public TaggedArray {
 public:
-
-    static constexpr int AMI_PATH_OFFSET = 1;
+    // Each TSTypeTable occupies three positions
+    static constexpr int ELEMENTS_LENGTH = 3;
+    static constexpr int MODULE_REQUEST_OFFSET = 1;
     static constexpr int SORT_ID_OFFSET = 2;
     static constexpr int TYPE_TABLE_OFFSET = 3;
-    static constexpr int ELEMENTS_LENGTH = 3;
+    // Reserve a position which is used to store the number of TSTypeTables and a TSTypeTable storage space
+    static constexpr int INITIAL_CAPACITY = ELEMENTS_LENGTH + 1;
     static constexpr int NUMBER_OF_TABLES_INDEX = 0;
     static constexpr int INCREASE_CAPACITY_RATE = 2;
     // primitive table, builtins table, infer table and runtime table
     static constexpr int DEFAULT_NUMBER_OF_TABLES = 4;
-    // first +1 means reserve a table from pandafile, second +1 menas the NUMBER_OF_TABLES_INDEX
-    static constexpr int DEFAULT_TABLE_CAPACITY = (DEFAULT_NUMBER_OF_TABLES + 1) * ELEMENTS_LENGTH + 1;
     static constexpr int PRIMITIVE_TABLE_ID = 0;
     static constexpr int BUILTINS_TABLE_ID = 1;
     static constexpr int INFER_TABLE_ID = 2;
@@ -154,14 +154,7 @@ public:
         return static_cast<TSModuleTable *>(object);
     }
 
-    static void Initialize(JSThread *thread, JSHandle<TSModuleTable> mTable);
-
-    static JSHandle<TSModuleTable> AddTypeTable(JSThread *thread, JSHandle<TSModuleTable> table,
-                                                JSHandle<JSTaggedValue> typeTable, JSHandle<EcmaString> amiPath);
-
-    JSHandle<EcmaString> GetAmiPathByModuleId(JSThread *thread, int entry) const;
-
-    JSHandle<TSTypeTable> GetTSTypeTable(JSThread *thread, int entry) const;
+    JSHandle<EcmaString> GetModuleRequestByModuleId(JSThread *thread, int entry) const;
 
     int GetGlobalModuleID(JSThread *thread, JSHandle<EcmaString> amiPath) const;
 
@@ -180,18 +173,9 @@ public:
         return entry * ELEMENTS_LENGTH + TYPE_TABLE_OFFSET;
     }
 
-    static void GenerateBuiltinsTypeTable(JSThread *thread);
-
-private:
-
-    static void AddRuntimeTypeTable(JSThread *thread);
-
-    static void FillLayoutTypes(JSThread *thread, JSHandle<TSObjLayoutInfo> &layOut,
-        std::vector<JSHandle<JSTaggedValue>> &prop, std::vector<GlobalTSTypeRef> &propType);
-
-    static int GetAmiPathOffset(int entry)
+    static int GetModuleRequestOffset(int entry)
     {
-        return entry * ELEMENTS_LENGTH + AMI_PATH_OFFSET;
+        return entry * ELEMENTS_LENGTH + MODULE_REQUEST_OFFSET;
     }
 
     static int GetSortIdOffset(int entry)
@@ -207,11 +191,6 @@ public:
 
     void Initialize();
 
-    std::tuple<JSHandle<TSTypeTable>, uint32_t> GenerateTSTypeTable(const JSPandaFile *jsPandaFile,
-                                                                    const CString &recordName);
-
-    void AddTypeTable(JSHandle<JSTaggedValue> typeTable, JSHandle<EcmaString> amiPath);
-
     void Dump();
 
     void Iterate(const RootVisitor &v);
@@ -226,11 +205,9 @@ public:
         globalModuleTable_ = table.GetTaggedValue();
     }
 
-    int GetNextModuleId() const
-    {
-        JSHandle<TSModuleTable> table = GetTSModuleTable();
-        return table->GetNumberOfTSTypeTables();
-    }
+    JSHandle<TSTypeTable> GetTSTypeTable(int entry) const;
+
+    void SetTSTypeTable(const JSHandle<TSTypeTable> &table, int tableId) const;
 
     void GenerateBuiltinSummary();
 
@@ -340,10 +317,6 @@ public:
     }
 
     GlobalTSTypeRef PUBLIC_API GetArrayParameterTypeGT(GlobalTSTypeRef gt) const;
-
-    JSHandle<TSTypeTable> GetRuntimeTypeTable() const;
-
-    void SetRuntimeTypeTable(JSHandle<TSTypeTable> inferTable);
 
     bool PUBLIC_API AssertTypes() const
     {
@@ -678,19 +651,17 @@ public:
         }
     }
 
+    void PrintNumOfTypes() const;
+
 private:
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);
 
-    GlobalTSTypeRef PUBLIC_API AddTSTypeToInferTable(JSHandle<TSType> type) const;
+    GlobalTSTypeRef AddTSTypeToTypeTable(const JSHandle<TSType> &type, int tableId) const;
 
     GlobalTSTypeRef FindUnionInTypeTable(JSHandle<TSTypeTable> table, JSHandle<TSUnionType> unionType) const;
 
     GlobalTSTypeRef FindIteratorInstanceInInferTable(GlobalTSTypeRef kindGt, GlobalTSTypeRef elementGt) const;
-
-    JSHandle<TSTypeTable> GetInferTypeTable() const;
-
-    void SetInferTypeTable(JSHandle<TSTypeTable> inferTable) const;
 
     TSTypeKind PUBLIC_API GetTypeKind(const GlobalTSTypeRef &gt) const;
 
