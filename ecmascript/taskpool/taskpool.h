@@ -55,9 +55,8 @@ public:
         return runner_->GetTotalThreadNum();
     }
 
-    bool IsInThreadPool(std::thread::id id)
+    bool IsInThreadPool(std::thread::id id) const
     {
-        os::memory::LockHolder lock(mutex_);
         return runner_->IsInThreadPool(id);
     }
 
