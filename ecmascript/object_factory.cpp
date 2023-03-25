@@ -1316,7 +1316,8 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
     }
 }
 
-FreeObject *ObjectFactory::FillFreeObject(uintptr_t address, size_t size, RemoveSlots removeSlots)
+FreeObject *ObjectFactory::FillFreeObject(uintptr_t address, size_t size, RemoveSlots removeSlots,
+                                          uintptr_t hugeObjectHead)
 {
     FreeObject *object = nullptr;
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
@@ -1343,7 +1344,9 @@ FreeObject *ObjectFactory::FillFreeObject(uintptr_t address, size_t size, Remove
     }
 
     if (removeSlots == RemoveSlots::YES) {
-        Region *region = Region::ObjectAddressToRange(object);
+        // For huge object, the region of `object` might not be its 1st region. Use `hugeObjectHead` instead.
+        Region *region = Region::ObjectAddressToRange(hugeObjectHead == 0 ? object :
+                                                      reinterpret_cast<TaggedObject *>(hugeObjectHead));
         if (!region->InYoungSpace()) {
             heap_->ClearSlotsRange(region, address, address + size);
         }

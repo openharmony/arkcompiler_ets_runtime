@@ -87,6 +87,7 @@ group("ark_js_moduletest") {
 
   if (!is_debug) {
     release_test_list = [
+      "hugearray",
       "multiconstpoolarray",
       "multiconstpoolclass",
       "multiconstpoolconstructor",
@@ -167,6 +168,7 @@ group("ark_asm_test") {
 
   if (!is_debug) {
     release_test_list = [
+      "hugearray",
       "multiconstpoolarray",
       "multiconstpoolclass",
       "multiconstpoolconstructor",

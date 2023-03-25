@@ -187,7 +187,7 @@ JSHandle<NameDictionary> JSObject::TransitionToDictionary(const JSThread *thread
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         uint32_t newSize = receiver->GetClass()->GetObjectSize();
         size_t trimBytes = numberInlinedProps * JSTaggedValue::TaggedTypeSize();
-        factory->FillFreeObject(ToUintPtr(*receiver) + newSize, trimBytes, RemoveSlots::YES);
+        factory->FillFreeObject(ToUintPtr(*receiver) + newSize, trimBytes, RemoveSlots::YES, ToUintPtr(*receiver));
     }
 
     return dict;
