@@ -130,7 +130,8 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
            GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK ||
            GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::INDEX_CHECK ||
-           GetOpCode(gate) == OpCode::JSCALLTARGET_TYPE_CHECK);
+           GetOpCode(gate) == OpCode::JSCALLTARGET_TYPE_CHECK ||
+           GetOpCode(gate) == OpCode::JSCALLTHISTARGET_TYPE_CHECK);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();
@@ -193,6 +194,13 @@ const ChunkVector<char>& GateAccessor::GetConstantString(GateRef gate) const
     ASSERT(GetOpCode(gate) == OpCode::CONSTSTRING);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetStringMetaData()->GetString();
+}
+
+bool GateAccessor::IsVtable(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::LOAD_PROPERTY);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetLoadPropertyMetaDate()->IsVtable();
 }
 
 uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const

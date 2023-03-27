@@ -367,6 +367,20 @@ GateRef CircuitBuilder::JSCallTargetTypeCheck(GateType type, GateRef func, GateR
     return ret;
 }
 
+GateRef CircuitBuilder::JSCallThisTargetTypeCheck(GateType type, GateRef func)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    ASSERT(acc_.HasFrameState(currentDepend));
+    auto frameState = acc_.GetFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->JSCallThisTargetTypeCheck(static_cast<size_t>(type.Value())),
+        MachineType::I1, {currentControl, currentDepend, func, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptType type)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -755,12 +769,12 @@ GateRef CircuitBuilder::HeapAlloc(GateRef initialHClass, GateType type, RegionSp
     return ret;
 }
 
-GateRef CircuitBuilder::LoadProperty(GateRef receiver, GateRef propertyLookupResult)
+GateRef CircuitBuilder::LoadProperty(GateRef receiver, GateRef propertyLookupResult, bool isFunction)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(circuit_->LoadProperty(), MachineType::I64,
+    auto ret = GetCircuit()->NewGate(circuit_->LoadProperty(isFunction), MachineType::I64,
                                      { currentControl, currentDepend, receiver, propertyLookupResult },
                                      GateType::AnyType());
     currentLabel->SetControl(ret);

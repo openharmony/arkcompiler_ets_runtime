@@ -60,6 +60,10 @@ static constexpr size_t FIVE_VALUE = 5;
     IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_CACHED_GATE_META)
 #undef DECLARE_CACHED_GATE_META
 
+#define DECLARE_LOAD_PROPERTY_META(NAME, OP, R, S, D, V)      \
+    LoadPropertyMetaDate cached##NAME##_ { OpCode::OP, R, S, D, V };
+#undef DECLARE_LOAD_PROPERTY_META
+
 #define DECLARE_CACHED_VALUE_META(VALUE)                                                        \
 GateMetaData cachedMerge##VALUE##_ { OpCode::MERGE, GateFlags::CONTROL, VALUE, 0, 0 };          \
 GateMetaData cachedDependSelector##VALUE##_ { OpCode::DEPEND_SELECTOR, GateFlags::FIXED, 1, VALUE, 0 };
@@ -118,6 +122,7 @@ public:
 #undef DECLARE_GATE_META
 
     explicit GateMetaBuilder(Chunk* chunk);
+    const GateMetaData* LoadProperty(bool isFunction);
     const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode, uint32_t pcOffset, GateFlags flags)
     {
         return new (chunk_) JSBytecodeMetaData(valuesIn, opcode, pcOffset, flags);

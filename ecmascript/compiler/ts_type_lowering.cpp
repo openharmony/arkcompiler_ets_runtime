@@ -235,9 +235,6 @@ void TSTypeLowering::Lower(GateRef gate)
         case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
             LowerTypedSuperCall(gate, jsFunc, newTarget);
             break;
-        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
-            LowerCallThis1Imm8V8V8(gate);
-            break;
         case EcmaOpcode::CALLARG0_IMM8:
             LowerTypedCallArg0(gate);
             break;
@@ -252,6 +249,21 @@ void TSTypeLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
             LowerTypedCallrange(gate);
+            break;
+        case EcmaOpcode::CALLTHIS0_IMM8_V8:
+            LowerTypedCallthis0(gate);
+            break;
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+            LowerTypedCallthis1(gate);
+            break;
+        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+            LowerTypedCallthis2(gate);
+            break;
+        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+            LowerTypedCallthis3(gate);
+            break;
+        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            LowerTypedCallthisrange(gate);
             break;
         default:
             break;
@@ -663,7 +675,7 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
     GateRef pfrGate = builder_.Int32(plr.GetData());
     GateRef result = Circuit::NullGate();
     if (LIKELY(!plr.IsAccessor())) {
-        result = builder_.LoadProperty(receiver, pfrGate);
+        result = builder_.LoadProperty(receiver, pfrGate, plr.IsVtable());
     } else {
         result = builder_.CallGetter(gate, receiver, pfrGate);
     }
@@ -940,25 +952,9 @@ BuiltinsStubCSigns::ID TSTypeLowering::GetBuiltinId(GateRef func, GateRef receiv
     return id;
 }
 
-void TSTypeLowering::LowerCallThis1Imm8V8V8(GateRef gate)
-{
-    GateRef thisObj = acc_.GetValueIn(gate, 0);
-    GateRef a0 = acc_.GetValueIn(gate, 1); // 1:parameter index
-    GateType a0Type = acc_.GetGateType(a0);
-    GateRef func = acc_.GetValueIn(gate, 2); // 2:function
-    BuiltinsStubCSigns::ID id = GetBuiltinId(func, thisObj);
-    if (id != BuiltinsStubCSigns::ID::NONE && a0Type.IsNumberType()) {
-        AddProfiling(gate);
-        SpeculateCallBuiltin(gate, id);
-    } else {
-        acc_.DeleteStateSplitAndFrameState(gate);
-    }
-}
-
 void TSTypeLowering::LowerTypedCallArg0(GateRef gate)
 {
     GateRef func = acc_.GetValueIn(gate, 0);
-
     GateType funcType = acc_.GetGateType(func);
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
         acc_.DeleteStateSplitAndFrameState(gate);
@@ -970,25 +966,35 @@ void TSTypeLowering::LowerTypedCallArg0(GateRef gate)
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
-    int methodIndex = tsManager_->GetMethodIndex(funcGt);
-    builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
-
-    GateRef env = builder_.GetFunctionLexicalEnv(func);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARG0_IMM8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
-    std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj };
+    if (IsLoadVtable(func)) {
+        builder_.JSCallThisTargetTypeCheck(funcType, func);
+        GateRef env = builder_.GetFunctionLexicalEnv(func);
+        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj };
 
-    GateRef result = builder_.TypedAotCall(gate, args);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+        GateRef result = builder_.TypedAotCall(gate, args);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    } else {
+        int methodIndex = tsManager_->GetMethodIndex(funcGt);
+        if (methodIndex == -1) {
+            acc_.DeleteStateSplitAndFrameState(gate);
+            return;
+        }
+        builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
+        GateRef env = builder_.GetFunctionLexicalEnv(func);
+        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj };
+
+        GateRef result = builder_.TypedAotCall(gate, args);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    }
 }
 
 void TSTypeLowering::LowerTypedCallArg1(GateRef gate)
 {
-    GateRef a0Value = acc_.GetValueIn(gate, 0);
     GateRef func = acc_.GetValueIn(gate, 1);
-
     GateType funcType = acc_.GetGateType(func);
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
         acc_.DeleteStateSplitAndFrameState(gate);
@@ -1000,25 +1006,34 @@ void TSTypeLowering::LowerTypedCallArg1(GateRef gate)
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
-    int methodIndex = tsManager_->GetMethodIndex(funcGt);
-    builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
-
-    GateRef env = builder_.GetFunctionLexicalEnv(func);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARG1_IMM8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
-    std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0Value };
-    GateRef result = builder_.TypedAotCall(gate, args);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    GateRef a0Value = acc_.GetValueIn(gate, 0);
+    if (IsLoadVtable(func)) {
+        builder_.JSCallThisTargetTypeCheck(funcType, func);
+        GateRef env = builder_.GetFunctionLexicalEnv(func);
+        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0Value };
+        GateRef result = builder_.TypedAotCall(gate, args);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    } else {
+        int methodIndex = tsManager_->GetMethodIndex(funcGt);
+        if (methodIndex == -1) {
+            acc_.DeleteStateSplitAndFrameState(gate);
+            return;
+        }
+        builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
+        GateRef env = builder_.GetFunctionLexicalEnv(func);
+        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0Value };
+        GateRef result = builder_.TypedAotCall(gate, args);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    }
 }
 
 void TSTypeLowering::LowerTypedCallArg2(GateRef gate)
 {
-    GateRef a0 = acc_.GetValueIn(gate, 0);
-    GateRef a1 = acc_.GetValueIn(gate, 1); // 1:first parameter
     GateRef func = acc_.GetValueIn(gate, 2); // 2:function
-
     GateType funcType = acc_.GetGateType(func);
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
         acc_.DeleteStateSplitAndFrameState(gate);
@@ -1030,24 +1045,34 @@ void TSTypeLowering::LowerTypedCallArg2(GateRef gate)
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
-    int methodIndex = tsManager_->GetMethodIndex(funcGt);
-    builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
-
-    GateRef env = builder_.GetFunctionLexicalEnv(func);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARGS2_IMM8_V8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
-    std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0, a1 };
-    GateRef result = builder_.TypedAotCall(gate, args);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    GateRef a0 = acc_.GetValueIn(gate, 0);
+    GateRef a1 = acc_.GetValueIn(gate, 1); // 1:first parameter
+    if (IsLoadVtable(func)) {
+        builder_.JSCallThisTargetTypeCheck(funcType, func);
+        GateRef env = builder_.GetFunctionLexicalEnv(func);
+        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0, a1 };
+        GateRef result = builder_.TypedAotCall(gate, args);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    } else {
+        int methodIndex = tsManager_->GetMethodIndex(funcGt);
+        if (methodIndex == -1) {
+            acc_.DeleteStateSplitAndFrameState(gate);
+            return;
+        }
+        builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
+        GateRef env = builder_.GetFunctionLexicalEnv(func);
+        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0, a1 };
+        GateRef result = builder_.TypedAotCall(gate, args);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    }
 }
 
 void TSTypeLowering::LowerTypedCallArg3(GateRef gate)
 {
-    GateRef a0 = acc_.GetValueIn(gate, 0);
-    GateRef a1 = acc_.GetValueIn(gate, 1);
-    GateRef a2 = acc_.GetValueIn(gate, 2);
     GateRef func = acc_.GetValueIn(gate, 3); // 3:function
     GateType funcType = acc_.GetGateType(func);
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
@@ -1060,17 +1085,31 @@ void TSTypeLowering::LowerTypedCallArg3(GateRef gate)
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
-    int methodIndex = tsManager_->GetMethodIndex(funcGt);
-    builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
-
-    GateRef env = builder_.GetFunctionLexicalEnv(func);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
-    std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0, a1, a2 };
-    GateRef result = builder_.TypedAotCall(gate, args);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    GateRef a0 = acc_.GetValueIn(gate, 0);
+    GateRef a1 = acc_.GetValueIn(gate, 1);
+    GateRef a2 = acc_.GetValueIn(gate, 2);
+    if (IsLoadVtable(func)) {
+        builder_.JSCallThisTargetTypeCheck(funcType, func);
+        GateRef env = builder_.GetFunctionLexicalEnv(func);
+        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0, a1, a2 };
+        GateRef result = builder_.TypedAotCall(gate, args);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    } else {
+        int methodIndex = tsManager_->GetMethodIndex(funcGt);
+        if (methodIndex == -1) {
+            acc_.DeleteStateSplitAndFrameState(gate);
+            return;
+        }
+        builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
+        GateRef env = builder_.GetFunctionLexicalEnv(func);
+        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0, a1, a2 };
+        GateRef result = builder_.TypedAotCall(gate, args);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    }
 }
 
 void TSTypeLowering::LowerTypedCallrange(GateRef gate)
@@ -1082,7 +1121,6 @@ void TSTypeLowering::LowerTypedCallrange(GateRef gate)
     const size_t callTargetIndex = 1; // acc
     size_t argc = numArgs - callTargetIndex;
     GateRef func = acc_.GetValueIn(gate, argc);
-
     GateType funcType = acc_.GetGateType(func);
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
         acc_.DeleteStateSplitAndFrameState(gate);
@@ -1094,14 +1132,9 @@ void TSTypeLowering::LowerTypedCallrange(GateRef gate)
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
-    int methodIndex = tsManager_->GetMethodIndex(funcGt);
-    builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
-
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
-    GateRef env = builder_.GetFunctionLexicalEnv(func);
     vec.emplace_back(glue_);
-    vec.emplace_back(env);
     vec.emplace_back(actualArgc);
     vec.emplace_back(func);
     vec.emplace_back(newTarget);
@@ -1109,7 +1142,187 @@ void TSTypeLowering::LowerTypedCallrange(GateRef gate)
     for (size_t i = 0; i < argc; i++) {
         vec.emplace_back(acc_.GetValueIn(gate, i));
     }
+    if (IsLoadVtable(func)) {
+        builder_.JSCallThisTargetTypeCheck(funcType, func);
+        GateRef newEnv = builder_.GetFunctionLexicalEnv(func);
+        std::vector<GateRef>::iterator pos = vec.begin();
+        vec.insert(++pos, newEnv);
+        GateRef result = builder_.TypedAotCall(gate, vec);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    } else {
+        int methodIndex = tsManager_->GetMethodIndex(funcGt);
+        if (methodIndex == -1) {
+            acc_.DeleteStateSplitAndFrameState(gate);
+            return;
+        }
+        builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
+        GateRef newEnv = builder_.GetFunctionLexicalEnv(func);
+        std::vector<GateRef>::iterator pos = vec.begin();
+        vec.insert(++pos, newEnv);
+        GateRef result = builder_.TypedAotCall(gate, vec);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    }
+}
 
+bool TSTypeLowering::IsLoadVtable(GateRef func)
+{
+    auto op = acc_.GetOpCode(func);
+    if (op != OpCode::LOAD_PROPERTY || !acc_.IsVtable(func)) {
+        return false;
+    }
+    return true;
+}
+
+bool TSTypeLowering::CanOptimizeAsFastCall(GateRef func, uint32_t len)
+{
+    GateType funcType = acc_.GetGateType(func);
+    if (!tsManager_->IsFunctionTypeKind(funcType)) {
+        return false;
+    }
+    GlobalTSTypeRef funcGt = funcType.GetGTRef();
+    uint32_t length = tsManager_->GetFunctionTypeLength(funcGt);
+    if (len != length) {
+        return false;
+    }
+    auto op = acc_.GetOpCode(func);
+    if (op != OpCode::LOAD_PROPERTY || !acc_.IsVtable(func)) {
+        return false;
+    }
+    return true;
+}
+
+void TSTypeLowering::LowerTypedCallthis0(GateRef gate)
+{
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef func = acc_.GetValueIn(gate, 1);
+    if (!CanOptimizeAsFastCall(func, 0)) {
+        acc_.DeleteStateSplitAndFrameState(gate);
+        return;
+    }
+    GateType funcType = acc_.GetGateType(func);
+    builder_.JSCallThisTargetTypeCheck(funcType, func);
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+        EcmaOpcode::CALLTHIS0_IMM8_V8));
+    GateRef newTarget = builder_.Undefined();
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef env = builder_.GetFunctionLexicalEnv(func);
+    std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj };
+
+    GateRef result = builder_.TypedAotCall(gate, args);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TSTypeLowering::LowerTypedCallthis1(GateRef gate)
+{
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef a0 = acc_.GetValueIn(gate, 1); // 1:parameter index
+    GateType a0Type = acc_.GetGateType(a0);
+    GateRef func = acc_.GetValueIn(gate, 2); // 2:function
+    BuiltinsStubCSigns::ID id = GetBuiltinId(func, thisObj);
+    if (id != BuiltinsStubCSigns::ID::NONE && a0Type.IsNumberType()) {
+        AddProfiling(gate);
+        SpeculateCallBuiltin(gate, id);
+    } else {
+        if (!CanOptimizeAsFastCall(func, 1)) {
+            acc_.DeleteStateSplitAndFrameState(gate);
+            return;
+        }
+        GateType funcType = acc_.GetGateType(func);
+        builder_.JSCallThisTargetTypeCheck(funcType, func);
+        GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+            EcmaOpcode::CALLTHIS1_IMM8_V8_V8));
+        GateRef newTarget = builder_.Undefined();
+        GateRef env = builder_.GetFunctionLexicalEnv(func);
+        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0 };
+
+        GateRef result = builder_.TypedAotCall(gate, args);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    }
+}
+
+void TSTypeLowering::LowerTypedCallthis2(GateRef gate)
+{
+    // 4: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 4);
+    GateRef func = acc_.GetValueIn(gate, 3);  // 3: func
+    if (!CanOptimizeAsFastCall(func, 2)) { // 2: 2 params
+        acc_.DeleteStateSplitAndFrameState(gate);
+        return;
+    }
+    GateType funcType = acc_.GetGateType(func);
+    builder_.JSCallThisTargetTypeCheck(funcType, func);
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+        EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8));
+    GateRef newTarget = builder_.Undefined();
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef a0Value = acc_.GetValueIn(gate, 1);
+    GateRef a1Value = acc_.GetValueIn(gate, 2);
+    GateRef env = builder_.GetFunctionLexicalEnv(func);
+    std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0Value, a1Value };
+
+    GateRef result = builder_.TypedAotCall(gate, args);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TSTypeLowering::LowerTypedCallthis3(GateRef gate)
+{
+    // 5: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 5);
+    GateRef func = acc_.GetValueIn(gate, 4); // 4: func
+    if (!CanOptimizeAsFastCall(func, 3)) { // 3: 3 params
+        acc_.DeleteStateSplitAndFrameState(gate);
+        return;
+    }
+    GateType funcType = acc_.GetGateType(func);
+    builder_.JSCallThisTargetTypeCheck(funcType, func);
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+        EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8));
+    GateRef newTarget = builder_.Undefined();
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef a0Value = acc_.GetValueIn(gate, 1);
+    GateRef a1Value = acc_.GetValueIn(gate, 2);
+    GateRef a2Value = acc_.GetValueIn(gate, 3);
+    GateRef env = builder_.GetFunctionLexicalEnv(func);
+    std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0Value, a1Value, a2Value };
+
+    GateRef result = builder_.TypedAotCall(gate, args);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TSTypeLowering::LowerTypedCallthisrange(GateRef gate)
+{
+    std::vector<GateRef> vec;
+    // this
+    size_t fixedInputsNum = 1;
+    ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
+    size_t numIns = acc_.GetNumValueIn(gate);
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+        EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8));
+    const size_t callTargetIndex = 1;  // 1: acc
+    GateRef func = acc_.GetValueIn(gate, numIns - callTargetIndex); // acc
+    if (!CanOptimizeAsFastCall(func, numIns - 2)) { // 2 :func and thisobj
+        acc_.DeleteStateSplitAndFrameState(gate);
+        return;
+    }
+    GateType funcType = acc_.GetGateType(func);
+    builder_.JSCallThisTargetTypeCheck(funcType, func);
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef newTarget = builder_.Undefined();
+    GateRef env = builder_.GetFunctionLexicalEnv(func);
+    vec.emplace_back(glue_);
+    vec.emplace_back(env);
+    vec.emplace_back(actualArgc);
+    vec.emplace_back(func);
+    vec.emplace_back(newTarget);
+    vec.emplace_back(thisObj);
+    // add common args
+    for (size_t i = fixedInputsNum; i < numIns - callTargetIndex; i++) {
+        vec.emplace_back(acc_.GetValueIn(gate, i));
+    }
     GateRef result = builder_.TypedAotCall(gate, vec);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }

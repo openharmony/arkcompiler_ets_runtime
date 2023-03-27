@@ -199,7 +199,6 @@ std::string MachineTypeToStr(MachineType machineType);
     V(ArrayCheck, ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                           \
     V(StableArrayCheck, STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)              \
     V(DeoptCheck, DEOPT_CHECK, GateFlags::NONE_FLAG, 1, 1, 3)                           \
-    V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)                        \
     V(StoreProperty, STORE_PROPERTY, GateFlags::NONE_FLAG, 1, 1, 3)                     \
     V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)                               \
     V(DefaultCase, DEFAULT_CASE, GateFlags::CONTROL, 1, 0, 0)                           \
@@ -240,17 +239,18 @@ std::string MachineTypeToStr(MachineType machineType);
     V(DependSelector, DEPEND_SELECTOR, GateFlags::FIXED, 1, value, 0)               \
     GATE_META_DATA_LIST_WITH_VALUE_IN(V)
 
-#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                        \
-    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)       \
-    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)             \
-    V(JSCallTargetTypeCheck, JSCALLTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2) \
-    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)             \
-    V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                        \
-    V(Int32OverflowCheck, INT32_OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)       \
-    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                    \
-    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                      \
-    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)             \
-    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                               \
+#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                                \
+    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)               \
+    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                     \
+    V(JSCallTargetTypeCheck, JSCALLTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)         \
+    V(JSCallThisTargetTypeCheck, JSCALLTHISTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1) \
+    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                     \
+    V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                \
+    V(Int32OverflowCheck, INT32_OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)               \
+    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                            \
+    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                              \
+    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)                     \
+    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                       \
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                                \
     V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                         \
@@ -276,6 +276,9 @@ std::string MachineTypeToStr(MachineType machineType);
     V(TYPED_BINARY_OP)          \
     V(CONSTSTRING)
 
+#define LOAD_PROPERTY_LIST(V)                                           \
+    V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)        \
+
 enum class OpCode : uint8_t {
     NOP = 0,
 #define DECLARE_GATE_OPCODE(NAME, OP, R, S, D, V) OP,
@@ -284,6 +287,7 @@ enum class OpCode : uint8_t {
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(DECLARE_GATE_OPCODE)
+    LOAD_PROPERTY_LIST(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 #define DECLARE_GATE_OPCODE(NAME) NAME,
     GATE_OPCODE_LIST(DECLARE_GATE_OPCODE)
@@ -473,6 +477,27 @@ inline std::ostream& operator<<(std::ostream& os, OpCode opcode)
 {
     return os << GateMetaData::Str(opcode);
 }
+
+class LoadPropertyMetaDate : public GateMetaData {
+public:
+    LoadPropertyMetaDate(OpCode opcode, GateFlags flags, uint32_t statesIn,
+        uint16_t dependsIn, uint32_t valuesIn, bool isVtable)
+        : GateMetaData(opcode, flags, statesIn, dependsIn, valuesIn), isVtable_(isVtable) {}
+
+    static LoadPropertyMetaDate* Cast(const GateMetaData* meta)
+    {
+        ASSERT(meta->GetOpCode() == OpCode::LOAD_PROPERTY);
+        return static_cast<LoadPropertyMetaDate*>(const_cast<GateMetaData*>(meta));
+    }
+
+    bool IsVtable() const
+    {
+        return isVtable_;
+    }
+
+private:
+    bool isVtable_ { false };
+};
 
 class JSBytecodeMetaData : public GateMetaData {
 public:

@@ -182,7 +182,7 @@ HWTEST_F_L0(LoweringRelateGateTests, HeapAllocTest)
     builder.StoreElement<ecmascript::kungfu::TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(array, builder.IntPtr(1),
         builder.ToTaggedInt(builder.Int64(1)));
     builder.StoreProperty(array, lengthString, builder.ToTaggedInt(builder.Int64(2)));
-    auto length = builder.LoadProperty(array, lengthString);
+    auto length = builder.LoadProperty(array, lengthString, false);
     Label less2(&builder);
     Label notLess2(&builder);
     auto condtion = builder.TaggedIsTrue(builder.NumberBinaryOp<TypedBinOp::TYPED_LESS>(length,
