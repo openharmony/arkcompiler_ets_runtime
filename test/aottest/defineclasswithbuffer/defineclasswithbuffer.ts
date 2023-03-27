@@ -37,3 +37,17 @@ var obj2 = new Obj2();
 obj2.fun();
 
 print(obj1 instanceof Object);
+
+// The following test case once exposed a bug: The abstract methods were not ignored when generating phc using ts types,
+// resulting in the inconsistency between the properties key and class litreal at runtime.
+abstract class C {
+    constructor() {}
+
+    abstract foo(): void;
+
+    bar(): string {
+       return "bar"
+    }
+}
+
+print(C.prototype.bar());
