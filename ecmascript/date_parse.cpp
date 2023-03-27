@@ -390,11 +390,16 @@ bool DateParse::DayValue::SetDayValue(int *time)
             day = data_[DAYS];
         } else {
             if (IsFull()) {
-                // 2:index of year
-                year = data_[2];
+                // input:month-day-year
+                year = data_[2]; // 2:index of year
+                mon = data_[0];  // 0:index of month
+                day = data_[1];  // 1:index of day
+            } else {
+                // input:year-month
+                year = data_[0]; // 0:index of year
+                mon = data_[1];  // 1:index of month
+                day = data_[2];  // 2:index of day
             }
-            mon = data_[0];
-            day = data_[1];
         }
     } else {
         mon = month_;
