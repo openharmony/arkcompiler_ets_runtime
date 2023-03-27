@@ -50,7 +50,6 @@ GlobalTSTypeRef TSTypeParser::ParseBuiltinObjType(uint32_t typeId)
         LOG_COMPILER(FATAL) << "load lib_ark_builtins.d.ts failed";
     }
     uint32_t offset = tsManager_->GetBuiltinOffset(typeId);
-    ASSERT(offset > USER_DEFINED_TYPE_OFFSET);
     return CreateGT(builtinjsPandaFile, tsManager_->GetBuiltinRecordName(), offset);
 }
 
@@ -59,21 +58,38 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
     panda_file::File::EntityId offset(typeId);
     JSHandle<TaggedArray> literal = LiteralDataExtractor::GetTypeLiteral(thread_, jsPandaFile, offset);
     if (literal->GetLength() == 0) {  // typeLiteral maybe hole in d.abc
-        return GlobalTSTypeRef::Default();
+        return GetAndStoreGT(jsPandaFile, typeId, recordName);
     }
     TSTypeKind kind = static_cast<TSTypeKind>(literal->Get(TYPE_KIND_INDEX_IN_LITERAL).GetInt());
     if (kind == TSTypeKind::IMPORT) {
         return ResolveImportType(jsPandaFile, recordName, literal, typeId);
     }
 
-    JSHandle<TSTypeTable> table;
-    uint32_t moduleId = 0;
-    std::tie(table, moduleId) = tsManager_->GenerateTSTypeTable(jsPandaFile, recordName);
-    GlobalTSTypeRef gt = GetGT(jsPandaFile, table, moduleId, typeId, recordName);
-    JSHandle<JSTaggedValue> type = ParseNonImportType(jsPandaFile, recordName, literal, kind, typeId);
-    SetTSType(table, type, gt);
+    uint32_t moduleId = tableGenerator_.TryGetModuleId(recordName);
+    if (UNLIKELY(!GlobalTSTypeRef::IsVaildModuleId(moduleId))) {
+        LOG_COMPILER(DEBUG) << "The maximum number of TSTypeTables is reached. All TSTypes in the record "
+                            << recordName << " will not be parsed and will be treated as any.";
+        return GetAndStoreGT(jsPandaFile, typeId, recordName);
+    }
 
-    GenerateTSHClass(type);
+    JSHandle<TSTypeTable> table = tableGenerator_.GetOrGenerateTSTypeTable(jsPandaFile, recordName, moduleId);
+    uint32_t localId = tableGenerator_.TryGetLocalId(table);
+    if (UNLIKELY(!GlobalTSTypeRef::IsVaildLocalId(localId))) {
+        LOG_COMPILER(DEBUG) << "The maximum number of TSTypes in TSTypeTable " << moduleId << " is reached. "
+                            << "The TSType with typeId " << typeId << " in the record " << recordName
+                            << " will not be parsed and will be treated as any.";
+        return GetAndStoreGT(jsPandaFile, typeId, recordName);
+    }
+
+    table->SetNumberOfTypes(thread_, localId);
+    GlobalTSTypeRef gt = GetAndStoreGT(jsPandaFile, typeId, recordName, moduleId, localId);
+    JSHandle<JSTaggedValue> type = ParseNonImportType(jsPandaFile, recordName, literal, kind, typeId);
+    if (UNLIKELY(type->IsUndefined())) {
+        return GetAndStoreGT(jsPandaFile, typeId, recordName);
+    }
+
+    SetTSType(table, type, gt);
+    tsManager_->CollectTypeOffsets(gt);  // collect types that need to generate hclasses
     return gt;
 }
 
@@ -86,22 +102,33 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
     // skip @ohos:|@app:|@native: prefixed imports
     auto [isNative, _] = ModuleManager::CheckNativeModule(cstringRelativePath);
     if (isNative) {
-        return GlobalTSTypeRef::Default();
+        return GetAndStoreGT(jsPandaFile, typeId, recordName);
     }
 
     CString baseFileName = jsPandaFile->GetJSPandaFileDesc();
     CString entryPoint =
         base::PathHelper::ConcatFileNameWithMerge(thread_, jsPandaFile, baseFileName, recordName, cstringRelativePath);
-    ASSERT(!entryPoint.empty());
+    ASSERT_PRINT(!entryPoint.empty(),
+        "EntryPoint is empty. Please check whether concating file name is correct or "
+        "whether the module request recorded in the import-type literal is correct.");
     // skip files without type information
-    if (!jsPandaFile->HasTypeSummaryOffset(entryPoint)) {
-        return GlobalTSTypeRef::Default();
+    if (UNLIKELY(!jsPandaFile->HasTypeSummaryOffset(entryPoint))) {
+        return GetAndStoreGT(jsPandaFile, typeId, recordName);
     }
+
+    uint32_t moduleId = tableGenerator_.TryGetModuleId(entryPoint);
+    if (UNLIKELY(!GlobalTSTypeRef::IsVaildModuleId(moduleId))) {
+        LOG_COMPILER(DEBUG) << "The maximum number of TSTypeTables is reached. All TSTypes in the recored "
+                            << entryPoint << " will not be parsed and will be treated as any.";
+        return GetAndStoreGT(jsPandaFile, typeId, recordName);
+    }
+
+    JSHandle<TSTypeTable> table = tableGenerator_.GetOrGenerateTSTypeTable(jsPandaFile, entryPoint, moduleId);
+    JSHandle<JSTaggedValue> exportTable = GenerateExportTableFromRecord(jsPandaFile, entryPoint, table);
+    JSHandle<TaggedArray> arrayWithGT(exportTable);
     JSHandle<EcmaString> targetVarName = GenerateImportVar(importVarNamePath);
-    JSHandle<TaggedArray> arrayWithGT = GenerateExportTableFromRecord(jsPandaFile, entryPoint);
     GlobalTSTypeRef importedGT = GetExportGTByName(targetVarName, arrayWithGT);
-    tsManager_->AddElementToLiteralOffsetGTMap(jsPandaFile, typeId, recordName, importedGT, true);
-    return importedGT;
+    return GetAndStoreImportGT(jsPandaFile, typeId, recordName, importedGT);
 }
 
 JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPandaFile, const CString &recordName,
@@ -136,8 +163,12 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPa
             JSHandle<TSObjectType> objectType = ParseObjectType(jsPandaFile, recordName, literal);
             return JSHandle<JSTaggedValue>(objectType);
         }
-        default:
-            UNREACHABLE();
+        default: {
+            LOG_COMPILER(DEBUG) << "Do not support parse types with kind " << static_cast<uint32_t>(kind) << ". "
+                                << "Please check whether the type literal " << typeId
+                                << " recorded in the record " << recordName << " is correct.";
+            return thread_->GlobalConstants()->GetHandledUndefined();
+        }
     }
 }
 
@@ -353,7 +384,7 @@ JSHandle<TSObjectType> TSTypeParser::ParseObjectType(const JSPandaFile *jsPandaF
 }
 
 void TSTypeParser::FillPropertyTypes(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                     JSHandle<TSObjLayoutInfo> &layOut, const JSHandle<TaggedArray> &literal,
+                                     JSHandle<TSObjLayoutInfo> &layout, const JSHandle<TaggedArray> &literal,
                                      uint32_t startIndex, uint32_t lastIndex, uint32_t &index, bool isField)
 {
     JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
@@ -366,7 +397,7 @@ void TSTypeParser::FillPropertyTypes(const JSPandaFile *jsPandaFile, const CStri
             gt = tsManager_->CreateClassInstanceType(gt);
         }
         value.Update(JSTaggedValue(gt.GetType()));
-        layOut->SetKeyAndType(thread_, fieldIndex, key.GetTaggedValue(), value.GetTaggedValue());
+        layout->AddKeyAndType(thread_, key.GetTaggedValue(), value.GetTaggedValue());
         if (isField) {
             index += 2;  // 2: ignore accessFlag and readonly
         }
@@ -374,7 +405,7 @@ void TSTypeParser::FillPropertyTypes(const JSPandaFile *jsPandaFile, const CStri
 }
 
 void TSTypeParser::FillInterfaceMethodTypes(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                            JSHandle<TSObjLayoutInfo> &layOut, const JSHandle<TaggedArray> &literal,
+                                            JSHandle<TSObjLayoutInfo> &layout, const JSHandle<TaggedArray> &literal,
                                             uint32_t startIndex, uint32_t lastIndex, uint32_t &index)
 {
     JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
@@ -391,21 +422,7 @@ void TSTypeParser::FillInterfaceMethodTypes(const JSPandaFile *jsPandaFile, cons
             key.Update(functionType->GetName());
         };
 
-        layOut->SetKeyAndType(thread_, methodIndex, key.GetTaggedValue(), value.GetTaggedValue());
-    }
-}
-
-void TSTypeParser::GenerateTSHClass(JSHandle<JSTaggedValue> type)
-{
-    if (type->IsTSClassType()) {
-        JSHandle<TSClassType> classType(type);
-        if (!classType->GetHasLinked()) {
-            tsManager_->RecursivelyMergeClassField(classType);
-        }
-        auto gt = classType->GetGT();
-        if (tsManager_->IsUserDefinedClassTypeKind(gt)) {
-            tsManager_->GenerateTSHClass(classType);
-        }
+        layout->AddKeyAndType(thread_, key.GetTaggedValue(), value.GetTaggedValue());
     }
 }
 
@@ -452,12 +469,10 @@ JSHandle<TaggedArray> TSTypeParser::GetExportDataFromRecord(const JSPandaFile *j
     return typeOfExportedSymbols;
 }
 
-JSHandle<TaggedArray> TSTypeParser::GenerateExportTableFromRecord(const JSPandaFile *jsPandaFile,
-                                                                  const CString &recordName)
+JSHandle<JSTaggedValue> TSTypeParser::GenerateExportTableFromRecord(const JSPandaFile *jsPandaFile,
+                                                                    const CString &recordName,
+                                                                    const JSHandle<TSTypeTable> &table)
 {
-    JSHandle<TSTypeTable> table;
-    uint32_t moduleId = 0;
-    std::tie(table, moduleId) = tsManager_->GenerateTSTypeTable(jsPandaFile, recordName);
     JSHandle<JSTaggedValue> exportValeTable = TSTypeTable::GetExportValueTable(thread_, table);
     if (exportValeTable->IsUndefined()) {
         // Read export-data from annotation of the .abc File
@@ -475,10 +490,10 @@ JSHandle<TaggedArray> TSTypeParser::GenerateExportTableFromRecord(const JSPandaF
             exportTable->Set(thread_, i, JSTaggedValue(typeGT.GetType()));
         }
         TSTypeTable::SetExportValueTable(thread_, table, exportTable);
-        return exportTable;
+        return JSHandle<JSTaggedValue>(exportTable);
     }
     ASSERT(exportValeTable->IsTaggedArray());
-    return JSHandle<TaggedArray>(exportValeTable);
+    return exportValeTable;
 }
 
 JSHandle<EcmaString> TSTypeParser::GenerateImportRelativePath(JSHandle<EcmaString> importRel) const

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,15 +12,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/ts_types/ts_obj_layout_info.h"
 
-namespace panda::ecmascript {
-void TSObjLayoutInfo::AddKeyAndType(const JSThread *thread, const JSTaggedValue &key, const JSTaggedValue &typeIdVal)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    int number = static_cast<int>(GetNumOfProperties());
-    SetNumOfProperties(thread, number + 1);
-    SetKey(thread, number, key);
-    SetTypeId(thread, number, typeIdVal);
+declare function AssertType(value: any, type: string): void;
+
+class A {
+    foo():B {
+        let v = new B();
+        AssertType(v, "B");
+        return v;
+    }
 }
-}  // namespace panda::ecmascript
+
+class B extends A {}
+
+let a = new A();
+let b = a.foo();
+let c = new B();
+let d = c.foo();
+
+AssertType(a, "A");
+AssertType(b, "B");
+AssertType(c, "B");
+AssertType(d, "B");

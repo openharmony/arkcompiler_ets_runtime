@@ -15,11 +15,9 @@
 
 #include <thread>
 
-#include "assembler/assembly-parser.h"
-
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/ts_types/tests/ts_type_test_helper.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
 
 namespace panda::test {
@@ -53,115 +51,15 @@ public:
         TestHelper::DestroyEcmaVMWithScope(ecmaVm, scope);
     }
 
-    void AddLiteral(pandasm::Program &program, const std::string &literalId,
-                    const std::vector<panda_file::LiteralTag> &tags,
-                    const std::vector<LiteralValueType> &values);
-    void AddTagValue(std::vector<LiteralArray::Literal> &literalArray,
-                     const panda_file::LiteralTag tag,
-                     const LiteralValueType &value);
-    void AddTypeSummary(pandasm::Program &program, const std::vector<std::string> &typeIds);
-    void AddSummaryLiteral(pandasm::Program &program, const std::string &typeSummaryId,
-                           const std::vector<std::string> &typeIds);
-    void AddCommonJsField(pandasm::Program &program);
-
     EcmaVM *ecmaVm {nullptr};
     EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
 };
 
-void TSTypeParserTest::AddLiteral(pandasm::Program &program, const std::string &literalId,
-                                  const std::vector<panda_file::LiteralTag> &tags,
-                                  const std::vector<LiteralValueType> &values)
-{
-    EXPECT_EQ(tags.size(), values.size());
-    std::vector<pandasm::LiteralArray::Literal> literal {};
-    for (uint32_t i = 0; i < tags.size(); i++) {
-        AddTagValue(literal, tags[i], values[i]);
-    }
-    pandasm::LiteralArray literalArray(literal);
-    program.literalarray_table.emplace(literalId, literalArray);
-}
-
-void TSTypeParserTest::AddTagValue(std::vector<LiteralArray::Literal> &literalArray,
-                                   const panda_file::LiteralTag tag,
-                                   const LiteralValueType &value)
-{
-    pandasm::LiteralArray::Literal literalTag;
-    literalTag.tag_ = panda_file::LiteralTag::TAGVALUE;
-    literalTag.value_ = static_cast<uint8_t>(tag);
-    literalArray.emplace_back(std::move(literalTag));
-
-    pandasm::LiteralArray::Literal literalValue;
-    literalValue.tag_ = tag;
-
-    if (tag == panda_file::LiteralTag::INTEGER) {
-        literalValue.value_ = std::get<uint32_t>(value);
-    } else if (tag == panda_file::LiteralTag::BUILTINTYPEINDEX) {
-        literalValue.value_ = std::get<uint8_t>(value);
-    } else if (tag == panda_file::LiteralTag::STRING) {
-        literalValue.value_ = std::get<std::string>(value);
-    } else if (tag == panda_file::LiteralTag::LITERALARRAY) {
-        literalValue.value_ = std::get<std::string>(value);
-    } else {
-        EXPECT_FALSE(true);
-    }
-
-    literalArray.emplace_back(std::move(literalValue));
-}
-
-void TSTypeParserTest::AddTypeSummary(pandasm::Program &program, const std::vector<std::string> &typeIds)
-{
-    const std::string typeSummaryId("test_0");
-    AddSummaryLiteral(program, typeSummaryId, typeIds);
-
-    const std::string testStr("test");
-    auto iter = program.record_table.find(testStr);
-    EXPECT_NE(iter, program.record_table.end());
-    if (iter != program.record_table.end()) {
-        auto &rec = iter->second;
-        auto typeSummaryIndexField = pandasm::Field(pandasm::extensions::Language::ECMASCRIPT);
-        typeSummaryIndexField.name = "typeSummaryOffset";
-        typeSummaryIndexField.type = pandasm::Type("u32", 0);
-        typeSummaryIndexField.metadata->SetValue(
-            pandasm::ScalarValue::Create<pandasm::Value::Type::LITERALARRAY>(typeSummaryId));
-        rec.field_list.emplace_back(std::move(typeSummaryIndexField));
-    }
-}
-
-void TSTypeParserTest::AddSummaryLiteral(pandasm::Program &program, const std::string &typeSummaryId,
-                                         const std::vector<std::string> &typeIds)
-{
-    uint32_t numOfTypes = typeIds.size();
-    std::vector<panda_file::LiteralTag> typeSummaryTags { panda_file::LiteralTag::INTEGER };
-    std::vector<LiteralValueType> typeSummaryValues { numOfTypes };
-    for (uint32_t i = 0; i < numOfTypes; i++) {
-        typeSummaryTags.emplace_back(panda_file::LiteralTag::LITERALARRAY);
-        typeSummaryValues.emplace_back(typeIds[i]);
-    }
-    typeSummaryTags.emplace_back(panda_file::LiteralTag::INTEGER);
-    typeSummaryValues.emplace_back(static_cast<uint32_t>(0U));
-    AddLiteral(program, typeSummaryId, typeSummaryTags, typeSummaryValues);
-}
-
-void TSTypeParserTest::AddCommonJsField(pandasm::Program &program)
-{
-    const std::string testStr("test");
-    auto iter = program.record_table.find(testStr);
-    EXPECT_NE(iter, program.record_table.end());
-    if (iter != program.record_table.end()) {
-        auto &rec = iter->second;
-        auto isCommonJsField = pandasm::Field(pandasm::extensions::Language::ECMASCRIPT);
-        isCommonJsField.name = "isCommonjs";
-        isCommonJsField.type = pandasm::Type("u8", 0);
-        isCommonJsField.metadata->SetValue(
-            pandasm::ScalarValue::Create<pandasm::Value::Type::U8>(static_cast<uint8_t>(false)));
-        rec.field_list.emplace_back(std::move(isCommonJsField));
-    }
-}
-
 HWTEST_F_L0(TSTypeParserTest, TestPrimetiveType)
 {
     auto tsManager = ecmaVm->GetTSManager();
+    tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     JSPandaFile *jsPandaFile = nullptr;
     const CString recordName("");
@@ -173,6 +71,7 @@ HWTEST_F_L0(TSTypeParserTest, TestPrimetiveType)
 HWTEST_F_L0(TSTypeParserTest, TestBuiltinType)
 {
     auto tsManager = ecmaVm->GetTSManager();
+    tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     JSPandaFile *jsPandaFile = nullptr;
     const CString recordName("");
@@ -219,11 +118,11 @@ HWTEST_F_L0(TSTypeParserTest, TestTSClassType)
                                                 static_cast<uint32_t>(0),
                                                 static_cast<uint32_t>(0),
                                                 static_cast<uint32_t>(0) };
-    AddLiteral(program, classId, classTags, classValues);
+    TSTypeTestHelper::AddLiteral(program, classId, classTags, classValues);
 
     const std::string abcFileName("TSClassTypeTest.abc");
-    AddTypeSummary(program, { classId });
-    AddCommonJsField(program);
+    TSTypeTestHelper::AddTypeSummary(program, { classId });
+    TSTypeTestHelper::AddCommonJsField(program);
     std::map<std::string, size_t> *statp = nullptr;
     pandasm::AsmEmitter::PandaFileToPandaAsmMaps maps {};
     pandasm::AsmEmitter::PandaFileToPandaAsmMaps *mapsp = &maps;
@@ -243,6 +142,7 @@ HWTEST_F_L0(TSTypeParserTest, TestTSClassType)
     EXPECT_NE(jsPandaFile, nullptr);
 
     auto tsManager = ecmaVm->GetTSManager();
+    tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
     GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
@@ -291,11 +191,11 @@ HWTEST_F_L0(TSTypeParserTest, TestTSFunctionType)
                                                    static_cast<uint8_t>(1),
                                                    static_cast<uint8_t>(4),
                                                    static_cast<uint8_t>(2) };
-    AddLiteral(program, functionId, functionTags, functionValues);
+    TSTypeTestHelper::AddLiteral(program, functionId, functionTags, functionValues);
 
     const std::string abcFileName("TSFunctionTypeTest.abc");
-    AddTypeSummary(program, { functionId });
-    AddCommonJsField(program);
+    TSTypeTestHelper::AddTypeSummary(program, { functionId });
+    TSTypeTestHelper::AddCommonJsField(program);
     std::map<std::string, size_t> *statp = nullptr;
     pandasm::AsmEmitter::PandaFileToPandaAsmMaps maps {};
     pandasm::AsmEmitter::PandaFileToPandaAsmMaps *mapsp = &maps;
@@ -315,6 +215,7 @@ HWTEST_F_L0(TSTypeParserTest, TestTSFunctionType)
     EXPECT_NE(jsPandaFile, nullptr);
 
     auto tsManager = ecmaVm->GetTSManager();
+    tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
     GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
@@ -356,11 +257,11 @@ HWTEST_F_L0(TSTypeParserTest, TestTSUnionType)
                                                 numOfTypes,
                                                 static_cast<uint8_t>(1),
                                                 static_cast<uint8_t>(4) };
-    AddLiteral(program, unionId, unionTags, unionValues);
+    TSTypeTestHelper::AddLiteral(program, unionId, unionTags, unionValues);
 
     const std::string abcFileName("TSUnionTypeTest.abc");
-    AddTypeSummary(program, { unionId });
-    AddCommonJsField(program);
+    TSTypeTestHelper::AddTypeSummary(program, { unionId });
+    TSTypeTestHelper::AddCommonJsField(program);
     std::map<std::string, size_t> *statp = nullptr;
     pandasm::AsmEmitter::PandaFileToPandaAsmMaps maps {};
     pandasm::AsmEmitter::PandaFileToPandaAsmMaps *mapsp = &maps;
@@ -380,6 +281,7 @@ HWTEST_F_L0(TSTypeParserTest, TestTSUnionType)
     EXPECT_NE(jsPandaFile, nullptr);
 
     auto tsManager = ecmaVm->GetTSManager();
+    tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
     GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
@@ -414,11 +316,11 @@ HWTEST_F_L0(TSTypeParserTest, TestTSArrayType)
                                                     panda_file::LiteralTag::BUILTINTYPEINDEX };
     std::vector<LiteralValueType> arrayValues { static_cast<uint32_t>(5),
                                                 static_cast<uint8_t>(1) };
-    AddLiteral(program, arrayId, arrayTags, arrayValues);
+    TSTypeTestHelper::AddLiteral(program, arrayId, arrayTags, arrayValues);
 
     const std::string abcFileName("TSArrayTypeTest.abc");
-    AddTypeSummary(program, { arrayId });
-    AddCommonJsField(program);
+    TSTypeTestHelper::AddTypeSummary(program, { arrayId });
+    TSTypeTestHelper::AddCommonJsField(program);
     std::map<std::string, size_t> *statp = nullptr;
     pandasm::AsmEmitter::PandaFileToPandaAsmMaps maps {};
     pandasm::AsmEmitter::PandaFileToPandaAsmMaps *mapsp = &maps;
@@ -438,6 +340,7 @@ HWTEST_F_L0(TSTypeParserTest, TestTSArrayType)
     EXPECT_NE(jsPandaFile, nullptr);
 
     auto tsManager = ecmaVm->GetTSManager();
+    tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
     GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
@@ -479,11 +382,11 @@ HWTEST_F_L0(TSTypeParserTest, TestTSObjectType)
                                                  static_cast<uint8_t>(1),
                                                  funStr,
                                                  static_cast<uint8_t>(1) };
-    AddLiteral(program, objectId, objectTags, objectValues);
+    TSTypeTestHelper::AddLiteral(program, objectId, objectTags, objectValues);
 
     const std::string abcFileName("TSObjectTypeTest.abc");
-    AddTypeSummary(program, { objectId });
-    AddCommonJsField(program);
+    TSTypeTestHelper::AddTypeSummary(program, { objectId });
+    TSTypeTestHelper::AddCommonJsField(program);
     std::map<std::string, size_t> *statp = nullptr;
     pandasm::AsmEmitter::PandaFileToPandaAsmMaps maps {};
     pandasm::AsmEmitter::PandaFileToPandaAsmMaps *mapsp = &maps;
@@ -503,6 +406,7 @@ HWTEST_F_L0(TSTypeParserTest, TestTSObjectType)
     EXPECT_NE(jsPandaFile, nullptr);
 
     auto tsManager = ecmaVm->GetTSManager();
+    tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
     GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, testTypeOffset);
@@ -519,4 +423,4 @@ HWTEST_F_L0(TSTypeParserTest, TestTSObjectType)
     EXPECT_EQ(propGT,
               GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::NUMBER)));
 }
-} // namespace panda::test
+}  // namespace panda::test

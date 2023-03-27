@@ -3234,7 +3234,7 @@ JSHandle<TSObjLayoutInfo> ObjectFactory::CreateTSObjLayoutInfo(int propNum, JSTa
 {
     uint32_t arrayLength = TSObjLayoutInfo::ComputeArrayLength(propNum);
     JSHandle<TSObjLayoutInfo> tsPropInfoHandle = JSHandle<TSObjLayoutInfo>::Cast(NewTaggedArray(arrayLength, initVal));
-    tsPropInfoHandle->SetNumberOfElements(thread_, 0);
+    tsPropInfoHandle->SetNumOfProperties(thread_, 0);
     return tsPropInfoHandle;
 }
 
@@ -3365,7 +3365,7 @@ JSHandle<TSTypeTable> ObjectFactory::NewTSTypeTable(uint32_t length)
 
     JSHandle<TSTypeTable> table(thread_, header);
     table->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length + TSTypeTable::RESERVE_TABLE_LENGTH);
-    table->SetNumberOfTypes(thread_, length);
+    table->SetNumberOfTypes(thread_);
 
     return table;
 }

@@ -19,17 +19,23 @@
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
-// TSObjLayoutInfo contains keys and TsTypeId of Properties.
+/*
+ * The TSObjLayoutInfo is organized as follows:
+ * The first position is used to store the number of properties.
+ * Store the key and gt of properties alternately starting from the second position.
+ * +---+-------+------+-------+------+-----+-------+------+
+ * | N | key_1 | gt_1 | key_2 | gt_2 | ... | key_N | gt_N |
+ * +---+-------+------+-------+------+-----+-------+------+
+ */
 class TSObjLayoutInfo : private TaggedArray {
 public:
     static constexpr int MIN_PROPERTIES_LENGTH = JSObject::MIN_PROPERTIES_LENGTH;
     static constexpr int MAX_PROPERTIES_LENGTH = PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES;
-    static constexpr int NUMBER_OF_PROPERTIES_INDEX = 0;
+    static constexpr int ELEMENTS_COUNT_INDEX = 0;
     static constexpr int ELEMENTS_START_INDEX = 1;
     static constexpr int ENTRY_SIZE = 2;
-    static constexpr int ELEMENTS_COUNT_INDEX = ELEMENTS_START_INDEX - 1;
-    static constexpr int ENTRY_TYPE_OFFSET = 1;
     static constexpr int ENTRY_KEY_OFFSET = 0;
+    static constexpr int ENTRY_TYPE_OFFSET = 1;
 
     inline static TSObjLayoutInfo *Cast(TaggedObject *obj)
     {
@@ -42,12 +48,12 @@ public:
         return static_cast<uint32_t>((GetLength() - ELEMENTS_START_INDEX) / ENTRY_SIZE);
     }
 
-    inline void SetNumberOfElements(const JSThread *thread, int propertiesNum)
+    inline void SetNumOfProperties(const JSThread *thread, int propertiesNum)
     {
         return TaggedArray::Set(thread, ELEMENTS_COUNT_INDEX, JSTaggedValue(propertiesNum));
     }
 
-    inline uint32_t NumberOfElements() const
+    inline uint32_t GetNumOfProperties() const
     {
         return TaggedArray::Get(ELEMENTS_COUNT_INDEX).GetInt();
     }
@@ -64,7 +70,7 @@ public:
         return TaggedArray::Get(idxInArray);
     }
 
-    void SetKeyAndType(const JSThread *thread, int index, const JSTaggedValue &key, const JSTaggedValue &typeIdVal);
+    void AddKeyAndType(const JSThread *thread, const JSTaggedValue &key, const JSTaggedValue &typeIdVal);
 
     inline uint32_t GetLength() const
     {
@@ -91,7 +97,7 @@ private:
 
     inline uint32_t GetKeyIndex(int index) const
     {
-        return ELEMENTS_START_INDEX + (static_cast<uint32_t>(index) * ENTRY_SIZE + ENTRY_KEY_OFFSET);
+        return ELEMENTS_START_INDEX + (static_cast<uint32_t>(index) * ENTRY_SIZE) + ENTRY_KEY_OFFSET;
     }
 
     inline uint32_t GetTypeIdIndex(int index) const
