@@ -242,6 +242,10 @@ ohos_source_set("libark_jsoptimizer_set") {
 
   deps = [ "$ark_root/libpandafile:arkfile_header_deps" ]
 
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+
   if (compile_llvm_online) {
     deps += [ ":build_llvm_libs" ]
   }
