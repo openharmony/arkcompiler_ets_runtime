@@ -51,7 +51,7 @@ FrameStateBuilder::~FrameStateBuilder()
 GateRef FrameStateBuilder::FrameState(size_t pcOffset, FrameStateInfo *stateInfo)
 {
     size_t frameStateInputs = numVregs_ + 1; // +1: for pc
-    std::vector<GateRef> inList(frameStateInputs, Circuit::NullGate());
+    std::vector<GateRef> inList(frameStateInputs + 1, Circuit::NullGate()); // 1: frameArgs
     auto optimizedGate = circuit_->GetConstantGate(MachineType::I64,
                                                    JSTaggedValue::VALUE_OPTIMIZED_OUT,
                                                    GateType::TaggedValue());
@@ -66,6 +66,7 @@ GateRef FrameStateBuilder::FrameState(size_t pcOffset, FrameStateInfo *stateInfo
                                             pcOffset,
                                             GateType::NJSValue());
     inList[numVregs_] = pcGate;
+    inList[numVregs_ + 1] = argAcc_.GetFrameArgs();
     return circuit_->NewGate(circuit_->FrameState(frameStateInputs), inList);
 }
 
@@ -285,9 +286,10 @@ void FrameStateBuilder::ComputeLiveState()
     }
 }
 
-void FrameStateBuilder::BuildFrameState()
+void FrameStateBuilder::BuildFrameState(GateRef frameArgs)
 {
     argAcc_.CollectArgs();
+    argAcc_.SetFrameArgs(frameArgs);
     bcEndStateInfos_.resize(builder_->GetLastBcIndex() + 1, nullptr); // 1: +1 pcOffsets size
     auto size = builder_->GetBasicBlockCount();
     bbBeginStateInfos_.resize(size, nullptr);

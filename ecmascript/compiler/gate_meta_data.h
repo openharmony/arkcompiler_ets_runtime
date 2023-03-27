@@ -207,14 +207,16 @@ std::string MachineTypeToStr(MachineType machineType);
     V(TypedNewAllocateThis, TYPED_NEW_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)     \
     V(TypedSuperAllocateThis, TYPED_SUPER_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2) \
     V(GetSuperConstructor, GET_SUPER_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)         \
-    V(UpdateHotness, UPDATE_HOTNESS, GateFlags::NO_WRITE, 1, 1, 1)                      \
+    V(UpdateHotness, UPDATE_HOTNESS, GateFlags::NO_WRITE, 1, 1, 2)                      \
     V(Dead, DEAD, GateFlags::NONE_FLAG, 0, 0, 0)                                        \
+    V(FrameArgs, FRAME_ARGS, GateFlags::NONE_FLAG, 0, 0, 4)                             \
+    V(GetEnv, GET_ENV, GateFlags::NONE_FLAG, 0, 0, 1)                                   \
     BINARY_GATE_META_DATA_CACHE_LIST(V)                                                 \
     UNARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                             \
     V(ValueSelector, VALUE_SELECTOR, GateFlags::FIXED, 1, 0, value)                      \
-    V(FrameState, FRAME_STATE, GateFlags::NONE_FLAG, 0, 0, value)                        \
+    V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, value)                  \
     V(RuntimeCall, RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)                      \
     V(RuntimeCallWithArgv, RUNTIME_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)    \
     V(NoGcRuntimeCall, NOGC_RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)             \
@@ -262,9 +264,9 @@ std::string MachineTypeToStr(MachineType machineType);
     V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 2)           \
     V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 3)        \
     V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 1, 0)  \
-    V(ConstData, CONST_DATA, GateFlags::NONE_FLAG, 0, 0, 0)              \
+    V(ConstData, CONST_DATA, GateFlags::NONE_FLAG, 0, 0, 1)              \
     V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                 \
-    V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)
+    V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)  \
 
 #define GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     V(Arg, ARG, GateFlags::HAS_ROOT, 0, 0, 0)             \

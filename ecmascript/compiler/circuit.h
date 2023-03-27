@@ -54,7 +54,8 @@ public:
     GateRef GetConstantGate(MachineType machineType, uint64_t value, GateType type);
     GateRef GetConstantStringGate(MachineType machineType, const std::string &str, GateType type);
     GateRef NewArg(MachineType machineType, size_t index, GateType type, GateRef argRoot);
-    GateRef GetConstantDataGate(uint64_t value, GateType type);
+    GateRef GetConstantDataGate(uint64_t value, GateType type, GateRef jsFunc);
+    GateRef GetInitialEnvGate(GateRef jsFunc);
     size_t GetGateCount() const;
     TimeStamp GetTime() const;
     void AdvanceTime() const;
@@ -137,9 +138,11 @@ public:
     }
 
     const GateMetaData* JSBytecode(size_t valuesIn, EcmaOpcode opcode,
-        uint32_t pcOffset, bool writable)
+        uint32_t pcOffset, bool writable, bool hasFrameState)
     {
-        GateFlags flags = writable ? GateFlags::NONE_FLAG : GateFlags::NO_WRITE;
+        GateFlags writableFlags = writable ? GateFlags::NONE_FLAG : GateFlags::NO_WRITE;
+        GateFlags frameStateFlags = hasFrameState ? GateFlags::HAS_FRAME_STATE : GateFlags::NONE_FLAG;
+        GateFlags flags = static_cast<GateFlags>(writableFlags | frameStateFlags);
         return metaBuilder_.JSBytecode(valuesIn, opcode, pcOffset, flags);
     }
 
@@ -216,6 +219,7 @@ private:
     TimeStamp time_;
     std::map<std::tuple<MachineType, BitField, GateType>, GateRef> constantCache_ {};
     std::map<BitField, GateRef> constantDataCache_ {};
+    std::map<GateRef, GateRef> initialEnvCache_ {};
     panda::ecmascript::FrameType frameType_ {panda::ecmascript::FrameType::OPTIMIZED_FRAME};
     bool isArch64_ { false };
 

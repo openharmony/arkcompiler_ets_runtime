@@ -105,6 +105,8 @@ int Main(const int argc, const char **argv)
         size_t maxAotMethodSize = runtimeOptions.GetMaxAotMethodSize();
         bool isEnableTypeLowering = runtimeOptions.IsEnableTypeLowering();
         bool isEnableOptInlining = runtimeOptions.IsEnableOptInlining();
+        bool isEnableTypeInfer = isEnableTypeLowering || vm->GetTSManager()->AssertTypes();
+        PassOptions passOptions(isEnableTypeLowering, isEnableTypeInfer, isEnableOptInlining);
         uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
         AOTInitialize(vm);
 
@@ -117,7 +119,7 @@ int Main(const int argc, const char **argv)
             entrypoint = runtimeOptions.GetEntryPoint();
         }
         PassManager passManager(vm, entrypoint, triple, optLevel, relocMode, &log, &logList, maxAotMethodSize,
-                                isEnableTypeLowering, profilerIn, hotnessThreshold, isEnableOptInlining);
+                                profilerIn, hotnessThreshold, &passOptions);
         for (const auto &fileName : pandaFileNames) {
             auto extendedFilePath = panda::os::file::File::GetExtendedFilePath(fileName);
             LOG_COMPILER(INFO) << "AOT compile: " << extendedFilePath;

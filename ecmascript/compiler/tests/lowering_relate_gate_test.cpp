@@ -54,7 +54,9 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
     auto state = acc.GetStateRoot();
     auto arg0 = builder.Arguments(0);
     auto pcGate = circuit.GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
-    auto frameState = circuit.NewGate(circuit.FrameState(1), {pcGate});
+    auto frameArgs = circuit.NewGate(
+        circuit.FrameArgs(), {builder.Arguments(3), builder.Arguments(4), builder.Arguments(5), builder.Arguments(2)});
+    auto frameState = circuit.NewGate(circuit.FrameState(1), {pcGate, frameArgs});
     auto stateSplit = circuit.NewGate(circuit.StateSplit(), {state, depend, frameState});
     builder.SetDepend(stateSplit);
     auto check = builder.TryPrimitiveTypeCheck(GateType::NumberType(), arg0);
@@ -147,7 +149,9 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeOpCodeFramework)
     auto arg0 = builder.Arguments(0);
     auto arg1 = builder.Arguments(1);
     auto pcGate = circuit.GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
-    auto frameState = circuit.NewGate(circuit.FrameState(1), {pcGate});
+    auto frameArgs = circuit.NewGate(
+        circuit.FrameArgs(), {builder.Arguments(3), builder.Arguments(4), builder.Arguments(5), builder.Arguments(2)});
+    auto frameState = circuit.NewGate(circuit.FrameState(1), {pcGate, frameArgs});
     auto stateSplit = circuit.NewGate(circuit.StateSplit(), {state, depend, frameState});
     builder.SetDepend(stateSplit);
     builder.TryPrimitiveTypeCheck(GateType::NumberType(), arg0);

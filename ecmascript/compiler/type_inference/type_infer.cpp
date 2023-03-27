@@ -802,7 +802,7 @@ bool TypeInfer::InferDefineGetterSetterByValue(GateRef gate)
 bool TypeInfer::InferSuperCall(GateRef gate)
 {
     ArgumentAccessor argAcc(circuit_);
-    auto newTarget = argAcc.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
+    auto newTarget = argAcc.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
     auto classType = gateAccessor_.GetGateType(newTarget);
     if (tsManager_->IsClassTypeKind(classType)) {
         auto classInstanceType = tsManager_->CreateClassInstanceType(classType);
@@ -836,8 +836,8 @@ bool TypeInfer::InferSuperPropertyByValue(GateRef gate)
 bool TypeInfer::GetSuperProp(GateRef gate, uint64_t index, bool isString)
 {
     ArgumentAccessor argAcc(circuit_);
-    auto func = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
-    auto newTarget = argAcc.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
+    auto func = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    auto newTarget = argAcc.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
     auto funcType = gateAccessor_.GetGateType(func);
     auto classType = gateAccessor_.GetGateType(newTarget);
     if (!funcType.IsAnyType() && !classType.IsAnyType()) {

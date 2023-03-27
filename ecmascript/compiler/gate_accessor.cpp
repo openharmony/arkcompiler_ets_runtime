@@ -723,6 +723,11 @@ GateRef GateAccessor::GetConstantGate(MachineType bitValue, BitField bitfield, G
     return circuit_->GetConstantGate(bitValue, bitfield, type);
 }
 
+GateRef GateAccessor::GetInitialEnvGate(GateRef jsFunc) const
+{
+    return circuit_->GetInitialEnvGate(jsFunc);
+}
+
 bool GateAccessor::IsConstantNumber(GateRef gate) const
 {
     DISALLOW_GARBAGE_COLLECTION;

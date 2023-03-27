@@ -33,6 +33,14 @@ enum class CommonArgIdx : uint8_t {
     NUM_OF_ARGS,
 };
 
+enum class FrameArgIdx : uint8_t {
+    FUNC = 0,
+    NEW_TARGET,
+    THIS_OBJECT,
+    ACTUAL_ARGC,
+    NUM_OF_ARGS,
+};
+
 class ArgumentAccessor {
 public:
     explicit ArgumentAccessor(
@@ -40,7 +48,8 @@ public:
         : circuit_(circuit),
           method_(methodLiteral),
           argRoot_(circuit->GetArgRoot()),
-          args_(0)
+          args_(0),
+          frameArgs_{Circuit::NullGate()}
     {
         CollectArgs();
     }
@@ -52,7 +61,6 @@ public:
     size_t GetActualNumArgs() const;
     // method must be set
     GateRef GetArgGate(const size_t currentVreg) const;
-    GateRef GetCommonArgGate(const CommonArgIdx arg) const;
     GateRef ArgsAt(const size_t index) const
     {
         return args_.at(index);
@@ -68,7 +76,20 @@ public:
         return static_cast<size_t>(CommonArgIdx::NUM_OF_ARGS) - static_cast<size_t>(CommonArgIdx::FUNC);
     }
 
+    GateRef GetFrameArgs() const
+    {
+        return frameArgs_;
+    }
+
+    void SetFrameArgs(GateRef frameArgs)
+    {
+        frameArgs_ = frameArgs;
+    }
+    GateRef GetFrameArgsIn(GateRef gate, FrameArgIdx idx);
+
 private:
+    // Disables using this interface during lowering, only allows it to be used during building graph.
+    GateRef GetCommonArgGate(const CommonArgIdx arg) const;
     size_t GetFunctionArgIndex(const size_t currentVreg, const bool haveFunc,
                                const bool haveNewTarget, const bool haveThis) const;
     GateRef GetTypedArgGate(const size_t argIndex) const;
@@ -77,6 +98,10 @@ private:
     const MethodLiteral *method_ {nullptr};
     GateRef argRoot_;
     std::vector<GateRef> args_;
+    GateRef frameArgs_;
+
+    friend class BytecodeCircuitBuilder;
+    friend class AsyncFunctionLowering;
 };
 }
 #endif  // ECMASCRIPT_COMPILER_ARGUMENT_ACCESSOR_H

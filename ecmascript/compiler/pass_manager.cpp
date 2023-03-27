@@ -39,7 +39,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         LOG_COMPILER(ERROR) << "Load and verify profiler failure";
         return false;
     }
-    bool enableCollectLiteralInfo = EnableTypeInfer() &&
+    bool enableCollectLiteralInfo = passOptions_->EnableTypeInfer() &&
         (profilerLoader_.IsLoaded() || vm_->GetTSManager()->AssertTypes());
     BytecodeInfoCollector bcInfoCollector(vm_, jsPandaFile, maxAotMethodSize_,
         enableCollectLiteralInfo);
@@ -93,7 +93,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         circuit.SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
         BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, tsManager, &circuit,
                                        info.GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
-                                       EnableTypeLowering(), fullName, recordName);
+                                       passOptions_->EnableTypeLowering(), fullName, recordName);
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
             builder.BytecodeToCircuit();
@@ -103,17 +103,17 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
                       &methodInfo, hasTypes, recordName,
                       methodLiteral, methodOffset, vm_->GetNativeAreaAllocator());
         PassRunner<PassData> pipeline(&data);
-        if (EnableTypeInfer()) {
+        if (passOptions_->EnableTypeInfer()) {
             pipeline.RunPass<TypeInferPass>();
         }
         if (data.IsTypeAbort()) {
             return;
         }
-        if (EnableOptInlining()) {
+        if (passOptions_->EnableOptInlining()) {
             pipeline.RunPass<TSInlineLoweringPass>();
         }
         pipeline.RunPass<AsyncFunctionLoweringPass>();
-        if (EnableTypeLowering()) {
+        if (passOptions_->EnableTypeLowering()) {
             pipeline.RunPass<TSTypeLoweringPass>();
             pipeline.RunPass<EarlyEliminationPass>();
             pipeline.RunPass<NumberSpeculativePass>();

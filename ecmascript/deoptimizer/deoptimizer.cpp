@@ -257,17 +257,17 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
 
     // [reserved args]
     if (method->HaveThisWithCallField()) {
-        JSTaggedValue value = GetFrameArgv(kungfu::CommonArgIdx::THIS_OBJECT);
+        JSTaggedValue value = deoptVregs_.at(static_cast<kungfu::OffsetType>(SpecVregIndex::THIS_OBJECT_INDEX));
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
     if (method->HaveNewTargetWithCallField()) {
-        JSTaggedValue value = GetFrameArgv(kungfu::CommonArgIdx::NEW_TARGET);
+        JSTaggedValue value = deoptVregs_.at(static_cast<kungfu::OffsetType>(SpecVregIndex::NEWTARGET_INDEX));
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
     if (method->HaveFuncWithCallField()) {
-        JSTaggedValue value = GetFrameArgv(kungfu::CommonArgIdx::FUNC);
+        JSTaggedValue value = deoptVregs_.at(static_cast<kungfu::OffsetType>(SpecVregIndex::FUNC_INDEX));
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
@@ -335,7 +335,7 @@ std::string Deoptimizier::DisplayItems(kungfu::DeoptType type)
 
 JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(kungfu::DeoptType type)
 {
-    JSTaggedValue callTarget = GetFrameArgv(kungfu::CommonArgIdx::FUNC);
+    JSTaggedValue callTarget = GetDeoptValue(static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
     auto method = GetMethod(callTarget);
     Dump(method, type);
     ASSERT(thread_ != nullptr);
@@ -357,7 +357,7 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(kungfu::DeoptType type)
     AsmInterpretedFrame *statePtr = frameWriter.ReserveAsmInterpretedFrame();
     const uint8_t *resumePc = method->GetBytecodeArray() + pc_;
 
-    JSTaggedValue thisObj = GetFrameArgv(kungfu::CommonArgIdx::THIS_OBJECT);
+    JSTaggedValue thisObj = GetDeoptValue(static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX));
     auto acc = GetDeoptValue(static_cast<int32_t>(SpecVregIndex::ACC_INDEX));
     statePtr->function = callTarget;
     statePtr->acc = acc;

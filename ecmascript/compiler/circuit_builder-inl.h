@@ -90,6 +90,14 @@ GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset)
     return result;
 }
 
+GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset, GateRef depend)
+{
+    GateRef val = PtrAdd(base, offset);
+    GateRef result = GetCircuit()->NewGate(GetCircuit()->Load(), type.GetMachineType(),
+                                           { depend, val }, type.GetGateType());
+    return result;
+}
+
 // Js World
 // cast operation
 GateRef CircuitBuilder::GetInt64OfTInt(GateRef x)

@@ -32,7 +32,8 @@ public:
           tsManager_(info->GetTSManager()),
           enableLog_(enableLog),
           profiling_(info->GetCompilerConfig()->IsProfiling()),
-          methodName_(name), glue_(acc_.GetGlueFromArgList()) {}
+          methodName_(name), glue_(acc_.GetGlueFromArgList()),
+          argAcc_(circuit) {}
 
     ~TSTypeLowering() = default;
 
@@ -88,7 +89,7 @@ private:
     void LowerTypedLdObjByValue(GateRef gate, bool isThis);
     void LowerTypedIsTrueOrFalse(GateRef gate, bool flag);
     void LowerTypedNewObjRange(GateRef gate);
-    void LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget);
+    void LowerTypedSuperCall(GateRef gate);
 
     void LowerCallThis1Imm8V8V8(GateRef gate);
     void LowerTypedCallArg0(GateRef gate);
@@ -121,6 +122,7 @@ private:
     bool profiling_ {false};
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
+    ArgumentAccessor argAcc_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_TYPE_LOWERING_H

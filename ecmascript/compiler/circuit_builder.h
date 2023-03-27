@@ -325,6 +325,7 @@ public:
 
     // memory
     inline GateRef Load(VariableType type, GateRef base, GateRef offset);
+    inline GateRef Load(VariableType type, GateRef base, GateRef offset, GateRef depend);
     void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value);
 
 #define ARITHMETIC_BINARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                 \
