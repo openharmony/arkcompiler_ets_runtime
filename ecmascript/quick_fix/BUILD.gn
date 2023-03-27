@@ -27,6 +27,10 @@ ohos_executable("quick_fix") {
     "$js_root:libark_jsruntime",
   ]
 
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+
   install_enable = false
 
   part_name = "ets_runtime"

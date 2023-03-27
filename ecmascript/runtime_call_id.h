@@ -893,12 +893,19 @@ enum EcmaRuntimeCallerId {
     [[maybe_unused]] JSThread *_js_thread_ = thread;                                           \
     [[maybe_unused]] EcmaRuntimeStat *_run_stat_ = _js_thread_->GetEcmaVM()->GetRuntimeStat(); \
     RuntimeTimerScope interpret_##name##_scope_(INTERPRETER_CALLER_ID(name) _run_stat_)
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define RUNTIME_TRACE(thread, name)                                                            \
     [[maybe_unused]] JSThread *_js_thread_ = thread;                                           \
     [[maybe_unused]] EcmaRuntimeStat *_run_stat_ = _js_thread_->GetEcmaVM()->GetRuntimeStat(); \
     RuntimeTimerScope interpret_##name##_scope_(RUNTIME_CALLER_ID(name) _run_stat_);           \
     [[maybe_unused]] RuntimeStateScope _runtime_state_##name##_scope_(_js_thread_)
+#else
+#define RUNTIME_TRACE(thread, name)                                                            \
+    [[maybe_unused]] JSThread *_js_thread_ = thread;                                           \
+    [[maybe_unused]] EcmaRuntimeStat *_run_stat_ = _js_thread_->GetEcmaVM()->GetRuntimeStat(); \
+    RuntimeTimerScope interpret_##name##_scope_(RUNTIME_CALLER_ID(name) _run_stat_);
+#endif
 #else
 #define INTERPRETER_TRACE(thread, name) static_cast<void>(0) // NOLINT(cppcoreguidelines-macro-usage)
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)

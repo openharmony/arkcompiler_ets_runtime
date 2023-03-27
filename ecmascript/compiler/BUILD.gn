@@ -370,13 +370,6 @@ ohos_executable("ark_aot_compiler") {
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
 
-  if (is_mingw && !ark_standalone_build) {
-    deps += [ "$hilog_root:libhilog_windows" ]
-  }
-  if (is_mac && !is_cross_platform_build && !ark_standalone_build) {
-    deps += [ "$hilog_root:libhilog_mac" ]
-  }
-
   if (target_os == "ios") {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
@@ -389,24 +382,9 @@ ohos_executable("ark_aot_compiler") {
     ]
   }
 
-  if (is_ohos && is_standard_system) {
-    if (enable_dump_in_faultlog || enable_bytrace || enable_hitrace ||
-        enable_hilog) {
-      external_deps = []
-    }
-    if (enable_dump_in_faultlog) {
-      external_deps += [ "faultloggerd:libfaultloggerd" ]
-    }
-    if (enable_bytrace) {
-      external_deps += [ "hitrace_native:hitrace_meter" ]
-    }
-    if (enable_hitrace) {
-      external_deps += [ "hitrace_native:libhitracechain" ]
-    }
-    if (enable_hilog) {
-      external_deps += [ "hiviewdfx_hilog_native:libhilog" ]
-    }
-  }
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
 
   install_enable = true
 
