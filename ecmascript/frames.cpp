@@ -399,6 +399,7 @@ uint32_t FrameIterator::GetBytecodeOffset() const
                 return constInfo[0];
             }
             LOG_ECMA(FATAL) << "error: empty pcOffset in stackmap!";
+            [[fallthrough]];
         }
         default: {
             break;
