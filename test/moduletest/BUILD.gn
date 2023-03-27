@@ -75,6 +75,7 @@ group("ark_js_moduletest") {
   ]
   if (!is_debug) {
     deps += [
+      "hugearray:hugearrayAction",
       "multiconstpoolarray:multiconstpoolarrayAction",
       "multiconstpoolclass:multiconstpoolclassAction",
       "multiconstpoolconstructor:multiconstpoolconstructorAction",
@@ -140,6 +141,7 @@ group("ark_asm_test") {
   ]
   if (!is_debug) {
     deps += [
+      "hugearray:hugearrayAsmAction",
       "multiconstpoolarray:multiconstpoolarrayAsmAction",
       "multiconstpoolclass:multiconstpoolclassAsmAction",
       "multiconstpoolconstructor:multiconstpoolconstructorAsmAction",
