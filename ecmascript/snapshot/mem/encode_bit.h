@@ -25,9 +25,9 @@
 /*
  *                        EncodeBit: use uint64_t value to encode TaggedObject when serialize
  *
- *     |0000...000|      |0000...00|      |0|       |0|     |00000000|     |0|      |0000...000|       |00...0|
- *   16bit:is reference  9bit:unused   builtins  special     obj type     string   18bit:obj offset  10bit:region index
- *
+ *  |0000...000|  |0000...00| |0|    |0|       |0|    |00000000|  |0|     |0000...000|   |00...0|
+ *     16bit         8bit    1bit   1bit      1bit      8bit     1bit         18bit       10bit
+ *  is reference    unused   weak  builtins  special  obj type   string   obj offset    region index
  */
 
 namespace panda::ecmascript {
