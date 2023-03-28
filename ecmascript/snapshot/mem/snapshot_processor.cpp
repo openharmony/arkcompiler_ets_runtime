@@ -1090,9 +1090,9 @@ void SnapshotProcessor::WriteHugeObjectToFile(HugeObjectSpace* space, std::fstre
                                         static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     space->EnumerateRegions([&hugeRegionHeadSize, &writer](Region *region) {
         size_t objSize = hugeRegionHeadSize;
-        uint64_t wasted = region->GetWastedSize();
-        // huge object size is storaged in region param wasted_ high 32 bits
-        objSize += SnapshotHelper::GetHugeObjectSize(wasted);
+        uint64_t snapshotData = region->GetSnapshotData();
+        // huge object size is storaged in region param snapshotMark_ high 32 bits
+        objSize += SnapshotHelper::GetHugeObjectSize(snapshotData);
         writer.write(reinterpret_cast<char *>(region), objSize);
         writer.flush();
     });
@@ -1138,9 +1138,9 @@ uint32_t SnapshotProcessor::StatisticsHugeObjectSize(HugeObjectSpace* space)
                                         static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     space->EnumerateRegions([&objSize, &hugeRegionHeadSize](Region *region) {
         objSize += hugeRegionHeadSize;
-        uint64_t wasted = region->GetWastedSize();
-        // huge object size is storaged in region param wasted_ high 32 bits
-        objSize += SnapshotHelper::GetHugeObjectSize(wasted);
+        uint64_t snapshotData = region->GetSnapshotData();
+        // huge object size is storaged in region param snapshotData_ high 32 bits
+        objSize += SnapshotHelper::GetHugeObjectSize(snapshotData);
     });
     return static_cast<uint32_t>(objSize);
 }
@@ -1172,13 +1172,13 @@ uintptr_t SnapshotProcessor::AllocateObjectToLocalSpace(Space *space, size_t obj
     }
     auto current = space->GetCurrentRegion();
     if (newObj == current->GetBegin()) {
-        // region param wasted_ low 32 bits is reused to record regionIndex
-        current->ResetWasted();
-        current->IncreaseWasted(regionIndex_);
+        // region param snapshotData_ low 32 bits is reused to record regionIndex
+        uint64_t snapshotData = regionIndex_;
         if (current->InHugeObjectSpace()) {
-            // region param wasted_ high 32 bits is reused to record huge object size
-            current->IncreaseWasted(SnapshotHelper::EncodeHugeObjectSize(objectSize));
+            // region param snapshotData_ high 32 bits is reused to record huge object size
+            snapshotData += SnapshotHelper::EncodeHugeObjectSize(objectSize);
         }
+        current->SetSnapshotData(snapshotData);
         regionIndex_++;
     }
     return newObj;
@@ -1224,20 +1224,14 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
         auto fileRegion = ToNativePtr<Region>(beginAddr + i * (DEFAULT_REGION_SIZE - GetMarkGCBitSetSize()));
         uintptr_t objectBeginAddr =
             ToUintPtr(fileRegion) + AlignUp(sizeof(Region),  static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        // region wasted_ is used to record region index for snapshot
-        size_t regionIndex = fileRegion->GetWastedSize();
+        // region snapshotData_ is used to record region index for snapshot
+        size_t regionIndex = fileRegion->GetSnapshotData();
         size_t liveObjectSize = 0;
         if (space->GetSpaceType() == MemSpaceType::SNAPSHOT_SPACE) {
             liveObjectSize = fileRegion->highWaterMark_ - fileRegion->packedData_.begin_;
             ASSERT(liveObjectSize <= region->end_ - region->packedData_.begin_);
         } else {
             liveObjectSize = fileRegion->AliveObject();
-            size_t freeObjSize = region->end_ - region->packedData_.begin_ - liveObjectSize;
-            // if region remain 8 bytes which is added to wasted,
-            // we should subtract it when calculate region index
-            if (freeObjSize < Constants::FREE_OBJECT_MIN_SIZE) {
-                regionIndex -= freeObjSize;
-            }
         }
         regionIndexMap_.emplace(regionIndex, region);
 
@@ -1282,15 +1276,15 @@ void SnapshotProcessor::DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObje
         uintptr_t copyFrom = oldMarkGCBitsetAddr +
         (fileRegion->packedData_.begin_ - ToUintPtr(fileRegion->packedData_.markGCBitset_));
 
-        // region wasted_ is used to record region index for snapshot
-        uint64_t wasted = fileRegion->GetWastedSize();
+        // region snapshotData_ is used to record region index for snapshot
+        uint64_t snapshotData = fileRegion->GetSnapshotData();
         // high 32 bits storage huge object size
-        size_t objSize = SnapshotHelper::GetHugeObjectSize(wasted);
+        size_t objSize = SnapshotHelper::GetHugeObjectSize(snapshotData);
         size_t alignedHugeRegionSize = AlignUp(objSize + sizeof(Region), PANDA_POOL_ALIGNMENT_IN_BYTES);
         Region *region = vm_->GetHeapRegionAllocator()->AllocateAlignedRegion(
             space, alignedHugeRegionSize, vm_->GetAssociatedJSThread());
         // low 32 bits storage regionIndex
-        size_t regionIndex = SnapshotHelper::GetHugeObjectRegionIndex(wasted);
+        size_t regionIndex = SnapshotHelper::GetHugeObjectRegionIndex(snapshotData);
         regionIndexMap_.emplace(regionIndex, region);
 
         ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->packedData_.begin_), objSize);
@@ -1796,9 +1790,9 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
         UNREACHABLE();
     }
     auto currentRegion = Region::ObjectAddressToRange(newObj);
-    // region wasted_ low 32 bits is used to record region index for snapshot
-    uint64_t wasted = currentRegion->GetWastedSize();
-    size_t regionIndex = SnapshotHelper::GetHugeObjectRegionIndex(wasted);
+    // region snapshotData_ low 32 bits is used to record region index for snapshot
+    uint64_t snapshotData = currentRegion->GetSnapshotData();
+    size_t regionIndex = SnapshotHelper::GetHugeObjectRegionIndex(snapshotData);
     size_t objOffset = newObj - ToUintPtr(currentRegion);
     EncodeBit encodeBit(static_cast<uint64_t>(regionIndex));
     encodeBit.SetObjectOffsetInRegion(objOffset);

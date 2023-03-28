@@ -149,22 +149,22 @@ private:
 
 class SnapshotHelper {
 public:
-    // when snapshot serialize, huge obj size is writed to region wasted_ high 32 bits
+    // when snapshot serialize, huge obj size is writed to region snapshotData_ high 32 bits
     static inline uint64_t EncodeHugeObjectSize(uint64_t objSize)
     {
         return objSize << Constants::UINT_32_BITS_COUNT;
     }
 
-    // get huge object size which is saved in region wasted_ high 32 bits
-    static inline size_t GetHugeObjectSize(uint64_t wasted)
+    // get huge object size which is saved in region snapshotData_ high 32 bits
+    static inline size_t GetHugeObjectSize(uint64_t snapshotData)
     {
-        return wasted >> Constants::UINT_32_BITS_COUNT;
+        return snapshotData >> Constants::UINT_32_BITS_COUNT;
     }
 
-    // get huge object region index which is saved in region wasted_ low 32 bits
-    static inline size_t GetHugeObjectRegionIndex(uint64_t wasted)
+    // get huge object region index which is saved in region snapshotMark_ low 32 bits
+    static inline size_t GetHugeObjectRegionIndex(uint64_t snapshotData)
     {
-        return wasted & Constants::MAX_UINT_32;
+        return snapshotData & Constants::MAX_UINT_32;
     }
 };
 }  // namespace panda::ecmascript
