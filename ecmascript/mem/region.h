@@ -107,7 +107,8 @@ public:
           end_(end),
           highWaterMark_(end),
           aliveObject_(0),
-          wasted_(0)
+          wasted_(0),
+          snapshotData_(0)
     {
         lock_ = new os::memory::Mutex();
     }
@@ -453,13 +454,25 @@ public:
     {
         wasted_ = 0;
     }
+
     void IncreaseWasted(uint64_t size)
     {
         wasted_ += size;
     }
+
     uint64_t GetWastedSize()
     {
         return wasted_;
+    }
+
+    uint64_t GetSnapshotData()
+    {
+        return snapshotData_;
+    }
+
+    void SetSnapshotData(uint64_t value)
+    {
+        snapshotData_ = value;
     }
 
     void SwapRSetForConcurrentSweeping()
@@ -564,6 +577,9 @@ private:
     Span<FreeObjectSet *> freeObjectSets_;
     os::memory::Mutex *lock_ {nullptr};
     uint64_t wasted_;
+    // snapshotdata_ is used to encode the region for snapshot. Its upper 32 bits are used to store the size of
+    // the huge object, and the lower 32 bits are used to store the region index
+    uint64_t snapshotData_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;
