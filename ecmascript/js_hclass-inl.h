@@ -194,8 +194,11 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;
         case JSType::LINE_STRING:
+            size = LineEcmaString::ObjectSize(reinterpret_cast<EcmaString* >(header));
+            size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+            break;
         case JSType::TREE_STRING:
-            size = EcmaStringAccessor(reinterpret_cast<EcmaString *>(header)).ObjectSize();
+            size = TreeEcmaString::SIZE;
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;
         case JSType::MACHINE_CODE_OBJECT:
