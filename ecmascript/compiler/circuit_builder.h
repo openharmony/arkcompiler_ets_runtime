@@ -237,6 +237,7 @@ public:
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef function, GateRef id, GateRef param);
     GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex);
+    GateRef JSCallThisTargetTypeCheck(GateType type, GateRef func);
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type = DeoptType::NOTCHECK);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList, GateType gateType);
@@ -450,7 +451,7 @@ public:
     GateRef LoadElement(GateRef receiver, GateRef index);
     template<TypedStoreOp Op>
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
-    GateRef LoadProperty(GateRef receiver, GateRef propertyLookupResult);
+    GateRef LoadProperty(GateRef receiver, GateRef propertyLookupResult, bool isFunction);
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
     GateRef LoadArrayLength(GateRef array);
     GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);

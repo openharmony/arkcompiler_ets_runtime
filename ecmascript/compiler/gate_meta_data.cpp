@@ -49,6 +49,7 @@ std::string GateMetaData::Str(OpCode opcode)
     const std::map<OpCode, const char *> strMap = {
 #define GATE_NAME_MAP(NAME, OP, R, S, D, V) { OpCode::OP, #OP },
     IMMUTABLE_META_DATA_CACHE_LIST(GATE_NAME_MAP)
+    LOAD_PROPERTY_LIST(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_SIZE(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_PC_OFFSET(GATE_NAME_MAP)
@@ -213,6 +214,15 @@ const GateMetaData* GateMetaBuilder::NAME()     \
 }
 IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
+
+#define DECLARE_LOAD_PROPERTY_GATE_META(NAME, OP, R, S, D, V)                           \
+const GateMetaData* GateMetaBuilder::NAME(bool isFunction)                              \
+{                                                                                       \
+    auto meta = new (chunk_) LoadPropertyMetaDate(OpCode::OP, R, S, D, V, isFunction);  \
+    return meta;                                                                        \
+}
+LOAD_PROPERTY_LIST(DECLARE_LOAD_PROPERTY_GATE_META)
+#undef DECLARE_LOAD_PROPERTY_GATE_META
 
 #define DECLARE_GATE_META(NAME, OP, R, S, D, V)                    \
 const GateMetaData* GateMetaBuilder::NAME(size_t value)            \

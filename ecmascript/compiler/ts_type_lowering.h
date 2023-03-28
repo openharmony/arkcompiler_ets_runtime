@@ -90,12 +90,19 @@ private:
     void LowerTypedNewObjRange(GateRef gate);
     void LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget);
 
-    void LowerCallThis1Imm8V8V8(GateRef gate);
     void LowerTypedCallArg0(GateRef gate);
     void LowerTypedCallArg1(GateRef gate);
     void LowerTypedCallArg2(GateRef gate);
     void LowerTypedCallArg3(GateRef gate);
     void LowerTypedCallrange(GateRef gate);
+    void LowerTypedCallthis0(GateRef gate);
+    void LowerTypedCallthis1(GateRef gate);
+    void LowerTypedCallthis2(GateRef gate);
+    void LowerTypedCallthis3(GateRef gate);
+    void LowerTypedCallthisrange(GateRef gate);
+    bool IsLoadVtable(GateRef func);
+    bool CanOptimizeAsFastCall(GateRef func, uint32_t len);
+
     bool CheckParam(GateRef gate, bool isCallThis, MethodLiteral* method);
 
     // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed,

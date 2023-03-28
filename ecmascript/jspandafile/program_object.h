@@ -121,8 +121,7 @@ public:
                 return i;
             }
         }
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
+        return -1;
     }
 
     inline void SetIndexHeader(const panda_file::File::IndexHeader *indexHeader)

@@ -238,6 +238,11 @@ public:
         return JSBytecodeMetaData::Cast(meta_);
     }
 
+    LoadPropertyMetaDate* GetLoadPropertyMetaDate()
+    {
+        return LoadPropertyMetaDate::Cast(meta_);
+    }
+
     std::string MachineTypeStr(MachineType machineType) const;
     std::string GateTypeStr(GateType gateType) const;
     ~Gate() = default;
