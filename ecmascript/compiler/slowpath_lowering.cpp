@@ -3677,7 +3677,11 @@ void SlowPathLowering::LowerConstruct(GateRef gate)
     }
     auto depend = builder_.GetDepend();
     GateRef constructGate = builder_.Call(cs, glue_, target, depend, args);
-    ReplaceHirToJSCall(gate, constructGate);
+    GateRef ctor = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::FUNC));
+    GateRef thisObj = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::THIS_OBJECT));
+    GateRef result = builder_.CallStub(
+        glue_, CommonStubCSigns::ConstructorCheck, { glue_, ctor, constructGate, thisObj });
+    ReplaceHirToJSCall(gate, result);
 }
 
 void SlowPathLowering::LowerUpdateHotness(GateRef gate)
