@@ -17,6 +17,10 @@ host_moduletest_action("builtinsir") {
   deps = []
 }
 
+host_moduletest_action("builtinsstring") {
+  deps = []
+}
+
 host_moduletest_action("builtinsnumber") {
   deps = []
 }
@@ -27,6 +31,7 @@ host_moduletest_action("builtinsregexp") {
 
 host_moduletest_action("builtins") {
   extra_modules = [
+    "builtinsstring",
     "builtinsir",
     "builtinsnumber",
     "builtinsregexp",
@@ -35,5 +40,6 @@ host_moduletest_action("builtins") {
     ":gen_builtinsir_abc",
     ":gen_builtinsnumber_abc",
     ":gen_builtinsregexp_abc",
+    ":gen_builtinsstring_abc",
   ]
 }

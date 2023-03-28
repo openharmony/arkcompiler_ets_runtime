@@ -467,8 +467,7 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
                 return JSTaggedValue::Hole();
             }
             JSHandle<JSTaggedValue> valueHandle(thread, value);
-            elements = *JSObject::GrowElementsCapacity(thread, receiverHandle,
-                                                       JSObject::ComputeElementCapacity(elementIndex + 1));
+            elements = *JSObject::GrowElementsCapacity(thread, receiverHandle, elementIndex + 1);
             receiverHandle->SetElements(thread, JSTaggedValue(elements));
             elements->Set(thread, elementIndex, valueHandle);
             return JSTaggedValue::Undefined();

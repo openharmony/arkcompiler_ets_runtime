@@ -12,6 +12,10 @@
 # limitations under the License.
 
 builtins test start
+builtins string start
+A
+ABBA
+builtins string end
 builtins ir start
 112
 119
