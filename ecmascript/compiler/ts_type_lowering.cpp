@@ -106,10 +106,6 @@ bool TSTypeLowering::IsTrustedType(GateRef gate) const
 
 void TSTypeLowering::Lower(GateRef gate)
 {
-    auto argAcc = ArgumentAccessor(circuit_);
-    GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
-    GateRef newTarget = argAcc.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
-
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
@@ -233,7 +229,7 @@ void TSTypeLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
-            LowerTypedSuperCall(gate, jsFunc, newTarget);
+            LowerTypedSuperCall(gate);
             break;
         case EcmaOpcode::CALLARG0_IMM8:
             LowerTypedCallArg0(gate);
@@ -694,9 +690,9 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     GateRef receiver = Circuit::NullGate();
     GateRef value = Circuit::NullGate();
     if (isThis) {
-        // 4: number of value inputs
-        ASSERT(acc_.GetNumValueIn(gate) == 4);
-        receiver = acc_.GetValueIn(gate, 3); // 3: this object
+        // 3: number of value inputs
+        ASSERT(acc_.GetNumValueIn(gate) == 3);
+        receiver = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
         value = acc_.GetValueIn(gate, 2); // 2: acc
     } else {
         // 4: number of value inputs
@@ -812,9 +808,9 @@ void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     GateRef receiver = Circuit::NullGate();
     GateRef propKey = Circuit::NullGate();
     if (isThis) {
-        // 3: number of value inputs
-        ASSERT(acc_.GetNumValueIn(gate) == 3);
-        receiver = acc_.GetValueIn(gate, 2); // 2: this object
+        // 2: number of value inputs
+        ASSERT(acc_.GetNumValueIn(gate) == 2);
+        receiver = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
         propKey = acc_.GetValueIn(gate, 1);
     } else {
         // 3: number of value inputs
@@ -894,8 +890,9 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
-void TSTypeLowering::LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef newTarget)
+void TSTypeLowering::LowerTypedSuperCall(GateRef gate)
 {
+    GateRef ctor = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateType ctorType = acc_.GetGateType(ctor);  // ldfunction in derived constructor get function type
     if (!tsManager_->IsClassTypeKind(ctorType) && !tsManager_->IsFunctionTypeKind(ctorType)) {
         acc_.DeleteStateSplitAndFrameState(gate);
@@ -910,6 +907,7 @@ void TSTypeLowering::LowerTypedSuperCall(GateRef gate, GateRef ctor, GateRef new
 
     GateRef frameState = acc_.GetFrameState(stateSplit);
     GateRef superCtor = builder_.GetSuperConstructor(ctor);
+    GateRef newTarget = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
     GateRef thisObj = builder_.TypedSuperAllocateThis(superCtor, newTarget, frameState);
 
     // call constructor

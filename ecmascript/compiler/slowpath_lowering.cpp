@@ -66,6 +66,8 @@ void SlowPathLowering::CallRuntimeLowering()
             LowerUpdateHotness(gate);
         } else if (op == OpCode::STATE_SPLIT) {
             DeleteStateSplit(gate);
+        } else if (op == OpCode::GET_ENV) {
+            LowerGetEnv(gate);
         }
     }
 
@@ -173,19 +175,8 @@ GateRef SlowPathLowering::GetProfileTypeInfo(GateRef jsFunc)
     return builder_.Load(VariableType::JS_ANY(), method, builder_.IntPtr(Method::PROFILE_TYPE_INFO_OFFSET));
 }
 
-// labelmanager must be initialized
-GateRef SlowPathLowering::GetHomeObjectFromJSFunction(GateRef jsFunc)
-{
-    GateRef offset = builder_.IntPtr(JSFunction::HOME_OBJECT_OFFSET);
-    return builder_.Load(VariableType::JS_ANY(), jsFunc, offset);
-}
-
 void SlowPathLowering::Lower(GateRef gate)
 {
-    GateRef newTarget = argAcc_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
-    GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
-    GateRef actualArgc = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
-
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
@@ -231,7 +222,7 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerCallrangeImm8Imm8V8(gate);
             break;
         case EcmaOpcode::GETUNMAPPEDARGS:
-            LowerGetUnmappedArgs(gate, actualArgc);
+            LowerGetUnmappedArgs(gate);
             break;
         case EcmaOpcode::ASYNCFUNCTIONENTER:
             LowerAsyncFunctionEnter(gate);
@@ -292,7 +283,7 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerCreateIterResultObj(gate);
             break;
         case EcmaOpcode::SUSPENDGENERATOR_V8:
-            LowerSuspendGenerator(gate, jsFunc);
+            LowerSuspendGenerator(gate);
             break;
         case EcmaOpcode::ASYNCFUNCTIONAWAITUNCAUGHT_V8:
             LowerAsyncFunctionAwaitUncaught(gate);
@@ -305,10 +296,10 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16:
-            LowerTryLdGlobalByName(gate, jsFunc);
+            LowerTryLdGlobalByName(gate);
             break;
         case EcmaOpcode::STGLOBALVAR_IMM16_ID16:
-            LowerStGlobalVar(gate, jsFunc);
+            LowerStGlobalVar(gate);
             break;
         case EcmaOpcode::GETITERATOR_IMM8:
         case EcmaOpcode::GETITERATOR_IMM16:
@@ -344,7 +335,7 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerThrowUndefinedIfHole(gate);
             break;
         case EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16:
-            LowerThrowUndefinedIfHoleWithName(gate, jsFunc);
+            LowerThrowUndefinedIfHoleWithName(gate);
             break;
         case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM8:
         case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16:
@@ -391,7 +382,7 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
         case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8:
-            LowerDefineMethod(gate, jsFunc);
+            LowerDefineMethod(gate);
             break;
         case EcmaOpcode::EXP_IMM8_V8:
             LowerExp(gate);
@@ -400,7 +391,7 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerIsIn(gate);
             break;
         case EcmaOpcode::INSTANCEOF_IMM8_V8:
-            LowerInstanceof(gate, jsFunc);
+            LowerInstanceof(gate);
             break;
         case EcmaOpcode::STRICTNOTEQ_IMM8_V8:
             LowerFastStrictNotEqual(gate);
@@ -417,18 +408,18 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
-            LowerCreateObjectWithBuffer(gate, jsFunc);
+            LowerCreateObjectWithBuffer(gate);
             break;
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
         case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
-            LowerCreateArrayWithBuffer(gate, jsFunc);
+            LowerCreateArrayWithBuffer(gate);
             break;
         case EcmaOpcode::STMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_STMODULEVAR_PREF_IMM16:
-            LowerStModuleVar(gate, jsFunc);
+            LowerStModuleVar(gate);
             break;
         case EcmaOpcode::SETGENERATORSTATE_IMM8:
-            LowerSetGeneratorState(gate, jsFunc);
+            LowerSetGeneratorState(gate);
             break;
         case EcmaOpcode::GETTEMPLATEOBJECT_IMM8:
         case EcmaOpcode::GETTEMPLATEOBJECT_IMM16:
@@ -445,15 +436,15 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerToNumeric(gate);
             break;
         case EcmaOpcode::DYNAMICIMPORT:
-            LowerDynamicImport(gate, jsFunc);
+            LowerDynamicImport(gate);
             break;
         case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
-            LowerExternalModule(gate, jsFunc);
+            LowerExternalModule(gate);
             break;
         case EcmaOpcode::GETMODULENAMESPACE_IMM8:
         case EcmaOpcode::WIDE_GETMODULENAMESPACE_PREF_IMM16:
-            LowerGetModuleNamespace(gate, jsFunc);
+            LowerGetModuleNamespace(gate);
             break;
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
@@ -472,14 +463,14 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
-            LowerSuperCall(gate, jsFunc, newTarget);
+            LowerSuperCall(gate);
             break;
         case EcmaOpcode::SUPERCALLARROWRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8:
-            LowerSuperCallArrow(gate, newTarget);
+            LowerSuperCallArrow(gate);
             break;
         case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
-            LowerSuperCallSpread(gate, newTarget);
+            LowerSuperCallSpread(gate);
             break;
         case EcmaOpcode::ISTRUE:
             LowerIsTrueOrFalse(gate, true);
@@ -520,21 +511,21 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16:
         case EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16:
-            LowerNewLexicalEnvWithName(gate, jsFunc);
+            LowerNewLexicalEnvWithName(gate);
             break;
         case EcmaOpcode::POPLEXENV:
             LowerPopLexicalEnv(gate);
             break;
         case EcmaOpcode::LDSUPERBYVALUE_IMM8_V8:
         case EcmaOpcode::LDSUPERBYVALUE_IMM16_V8:
-            LowerLdSuperByValue(gate, jsFunc);
+            LowerLdSuperByValue(gate);
             break;
         case EcmaOpcode::STSUPERBYVALUE_IMM16_V8_V8:
-            LowerStSuperByValue(gate, jsFunc);
+            LowerStSuperByValue(gate);
             break;
         case EcmaOpcode::TRYSTGLOBALBYNAME_IMM8_ID16:
         case EcmaOpcode::TRYSTGLOBALBYNAME_IMM16_ID16:
-            LowerTryStGlobalByName(gate, jsFunc);
+            LowerTryStGlobalByName(gate);
             break;
         case EcmaOpcode::STCONSTTOGLOBALRECORD_IMM16_ID16:
             LowerStConstToGlobalRecord(gate, true);
@@ -551,15 +542,15 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerStOwnByNameWithNameSet(gate);
             break;
         case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
-            LowerLdGlobalVar(gate, jsFunc);
+            LowerLdGlobalVar(gate);
             break;
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
-            LowerLdObjByName(gate, jsFunc);
+            LowerLdObjByName(gate);
             break;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
-            LowerStObjByName(gate, jsFunc, false);
+            LowerStObjByName(gate, false);
             break;
         case EcmaOpcode::DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8:
             LowerDefineGetterSetterByValue(gate);
@@ -576,27 +567,27 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
         case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
-            LowerLdObjByValue(gate, jsFunc, false);
+            LowerLdObjByValue(gate, false);
             break;
         case EcmaOpcode::LDTHISBYVALUE_IMM8:
         case EcmaOpcode::LDTHISBYVALUE_IMM16:
-            LowerLdObjByValue(gate, jsFunc, true);
+            LowerLdObjByValue(gate, true);
             break;
         case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
         case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
-            LowerStObjByValue(gate, jsFunc, false);
+            LowerStObjByValue(gate, false);
             break;
         case EcmaOpcode::STTHISBYVALUE_IMM8_V8:
         case EcmaOpcode::STTHISBYVALUE_IMM16_V8:
-            LowerStObjByValue(gate, jsFunc, true);
+            LowerStObjByValue(gate, true);
             break;
         case EcmaOpcode::LDSUPERBYNAME_IMM8_ID16:
         case EcmaOpcode::LDSUPERBYNAME_IMM16_ID16:
-            LowerLdSuperByName(gate, jsFunc);
+            LowerLdSuperByName(gate);
             break;
         case EcmaOpcode::STSUPERBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STSUPERBYNAME_IMM16_ID16_V8:
-            LowerStSuperByName(gate, jsFunc);
+            LowerStSuperByName(gate);
             break;
         case EcmaOpcode::CREATEGENERATOROBJ_V8:
             LowerCreateGeneratorObj(gate);
@@ -625,15 +616,15 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
         case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
-            LowerDefineClassWithBuffer(gate, jsFunc);
+            LowerDefineClassWithBuffer(gate);
             break;
         case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:
         case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
-            LowerDefineFunc(gate, jsFunc);
+            LowerDefineFunc(gate);
             break;
         case EcmaOpcode::COPYRESTARGS_IMM8:
         case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16:
-            LowerCopyRestArgs(gate, actualArgc);
+            LowerCopyRestArgs(gate);
             break;
         case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
             LowerWideLdPatchVar(gate);
@@ -643,7 +634,7 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
-            LowerLdLocalModuleVarByIndex(gate, jsFunc);
+            LowerLdLocalModuleVarByIndex(gate);
             break;
         case EcmaOpcode::DEBUGGER:
         case EcmaOpcode::JSTRICTEQZ_IMM8:
@@ -677,11 +668,11 @@ void SlowPathLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
-            LowerLdThisByName(gate, jsFunc);
+            LowerLdThisByName(gate);
             break;
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
-            LowerStObjByName(gate, jsFunc, true);
+            LowerStObjByName(gate, true);
             break;
         case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
             LowerNotifyConcurrentResult(gate);
@@ -737,7 +728,7 @@ void SlowPathLowering::LowerCreateIterResultObj(GateRef gate)
 
 // When executing to SUSPENDGENERATOR instruction, save contextual information to GeneratorContext,
 // including registers, acc, etc.
-void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::SaveFrameToContext(GateRef gate)
 {
     GateRef genObj = acc_.GetValueIn(gate, 1);
     GateRef saveRegister = acc_.GetDep(gate);
@@ -772,11 +763,12 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef jsFunc)
 
     // set this
     GateRef thisOffset = builder_.IntPtr(GeneratorContext::GENERATOR_THIS_OFFSET);
-    GateRef thisObj = acc_.GetValueIn(gate, 3); // 3: this object
+    GateRef thisObj = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
     builder_.Store(VariableType::JS_ANY(), glue_, context, thisOffset, thisObj);
 
     // set method
     GateRef methodOffset = builder_.IntPtr(GeneratorContext::GENERATOR_METHOD_OFFSET);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     builder_.Store(VariableType::JS_ANY(), glue_, context, methodOffset, jsFunc);
 
     // set acc
@@ -810,9 +802,9 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef jsFunc)
     builder_.Store(VariableType::JS_POINTER(), glue_, context, generatorObjectOffset, genObj);
 }
 
-void SlowPathLowering::LowerSuspendGenerator(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerSuspendGenerator(GateRef gate)
 {
-    SaveFrameToContext(gate, jsFunc);
+    SaveFrameToContext(gate);
     acc_.SetDep(gate, builder_.GetDepend());
     AddProfiling(gate, false);
     const int id = RTSTUB_ID(OptSuspendGenerator);
@@ -851,22 +843,13 @@ void SlowPathLowering::LowerAsyncFunctionReject(GateRef gate)
     ReplaceHirWithValue(gate, newGate);
 }
 
-void SlowPathLowering::LowerLoadStr(GateRef gate, GateRef jsFunc)
-{
-    Label successExit(&builder_);
-    Label exceptionExit(&builder_);
-    GateRef newGate = builder_.GetObjectFromConstPool(glue_, gate, jsFunc,
-                                                      builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0)),
-                                                      ConstPoolType::STRING);
-    ReplaceHirWithValue(gate, newGate);
-}
-
-void SlowPathLowering::LowerTryLdGlobalByName(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerTryLdGlobalByName(GateRef gate)
 {
     Label updateProfileTypeInfo(&builder_);
     Label accessObject(&builder_);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter
     DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
@@ -882,12 +865,13 @@ void SlowPathLowering::LowerTryLdGlobalByName(GateRef gate, GateRef jsFunc)
     ReplaceHirWithValue(gate, result);
 }
 
-void SlowPathLowering::LowerStGlobalVar(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerStGlobalVar(GateRef gate)
 {
     Label updateProfileTypeInfo(&builder_);
     Label accessObject(&builder_);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter
     GateRef value = acc_.GetValueIn(gate, 2);  // 2: the 2nd para is value
@@ -1107,10 +1091,11 @@ void SlowPathLowering::LowerThrowUndefinedIfHole(GateRef gate)
     acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, Circuit::NullGate());
 }
 
-void SlowPathLowering::LowerThrowUndefinedIfHoleWithName(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerThrowUndefinedIfHoleWithName(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef hole = acc_.GetValueIn(gate, 1);
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
@@ -1430,13 +1415,13 @@ void SlowPathLowering::LowerIsIn(GateRef gate)
     ReplaceHirWithValue(gate, newGate);
 }
 
-void SlowPathLowering::LowerInstanceof(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerInstanceof(GateRef gate)
 {
     Label updateProfileTypeInfo(&builder_);
     Label doInstanceofWithIC(&builder_);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef obj = acc_.GetValueIn(gate, 1);     // 1: the second parameter
     GateRef target = acc_.GetValueIn(gate, 2);  // 2: the third parameter
@@ -1485,17 +1470,19 @@ void SlowPathLowering::LowerCreateEmptyObject(GateRef gate)
     ReplaceHirWithValue(gate, result, true);
 }
 
-void SlowPathLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerCreateArrayWithBuffer(GateRef gate)
 {
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::CreateArrayWithBuffer, { glue_, index, jsFunc });
     ReplaceHirWithValue(gate, result, true);
 }
 
-void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = acc_.GetValueIn(gate, 0);
     GateRef obj = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, builder_.TruncInt64ToInt32(index),
                                                   ConstPoolType::OBJECT_LITERAL);
@@ -1504,20 +1491,22 @@ void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate, GateRef jsFunc)
     ReplaceHirWithValue(gate, result);
 }
 
-void SlowPathLowering::LowerStModuleVar(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerStModuleVar(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     auto result = LowerCallRuntime(gate, RTSTUB_ID(StModuleVarByIndexOnJSFunc),
         {index, acc_.GetValueIn(gate, 1), jsFunc}, true);
     ReplaceHirWithValue(gate, result, true);
 }
 
-void SlowPathLowering::LowerSetGeneratorState(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerSetGeneratorState(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     auto result = LowerCallRuntime(gate, RTSTUB_ID(SetGeneratorState),
         {index, acc_.GetValueIn(gate, 1), jsFunc}, true);
@@ -1572,46 +1561,52 @@ void SlowPathLowering::LowerToNumeric(GateRef gate)
     ReplaceHirWithValue(gate, *result);
 }
 
-void SlowPathLowering::LowerDynamicImport(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerDynamicImport(GateRef gate)
 {
     const int id = RTSTUB_ID(DynamicImport);
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef newGate = LowerCallRuntime(gate, id, {acc_.GetValueIn(gate, 0), jsFunc});
     ReplaceHirWithValue(gate, newGate);
 }
 
-void SlowPathLowering::LowerLdLocalModuleVarByIndex(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerLdLocalModuleVarByIndex(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     GateRef result = LowerCallRuntime(gate, RTSTUB_ID(LdLocalModuleVarByIndexOnJSFunc), {index, jsFunc}, true);
     ReplaceHirWithValue(gate, result);
 }
 
-void SlowPathLowering::LowerExternalModule(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerExternalModule(GateRef gate)
 {
     ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     GateRef result = LowerCallRuntime(gate, RTSTUB_ID(LdExternalModuleVarByIndexOnJSFunc), {index, jsFunc}, true);
     ReplaceHirWithValue(gate, result);
 }
 
-void SlowPathLowering::LowerGetModuleNamespace(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerGetModuleNamespace(GateRef gate)
 {
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     GateRef result = LowerCallRuntime(gate, RTSTUB_ID(GetModuleNamespaceByIndexOnJSFunc), {index, jsFunc}, true);
     ReplaceHirWithValue(gate, result);
 }
 
-void SlowPathLowering::LowerSuperCall(GateRef gate, GateRef func, GateRef newTarget)
+void SlowPathLowering::LowerSuperCall(GateRef gate)
 {
     const int id = RTSTUB_ID(OptSuperCall);
     std::vector<GateRef> vec;
     ASSERT(acc_.GetNumValueIn(gate) >= 0);
+    GateRef func = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef newTarget = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
     size_t numIns = acc_.GetNumValueIn(gate);
     vec.emplace_back(func);
     vec.emplace_back(newTarget);
@@ -1622,11 +1617,12 @@ void SlowPathLowering::LowerSuperCall(GateRef gate, GateRef func, GateRef newTar
     ReplaceHirWithValue(gate, newGate);
 }
 
-void SlowPathLowering::LowerSuperCallArrow(GateRef gate, GateRef newTarget)
+void SlowPathLowering::LowerSuperCallArrow(GateRef gate)
 {
     const int id = RTSTUB_ID(OptSuperCall);
     std::vector<GateRef> vec;
     ASSERT(acc_.GetNumValueIn(gate) > 0);
+    GateRef newTarget = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
     size_t numIns = acc_.GetNumValueIn(gate);
     size_t funcIndex = numIns - 1;
     GateRef func = acc_.GetValueIn(gate, funcIndex);
@@ -1639,11 +1635,12 @@ void SlowPathLowering::LowerSuperCallArrow(GateRef gate, GateRef newTarget)
     ReplaceHirWithValue(gate, newGate);
 }
 
-void SlowPathLowering::LowerSuperCallSpread(GateRef gate, GateRef newTarget)
+void SlowPathLowering::LowerSuperCallSpread(GateRef gate)
 {
     const int id = RTSTUB_ID(OptSuperCallSpread);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef newTarget = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
     GateRef func = acc_.GetValueIn(gate, 1);
     GateRef array = acc_.GetValueIn(gate, 0);
     GateRef newGate = LowerCallRuntime(gate, id, { func, newTarget, array });
@@ -1948,10 +1945,11 @@ void SlowPathLowering::LowerNewLexicalEnv(GateRef gate)
     ReplaceHirWithValue(gate, result);
 }
 
-void SlowPathLowering::LowerNewLexicalEnvWithName(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerNewLexicalEnvWithName(GateRef gate)
 {
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef lexEnv = acc_.GetValueIn(gate, 2); // 2: Get current lexEnv
     auto args = { builder_.ToTaggedInt(acc_.GetValueIn(gate, 0)),
                   builder_.ToTaggedInt(acc_.GetValueIn(gate, 1)),
@@ -1968,22 +1966,24 @@ void SlowPathLowering::LowerPopLexicalEnv(GateRef gate)
     ReplaceHirWithValue(gate, parentEnv, true);
 }
 
-void SlowPathLowering::LowerLdSuperByValue(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerLdSuperByValue(GateRef gate)
 {
     const int id = RTSTUB_ID(OptLdSuperByValue);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef propKey = acc_.GetValueIn(gate, 1);
     GateRef newGate = LowerCallRuntime(gate, id, { receiver, propKey, jsFunc });
     ReplaceHirWithValue(gate, newGate);
 }
 
-void SlowPathLowering::LowerStSuperByValue(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerStSuperByValue(GateRef gate)
 {
     const int id = RTSTUB_ID(OptStSuperByValue);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef propKey = acc_.GetValueIn(gate, 1);
     GateRef value = acc_.GetValueIn(gate, 2);
@@ -1991,12 +1991,13 @@ void SlowPathLowering::LowerStSuperByValue(GateRef gate, GateRef jsFunc)
     ReplaceHirWithValue(gate, newGate);
 }
 
-void SlowPathLowering::LowerTryStGlobalByName(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerTryStGlobalByName(GateRef gate)
 {
     Label updateProfileTypeInfo(&builder_);
     Label accessObject(&builder_);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter
     GateRef value = acc_.GetValueIn(gate, 2);  // 2: the 2nd para is value
@@ -2126,12 +2127,13 @@ void SlowPathLowering::LowerStOwnByNameWithNameSet(GateRef gate)
     acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, Circuit::NullGate());
 }
 
-void SlowPathLowering::LowerLdGlobalVar(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerLdGlobalVar(GateRef gate)
 {
     Label updateProfileTypeInfo(&builder_);
     Label accessObject(&builder_);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter
     DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
@@ -2147,12 +2149,13 @@ void SlowPathLowering::LowerLdGlobalVar(GateRef gate, GateRef jsFunc)
     ReplaceHirWithValue(gate, result);
 }
 
-void SlowPathLowering::LowerLdObjByName(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerLdObjByName(GateRef gate)
 {
     Label updateProfileTypeInfo(&builder_);
     Label accessObject(&builder_);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter
     GateRef receiver = acc_.GetValueIn(gate, 2);  // 2: the third parameter
@@ -2169,15 +2172,16 @@ void SlowPathLowering::LowerLdObjByName(GateRef gate, GateRef jsFunc)
     ReplaceHirWithValue(gate, result);
 }
 
-void SlowPathLowering::LowerStObjByName(GateRef gate, GateRef jsFunc, bool isThis)
+void SlowPathLowering::LowerStObjByName(GateRef gate, bool isThis)
 {
     Label updateProfileTypeInfo(&builder_);
     Label accessObject(&builder_);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef receiver;
     GateRef value;
     if (isThis) {
-        ASSERT(acc_.GetNumValueIn(gate) == 4); // 4: number of value inputs
-        receiver = acc_.GetValueIn(gate, 3); // 3: this object
+        ASSERT(acc_.GetNumValueIn(gate) == 3); // 3: number of value inputs
+        receiver = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
         value = acc_.GetValueIn(gate, 2);  // 2: the third para is value
     } else {
         // 4: number of value inputs
@@ -2273,17 +2277,18 @@ void SlowPathLowering::LowerStObjByIndex(GateRef gate)
     ReplaceHirWithValue(gate, *result);
 }
 
-void SlowPathLowering::LowerLdObjByValue(GateRef gate, GateRef jsFunc, bool isThis)
+void SlowPathLowering::LowerLdObjByValue(GateRef gate, bool isThis)
 {
     Label updateProfileTypeInfo(&builder_);
     Label accessObject(&builder_);
 
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef receiver;
     GateRef propKey;
     if (isThis) {
-        // 3: number of value inputs
-        ASSERT(acc_.GetNumValueIn(gate) == 3);
-        receiver = acc_.GetValueIn(gate, 2); // 2: this object
+        // 2: number of value inputs
+        ASSERT(acc_.GetNumValueIn(gate) == 2);
+        receiver = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
         propKey = acc_.GetValueIn(gate, 1);
     } else {
         // 3: number of value inputs
@@ -2305,16 +2310,17 @@ void SlowPathLowering::LowerLdObjByValue(GateRef gate, GateRef jsFunc, bool isTh
     ReplaceHirWithValue(gate, result);
 }
 
-void SlowPathLowering::LowerStObjByValue(GateRef gate, GateRef jsFunc, bool isThis)
+void SlowPathLowering::LowerStObjByValue(GateRef gate, bool isThis)
 {
     Label updateProfileTypeInfo(&builder_);
     Label accessObject(&builder_);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef receiver;
     GateRef propKey;
     GateRef value;
     if (isThis) {
-        ASSERT(acc_.GetNumValueIn(gate) == 4); // 4: number of value inputs
-        receiver = acc_.GetValueIn(gate, 3); // 3: this object
+        ASSERT(acc_.GetNumValueIn(gate) == 3); // 3: number of value inputs
+        receiver = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
         propKey = acc_.GetValueIn(gate, 1);
         value = acc_.GetValueIn(gate, 2);  // 2: the third parameter
     } else {
@@ -2338,20 +2344,22 @@ void SlowPathLowering::LowerStObjByValue(GateRef gate, GateRef jsFunc, bool isTh
     ReplaceHirWithValue(gate, result);
 }
 
-void SlowPathLowering::LowerLdSuperByName(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerLdSuperByName(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef prop = acc_.GetValueIn(gate, 0);
     GateRef result =
         LowerCallRuntime(gate, RTSTUB_ID(OptLdSuperByValue), {acc_.GetValueIn(gate, 1), prop, jsFunc}, true);
     ReplaceHirWithValue(gate, result);
 }
 
-void SlowPathLowering::LowerStSuperByName(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerStSuperByName(GateRef gate)
 {
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef prop = acc_.GetValueIn(gate, 0);
     auto args2 = { acc_.GetValueIn(gate, 1), prop, acc_.GetValueIn(gate, 2), jsFunc };
     GateRef result = LowerCallRuntime(gate, RTSTUB_ID(OptStSuperByValue), args2, true);
@@ -2475,12 +2483,13 @@ void SlowPathLowering::LowerStLexVar(GateRef gate)
     ReplaceHirWithValue(gate, result, true);
 }
 
-void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
 {
     GateType type = acc_.GetGateType(gate);
 
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef methodId = acc_.GetValueIn(gate, 0);
     GateRef proto = acc_.GetValueIn(gate, 3);
     GateRef literalId = acc_.GetValueIn(gate, 1);
@@ -2528,8 +2537,9 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef jsFunc)
     acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, result);
 }
 
-void SlowPathLowering::LowerDefineFunc(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerDefineFunc(GateRef gate)
 {
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef methodId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
     GateRef length = acc_.GetValueIn(gate, 1);
     auto method = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, methodId, ConstPoolType::METHOD);
@@ -2805,10 +2815,11 @@ void SlowPathLowering::LowerGetResumeMode(GateRef gate)
     ReplaceHirWithValue(gate, *result, true);
 }
 
-void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerDefineMethod(GateRef gate)
 {
     // 4: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 4);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef methodId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
     auto method = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, methodId, ConstPoolType::METHOD);
     GateRef length = acc_.GetValueIn(gate, 1);
@@ -2834,15 +2845,17 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef jsFunc)
     acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, result);
 }
 
-void SlowPathLowering::LowerGetUnmappedArgs(GateRef gate, GateRef actualArgc)
+void SlowPathLowering::LowerGetUnmappedArgs(GateRef gate)
 {
+    GateRef actualArgc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::ACTUAL_ARGC);
     GateRef newGate = builder_.CallStub(glue_, gate, CommonStubCSigns::GetUnmapedArgs,
         { glue_, builder_.TruncInt64ToInt32(actualArgc) });
     ReplaceHirWithValue(gate, newGate);
 }
 
-void SlowPathLowering::LowerCopyRestArgs(GateRef gate, GateRef actualArgc)
+void SlowPathLowering::LowerCopyRestArgs(GateRef gate)
 {
+    GateRef actualArgc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::ACTUAL_ARGC);
     GateRef taggedArgc = builder_.ToTaggedInt(actualArgc);
     GateRef restIdx = acc_.GetValueIn(gate, 0);
     GateRef taggedRestIdx = builder_.ToTaggedInt(restIdx);
@@ -3033,13 +3046,14 @@ void SlowPathLowering::LowerCallthis3Imm8V8V8V8V8(GateRef gate)
     LowerToJSCall(gate, {glue_, env, actualArgc, func, newTarget, thisObj, a0Value, a1Value, a2Value});
 }
 
-void SlowPathLowering::LowerLdThisByName(GateRef gate, GateRef jsFunc)
+void SlowPathLowering::LowerLdThisByName(GateRef gate)
 {
     Label updateProfileTypeInfo(&builder_);
     Label accessObject(&builder_);
 
-    ASSERT(acc_.GetNumValueIn(gate) == 3);  // 3: number of parameter
-    GateRef thisObj = acc_.GetValueIn(gate, 2); // 2: this object
+    ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: number of parameter
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef thisObj = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
     GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter
     DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
@@ -3058,7 +3072,7 @@ void SlowPathLowering::LowerLdThisByName(GateRef gate, GateRef jsFunc)
 void SlowPathLowering::LowerConstPoolData(GateRef gate)
 {
     Environment env(0, &builder_);
-    GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
+    GateRef jsFunc = acc_.GetValueIn(gate, 0);
     ConstDataId dataId = acc_.GetConstDataId(gate);
     auto newGate = LoadObjectFromConstPool(jsFunc, builder_.Int32(dataId.GetId()));
     // replace newGate
@@ -3160,7 +3174,17 @@ void SlowPathLowering::LowerNotifyConcurrentResult(GateRef gate)
 {
     const int id = RTSTUB_ID(NotifyConcurrentResult);
 
-    GateRef newGate = LowerCallRuntime(gate, id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
+    GateRef newGate = LowerCallRuntime(gate, id, {acc_.GetValueIn(gate, 0),
+                                                  argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT)});
     ReplaceHirWithValue(gate, newGate);
+}
+
+void SlowPathLowering::LowerGetEnv(GateRef gate)
+{
+    GateRef jsFunc = acc_.GetValueIn(gate, 0);
+    GateRef envOffset = builder_.IntPtr(JSFunction::LEXICAL_ENV_OFFSET);
+    GateRef env = builder_.Load(VariableType::JS_ANY(), jsFunc, envOffset, acc_.GetDependRoot());
+    acc_.UpdateAllUses(gate, env);
+    acc_.DeleteGate(gate);
 }
 }  // namespace panda::ecmascript

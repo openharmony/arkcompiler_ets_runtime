@@ -540,6 +540,21 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
     if (HasTypes()) {
         argAcc_.FillArgsGateType(&typeRecorder_);
     }
+
+    BuildFrameArgs();
+}
+
+void BytecodeCircuitBuilder::BuildFrameArgs()
+{
+    size_t numArgs = static_cast<size_t>(FrameArgIdx::NUM_OF_ARGS);
+    std::vector<GateRef> args(numArgs, Circuit::NullGate());
+    size_t idx = 0;
+    args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
+    args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
+    args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
+    args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
+    GateRef frameArgs = circuit_->NewGate(circuit_->FrameArgs(), args);
+    argAcc_.SetFrameArgs(frameArgs);
 }
 
 bool BytecodeCircuitBuilder::ShouldBeDead(BytecodeRegion &curBlock)
@@ -692,7 +707,8 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(
         if (std::holds_alternative<ConstDataId>(input)) {
             if (std::get<ConstDataId>(input).IsStringId()) {
                 inList[i + length] = circuit_->GetConstantDataGate(std::get<ConstDataId>(input).CaculateBitField(),
-                                                                   GateType::StringType());
+                                                                   GateType::StringType(),
+                                                                   argAcc_.GetCommonArgGate(CommonArgIdx::FUNC));
             } else {
                 inList[i + length] = circuit_->GetConstantGate(MachineType::I64,
                                                                std::get<ConstDataId>(input).GetId(),
@@ -714,8 +730,9 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(
     if (info.AccIn()) {
         inputSize++;
     }
-    if (info.ThisObjectIn()) {
-        inList[inputSize + length] = argAcc_.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
+    if (info.HasFrameState()) {
+        GateRef frameArgs = argAcc_.GetFrameArgs();
+        inList[inputSize + length] = frameArgs;
     }
     return inList;
 }
@@ -804,7 +821,8 @@ GateRef BytecodeCircuitBuilder::NewConst(const BytecodeInfo &info)
             break;
         case EcmaOpcode::LDA_STR_ID16: {
             auto input = std::get<ConstDataId>(info.inputs.at(0));
-            gate = circuit_->GetConstantDataGate(input.CaculateBitField(), GateType::StringType());
+            gate = circuit_->GetConstantDataGate(input.CaculateBitField(), GateType::StringType(),
+                                                 argAcc_.GetCommonArgGate(CommonArgIdx::FUNC));
             break;
         }
         default:
@@ -821,9 +839,9 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
     GateRef gate = 0;
     bool writable = !bytecodeInfo.NoSideEffects();
+    bool hasFrameState = bytecodeInfo.HasFrameState();
     size_t pcOffset = GetPcOffset(iterator.Index());
-    auto meta = circuit_->JSBytecode(numValueInputs,
-                                     bytecodeInfo.GetOpcode(), pcOffset, writable);
+    auto meta = circuit_->JSBytecode(numValueInputs, bytecodeInfo.GetOpcode(), pcOffset, writable, hasFrameState);
     std::vector<GateRef> inList = CreateGateInList(bytecodeInfo, meta);
     if (bytecodeInfo.IsDef()) {
         gate = circuit_->NewGate(meta, MachineType::I64, inList.size(),
@@ -837,7 +855,8 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
         auto offsetGate = circuit_->GetConstantGate(MachineType::I32,
                                                     GetJumpOffset(iterator.Index()),
                                                     GateType::NJSValue());
-        auto updateHotness = circuit_->NewGate(circuit_->UpdateHotness(), {state, depend, offsetGate});
+        GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
+        auto updateHotness = circuit_->NewGate(circuit_->UpdateHotness(), {state, depend, offsetGate, jsFunc});
         gateAcc_.NewIn(gate, 0, updateHotness);
         gateAcc_.NewIn(gate, 1, updateHotness);
     } else {
@@ -908,7 +927,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, GateRef &state, GateRef
     if (bytecodeInfo.IsCondJump()) {
         ASSERT(!bytecodeInfo.Deopt());
         size_t pcOffset = GetPcOffset(iterator.Index());
-        auto meta = circuit_->JSBytecode(numValueInputs, bytecodeInfo.GetOpcode(), pcOffset, false);
+        auto meta = circuit_->JSBytecode(numValueInputs, bytecodeInfo.GetOpcode(), pcOffset, false, false);
         auto numValues = meta->GetNumIns();
         GateRef gate = circuit_->NewGate(meta, std::vector<GateRef>(numValues, Circuit::NullGate()));
         gateAcc_.NewIn(gate, 0, state);
@@ -920,7 +939,8 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, GateRef &state, GateRef
             auto offsetGate = circuit_->GetConstantGate(MachineType::I32,
                                                         offset,
                                                         GateType::NJSValue());
-            ifTrue = circuit_->NewGate(circuit_->UpdateHotness(), {ifTrue, trueRelay, offsetGate});
+            GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
+            ifTrue = circuit_->NewGate(circuit_->UpdateHotness(), {ifTrue, trueRelay, offsetGate, jsFunc});
             trueRelay = ifTrue;
         }
         auto ifFalse = circuit_->NewGate(circuit_->IfFalse(), {gate});
@@ -961,7 +981,8 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, GateRef &state, GateRef
             auto offsetGate = circuit_->GetConstantGate(MachineType::I32,
                                                         offset,
                                                         GateType::NJSValue());
-            auto updateHotness = circuit_->NewGate(circuit_->UpdateHotness(), {state, depend, offsetGate});
+            GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
+            auto updateHotness = circuit_->NewGate(circuit_->UpdateHotness(), {state, depend, offsetGate, jsFunc});
             SetBlockPred(*bbNext, updateHotness, updateHotness, isLoopBack);
         } else {
             SetBlockPred(*bbNext, state, depend, isLoopBack);
@@ -978,7 +999,8 @@ void BytecodeCircuitBuilder::NewReturn(BytecodeRegion &bb, GateRef &state, GateR
     auto offsetGate = circuit_->GetConstantGate(MachineType::I32,
                                                 GetJumpOffset(iterator.Index()),
                                                 GateType::NJSValue());
-    auto updateHotness = circuit_->NewGate(circuit_->UpdateHotness(), {state, depend, offsetGate});
+    GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
+    auto updateHotness = circuit_->NewGate(circuit_->UpdateHotness(), {state, depend, offsetGate, jsFunc});
     if (bytecodeInfo.GetOpcode() == EcmaOpcode::RETURN) {
         // handle return.dyn bytecode
         auto gate = circuit_->NewGate(circuit_->Return(),
@@ -1191,7 +1213,7 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
         // find def-site in function args
         ASSERT(!tmpAcc);
         if (tmpReg == GetEnvVregIdx()) {
-            ans = argAcc_.GetCommonArgGate(CommonArgIdx::LEXENV);
+            ans = gateAcc_.GetInitialEnvGate(argAcc_.GetCommonArgGate(CommonArgIdx::FUNC));
         } else {
             ans = argAcc_.GetArgGate(tmpReg);
         }
@@ -1258,7 +1280,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
                     auto vregId = std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId();
                     GateRef defVreg = Circuit::NullGate();
                     if (IsFirstBCEnvIn(bbIndex, bcIndex, vregId)) {
-                        defVreg = argAcc_.GetCommonArgGate(CommonArgIdx::LEXENV);
+                        defVreg = gateAcc_.GetInitialEnvGate(argAcc_.GetCommonArgGate(CommonArgIdx::FUNC));
                     } else {
                         defVreg = ResolveDef(bbIndex, bcIndex - 1, vregId, false);
                     }
@@ -1273,7 +1295,8 @@ void BytecodeCircuitBuilder::BuildCircuit()
     }
 
     if (IsTypeLoweringEnabled()) {
-        frameStateBuilder_.BuildFrameState();
+        GateRef frameArgs = argAcc_.GetFrameArgs();
+        frameStateBuilder_.BuildFrameState(frameArgs);
     }
 
     if (IsLogEnabled()) {

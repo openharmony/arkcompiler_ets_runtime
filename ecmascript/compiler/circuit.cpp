@@ -408,19 +408,30 @@ GateRef Circuit::GetConstantStringGate(MachineType machineType, const std::strin
     return gate;
 }
 
+GateRef Circuit::GetInitialEnvGate(GateRef jsFunc)
+{
+    auto search = initialEnvCache_.find(jsFunc);
+    if (search != initialEnvCache_.end()) {
+        return initialEnvCache_.at(jsFunc);
+    }
+    auto gate = NewGate(GetEnv(), MachineType::I64, {jsFunc}, GateType::AnyType());
+    initialEnvCache_[jsFunc] = gate;
+    return gate;
+}
+
 GateRef Circuit::NewArg(MachineType machineType, size_t index,
                         GateType type, GateRef argRoot)
 {
     return NewGate(metaBuilder_.Arg(index), machineType, { argRoot }, type);
 }
 
-GateRef Circuit::GetConstantDataGate(uint64_t value, GateType type)
+GateRef Circuit::GetConstantDataGate(uint64_t value, GateType type, GateRef jsFunc)
 {
     auto search = constantDataCache_.find(value);
     if (search != constantDataCache_.end()) {
         return constantDataCache_.at(value);
     }
-    auto gate = NewGate(metaBuilder_.ConstData(value), MachineType::ARCH, type);
+    auto gate = NewGate(metaBuilder_.ConstData(value), MachineType::ARCH, { jsFunc }, type);
     constantDataCache_[value] = gate;
     return gate;
 }

@@ -130,4 +130,12 @@ void ArgumentAccessor::CollectArgs()
         std::reverse(args_.begin(), args_.end());
     }
 }
+
+GateRef ArgumentAccessor::GetFrameArgsIn(GateRef gate, FrameArgIdx idx)
+{
+    GateAccessor gateAcc(circuit_);
+    ASSERT(gateAcc.GetOpCode(gate) == OpCode::JS_BYTECODE || gateAcc.GetOpCode(gate) == OpCode::FRAME_STATE);
+    GateRef frameArgs = gateAcc.GetFrameState(gate);
+    return gateAcc.GetValueIn(frameArgs, static_cast<size_t>(idx));
+}
 }  // namespace panda::ecmascript::kungfu

@@ -98,25 +98,14 @@ private:
     LLVMModule *aotModule_ {nullptr};
 };
 
-class PassManager {
+class PassOptions {
 public:
-    PassManager(EcmaVM* vm, std::string entry, std::string &triple, size_t optLevel, size_t relocMode,
-                CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, bool enableTypeLowering,
-                const std::string &profIn, uint32_t hotnessThreshold, bool enableOptInlining)
-        : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
-          logList_(logList), maxAotMethodSize_(maxAotMethodSize),
-          enableTypeLowering_(enableTypeLowering),
-          enableTypeInfer_(enableTypeLowering || vm_->GetTSManager()->AssertTypes()),
-          profilerLoader_(profIn, hotnessThreshold), enableOptInlining_(enableOptInlining) {};
-    PassManager() = default;
-    ~PassManager() = default;
-
-    bool Compile(const std::string &fileName, AOTFileGenerator &generator);
-
-private:
-    JSPandaFile *CreateAndVerifyJSPandaFile(const CString &fileName);
-    bool IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const;
-    void ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName);
+    PassOptions(bool enableTypeLowering, bool enableTypeInfer, bool enableOptInlining)
+        : enableTypeLowering_(enableTypeLowering),
+          enableTypeInfer_(enableTypeInfer),
+          enableOptInlining_(enableOptInlining)
+        {
+        }
 
     bool EnableTypeLowering() const
     {
@@ -132,6 +121,29 @@ private:
     {
         return enableOptInlining_;
     }
+private:
+    bool enableTypeLowering_ {false};
+    bool enableTypeInfer_ {false};
+    bool enableOptInlining_ {false};
+};
+
+class PassManager {
+public:
+    PassManager(EcmaVM* vm, std::string entry, std::string &triple, size_t optLevel, size_t relocMode,
+                CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, const std::string &profIn,
+                uint32_t hotnessThreshold, PassOptions *passOptions)
+        : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
+          logList_(logList), maxAotMethodSize_(maxAotMethodSize),
+          profilerLoader_(profIn, hotnessThreshold), passOptions_(passOptions) {};
+    PassManager() = default;
+    ~PassManager() = default;
+
+    bool Compile(const std::string &fileName, AOTFileGenerator &generator);
+
+private:
+    JSPandaFile *CreateAndVerifyJSPandaFile(const CString &fileName);
+    bool IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const;
+    void ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName);
 
     EcmaVM *vm_ {nullptr};
     std::string entry_ {};
@@ -141,10 +153,8 @@ private:
     CompilerLog *log_ {nullptr};
     AotMethodLogList *logList_ {nullptr};
     size_t maxAotMethodSize_ {0};
-    bool enableTypeLowering_ {true};
-    bool enableTypeInfer_ {true};
     PGOProfilerLoader profilerLoader_;
-    bool enableOptInlining_ {true};
+    PassOptions *passOptions_ {nullptr};
 };
 }
 #endif // ECMASCRIPT_COMPILER_PASS_MANAGER_H

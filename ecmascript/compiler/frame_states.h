@@ -75,7 +75,7 @@ public:
         Circuit *circuit, const MethodLiteral *literal);
     ~FrameStateBuilder();
 
-    void BuildFrameState();
+    void BuildFrameState(GateRef frameArgs);
 private:
     GateRef ValuesAt(size_t index) const
     {

@@ -286,7 +286,7 @@ void TypeLowering::LowerTSSubtypingCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
 
     ArgumentAccessor argAcc(circuit_);
-    GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
+    GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
 
@@ -3002,8 +3002,8 @@ void TypeLowering::LowerJSCallTargetTypeCheck(GateRef gate)
     auto type = acc_.GetParamGateType(gate);
     if (tsManager_->IsFunctionTypeKind(type)) {
         ArgumentAccessor argAcc(circuit_);
-        GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
         GateRef frameState = GetFrameState(gate);
+        GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
         auto func = acc_.GetValueIn(gate, 0);
         auto methodIndex = acc_.GetValueIn(gate, 1);
         GateRef isObj = builder_.TaggedIsHeapObject(func);
@@ -3061,7 +3061,8 @@ void TypeLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     ArgumentAccessor argAcc(circuit_);
-    GateRef jsFunc = argAcc.GetCommonArgGate(CommonArgIdx::FUNC);
+    GateRef frameState = GetFrameState(gate);
+    GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
 
     GateRef ctor = acc_.GetValueIn(gate, 0);
 
@@ -3080,7 +3081,6 @@ void TypeLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
         GateRef ihclassIndex = acc_.GetValueIn(gate, 1);
         GateRef ihclass = GetObjectFromConstPool(jsFunc, ihclassIndex);
         GateRef check = builder_.Equal(protoOrHclass, ihclass);
-        GateRef frameState = GetFrameState(gate);
         builder_.DeoptCheck(check, frameState);
 
         thisObj = builder_.CallStub(glue, gate, CommonStubCSigns::NewJSObject, { glue, protoOrHclass });

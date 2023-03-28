@@ -191,7 +191,7 @@ void LLVMIRBuilder::InitializeHandlers()
         OpCode::DEAD, OpCode::RETURN_LIST,
         OpCode::ARG_LIST, OpCode::THROW,
         OpCode::DEPEND_SELECTOR, OpCode::DEPEND_RELAY,
-        OpCode::FRAME_STATE, OpCode::STATE_SPLIT
+        OpCode::FRAME_STATE, OpCode::STATE_SPLIT, OpCode::FRAME_ARGS
     };
 }
 
@@ -2039,6 +2039,10 @@ void LLVMIRBuilder::VisitDeopt(GateRef gate)
     GateRef env = acc_.GetValueIn(frameState, envIndex);
     GateRef acc = acc_.GetValueIn(frameState, accIndex);
     GateRef pc = acc_.GetValueIn(frameState, pcIndex);
+    ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));
+    GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
+    GateRef newTarget = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::NEW_TARGET);
+    GateRef thisObj = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::THIS_OBJECT);
     std::vector<LLVMValueRef> values;
     for (size_t i = 0; i < envIndex; i++) {
         GateRef vregValue = acc_.GetValueIn(frameState, i);
@@ -2058,6 +2062,12 @@ void LLVMIRBuilder::VisitDeopt(GateRef gate)
     }
     values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX), false));
     values.emplace_back(gate2LValue_.at(pc));
+    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::FUNC_INDEX), false));
+    values.emplace_back(gate2LValue_.at(jsFunc));
+    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::NEWTARGET_INDEX), false));
+    values.emplace_back(gate2LValue_.at(newTarget));
+    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::THIS_OBJECT_INDEX), false));
+    values.emplace_back(gate2LValue_.at(thisObj));
     LLVMValueRef runtimeCall =
         LLVMBuildCall3(builder_, funcType, callee, params.data(), params.size(), "", values.data(), values.size());
     gate2LValue_[gate] = runtimeCall;

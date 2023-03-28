@@ -46,6 +46,9 @@ enum BytecodeFlags : uint32_t {
     NO_THROW = 1 << 6,
     READ_ENV = 1 << 7,
     WRITE_ENV = 1 << 8,
+    READ_FUNC = 1 << 9,
+    READ_NEWTARGET = 1 << 10,
+    READ_ARGC = 1 << 11,
 };
 
 enum BytecodeKind : uint32_t {
@@ -65,7 +68,7 @@ class BytecodeMetaData {
 public:
     static constexpr uint32_t MAX_OPCODE_SIZE = 16;
     static constexpr uint32_t MAX_SIZE_BITS = 4;
-    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 9;
+    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 12;
     static constexpr uint32_t BYTECODE_KIND_SIZE = 4;
 
     using OpcodeField = panda::BitField<EcmaOpcode, 0, MAX_OPCODE_SIZE>;
@@ -171,6 +174,21 @@ public:
     bool IsDiscarded() const
     {
         return GetKind() == BytecodeKind::DISCARDED;
+    }
+
+    bool HasFuncIn() const
+    {
+        return HasFlag(BytecodeFlags::READ_FUNC);
+    }
+
+    bool HasNewTargetIn() const
+    {
+        return HasFlag(BytecodeFlags::READ_NEWTARGET);
+    }
+
+    bool HasArgcIn() const
+    {
+        return HasFlag(BytecodeFlags::READ_ARGC);
     }
 
     inline EcmaOpcode GetOpcode() const
@@ -556,7 +574,7 @@ public:
 
     size_t ComputeValueInputCount() const
     {
-        return (AccIn() ? 1 : 0) + (ThisObjectIn() ? 1 : 0) + inputs.size();
+        return (AccIn() ? 1 : 0) + inputs.size();
     }
 
     size_t ComputeOutCount() const
@@ -567,6 +585,26 @@ public:
     bool IsBc(EcmaOpcode ecmaOpcode) const
     {
         return metaData_.GetOpcode() == ecmaOpcode;
+    }
+
+    bool HasFuncIn() const
+    {
+        return metaData_.HasFuncIn();
+    }
+
+    bool HasNewTargetIn() const
+    {
+        return metaData_.HasNewTargetIn();
+    }
+
+    bool HasArgcIn() const
+    {
+        return metaData_.HasArgcIn();
+    }
+
+    bool HasFrameState() const
+    {
+        return HasFuncIn() || HasNewTargetIn() || ThisObjectIn() || HasArgcIn();
     }
 
     inline EcmaOpcode GetOpcode() const
