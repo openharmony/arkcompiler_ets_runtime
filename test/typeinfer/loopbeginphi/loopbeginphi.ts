@@ -49,4 +49,30 @@ declare function AssertType(value:any, type:string):void;
             }
         }
     }
+
+    class Body {}
+    const bodies: Body[] = [];
+
+    function advance(dt: number) {
+        const size = bodies.length;
+
+        for (let i = 0; i < size; i++) {
+            AssertType(i, "int");
+            const bodyi = bodies[i];
+            for (let j = i + 1; j < size; j++) {
+                AssertType(j, "int");
+            }
+        }
+    }
+
+    function advance2(dt: number) {
+        const size = bodies.length;
+
+        for (let i = 0; i < size; i++) {
+            AssertType(i, "int");
+            for (let j = i + 1; j < size; j++) {
+                AssertType(j, "int");
+            }
+        }
+    }
 }

@@ -1032,7 +1032,7 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
         ASSERT(dependCur != Circuit::NullGate());
         if (!bb.trys.empty()) {
             dependCur = circuit_->NewGate(circuit_->GetException(),
-                MachineType::I64, {dependCur}, GateType::Empty());
+                MachineType::I64, {dependCur}, GateType::AnyType());
         }
         EnumerateBlock(bb, [this, &stateCur, &dependCur, &bb]
             (const BytecodeInfo &bytecodeInfo) -> bool {
