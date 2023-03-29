@@ -28,6 +28,7 @@ void HotReloadManager::NotifyPatchLoaded(const JSPandaFile *baseFile, const JSPa
     baseJSPandaFiles_[patchFile] = baseFile;
 
     ExtractPatch(patchFile);
+    vm_->GetJsDebuggerManager()->ClearSingleStepper();
 }
 
 void HotReloadManager::NotifyPatchUnloaded(const JSPandaFile *patchFile)
@@ -38,6 +39,7 @@ void HotReloadManager::NotifyPatchUnloaded(const JSPandaFile *patchFile)
     LOG_DEBUGGER(DEBUG) << "HotReloadManager::NotifyPatchUnloaded";
     baseJSPandaFiles_.erase(patchFile);
     patchExtractors_.clear();
+    vm_->GetJsDebuggerManager()->ClearSingleStepper();
 }
 
 const JSPandaFile *HotReloadManager::GetBaseJSPandaFile(const JSPandaFile *jsPandaFile) const
