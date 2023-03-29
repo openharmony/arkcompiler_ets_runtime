@@ -75,6 +75,7 @@ MemMap MachineCodePageMap(size_t size, int prot, size_t alignment)
 void MachineCodePageUnmap(MemMap it)
 {
     PageClearTag(it.GetMem(), it.GetSize());
+    PageProtect(it.GetMem(), it.GetSize(), PAGE_PROT_NONE);
     PageUnmap(it);
 }
 

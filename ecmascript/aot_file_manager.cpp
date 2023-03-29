@@ -223,6 +223,7 @@ bool StubFileInfo::Load()
         }
     }
     LOG_COMPILER(INFO) << "loaded stub file successfully";
+    PageProtect(exeMem_.addr_, exeMem_.size_, PAGE_PROT_EXEC_READ);
     return true;
 }
 
@@ -335,6 +336,7 @@ bool AnFileInfo::Load(const std::string &filename)
 
     LOG_COMPILER(INFO) << "loaded an file: " << filename.c_str();
     isLoad_ = true;
+    PageProtect(exeMem_.addr_, exeMem_.size_, PAGE_PROT_EXEC_READ);
     return true;
 }
 
