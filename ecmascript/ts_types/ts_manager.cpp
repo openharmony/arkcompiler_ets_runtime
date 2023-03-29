@@ -356,7 +356,7 @@ GlobalTSTypeRef TSManager::GetOrCreateUnionType(CVector<GlobalTSTypeRef> unionTy
     unionType->SetComponents(thread_, components);
 
     JSHandle<TSModuleTable> mTable = GetTSModuleTable();
-    uint32_t numOfTables = mTable->GetNumberOfTSTypeTables();
+    uint32_t numOfTables = static_cast<uint32_t>(mTable->GetNumberOfTSTypeTables());
     for (uint32_t tableIndex = 0; tableIndex < numOfTables; ++tableIndex) {
         JSHandle<TSTypeTable> typeTable = GetTSTypeTable(tableIndex);
         GlobalTSTypeRef foundUnionRef = FindUnionInTypeTable(typeTable, unionType);
@@ -1231,13 +1231,13 @@ void TSManager::GenerateBuiltinSummary()
 void TSManager::PrintNumOfTypes() const
 {
     JSHandle<TSModuleTable> mTable = GetTSModuleTable();
-    uint32_t length = mTable->GetNumberOfTSTypeTables();
+    uint32_t length = static_cast<uint32_t>(mTable->GetNumberOfTSTypeTables());
     uint32_t totalNumOfTypes = 0;
     for (uint32_t i = 0; i < length; i++) {
         JSHandle<EcmaString> valueString = mTable->GetModuleRequestByModuleId(thread_, i);
         std::string name = EcmaStringAccessor(valueString).ToStdString();
         JSHandle<TSTypeTable> tTable = GetTSTypeTable(i);
-        uint32_t numOfExpectedTypes = tTable->GetNumberOfTypes();
+        uint32_t numOfExpectedTypes = static_cast<uint32_t>(tTable->GetNumberOfTypes());
         uint32_t numOfTypes = 0;
         for (uint32_t j = 1; j <= numOfExpectedTypes; j++) {
             JSHandle<JSTaggedValue> tsType(thread_, tTable->Get(j));
