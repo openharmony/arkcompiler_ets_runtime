@@ -134,7 +134,7 @@ declare function AssertType(value: any, type: string): void;
 
     // Array
     let arr = new Array();
-    AssertType(arr.length, "number");
+    AssertType(arr.length, "int");
     AssertType(arr.concat([1, 2, 3]), "any[]");
     AssertType(arr.copyWithin(0, 1), "Array");
     AssertType(arr.entries(), "interface");
@@ -167,7 +167,7 @@ declare function AssertType(value: any, type: string): void;
     AssertType(arr.flat(), "any[]");
     // Call Array
     let arr2 = Array();
-    AssertType(arr2.length, "number");
+    AssertType(arr2.length, "int");
     AssertType(arr2.concat([1, 2, 3]), "any[]");
     AssertType(arr2.copyWithin(0, 1), "Array");
 
