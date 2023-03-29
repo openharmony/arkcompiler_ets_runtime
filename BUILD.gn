@@ -27,8 +27,8 @@ group("ark_js_packages") {
     if (is_clang && clang_version != "9.0.3" && current_cpu == "arm64" &&
         is_ohos) {
       deps += [
-        "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/ohos:ohos_clang_arm64)",
-        "ecmascript/pgo_profiler/prof_dump:profdump($build_root/toolchain/ohos:ohos_clang_arm64)",
+        "ecmascript/compiler:ark_aot_compiler",
+        "ecmascript/pgo_profiler/prof_dump:profdump",
       ]
     }
   }
@@ -796,7 +796,7 @@ if (is_mingw) {
       "ecmascript/platform/unix/mac/os.cpp",
       "ecmascript/platform/unix/mac/backtrace.cpp",
     ]
-  } else if ((is_ohos && is_standard_system) || target_os == "android") {
+  } else if (is_ohos || target_os == "android") {
     ecma_platform_source += [
       "ecmascript/platform/unix/linux/os.cpp",
       "ecmascript/platform/unix/ohos/backtrace.cpp",

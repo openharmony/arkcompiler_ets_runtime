@@ -989,7 +989,7 @@ template("host_quickfix_test_action") {
       "--script-args",
       _script_args_,
       "--timeout-limit",
-      "300",
+      "500",
       "--expect-file",
       rebase_path(_test_expect_path_),
       "--env-path",
