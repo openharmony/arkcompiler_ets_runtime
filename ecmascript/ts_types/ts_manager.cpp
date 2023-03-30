@@ -116,7 +116,7 @@ JSHandle<TSClassType> TSManager::GetExtendedClassType(JSHandle<TSClassType> clas
     return JSHandle<TSClassType>(extendClassType);
 }
 
-GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, JSHandle<EcmaString> propertyName) const
+GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> propertyName) const
 {
     JSThread *thread = vm_->GetJSThread();
     JSHandle<JSTaggedValue> type = GetTSType(gt);
@@ -130,7 +130,7 @@ GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, JSHandle<EcmaString> 
         return TSClassInstanceType::GetPropTypeGT(thread, classInstanceType, propertyName);
     } else if (type->IsTSObjectType()) {
         JSHandle<TSObjectType> objectType(type);
-        return TSObjectType::GetPropTypeGT(objectType, propertyName);
+        return TSObjectType::GetPropTypeGT(thread, objectType, propertyName);
     } else if (type->IsTSIteratorInstanceType()) {
         JSHandle<TSIteratorInstanceType> iteratorInstance(type);
         return TSIteratorInstanceType::GetPropTypeGT(thread, iteratorInstance, propertyName);
@@ -153,7 +153,7 @@ bool TSManager::IsStaticFunc(GlobalTSTypeRef gt) const
     return functionType->GetStatic();
 }
 
-GlobalTSTypeRef TSManager::GetSuperPropType(GlobalTSTypeRef gt, JSHandle<EcmaString> propertyName,
+GlobalTSTypeRef TSManager::GetSuperPropType(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> propertyName,
                                             PropertyType propType) const
 {
     JSThread *thread = vm_->GetJSThread();
@@ -170,11 +170,9 @@ GlobalTSTypeRef TSManager::GetSuperPropType(GlobalTSTypeRef gt, JSHandle<EcmaStr
 GlobalTSTypeRef TSManager::GetSuperPropType(GlobalTSTypeRef gt, const uint64_t key, PropertyType propType) const
 {
     JSTaggedValue keyValue = JSTaggedValue(key);
-    JSMutableHandle<EcmaString> propertyName(thread_, JSTaggedValue::Undefined());
-    if (keyValue.IsInt()) {
-        propertyName.Update(factory_->NewFromStdString(std::to_string(keyValue.GetInt())));
-    } else if (keyValue.IsDouble()) {
-        propertyName.Update(factory_->NewFromStdString(std::to_string(keyValue.GetDouble())));
+    JSMutableHandle<JSTaggedValue> propertyName(thread_, JSTaggedValue::Undefined());
+    if (keyValue.IsInt() || keyValue.IsDouble()) {
+        propertyName.Update(keyValue);
     } else {
         propertyName.Update(factory_->NewFromStdString(std::to_string(key).c_str()));
     }
@@ -184,11 +182,9 @@ GlobalTSTypeRef TSManager::GetSuperPropType(GlobalTSTypeRef gt, const uint64_t k
 GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, const uint64_t key) const
 {
     JSTaggedValue keyValue = JSTaggedValue(key);
-    JSMutableHandle<EcmaString> propertyName(thread_, JSTaggedValue::Undefined());
-    if (keyValue.IsInt()) {
-        propertyName.Update(factory_->NewFromStdString(std::to_string(keyValue.GetInt())));
-    } else if (keyValue.IsDouble()) {
-        propertyName.Update(factory_->NewFromStdString(std::to_string(keyValue.GetDouble())));
+    JSMutableHandle<JSTaggedValue> propertyName(thread_, JSTaggedValue::Undefined());
+    if (keyValue.IsInt() || keyValue.IsDouble()) {
+        propertyName.Update(keyValue);
     } else {
         propertyName.Update(factory_->NewFromStdString(std::to_string(key).c_str()));
     }

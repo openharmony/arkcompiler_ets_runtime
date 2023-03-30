@@ -154,7 +154,7 @@ HWTEST_F_L0(TSTypeParserTest, TestTSClassType)
     JSHandle<TSClassType> classType(type);
     EXPECT_EQ(resultGT, classType->GetGT());
     auto factory = ecmaVm->GetFactory();
-    JSHandle<EcmaString> propertyName = factory->NewFromStdString(valueStr);
+    JSHandle<JSTaggedValue> propertyName(factory->NewFromStdString(valueStr));
     GlobalTSTypeRef propGT = TSClassType::GetPropTypeGT(thread, classType, propertyName);
     EXPECT_EQ(propGT,
               GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::NUMBER)));
@@ -418,8 +418,8 @@ HWTEST_F_L0(TSTypeParserTest, TestTSObjectType)
     JSHandle<TSObjectType> objectType(type);
     EXPECT_EQ(resultGT, objectType->GetGT());
     auto factory = ecmaVm->GetFactory();
-    JSHandle<EcmaString> propName = factory->NewFromStdString(ageStr);
-    GlobalTSTypeRef propGT = TSObjectType::GetPropTypeGT(objectType, propName);
+    JSHandle<JSTaggedValue> propName(factory->NewFromStdString(ageStr));
+    GlobalTSTypeRef propGT = TSObjectType::GetPropTypeGT(thread, objectType, propName);
     EXPECT_EQ(propGT,
               GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::NUMBER)));
 }
