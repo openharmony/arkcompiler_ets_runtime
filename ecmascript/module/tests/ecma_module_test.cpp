@@ -419,24 +419,29 @@ HWTEST_F_L0(EcmaModuleTest, NormalizePath)
     CString res1 = "node_modules/0/moduleTest/index";
     CString moduleRecordName1 = "node_modules///0//moduleTest/index";
 
-    CString res2 = "./node_modules/0/moduleTest/index";
+    CString res2 = "node_modules/0/moduleTest/index";
     CString moduleRecordName2 = "./node_modules///0//moduleTest/index";
 
     CString res3 = "../node_modules/0/moduleTest/index";
     CString moduleRecordName3 = "../node_modules/0/moduleTest///index";
 
-    CString res4 = "./moduleTest/index";
+    CString res4 = "moduleTest/index";
     CString moduleRecordName4 = "./node_modules/..//moduleTest////index";
+
+    CString res5 = "node_modules/moduleTest/index";
+    CString moduleRecordName5 = "node_modules/moduleTest/index/";
 
     CString normalName1 = PathHelper::NormalizePath(moduleRecordName1);
     CString normalName2 = PathHelper::NormalizePath(moduleRecordName2);
     CString normalName3 = PathHelper::NormalizePath(moduleRecordName3);
     CString normalName4 = PathHelper::NormalizePath(moduleRecordName4);
+    CString normalName5 = PathHelper::NormalizePath(moduleRecordName5);
 
     EXPECT_EQ(res1, normalName1);
     EXPECT_EQ(res2, normalName2);
     EXPECT_EQ(res3, normalName3);
     EXPECT_EQ(res4, normalName4);
+    EXPECT_EQ(res5, normalName5);
 }
 
 HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
