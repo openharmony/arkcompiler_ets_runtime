@@ -22,7 +22,9 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 
+#include "libpandafile/class_data_accessor-inl.h"
 #include "libpandafile/file.h"
+#include "libpandabase/utils/utf.h"
 
 namespace panda::ecmascript {
 class JSPandaFile;
@@ -65,54 +67,74 @@ using LocalVariableTable = CUnorderedMap<std::string, int32_t>;  // name, regNum
 // public for debugger
 class PUBLIC_API DebugInfoExtractor {
 public:
-    explicit DebugInfoExtractor(const JSPandaFile *jsPandaFile);
+    explicit DebugInfoExtractor(const JSPandaFile *jsPandaFile) : jsPandaFile_(jsPandaFile)
+    {}
 
     ~DebugInfoExtractor() = default;
 
     DEFAULT_COPY_SEMANTIC(DebugInfoExtractor);
     DEFAULT_MOVE_SEMANTIC(DebugInfoExtractor);
 
-    const LineNumberTable &GetLineNumberTable(panda_file::File::EntityId methodId) const;
+    const LineNumberTable &GetLineNumberTable(const panda_file::File::EntityId methodId);
 
-    const ColumnNumberTable &GetColumnNumberTable(panda_file::File::EntityId methodId) const;
+    const ColumnNumberTable &GetColumnNumberTable(const panda_file::File::EntityId methodId);
 
-    const LocalVariableTable &GetLocalVariableTable(panda_file::File::EntityId methodId) const;
+    const LocalVariableTable &GetLocalVariableTable(const panda_file::File::EntityId methodId);
 
-    const std::string &GetSourceFile(panda_file::File::EntityId methodId) const;
+    const std::string &GetSourceFile(const panda_file::File::EntityId methodId);
 
-    const std::string &GetSourceCode(panda_file::File::EntityId methodId) const;
+    const std::string &GetSourceCode(const panda_file::File::EntityId methodId);
 
-    CVector<panda_file::File::EntityId> GetMethodIdList() const;
-
-    bool ContainsMethod(panda_file::File::EntityId methodId) const;
+    bool ExtractorMethodDebugInfo(const panda_file::File::EntityId methodId);
 
     template<class Callback>
-    bool MatchWithLocation(const Callback &cb, int32_t line, int32_t column, const std::string &url) const
+    bool MatchWithLocation(const Callback &cb, int32_t line, int32_t column,
+        const std::string &url, const std::string &debugRecordName)
     {
         if (line == SPECIAL_LINE_MARK) {
             return false;
         }
-
-        for (const auto &[id, debugInfo] : methods_) {
-            // the url for testcases is empty
-            if (!url.empty() && url != debugInfo.sourceFile) {
+        auto &pandaFile = *jsPandaFile_->GetPandaFile();
+        auto classes = jsPandaFile_->GetClasses();
+        for (size_t i = 0; i < classes.Size(); i++) {
+            panda_file::File::EntityId id(classes[i]);
+            if (jsPandaFile_->IsExternal(id)) {
                 continue;
             }
-            auto methodId = panda_file::File::EntityId(id);
-            const LineNumberTable &lineTable = GetLineNumberTable(methodId);
-            const ColumnNumberTable &columnTable = GetColumnNumberTable(methodId);
-            for (uint32_t i = 0; i < lineTable.size(); i++) {
-                if (lineTable[i].line != line) {
+
+            CVector<panda_file::File::EntityId> methodIds;
+            panda_file::ClassDataAccessor cda(pandaFile, id);
+            CString recordName = JSPandaFile::ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
+            // the recordName for testcases is empty
+            if (!debugRecordName.empty() && recordName != debugRecordName.c_str()
+                && debugRecordName != JSPandaFile::ENTRY_MAIN_FUNCTION) {
+                continue;
+            }
+            cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
+                methodIds.push_back(mda.GetMethodId());
+            });
+
+            for (auto &methodId : methodIds) {
+                const std::string &sourceFile = GetSourceFile(methodId);
+                // the url for testcases is empty
+                if (!url.empty() && sourceFile != url) {
                     continue;
                 }
-                uint32_t currentOffset = lineTable[i].offset;
-                uint32_t nextOffset = ((i == lineTable.size() - 1) ? UINT32_MAX : lineTable[i + 1].offset);
-                for (const auto &pair : columnTable) {
-                    if (pair.column == column && pair.offset >= currentOffset && pair.offset < nextOffset) {
-                        return cb(JSPtLocation(jsPandaFile_, methodId, pair.offset, url));
+                const LineNumberTable &lineTable = GetLineNumberTable(methodId);
+                const ColumnNumberTable &columnTable = GetColumnNumberTable(methodId);
+                for (uint32_t j = 0; j < lineTable.size(); j++) {
+                    if (lineTable[j].line != line) {
+                        continue;
                     }
+                    uint32_t currentOffset = lineTable[j].offset;
+                    uint32_t nextOffset = ((j == lineTable.size() - 1) ? UINT32_MAX : lineTable[j + 1].offset);
+                    for (const auto &pair : columnTable) {
+                        if (pair.column == column && pair.offset >= currentOffset && pair.offset < nextOffset) {
+                            return cb(JSPtLocation(jsPandaFile_, methodId, pair.offset, url));
+                        }
+                    }
+                    return cb(JSPtLocation(jsPandaFile_, methodId, currentOffset, url));
                 }
-                return cb(JSPtLocation(jsPandaFile_, methodId, currentOffset, url));
             }
         }
         return false;
@@ -165,8 +187,6 @@ public:
     constexpr static int32_t SPECIAL_LINE_MARK = -1;
 
 private:
-    void Extract();
-
     struct MethodDebugInfo {
         std::string sourceFile;
         std::string sourceCode;
