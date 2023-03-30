@@ -93,7 +93,8 @@ public:
 
     static CString NormalizePath(const CString &fileName)
     {
-        if (fileName.find("//") == CString::npos && fileName.find("../") == CString::npos) {
+        if (fileName.find("//") == CString::npos && fileName.find("./") == CString::npos &&
+            fileName[fileName.size() - 1] != '/') {
             return fileName;
         }
         const char delim = '/';
@@ -104,13 +105,11 @@ public:
         while (curr != CString::npos) {
             if (curr > prev) {
                 CString elem = fileName.substr(prev, curr - prev);
-                if (elem.compare("..") == 0 && !elems.empty()) {
+                if (elem == ".." && !elems.empty()) {
                     elems.pop_back();
-                    prev = curr + 1;
-                    curr = fileName.find(delim, prev);
-                    continue;
+                } else if (elem != ".") {
+                    elems.push_back(elem);
                 }
-                elems.push_back(elem);
             }
             prev = curr + 1;
             curr = fileName.find(delim, prev);
@@ -462,13 +461,15 @@ public:
                                           const CString &requestName)
     {
         static CVector<CString> packagePaths = {CString(PACKAGE_PATH_SEGMENT), CString(NPM_PATH_SEGMENT)};
-        CString entryPoint = ParseOhpmPackage(jsPandaFile, recordName, requestName);
+        // We need to deal with scenarios like this 'json5/' -> 'json5'
+        CString normalizeRequestName = NormalizePath(requestName);
+        CString entryPoint = ParseOhpmPackage(jsPandaFile, recordName, normalizeRequestName);
         if (!entryPoint.empty()) {
             return entryPoint;
         }
         // Package compatible with old soft link format
         for (size_t i = 0; i < packagePaths.size(); ++i) {
-            entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, requestName, packagePaths[i]);
+            entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, normalizeRequestName, packagePaths[i]);
             if (!entryPoint.empty()) {
                 return entryPoint;
             }
