@@ -1144,7 +1144,7 @@ void JSTaggedValue::Dump(std::ostream &os) const
     os << "\n";
 
     if (IsHeapObject()) {
-        TaggedObject *obj = GetTaggedObject();
+        TaggedObject *obj = IsWeak() ? GetTaggedWeakRef() : GetTaggedObject();
         DumpObject(obj, os);
     }
 }

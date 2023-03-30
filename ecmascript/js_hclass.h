@@ -1600,6 +1600,7 @@ public:
 
     void SetPrototype(const JSThread *thread, JSTaggedValue proto);
     void SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
+    void ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
     inline JSTaggedValue GetPrototype() const
     {
         return GetProto();
