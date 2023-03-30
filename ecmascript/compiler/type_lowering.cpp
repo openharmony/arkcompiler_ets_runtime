@@ -3143,10 +3143,9 @@ GateRef TypeLowering::CallAccessor(GateRef glue, GateRef gate, GateRef function,
 {
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCall));
     GateRef target = builder_.IntPtr(RTSTUB_ID(JSCall));
-    GateRef envArg = builder_.Undefined();
     GateRef newTarget = builder_.Undefined();
     GateRef argc = builder_.Int64(NUM_MANDATORY_JSFUNC_ARGS + (mode == AccessorMode::SETTER ? 1 : 0));  // 1: value
-    std::vector<GateRef> args { glue, envArg, argc, function, newTarget, receiver };
+    std::vector<GateRef> args { glue, argc, function, newTarget, receiver };
     if (mode == AccessorMode::SETTER) {
         args.emplace_back(value);
     }

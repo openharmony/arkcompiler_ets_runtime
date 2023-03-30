@@ -910,8 +910,7 @@ void SlowPathLowering::LowerCallArg0(GateRef gate)
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
     GateRef func = acc_.GetValueIn(gate, 0);
-    GateRef env = builder_.Undefined();
-    LowerToJSCall(gate, {glue_, env, actualArgc, func, newTarget, thisObj});
+    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj});
 }
 
 void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate)
@@ -927,9 +926,7 @@ void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate)
     GateRef callTarget = acc_.GetValueIn(gate, numIns - callTargetIndex); // acc
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef newTarget = builder_.Undefined();
-    GateRef env = builder_.Undefined();
     vec.emplace_back(glue_);
-    vec.emplace_back(env);
     vec.emplace_back(actualArgc);
     vec.emplace_back(callTarget);
     vec.emplace_back(newTarget);
@@ -953,8 +950,7 @@ void SlowPathLowering::LowerWideCallthisrangePrefImm16V8(GateRef gate)
     GateRef callTarget = acc_.GetValueIn(gate, numIns - callTargetIndex);
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef newTarget = builder_.Undefined();
-    GateRef env = builder_.Undefined();
-    std::vector<GateRef> vec {glue_, env, actualArgc, callTarget, newTarget, thisObj};
+    std::vector<GateRef> vec {glue_, actualArgc, callTarget, newTarget, thisObj};
     // add common args
     for (size_t i = fixedInputsNum; i < numIns - callTargetIndex; i++) {
         vec.emplace_back(acc_.GetValueIn(gate, i));
@@ -984,9 +980,7 @@ void SlowPathLowering::LowerCallrangeImm8Imm8V8(GateRef gate)
     GateRef callTarget = acc_.GetValueIn(gate, numArgs - callTargetIndex);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
-    GateRef env = builder_.Undefined();
     vec.emplace_back(glue_);
-    vec.emplace_back(env);
     vec.emplace_back(actualArgc);
     vec.emplace_back(callTarget);
     vec.emplace_back(newTarget);
@@ -1689,14 +1683,13 @@ void SlowPathLowering::LowerNewObjRange(GateRef gate)
     builder_.Branch(builder_.TaggedIsHole(thisObj), &slowPath, &fastPath);
     builder_.Bind(&fastPath);
     {
-        const int extra = 5; // 5: add glue, lexEnv, argc, new-target and this
+        const int extra = 4; // 4: add glue, argc, new-target and this
         GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
             EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
         size_t range = acc_.GetNumValueIn(gate);
         std::vector<GateRef> args;
         args.reserve((range + extra));
         args.emplace_back(glue_);
-        args.emplace_back(builder_.Undefined());
         args.emplace_back(actualArgc);
         args.emplace_back(ctor);
         args.emplace_back(ctor);
@@ -2922,8 +2915,7 @@ void SlowPathLowering::LowerCallthis0Imm8V8(GateRef gate)
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef func = acc_.GetValueIn(gate, 1);
-    GateRef env = builder_.Undefined();
-    LowerToJSCall(gate, {glue_, env, actualArgc, func, newTarget, thisObj});
+    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj});
 }
 
 void SlowPathLowering::LowerCallArg1Imm8V8(GateRef gate)
@@ -2937,8 +2929,7 @@ void SlowPathLowering::LowerCallArg1Imm8V8(GateRef gate)
     GateRef a0Value = acc_.GetValueIn(gate, 0);
     GateRef thisObj = builder_.Undefined();
     GateRef func = acc_.GetValueIn(gate, 1); // acc
-    GateRef env = builder_.Undefined();
-    LowerToJSCall(gate, {glue_, env, actualArgc, func, newTarget, thisObj, a0Value});
+    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj, a0Value});
 }
 
 void SlowPathLowering::LowerWideCallrangePrefImm16V8(GateRef gate)
@@ -2952,10 +2943,8 @@ void SlowPathLowering::LowerWideCallrangePrefImm16V8(GateRef gate)
     GateRef callTarget = acc_.GetValueIn(gate, numIns - fixedInputsNum); // acc
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
-    GateRef env = builder_.Undefined();
 
     vec.emplace_back(glue_);
-    vec.emplace_back(env);
     vec.emplace_back(actualArgc);
     vec.emplace_back(callTarget);
     vec.emplace_back(newTarget);
@@ -2977,8 +2966,7 @@ void SlowPathLowering::LowerCallThisArg1(GateRef gate)
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef a0 = acc_.GetValueIn(gate, 1); // 1:first parameter
     GateRef func = acc_.GetValueIn(gate, 2); // 2:function
-    GateRef env = builder_.Undefined();
-    LowerToJSCall(gate, {glue_, env, actualArgc, func, newTarget, thisObj, a0});
+    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj, a0});
 }
 
 void SlowPathLowering::LowerCallargs2Imm8V8V8(GateRef gate)
@@ -2992,9 +2980,8 @@ void SlowPathLowering::LowerCallargs2Imm8V8V8(GateRef gate)
     GateRef a0 = acc_.GetValueIn(gate, 0);
     GateRef a1 = acc_.GetValueIn(gate, 1); // 1:first parameter
     GateRef func = acc_.GetValueIn(gate, 2); // 2:function
-    GateRef env = builder_.Undefined();
 
-    LowerToJSCall(gate, {glue_, env, actualArgc, func, newTarget, thisObj, a0, a1});
+    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj, a0, a1});
 }
 
 void SlowPathLowering::LowerCallargs3Imm8V8V8(GateRef gate)
@@ -3009,9 +2996,8 @@ void SlowPathLowering::LowerCallargs3Imm8V8V8(GateRef gate)
     GateRef a1 = acc_.GetValueIn(gate, 1);
     GateRef a2 = acc_.GetValueIn(gate, 2);
     GateRef func = acc_.GetValueIn(gate, 3);
-    GateRef env = builder_.Undefined();
 
-    LowerToJSCall(gate, {glue_, env, actualArgc, func, newTarget, thisObj, a0, a1, a2});
+    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj, a0, a1, a2});
 }
 
 void SlowPathLowering::LowerCallthis2Imm8V8V8V8(GateRef gate)
@@ -3025,9 +3011,8 @@ void SlowPathLowering::LowerCallthis2Imm8V8V8V8(GateRef gate)
     GateRef a0Value = acc_.GetValueIn(gate, 1);
     GateRef a1Value = acc_.GetValueIn(gate, 2);
     GateRef func = acc_.GetValueIn(gate, 3);  //acc
-    GateRef env = builder_.Undefined();
 
-    LowerToJSCall(gate, {glue_, env, actualArgc, func, newTarget, thisObj, a0Value, a1Value});
+    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj, a0Value, a1Value});
 }
 
 void SlowPathLowering::LowerCallthis3Imm8V8V8V8V8(GateRef gate)
@@ -3042,8 +3027,7 @@ void SlowPathLowering::LowerCallthis3Imm8V8V8V8V8(GateRef gate)
     GateRef a1Value = acc_.GetValueIn(gate, 2);
     GateRef a2Value = acc_.GetValueIn(gate, 3);
     GateRef func = acc_.GetValueIn(gate, 4);
-    GateRef env = builder_.Undefined();
-    LowerToJSCall(gate, {glue_, env, actualArgc, func, newTarget, thisObj, a0Value, a1Value, a2Value});
+    LowerToJSCall(gate, {glue_, actualArgc, func, newTarget, thisObj, a0Value, a1Value, a2Value});
 }
 
 void SlowPathLowering::LowerLdThisByName(GateRef gate)
@@ -3137,7 +3121,7 @@ void SlowPathLowering::LowerConstruct(GateRef gate)
 void SlowPathLowering::LowerTypedAotCall(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    GateRef func = acc_.GetValueIn(gate, 3); // 3: argv func
+    GateRef func = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::FUNC));
     GateRef method  = builder_.GetMethodFromFunction(func);
     GateRef code = builder_.GetCodeAddr(method);
     size_t num = acc_.GetNumValueIn(gate);

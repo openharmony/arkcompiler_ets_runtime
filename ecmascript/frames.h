@@ -422,8 +422,6 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionArgConfigFrame),
 //               |       call-target        |
 //               |--------------------------|
 //               |       argc               |
-//               |--------------------------|
-//               |       lexEnv             |
 //      sp ----> |--------------------------| ---------------
 //               |       returnAddr         |               ^
 //               |--------------------------|               |
@@ -441,7 +439,6 @@ struct OptimizedJSFunctionFrame : public base::AlignedStruct<JSTaggedValue::Tagg
                                                              base::AlignedPointer,
                                                              base::AlignedPointer> {
 public:
-    static constexpr size_t ENV_SLOT_DIFF = 2;
     enum class Index : size_t {
         JSFuncIndex = 0,
         TypeIndex,
@@ -463,12 +460,12 @@ public:
 
     JSTaggedType* GetArgv(uintptr_t *preFrameSp) const
     {
-        return reinterpret_cast<JSTaggedType *>(preFrameSp + ENV_SLOT_DIFF * sizeof(uint64_t) / sizeof(uintptr_t));
+        return reinterpret_cast<JSTaggedType *>(preFrameSp + sizeof(uint64_t) / sizeof(uintptr_t));
     }
 
     size_t GetArgc(uintptr_t *preFrameSp) const
     {
-        return *(preFrameSp + sizeof(uint64_t) / sizeof(uintptr_t));
+        return *preFrameSp;
     }
 
     JSTaggedType* GetArgv(const FrameIterator &it) const;
@@ -1191,7 +1188,7 @@ struct OptimizedWithArgvLeaveFrame {
 //         +--------------------------+-------------
 //         |       argc               |            ^
 //         |--------------------------|            |
-//         |       env                |            |
+//         |       thread             |            |
 //         +--------------------------+            |
 //         |       ret-addr           |            |
 //  sp --> |--------------------------|   OptimizedBuiltinLeaveFrame
@@ -1212,7 +1209,7 @@ public:
     }
     uintptr_t GetCallSiteSp() const
     {
-        return ToUintPtr(this) + MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, thread);
+        return ToUintPtr(this) + MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, argc);
     }
     inline JSTaggedType* GetPrevFrameFp() const
     {
