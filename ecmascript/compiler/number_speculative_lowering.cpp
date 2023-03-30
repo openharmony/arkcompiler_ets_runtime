@@ -41,8 +41,11 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
     OpCode op = acc_.GetOpCode(gate);
     switch (op) {
         case OpCode::TYPED_BINARY_OP: {
-            ASSERT(acc_.GetLeftType(gate).IsNumberType() && acc_.GetRightType(gate).IsNumberType());
-            VisitNumberBinaryOp(gate);
+            VisitTypedBinaryOp(gate);
+            break;
+        }
+        case OpCode::TYPED_UNARY_OP: {
+            VisitTypedUnaryOp(gate);
             break;
         }
         case OpCode::VALUE_SELECTOR: {
@@ -58,9 +61,22 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
     }
 }
 
-void NumberSpeculativeLowering::VisitNumberBinaryOp(GateRef gate)
+void NumberSpeculativeLowering::VisitTypedBinaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
+    if (acc_.GetLeftType(gate).IsNumberType() && acc_.GetRightType(gate).IsNumberType()) {
+        VisitNumberBinaryOp(gate);
+    } else {
+        [[maybe_unused]] GateRef left = acc_.GetValueIn(gate, 0);
+        [[maybe_unused]] GateRef right = acc_.GetValueIn(gate, 1);
+        ASSERT(acc_.IsConstantUndefined(left) || acc_.IsConstantUndefined(right));
+        ASSERT(acc_.GetTypedBinaryOp(gate) == TypedBinOp::TYPED_STRICTEQ);
+        VisitUndefinedStrictEq(gate);
+    }
+}
+
+void NumberSpeculativeLowering::VisitNumberBinaryOp(GateRef gate)
+{
     TypedBinOp Op = acc_.GetTypedBinaryOp(gate);
     switch (Op) {
         case TypedBinOp::TYPED_ADD: {
@@ -99,8 +115,61 @@ void NumberSpeculativeLowering::VisitNumberBinaryOp(GateRef gate)
             VisitNumberCompare<TypedBinOp::TYPED_NOTEQ>(gate);
             break;
         }
+        case TypedBinOp::TYPED_SHL: {
+            VisitNumberShift<TypedBinOp::TYPED_SHL>(gate);
+            break;
+        }
+        case TypedBinOp::TYPED_SHR: {
+            VisitNumberShift<TypedBinOp::TYPED_SHR>(gate);
+            break;
+        }
+        case TypedBinOp::TYPED_ASHR: {
+            VisitNumberShift<TypedBinOp::TYPED_ASHR>(gate);
+            break;
+        }
         default:
             break;
+    }
+}
+
+void NumberSpeculativeLowering::VisitTypedUnaryOp(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+    TypedUnOp Op = accessor.GetTypedUnOp();
+    switch (Op) {
+        case TypedUnOp::TYPED_INC: {
+            VisitTypedInc(gate);
+            return;
+        }
+        case TypedUnOp::TYPED_NOT: {
+            VisitTypedNot(gate);
+            return;
+        }
+        case TypedUnOp::TYPED_JEQZ: {
+            VisitTypedJeqz(gate);
+            return;
+        }
+        default:
+            break;
+    }
+}
+
+void NumberSpeculativeLowering::VisitTypedNot(GateRef gate)
+{
+    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+    GateType type = accessor.GetTypeValue();
+    if (type.IsIntType()) {
+        VisitIntNot(gate);
+    }
+}
+
+void NumberSpeculativeLowering::VisitTypedJeqz(GateRef gate)
+{
+    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+    GateType type = accessor.GetTypeValue();
+    if (type.IsBooleanType()) {
+        VisitBooleanJeqz(gate);
     }
 }
 
@@ -135,6 +204,76 @@ void NumberSpeculativeLowering::VisitNumberCompare(GateRef gate)
     } else {
         result = CompareDoubles<Op>(left, right);   // float op float
     }
+    acc_.SetMachineType(gate, MachineType::I1);
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+template<TypedBinOp Op>
+void NumberSpeculativeLowering::VisitNumberShift(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateRef result = ShiftInts<Op>(left, right);  // int op int
+    acc_.SetMachineType(gate, MachineType::I32);
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+
+void NumberSpeculativeLowering::VisitTypedInc(GateRef gate)
+{
+    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+    GateType type = accessor.GetTypeValue();
+    if (type.IsIntType()) {
+        VisitIntInc(gate);
+    } else if (type.IsNumberType()) {
+        VisitDoubleInc(gate);
+    } else {
+        UNREACHABLE();
+    }
+}
+
+void NumberSpeculativeLowering::VisitIntInc(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef result = builder_.Int32Add(value, builder_.Int32(1));
+    acc_.SetMachineType(gate, MachineType::I32);
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void NumberSpeculativeLowering::VisitDoubleInc(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef result = builder_.DoubleAdd(value, builder_.Double(1));
+    acc_.SetMachineType(gate, MachineType::F64);
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+
+void NumberSpeculativeLowering::VisitIntNot(GateRef gate)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef result = builder_.Int32Not(value);
+    acc_.SetMachineType(gate, MachineType::I32);
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void NumberSpeculativeLowering::VisitBooleanJeqz(GateRef gate)
+{
+    GateRef condition = builder_.BoolNot(acc_.GetValueIn(gate, 0));
+    GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition);
+    acc_.ReplaceGate(gate, ifBranch, acc_.GetDep(gate), Circuit::NullGate());
+}
+
+void NumberSpeculativeLowering::VisitUndefinedStrictEq(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateRef result = builder_.Equal(left, right);
     acc_.SetMachineType(gate, MachineType::I1);
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -187,30 +326,23 @@ template<TypedBinOp Op>
 GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
 {
     GateRef res = Circuit::NullGate();
-    left = builder_.SExtInt32ToInt64(left);
-    right = builder_.SExtInt32ToInt64(right);
     switch (Op) {
         case TypedBinOp::TYPED_ADD:
-            res = builder_.Int64Add(left, right);
+            res = builder_.AddWithOverflow(left, right);
             break;
         case TypedBinOp::TYPED_SUB:
-            res = builder_.Int64Sub(left, right);
+            res = builder_.SubWithOverflow(left, right);
             break;
         case TypedBinOp::TYPED_MUL:
-            res = builder_.Int64Mul(left, right);
+            res = builder_.MulWithOverflow(left, right);
             break;
         default:
             break;
     }
     // DeoptCheckForOverFlow
-    GateRef max = builder_.Int64(INT32_MAX);
-    GateRef min = builder_.Int64(INT32_MIN);
-    GateRef notOverflow = builder_.Int64LessThanOrEqual(res, max);
-    GateRef notUnderflow = builder_.Int64GreaterThanOrEqual(res, min);
-    GateRef condition = builder_.BoolAnd(notOverflow, notUnderflow);
+    GateRef condition = builder_.BoolNot(builder_.ExtractValue(MachineType::I1, res, builder_.Int32(1)));
     builder_.DeoptCheck(condition, acc_.GetFrameState(builder_.GetDepend()), DeoptType::NOTINT);
-    GateRef result = builder_.TruncInt64ToInt32(res);
-    return result;
+    return builder_.ExtractValue(MachineType::I32, res, builder_.Int32(0));
 }
 
 template<TypedBinOp Op>
@@ -289,5 +421,34 @@ GateRef NumberSpeculativeLowering::CompareDoubles(GateRef left, GateRef right)
             break;
     }
     return condition;
+}
+
+template<TypedBinOp Op>
+GateRef NumberSpeculativeLowering::ShiftInts(GateRef left, GateRef right)
+{
+    GateRef value = Circuit::NullGate();
+    GateRef shift = builder_.Int32And(right, builder_.Int32(0x1f)); // 0x1f: bit mask of shift value
+    switch (Op) {
+        case TypedBinOp::TYPED_SHL: {
+            value = builder_.Int32LSL(left, shift);
+            break;
+        }
+        case TypedBinOp::TYPED_SHR: {
+            value = builder_.Int32LSR(left, shift);
+            GateRef frameState = acc_.GetFrameState(builder_.GetDepend());
+            GateRef condition = builder_.Int32UnsignedLessThanOrEqual(value, builder_.Int32(INT32_MAX));
+            builder_.DeoptCheck(condition, frameState, DeoptType::NOTINT);
+            break;
+        }
+        case TypedBinOp::TYPED_ASHR: {
+            value = builder_.Int32ASR(left, shift);
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+            break;
+    }
+    return value;
 }
 }  // namespace panda::ecmascript

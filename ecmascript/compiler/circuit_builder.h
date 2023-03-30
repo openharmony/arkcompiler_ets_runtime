@@ -129,6 +129,7 @@ class Variable;
     V(Int32GreaterThan, Icmp, static_cast<BitField>(ICmpCondition::SGT))                \
     V(Int32GreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SGE))         \
     V(Int32UnsignedLessThan, Icmp, static_cast<BitField>(ICmpCondition::ULT))           \
+    V(Int32UnsignedLessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::ULE))    \
     V(Int32UnsignedGreaterThan, Icmp, static_cast<BitField>(ICmpCondition::UGT))        \
     V(Int32UnsignedGreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::UGE)) \
     V(Int64LessThan, Icmp, static_cast<BitField>(ICmpCondition::SLT))                   \
@@ -244,10 +245,15 @@ public:
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args);
     inline GateRef TypedCallBuiltin(GateRef hirGate, GateRef x, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
+    GateRef AddWithOverflow(GateRef left, GateRef right);
+    GateRef SubWithOverflow(GateRef left, GateRef right);
+    GateRef MulWithOverflow(GateRef left, GateRef right);
+    GateRef ExtractValue(MachineType mt, GateRef pointer, GateRef index);
     MachineType GetMachineTypeOfValueType(ValueType type);
     GateType GetGateTypeOfValueType(ValueType type);
     GateRef Convert(GateRef gate, ValueType src, ValueType dst);
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
+    GateRef ConvertTaggedBooleanToBool(GateRef gate);
     GateRef ConvertInt32ToTaggedInt(GateRef gate);
     GateRef ConvertFloat64ToTaggedDouble(GateRef gate);
     GateRef ConvertFloat64ToInt32(GateRef gate);

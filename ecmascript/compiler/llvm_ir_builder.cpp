@@ -185,6 +185,10 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::DEOPT, &LLVMIRBuilder::HandleDeopt},
         {OpCode::TRUNC_FLOAT_TO_INT64, &LLVMIRBuilder::HandleTruncFloatToInt},
         {OpCode::TRUNC_FLOAT_TO_INT32, &LLVMIRBuilder::HandleTruncFloatToInt},
+        {OpCode::ADD_WITH_OVERFLOW, &LLVMIRBuilder::HandleAddWithOverflow},
+        {OpCode::SUB_WITH_OVERFLOW, &LLVMIRBuilder::HandleSubWithOverflow},
+        {OpCode::MUL_WITH_OVERFLOW, &LLVMIRBuilder::HandleMulWithOverflow},
+        {OpCode::EXTRACT_VALUE, &LLVMIRBuilder::HandleExtractValue},
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
@@ -1630,6 +1634,121 @@ void LLVMIRBuilder::HandleCmp(GateRef gate)
     GateRef left = acc_.GetIn(gate, 0);
     GateRef right = acc_.GetIn(gate, 1);
     VisitCmp(gate, left, right);
+}
+
+void LLVMIRBuilder::HandleAddWithOverflow(GateRef gate)
+{
+    GateRef left = acc_.GetIn(gate, 0);
+    GateRef right = acc_.GetIn(gate, 1);
+    ASSERT(acc_.GetMachineType(left) == MachineType::I32);
+    ASSERT(acc_.GetMachineType(right) == MachineType::I32);
+    VisitAddWithOverflow(gate, left, right);
+}
+
+void LLVMIRBuilder::VisitAddWithOverflow(GateRef gate, GateRef e1, GateRef e2)
+{
+    LLVMValueRef e1Value = gate2LValue_[e1];
+    LLVMValueRef e2Value = gate2LValue_[e2];
+    std::vector<LLVMValueRef> args = { e1Value, e2Value };
+    auto fn = LLVMGetNamedFunction(module_, "llvm.sadd.with.overflow.i32");
+    if (!fn) {
+        /* init instrinsic function declare */
+        LLVMTypeRef paramTys1[] = {
+            LLVMInt32Type(),
+            LLVMInt32Type(),
+        };
+        LLVMTypeRef structTys[] = {
+            LLVMInt32Type(),
+            LLVMInt1Type(),
+        };
+        LLVMTypeRef returnType = LLVMStructType(structTys, 2, 0);
+        auto fnTy = LLVMFunctionType(returnType, paramTys1, 2, 0);
+        fn = LLVMAddFunction(module_, "llvm.sadd.with.overflow.i32", fnTy);
+    }
+    LLVMValueRef result = LLVMBuildCall(builder_, fn, args.data(), 2, "");
+    gate2LValue_[gate] = result;
+}
+
+void LLVMIRBuilder::HandleSubWithOverflow(GateRef gate)
+{
+    GateRef left = acc_.GetIn(gate, 0);
+    GateRef right = acc_.GetIn(gate, 1);
+    ASSERT(acc_.GetMachineType(left) == MachineType::I32);
+    ASSERT(acc_.GetMachineType(right) == MachineType::I32);
+    VisitSubWithOverflow(gate, left, right);
+}
+
+void LLVMIRBuilder::VisitSubWithOverflow(GateRef gate, GateRef e1, GateRef e2)
+{
+    LLVMValueRef e1Value = gate2LValue_[e1];
+    LLVMValueRef e2Value = gate2LValue_[e2];
+    std::vector<LLVMValueRef> args = { e1Value, e2Value };
+    auto fn = LLVMGetNamedFunction(module_, "llvm.ssub.with.overflow.i32");
+    if (!fn) {
+        /* init instrinsic function declare */
+        LLVMTypeRef paramTys1[] = {
+            LLVMInt32Type(),
+            LLVMInt32Type(),
+        };
+        LLVMTypeRef structTys[] = {
+            LLVMInt32Type(),
+            LLVMInt1Type(),
+        };
+        LLVMTypeRef returnType = LLVMStructType(structTys, 2, 0);
+        auto fnTy = LLVMFunctionType(returnType, paramTys1, 2, 0);
+        fn = LLVMAddFunction(module_, "llvm.ssub.with.overflow.i32", fnTy);
+    }
+    LLVMValueRef result = LLVMBuildCall(builder_, fn, args.data(), 2, "");
+    gate2LValue_[gate] = result;
+}
+
+void LLVMIRBuilder::HandleMulWithOverflow(GateRef gate)
+{
+    GateRef left = acc_.GetIn(gate, 0);
+    GateRef right = acc_.GetIn(gate, 1);
+    ASSERT(acc_.GetMachineType(left) == MachineType::I32);
+    ASSERT(acc_.GetMachineType(right) == MachineType::I32);
+    VisitMulWithOverflow(gate, left, right);
+}
+
+void LLVMIRBuilder::VisitMulWithOverflow(GateRef gate, GateRef e1, GateRef e2)
+{
+    LLVMValueRef e1Value = gate2LValue_[e1];
+    LLVMValueRef e2Value = gate2LValue_[e2];
+    std::vector<LLVMValueRef> args = { e1Value, e2Value };
+    auto fn = LLVMGetNamedFunction(module_, "llvm.smul.with.overflow.i32");
+    if (!fn) {
+        /* init instrinsic function declare */
+        LLVMTypeRef paramTys1[] = {
+            LLVMInt32Type(),
+            LLVMInt32Type(),
+        };
+        LLVMTypeRef structTys[] = {
+            LLVMInt32Type(),
+            LLVMInt1Type(),
+        };
+        LLVMTypeRef returnType = LLVMStructType(structTys, 2, 0);
+        auto fnTy = LLVMFunctionType(returnType, paramTys1, 2, 0);
+        fn = LLVMAddFunction(module_, "llvm.smul.with.overflow.i32", fnTy);
+    }
+    LLVMValueRef result = LLVMBuildCall(builder_, fn, args.data(), 2, "");
+    gate2LValue_[gate] = result;
+}
+
+void LLVMIRBuilder::HandleExtractValue(GateRef gate)
+{
+    GateRef pointer = acc_.GetIn(gate, 0);
+    GateRef index = acc_.GetIn(gate, 1);
+    VisitExtractValue(gate, pointer, index);
+}
+
+void LLVMIRBuilder::VisitExtractValue(GateRef gate, GateRef e1, GateRef e2)
+{
+    LLVMValueRef e1Value = gate2LValue_[e1];
+    ASSERT((acc_.GetOpCode(e2) == OpCode::CONSTANT) && acc_.GetMachineType(e2) == MachineType::I32);
+    uint32_t index = static_cast<uint32_t>(acc_.GetConstantValue(e2));
+    LLVMValueRef result = LLVMBuildExtractValue(builder_, e1Value, index, "");
+    gate2LValue_[gate] = result;
 }
 
 LLVMIntPredicate LLVMIRBuilder::ConvertLLVMPredicateFromICMP(ICmpCondition cond)

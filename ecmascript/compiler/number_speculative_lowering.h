@@ -32,14 +32,26 @@ public:
 
 private:
     void VisitGate(GateRef gate);
+    void VisitTypedBinaryOp(GateRef gate);
     void VisitNumberBinaryOp(GateRef gate);
+    void VisitTypedUnaryOp(GateRef gate);
+    void VisitTypedInc(GateRef gate);
+    void VisitTypedNot(GateRef gate);
+    void VisitTypedJeqz(GateRef gate);
     void VisitConstant(GateRef gate);
     void VisitPhi(GateRef gate);
+    void VisitUndefinedStrictEq(GateRef gate);
     
     template<TypedBinOp Op>
     void VisitNumberCalculate(GateRef gate);
     template<TypedBinOp Op>
     void VisitNumberCompare(GateRef gate);
+    template<TypedBinOp Op>
+    void VisitNumberShift(GateRef gate);
+    void VisitIntNot(GateRef gate);
+    void VisitIntInc(GateRef gate);
+    void VisitDoubleInc(GateRef gate);
+    void VisitBooleanJeqz(GateRef gate);
 
     template<TypedBinOp Op>
     GateRef CalculateInts(GateRef left, GateRef right);
@@ -49,11 +61,12 @@ private:
     GateRef CompareInts(GateRef left, GateRef right);
     template<TypedBinOp Op>
     GateRef CompareDoubles(GateRef left, GateRef right);
+    template<TypedBinOp Op>
+    GateRef ShiftInts(GateRef left, GateRef right);
 
     Circuit* circuit_;
     GateAccessor acc_;
     CircuitBuilder builder_;
-    // ChunkVector<UseInfo>& useInfos_;
     ChunkVector<TypeInfo>& typeInfos_;
 };
 }  // panda::ecmascript::kungfu

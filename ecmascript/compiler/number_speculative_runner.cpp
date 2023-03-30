@@ -21,7 +21,7 @@ namespace panda::ecmascript::kungfu {
 void NumberSpeculativeRunner::Run()
 {
     auto maxId = circuit_->GetMaxGateId();
-    typeInfos_.resize(maxId + 1, TypeInfo::TAGGED);
+    typeInfos_.resize(maxId + 1, TypeInfo::NONE);
     NumberSpeculativeRetype retype(circuit_, chunk_, typeInfos_);
     retype.Run();
 

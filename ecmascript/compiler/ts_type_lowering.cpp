@@ -140,6 +140,9 @@ void TSTypeLowering::Lower(GateRef gate)
         case EcmaOpcode::EQ_IMM8_V8:
             LowerTypedEq(gate);
             break;
+        case EcmaOpcode::STRICTEQ_IMM8_V8:
+            LowerTypedStrictEq(gate);
+            break;
         case EcmaOpcode::NOTEQ_IMM8_V8:
             LowerTypedNotEq(gate);
             break;
@@ -396,6 +399,19 @@ void TSTypeLowering::LowerTypedEq(GateRef gate)
     }
 }
 
+void TSTypeLowering::LowerTypedStrictEq(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+    GateType gateType = acc_.GetGateType(gate);
+    if (acc_.IsConstantUndefined(left) || acc_.IsConstantUndefined(right)) {
+        GateRef result = builder_.TypedBinaryOp<TypedBinOp::TYPED_STRICTEQ>(left, right, leftType, rightType, gateType);
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    }
+}
+
 void TSTypeLowering::LowerTypedNotEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
@@ -586,9 +602,9 @@ void TSTypeLowering::LowerConditionJump(GateRef gate)
 void TSTypeLowering::SpeculateConditionJump(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateRef condition = builder_.IsSpecial(value, JSTaggedValue::VALUE_FALSE);
-    GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition);
-    acc_.ReplaceGate(gate, ifBranch, builder_.GetDepend(), Circuit::NullGate());
+    GateType valueType = acc_.GetGateType(value);
+    GateRef jeqz = builder_.TypedUnaryOp<TypedUnOp::TYPED_JEQZ>(value, valueType, GateType::Empty());
+    acc_.ReplaceGate(gate, jeqz, jeqz, Circuit::NullGate());
 }
 
 void TSTypeLowering::LowerTypedNeg(GateRef gate)
@@ -754,6 +770,8 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
         UNREACHABLE();
     }
     GateRef index = acc_.GetValueIn(gate, 0);
+    uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
+    index = builder_.Int32(indexValue);
     builder_.IndexCheck(receiverType, receiver, index);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
@@ -790,6 +808,8 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
         UNREACHABLE();
     }
     GateRef index = acc_.GetValueIn(gate, 1);
+    uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
+    index = builder_.Int32(indexValue);
     builder_.IndexCheck(receiverType, receiver, index);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
@@ -828,7 +848,8 @@ void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     AddProfiling(gate);
 
     builder_.StableArrayCheck(receiver);
-    builder_.IndexCheck(receiverType, receiver, propKey);
+    GateRef length = builder_.LoadArrayLength(receiver);
+    builder_.IndexCheck(receiverType, length, propKey);
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, propKey);
 

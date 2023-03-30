@@ -46,6 +46,7 @@ GateRef LaterElimination::VisitGate(GateRef gate)
     auto opcode = acc_.GetOpCode(gate);
     switch (opcode) {
         case OpCode::GET_CONSTPOOL:
+        case OpCode::CHECK_AND_CONVERT:
             return TryEliminateGate(gate);
         case OpCode::DEPEND_SELECTOR:
             return TryEliminateDependSelector(gate);
@@ -138,6 +139,15 @@ bool LaterElimination::CheckReplacement(GateRef lhs, GateRef rhs)
     size_t valueCount = acc_.GetNumValueIn(lhs);
     for (size_t i = 0; i < valueCount; i++) {
         if (acc_.GetValueIn(lhs, i) != acc_.GetValueIn(rhs, i)) {
+            return false;
+        }
+    }
+    auto opcode = acc_.GetOpCode(lhs);
+    if (opcode == OpCode::CHECK_AND_CONVERT) {
+        if (acc_.GetSrcType(lhs) != acc_.GetSrcType(rhs)) {
+            return false;
+        }
+        if (acc_.GetDstType(lhs) != acc_.GetDstType(rhs)) {
             return false;
         }
     }

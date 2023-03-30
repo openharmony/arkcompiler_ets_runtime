@@ -237,6 +237,10 @@ private:
     V(ChangeInt64ToTagged, (GateRef gate, GateRef e1))                                    \
     V(Deopt, (GateRef gate))                                                              \
     V(TruncFloatToInt, (GateRef gate, GateRef e1))                                        \
+    V(AddWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \
+    V(SubWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \
+    V(MulWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \
+    V(ExtractValue, (GateRef gate, GateRef e1, GateRef e2))                               \
 
 // runtime/common stub ID, opcodeOffset for bc stub
 using StubIdType = std::variant<RuntimeStubCSigns::ID, CommonStubCSigns::ID, LLVMValueRef>;
