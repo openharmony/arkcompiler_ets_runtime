@@ -693,7 +693,6 @@ public:
     bool GetOwnProperty(const EcmaVM *vm, Local<JSValueRef> key, PropertyAttribute &property);
     Local<ArrayRef> GetOwnPropertyNames(const EcmaVM *vm);
     Local<ArrayRef> GetOwnEnumerablePropertyNames(const EcmaVM *vm);
-    Local<ArrayRef> GetOwnEnumerablePropertyValues(const EcmaVM *vm);
     Local<JSValueRef> GetPrototype(const EcmaVM *vm);
 
     bool DefineProperty(const EcmaVM *vm, Local<JSValueRef> key, PropertyAttribute attribute);
