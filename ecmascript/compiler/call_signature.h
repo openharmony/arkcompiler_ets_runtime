@@ -46,6 +46,7 @@ public:
         BYTECODE_HANDLER,
         BYTECODE_DEBUGGER_HANDLER,
         BYTECODE_HELPER_HANDLER,
+        BYTECODE_PROFILE_HANDLER,
         JSFUNCTION,
         BUILTINS_STUB,
         BUILTINS_WITH_ARGV_STUB,
@@ -406,6 +407,7 @@ private:
     V(DebugPrintInstruction)                \
     V(Comment)                              \
     V(PGOProfiler)                          \
+    V(PGOTypeProfiler)                      \
     V(FatalPrint)                           \
     V(GetActualArgvNoGC)                    \
     V(InsertOldToNewRSet)                   \

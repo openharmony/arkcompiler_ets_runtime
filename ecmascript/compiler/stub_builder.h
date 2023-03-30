@@ -23,6 +23,8 @@
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
+using ProfileOperation = std::function<void(GateRef)>;
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DEFVARIABLE(varname, type, val) Variable varname(GetEnvironment(), type, NextVariableId(), val)
 
@@ -66,6 +68,25 @@ using namespace panda::ecmascript;
 #else
 #define EXITENTRY() ((void)0)
 #endif
+
+#define TYPE_CALL_BACK(type)                                  \
+    if (callback) {                                           \
+        GateRef typeGate = Int32(static_cast<int32_t>(type)); \
+        callback(typeGate);                                   \
+    }
+
+#define COMBINE_TYPE_CALL_BACK(curType, type)                       \
+    if (callback) {                                                 \
+        GateRef curTypeGate = Int32(static_cast<int32_t>(curType)); \
+        GateRef typeGate = Int32(static_cast<int32_t>(type));       \
+        GateRef combineTypeGate = Int32Or(curTypeGate, typeGate);   \
+        callback(combineTypeGate);                                  \
+    }
+
+#define FUNC_CALL_BACK(func) \
+    if (callback)  {         \
+        callback(func);      \
+    }
 
 class StubBuilder {
 public:
@@ -521,15 +542,15 @@ public:
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
 
     // fast path
-    GateRef FastEqual(GateRef left, GateRef right);
-    GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right);
+    GateRef FastEqual(GateRef left, GateRef right, ProfileOperation callback);
+    GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastStringEqual(GateRef glue, GateRef left, GateRef right);
-    GateRef FastMod(GateRef gule, GateRef left, GateRef right);
+    GateRef FastMod(GateRef gule, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastTypeOf(GateRef left, GateRef right);
-    GateRef FastMul(GateRef left, GateRef right);
-    GateRef FastDiv(GateRef left, GateRef right);
-    GateRef FastAdd(GateRef left, GateRef right);
-    GateRef FastSub(GateRef left, GateRef right);
+    GateRef FastMul(GateRef left, GateRef right, ProfileOperation callback);
+    GateRef FastDiv(GateRef left, GateRef right, ProfileOperation callback);
+    GateRef FastAdd(GateRef left, GateRef right, ProfileOperation callback);
+    GateRef FastSub(GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastToBoolean(GateRef value);
 
     // Add SpecialContainer
@@ -563,7 +584,7 @@ public:
     GateRef CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder, GateRef accessor);
     GateRef ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj);
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize, GateRef hotnessCounter,
-                           JSCallMode mode, std::initializer_list<GateRef> args);
+                           JSCallMode mode, std::initializer_list<GateRef> args, ProfileOperation callback = nullptr);
     GateRef IsFastTypeArray(GateRef jsType);
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
@@ -581,7 +602,6 @@ public:
     inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
     inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode);
     void Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel);
-    void PGOProfiler(GateRef glue, GateRef func);
 
     GateRef FlattenString(GateRef glue, GateRef str);
     void Comment(GateRef glue, const std::string &str);
@@ -589,9 +609,9 @@ public:
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode Op>
-    GateRef FastAddSubAndMul(GateRef left, GateRef right);
+    GateRef FastAddSubAndMul(GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastBinaryOp(GateRef left, GateRef right,
-                         const BinaryOperation& intOp, const BinaryOperation& floatOp);
+                         const BinaryOperation& intOp, const BinaryOperation& floatOp, ProfileOperation callback);
     void InitializeArguments();
     CallSignature *callSignature_ {nullptr};
     Environment *env_;

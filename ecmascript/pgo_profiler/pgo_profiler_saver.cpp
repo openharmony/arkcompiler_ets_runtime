@@ -37,7 +37,11 @@ bool PGOProfilerSaver::InitializeData()
         if (!RealPath(outDir_, realOutPath_, false)) {
             return false;
         }
-        realOutPath_ += PROFILE_FILE_NAME;
+
+        static const std::string endString = ".ap";
+        if (realOutPath_.compare(realOutPath_.length() - endString.length(), endString.length(), endString)) {
+            realOutPath_ += PROFILE_FILE_NAME;
+        }
         LOG_ECMA(INFO) << "Save profiler to file:" << realOutPath_;
         PGOProfilerHeader::Build(&header_, PGOProfilerHeader::LastSize());
         pandaFileInfos_ = std::make_unique<PGOPandaFileInfos>();
@@ -64,26 +68,27 @@ void PGOProfilerSaver::Merge(const PGORecordDetailInfos &recordInfos)
     globalRecordInfos_->Merge(recordInfos);
 }
 
-void PGOProfilerSaver::Save()
+bool PGOProfilerSaver::Save()
 {
     if (!isInitialized_) {
-        return;
+        return false;
     }
     os::memory::LockHolder lock(mutex_);
-    SaveProfiler();
+    return SaveProfiler();
 }
 
-void PGOProfilerSaver::SaveProfiler(const SaveTask *task)
+bool PGOProfilerSaver::SaveProfiler(const SaveTask *task)
 {
     std::ofstream fileStream(realOutPath_.c_str());
     if (!fileStream.is_open()) {
         LOG_ECMA(ERROR) << "The file path(" << realOutPath_ << ") open failure!";
-        return;
+        return false;
     }
     pandaFileInfos_->ProcessToBinary(fileStream, header_->GetPandaInfoSection());
-    globalRecordInfos_->ProcessToBinary(task, fileStream, header_->GetRecordInfoSection());
+    globalRecordInfos_->ProcessToBinary(task, fileStream, header_);
     header_->ProcessToBinary(fileStream);
     fileStream.close();
+    return true;
 }
 
 void PGOProfilerSaver::TerminateSaveTask()

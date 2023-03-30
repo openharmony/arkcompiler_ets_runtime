@@ -106,6 +106,7 @@ enum CommandValues {
     OPTION_MERGE_ABC,
     OPTION_ENABLE_TYPE_LOWERING,
     OPTION_ENABLE_OPT_INLINING,
+    OPTION_ENABLE_OPT_PGOTYPE,
     OPTION_HELP,
     OPTION_PGO_PROFILER_PATH,
     OPTION_PGO_HOTNESS_THRESHOLD,
@@ -846,6 +847,16 @@ public:
         return enableOptInlining_;
     }
 
+    void SetEnableOptPGOType(bool value)
+    {
+        enableOptPGOType_ = value;
+    }
+
+    bool IsEnableOptPGOType() const
+    {
+        return enableOptPGOType_;
+    }
+
     void WasSet(int opt)
     {
         wasSet_ |= 1ULL << static_cast<uint64_t>(opt);
@@ -943,6 +954,7 @@ private:
     bool mergeAbc_ {false};
     bool enableTypeLowering_ {true};
     bool enableOptInlining_ {false};
+    bool enableOptPGOType_ {true};
     uint64_t wasSet_ {0};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};

@@ -34,6 +34,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/compiler/compiler_log.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -263,10 +264,11 @@ public:
                            bool enableLog,
                            bool enableTypeLowering,
                            std::string name,
-                           const CString &recordName)
+                           const CString &recordName,
+                           PGOProfilerLoader *loader)
         : tsManager_(tsManager), circuit_(circuit), file_(jsPandaFile),
           method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
-          typeRecorder_(jsPandaFile, method_, tsManager, recordName), hasTypes_(hasTypes),
+          typeRecorder_(jsPandaFile, method_, tsManager, recordName, loader), hasTypes_(hasTypes),
           enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
           pcOffsets_(methodPCInfo.pcOffsets),
           frameStateBuilder_(this, circuit, methodLiteral), methodName_(name), recordName_(recordName),

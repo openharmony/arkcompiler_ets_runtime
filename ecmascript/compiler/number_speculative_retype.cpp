@@ -20,18 +20,30 @@
 #include "ecmascript/compiler/type.h"
 
 namespace panda::ecmascript::kungfu {
-GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, GateType pgoType)
+GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, GateType gateType)
 {
     TypeInfo& type = typeInfos_[acc_.GetId(gate)];
     TypeInfo old = type;
-    if (pgoType.IsIntType()) {
+    if (gateType.IsIntType()) {
         type = TypeInfo::INT32;
-    } else if (pgoType.IsDoubleType()) {
+    } else if (gateType.IsDoubleType()) {
         type = TypeInfo::FLOAT64;
-    } else if (pgoType.IsBooleanType()) {
+    } else if (gateType.IsBooleanType()) {
         type = TypeInfo::INT1;
     } else {
         type = TypeInfo::TAGGED;
+    }
+    return old == type ? Circuit::NullGate() : gate;
+}
+
+GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, PGOSampleType pgoType)
+{
+    TypeInfo& type = typeInfos_[acc_.GetId(gate)];
+    TypeInfo old = type;
+    if (pgoType.IsInt()) {
+        type = TypeInfo::INT32;
+    } else {
+        type = TypeInfo::FLOAT64;
     }
     return old == type ? Circuit::NullGate() : gate;
 }
@@ -63,9 +75,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
 
 GateRef NumberSpeculativeRetype::VisitTypedBinaryOp(GateRef gate)
 {
-    GateType leftType = acc_.GetLeftType(gate);
-    GateType rightType = acc_.GetRightType(gate);
-    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+    if (acc_.HasNumberType(gate)) {
         return VisitNumberBinaryOp(gate);
     } else {
         [[maybe_unused]] GateRef left = acc_.GetValueIn(gate, 0);
@@ -181,17 +191,18 @@ GateRef NumberSpeculativeRetype::VisitTypedUnaryOp(GateRef gate)
 
 GateRef NumberSpeculativeRetype::VisitNumberCalculate(GateRef gate)
 {
-    GateType gateType = acc_.GetGateType(gate);
     if (IsRetype()) {
-        GateType resType = gateType.IsIntType() ? GateType::IntType() : GateType::DoubleType();
-        return SetOutputType(gate, resType);
+        PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
+        if (sampleType.IsNumber()) {
+            return SetOutputType(gate, sampleType);
+        } else {
+            GateType gateType = acc_.GetGateType(gate);
+            GateType resType = gateType.IsIntType() ? GateType::IntType() : GateType::DoubleType();
+            return SetOutputType(gate, resType);
+        }
     } else if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
-        if (gateType.IsIntType()) {
-            ConvertForIntOperator(gate);
-        } else {
-            ConvertForDoubleOperator(gate);
-        }
+        ConvertForBinaryOp(gate);
         acc_.ReplaceStateIn(gate, builder_.GetState());
         acc_.ReplaceDependIn(gate, builder_.GetDepend());
     }
@@ -205,13 +216,7 @@ GateRef NumberSpeculativeRetype::VisitNumberCompare(GateRef gate)
     }
     if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
-        GateType leftType = acc_.GetLeftType(gate);
-        GateType rightType = acc_.GetRightType(gate);
-        if (leftType.IsIntType() && rightType.IsIntType()) {
-            ConvertForIntOperator(gate);
-        } else {
-            ConvertForDoubleOperator(gate);
-        }
+        ConvertForCompareOp(gate);
         acc_.ReplaceStateIn(gate, builder_.GetState());
         acc_.ReplaceDependIn(gate, builder_.GetDepend());
     }
@@ -225,7 +230,9 @@ GateRef NumberSpeculativeRetype::VisitNumberShift(GateRef gate)
     }
     if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
-        ConvertForIntOperator(gate);
+        GateType leftType = acc_.GetLeftType(gate);
+        GateType rightType = acc_.GetRightType(gate);
+        ConvertForIntOperator(gate, leftType, rightType);
         acc_.ReplaceStateIn(gate, builder_.GetState());
         acc_.ReplaceDependIn(gate, builder_.GetDepend());
     }
@@ -329,26 +336,6 @@ GateRef NumberSpeculativeRetype::VisitBooleanJeqz(GateRef gate)
     return Circuit::NullGate();
 }
 
-void NumberSpeculativeRetype::ConvertForIntOperator(GateRef gate)
-{
-    GateRef left = acc_.GetValueIn(gate, 0);
-    GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = acc_.GetLeftType(gate);
-    GateType rightType = acc_.GetRightType(gate);
-    acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(left, leftType), 0);
-    acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(right, rightType), 1);
-}
-
-void NumberSpeculativeRetype::ConvertForDoubleOperator(GateRef gate)
-{
-    GateRef left = acc_.GetValueIn(gate, 0);
-    GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = acc_.GetLeftType(gate);
-    GateType rightType = acc_.GetRightType(gate);
-    acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(left, leftType), 0);
-    acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(right, rightType), 1);
-}
-
 GateRef NumberSpeculativeRetype::VisitNumberRelated(GateRef gate)
 {
     if (IsRetype()) {
@@ -400,6 +387,80 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToBool(GateRef gate, [[maybe_unu
             return Circuit::NullGate();
         }
     }
+}
+
+void NumberSpeculativeRetype::ConvertForBinaryOp(GateRef gate)
+{
+    PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
+    if (sampleType.IsNumber()) {
+        if (sampleType.IsInt()) {
+            GateType leftType = GateType::IntType();
+            GateType rightType = GateType::IntType();
+            ConvertForIntOperator(gate, leftType, rightType);
+        } else {
+            GateType leftType = GateType::NumberType();
+            GateType rightType = GateType::NumberType();
+            if (sampleType.IsIntOverFlow()) {
+                leftType = GateType::IntType();
+                rightType = GateType::IntType();
+            } else if (sampleType.IsDouble()) {
+                leftType = GateType::DoubleType();
+                rightType = GateType::DoubleType();
+            }
+            ConvertForDoubleOperator(gate, leftType, rightType);
+        }
+    } else {
+        GateType gateType = acc_.GetGateType(gate);
+        GateType leftType = acc_.GetLeftType(gate);
+        GateType rightType = acc_.GetRightType(gate);
+        if (gateType.IsIntType()) {
+            ConvertForIntOperator(gate, leftType, rightType);
+        } else {
+            ConvertForDoubleOperator(gate, leftType, rightType);
+        }
+    }
+}
+
+void NumberSpeculativeRetype::ConvertForCompareOp(GateRef gate)
+{
+    PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
+    if (sampleType.IsNumber()) {
+        if (sampleType.IsInt()) {
+            GateType leftType = GateType::IntType();
+            GateType rightType = GateType::IntType();
+            ConvertForIntOperator(gate, leftType, rightType);
+        } else {
+            GateType leftType = GateType::NumberType();
+            GateType rightType = GateType::NumberType();
+            ConvertForDoubleOperator(gate, leftType, rightType);
+        }
+    } else {
+        GateType leftType = acc_.GetLeftType(gate);
+        GateType rightType = acc_.GetRightType(gate);
+        if (leftType.IsIntType() && rightType.IsIntType()) {
+            ConvertForIntOperator(gate, leftType, rightType);
+        } else {
+            ConvertForDoubleOperator(gate, leftType, rightType);
+        }
+    }
+}
+
+void NumberSpeculativeRetype::ConvertForIntOperator(GateRef gate, GateType leftType, GateType rightType)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+
+    acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(left, leftType), 0);
+    acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(right, rightType), 1);
+}
+
+void NumberSpeculativeRetype::ConvertForDoubleOperator(GateRef gate, GateType leftType, GateType rightType)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+
+    acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(left, leftType), 0);
+    acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(right, rightType), 1);
 }
 
 GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType gateType)

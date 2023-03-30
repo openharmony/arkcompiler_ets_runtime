@@ -143,6 +143,7 @@ public:
         return factory_;
     }
 
+    void InitializePGOProfiler();
     void ResetPGOProfiler();
 
     bool IsEnablePGOProfiler() const;

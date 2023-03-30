@@ -407,7 +407,7 @@ HWTEST_F_L0(PGOProfilerTest, BinaryToText)
     ASSERT_FALSE(recordInfos->AddMethod("test", EntityId(23), "test", SampleMode::CALL_MODE));
 
     pandaFileInfos->ProcessToBinary(file, header->GetPandaInfoSection());
-    recordInfos->ProcessToBinary(nullptr, file, header->GetRecordInfoSection());
+    recordInfos->ProcessToBinary(nullptr, file, header);
     header->ProcessToBinary(file);
     file.close();
 
@@ -451,9 +451,9 @@ HWTEST_F_L0(PGOProfilerTest, TextRecover)
     file.write(result.c_str(), result.size());
     result = "\nPanda file sumcheck list: [ 413775942 ]\n";
     file.write(result.c_str(), result.size());
-    result = "\n_GLOBAL::funct_main_0: [ 1232/3/CALL_MODE/hello ]\n";
+    result = "\n_GLOBAL::funct_main_0: [ 1232/3/CALL_MODE/hello/ ]\n";
     file.write(result.c_str(), result.size());
-    result = "\nrecordName: [ 234/100/HOTNESS_MODE/h#ello1 ]\n";
+    result = "\nrecordName: [ 234/100/HOTNESS_MODE/h#ello1/ ]\n";
     file.write(result.c_str(), result.size());
     file.close();
 

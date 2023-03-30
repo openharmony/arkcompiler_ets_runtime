@@ -57,6 +57,15 @@ public:
         recordSimpleInfos_->Update(recordName, callback);
     }
 
+    template <typename Callback>
+    void GetTypeInfo(const CString &recordName, EntityId methodId, Callback callback)
+    {
+        if (!isLoaded_ || !isVerifySuccess_) {
+            return;
+        }
+        recordSimpleInfos_->GetTypeInfo(recordName, methodId, callback);
+    }
+
     bool IsLoaded() const
     {
         return isLoaded_;

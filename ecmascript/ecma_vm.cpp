@@ -150,29 +150,37 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     options_.ParseAsmInterOption();
 }
 
-void EcmaVM::ResetPGOProfiler()
+void EcmaVM::InitializePGOProfiler()
 {
     bool isEnablePGOProfiler = IsEnablePGOProfiler();
-    if (options_.IsWorker()) {
-        isEnablePGOProfiler = PGOProfilerManager::GetInstance()->IsEnable();
-    }
     if (pgoProfiler_ == nullptr) {
         pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(this, isEnablePGOProfiler);
-    } else {
-        PGOProfilerManager::GetInstance()->Reset(pgoProfiler_, isEnablePGOProfiler);
     }
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
 }
 
+void EcmaVM::ResetPGOProfiler()
+{
+    if (pgoProfiler_ != nullptr) {
+        bool isEnablePGOProfiler = IsEnablePGOProfiler();
+        PGOProfilerManager::GetInstance()->Reset(pgoProfiler_, isEnablePGOProfiler);
+        thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
+        thread_->CheckOrSwitchPGOStubs();
+    }
+}
+
 bool EcmaVM::IsEnablePGOProfiler() const
 {
+    if (options_.IsWorker()) {
+        return PGOProfilerManager::GetInstance()->IsEnable();
+    }
     return options_.GetEnableAsmInterpreter() && options_.IsEnablePGOProfiler();
 }
 
 bool EcmaVM::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
-    ResetPGOProfiler();
+    InitializePGOProfiler();
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
     RuntimeStubs::Initialize(thread_);

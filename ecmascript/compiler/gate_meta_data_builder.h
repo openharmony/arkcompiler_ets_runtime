@@ -128,9 +128,9 @@ public:
         return new (chunk_) JSBytecodeMetaData(valuesIn, opcode, pcOffset, flags);
     }
 
-    const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp)
+    const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp, PGOSampleType type)
     {
-        return new (chunk_) TypedBinaryMegaData(value, binOp);
+        return new (chunk_) TypedBinaryMegaData(value, binOp, type);
     }
 
     const GateMetaData* Nop()

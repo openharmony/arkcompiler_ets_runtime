@@ -64,7 +64,7 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
 void NumberSpeculativeLowering::VisitTypedBinaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    if (acc_.GetLeftType(gate).IsNumberType() && acc_.GetRightType(gate).IsNumberType()) {
+    if (acc_.HasNumberType(gate)) {
         VisitNumberBinaryOp(gate);
     } else {
         [[maybe_unused]] GateRef left = acc_.GetValueIn(gate, 0);
@@ -179,6 +179,14 @@ void NumberSpeculativeLowering::VisitNumberCalculate(GateRef gate)
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     GateType gateType = acc_.GetGateType(gate);
+    PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
+    if (sampleType.IsNumber()) {
+        if (sampleType.IsInt()) {
+            gateType = GateType::IntType();
+        } else {
+            gateType = GateType::DoubleType();
+        }
+    }
     GateRef result = Circuit::NullGate();
     if (gateType.IsIntType()) {
         result = CalculateInts<Op>(left, right);    // int op int
@@ -198,6 +206,16 @@ void NumberSpeculativeLowering::VisitNumberCompare(GateRef gate)
     GateRef right = acc_.GetValueIn(gate, 1);
     GateType leftType = acc_.GetLeftType(gate);
     GateType rightType = acc_.GetRightType(gate);
+    PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
+    if (sampleType.IsNumber()) {
+        if (sampleType.IsInt()) {
+            leftType = GateType::IntType();
+            rightType = GateType::IntType();
+        } else {
+            leftType = GateType::NumberType();
+            rightType = GateType::NumberType();
+        }
+    }
     GateRef result = Circuit::NullGate();
     if (leftType.IsIntType() && rightType.IsIntType()) {
         result = CompareInts<Op>(left, right);  // int op int

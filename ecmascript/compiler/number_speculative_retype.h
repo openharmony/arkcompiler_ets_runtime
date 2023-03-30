@@ -31,7 +31,7 @@ public:
         : GraphVisitor(circuit, chunk), acc_(circuit), builder_(circuit), typeInfos_(typeInfos) {}
     void Run();
     GateRef VisitGate(GateRef gate);
-    
+
 private:
     enum class State {
         Retype,
@@ -42,12 +42,13 @@ private:
     {
         return state_ == State::Retype;
     }
-    
+
     bool IsConvert() const
     {
         return state_ == State::Convert;
     }
-    
+
+    GateRef SetOutputType(GateRef gate, PGOSampleType type);
     GateRef SetOutputType(GateRef gate, GateType type);
     GateRef VisitPhi(GateRef gate);
     GateRef VisitConstant(GateRef gate);
@@ -69,12 +70,17 @@ private:
     GateRef VisitIndexCheck(GateRef gate);
     GateRef VisitLoadElement(GateRef gate);
     GateRef VisitStoreElement(GateRef gate);
-    void ConvertForIntOperator(GateRef gate);
-    void ConvertForDoubleOperator(GateRef gate);
     GateRef VisitNumberRelated(GateRef gate);
     GateRef VisitOthers(GateRef gate);
 
     GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);
+
+    void ConvertForBinaryOp(GateRef gate);
+    void ConvertForCompareOp(GateRef gate);
+
+    void ConvertForIntOperator(GateRef gate, GateType leftType, GateType rightType);
+    void ConvertForDoubleOperator(GateRef gate, GateType leftType, GateType rightType);
+
     GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType);
     GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType);
     GateRef CheckAndConvertToTagged(GateRef gate, GateType gateType);

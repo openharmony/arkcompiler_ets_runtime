@@ -57,17 +57,11 @@ private:
 
     void Lower(GateRef gate);
     void VerifyGuard() const;
-    void LowerTypedAdd(GateRef gate);
-    void LowerTypedSub(GateRef gate);
-    void LowerTypedMul(GateRef gate);
+
+    template<TypedBinOp Op>
+    void LowerTypedBinOp(GateRef gate);
     void LowerTypedMod(GateRef gate);
-    void LowerTypedLess(GateRef gate);
-    void LowerTypedLessEq(GateRef gate);
-    void LowerTypedGreater(GateRef gate);
-    void LowerTypedGreaterEq(GateRef gate);
     void LowerTypedDiv(GateRef gate);
-    void LowerTypedEq(GateRef gate);
-    void LowerTypedNotEq(GateRef gate);
     void LowerTypedStrictEq(GateRef gate);
     void LowerTypedShl(GateRef gate);
     void LowerTypedShr(GateRef gate);
@@ -111,6 +105,7 @@ private:
     // or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;
     bool NeedInt32OverflowCheck(TypedUnOp op) const;
+    bool HasNumberType(GateRef gate, GateRef left, GateRef right) const;
 
     template<TypedBinOp Op>
     void SpeculateNumbers(GateRef gate);

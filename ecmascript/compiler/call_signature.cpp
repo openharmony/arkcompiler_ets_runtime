@@ -1354,6 +1354,24 @@ DEF_CALL_SIGNATURE(PGOProfiler)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(PGOTypeProfiler)
+{
+    // 2 : 2 input parameters
+    CallSignature typeProfInstruction("PGOTypeProfiler", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = typeProfInstruction;
+    // 2 : 2 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::INT32(),
+        VariableType::INT32(),
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(FatalPrint)
 {
     // 1 : 1 input parameters

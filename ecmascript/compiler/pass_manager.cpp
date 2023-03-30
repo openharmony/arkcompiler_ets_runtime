@@ -91,9 +91,10 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
 
         Circuit circuit(vm_->GetNativeAreaAllocator(), cmpCfg->Is64Bit());
         circuit.SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+        PGOProfilerLoader *loader = passOptions_->EnableOptPGOType() ? &profilerLoader_ : nullptr;
         BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, tsManager, &circuit,
                                        info.GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
-                                       passOptions_->EnableTypeLowering(), fullName, recordName);
+                                       passOptions_->EnableTypeLowering(), fullName, recordName, loader);
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
             builder.BytecodeToCircuit();

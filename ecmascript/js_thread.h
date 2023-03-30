@@ -52,6 +52,11 @@ enum class PGOProfilerStatus : uint8_t {
     PGO_PROFILER_ENABLE,
 };
 
+enum class BCStubStatus: uint8_t {
+    NORMAL_BC_STUB,
+    PROFILE_BC_STUB,
+};
+
 struct BCStubEntries {
     static constexpr size_t EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT =
         kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS;
@@ -179,16 +184,16 @@ STATIC_ASSERT_EQ_ARCH(sizeof(COStubEntries), COStubEntries::SizeArch32, COStubEn
 class JSThread {
 public:
     static constexpr int CONCURRENT_MARKING_BITFIELD_NUM = 2;
-    static constexpr int PGO_PROFILER_BITFIELD_NUM = 1;
     static constexpr int CHECK_SAFEPOINT_BITFIELD_NUM = 8;
+    static constexpr int PGO_PROFILER_BITFIELD_START = 16;
     static constexpr int BOOL_BITFIELD_NUM = 1;
     static constexpr uint32_t RESERVE_STACK_SIZE = 128;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
-    using PGOStatusBits = MarkStatusBits::NextField<PGOProfilerStatus, PGO_PROFILER_BITFIELD_NUM>;
-
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
     using VMNeedSuspensionBit = BitField<bool, CHECK_SAFEPOINT_BITFIELD_NUM, BOOL_BITFIELD_NUM>;
     using VMHasSuspendedBit = VMNeedSuspensionBit::NextFlag;
+    using PGOStatusBits = BitField<PGOProfilerStatus, PGO_PROFILER_BITFIELD_START, BOOL_BITFIELD_NUM>;
+    using BCStubStatusBits = PGOStatusBits::NextField<BCStubStatus, BOOL_BITFIELD_NUM>;
     using ThreadId = uint32_t;
 
     explicit JSThread(EcmaVM *vm);
@@ -419,6 +424,7 @@ public:
     }
 
     void PUBLIC_API CheckSwitchDebuggerBCStub();
+    void CheckOrSwitchPGOStubs();
 
     ThreadId GetThreadId() const
     {
@@ -469,13 +475,23 @@ public:
     {
         PGOProfilerStatus status =
             enable ? PGOProfilerStatus::PGO_PROFILER_ENABLE : PGOProfilerStatus::PGO_PROFILER_DISABLE;
-        PGOStatusBits::Set(status, &glueData_.gcStateBitField_);
+        PGOStatusBits::Set(status, &glueData_.interruptVector_);
     }
 
     bool IsPGOProfilerEnable() const
     {
-        auto status = PGOStatusBits::Decode(glueData_.gcStateBitField_);
+        auto status = PGOStatusBits::Decode(glueData_.interruptVector_);
         return status == PGOProfilerStatus::PGO_PROFILER_ENABLE;
+    }
+
+    void SetBCStubStatus(BCStubStatus status)
+    {
+        BCStubStatusBits::Set(status, &glueData_.interruptVector_);
+    }
+
+    BCStubStatus GetBCStubStatus() const
+    {
+        return BCStubStatusBits::Decode(glueData_.interruptVector_);
     }
 
     bool CheckSafepoint();

@@ -28,6 +28,7 @@ public:
     NO_MOVE_SEMANTIC(PGOProfiler);
 
     void Sample(JSTaggedType value, SampleMode mode = SampleMode::CALL_MODE);
+    void TypeSample(JSTaggedType func, int32_t offset, int32_t type);
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT = 10;
 
