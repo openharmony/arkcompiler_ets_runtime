@@ -644,6 +644,8 @@ bool Heap::CheckOngoingConcurrentMarking()
             WaitConcurrentMarkingFinished();
             ecmaVm_->GetEcmaGCStats()->StatisticConcurrentMarkWait(clockScope.GetPauseTime());
             LOG_GC(DEBUG) << "wait concurrent marking finish pause time " << clockScope.TotalSpentTime();
+        } else {
+            WaitRunningTaskFinished();
         }
         memController_->RecordAfterConcurrentMark(IsFullMark(), concurrentMarker_);
         return true;
