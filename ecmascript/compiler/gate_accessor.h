@@ -374,6 +374,7 @@ public:
     ICmpCondition GetICmpCondition(GateRef gate) const;
     FCmpCondition GetFCmpCondition(GateRef gate) const;
     ConstDataId GetConstDataId(GateRef gate) const;
+    size_t GetOffset(GateRef gate) const;
     size_t GetVirtualRegisterIndex(GateRef gate) const;
     TypedLoadOp GetTypedLoadOp(GateRef gate) const;
     TypedStoreOp GetTypedStoreOp(GateRef gate) const;

@@ -191,6 +191,7 @@ private:
     void LowerStoreProperty(GateRef gate, GateRef glue);
     void LowerCallSetter(GateRef gate, GateRef glue);
     void LowerLoadArrayLength(GateRef gate);
+    void LowerLoadConstOffset(GateRef gate);
     void LowerStoreElement(GateRef gate, GateRef glue);
     void LowerLoadElement(GateRef gate);
     void LowerLoadFromTaggedArray(GateRef gate);

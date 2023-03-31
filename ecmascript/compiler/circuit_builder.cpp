@@ -842,6 +842,19 @@ GateRef CircuitBuilder::LoadArrayLength(GateRef array)
     return ret;
 }
 
+GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, size_t offset)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+
+    auto ret = GetCircuit()->NewGate(circuit_->LoadConstOffset(offset), type.GetMachineType(),
+                                     { currentControl, currentDepend, receiver }, type.GetGateType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
