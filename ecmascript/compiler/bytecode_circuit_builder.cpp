@@ -528,7 +528,6 @@ void BytecodeCircuitBuilder::UpdateCFG()
 void BytecodeCircuitBuilder::BuildCircuitArgs()
 {
     argAcc_.NewCommonArg(CommonArgIdx::GLUE, MachineType::I64, GateType::NJSValue());
-    argAcc_.NewCommonArg(CommonArgIdx::LEXENV, MachineType::I64, GateType::TaggedValue());
     argAcc_.NewCommonArg(CommonArgIdx::ACTUAL_ARGC, MachineType::I64, GateType::NJSValue());
     auto funcIdx = static_cast<size_t>(CommonArgIdx::FUNC);
     const size_t actualNumArgs = argAcc_.GetActualNumArgs();

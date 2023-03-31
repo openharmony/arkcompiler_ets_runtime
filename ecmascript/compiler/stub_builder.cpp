@@ -4739,7 +4739,6 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         {
             GateRef newTarget = Undefined();
             GateRef thisValue = Undefined();
-            GateRef lexEnv = env_->GetBuilder()->GetFunctionLexicalEnv(func);
             GateRef realNumArgs = Int64Add(ZExtInt32ToInt64(actualNumArgs), Int64(NUM_MANDATORY_JSFUNC_ARGS));
             switch (mode) {
                 case JSCallMode::CALL_THIS_ARG0:
@@ -4748,7 +4747,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 case JSCallMode::CALL_ARG0:
                 case JSCallMode::DEPRECATED_CALL_ARG0:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
-                        { glue, lexEnv, realNumArgs, func, newTarget, thisValue});
+                        { glue, realNumArgs, func, newTarget, thisValue});
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_ARG1:
@@ -4757,7 +4756,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 case JSCallMode::CALL_ARG1:
                 case JSCallMode::DEPRECATED_CALL_ARG1:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
-                        { glue, lexEnv, realNumArgs, func, newTarget, thisValue,  data[0] });
+                        { glue, realNumArgs, func, newTarget, thisValue,  data[0] });
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_ARG2:
@@ -4766,7 +4765,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 case JSCallMode::CALL_ARG2:
                 case JSCallMode::DEPRECATED_CALL_ARG2:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
-                        { glue, lexEnv, realNumArgs, func, newTarget, thisValue,  data[0], data[1] });
+                        { glue, realNumArgs, func, newTarget, thisValue,  data[0], data[1] });
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_ARG3:
@@ -4775,7 +4774,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                 case JSCallMode::CALL_ARG3:
                 case JSCallMode::DEPRECATED_CALL_ARG3:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
-                        { glue, lexEnv, realNumArgs, func, newTarget, thisValue,
+                        { glue, realNumArgs, func, newTarget, thisValue,
                           data[0], data[1], data[2] }); // 2: args2
                     Jump(&exit);
                     break;
@@ -4798,17 +4797,17 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     break;
                 case JSCallMode::CALL_GETTER:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
-                        { glue, lexEnv, realNumArgs, func, newTarget, data[0]});
+                        { glue, realNumArgs, func, newTarget, data[0]});
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_SETTER:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
-                        { glue, lexEnv, realNumArgs, func, newTarget, data[0], data[1]});
+                        { glue, realNumArgs, func, newTarget, data[0], data[1]});
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
                     result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
-                        { glue, lexEnv, realNumArgs, func, newTarget, data[0], data[1], data[2], data[3] });
+                        { glue, realNumArgs, func, newTarget, data[0], data[1], data[2], data[3] });
                     Jump(&exit);
                     break;
                 default:

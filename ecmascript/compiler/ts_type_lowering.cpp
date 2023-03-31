@@ -811,9 +811,8 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
 
     // call constructor
     size_t range = acc_.GetNumValueIn(gate);
-    GateRef envArg = builder_.Undefined();
-    GateRef actualArgc = builder_.Int64(range + 2);  // 2:newTaget, this
-    std::vector<GateRef> args { glue_, envArg, actualArgc, ctor, ctor, thisObj };
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(range, EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
+    std::vector<GateRef> args { glue_, actualArgc, ctor, ctor, thisObj };
     for (size_t i = 1; i < range; ++i) {  // 1:skip ctor
         args.emplace_back(acc_.GetValueIn(gate, i));
     }
@@ -844,9 +843,8 @@ void TSTypeLowering::LowerTypedSuperCall(GateRef gate)
 
     // call constructor
     size_t range = acc_.GetNumValueIn(gate);
-    GateRef envArg = builder_.Undefined();
     GateRef actualArgc = builder_.Int64(range + 3);  // 3: ctor, newTaget, this
-    std::vector<GateRef> args { glue_, envArg, actualArgc, superCtor, newTarget, thisObj };
+    std::vector<GateRef> args { glue_, actualArgc, superCtor, newTarget, thisObj };
     for (size_t i = 0; i < range; ++i) {
         args.emplace_back(acc_.GetValueIn(gate, i));
     }
@@ -902,8 +900,7 @@ void TSTypeLowering::LowerTypedCallArg0(GateRef gate)
     GateRef thisObj = builder_.Undefined();
     if (IsLoadVtable(func)) {
         builder_.JSCallThisTargetTypeCheck(funcType, func);
-        GateRef env = builder_.GetFunctionLexicalEnv(func);
-        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj };
+        std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj };
 
         GateRef result = builder_.TypedAotCall(gate, args);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -914,8 +911,7 @@ void TSTypeLowering::LowerTypedCallArg0(GateRef gate)
             return;
         }
         builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
-        GateRef env = builder_.GetFunctionLexicalEnv(func);
-        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj };
+        std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj };
 
         GateRef result = builder_.TypedAotCall(gate, args);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -943,8 +939,7 @@ void TSTypeLowering::LowerTypedCallArg1(GateRef gate)
     GateRef a0Value = acc_.GetValueIn(gate, 0);
     if (IsLoadVtable(func)) {
         builder_.JSCallThisTargetTypeCheck(funcType, func);
-        GateRef env = builder_.GetFunctionLexicalEnv(func);
-        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0Value };
+        std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0Value };
         GateRef result = builder_.TypedAotCall(gate, args);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     } else {
@@ -954,8 +949,7 @@ void TSTypeLowering::LowerTypedCallArg1(GateRef gate)
             return;
         }
         builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
-        GateRef env = builder_.GetFunctionLexicalEnv(func);
-        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0Value };
+        std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0Value };
         GateRef result = builder_.TypedAotCall(gate, args);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     }
@@ -983,8 +977,7 @@ void TSTypeLowering::LowerTypedCallArg2(GateRef gate)
     GateRef a1 = acc_.GetValueIn(gate, 1); // 1:first parameter
     if (IsLoadVtable(func)) {
         builder_.JSCallThisTargetTypeCheck(funcType, func);
-        GateRef env = builder_.GetFunctionLexicalEnv(func);
-        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0, a1 };
+        std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0, a1 };
         GateRef result = builder_.TypedAotCall(gate, args);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     } else {
@@ -994,8 +987,7 @@ void TSTypeLowering::LowerTypedCallArg2(GateRef gate)
             return;
         }
         builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
-        GateRef env = builder_.GetFunctionLexicalEnv(func);
-        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0, a1 };
+        std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0, a1 };
         GateRef result = builder_.TypedAotCall(gate, args);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     }
@@ -1024,8 +1016,7 @@ void TSTypeLowering::LowerTypedCallArg3(GateRef gate)
     GateRef a2 = acc_.GetValueIn(gate, 2);
     if (IsLoadVtable(func)) {
         builder_.JSCallThisTargetTypeCheck(funcType, func);
-        GateRef env = builder_.GetFunctionLexicalEnv(func);
-        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0, a1, a2 };
+        std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0, a1, a2 };
         GateRef result = builder_.TypedAotCall(gate, args);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     } else {
@@ -1035,8 +1026,7 @@ void TSTypeLowering::LowerTypedCallArg3(GateRef gate)
             return;
         }
         builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
-        GateRef env = builder_.GetFunctionLexicalEnv(func);
-        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0, a1, a2 };
+        std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0, a1, a2 };
         GateRef result = builder_.TypedAotCall(gate, args);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     }
@@ -1074,9 +1064,6 @@ void TSTypeLowering::LowerTypedCallrange(GateRef gate)
     }
     if (IsLoadVtable(func)) {
         builder_.JSCallThisTargetTypeCheck(funcType, func);
-        GateRef newEnv = builder_.GetFunctionLexicalEnv(func);
-        std::vector<GateRef>::iterator pos = vec.begin();
-        vec.insert(++pos, newEnv);
         GateRef result = builder_.TypedAotCall(gate, vec);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     } else {
@@ -1086,9 +1073,6 @@ void TSTypeLowering::LowerTypedCallrange(GateRef gate)
             return;
         }
         builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
-        GateRef newEnv = builder_.GetFunctionLexicalEnv(func);
-        std::vector<GateRef>::iterator pos = vec.begin();
-        vec.insert(++pos, newEnv);
         GateRef result = builder_.TypedAotCall(gate, vec);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     }
@@ -1136,8 +1120,7 @@ void TSTypeLowering::LowerTypedCallthis0(GateRef gate)
         EcmaOpcode::CALLTHIS0_IMM8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
-    GateRef env = builder_.GetFunctionLexicalEnv(func);
-    std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj };
+    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj };
 
     GateRef result = builder_.TypedAotCall(gate, args);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -1166,8 +1149,7 @@ void TSTypeLowering::LowerTypedCallthis1(GateRef gate)
         GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
             EcmaOpcode::CALLTHIS1_IMM8_V8_V8));
         GateRef newTarget = builder_.Undefined();
-        GateRef env = builder_.GetFunctionLexicalEnv(func);
-        std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0 };
+        std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0 };
 
         GateRef result = builder_.TypedAotCall(gate, args);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -1191,8 +1173,7 @@ void TSTypeLowering::LowerTypedCallthis2(GateRef gate)
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef a0Value = acc_.GetValueIn(gate, 1);
     GateRef a1Value = acc_.GetValueIn(gate, 2);
-    GateRef env = builder_.GetFunctionLexicalEnv(func);
-    std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0Value, a1Value };
+    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0Value, a1Value };
 
     GateRef result = builder_.TypedAotCall(gate, args);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -1216,8 +1197,7 @@ void TSTypeLowering::LowerTypedCallthis3(GateRef gate)
     GateRef a0Value = acc_.GetValueIn(gate, 1);
     GateRef a1Value = acc_.GetValueIn(gate, 2);
     GateRef a2Value = acc_.GetValueIn(gate, 3);
-    GateRef env = builder_.GetFunctionLexicalEnv(func);
-    std::vector<GateRef> args { glue_, env, actualArgc, func, newTarget, thisObj, a0Value, a1Value, a2Value };
+    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0Value, a1Value, a2Value };
 
     GateRef result = builder_.TypedAotCall(gate, args);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -1242,9 +1222,7 @@ void TSTypeLowering::LowerTypedCallthisrange(GateRef gate)
     builder_.JSCallThisTargetTypeCheck(funcType, func);
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef newTarget = builder_.Undefined();
-    GateRef env = builder_.GetFunctionLexicalEnv(func);
     vec.emplace_back(glue_);
-    vec.emplace_back(env);
     vec.emplace_back(actualArgc);
     vec.emplace_back(func);
     vec.emplace_back(newTarget);

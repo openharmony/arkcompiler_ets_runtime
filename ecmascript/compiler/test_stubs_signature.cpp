@@ -19,12 +19,11 @@ namespace panda::ecmascript::kungfu {
 DEF_CALL_SIGNATURE(FooAOT)
 {
     // 7 : 7 input parameters
-    CallSignature fooAot("FooAOT", 0, 8,
+    CallSignature fooAot("FooAOT", 0, 7,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = fooAot;
-    std::array<VariableType, 8> params = { // 8 : 8 input parameters
+    std::array<VariableType, 7> params = { // 7 : 7 input parameters
         VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),     // lexenv
         VariableType::INT64(),
         VariableType::JS_ANY(),     // calltarget
         VariableType::JS_ANY(),     // newTarget
@@ -39,12 +38,11 @@ DEF_CALL_SIGNATURE(FooAOT)
 DEF_CALL_SIGNATURE(Foo1AOT)
 {
     // 7 : 7 input parameters
-    CallSignature foo1Aot("Foo1AOT", 0, 8,
+    CallSignature foo1Aot("Foo1AOT", 0, 7,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = foo1Aot;
-    std::array<VariableType, 8> params = { // 8 : 8 input parameters
+    std::array<VariableType, 7> params = { // 7 : 7 input parameters
         VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),     // lexenv
         VariableType::INT64(),
         VariableType::JS_ANY(),     // calltarget
         VariableType::JS_ANY(),     // newTarget
@@ -59,12 +57,11 @@ DEF_CALL_SIGNATURE(Foo1AOT)
 DEF_CALL_SIGNATURE(Foo2AOT)
 {
     // 7 : 7 input parameters
-    CallSignature foo2Aot("Foo2AOT", 0, 8,
+    CallSignature foo2Aot("Foo2AOT", 0, 7,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = foo2Aot;
-    std::array<VariableType, 8> params = { // 8 : 8 input parameters
+    std::array<VariableType, 7> params = { // 7 : 7 input parameters
         VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),     // lexenv
         VariableType::INT64(),
         VariableType::JS_ANY(),     // calltarget
         VariableType::JS_ANY(),     // newTarget
@@ -79,12 +76,11 @@ DEF_CALL_SIGNATURE(Foo2AOT)
 DEF_CALL_SIGNATURE(FooNativeAOT)
 {
     // 7 : 7 input parameters
-    CallSignature foo2Aot("FooNativeAOT", 0, 8,
+    CallSignature foo2Aot("FooNativeAOT", 0, 7,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = foo2Aot;
-    std::array<VariableType, 8> params = { // 8 : 8 input parameters
+    std::array<VariableType, 7> params = { // 7 : 7 input parameters
         VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),     // lexenv
         VariableType::INT64(),
         VariableType::JS_ANY(),     // calltarget
         VariableType::JS_ANY(),     // newTarget
@@ -99,12 +95,11 @@ DEF_CALL_SIGNATURE(FooNativeAOT)
 DEF_CALL_SIGNATURE(FooBoundAOT)
 {
     // 7 : 7 input parameters
-    CallSignature foo2Aot("FooBoundAOT", 0, 8,
+    CallSignature foo2Aot("FooBoundAOT", 0, 7,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = foo2Aot;
-    std::array<VariableType, 8> params = { // 8 : 8 input parameters
+    std::array<VariableType, 7> params = { // 7 : 7 input parameters
         VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),     // lexenv
         VariableType::INT64(),
         VariableType::JS_ANY(),     // calltarget
         VariableType::JS_ANY(),     // newTarget
@@ -119,12 +114,11 @@ DEF_CALL_SIGNATURE(FooBoundAOT)
 DEF_CALL_SIGNATURE(Bar1AOT)
 {
     // 8 : 8 input parameters
-    CallSignature barAot("Bar1AOT", 0, 9,
+    CallSignature barAot("Bar1AOT", 0, 8,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = barAot;
-    std::array<VariableType, 9> params = { // 9 : 9 input parameters
+    std::array<VariableType, 8> params = { // 8 : 8 input parameters
         VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),     // lexenv
         VariableType::INT64(),
         VariableType::JS_ANY(),     // calltarget
         VariableType::JS_ANY(),     // newTarget
@@ -140,12 +134,11 @@ DEF_CALL_SIGNATURE(Bar1AOT)
 DEF_CALL_SIGNATURE(BarAOT)
 {
     // 7 : 7 input parameters
-    CallSignature barAot("BarAOT", 0, 8,
+    CallSignature barAot("BarAOT", 0, 7,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = barAot;
-    std::array<VariableType, 8> params = { // 8 : 8 input parameters
+    std::array<VariableType, 7> params = { // 7 : 7 input parameters
         VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),     // lexEnv
         VariableType::INT64(),
         VariableType::JS_ANY(),     // calltarget
         VariableType::JS_ANY(),     // newTarget
@@ -160,12 +153,11 @@ DEF_CALL_SIGNATURE(BarAOT)
 DEF_CALL_SIGNATURE(FooProxyAOT)
 {
     // 8 : 8 input parameters
-    CallSignature fooProxyAot("FooProxyAOT", 0, 8,
+    CallSignature fooProxyAot("FooProxyAOT", 0, 7,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = fooProxyAot;
-    std::array<VariableType, 8> params = { // 8 : 8 input parameters
+    std::array<VariableType, 7> params = { // 7 : 7 input parameters
         VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),     // lexEnv
         VariableType::INT64(),
         VariableType::JS_ANY(),     // calltarget
         VariableType::JS_ANY(),     // newTarget
@@ -179,13 +171,12 @@ DEF_CALL_SIGNATURE(FooProxyAOT)
 
 DEF_CALL_SIGNATURE(FooProxy2AOT)
 {
-    // 8 : 8 input parameters
-    CallSignature FooProxy2AOT("FooProxy2AOT", 0, 8,
+    // 7 : 7 input parameters
+    CallSignature FooProxy2AOT("FooProxy2AOT", 0, 7,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = FooProxy2AOT;
-    std::array<VariableType, 8> params = { // 8 : 8 input parameters
+    std::array<VariableType, 7> params = { // 7 : 7 input parameters
         VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),     // lexEnv
         VariableType::INT64(),
         VariableType::JS_ANY(),     // calltarget
         VariableType::JS_ANY(),     // newTarget
@@ -199,13 +190,12 @@ DEF_CALL_SIGNATURE(FooProxy2AOT)
 
 DEF_CALL_SIGNATURE(Bar2AOT)
 {
-    // 7 : 7 input parameters
-    CallSignature bar2Aot("Bar2AOT", 0, 6,
+    // 5 : 5 input parameters
+    CallSignature bar2Aot("Bar2AOT", 0, 5,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = bar2Aot;
-    std::array<VariableType, 6> params = { // 6 : 6 input parameters
+    std::array<VariableType, 5> params = { // 5 : 5 input parameters
         VariableType::NATIVE_POINTER(),
-        VariableType::JS_ANY(),     // lexenv
         VariableType::INT64(),
         VariableType::JS_ANY(),     // calltarget
         VariableType::JS_ANY(),     // newTarget

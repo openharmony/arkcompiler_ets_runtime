@@ -2304,9 +2304,8 @@ LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodL
 {
     LLVMTypeRef returnType = NewLType(MachineType::I64, GateType::TaggedValue());  // possibly get it for circuit
     LLVMTypeRef glue = NewLType(MachineType::I64, GateType::NJSValue());
-    LLVMTypeRef lexEnv = NewLType(MachineType::I64, GateType::TaggedValue());
     LLVMTypeRef actualArgc = NewLType(MachineType::I64, GateType::NJSValue());
-    std::vector<LLVMTypeRef> paramTys = { glue, lexEnv, actualArgc };
+    std::vector<LLVMTypeRef> paramTys = { glue, actualArgc };
     auto funcIndex = static_cast<uint32_t>(CommonArgIdx::FUNC);
     auto numOfComArgs = static_cast<uint32_t>(CommonArgIdx::NUM_OF_ARGS);
     auto paramCount = methodLiteral->GetNumArgs() + numOfComArgs;
