@@ -269,6 +269,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(SwitchBranch, SWITCH_BRANCH, GateFlags::CONTROL, 1, 0, 1)          \
     V(SwitchCase, SWITCH_CASE, GateFlags::CONTROL, 1, 0, 0)              \
     V(HeapAlloc, HEAP_ALLOC, GateFlags::NONE_FLAG, 1, 1, 1)              \
+    V(LoadConstOffset, LOAD_CONST_OFFSET, GateFlags::NO_WRITE, 1, 1, 1)  \
     V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 2)           \
     V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 3)        \
     V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 1, 0)  \

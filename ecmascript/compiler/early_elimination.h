@@ -100,6 +100,29 @@ private:
     GateRef receiver_ {Circuit::NullGate()};
 };
 
+class LoadConstInfo {
+public:
+    LoadConstInfo(GateRef receiver, size_t offset) : receiver_(receiver), offset_(offset) {}
+    ~LoadConstInfo() = default;
+    bool operator < (const LoadConstInfo& rhs) const
+    {
+        if (receiver_ != rhs.receiver_)  {
+            return receiver_ < rhs.receiver_;
+        } else {
+            return offset_ < rhs.offset_;
+        }
+    }
+
+    bool operator == (const LoadConstInfo& rhs) const
+    {
+        return receiver_ == rhs.receiver_ && offset_ == rhs.offset_;
+    }
+
+private:
+    GateRef receiver_ {Circuit::NullGate()};
+    size_t offset_;
+};
+
 class GateTypeCheckInfo {
 public:
     GateTypeCheckInfo(GateRef value, GateType type) : value_(value), type_(type) {}
@@ -290,6 +313,7 @@ public:
     GateRef LookUpElement(ElementInfo info) const;
     GateRef LookUpProperty(PropertyInfo info) const;
     GateRef LookUpArrayLength(ArrayLengthInfo info) const;
+    GateRef LookUpLoadConstOffset(LoadConstInfo info) const;
     bool LookUpGateTypeCheck(GateTypeCheckInfo info) const;
     GateTypeCheckInfo LookUpGateTypeCheck(GateRef gate) const;
     bool LookUpInt32OverflowCheck(Int32OverflowCheckInfo info) const;
@@ -302,6 +326,7 @@ public:
     DependChainInfo* UpdateElement(ElementInfo info, GateRef gate);
     DependChainInfo* UpdateProperty(PropertyInfo info, GateRef gate);
     DependChainInfo* UpdateArrayLength(ArrayLengthInfo info, GateRef gate);
+    DependChainInfo* UpdateLoadConstOffset(LoadConstInfo info, GateRef gate);
     DependChainInfo* UpdateGateTypeCheck(GateTypeCheckInfo info);
     DependChainInfo* UpdateInt32OverflowCheck(Int32OverflowCheckInfo info);
     DependChainInfo* UpdateStableArrayCheck(StableArrayCheckInfo info);
@@ -327,6 +352,7 @@ private:
     ChunkMap<ElementInfo, GateRef>* elementMap_ {nullptr};
     ChunkMap<PropertyInfo, GateRef>* propertyMap_ {nullptr};
     ChunkMap<ArrayLengthInfo, GateRef>* arrayLengthMap_ {nullptr};
+    ChunkMap<LoadConstInfo, GateRef>* loadConstMap_ {nullptr};
     ChunkSet<GateTypeCheckInfo>* gateTypeCheckSet_ {nullptr};
     ChunkSet<Int32OverflowCheckInfo>* int32OverflowCheckSet_ {nullptr};
     ChunkSet<StableArrayCheckInfo>* stableArrayCheckSet_ {nullptr};
@@ -362,6 +388,7 @@ private:
     ElementInfo GetElementInfo(GateRef gate) const;
     PropertyInfo GetPropertyInfo(GateRef gate) const;
     ArrayLengthInfo GetArrayLengthInfo(GateRef gate) const;
+    LoadConstInfo GetLoadConstInfo(GateRef gate) const;
     Int32OverflowCheckInfo GetInt32OverflowCheckInfo(GateRef gate) const;
     StableArrayCheckInfo GetStableArrayCheckInfo(GateRef gate) const;
     IndexCheckInfo GetIndexCheckInfo(GateRef gate) const;
@@ -371,6 +398,7 @@ private:
     GateRef TryEliminateElement(GateRef gate);
     GateRef TryEliminateProperty(GateRef gate);
     GateRef TryEliminateArrayLength(GateRef gate);
+    GateRef TryEliminateLoadConstOffset(GateRef gate);
     GateRef TryEliminateGateTypeCheck(GateRef gate);
     GateRef TryEliminateInt32OverflowCheck(GateRef gate);
     GateRef TryEliminateStableArrayCheck(GateRef gate);

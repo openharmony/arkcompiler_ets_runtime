@@ -468,6 +468,7 @@ public:
     GateRef CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult);
     GateRef CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult, GateRef value);
     GateRef GetConstPool(GateRef jsFunc);
+    GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset);
 
     // Object Operations
     inline GateRef LoadHClass(GateRef object);

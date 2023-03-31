@@ -100,6 +100,9 @@ void TypeLowering::LowerType(GateRef gate)
         case OpCode::LOAD_ARRAY_LENGTH:
             LowerLoadArrayLength(gate);
             break;
+        case OpCode::LOAD_CONST_OFFSET:
+            LowerLoadConstOffset(gate);
+            break;
         case OpCode::LOAD_ELEMENT:
             LowerLoadElement(gate);
             break;
@@ -615,6 +618,16 @@ void TypeLowering::LowerLoadArrayLength(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
+void TypeLowering::LowerLoadConstOffset(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef offset = builder_.IntPtr(acc_.GetOffset(gate));
+    GateRef result = builder_.Load(
+        VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate)), receiver, offset);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
 void TypeLowering::LowerLoadElement(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -636,9 +649,7 @@ void TypeLowering::LowerLoadElement(GateRef gate)
 void TypeLowering::LowerArrayLoadElement(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef element =
-        builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSObject::ELEMENTS_OFFSET));
+    GateRef element = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef res = builder_.GetValueFromTaggedArray(element, index);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), res);

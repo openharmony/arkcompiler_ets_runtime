@@ -47,6 +47,15 @@ GateRef DependChainInfo::LookUpArrayLength(ArrayLengthInfo info) const
     }
 }
 
+GateRef DependChainInfo::LookUpLoadConstOffset(LoadConstInfo info) const
+{
+    if ((loadConstMap_ != nullptr) && (loadConstMap_->count(info) > 0)) {
+        return loadConstMap_->at(info);
+    } else {
+        return Circuit::NullGate();
+    }
+}
+
 bool DependChainInfo::LookUpGateTypeCheck(GateTypeCheckInfo info) const
 {
     return (gateTypeCheckSet_ != nullptr) && (gateTypeCheckSet_->count(info) > 0);
@@ -131,6 +140,18 @@ DependChainInfo* DependChainInfo::UpdateArrayLength(ArrayLengthInfo info, GateRe
         that->arrayLengthMap_ = new ChunkMap<ArrayLengthInfo, GateRef>(chunk_);
     }
     that->arrayLengthMap_->insert(std::make_pair(info, gate));
+    return that;
+}
+
+DependChainInfo* DependChainInfo::UpdateLoadConstOffset(LoadConstInfo info, GateRef gate)
+{
+    DependChainInfo* that = new (chunk_) DependChainInfo(*this);
+    if (loadConstMap_ != nullptr) {
+        that->loadConstMap_ = new ChunkMap<LoadConstInfo, GateRef>(*loadConstMap_);
+    } else {
+        that->loadConstMap_ = new ChunkMap<LoadConstInfo, GateRef>(chunk_);
+    }
+    that->loadConstMap_->insert(std::make_pair(info, gate));
     return that;
 }
 
@@ -226,6 +247,7 @@ bool DependChainInfo::Empty() const {
     return (elementMap_ == nullptr) &&
            (propertyMap_ == nullptr) &&
            (arrayLengthMap_ == nullptr) &&
+           (loadConstMap_ == nullptr) &&
            (gateTypeCheckSet_ == nullptr) &&
            (int32OverflowCheckSet_ == nullptr) &&
            (stableArrayCheckSet_ == nullptr) &&
@@ -273,6 +295,9 @@ bool DependChainInfo::Equals(DependChainInfo* that)
         return false;
     }
     if (!EqualsMap<ArrayLengthInfo, GateRef>(arrayLengthMap_, that->arrayLengthMap_)) {
+        return false;
+    }
+    if (!EqualsMap<LoadConstInfo, GateRef>(loadConstMap_, that->loadConstMap_)) {
         return false;
     }
     if (!EqualsSet<GateTypeCheckInfo>(gateTypeCheckSet_, that->gateTypeCheckSet_)) {
@@ -343,6 +368,7 @@ DependChainInfo* DependChainInfo::Merge(DependChainInfo* that)
     newInfo->elementMap_ = MergeMap<ElementInfo, GateRef>(elementMap_, that->elementMap_);
     newInfo->propertyMap_ = MergeMap<PropertyInfo, GateRef>(propertyMap_, that->propertyMap_);
     newInfo->arrayLengthMap_ = MergeMap<ArrayLengthInfo, GateRef>(arrayLengthMap_, that->arrayLengthMap_);
+    newInfo->loadConstMap_ = MergeMap<LoadConstInfo, GateRef>(loadConstMap_, that->loadConstMap_);
     newInfo->gateTypeCheckSet_ =
         MergeSet<GateTypeCheckInfo>(gateTypeCheckSet_, that->gateTypeCheckSet_);
     newInfo->int32OverflowCheckSet_ =
@@ -421,6 +447,13 @@ ArrayLengthInfo EarlyElimination::GetArrayLengthInfo(GateRef gate) const
     return ArrayLengthInfo(v0);
 }
 
+LoadConstInfo EarlyElimination::GetLoadConstInfo(GateRef gate) const
+{
+    auto receiver = acc_.GetValueIn(gate, 0);
+    auto offset = acc_.GetOffset(gate);
+    return LoadConstInfo(receiver, offset);
+}
+
 Int32OverflowCheckInfo EarlyElimination::GetInt32OverflowCheckInfo(GateRef gate) const
 {
     TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
@@ -461,6 +494,8 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
             return TryEliminateElement(gate);
         case OpCode::LOAD_ARRAY_LENGTH:
             return TryEliminateArrayLength(gate);
+        case OpCode::LOAD_CONST_OFFSET:
+            return TryEliminateLoadConstOffset(gate);
         case OpCode::TYPED_ARRAY_CHECK:
         case OpCode::OBJECT_TYPE_CHECK:
             return TryEliminateObjectTypeCheck(gate);
@@ -588,6 +623,23 @@ GateRef EarlyElimination::TryEliminateArrayLength(GateRef gate)
     }
 
     dependInfo = dependInfo->UpdateArrayLength(info, gate);
+    return UpdateDependInfo(gate, dependInfo);
+}
+
+GateRef EarlyElimination::TryEliminateLoadConstOffset(GateRef gate)
+{
+    auto depIn = acc_.GetDep(gate);
+    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
+    if (dependInfo == nullptr) {
+        return Circuit::NullGate();
+    }
+    auto info = GetLoadConstInfo(gate);
+    auto preGate = dependInfo->LookUpLoadConstOffset(info);
+    if (preGate != Circuit::NullGate()) {
+        return preGate;
+    }
+
+    dependInfo = dependInfo->UpdateLoadConstOffset(info, gate);
     return UpdateDependInfo(gate, dependInfo);
 }
 
