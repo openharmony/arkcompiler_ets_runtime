@@ -175,19 +175,20 @@ group("ark_runtime_host_unittest") {
     deps += [ ":ark_unittest" ]
 
     # js bytecode test
-    deps += [ "//arkcompiler/ets_runtime/test/moduletest:ark_js_moduletest" ]
+    deps += [ "$js_root/test/moduletest:ark_js_moduletest" ]
 
     # quickfix test
-    deps += [ "//arkcompiler/ets_runtime/test/quickfix:ark_quickfix_test" ]
+    deps += [ "$js_root/test/quickfix:ark_quickfix_test" ]
 
     # ts aot test and asm test
     if (!run_with_asan) {
       deps += [
-        "//arkcompiler/ets_runtime/test/aottest:ark_aot_test",
+        "$js_root/test/aottest:ark_aot_test",
 
-        #"//arkcompiler/ets_runtime/test/moduletest:ark_asm_single_step_test",
-        "//arkcompiler/ets_runtime/test/moduletest:ark_asm_test",
-        "//arkcompiler/ets_runtime/test/typeinfer:ark_typeinfer_test",
+        #"$js_root/test/moduletest:ark_asm_single_step_test",
+        "$js_root/test/deopttest:ark_deopt_test",
+        "$js_root/test/moduletest:ark_asm_test",
+        "$js_root/test/typeinfer:ark_typeinfer_test",
       ]
     }
   }

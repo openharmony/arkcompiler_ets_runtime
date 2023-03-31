@@ -240,8 +240,10 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
     }
     // [actual args]
     if (declaredNumArgs > actualNumArgs) {
-        frameWriter->PushValue(JSTaggedValue::Undefined().GetRawData());
-        virtualIndex--;
+        for (int32_t i = 0; i < declaredNumArgs - actualNumArgs; i++) {
+            frameWriter->PushValue(JSTaggedValue::Undefined().GetRawData());
+            virtualIndex--;
+        }
     }
     for (int32_t i = actualNumArgs - 1; i >= 0; i--) {
         JSTaggedValue value = JSTaggedValue::Undefined();

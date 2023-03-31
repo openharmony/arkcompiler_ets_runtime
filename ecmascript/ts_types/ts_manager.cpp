@@ -558,12 +558,12 @@ void TSManager::GenerateTSHClasses()
         }
         ASSERT(tsType->IsTSClassType());
         JSHandle<TSClassType> classType(tsType);
-        if (IsUserDefinedClassTypeKind(gt)) {
+        if (HasTSHClass(classType)) {
+            continue;
+        } else if (IsUserDefinedClassTypeKind(gt)) {
             RecursiveGenTSHClass(classType);
-        } else {
-            if (!classType->GetHasLinked()) {
-                SubtypingOperator::MergeClassField(thread_, classType);
-            }
+        } else if (!classType->GetHasLinked()) {
+            SubtypingOperator::MergeClassField(thread_, classType);
         }
     }
     collectedTypeOffsets_.clear();
