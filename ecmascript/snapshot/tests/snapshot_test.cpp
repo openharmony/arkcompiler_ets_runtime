@@ -24,6 +24,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/snapshot/mem/snapshot_processor.h"
+#include "ecmascript/snapshot/tests/snapshot_mock.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 using namespace panda::ecmascript;
@@ -57,6 +58,37 @@ public:
         ecmaVm->SetEnableForceGC(false);
         thread->ClearException();
         JSNApi::DestroyJSVM(ecmaVm);
+    }
+
+    void CompatibilityHelper(base::FileHeader::VersionType serializeVersion,
+                             base::FileHeader::VersionType deserializeVersion, bool expected)
+    {
+        static constexpr uint32_t ARRAY_SIZE = 300;
+        static constexpr uint32_t KILO_BITS = 1024;
+        auto factory = ecmaVm->GetFactory();
+        auto env = ecmaVm->GetGlobalEnv();
+
+        JSHandle<TaggedArray> array1 = factory->NewTaggedArray(ARRAY_SIZE * KILO_BITS / sizeof(uint8_t));
+
+        JSHandle<JSFunction> funcFunc(env->GetFunctionFunction());
+        array1->Set(thread, 0, funcFunc.GetTaggedValue());
+
+        CString fileName = "snapshot";
+        SnapshotMock snapshotSerialize(ecmaVm);
+        snapshotSerialize.SetLastVersion(serializeVersion);
+        // serialize in earlier version tag
+        snapshotSerialize.Serialize(*array1, nullptr, fileName);
+
+        JSRuntimeOptions options;
+        EcmaVM *ecmaVm2 = JSNApi::CreateEcmaVM(options);
+        // deserialize with last version tag
+        SnapshotMock snapshotDeserialize(ecmaVm2);
+        snapshotDeserialize.SetLastVersion(deserializeVersion);
+        EXPECT_EQ(snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName), expected);
+
+        ASSERT_EQ(const_cast<Heap *>(ecmaVm2->GetHeap())->GetHugeObjectSpace()->GetFirstRegion() != nullptr, expected);
+        JSNApi::DestroyJSVM(ecmaVm2);
+        std::remove(fileName.c_str());
     }
 
     EcmaVM *ecmaVm {nullptr};
@@ -277,4 +309,33 @@ HWTEST_F_L0(SnapshotTest, SerializeHugeObject)
     EXPECT_TRUE(array4->Get(3).IsJSFunction());
     std::remove(fileName.c_str());
 }
+
+HWTEST_F_L0(SnapshotTest, BackwardCompatibility)
+{
+    base::FileHeader::VersionType oldVersion = {0, 0, 0, 1};
+    base::FileHeader::VersionType newVersion = {4, 0, 0, 1};
+    CompatibilityHelper(oldVersion, newVersion, false);
+}
+
+HWTEST_F_L0(SnapshotTest, ForwardCompatibility)
+{
+    base::FileHeader::VersionType oldVersion = {0, 0, 0, 1};
+    base::FileHeader::VersionType newVersion = {4, 0, 0, 1};
+    CompatibilityHelper(newVersion, oldVersion, false);
+}
+
+HWTEST_F_L0(SnapshotTest, StrictCompatibility)
+{
+    base::FileHeader::VersionType newVersion = {4, 0, 0, 1};
+    CompatibilityHelper(newVersion, newVersion, true);
+}
+
+HWTEST_F_L0(SnapshotTest, VersionTest)
+{
+    base::FileHeader::VersionType version = {4, 3, 2, 1};
+    uint32_t versionNumber = 0x04030201U;
+    EXPECT_EQ(version, base::FileHeader::ToVersion(versionNumber));
+    EXPECT_EQ(versionNumber, base::FileHeader::ToVersionNumber(version));
+}
+
 }  // namespace panda::test

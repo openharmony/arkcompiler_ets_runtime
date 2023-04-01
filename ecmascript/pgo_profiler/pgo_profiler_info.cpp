@@ -68,7 +68,7 @@ bool PGOProfilerHeader::ParseFromText(std::ifstream &stream)
             return false;
         }
         auto version = header.substr(index + 1);
-        if (!SetVersionInner(version)) {
+        if (!InternalSetVersion(version)) {
             return false;
         }
         if (!Verify()) {
@@ -84,7 +84,7 @@ bool PGOProfilerHeader::ProcessToText(std::ofstream &stream) const
     if (!Verify()) {
         return false;
     }
-    stream << VERSION_HEADER << GetVersionInner() << NEW_LINE;
+    stream << VERSION_HEADER << InternalGetVersion() << NEW_LINE;
     return true;
 }
 

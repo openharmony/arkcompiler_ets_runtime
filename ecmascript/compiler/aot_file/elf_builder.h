@@ -35,7 +35,6 @@ public:
     void PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, Triple triple);
     void PackELFSections(std::ofstream &elfFile);
     void PackELFSegment(std::ofstream &elfFile);
-    static bool VerifyELFHeader(const llvm::ELF::Elf64_Ehdr &header, uint32_t version);
     static llvm::ELF::Elf64_Word FindShName(std::string name, uintptr_t strTabPtr, int strTabSize);
     void SetEnableSecDump(bool flag)
     {
@@ -68,5 +67,3 @@ private:
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_AOT_FILE_ELF_BUILDER_H
-
-

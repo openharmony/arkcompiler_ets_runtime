@@ -158,7 +158,7 @@ void Module::DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name,
     assembler_->Disassemble(addr2name, log, logList);
 }
 
-void Module::DestoryModule()
+void Module::DestroyModule()
 {
     if (llvmModule_ != nullptr) {
         delete llvmModule_;
@@ -277,7 +277,7 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
     CollectCodeInfo();
     GenerateMethodToEntryIndexMap();
     aotInfo_.Save(filename, cfg_.GetTriple());
-    DestoryModule();
+    DestroyModule();
 }
 
 void AOTFileGenerator::SaveSnapshotFile()

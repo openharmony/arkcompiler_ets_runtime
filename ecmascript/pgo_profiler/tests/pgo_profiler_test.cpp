@@ -37,8 +37,13 @@ public:
 
     static void TearDownTestCase()
     {
-        PGOProfilerManager::GetInstance()->Destroy();
         GTEST_LOG_(INFO) << "TearDownCase";
+    }
+
+    void TearDown() override
+    {
+        vm_ = nullptr;
+        PGOProfilerManager::GetInstance()->Destroy();
     }
 
 protected:
@@ -447,7 +452,7 @@ HWTEST_F_L0(PGOProfilerTest, TextRecover)
     mkdir("ark-profiler11/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     std::ofstream file("ark-profiler11/modules.text");
-    std::string result = "Profiler Version: 0.0.0.1\n";
+    std::string result = "Profiler Version: 0.0.0.2\n";
     file.write(result.c_str(), result.size());
     result = "\nPanda file sumcheck list: [ 413775942 ]\n";
     file.write(result.c_str(), result.size());

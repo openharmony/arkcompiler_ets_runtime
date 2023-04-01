@@ -20,6 +20,7 @@
 #include <sstream>
 #include <string.h>
 
+#include "ecmascript/aot_version.h"
 #include "ecmascript/base/file_header.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
@@ -81,13 +82,12 @@ static constexpr size_t ALIGN_SIZE = 4;
  */
 class PGOProfilerHeader : public base::FileHeader {
 public:
-    static constexpr std::array<uint8_t, VERSION_SIZE> TYPE_MINI_VERSION = {0, 0, 0, 2};
-    static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 2};
+    static constexpr VersionType TYPE_MINI_VERSION = {0, 0, 0, 2};
     static constexpr size_t SECTION_SIZE = 2;
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
 
-    PGOProfilerHeader() : base::FileHeader(LAST_VERSION), sectionNumber_(SECTION_SIZE)
+    PGOProfilerHeader() : base::FileHeader(AOTFileVersion::AP_VERSION), sectionNumber_(SECTION_SIZE)
     {
         GetPandaInfoSection()->offset_ = Size();
     }
@@ -104,7 +104,7 @@ public:
 
     bool Verify() const
     {
-        return VerifyInner("apPath file", LAST_VERSION);
+        return InternalVerify("apPath file", AOTFileVersion::AP_VERSION, AOTFileVersion::AP_STRICT_MATCH);
     }
 
     static void Build(PGOProfilerHeader **header, size_t size)
@@ -138,9 +138,9 @@ public:
         return GetSectionInfo(RECORD_INFO_SECTION_INDEX);
     }
 
-    bool SupportType()
+    bool SupportType() const
     {
-        return VerifyVersionInner(TYPE_MINI_VERSION);
+        return InternalVerifyVersion(TYPE_MINI_VERSION);
     }
 
     NO_COPY_SEMANTIC(PGOProfilerHeader);

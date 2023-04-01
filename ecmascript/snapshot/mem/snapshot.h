@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_SNAPSHOT_MEM_SNAPSHOT_H
 #define ECMASCRIPT_SNAPSHOT_MEM_SNAPSHOT_H
 
+#include "ecmascript/aot_version.h"
 #include "ecmascript/common.h"
 #include "ecmascript/snapshot/mem/encode_bit.h"
 #include "ecmascript/snapshot/mem/snapshot_processor.h"
@@ -28,7 +29,7 @@ class Program;
 class EcmaVM;
 class JSPandaFile;
 
-class PUBLIC_API Snapshot final {
+class PUBLIC_API Snapshot {
 public:
     explicit Snapshot(EcmaVM *vm) : vm_(vm) {}
     ~Snapshot() = default;
@@ -37,29 +38,32 @@ public:
     void Serialize(TaggedObject *objectHeader, const JSPandaFile *jsPandaFile, const CString &fileName = "./snapshot");
     void Serialize(uintptr_t startAddr, size_t size, const CString &fileName = "./snapshot");
     void SerializeBuiltins(const CString &fileName = "./snapshot");
-    const JSPandaFile *Deserialize(SnapshotType type, const CString &snapshotFile, bool isBuiltins = false);
+    bool Deserialize(SnapshotType type, const CString &snapshotFile, bool isBuiltins = false);
 
-private:
+protected:
     struct SnapShotHeader : public base::FileHeader {
     public:
-        static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 1};
+        explicit SnapShotHeader(const VersionType &lastVersion) : base::FileHeader(lastVersion) {}
 
-        SnapShotHeader() : base::FileHeader(LAST_VERSION) {}
-
-        bool Verify()
+        bool Verify(const VersionType &lastVersion) const
         {
-            return VerifyInner("snapshot file", LAST_VERSION);
+            return InternalVerify("snapshot file", lastVersion, AOTFileVersion::AI_STRICT_MATCH);
         }
 
-        uint32_t oldSpaceObjSize;
-        uint32_t nonMovableObjSize;
-        uint32_t machineCodeObjSize;
-        uint32_t snapshotObjSize;
-        uint32_t hugeObjSize;
-        uint32_t stringSize;
-        uint32_t pandaFileBegin;
-        uint32_t rootObjectSize;
+        uint32_t oldSpaceObjSize {0};
+        uint32_t nonMovableObjSize {0};
+        uint32_t machineCodeObjSize {0};
+        uint32_t snapshotObjSize {0};
+        uint32_t hugeObjSize {0};
+        uint32_t stringSize {0};
+        uint32_t pandaFileBegin {0};
+        uint32_t rootObjectSize {0};
     };
+
+    virtual const base::FileHeader::VersionType &GetLastVersion() const
+    {
+        return AOTFileVersion::AI_VERSION;
+    }
 
 private:
     size_t AlignUpPageSize(size_t spaceSize);
