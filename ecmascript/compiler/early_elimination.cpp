@@ -350,7 +350,6 @@ bool EarlyElimination::IsSideEffectLoop(GateRef depend)
     while (!workList.empty()) {
         auto curDep = workList.front();
         workList.pop();
-        if (!visited.empty()) return false;
         if (visited.count(curDep)) {
             continue;
         }
