@@ -13,6 +13,8 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_typeinfer_module_test_action("module_class") {
+host_typeinfer_test_action("module_class") {
   deps = []
+  is_multi_file_tests = true
+  is_enable_es2abc = false
 }

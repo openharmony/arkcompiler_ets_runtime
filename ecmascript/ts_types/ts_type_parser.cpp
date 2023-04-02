@@ -34,6 +34,12 @@ GlobalTSTypeRef TSTypeParser::CreateGT(const JSPandaFile *jsPandaFile, const CSt
         return ParseBuiltinObjType(typeId);
     }
 
+    // Es2abc uses negative numbers to represent type parameters in generics.
+    // The following code will be replaced by precise implementation when AOT supports parsing generic types.
+    if (static_cast<int32_t>(typeId) < 0) {
+        return GlobalTSTypeRef::Default();
+    }
+
     if (tsManager_->HasCreatedGT(jsPandaFile, typeId)) {
         return tsManager_->GetGTFromOffset(jsPandaFile, typeId);
     }

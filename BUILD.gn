@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//arkcompiler/ets_frontend/es2panda/es2abc_config.gni")
 import("//arkcompiler/ets_frontend/ts2panda/ts2abc_config.gni")
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("$build_root/config/sanitizers/sanitizers.gni")
@@ -148,14 +149,17 @@ group("ark_unittest") {
 if (!run_with_asan) {
   _builtins_dts_path_ =
       rebase_path("./ecmascript/ts_types/lib_ark_builtins.d.ts")
-  _builtins_d_abc_path_ = "$target_out_dir/lib_ark_builtins.d.abc"
+  _ts2abc_builtins_d_abc_path_ =
+      "$target_out_dir/lib_ark_builtins/ts2abc/lib_ark_builtins.d.abc"
+  _es2abc_builtins_d_abc_path_ =
+      "$target_out_dir/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
 
-  ts2abc_gen_abc("gen_builtins_d_abc") {
+  ts2abc_gen_abc("ts2abc_gen_builtins_d_abc") {
     extra_visibility = [ "*" ]
 
     # extra_dependencies = _deps_
     src_js = rebase_path(_builtins_dts_path_)
-    dst_file = rebase_path(_builtins_d_abc_path_)
+    dst_file = rebase_path(_ts2abc_builtins_d_abc_path_)
     extra_args = [
       "--merge-abc",
       "--q",
@@ -163,7 +167,25 @@ if (!run_with_asan) {
     ]
 
     in_puts = [ _builtins_dts_path_ ]
-    out_puts = [ _builtins_d_abc_path_ ]
+    out_puts = [ _ts2abc_builtins_d_abc_path_ ]
+  }
+
+  es2abc_gen_abc("es2abc_gen_builtins_d_abc") {
+    extra_visibility = [ "*" ]
+
+    # extra_dependencies = _deps_
+    src_js = rebase_path(_builtins_dts_path_)
+    dst_file = rebase_path(_es2abc_builtins_d_abc_path_)
+    extension = "ts"
+    extra_args = [
+      "--module",
+      "--merge-abc",
+      "--type-extractor",
+      "--type-dts-builtin",
+    ]
+
+    in_puts = [ _builtins_dts_path_ ]
+    out_puts = [ _es2abc_builtins_d_abc_path_ ]
   }
 }
 
