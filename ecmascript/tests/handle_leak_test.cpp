@@ -84,7 +84,7 @@ public:
         sigemptyset(&act.sa_mask);
         sigaddset(&act.sa_mask, SIGQUIT);
         act.sa_flags = SA_RESETHAND;
-        return sigaction(SIGSEGV, &act, NULL);
+        return sigaction(SIGSEGV, &act, nullptr);
     }
 };
 

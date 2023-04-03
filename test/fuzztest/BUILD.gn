@@ -221,7 +221,7 @@ group("fuzztest") {
     "newbigintbyint64_fuzzer:fuzztest",
     "newbigintbyuint64_fuzzer:fuzztest",
     "notifyapplicationstate_fuzzer:fuzztest",
-    "notifyidietime_fuzzer:fuzztest",
+    "notifyidletime_fuzzer:fuzztest",
     "numberrefnewdouble_fuzzer:fuzztest",
     "numberrefnewint32_fuzzer:fuzztest",
     "numberrefnewint64_fuzzer:fuzztest",
