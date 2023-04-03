@@ -15,5 +15,4 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_aot_js_test_action("exception_case5") {
   deps = []
-  is_disable_type_lowering = true
 }

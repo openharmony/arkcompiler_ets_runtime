@@ -357,14 +357,9 @@ template("host_aot_js_test_action") {
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-    _aot_compile_options_ =
-        " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
-        _test_aot_log_level + " --log-components=all"
-
-    if (defined(invoker.is_disable_type_lowering) &&
-        invoker.is_disable_type_lowering) {
-      _aot_compile_options_ += " --enable-type-lowering=false"
-    }
+    _aot_compile_options_ = " --aot-file=" + rebase_path(_test_aot_arg_) +
+                            " --log-level=" + _test_aot_log_level +
+                            " --log-components=all --enable-type-lowering=false"
 
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
@@ -515,10 +510,6 @@ template("host_aot_test_action") {
         " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
         _test_aot_log_level + " --log-components=all"
 
-    if (defined(invoker.is_disable_type_lowering) &&
-        invoker.is_disable_type_lowering) {
-      _aot_compile_options_ += ""
-    }
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
       _aot_compile_options_ += " --trace-deopt=true"
@@ -559,7 +550,7 @@ template("host_aot_test_action") {
     ]
   }
 
-  action("${_target_name_}AotCompileActionSlowPtah") {
+  action("${_target_name_}AotCompileActionSlowPath") {
     testonly = true
     _host_aot_target_ =
         "$js_root/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
@@ -576,10 +567,6 @@ template("host_aot_test_action") {
         " --aot-file=" + rebase_path(_test_aot_arg_slowpath_) +
         " --log-level=" + _test_aot_log_level + " --log-components=all" +
         "  --enable-type-lowering=false"
-    if (defined(invoker.is_disable_type_lowering) &&
-        invoker.is_disable_type_lowering) {
-      _aot_compile_options_ += ""
-    }
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
       _aot_compile_options_ += " --trace-deopt=true"
@@ -628,11 +615,13 @@ template("host_aot_test_action") {
     _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
 
     deps = [
-      ":${_target_name_}AotActionSlowPtah",
       ":${_target_name_}AotCompileAction",
       ":gen_${_target_name_}_abc",
       _host_jsvm_target_,
     ]
+    if (!defined(invoker.is_only_typed_path) || !invoker.is_only_typed_path) {
+      deps += [ ":${_target_name_}AotActionSlowPath" ]
+    }
     deps += _deps_
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
@@ -672,14 +661,14 @@ template("host_aot_test_action") {
     outputs = [ "$target_out_dir/${_target_name_}/" ]
   }
 
-  action("${_target_name_}AotActionSlowPtah") {
+  action("${_target_name_}AotActionSlowPath") {
     testonly = true
     _host_jsvm_target_ =
         "$js_root/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
     _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
 
     deps = [
-      ":${_target_name_}AotCompileActionSlowPtah",
+      ":${_target_name_}AotCompileActionSlowPath",
       ":gen_${_target_name_}_abc",
       _host_jsvm_target_,
     ]
@@ -719,7 +708,7 @@ template("host_aot_test_action") {
 
     inputs = [ _test_abc_path_ ]
 
-    outputs = [ "$target_out_dir/${_target_name_}/SlowPtah" ]
+    outputs = [ "$target_out_dir/${_target_name_}/SlowPath" ]
   }
 }
 

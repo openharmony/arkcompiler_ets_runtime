@@ -17,4 +17,5 @@ host_aot_test_action("builtins_stub") {
   deps = []
   is_enable_builtins_dts = true
   log_option = " --log-debug=builtins"
+  is_only_typed_path = true
 }

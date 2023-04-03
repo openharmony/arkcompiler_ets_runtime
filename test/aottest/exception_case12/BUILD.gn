@@ -15,6 +15,5 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_aot_test_action("exception_case12") {
   deps = []
-  is_disable_type_lowering = false
   is_enable_trace_deopt = true
 }

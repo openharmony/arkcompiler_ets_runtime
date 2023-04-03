@@ -15,7 +15,6 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_aot_test_action("async_context") {
   deps = []
-  is_disable_type_lowering = false
   run_multi_file_tests = true
   is_enable_enableArkTools = true
 }
