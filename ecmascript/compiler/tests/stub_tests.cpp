@@ -330,7 +330,7 @@ HWTEST_F_L0(StubTest, FastModTest)
 
     // test y == 0.0 || std::isnan(y) || std::isnan(x) || std::isinf(x) return NAN_VALUE
     double x2 = 7.3;
-    int y2 = base::NAN_VALUE;
+    double y2 = base::NAN_VALUE;
     auto result2 = fn(thread->GetGlueAddr(), JSTaggedValue(x2).GetRawData(), JSTaggedValue(y2).GetRawData());
     auto expectRes2 = FastRuntimeStub::FastMod(JSTaggedValue(x2), JSTaggedValue(y2));
     EXPECT_EQ(result2, expectRes2);
