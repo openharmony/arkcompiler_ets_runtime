@@ -64,3 +64,14 @@ function binarySearch(array: number[], target: number): number {
 let array: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 let ret = binarySearch(array, 3);
 print(ret);
+
+function foo(arr : number[]) {
+    let t = 0 + 0;
+    let sum = arr[t];
+    for (let i = 0; i < 2; ++i) {
+        sum += arr[t];
+        arr[t] = 999;
+    }
+    return sum;
+}
+print(foo(array));
