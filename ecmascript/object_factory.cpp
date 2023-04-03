@@ -3371,6 +3371,14 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf8(const CString &data)
     return GetStringFromStringTable(utf8Data, data.length(), canBeCompress);
 }
 
+JSHandle<EcmaString> ObjectFactory::NewFromUtf16(const CS16tring &data)
+{
+    uint32_t length = data.length();
+    auto utf16Data = reinterpret_cast<const uint16_t *>(data.c_str());
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf16Data, length);
+    return GetStringFromStringTable(utf16Data, length, canBeCompress);
+}
+
 JSHandle<EcmaString> ObjectFactory::NewFromStdString(const std::string &data)
 {
     auto utf8Data = reinterpret_cast<const uint8_t *>(data.c_str());

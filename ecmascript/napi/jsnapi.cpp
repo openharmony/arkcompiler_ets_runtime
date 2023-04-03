@@ -966,6 +966,17 @@ Local<StringRef> StringRef::NewFromUtf8(const EcmaVM *vm, const char *utf8, int 
     return JSNApiHelper::ToLocal<StringRef>(current);
 }
 
+Local<StringRef> StringRef::NewFromUtf16(const EcmaVM *vm, const char16_t *utf16, int length)
+{
+    ObjectFactory *factory = vm->GetFactory();
+    if (length < 0) {
+        JSHandle<JSTaggedValue> current(factory->NewFromUtf16(utf16));
+        return JSNApiHelper::ToLocal<StringRef>(current);
+    }
+    JSHandle<JSTaggedValue> current(factory->NewFromUtf16(reinterpret_cast<const uint16_t *>(utf16), length));
+    return JSNApiHelper::ToLocal<StringRef>(current);
+}
+
 std::string StringRef::ToString()
 {
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).ToStdString();
@@ -986,6 +997,12 @@ int StringRef::WriteUtf8(char *buffer, int length, bool isWriteBuffer)
 {
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
         .WriteToFlatUtf8(reinterpret_cast<uint8_t *>(buffer), length, isWriteBuffer);
+}
+
+int StringRef::WriteUtf16(char16_t *buffer, int length)
+{
+    return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
+        .WriteToUtf16(reinterpret_cast<uint16_t *>(buffer), length);
 }
 
 int StringRef::WriteLatin1(char *buffer, int length)

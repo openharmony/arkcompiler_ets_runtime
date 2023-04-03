@@ -500,6 +500,7 @@ public:
     // ----------------------------------- new string ----------------------------------------
     JSHandle<EcmaString> NewFromASCII(const CString &data);
     JSHandle<EcmaString> NewFromUtf8(const CString &data);
+    JSHandle<EcmaString> NewFromUtf16(const CS16tring &data);
 
     JSHandle<EcmaString> NewFromStdString(const std::string &data);
 

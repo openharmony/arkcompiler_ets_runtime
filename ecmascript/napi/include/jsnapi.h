@@ -533,10 +533,12 @@ public:
         return static_cast<StringRef *>(value);
     }
     static Local<StringRef> NewFromUtf8(const EcmaVM *vm, const char *utf8, int length = -1);
+    static Local<StringRef> NewFromUtf16(const EcmaVM *vm, const char16_t *utf16, int length = -1);
     std::string ToString();
     int32_t Length();
     int32_t Utf8Length(const EcmaVM *vm);
     int WriteUtf8(char *buffer, int length, bool isWriteBuffer = false);
+    int WriteUtf16(char16_t *buffer, int length);
     int WriteLatin1(char *buffer, int length);
     static Local<StringRef> GetNapiWrapperString(const EcmaVM *vm);
 };
