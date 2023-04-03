@@ -16,17 +16,8 @@
 #ifndef ECMASCRIPT_COMPILER_LLVM_CODEGEN_H
 #define ECMASCRIPT_COMPILER_LLVM_CODEGEN_H
 
-#include <iostream>
-#include <list>
-#include <map>
-#include <vector>
-
 #include "ecmascript/compiler/binary_section.h"
 #include "ecmascript/compiler/code_generator.h"
-#include "ecmascript/compiler/compiler_log.h"
-#include "ecmascript/compiler/llvm_ir_builder.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/js_thread.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -40,20 +31,9 @@
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-#include "ecmascript/mem/machine_code.h"
-#include "ecmascript/mem/region.h"
-#include "llvm-c/Analysis.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/ExecutionEngine.h"
-#include "llvm-c/Target.h"
-#include "llvm-c/Transforms/PassManagerBuilder.h"
-#include "llvm-c/Transforms/Scalar.h"
-#include "llvm-c/Types.h"
-#include "llvm/ExecutionEngine/Interpreter.h"
-#include "llvm/IR/Instructions.h"
-#include "llvm/ExecutionEngine/SectionMemoryManager.h"
-#include "llvm/ExecutionEngine/MCJIT.h"
-#include "llvm/Support/Host.h"
+#include "llvm/ExecutionEngine/JITEventListener.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
@@ -62,105 +42,31 @@
 #endif
 
 namespace panda::ecmascript::kungfu {
+class CompilerLog;
+class MethodLogList;
+class LLVMModule;
+
 struct CodeInfo {
     using sectionInfo = std::pair<uint8_t *, size_t>;
-    CodeInfo()
-    {
-        ASSERT(REQUIRED_SECS_LIMIT == AlignUp(REQUIRED_SECS_LIMIT, PageSize()));
-#ifdef PANDA_TARGET_MACOS
-        reqSecs_ = static_cast<uint8_t *>(PageMap(REQUIRED_SECS_LIMIT, PAGE_PROT_READWRITE).GetMem());
-#else
-        reqSecs_ = static_cast<uint8_t *>(PageMap(REQUIRED_SECS_LIMIT, PAGE_PROT_EXEC_READWRITE).GetMem());
-#endif
-        if (reqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
-            reqSecs_ = nullptr;
-        }
-        ASSERT(UNREQUIRED_SECS_LIMIT == AlignUp(UNREQUIRED_SECS_LIMIT, PageSize()));
-#ifdef PANDA_TARGET_MACOS
-        unreqSecs_ = static_cast<uint8_t *>(PageMap(UNREQUIRED_SECS_LIMIT, PAGE_PROT_READWRITE).GetMem());
-#else
-        unreqSecs_ = static_cast<uint8_t *>(PageMap(UNREQUIRED_SECS_LIMIT, PAGE_PROT_EXEC_READWRITE).GetMem());
-#endif
-        if (unreqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
-            unreqSecs_ = nullptr;
-        }
-        secInfos_.fill(std::make_pair(nullptr, 0));
-    }
-    ~CodeInfo()
-    {
-        Reset();
-        if (reqSecs_ != nullptr) {
-            PageUnmap(MemMap(reqSecs_, REQUIRED_SECS_LIMIT));
-        }
-        reqSecs_ = nullptr;
-        if (unreqSecs_ != nullptr) {
-            PageUnmap(MemMap(unreqSecs_, UNREQUIRED_SECS_LIMIT));
-        }
-        unreqSecs_ = nullptr;
-    }
+    CodeInfo();
 
-    uint8_t *AllocaInReqSecBuffer(uintptr_t size, bool alignFlag = true)
-    {
-        return Alloca(size, reqSecs_, reqBufPos_, alignFlag);
-    }
+    ~CodeInfo();
 
-    uint8_t *AllocaInNotReqSecBuffer(uintptr_t size)
-    {
-        return Alloca(size, unreqSecs_, unreqBufPos_);
-    }
+    uint8_t *AllocaInReqSecBuffer(uintptr_t size, bool alignFlag = true);
 
-    uint8_t *AllocaCodeSection(uintptr_t size, const char *sectionName)
-    {
-        // if have got section, don't use align.
-        uint8_t *addr = AllocaInReqSecBuffer(size, false);
-        auto curSec = ElfSection(sectionName);
-        codeInfo_.push_back({addr, size});
-        if (curSec.isValidAOTSec()) {
-            secInfos_[curSec.GetIntIndex()] = std::make_pair(addr, size);
-        }
-        return addr;
-    }
+    uint8_t *AllocaInNotReqSecBuffer(uintptr_t size);
 
-    uint8_t *AllocaDataSection(uintptr_t size, const char *sectionName)
-    {
-        uint8_t *addr = nullptr;
-        auto curSec = ElfSection(sectionName);
-        // rodata section needs 16 bytes alignment
-        if (curSec.InRodataSection()) {
-            size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        }
-        addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size) : AllocaInNotReqSecBuffer(size);
-        if (curSec.isValidAOTSec()) {
-            secInfos_[curSec.GetIntIndex()] = std::make_pair(addr, size);
-        }
-        return addr;
-    }
+    uint8_t *AllocaCodeSection(uintptr_t size, const char *sectionName);
 
-    void Reset()
-    {
-        codeInfo_.clear();
-        reqBufPos_ = 0;
-        unreqBufPos_ = 0;
-    }
+    uint8_t *AllocaDataSection(uintptr_t size, const char *sectionName);
 
-    uint8_t *GetSectionAddr(ElfSecName sec) const
-    {
-        auto curSection = ElfSection(sec);
-        auto idx = curSection.GetIntIndex();
-        return const_cast<uint8_t *>(secInfos_[idx].first);
-    }
+    void Reset();
 
-    size_t GetSectionSize(ElfSecName sec) const
-    {
-        auto curSection = ElfSection(sec);
-        auto idx = curSection.GetIntIndex();
-        return secInfos_[idx].second;
-    }
+    uint8_t *GetSectionAddr(ElfSecName sec) const;
 
-    std::vector<std::pair<uint8_t *, uintptr_t>> GetCodeInfo() const
-    {
-        return codeInfo_;
-    }
+    size_t GetSectionSize(ElfSecName sec) const;
+
+    std::vector<std::pair<uint8_t *, uintptr_t>> GetCodeInfo() const;
 
     template <class Callback>
     void IterateSecInfos(const Callback &cb) const
@@ -174,8 +80,11 @@ struct CodeInfo {
     }
 
 private:
+    uint8_t *Alloca(uintptr_t size, uint8_t *bufBegin, size_t &curPos, bool alignFlag = true);
+
     static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 29);  // 512M
     static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 28);  // 256M
+
     // start point of the buffer reserved for sections required in executing phase
     uint8_t *reqSecs_ {nullptr};
     size_t reqBufPos_ {0};
@@ -184,24 +93,6 @@ private:
     size_t unreqBufPos_ {0};
     std::array<sectionInfo, static_cast<int>(ElfSecName::SIZE)> secInfos_;
     std::vector<std::pair<uint8_t *, uintptr_t>> codeInfo_ {}; // info for disasssembler, planed to be deprecated
-
-    uint8_t *Alloca(uintptr_t size, uint8_t *bufBegin, size_t &curPos, bool alignFlag = true)
-    {
-        // align up for rodata section
-        if (alignFlag) {
-            size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        }
-        uint8_t *addr = nullptr;
-        size_t limit = (bufBegin == reqSecs_) ? REQUIRED_SECS_LIMIT : UNREQUIRED_SECS_LIMIT;
-        if (curPos + size > limit) {
-            LOG_COMPILER(ERROR) << std::hex << "Alloca Section failed. Current curPos:" << curPos
-                      << " plus size:" << size << "exceed limit:" << limit;
-            return nullptr;
-        }
-        addr = bufBegin + curPos;
-        curPos += size;
-        return addr;
-    }
 };
 
 struct LOptions {
@@ -250,17 +141,43 @@ public:
         codeInfo_.IterateSecInfos(cb);
     }
 
+    void SetObjFile(const llvm::object::ObjectFile *obj)
+    {
+        objFile_ = obj;
+    }
 private:
+    class AOTEventListener : public llvm::JITEventListener {
+      public:
+        AOTEventListener(LLVMAssembler* as) : as_(as)
+        {
+        }
+        void notifyObjectLoaded([[maybe_unused]] ObjectKey key, const llvm::object::ObjectFile &objFile,
+                                [[maybe_unused]] const llvm::RuntimeDyld::LoadedObjectInfo &objInfo)
+        {
+            as_->SetObjFile(&objFile);
+        }
+      private:
+        LLVMAssembler* GetAssembler() const
+        {
+            return as_;
+        }
+
+        LLVMAssembler* as_ {nullptr};
+    };
+
     void UseRoundTripSectionMemoryManager();
     bool BuildMCJITEngine();
     void BuildAndRunPasses();
     void Initialize(LOptions option);
-    static void PrintInstAndStep(unsigned &pc, uint8_t **byteSp, uintptr_t &numBytes, size_t instSize, char *outString,
-        bool logFlag = true);
+    static void PrintInstAndStep(uint64_t &pc, uint8_t **byteSp, uintptr_t &numBytes, size_t instSize,
+                                 char *outString, bool logFlag = true);
+    uint64_t GetTextSectionIndex() const;
 
     LLVMMCJITCompilerOptions options_ {};
     LLVMModuleRef module_;
+    const llvm::object::ObjectFile* objFile_ {nullptr};
     LLVMExecutionEngineRef engine_ {nullptr};
+    AOTEventListener listener_;
     char *error_ {nullptr};
     struct CodeInfo codeInfo_ {};
 };
@@ -273,7 +190,7 @@ public:
     void GenerateCodeForStub(Circuit *circuit, const ControlFlowGraph &graph, size_t index,
                              const CompilationConfig *cfg) override;
     void GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
-        const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile) override;
+        const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile, const std::string &methodName) override;
 
     bool IsLogEnabled() const
     {

@@ -30,37 +30,25 @@
 #endif
 
 #include "llvm-c/Analysis.h"
-#include "llvm-c/Core.h"
 #include "llvm-c/Disassembler.h"
 #include "llvm-c/DisassemblerTypes.h"
 #include "llvm-c/Target.h"
 #include "llvm-c/Transforms/PassManagerBuilder.h"
-#include "llvm-c/Transforms/Scalar.h"
-#include "llvm/ADT/APInt.h"
 #include "llvm/CodeGen/BuiltinGCs.h"
+#include "llvm/DebugInfo/DWARF/DWARFContext.h"
+#include "llvm/DebugInfo/DIContext.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include "llvm/ExecutionEngine/GenericValue.h"
-#include "llvm/IR/Argument.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/InstrTypes.h"
-#include "llvm/IR/Instructions.h"
+#include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
-#include "llvm/IRReader/IRReader.h"
-#include "llvm/Support/Casting.h"
-#include "llvm/Support/Debug.h"
-#include "llvm/Support/Host.h"
-#include "llvm/Support/TargetSelect.h"
 #include "llvm/Transforms/Scalar.h"
 
 #include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/compiler/compiler_log.h"
+#include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/ecma_macros.h"
+#include "ecmascript/mem/region.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
@@ -70,25 +58,144 @@
 #pragma GCC diagnostic pop
 #endif
 
-using namespace panda::ecmascript;
 namespace panda::ecmascript::kungfu {
+using namespace panda::ecmascript;
+using namespace llvm;
+
+CodeInfo::CodeInfo()
+{
+    ASSERT(REQUIRED_SECS_LIMIT == AlignUp(REQUIRED_SECS_LIMIT, PageSize()));
+#ifdef PANDA_TARGET_MACOS
+    reqSecs_ = static_cast<uint8_t *>(PageMap(REQUIRED_SECS_LIMIT, PAGE_PROT_READWRITE).GetMem());
+#else
+    reqSecs_ = static_cast<uint8_t *>(PageMap(REQUIRED_SECS_LIMIT, PAGE_PROT_EXEC_READWRITE).GetMem());
+#endif
+    if (reqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
+        reqSecs_ = nullptr;
+    }
+    ASSERT(UNREQUIRED_SECS_LIMIT == AlignUp(UNREQUIRED_SECS_LIMIT, PageSize()));
+#ifdef PANDA_TARGET_MACOS
+    unreqSecs_ = static_cast<uint8_t *>(PageMap(UNREQUIRED_SECS_LIMIT, PAGE_PROT_READWRITE).GetMem());
+#else
+    unreqSecs_ = static_cast<uint8_t *>(PageMap(UNREQUIRED_SECS_LIMIT, PAGE_PROT_EXEC_READWRITE).GetMem());
+#endif
+    if (unreqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
+        unreqSecs_ = nullptr;
+    }
+    secInfos_.fill(std::make_pair(nullptr, 0));
+}
+
+CodeInfo::~CodeInfo()
+{
+    Reset();
+    if (reqSecs_ != nullptr) {
+        PageUnmap(MemMap(reqSecs_, REQUIRED_SECS_LIMIT));
+    }
+    reqSecs_ = nullptr;
+    if (unreqSecs_ != nullptr) {
+        PageUnmap(MemMap(unreqSecs_, UNREQUIRED_SECS_LIMIT));
+    }
+    unreqSecs_ = nullptr;
+}
+
+uint8_t *CodeInfo::AllocaInReqSecBuffer(uintptr_t size, bool alignFlag)
+{
+    return Alloca(size, reqSecs_, reqBufPos_, alignFlag);
+}
+
+uint8_t *CodeInfo::AllocaInNotReqSecBuffer(uintptr_t size)
+{
+    return Alloca(size, unreqSecs_, unreqBufPos_);
+}
+
+uint8_t *CodeInfo::AllocaCodeSection(uintptr_t size, const char *sectionName)
+{
+    // if have got section, don't use align.
+    uint8_t *addr = AllocaInReqSecBuffer(size, false);
+    auto curSec = ElfSection(sectionName);
+    codeInfo_.push_back({addr, size});
+    if (curSec.isValidAOTSec()) {
+        secInfos_[curSec.GetIntIndex()] = std::make_pair(addr, size);
+    }
+    return addr;
+}
+
+uint8_t *CodeInfo::AllocaDataSection(uintptr_t size, const char *sectionName)
+{
+    uint8_t *addr = nullptr;
+    auto curSec = ElfSection(sectionName);
+    // rodata section needs 16 bytes alignment
+    if (curSec.InRodataSection()) {
+        size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+    }
+    addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size) : AllocaInNotReqSecBuffer(size);
+    if (curSec.isValidAOTSec()) {
+        secInfos_[curSec.GetIntIndex()] = std::make_pair(addr, size);
+    }
+    return addr;
+}
+
+void CodeInfo::Reset()
+{
+    codeInfo_.clear();
+    reqBufPos_ = 0;
+    unreqBufPos_ = 0;
+}
+
+uint8_t *CodeInfo::GetSectionAddr(ElfSecName sec) const
+{
+    auto curSection = ElfSection(sec);
+    auto idx = curSection.GetIntIndex();
+    return const_cast<uint8_t *>(secInfos_[idx].first);
+}
+
+size_t CodeInfo::GetSectionSize(ElfSecName sec) const
+{
+    auto curSection = ElfSection(sec);
+    auto idx = curSection.GetIntIndex();
+    return secInfos_[idx].second;
+}
+
+std::vector<std::pair<uint8_t *, uintptr_t>> CodeInfo::GetCodeInfo() const
+{
+    return codeInfo_;
+}
+
+uint8_t *CodeInfo::Alloca(uintptr_t size, uint8_t *bufBegin, size_t &curPos, bool alignFlag)
+{
+    // align up for rodata section
+    if (alignFlag) {
+        size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+    }
+    uint8_t *addr = nullptr;
+    size_t limit = (bufBegin == reqSecs_) ? REQUIRED_SECS_LIMIT : UNREQUIRED_SECS_LIMIT;
+    if (curPos + size > limit) {
+        LOG_COMPILER(ERROR) << std::hex << "Alloca Section failed. Current curPos:" << curPos
+                            << " plus size:" << size << "exceed limit:" << limit;
+        return nullptr;
+    }
+    addr = bufBegin + curPos;
+    curPos += size;
+    return addr;
+}
+
 void LLVMIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlFlowGraph &graph, size_t index,
                                               const CompilationConfig *cfg)
 {
     LLVMValueRef function = module_->GetFunction(index);
     const CallSignature* cs = module_->GetCSign(index);
-    LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, cs->GetCallConv(), enableLog_);
+    LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, cs->GetCallConv(), enableLog_, cs->GetName());
     builder.Build();
 }
 
 void LLVMIRGeneratorImpl::GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
                                        const panda::ecmascript::MethodLiteral *methodLiteral,
-                                       const JSPandaFile *jsPandaFile)
+                                       const JSPandaFile *jsPandaFile, const std::string &methodName)
 {
     auto function = module_->AddFunc(methodLiteral, jsPandaFile);
     circuit->SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
     LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, CallSignature::CallConv::WebKitJSCallConv,
-                          enableLog_);
+                          enableLog_, methodName);
     builder.Build();
 }
 
@@ -132,6 +239,7 @@ bool LLVMAssembler::BuildMCJITEngine()
         LOG_COMPILER(FATAL) << "error_ : " << error_;
         return false;
     }
+    llvm::unwrap(engine_)->RegisterJITEventListener(&listener_);
     return true;
 }
 
@@ -161,7 +269,7 @@ void LLVMAssembler::BuildAndRunPasses()
     LLVMDisposePassManager(modPass);
 }
 
-LLVMAssembler::LLVMAssembler(LLVMModuleRef module, LOptions option) : module_(module)
+LLVMAssembler::LLVMAssembler(LLVMModuleRef module, LOptions option) : module_(module), listener_(this)
 {
     Initialize(option);
 }
@@ -242,6 +350,7 @@ void LLVMAssembler::Initialize(LOptions option)
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
+
     llvm::linkAllBuiltinGCs();
     LLVMInitializeMCJITCompilerOptions(&options_, sizeof(options_));
     options_.OptLevel = option.optLevel;
@@ -258,7 +367,6 @@ static const char *SymbolLookupCallback([[maybe_unused]] void *disInfo, [[maybe_
     *referenceType = LLVMDisassembler_ReferenceType_InOut_None;
     return nullptr;
 }
-
 
 kungfu::CalleeRegAndOffsetVec LLVMAssembler::GetCalleeReg2Offset(LLVMValueRef fn, const CompilerLog &log)
 {
@@ -280,7 +388,6 @@ kungfu::CalleeRegAndOffsetVec LLVMAssembler::GetCalleeReg2Offset(LLVMValueRef fn
     return info;
 }
 
-
 int LLVMAssembler::GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log)
 {
     int fpToCallerSpDelta = 0;
@@ -300,7 +407,16 @@ int LLVMAssembler::GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log)
     return fpToCallerSpDelta;
 }
 
-void LLVMAssembler::PrintInstAndStep(unsigned &pc, uint8_t **byteSp, uintptr_t &numBytes,
+static uint32_t GetInstrValue(size_t instrSize, uint8_t *instrAddr)
+{
+    uint32_t value = 0;
+    if (instrSize <= sizeof(uint32_t)) {
+        memcpy_s(&value, sizeof(uint32_t), instrAddr, instrSize);
+    }
+    return value;
+}
+
+void LLVMAssembler::PrintInstAndStep(uint64_t &instrOffset, uint8_t **instrAddr, uintptr_t &numBytes,
                                      size_t instSize, char *outString, bool logFlag)
 {
     if (instSize == 0) {
@@ -308,11 +424,11 @@ void LLVMAssembler::PrintInstAndStep(unsigned &pc, uint8_t **byteSp, uintptr_t &
     }
     if (logFlag) {
         // 8: length of output content
-        LOG_COMPILER(INFO) << std::setw(8) << std::setfill('0') << std::hex << pc << ":" << std::setw(8)
-                            << *reinterpret_cast<uint32_t *>(*byteSp) << " " << outString;
+        LOG_COMPILER(INFO) << std::setw(8) << std::setfill('0') << std::hex << instrOffset << ":" << std::setw(8)
+                           << GetInstrValue(instSize, *instrAddr) << " " << outString;
     }
-    pc += instSize;
-    *byteSp += instSize;
+    instrOffset += instSize;
+    *instrAddr += instSize;
     numBytes -= instSize;
 }
 
@@ -321,45 +437,84 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> *addr2nam
 {
     LLVMModuleRef module = LLVMModuleCreateWithName("Emit");
     LLVMSetTarget(module, triple.c_str());
-    LLVMDisasmContextRef dcr = LLVMCreateDisasm(LLVMGetTarget(module), nullptr, 0, nullptr, SymbolLookupCallback);
-    if (!dcr) {
+    LLVMDisasmContextRef ctx = LLVMCreateDisasm(LLVMGetTarget(module), nullptr, 0, nullptr, SymbolLookupCallback);
+    if (!ctx) {
         LOG_COMPILER(ERROR) << "ERROR: Couldn't create disassembler for triple!";
         return;
     }
-    uint8_t *byteSp = buf;
+    uint8_t *instrAddr = buf;
     uint64_t bufAddr = reinterpret_cast<uint64_t>(buf);
-    uintptr_t numBytes = size;
-    unsigned pc = 0;
-    const size_t outStringSize = 128;
+    uint64_t numBytes = size;
+    uint64_t instrOffset = 0;
+    const size_t outStringSize = 256;
     char outString[outStringSize];
     while (numBytes > 0) {
-        uint64_t addr = reinterpret_cast<uint64_t>(byteSp) - bufAddr;
+        uint64_t addr = reinterpret_cast<uint64_t>(instrAddr) - bufAddr;
         if (addr2name != nullptr && addr2name->find(addr) != addr2name->end()) {
             std::string methodName = addr2name->at(addr);
             LOG_COMPILER(INFO) << "------------------- asm code [" << methodName << "] -------------------";
         }
-        size_t instSize = LLVMDisasmInstruction(dcr, byteSp, numBytes, pc, outString, outStringSize);
-        PrintInstAndStep(pc, &byteSp, numBytes, instSize, outString);
+        size_t instSize = LLVMDisasmInstruction(ctx, instrAddr, numBytes, instrOffset, outString, outStringSize);
+        PrintInstAndStep(instrOffset, &instrAddr, numBytes, instSize, outString);
     }
-    LLVMDisasmDispose(dcr);
+    LLVMDisasmDispose(ctx);
+}
+
+static void DecodeDebugInfo(uint64_t addr, uint64_t secIndex, char* outString, size_t outStringSize,
+                                    DWARFContext *ctx)
+{
+    object::SectionedAddress secAddr = {addr, secIndex};
+    DILineInfoSpecifier spec;
+    spec.FNKind = DINameKind::ShortName;
+
+    DILineInfo info = ctx->getLineInfoForAddress(secAddr, spec);
+    if (info && info.Line > 0) {
+        std::string debugInfo = std::string("\t<line=");
+        debugInfo += std::to_string(info.Line);
+        debugInfo += std::string(">");
+        size_t len = strlen(outString);
+        if (len + debugInfo.size() <= outStringSize) {
+            strcpy_s(outString + len, outStringSize - len, debugInfo.c_str());
+        }
+    }
+}
+
+uint64_t LLVMAssembler::GetTextSectionIndex() const
+{
+    uint64_t index = 0;
+    for (object::section_iterator it = objFile_->section_begin(); it != objFile_->section_end(); ++it) {
+        auto name = it->getName();
+        if (name) {
+            std::string str = name->str();
+            if (str == ".text") {
+                index = it->getIndex();
+                ASSERT(it->isText());
+                break;
+            }
+        }
+    }
+    return index;
 }
 
 void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2name,
                                 const CompilerLog &log, const MethodLogList &logList) const
 {
-    LLVMDisasmContextRef dcr = LLVMCreateDisasm(LLVMGetTarget(module_), nullptr, 0, nullptr, SymbolLookupCallback);
+    const uint64_t textSecIndex = GetTextSectionIndex();
+    LLVMDisasmContextRef disCtx = LLVMCreateDisasm(LLVMGetTarget(module_), nullptr, 0, nullptr, SymbolLookupCallback);
     bool logFlag = false;
-    unsigned pc = 0;
+    std::unique_ptr<DWARFContext> dwarfCtx = DWARFContext::create(*objFile_);
 
     for (auto it : codeInfo_.GetCodeInfo()) {
-        uint8_t *byteSp = it.first;
-        uintptr_t numBytes = it.second;
+        uint8_t *instrAddr = it.first;
+        uint64_t numBytes = it.second;
+        uint64_t instrOffset = 0;
 
-        const size_t outStringSize = 128;
-        char outString[outStringSize];
+        const size_t outStringSize = 256;
+        char outString[outStringSize] = {'\0'};
         std::string methodName;
+
         while (numBytes > 0) {
-            uint64_t addr = reinterpret_cast<uint64_t>(byteSp);
+            uint64_t addr = reinterpret_cast<uint64_t>(instrAddr);
             if (addr2name.find(addr) != addr2name.end()) {
                 methodName = addr2name.at(addr);
                 logFlag = log.OutputASM();
@@ -373,10 +528,11 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2nam
                 }
             }
 
-            size_t instSize = LLVMDisasmInstruction(dcr, byteSp, numBytes, pc, outString, outStringSize);
-            PrintInstAndStep(pc, &byteSp, numBytes, instSize, outString, logFlag);
+            size_t instSize = LLVMDisasmInstruction(disCtx, instrAddr, numBytes, instrOffset, outString, outStringSize);
+            DecodeDebugInfo(instrOffset, textSecIndex, outString, outStringSize, dwarfCtx.get());
+            PrintInstAndStep(instrOffset, &instrAddr, numBytes, instSize, outString, logFlag);
         }
     }
-    LLVMDisasmDispose(dcr);
+    LLVMDisasmDispose(disCtx);
 }
 }  // namespace panda::ecmascript::kungfu
