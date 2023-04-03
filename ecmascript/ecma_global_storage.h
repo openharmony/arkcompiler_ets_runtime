@@ -156,7 +156,7 @@ public:
 private:
     void SaveBacktrace(JSThread *thread, JSTaggedType value)
     {
-        globalNumber_ = thread->IncreaseGlobalNumberCount();
+        globalNumber_ = static_cast<int32_t>(thread->IncreaseGlobalNumberCount());
         std::ostringstream stack;
         stack << "Global Handle Number:[" << globalNumber_ << "], value:0x" <<
             std::hex << value << std::endl;

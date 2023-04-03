@@ -769,8 +769,8 @@ void SamplesQueue::PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
 {
     os::memory::LockHolder holder(mtx_);
     if (!IsFull()) {
-        int frameInfoTempsLength = napiFrameInfoTemps.size();
-        int frameStackLength = napiFrameStack.size();
+        int frameInfoTempsLength = static_cast<int>(napiFrameInfoTemps.size());
+        int frameStackLength = static_cast<int>(napiFrameStack.size());
         // napiFrameInfoTemps
         for (int i = 0; i < frameInfoTempsLength; i++) {
             CheckAndCopy(frames_[rear_].frameInfoTemps[i].functionName,

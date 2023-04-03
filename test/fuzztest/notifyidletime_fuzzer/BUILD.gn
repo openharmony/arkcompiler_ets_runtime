@@ -21,11 +21,11 @@ import("//build/ohos.gni")
 ohos_fuzztest("NotifyIdleTimeFuzzTest") {
   module_out_path = "arkcompiler/ets_runtime"
 
-  fuzz_config_file = "$js_root/test/fuzztest/notifyidietime_fuzzer"
+  fuzz_config_file = "$js_root/test/fuzztest/notifyidletime_fuzzer"
 
   resource_config_file = "$js_root/test/resource/js_runtime/ohos_test.xml"
 
-  sources = [ "notifyidietime_fuzzer.cpp" ]
+  sources = [ "notifyidletime_fuzzer.cpp" ]
 
   configs = [ "$js_root:ecma_test_config" ]
 

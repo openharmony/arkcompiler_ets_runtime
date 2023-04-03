@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "notifyidietime_fuzzer.h"
+#include "notifyidletime_fuzzer.h"
 
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"

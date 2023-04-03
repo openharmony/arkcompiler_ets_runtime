@@ -422,7 +422,7 @@ int32_t DebuggerApi::GetRequestModuleIndex(const EcmaVM *ecmaVm, JSTaggedValue m
         SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
     JSTaggedValue requireModule = requiredModule->GetEcmaModuleRecordName();
     JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
-    int32_t requestedModulesLen = requestedModules->GetLength();
+    int32_t requestedModulesLen = static_cast<int32_t>(requestedModules->GetLength());
     for (int32_t idx = 0; idx < requestedModulesLen; idx++) {
         JSTaggedValue requestModule = requestedModules->Get(idx);
         if (JSTaggedValue::SameValue(requireModule, requestModule)) {
@@ -619,7 +619,7 @@ void DebuggerApi::GetImportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &mod
 
     JSThread *thread = ecmaVm->GetJSThread();
     JSHandle<TaggedArray> importArray(thread, TaggedArray::Cast(importEntries.GetTaggedObject()));
-    int32_t importEntriesLen = importArray->GetLength();
+    int32_t importEntriesLen = static_cast<int32_t>(importArray->GetLength());
     JSHandle<TaggedArray> environment(thread, TaggedArray::Cast(moduleEnvironment.GetTaggedObject()));
     JSHandle<JSTaggedValue> starString = thread->GlobalConstants()->GetHandledStarString();
     JSMutableHandle<ImportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());

@@ -76,8 +76,8 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
         char buf[LOG_BUF_LEN] = {0};
         char frameFormatWithMapName[] = "#%02zu pc %016" PRIx64 " %s";
         int ret = 0;
-        ret = snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, frameFormatWithMapName, \
-            i, offset, file);
+        ret = static_cast<int>(snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, frameFormatWithMapName, \
+            i, offset, file));
         if (ret <= 0) {
             LOG_ECMA(ERROR) << "Backtrace snprintf_s failed";
             return;
