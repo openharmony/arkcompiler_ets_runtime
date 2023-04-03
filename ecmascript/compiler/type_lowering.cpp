@@ -44,7 +44,7 @@ void TypeLowering::RunTypeLowering()
 void TypeLowering::LowerType(GateRef gate)
 {
     GateRef glue = acc_.GetGlueFromArgList();
-    auto op = OpCode(acc_.GetOpCode(gate));
+    auto op = acc_.GetOpCode(gate);
     switch (op) {
         case OpCode::PRIMITIVE_TYPE_CHECK:
             LowerPrimitiveTypeCheck(gate);

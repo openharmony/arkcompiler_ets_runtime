@@ -79,8 +79,15 @@ bool GateMetaData::IsProlog() const
 
 bool GateMetaData::IsFixed() const
 {
-    return (opcode_ == OpCode::VALUE_SELECTOR) || (opcode_ == OpCode::DEPEND_SELECTOR) ||
-        (opcode_ == OpCode::DEPEND_RELAY);
+    switch (opcode_) {
+        case OpCode::VALUE_SELECTOR:
+        case OpCode::DEPEND_SELECTOR:
+        case OpCode::DEPEND_RELAY:
+        case OpCode::LOOP_EXIT_DEPEND:
+            return true;
+        default:
+            return false;
+    }
 }
 
 bool GateMetaData::IsSchedulable() const
@@ -107,6 +114,7 @@ bool GateMetaData::IsGeneralState() const
         case OpCode::DEFAULT_CASE:
         case OpCode::MERGE:
         case OpCode::LOOP_BEGIN:
+        case OpCode::LOOP_EXIT:
         case OpCode::ORDINARY_BLOCK:
         case OpCode::STATE_ENTRY:
         case OpCode::TYPED_BINARY_OP:
@@ -132,6 +140,17 @@ bool GateMetaData::IsTerminalState() const
         case OpCode::RETURN:
         case OpCode::THROW:
         case OpCode::RETURN_VOID:
+        case OpCode::GET_EXCEPTION:
+        case OpCode::STATE_SPLIT:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool GateMetaData::IsVirtualState() const
+{
+    switch (opcode_) {
         case OpCode::GET_EXCEPTION:
         case OpCode::STATE_SPLIT:
             return true;

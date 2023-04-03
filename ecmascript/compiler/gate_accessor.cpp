@@ -585,7 +585,7 @@ void GateAccessor::ReplaceHirWithIfBranch(GateRef hirGate, StateDepend success,
             } else if (op == OpCode::IF_EXCEPTION) {
                 ifException = *it;
                 it = ReplaceHirIfException(it, exception);
-            } else if (op == OpCode::STATE_SPLIT) {
+            } else if (GetMetaData(*it)->IsVirtualState()) {
                 it = ReplaceIn(it, success.State());
             } else {
                 ExceptionReturn(exception.State(), exception.Depend());

@@ -166,11 +166,18 @@ GateRef FrameStateBuilder::GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *p
             auto predId = std::get<0>(bb->expandedPreds.at(i));
             if (bb->loopbackBlocks.count(predId)) {
                 if (predId == predBb->id) {
+                    if (bb->numOfLoopBacks == 1) {
+                        return loopBackValue;
+                    }
                     return gateAcc_.GetValueIn(loopBackValue, backIndex);
                 }
                 backIndex++;
             } else {
                 if (predId == predBb->id) {
+                    auto mergeCount = bb->numOfStatePreds - bb->numOfLoopBacks;
+                    if (mergeCount == 1) {
+                        return forwardValue;
+                    }
                     return gateAcc_.GetValueIn(forwardValue, forwardIndex);
                 }
                 forwardIndex++;

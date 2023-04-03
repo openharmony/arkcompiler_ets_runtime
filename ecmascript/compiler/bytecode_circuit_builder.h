@@ -27,8 +27,10 @@
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/frame_states.h"
+#include "ecmascript/compiler/loop_analysis.h"
 #include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
@@ -37,13 +39,6 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
 
 namespace panda::ecmascript::kungfu {
-
-enum class VisitState : uint8_t {
-    UNVISITED,
-    PENDING,
-    VISITED
-};
-
 struct ExceptionItem {
     uint8_t* startPc;
     uint8_t* endPc;
@@ -175,6 +170,9 @@ struct BytecodeRegion {
     std::set<size_t> loopbackBlocks {}; // List of loopback block ids
     bool isDead {false};
     bool phiAcc {false};
+    bool isLoopExit {false};
+    bool isLoopBody {false};
+    size_t loopHead {0};
     std::set<uint16_t> phi {}; // phi node
     size_t numOfStatePreds {0};
     size_t numOfLoopBacks {0};
@@ -182,12 +180,14 @@ struct BytecodeRegion {
     size_t forwardIndex {0};
     size_t loopBackIndex {0};
     std::vector<std::tuple<size_t, size_t, bool>> expandedPreds {};
-    GateRef stateStart {Circuit::NullGate()};
-    GateRef dependStart {Circuit::NullGate()};
-    GateRef mergeForwardEdges {Circuit::NullGate()};
-    GateRef mergeLoopBackEdges {Circuit::NullGate()};
-    GateRef depForward {Circuit::NullGate()};
-    GateRef depLoopBack {Circuit::NullGate()};
+    GateRef loopExitState {Circuit::NullGate()};
+    GateRef loopExitDepend {Circuit::NullGate()};
+    GateRef stateCurrent {Circuit::NullGate()};
+    GateRef dependCurrent {Circuit::NullGate()};
+    GateRef stateMerge {Circuit::NullGate()};
+    GateRef dependMerge {Circuit::NullGate()};
+    GateRef loopBackStateMerge {Circuit::NullGate()};
+    GateRef loopBackDependMerge {Circuit::NullGate()};
     std::unordered_map<uint16_t, GateRef> vregToValSelectorGate {}; // corresponding ValueSelector gates of vregs
     GateRef valueSelectorAccGate {Circuit::NullGate()};
     BytecodeIterator bytecodeIterator_ {};
@@ -271,7 +271,9 @@ public:
           typeRecorder_(jsPandaFile, method_, tsManager, recordName, loader), hasTypes_(hasTypes),
           enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
           pcOffsets_(methodPCInfo.pcOffsets),
-          frameStateBuilder_(this, circuit, methodLiteral), methodName_(name), recordName_(recordName),
+          frameStateBuilder_(this, circuit, methodLiteral),
+          loopAnalysis_(this, circuit->chunk()),
+          methodName_(name), recordName_(recordName),
           bytecodes_(bytecodes)
     {
     }
@@ -440,10 +442,14 @@ private:
     void BuildCircuitArgs();
     void CollectPredsInfo();
     void NewMerge(GateRef &state, GateRef &depend, size_t numOfIns);
-    void NewLoopBegin(BytecodeRegion &bb);
-    void BuildBlockCircuitHead();
+    void NewLoopBegin(BytecodeRegion &bb, GateRef &state, GateRef &depend);
+    void NewLoopExit(BytecodeRegion &bb, GateRef &state, GateRef &depend);
+    void BuildBlockCircuitHead(BytecodeRegion &bb, GateRef &state, GateRef &depend);
     std::vector<GateRef> CreateGateInList(const BytecodeInfo &info, const GateMetaData *meta);
-    void SetBlockPred(BytecodeRegion &bbNext, const GateRef &state, const GateRef &depend, bool isLoopBack);
+    void SetBlockPred(BytecodeRegion &bb, BytecodeRegion &bbNext, const GateRef &state, const GateRef &depend);
+    void SetLoopBlockPred(BytecodeRegion &bb, BytecodeRegion &bbNext,
+                          GateRef &state, GateRef &depend);
+    void SetLoopExitBlockPred(BytecodeRegion &bb, GateRef &state, GateRef &depend);
     GateRef NewConst(const BytecodeInfo &info);
     void NewJSGate(BytecodeRegion &bb, GateRef &state, GateRef &depend);
     void NewJump(BytecodeRegion &bb, GateRef &state, GateRef &depend);
@@ -451,6 +457,8 @@ private:
     void NewByteCode(BytecodeRegion &bb, GateRef &state, GateRef &depend);
     void BuildSubCircuit();
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
+    GateRef NewLoopBackPhi(BytecodeRegion &bb, uint16_t reg, bool acc);
+    GateRef NewLoopForwardPhi(BytecodeRegion &bb, uint16_t reg, bool acc);
     GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc);
     void BuildCircuit();
     GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
@@ -489,6 +497,7 @@ private:
     std::vector<const uint8_t*> pcOffsets_;
     std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_ {};
     FrameStateBuilder frameStateBuilder_;
+    LoopAnalysis loopAnalysis_;
     std::string methodName_;
     const CString &recordName_;
     Bytecodes *bytecodes_;

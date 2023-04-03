@@ -196,6 +196,11 @@ public:
         return OpcodeField::Get(value_);
     }
 
+    bool IsInvalid() const
+    {
+        return value_ == 0;
+    }
+
 private:
     BytecodeMetaData() = default;
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(BytecodeMetaData);
@@ -565,6 +570,11 @@ public:
     bool IsGeneral() const
     {
         return metaData_.IsGeneral();
+    }
+
+    bool needFallThrough() const
+    {
+        return !IsJump() && !IsReturn() && !IsThrow();
     }
 
     bool IsGeneratorRelative() const

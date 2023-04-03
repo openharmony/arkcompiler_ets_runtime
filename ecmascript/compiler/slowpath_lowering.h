@@ -298,6 +298,7 @@ private:
     void LowerNotifyConcurrentResult(GateRef gate);
     void DeleteStateSplit(GateRef gate);
     void LowerGetEnv(GateRef gate);
+    void DeleteLoopExit(GateRef gate);
 
     TSManager *tsManager_ {nullptr};
     const MethodLiteral *methodLiteral_ {nullptr};

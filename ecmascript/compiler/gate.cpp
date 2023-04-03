@@ -216,12 +216,14 @@ void Gate::CheckStateOutput() const
         const Gate *curGate = this;
         if (!curGate->IsFirstOutNull()) {
             const Out *curOut = curGate->GetFirstOutConst();
-            if (curOut->IsStateEdge() && curOut->GetGateConst()->GetMetaData()->IsState()) {
+            auto meta = curOut->GetGateConst()->GetMetaData();
+            if (curOut->IsStateEdge() && meta->IsState() && !meta->IsVirtualState()) {
                 cnt++;
             }
             while (!curOut->IsNextOutNull()) {
                 curOut = curOut->GetNextOutConst();
-                if (curOut->IsStateEdge() && curOut->GetGateConst()->GetMetaData()->IsState()) {
+                meta = curOut->GetGateConst()->GetMetaData();
+                if (curOut->IsStateEdge() && meta->IsState() && !meta->IsVirtualState()) {
                     cnt++;
                 }
             }
