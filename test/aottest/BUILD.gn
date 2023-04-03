@@ -182,9 +182,9 @@ group("ark_aot_ts_test") {
 
   if (is_debug) {
     debug_test_list = [
-      "builtins_array",
       # builtins_stub test only print log in debug mode
-      # "builtins_stub"
+      "builtins_array",
+      "builtins_stub",
     ]
     foreach(test, debug_test_list) {
       deps += [ "${test}:${test}AotAction" ]
