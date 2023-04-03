@@ -576,6 +576,7 @@ bool TypeInfer::InferLdObjByIndex(GateRef gate)
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
     auto inValueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+    inValueType = tsManager_->TryNarrowUnionType(inValueType);
     if (tsManager_->IsArrayTypeKind(inValueType)) {
         auto type = tsManager_->GetArrayParameterTypeGT(inValueType);
         return UpdateType(gate, type);
@@ -654,7 +655,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     if (objType.IsAnyType()) {
         return UpdateType(gate, GateType::AnyType());
     }
-
+    objType = tsManager_->TryNarrowUnionType(objType);
     if (ShouldConvertToBuiltinArray(objType)) {
         GlobalTSTypeRef builtinGt = ConvertPrimitiveToBuiltin(objType);
         auto builtinInstanceType = tsManager_->CreateClassInstanceType(builtinGt);
@@ -770,6 +771,7 @@ bool TypeInfer::InferCallFunction(GateRef gate)
 bool TypeInfer::InferLdObjByValue(GateRef gate)
 {
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+    objType = tsManager_->TryNarrowUnionType(objType);
     // handle array
     if (tsManager_->IsArrayTypeKind(objType)) {
         auto elementType = tsManager_->GetArrayParameterTypeGT(objType);

@@ -563,6 +563,7 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef receiver = acc_.GetValueIn(gate, 2); // 2: acc or this object
     GateType receiverType = acc_.GetGateType(receiver);
+    receiverType = tsManager_->TryNarrowUnionType(receiverType);
     if (tsManager_->IsArrayTypeKind(receiverType)) {
         EcmaString *propString = EcmaString::Cast(prop.GetTaggedObject());
         EcmaString *lengthString = EcmaString::Cast(thread->GlobalConstants()->GetLengthString().GetTaggedObject());
@@ -628,6 +629,7 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
         value = acc_.GetValueIn(gate, 3); // 3: acc
     }
     GateType receiverType = acc_.GetGateType(receiver);
+    receiverType = tsManager_->TryNarrowUnionType(receiverType);
     int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
     if (hclassIndex == -1) { // slowpath
         acc_.DeleteStateSplitAndFrameState(gate);
@@ -667,6 +669,7 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef receiver = acc_.GetValueIn(gate, 1);
     GateType receiverType = acc_.GetGateType(receiver);
+    receiverType = tsManager_->TryNarrowUnionType(receiverType);
     if (!tsManager_->IsFloat32ArrayType(receiverType)) { // slowpath
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
@@ -705,6 +708,7 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 2);
     GateType receiverType = acc_.GetGateType(receiver);
     GateType valueType = acc_.GetGateType(value);
+    receiverType = tsManager_->TryNarrowUnionType(receiverType);
     if ((!tsManager_->IsFloat32ArrayType(receiverType)) || (!valueType.IsNumberType())) { // slowpath
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
@@ -751,6 +755,7 @@ void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     }
     GateType receiverType = acc_.GetGateType(receiver);
     GateType propKeyType = acc_.GetGateType(propKey);
+    receiverType = tsManager_->TryNarrowUnionType(receiverType);
     if (!tsManager_->IsArrayTypeKind(receiverType) || !propKeyType.IsNumberType()) { // slowpath
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
