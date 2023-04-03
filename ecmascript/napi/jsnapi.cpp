@@ -17,6 +17,9 @@
 
 #include <array>
 #include <cstdint>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/json_parser.h"
@@ -180,6 +183,52 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 int JSNApi::vmCount_ = 0;
 bool JSNApi::initialize_ = false;
 static os::memory::Mutex *mutex = new panda::os::memory::Mutex();
+#define XPM_PROC_PREFIX "/proc/"
+#define XPM_PROC_SUFFIX "xpm_validate_region"
+#define XPM_PROC_LENGTH 50
+
+static bool CheckSecureMem([[maybe_unused]] uintptr_t mem)
+{
+    static bool hasOpen = false;
+    static uintptr_t secureMemStart = 0;
+    static uintptr_t secureMemEnd = 0;
+    if (!hasOpen) {
+        char procPath[XPM_PROC_LENGTH] = {0};
+        pid_t pid = getpid();
+        if (sprintf_s(procPath, XPM_PROC_LENGTH, "%s%u%s", XPM_PROC_PREFIX, pid, XPM_PROC_SUFFIX) <= 0) {
+            LOG_ECMA(ERROR) << "sprintf proc path failed";
+            return false;
+        }
+        int fd = open(procPath, O_RDWR);
+        if (fd < 0) {
+            LOG_ECMA(ERROR) << "open xpm proc file failed";
+            // No verification is performed when a file fails to be opened.
+            hasOpen = true;
+            return true;
+        }
+
+        char xpmValidateRegion[XPM_PROC_LENGTH] = {0};
+        int ret = read(fd, xpmValidateRegion, sizeof(xpmValidateRegion));
+        if (ret <= 0) {
+            LOG_ECMA(ERROR) << "read xpm proc file failed";
+            close(fd);
+            return false;
+        }
+        sscanf_s(xpmValidateRegion, "%lx-%lx", &secureMemStart, &secureMemEnd);
+        // The check is not performed when the file is already opened.
+        hasOpen = true;
+    }
+
+    // xpm proc does not exist, the read value is 0, and the check is not performed.
+    if (secureMemStart == 0 && secureMemEnd == 0) {
+        return true;
+    }
+
+    if (mem < secureMemStart || mem >= secureMemEnd) {
+        return false;
+    }
+    return true;
+}
 
 // ------------------------------------ Panda -----------------------------------------------
 EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
@@ -429,6 +478,39 @@ bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, 
     LOG_ECMA(DEBUG) << "start to execute module buffer: " << filename;
     JSThread *thread = vm->GetAssociatedJSThread();
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBuffer(thread, data, size, filename.c_str(), needUpdate)) {
+        LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
+        return false;
+    }
+    return true;
+}
+
+bool JSNApi::Execute(EcmaVM *vm, std::unique_ptr<uint8_t[]> data, int32_t size, const std::string &entry,
+                     const std::string &filename, bool needUpdate)
+{
+    LOG_ECMA(DEBUG) << "start to execute ark buffer with secure mmap: " << filename;
+    if (!CheckSecureMem(reinterpret_cast<uintptr_t>(data.get()))) {
+        return false;
+    }
+    JSThread *thread = vm->GetAssociatedJSThread();
+    if (!ecmascript::JSPandaFileExecutor::ExecuteFromBuffer(thread, std::move(data), size, entry, filename.c_str(),
+                                                            needUpdate)) {
+        LOG_ECMA(ERROR) << "Cannot execute ark buffer file '" << filename
+                        << "' with entry '" << entry << "'" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, std::unique_ptr<uint8_t[]> data, int32_t size, const std::string &filename,
+                                 bool needUpdate)
+{
+    LOG_ECMA(DEBUG) << "start to execute module buffer with secure mmap: " << filename;
+    if (!CheckSecureMem(reinterpret_cast<uintptr_t>(data.get()))) {
+        return false;
+    }
+    JSThread *thread = vm->GetAssociatedJSThread();
+    if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBuffer(thread, std::move(data), size, filename.c_str(),
+                                                              needUpdate)) {
         LOG_ECMA(ERROR) << "Cannot execute module buffer file '" << filename;
         return false;
     }

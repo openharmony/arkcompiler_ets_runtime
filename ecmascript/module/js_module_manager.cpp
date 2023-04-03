@@ -735,4 +735,22 @@ bool ModuleManager::LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule
     requiredModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
     return true;
 }
+
+JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const JSPandaFile *jsPandaFile,
+                                                                 const CString &filename)
+{
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<EcmaString> referencingHandle = vm_->GetFactory()->NewFromUtf8(filename);
+    NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
+    int entry = dict->FindEntry(referencingHandle.GetTaggedValue());
+    if (entry != -1) {
+        return JSHandle<JSTaggedValue>(thread, dict->GetValue(entry));
+    }
+
+    if (jsPandaFile == nullptr) {
+        CString msg = "Faild to resolve file '" + filename + "', please check the request path.";
+        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+    }
+    return ResolveModule(thread, jsPandaFile);
+}
 } // namespace panda::ecmascript

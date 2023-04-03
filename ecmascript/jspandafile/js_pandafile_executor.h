@@ -37,6 +37,15 @@ public:
     static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                  std::string_view entryPoint, bool excuteFromJob = false);
     static void LoadAOTFilesForFile(EcmaVM *vm, JSPandaFile *jsPandaFile);
+    // Execute from secure mem
+    static Expected<JSTaggedValue, bool> ExecuteFromBuffer(JSThread *thread, std::unique_ptr<uint8_t[]> buffer,
+                                                           size_t size, std::string_view entryPoint,
+                                                           const CString &filename = "", bool needUpdate = false);
+    static Expected<JSTaggedValue, bool> ExecuteModuleBuffer(JSThread *thread, std::unique_ptr<uint8_t[]> buffer,
+                                                             size_t size, const CString &filename = "",
+                                                             bool needUpdate = false);
+    static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, const CString &filename,
+                                                             const CString &entry, const JSPandaFile *jsPandaFile);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H
