@@ -274,6 +274,7 @@ config("ark_jsruntime_common_config") {
     "-pipe",
     "-Wdate-time",
     "-funwind-tables",
+    "-fno-rtti",
     "-fasynchronous-unwind-tables",
     "-Wformat=2",
     "-std=c++17",
