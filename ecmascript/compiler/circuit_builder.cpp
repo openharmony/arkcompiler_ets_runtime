@@ -282,7 +282,7 @@ GateRef CircuitBuilder::ConvertInt32ToFloat64(GateRef gate)
 
 GateRef CircuitBuilder::ConvertFloat64ToInt32(GateRef gate)
 {
-    return Convert(gate, ValueType::FLOAT64, ValueType::INT32);
+    return CheckAndConvert(gate, ValueType::FLOAT64, ValueType::INT32);
 }
 
 GateRef CircuitBuilder::ConvertBoolToTaggedBoolean(GateRef gate)

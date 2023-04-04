@@ -35,8 +35,7 @@ private:
     void VisitTypedBinaryOp(GateRef gate);
     void VisitNumberBinaryOp(GateRef gate);
     void VisitTypedUnaryOp(GateRef gate);
-    void VisitTypedInc(GateRef gate);
-    void VisitTypedNot(GateRef gate);
+    void VisitNumberNot(GateRef gate);
     void VisitTypedJeqz(GateRef gate);
     void VisitConstant(GateRef gate);
     void VisitPhi(GateRef gate);
@@ -49,9 +48,11 @@ private:
     void VisitNumberCompare(GateRef gate);
     template<TypedBinOp Op>
     void VisitNumberShift(GateRef gate);
-    void VisitIntNot(GateRef gate);
-    void VisitIntInc(GateRef gate);
-    void VisitDoubleInc(GateRef gate);
+    template<TypedBinOp Op>
+    void VisitNumberLogical(GateRef gate);
+    template<TypedUnOp Op>
+    void VisitNumberMonocular(GateRef gate);
+    void VisitNumberDiv(GateRef gate);
     void VisitBooleanJeqz(GateRef gate);
 
     template<TypedBinOp Op>
@@ -64,7 +65,12 @@ private:
     GateRef CompareDoubles(GateRef left, GateRef right);
     template<TypedBinOp Op>
     GateRef ShiftInts(GateRef left, GateRef right);
-
+    template<TypedBinOp Op>
+    GateRef LogicalInts(GateRef left, GateRef right);
+    template<TypedUnOp Op>
+    GateRef MonocularInt(GateRef gate);
+    template<TypedUnOp Op>
+    GateRef MonocularDouble(GateRef gate);
     Circuit* circuit_;
     GateAccessor acc_;
     CircuitBuilder builder_;
