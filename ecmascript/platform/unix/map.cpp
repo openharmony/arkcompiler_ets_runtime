@@ -69,6 +69,11 @@ void PageRelease(void *mem, size_t size)
     madvise(mem, size, MADV_DONTNEED);
 }
 
+void PagePreRead(void *mem, size_t size)
+{
+    madvise(mem, size, MADV_WILLNEED);
+}
+
 void PageTag(void *mem, size_t size, PageTagType type)
 {
     const char *tag = GetPageTagString(type);

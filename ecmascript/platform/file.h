@@ -22,6 +22,7 @@
 #include <winnt.h>
 #else
 #include <fcntl.h>
+#include <dlfcn.h>
 #endif
 
 #include <string>

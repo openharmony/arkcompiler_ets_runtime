@@ -79,6 +79,7 @@ void PUBLIC_API PageUnmap(MemMap it);
 MemMap PUBLIC_API MachineCodePageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0);
 void PUBLIC_API MachineCodePageUnmap(MemMap it);
 void PageRelease(void *mem, size_t size);
+void PagePreRead(void *mem, size_t size);
 void PageTag(void *mem, size_t size, PageTagType type);
 void PageClearTag(void *mem, size_t size);
 const char *GetPageTagString(PageTagType type);

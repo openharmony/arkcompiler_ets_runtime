@@ -15,11 +15,14 @@
 #ifndef ECMASCRIPT_AOT_FILE_MANAGER_H
 #define ECMASCRIPT_AOT_FILE_MANAGER_H
 
+#include <string>
 #include "ecmascript/compiler/binary_section.h"
 #include "ecmascript/deoptimizer/calleeReg.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
+#include "ecmascript/platform/file.h"
+#include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript {
 class JSpandafile;
@@ -66,33 +69,37 @@ struct ModuleSectionDes {
     uint32_t arkStackMapSize_ {0};
     uint8_t *arkStackMapRawPtr_ {nullptr};
 
-    std::string GetSecName(const ElfSecName idx) const
+    static std::string GetSecName(const ElfSecName idx)
     {
         switch (idx) {
             case ElfSecName::RODATA:
-                return "rodata";
+                return ".rodata";
             case ElfSecName::RODATA_CST4:
-                return "rodata.cst4";
+                return ".rodata.cst4";
             case ElfSecName::RODATA_CST8:
-                return "rodata.cst8";
+                return ".rodata.cst8";
             case ElfSecName::RODATA_CST16:
-                return "rodata.cst16";
+                return ".rodata.cst16";
             case ElfSecName::RODATA_CST32:
-                return "rodata.cst32";
+                return ".rodata.cst32";
             case ElfSecName::TEXT:
-                return "text";
+                return ".text";
             case ElfSecName::DATA:
-                return "data";
+                return ".data";
             case ElfSecName::GOT:
-                return "got";
+                return ".got";
             case ElfSecName::RELATEXT:
-                return "rela.text";
+                return ".rela.text";
             case ElfSecName::STRTAB:
-                return "strtab";
+                return ".strtab";
             case ElfSecName::SYMTAB:
-                return "symtab";
+                return ".symtab";
             case ElfSecName::LLVM_STACKMAP:
-                return "llvm_stackmaps";
+                return ".llvm_stackmaps";
+            case ElfSecName::ARK_STACKMAP:
+                return ".ark_stackmaps";
+            case ElfSecName::ARK_FUNCENTRY:
+                return ".ark_funcentry";
             default: {
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -106,6 +113,11 @@ struct ModuleSectionDes {
     }
 
     std::shared_ptr<uint8_t> GetArkStackMapSharePtr()
+    {
+        return std::move(arkStackMapPtr_);
+    }
+
+    std::shared_ptr<uint8_t> GetArkStackMapSharePtr() const
     {
         return std::move(arkStackMapPtr_);
     }
@@ -331,8 +343,12 @@ public:
     bool CalCallSiteInfo(uintptr_t retAddr, CallSiteInfo& ret) const;
 
 protected:
-    ExecutedMemoryAllocator::ExeMem& GetExeMem() {
-        return exeMem_;
+    ExecutedMemoryAllocator::ExeMem& GetStubsMem() {
+        return stubsMem_;
+    }
+
+    MemMap& GetFileMapMem() {
+        return fileMapMem_;
     }
 
     uint32_t entryNum_ {0};
@@ -340,14 +356,15 @@ protected:
     uint32_t totalCodeSize_ {0};
     std::vector<FuncEntryDes> entries_ {};
     std::vector<ModuleSectionDes> des_ {};
-    ExecutedMemoryAllocator::ExeMem exeMem_ {};
+    ExecutedMemoryAllocator::ExeMem stubsMem_ {};
+    MemMap fileMapMem_ {};
 };
 
 class PUBLIC_API AnFileInfo : public AOTFileInfo {
 public:
     AnFileInfo() = default;
     ~AnFileInfo() override = default;
-    void Save(const std::string &filename, kungfu::Triple triple);
+    void Save(const std::string &filename, Triple triple);
     void AddModuleDes(ModuleSectionDes &moduleDes)
     {
         des_.emplace_back(moduleDes);
@@ -380,7 +397,7 @@ public:
 
 private:
     bool Load(const std::string &filename);
-    void RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
+    const std::vector<ElfSecName> & GetDumpSectionNames();
     std::unordered_map<uint32_t, uint64_t> mainEntryMap_ {};
     bool isLoad_ {false};
 
@@ -479,6 +496,7 @@ public:
     bool SafeInsideStub(uintptr_t pc);
     bool SafeInsideAOT(uintptr_t pc);
     AOTFileInfo::CallSiteInfo SafeCalCallSiteInfo(uintptr_t retAddr);
+    void DestoryFileMapMem(MemMap &fileMapMem);
     void SafeDestoryAllData();
     const std::string& GetDir() const
     {
@@ -524,7 +542,7 @@ public:
     explicit AOTFileManager(EcmaVM *vm);
     virtual ~AOTFileManager();
 
-    static constexpr uint32_t AOT_VERSION = 1;
+    static constexpr uint32_t AOT_VERSION = 2;
     static constexpr char FILE_EXTENSION_AN[] = ".an";
     static constexpr char FILE_EXTENSION_AI[] = ".ai";
     static constexpr uint8_t DESERI_CP_ITEM_SIZE = 2;

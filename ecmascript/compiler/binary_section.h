@@ -17,7 +17,9 @@
 #define ECMASCRIPT_COMPILER_BINARY_SECTION_H
 
 #include <string>
+#include <map>
 #include "ecmascript/common.h"
+#include "llvm/BinaryFormat/ELF.h"
 
 namespace panda::ecmascript {
 enum class ElfSecName : uint8_t {
@@ -34,6 +36,8 @@ enum class ElfSecName : uint8_t {
     STRTAB,
     SYMTAB,
     LLVM_STACKMAP,
+    ARK_FUNCENTRY,
+    ARK_STACKMAP,
     SIZE
 };
 
@@ -53,10 +57,12 @@ public:
     explicit ElfSection(ElfSecName idx)
     {
         value_ = idx;
+        InitShTypeAndFlag();
     }
     explicit ElfSection(size_t idx)
     {
         value_ = static_cast<ElfSecName>(idx);
+        InitShTypeAndFlag();
     }
     explicit ElfSection(std::string str)
     {
@@ -84,7 +90,92 @@ public:
             value_ = ElfSecName::SYMTAB;
         }  else if (str.compare(".llvm_stackmaps") == 0) {
             value_ = ElfSecName::LLVM_STACKMAP;
+        }  else if (str.compare(".ark_stackmaps") == 0) {
+            value_ = ElfSecName::ARK_STACKMAP;
+        }  else if (str.compare(".ark_funcentry") == 0) {
+            value_ = ElfSecName::ARK_FUNCENTRY;
         }
+        InitShTypeAndFlag();
+    }
+
+    bool ShouldDumpToAOTFile() const
+    {
+         bool saveForAot = false;
+         switch (value_) {
+            case ElfSecName::RODATA:
+            case ElfSecName::RODATA_CST4:
+            case ElfSecName::RODATA_CST8:
+            case ElfSecName::RODATA_CST16:
+            case ElfSecName::RODATA_CST32:
+            case ElfSecName::TEXT:
+            case ElfSecName::DATA:
+            case ElfSecName::SYMTAB:
+            case ElfSecName::STRTAB:
+            case ElfSecName::ARK_FUNCENTRY:
+            case ElfSecName::ARK_STACKMAP: {
+                saveForAot = true;
+                break;
+            }
+            default: {
+                break;
+            }
+         }
+         return saveForAot;
+    }
+
+    ElfSecName Value() const
+    {
+        return value_;
+    }
+
+    int Entsize() const
+    {
+        if (value_ == ElfSecName::RELATEXT || value_ == ElfSecName::SYMTAB) {
+            return FIX_SIZE;
+        }
+        return 0;
+    }
+
+    int Link() const
+    {
+        return value_ == ElfSecName::SYMTAB ? 1 : 0;
+    }
+
+    void InitShTypeAndFlag()
+    {
+        std::map<ElfSecName, std::pair<unsigned, unsigned>> nameToTypeAndFlag = {
+            {ElfSecName::RODATA, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE)},
+            {ElfSecName::RODATA_CST4, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE)},
+            {ElfSecName::RODATA_CST8, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE)},
+            {ElfSecName::RODATA_CST16, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE)},
+            {ElfSecName::RODATA_CST32, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE)},
+            {ElfSecName::TEXT, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_EXECINSTR)},
+            {ElfSecName::DATA, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_WRITE)},
+            {ElfSecName::GOT, std::pair<unsigned, unsigned>(llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_WRITE)},
+            {ElfSecName::RELATEXT, std::pair<unsigned, unsigned>(llvm::ELF::SHT_RELA, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_WRITE)},
+            {ElfSecName::STRTAB, std::pair<unsigned, unsigned>(llvm::ELF::SHT_STRTAB, llvm::ELF::SHF_ALLOC)},
+            {ElfSecName::SYMTAB, std::pair<unsigned, unsigned>(llvm::ELF::SHT_SYMTAB, llvm::ELF::SHF_ALLOC)},
+            {ElfSecName::LLVM_STACKMAP, std::pair<unsigned, unsigned>(llvm::ELF::SHT_RELA, llvm::ELF::SHF_ALLOC)},
+            {ElfSecName::ARK_FUNCENTRY, std::pair<unsigned, unsigned>(llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC)},
+            {ElfSecName::ARK_STACKMAP, std::pair<unsigned, unsigned>(llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC)},
+        };
+        auto it = nameToTypeAndFlag.find(value_);
+        if (it == nameToTypeAndFlag.end()) {
+            return;
+        }
+        ASSERT(it != nameToTypeAndFlag.end());
+        type_ = it->second.first;
+        flag_ = it->second.second;
+    }
+
+    unsigned Type() const
+    {
+        return type_;
+    }
+
+    unsigned Flag() const
+    {
+        return flag_;
     }
 
     bool isValidAOTSec() const
@@ -115,7 +206,11 @@ public:
         return ElfSecName::RODATA <= value_ && value_ <= ElfSecName::RODATA_CST8;
     }
 private:
+    static int const FIX_SIZE = 24; // 24:Elf_Rel
     ElfSecName value_ {ElfSecName::NONE};
+    unsigned type_ {0};
+    unsigned flag_ {0};
+
     static constexpr size_t AOTSecFeatureTable_[static_cast<size_t>(ElfSecName::SIZE)] = {
         ElfSecFeature::NOT_VALID,
         ElfSecFeature::VALID_AND_SEQUENTIAL,
@@ -129,6 +224,7 @@ private:
         ElfSecFeature::VALID_AND_SEQUENTIAL,
         ElfSecFeature::VALID_AND_SEQUENTIAL,
         ElfSecFeature::VALID_AND_SEQUENTIAL,
+        ElfSecFeature::VALID_NOT_SEQUENTIAL,
         ElfSecFeature::VALID_NOT_SEQUENTIAL,
     };
 };

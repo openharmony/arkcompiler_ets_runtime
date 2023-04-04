@@ -83,6 +83,10 @@ void PageRelease([[maybe_unused]] void *mem, [[maybe_unused]] size_t size)
 {
 }
 
+void PagePreRead([[maybe_unused]] void *mem, [[maybe_unused]] size_t size)
+{
+}
+
 void PageTag([[maybe_unused]] void *mem, [[maybe_unused]] size_t size, [[maybe_unused]] PageTagType type)
 {
 }

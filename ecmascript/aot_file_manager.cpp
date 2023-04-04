@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 #include "ecmascript/aot_file_manager.h"
-
 #include "ecmascript/base/config.h"
+#include "ecmascript/compiler/aot_file/elf_builder.h"
+#include "ecmascript/compiler/aot_file/elf_reader.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
@@ -31,9 +32,6 @@
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 #include "ecmascript/mem/region.h"
-#include "ecmascript/platform/elf.h"
-#include "ecmascript/platform/file.h"
-#include "ecmascript/platform/map.h"
 
 
 extern const uint8_t _binary_stub_an_start[];
@@ -199,8 +197,8 @@ bool StubFileInfo::Load()
         return false;
     }
 
-    ExecutedMemoryAllocator::AllocateBuf(totalCodeSize_, exeMem_);
-    uint64_t codeAddress = reinterpret_cast<uint64_t>(exeMem_.addr_);
+    ExecutedMemoryAllocator::AllocateBuf(totalCodeSize_, stubsMem_);
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(stubsMem_.addr_);
     uint32_t curUnitOffset = 0;
     uint32_t asmStubSize = 0;
     binBufparser.ParseBuffer(&asmStubSize, sizeof(asmStubSize));
@@ -223,7 +221,7 @@ bool StubFileInfo::Load()
         }
     }
     LOG_COMPILER(INFO) << "loaded stub file successfully";
-    PageProtect(exeMem_.addr_, exeMem_.size_, PAGE_PROT_EXEC_READ);
+    PageProtect(stubsMem_.addr_, stubsMem_.size_, PAGE_PROT_EXEC_READ);
     return true;
 }
 
@@ -246,7 +244,7 @@ void StubFileInfo::Dump() const
     }
 }
 
-void AnFileInfo::Save(const std::string &filename, kungfu::Triple triple)
+void AnFileInfo::Save(const std::string &filename, Triple triple)
 {
     std::string realPath;
     if (!RealPath(filename, realPath, false)) {
@@ -260,20 +258,21 @@ void AnFileInfo::Save(const std::string &filename, kungfu::Triple triple)
     }
 
     std::ofstream file(realPath.c_str(), std::ofstream::binary);
-    SetStubNum(entries_.size());
+    ASSERT(GetCodeUnitsNum() == 1);
+    ModuleSectionDes &des = des_[0];
+    // add section
+    uint64_t addr = reinterpret_cast<uint64_t>(entries_.data());
+    entryNum_ = entries_.size();
+    uint32_t size = sizeof(FuncEntryDes) * entryNum_;
+    des.SetSecAddr(addr, ElfSecName::ARK_FUNCENTRY);
+    des.SetSecSize(size, ElfSecName::ARK_FUNCENTRY);
 
-    Elf64_Ehdr header;
-    PackELFHeader(header, AOTFileManager::AOT_VERSION, triple);
-    file.write(reinterpret_cast<char *>(&header), sizeof(Elf64_Ehdr));
-    file.write(reinterpret_cast<char *>(&entryNum_), sizeof(entryNum_));
-    file.write(reinterpret_cast<char *>(entries_.data()), sizeof(FuncEntryDes) * entryNum_);
-    uint32_t moduleNum = GetCodeUnitsNum();
-    file.write(reinterpret_cast<char *>(&moduleNum), sizeof(moduleNum_));
-    file.write(reinterpret_cast<char *>(&totalCodeSize_), sizeof(totalCodeSize_));
-    LOG_COMPILER(DEBUG) << "total code size = " << (totalCodeSize_ / 1_KB) << "KB";
-    for (size_t i = 0; i < moduleNum; i++) {
-        des_[i].SaveSectionsInfo(file);
-    }
+    ElfBuilder builder(des);
+    llvm::ELF::Elf64_Ehdr header;
+    builder.PackELFHeader(header, AOTFileManager::AOT_VERSION, triple);
+    file.write(reinterpret_cast<char *>(&header), sizeof(llvm::ELF::Elf64_Shdr));
+    builder.PackELFSections(file);
+    builder.PackELFSegment(file);
     file.close();
 }
 
@@ -287,38 +286,36 @@ bool AnFileInfo::Load(const std::string &filename)
         return false;
     }
 
-    std::ifstream file(realPath.c_str(), std::ofstream::binary);
-    if (!file.good()) {
-        LOG_COMPILER(INFO) << "Fail to load an file: " << realPath.c_str();
-        file.close();
+    fileMapMem_ = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
+
+    if (fileMapMem_.GetOriginAddr() == nullptr) {
+        LOG_ECMA(ERROR) << "File mmap failed";
         return false;
     }
+    PagePreRead(fileMapMem_.GetOriginAddr(), fileMapMem_.GetSize());
 
-    Elf64_Ehdr header;
-    file.read(reinterpret_cast<char *>(&header), sizeof(Elf64_Ehdr));
-    if (!VerifyELFHeader(header, AOTFileManager::AOT_VERSION)) {
-        file.close();
-        return false;
-    }
-
-    file.read(reinterpret_cast<char *>(&entryNum_), sizeof(entryNum_));
-    entries_.resize(entryNum_);
-    file.read(reinterpret_cast<char *>(entries_.data()), sizeof(FuncEntryDes) * entryNum_);
-    file.read(reinterpret_cast<char *>(&moduleNum_), sizeof(moduleNum_));
+    moduleNum_ = 1;
     des_.resize(moduleNum_);
-    file.read(reinterpret_cast<char *>(&totalCodeSize_), sizeof(totalCodeSize_));
+    ModuleSectionDes &des = des_[0];
 
-    if (totalCodeSize_ == 0) {
-        file.close();
-        LOG_COMPILER(ERROR) << "error: code in the an file is empty!";
+    ElfReader reader(fileMapMem_);
+    std::vector<ElfSecName> secs = GetDumpSectionNames();
+    if (!reader.VerifyELFHeader(AOTFileManager::AOT_VERSION)) {
         return false;
     }
-    ExecutedMemoryAllocator::AllocateBuf(totalCodeSize_, exeMem_);
-    uint64_t codeAddress = reinterpret_cast<uint64_t>(exeMem_.addr_);
-    uint32_t curUnitOffset = 0;
-    for (size_t i = 0; i < moduleNum_; i++) {
-        des_[i].LoadSectionsInfo(file, curUnitOffset, codeAddress);
+    reader.ParseELFSections(des, secs);
+    if (!reader.ParseELFSegment()) {
+        LOG_ECMA(ERROR) << "modify mmap area permission failed";
+        return false;
     }
+
+    uint64_t secAddr = des.GetSecAddr(ElfSecName::ARK_FUNCENTRY);
+    uint32_t secSize = des.GetSecSize(ElfSecName::ARK_FUNCENTRY);
+    FuncEntryDes *entryDes = reinterpret_cast<FuncEntryDes *>(secAddr);
+    entryNum_ = secSize / sizeof(FuncEntryDes);
+    entries_.assign(entryDes, entryDes + entryNum_);
+    des.SetStartIndex(0);
+    des.SetFuncCount(entryNum_);
 
     size_t len = entries_.size();
     for (size_t i = 0; i < len; i++) {
@@ -336,8 +333,14 @@ bool AnFileInfo::Load(const std::string &filename)
 
     LOG_COMPILER(INFO) << "loaded an file: " << filename.c_str();
     isLoad_ = true;
-    PageProtect(exeMem_.addr_, exeMem_.size_, PAGE_PROT_EXEC_READ);
     return true;
+}
+
+const std::vector<ElfSecName> & AnFileInfo::GetDumpSectionNames()
+{
+    static const std::vector<ElfSecName> secNames = {ElfSecName::RODATA_CST8, ElfSecName::TEXT, ElfSecName::STRTAB,
+                                                     ElfSecName::SYMTAB, ElfSecName::ARK_STACKMAP, ElfSecName::ARK_FUNCENTRY};
+    return secNames;
 }
 
 void AnFileInfo::Dump() const
@@ -819,16 +822,24 @@ AnFileDataManager::~AnFileDataManager()
     SafeDestoryAllData();
 }
 
+void AnFileDataManager::DestoryFileMapMem(MemMap &fileMapMem)
+{
+    if (fileMapMem.GetOriginAddr() != nullptr && fileMapMem.GetSize() > 0) {
+        FileUnMap(fileMapMem);
+        fileMapMem.Reset();
+    }
+}
+
 void AnFileDataManager::SafeDestoryAllData()
 {
     os::memory::WriteLockHolder lock(lock_);
     if (loadedStub_ != nullptr) {
-        ExecutedMemoryAllocator::DestoryBuf(loadedStub_->GetExeMem());
+        ExecutedMemoryAllocator::DestoryBuf(loadedStub_->GetStubsMem());
         loadedStub_ = nullptr;
     }
 
     for (auto &iter : loadedAn_) {
-        ExecutedMemoryAllocator::DestoryBuf(iter->GetExeMem());
+        DestoryFileMapMem(iter->GetFileMapMem());
     }
     loadedAn_.clear();
 }
