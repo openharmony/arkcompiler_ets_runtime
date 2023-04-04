@@ -43,6 +43,7 @@ group("ark_aot_test") {
     "call_same_bytecode_func:call_same_bytecode_funcAotAction",
     "callithisrange:callithisrangeAotAction",
     "calls:callsAotAction",
+    "class_method_signature:class_method_signatureAotAction",
     "closeiterator:closeiteratorAotAction",
 
     # "continue_from_finally:continue_from_finallyAotAction",
