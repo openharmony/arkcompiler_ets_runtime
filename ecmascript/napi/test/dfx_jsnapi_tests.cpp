@@ -136,16 +136,26 @@ HWTEST_F_L0(DFXJSNApiTests, BuildNativeAndJsStackTrace)
     bool result = false;
     std::string stackTraceStr = "stack_trace_str";
     result = DFXJSNApi::BuildNativeAndJsStackTrace(vm_, stackTraceStr);
+#if defined(ENABLE_EXCEPTION_BACKTRACE)
+    EXPECT_FALSE(stackTraceStr.empty());
+    EXPECT_TRUE(result);
+#else
     EXPECT_TRUE(stackTraceStr.empty());
     EXPECT_FALSE(result);
+#endif
 }
 
 HWTEST_F_L0(DFXJSNApiTests, BuildJsStackTrace)
 {
     std::string stackTraceStr = "stack_trace_str";
     bool result = DFXJSNApi::BuildJsStackTrace(vm_, stackTraceStr);
+#if defined(ENABLE_EXCEPTION_BACKTRACE)
+    EXPECT_FALSE(stackTraceStr.empty());
+    EXPECT_TRUE(result);
+#else
     EXPECT_TRUE(stackTraceStr.empty());
     EXPECT_FALSE(result);
+#endif
 }
 
 HWTEST_F_L0(DFXJSNApiTests, Start_Stop_HeapTracking_001)
