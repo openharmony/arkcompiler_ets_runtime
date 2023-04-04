@@ -172,6 +172,7 @@ private:
     static void CheckResolvedIndexBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
     static JSTaggedValue FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
                                       const JSTaggedValue &dictionary);
+    static JSHandle<SourceTextModule> GetModuleFromBinding(JSThread *thread, const JSTaggedValue &JSTaggedValue);
 };
 
 class ResolvedBinding final : public Record {

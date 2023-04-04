@@ -12,4 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-print("execute cjsWithoutExports.js success!");
+import T from './cjsC.js'
+print(T.name)
+//import T from './testesm.js'
+export {T}

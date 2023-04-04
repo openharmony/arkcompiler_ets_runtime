@@ -111,21 +111,31 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
     }
     ASSERT(moduleEnvironment.IsTaggedArray());
     JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
-    ASSERT(resolvedBinding.IsResolvedIndexBinding());
-    ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-    JSTaggedValue resolvedModule = binding->GetModule();
-    ASSERT(resolvedModule.IsSourceTextModule());
-    SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
+    if (resolvedBinding.IsResolvedIndexBinding()) {
+        ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
+        JSTaggedValue resolvedModule = binding->GetModule();
+        ASSERT(resolvedModule.IsSourceTextModule());
+        SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
 
-    ModuleTypes moduleType = module->GetTypes();
-    if (IsNativeModule(moduleType)) {
-        return GetNativeModuleValue(thread, currentModule, resolvedModule, binding);
+        ModuleTypes moduleType = module->GetTypes();
+        if (IsNativeModule(moduleType)) {
+            return GetNativeModuleValue(thread, currentModule, resolvedModule, binding);
+        }
+        if (module->GetTypes() == ModuleTypes::CJS_MODULE) {
+            return GetCJSModuleValue(thread, currentModule, resolvedModule, binding);
+        }
+        return SourceTextModule::Cast(
+            resolvedModule.GetTaggedObject())->GetModuleValue(thread, binding->GetIndex(), false);
     }
+    ResolvedBinding *binding = ResolvedBinding::Cast(resolvedBinding.GetTaggedObject());
+    JSTaggedValue resolvedModule = binding->GetModule();
+    SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
     if (module->GetTypes() == ModuleTypes::CJS_MODULE) {
-        return GetCJSModuleValue(thread, currentModule, resolvedModule, binding);
+        JSHandle<JSTaggedValue> cjsModuleName(thread, GetModuleName(JSTaggedValue(module)));
+        return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
     }
-    return SourceTextModule::Cast(
-        resolvedModule.GetTaggedObject())->GetModuleValue(thread, binding->GetIndex(), false);
+    LOG_ECMA(FATAL) << "Get module value failed, mistaken ResolvedBinding";
+    UNREACHABLE();
 }
 
 JSTaggedValue ModuleManager::GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
@@ -168,7 +178,7 @@ JSTaggedValue ModuleManager::GetCJSModuleValue(JSThread *thread, JSTaggedValue c
 
 JSTaggedValue ModuleManager::GetValueFromExportObject(JSHandle<JSTaggedValue> &exportObject, int32_t index)
 {
-    if (index == -1) {
+    if (index == SourceTextModule::UNDEFINED_INDEX) {
         return exportObject.GetTaggedValue();
     }
     JSObject *obj = JSObject::Cast(exportObject.GetTaggedValue());
