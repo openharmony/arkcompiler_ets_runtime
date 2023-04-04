@@ -301,6 +301,8 @@ public:
 
     bool IsAbstractMethod(GlobalTSTypeRef gt) const;
 
+    bool IsMethodSignature(GlobalTSTypeRef gt) const;
+
     inline GlobalTSTypeRef PUBLIC_API GetFuncReturnValueTypeGT(kungfu::GateType gateType) const
     {
         GlobalTSTypeRef gt = gateType.GetGTRef();

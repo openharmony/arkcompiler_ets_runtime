@@ -187,18 +187,15 @@ public:
     enum class Visibility : uint8_t { PUBLIC = 0, PRIVATE, PROTECTED };
 
     // define BitField
-    static constexpr size_t VISIBILITY_BITS = 2;
-    static constexpr size_t STATIC_BITS = 1;
-    static constexpr size_t ASYNC_BITS = 1;
-    static constexpr size_t GENERATOR_BITS = 1;
-    static constexpr size_t GETTERSETTER_BITS = 1;
-    static constexpr size_t ABSTRACT_BITS = 1;
-    FIRST_BIT_FIELD(BitField, Visibility, Visibility, VISIBILITY_BITS);
-    NEXT_BIT_FIELD(BitField, Static, bool, STATIC_BITS, Visibility);
-    NEXT_BIT_FIELD(BitField, Async, bool, ASYNC_BITS, Static);
-    NEXT_BIT_FIELD(BitField, Generator, bool, GENERATOR_BITS, Async);
-    NEXT_BIT_FIELD(BitField, IsGetterSetter, bool, GETTERSETTER_BITS, Generator);
-    NEXT_BIT_FIELD(BitField, IsAbstract, bool, ABSTRACT_BITS, IsGetterSetter);
+    static constexpr size_t ONE_BIT = 1;
+    static constexpr size_t TWO_BITS = 2;
+    FIRST_BIT_FIELD(BitField, Visibility, Visibility, TWO_BITS);
+    NEXT_BIT_FIELD(BitField, Static, bool, ONE_BIT, Visibility);
+    NEXT_BIT_FIELD(BitField, Async, bool, ONE_BIT, Static);
+    NEXT_BIT_FIELD(BitField, Generator, bool, ONE_BIT, Async);
+    NEXT_BIT_FIELD(BitField, IsGetterSetter, bool, ONE_BIT, Generator);
+    NEXT_BIT_FIELD(BitField, IsAbstract, bool, ONE_BIT, IsGetterSetter);
+    NEXT_BIT_FIELD(BitField, IsSignature, bool, ONE_BIT, IsAbstract);
 
     DECL_VISIT_OBJECT(NAME_OFFSET, RETURN_GT_OFFSET)
     DECL_DUMP()
