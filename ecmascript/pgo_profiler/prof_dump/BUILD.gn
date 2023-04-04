@@ -18,13 +18,29 @@ ohos_executable("profdump") {
 
   deps = [
     "$ark_root/libpandabase:libarkbase_static",
-    "$js_root:libark_jsruntime",
+    "$ark_root/libpandafile:arkfile_header_deps",
+    "$ark_root/libpandafile:libarkfile_static",
+    "$js_root:libark_js_intl_set",
+    "$js_root:libark_jsruntime_set",
+    "$js_root/ecmascript/compiler:libark_mock_stub_set",
   ]
 
   configs = [
     "$js_root:ark_jsruntime_common_config",
     "$js_root:ark_jsruntime_public_config",
   ]
+
+  if (target_os == "ios") {
+    deps += [
+      "$ark_third_party_root/icu/icu4c:static_icui18n",
+      "$ark_third_party_root/icu/icu4c:static_icuuc",
+    ]
+  } else {
+    deps += [
+      "$ark_third_party_root/icu/icu4c:shared_icui18n",
+      "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    ]
+  }
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
