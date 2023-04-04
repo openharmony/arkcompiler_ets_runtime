@@ -453,8 +453,7 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
 
 bool TSTypeLowering::NeedInt32OverflowCheck(TypedUnOp op) const
 {
-    if (op == TypedUnOp::TYPED_INC || op == TypedUnOp::TYPED_DEC ||
-        op == TypedUnOp::TYPED_NEG) {
+    if (op == TypedUnOp::TYPED_DEC || op == TypedUnOp::TYPED_NEG) {
         return true;
     }
     return false;

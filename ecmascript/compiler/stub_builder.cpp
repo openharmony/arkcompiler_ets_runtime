@@ -939,70 +939,65 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    Label isHeapObject(env);
     Label isVailedIndex(env);
     Label notValidIndex(env);
 
-    Branch(TaggedIsHeapObject(value), &isHeapObject, &exit);
-    Bind(&isHeapObject);
+    // ObjectAddressToRange function may cause obj is not an object. GC may not mark this obj.
+    GateRef objectRegion = ObjectAddressToRange(obj);
+    GateRef valueRegion = ObjectAddressToRange(value);
+    GateRef slotAddr = PtrAdd(TaggedCastToIntPtr(obj), offset);
+    GateRef objectNotInYoung = BoolNot(InYoungGeneration(objectRegion));
+    GateRef valueRegionInYoung = InYoungGeneration(valueRegion);
+    Branch(BoolAnd(objectNotInYoung, valueRegionInYoung), &isVailedIndex, &notValidIndex);
+    Bind(&isVailedIndex);
     {
-        // ObjectAddressToRange function may cause obj is not an object. GC may not mark this obj.
-        GateRef objectRegion = ObjectAddressToRange(obj);
-        GateRef valueRegion = ObjectAddressToRange(value);
-        GateRef slotAddr = PtrAdd(TaggedCastToIntPtr(obj), offset);
-        GateRef objectNotInYoung = BoolNot(InYoungGeneration(objectRegion));
-        GateRef valueRegionInYoung = InYoungGeneration(valueRegion);
-        Branch(BoolAnd(objectNotInYoung, valueRegionInYoung), &isVailedIndex, &notValidIndex);
-        Bind(&isVailedIndex);
+        GateRef loadOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env_->Is32Bit()));
+        auto oldToNewSet = Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
+        Label isNullPtr(env);
+        Label notNullPtr(env);
+        Branch(IntPtrEuqal(oldToNewSet, IntPtr(0)), &isNullPtr, &notNullPtr);
+        Bind(&notNullPtr);
         {
-            GateRef loadOffset = IntPtr(Region::PackedData::GetOldToNewSetOffset(env_->Is32Bit()));
-            auto oldToNewSet = Load(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
-            Label isNullPtr(env);
-            Label notNullPtr(env);
-            Branch(IntPtrEuqal(oldToNewSet, IntPtr(0)), &isNullPtr, &notNullPtr);
-            Bind(&notNullPtr);
-            {
-                // (slotAddr - this) >> TAGGED_TYPE_SIZE_LOG
-                GateRef bitOffsetPtr = IntPtrLSR(PtrSub(slotAddr, objectRegion), IntPtr(TAGGED_TYPE_SIZE_LOG));
-                GateRef bitOffset = TruncPtrToInt32(bitOffsetPtr);
-                GateRef bitPerWordLog2 = Int32(GCBitset::BIT_PER_WORD_LOG2);
-                GateRef bytePerWord = Int32(GCBitset::BYTE_PER_WORD);
-                // bitOffset >> BIT_PER_WORD_LOG2
-                GateRef index = Int32LSR(bitOffset, bitPerWordLog2);
-                GateRef byteIndex = Int32Mul(index, bytePerWord);
-                // bitset_[index] |= mask;
-                GateRef bitsetData = PtrAdd(oldToNewSet, IntPtr(RememberedSet::GCBITSET_DATA_OFFSET));
-                GateRef oldsetValue = Load(VariableType::INT32(), bitsetData, byteIndex);
-                GateRef newmapValue = Int32Or(oldsetValue, GetBitMask(bitOffset));
+            // (slotAddr - this) >> TAGGED_TYPE_SIZE_LOG
+            GateRef bitOffsetPtr = IntPtrLSR(PtrSub(slotAddr, objectRegion), IntPtr(TAGGED_TYPE_SIZE_LOG));
+            GateRef bitOffset = TruncPtrToInt32(bitOffsetPtr);
+            GateRef bitPerWordLog2 = Int32(GCBitset::BIT_PER_WORD_LOG2);
+            GateRef bytePerWord = Int32(GCBitset::BYTE_PER_WORD);
+            // bitOffset >> BIT_PER_WORD_LOG2
+            GateRef index = Int32LSR(bitOffset, bitPerWordLog2);
+            GateRef byteIndex = Int32Mul(index, bytePerWord);
+            // bitset_[index] |= mask;
+            GateRef bitsetData = PtrAdd(oldToNewSet, IntPtr(RememberedSet::GCBITSET_DATA_OFFSET));
+            GateRef oldsetValue = Load(VariableType::INT32(), bitsetData, byteIndex);
+            GateRef newmapValue = Int32Or(oldsetValue, GetBitMask(bitOffset));
 
-                Store(VariableType::INT32(), glue, bitsetData, byteIndex, newmapValue);
-                Jump(&notValidIndex);
-            }
-            Bind(&isNullPtr);
-            {
-                CallNGCRuntime(glue, RTSTUB_ID(InsertOldToNewRSet), { glue, obj, offset });
-                Jump(&notValidIndex);
-            }
+            Store(VariableType::INT32(), glue, bitsetData, byteIndex, newmapValue);
+            Jump(&notValidIndex);
         }
-        Bind(&notValidIndex);
+        Bind(&isNullPtr);
         {
-            Label marking(env);
-            bool isArch32 = GetEnvironment()->Is32Bit();
-            GateRef stateBitFieldAddr = Int64Add(glue,
-                                                 Int64(JSThread::GlueData::GetStateBitFieldOffset(isArch32)));
-            GateRef stateBitField = Load(VariableType::INT64(), stateBitFieldAddr, Int64(0));
-            // mask: 1 << JSThread::CONCURRENT_MARKING_BITFIELD_NUM - 1
-            GateRef markingBitMask = Int64Sub(
-                Int64LSL(Int64(1), Int64(JSThread::CONCURRENT_MARKING_BITFIELD_NUM)), Int64(1));
-            GateRef state = Int64And(stateBitField, markingBitMask);
-            Branch(Int64Equal(state, Int64(static_cast<int64_t>(MarkStatus::READY_TO_MARK))), &exit, &marking);
-
-            Bind(&marking);
-            CallNGCRuntime(
-                glue,
-                RTSTUB_ID(MarkingBarrier), { glue, obj, offset, value });
-            Jump(&exit);
+            CallNGCRuntime(glue, RTSTUB_ID(InsertOldToNewRSet), { glue, obj, offset });
+            Jump(&notValidIndex);
         }
+    }
+    Bind(&notValidIndex);
+    {
+        Label marking(env);
+        bool isArch32 = GetEnvironment()->Is32Bit();
+        GateRef stateBitFieldAddr = Int64Add(glue,
+                                             Int64(JSThread::GlueData::GetStateBitFieldOffset(isArch32)));
+        GateRef stateBitField = Load(VariableType::INT64(), stateBitFieldAddr, Int64(0));
+        // mask: 1 << JSThread::CONCURRENT_MARKING_BITFIELD_NUM - 1
+        GateRef markingBitMask = Int64Sub(
+            Int64LSL(Int64(1), Int64(JSThread::CONCURRENT_MARKING_BITFIELD_NUM)), Int64(1));
+        GateRef state = Int64And(stateBitField, markingBitMask);
+        Branch(Int64Equal(state, Int64(static_cast<int64_t>(MarkStatus::READY_TO_MARK))), &exit, &marking);
+
+        Bind(&marking);
+        CallNGCRuntime(
+            glue,
+            RTSTUB_ID(MarkingBarrier), { glue, obj, offset, value });
+        Jump(&exit);
     }
     Bind(&exit);
     env->SubCfgExit();

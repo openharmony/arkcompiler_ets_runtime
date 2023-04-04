@@ -761,8 +761,7 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     return result;
 }
 
-// memory
-void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value)
+void CircuitBuilder::StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value)
 {
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
@@ -770,8 +769,25 @@ void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRe
     GateRef result = GetCircuit()->NewGate(circuit_->Store(),
         MachineType::NOVALUE, { depend, value, ptr }, type.GetGateType());
     label->SetDepend(result);
+}
+
+// memory
+void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value)
+{
+    StoreWithNoBarrier(type, base, offset, value);
     if (type == VariableType::JS_POINTER() || type == VariableType::JS_ANY()) {
-        CallStub(glue, base, CommonStubCSigns::SetValueWithBarrier, { glue, base, offset, value });
+        Label entry(env_);
+        SubCfgEntry(&entry);
+        Label exit(env_);
+        Label isHeapObject(env_);
+        Branch(TaggedIsHeapObject(value), &isHeapObject, &exit);
+        Bind(&isHeapObject);
+        {
+            CallStub(glue, base, CommonStubCSigns::SetValueWithBarrier, { glue, base, offset, value });
+            Jump(&exit);
+        }
+        Bind(&exit);
+        SubCfgExit();
     }
 }
 
@@ -828,6 +844,12 @@ GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef propertyLookupRe
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
+}
+
+GateRef CircuitBuilder::StorePropertyNoBarrier(GateRef gate)
+{
+    acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
+    return gate;
 }
 
 GateRef CircuitBuilder::LoadArrayLength(GateRef array)

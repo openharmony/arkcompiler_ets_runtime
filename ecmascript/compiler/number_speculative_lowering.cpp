@@ -56,6 +56,10 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitConstant(gate);
             break;
         }
+        case OpCode::STORE_PROPERTY: {
+            VisitStoreProperty(gate);
+            break;
+        }
         default:
             break;
     }
@@ -255,7 +259,8 @@ void NumberSpeculativeLowering::VisitTypedInc(GateRef gate)
 void NumberSpeculativeLowering::VisitIntInc(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateRef result = builder_.Int32Add(value, builder_.Int32(1));
+    GateRef right = builder_.Int32(1);
+    GateRef result = CalculateInts<TypedBinOp::TYPED_ADD>(value, right);
     acc_.SetMachineType(gate, MachineType::I32);
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -295,6 +300,20 @@ void NumberSpeculativeLowering::VisitUndefinedStrictEq(GateRef gate)
     acc_.SetMachineType(gate, MachineType::I1);
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void NumberSpeculativeLowering::VisitStoreProperty(GateRef gate)
+{
+    TypeInfo output = typeInfos_[acc_.GetId(gate)];
+    switch (output) {
+        case TypeInfo::INT1:
+        case TypeInfo::INT32:
+        case TypeInfo::FLOAT64:
+            builder_.StorePropertyNoBarrier(gate);
+            break;
+        default:
+            break;
+    }
 }
 
 void NumberSpeculativeLowering::VisitConstant(GateRef gate)
