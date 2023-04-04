@@ -14,6 +14,9 @@
  */
 
 #include "ecmascript/compiler/llvm_codegen.h"
+#if defined(PANDA_TARGET_MACOS) || defined(PANDA_TARGET_IOS)
+#include "ecmascript/base/llvm_helper.h"
+#endif
 
 #include <cstring>
 #include <iomanip>
@@ -444,7 +447,7 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> *addr2nam
     }
     uint8_t *instrAddr = buf;
     uint64_t bufAddr = reinterpret_cast<uint64_t>(buf);
-    uint64_t numBytes = size;
+    size_t numBytes = size;
     uint64_t instrOffset = 0;
     const size_t outStringSize = 256;
     char outString[outStringSize];
@@ -506,7 +509,7 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2nam
 
     for (auto it : codeInfo_.GetCodeInfo()) {
         uint8_t *instrAddr = it.first;
-        uint64_t numBytes = it.second;
+        size_t numBytes = it.second;
         uint64_t instrOffset = 0;
 
         const size_t outStringSize = 256;
