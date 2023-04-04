@@ -295,8 +295,7 @@ void SourceTextModule::InitializeEnvironment(JSThread *thread, const JSHandle<So
         if (resolvedBinding.IsHole()) {
             continue;
         }
-        ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-        JSHandle<SourceTextModule> requestedModule(thread, binding->GetModule());
+        JSHandle<SourceTextModule> requestedModule = GetModuleFromBinding(thread, resolvedBinding);
         JSMutableHandle<JSTaggedValue> requestedName(thread, JSTaggedValue::Undefined());
         if (isBundle) {
             requestedName.Update(requestedModule->GetEcmaModuleFilename());
@@ -322,6 +321,17 @@ void SourceTextModule::InitializeEnvironment(JSThread *thread, const JSHandle<So
         // in.[[LocalName]], resolution.[[Module]], resolution.[[BindingName]]).
         environment->Set(thread, idx, resolution);
     }
+}
+
+JSHandle<SourceTextModule> SourceTextModule::GetModuleFromBinding(JSThread *thread,
+    const JSTaggedValue &resolvedBinding)
+{
+    if (resolvedBinding.IsResolvedIndexBinding()) {
+        ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
+        return JSHandle<SourceTextModule>(thread, binding->GetModule());
+    }
+    ResolvedBinding *binding = ResolvedBinding::Cast(resolvedBinding.GetTaggedObject());
+    return JSHandle<SourceTextModule>(thread, binding->GetModule());
 }
 
 int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl)
@@ -1259,8 +1269,12 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveLocalExport(JSThread *thread,
         // a. If SameValue(exportName, e.[[ExportName]]) is true, then
         // if module is type of CommonJS or native, export first, check after execution.
         auto moduleType = module->GetTypes();
+        if (moduleType == ModuleTypes::CJS_MODULE) {
+            return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedBindingRecord(module, exportName));
+        }
+
         if ((JSTaggedValue::SameValue(ee->GetExportName(), exportName.GetTaggedValue())) ||
-            (moduleType == ModuleTypes::CJS_MODULE || ModuleManager::IsNativeModule(moduleType))) {
+                 ModuleManager::IsNativeModule(moduleType)) {
             // Adapter new module
             if (module->GetIsNewBcVersion()) {
                 return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, idx));
@@ -1371,8 +1385,6 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
             msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
-        // c. Assert: resolution is a ResolvedBinding Record.
-        ASSERT(resolution->IsResolvedIndexBinding());
     }
 }
 } // namespace panda::ecmascript

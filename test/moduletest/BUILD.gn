@@ -78,6 +78,7 @@ group("ark_js_moduletest") {
     "watch",
     "wrapperclassfunc",
     "yieldstar",
+    "esmnestedimportcjs",
   ]
 
   deps = []
