@@ -34,6 +34,7 @@ group("ark_js_moduletest") {
     "dynamicimport:dynamicimportAction",
     "dyninstruction:dyninstructionAction",
     "ecmastringtable:ecmastringtableAction",
+    "esmnestedimportcjs:esmnestedimportcjsAction",
     "forawaitof:forawaitofAction",
     "fortest:fortestAction",
     "generator:generatorAction",
