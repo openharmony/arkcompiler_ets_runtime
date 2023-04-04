@@ -54,7 +54,7 @@
 namespace panda::ecmascript::kungfu {
 LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
                              LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
-                             CallSignature::CallConv callConv, bool enableLog)
+                             CallSignature::CallConv callConv, bool enableLog, const std::string &funcName)
     : compCfg_(cfg), scheduledGates_(schedule), circuit_(circuit), acc_(circuit), module_(module->GetModule()),
       function_(function), llvmModule_(module), callConv_(callConv), enableLog_(enableLog)
 {
@@ -76,12 +76,30 @@ LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, 
         // hard float instruction
         LLVMAddTargetDependentFunctionAttr(function_, "target-features", "+armv8-a");
     }
+
+    LLVMMetadataRef dFile = llvmModule_->GetDFileMD();
+    LLVMMetadataRef funcTyMD = GetFunctionTypeMD(dFile);
+    size_t funcOffset = 0;
+    dFuncMD_ = LLVMDIBuilderCreateFunction(GetDIBuilder(), dFile, funcName.c_str(), funcName.size(),
+                                           funcName.c_str(), funcName.size(), dFile, funcOffset,
+                                           funcTyMD, true, true, 0, LLVMDIFlags::LLVMDIFlagZero, false);
+    LLVMSetSubprogram(function_, dFuncMD_);
+}
+
+LLVMMetadataRef LLVMIRBuilder::GetFunctionTypeMD(LLVMMetadataRef dFile)
+{
+    LLVMDIBuilderRef builder = GetDIBuilder();
+    LLVMMetadataRef Int64Ty = LLVMDIBuilderCreateBasicType(builder, "Int64", 5, 64, 0, LLVMDIFlags::LLVMDIFlagZero);
+    LLVMMetadataRef paramT[] = { nullptr, Int64Ty }; // need to compute the real types for parameters in the future.
+    LLVMMetadataRef funcTy = LLVMDIBuilderCreateSubroutineType(builder, dFile, paramT, 2, LLVMDIFlags::LLVMDIFlagZero);
+    return funcTy;
 }
 
 LLVMIRBuilder::~LLVMIRBuilder()
 {
     if (builder_ != nullptr) {
         LLVMDisposeBuilder(builder_);
+        builder_ = nullptr;
     }
 }
 
@@ -309,6 +327,7 @@ void LLVMIRBuilder::Finish()
     for (auto &it : bbID2BB_) {
         it.second->ResetImpl<BasicBlockImpl>();
     }
+    LLVMDIBuilderFinalize(GetDIBuilder());
 }
 
 BasicBlockImpl *LLVMIRBuilder::EnsureBBImpl(BasicBlock *bb) const
@@ -2197,6 +2216,11 @@ LLVMModule::LLVMModule(const std::string &name, const std::string &triple, bool 
 {
     module_ = LLVMModuleCreateWithName(name.c_str());
     LLVMSetTarget(module_, triple.c_str());
+    dBuilder_ = LLVMCreateDIBuilder(module_);
+    dFileMD_ = LLVMDIBuilderCreateFile(dBuilder_, name.c_str(), name.size(), ".", 1);
+    dUnitMD_ = LLVMDIBuilderCreateCompileUnit(dBuilder_, LLVMDWARFSourceLanguageC_plus_plus, dFileMD_, "ArkCompiler",
+                                              11, 0, NULL, 0, 0, NULL, 0, LLVMDWARFEmissionFull,
+                                              0, 0, 0, "/", 1, "", 0);
 }
 
 LLVMModule::~LLVMModule()
@@ -2204,6 +2228,10 @@ LLVMModule::~LLVMModule()
     if (module_ != nullptr) {
         LLVMDisposeModule(module_);
         module_ = nullptr;
+    }
+    if (dBuilder_ != nullptr) {
+        LLVMDisposeDIBuilder(dBuilder_);
+        dBuilder_ = nullptr;
     }
 }
 

@@ -16,9 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_BINARY_SECTION_H
 #define ECMASCRIPT_COMPILER_BINARY_SECTION_H
 
-#include <map>
-#include <cstring>
-
+#include <string>
 #include "ecmascript/common.h"
 
 namespace panda::ecmascript {

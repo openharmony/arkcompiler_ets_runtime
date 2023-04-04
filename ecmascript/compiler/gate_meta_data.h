@@ -227,7 +227,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(RuntimeCall, RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)                      \
     V(RuntimeCallWithArgv, RUNTIME_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)    \
     V(NoGcRuntimeCall, NOGC_RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)             \
-    V(AotCall, AOT_CALL, GateFlags::NONE_FLAG, 0, 1, value)             \
+    V(AotCall, AOT_CALL, GateFlags::NONE_FLAG, 0, 1, value)                              \
     V(Call, CALL, GateFlags::NONE_FLAG, 0, 1, value)                                     \
     V(BytecodeCall, BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)                    \
     V(DebuggerBytecodeCall, DEBUGGER_BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)   \

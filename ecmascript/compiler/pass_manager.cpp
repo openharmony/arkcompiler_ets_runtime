@@ -41,8 +41,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     }
     bool enableCollectLiteralInfo = passOptions_->EnableTypeInfer() &&
         (profilerLoader_.IsLoaded() || vm_->GetTSManager()->AssertTypes());
-    BytecodeInfoCollector bcInfoCollector(vm_, jsPandaFile, maxAotMethodSize_,
-        enableCollectLiteralInfo);
+    BytecodeInfoCollector bcInfoCollector(vm_, jsPandaFile, maxAotMethodSize_, enableCollectLiteralInfo);
 
     if (!IsReleasedPandaFile(jsPandaFile)) {
         LOG_COMPILER(ERROR) << "The input panda file [" << fileName
@@ -50,9 +49,8 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     }
 
     ResolveModule(jsPandaFile, fileName);
-    auto aotModule = new LLVMModule(fileName, triple_);
-    auto aotModuleAssembler = new LLVMAssembler(aotModule->GetModule(),
-                                                LOptions(optLevel_, true, relocMode_));
+    LLVMModule* aotModule = new LLVMModule(fileName, triple_);
+    LLVMAssembler* aotAssembler = new LLVMAssembler(aotModule->GetModule(), LOptions(optLevel_, true, relocMode_));
 
     CompilationConfig cmpCfg(triple_, false, log_->IsTraceBC(), vm_->GetJSOptions().GetOptCodeProfiler());
     Bytecodes bytecodes;
@@ -64,8 +62,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     TSManager *tsManager = vm_->GetTSManager();
     tsManager->SetCompilationDriver(&cmpDriver);
     tsManager->SetBytecodeInfoCollector(&bcInfoCollector);
-    PassInfo info(tsManager, &bytecodes, &lexEnvManager, &cmpCfg, log_,
-        jsPandaFile, &bcInfoCollector, aotModule);
+    PassInfo info(tsManager, &bytecodes, &lexEnvManager, &cmpCfg, log_, jsPandaFile, &bcInfoCollector, aotModule);
 
     cmpDriver.Run([this, &fileName, &info]
         (const CString recordName, const std::string &methodName, MethodLiteral *methodLiteral,
@@ -100,8 +97,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             builder.BytecodeToCircuit();
         }
 
-        PassData data(&builder, &circuit, &info, log_, fullName,
-                      &methodInfo, hasTypes, recordName,
+        PassData data(&builder, &circuit, &info, log_, fullName, &methodInfo, hasTypes, recordName,
                       methodLiteral, methodOffset, vm_->GetNativeAreaAllocator());
         PassRunner<PassData> pipeline(&data);
         if (passOptions_->EnableTypeInfer()) {
@@ -129,7 +125,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     });
     LOG_COMPILER(INFO) << bytecodeInfo.GetSkippedMethodSize() << " methods in "
                        << fileName << " have been skipped";
-    generator.AddModule(aotModule, aotModuleAssembler, &bcInfoCollector);
+    generator.AddModule(aotModule, aotAssembler, &bcInfoCollector);
     return true;
 }
 

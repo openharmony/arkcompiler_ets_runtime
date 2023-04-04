@@ -31,96 +31,6 @@ config("include_llvm_config") {
 
 module_output_path = "arkcompiler/ets_runtime"
 
-host_unittest_action("StubTest") {
-  module_out_path = module_output_path
-
-  sources = [
-    # test file
-    "stub_tests.cpp",
-  ]
-  configs = [
-    ":include_llvm_config",
-    "//arkcompiler/ets_runtime:ecma_test_config",
-    "//arkcompiler/ets_runtime:ark_jsruntime_compiler_config",
-    "//arkcompiler/ets_runtime:ark_jsruntime_public_config",
-  ]
-
-  if (compile_llvm_online) {
-    lib_dirs = [ "//third_party/third_party_llvm-project/build/lib" ]
-  } else {
-    lib_dirs =
-        [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/lib" ]
-  }
-
-  libs = [
-    "stdc++",
-    "z",
-    "LLVMTarget",
-    "LLVMObject",
-    "LLVMMC",
-    "LLVMSupport",
-    "LLVMCore",
-    "LLVMExecutionEngine",
-    "LLVMInterpreter",
-    "LLVMMCJIT",
-    "LLVMExegesis",
-    "LLVMRuntimeDyld",
-    "LLVMInstCombine",
-    "LLVMAnalysis",
-    "LLVMScalarOpts",
-    "LLVMBinaryFormat",
-    "LLVMDebugInfoDWARF",
-    "LLVMRemarks",
-    "LLVMTextAPI",
-    "LLVMScalarOpts",
-    "LLVMTransformUtils",
-    "LLVMBitReader",
-    "LLVMAsmPrinter",
-    "LLVMProfileData",
-    "LLVMBitstreamReader",
-    "LLVMSelectionDAG",
-    "LLVMGlobalISel",
-    "LLVMLTO",
-    "LLVMCFGuard",
-    "LLVMVectorize",
-    "LLVMDemangle",
-    "LLVMipo",
-    "LLVMInstrumentation",
-    "LLVMDebugInfoCodeView",
-    "LLVMAggressiveInstCombine",
-    "LLVMAsmParser",
-    "LLVMMCParser",
-    "LLVMMIRParser",
-    "LLVMX86Info",
-    "LLVMAArch64Info",
-    "LLVMARMDesc",
-    "LLVMAArch64Desc",
-    "LLVMX86Desc",
-    "LLVMX86Disassembler",
-    "LLVMARMDisassembler",
-    "LLVMAArch64Disassembler",
-    "LLVMMCDisassembler",
-    "LLVMAArch64CodeGen",
-    "LLVMARMCodeGen",
-    "LLVMCodeGen",
-    "LLVMX86CodeGen",
-    "LLVMX86AsmParser",
-    "LLVMTransformUtils",
-    "LLVMAArch64Utils",
-    "LLVMARMUtils",
-    "LLVMIRReader",
-  ]
-
-  deps = [
-    "//arkcompiler/ets_runtime/ecmascript/compiler:libark_jsoptimizer_test",
-    sdk_libc_secshared_dep,
-  ]
-
-  # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
-}
-
 host_unittest_action("AssemblerTest") {
   module_out_path = module_output_path
 
@@ -311,6 +221,5 @@ group("host_unittest") {
   deps = [
     ":AssemblerTestAction",
     ":CircuitOptimizerTestAction",
-    ":StubTestAction",
   ]
 }

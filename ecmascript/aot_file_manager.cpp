@@ -432,7 +432,6 @@ void AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
 
 }
 
-
 const std::shared_ptr<AnFileInfo> AOTFileManager::GetAnFileInfo(const JSPandaFile *jsPandaFile) const
 {
     uint32_t index = GetAnFileIndex(jsPandaFile);
