@@ -47,6 +47,7 @@ group("ark_aot_ts_test") {
     "call_same_bytecode_func",
     "callithisrange",
     "calls",
+    "class_method_signature",
     "closeiterator",
 
     # "continue_from_finally",

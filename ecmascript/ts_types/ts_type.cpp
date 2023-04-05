@@ -69,7 +69,7 @@ JSHClass *TSObjectType::CreateHClassByProps(JSThread *thread, JSHandle<TSObjLayo
         hclass->SetNumberOfProps(numOfProps);
     } else {
         // dictionary mode
-        hclass = factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, 0);  // without in-obj
+        hclass = factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_OBJECT, 0);  // without in-obj
         hclass->SetIsDictionaryMode(true);
         hclass->SetNumberOfProps(0);
     }
@@ -92,12 +92,27 @@ JSHClass *TSObjectType::CreatePrototypeHClassByProps(JSThread *thread, JSHandle<
         TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
         JSHandle<JSTaggedValue> ctor = globalConst->GetHandledConstructorString();
         CVector<std::pair<JSHandle<JSTaggedValue>, GlobalTSTypeRef>> sortedPrototype {{ctor, GlobalTSTypeRef()}};
+        CVector<std::pair<JSHandle<JSTaggedValue>, GlobalTSTypeRef>> signatureVec {};
         for (uint32_t index = 0; index < numOfProps; ++index) {
-            auto key = propType->GetKey(index);
+            JSHandle<JSTaggedValue> key(thread, propType->GetKey(index));
             auto value = GlobalTSTypeRef(propType->GetTypeId(index).GetInt());
-            if (!JSTaggedValue::SameValue(key, ctor.GetTaggedValue()) && !tsManager->IsAbstractMethod(value)) {
-                sortedPrototype.emplace_back(std::make_pair(JSHandle<JSTaggedValue>(thread, key), value));
+            // Usually, abstract methods in abstract class have no specific implementation,
+            // and method signatures will be added after class scope.
+            // Strategy: ignore abstract method, and rearrange the order of method signature to be at the end.
+            bool isSame = JSTaggedValue::SameValue(key, ctor);
+            bool isAbs = tsManager->IsAbstractMethod(value);
+            if (!isSame && !isAbs) {
+                bool isSign = tsManager->IsMethodSignature(value);
+                if (LIKELY(!isSign)) {
+                    sortedPrototype.emplace_back(std::make_pair(key, value));
+                } else {
+                    signatureVec.emplace_back(std::make_pair(key, value));
+                }
             }
+        }
+
+        if (!signatureVec.empty()) {
+            sortedPrototype.insert(sortedPrototype.end(), signatureVec.begin(), signatureVec.end());
         }
 
         uint32_t keysLen = sortedPrototype.size();

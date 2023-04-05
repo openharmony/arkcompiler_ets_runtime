@@ -461,6 +461,17 @@ bool TSManager::IsAbstractMethod(GlobalTSTypeRef gt) const
     return functionType->GetIsAbstract();
 }
 
+bool TSManager::IsMethodSignature(GlobalTSTypeRef gt) const
+{
+    if (!IsFunctionTypeKind(gt)) {
+        return false;
+    }
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType(tsType);
+    return functionType->GetIsSignature();
+}
+
 GlobalTSTypeRef TSManager::GetFuncReturnValueTypeGT(GlobalTSTypeRef gt) const
 {
     ASSERT(IsFunctionTypeKind(gt));
