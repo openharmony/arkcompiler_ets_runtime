@@ -157,13 +157,18 @@ public:
     static constexpr int NUM_NINE = 9;
     static constexpr int MONTH_PER_YEAR = 12;
     static constexpr int MAX_DAYS_MONTH = 31;
-    static double SetDateValues(const std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
+    static double SetDateValues(const std::array<int64_t, DATE_LENGTH> *date, bool isLocal, bool *isDst);
     static double SetDateValues(int64_t year, int64_t month, int64_t day);
-    static void GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
+    static void GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal, bool isDst);
     static CString StrToTargetLength(const CString &str, int length);
+    void SetIsDst(bool isDst)
+    {
+        isDst_ = isDst;
+    }
     DECL_DUMP()
 
 private:
+    bool isDst_ = false;
     bool GetThisDateValues(std::array<int64_t, DATE_LENGTH> *date, bool isLocal) const;
     CString GetLocaleTimeStr(const std::array<int64_t, DATE_LENGTH> &fields) const;
     CString GetLocaleDateStr(const std::array<int64_t, DATE_LENGTH> &fields) const;

@@ -20,7 +20,6 @@
 namespace panda::ecmascript {
 static constexpr uint16_t THOUSAND = 1000;
 static constexpr int SEC_PER_MINUTE = 60;
-static constexpr int SEC_PER_HOUR = 3600;
 
 int64_t GetLocalOffsetFromOS(int64_t timeMs, bool isLocal)
 {
@@ -37,9 +36,17 @@ int64_t GetLocalOffsetFromOS(int64_t timeMs, bool isLocal)
     if (t == nullptr) {
         return 0;
     }
-    if (t->tm_isdst) {
-        t->tm_gmtoff -= SEC_PER_HOUR;
-    }
+
     return t->tm_gmtoff / SEC_PER_MINUTE;
+}
+
+bool IsDst(int64_t timeMs)
+{
+    timeMs /= THOUSAND;
+    time_t tv = timeMs;
+    struct tm tm {
+    };
+    struct tm *t = localtime_r(&tv, &tm);
+    return t->tm_isdst;
 }
 }  // namespace panda::ecmascript

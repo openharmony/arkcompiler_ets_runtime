@@ -20,5 +20,6 @@
 
 namespace panda::ecmascript {
 int64_t GetLocalOffsetFromOS(int64_t timeMs, bool isLocal);
+bool IsDst(int64_t timeMs);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_TIME_H
