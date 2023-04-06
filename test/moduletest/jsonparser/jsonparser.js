@@ -26,3 +26,13 @@ let json2 = JSON.parse("[       1       ]");
 print(json2);
 let json3 = JSON.parse("[              ]");
 print(json3);
+let data = {
+    "11111111" : "https://www.a.com",
+    "22222222" : "https://www.b.com",
+    "00000000" : "https://www.c.com"
+}
+let strData = JSON.stringify(data);
+let res = JSON.parse(strData);
+print(res["11111111"]);
+print(res["22222222"]);
+print(res["00000000"]);
