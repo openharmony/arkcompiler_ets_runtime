@@ -41,7 +41,8 @@ private:
     void VisitConstant(GateRef gate);
     void VisitPhi(GateRef gate);
     void VisitUndefinedStrictEq(GateRef gate);
-    
+    void VisitStoreProperty(GateRef gate);
+
     template<TypedBinOp Op>
     void VisitNumberCalculate(GateRef gate);
     template<TypedBinOp Op>

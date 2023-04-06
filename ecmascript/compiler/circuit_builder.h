@@ -334,6 +334,7 @@ public:
     inline GateRef Load(VariableType type, GateRef base, GateRef offset);
     inline GateRef Load(VariableType type, GateRef base, GateRef offset, GateRef depend);
     void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value);
+    void StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value);
 
 #define ARITHMETIC_BINARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                 \
     inline GateRef NAME(GateRef x, GateRef y)                                             \
@@ -461,6 +462,7 @@ public:
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
     GateRef LoadProperty(GateRef receiver, GateRef propertyLookupResult, bool isFunction);
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
+    GateRef StorePropertyNoBarrier(GateRef gate);
     GateRef LoadArrayLength(GateRef array);
     GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);

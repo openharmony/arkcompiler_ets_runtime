@@ -210,6 +210,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(StableArrayCheck, STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)              \
     V(DeoptCheck, DEOPT_CHECK, GateFlags::NONE_FLAG, 1, 1, 3)                           \
     V(StoreProperty, STORE_PROPERTY, GateFlags::NONE_FLAG, 1, 1, 3)                     \
+    V(StorePropertyNoBarrier, STORE_PROPERTY_NO_BARRIER, GateFlags::NONE_FLAG, 1, 1, 3) \
     V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)                               \
     V(DefaultCase, DEFAULT_CASE, GateFlags::CONTROL, 1, 0, 0)                           \
     V(LoadArrayLength, LOAD_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                 \

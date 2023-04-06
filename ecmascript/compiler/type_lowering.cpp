@@ -92,6 +92,7 @@ void TypeLowering::LowerType(GateRef gate)
             LowerCallGetter(gate, glue);
             break;
         case OpCode::STORE_PROPERTY:
+        case OpCode::STORE_PROPERTY_NO_BARRIER:
             LowerStoreProperty(gate, glue);
             break;
         case OpCode::CALL_SETTER:
@@ -576,7 +577,14 @@ void TypeLowering::LowerStoreProperty(GateRef gate, GateRef glue)
     PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
     ASSERT(plr.IsLocal());
     GateRef offset = builder_.IntPtr(plr.GetOffset());
-    builder_.Store(VariableType::JS_ANY(), glue, receiver, offset, value);
+    auto op = OpCode(acc_.GetOpCode(gate));
+    if (op == OpCode::STORE_PROPERTY) {
+        builder_.Store(VariableType::JS_ANY(), glue, receiver, offset, value);
+    } else if (op == OpCode::STORE_PROPERTY_NO_BARRIER) {
+        builder_.StoreWithNoBarrier(VariableType::JS_ANY(), receiver, offset, value);
+    } else {
+        UNREACHABLE();
+    }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
