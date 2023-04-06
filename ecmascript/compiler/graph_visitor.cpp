@@ -60,6 +60,8 @@ void GraphVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef re
 void GraphVisitor::VisitGraph()
 {
     circuit_->AdvanceTime();
+    orderCount_ = 0;
+    orderList_.resize(circuit_->GetMaxGateId() + 1, -1);
     GateRef returnList = acc_.GetReturnRoot();
     auto uses = acc_.Uses(returnList);
     for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
@@ -89,6 +91,15 @@ void GraphVisitor::ReVisitGate(GateRef gate)
     }
 }
 
+int32_t GraphVisitor::GetGateOrder(GateRef gate) const
+{
+    return orderList_[acc_.GetId(gate)];
+}
+
+void GraphVisitor::SetGateOrder(GateRef gate, int32_t orderId)
+{
+    orderList_[acc_.GetId(gate)] = orderId;
+}
 
 // Reverse post-order
 void GraphVisitor::VisitTopGate(Edge& current)
@@ -112,6 +123,9 @@ void GraphVisitor::VisitTopGate(Edge& current)
         }
     }
     // all input are visited
+    if (GetGateOrder(gate) == -1) { // -1 : not visited before
+        SetGateOrder(gate, ++orderCount_);
+    }
     GateRef replacement = VisitGate(gate);
     PopGate(gate);
     if (replacement == Circuit::NullGate()) {

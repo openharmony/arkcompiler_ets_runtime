@@ -581,4 +581,38 @@ HWTEST_F_L0(CircuitOptimizerTests, TestMergeEarlyElimination) {
     EXPECT_TRUE(acc.GetMetaData(load2)->IsNop());
     EXPECT_TRUE(acc.GetMetaData(load3)->IsNop());
 }
+
+HWTEST_F_L0(CircuitOptimizerTests, TestPropertyEarlyElimination) {
+    // construct a circuit
+    ecmascript::NativeAreaAllocator allocator;
+    Circuit circuit(&allocator);
+    ecmascript::Chunk chunk(&allocator);
+    GateAccessor acc(&circuit);
+    auto receiver = circuit.NewArg(MachineType::I64, 1,
+                                   GateType::AnyType(),
+                                   acc.GetArgRoot());
+    auto storeValue = circuit.NewArg(MachineType::I64, 2,
+                                   GateType::AnyType(),
+                                   acc.GetArgRoot());
+    auto index0 = circuit.NewGate(circuit.Constant(0),
+                                 MachineType::I32, GateType::NJSValue());
+    auto index1 = circuit.NewGate(circuit.Constant(1),
+                                 MachineType::I32, GateType::NJSValue());
+    auto load0 = circuit.NewGate(circuit.LoadProperty(0),
+                                 MachineType::ANYVALUE,
+                                 { acc.GetStateRoot(), acc.GetDependRoot(), receiver, index0 },
+                                 GateType::AnyType());
+    auto store0 = circuit.NewGate(circuit.StoreProperty(),
+                                 MachineType::NOVALUE,
+                                 { load0, load0, receiver, index1, storeValue },
+                                 GateType::Empty());
+    auto load1 = circuit.NewGate(circuit.LoadProperty(0),
+                                 MachineType::ANYVALUE,
+                                 { store0, store0, receiver, index0 },
+                                 GateType::AnyType());
+    circuit.NewGate(circuit.ReturnVoid(), { load1, load1, acc.GetReturnRoot() });
+    ecmascript::kungfu::EarlyElimination(&circuit, false, "test", &chunk).Run();
+    EXPECT_FALSE(acc.GetMetaData(load0)->IsNop());
+    EXPECT_TRUE(acc.GetMetaData(load1)->IsNop());
+}
 } // namespace panda::test
