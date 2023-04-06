@@ -27,5 +27,3 @@ true
 true
 true
 true
-1949 4 1 0
-1949 6 10 0

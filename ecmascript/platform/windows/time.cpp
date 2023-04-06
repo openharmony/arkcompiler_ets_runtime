@@ -16,8 +16,10 @@
 #include "ecmascript/platform/time.h"
 
 #include <timezoneapi.h>
+#include <time.h>
 
 namespace panda::ecmascript {
+static constexpr uint16_t THOUSAND = 1000;
 int64_t GetLocalOffsetFromOS([[maybe_unused]] int64_t timeMs, bool isLocal)
 {
     if (!isLocal) {
@@ -27,5 +29,14 @@ int64_t GetLocalOffsetFromOS([[maybe_unused]] int64_t timeMs, bool isLocal)
     GetTimeZoneInformation(&tmp);
     int64_t res = -tmp.Bias;
     return res;
+}
+
+bool IsDst(int64_t timeMs)
+{
+    timeMs /= THOUSAND;
+    time_t tv = timeMs;
+    struct tm nowtm;
+    localtime_s(&nowtm, &tv);
+    return nowtm.tm_isdst;
 }
 }  // namespace panda::ecmascript
