@@ -364,17 +364,45 @@ JSHandle<JSHClass> JSHClass::TransProtoWithoutLayout(const JSThread *thread, con
 
 void JSHClass::SetPrototype(const JSThread *thread, JSTaggedValue proto)
 {
-    if (proto.IsECMAObject()) {
-        auto hclass = proto.GetTaggedObject()->GetClass();
-        ASSERT(!Region::ObjectAddressToRange(reinterpret_cast<TaggedObject*>(hclass))->InReadOnlySpace());
-        hclass->SetIsPrototype(true);
-    }
-    SetProto(thread, proto);
+    JSHandle<JSTaggedValue> protoHandle(thread, proto);
+    SetPrototype(thread, protoHandle);
 }
 
 void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto)
 {
-    SetPrototype(thread, proto.GetTaggedValue());
+    // In the original version, whether the objcet is EcmaObject is determined,
+    // but proxy is not allowd.
+    if (proto->IsJSObject()) {
+        ShouldUpdateProtoClass(thread, proto);
+    }
+    SetProto(thread, proto);
+}
+
+void JSHClass::ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JSTaggedValue> &proto)
+{
+    JSHandle<JSHClass> hclass(thread, proto->GetTaggedObject()->GetClass());
+    ASSERT(!Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*hclass))->InReadOnlySpace());
+    if (!hclass->IsPrototype()) {
+        // If the objcet should be changed to the proto of an object,
+        // the original hclass cannot be shared.
+        JSHandle<JSHClass> newProtoClass = JSHClass::Clone(thread, hclass);
+        JSTaggedValue layout = newProtoClass->GetLayout();
+        // If the type of object is JSObject, the layout info value is initialized to the default value,
+        // if the value is not JSObject, the layout info value is initialized to null.
+        if (!layout.IsNull()) {
+            JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, layout);
+            layoutInfoHandle.Update(
+                thread->GetEcmaVM()->GetFactory()->CopyLayoutInfo(layoutInfoHandle).GetTaggedValue());
+            newProtoClass->SetLayout(thread, layoutInfoHandle);
+        }
+
+#if ECMASCRIPT_ENABLE_IC
+        // After the hclass is updated, check whether the proto chain status of ic is updated.
+        NotifyHclassChanged(thread, hclass, newProtoClass);
+#endif
+        JSObject::Cast(proto->GetTaggedObject())->SetClass(*newProtoClass);
+        newProtoClass->SetIsPrototype(true);
+    }
 }
 
 void JSHClass::TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &obj)

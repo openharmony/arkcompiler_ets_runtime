@@ -22,7 +22,7 @@
 namespace panda::ecmascript::builtins {
 class BuiltinsArkTools : public base::BuiltinsBase {
 public:
-    // Make sure the ECMASCRIPT_OBJECT_DUMP in config.h has been opened before use it
+    // Make sure the enable-ark-tools has been opened before use it
     // Use through ArkTools.print(msg, [obj1, obj2, ... objn]) in js
     static JSTaggedValue ObjectDump(EcmaRuntimeCallInfo *info);
 
@@ -54,6 +54,8 @@ public:
 
     static bool CreateFile(std::string &fileName);
 #endif
+    // ArkTools.isPrototype(object)
+    static JSTaggedValue IsPrototype(EcmaRuntimeCallInfo *info);
 };
 }  // namespace panda::ecmascript::builtins
 

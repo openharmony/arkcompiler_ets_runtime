@@ -270,4 +270,17 @@ bool BuiltinsArkTools::CreateFile(std::string &fileName)
     }
 }
 #endif
+
+// It is used to check whether an object is a proto, and this function can be
+// used to check whether the state machine of IC is faulty.
+JSTaggedValue BuiltinsArkTools::IsPrototype(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
+    JSHClass *objHclass = obj->GetTaggedObject()->GetClass();
+    return JSTaggedValue(objHclass->IsPrototype());
+}
 }  // namespace panda::ecmascript::builtins
