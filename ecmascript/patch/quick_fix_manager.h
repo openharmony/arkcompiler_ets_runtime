@@ -22,15 +22,13 @@ namespace panda::ecmascript {
 using PatchErrorCode = panda::JSNApi::PatchErrorCode;
 class QuickFixManager {
 public:
-    using QuickFixQueryCallBack = bool (*)(std::string baseFileName,
-                                           std::string &patchFileName,
-                                           void **patchBuffer,
-                                           size_t &patchSize);
-
     QuickFixManager() = default;
     ~QuickFixManager();
 
-    void RegisterQuickFixQueryFunc(const QuickFixQueryCallBack callBack);
+    void RegisterQuickFixQueryFunc(const std::function<bool(std::string baseFileName,
+                        std::string &patchFileName,
+                        void **patchBuffer,
+                        size_t &patchSize)> callBack);
     void LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *baseFile);
     PatchErrorCode LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName);
     PatchErrorCode LoadPatch(JSThread *thread,
@@ -53,7 +51,10 @@ private:
 
     // key: baseFileName
     CMap<CString, PatchInfo> methodInfos_ {};
-    QuickFixQueryCallBack callBack_ {nullptr};
+    std::function<bool(std::string baseFileName,
+                        std::string &patchFileName,
+                        void **patchBuffer,
+                        size_t &patchSize)> callBack_;
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_PATCH_QUICK_FIX_MANAGER_H

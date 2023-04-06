@@ -2724,7 +2724,10 @@ bool JSNApi::IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, c
 /*
  * register quickfix query function.
  */
-void JSNApi::RegisterQuickFixQueryFunc(EcmaVM *vm, QuickFixQueryCallBack callBack)
+void JSNApi::RegisterQuickFixQueryFunc(EcmaVM *vm, std::function<bool(std::string baseFileName,
+                        std::string &patchFileName,
+                        void **patchBuffer,
+                        size_t &patchSize)> callBack)
 {
     ecmascript::QuickFixManager *quickFixManager = vm->GetQuickFixManager();
     quickFixManager->RegisterQuickFixQueryFunc(callBack);

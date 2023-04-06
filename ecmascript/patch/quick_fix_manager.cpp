@@ -24,7 +24,10 @@ QuickFixManager::~QuickFixManager()
     methodInfos_.clear();
 }
 
-void QuickFixManager::RegisterQuickFixQueryFunc(const QuickFixQueryCallBack callBack)
+void QuickFixManager::RegisterQuickFixQueryFunc(const std::function<bool(std::string baseFileName,
+                        std::string &patchFileName,
+                        void **patchBuffer,
+                        size_t &patchSize)> callBack)
 {
     callBack_ = callBack;
 }
