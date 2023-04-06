@@ -158,8 +158,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         const JSPandaFile *jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordNameStr.c_str());
         if (jsPandaFile == nullptr) {
-            LOG_ECMA(ERROR) << "Try to load record " << recordNameStr << " in abc : " << baseFilename;
-            CString msg = "Faild to load file '" + recordNameStr + "', please check the request path.";
+            CString msg = "Load file with filename '" + baseFilename + "' failed, recordName '" + recordNameStr + "'";
             JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
         }
@@ -173,8 +172,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileNameStr,
                                                                                         entryPoint);
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "Try to load record " << entryPoint << " in abc : " << fileNameStr;
-        CString msg = "Faild to load file '" + entryPoint + "', please check the request path.";
+        CString msg = "Load file with filename '" + fileNameStr + "' failed, recordName '" + entryPoint + "'";
         JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
     }
@@ -182,7 +180,6 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
     if (!vm->GetModuleManager()->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
         if (!JSPandaFileExecutor::ExecuteFromFile(thread, fileNameStr.c_str(), entryPoint.c_str(), false, true)) {
-            LOG_ECMA(INFO) << "Try to load record " << entryPoint << " in abc : " << fileNameStr;
             CString msg = "Cannot execute request dynamic-imported module : " + entryPoint;
             JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));

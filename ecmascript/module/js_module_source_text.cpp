@@ -96,13 +96,12 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, moduleRecordName);
     if (jsPandaFile == nullptr) {
-        CString msg = "Faild to load file with filename '" + baseFilename + "' and moduleRecordName '"
-            + moduleRecordName + "'";
+        CString msg = "Load file with filename '" + baseFilename + "' failed, recordName '" + moduleRecordName + "'";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
-
+    CString outFileName = baseFilename;
     CString entryPoint =
-        PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile, baseFilename, moduleRecordName, moduleRequestName);
+        PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile, outFileName, moduleRecordName, moduleRequestName);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
@@ -110,7 +109,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
         THROW_SYNTAX_ERROR_AND_RETURN(thread, "", thread->GlobalConstants()->GetHandledUndefined());
     }
 #endif
-    return moduleManager->HostResolveImportedModuleWithMerge(baseFilename, entryPoint);
+    return moduleManager->HostResolveImportedModuleWithMerge(outFileName, entryPoint);
 }
 
 // old way with bundle
@@ -314,8 +313,12 @@ void SourceTextModule::InitializeEnvironment(JSThread *thread, const JSHandle<So
             SourceTextModule::ResolveExportObject(thread, requestedModule, exports, importName);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString msg = "InitializeEnvironment find importName " + ConvertToString(importName.GetTaggedValue());
-            msg += " failed\nrequestedName" + ConvertToString(requestedName.GetTaggedValue());
+            CString msg = "the requested module '" +
+                          ConvertToString(host->GetModuleRequest()) +
+                          "' does not provide an export named '" +
+                          ConvertToString(importName.GetTaggedValue()) +
+                          "' which imported by '" +
+                          ConvertToString(requestedName.GetTaggedValue()) + "'";
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // iii. Call envRec.CreateImportBinding(
@@ -540,9 +543,14 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
                 SourceTextModule::ResolveExport(thread, importedModule, importName, resolveVector);
             // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
             if (resolution->IsNull() || resolution->IsString()) {
-                CString msg = "find importName " + ConvertToString(importName.GetTaggedValue()) + " failed ";
+                CString msg = "the requested module '" +
+                              ConvertToString(moduleRequest.GetTaggedValue()) +
+                              "' does not provide an export named '" +
+                              ConvertToString(importName.GetTaggedValue());
                 if (!module->GetEcmaModuleRecordName().IsUndefined()) {
-                    msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
+                    msg += "' which imported by '" + ConvertToString(module->GetEcmaModuleRecordName()) + "'";
+                } else {
+                    msg += "' which imported by '" + ConvertToString(module->GetEcmaModuleFilename()) + "'";
                 }
                 THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
             }
@@ -614,9 +622,14 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
             SourceTextModule::ResolveExport(thread, importedModule, importName, resolveVector);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString msg = "find importName " + ConvertToString(importName.GetTaggedValue()) + " failed ";
+            CString msg = "the requested module '" +
+                          ConvertToString(moduleRequest.GetTaggedValue()) +
+                          "' does not provide an export named '" +
+                          ConvertToString(importName.GetTaggedValue());
             if (!module->GetEcmaModuleRecordName().IsUndefined()) {
-                msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
+                msg += "' which imported by '" + ConvertToString(module->GetEcmaModuleRecordName()) + "'";
+            } else {
+                msg += "' which imported by '" + ConvertToString(module->GetEcmaModuleFilename()) + "'";
             }
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
@@ -940,8 +953,8 @@ void SourceTextModule::ModuleExecution(JSThread *thread, const JSHandle<SourceTe
     }
 
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "Try to load abc " << moduleFilenameStr;
-        CString msg = "Faild to load file '" + moduleFilenameStr + "', please check the request path.";
+        CString msg = "Load file with filename '" + moduleFilenameStr + "' failed, recordName '" +
+                      entryPoint.c_str() + "'";
         THROW_ERROR(thread, ErrorType::REFERENCE_ERROR, msg.c_str());
     }
     JSPandaFileExecutor::Execute(thread, jsPandaFile, entryPoint, excuteFromJob);
@@ -1334,9 +1347,14 @@ void SourceTextModule::CheckResolvedBinding(JSThread *thread, const JSHandle<Sou
             SourceTextModule::ResolveExport(thread, module, exportName, resolveVector);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString msg = "find exportName " + ConvertToString(exportName.GetTaggedValue()) + " failed";
+            CString msg = "the requested module '" +
+                          ConvertToString(ee->GetModuleRequest()) +
+                          "' does not provide an export named '" +
+                          ConvertToString(exportName.GetTaggedValue());
             if (!module->GetEcmaModuleRecordName().IsUndefined()) {
-                msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
+                msg += "' which exported by '" + ConvertToString(module->GetEcmaModuleRecordName()) + "'";
+            } else {
+                msg += "' which exported by '" + ConvertToString(module->GetEcmaModuleFilename()) + "'";
             }
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
@@ -1367,8 +1385,12 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
             SourceTextModule::ResolveExport(thread, module, exportName, resolveVector);
         // b. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString msg = "find exportName " + ConvertToString(exportName.GetTaggedValue()) + " failed ";
-            msg += "RecordName : " + ConvertToString(module->GetEcmaModuleRecordName());
+            CString msg = "the requested module '" +
+                          ConvertToString(ee->GetModuleRequest()) +
+                          "' does not provide an export named '" +
+                          ConvertToString(exportName.GetTaggedValue()) +
+                          "' which exported by '" +
+                          ConvertToString(module->GetEcmaModuleRecordName()) + "'";
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // c. Assert: resolution is a ResolvedBinding Record.

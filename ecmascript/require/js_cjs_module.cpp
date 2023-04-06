@@ -160,8 +160,7 @@ void CjsModule::RequireExecution(JSThread *thread, CString mergedFilename, CStri
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, mergedFilename, requestEntryPoint);
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "Try to load cjs module " << requestEntryPoint << " in abc : " << mergedFilename;
-        CString msg = "Faild to load file '" + requestEntryPoint + "', please check the request path.";
+        CString msg = "Load file with filename '" + mergedFilename + "' failed, recordName '" + requestEntryPoint + "'";
         THROW_ERROR(thread, ErrorType::REFERENCE_ERROR, msg.c_str());
     }
     JSPandaFileExecutor::Execute(thread, jsPandaFile, requestEntryPoint);
