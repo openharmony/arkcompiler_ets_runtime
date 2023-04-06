@@ -241,7 +241,6 @@ class ArkTest():
         abcmode = {'ts2abc': ['--merge-abc', '--merge-abc -m'],
                    'es2abc': ['--merge-abc', '--merge-abc --module']}
         self.abcmode = abcmode[args.frontend][args.module]
-        self.builtin = ''
         self.frontend_args = ''
         self.aot_args = ''
         self.jsvm_args = icu_arg
@@ -339,7 +338,11 @@ class ArkTest():
             'clean': f'rm -f {out_case_dir}/{name}.abc {out_case_dir}/{name}.an {out_case_dir}/{name}.ai',
             'cleanhap': f'rm -rf {hap_dir}/an {out_case_dir}/{name}.an {out_case_dir}/{name}.ai'}
         if self.builtin:
-            cmd = f'node --expose-gc {self.ts2abc} {self.builtin}.ts -m --merge-abc -q -b'
+            if self.frontend == self.ts2abc:
+                cmd = f'{self.ts2abc} {self.builtin}.ts -m --merge-abc -q -b'
+            elif self.frontend == self.es2abc:
+                cmd = (f'{self.es2abc} --module --merge-abc --extension=ts --type-extractor --type-dts-builtin '
+                       f'--output={self.builtin}.abc {self.builtin}.ts')
             print(cmd)
             os.system(cmd)
         if self.step == 'hap':
@@ -432,7 +435,7 @@ class ArkTest():
         else:
             ret = self.run_cmd(cmd_map[self.args.tool])
         self.judge_test(file, ret)
-    
+
     def judge_test(self, file, out):
         if out[0]:
             self.fail_cases.append(file)
