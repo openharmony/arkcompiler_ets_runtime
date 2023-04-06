@@ -318,6 +318,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::COPYRESTARGS_IMM8:
         case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16:
             flags |= BytecodeFlags::READ_ARGC;
+            [[fallthrough]];
         default:
             break;
     }
