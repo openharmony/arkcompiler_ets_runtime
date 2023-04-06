@@ -33,13 +33,23 @@ void __asan_unpoison_memory_region(void const volatile *addr, size_t size) __att
 }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#ifndef ASAN_POISON_MEMORY_REGION
 #define ASAN_POISON_MEMORY_REGION(addr, size) __asan_poison_memory_region((addr), (size))
+#endif
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#ifndef ASAN_UNPOISON_MEMORY_REGION
 #define ASAN_UNPOISON_MEMORY_REGION(addr, size) __asan_unpoison_memory_region((addr), (size))
+#endif
 #else
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#ifdef ASAN_POISON_MEMORY_REGION
+#undef ASAN_POISON_MEMORY_REGION
+#endif
 #define ASAN_POISON_MEMORY_REGION(addr, size) ((void)(addr), (void)(size))
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#ifdef ASAN_UNPOISON_MEMORY_REGION
+#undef ASAN_UNPOISON_MEMORY_REGION
+#endif
 #define ASAN_UNPOISON_MEMORY_REGION(addr, size) ((void)(addr), (void)(size))
 #endif
 
