@@ -44,30 +44,48 @@ void SlowPathLowering::CallRuntimeLowering()
 
     for (const auto &gate : gateList) {
         auto op = acc_.GetOpCode(gate);
-        if (op == OpCode::JS_BYTECODE) {
-            Lower(gate);
-        } else if (op == OpCode::GET_EXCEPTION) {
-            // initialize label manager
-            Environment env(gate, circuit_, &builder_);
-            LowerExceptionHandler(gate);
-        } else if (op == OpCode::GET_CONSTPOOL) {
-            // initialize label manager
-            Environment env(gate, circuit_, &builder_);
-            LowerGetConstPool(gate);
-        } else if (op == OpCode::CONST_DATA) {
-            LowerConstPoolData(gate);
-        } else if (op == OpCode::DEOPT_CHECK) {
-            LowerDeoptCheck(gate);
-        } else if (op == OpCode::CONSTRUCT) {
-            LowerConstruct(gate);
-        } else if (op == OpCode::TYPEDAOTCALL) {
-            LowerTypedAotCall(gate);
-        } else if (op == OpCode::UPDATE_HOTNESS) {
-            LowerUpdateHotness(gate);
-        } else if (op == OpCode::STATE_SPLIT) {
-            DeleteStateSplit(gate);
-        } else if (op == OpCode::GET_ENV) {
-            LowerGetEnv(gate);
+        switch (op) {
+            case OpCode::JS_BYTECODE:
+                Lower(gate);
+                break;
+            case OpCode::GET_EXCEPTION: {
+                // initialize label manager
+                Environment env(gate, circuit_, &builder_);
+                LowerExceptionHandler(gate);
+                break;
+            }
+            case OpCode::GET_CONSTPOOL: {
+                // initialize label manager
+                Environment env(gate, circuit_, &builder_);
+                LowerGetConstPool(gate);
+                break;
+            }
+            case OpCode::CONST_DATA:
+                LowerConstPoolData(gate);
+                break;
+            case OpCode::DEOPT_CHECK:
+                LowerDeoptCheck(gate);
+                break;
+            case OpCode::CONSTRUCT:
+                LowerConstruct(gate);
+                break;
+            case OpCode::TYPEDAOTCALL:
+                LowerTypedAotCall(gate);
+                break;
+            case OpCode::UPDATE_HOTNESS:
+                LowerUpdateHotness(gate);
+                break;
+            case OpCode::STATE_SPLIT:
+                DeleteStateSplit(gate);
+                break;
+            case OpCode::GET_ENV:
+                LowerGetEnv(gate);
+                break;
+            case OpCode::LOOP_EXIT:
+                DeleteLoopExit(gate);
+                break;
+            default:
+                break;
         }
     }
 
@@ -86,6 +104,12 @@ void SlowPathLowering::DeleteStateSplit(GateRef gate)
 {
     auto depend = acc_.GetDep(gate);
     acc_.ReplaceGate(gate, Circuit::NullGate(), depend, Circuit::NullGate());
+}
+
+void SlowPathLowering::DeleteLoopExit(GateRef gate)
+{
+    auto state = acc_.GetState(gate);
+    acc_.ReplaceGate(gate, state, Circuit::NullGate(), Circuit::NullGate());
 }
 
 void SlowPathLowering::LowerToJSCall(GateRef hirGate, const std::vector<GateRef> &args)

@@ -99,6 +99,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "later_elimination.cpp",
     "llvm_codegen.cpp",
     "llvm_ir_builder.cpp",
+    "loop_analysis.cpp",
     "new_object_stub_builder.cpp",
     "number_speculative_lowering.cpp",
     "number_speculative_retype.cpp",

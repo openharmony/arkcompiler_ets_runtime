@@ -31,6 +31,12 @@
 #include "securec.h"
 
 namespace panda::ecmascript::kungfu {
+enum class VisitState : uint8_t {
+    UNVISITED,
+    PENDING,
+    VISITED
+};
+
 class Circuit {  // note: calling NewGate could make all saved Gate* invalid
 public:
     explicit Circuit(NativeAreaAllocator* allocator, bool isArch64 = true);

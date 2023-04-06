@@ -194,6 +194,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(IfFalse, IF_FALSE, GateFlags::CONTROL, 1, 0, 0)                                   \
     V(LoopBegin, LOOP_BEGIN, GateFlags::CONTROL, 2, 0, 0)                               \
     V(LoopBack, LOOP_BACK, GateFlags::CONTROL, 1, 0, 0)                                 \
+    V(LoopExit, LOOP_EXIT, GateFlags::CONTROL_ROOT, 1, 0, 0)                            \
+    V(LoopExitDepend, LOOP_EXIT_DEPEND, GateFlags::FIXED, 1, 1, 0)                      \
     V(DependRelay, DEPEND_RELAY, GateFlags::FIXED, 1, 1, 0)                             \
     V(IfSuccess, IF_SUCCESS, GateFlags::CONTROL, 1, 0, 0)                               \
     V(IfException, IF_EXCEPTION, GateFlags::CONTROL, 1, 1, 0)                           \
@@ -311,6 +313,7 @@ enum GateFlags : uint8_t {
     HAS_ROOT = 1 << 1,
     HAS_FRAME_STATE = 1 << 2,
     CONTROL = NO_WRITE,
+    CONTROL_ROOT = NO_WRITE | HAS_ROOT,
     CHECKABLE = NO_WRITE | HAS_FRAME_STATE,
     ROOT = NO_WRITE | HAS_ROOT,
     FIXED = NO_WRITE,
@@ -407,6 +410,7 @@ public:
     bool IsState() const;  // note: IsState(STATE_ENTRY) == false
     bool IsGeneralState() const;
     bool IsTerminalState() const;
+    bool IsVirtualState() const;
     bool IsCFGMerge() const;
     bool IsControlCase() const;
     bool IsLoopHead() const;

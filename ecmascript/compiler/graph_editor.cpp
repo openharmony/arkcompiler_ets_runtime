@@ -51,6 +51,8 @@ void GraphEditor::RemoveGate()
         switch (opcode) {
             case OpCode::NOP:
             case OpCode::DEAD:
+            case OpCode::VALUE_SELECTOR:
+            case OpCode::DEPEND_SELECTOR:
                 // dead op, just continue
                 break;
             case OpCode::MERGE:
@@ -78,7 +80,7 @@ void GraphEditor::PropagateGate(const Edge& edge)
         return;
     }
 
-    // IsDependIn
+    // IsValueIn
     if (acc_.IsValueIn(gate, edge.GetIndex())) {
         // value gate
         ReplaceGate(gate);
