@@ -223,20 +223,6 @@ private:
                          GateRef value = Circuit::NullGate());
     void ReplaceHirWithPendingException(GateRef hirGate, GateRef glue, GateRef state, GateRef depend, GateRef value);
 
-    template<OpCode Op>
-    GateRef CalculateNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
-    template<OpCode Op>
-    GateRef ShiftNumber(GateRef left, GateRef right, GateType leftType, GateType rightType);
-    template<OpCode Op>
-    GateRef LogicalNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
-    template<TypedBinOp Op>
-    GateRef CompareNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
-    template<TypedBinOp Op>
-    GateRef CompareInt(GateRef left, GateRef right);
-    template<TypedBinOp Op>
-    GateRef CompareDouble(GateRef left, GateRef right);
-    template<TypedUnOp Op>
-    GateRef MonocularNumber(GateRef value, GateType valueType);
     template<OpCode Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
     GateRef DoubleToTaggedDoublePtr(GateRef gate);
@@ -259,17 +245,18 @@ private:
 
     void LowerConvert(GateRef gate);
     void LowerCheckAndConvert(GateRef gate);
+    void LowerCheckFloat64AndConvert(GateRef gate);
     void LowerCheckTaggedIntAndConvert(GateRef gate);
     void LowerCheckTaggedDoubleAndConvert(GateRef gate);
     void LowerCheckTaggedNumberAndConvert(GateRef gate);
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
     GateRef ConvertInt32ToFloat64(GateRef gate);
     GateRef ConvertInt32ToTaggedInt(GateRef gate);
-    GateRef ConvertFloat64ToInt32(GateRef gate);
+    GateRef ConvertFloat64ToInt32(GateRef gate, Label *exit);
     GateRef ConvertFloat64ToTaggedDouble(GateRef gate);
     GateRef ConvertTaggedIntToInt32(GateRef gate);
     GateRef ConvertTaggedIntToFloat64(GateRef gate);
-    GateRef ConvertTaggedDoubleToInt32(GateRef gate);
+    GateRef ConvertTaggedDoubleToInt32(GateRef gate, Label *exit);
     GateRef ConvertTaggedDoubleToFloat64(GateRef gate);
     GateRef ConvertTaggedNumberToInt32(GateRef gate, Label *exit);
     GateRef ConvertTaggedNumberToFloat64(GateRef gate, Label *exit);

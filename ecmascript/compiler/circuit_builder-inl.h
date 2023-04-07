@@ -155,6 +155,33 @@ GateRef CircuitBuilder::GetDoubleOfTNumber(GateRef x)
     return ret;
 }
 
+GateRef CircuitBuilder::DoubleToInt(GateRef x, Label *exit)
+{
+    Label overflow(env_);
+    
+    GateRef xInt = ChangeFloat64ToInt32(x);
+    DEFVAlUE(result, env_, VariableType::INT32(), xInt);
+
+    GateRef xInt64 = CastDoubleToInt64(x);
+    // exp = (u64 & DOUBLE_EXPONENT_MASK) >> DOUBLE_SIGNIFICAND_SIZE - DOUBLE_EXPONENT_BIAS
+    GateRef exp = Int64And(xInt64, Int64(base::DOUBLE_EXPONENT_MASK));
+    exp = TruncInt64ToInt32(Int64LSR(exp, Int64(base::DOUBLE_SIGNIFICAND_SIZE)));
+    exp = Int32Sub(exp, Int32(base::DOUBLE_EXPONENT_BIAS));
+    GateRef bits = Int32(base::INT32_BITS - 1);
+    // exp < 32 - 1
+    Branch(Int32LessThan(exp, bits), exit, &overflow);
+
+    Bind(&overflow);
+    {
+        result = CallNGCRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(DoubleToInt),
+                                Circuit::NullGate(), { x }, Circuit::NullGate());
+        Jump(exit);
+    }
+    Bind(exit);
+    auto ret = *result;
+    return ret;
+}
+
 GateRef CircuitBuilder::Int8Equal(GateRef x, GateRef y)
 {
     return Equal(x, y);

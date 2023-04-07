@@ -374,6 +374,7 @@ public:
     inline GateRef GetDoubleOfTDouble(GateRef x);
     inline GateRef GetBooleanOfTBoolean(GateRef x);
     inline GateRef GetDoubleOfTNumber(GateRef x);
+    inline GateRef DoubleToInt(GateRef x, Label *exit);
     inline GateRef Int32ToTaggedPtr(GateRef x);
     inline GateRef Int64ToTaggedPtr(GateRef x);
     inline GateRef Int32ToTaggedInt(GateRef x);

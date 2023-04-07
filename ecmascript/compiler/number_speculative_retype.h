@@ -56,15 +56,18 @@ private:
     GateRef VisitNumberBinaryOp(GateRef gate);
     GateRef VisitUndefinedStrictEq(GateRef gate);
     GateRef VisitTypedUnaryOp(GateRef gate);
-    GateRef VisitTypedInc(GateRef gate);
-    GateRef VisitIntInc(GateRef gate);
-    GateRef VisitDoubleInc(GateRef gate);
-    GateRef VisitTypedNot(GateRef gate);
+    
+    GateRef VisitNumberMonocular(GateRef gate);
+    GateRef VisitNumberNot(GateRef gate);
     GateRef VisitTypedJeqz(GateRef gate);
+
+    GateRef VisitIntMonocular(GateRef gate);
+    GateRef VisitDoubleMonocular(GateRef gate);
+
     GateRef VisitNumberCalculate(GateRef gate);
     GateRef VisitNumberCompare(GateRef gate);
-    GateRef VisitNumberShift(GateRef gate);
-    GateRef VisitIntNot(GateRef gate);
+    GateRef VisitNumberShiftAndLogical(GateRef gate);
+    GateRef VisitNumberDiv(GateRef gate);
     GateRef VisitBooleanJeqz(GateRef gate);
     GateRef VisitOverflowCheck(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);
