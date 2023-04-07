@@ -513,7 +513,7 @@ public:
             entryPoint = ParsePrefixBundle(thread, jsPandaFile, baseFileName, requestName);
         } else if (StringHelper::StringStartWith(requestName, PREFIX_PACKAGE)) {
             entryPoint = requestName.substr(PREFIX_PACKAGE_LEN);
-        } else if (IsImportFile(requestName)) { // load a relative pathname.
+        } else if (IsImportFile(requestName)) { // load a relative pathName.
             entryPoint = MakeNewRecord(jsPandaFile, baseFileName, recordName, requestName);
         } else {
             entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, requestName);
@@ -522,7 +522,8 @@ public:
             LOG_ECMA(ERROR) << "Failed to resolve the requested entryPoint. baseFileName : '" << baseFileName <<
                 "'. RecordName : '" <<  recordName << "'. RequestName : '" <<  requestName << "'.";
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-            CString msg = "Failed to load file '" + requestName + "'. Please check the target path.";
+            CString msg = "failed to load module'" + requestName + "' which imported by '" +
+                          recordName + "'. Please check the target path.";
             JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, entryPoint);
         }

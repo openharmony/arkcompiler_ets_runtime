@@ -201,7 +201,8 @@ public:
         return pf_->GetClasses();
     }
 
-    bool PUBLIC_API IsModule(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
+    bool PUBLIC_API IsModule(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME,
+                             CString fullRecordName = "") const;
 
     bool IsCjs(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
 

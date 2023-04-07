@@ -199,7 +199,7 @@ MethodLiteral *JSPandaFile::FindMethodLiteral(uint32_t offset) const
     return iter->second;
 }
 
-bool JSPandaFile::IsModule(JSThread *thread, const CString &recordName) const
+bool JSPandaFile::IsModule(JSThread *thread, const CString &recordName, CString fullRecordName) const
 {
     if (IsBundlePack()) {
         return jsRecordInfo_.begin()->second.moduleRecordIdx == -1 ? false : true;
@@ -208,7 +208,11 @@ bool JSPandaFile::IsModule(JSThread *thread, const CString &recordName) const
     if (info != jsRecordInfo_.end()) {
         return info->second.moduleRecordIdx == -1 ? false : true;
     }
-    CString msg = "Faild to load file '" + recordName + "', please check the request path.";
+
+    if (fullRecordName.empty()) {
+        fullRecordName = recordName;
+    }
+    CString msg = "cannot find record '" + fullRecordName + "', please check the request path.";
     THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), false);
 }
 
@@ -221,7 +225,7 @@ bool JSPandaFile::IsCjs(JSThread *thread, const CString &recordName) const
     if (info != jsRecordInfo_.end()) {
         return info->second.isCjs;
     }
-    CString msg = "Faild to load file '" + recordName + "', please check the request path.";
+    CString msg = "cannot find record '" + recordName + "', please check the request path.";
     THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), false);
 }
 
@@ -234,7 +238,7 @@ bool JSPandaFile::IsJson(JSThread *thread, const CString &recordName) const
     if (info != jsRecordInfo_.end()) {
         return info->second.isJson;
     }
-    CString msg = "Faild to load file '" + recordName + "', please check the request path.";
+    CString msg = "cannot find record '" + recordName + "', please check the request path.";
     THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), false);
 }
 
@@ -249,8 +253,8 @@ const char *JSPandaFile::GetJsonStringId(JSThread *thread, const CString &record
         return reinterpret_cast<const char *>(pf_->GetStringData(
             panda_file::File::EntityId(info->second.jsonStringId)).data);
     }
-    CString message = "find jsonStringId failed: " + recordName;
-    THROW_REFERENCE_ERROR_AND_RETURN(thread, message.c_str(), nullptr);
+    CString msg = "cannot find record '" + recordName + "', please check the request path.";
+    THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), nullptr);
 }
 
 CString JSPandaFile::GetEntryPoint(const CString &recordName) const
