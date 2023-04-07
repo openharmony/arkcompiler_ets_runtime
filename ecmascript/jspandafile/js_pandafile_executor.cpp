@@ -61,20 +61,21 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         entry = entryPoint.data();
     }
  
-    const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(),
-                                                                                        needUpdate);
+    const JSPandaFile *jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, needUpdate);
     if (jsPandaFile == nullptr) {
-        CString msg = "Load file with filename '" + name + "' failed";
+        CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
+    CString realEntry = entry;
     // If it is an old record, delete the bundleName and moduleName
     if (!jsPandaFile->IsBundlePack() && !excuteFromJob && !vm->GetBundleName().empty()) {
         const_cast<JSPandaFile *>(jsPandaFile)->CheckIsRecordWithBundleName(vm);
         if (!jsPandaFile->IsRecordWithBundleName()) {
-            PathHelper::CroppingRecord(entry);
+            PathHelper::CroppingRecord(realEntry);
         }
     }
-    bool isModule = jsPandaFile->IsModule(thread, entry.c_str());
+    bool isModule = jsPandaFile->IsModule(thread, realEntry, entry);
     if (thread->HasPendingException()) {
         vm->HandleUncaughtException(thread->GetException().GetTaggedObject());
         return Unexpected(false);
@@ -86,13 +87,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         if (jsPandaFile->IsBundlePack()) {
             moduleRecord = moduleManager->HostResolveImportedModule(name);
         } else {
-            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(name, entry.c_str());
+            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(name, realEntry);
         }
         SourceTextModule::Instantiate(thread, moduleRecord);
         if (thread->HasPendingException()) {
             if (!excuteFromJob) {
-                auto exception = thread->GetException();
-                vm->HandleUncaughtException(exception.GetTaggedObject());
+                vm->HandleUncaughtException(thread->GetException().GetTaggedObject());
             }
             return Unexpected(false);
         }
@@ -101,7 +101,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         SourceTextModule::Evaluate(thread, module, nullptr, 0, excuteFromJob);
         return JSTaggedValue::Undefined();
     }
-    return JSPandaFileExecutor::Execute(thread, jsPandaFile, entry.c_str(), excuteFromJob);
+    return JSPandaFileExecutor::Execute(thread, jsPandaFile, realEntry.c_str(), excuteFromJob);
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *thread,
@@ -112,13 +112,14 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, normalName, entryPoint, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
-        CString msg = "Load file with filename '" + normalName + "' failed";
+        CString msg = "Load file with filename '" + normalName + "' failed, recordName '" + entryPoint.data() + "'";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
+
     CString entry = entryPoint.data();
     bool isModule = jsPandaFile->IsModule(thread, entry);
-    bool isBundle = jsPandaFile->IsBundlePack();
     if (isModule) {
+        bool isBundle = jsPandaFile->IsBundlePack();
         return CommonExecuteBuffer(thread, isBundle, normalName, entry, buffer, size);
     }
     return JSPandaFileExecutor::Execute(thread, jsPandaFile, entry);
@@ -142,21 +143,27 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     CString normalName = PathHelper::NormalizePath(filename);
     CString entry = PathHelper::ParseOhmUrl(vm, normalName, name);
     const JSPandaFile *jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), buffer, size, needUpdate);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
-        CString message = "Excute file's entryPoint failed: " + entry +
-            ". Please check the reference path .";
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, message.c_str(), Unexpected(false));
+        CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
-    ASSERT(jsPandaFile->IsModule(thread, entry.c_str()));
     bool isBundle = jsPandaFile->IsBundlePack();
+    CString realEntry = entry;
     if (!isBundle) {
         const_cast<JSPandaFile *>(jsPandaFile)->CheckIsRecordWithBundleName(vm);
         if (!jsPandaFile->IsRecordWithBundleName()) {
-            PathHelper::CroppingRecord(entry);
+            PathHelper::CroppingRecord(realEntry);
         }
     }
-    return CommonExecuteBuffer(thread, isBundle, name, entry, buffer, size);
+    // will be refactored, temporarily use the function IsModule to verify realEntry
+    [[maybe_unused]] bool isModule = jsPandaFile->IsModule(thread, realEntry, entry);
+    if (thread->HasPendingException()) {
+        vm->HandleUncaughtException(thread->GetException().GetTaggedObject());
+        return Unexpected(false);
+    }
+    ASSERT(isModule);
+    return CommonExecuteBuffer(thread, isBundle, name, realEntry, buffer, size);
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread *thread,
@@ -174,8 +181,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     }
     SourceTextModule::Instantiate(thread, moduleRecord);
     if (thread->HasPendingException()) {
-        auto exception = thread->GetException();
-        vm->HandleUncaughtException(exception.GetTaggedObject());
+        vm->HandleUncaughtException(thread->GetException().GetTaggedObject());
         return Unexpected(false);
     }
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
