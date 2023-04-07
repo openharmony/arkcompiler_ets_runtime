@@ -830,7 +830,7 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef jsFunc)
         builder_.Load(VariableType::JS_POINTER(), genObj, builder_.IntPtr(JSGeneratorObject::GENERATOR_CONTEXT_OFFSET));
     // new tagged array
     auto method = methodLiteral_;
-    const size_t arrLength = method->GetNumberVRegs();
+    const size_t arrLength = method->GetNumberVRegs() + 1; // 1: env vreg
     GateRef length = builder_.Int32(arrLength);
     GateRef taggedLength = builder_.ToTaggedInt(builder_.ZExtInt32ToInt64(length));
     const int arrayId = RTSTUB_ID(NewTaggedArray);
@@ -844,6 +844,7 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef jsFunc)
             builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, taggedArray, builder_.Int32(idx), tmpGate);
         }
     }
+    GateRef lexicalEnvGate = acc_.GetValueIn(saveRegister, numVreg - 1);
     acc_.DeleteGate(saveRegister);
 
     // setRegsArrays
@@ -869,7 +870,6 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate, GateRef jsFunc)
     builder_.Store(VariableType::JS_ANY(), glue_, context, generatorObjectOffset, genObj);
 
     // set lexical env
-    GateRef lexicalEnvGate = builder_.GetLexicalEnv(builder_.GetDepend());
     GateRef lexicalEnvOffset = builder_.IntPtr(GeneratorContext::GENERATOR_LEXICALENV_OFFSET);
     builder_.Store(VariableType::JS_ANY(), glue_, context, lexicalEnvOffset, lexicalEnvGate);
 
@@ -895,6 +895,7 @@ void SlowPathLowering::LowerSuspendGenerator(GateRef gate, GateRef jsFunc)
 {
     SaveFrameToContext(gate, jsFunc);
     acc_.SetDep(gate, builder_.GetDepend());
+    AddProfiling(gate, false);
     const int id = RTSTUB_ID(OptSuspendGenerator);
     auto value = acc_.GetValueIn(gate, 2); // 2: acc
     auto genObj = acc_.GetValueIn(gate, 1);
@@ -1906,12 +1907,12 @@ void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate, GateRef jsFunc)
 {
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    // 1: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef index = acc_.GetValueIn(gate, 0);
     GateRef obj = builder_.GetObjectFromConstPool(glue_, jsFunc, builder_.TruncInt64ToInt32(index),
                                                   ConstPoolType::OBJECT_LITERAL);
-    GateRef lexEnv = builder_.GetLexicalEnv(builder_.GetDepend());
+    GateRef lexEnv = acc_.GetValueIn(gate, 1);
     GateRef result = LowerCallRuntime(RTSTUB_ID(CreateObjectHavingMethod), { obj, lexEnv }, true);
     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
         &exceptionExit, &successExit);
@@ -2140,12 +2141,11 @@ void SlowPathLowering::LowerNewObjRange(GateRef gate)
     builder_.Bind(&fastPath);
     {
         const int extra = 5; // 5: add glue, lexEnv, argc, new-target and this
-        GateRef lexicalEnv = builder_.GetLexicalEnv(builder_.GetDepend());
         GateRef actualArgc = builder_.Int64(ComputeCallArgc(gate, EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8));
         size_t range = acc_.GetNumValueIn(gate);
         std::vector<GateRef> args(range + extra);
         args[0] = glue_;
-        args[1] = lexicalEnv;
+        args[1] = builder_.Undefined();
         args[2] = actualArgc;  // 2: argc
         args[3] = ctor;        // 3: call-target
         args[4] = ctor;        // 4: new-target
@@ -2411,9 +2411,9 @@ void SlowPathLowering::LowerNewLexicalEnv(GateRef gate)
 {
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    // 1: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 1);
-    GateRef lexEnv = builder_.GetLexicalEnv(builder_.GetDepend());
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef lexEnv = acc_.GetValueIn(gate, 1);
     GateRef result = builder_.CallStub(glue_, CommonStubCSigns::NewLexicalEnv,
         { glue_, lexEnv, builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0)) });
     builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
@@ -2426,9 +2426,9 @@ void SlowPathLowering::LowerNewLexicalEnvWithName(GateRef gate, GateRef jsFunc)
 {
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
-    // 2: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef lexEnv = builder_.GetLexicalEnv(builder_.GetDepend());
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef lexEnv = acc_.GetValueIn(gate, 2); // 2: Get current lexEnv
     auto args = { builder_.ToTaggedInt(acc_.GetValueIn(gate, 0)),
                   builder_.ToTaggedInt(acc_.GetValueIn(gate, 1)),
                   lexEnv, jsFunc };
@@ -2444,12 +2444,14 @@ void SlowPathLowering::LowerPopLexicalEnv(GateRef gate)
 {
     std::vector<GateRef> successControl;
     std::vector<GateRef> failControl;
-    LowerCallNGCRuntime(RTSTUB_ID(OptPopLexicalEnv), { glue_ }, true);
+    GateRef currentEnv = acc_.GetValueIn(gate, 0);
+    GateRef index = builder_.Int32(LexicalEnv::PARENT_ENV_INDEX);
+    GateRef parentEnv = builder_.GetValueFromTaggedArray(currentEnv, index);
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     failControl.emplace_back(Circuit::NullGate());
     failControl.emplace_back(Circuit::NullGate());
-    ReplaceHirToSubCfg(gate, Circuit::NullGate(), successControl, failControl, true);
+    ReplaceHirToSubCfg(gate, parentEnv, successControl, failControl, true);
 }
 
 void SlowPathLowering::LowerLdSuperByValue(GateRef gate, GateRef jsFunc)
@@ -2958,27 +2960,35 @@ void SlowPathLowering::LowerStArraySpread(GateRef gate)
 
 void SlowPathLowering::LowerLdLexVar(GateRef gate)
 {
-    // 2: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 2);
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef level = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
     GateRef slot = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 1));
-    DEFVAlUE(currentEnv, (&builder_), VariableType::JS_ANY(), builder_.GetLexicalEnv(builder_.GetDepend()));
-    DEFVAlUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
     std::vector<GateRef> successControl;
     std::vector<GateRef> exceptionControl;
 
-    Label loopHead(&builder_);
-    Label loopEnd(&builder_);
-    Label afterLoop(&builder_);
-    builder_.Branch(builder_.Int32LessThan(*i, level), &loopHead, &afterLoop);
-    builder_.LoopBegin(&loopHead);
+    DEFVAlUE(currentEnv, (&builder_), VariableType::JS_ANY(), acc_.GetValueIn(gate, 2)); // 2: Get current lexEnv
     GateRef index = builder_.Int32(LexicalEnv::PARENT_ENV_INDEX);
-    currentEnv = builder_.GetValueFromTaggedArray(*currentEnv, index);
-    i = builder_.Int32Add(*i, builder_.Int32(1));
-    builder_.Branch(builder_.Int32LessThan(*i, level), &loopEnd, &afterLoop);
-    builder_.Bind(&loopEnd);
-    builder_.LoopEnd(&loopHead);
-    builder_.Bind(&afterLoop);
+    Label exit(&builder_);
+    uint64_t constLevel = acc_.TryGetValue(acc_.GetValueIn(gate, 0));
+    if (constLevel == 0) {
+        builder_.Jump(&exit);
+    } else if (constLevel == 1) {
+        currentEnv = builder_.GetValueFromTaggedArray(*currentEnv, index);
+        builder_.Jump(&exit);
+    } else {
+        DEFVAlUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
+        Label loopHead(&builder_);
+        Label loopEnd(&builder_);
+        builder_.Branch(builder_.Int32LessThan(*i, level), &loopHead, &exit);
+        builder_.LoopBegin(&loopHead);
+        currentEnv = builder_.GetValueFromTaggedArray(*currentEnv, index);
+        i = builder_.Int32Add(*i, builder_.Int32(1));
+        builder_.Branch(builder_.Int32LessThan(*i, level), &loopEnd, &exit);
+        builder_.Bind(&loopEnd);
+        builder_.LoopEnd(&loopHead);
+    }
+    builder_.Bind(&exit);
     GateRef valueIndex = builder_.Int32Add(slot, builder_.Int32(LexicalEnv::RESERVED_ENV_LENGTH));
     GateRef result = builder_.GetValueFromTaggedArray(*currentEnv, valueIndex);
     successControl.emplace_back(builder_.GetState());
@@ -2990,48 +3000,56 @@ void SlowPathLowering::LowerLdLexVar(GateRef gate)
 
 void SlowPathLowering::LowerStLexVar(GateRef gate)
 {
-    // 3: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    // 4: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 4);
     GateRef level = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
     GateRef slot = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 1));
-    GateRef value = acc_.GetValueIn(gate, 2);
-    DEFVAlUE(currentEnv, (&builder_), VariableType::JS_ANY(), builder_.GetLexicalEnv(builder_.GetDepend()));
-    DEFVAlUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
     std::vector<GateRef> successControl;
     std::vector<GateRef> exceptionControl;
-    Label loopHead(&builder_);
-    Label loopEnd(&builder_);
-    Label afterLoop(&builder_);
-    builder_.Branch(builder_.Int32LessThan(*i, level), &loopHead, &afterLoop);
-    builder_.LoopBegin(&loopHead);
+    GateRef value = acc_.GetValueIn(gate, 3);
+    DEFVAlUE(currentEnv, (&builder_), VariableType::JS_ANY(), acc_.GetValueIn(gate, 2)); // 2: Get current lexEnv
     GateRef index = builder_.Int32(LexicalEnv::PARENT_ENV_INDEX);
-    currentEnv = builder_.GetValueFromTaggedArray(*currentEnv, index);
-    i = builder_.Int32Add(*i, builder_.Int32(1));
-    builder_.Branch(builder_.Int32LessThan(*i, level), &loopEnd, &afterLoop);
-    builder_.Bind(&loopEnd);
-    builder_.LoopEnd(&loopHead);
-    builder_.Bind(&afterLoop);
+    Label exit(&builder_);
+    uint64_t constLevel = acc_.TryGetValue(acc_.GetValueIn(gate, 0));
+    if (constLevel == 0) {
+        builder_.Jump(&exit);
+    } else if (constLevel == 1) {
+        currentEnv = builder_.GetValueFromTaggedArray(*currentEnv, index);
+        builder_.Jump(&exit);
+    } else {
+        DEFVAlUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
+        Label loopHead(&builder_);
+        Label loopEnd(&builder_);
+        builder_.Branch(builder_.Int32LessThan(*i, level), &loopHead, &exit);
+        builder_.LoopBegin(&loopHead);
+        currentEnv = builder_.GetValueFromTaggedArray(*currentEnv, index);
+        i = builder_.Int32Add(*i, builder_.Int32(1));
+        builder_.Branch(builder_.Int32LessThan(*i, level), &loopEnd, &exit);
+        builder_.Bind(&loopEnd);
+        builder_.LoopEnd(&loopHead);
+    }
+    builder_.Bind(&exit);
     GateRef valueIndex = builder_.Int32Add(slot, builder_.Int32(LexicalEnv::RESERVED_ENV_LENGTH));
     builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue_, *currentEnv, valueIndex, value);
+    auto result = *currentEnv;
     successControl.emplace_back(builder_.GetState());
     successControl.emplace_back(builder_.GetDepend());
     exceptionControl.emplace_back(Circuit::NullGate());
     exceptionControl.emplace_back(Circuit::NullGate());
-    // StLexVar will not be inValue to other hir gates, result gate will be ignored
-    ReplaceHirToSubCfg(gate, Circuit::NullGate(), successControl, exceptionControl, true);
+    ReplaceHirToSubCfg(gate, result, successControl, exceptionControl, true);
 }
 
 void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate, GateRef jsFunc)
 {
     GateType type = acc_.GetGateType(gate);
 
-    // 4: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 4);
+    // 5: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 5);
     GateRef methodId = acc_.GetValueIn(gate, 0);
     GateRef proto = acc_.GetValueIn(gate, 3);
     GateRef literalId = acc_.GetValueIn(gate, 1);
     GateRef length = acc_.GetValueIn(gate, 2);  // 2: second arg
-    GateRef lexicalEnv = builder_.GetLexicalEnv(builder_.GetDepend());
+    GateRef lexicalEnv = acc_.GetValueIn(gate, 4); // 4: Get current env
     GateRef constpool = builder_.GetConstPool(jsFunc);
     GateRef module = builder_.GetModuleFromFunction(jsFunc);
     Label isException(&builder_);
@@ -3090,7 +3108,7 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate, GateRef jsFunc)
         GateRef hClass = builder_.LoadHClass(result);
         builder_.SetPropertyInlinedProps(glue_, result, hClass, builder_.ToTaggedInt(length),
             builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        GateRef env = builder_.GetLexicalEnv(builder_.GetDepend());
+        GateRef env = acc_.GetValueIn(gate, 2); // 2: Get current env
         builder_.SetLexicalEnvToFunction(glue_, result, env);
         builder_.SetModuleToFunction(glue_, result, builder_.GetModuleFromFunction(jsFunc));
         builder_.SetHomeObjectToFunction(glue_, result, builder_.GetHomeObjectFromFunction(jsFunc));
@@ -3274,6 +3292,7 @@ void SlowPathLowering::LowerResumeGenerator(GateRef gate)
     }
     acc_.SetDep(gate, restoreGate);
     builder_.SetDepend(restoreGate);
+    AddProfiling(gate, false);
     GateRef contextOffset = builder_.IntPtr(JSGeneratorObject::GENERATOR_CONTEXT_OFFSET);
     GateRef contextGate = builder_.Load(VariableType::JS_POINTER(), obj, contextOffset);
     GateRef arrayOffset = builder_.IntPtr(GeneratorContext::GENERATOR_REGS_ARRAY_OFFSET);
@@ -3370,12 +3389,12 @@ void SlowPathLowering::LowerGetResumeMode(GateRef gate)
 
 void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef jsFunc)
 {
-    // 3: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    // 4: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 4);
     GateRef methodId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
     auto method = builder_.GetObjectFromConstPool(glue_, jsFunc, methodId, ConstPoolType::METHOD);
     GateRef length = acc_.GetValueIn(gate, 1);
-    GateRef homeObject = acc_.GetValueIn(gate, 2);  // 2: second arg
+    GateRef homeObject = acc_.GetValueIn(gate, 3);  // 3: third arg
 
     Label defaultLabel(&builder_);
     Label successExit(&builder_);
@@ -3388,7 +3407,7 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate, GateRef jsFunc)
         GateRef hclass = builder_.LoadHClass(result);
         builder_.SetPropertyInlinedProps(glue_, result, hclass, builder_.ToTaggedInt(length),
             builder_.Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::INT64());
-        GateRef env = builder_.GetLexicalEnv(builder_.GetDepend());
+        GateRef env = acc_.GetValueIn(gate, 2); // 2: Get current env
         builder_.SetLexicalEnvToFunction(glue_, result, env);
         builder_.SetModuleToFunction(glue_, result, builder_.GetModuleFromFunction(jsFunc));
         builder_.Jump(&successExit);
@@ -3431,10 +3450,14 @@ void SlowPathLowering::LowerWideStPatchVar(GateRef gate)
     ReplaceHirToCall(gate, newGate);
 }
 
-void SlowPathLowering::AddProfiling(GateRef gate)
+void SlowPathLowering::AddProfiling(GateRef gate, bool skipGenerator)
 {
     if (IsTraceBC()) {
         EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
+        if ((ecmaOpcode == EcmaOpcode::SUSPENDGENERATOR_V8 || ecmaOpcode == EcmaOpcode::RESUMEGENERATOR) &&
+            skipGenerator) {
+            return;
+        }
         auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
         GateRef constOpcode = builder_.ToTaggedInt(builder_.ZExtInt32ToInt64(ecmaOpcodeGate));
         GateRef debugGate = builder_.CallRuntime(glue_, RTSTUB_ID(DebugAOTPrint), acc_.GetDep(gate), {constOpcode});
@@ -3443,6 +3466,10 @@ void SlowPathLowering::AddProfiling(GateRef gate)
 
     if (IsProfiling()) {
         EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
+        if ((ecmaOpcode == EcmaOpcode::SUSPENDGENERATOR_V8 || ecmaOpcode == EcmaOpcode::RESUMEGENERATOR) &&
+            skipGenerator) {
+            return;
+        }
         auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
         GateRef constOpcode = builder_.Int32ToTaggedInt(ecmaOpcodeGate);
         GateRef mode =

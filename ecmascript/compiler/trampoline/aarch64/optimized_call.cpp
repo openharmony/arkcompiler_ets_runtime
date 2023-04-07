@@ -346,9 +346,7 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
 //               |--------------------------|   OptimizedJSFunctionFrame
 //               |       frameType          |               |
 //               |--------------------------|               |
-//               |       call-target        |               |
-//               |--------------------------|               |
-//               |       lexEnv             |               v
+//               |       call-target        |               v
 //               +--------------------------+ ---------------
 
 void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
@@ -1032,7 +1030,7 @@ void OptimizedCall::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
 //               |--------------------------|  OptimizedJSFunctionFrame
 //               |       frameType          |               |
 //               |--------------------------|               |
-//               |       lexEnv             |               v
+//               |       call-target        |               v
 //               +--------------------------+ ---------------
 
 void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, bool isNew)
