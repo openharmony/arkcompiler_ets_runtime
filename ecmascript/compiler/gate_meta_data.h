@@ -239,7 +239,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(SaveRegister, SAVE_REGISTER, GateFlags::NONE_FLAG, 0, 1, value)
 
 #define GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                  \
-    V(TypedCall, TYPED_CALL, GateFlags::NONE_FLAG, 1, 1, value)                \
+    V(TypedCallBuiltin, TYPED_CALL_BUILTIN, GateFlags::NO_WRITE, 1, 1, value)  \
     V(Construct, CONSTRUCT, GateFlags::NONE_FLAG, 1, 1, value)                 \
     V(TypedAotCall, TYPEDAOTCALL, GateFlags::NONE_FLAG, 1, 1, value)
 

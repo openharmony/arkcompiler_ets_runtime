@@ -113,7 +113,7 @@ void TypeLowering::LowerType(GateRef gate)
         case OpCode::HEAP_ALLOC:
             LowerHeapAllocate(gate, glue);
             break;
-        case OpCode::TYPED_CALL:
+        case OpCode::TYPED_CALL_BUILTIN:
             LowerTypedCallBuitin(gate);
             break;
         case OpCode::TYPED_NEW_ALLOCATE_THIS:

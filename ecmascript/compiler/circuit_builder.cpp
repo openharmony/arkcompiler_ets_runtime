@@ -458,7 +458,7 @@ GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, con
     auto numValueIn = args.size() - 2; // 2: state & depend
     uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
     ASSERT(pcOffset != 0);
-    return GetCircuit()->NewGate(circuit_->TypedCall(numValueIn, pcOffset), type, args, GateType::AnyType());
+    return GetCircuit()->NewGate(circuit_->TypedCallBuiltin(numValueIn, pcOffset), type, args, GateType::AnyType());
 }
 
 GateRef CircuitBuilder::AddWithOverflow(GateRef left, GateRef right)

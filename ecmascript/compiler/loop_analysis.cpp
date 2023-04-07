@@ -102,7 +102,7 @@ void LoopAnalysis::CountLoopBackEdge(size_t fromId, size_t toId)
         loopInfoVector_.emplace_back(loopInfo);
     }
     toBlock.loopbackBlocks.insert(fromId);
-    toBlock.numOfLoopBacks++;
+    toBlock.numOfLoopBacks = toBlock.loopbackBlocks.size();
 }
 
 void LoopAnalysis::CollectLoopBack()
@@ -112,11 +112,13 @@ void LoopAnalysis::CollectLoopBack()
 
     size_t entryId = 0; // entry id
     workList_.emplace_back(entryId);
-    dfsList_.emplace_back(entryId);
     while (!workList_.empty()) {
         size_t bbId = workList_.back();
         auto &bb = builder_->GetBasicBlockById(bbId);
-        visitState_[bbId] = VisitState::PENDING;
+        if (visitState_[bbId] == VisitState::UNVISITED) {
+            dfsList_.emplace_back(bbId);
+            visitState_[bbId] = VisitState::PENDING;
+        }
         bool allVisited = true;
 
         for (const auto &succBlock: bb.succs) {
@@ -125,7 +127,6 @@ void LoopAnalysis::CollectLoopBack()
                 // dfs
                 workList_.emplace_back(succId);
                 allVisited = false;
-                dfsList_.emplace_back(succId);
                 break;
             } else if (visitState_[succId] == VisitState::PENDING) {
                 // back edge
@@ -138,7 +139,6 @@ void LoopAnalysis::CollectLoopBack()
             if (visitState_[succId] == VisitState::UNVISITED) {
                 // dfs
                 workList_.emplace_back(succId);
-                dfsList_.emplace_back(succId);
                 allVisited = false;
                 break;
             } else if (visitState_[succId] == VisitState::PENDING) {
