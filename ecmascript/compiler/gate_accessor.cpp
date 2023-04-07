@@ -240,7 +240,7 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
     switch (op) {
         case OpCode::JS_BYTECODE:
             return gatePtr->GetJSBytecodeMetaData()->GetPcOffset();
-        case OpCode::TYPED_CALL:
+        case OpCode::TYPED_CALL_BUILTIN:
         case OpCode::CONSTRUCT:
         case OpCode::TYPEDAOTCALL:
         case OpCode::CALL_GETTER:

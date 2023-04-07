@@ -126,7 +126,7 @@ bool GateMetaData::IsGeneralState() const
         case OpCode::LOAD_PROPERTY:
         case OpCode::STORE_ELEMENT:
         case OpCode::STORE_PROPERTY:
-        case OpCode::TYPED_CALL:
+        case OpCode::TYPED_CALL_BUILTIN:
         case OpCode::DEOPT_CHECK:
             return true;
         default:
