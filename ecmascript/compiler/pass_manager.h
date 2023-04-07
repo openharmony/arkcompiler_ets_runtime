@@ -16,24 +16,29 @@
 #ifndef ECMASCRIPT_COMPILER_PASS_MANAGER_H
 #define ECMASCRIPT_COMPILER_PASS_MANAGER_H
 
+#include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/file_generators.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
+#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class Bytecodes;
 class LexEnvManager;
 class CompilationConfig;
-class BytecodeInfoCollector;
 
-class PassInfo {
+class PassContext {
 public:
-    PassInfo(TSManager *tsManager, Bytecodes *bytecodes, LexEnvManager *lexEnvManager,
-             CompilationConfig *cmpCfg, CompilerLog *log, const JSPandaFile *jsPandaFile,
-             BytecodeInfoCollector* bcInfoCollector, LLVMModule *aotModule)
-        : tsManager_(tsManager), bytecodes_(bytecodes), lexEnvManager_(lexEnvManager), cmpCfg_(cmpCfg),
-          log_(log), jsPandaFile_(jsPandaFile), bcInfoCollector_(bcInfoCollector), aotModule_(aotModule)
+    PassContext(const std::string &triple, CompilerLog *log, BytecodeInfoCollector* collector, LLVMModule *aotModule)
+        : vm_(collector->GetVM()),
+          bcInfoCollector_(collector),
+          tsManager_(vm_->GetTSManager()),
+          lexEnvManager_(bcInfoCollector_->GetEnvManager()),
+          cmpCfg_(triple, false, log->IsTraceBC(), vm_->GetJSOptions().GetOptCodeProfiler()),
+          log_(log),
+          jsPandaFile_(collector->GetJSPandaFile()),
+          aotModule_(aotModule)
     {
     }
 
@@ -42,9 +47,9 @@ public:
         return tsManager_;
     }
 
-    Bytecodes* GetByteCodes() const
+    Bytecodes* GetByteCodes()
     {
-        return bytecodes_;
+        return &bytecodes_;
     }
 
     LexEnvManager* GetLexEnvManager() const
@@ -52,9 +57,9 @@ public:
         return lexEnvManager_;
     }
 
-    CompilationConfig* GetCompilerConfig() const
+    CompilationConfig* GetCompilerConfig()
     {
-        return cmpCfg_;
+        return &cmpCfg_;
     }
 
     CompilerLog* GetCompilerLog() const
@@ -88,13 +93,14 @@ public:
     }
 
 private:
+    EcmaVM *vm_ {nullptr};
+    BytecodeInfoCollector *bcInfoCollector_ {nullptr};
     TSManager *tsManager_ {nullptr};
-    Bytecodes *bytecodes_ {nullptr};
+    Bytecodes bytecodes_;
     LexEnvManager *lexEnvManager_ {nullptr};
-    CompilationConfig *cmpCfg_ {nullptr};
+    CompilationConfig cmpCfg_;
     CompilerLog *log_ {nullptr};
     const JSPandaFile *jsPandaFile_ {nullptr};
-    BytecodeInfoCollector *bcInfoCollector_ {nullptr};
     LLVMModule *aotModule_ {nullptr};
 };
 
@@ -149,8 +155,10 @@ public:
 
 private:
     JSPandaFile *CreateAndVerifyJSPandaFile(const CString &fileName);
+    void ProcessConstantPool(BytecodeInfoCollector *collector);
     bool IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const;
     void ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName);
+    bool ShouldCollect() const;
 
     EcmaVM *vm_ {nullptr};
     std::string entry_ {};

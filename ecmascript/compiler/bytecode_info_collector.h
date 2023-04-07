@@ -469,13 +469,8 @@ private:
 class BytecodeInfoCollector {
 public:
     BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile,
-                          size_t maxAotMethodSize, bool enableCollectLiteralInfo)
-        : vm_(vm), jsPandaFile_(jsPandaFile), bytecodeInfo_(maxAotMethodSize),
-          enableCollectLiteralInfo_(enableCollectLiteralInfo)
-    {
-        ProcessClasses();
-    }
-    ~BytecodeInfoCollector() = default;
+                          size_t maxAotMethodSize, bool enableCollectLiteralInfo);
+    ~BytecodeInfoCollector();
     NO_COPY_SEMANTIC(BytecodeInfoCollector);
     NO_MOVE_SEMANTIC(BytecodeInfoCollector);
 
@@ -489,6 +484,11 @@ public:
         return bytecodeInfo_;
     }
 
+    BCInfo* GetBytecodeInfoPtr()
+    {
+        return &bytecodeInfo_;
+    }
+
     bool IsSkippedMethod(uint32_t methodOffset) const
     {
         return bytecodeInfo_.IsSkippedMethod(methodOffset);
@@ -499,6 +499,16 @@ public:
         return jsPandaFile_;
     }
 
+    EcmaVM *GetVM() const
+    {
+        return vm_;
+    }
+
+    LexEnvManager* GetEnvManager() const
+    {
+        return envManager_;
+    }
+
     template <class Callback>
     void IterateConstantPoolInfo(ConstantPoolInfo::ItemType type, const Callback &cb)
     {
@@ -506,6 +516,8 @@ public:
     }
 
 private:
+    void ProcessEnvs();
+
     inline size_t GetMethodInfoID()
     {
         return methodInfoIndex_++;
@@ -551,6 +563,7 @@ private:
     size_t methodInfoIndex_ {0};
     bool enableCollectLiteralInfo_ {false};
     std::set<int32_t> classDefBCIndexes_ {};
+    LexEnvManager* envManager_ {nullptr};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BYTECODE_INFO_COLLECTOR_H

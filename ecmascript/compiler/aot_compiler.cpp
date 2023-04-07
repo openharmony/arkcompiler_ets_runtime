@@ -107,6 +107,7 @@ int Main(const int argc, const char **argv)
         bool isEnableOptInlining = runtimeOptions.IsEnableOptInlining();
         bool isEnableTypeInfer = isEnableTypeLowering || vm->GetTSManager()->AssertTypes();
         bool isEnableOptPGOType = runtimeOptions.IsEnableOptPGOType();
+
         PassOptions passOptions(isEnableTypeLowering, isEnableTypeInfer, isEnableOptInlining, isEnableOptPGOType);
         uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
         AOTInitialize(vm);
@@ -116,6 +117,7 @@ int Main(const int argc, const char **argv)
         AotMethodLogList logList(logMethodsList);
         AOTFileGenerator generator(&log, &logList, vm, triple);
         std::string profilerIn(runtimeOptions.GetPGOProfilerPath());
+
         if (runtimeOptions.WasSetEntryPoint()) {
             entrypoint = runtimeOptions.GetEntryPoint();
         }

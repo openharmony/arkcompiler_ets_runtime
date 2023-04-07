@@ -31,6 +31,7 @@
 #include "securec.h"
 
 namespace panda::ecmascript::kungfu {
+class DebugInfo;
 enum class VisitState : uint8_t {
     UNVISITED,
     PENDING,
@@ -39,17 +40,17 @@ enum class VisitState : uint8_t {
 
 class Circuit {  // note: calling NewGate could make all saved Gate* invalid
 public:
-    explicit Circuit(NativeAreaAllocator* allocator, bool isArch64 = true);
+    explicit Circuit(NativeAreaAllocator* allocator, DebugInfo* dInfo = nullptr, bool isArch64 = true);
     ~Circuit();
     NO_COPY_SEMANTIC(Circuit);
     NO_MOVE_SEMANTIC(Circuit);
 
-    GateRef NewGate(const GateMetaData *meta, const std::vector<GateRef> &inList);
-    GateRef NewGate(const GateMetaData *meta, MachineType machineType, GateType type);
+    GateRef NewGate(const GateMetaData *meta, const std::vector<GateRef> &inList, const char* comment = nullptr);
+    GateRef NewGate(const GateMetaData *meta, MachineType machineType, GateType type, const char* comment = nullptr);
     GateRef NewGate(const GateMetaData *meta, MachineType machineType,
-        const std::initializer_list<GateRef>& args, GateType type);
-    GateRef NewGate(const GateMetaData *meta, MachineType machineType,
-        size_t numIns, const GateRef inList[], GateType type);
+        const std::initializer_list<GateRef>& args, GateType type, const char* comment = nullptr);
+    GateRef NewGate(const GateMetaData *meta, MachineType machineType, size_t numIns,
+                    const GateRef inList[], GateType type, const char* comment = nullptr);
     void PrintAllGates() const;
     void PrintAllGatesWithBytecode() const;
     void GetAllGates(std::vector<GateRef>& gates) const;
@@ -225,6 +226,7 @@ private:
     uint8_t *GetDataPtr(size_t offset);
     Gate *LoadGatePtr(GateRef shift);
     const Gate *LoadGatePtrConst(GateRef shift) const;
+    bool AddComment(GateRef g, const char* str);
 
 private:
     void* space_ {nullptr};
@@ -241,6 +243,8 @@ private:
     GateRef root_ { 0 };
     GateRef dead_ { 0 };
     GateMetaBuilder metaBuilder_;
+    ChunkMap<GateRef, size_t> gateToDInfo_;
+    DebugInfo* debugInfo_ {nullptr};
 #ifndef NDEBUG
     ChunkVector<GateRef> allGates_;
 #endif

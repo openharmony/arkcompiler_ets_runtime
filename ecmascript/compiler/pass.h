@@ -34,15 +34,15 @@
 #include "ecmascript/compiler/verifier.h"
 
 namespace panda::ecmascript::kungfu {
-class PassInfo;
+class PassContext;
 
 class PassData {
 public:
-    PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassInfo *info, CompilerLog *log,
+    PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassContext *ctx, CompilerLog *log,
              std::string methodName, MethodInfo *methodInfo = nullptr, bool hasTypes = false,
              const CString &recordName = "", MethodLiteral *methodLiteral = nullptr,
              uint32_t methodOffset = 0, NativeAreaAllocator *allocator = nullptr)
-        : builder_(builder), circuit_(circuit), info_(info), log_(log), methodName_(methodName),
+        : builder_(builder), circuit_(circuit), ctx_(ctx), log_(log), methodName_(methodName),
           methodInfo_(methodInfo), hasTypes_(hasTypes), recordName_(recordName), methodLiteral_(methodLiteral),
           methodOffset_(methodOffset), allocator_(allocator)
     {
@@ -70,29 +70,29 @@ public:
         return builder_;
     }
 
-    PassInfo* GetInfo() const
+    PassContext* GetPassContext() const
     {
-        return info_;
+        return ctx_;
     }
 
     CompilationConfig* GetCompilerConfig() const
     {
-        return info_->GetCompilerConfig();
+        return ctx_->GetCompilerConfig();
     }
 
     TSManager* GetTSManager() const
     {
-        return info_->GetTSManager();
+        return ctx_->GetTSManager();
     }
 
     const JSPandaFile *GetJSPandaFile() const
     {
-        return info_->GetJSPandaFile();
+        return ctx_->GetJSPandaFile();
     }
 
     LLVMModule* GetAotModule() const
     {
-        return info_->GetAOTModule();
+        return ctx_->GetAOTModule();
     }
 
     CompilerLog* GetLog() const
@@ -146,15 +146,15 @@ public:
             // A ts method which has low type percent and not marked as a resolved method
             // should be skipped from full compilation.
             if (methodInfo_->IsTypeInferAbort() && !methodInfo_->IsResolvedMethod()) {
-                info_->GetBytecodeInfo().AddSkippedMethod(methodOffset_);
+                ctx_->GetBytecodeInfo().AddSkippedMethod(methodOffset_);
                 return true;
             }
         } else {
             // For js method, type infer pass will be skipped and it don't have a type percent.
             // If we set an non zero type threshold, js method will be skipped from full compilation.
             // The default Type threshold is -1.
-            if (info_->GetTSManager()->GetTypeThreshold() >= 0) {
-                info_->GetBytecodeInfo().AddSkippedMethod(methodOffset_);
+            if (ctx_->GetTSManager()->GetTypeThreshold() >= 0) {
+                ctx_->GetBytecodeInfo().AddSkippedMethod(methodOffset_);
                 return true;
             }
         }
@@ -169,7 +169,7 @@ private:
     BytecodeCircuitBuilder *builder_ {nullptr};
     Circuit *circuit_ {nullptr};
     ControlFlowGraph cfg_;
-    PassInfo *info_ {nullptr};
+    PassContext *ctx_ {nullptr};
     CompilerLog *log_ {nullptr};
     std::string methodName_;
     MethodInfo *methodInfo_ {nullptr};
@@ -203,7 +203,7 @@ public:
         TimeScope timescope("TypeInferPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         if (data->HasTypes()) {
             bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
-            TypeInfer typeInfer(data->GetBuilder(), data->GetCircuit(), data->GetInfo(), data->GetMethodInfoIndex(),
+            TypeInfer typeInfer(data->GetBuilder(), data->GetCircuit(), data->GetPassContext(), data->GetMethodInfoIndex(),
                                 enableLog, data->GetMethodName(), data->GetRecordName(), data->GetMethodInfo());
             typeInfer.TraverseCircuit();
         }
@@ -217,8 +217,7 @@ public:
     {
         TimeScope timescope("TSTypeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        TSTypeLowering lowering(data->GetCircuit(), data->GetInfo(), enableLog,
-                                data->GetMethodName());
+        TSTypeLowering lowering(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName());
         lowering.RunTSTypeLowering();
         return true;
     }
@@ -256,7 +255,7 @@ public:
     {
         TimeScope timescope("TSInlineLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        TSInlineLowering inlining(data->GetCircuit(), data->GetInfo(), enableLog, data->GetMethodName());
+        TSInlineLowering inlining(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName());
         inlining.RunTSInlineLowering();
         return true;
     }

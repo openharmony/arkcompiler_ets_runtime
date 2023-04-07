@@ -179,7 +179,7 @@ private:
     LLVMExecutionEngineRef engine_ {nullptr};
     AOTEventListener listener_;
     char *error_ {nullptr};
-    struct CodeInfo codeInfo_ {};
+    CodeInfo codeInfo_ {};
 };
 
 class LLVMIRGeneratorImpl : public CodeGeneratorImpl {

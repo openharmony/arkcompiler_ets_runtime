@@ -35,6 +35,7 @@
 namespace panda::ecmascript::kungfu {
 using OperandsVector = std::set<int>;
 class BasicBlock;
+class DebugInfo;
 using BasicBlockMap = std::map<int, std::unique_ptr<BasicBlock>>;
 class LLVMIRBuilder;
 using HandleType = void(LLVMIRBuilder::*)(GateRef gate);
@@ -112,7 +113,8 @@ struct BasicBlockImpl {
 
 class LLVMModule {
 public:
-    LLVMModule(const std::string &name, const std::string &triple, bool enablePGOProfiler = false);
+    LLVMModule(NativeAreaAllocator* allocator, const std::string &name, const std::string &triple,
+               bool enablePGOProfiler = false);
     ~LLVMModule();
     void SetUpForCommonStubs();
     void SetUpForBytecodeHandlerStubs();
@@ -182,6 +184,11 @@ public:
 
     LLVMValueRef GetDeoptFunction();
 
+    DebugInfo* GetDebugInfo() const
+    {
+        return debugInfo_;
+    }
+
     static constexpr int kDeoptEntryOffset = 0;
 
 private:
@@ -198,6 +205,7 @@ private:
     LLVMMetadataRef dFileMD_ {nullptr};
     LLVMMetadataRef dUnitMD_ {nullptr};
     LLVMDIBuilderRef dBuilder_ {nullptr};
+    DebugInfo* debugInfo_ {nullptr};
     CompilationConfig cfg_;
 };
 

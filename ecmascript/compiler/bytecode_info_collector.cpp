@@ -27,6 +27,34 @@ static T *InitializeMemory(T *mem, Args... args)
     return new (mem) T(std::forward<Args>(args)...);
 }
 
+BytecodeInfoCollector::BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile,
+                                             size_t maxAotMethodSize, bool enableCollectLiteralInfo)
+    : vm_(vm),
+      jsPandaFile_(jsPandaFile),
+      bytecodeInfo_(maxAotMethodSize),
+      enableCollectLiteralInfo_(enableCollectLiteralInfo)
+{
+    vm_->GetTSManager()->SetBytecodeInfoCollector(this);
+    ProcessClasses();
+    ProcessEnvs();
+}
+
+BytecodeInfoCollector::~BytecodeInfoCollector()
+{
+    if (envManager_ != nullptr) {
+        delete envManager_;
+        envManager_ = nullptr;
+    }
+    vm_->GetTSManager()->SetBytecodeInfoCollector(nullptr);
+}
+
+void BytecodeInfoCollector::ProcessEnvs()
+{
+    if (envManager_ == nullptr) {
+        envManager_ = new LexEnvManager(bytecodeInfo_);
+    }
+}
+
 void BytecodeInfoCollector::ProcessClasses()
 {
     ASSERT(jsPandaFile_ != nullptr && jsPandaFile_->GetMethodLiterals() != nullptr);

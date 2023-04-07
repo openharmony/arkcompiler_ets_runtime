@@ -36,15 +36,18 @@ enum InferState : uint8_t {
 class TypeInfer {
 public:
     TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit,
-              PassInfo *info, size_t methodId, bool enableLog,
+              PassContext *ctx, size_t methodId, bool enableLog,
               const std::string &name, const CString &recordName,
               MethodInfo *methodInfo)
-        : builder_(builder), circuit_(circuit),
+        : builder_(builder),
+          circuit_(circuit),
           gateAccessor_(circuit),
-          tsManager_(info->GetTSManager()),
-          lexEnvManager_(info->GetLexEnvManager()),
-          methodId_(methodId), enableLog_(enableLog),
-          methodName_(name), recordName_(recordName),
+          tsManager_(ctx->GetTSManager()),
+          lexEnvManager_(ctx->GetLexEnvManager()),
+          methodId_(methodId),
+          enableLog_(enableLog),
+          methodName_(name),
+          recordName_(recordName),
           methodInfo_(methodInfo),
           inQueue_(circuit_->GetGateCount(), true)
     {
