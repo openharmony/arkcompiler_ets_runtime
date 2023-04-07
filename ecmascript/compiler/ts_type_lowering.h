@@ -34,6 +34,8 @@ public:
           tsManager_(ctx->GetTSManager()),
           enableLog_(enableLog),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
+          verifyVTable_(ctx->GetCompilerConfig()->IsVerifyVTbale()),
+          traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
           methodName_(name),
           glue_(acc_.GetGlueFromArgList()),
           argAcc_(circuit) {}
@@ -51,6 +53,16 @@ private:
     bool IsProfiling() const
     {
         return profiling_;
+    }
+
+    bool IsVerifyVTbale() const
+    {
+        return verifyVTable_;
+    }
+
+    bool IsTraceBC() const
+    {
+        return traceBc_;
     }
 
     const std::string& GetMethodName() const
@@ -121,6 +133,8 @@ private:
     void DeleteConstDataIfNoUser(GateRef gate);
 
     void AddProfiling(GateRef gate);
+    void AddVTableLoadVerifer(GateRef gate, GateRef value);
+    void AddVTableStoreVerifer(GateRef gate, GateRef store, bool isThis);
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
@@ -128,6 +142,8 @@ private:
     TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
     bool profiling_ {false};
+    bool verifyVTable_ {false};
+    bool traceBc_ {false};
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
     ArgumentAccessor argAcc_;

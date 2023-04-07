@@ -1835,9 +1835,11 @@ DEF_RUNTIME_STUBS(FastCopyElementToArray)
 DEF_RUNTIME_STUBS(DebugAOTPrint)
 {
     RUNTIME_STUBS_HEADER(DebugAOTPrint);
-    auto ecmaOpcode = GetArg(argv, argc, 0).GetInt();
+    int ecmaOpcode = GetArg(argv, argc, 0).GetInt();
+    int path = GetArg(argv, argc, 1).GetInt();
     std::string result = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
-    LOG_ECMA(INFO) << "aot slowpath " << result;
+    std::string pathStr = path == 0 ? "slowpath " : "typedpath ";
+    LOG_ECMA(INFO) << "aot " << pathStr << result;
     return JSTaggedValue::Undefined().GetRawData();
 }
 
@@ -1848,6 +1850,60 @@ DEF_RUNTIME_STUBS(ProfileOptimizedCode)
     OptCodeProfiler::Mode mode = static_cast<OptCodeProfiler::Mode>(GetArg(argv, argc, 1).GetInt());
     OptCodeProfiler *profiler = thread->GetEcmaVM()->GetOptCodeProfiler();
     profiler->Update(ecmaOpcode, mode);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(VerifyVTableLoading)
+{
+    RUNTIME_STUBS_HEADER(VerifyVTableLoading);
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 0);        // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);             // 1: means the first parameter
+    JSHandle<JSTaggedValue> typedPathValue = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+
+    JSHandle<JSTaggedValue> verifiedPathValue = JSTaggedValue::GetProperty(thread, receiver, key).GetValue();
+    if (UNLIKELY(!JSTaggedValue::SameValue(typedPathValue, verifiedPathValue))) {
+        std::ostringstream oss;
+        receiver->Dump(oss);
+        LOG_ECMA(ERROR) << "Verify VTable Load Failed, receiver: " << oss.str();
+        oss.str("");
+
+        LOG_ECMA(ERROR) << "Verify VTable Load Failed, key: "
+                        << EcmaStringAccessor(key.GetTaggedValue()).ToStdString();
+
+        typedPathValue->Dump(oss);
+        LOG_ECMA(ERROR) << "Verify VTable Load Failed, typed path value: " << oss.str();
+        oss.str("");
+
+        verifiedPathValue->Dump(oss);
+        LOG_ECMA(ERROR) << "Verify VTable Load Failed, verified path value: " << oss.str();
+    }
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(VerifyVTableStoring)
+{
+    RUNTIME_STUBS_HEADER(VerifyVTableStoring);
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 0);    // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1);         // 1: means the first parameter
+    JSHandle<JSTaggedValue> storeValue = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+
+    JSHandle<JSTaggedValue> verifiedValue = JSTaggedValue::GetProperty(thread, receiver, key).GetValue();
+    if (UNLIKELY(!JSTaggedValue::SameValue(storeValue, verifiedValue))) {
+        std::ostringstream oss;
+        receiver->Dump(oss);
+        LOG_ECMA(ERROR) << "Verify VTable Store Failed, receiver: " << oss.str();
+        oss.str("");
+
+        LOG_ECMA(ERROR) << "Verify VTable Store Failed, key: "
+                        << EcmaStringAccessor(key.GetTaggedValue()).ToStdString();
+
+        storeValue->Dump(oss);
+        LOG_ECMA(ERROR) << "Verify VTable Store Failed, typed path store value: " << oss.str();
+        oss.str("");
+
+        verifiedValue->Dump(oss);
+        LOG_ECMA(ERROR) << "Verify VTable Store Failed, verified path load value: " << oss.str();
+    }
     return JSTaggedValue::Undefined().GetRawData();
 }
 

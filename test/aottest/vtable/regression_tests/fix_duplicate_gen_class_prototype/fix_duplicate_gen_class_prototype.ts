@@ -33,7 +33,7 @@ class D extends C {
     }
 }
 
-// In general test cases we use let to declare class instances, while using var, the order of handling class type is
-// different(due to type infererence mechanism), child class firstly, and parent class nextly, which exposed the bug.
+// In general test cases we use let to declare class instances, while using var, the order of parsing class type is
+// different(due to variable hoisting), child class firstly, and parent class nextly, which exposed the bug.
 var d = new D();
 print(d.foo());

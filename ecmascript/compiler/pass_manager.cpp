@@ -55,7 +55,8 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
 
     BytecodeInfoCollector collector(vm_, jsPandaFile, maxAotMethodSize_, ShouldCollect());
     PassContext ctx(triple_, log_, &collector, m->GetModule());
-    CompilationDriver cmpDriver(profilerLoader_, &collector);
+    CompilationDriver cmpDriver(profilerLoader_, &collector, vm_->GetJSOptions().GetCompilerSelectMethods(),
+                                vm_->GetJSOptions().GetCompilerSkipMethods());
 
     cmpDriver.Run([this, &fileName, &ctx](const CString recordName,
                                           const std::string &methodName,
@@ -111,12 +112,23 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         if (passOptions_->EnableTypeLowering()) {
             pipeline.RunPass<TSTypeLoweringPass>();
-            pipeline.RunPass<EarlyEliminationPass>();
+            if (passOptions_->EnableEarlyElimination()) {
+                pipeline.RunPass<EarlyEliminationPass>();
+            }
             pipeline.RunPass<NumberSpeculativePass>();
-            pipeline.RunPass<LaterEliminationPass>();
+            if (passOptions_->EnableLaterElimination()) {
+                pipeline.RunPass<LaterEliminationPass>();
+            }
+            if (passOptions_->EnableValueNumbering()) {
+                pipeline.RunPass<ValueNumberingPass>();
+            }
             pipeline.RunPass<TypeLoweringPass>();
-            pipeline.RunPass<EarlyEliminationPass>();
-            pipeline.RunPass<LaterEliminationPass>();
+            if (passOptions_->EnableEarlyElimination()) {
+                pipeline.RunPass<EarlyEliminationPass>();
+            }
+            if (passOptions_->EnableLaterElimination()) {
+                pipeline.RunPass<LaterEliminationPass>();
+            }
             pipeline.RunPass<GenericTypeLoweringPass>();
         }
         pipeline.RunPass<SlowPathLoweringPass>();

@@ -251,8 +251,8 @@ class ArkTest():
         self.pgo = False
         if args.pgo:
             self.pgo = True
-            self.aot_args = (f'{self.aot_args} --enable-pgo-profiler=true --pgo-hotness-threshold={args.pgo_th}'
-                             f' --pgo-profiler-path=pgo_file_name.ap')
+            self.aot_args = (f'{self.aot_args} --enable-pgo-profiler=true --compiler-pgo-hotness-threshold={args.pgo_th}'
+                             f' --compiler-pgo-profiler-path=pgo_file_name.ap')
         if args.frontend_args:
             self.frontend_args = f'{self.frontend_args} {args.frontend_args}'
         if args.aot_args:
@@ -268,7 +268,7 @@ class ArkTest():
             if self.step[:3] != 'aot':
                 self.runner = 'qemu-aarch64'
                 self.runnerd = 'qemu-aarch64 -cpu max,sve=off -g 123456'
-            self.aot_args = f'{self.aot_args} --target-triple=aarch64-unknown-linux-gnu'
+            self.aot_args = f'{self.aot_args} --compiler-target-triple=aarch64-unknown-linux-gnu'
         self.test_count = 0
         self.fail_cases = []
         os.environ['LD_LIBRARY_PATH'] = self.libs_dir

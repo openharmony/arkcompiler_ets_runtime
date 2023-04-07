@@ -24,6 +24,10 @@ enum class Triple {
     TRIPLE_ARM32,
 };
 
+#define TARGET_X64 "x86_64-unknown-linux-gnu"
+#define TARGET_AARCH64 "aarch64-unknown-linux-gnu"
+#define TARGET_ARM32 "arm-unknown-linux-gnu"
+
 class GCStackMapRegisters {
 public:
 #if defined(PANDA_TARGET_AMD64)

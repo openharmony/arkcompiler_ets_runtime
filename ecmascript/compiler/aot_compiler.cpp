@@ -102,18 +102,21 @@ int Main(const int argc, const char **argv)
         std::string logOption = runtimeOptions.GetCompilerLogOption();
         std::string logMethodsList = runtimeOptions.GetMethodsListForLog();
         bool compilerLogTime = runtimeOptions.IsEnableCompilerLogTime();
-        bool isTraceBC = runtimeOptions.IsTraceBC();
         size_t maxAotMethodSize = runtimeOptions.GetMaxAotMethodSize();
         bool isEnableTypeLowering = runtimeOptions.IsEnableTypeLowering();
+        bool isEnableEarlyElimination = runtimeOptions.IsEnableEarlyElimination();
+        bool isEnableLaterElimination = runtimeOptions.IsEnableLaterElimination();
+        bool isEnableValueNumbering = runtimeOptions.IsEnableValueNumbering();
         bool isEnableOptInlining = runtimeOptions.IsEnableOptInlining();
         bool isEnableTypeInfer = isEnableTypeLowering || vm->GetTSManager()->AssertTypes();
         bool isEnableOptPGOType = runtimeOptions.IsEnableOptPGOType();
 
-        PassOptions passOptions(isEnableTypeLowering, isEnableTypeInfer, isEnableOptInlining, isEnableOptPGOType);
+        PassOptions passOptions(isEnableTypeLowering, isEnableEarlyElimination, isEnableLaterElimination,
+                                isEnableValueNumbering, isEnableTypeInfer, isEnableOptInlining, isEnableOptPGOType);
         uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
         AOTInitialize(vm);
 
-        CompilerLog log(logOption, isTraceBC);
+        CompilerLog log(logOption);
         log.SetEnableCompilerLogTime(compilerLogTime);
         AotMethodLogList logList(logMethodsList);
         AOTFileGenerator generator(&log, &logList, vm, triple);

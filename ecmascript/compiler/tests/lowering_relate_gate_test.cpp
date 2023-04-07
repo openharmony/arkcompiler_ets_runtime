@@ -63,7 +63,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
     auto check = builder.TryPrimitiveTypeCheck(GateType::NumberType(), arg0);
     builder.ReturnVoid(check, depend);
 
-    CompilationConfig config("x86_64-unknown-linux-gnu", false);
+    CompilationConfig config(TARGET_X64);
     TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypeCheckFramework");
     typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
@@ -83,7 +83,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeConvertFramework)
                                        {entry, depend, arg0});
     builder.Return(convert, convert, convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
-    CompilationConfig config("x86_64-unknown-linux-gnu", false);
+    CompilationConfig config(TARGET_X64);
     TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypeConvertFramework");
     typeLowering.RunTypeLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));

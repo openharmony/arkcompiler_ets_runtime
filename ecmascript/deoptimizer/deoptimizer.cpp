@@ -331,6 +331,8 @@ std::string Deoptimizier::DisplayItems(DeoptType type)
             return "NOT NEG OVERFLOW";
         case DeoptType::NOTCALLTGT:
             return "NOT CALL TARGET";
+        case kungfu::DeoptType::NOTJSCALLTGT:
+            return "NOT JS CALL TARGET";
         default: {
             return "NOT CHECK";
         }

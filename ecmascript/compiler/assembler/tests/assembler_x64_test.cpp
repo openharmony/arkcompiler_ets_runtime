@@ -50,7 +50,7 @@ public:
 
     void SetUp() override
     {
-        InitializeLLVM("x86_64-unknown-linux-gnu");
+        InitializeLLVM(TARGET_X64);
         TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
         chunk_ = thread->GetEcmaVM()->GetChunk();
     }
@@ -70,7 +70,7 @@ public:
 
     void InitializeLLVM(std::string triple)
     {
-        if (triple.compare("x86_64-unknown-linux-gnu") == 0) {
+        if (triple.compare(TARGET_X64) == 0) {
             LLVMInitializeX86TargetInfo();
             LLVMInitializeX86TargetMC();
             LLVMInitializeX86Disassembler();
@@ -78,14 +78,14 @@ public:
             LLVMInitializeX86AsmPrinter();
             LLVMInitializeX86AsmParser();
             LLVMInitializeX86Target();
-        } else if (triple.compare("aarch64-unknown-linux-gnu") == 0) {
+        } else if (triple.compare(TARGET_AARCH64) == 0) {
             LLVMInitializeAArch64TargetInfo();
             LLVMInitializeAArch64TargetMC();
             LLVMInitializeAArch64Disassembler();
             LLVMInitializeAArch64AsmPrinter();
             LLVMInitializeAArch64AsmParser();
             LLVMInitializeAArch64Target();
-        } else if (triple.compare("arm-unknown-linux-gnu") == 0) {
+        } else if (triple.compare(TARGET_ARM32) == 0) {
             LLVMInitializeARMTargetInfo();
             LLVMInitializeARMTargetMC();
             LLVMInitializeARMDisassembler();
@@ -178,7 +178,7 @@ HWTEST_F_L0(AssemblerX64Test, Emit)
     value = masm.GetU8(current++);
     ASSERT_EQ(value, 0xC3U);
 
-    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, "x86_64-unknown-linux-gnu",
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
                                                    masm.GetBegin(), masm.GetCurrentPosition());
 }
 
@@ -259,7 +259,7 @@ HWTEST_F_L0(AssemblerX64Test, Emit1)
     value = masm.GetU8(current++);
     ASSERT_EQ(value, 0xE0U);
 
-    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, "x86_64-unknown-linux-gnu",
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
                                                    masm.GetBegin(), masm.GetCurrentPosition());
 }
 
@@ -321,7 +321,7 @@ HWTEST_F_L0(AssemblerX64Test, Emit2)
     ASSERT_EQ(value, 0xE0U);
     value = masm.GetU8(current++);
     ASSERT_EQ(value, 0x08U);
-    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, "x86_64-unknown-linux-gnu",
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
                                                    masm.GetBegin(), masm.GetCurrentPosition());
 }
 
@@ -400,7 +400,7 @@ HWTEST_F_L0(AssemblerX64Test, Emit3)
     ASSERT_EQ(value, 0x21U);
     value = masm.GetU8(current++);
     ASSERT_EQ(value, 0xC2U);
-    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, "x86_64-unknown-linux-gnu",
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
                                                    masm.GetBegin(), masm.GetCurrentPosition());
 }
 
@@ -467,7 +467,7 @@ HWTEST_F_L0(AssemblerX64Test, Emit4)
     __ Int3();
     value = masm.GetU8(current++);
     ASSERT_EQ(value, 0xCCU);
-    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, "x86_64-unknown-linux-gnu",
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
                                                    masm.GetBegin(), masm.GetCurrentPosition());
 }
 #undef __

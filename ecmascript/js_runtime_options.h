@@ -70,7 +70,7 @@ enum CommandValues {
     OPTION_GC_THREADNUM,
     OPTION_GC_LONG_PAUSED_TIME,
     OPTION_AOT_FILE,
-    OPTION_TARGET_TRIPLE,
+    OPTION_COMPILER_TARGET_TRIPLE,
     OPTION_ASM_OPT_LEVEL,
     OPTION_RELOCATION_MODE,
     OPTION_MAX_UNMOVABLE_SPACE,
@@ -85,16 +85,17 @@ enum CommandValues {
     OPTION_COMPILER_LOG_METHODS,
     OPTION_COMPILER_TYPE_THRESHOLD,
     OPTION_ENABLE_RUNTIME_STAT,
-    OPTION_ASSERT_TYPES,
-    OPTION_PRINT_ANY_TYPES,
+    OPTION_COMPILER_ASSERT_TYPES,
+    OPTION_COMPILER_PRINT_ANY_TYPES,
     OPTION_COMPILER_LOG_SNAPSHOT,
     OPTION_COMPILER_LOG_TIME,
     OPTION_ENABLE_WORKER,
     OPTION_BUILTINS_DTS,
-    OPTION_TRACE_BC,
-    OPTION_TRACE_DEOPT,
-    OPTION_DEOPT_THRESHOLD,
-    OPTION_OPT_CODE_PROFILER,
+    OPTION_COMPILER_TRACE_BC,
+    OPTION_COMPILER_TRACE_DEOPT,
+    OPTION_COMPILER_DEOPT_THRESHOLD,
+    OPTION_COMPILER_STRESS_DEOPT,
+    OPTION_COMPILER_OPT_CODE_PROFILER,
     OPTION_LOG_LEVEL,
     OPTION_LOG_DEBUG,
     OPTION_LOG_INFO,
@@ -102,19 +103,25 @@ enum CommandValues {
     OPTION_LOG_ERROR,
     OPTION_LOG_FATAL,
     OPTION_LOG_COMPONENTS,
-    OPTION_MAX_AOT_METHOD,
+    OPTION_COMPILER_OPT_MAX_METHOD,
     OPTION_ENTRY_POINT,
     OPTION_MERGE_ABC,
-    OPTION_ENABLE_TYPE_LOWERING,
-    OPTION_ENABLE_OPT_INLINING,
-    OPTION_ENABLE_OPT_PGOTYPE,
+    OPTION_COMPILER_OPT_TYPE_LOWERING,
+    OPTION_COMPILER_OPT_EARLY_ELIMINATION,
+    OPTION_COMPILER_OPT_LATER_ELIMINATION,
+    OPTION_COMPILER_OPT_VALUE_NUMBERING,
+    OPTION_COMPILER_OPT_INLINING,
+    OPTION_COMPILER_OPT_PGOTYPE,
     OPTION_COMPILER_OPT_GLOBAL_TYPEINFER,
     OPTION_HELP,
-    OPTION_PGO_PROFILER_PATH,
-    OPTION_PGO_HOTNESS_THRESHOLD,
+    OPTION_COMPILER_PGO_PROFILER_PATH,
+    OPTION_COMPILER_PGO_HOTNESS_THRESHOLD,
     OPTION_ENABLE_PGO_PROFILER,
     OPTION_OPTIONS,
-    OPTION_PRINT_EXECUTE_TIME
+    OPTION_PRINT_EXECUTE_TIME,
+    OPTION_COMPILER_VERIFY_VTABLE,
+    OPTION_COMPILER_SELECT_METHODS,
+    OPTION_COMPILER_SKIP_METHODS
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -650,9 +657,8 @@ public:
 
     bool WasSetTraceBc() const
     {
-        return WasOptionSet(OPTION_TRACE_BC);
+        return WasOptionSet(OPTION_COMPILER_TRACE_BC);
     }
-
 
     std::string GetLogLevel() const
     {
@@ -854,6 +860,36 @@ public:
         return enableTypeLowering_;
     }
 
+    void SetEnableEarlyElimination(bool value)
+    {
+        enableEarlyElimination_ = value;
+    }
+
+    bool IsEnableEarlyElimination() const
+    {
+        return enableEarlyElimination_;
+    }
+
+    void SetEnableLaterElimination(bool value)
+    {
+        enableLaterElimination_ = value;
+    }
+
+    bool IsEnableLaterElimination() const
+    {
+        return enableLaterElimination_;
+    }
+
+    void SetEnableValueNumbering(bool value)
+    {
+        enableValueNumbering_ = value;
+    }
+
+    bool IsEnableValueNumbering() const
+    {
+        return enableValueNumbering_;
+    }
+
     void SetEnableOptInlining(bool value)
     {
         enableOptInlining_ = value;
@@ -909,6 +945,16 @@ public:
         return deoptThreshold_;
     }
 
+    void SetStressDeopt(bool value)
+    {
+        stressDeopt_ = value;
+    }
+
+    bool GetStressDeopt() const
+    {
+        return stressDeopt_;
+    }
+
     void SetOptCodeProfiler(bool value)
     {
         optCodeProfiler_ = value;
@@ -918,6 +964,37 @@ public:
     {
         return optCodeProfiler_;
     }
+
+    void SetVerifyVTable(bool value)
+    {
+        verifyVTable_ = value;
+    }
+
+    bool GetVerifyVTable() const
+    {
+        return verifyVTable_;
+    }
+
+    std::string GetCompilerSelectMethods() const
+    {
+        return compilerSelectMethods_;
+    }
+
+    void SetCompilerSelectMethods(std::string value)
+    {
+        compilerSelectMethods_ = std::move(value);
+    }
+
+    std::string GetCompilerSkipMethods() const
+    {
+        return compilerSkipMethods_;
+    }
+
+    void SetCompilerSkipMethods(std::string value)
+    {
+        compilerSkipMethods_ = std::move(value);
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -945,7 +1022,7 @@ private:
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time
     std::string aotOutputFile_ {""};
-    std::string targetTriple_ {"x86_64-unknown-linux-gnu"};
+    std::string targetTriple_ {TARGET_X64};
     uint32_t asmOptLevel_ {3}; // 3: default opt level
     uint32_t relocationMode_ {2}; // 2: default relocation mode
     uint32_t maxNonmovableSpaceCapacity_ {4_MB};
@@ -980,6 +1057,9 @@ private:
     std::string entryPoint_ {"_GLOBAL::func_main_0"};
     bool mergeAbc_ {false};
     bool enableTypeLowering_ {true};
+    bool enableEarlyElimination_ {true};
+    bool enableLaterElimination_ {true};
+    bool enableValueNumbering_ {false};
     bool enableOptInlining_ {false};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};
@@ -991,8 +1071,12 @@ private:
     std::string pgoProfilerPath_ {""};
     bool traceDeopt_ {false};
     uint8_t deoptThreshold_ {10};
+    bool stressDeopt_ {false};
     bool optCodeProfiler_ {false};
     bool startGlobalLeakCheck_ {false};
+    bool verifyVTable_ {false};
+    std::string compilerSelectMethods_ {""};
+    std::string compilerSkipMethods_ {""};
 };
 }  // namespace panda::ecmascript
 

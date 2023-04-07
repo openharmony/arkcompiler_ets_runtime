@@ -120,6 +120,7 @@ public:
     {
         traceBc_ = cmpCfg->IsTraceBC();
         profiling_ = cmpCfg->IsProfiling();
+        stressDeopt_ = cmpCfg->IsStressDeopt();
     }
     ~SlowPathLowering() = default;
     void CallRuntimeLowering();
@@ -137,6 +138,11 @@ public:
     bool IsProfiling() const
     {
         return profiling_;
+    }
+
+    bool IsStressDeopt() const
+    {
+        return stressDeopt_;
     }
 
 private:
@@ -307,6 +313,7 @@ private:
     bool enableLog_ {false};
     bool traceBc_ {false};
     bool profiling_ {false};
+    bool stressDeopt_ {false};
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
 };

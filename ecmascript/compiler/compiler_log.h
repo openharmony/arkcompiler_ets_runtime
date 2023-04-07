@@ -35,7 +35,7 @@ class MethodLogList;
 
 class CompilerLog {
 public:
-    explicit CompilerLog(const std::string &logOpt, bool TraceBC = false);
+    explicit CompilerLog(const std::string &logOpt);
     ~CompilerLog() = default;
 
     bool AllMethod() const
@@ -71,11 +71,6 @@ public:
     bool OutputType() const
     {
         return outputType_;
-    }
-
-    bool IsTraceBC() const
-    {
-        return traceBc_;
     }
 
     bool GetEnableCompilerLogTime() const
@@ -136,7 +131,6 @@ private:
     bool outputLLIR_ {false};
     bool outputASM_ {false};
     bool outputType_ {false};
-    bool traceBc_ {false};
     bool compilerLogTime_ {true};
     bool enableMethodLog_ {false};
     std::map<std::string, double> timePassMap_ {};
@@ -177,7 +171,7 @@ public:
     TimeScope(std::string name, std::string methodName, uint32_t methodOffset, CompilerLog* log);
     TimeScope(std::string name, CompilerLog* log);
     ~TimeScope();
-   
+
 private:
     static constexpr int PASS_LENS = 32;
     static constexpr int METHOD_LENS = 16;

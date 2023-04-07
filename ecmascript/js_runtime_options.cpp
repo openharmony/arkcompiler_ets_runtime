@@ -44,7 +44,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--ark-bundle-name:                    Set ark bundle name\n"
     "--asm-interpreter:                    Enable asm interpreter. Default: 'true'\n"
     "--asm-opcode-disable-range:           Opcode range when asm interpreter is enabled.\n"
-    "--assert-types:                       Enable type assertion for type inference tests. Default: 'false'\n"
+    "--compiler-assert-types:              Enable type assertion for type inference tests. Default: 'false'\n"
     "--builtins-dts:                       Builtins.d.abc file path for AOT.\n"
     "--compiler-log:                       Log Option For aot compiler and stub compiler,\n"
     "                                      'none': no log,\n"
@@ -65,15 +65,20 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-global-typeinfer:      Enable global typeinfer for aot compiler: Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
     "--enable-ark-tools:                   Enable ark tools to debug. Default: 'false'\n"
-    "--trace-bc:                           Enable tracing bytecode for aot runtime. Default: 'false'\n"
-    "--trace-deopt:                        Enable tracing deopt for aot runtime. Default: 'false'\n"
-    "--deopt-threshold:                    Set max count which aot function can occur deoptimization. Default: '10'\n"
-    "--opt-code-profiler:                  Enable opt code Bytecode Statistics for aot runtime. Default: 'false'\n"
+    "--compiler-trace-bc:                  Enable tracing bytecode for aot runtime. Default: 'false'\n"
+    "--compiler-trace-deopt:               Enable tracing deopt for aot runtime. Default: 'false'\n"
+    "--compiler-deopt-threshold:           Set max count which aot function can occur deoptimization. Default: '10'\n"
+    "--compiler-stress-deopt:              Enable stress deopt for aot compiler. Default: 'false'\n"
+    "--compiler-opt-code-profiler:         Enable opt code Bytecode Statistics for aot runtime. Default: 'false'\n"
     "--enable-force-gc:                    Enable force gc when allocating object. Default: 'true'\n"
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
-    "--enable-type-lowering:               Enable TSTypeLowering and TypeLowering for aot runtime. Default: 'true'\n"
-    "--enable-opt-inlining:                Enable inlining function for aot compiler: Default: 'false'\n"
+    "--compiler-opt-type-lowering:         Enable all type optimization pass for aot compiler. Default: 'true'\n"
+    "--compiler-opt-early-elimination:     Enable EarlyElimination for aot compiler. Default: 'true'\n"
+    "--compiler-opt-later-elimination:     Enable LaterElimination for aot compiler. Default: 'true'\n"
+    "--compiler-opt-value-numbering:       Enable ValueNumbering for aot compiler. Default: 'false'\n"
+    "--compiler-opt-inlining:              Enable inlining function for aot compiler: Default: 'false'\n"
+    "--compiler-opt-pgotype:               Enable pgo type for aot compiler: Default: 'true'\n"
     "--entry-point:                        Full name of entrypoint function. Default: '_GLOBAL::func_main_0'\n"
     "--force-full-gc:                      If true trigger full gc, else trigger semi and old gc. Default: 'true'\n"
     "--framework-abc-file:                 Snapshot file. Default: 'strip.native.min.abc'\n"
@@ -102,12 +107,12 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--log-warning:                        Enable warning log for components: ['all', 'gc', 'ecma',\n"
     "                                      'interpreter', 'debugger', 'compiler', 'builtins', \n"
     "                                      'all']. Default: 'all'\n"
-    "--max-aot-method:                     Enable aot compiler to skip method larger than limit (KB). Default: '32'\n"
+    "--compiler-opt-max-method:            Enable aot compiler to skip method larger than limit (KB). Default: '32'\n"
     "--max-unmovable-space:                Set max unmovable space capacity\n"
     "--merge-abc:                          ABC file is merge abc. Default: 'false'\n"
-    "--opt-level:                          Optimization level configuration of aot compiler. Default: '3'\n"
+    "--compiler-opt-level:                 Optimization level configuration of aot compiler. Default: '3'\n"
     "--options:                            Print compiler and runtime options\n"
-    "--print-any-types:                    Enable print any types after type inference. Default: 'false'\n"
+    "--compiler-print-any-types:           Enable print any types after type inference. Default: 'false'\n"
     "--serializer-buffer-size-limit:       Max serializer buffer size used by the VM in Byte. Default size is 2GB\n"
     "--snapshot-file:                      Snapshot file. Default: '/system/etc/snapshot'\n"
     "--startup-time:                       Print the start time of command execution. Default: 'false'\n"
@@ -115,12 +120,17 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
                                            "Default: 'stub.an'\n"
     "--enable-pgo-profiler:                Enable pgo profiler to sample jsfunction call and output to file. "
                                            "Default: 'false'\n"
-    "--pgo-hotness-threshold:              Set hotness threshold for pgo in aot compiler. Default: '2'\n"
-    "--pgo-profiler-path:                  The pgo file output dir or the pgo file dir of AOT compiler. Default: ''\n"
-    "--target-triple:                      CPU triple for aot compiler or stub compiler. \n"
+    "--compiler-pgo-hotness-threshold:     Set hotness threshold for pgo in aot compiler. Default: '2'\n"
+    "--compiler-pgo-profiler-path:         The pgo file output dir or the pgo file dir of AOT compiler. Default: ''\n"
+    "--compiler-target-triple:             CPU triple for aot compiler or stub compiler. \n"
     "                                      values: ['x86_64-unknown-linux-gnu', 'arm-unknown-linux-gnu', \n"
     "                                      'aarch64-unknown-linux-gnu'], Default: 'x86_64-unknown-linux-gnu'\n"
-    "--enable-print-execute-time:          Enable print execute panda file spent time\n\n";
+    "--enable-print-execute-time:          Enable print execute panda file spent time\n"
+    "--compiler-verify-vtable:             Verify vtable result for aot compiler. Default: 'false'\n"
+    "--compiler-select-methods             Compiler selected methods for aot. Only work in full compiling mode\n"
+    "                                      Format:--compile-methods=record1:m1,m2,record2:m3\n"
+    "--compiler-skip-methods               Compiler skpped methods for aot. Only work in full compiling mode\n"
+    "                                      Format:--compile-skip-methods=record1:m1,m2,record2:m3\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -130,7 +140,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"ark-bundleName", required_argument, nullptr, OPTION_ARK_BUNDLENAME},
         {"asm-interpreter", required_argument, nullptr, OPTION_ENABLE_ASM_INTERPRETER},
         {"asm-opcode-disable-range", required_argument, nullptr, OPTION_ASM_OPCODE_DISABLE_RANGE},
-        {"assert-types", required_argument, nullptr, OPTION_ASSERT_TYPES},
+        {"compiler-assert-types", required_argument, nullptr, OPTION_COMPILER_ASSERT_TYPES},
         {"builtins-dts", required_argument, nullptr, OPTION_BUILTINS_DTS},
         {"compiler-log", required_argument, nullptr, OPTION_COMPILER_LOG_OPT},
         {"compiler-log-methods", required_argument, nullptr, OPTION_COMPILER_LOG_METHODS},
@@ -139,16 +149,20 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-opt-global-typeinfer", required_argument, nullptr, OPTION_COMPILER_OPT_GLOBAL_TYPEINFER},
         {"compiler-type-threshold", required_argument, nullptr, OPTION_COMPILER_TYPE_THRESHOLD},
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
-        {"trace-bc", required_argument, nullptr, OPTION_TRACE_BC},
-        {"trace-deopt", required_argument, nullptr, OPTION_TRACE_DEOPT},
-        {"deopt-threshold", required_argument, nullptr, OPTION_DEOPT_THRESHOLD},
-        {"opt-code-profiler", required_argument, nullptr, OPTION_OPT_CODE_PROFILER},
+        {"compiler-trace-bc", required_argument, nullptr, OPTION_COMPILER_TRACE_BC},
+        {"compiler-trace-deopt", required_argument, nullptr, OPTION_COMPILER_TRACE_DEOPT},
+        {"compiler-deopt-threshold", required_argument, nullptr, OPTION_COMPILER_DEOPT_THRESHOLD},
+        {"compiler-stress-deopt", required_argument, nullptr, OPTION_COMPILER_STRESS_DEOPT},
+        {"compiler-opt-code-profiler", required_argument, nullptr, OPTION_COMPILER_OPT_CODE_PROFILER},
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
-        {"enable-type-lowering", required_argument, nullptr, OPTION_ENABLE_TYPE_LOWERING},
-        {"enable-opt-inlining", required_argument, nullptr, OPTION_ENABLE_OPT_INLINING},
-        {"enable-opt-pgotype", required_argument, nullptr, OPTION_ENABLE_OPT_PGOTYPE},
+        {"compiler-opt-type-lowering", required_argument, nullptr, OPTION_COMPILER_OPT_TYPE_LOWERING},
+        {"compiler-opt-early-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_EARLY_ELIMINATION},
+        {"compiler-opt-later-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_LATER_ELIMINATION},
+        {"compiler-opt-value-numbering", required_argument, nullptr, OPTION_COMPILER_OPT_VALUE_NUMBERING},
+        {"compiler-opt-inlining", required_argument, nullptr, OPTION_COMPILER_OPT_INLINING},
+        {"compiler-opt-pgotype", required_argument, nullptr, OPTION_COMPILER_OPT_PGOTYPE},
         {"entry-point", required_argument, nullptr, OPTION_ENTRY_POINT},
         {"force-full-gc", required_argument, nullptr, OPTION_FORCE_FULL_GC},
         {"gc-thread-num", required_argument, nullptr, OPTION_GC_THREADNUM},
@@ -164,21 +178,24 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"log-level", required_argument, nullptr, OPTION_LOG_LEVEL},
         {"log-warning", required_argument, nullptr, OPTION_LOG_WARNING},
         {"gc-long-paused-time", required_argument, nullptr, OPTION_GC_LONG_PAUSED_TIME},
-        {"max-aot-method", required_argument, nullptr, OPTION_MAX_AOT_METHOD},
+        {"compiler-opt-max-method", required_argument, nullptr, OPTION_COMPILER_OPT_MAX_METHOD},
         {"max-unmovable-space", required_argument, nullptr, OPTION_MAX_UNMOVABLE_SPACE},
         {"merge-abc", required_argument, nullptr, OPTION_MERGE_ABC},
-        {"opt-level", required_argument, nullptr, OPTION_ASM_OPT_LEVEL},
+        {"compiler-opt-level", required_argument, nullptr, OPTION_ASM_OPT_LEVEL},
         {"options", no_argument, nullptr, OPTION_OPTIONS},
-        {"print-any-types", required_argument, nullptr, OPTION_PRINT_ANY_TYPES},
+        {"compiler-print-any-types", required_argument, nullptr, OPTION_COMPILER_PRINT_ANY_TYPES},
         {"reloc-mode", required_argument, nullptr, OPTION_RELOCATION_MODE},
         {"serializer-buffer-size-limit", required_argument, nullptr, OPTION_SERIALIZER_BUFFER_SIZE_LIMIT},
         {"startup-time", required_argument, nullptr, OPTION_STARTUP_TIME},
         {"stub-file", required_argument, nullptr, OPTION_STUB_FILE},
-        {"target-triple", required_argument, nullptr, OPTION_TARGET_TRIPLE},
+        {"compiler-target-triple", required_argument, nullptr, OPTION_COMPILER_TARGET_TRIPLE},
         {"enable-print-execute-time", required_argument, nullptr, OPTION_PRINT_EXECUTE_TIME},
         {"enable-pgo-profiler", required_argument, nullptr, OPTION_ENABLE_PGO_PROFILER},
-        {"pgo-profiler-path", required_argument, nullptr, OPTION_PGO_PROFILER_PATH},
-        {"pgo-hotness-threshold", required_argument, nullptr, OPTION_PGO_HOTNESS_THRESHOLD},
+        {"compiler-pgo-profiler-path", required_argument, nullptr, OPTION_COMPILER_PGO_PROFILER_PATH},
+        {"compiler-pgo-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_PGO_HOTNESS_THRESHOLD},
+        {"compiler-verify-vtable", required_argument, nullptr, OPTION_COMPILER_VERIFY_VTABLE},
+        {"compiler-select-methods", required_argument, nullptr, OPTION_COMPILER_SELECT_METHODS},
+        {"compiler-skip-methods", required_argument, nullptr, OPTION_COMPILER_SKIP_METHODS},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -246,7 +263,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             case OPTION_ASM_OPCODE_DISABLE_RANGE:
                 SetAsmOpcodeDisableRange(optarg);
                 break;
-            case OPTION_ASSERT_TYPES:
+            case OPTION_COMPILER_ASSERT_TYPES:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetAssertTypes(argBool);
@@ -284,7 +301,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_TRACE_BC:
+            case OPTION_COMPILER_TRACE_BC:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetTraceBc(argBool);
@@ -292,7 +309,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_TRACE_DEOPT:
+            case OPTION_COMPILER_TRACE_DEOPT:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetTraceDeopt(argBool);
@@ -300,7 +317,15 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_OPT_CODE_PROFILER:
+            case OPTION_COMPILER_STRESS_DEOPT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetStressDeopt(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_CODE_PROFILER:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetOptCodeProfiler(argBool);
@@ -404,8 +429,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_MAX_AOT_METHOD:
-                ret = ParseUint32Param("max-aot-method", &argUint32);
+            case OPTION_COMPILER_OPT_MAX_METHOD:
+                ret = ParseUint32Param("compiler-opt-max-method", &argUint32);
                 if (ret) {
                     SetMaxAotMethodSize(argUint32);
                 } else {
@@ -432,14 +457,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 SetMethodsListForLog(optarg);
                 break;
             case OPTION_ASM_OPT_LEVEL:
-                ret = ParseUint32Param("opt-level", &argUint32);
+                ret = ParseUint32Param("compiler-opt-level", &argUint32);
                 if (ret) {
                     SetOptLevel(argUint32);
                 } else {
                     return false;
                 }
                 break;
-            case OPTION_PRINT_ANY_TYPES:
+            case OPTION_COMPILER_PRINT_ANY_TYPES:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetPrintAnyTypes(argBool);
@@ -463,13 +488,13 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_PGO_PROFILER_PATH:
+            case OPTION_COMPILER_PGO_PROFILER_PATH:
                 if (*optarg == '\0') {
                     return false;
                 }
                 SetPGOProfilerPath(optarg);
                 break;
-            case OPTION_PGO_HOTNESS_THRESHOLD:
+            case OPTION_COMPILER_PGO_HOTNESS_THRESHOLD:
                 ret = ParseUint32Param("pgo-hotness-threshold", &argUint32);
                 if (ret) {
                     SetPGOHotnessThreshold(argUint32);
@@ -505,7 +530,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             case OPTION_STUB_FILE:
                 SetStubFile(optarg);
                 break;
-            case OPTION_TARGET_TRIPLE:
+            case OPTION_COMPILER_TARGET_TRIPLE:
                 SetTargetTriple(optarg);
                 break;
             case OPTION_ENTRY_POINT:
@@ -519,7 +544,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_ENABLE_TYPE_LOWERING:
+            case OPTION_COMPILER_OPT_TYPE_LOWERING:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableTypeLowering(argBool);
@@ -527,7 +552,31 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_ENABLE_OPT_INLINING:
+            case OPTION_COMPILER_OPT_EARLY_ELIMINATION:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableEarlyElimination(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_LATER_ELIMINATION:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableLaterElimination(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_VALUE_NUMBERING:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableValueNumbering(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_INLINING:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableOptInlining(argBool);
@@ -535,7 +584,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_ENABLE_OPT_PGOTYPE:
+            case OPTION_COMPILER_OPT_PGOTYPE:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableOptPGOType(argBool);
@@ -550,6 +599,20 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 } else {
                     return false;
                 }
+                break;
+            case OPTION_COMPILER_VERIFY_VTABLE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetVerifyVTable(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_SELECT_METHODS:
+                SetCompilerSelectMethods(optarg);
+                break;
+            case OPTION_COMPILER_SKIP_METHODS:
+                SetCompilerSkipMethods(optarg);
                 break;
             default:
                 std::cerr << "Invalid option\n"<< std::endl;

@@ -2784,8 +2784,9 @@ void SlowPathLowering::AddProfiling(GateRef gate, bool skipGenerator)
         }
         auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
         GateRef constOpcode = builder_.ToTaggedInt(builder_.ZExtInt32ToInt64(ecmaOpcodeGate));
+        GateRef slowPath = builder_.Int32ToTaggedInt(builder_.Int32(0));
         GateRef debugGate = builder_.CallRuntime(glue_, RTSTUB_ID(DebugAOTPrint), acc_.GetDep(gate),
-                                                 { constOpcode }, gate);
+                                                 { constOpcode, slowPath }, gate);
         acc_.SetDep(gate, debugGate);
     }
 
@@ -2956,6 +2957,10 @@ void SlowPathLowering::LowerDeoptCheck(GateRef gate)
     GateRef condition = acc_.GetValueIn(gate, 0);
     GateRef frameState = acc_.GetValueIn(gate, 1);
     GateRef deoptType = acc_.GetValueIn(gate, 2);
+
+    if (IsStressDeopt()) {
+        condition = builder_.False();
+    }
 
     Label success(&builder_);
     Label fail(&builder_);
