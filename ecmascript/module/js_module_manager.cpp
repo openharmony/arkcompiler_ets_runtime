@@ -344,9 +344,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const 
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "Try to load record " << recordName << " in abc : " << moduleFileName;
-        CString msg = "Faild to load file '" + recordName + "', please check the request path.";
-
+        CString msg = "Load file with filename '" + moduleFileName + "' failed, recordName '" + recordName + "'";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
 
@@ -384,9 +382,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const CString &
     const JSPandaFile *jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "Try to load abc : " << moduleFileName;
-        CString msg = "Faild to load file '" + moduleFileName + "', please check the request path.";
-
+        CString msg = "Load file with filename '" + moduleFileName + "' failed";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
 
@@ -410,7 +406,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const void *buf
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename,
                                                            JSPandaFile::ENTRY_MAIN_FUNCTION, buffer, size);
     if (jsPandaFile == nullptr) {
-        CString msg = "Faild to load file '" + filename + "', please check the request path.";
+        CString msg = "Load file with filename '" + filename + "' failed";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
 
