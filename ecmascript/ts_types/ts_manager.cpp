@@ -1209,7 +1209,7 @@ kungfu::GateType TSManager::TryNarrowUnionType(kungfu::GateType gateType)
                 }
             }
         }
-        if(actualTypeNum == 1) {
+        if (actualTypeNum == 1) {
             return actualType;
         }
     }

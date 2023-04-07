@@ -20,6 +20,6 @@ group("ark_typeinfer_module_test") {
 
   deps = []
   foreach(test, test_list) {
-    deps += [ "${test}:${test}AotTypeInferModuleAction" ]
+    deps += [ "${test}:${test}AotTypeInferAction" ]
   }
 }

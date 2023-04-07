@@ -15,4 +15,9 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_typeinfer_test_action("defineasyncfunc") {
   deps = []
+
+  # Since ts2abc does not support recording generic types,
+  # the expected result will be more precise if es2abc is used.
+  # A more precise test will be added when AOT supports inferring generic types.
+  is_enable_es2abc = false
 }
