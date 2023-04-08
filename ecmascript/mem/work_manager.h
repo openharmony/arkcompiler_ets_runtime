@@ -197,6 +197,11 @@ public:
         return true;
     }
 
+    inline uint32_t GetTotalThreadNum()
+    {
+        return threadNum_;
+    }
+
 private:
     NO_COPY_SEMANTIC(WorkManager);
     NO_MOVE_SEMANTIC(WorkManager);
