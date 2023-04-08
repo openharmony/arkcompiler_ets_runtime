@@ -41,6 +41,8 @@ enum BytecodeFlags : uint32_t {
     GENERAL_BC = 1 << 3,
     READ_THIS_OBJECT = 1 << 4,
     NO_SIDE_EFFECTS = 1 << 5,
+    READ_ENV = 1 << 7,
+    WRITE_ENV = 1 << 8,
 };
 
 enum BytecodeKind : uint32_t {
@@ -60,7 +62,7 @@ class BytecodeMetaData {
 public:
     static constexpr uint32_t MAX_OPCODE_SIZE = 16;
     static constexpr uint32_t MAX_SIZE_BITS = 4;
-    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 6;
+    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 9;
     static constexpr uint32_t BYTECODE_KIND_SIZE = 4;
 
     using OpcodeField = panda::BitField<EcmaOpcode, 0, MAX_OPCODE_SIZE>;
@@ -86,6 +88,16 @@ public:
     bool HasAccOut() const
     {
         return HasFlag(BytecodeFlags::WRITE_ACC);
+    }
+
+    bool HasEnvIn() const
+    {
+        return HasFlag(BytecodeFlags::READ_ENV);
+    }
+
+    bool HasEnvOut() const
+    {
+        return HasFlag(BytecodeFlags::WRITE_ENV);
     }
 
     bool IsMov() const
@@ -162,7 +174,7 @@ private:
     BytecodeMetaData() = default;
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(BytecodeMetaData);
     DEFAULT_COPY_SEMANTIC(BytecodeMetaData);
-    BytecodeMetaData(uint32_t value) : value_(value) {}
+    BytecodeMetaData(uint64_t value) : value_(value) {}
 
     static BytecodeMetaData InitBytecodeMetaData(const uint8_t *pc);
 
@@ -181,7 +193,7 @@ private:
         return KindField::Get(value_);
     }
 
-    uint32_t value_ {0};
+    uint64_t value_ {0};
     friend class Bytecodes;
     friend class BytecodeInfo;
     friend class BytecodeCircuitBuilder;
@@ -441,6 +453,16 @@ public:
     bool AccIn() const
     {
         return metaData_.HasAccIn();
+    }
+
+    bool EnvIn() const
+    {
+        return metaData_.HasEnvIn();
+    }
+
+    bool EnvOut() const
+    {
+        return metaData_.HasEnvOut();
     }
 
     bool NoSideEffects() const

@@ -181,6 +181,30 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
             break;
     }
 
+    switch (inst.GetOpcode()) {
+        case EcmaOpcode::NEWLEXENV_IMM8:
+        case EcmaOpcode::WIDE_NEWLEXENV_PREF_IMM16:
+        case EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16:
+        case EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16:
+        case EcmaOpcode::POPLEXENV:
+            flags |= BytecodeFlags::WRITE_ENV;
+        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
+        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
+        case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
+        case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
+        case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:
+        case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
+        case EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8:
+        case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8:
+        case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8:
+        case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8:
+            flags |= BytecodeFlags::READ_ENV;
+            break;
+        default:
+            break;
+    }
+
     if (kind == BytecodeKind::GENERAL ||
         kind == BytecodeKind::THROW_BC ||
         kind == BytecodeKind::RESUME ||
@@ -188,7 +212,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         flags |= BytecodeFlags::GENERAL_BC;
     }
     auto size = inst.GetSize();
-    uint32_t value = SizeField::Encode(size) | KindField::Encode(kind) |
+    uint64_t value = SizeField::Encode(size) | KindField::Encode(kind) |
                      FlagsField::Encode(static_cast<BytecodeFlags>(flags)) |
                      OpcodeField::Encode(inst.GetOpcode());
     return BytecodeMetaData(value);
@@ -527,6 +551,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t length = READ_INST_8_3();
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(length));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8: {
@@ -534,6 +559,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t length = READ_INST_8_4();
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(length));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8: {
@@ -541,6 +567,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t length = READ_INST_8_3();
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(length));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
@@ -548,6 +575,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t length = READ_INST_8_4();
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(length));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8: {
@@ -579,6 +607,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t slot = READ_INST_4_1();
             info.inputs.emplace_back(Immediate(level));
             info.inputs.emplace_back(Immediate(slot));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::LDLEXVAR_IMM8_IMM8: {
@@ -586,6 +615,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t slot = READ_INST_8_1();
             info.inputs.emplace_back(Immediate(level));
             info.inputs.emplace_back(Immediate(slot));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16: {
@@ -593,6 +623,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t slot = READ_INST_16_3();
             info.inputs.emplace_back(Immediate(level));
             info.inputs.emplace_back(Immediate(slot));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::STLEXVAR_IMM4_IMM4: {
@@ -600,6 +631,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t slot = READ_INST_4_1();
             info.inputs.emplace_back(Immediate(level));
             info.inputs.emplace_back(Immediate(slot));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::STLEXVAR_IMM8_IMM8: {
@@ -607,6 +639,8 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t slot = READ_INST_8_1();
             info.inputs.emplace_back(Immediate(level));
             info.inputs.emplace_back(Immediate(slot));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            info.vregOut.emplace_back(builder->GetEnvVregIdx());
             break;
         }
         case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16: {
@@ -614,16 +648,22 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t slot = READ_INST_16_3();
             info.inputs.emplace_back(Immediate(level));
             info.inputs.emplace_back(Immediate(slot));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            info.vregOut.emplace_back(builder->GetEnvVregIdx());
             break;
         }
         case EcmaOpcode::NEWLEXENV_IMM8: {
             uint8_t numVars = READ_INST_8_0();
             info.inputs.emplace_back(Immediate(numVars));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            info.vregOut.emplace_back(builder->GetEnvVregIdx());
             break;
         }
         case EcmaOpcode::WIDE_NEWLEXENV_PREF_IMM16: {
             uint16_t numVars = READ_INST_16_1();
             info.inputs.emplace_back(Immediate(numVars));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            info.vregOut.emplace_back(builder->GetEnvVregIdx());
             break;
         }
         case EcmaOpcode::NEWLEXENVWITHNAME_IMM8_ID16: {
@@ -631,6 +671,8 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t scopeId = READ_INST_16_1();
             info.inputs.emplace_back(Immediate(numVars));
             info.inputs.emplace_back(Immediate(scopeId));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            info.vregOut.emplace_back(builder->GetEnvVregIdx());
             break;
         }
         case EcmaOpcode::WIDE_NEWLEXENVWITHNAME_PREF_IMM16_ID16: {
@@ -638,6 +680,8 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t scopeId = READ_INST_16_3();
             info.inputs.emplace_back(Immediate(numVars));
             info.inputs.emplace_back(Immediate(scopeId));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            info.vregOut.emplace_back(builder->GetEnvVregIdx());
             break;
         }
         case EcmaOpcode::CREATEITERRESULTOBJ_V8_V8: {
@@ -720,11 +764,13 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16: {
             uint16_t imm = READ_INST_16_1();
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::ObjectLiteralIDType, imm));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
             uint16_t imm = READ_INST_16_2();
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::ObjectLiteralIDType, imm));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::SETOBJECTWITHPROTO_IMM8_V8: {
@@ -1215,6 +1261,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::ClassLiteralIDType, literaId));
             info.inputs.emplace_back(Immediate(length));
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8: {
@@ -1226,6 +1273,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::ClassLiteralIDType, literaId));
             info.inputs.emplace_back(Immediate(length));
             info.inputs.emplace_back(VirtualRegister(v0));
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
             break;
         }
         case EcmaOpcode::LDFUNCTION: {
@@ -1262,6 +1310,11 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(VirtualRegister(v0));
             break;
         }
+        case EcmaOpcode::POPLEXENV: {
+            info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            info.vregOut.emplace_back(builder->GetEnvVregIdx());
+            break;
+        }
         case EcmaOpcode::TONUMERIC_IMM8:
         case EcmaOpcode::INC_IMM8:
         case EcmaOpcode::DEC_IMM8:
@@ -1289,7 +1342,6 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::LDFALSE:
         case EcmaOpcode::LDHOLE:
         case EcmaOpcode::CALLARG0_IMM8:
-        case EcmaOpcode::POPLEXENV:
         case EcmaOpcode::GETUNMAPPEDARGS:
         case EcmaOpcode::ASYNCFUNCTIONENTER:
         case EcmaOpcode::TYPEOF_IMM8:

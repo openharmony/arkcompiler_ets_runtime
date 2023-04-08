@@ -395,8 +395,6 @@ private:
     V(DebugPrintInstruction)                \
     V(PGOProfiler)                          \
     V(FatalPrint)                           \
-    V(OptSetLexicalEnv)                     \
-    V(OptPopLexicalEnv)                     \
     V(GetActualArgvNoGC)                    \
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \
