@@ -870,7 +870,7 @@ bool JSSerializer::WriteJSArrayBuffer(const JSHandle<JSTaggedValue> &value)
 
 bool JSSerializer::IsNativeBindingObject(std::vector<JSTaggedValue> keyVector)
 {
-    if (keyVector.size() < 2) { // 2:detachSymbol, attachSymbol
+    if (keyVector.size() < 2) { // 2: detachSymbol, attachSymbol
         return false;
     }
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
@@ -916,6 +916,11 @@ bool JSSerializer::WritePlainObject(const JSHandle<JSTaggedValue> &objValue)
 
     if (IsNativeBindingObject(keyVector)) {
         return WriteNativeBindingObject(objValue);
+    }
+
+    // not support native object without detach and attach
+    if (obj->GetNativePointerFieldCount() > 0) {
+        return false;
     }
 
     if (!WriteType(SerializationUID::JS_PLAIN_OBJECT)) {
