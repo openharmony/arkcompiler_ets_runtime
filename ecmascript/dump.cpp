@@ -3403,6 +3403,8 @@ void LocalExportEntry::Dump(std::ostream &os) const
     os << " - LocalName: ";
     GetLocalName().Dump(os);
     os << "\n";
+    os << " - LocalIndex: " << GetLocalIndex();
+    os << "\n";
 }
 
 void IndirectExportEntry::Dump(std::ostream &os) const

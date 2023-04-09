@@ -14,3 +14,5 @@
 Pass!!
 123
 123
+export as ... case test : get fun
+load function f()
