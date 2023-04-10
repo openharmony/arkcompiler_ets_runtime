@@ -50,7 +50,6 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
 
     JSTaggedValue timeValue(0.0);
     uint32_t length = argv->GetArgsNumber();
-    bool isDst = false;
     if (length == 0) {  // no value
         timeValue = JSDate::Now();
     } else if (length == 1) {  // one value
@@ -91,7 +90,7 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
                 fields[0] += JSDate::NINETEEN_HUNDRED_YEAR;
             }
         }
-        timeValue = JSTaggedValue((i == length) ? JSDate::SetDateValues(&fields, true, &isDst) : base::NAN_VALUE);
+        timeValue = JSTaggedValue((i == length) ? JSDate::SetDateValues(&fields, true) : base::NAN_VALUE);
     }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -100,7 +99,6 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
         JSHandle<JSDate>::Cast(factory->NewJSObjectByConstructor(constructor, newTarget));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     dateObject->SetTimeValue(thread, timeValue);
-    dateObject->SetIsDst(isDst);
     return dateObject.GetTaggedValue();
 }
 

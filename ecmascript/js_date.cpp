@@ -637,7 +637,7 @@ bool JSDate::GetThisDateValues(std::array<int64_t, DATE_LENGTH> *date, bool isLo
     if (std::isnan(timeMs)) {
         return false;
     }
-    GetDateValues(timeMs, date, isLocal, isDst_);
+    GetDateValues(timeMs, date, isLocal);
     return true;
 }
 
@@ -672,7 +672,7 @@ CString JSDate::ToDateString(double timeMs)
     };
     std::array<CString, DAY_PER_WEEK> weekdayName = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
     std::array<int64_t, DATE_LENGTH> fields = {0};
-    GetDateValues(timeMs, &fields, true, false);
+    GetDateValues(timeMs, &fields, true);
     CString localTime;
     int localMin = 0;
     localMin = GetLocalOffsetFromOS(timeMs, true);
@@ -816,18 +816,21 @@ JSTaggedValue JSDate::ValueOf() const
 }
 
 // static
-void JSDate::GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal, bool isDst)
+void JSDate::GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal)
 {
     int64_t tz = 0;
     int64_t timeMsInt;
     timeMsInt = static_cast<int64_t>(timeMs);
+    bool preDst = IsDst(timeMsInt);
     if (isLocal) {  // timezone offset
         tz = GetLocalOffsetFromOS(timeMsInt, isLocal);
         timeMsInt += tz * MS_PER_SECOND * SEC_PER_MINUTE;
         bool curDst = IsDst(timeMsInt);
         int64_t dstOffset = MIN_PER_HOUR * SEC_PER_MINUTE * MS_PER_SECOND;
-        if (curDst && !isDst) {
-            timeMsInt += dstOffset;
+        if (curDst) {
+            timeMsInt += preDst ? 0 : dstOffset;
+        } else {
+            timeMsInt -= preDst ? dstOffset : 0;
         }
     }
 
@@ -841,7 +844,7 @@ double JSDate::GetDateValue(double timeMs, uint8_t code, bool isLocal) const
         return base::NAN_VALUE;
     }
     std::array<int64_t, DATE_LENGTH> date = {0};
-    GetDateValues(timeMs, &date, isLocal, isDst_);
+    GetDateValues(timeMs, &date, isLocal);
     return static_cast<double>(date[code]);
 }
 
@@ -866,9 +869,9 @@ JSTaggedValue JSDate::SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, boo
     }
     if (std::isnan(timeMs) && firstValue == 0) {
         timeMs = 0.0;
-        GetDateValues(timeMs, &date, false, isDst_);
+        GetDateValues(timeMs, &date, false);
     } else {
-        GetDateValues(timeMs, &date, isLocal, isDst_);
+        GetDateValues(timeMs, &date, isLocal);
     }
 
     for (uint32_t i = 0; i < count; i++) {
@@ -882,13 +885,12 @@ JSTaggedValue JSDate::SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, boo
         }
         date[firstValue + i] = NumberHelper::TruncateDouble(temp);
     }
-    bool isDst = false;
     // set date values.
-    return JSTaggedValue(SetDateValues(&date, isLocal, &isDst));
+    return JSTaggedValue(SetDateValues(&date, isLocal));
 }
 
 // static
-double JSDate::SetDateValues(const std::array<int64_t, DATE_LENGTH> *date, bool isLocal, bool *isDst)
+double JSDate::SetDateValues(const std::array<int64_t, DATE_LENGTH> *date, bool isLocal)
 {
     int64_t month = DateUtils::Mod((*date)[MONTH], MONTH_PER_YEAR);
     int64_t year = (*date)[YEAR] + ((*date)[MONTH] - month) / MONTH_PER_YEAR;
@@ -900,7 +902,6 @@ double JSDate::SetDateValues(const std::array<int64_t, DATE_LENGTH> *date, bool 
     int64_t millisecond =
         (((*date)[HOUR] * MIN_PER_HOUR + (*date)[MIN]) * SEC_PER_MINUTE + (*date)[SEC]) * MS_PER_SECOND + (*date)[MS];
     int64_t result = days * MS_PER_DAY + millisecond;
-    *isDst = IsDst(result);
     if (isLocal) {
         int64_t offset = GetLocalOffsetFromOS(result, isLocal) * SEC_PER_MINUTE * MS_PER_SECOND;
         result -= offset;
