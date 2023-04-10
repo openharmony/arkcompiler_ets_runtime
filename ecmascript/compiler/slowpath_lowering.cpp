@@ -54,12 +54,6 @@ void SlowPathLowering::CallRuntimeLowering()
                 LowerExceptionHandler(gate);
                 break;
             }
-            case OpCode::GET_CONSTPOOL: {
-                // initialize label manager
-                Environment env(gate, circuit_, &builder_);
-                LowerGetConstPool(gate);
-                break;
-            }
             case OpCode::CONST_DATA:
                 LowerConstPoolData(gate);
                 break;
@@ -74,9 +68,6 @@ void SlowPathLowering::CallRuntimeLowering()
                 break;
             case OpCode::UPDATE_HOTNESS:
                 LowerUpdateHotness(gate);
-                break;
-            case OpCode::STATE_SPLIT:
-                DeleteStateSplit(gate);
                 break;
             case OpCode::GET_ENV:
                 LowerGetEnv(gate);
@@ -100,10 +91,13 @@ void SlowPathLowering::CallRuntimeLowering()
     }
 }
 
-void SlowPathLowering::DeleteStateSplit(GateRef gate)
+void SlowPathLowering::LowerGetEnv(GateRef gate)
 {
-    auto depend = acc_.GetDep(gate);
-    acc_.ReplaceGate(gate, Circuit::NullGate(), depend, Circuit::NullGate());
+    GateRef jsFunc = acc_.GetValueIn(gate, 0);
+    GateRef envOffset = builder_.IntPtr(JSFunction::LEXICAL_ENV_OFFSET);
+    GateRef env = builder_.Load(VariableType::JS_ANY(), jsFunc, envOffset, acc_.GetDependRoot());
+    acc_.UpdateAllUses(gate, env);
+    acc_.DeleteGate(gate);
 }
 
 void SlowPathLowering::DeleteLoopExit(GateRef gate)
@@ -3089,18 +3083,6 @@ void SlowPathLowering::LowerConstPoolData(GateRef gate)
     acc_.DeleteGate(gate);
 }
 
-void SlowPathLowering::LowerGetConstPool(GateRef gate)
-{
-    Environment env(0, &builder_);
-    GateRef jsFunc = acc_.GetValueIn(gate, 0); // 0: this object
-    GateRef newGate = builder_.GetConstPoolFromFunction(jsFunc);
-
-    acc_.UpdateAllUses(gate, newGate);
-
-    // delete old gate
-    acc_.DeleteGate(gate);
-}
-
 void SlowPathLowering::LowerDeoptCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -3185,14 +3167,5 @@ void SlowPathLowering::LowerNotifyConcurrentResult(GateRef gate)
     GateRef newGate = LowerCallRuntime(gate, id, {acc_.GetValueIn(gate, 0),
                                                   argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT)});
     ReplaceHirWithValue(gate, newGate);
-}
-
-void SlowPathLowering::LowerGetEnv(GateRef gate)
-{
-    GateRef jsFunc = acc_.GetValueIn(gate, 0);
-    GateRef envOffset = builder_.IntPtr(JSFunction::LEXICAL_ENV_OFFSET);
-    GateRef env = builder_.Load(VariableType::JS_ANY(), jsFunc, envOffset, acc_.GetDependRoot());
-    acc_.UpdateAllUses(gate, env);
-    acc_.DeleteGate(gate);
 }
 }  // namespace panda::ecmascript

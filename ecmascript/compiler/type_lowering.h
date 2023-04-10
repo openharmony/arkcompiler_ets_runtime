@@ -181,8 +181,7 @@ private:
     void LowerObjectTypeCheck(GateRef gate);
     void LowerTSSubtypingCheck(GateRef gate);
     void LowerFloat32ArrayCheck(GateRef gate, GateRef glue);
-    void LowerArrayCheck(GateRef gate, GateRef glue);
-    void LowerStableArrayCheck(GateRef gate, GateRef glue);
+    void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate, GateRef glue);
     void LowerFloat32ArrayIndexCheck(GateRef gate);
     void LowerArrayIndexCheck(GateRef gate);

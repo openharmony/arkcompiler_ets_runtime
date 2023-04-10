@@ -123,5 +123,14 @@ struct AlignedUint8 {
         return sizeof(uint8_t);
     }
 };
+
+struct AlignedBool {
+    static constexpr size_t SizeArch32 = sizeof(bool);
+    static constexpr size_t SizeArch64 = sizeof(bool);
+    static constexpr size_t Size()
+    {
+        return sizeof(bool);
+    }
+};
 }
 #endif // ECMASCRIPT_BASE_ALIGNED_STRUCT_H

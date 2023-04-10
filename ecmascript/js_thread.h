@@ -345,16 +345,6 @@ public:
         glueData_.globalObject_ = globalObject;
     }
 
-    JSTaggedValue GetStableArrayElementsGuardians() const
-    {
-        return glueData_.stableArrayElementsGuardians_;
-    }
-
-    void SetStableArrayElementsGuardians(JSTaggedValue guardians)
-    {
-        glueData_.stableArrayElementsGuardians_ = guardians;
-    }
-
     const GlobalEnvConstants *GlobalConstants() const
     {
         return &glueData_.globalConst_;
@@ -364,7 +354,7 @@ public:
 
     bool IsStableArrayElementsGuardiansInvalid() const
     {
-        return !stableArrayElementsGuardians_;
+        return !glueData_.stableArrayElementsGuardians_;
     }
 
     void ResetGuardians();
@@ -692,7 +682,7 @@ public:
                                                  BCStubEntries,
                                                  JSTaggedValue,
                                                  JSTaggedValue,
-                                                 JSTaggedValue,
+                                                 base::AlignedBool,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -844,7 +834,7 @@ public:
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
-        alignas(EAS) JSTaggedValue stableArrayElementsGuardians_ {JSTaggedValue::True()};
+        alignas(EAS) bool stableArrayElementsGuardians_ {true};
         alignas(EAS) JSTaggedType *currentFrame_ {nullptr};
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
@@ -912,7 +902,6 @@ private:
     bool runtimeState_ {false};
     bool isAsmInterpreter_ {false};
     VmThreadControl *vmThreadControl_ {nullptr};
-    bool stableArrayElementsGuardians_ {true};
 
     bool finalizationCheckState_ {false};
 

@@ -218,7 +218,7 @@ bool GateMetaData::IsCheckWithOneIn() const
 {
     return (opcode_ == OpCode::PRIMITIVE_TYPE_CHECK) ||
            (opcode_ == OpCode::INT32_OVERFLOW_CHECK) ||
-           (opcode_ == OpCode::ARRAY_CHECK) ||
+           (opcode_ == OpCode::HEAP_OBJECT_CHECK) ||
            (opcode_ == OpCode::STABLE_ARRAY_CHECK) ||
            (opcode_ == OpCode::TYPED_ARRAY_CHECK);
 }

@@ -49,11 +49,8 @@ void TypeLowering::LowerType(GateRef gate)
         case OpCode::PRIMITIVE_TYPE_CHECK:
             LowerPrimitiveTypeCheck(gate);
             break;
-        case OpCode::ARRAY_CHECK:
-            LowerArrayCheck(gate, glue);
-            break;
         case OpCode::STABLE_ARRAY_CHECK:
-            LowerStableArrayCheck(gate, glue);
+            LowerStableArrayCheck(gate);
             break;
         case OpCode::TYPED_ARRAY_CHECK:
             LowerTypedArrayCheck(gate, glue);
@@ -198,46 +195,17 @@ void TypeLowering::LowerBooleanCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeLowering::LowerArrayCheck(GateRef gate, GateRef glue)
+void TypeLowering::LowerStableArrayCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
 
-    GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(false));
-    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
     GateRef receiver = acc_.GetValueIn(gate, 0);
+    builder_.HeapObjectCheck(receiver, frameState);
+
     GateRef receiverHClass = builder_.LoadHClass(receiver);
-    GateRef arrayFunction =
-        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef protoOrHclass =
-        builder_.Load(VariableType::JS_ANY(), arrayFunction,
-                      builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    GateRef hcalssCheck = builder_.Equal(receiverHClass, protoOrHclass);
-    builder_.DeoptCheck(hcalssCheck, frameState, DeoptType::NOTARRAY);
-
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
-void TypeLowering::LowerStableArrayCheck(GateRef gate, GateRef glue)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef frameState = GetFrameState(gate);
-
-    GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(false));
-    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef receiverHClass = builder_.LoadHClass(receiver);
-    GateRef arrayFunction =
-        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef protoOrHclass =
-        builder_.Load(VariableType::JS_ANY(), arrayFunction,
-                      builder_.IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    GateRef hcalssCheck = builder_.Equal(receiverHClass, protoOrHclass);
-    GateRef guardiansOffset = builder_.IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(false));
-    GateRef guardians = builder_.Load(VariableType(MachineType::I64, GateType::BooleanType()), glue, guardiansOffset);
-    GateRef guardiansCheck = builder_.Equal(guardians, builder_.TaggedTrue());
-    GateRef check = builder_.BoolAnd(hcalssCheck, guardiansCheck);
-    builder_.DeoptCheck(check, frameState, DeoptType::NOTSARRAY);
+    builder_.HClassStableArrayCheck(receiverHClass, frameState);
+    builder_.ArrayGuardianCheck(frameState);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -294,13 +262,10 @@ void TypeLowering::LowerTSSubtypingCheck(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
 
-    Label receiverIsHeapObject(&builder_);
     Label exit(&builder_);
+    builder_.HeapObjectCheck(receiver, frameState);
 
     DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
-    builder_.Branch(builder_.TaggedIsHeapObject(receiver), &receiverIsHeapObject, &exit);
-
-    builder_.Bind(&receiverIsHeapObject);
     {
         JSTaggedValue aotHC = tsManager_->GetHClassFromCache(acc_.TryGetValue(aotHCIndex));
         ASSERT(aotHC.IsJSHClass());

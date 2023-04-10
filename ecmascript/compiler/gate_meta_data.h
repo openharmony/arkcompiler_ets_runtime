@@ -82,7 +82,7 @@ enum class DeoptType : uint8_t {
     NOTDOUBLE,
     NOTNUMBER,
     NOTBOOL,
-    NOTARRAY,
+    NOTHEAPOBJECT,
     NOTSARRAY,
     NOTF32ARRAY,
     INCONSISTENTHCLASS,
@@ -206,8 +206,10 @@ std::string MachineTypeToStr(MachineType machineType);
     V(Load, LOAD, GateFlags::NONE_FLAG, 0, 1, 1)                                        \
     V(Store, STORE, GateFlags::NONE_FLAG, 0, 1, 2)                                      \
     V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, 3)                  \
-    V(ArrayCheck, ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                           \
+    V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                \
     V(StableArrayCheck, STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)              \
+    V(ArrayGuardianCheck, ARRAY_GUARDIAN_CHECK, GateFlags::CHECKABLE, 1, 1, 0)          \
+    V(HClassStableArrayCheck, HCLASS_STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1) \
     V(DeoptCheck, DEOPT_CHECK, GateFlags::NONE_FLAG, 1, 1, 3)                           \
     V(StoreProperty, STORE_PROPERTY, GateFlags::NONE_FLAG, 1, 1, 3)                     \
     V(StorePropertyNoBarrier, STORE_PROPERTY_NO_BARRIER, GateFlags::NONE_FLAG, 1, 1, 3) \

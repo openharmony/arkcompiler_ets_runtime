@@ -307,8 +307,8 @@ std::string Deoptimizier::DisplayItems(kungfu::DeoptType type)
             return "NOT NUMBER";
         case kungfu::DeoptType::NOTBOOL:
             return "NOT BOOL";
-        case kungfu::DeoptType::NOTARRAY:
-            return "NOT ARRAY";
+        case kungfu::DeoptType::NOTHEAPOBJECT:
+            return "NOT HEAP OBJECT";
         case kungfu::DeoptType::NOTSARRAY:
             return "NOT SARRAY";
         case kungfu::DeoptType::NOTF32ARRAY:

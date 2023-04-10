@@ -146,14 +146,12 @@ GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef ind
     return ret;
 }
 
-GateRef CircuitBuilder::ArrayCheck(GateRef gate)
+GateRef CircuitBuilder::HeapObjectCheck(GateRef gate, GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.HasFrameState(currentDepend));
-    auto frameState = acc_.GetFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->ArrayCheck(),
+    GateRef ret = GetCircuit()->NewGate(circuit_->HeapObjectCheck(),
         MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -169,6 +167,30 @@ GateRef CircuitBuilder::StableArrayCheck(GateRef gate)
     auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->StableArrayCheck(),
         MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::HClassStableArrayCheck(GateRef gate, GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->HClassStableArrayCheck(),
+        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayGuardianCheck(GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArrayGuardianCheck(),
+        MachineType::I1, {currentControl, currentDepend, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

@@ -47,6 +47,9 @@ GateRef LaterElimination::VisitGate(GateRef gate)
     switch (opcode) {
         case OpCode::GET_CONSTPOOL:
         case OpCode::CHECK_AND_CONVERT:
+        case OpCode::ARRAY_GUARDIAN_CHECK:
+        case OpCode::HCLASS_STABLE_ARRAY_CHECK:
+        case OpCode::HEAP_OBJECT_CHECK:
             return TryEliminateGate(gate);
         case OpCode::DEPEND_SELECTOR:
             return TryEliminateDependSelector(gate);
