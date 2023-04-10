@@ -273,8 +273,8 @@ JSHandle<TSInterfaceType> TSTypeParser::ParseInterfaceType(const JSPandaFile *js
     // resolve fields and methods of interface
     uint32_t numFields = literal->Get(index++).GetInt();
     // field takes up 4 spaces and method takes up 2 spaces.
-    uint32_t numMethods = static_cast<uint32_t>(literal->Get(index +
-                                                             numFields * TSInterfaceType::FIELD_LENGTH).GetInt());
+    uint32_t numMethods =
+        static_cast<uint32_t>(literal->Get(index + numFields * TSInterfaceType::FIELD_LENGTH).GetInt());
     uint32_t totalFields = numFields + numMethods;
 
     JSHandle<TSObjectType> fieldsType = factory_->NewTSObjectType(totalFields);

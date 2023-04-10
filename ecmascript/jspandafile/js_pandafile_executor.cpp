@@ -79,7 +79,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     if (thread->HasPendingException()) {
         vm->HandleUncaughtException(thread->GetException().GetTaggedObject());
         return Unexpected(false);
-    }    
+    }
     if (isModule) {
         [[maybe_unused]] EcmaHandleScope scope(thread);
         ModuleManager *moduleManager = vm->GetModuleManager();

@@ -73,16 +73,10 @@ JSTaggedValue TestFunctionApplyAndCall(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSTaggedValue> thisValue(BuiltinsBase::GetThis(argv));
 
-    JSTaggedValue testA =
-        JSObject::GetProperty(thread, thisValue,
-                              JSHandle<JSTaggedValue>(factory->NewFromASCII("test_builtins_function_a")))
-            .GetValue()
-            .GetTaggedValue();
-    JSTaggedValue testB =
-        JSObject::GetProperty(thread, thisValue,
-                              JSHandle<JSTaggedValue>(factory->NewFromASCII("test_builtins_function_b")))
-            .GetValue()
-            .GetTaggedValue();
+    JSTaggedValue testA = JSObject::GetProperty(thread, thisValue,
+        JSHandle<JSTaggedValue>(factory->NewFromASCII("test_builtins_function_a"))).GetValue().GetTaggedValue();
+    JSTaggedValue testB = JSObject::GetProperty(thread, thisValue,
+        JSHandle<JSTaggedValue>(factory->NewFromASCII("test_builtins_function_b"))).GetValue().GetTaggedValue();
 
     result = result + testA.GetInt() + testB.GetInt();
     return BuiltinsBase::GetTaggedInt(result);
