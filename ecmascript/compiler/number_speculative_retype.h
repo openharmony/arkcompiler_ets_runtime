@@ -56,7 +56,7 @@ private:
     GateRef VisitNumberBinaryOp(GateRef gate);
     GateRef VisitUndefinedStrictEq(GateRef gate);
     GateRef VisitTypedUnaryOp(GateRef gate);
-    
+
     GateRef VisitNumberMonocular(GateRef gate);
     GateRef VisitNumberNot(GateRef gate);
     GateRef VisitTypedJeqz(GateRef gate);
@@ -74,6 +74,7 @@ private:
     GateRef VisitLoadElement(GateRef gate);
     GateRef VisitStoreElement(GateRef gate);
     GateRef VisitNumberRelated(GateRef gate);
+    GateRef VisitCallBuiltins(GateRef gate);
     GateRef VisitOthers(GateRef gate);
 
     GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);

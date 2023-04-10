@@ -483,6 +483,11 @@ GateRef CircuitBuilder::ExtractValue(MachineType mt, GateRef pointer, GateRef in
     return GetCircuit()->NewGate(circuit_->ExtractValue(), mt, {pointer, index}, GateType::NJSValue());
 }
 
+GateRef CircuitBuilder::Sqrt(GateRef param)
+{
+    return GetCircuit()->NewGate(circuit_->Sqrt(), MachineType::F64, {param}, GateType::DoubleType());
+}
+
 GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateType typeTo,
                                     const std::vector<GateRef>& inList)
 {

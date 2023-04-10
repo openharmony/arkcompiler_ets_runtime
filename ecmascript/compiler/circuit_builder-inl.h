@@ -108,7 +108,8 @@ GateRef CircuitBuilder::GetInt64OfTInt(GateRef x)
 
 GateRef CircuitBuilder::GetInt32OfTInt(GateRef x)
 {
-    return TruncInt64ToInt32(GetInt64OfTInt(x));
+    GateRef tagged = ChangeTaggedPointerToInt64(x);
+    return TruncInt64ToInt32(tagged);
 }
 
 GateRef CircuitBuilder::TaggedCastToIntPtr(GateRef x)
@@ -158,7 +159,7 @@ GateRef CircuitBuilder::GetDoubleOfTNumber(GateRef x)
 GateRef CircuitBuilder::DoubleToInt(GateRef x, Label *exit)
 {
     Label overflow(env_);
-    
+
     GateRef xInt = ChangeFloat64ToInt32(x);
     DEFVAlUE(result, env_, VariableType::INT32(), xInt);
 

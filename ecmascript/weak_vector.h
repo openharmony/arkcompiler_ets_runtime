@@ -35,8 +35,6 @@ public:
 
     static constexpr uint32_t DEFAULT_CAPACITY = 4;
     static constexpr uint32_t DEFAULT_GROW_SIZE = 5;
-    static constexpr uint32_t END_INDEX = 0;
-    static constexpr uint32_t ELEMENTS_START_INDEX = 1;
     static JSHandle<WeakVector> Create(const JSThread *thread, uint32_t capacity = DEFAULT_CAPACITY);
     static JSHandle<WeakVector> Grow(const JSThread *thread, const JSHandle<WeakVector> &old, uint32_t newCapacity);
     static JSHandle<WeakVector> Append(const JSThread *thread, const JSHandle<WeakVector> &vec,
@@ -51,7 +49,7 @@ public:
 
     inline uint32_t GetEnd() const
     {
-        return TaggedArray::Get(END_INDEX).GetArrayLength();
+        return TaggedArray::GetExtraLength();
     }
 
     inline bool Full() const
@@ -66,7 +64,7 @@ public:
 
     inline uint32_t GetCapacity() const
     {
-        return TaggedArray::GetLength() - ELEMENTS_START_INDEX;
+        return TaggedArray::GetLength();
     }
 
     inline JSTaggedValue Get(uint32_t index) const
@@ -92,17 +90,17 @@ public:
 
 private:
     static const uint32_t MIN_CAPACITY = 2;
-    static const uint32_t MAX_VECTOR_INDEX = TaggedArray::MAX_ARRAY_INDEX - ELEMENTS_START_INDEX;
+    static const uint32_t MAX_VECTOR_INDEX = TaggedArray::MAX_ARRAY_INDEX;
 
     inline static constexpr uint32_t VectorToArrayIndex(uint32_t index)
     {
-        return index + ELEMENTS_START_INDEX;
+        return index;
     }
 
-    inline void SetEnd(const JSThread *thread, uint32_t end)
+    inline void SetEnd([[maybe_unused]] const JSThread *thread, uint32_t end)
     {
         ASSERT(end <= GetCapacity());
-        TaggedArray::Set(thread, END_INDEX, JSTaggedValue(end));
+        SetExtraLength(end);
     }
 
     static JSTaggedValue GetStoreVal(const JSHandle<JSTaggedValue> &value, ElementType type);

@@ -23,9 +23,6 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
     auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
     auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
     switch (id) {
-        case BUILTINS_STUB_ID(SQRT):
-            LowerTypedSqrt(gate);
-            break;
         case BUILTINS_STUB_ID(ABS):
             LowerTypedAbs(gate);
             break;
@@ -112,9 +109,15 @@ GateRef BuiltinLowering::TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID
     return ret;
 }
 
-void BuiltinLowering::LowerTypedSqrt(GateRef gate)
-{
-    auto ret = TypedSqrt(gate);
+void BuiltinLowering::LowerTypedSqrt(GateRef gate) {
+    Environment env(gate, circuit_, &builder_);
+    GateRef param = acc_.GetValueIn(gate, 0);
+    // 20.2.2.32
+    // If value is NAN or negative, include -NaN and -Infinity but not -0.0, the result is NaN
+    // Assembly instruction support NAN and negative
+    auto ret = builder_.Sqrt(param);
+    acc_.SetMachineType(gate, MachineType::F64);
+    acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
@@ -128,90 +131,6 @@ GateRef BuiltinLowering::IntToTaggedIntPtr(GateRef x)
 {
     GateRef val = builder_.SExtInt32ToInt64(x);
     return builder_.ToTaggedIntPtr(val);
-}
-
-GateRef BuiltinLowering::TypedSqrt(GateRef gate)
-{
-    auto env = builder_.GetCurrentEnvironment();
-    Label entry(&builder_);
-    env->SubCfgEntry(&entry);
-
-    Label numberBranch(&builder_);
-    Label notNumberBranch(&builder_);
-    Label exit(&builder_);
-    GateRef para1 = acc_.GetValueIn(gate, 0);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-
-    builder_.Branch(builder_.TaggedIsNumber(para1), &numberBranch, &notNumberBranch);
-    builder_.Bind(&numberBranch);
-    {
-        Label isInt(&builder_);
-        Label notInt(&builder_);
-        Label calc(&builder_);
-        DEFVAlUE(value, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
-        builder_.Branch(builder_.TaggedIsInt(para1), &isInt, &notInt);
-        builder_.Bind(&isInt);
-        {
-            value = builder_.ChangeInt32ToFloat64(builder_.GetInt32OfTInt(para1));
-            builder_.Jump(&calc);
-        }
-        builder_.Bind(&notInt);
-        {
-            value = builder_.GetDoubleOfTDouble(para1);
-            builder_.Jump(&calc);
-        }
-        builder_.Bind(&calc);
-        {
-            Label signbit(&builder_);
-            Label notSignbit(&builder_);
-            GateRef negativeInfinity = builder_.Double(-base::POSITIVE_INFINITY);
-            GateRef isNegativeInfinity = builder_.Equal(*value, negativeInfinity);
-            isNegativeInfinity = builder_.Equal(builder_.SExtInt1ToInt32(isNegativeInfinity), builder_.Int32(1));
-            GateRef negativeNan = builder_.Double(-base::NAN_VALUE);
-            GateRef isNegativeNan = builder_.Equal(*value, negativeNan);
-            isNegativeNan = builder_.Equal(builder_.SExtInt1ToInt32(isNegativeNan), builder_.Int32(1));
-            GateRef negativeZero = builder_.Double(-0.0);
-            GateRef isNegativeZero = builder_.Equal(*value, negativeZero);
-            // If value is negative, include -NaN and -Infinity but not -0.0, the result is NaN
-            GateRef negNanOrInfinityNotZero = builder_.BoolOr(isNegativeNan, isNegativeInfinity);
-            negNanOrInfinityNotZero = builder_.BoolAnd(negNanOrInfinityNotZero, builder_.BoolNot(isNegativeZero));
-            builder_.Branch(negNanOrInfinityNotZero, &signbit, &notSignbit);
-            builder_.Bind(&signbit);
-            {
-                result = builder_.DoubleToTaggedDoublePtr(builder_.Double(base::NAN_VALUE));
-                builder_.Jump(&exit);
-            }
-            builder_.Bind(&notSignbit);
-            {
-                Label naN(&builder_);
-                Label notNan(&builder_);
-                GateRef condition = builder_.DoubleIsNAN(*value);
-                builder_.Branch(condition, &naN, &notNan);
-                builder_.Bind(&notNan);
-                {
-                    GateRef glue = acc_.GetGlueFromArgList();
-                    result = builder_.CallNGCRuntime(
-                        glue, RTSTUB_ID(FloatSqrt), Gate::InvalidGateRef, {*value}, gate);
-                    builder_.Jump(&exit);
-                }
-                // If value is NaN, the result is NaN
-                builder_.Bind(&naN);
-                {
-                    result = builder_.DoubleToTaggedDoublePtr(builder_.Double(base::NAN_VALUE));
-                    builder_.Jump(&exit);
-                }
-            }
-        }
-    }
-    builder_.Bind(&notNumberBranch);
-    {
-        builder_.Jump(&exit);
-    }
-
-    builder_.Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
 }
 
 //  Int abs : The internal representation of an integer is inverse code,
@@ -306,27 +225,28 @@ BuiltinsStubCSigns::ID BuiltinLowering::GetBuiltinId(std::string idStr)
     return BUILTINS_STUB_ID(NONE);
 }
 
-GateRef BuiltinLowering::CheckPara(GateRef gate)
+GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
 {
     GateRef idGate = acc_.GetValueIn(gate, 1);
     BuiltinsStubCSigns::ID id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
-    GateRef para1 = acc_.GetValueIn(gate, 2);
-    GateRef paracheck = builder_.TaggedIsNumber(para1);
     switch (id) {
-        case BuiltinsStubCSigns::ID::SQRT:
         case BuiltinsStubCSigns::ID::COS:
         case BuiltinsStubCSigns::ID::SIN:
         case BuiltinsStubCSigns::ID::ACOS:
         case BuiltinsStubCSigns::ID::ATAN:
         case BuiltinsStubCSigns::ID::ABS:
         case BuiltinsStubCSigns::ID::FLOOR: {
-            break;
+            GateRef para = acc_.GetValueIn(gate, 2);
+            GateRef paracheck = builder_.TaggedIsNumber(para);
+            return builder_.BoolAnd(paracheck, funcCheck);
         }
+        case BuiltinsStubCSigns::ID::SQRT:
+            // NumberSpeculativeRetype is checked
+            return funcCheck;
         default: {
             LOG_COMPILER(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }
-    return paracheck;
 }
 }  // namespace panda::ecmascript::kungfu

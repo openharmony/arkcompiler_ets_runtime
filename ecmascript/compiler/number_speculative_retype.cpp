@@ -68,6 +68,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitPhi(gate);
         case OpCode::CONSTANT:
             return VisitConstant(gate);
+        case OpCode::TYPED_CALL_BUILTIN:
+            return VisitCallBuiltins(gate);
         default:
             return VisitOthers(gate);
     }
@@ -349,6 +351,32 @@ GateRef NumberSpeculativeRetype::VisitNumberRelated(GateRef gate)
         }
         acc_.ReplaceStateIn(gate, builder_.GetState());
         acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitCallBuiltins(GateRef gate)
+{
+    auto valuesIn = acc_.GetNumValueIn(gate);
+    auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
+    auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
+    if (id != BUILTINS_STUB_ID(SQRT)) {
+        return VisitOthers(gate);
+    }
+
+    if (IsRetype()) {
+        // Sqrt output is double
+        return SetOutputType(gate, GateType::DoubleType());
+    }
+    if (IsConvert()) {
+        Environment env(gate, circuit_, &builder_);
+        acc_.ReplaceValueIn(gate, ConvertToTagged(idGate), valuesIn - 1);
+        for (size_t i = 0; i < valuesIn - 1; ++i) {
+            GateRef input = acc_.GetValueIn(gate, i);
+            acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(input, GateType::NumberType()), i);
+            acc_.ReplaceStateIn(gate, builder_.GetState());
+            acc_.ReplaceDependIn(gate, builder_.GetDepend());
+        }
     }
     return Circuit::NullGate();
 }
@@ -640,7 +668,7 @@ GateRef NumberSpeculativeRetype::VisitNumberDiv(GateRef gate)
     if (IsRetype()) {
         return SetOutputType(gate, GateType::DoubleType());
     }
-    
+
     if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
         ConvertForDoubleOperator(gate, acc_.GetLeftType(gate), acc_.GetRightType(gate));

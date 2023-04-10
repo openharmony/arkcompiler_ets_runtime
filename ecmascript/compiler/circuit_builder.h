@@ -249,6 +249,7 @@ public:
     GateRef SubWithOverflow(GateRef left, GateRef right);
     GateRef MulWithOverflow(GateRef left, GateRef right);
     GateRef ExtractValue(MachineType mt, GateRef pointer, GateRef index);
+    GateRef Sqrt(GateRef param);
     MachineType GetMachineTypeOfValueType(ValueType type);
     GateType GetGateTypeOfValueType(ValueType type);
     GateRef Convert(GateRef gate, ValueType src, ValueType dst);

@@ -60,6 +60,10 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitStoreProperty(gate);
             break;
         }
+        case OpCode::TYPED_CALL_BUILTIN: {
+            VisitCallBuiltins(gate);
+            break;
+        }
         default:
             break;
     }
@@ -339,6 +343,19 @@ void NumberSpeculativeLowering::VisitStoreProperty(GateRef gate)
         default:
             break;
     }
+}
+
+void NumberSpeculativeLowering::VisitCallBuiltins(GateRef gate)
+{
+    auto valuesIn = acc_.GetNumValueIn(gate);
+    auto idGate = acc_.GetValueIn(gate, valuesIn - 1);
+    auto id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
+    if (id != BUILTINS_STUB_ID(SQRT)) {
+        return;
+    }
+
+    BuiltinLowering lowering(circuit_);
+    lowering.LowerTypedSqrt(gate);
 }
 
 void NumberSpeculativeLowering::VisitConstant(GateRef gate)

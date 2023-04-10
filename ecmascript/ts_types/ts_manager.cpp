@@ -1218,6 +1218,7 @@ kungfu::GateType TSManager::TryNarrowUnionType(kungfu::GateType gateType)
 
 bool TSManager::IsBuiltinMath(kungfu::GateType funcType) const
 {
+    DISALLOW_GARBAGE_COLLECTION;
     GlobalTSTypeRef funcGT = funcType.GetGTRef();
     uint32_t moduleId = funcGT.GetModuleId();
     if (moduleId != static_cast<uint32_t>(MTableIdx::BUILTIN)) {
@@ -1230,14 +1231,26 @@ bool TSManager::IsBuiltinMath(kungfu::GateType funcType) const
         uint32_t mathOffset = GetBuiltinOffset(idx);
         bool hasCreatedGT = HasCreatedGT(builtinPandaFile, mathOffset);
         if (hasCreatedGT) {
-            auto gt = GetGTFromOffset(builtinPandaFile, mathOffset);
-            return (funcGT == gt);
-        }
-        return false;
-    }
+            JSHandle<JSTaggedValue> funcTsType = GetTSType(funcGT);
+            ASSERT(funcTsType->IsTSFunctionType());
+            JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(funcTsType);
+            auto name = functionType->GetName();
 
-    uint32_t localId = funcGT.GetLocalId();
-    return (localId == static_cast<uint32_t>(BuiltinTypeId::MATH));
+            auto gt = GetGTFromOffset(builtinPandaFile, mathOffset);
+            auto tsType = GetTSType(gt);
+            ASSERT(tsType->IsTSClassType());
+            JSHandle<TSClassType> classType(tsType);
+            JSHandle<TSObjectType> constructorType(thread_, classType->GetConstructorType());
+            JSTaggedValue layout = constructorType->GetObjLayoutInfo();
+            TSObjLayoutInfo *itLayout = TSObjLayoutInfo::Cast(layout.GetTaggedObject());
+            int index = itLayout->GetElementIndexByKey(name);
+            if (index != -1) {
+                auto mathFuncGt = GlobalTSTypeRef(itLayout->GetTypeId(index).GetInt());
+                return mathFuncGt == funcGT;
+            }
+        }
+    }
+    return false;
 }
 
 bool TSManager::IsBuiltin(kungfu::GateType funcType) const
