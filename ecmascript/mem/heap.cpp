@@ -304,6 +304,13 @@ void Heap::EnableParallelGC()
     Taskpool::GetCurrentTaskpool()->Initialize();
     parallelGC_ = ecmaVm_->GetJSOptions().EnableParallelGC();
     maxEvacuateTaskCount_ = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    if (auto totalThreadNum = workManager_->GetTotalThreadNum();
+        totalThreadNum != maxEvacuateTaskCount_ + 1) {
+        LOG_ECMA_MEM(WARN) << "TheadNum mismatch, totalThreadNum(workerManager): " << totalThreadNum << ", "
+                           << "totalThreadNum(taskpool): " << maxEvacuateTaskCount_ + 1;
+        delete workManager_;
+        workManager_ = new WorkManager(this, maxEvacuateTaskCount_ + 1);
+    }
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
                                          maxEvacuateTaskCount_ - 1);
     bool concurrentMarkerEnabled = ecmaVm_->GetJSOptions().EnableConcurrentMark();
