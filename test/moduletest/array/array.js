@@ -70,3 +70,44 @@ arr8[1] = 8;
 print(arr8.shift());  // undefined
 print(arr8.shift());  // 8
 print(arr8.shift());  // undefined
+
+// Test on Array::Splice
+var arr9 = new Array(9);
+print(arr9.length); // 9
+arr9.splice(0, 9);
+print(arr9.length); // 0
+for(let i = 0; i < arr9.length; i++) {
+    print(arr9[i]);
+}
+
+var arr10 = new Array(9);
+print(arr10.length); // 9
+arr10.splice(0, 8, 1);
+print(arr10.length); // 2
+for(let i = 0; i < arr10.length; i++) {
+    print(arr10[i]); // 1, undefined
+}
+
+var arr11 = new Array(9);
+print(arr11.length); // 9
+arr11.splice(1, 8, 1);
+print(arr11.length); // 2
+for(let i = 0; i < arr11.length; i++) {
+    print(arr11[i]); // undefined, 1
+}
+
+var arr12 = new Array(9);
+print(arr12.length); // 9
+arr12.splice(0, 4, 1, 2, 3, 4, 5);
+print(arr12.length); // 10
+for(let i = 0; i < arr12.length; i++) {
+    print(arr12[i]); // 1, 2, 3, 4, 5, undefined, undefined, undefined, undefined, undefined
+}
+
+var arr13 = new Array(9);
+print(arr13.length); // 9
+arr13.splice(7, 5, 1, 2, 3);
+print(arr13.length); // 10
+for (var i = 0; i < arr13.length; i++) {
+    print(arr13[i]); // undefined, undefined, undefined, undefined, undefined, undefined, undefined, 1, 2, 3
+}
