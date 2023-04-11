@@ -683,12 +683,13 @@ Local<FunctionRef> DebuggerApi::GenerateFuncFromBuffer(const EcmaVM *ecmaVm, con
                                                        size_t size, std::string_view entryPoint)
 {
     JSPandaFileManager *mgr = JSPandaFileManager::GetInstance();
-    const auto *jsPandaFile = mgr->LoadJSPandaFile(ecmaVm->GetJSThread(), "", entryPoint, buffer, size);
+    std::shared_ptr<JSPandaFile> jsPandaFile =
+        mgr->LoadJSPandaFile(ecmaVm->GetJSThread(), "", entryPoint, buffer, size);
     if (jsPandaFile == nullptr) {
         return JSValueRef::Undefined(ecmaVm);
     }
 
-    JSHandle<Program> program = mgr->GenerateProgram(const_cast<EcmaVM *>(ecmaVm), jsPandaFile, entryPoint);
+    JSHandle<Program> program = mgr->GenerateProgram(const_cast<EcmaVM *>(ecmaVm), jsPandaFile.get(), entryPoint);
     JSTaggedValue func = program->GetMainFunction();
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(ecmaVm->GetJSThread(), func));
 }

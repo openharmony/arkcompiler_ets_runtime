@@ -52,6 +52,7 @@ enum class SerializationUID : uint8_t {
     // Not support yet, BigInt type has not been implemented in ark engine
     BIGINT,
     ECMASTRING,
+    C_STRING,
     // Boolean types
     C_TRUE,
     C_FALSE,
@@ -95,9 +96,8 @@ enum class SerializationUID : uint8_t {
     ERROR_MESSAGE_END,
     // Function begin
     CONCURRENT_FUNCTION,
-    JS_METHOD,
+    METHOD,
     NATIVE_METHOD,
-    CONSTANT_POOL,
     TAGGED_ARRAY,
     // Function end
     BYTE_ARRAY,
@@ -148,6 +148,7 @@ private:
     bool IsSerialized(uintptr_t addr) const;
     bool WriteIfSerialized(uintptr_t addr);
     uint32_t GetDataViewTypeIndex(const DataViewType dataViewType);
+    bool WriteString(const CString &str);
 
     NO_MOVE_SEMANTIC(JSSerializer);
     NO_COPY_SEMANTIC(JSSerializer);
@@ -183,9 +184,8 @@ private:
     JSHandle<JSTaggedValue> ReadJSFunction();
     JSHandle<JSTaggedValue> ReadTaggedArray();
     JSHandle<JSTaggedValue> ReadByteArray();
-    JSHandle<JSTaggedValue> ReadJSMethod();
+    JSHandle<JSTaggedValue> ReadMethod();
     JSHandle<JSTaggedValue> ReadNativeMethod();
-    JSHandle<JSTaggedValue> ReadConstantPool();
     JSHandle<JSTaggedValue> ReadJSError(SerializationUID uid);
     JSHandle<JSTaggedValue> ReadJSDate();
     JSHandle<JSTaggedValue> ReadJSArray();
@@ -207,6 +207,7 @@ private:
     bool DefinePropertiesAndElements(const JSHandle<JSTaggedValue> &obj);
     bool ReadDesc(PropertyDescriptor *desc);
     bool ReadBoolean(bool *value);
+    bool ReadString(CString *value);
     DataViewType GetDataViewTypeByIndex(uint32_t viewTypeIndex);
 
     NO_MOVE_SEMANTIC(JSDeserializer);

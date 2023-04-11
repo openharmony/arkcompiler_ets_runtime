@@ -17,7 +17,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript {
-ModuleDataAccessor::ModuleDataAccessor(const JSPandaFile *pandaFile, panda_file::File::EntityId moduleDataId)
+ModuleDataAccessor::ModuleDataAccessor(const JSPandaFile *pandaFile, EntityId moduleDataId)
     : pandaFile_(pandaFile), moduleDataId_(moduleDataId)
 {
     auto &pf = *pandaFile_->GetPandaFile();

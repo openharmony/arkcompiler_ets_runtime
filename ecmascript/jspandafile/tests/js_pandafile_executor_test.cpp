@@ -70,7 +70,7 @@ HWTEST_F_L0(JSPandaFileExecutorTest, Execute)
     Parser parser;
     auto res = parser.Parse(data);
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     const File *file = pf->GetPandaFile();
     File::EntityId classId = file->GetClassId(typeDesc);
@@ -81,14 +81,15 @@ HWTEST_F_L0(JSPandaFileExecutorTest, Execute)
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
     MethodLiteral *method = new MethodLiteral(methodId[0]);
-    method->Initialize(pf);
+    method->Initialize(pf.get());
     pf->SetMethodLiteralToMap(method);
-    pfManager->InsertJSPandaFile(pf);
-    Expected<JSTaggedValue, bool> result = JSPandaFileExecutor::Execute(thread, pf, JSPandaFile::ENTRY_MAIN_FUNCTION);
+    pfManager->AddJSPandaFileVm(instance, pf);
+    Expected<JSTaggedValue, bool> result =
+        JSPandaFileExecutor::Execute(thread, pf.get(), JSPandaFile::ENTRY_MAIN_FUNCTION);
     EXPECT_TRUE(result);
     EXPECT_EQ(result.Value(), JSTaggedValue::Hole());
 
-    pfManager->RemoveJSPandaFile((void *)pf);
+    pfManager->RemoveJSPandaFileVm(instance, pf.get());
 }
 
 HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
@@ -105,7 +106,7 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
     Parser parser;
     auto res = parser.Parse(data);
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     const File *file = pf->GetPandaFile();
     File::EntityId classId = file->GetClassId(typeDesc);
@@ -116,22 +117,22 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
     MethodLiteral *method = new MethodLiteral(methodId[0]);
-    method->Initialize(pf);
+    method->Initialize(pf.get());
     pf->SetMethodLiteralToMap(method);
-    pfManager->InsertJSPandaFile(pf);
+    pfManager->AddJSPandaFileVm(instance, pf);
     Expected<JSTaggedValue, bool> result =
         JSPandaFileExecutor::ExecuteFromFile(thread, CString(fileName), JSPandaFile::ENTRY_MAIN_FUNCTION);
     EXPECT_TRUE(result);
     EXPECT_EQ(result.Value(), JSTaggedValue::Hole());
 
-    pfManager->RemoveJSPandaFile((void *)pf);
-    const JSPandaFile *foundPf = pfManager->FindJSPandaFile(fileName);
-    pfManager->RemoveJSPandaFile((void *)foundPf);
+    pfManager->RemoveJSPandaFileVm(instance, pf.get());
+    std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFile(fileName);
+    EXPECT_TRUE(foundPf == nullptr);
 }
 
 HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
 {
-    const char *fileName = "__JSPandaFileExecutorTest2.abc";
+    const char *fileName = "__JSPandaFileExecutorTest3.abc";
     const char *data = R"(
         .language ECMAScript
         .function any func_main_0(any a0, any a1, any a2) {
@@ -143,7 +144,7 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
     Parser parser;
     auto res = parser.Parse(data);
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName));
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     const File *file = pf->GetPandaFile();
     File::EntityId classId = file->GetClassId(typeDesc);
@@ -154,16 +155,16 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
     MethodLiteral *method = new MethodLiteral(methodId[0]);
-    method->Initialize(pf);
+    method->Initialize(pf.get());
     pf->SetMethodLiteralToMap(method);
-    pfManager->InsertJSPandaFile(pf);
+    pfManager->AddJSPandaFileVm(instance, pf);
     Expected<JSTaggedValue, bool> result = JSPandaFileExecutor::ExecuteFromBuffer(
         thread, (void *)data, sizeof(data), JSPandaFile::ENTRY_MAIN_FUNCTION, CString(fileName));
     EXPECT_TRUE(result);
     EXPECT_EQ(result.Value(), JSTaggedValue::Hole());
 
-    pfManager->RemoveJSPandaFile((void *)pf);
-    const JSPandaFile *foundPf = pfManager->FindJSPandaFile(fileName);
-    pfManager->RemoveJSPandaFile((void *)foundPf);
+    pfManager->RemoveJSPandaFileVm(instance, pf.get());
+    std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFile(fileName);
+    EXPECT_TRUE(foundPf == nullptr);
 }
 }  // namespace panda::test

@@ -62,7 +62,7 @@ HWTEST_F_L0(PandaFileTranslatorTest, GenerateProgram)
 {
     Parser parser;
     auto vm = thread->GetEcmaVM();
-    const char *filename = "__PandaFileTranslatorTest.pa";
+    const char *filename = "__PandaFileTranslatorTest1.pa";
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     const char *data = R"(
         .function any func_main_0(any a0, any a1, any a2) {}
@@ -71,7 +71,7 @@ HWTEST_F_L0(PandaFileTranslatorTest, GenerateProgram)
     auto res = parser.Parse(data);
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
     const File *file = pf->GetPandaFile();
     File::EntityId classId = file->GetClassId(typeDesc);
     ClassDataAccessor cda(*file, classId);
@@ -84,28 +84,26 @@ HWTEST_F_L0(PandaFileTranslatorTest, GenerateProgram)
     MethodLiteral *method2 = new MethodLiteral(methodId[1]);
     pf->SetMethodLiteralToMap(method1);
     pf->SetMethodLiteralToMap(method2);
-    pfManager->InsertJSPandaFile(pf);
+    pfManager->AddJSPandaFileVm(instance, pf);
 
-    JSHandle<ecmascript::Program> program1 =
-        PandaFileTranslator::GenerateProgram(vm, pf, std::string_view("func"));
+    JSHandle<ecmascript::Program> program1 = pfManager->GenerateProgram(vm, pf.get(), std::string_view("func"));
     JSHandle<JSFunction> mainFunc1(thread, program1->GetMainFunction());
     JSHandle<JSTaggedValue> funcName1 = JSFunction::GetFunctionName(thread, JSHandle<JSFunctionBase>(mainFunc1));
     EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName1)).ToCString().c_str(), "func");
 
     pf->UpdateMainMethodIndex(methodId[1].GetOffset());
-    JSHandle<ecmascript::Program> program2 =
-        PandaFileTranslator::GenerateProgram(vm, pf, JSPandaFile::ENTRY_FUNCTION_NAME);
+    JSHandle<ecmascript::Program> program2 = pfManager->GenerateProgram(vm, pf.get(), JSPandaFile::ENTRY_FUNCTION_NAME);
     JSHandle<JSFunction> mainFunc2(thread, program2->GetMainFunction());
     JSHandle<JSTaggedValue> funcName2 = JSFunction::GetFunctionName(thread, JSHandle<JSFunctionBase>(mainFunc2));
     EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName2)).ToCString().c_str(), "func_main_0");
 
-    pfManager->RemoveJSPandaFile((void *)pf);
+    pfManager->RemoveJSPandaFileVm(instance, pf.get());
 }
 
 HWTEST_F_L0(PandaFileTranslatorTest, TranslateClasses)
 {
     Parser parser;
-    const char *filename = "__PandaFileTranslatorTest.pa";
+    const char *filename = "__PandaFileTranslatorTest2.pa";
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     const char *data = R"(
         .function any func_main_0(any a0, any a1, any a2) {
@@ -116,7 +114,7 @@ HWTEST_F_L0(PandaFileTranslatorTest, TranslateClasses)
     auto res = parser.Parse(data);
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
     const File *file = pf->GetPandaFile();
     File::EntityId classId = file->GetClassId(typeDesc);
     ClassDataAccessor cda(*file, classId);
@@ -125,14 +123,14 @@ HWTEST_F_L0(PandaFileTranslatorTest, TranslateClasses)
         methodId.push_back(mda.GetMethodId());
     });
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
-    pfManager->InsertJSPandaFile(pf);
+    pfManager->AddJSPandaFileVm(instance, pf);
     EXPECT_TRUE(pf->FindMethodLiteral(methodId[0].GetOffset()) == nullptr);
 
-    const char *methodName = MethodLiteral::GetMethodName(pf, methodId[0]);
-    PandaFileTranslator::TranslateClasses(pf, CString(methodName));
+    const char *methodName = MethodLiteral::GetMethodName(pf.get(), methodId[0]);
+    PandaFileTranslator::TranslateClasses(pf.get(), CString(methodName));
     EXPECT_TRUE(pf->FindMethodLiteral(methodId[0].GetOffset()) != nullptr);
     EXPECT_EQ(pf->FindMethodLiteral(methodId[0].GetOffset())->GetFunctionKind(),
                                     ecmascript::FunctionKind::BASE_CONSTRUCTOR);
-    pfManager->RemoveJSPandaFile((void *)pf);
+    pfManager->RemoveJSPandaFileVm(instance, pf.get());
 }
 }  // namespace panda::test

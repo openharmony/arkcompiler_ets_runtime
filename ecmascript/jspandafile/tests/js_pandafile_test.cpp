@@ -54,7 +54,7 @@ public:
     EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
 protected:
-    JSPandaFile *CreateJSPandaFile(const char *source, const CString filename)
+    std::shared_ptr<JSPandaFile> CreateJSPandaFile(const char *source, const CString filename)
     {
         Parser parser;
         const std::string fn = "SRC.pa"; // test file name : "SRC.pa"
@@ -63,7 +63,7 @@ protected:
 
         std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
         JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-        JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), filename);
+        std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), filename);
         return pf;
     }
 };
@@ -74,9 +74,8 @@ HWTEST_F_L0(JSPandaFileTest, CreateJSPandaFile)
         .function void foo() {}
     )";
     const CString fileName = "test.pa";
-    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
     EXPECT_TRUE(pf != nullptr);
-    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetJSPandaFileDesc)
@@ -85,10 +84,9 @@ HWTEST_F_L0(JSPandaFileTest, GetJSPandaFileDesc)
         .function void foo() {}
     )";
     const CString fileName = "test.pa";
-    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
     const CString expectFileName = pf->GetJSPandaFileDesc();
     EXPECT_STREQ(expectFileName.c_str(), "test.pa");
-    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetPandaFile)
@@ -97,10 +95,9 @@ HWTEST_F_L0(JSPandaFileTest, GetPandaFile)
         .function void foo() {}
     )";
     const CString fileName = "test.pa";
-    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
     const File *file = pf->GetPandaFile();
     EXPECT_TRUE(file != nullptr);
-    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetMethodLiterals_GetNumMethods)
@@ -111,13 +108,12 @@ HWTEST_F_L0(JSPandaFileTest, GetMethodLiterals_GetNumMethods)
         .function void foo3() {}
     )";
     const CString fileName = "test.pa";
-    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
     MethodLiteral *method = pf->GetMethodLiterals();
     EXPECT_TRUE(method != nullptr);
 
     uint32_t methodNum = pf->GetNumMethods();
     EXPECT_EQ(methodNum, 3U); // 3 : number of methods
-    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, SetMethodLiteralToMap_FindMethodLiteral)
@@ -128,7 +124,7 @@ HWTEST_F_L0(JSPandaFileTest, SetMethodLiteralToMap_FindMethodLiteral)
         .function void foo3() {}
     )";
     const CString fileName = "test.pa";
-    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     File::EntityId classId = file->GetClassId(typeDesc);
@@ -149,10 +145,9 @@ HWTEST_F_L0(JSPandaFileTest, SetMethodLiteralToMap_FindMethodLiteral)
     pf->SetMethodLiteralToMap(method1);
     pf->SetMethodLiteralToMap(method2);
     pf->SetMethodLiteralToMap(method3);
-    EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[0]).c_str(), "foo1");
-    EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[1]).c_str(), "foo2");
-    EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf, methodId[2]).c_str(), "foo3");
-    JSPandaFileManager::RemoveJSPandaFile(pf);
+    EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf.get(), methodId[0]).c_str(), "foo1");
+    EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf.get(), methodId[1]).c_str(), "foo2");
+    EXPECT_STREQ(MethodLiteral::ParseFunctionName(pf.get(), methodId[2]).c_str(), "foo3");
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_GetConstpoolIndex_GetConstpoolMap)
@@ -163,7 +158,7 @@ HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_GetConstpoolIndex_GetConstp
         .function void foo3() {}
     )";
     const CString fileName = "test.pa";
-    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     File::EntityId classId = file->GetClassId(typeDesc);
@@ -204,7 +199,6 @@ HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_GetConstpoolIndex_GetConstp
     EXPECT_EQ(gotIndex1, 0U);
     EXPECT_EQ(gotIndex2, 1U);
     EXPECT_EQ(gotIndex3, 2U);
-    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetMainMethodIndex_UpdateMainMethodIndex)
@@ -214,7 +208,7 @@ HWTEST_F_L0(JSPandaFileTest, GetMainMethodIndex_UpdateMainMethodIndex)
         .function void func2() {}
     )";
     const CString fileName = "test.pa";
-    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     File::EntityId classId = file->GetClassId(typeDesc);
@@ -239,7 +233,6 @@ HWTEST_F_L0(JSPandaFileTest, GetMainMethodIndex_UpdateMainMethodIndex)
     pf->UpdateMainMethodIndex(methodId[1].GetOffset());
     mainMethodIndex = pf->GetMainMethodIndex();
     EXPECT_EQ(mainMethodIndex, methodId[1].GetOffset());
-    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetClasses)
@@ -248,7 +241,7 @@ HWTEST_F_L0(JSPandaFileTest, GetClasses)
         .function void foo() {}
     )";
     const CString fileName = "test.pa";
-    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
     const File *file = pf->GetPandaFile();
     const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
     File::EntityId classId = file->GetClassId(typeDesc);
@@ -261,7 +254,6 @@ HWTEST_F_L0(JSPandaFileTest, GetClasses)
 
     Span<const uint32_t> classes = pf->GetClasses();
     EXPECT_EQ(classes.Data(), classesData.Data());
-    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, IsModule_IsCjs)
@@ -270,10 +262,9 @@ HWTEST_F_L0(JSPandaFileTest, IsModule_IsCjs)
         .function void foo1() {}
     )";
     const CString fileName1 = "test1.pa";
-    JSPandaFile *pf1 = CreateJSPandaFile(source1, fileName1);
+    std::shared_ptr<JSPandaFile> pf1 = CreateJSPandaFile(source1, fileName1);
     EXPECT_EQ(pf1->IsModule(thread), false);
     EXPECT_EQ(pf1->IsCjs(thread), false);
-    JSPandaFileManager::RemoveJSPandaFile(pf1);
 }
 
 HWTEST_F_L0(JSPandaFileTest, SetLoadedAOTStatus_IsLoadedAOT)
@@ -282,14 +273,13 @@ HWTEST_F_L0(JSPandaFileTest, SetLoadedAOTStatus_IsLoadedAOT)
         .function void foo() {}
     )";
     const CString fileName = "test.pa";
-    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
     bool isLoadedAOT = pf->IsLoadedAOT();
     EXPECT_EQ(isLoadedAOT, false);
 
     pf->SetAOTFileInfoIndex(0);
     isLoadedAOT = pf->IsLoadedAOT();
     EXPECT_EQ(isLoadedAOT, true);
-    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, GetFileUniqId)
@@ -298,11 +288,10 @@ HWTEST_F_L0(JSPandaFileTest, GetFileUniqId)
         .function void foo() {}
     )";
     const CString fileName = "test.pa";
-    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
     EXPECT_EQ(pf->GetFileUniqId(), merge_hashes(panda_file::File::CalcFilenameHash(""),
         GetHash32(reinterpret_cast<const uint8_t *>(pf->GetPandaFile()->GetHeader()),
         sizeof(panda_file::File::Header))));
-    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileTest, IsParsedConstpoolOfCurrentVM)
@@ -311,11 +300,10 @@ HWTEST_F_L0(JSPandaFileTest, IsParsedConstpoolOfCurrentVM)
         .function void foo() {}
     )";
     const CString fileName = "test.pa";
-    JSPandaFile *pf = CreateJSPandaFile(source, fileName);
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);;
     auto &recordInfo = pf->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME);
     EXPECT_TRUE(!recordInfo.IsParsedConstpoolOfCurrentVM(instance));
     recordInfo.SetParsedConstpoolVM(instance);
     EXPECT_TRUE(pf->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME).IsParsedConstpoolOfCurrentVM(instance));
-    JSPandaFileManager::RemoveJSPandaFile(pf);
 }
 }  // namespace panda::test

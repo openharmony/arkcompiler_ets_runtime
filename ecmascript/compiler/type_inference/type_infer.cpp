@@ -1027,7 +1027,7 @@ void TypeInfer::PrintAllByteCodesTypes() const
 
     const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
     const MethodLiteral *methodLiteral = builder_->GetMethod();
-    const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodLiteral->GetMethodId());
+    const std::string functionName = MethodLiteral::ParseFunctionName(jsPandaFile, methodLiteral->GetMethodId());
 
     LOG_COMPILER(INFO) << "print bytecode types:";
     LOG_COMPILER(INFO) << ".recordName " + recordName_;
@@ -1097,11 +1097,10 @@ void TypeInfer::TypeCheck(GateRef gate) const
         auto type = gateAccessor_.GetGateType(valueGate);
         if (expectedTypeStr != tsManager_->GetTypeStr(type)) {
             const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
-            const MethodLiteral *methodLiteral = builder_->GetMethod();
             EntityId methodId = builder_->GetMethod()->GetMethodId();
             DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
             const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
-            const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
+            const std::string functionName = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
 
             std::string log = CollectGateTypeLogInfo(valueGate, debugExtractor, "[TypeAssertion] ");
             log += "[TypeAssertion] but expected type: " + expectedTypeStr + "\n";
@@ -1115,12 +1114,11 @@ void TypeInfer::TypeCheck(GateRef gate) const
 void TypeInfer::FilterAnyTypeGates() const
 {
     const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
-    const MethodLiteral *methodLiteral = builder_->GetMethod();
-    EntityId methodId = methodLiteral->GetMethodId();
+    EntityId methodId = builder_->GetMethod()->GetMethodId();
 
     DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
-    const std::string functionName = methodLiteral->ParseFunctionName(jsPandaFile, methodId);
+    const std::string functionName = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
 
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);

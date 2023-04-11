@@ -531,7 +531,6 @@ public:
 
     void LoadStubFile(const std::string &fileName);
     void LoadAnFile(const std::string &fileName);
-    void LoadAnFile(JSPandaFile *jsPandaFile);
     AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr) const;
     bool TryReadLock() const;
     bool InsideStub(uintptr_t pc) const;
@@ -555,7 +554,6 @@ public:
     bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
     void AddConstantPool(const CString &snapshotFileName, JSTaggedValue deserializedCPList);
     JSHandle<JSTaggedValue> GetDeserializedConstantPool(const JSPandaFile *jsPandaFile, int32_t cpID);
-    std::string GetAotFileName(EcmaVM *vm, const JSPandaFile *jsPandaFile, const std::string &extensionName) const;
 
     void DumpAOTInfo() const DUMP_API_ATTR;
 

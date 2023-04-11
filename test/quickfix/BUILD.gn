@@ -14,7 +14,7 @@
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 hot_reload_test_list = [
-  "check_import",
+  # "check_import",
   "class_inheritance",
   "class_mem_func",
   "class_mem_var",

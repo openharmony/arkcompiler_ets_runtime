@@ -157,13 +157,13 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
 
 void CjsModule::RequireExecution(JSThread *thread, CString mergedFilename, CString requestEntryPoint)
 {
-    const JSPandaFile *jsPandaFile =
+    std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, mergedFilename, requestEntryPoint);
     if (jsPandaFile == nullptr) {
         CString msg = "Load file with filename '" + mergedFilename + "' failed, recordName '" + requestEntryPoint + "'";
         THROW_ERROR(thread, ErrorType::REFERENCE_ERROR, msg.c_str());
     }
-    JSPandaFileExecutor::Execute(thread, jsPandaFile, requestEntryPoint);
+    JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), requestEntryPoint);
 }
 
 JSTaggedValue CjsModule::Require(JSThread *thread, JSHandle<EcmaString> &request,

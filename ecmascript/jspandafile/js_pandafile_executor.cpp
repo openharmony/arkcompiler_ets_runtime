@@ -61,7 +61,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         entry = entryPoint.data();
     }
  
-    const JSPandaFile *jsPandaFile =
+    std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, needUpdate);
     if (jsPandaFile == nullptr) {
         CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
@@ -70,7 +70,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     CString realEntry = entry;
     // If it is an old record, delete the bundleName and moduleName
     if (!jsPandaFile->IsBundlePack() && !excuteFromJob && !vm->GetBundleName().empty()) {
-        const_cast<JSPandaFile *>(jsPandaFile)->CheckIsRecordWithBundleName(vm);
+        jsPandaFile->CheckIsRecordWithBundleName(vm);
         if (!jsPandaFile->IsRecordWithBundleName()) {
             PathHelper::CroppingRecord(realEntry);
         }
@@ -101,7 +101,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         SourceTextModule::Evaluate(thread, module, nullptr, 0, excuteFromJob);
         return JSTaggedValue::Undefined();
     }
-    return JSPandaFileExecutor::Execute(thread, jsPandaFile, realEntry.c_str(), excuteFromJob);
+    return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), realEntry.c_str(), excuteFromJob);
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *thread,
@@ -109,7 +109,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer filename " << filename;
     CString normalName = PathHelper::NormalizePath(filename);
-    const JSPandaFile *jsPandaFile =
+    std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, normalName, entryPoint, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
         CString msg = "Load file with filename '" + normalName + "' failed, recordName '" + entryPoint.data() + "'";
@@ -122,7 +122,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
         bool isBundle = jsPandaFile->IsBundlePack();
         return CommonExecuteBuffer(thread, isBundle, normalName, entry, buffer, size);
     }
-    return JSPandaFileExecutor::Execute(thread, jsPandaFile, entry);
+    return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entry);
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
@@ -142,7 +142,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
 #endif
     CString normalName = PathHelper::NormalizePath(filename);
     CString entry = PathHelper::ParseOhmUrl(vm, normalName, name);
-    const JSPandaFile *jsPandaFile =
+    std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
         CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
@@ -151,7 +151,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     bool isBundle = jsPandaFile->IsBundlePack();
     CString realEntry = entry;
     if (!isBundle) {
-        const_cast<JSPandaFile *>(jsPandaFile)->CheckIsRecordWithBundleName(vm);
+        jsPandaFile->CheckIsRecordWithBundleName(vm);
         if (!jsPandaFile->IsRecordWithBundleName()) {
             PathHelper::CroppingRecord(realEntry);
         }

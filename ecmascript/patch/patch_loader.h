@@ -86,19 +86,6 @@ private:
                                  PatchInfo &patchInfo);
 
     static void ClearPatchInfo(JSThread *thread, const CString &patchFileName);
-
-    static bool CheckIsInvalidPatch(const JSPandaFile *baseFile, const JSPandaFile *patchFile, EcmaVM *vm);
-    // Check module mismatch
-    static bool CheckIsModuleMismatch(JSThread *thread, JSHandle<SourceTextModule> patchModule,
-                                      JSHandle<SourceTextModule> baseModule);
-    static bool CheckImportEntriesMismatch(JSThread *thread, JSTaggedValue patch, JSTaggedValue base);
-    static bool CheckLocalExportEntriesMismatch(JSThread *thread, JSTaggedValue patch, JSTaggedValue base);
-    static bool CheckIndirectExportEntriesMismatch(JSThread *thread, JSTaggedValue patch, JSTaggedValue base);
-    static bool CheckStarExportEntriesMismatch(JSThread *thread, JSTaggedValue patch, JSTaggedValue base);
-    static bool CheckImportEntryMismatch(ImportEntry *patch, ImportEntry *base);
-    static bool CheckLocalExportEntryMismatch(LocalExportEntry *patch, LocalExportEntry *base);
-    static bool CheckIndirectExportEntryMismatch(IndirectExportEntry *patch, IndirectExportEntry *base);
-    static bool CheckStarExportEntryMismatch(StarExportEntry *patch, StarExportEntry *base);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_PATCH_PATCH_LOADER_H

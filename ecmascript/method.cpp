@@ -31,7 +31,7 @@ const char *Method::GetMethodName() const
     return MethodLiteral::GetMethodName(jsPandaFile, GetMethodId());
 }
 
-const char *Method::GetMethodName(const JSPandaFile* file) const
+const char *Method::GetMethodName(const JSPandaFile *file) const
 {
     return MethodLiteral::GetMethodName(file, GetMethodId());
 }

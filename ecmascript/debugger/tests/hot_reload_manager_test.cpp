@@ -74,13 +74,13 @@ HWTEST_F_L0(HotReloadManagerTest, LoadAndUnload)
 
     auto baseFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(baseFileName.c_str());
     EXPECT_TRUE(baseFile != nullptr);
-    EXPECT_TRUE(hotReloadManager->GetBaseJSPandaFile(baseFile) == baseFile);
+    EXPECT_TRUE(hotReloadManager->GetBaseJSPandaFile(baseFile.get()) == baseFile.get());
 
     auto res = JSNApi::LoadPatch(ecmaVm, patchFileName, baseFileName);
     EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
     auto patchFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(patchFileName.c_str());
     EXPECT_TRUE(patchFile != nullptr);
-    EXPECT_TRUE(hotReloadManager->GetBaseJSPandaFile(patchFile) == baseFile);
+    EXPECT_TRUE(hotReloadManager->GetBaseJSPandaFile(patchFile.get()) == baseFile.get());
 
     [[maybe_unused]] auto *patchExtractor = hotReloadManager->GetPatchExtractor(sourceFile);
     EXPECT_TRUE(patchExtractor != nullptr);
@@ -91,7 +91,7 @@ HWTEST_F_L0(HotReloadManagerTest, LoadAndUnload)
 
     res = JSNApi::UnloadPatch(ecmaVm, patchFileName);
     EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
-    EXPECT_TRUE(hotReloadManager->GetBaseJSPandaFile(patchFile) != baseFile);
+    EXPECT_TRUE(hotReloadManager->GetBaseJSPandaFile(patchFile.get()) != baseFile.get());
     EXPECT_TRUE(hotReloadManager->GetPatchExtractor(sourceFile) == nullptr);
 }
 }  // namespace panda::test

@@ -74,13 +74,13 @@ HWTEST_F_L0(JSPandaFileManagerTest, NewJSPandaFile)
 
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName.c_str()));
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName.c_str()));
     EXPECT_TRUE(pf != nullptr);
 
     auto expectFileName = pf->GetJSPandaFileDesc();
     EXPECT_STREQ(expectFileName.c_str(), "__JSPandaFileManagerTest.pa");
     remove(fileName.c_str());
-    JSPandaFileManager::RemoveJSPandaFile(pf);
+    pfManager->RemoveJSPandaFileVm(instance, pf.get());
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, OpenJSPandaFile)
@@ -90,7 +90,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, OpenJSPandaFile)
         .function void foo() {}
     )";
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-    JSPandaFile *ojspf = pfManager->OpenJSPandaFile(filename);
+    std::shared_ptr<JSPandaFile> ojspf = pfManager->OpenJSPandaFile(filename);
     EXPECT_TRUE(ojspf == nullptr);
 
     Parser parser;
@@ -100,14 +100,14 @@ HWTEST_F_L0(JSPandaFileManagerTest, OpenJSPandaFile)
     ojspf = pfManager->OpenJSPandaFile(filename);
     EXPECT_TRUE(ojspf != nullptr);
     EXPECT_STREQ(ojspf->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest.pa");
-    JSPandaFileManager::RemoveJSPandaFile(ojspf);
+    pfManager->RemoveJSPandaFileVm(instance, ojspf.get());
 
     remove(filename);
     ojspf = pfManager->OpenJSPandaFile(filename);
     EXPECT_TRUE(ojspf == nullptr);
 }
 
-HWTEST_F_L0(JSPandaFileManagerTest, Insert_Find_Remove_JSPandaFile)
+HWTEST_F_L0(JSPandaFileManagerTest, Add_Find_Remove_JSPandaFile)
 {
     const char *filename1 = "__JSPandaFileManagerTest1.pa";
     const char *filename2 = "__JSPandaFileManagerTest2.pa";
@@ -119,21 +119,95 @@ HWTEST_F_L0(JSPandaFileManagerTest, Insert_Find_Remove_JSPandaFile)
     auto res = parser.Parse(data);
     std::unique_ptr<const File> pfPtr1 = pandasm::AsmEmitter::Emit(res.Value());
     std::unique_ptr<const File> pfPtr2 = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
-    JSPandaFile *pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
-    pfManager->InsertJSPandaFile(pf1);
-    pfManager->InsertJSPandaFile(pf2);
-    const JSPandaFile *foundPf1 = pfManager->FindJSPandaFile(filename1);
-    const JSPandaFile *foundPf2 = pfManager->FindJSPandaFile(filename2);
+    std::shared_ptr<JSPandaFile> pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
+    std::shared_ptr<JSPandaFile> pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
+    pfManager->AddJSPandaFileVm(instance, pf1);
+    pfManager->AddJSPandaFileVm(instance, pf2);
+    std::shared_ptr<JSPandaFile> foundPf1 = pfManager->FindJSPandaFile(filename1);
+    std::shared_ptr<JSPandaFile> foundPf2 = pfManager->FindJSPandaFile(filename2);
     EXPECT_STREQ(foundPf1->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest1.pa");
     EXPECT_STREQ(foundPf2->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest2.pa");
 
-    pfManager->RemoveJSPandaFile((void *)pf1);
-    pfManager->RemoveJSPandaFile((void *)pf2);
-    const JSPandaFile *afterRemovePf1 = pfManager->FindJSPandaFile(filename1);
-    const JSPandaFile *afterRemovePf2 = pfManager->FindJSPandaFile(filename2);
+    pfManager->RemoveJSPandaFileVm(instance, pf1.get());
+    pfManager->RemoveJSPandaFileVm(instance, pf2.get());
+    std::shared_ptr<JSPandaFile> afterRemovePf1 = pfManager->FindJSPandaFile(filename1);
+    std::shared_ptr<JSPandaFile> afterRemovePf2 = pfManager->FindJSPandaFile(filename2);
     EXPECT_EQ(afterRemovePf1, nullptr);
     EXPECT_EQ(afterRemovePf2, nullptr);
+}
+
+HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
+{
+    const char *filename1 = "__JSPandaFileManagerTest1.pa";
+    const char *filename2 = "__JSPandaFileManagerTest2.pa";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr1 = pandasm::AsmEmitter::Emit(res.Value());
+    std::unique_ptr<const File> pfPtr2 = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
+    std::shared_ptr<JSPandaFile> pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
+    pfManager->AddJSPandaFileVm(instance, pf1);
+    pfManager->AddJSPandaFileVm(instance, pf2);
+
+    JSHandle<ConstantPool> constpool1 = instance->GetFactory()->NewConstantPool(1);
+    JSHandle<ConstantPool> constpool2 = instance->GetFactory()->NewConstantPool(2);
+    instance->AddConstpool(pf1.get(), constpool1.GetTaggedValue(), 0);
+    instance->AddConstpool(pf2.get(), constpool2.GetTaggedValue(), 0);
+
+    EcmaVM *instance1;
+    EcmaHandleScope *scope1;
+    JSThread *thread1;
+    TestHelper::CreateEcmaVMWithScope(instance1, thread1, scope1);
+
+    std::shared_ptr<JSPandaFile> loadedPf1 =
+        pfManager->LoadJSPandaFile(thread1, filename1, JSPandaFile::ENTRY_MAIN_FUNCTION);
+    instance1->AddConstpool(pf1.get(), constpool1.GetTaggedValue(), 0);
+    EXPECT_TRUE(pf1 == loadedPf1);
+    TestHelper::DestroyEcmaVMWithScope(instance1, scope1); // Remove 'instance1' when ecmaVM destruct.
+
+    std::shared_ptr<JSPandaFile> foundPf1 = pfManager->FindJSPandaFile(filename1);
+    EXPECT_TRUE(foundPf1 != nullptr);
+
+    pfManager->RemoveJSPandaFileVm(instance, pf1.get());
+    pfManager->RemoveJSPandaFileVm(instance, pf2.get());
+    std::shared_ptr<JSPandaFile> afterRemovePf1 = pfManager->FindJSPandaFile(filename1);
+    std::shared_ptr<JSPandaFile> afterRemovePf2 = pfManager->FindJSPandaFile(filename2);
+    EXPECT_EQ(afterRemovePf1, nullptr);
+    EXPECT_EQ(afterRemovePf2, nullptr);
+}
+
+void CreateJSPandaFileAndConstpool(EcmaVM *vm)
+{
+    const char *filename = "__JSPandaFileManagerTest1.pa";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    pfManager->AddJSPandaFileVm(vm, pf);
+
+    [[maybe_unused]] EcmaHandleScope handleScope(vm->GetJSThread());
+    JSHandle<ConstantPool> constpool = vm->GetFactory()->NewConstantPool(1);
+    vm->AddConstpool(pf.get(), constpool.GetTaggedValue(), 0);
+}
+
+HWTEST_F_L0(JSPandaFileManagerTest, GC_Add_Find_Remove_JSPandaFile)
+{
+    const char *filename = "__JSPandaFileManagerTest1.pa";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+
+    CreateJSPandaFileAndConstpool(instance);
+    instance->CollectGarbage(ecmascript::TriggerGCType::FULL_GC); // Remove 'instance' and JSPandafile when trigger GC.
+
+    std::shared_ptr<JSPandaFile> afterRemovePf = pfManager->FindJSPandaFile(filename);
+    EXPECT_EQ(afterRemovePf, nullptr);
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, LoadJSPandaFile)
@@ -148,22 +222,23 @@ HWTEST_F_L0(JSPandaFileManagerTest, LoadJSPandaFile)
     auto res = parser.Parse(data);
     std::unique_ptr<const File> pfPtr1 = pandasm::AsmEmitter::Emit(res.Value());
     std::unique_ptr<const File> pfPtr2 = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
-    JSPandaFile *pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
-    pfManager->InsertJSPandaFile(pf1);
-    pfManager->InsertJSPandaFile(pf2);
-    const JSPandaFile *loadedPf1 = pfManager->LoadJSPandaFile(thread, filename1, JSPandaFile::ENTRY_MAIN_FUNCTION);
-    const JSPandaFile *loadedPf2 =
+    std::shared_ptr<JSPandaFile> pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
+    std::shared_ptr<JSPandaFile> pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
+    pfManager->AddJSPandaFileVm(instance, pf1);
+    pfManager->AddJSPandaFileVm(instance, pf2);
+    std::shared_ptr<JSPandaFile> loadedPf1 =
+        pfManager->LoadJSPandaFile(thread, filename1, JSPandaFile::ENTRY_MAIN_FUNCTION);
+    std::shared_ptr<JSPandaFile> loadedPf2 =
         pfManager->LoadJSPandaFile(thread, filename2, JSPandaFile::ENTRY_MAIN_FUNCTION, (void *)data, sizeof(data));
     EXPECT_TRUE(loadedPf1 != nullptr);
     EXPECT_TRUE(loadedPf2 != nullptr);
+    EXPECT_TRUE(pf1 == loadedPf1);
+    EXPECT_TRUE(pf2 == loadedPf2);
     EXPECT_STREQ(loadedPf1->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest1.pa");
     EXPECT_STREQ(loadedPf2->GetJSPandaFileDesc().c_str(), "__JSPandaFileManagerTest2.pa");
 
-    pfManager->RemoveJSPandaFile((void *)pf1);
-    pfManager->RemoveJSPandaFile((void *)pf2);
-    pfManager->RemoveJSPandaFile((void *)loadedPf1);
-    pfManager->RemoveJSPandaFile((void *)loadedPf2);
+    pfManager->RemoveJSPandaFileVm(instance, pf1.get());
+    pfManager->RemoveJSPandaFileVm(instance, pf2.get());
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, GenerateProgram)
@@ -178,7 +253,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, GenerateProgram)
     auto res = parser.Parse(data);
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
     const File *file = pf->GetPandaFile();
     File::EntityId classId = file->GetClassId(typeDesc);
     ClassDataAccessor cda(*file, classId);
@@ -189,14 +264,14 @@ HWTEST_F_L0(JSPandaFileManagerTest, GenerateProgram)
     pf->UpdateMainMethodIndex(methodId[0].GetOffset());
     MethodLiteral *method = new MethodLiteral(methodId[0]);
     pf->SetMethodLiteralToMap(method);
-    pfManager->InsertJSPandaFile(pf);
+    pfManager->AddJSPandaFileVm(instance, pf);
 
-    JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(vm, pf, JSPandaFile::ENTRY_FUNCTION_NAME);
+    JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(vm, pf.get(), JSPandaFile::ENTRY_FUNCTION_NAME);
     JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction());
     JSHandle<JSTaggedValue> funcName = JSFunction::GetFunctionName(thread, JSHandle<JSFunctionBase>(mainFunc));
     EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName)).ToCString().c_str(), "foo");
 
-    pfManager->RemoveJSPandaFile((void *)pf);
+    pfManager->RemoveJSPandaFileVm(instance, pf.get());
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, GetJSPtExtractor)
@@ -209,12 +284,12 @@ HWTEST_F_L0(JSPandaFileManagerTest, GetJSPtExtractor)
     auto res = parser.Parse(data);
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
-    pfManager->InsertJSPandaFile(pf);
-    DebugInfoExtractor *extractor = pfManager->GetJSPtExtractor(pf);
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    pfManager->AddJSPandaFileVm(instance, pf);
+    DebugInfoExtractor *extractor = pfManager->GetJSPtExtractor(pf.get());
     EXPECT_TRUE(extractor != nullptr);
 
-    pfManager->RemoveJSPandaFile((void *)pf);
+    pfManager->RemoveJSPandaFileVm(instance, pf.get());
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, EnumerateJSPandaFiles)
@@ -229,14 +304,15 @@ HWTEST_F_L0(JSPandaFileManagerTest, EnumerateJSPandaFiles)
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     std::unique_ptr<const File> pfPtr1 = pandasm::AsmEmitter::Emit(res.Value());
     std::unique_ptr<const File> pfPtr2 = pandasm::AsmEmitter::Emit(res.Value());
-    JSPandaFile *pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
-    JSPandaFile *pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
-    pfManager->InsertJSPandaFile(pf1);
-    pfManager->InsertJSPandaFile(pf2);
+    std::shared_ptr<JSPandaFile> pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
+    std::shared_ptr<JSPandaFile> pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(filename2));
+    pfManager->AddJSPandaFileVm(instance, pf1);
+    pfManager->AddJSPandaFileVm(instance, pf2);
     std::vector<CString> descList{};
     int count = 0;
     pfManager->EnumerateJSPandaFiles([&](const JSPandaFile *file) -> bool {
         auto desc = file->GetJSPandaFileDesc();
+        std::cout << "desc:" << desc << std::endl;
         descList.push_back(desc);
         count++;
         return true;
@@ -246,7 +322,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, EnumerateJSPandaFiles)
     EXPECT_STREQ(descList[0].c_str(), "__JSPandaFileManagerTest4.pa");
     EXPECT_STREQ(descList[1].c_str(), "__JSPandaFileManagerTest3.pa");
 
-    pfManager->RemoveJSPandaFile((void *)pf1);
-    pfManager->RemoveJSPandaFile((void *)pf2);
+    pfManager->RemoveJSPandaFileVm(instance, pf1.get());
+    pfManager->RemoveJSPandaFileVm(instance, pf2.get());
 }
 }  // namespace panda::test

@@ -104,13 +104,14 @@ HWTEST_F_L0(TSTypeTableGeneratorTest, GetOrGenerateTSTypeTable)
 
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     const CString fileName(abcFileName.c_str());
-    const JSPandaFile *jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    std::shared_ptr<JSPandaFile> jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
     EXPECT_NE(jsPandaFile, nullptr);
 
     auto tsManager = ecmaVm->GetTSManager();
     tsManager->Initialize();
     TSTypeTableGenerator tableGenerator(tsManager);
-    [[maybe_unused]] JSHandle<TSTypeTable> table = tableGenerator.GetOrGenerateTSTypeTable(jsPandaFile, "test", 0U);
+    [[maybe_unused]] JSHandle<TSTypeTable> table =
+        tableGenerator.GetOrGenerateTSTypeTable(jsPandaFile.get(), "test", 0U);
     ASSERT(table->GetNumberOfTypes() == 0U);
 }
 }  // namespace panda::test

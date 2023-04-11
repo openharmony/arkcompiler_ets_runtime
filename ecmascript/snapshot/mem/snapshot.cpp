@@ -166,7 +166,7 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
     processor.DeserializeString(stringBegin, stringEnd);
 
     FileUnMap(MemMap(fileMap.GetOriginAddr(), hdr.pandaFileBegin));
-    const JSPandaFile *jsPandaFile = nullptr;
+    std::shared_ptr<JSPandaFile> jsPandaFile;
     if (static_cast<uint32_t>(fileMap.GetSize()) > hdr.pandaFileBegin) {
         uintptr_t pandaFileMem = readFile + hdr.pandaFileBegin;
         auto pf = panda_file::File::OpenFromMemory(os::mem::ConstBytePtr(ToNativePtr<std::byte>(pandaFileMem),
@@ -174,9 +174,9 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
         jsPandaFile = JSPandaFileManager::GetInstance()->NewJSPandaFile(pf.release(), "");
     }
     // relocate object field
-    processor.Relocate(type, jsPandaFile, hdr.rootObjectSize);
+    processor.Relocate(type, jsPandaFile.get(), hdr.rootObjectSize);
     LOG_COMPILER(INFO) << "loaded ai file: " << snapshotFile.c_str();
-    return jsPandaFile;
+    return jsPandaFile.get();
 }
 
 size_t Snapshot::AlignUpPageSize(size_t spaceSize)

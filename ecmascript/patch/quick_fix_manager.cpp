@@ -54,7 +54,7 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *bas
         return;
     }
 
-    const JSPandaFile *patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+    std::shared_ptr<JSPandaFile> patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
         thread, patchFileName.c_str(), "", patchBuffer, patchSize);
     if (patchFile == nullptr) {
         LOG_ECMA(ERROR) << "load patch jsPandafile failed";
@@ -62,7 +62,7 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *bas
     }
 
     PatchInfo patchInfo;
-    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile, patchFile, patchInfo);
+    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile, patchFile.get(), patchInfo);
     if (ret != PatchErrorCode::SUCCESS) {
         LOG_ECMA(ERROR) << "Load patch fail!";
         return;
@@ -80,7 +80,7 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &p
         return PatchErrorCode::PATCH_HAS_LOADED;
     }
 
-    const JSPandaFile *baseFile =
+    std::shared_ptr<JSPandaFile> baseFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFileName.c_str(), "");
     if (baseFile == nullptr) {
         LOG_ECMA(ERROR) << "find base jsPandafile failed";
@@ -88,7 +88,7 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &p
     }
 
     // The entry point is not work for merge abc.
-    const JSPandaFile *patchFile =
+    std::shared_ptr<JSPandaFile> patchFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, patchFileName.c_str(), "");
     if (patchFile == nullptr) {
         LOG_ECMA(ERROR) << "load patch jsPandafile failed";
@@ -96,7 +96,7 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &p
     }
 
     PatchInfo patchInfo;
-    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile, patchFile, patchInfo);
+    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile.get(), patchFile.get(), patchInfo);
     if (ret != PatchErrorCode::SUCCESS) {
         LOG_ECMA(ERROR) << "Load patch fail!";
         return ret;
@@ -117,14 +117,14 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread,
         return PatchErrorCode::PATCH_HAS_LOADED;
     }
 
-    const JSPandaFile *baseFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+    std::shared_ptr<JSPandaFile> baseFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
         thread, baseFileName.c_str(), "", baseBuffer, baseSize);
     if (baseFile == nullptr) {
         LOG_ECMA(ERROR) << "find base jsPandafile failed";
         return PatchErrorCode::FILE_NOT_FOUND;
     }
 
-    const JSPandaFile *patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+    std::shared_ptr<JSPandaFile> patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
         thread, patchFileName.c_str(), "", patchBuffer, patchSize);
     if (patchFile == nullptr) {
         LOG_ECMA(ERROR) << "load patch jsPandafile failed";
@@ -132,7 +132,7 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread,
     }
 
     PatchInfo patchInfo;
-    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile, patchFile, patchInfo);
+    auto ret = PatchLoader::LoadPatchInternal(thread, baseFile.get(), patchFile.get(), patchInfo);
     if (ret != PatchErrorCode::SUCCESS) {
         LOG_ECMA(ERROR) << "Load patch fail!";
         return ret;
@@ -188,12 +188,12 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
 
     // Generate patch constpool.
     CString patchFileName = patchInfo.patchFileName;
-    const JSPandaFile *patchFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(patchFileName);
+    std::shared_ptr<JSPandaFile> patchFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(patchFileName);
     ASSERT(patchFile != nullptr);
 
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<Method> method = vm->GetFactory()->NewMethod(patchMethodLiteral);
-    JSHandle<ConstantPool> newConstpool = vm->FindOrCreateConstPool(patchFile, patchMethodLiteral->GetMethodId());
+    JSHandle<ConstantPool> newConstpool = vm->FindOrCreateConstPool(patchFile.get(), patchMethodLiteral->GetMethodId());
     method->SetConstantPool(thread, newConstpool);
     return method.GetTaggedValue();
 }
@@ -203,7 +203,7 @@ bool QuickFixManager::IsQuickFixCausedException(JSThread *thread,
                                                 const std::string &patchFileName)
 {
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
-    const JSPandaFile* patchFile = pfManager->FindJSPandaFile(ConvertToString(patchFileName));
+    std::shared_ptr<JSPandaFile> patchFile = pfManager->FindJSPandaFile(ConvertToString(patchFileName));
     if (patchFile == nullptr || ConvertToString(patchFileName) != patchFile->GetJSPandaFileDesc()) {
         return false;
     }
@@ -219,7 +219,7 @@ bool QuickFixManager::IsQuickFixCausedException(JSThread *thread,
     for (const auto &item : patchMethodLiterals) {
         MethodLiteral *patch = item.second;
         auto methodId = patch->GetMethodId();
-        const char *patchMethodName = MethodLiteral::GetMethodName(patchFile, methodId);
+        const char *patchMethodName = MethodLiteral::GetMethodName(patchFile.get(), methodId);
         if (std::strcmp(patchMethodName, JSPandaFile::ENTRY_FUNCTION_NAME) != 0 &&
             methodNames.find(CString(patchMethodName)) != methodNames.end()) {
             return true;

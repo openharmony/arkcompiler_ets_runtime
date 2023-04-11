@@ -42,8 +42,8 @@ public:
     static void TranslateClasses(JSPandaFile *jsPandaFile, const CString &methodName);
 
 private:
-    static JSHandle<Program> GenerateProgramInternal(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-                                                     uint32_t mainMethodIndex, JSHandle<ConstantPool> constpool);
+    static JSHandle<Program> GenerateProgramInternal(EcmaVM *vm, MethodLiteral *mainMethodLiteral,
+                                                     JSHandle<ConstantPool> constpool);
     static void TranslateBytecode(JSPandaFile *jsPandaFile, uint32_t insSz, const uint8_t *insArr,
         const MethodLiteral *methodLiteral, const CString &methodName = JSPandaFile::ENTRY_FUNCTION_NAME);
     static void FixInstructionId32(const OldBytecodeInst &inst, uint32_t index, uint32_t fixOrder = 0);
@@ -53,6 +53,7 @@ private:
     static void ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint,
                                              JSHandle<ConstantPool> constpool);
     static JSHandle<ConstantPool> AllocateConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile);
+
     friend class PatchLoader;
 };
 }  // namespace panda::ecmascript

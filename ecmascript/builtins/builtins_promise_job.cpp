@@ -155,7 +155,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     } else {
         CString recordNameStr = ConvertToString(recordName.GetTaggedValue());
         CString requestModule = ConvertToString(specifierString.GetTaggedValue());
-        const JSPandaFile *jsPandaFile =
+        std::shared_ptr<JSPandaFile> jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordNameStr.c_str());
         if (jsPandaFile == nullptr) {
             CString msg = "Load file with filename '" + baseFilename + "' failed, recordName '" + recordNameStr + "'";
@@ -164,13 +164,13 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         }
 
         entryPoint =
-            PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile, baseFilename, recordNameStr, requestModule);
+            PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(), baseFilename, recordNameStr, requestModule);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         fileNameStr = baseFilename;
         moduleName = vm->GetFactory()->NewFromUtf8(entryPoint);
     }
-    const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileNameStr,
-                                                                                        entryPoint);
+    std::shared_ptr<JSPandaFile> jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileNameStr, entryPoint);
     if (jsPandaFile == nullptr) {
         CString msg = "Load file with filename '" + fileNameStr + "' failed, recordName '" + entryPoint + "'";
         JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();

@@ -341,14 +341,14 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const 
     if (entry != -1) {
         return JSHandle<JSTaggedValue>(thread, dict->GetValue(entry));
     }
-    const JSPandaFile *jsPandaFile =
+    std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
     if (jsPandaFile == nullptr) {
         CString msg = "Load file with filename '" + moduleFileName + "' failed, recordName '" + recordName + "'";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
 
-    JSHandle<JSTaggedValue> moduleRecord = ResolveModuleWithMerge(thread, jsPandaFile, recordName);
+    JSHandle<JSTaggedValue> moduleRecord = ResolveModuleWithMerge(thread, jsPandaFile.get(), recordName);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<NameDictionary> handleDict(thread, resolvedModules_);
     resolvedModules_ = NameDictionary::Put(thread, handleDict, JSHandle<JSTaggedValue>(recordNameHandle),
@@ -379,14 +379,14 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const CString &
         return JSHandle<JSTaggedValue>(thread, dict->GetValue(entry));
     }
 
-    const JSPandaFile *jsPandaFile =
+    std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
     if (jsPandaFile == nullptr) {
         CString msg = "Load file with filename '" + moduleFileName + "' failed";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
 
-    return ResolveModule(thread, jsPandaFile);
+    return ResolveModule(thread, jsPandaFile.get());
 }
 
 JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const void *buffer, size_t size,
@@ -402,7 +402,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const void *buf
         return JSHandle<JSTaggedValue>(thread, dict->GetValue(entry));
     }
 
-    const JSPandaFile *jsPandaFile =
+    std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename,
                                                            JSPandaFile::ENTRY_MAIN_FUNCTION, buffer, size);
     if (jsPandaFile == nullptr) {
@@ -410,7 +410,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const void *buf
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
 
-    return ResolveModule(thread, jsPandaFile);
+    return ResolveModule(thread, jsPandaFile.get());
 }
 
 JSHandle<JSTaggedValue> ModuleManager::ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile)

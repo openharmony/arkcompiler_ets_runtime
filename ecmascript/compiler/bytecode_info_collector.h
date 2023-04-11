@@ -494,7 +494,7 @@ public:
         return bytecodeInfo_.IsSkippedMethod(methodOffset);
     }
 
-    const JSPandaFile* GetJSPandaFile()
+    const JSPandaFile *GetJSPandaFile() const
     {
         return jsPandaFile_;
     }

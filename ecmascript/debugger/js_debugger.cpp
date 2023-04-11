@@ -168,7 +168,7 @@ std::unique_ptr<PtMethod> JSDebugger::FindMethod(const JSPtLocation &location) c
 {
     std::unique_ptr<PtMethod> ptMethod {nullptr};
     ::panda::ecmascript::JSPandaFileManager::GetInstance()->EnumerateJSPandaFiles([&ptMethod, location](
-        const panda::ecmascript::JSPandaFile *jsPandaFile) {
+        const JSPandaFile *jsPandaFile) {
         if (jsPandaFile->GetJSPandaFileDesc() == location.GetJsPandaFile()->GetJSPandaFileDesc()) {
             MethodLiteral *methodsData = jsPandaFile->GetMethodLiterals();
             uint32_t numberMethods = jsPandaFile->GetNumMethods();

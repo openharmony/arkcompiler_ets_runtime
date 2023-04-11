@@ -3028,7 +3028,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         InterpretedFrame *state = GET_FRAME(sp);
         Method *method = JSFunction::Cast(state->function.GetTaggedObject())->GetCallTarget();
-        auto fistPC = method->GetBytecodeArray();
+        [[maybe_unused]] auto fistPC = method->GetBytecodeArray();
         UPDATE_HOTNESS_COUNTER(-(pc - fistPC));
         LOG_INST() << "Exit: AsyncGeneratorResolve " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
                    << std::hex << reinterpret_cast<uintptr_t>(state->pc);
