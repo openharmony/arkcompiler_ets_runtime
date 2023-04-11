@@ -18,9 +18,10 @@
 
 #include "ecmascript/compiler/async_function_lowering.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
-#include "ecmascript/compiler/early_elimination.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
+#include "ecmascript/compiler/early_elimination.h"
+#include "ecmascript/compiler/generic_type_lowering.h"
 #include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
@@ -232,6 +233,19 @@ public:
         TypeLowering lowering(data->GetCircuit(), data->GetCompilerConfig(), data->GetTSManager(),
                               enableLog, data->GetMethodName());
         lowering.RunTypeLowering();
+        return true;
+    }
+};
+
+class GenericTypeLoweringPass {
+public:
+    bool Run(PassData *data)
+    {
+        TimeScope timescope("GenericTypeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        GenericTypeLowering lowering(data->GetCircuit(), data->GetCompilerConfig(),
+                                     enableLog, data->GetMethodName());
+        lowering.Run();
         return true;
     }
 };

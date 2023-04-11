@@ -416,24 +416,22 @@ void JSThread::ShrinkHandleStorage(int prevIndex)
 
 void JSThread::NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver)
 {
-    if (!receiver->GetJSHClass()->IsPrototype()) {
+    if (!glueData_.stableArrayElementsGuardians_) {
         return;
     }
-    if (!stableArrayElementsGuardians_) {
+    if (!receiver->GetJSHClass()->IsPrototype()) {
         return;
     }
     auto env = GetEcmaVM()->GetGlobalEnv();
     if (receiver.GetTaggedValue() == env->GetObjectFunctionPrototype().GetTaggedValue() ||
         receiver.GetTaggedValue() == env->GetArrayPrototype().GetTaggedValue()) {
-        SetStableArrayElementsGuardians(JSTaggedValue::False());
-        stableArrayElementsGuardians_ = false;
+        glueData_.stableArrayElementsGuardians_ = false;
     }
 }
 
 void JSThread::ResetGuardians()
 {
-    SetStableArrayElementsGuardians(JSTaggedValue::True());
-    stableArrayElementsGuardians_ = true;
+    glueData_.stableArrayElementsGuardians_ = true;
 }
 
 void JSThread::CheckSwitchDebuggerBCStub()

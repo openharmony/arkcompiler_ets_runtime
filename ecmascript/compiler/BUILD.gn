@@ -92,6 +92,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "gate.cpp",
     "gate_accessor.cpp",
     "gate_meta_data.cpp",
+    "generic_type_lowering.cpp",
     "graph_editor.cpp",
     "graph_visitor.cpp",
     "ic_stub_builder.cpp",

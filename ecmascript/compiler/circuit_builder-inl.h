@@ -158,7 +158,7 @@ GateRef CircuitBuilder::GetDoubleOfTNumber(GateRef x)
 GateRef CircuitBuilder::DoubleToInt(GateRef x, Label *exit)
 {
     Label overflow(env_);
-    
+
     GateRef xInt = ChangeFloat64ToInt32(x);
     DEFVAlUE(result, env_, VariableType::INT32(), xInt);
 
@@ -615,6 +615,16 @@ GateRef CircuitBuilder::IsDictionaryModeByHClass(GateRef hClass)
     return NotEqual(Int32And(Int32LSR(bitfield,
         Int32(JSHClass::IsDictionaryBit::START_BIT)),
         Int32((1LU << JSHClass::IsDictionaryBit::SIZE) - 1)),
+        Int32(0));
+}
+
+GateRef CircuitBuilder::IsIsStableElementsByHClass(GateRef hClass)
+{
+    GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    return NotEqual(Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::IsStableElementsBit::START_BIT)),
+        Int32((1LU << JSHClass::IsStableElementsBit::SIZE) - 1)),
         Int32(0));
 }
 

@@ -230,8 +230,10 @@ public:
     // low level interface
     template<TypedUnOp Op>
     inline GateRef Int32OverflowCheck(GateRef gate);
-    GateRef ArrayCheck(GateRef gate);
+    GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
     GateRef StableArrayCheck(GateRef gate);
+    GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState);
+    GateRef ArrayGuardianCheck(GateRef frameState);
     GateRef TypedArrayCheck(GateType type, GateRef gate);
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
@@ -482,6 +484,7 @@ public:
     inline GateRef IsJsType(GateRef object, JSType type);
     inline GateRef GetObjectType(GateRef hClass);
     inline GateRef IsDictionaryModeByHClass(GateRef hClass);
+    inline GateRef IsIsStableElementsByHClass(GateRef hClass);
     inline GateRef DoubleIsINF(GateRef x);
     inline GateRef IsDictionaryElement(GateRef hClass);
     inline GateRef IsClassConstructor(GateRef object);
