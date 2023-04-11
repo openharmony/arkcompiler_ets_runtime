@@ -97,7 +97,11 @@ JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallI
         }
 
         for (uint32_t idx = 0; idx < actualDeleteCount; idx++) {
-            destElements->Set(thread, idx, srcElementsHandle->Get(start + idx));
+            if ((start + idx) >= srcElementsHandle->GetLength()) {
+                destElements->Set(thread, idx, JSTaggedValue::Hole());
+            } else {
+                destElements->Set(thread, idx, srcElementsHandle->Get(start + idx));
+            }
         }
         JSHandle<JSArray>::Cast(newArrayHandle)->SetArrayLength(thread, actualDeleteCount);
     } else {
@@ -129,26 +133,33 @@ JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallI
     }
     uint32_t oldCapacity = srcElementsHandle->GetLength();
     uint32_t newCapacity = len - actualDeleteCount + insertCount;
+    if (newCapacity > oldCapacity) {
+        srcElementsHandle.Update(JSObject::GrowElementsCapacity(thread, thisObjHandle, newCapacity));
+    }
     if (insertCount < actualDeleteCount) {
         JSArray::CheckAndCopyArray(thread, receiver);
         srcElementsHandle.Update(receiver->GetElements());
         for (uint32_t idx = start; idx < len - actualDeleteCount; idx++) {
-            auto element = srcElementsHandle->Get(idx + actualDeleteCount);
+            auto element = JSTaggedValue::Hole();
+            if ((idx + actualDeleteCount) < srcElementsHandle->GetLength()) {
+                element = srcElementsHandle->Get(idx + actualDeleteCount);
+            }
             element = element.IsHole() ? JSTaggedValue::Undefined() : element;
-            srcElementsHandle->Set(thread, idx + insertCount, element);
+            if ((idx + insertCount) < srcElementsHandle->GetLength()) {
+                srcElementsHandle->Set(thread, idx + insertCount, element);
+            }
         }
 
-        if (TaggedArray::ShouldTrim(oldCapacity, newCapacity)) {
+        if ((oldCapacity > newCapacity) && TaggedArray::ShouldTrim(oldCapacity, newCapacity)) {
             srcElementsHandle->Trim(thread, newCapacity);
         } else {
             for (uint32_t idx = newCapacity; idx < len; idx++) {
-                srcElementsHandle->Set(thread, idx, JSTaggedValue::Hole());
+                if (idx < srcElementsHandle->GetLength()) {
+                    srcElementsHandle->Set(thread, idx, JSTaggedValue::Hole());
+                }
             }
         }
     } else {
-        if (newCapacity > oldCapacity) {
-            srcElementsHandle.Update(JSObject::GrowElementsCapacity(thread, thisObjHandle, newCapacity));
-        }
         for (uint32_t idx = len - actualDeleteCount; idx > start; idx--) {
             auto element = srcElementsHandle->Get(idx + actualDeleteCount - 1);
             element = element.IsHole() ? JSTaggedValue::Undefined() : element;
