@@ -154,7 +154,7 @@ HWTEST_F_L0(EcmaModuleTest, StoreModuleValue)
     JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName));
     JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportName));
     JSHandle<LocalExportEntry> localExportEntry =
-        objFactory->NewLocalExportEntry(exportNameHandle, localNameHandle);
+        objFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX);
     JSHandle<SourceTextModule> module = objFactory->NewSourceTextModule();
     SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 1);
 
@@ -186,8 +186,8 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValue)
         JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportLocalName));
     JSHandle<JSTaggedValue> exportNameHandle =
         JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportName));
-    JSHandle<LocalExportEntry> localExportEntry =
-        objFactory->NewLocalExportEntry(exportNameHandle, exportLocalNameHandle);
+    JSHandle<LocalExportEntry> localExportEntry = objFactory->NewLocalExportEntry(exportNameHandle,
+        exportLocalNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX);
     JSHandle<SourceTextModule> moduleExport = objFactory->NewSourceTextModule();
     SourceTextModule::AddLocalExportEntry(thread, moduleExport, localExportEntry, 0, 1);
     // store module value
