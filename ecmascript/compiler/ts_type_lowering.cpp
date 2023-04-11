@@ -197,11 +197,11 @@ void TSTypeLowering::Lower(GateRef gate)
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
-            acc_.DeleteStateSplitAndFrameState(gate);
+            LowerTypedLdObjByName(gate);
             break;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
-            acc_.DeleteStateSplitAndFrameState(gate);
+            LowerTypedStObjByName(gate, false);
             break;
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
