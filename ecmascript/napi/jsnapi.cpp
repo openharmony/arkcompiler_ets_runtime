@@ -811,6 +811,7 @@ EscapeLocalScope::EscapeLocalScope(const EcmaVM *vm) : LocalScope(vm, JSTaggedVa
 Local<JSValueRef> PrimitiveRef::GetValue(const EcmaVM *vm)
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     if (obj->IsJSPrimitiveRef()) {
         JSTaggedValue primitiveValue = JSPrimitiveRef::Cast(obj->GetTaggedObject())->GetValue();
         JSHandle<JSTaggedValue> value(vm->GetJSThread(), primitiveValue);
@@ -885,6 +886,7 @@ void BigIntRef::BigIntToInt64(const EcmaVM *vm, int64_t *cValue, bool *lossless)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> bigintVal(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(bigintVal, ERROR);
     BigInt::BigIntToInt64(thread, bigintVal, cValue, lossless);
 }
 
@@ -892,12 +894,14 @@ void BigIntRef::BigIntToUint64(const EcmaVM *vm, uint64_t *cValue, bool *lossles
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> bigintVal(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(bigintVal, ERROR);
     BigInt::BigIntToUint64(thread, bigintVal, cValue, lossless);
 }
 
 void BigIntRef::GetWordsArray(bool* signBit, size_t wordCount, uint64_t* words)
 {
     JSHandle<BigInt> bigintVal(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(bigintVal, FATAL);
     uint32_t len = bigintVal->GetLength();
     uint32_t count = 0;
     uint32_t index = 0;
@@ -917,6 +921,7 @@ void BigIntRef::GetWordsArray(bool* signBit, size_t wordCount, uint64_t* words)
 uint32_t BigIntRef::GetWordsArraySize()
 {
     JSHandle<BigInt> bigintVal(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(bigintVal, FATAL);
     uint32_t len = bigintVal->GetLength();
     return len % 2 != 0 ? len / 2 + 1 : len / 2; // 2 : len is odd or even
 }
@@ -1042,6 +1047,7 @@ Local<NativePointerRef> NativePointerRef::New(
 void *NativePointerRef::Value()
 {
     JSHandle<JSTaggedValue> nativePointer = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(nativePointer, FATAL);
     return JSHandle<JSNativePointer>(nativePointer)->GetExternalPointer();
 }
 
@@ -1076,6 +1082,7 @@ bool ObjectRef::Set(const EcmaVM *vm, void *detach, void *attach)
     [[maybe_unused]] LocalScope scope(vm);
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSTaggedValue> object = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> detachKey = env->GetDetachSymbol();
     JSHandle<JSTaggedValue> attachKey = env->GetAttachSymbol();
     JSHandle<JSTaggedValue> detachValue = JSNApiHelper::ToJSHandle(NativePointerRef::New(vm, detach));
@@ -1090,6 +1097,7 @@ bool ObjectRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> v
 {
     [[maybe_unused]] LocalScope scope(vm);
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
     JSHandle<JSTaggedValue> valueValue = JSNApiHelper::ToJSHandle(value);
     bool result = JSTaggedValue::SetProperty(vm->GetJSThread(), obj, keyValue, valueValue);
@@ -1116,6 +1124,7 @@ bool ObjectRef::SetAccessorProperty(const EcmaVM *vm, Local<JSValueRef> key, Loc
     desc.SetSetter(setterValue);
     desc.SetGetter(getterValue);
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
     bool result = JSTaggedValue::DefineOwnProperty(thread, obj, keyValue, desc);
     RETURN_VALUE_IF_ABRUPT(thread, false);
@@ -1127,6 +1136,7 @@ Local<JSValueRef> ObjectRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
     EscapeLocalScope scope(vm);
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
     OperationResult ret = JSTaggedValue::GetProperty(thread, obj, keyValue);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
@@ -1146,6 +1156,7 @@ bool ObjectRef::GetOwnProperty(const EcmaVM *vm, Local<JSValueRef> key, Property
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
     PropertyDescriptor desc(thread);
     bool ret = JSObject::GetOwnProperty(thread, JSHandle<JSObject>(obj), keyValue, desc);
@@ -1176,6 +1187,7 @@ Local<ArrayRef> ObjectRef::GetOwnPropertyNames(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> obj(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<TaggedArray> array(JSTaggedValue::GetOwnPropertyKeys(thread, obj));
     JSHandle<JSTaggedValue> jsArray(JSArray::CreateArrayFromList(thread, array));
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
@@ -1186,6 +1198,7 @@ Local<ArrayRef> ObjectRef::GetOwnEnumerablePropertyNames(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSObject> obj(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<TaggedArray> array(JSObject::EnumerableOwnNames(thread, obj));
     JSHandle<JSTaggedValue> jsArray(JSArray::CreateArrayFromList(thread, array));
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
@@ -1196,6 +1209,7 @@ Local<JSValueRef> ObjectRef::GetPrototype(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> prototype(thread, JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>(object)));
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<JSValueRef>(prototype);
@@ -1205,6 +1219,7 @@ bool ObjectRef::DefineProperty(const EcmaVM *vm, Local<JSValueRef> key, Property
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
     PropertyDescriptor desc(thread, attribute.IsWritable(), attribute.IsEnumerable(), attribute.IsConfigurable());
     desc.SetValue(JSNApiHelper::ToJSHandle(attribute.GetValue(vm)));
@@ -1217,6 +1232,7 @@ bool ObjectRef::Has(const EcmaVM *vm, Local<JSValueRef> key)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
     bool result = object->HasProperty(thread, object, keyValue);
     RETURN_VALUE_IF_ABRUPT(thread, false);
@@ -1227,6 +1243,7 @@ bool ObjectRef::Has(const EcmaVM *vm, uint32_t key)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(object, ERROR);
     bool result = object->HasProperty(thread, object, key);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     return result;
@@ -1236,6 +1253,7 @@ bool ObjectRef::Delete(const EcmaVM *vm, Local<JSValueRef> key)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyValue(JSNApiHelper::ToJSHandle(key));
     bool result = object->DeleteProperty(thread, object, keyValue);
     RETURN_VALUE_IF_ABRUPT(thread, false);
@@ -1246,6 +1264,7 @@ bool ObjectRef::Delete(const EcmaVM *vm, uint32_t key)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> object(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(object, ERROR);
     JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(key));
     bool result = object->DeleteProperty(thread, object, keyHandle);
     RETURN_VALUE_IF_ABRUPT(thread, false);
@@ -1255,18 +1274,21 @@ bool ObjectRef::Delete(const EcmaVM *vm, uint32_t key)
 void ObjectRef::SetNativePointerFieldCount(int32_t count)
 {
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(object, FATAL);
     object->SetNativePointerFieldCount(count);
 }
 
 int32_t ObjectRef::GetNativePointerFieldCount()
 {
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(object, FATAL);
     return object->GetNativePointerFieldCount();
 }
 
 void *ObjectRef::GetNativePointerField(int32_t index)
 {
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(object, FATAL);
     return object->GetNativePointerField(index);
 }
 
@@ -1274,6 +1296,7 @@ void ObjectRef::SetNativePointerField(int32_t index, void *nativePointer,
     NativePointerCallback callBack, void *data, size_t nativeBindingsize)
 {
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(object, FATAL);
     object->SetNativePointerField(index, nativePointer, callBack, data, nativeBindingsize);
 }
 
@@ -1332,6 +1355,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     }
     vm->GetJsDebuggerManager()->ClearSingleStepper();
     JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(func, ERROR);
     JSHandle<JSTaggedValue> thisValue = JSNApiHelper::ToJSHandle(thisObj);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
@@ -1363,6 +1387,7 @@ Local<JSValueRef> FunctionRef::Constructor(const EcmaVM *vm,
         return JSValueRef::Undefined(vm);
     }
     JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(func, ERROR);
     JSHandle<JSTaggedValue> newTarget = func;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
@@ -1383,6 +1408,7 @@ Local<JSValueRef> FunctionRef::GetFunctionPrototype(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> func = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(func, FATAL);
     JSHandle<JSTaggedValue> prototype(thread, JSHandle<JSFunction>(func)->GetFunctionPrototype());
     return JSNApiHelper::ToLocal<JSValueRef>(prototype);
 }
@@ -1394,6 +1420,7 @@ bool FunctionRef::Inherit(const EcmaVM *vm, Local<FunctionRef> parent)
     JSHandle<JSTaggedValue> parentValue = JSNApiHelper::ToJSHandle(parent);
     JSHandle<JSObject> parentHandle = JSHandle<JSObject>::Cast(parentValue);
     JSHandle<JSObject> thisHandle = JSHandle<JSObject>::Cast(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(thisHandle, ERROR);
     // Set this.__proto__ to parent
     bool res = JSObject::SetPrototype(thread, thisHandle, parentValue);
     if (!res) {
@@ -1512,6 +1539,7 @@ Local<PromiseRef> PromiseCapabilityRef::GetPromise(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(capacity, FATAL);
     return JSNApiHelper::ToLocal<PromiseRef>(JSHandle<JSTaggedValue>(thread, capacity->GetPromise()));
 }
 
@@ -1522,6 +1550,7 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
 
     JSHandle<JSTaggedValue> arg = JSNApiHelper::ToJSHandle(value);
     JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(capacity, FATAL);
     JSHandle<JSTaggedValue> resolve(thread, capacity->GetResolve());
     JSHandle<JSTaggedValue> undefined(constants->GetHandledUndefined());
     EcmaRuntimeCallInfo *info =
@@ -1544,6 +1573,7 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, Local<JSValueRef> reason)
 
     JSHandle<JSTaggedValue> arg = JSNApiHelper::ToJSHandle(reason);
     JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(capacity, FATAL);
     JSHandle<JSTaggedValue> reject(thread, capacity->GetReject());
     JSHandle<JSTaggedValue> undefined(constants->GetHandledUndefined());
 
@@ -1566,6 +1596,7 @@ Local<PromiseRef> PromiseRef::Catch(const EcmaVM *vm, Local<FunctionRef> handler
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> promise = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(promise, ERROR);
     JSHandle<JSTaggedValue> catchKey(thread, constants->GetPromiseCatchString());
     JSHandle<JSTaggedValue> reject = JSNApiHelper::ToJSHandle(handler);
     JSHandle<JSTaggedValue> undefined = constants->GetHandledUndefined();
@@ -1585,6 +1616,7 @@ Local<PromiseRef> PromiseRef::Finally(const EcmaVM *vm, Local<FunctionRef> handl
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> promise = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(promise, ERROR);
     JSHandle<JSTaggedValue> finallyKey = constants->GetHandledPromiseFinallyString();
     JSHandle<JSTaggedValue> resolver = JSNApiHelper::ToJSHandle(handler);
     JSHandle<JSTaggedValue> undefined(constants->GetHandledUndefined());
@@ -1604,6 +1636,7 @@ Local<PromiseRef> PromiseRef::Then(const EcmaVM *vm, Local<FunctionRef> handler)
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> promise = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(promise, ERROR);
     JSHandle<JSTaggedValue> thenKey(thread, constants->GetPromiseThenString());
     JSHandle<JSTaggedValue> resolver = JSNApiHelper::ToJSHandle(handler);
     JSHandle<JSTaggedValue> undefined(constants->GetHandledUndefined());
@@ -1623,6 +1656,7 @@ Local<PromiseRef> PromiseRef::Then(const EcmaVM *vm, Local<FunctionRef> onFulfil
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> promise = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(promise, ERROR);
     JSHandle<JSTaggedValue> thenKey(thread, constants->GetPromiseThenString());
     JSHandle<JSTaggedValue> resolver = JSNApiHelper::ToJSHandle(onFulfilled);
     JSHandle<JSTaggedValue> reject = JSNApiHelper::ToJSHandle(onRejected);
@@ -1658,12 +1692,14 @@ Local<ArrayBufferRef> ArrayBufferRef::New(
 int32_t ArrayBufferRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
 {
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(arrayBuffer, FATAL);
     return arrayBuffer->GetArrayBufferByteLength();
 }
 
 void *ArrayBufferRef::GetBuffer()
 {
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(arrayBuffer, FATAL);
     JSTaggedValue bufferData = arrayBuffer->GetArrayBufferData();
     if (!bufferData.IsJSNativePointer()) {
         return nullptr;
@@ -1688,12 +1724,14 @@ Local<DataViewRef> DataViewRef::New(
 uint32_t DataViewRef::ByteLength()
 {
     JSHandle<JSDataView> dataView(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(dataView, FATAL);
     return dataView->GetByteLength();
 }
 
 uint32_t DataViewRef::ByteOffset()
 {
     JSHandle<JSDataView> dataView(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(dataView, FATAL);
     return dataView->GetByteOffset();
 }
 
@@ -1701,6 +1739,7 @@ Local<ArrayBufferRef> DataViewRef::GetArrayBuffer(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSDataView> dataView(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(dataView, FATAL);
     JSHandle<JSTaggedValue> arrayBuffer(thread, dataView->GetViewedArrayBuffer());
     return JSNApiHelper::ToLocal<ArrayBufferRef>(arrayBuffer);
 }
@@ -1710,18 +1749,21 @@ Local<ArrayBufferRef> DataViewRef::GetArrayBuffer(const EcmaVM *vm)
 uint32_t TypedArrayRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
 {
     JSHandle<JSTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(typedArray, FATAL);
     return typedArray->GetByteLength();
 }
 
 uint32_t TypedArrayRef::ByteOffset([[maybe_unused]] const EcmaVM *vm)
 {
     JSHandle<JSTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(typedArray, FATAL);
     return typedArray->GetByteOffset();
 }
 
 uint32_t TypedArrayRef::ArrayLength([[maybe_unused]] const EcmaVM *vm)
 {
     JSHandle<JSTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(typedArray, FATAL);
     return typedArray->GetArrayLength();
 }
 
@@ -1729,6 +1771,7 @@ Local<ArrayBufferRef> TypedArrayRef::GetArrayBuffer(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTypedArray> typeArray(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(typeArray, ERROR);
     JSHandle<JSTaggedValue> arrayBuffer(thread, JSTypedArray::GetOffHeapBuffer(thread, typeArray));
     return JSNApiHelper::ToLocal<ArrayBufferRef>(arrayBuffer);
 }
@@ -1813,6 +1856,7 @@ Local<StringRef> RegExpRef::GetOriginalSource(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(regExp, FATAL);
     JSTaggedValue source = regExp->GetOriginalSource();
     if (!source.IsString()) {
         auto constants = thread->GlobalConstants();
@@ -1825,6 +1869,7 @@ Local<StringRef> RegExpRef::GetOriginalSource(const EcmaVM *vm)
 std::string RegExpRef::GetOriginalFlags()
 {
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(regExp, FATAL);
     JSTaggedValue regExpFlags = regExp->GetOriginalFlags();
     uint32_t regExpFlagsInt = static_cast<uint32_t>(regExpFlags.GetInt());
     std::string strFlags = "";
@@ -1853,6 +1898,7 @@ std::string RegExpRef::GetOriginalFlags()
 Local<JSValueRef> RegExpRef::IsGlobal(const EcmaVM *vm)
 {
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(regExp, FATAL);
     JSTaggedValue flags = regExp->GetOriginalFlags();
     bool result = flags.GetInt() & RegExpParser::FLAG_GLOBAL;
     Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
@@ -1862,6 +1908,7 @@ Local<JSValueRef> RegExpRef::IsGlobal(const EcmaVM *vm)
 Local<JSValueRef> RegExpRef::IsIgnoreCase(const EcmaVM *vm)
 {
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(regExp, FATAL);
     JSTaggedValue flags = regExp->GetOriginalFlags();
     bool result = flags.GetInt() & RegExpParser::FLAG_IGNORECASE;
     Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
@@ -1871,6 +1918,7 @@ Local<JSValueRef> RegExpRef::IsIgnoreCase(const EcmaVM *vm)
 Local<JSValueRef> RegExpRef::IsMultiline(const EcmaVM *vm)
 {
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(regExp, FATAL);
     JSTaggedValue flags = regExp->GetOriginalFlags();
     bool result = flags.GetInt() & RegExpParser::FLAG_MULTILINE;
     Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
@@ -1880,6 +1928,7 @@ Local<JSValueRef> RegExpRef::IsMultiline(const EcmaVM *vm)
 Local<JSValueRef> RegExpRef::IsDotAll(const EcmaVM *vm)
 {
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(regExp, FATAL);
     JSTaggedValue flags = regExp->GetOriginalFlags();
     bool result = flags.GetInt() & RegExpParser::FLAG_DOTALL;
     Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
@@ -1889,6 +1938,7 @@ Local<JSValueRef> RegExpRef::IsDotAll(const EcmaVM *vm)
 Local<JSValueRef> RegExpRef::IsUtf16(const EcmaVM *vm)
 {
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(regExp, FATAL);
     JSTaggedValue flags = regExp->GetOriginalFlags();
     bool result = flags.GetInt() & RegExpParser::FLAG_UTF16;
     Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
@@ -1898,6 +1948,7 @@ Local<JSValueRef> RegExpRef::IsUtf16(const EcmaVM *vm)
 Local<JSValueRef> RegExpRef::IsStick(const EcmaVM *vm)
 {
     JSHandle<JSRegExp> regExp(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(regExp, FATAL);
     JSTaggedValue flags = regExp->GetOriginalFlags();
     bool result = flags.GetInt() & RegExpParser::FLAG_STICKY;
     Local<JSValueRef> jsValue = BooleanRef::New(vm, result);
@@ -1919,6 +1970,7 @@ Local<StringRef> DateRef::ToString(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSDate> date(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(date, ERROR);
     JSTaggedValue dateStr = date->ToString(thread);
     if (!dateStr.IsString()) {
         auto constants = thread->GlobalConstants();
@@ -1931,6 +1983,7 @@ Local<StringRef> DateRef::ToString(const EcmaVM *vm)
 double DateRef::GetTime()
 {
     JSHandle<JSDate> date(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(date, ERROR);
     if (!date->IsDate()) {
         LOG_ECMA(ERROR) << "Not a Date Object";
     }
@@ -1940,6 +1993,7 @@ double DateRef::GetTime()
 Local<JSValueRef> MapRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
 {
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(map, FATAL);
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(vm->GetJSThread(),
                 map->Get(JSNApiHelper::ToJSTaggedValue(*key))));
 }
@@ -1947,6 +2001,7 @@ Local<JSValueRef> MapRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
 void MapRef::Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value)
 {
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(map, ERROR);
     JSMap::Set(vm->GetJSThread(), map, JSNApiHelper::ToJSHandle(key), JSNApiHelper::ToJSHandle(value));
 }
 
@@ -1967,18 +2022,21 @@ Local<MapRef> MapRef::New(const EcmaVM *vm)
 int32_t MapRef::GetSize()
 {
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(map, FATAL);
     return map->GetSize();
 }
 
 int32_t MapRef::GetTotalElements()
 {
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(map, FATAL);
     return map->GetSize() + LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject())->NumberOfDeletedElements();
 }
 
 Local<JSValueRef> MapRef::GetKey(const EcmaVM *vm, int entry)
 {
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(map, FATAL);
     JSThread *thread = vm->GetJSThread();
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, map->GetKey(entry)));
 }
@@ -1986,6 +2044,7 @@ Local<JSValueRef> MapRef::GetKey(const EcmaVM *vm, int entry)
 Local<JSValueRef> MapRef::GetValue(const EcmaVM *vm, int entry)
 {
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(map, FATAL);
     JSThread *thread = vm->GetJSThread();
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, map->GetValue(entry)));
 }
@@ -1993,18 +2052,21 @@ Local<JSValueRef> MapRef::GetValue(const EcmaVM *vm, int entry)
 int32_t SetRef::GetSize()
 {
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(set, FATAL);
     return set->GetSize();
 }
 
 int32_t SetRef::GetTotalElements()
 {
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(set, FATAL);
     return set->GetSize() + LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject())->NumberOfDeletedElements();
 }
 
 Local<JSValueRef> SetRef::GetValue(const EcmaVM *vm, int entry)
 {
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(set, FATAL);
     JSThread *thread = vm->GetJSThread();
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, set->GetValue(entry)));
 }
@@ -2012,12 +2074,14 @@ Local<JSValueRef> SetRef::GetValue(const EcmaVM *vm, int entry)
 int32_t MapIteratorRef::GetIndex()
 {
     JSHandle<JSMapIterator> jsMapIter(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(jsMapIter, FATAL);
     return jsMapIter->GetNextIndex();
 }
 
 Local<JSValueRef> MapIteratorRef::GetKind(const EcmaVM *vm)
 {
     JSHandle<JSMapIterator> jsMapIter(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(jsMapIter, FATAL);
     IterationKind iterKind = jsMapIter->GetIterationKind();
     Local<JSValueRef> result;
     switch (iterKind) {
@@ -2039,12 +2103,14 @@ Local<JSValueRef> MapIteratorRef::GetKind(const EcmaVM *vm)
 int32_t SetIteratorRef::GetIndex()
 {
     JSHandle<JSSetIterator> jsSetIter(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(jsSetIter, FATAL);
     return jsSetIter->GetNextIndex();
 }
 
 Local<JSValueRef> SetIteratorRef::GetKind(const EcmaVM *vm)
 {
     JSHandle<JSSetIterator> jsSetIter(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(jsSetIter, FATAL);
     IterationKind iterKind = jsSetIter->GetIterationKind();
     Local<JSValueRef> result;
     switch (iterKind) {
@@ -2071,6 +2137,7 @@ bool GeneratorFunctionRef::IsGenerator()
 Local<JSValueRef> GeneratorObjectRef::GetGeneratorState(const EcmaVM *vm)
 {
     JSHandle<JSGeneratorObject> jsGenerator(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(jsGenerator, FATAL);
     if (jsGenerator->GetGeneratorState() == JSGeneratorState::COMPLETED) {
         return StringRef::NewFromUtf8(vm, "closed");
     }
@@ -2081,6 +2148,7 @@ Local<JSValueRef> GeneratorObjectRef::GetGeneratorFunction(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSGeneratorObject> jsGenerator(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(jsGenerator, FATAL);
     JSHandle<GeneratorContext> generatorContext(thread, jsGenerator->GetGeneratorContext());
     JSTaggedValue jsTagValue = generatorContext->GetMethod();
     return JSNApiHelper::ToLocal<GeneratorFunctionRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
@@ -2090,6 +2158,7 @@ Local<JSValueRef> GeneratorObjectRef::GetGeneratorReceiver(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSGeneratorObject> jsGenerator(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(jsGenerator, FATAL);
     JSHandle<GeneratorContext> generatorContext(thread, jsGenerator->GetGeneratorContext());
     JSTaggedValue jsTagValue = generatorContext->GetAcc();
     return JSNApiHelper::ToLocal<GeneratorObjectRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
@@ -2101,6 +2170,7 @@ Local<JSValueRef> CollatorRef::GetCompareFunction(const EcmaVM *vm)
     JSThread *thread = vm->GetJSThread();
 #ifdef ARK_SUPPORT_INTL
     JSHandle<JSCollator> jsCollator(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(jsCollator, FATAL);
     JSTaggedValue jsTagValue = jsCollator->GetBoundCompare();
     return JSNApiHelper::ToLocal<CollatorRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
 #else
@@ -2114,6 +2184,7 @@ Local<JSValueRef> DataTimeFormatRef::GetFormatFunction(const EcmaVM *vm)
     JSThread *thread = vm->GetJSThread();
 #ifdef ARK_SUPPORT_INTL
     JSHandle<JSDateTimeFormat> jsDateTimeFormat(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(jsDateTimeFormat, FATAL);
     JSTaggedValue jsTagValue = jsDateTimeFormat->GetBoundFormat();
     return JSNApiHelper::ToLocal<DataTimeFormatRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
 #else
@@ -2127,6 +2198,7 @@ Local<JSValueRef> NumberFormatRef::GetFormatFunction(const EcmaVM *vm)
     JSThread *thread = vm->GetJSThread();
 #ifdef ARK_SUPPORT_INTL
     JSHandle<JSNumberFormat> jsNumberFormat(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(jsNumberFormat, FATAL);
     JSTaggedValue jsTagValue = jsNumberFormat->GetBoundFormat();
     return JSNApiHelper::ToLocal<NumberFormatRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
 #else
@@ -2210,6 +2282,7 @@ Local<ObjectRef> JSValueRef::ToObject(const EcmaVM *vm)
         return Undefined(vm);
     }
     JSHandle<JSTaggedValue> obj(JSTaggedValue::ToObject(thread, JSNApiHelper::ToJSHandle(this)));
+    LOG_IF_SPECIAL(obj, ERROR);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<ObjectRef>(obj);
 }
@@ -2218,6 +2291,7 @@ Local<StringRef> JSValueRef::ToString(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     if (!obj->IsString()) {
         obj = JSHandle<JSTaggedValue>(JSTaggedValue::ToString(thread, obj));
         RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
@@ -2229,6 +2303,7 @@ Local<NativePointerRef> JSValueRef::ToNativePointer(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<NativePointerRef>(obj);
 }
@@ -2242,6 +2317,7 @@ int64_t JSValueRef::IntegerValue(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> tagged = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(tagged, ERROR);
     if (tagged->IsNumber()) {
         if (!NumberHelper::IsFinite(tagged.GetTaggedValue()) || NumberHelper::IsNaN(tagged.GetTaggedValue())) {
             return 0;
@@ -2274,6 +2350,7 @@ Local<BooleanRef> JSValueRef::ToBoolean(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> booleanObj(thread, JSTaggedValue(obj->ToBoolean()));
     return JSNApiHelper::ToLocal<BooleanRef>(booleanObj);
 }
@@ -2282,6 +2359,7 @@ Local<NumberRef> JSValueRef::ToNumber(const EcmaVM *vm)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> number(thread, JSTaggedValue::ToNumber(thread, obj));
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<NumberRef>(number);
@@ -2291,6 +2369,7 @@ bool JSValueRef::IsStrictEquals(const EcmaVM *vm, Local<JSValueRef> value)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> xValue = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(xValue, ERROR);
     JSHandle<JSTaggedValue> yValue = JSNApiHelper::ToJSHandle(value);
     return JSTaggedValue::StrictEqual(thread, xValue, yValue);
 }
@@ -2306,6 +2385,7 @@ bool JSValueRef::InstanceOf(const EcmaVM *vm, Local<JSValueRef> value)
 {
     JSThread *thread = vm->GetJSThread();
     JSHandle<JSTaggedValue> origin = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(origin, ERROR);
     JSHandle<JSTaggedValue> target = JSNApiHelper::ToJSHandle(value);
     bool result = JSObject::InstanceOf(thread, origin, target);
     RETURN_VALUE_IF_ABRUPT(thread, false);
@@ -2548,36 +2628,42 @@ bool JSValueRef::IsJSPrimitiveRef()
 bool JSValueRef::IsJSPrimitiveNumber()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsNumber();
 }
 
 bool JSValueRef::IsJSPrimitiveInt()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsInt();
 }
 
 bool JSValueRef::IsJSPrimitiveBoolean()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsBoolean();
 }
 
 bool JSValueRef::IsJSPrimitiveString()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsString();
 }
 
 bool JSValueRef::IsJSPrimitiveSymbol()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsSymbol();
 }
 
 bool JSValueRef::IsGeneratorObject()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     bool rst = obj->IsGeneratorObject();
     return rst;
 }
@@ -2585,6 +2671,7 @@ bool JSValueRef::IsGeneratorObject()
 bool JSValueRef::IsModuleNamespaceObject()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     bool rst = obj->IsModuleNamespace();
     return rst;
 }
@@ -2592,6 +2679,7 @@ bool JSValueRef::IsModuleNamespaceObject()
 bool JSValueRef::IsSharedArrayBuffer()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     bool rst = obj->IsSharedArrayBuffer();
     return rst;
 }
@@ -2639,12 +2727,14 @@ bool JSValueRef::IsJSListFormat()
 bool JSValueRef::IsAsyncGeneratorObject()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     return obj->IsAsyncGeneratorObject();
 }
 
 bool JSValueRef::IsAsyncFunction()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     bool rst = obj->IsJSAsyncFunction();
     return rst;
 }
@@ -2652,6 +2742,7 @@ bool JSValueRef::IsAsyncFunction()
 bool JSValueRef::IsArgumentsObject()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     bool rst = obj->IsArguments();
     return rst;
 }
@@ -2659,6 +2750,7 @@ bool JSValueRef::IsArgumentsObject()
 bool JSValueRef::IsGeneratorFunction()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     bool rst = obj->IsGeneratorFunction();
     return rst;
 }
@@ -2666,6 +2758,7 @@ bool JSValueRef::IsGeneratorFunction()
 bool JSValueRef::IsAsyncGeneratorFunction()
 {
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
     return obj->IsAsyncGeneratorFunction();
 }
 

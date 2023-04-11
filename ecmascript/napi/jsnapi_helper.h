@@ -30,6 +30,17 @@
         }                                                     \
     } while (false)
 
+#if ECMASCRIPT_ENABLE_NAPI_SPECIAL_CHECK
+#define LOG_IF_SPECIAL(handleValue, level)                                                       \
+    do {                                                                                         \
+        if ((handleValue).GetTaggedValue().IsSpecial()) {                                        \
+            LOG_FULL(level) << "Special value " << (handleValue).GetTaggedType() << " checked!"; \
+        }                                                                                        \
+    } while (false)
+#else
+#define LOG_IF_SPECIAL(handleValue, level) static_cast<void>(0)
+#endif
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define TYPED_ARRAY_ALL(V) \
     V(Int8Array)           \
