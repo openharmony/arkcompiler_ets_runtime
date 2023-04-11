@@ -14,17 +14,17 @@
  */
 
 export class Test {
-    constructor(a) {
-        this.a = a;
-    }
+  constructor(a) {
+    this.a = a;
+  }
 
-    fun1() {
-        print('hello world');
-    }
+  fun1() {
+    print('hello world');
+  }
 
-    fun2() {
-        print('hello world1');
-    }
+  fun2() {
+    print('hello world1');
+  }
 }
 
-export var module = 0;
+export let module = 0;

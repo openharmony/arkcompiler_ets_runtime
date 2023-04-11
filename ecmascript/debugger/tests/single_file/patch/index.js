@@ -14,5 +14,5 @@
  */
 
 function foo() {
-    print("patch foo")
+  print('patch foo');
 }

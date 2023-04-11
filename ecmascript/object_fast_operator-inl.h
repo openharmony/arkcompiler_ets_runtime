@@ -356,7 +356,7 @@ JSTaggedValue ObjectFastOperator::GetPropertyByValue(JSThread *thread, JSTaggedV
 
 template<bool UseOwn>
 JSTaggedValue ObjectFastOperator::SetPropertyByValue(JSThread *thread, JSTaggedValue receiver,
-                                                     JSTaggedValue key, JSTaggedValue value)
+    JSTaggedValue key, JSTaggedValue value)
 {
     INTERPRETER_TRACE(thread, SetPropertyByValue);
     if (UNLIKELY(!key.IsNumber() && !key.IsStringOrSymbol())) {
@@ -421,9 +421,7 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByName(JSThread *thread, JSTagg
     JSTaggedValue result = ObjectFastOperator::GetPropertyByName(thread, receiver, key);
     if (result.IsHole()) {
         return JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver),
-                                          JSHandle<JSTaggedValue>(thread, key))
-            .GetValue()
-            .GetTaggedValue();
+            JSHandle<JSTaggedValue>(thread, key)).GetValue().GetTaggedValue();
     }
     return result;
 }
@@ -434,9 +432,7 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByValue(JSThread *thread, JSTag
     JSTaggedValue result = ObjectFastOperator::GetPropertyByValue(thread, receiver, key);
     if (result.IsHole()) {
         return JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver),
-                                          JSHandle<JSTaggedValue>(thread, key))
-            .GetValue()
-            .GetTaggedValue();
+            JSHandle<JSTaggedValue>(thread, key)).GetValue().GetTaggedValue();
     }
     return result;
 }

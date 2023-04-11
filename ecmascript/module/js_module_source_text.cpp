@@ -114,8 +114,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
 
 // old way with bundle
 JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModule(JSThread *thread,
-                                                                       const JSHandle<SourceTextModule> &module,
-                                                                       const JSHandle<JSTaggedValue> &moduleRequest)
+    const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest)
 {
     auto moduleManage = thread->GetEcmaVM()->GetModuleManager();
     if (moduleManage->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
