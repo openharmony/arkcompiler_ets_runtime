@@ -1290,7 +1290,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveLocalExport(JSThread *thread,
                  ModuleManager::IsNativeModule(moduleType)) {
             // Adapter new module
             if (module->GetIsNewBcVersion()) {
-                return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, idx));
+                return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, ee->GetLocalIndex()));
             }
             // i. Assert: module provides the direct binding for this export.
             // ii. Return ResolvedBinding Record { [[Module]]: module, [[BindingName]]: e.[[LocalName]] }.

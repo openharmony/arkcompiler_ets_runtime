@@ -102,7 +102,9 @@ void ModuleDataAccessor::EnumerateLocalExportEntry(JSThread *thread, JSHandle<So
         return;
     }
     JSHandle<TaggedArray> localExportEntries = factory->NewTaggedArray(localExportNum);
-    JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry();
+    uint32_t localIndex = -1;
+    JSMutableHandle<JSTaggedValue> distinctLocalName(thread, JSTaggedValue::Undefined());
+
     for (size_t idx = 0; idx < localExportNum; idx++) {
         auto localNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
         auto exportNameOffset = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint32_t)>(&sp));
@@ -112,7 +114,11 @@ void ModuleDataAccessor::EnumerateLocalExportEntry(JSThread *thread, JSHandle<So
         sd = pandaFile_->GetStringData(panda_file::File::EntityId(exportNameOffset));
         JSHandle<JSTaggedValue> exportName(thread, factory->GetRawStringFromStringTable(sd));
 
-        localExportEntry = factory->NewLocalExportEntry(exportName, localName);
+        if (!JSTaggedValue::StrictEqual(thread, distinctLocalName, localName)) {
+            distinctLocalName.Update(localName);
+            localIndex++;
+        }
+        JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(exportName, localName, localIndex);
         localExportEntries->Set(thread, idx, localExportEntry);
     }
     entryDataSp_ = sp;

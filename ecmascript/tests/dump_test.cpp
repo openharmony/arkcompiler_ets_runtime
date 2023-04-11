@@ -1263,7 +1263,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::LOCAL_EXPORTENTRY_RECORD: {
-                CHECK_DUMP_FIELDS(Record::SIZE, LocalExportEntry::SIZE, 2U);
+                CHECK_DUMP_FIELDS(Record::SIZE, LocalExportEntry::SIZE, 3U);
                 JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry();
                 DUMP_FOR_HANDLE(localExportEntry);
                 break;

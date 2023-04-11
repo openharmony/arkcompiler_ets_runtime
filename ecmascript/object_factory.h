@@ -571,8 +571,9 @@ public:
                                          const JSHandle<JSTaggedValue> &importName,
                                          const JSHandle<JSTaggedValue> &localName);
     JSHandle<LocalExportEntry> NewLocalExportEntry();
-    JSHandle<LocalExportEntry> NewLocalExportEntry(const JSHandle<JSTaggedValue> &exportName,
-                                                   const JSHandle<JSTaggedValue> &localName);
+    JSHandle<LocalExportEntry> NewLocalExportEntry(
+        const JSHandle<JSTaggedValue> &exportName, const JSHandle<JSTaggedValue> &localName,
+        const uint32_t index = 0);
     JSHandle<IndirectExportEntry> NewIndirectExportEntry();
     JSHandle<IndirectExportEntry> NewIndirectExportEntry(const JSHandle<JSTaggedValue> &exportName,
                                                          const JSHandle<JSTaggedValue> &moduleRequest,

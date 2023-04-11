@@ -93,7 +93,8 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, co
     moduleRecord->SetEcmaModuleFilename(thread, cjsModuleFilename);
 
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
-    JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName, defaultName);
+    JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName,
+        defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX);
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::CJS_MODULE);
@@ -109,7 +110,8 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, c
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
 
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
-    JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName, defaultName);
+    JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName,
+        defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX);
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
     JSTaggedValue jsonData = JsonParse(thread, jsPandaFile, recordName);
     moduleRecord->StoreModuleValue(thread, 0, JSHandle<JSTaggedValue>(thread, jsonData)); // index = 0
@@ -134,7 +136,8 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseNativeModule(JSThread *thread,
     JSHandle<EcmaString> falsyRecordName = factory->NewFromUtf8(moduleRequestName);
     moduleRecord->SetEcmaModuleRecordName(thread, falsyRecordName);
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
-    JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName, defaultName);
+    JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName,
+        defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX);
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1);
     moduleRecord->SetTypes(moduleType);
     moduleRecord->SetIsNewBcVersion(true);

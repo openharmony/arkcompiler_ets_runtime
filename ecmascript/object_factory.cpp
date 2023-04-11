@@ -3762,11 +3762,11 @@ JSHandle<ImportEntry> ObjectFactory::NewImportEntry(const JSHandle<JSTaggedValue
 JSHandle<LocalExportEntry> ObjectFactory::NewLocalExportEntry()
 {
     JSHandle<JSTaggedValue> defautValue = thread_->GlobalConstants()->GetHandledUndefined();
-    return NewLocalExportEntry(defautValue, defautValue);
+    return NewLocalExportEntry(defautValue, defautValue, LocalExportEntry::LOCAL_DEFAULT_INDEX);
 }
 
 JSHandle<LocalExportEntry> ObjectFactory::NewLocalExportEntry(const JSHandle<JSTaggedValue> &exportName,
-                                                              const JSHandle<JSTaggedValue> &localName)
+    const JSHandle<JSTaggedValue> &localName, const uint32_t index)
 {
     NewObjectHook();
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
@@ -3774,6 +3774,7 @@ JSHandle<LocalExportEntry> ObjectFactory::NewLocalExportEntry(const JSHandle<JST
     JSHandle<LocalExportEntry> obj(thread_, header);
     obj->SetExportName(thread_, exportName);
     obj->SetLocalName(thread_, localName);
+    obj->SetLocalIndex(index);
     return obj;
 }
 

@@ -37,12 +37,15 @@ class LocalExportEntry : public Record {
 public:
     CAST_CHECK(LocalExportEntry, IsLocalExportEntry);
 
+    static constexpr uint32_t LOCAL_DEFAULT_INDEX = 0;
     static constexpr size_t LOCAL_EXPORT_ENTRY_OFFSET = Record::SIZE;
     ACCESSORS(ExportName, LOCAL_EXPORT_ENTRY_OFFSET, LOCAL_NAME_OFFSET);
-    ACCESSORS(LocalName, LOCAL_NAME_OFFSET, SIZE);
+    ACCESSORS(LocalName, LOCAL_NAME_OFFSET, LOCAL_INDEX_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(LocalIndex, uint32_t, LOCAL_INDEX_OFFSET, LAST_OFFSET);
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     DECL_DUMP()
-    DECL_VISIT_OBJECT(LOCAL_EXPORT_ENTRY_OFFSET, SIZE)
+    DECL_VISIT_OBJECT(LOCAL_EXPORT_ENTRY_OFFSET, LOCAL_INDEX_OFFSET)
 };
 
 class IndirectExportEntry : public Record {
