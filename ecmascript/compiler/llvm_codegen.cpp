@@ -31,7 +31,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
 #include "llvm-c/Analysis.h"
