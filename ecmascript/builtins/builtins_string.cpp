@@ -1803,6 +1803,7 @@ JSTaggedValue BuiltinsString::GetLength(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, String, GetLength);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
 
@@ -1813,6 +1814,7 @@ JSTaggedValue BuiltinsString::GetLength(EcmaRuntimeCallInfo *argv)
 // 21.1.3
 JSTaggedValue BuiltinsString::ThisStringValue(JSThread *thread, JSTaggedValue value)
 {
+    BUILTINS_API_TRACE(thread, String, ThisStringValue);
     if (value.IsString()) {
         return value;
     }
@@ -1831,6 +1833,7 @@ JSTaggedValue BuiltinsString::ThisStringValue(JSThread *thread, JSTaggedValue va
 JSTaggedValue BuiltinsString::Pad(EcmaRuntimeCallInfo *argv, bool isStart)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, String, Pad);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> thisTag = JSTaggedValue::RequireObjectCoercible(thread, BuiltinsString::GetThis(argv));

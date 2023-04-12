@@ -36,6 +36,7 @@ using StringHelper = base::StringHelper;
 JSTaggedValue BuiltinsGlobal::NotSupportEval(EcmaRuntimeCallInfo *msg)
 {
     JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, Global, NotSupportEval);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     THROW_TYPE_ERROR_AND_RETURN(thread, "not support eval()", JSTaggedValue::Exception());
 }
@@ -191,6 +192,7 @@ JSTaggedValue BuiltinsGlobal::EncodeURIComponent(EcmaRuntimeCallInfo *msg)
 // Runtime Semantics
 JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet)
 {
+    BUILTINS_API_TRACE(thread, Global, Encode);
     // 1. Let strLen be the number of code units in string.
     uint32_t strLen = EcmaStringAccessor(str).GetLength();
     // 2. Let R be the empty String.
@@ -290,6 +292,7 @@ uint8_t BuiltinsGlobal::GetValueFromTwoHex(uint16_t front, uint16_t behind)
 // Runtime Semantics
 JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet)
 {
+    BUILTINS_API_TRACE(thread, Global, Decode);
     // 1. Let strLen be the number of code units in string.
     int32_t strLen = static_cast<int32_t>(EcmaStringAccessor(str).GetLength());
     // 2. Let R be the empty String.
@@ -474,7 +477,7 @@ void BuiltinsGlobal::PrintString([[maybe_unused]] JSThread *thread, EcmaString *
     if (string == nullptr) {
         return;
     }
-
+    BUILTINS_API_TRACE(thread, Global, PrintString);
     CString buffer = ConvertToString(string);
     std::cout << buffer;
 }
@@ -534,6 +537,7 @@ JSTaggedValue BuiltinsGlobal::CallJsProxy(EcmaRuntimeCallInfo *msg)
 JSTaggedValue BuiltinsGlobal::StartRuntimeStat(EcmaRuntimeCallInfo *msg)
 {
     JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, Global, StartRuntimeStat);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
     thread->GetEcmaVM()->SetRuntimeStatEnable(true);
@@ -543,6 +547,7 @@ JSTaggedValue BuiltinsGlobal::StartRuntimeStat(EcmaRuntimeCallInfo *msg)
 JSTaggedValue BuiltinsGlobal::StopRuntimeStat(EcmaRuntimeCallInfo *msg)
 {
     JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, Global, StopRuntimeStat);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
     thread->GetEcmaVM()->SetRuntimeStatEnable(false);

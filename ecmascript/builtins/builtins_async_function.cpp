@@ -22,6 +22,7 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsAsyncFunction::AsyncFunctionConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), AsyncFunction, Constructor);
     // not support
     THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "Not support eval. Forbidden using new AsyncFunction().",
                                 JSTaggedValue::Exception());

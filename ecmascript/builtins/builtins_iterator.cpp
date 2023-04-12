@@ -23,16 +23,19 @@
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsIterator::IteratorConstructor([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Iterator, Constructor);
     return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue BuiltinsIterator::Next([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Iterator, Next);
     return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue BuiltinsIterator::Throw([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Iterator, Throw);
     return JSTaggedValue::Undefined();
 }
 
@@ -48,6 +51,7 @@ JSTaggedValue BuiltinsIterator::Return(EcmaRuntimeCallInfo *argv)
 
 JSTaggedValue BuiltinsIterator::GetIteratorObj(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Iterator, GetObj);
     return base::BuiltinsBase::GetThis(argv).GetTaggedValue();
 }
 }  // namespace panda::ecmascript::builtins

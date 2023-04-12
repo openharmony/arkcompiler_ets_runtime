@@ -26,8 +26,8 @@ JSTaggedValue BuiltinsBoolean::BooleanConstructor(EcmaRuntimeCallInfo *argv)
 {
     BUILTINS_ENTRY_DEBUG_LOG();
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Boolean, Constructor);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Boolean, Constructor);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let b be ToBoolean(value).
     bool boolValue = GetCallArg(argv, 0)->ToBoolean();
@@ -76,6 +76,7 @@ JSTaggedValue BuiltinsBoolean::BooleanPrototypeToString(EcmaRuntimeCallInfo *arg
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Boolean, BooleanPrototypeToString);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let b be thisBooleanValue(this value).
     JSTaggedValue thisValueToBoolean = BuiltinsBoolean::ThisBooleanValue(thread, GetThis(argv).GetTaggedValue());
@@ -90,7 +91,9 @@ JSTaggedValue BuiltinsBoolean::BooleanPrototypeToString(EcmaRuntimeCallInfo *arg
 JSTaggedValue BuiltinsBoolean::BooleanPrototypeValueOf(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Boolean, BooleanPrototypeValueOf);
     // 1. Return thisBooleanValue(this value).
-    return BuiltinsBoolean::ThisBooleanValue(argv->GetThread(), GetThis(argv).GetTaggedValue());
+    return BuiltinsBoolean::ThisBooleanValue(thread, GetThis(argv).GetTaggedValue());
 }
 }  // namespace panda::ecmascript::builtins

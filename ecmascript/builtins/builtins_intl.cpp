@@ -25,6 +25,7 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsIntl::GetCanonicalLocales(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Intl, GetCanonicalLocales);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1.Let ll be ? CanonicalizeLocaleList(locales).

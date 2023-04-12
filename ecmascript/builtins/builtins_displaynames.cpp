@@ -29,6 +29,7 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsDisplayNames::DisplayNamesConstructor(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DisplayNames, Constructor);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -58,6 +59,7 @@ JSTaggedValue BuiltinsDisplayNames::DisplayNamesConstructor(EcmaRuntimeCallInfo 
 JSTaggedValue BuiltinsDisplayNames::SupportedLocalesOf(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DisplayNames, SupportedLocalesOf);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let availableLocales be %DisplayNames%.[[AvailableLocales]].
@@ -79,6 +81,7 @@ JSTaggedValue BuiltinsDisplayNames::SupportedLocalesOf(EcmaRuntimeCallInfo *argv
 JSTaggedValue BuiltinsDisplayNames::Of(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DisplayNames, Of);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let displayNames be this value.
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);
@@ -119,6 +122,7 @@ JSTaggedValue BuiltinsDisplayNames::Of(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDisplayNames::ResolvedOptions(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DisplayNames, ResolvedOptions);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let DisplayNames be the this value.

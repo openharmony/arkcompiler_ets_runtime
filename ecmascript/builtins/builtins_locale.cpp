@@ -26,6 +26,7 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsLocale::LocaleConstructor(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, Constructor);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -80,6 +81,7 @@ JSTaggedValue BuiltinsLocale::LocaleConstructor(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsLocale::Maximize(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, Maximize);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let loc be the this value.
     JSHandle<JSTaggedValue> loc = GetThis(argv);
@@ -111,6 +113,7 @@ JSTaggedValue BuiltinsLocale::Maximize(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsLocale::Minimize(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, Minimize);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let loc be the this value.
     JSHandle<JSTaggedValue> loc = GetThis(argv);
@@ -145,6 +148,7 @@ JSTaggedValue BuiltinsLocale::Minimize(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsLocale::ToString(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, ToString);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let loc be the this value.
     JSHandle<JSTaggedValue> loc = GetThis(argv);
@@ -160,6 +164,7 @@ JSTaggedValue BuiltinsLocale::ToString(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsLocale::GetBaseName(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, GetBaseName);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let loc be the this value.
     JSHandle<JSTaggedValue> loc = GetThis(argv);
@@ -178,6 +183,7 @@ JSTaggedValue BuiltinsLocale::GetBaseName(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsLocale::GetCalendar(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, GetCalendar);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let loc be the this value.
     JSHandle<JSTaggedValue> loc = GetThis(argv);
@@ -195,6 +201,7 @@ JSTaggedValue BuiltinsLocale::GetCaseFirst(EcmaRuntimeCallInfo *argv)
 {
     // This property only exists if %Locale%.[[RelevantExtensionKeys]] contains "kf".
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, GetCaseFirst);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let loc be the this value.
     JSHandle<JSTaggedValue> loc = GetThis(argv);
@@ -211,6 +218,7 @@ JSTaggedValue BuiltinsLocale::GetCaseFirst(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsLocale::GetCollation(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, GetCollation);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let loc be the this value.
     JSHandle<JSTaggedValue> loc = GetThis(argv);
@@ -227,6 +235,7 @@ JSTaggedValue BuiltinsLocale::GetCollation(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsLocale::GetHourCycle(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, GetHourCycle);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let loc be the this value.
     JSHandle<JSTaggedValue> loc = GetThis(argv);
@@ -244,6 +253,7 @@ JSTaggedValue BuiltinsLocale::GetNumeric(EcmaRuntimeCallInfo *argv)
 {
     // This property only exists if %Locale%.[[RelevantExtensionKeys]] contains "kn".
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, GetNumeric);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let loc be the this value.
     JSHandle<JSTaggedValue> loc = GetThis(argv);
@@ -263,6 +273,7 @@ JSTaggedValue BuiltinsLocale::GetNumeric(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsLocale::GetNumberingSystem(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, GetNumberingSystem);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let loc be the this value.
     JSHandle<JSTaggedValue> loc = GetThis(argv);
@@ -279,6 +290,7 @@ JSTaggedValue BuiltinsLocale::GetNumberingSystem(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsLocale::GetLanguage(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, GetLanguage);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let loc be the this value.
@@ -304,6 +316,7 @@ JSTaggedValue BuiltinsLocale::GetLanguage(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsLocale::GetScript(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, GetScript);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let loc be the this value.
@@ -332,6 +345,7 @@ JSTaggedValue BuiltinsLocale::GetScript(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsLocale::GetRegion(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Locale, GetRegion);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();

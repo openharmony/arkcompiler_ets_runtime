@@ -26,6 +26,7 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsPluralRules::PluralRulesConstructor(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, PluralRules, Constructor);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -56,6 +57,7 @@ JSTaggedValue BuiltinsPluralRules::PluralRulesConstructor(EcmaRuntimeCallInfo *a
 JSTaggedValue BuiltinsPluralRules::SupportedLocalesOf(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, PluralRules, SupportedLocalesOf);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let availableLocales be %PluralRules%.[[AvailableLocales]].
@@ -76,6 +78,7 @@ JSTaggedValue BuiltinsPluralRules::SupportedLocalesOf(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsPluralRules::Select(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, PluralRules, Select);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let pr be the this value.
@@ -103,6 +106,7 @@ JSTaggedValue BuiltinsPluralRules::Select(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsPluralRules::ResolvedOptions(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, PluralRules, ResolvedOptions);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let thisValue be the this value;

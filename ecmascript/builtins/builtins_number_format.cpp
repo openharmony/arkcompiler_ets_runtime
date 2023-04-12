@@ -30,6 +30,7 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsNumberFormat::NumberFormatConstructor(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, NumberFormat, Constructor);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
@@ -83,6 +84,7 @@ JSTaggedValue BuiltinsNumberFormat::NumberFormatConstructor(EcmaRuntimeCallInfo 
 JSTaggedValue BuiltinsNumberFormat::SupportedLocalesOf(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, NumberFormat, SupportedLocalesOf);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let availableLocales be %NumberFormat%.[[AvailableLocales]].
     JSHandle<TaggedArray> availableLocales = JSNumberFormat::GetAvailableLocales(thread);
@@ -103,6 +105,7 @@ JSTaggedValue BuiltinsNumberFormat::SupportedLocalesOf(EcmaRuntimeCallInfo *argv
 JSTaggedValue BuiltinsNumberFormat::Format(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, NumberFormat, Format);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let nf be this value.
@@ -138,6 +141,7 @@ JSTaggedValue BuiltinsNumberFormat::Format(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsNumberFormat::FormatToParts(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, NumberFormat, FormatToParts);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let nf be the this value.
     JSHandle<JSTaggedValue> nf = GetThis(argv);
@@ -158,6 +162,7 @@ JSTaggedValue BuiltinsNumberFormat::FormatToParts(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsNumberFormat::ResolvedOptions(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, NumberFormat, ResolvedOptions);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let nf be this value.
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);

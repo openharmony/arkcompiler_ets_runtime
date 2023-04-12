@@ -261,6 +261,7 @@ JSTaggedValue BuiltinsRegExp::GetGlobal(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RegExp, GetGlobal);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
     bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_GLOBAL);
@@ -272,6 +273,7 @@ JSTaggedValue BuiltinsRegExp::GetIgnoreCase(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RegExp, GetIgnoreCase);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
     bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_IGNORECASE);
@@ -283,6 +285,7 @@ JSTaggedValue BuiltinsRegExp::GetMultiline(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RegExp, GetMultiline);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
     bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_MULTILINE);
@@ -293,6 +296,7 @@ JSTaggedValue BuiltinsRegExp::GetDotAll(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RegExp, GetDotAll);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
     bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_DOTALL);
@@ -304,6 +308,7 @@ JSTaggedValue BuiltinsRegExp::GetSource(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RegExp, GetSource);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let R be the this value.
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
@@ -333,6 +338,7 @@ JSTaggedValue BuiltinsRegExp::GetSticky(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RegExp, GetSticky);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
     bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_STICKY);
@@ -344,6 +350,7 @@ JSTaggedValue BuiltinsRegExp::GetUnicode(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RegExp, GetUnicode);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisObj = GetThis(argv);
     bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_UTF16);
@@ -354,6 +361,7 @@ JSTaggedValue BuiltinsRegExp::GetUnicode(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsRegExp::GetSpecies(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), RegExp, GetSpecies);
     return GetThis(argv).GetTaggedValue();
 }
 
@@ -575,6 +583,7 @@ JSTaggedValue BuiltinsRegExp::RegExpReplaceFast(JSThread *thread, JSHandle<JSTag
                                                 JSHandle<EcmaString> inputString, uint32_t inputLength)
 {
     ASSERT(regexp->IsJSRegExp());
+    BUILTINS_API_TRACE(thread, RegExp, RegExpReplaceFast);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // get bytecode
     JSTaggedValue bufferData = JSRegExp::Cast(regexp->GetTaggedObject())->GetByteCodeBuffer();
@@ -1307,6 +1316,7 @@ RegExpExecutor::MatchResult BuiltinsRegExp::Matcher(JSThread *thread, const JSHa
                                                     const uint8_t *buffer, size_t length, int32_t lastIndex,
                                                     bool isUtf16)
 {
+    BUILTINS_API_TRACE(thread, RegExp, Matcher);
     // get bytecode
     JSTaggedValue bufferData = JSRegExp::Cast(regexp->GetTaggedObject())->GetByteCodeBuffer();
     void *dynBuf = JSNativePointer::Cast(bufferData.GetTaggedObject())->GetExternalPointer();
@@ -1358,6 +1368,7 @@ uint32_t BuiltinsRegExp::AdvanceStringIndex(const JSHandle<JSTaggedValue> &input
 
 bool BuiltinsRegExp::GetFlagsInternal(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const uint8_t mask)
 {
+    BUILTINS_API_TRACE(thread, RegExp, GetFlagsInternal);
     // 1. Let R be the this value.
     // 2. If Type(R) is not Object, throw a TypeError exception.
     if (!obj->IsECMAObject()) {
@@ -1383,7 +1394,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
 {
     ASSERT(JSObject::IsRegExp(thread, regexp));
     ASSERT(inputStr->IsString());
-
+    BUILTINS_API_TRACE(thread, RegExp, RegExpBuiltinExec);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> lastIndexHandle = globalConst->GetHandledLastIndexString();
     JSTaggedValue result =
@@ -1526,6 +1537,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
 JSTaggedValue BuiltinsRegExp::RegExpExec(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
                                          const JSHandle<JSTaggedValue> &inputString, bool useCache)
 {
+    BUILTINS_API_TRACE(thread, RegExp, RegExpExec);
     // 1. Assert: Type(R) is Object.
     ASSERT(regexp->IsECMAObject());
     // 2. Assert: Type(S) is String.
@@ -1567,6 +1579,7 @@ JSTaggedValue BuiltinsRegExp::RegExpExec(JSThread *thread, const JSHandle<JSTagg
 // 21.2.3.2.1
 JSTaggedValue BuiltinsRegExp::RegExpAlloc(JSThread *thread, const JSHandle<JSTaggedValue> &newTarget)
 {
+    BUILTINS_API_TRACE(thread, RegExp, RegExpAlloc);
     /**
      * 1. Let obj be OrdinaryCreateFromConstructor(newTarget, "%RegExpPrototype%",
      * «[[RegExpMatcher]],[[OriginalSource]], [[OriginalFlags]]»).
@@ -1625,6 +1638,7 @@ uint32_t BuiltinsRegExp::UpdateExpressionFlags(JSThread *thread, const CString &
 
 JSHandle<JSTaggedValue> BuiltinsRegExp::GetDollarString(JSThread *thread, RegExpGlobalArrayIndex index)
 {
+    BUILTINS_API_TRACE(thread, RegExp, GetDollarString);
     switch (index) {
         case DOLLAR_ONE:
             return thread->GlobalConstants()->GetHandledDollarStringOne();
@@ -1652,7 +1666,7 @@ JSHandle<JSTaggedValue> BuiltinsRegExp::GetDollarString(JSThread *thread, RegExp
 JSTaggedValue BuiltinsRegExp::FlagsBitsToString(JSThread *thread, uint8_t flags)
 {
     ASSERT((flags & 0xC0) == 0);  // 0xC0: first 2 bits of flags must be 0
-
+    BUILTINS_API_TRACE(thread, RegExp, FlagsBitsToString);
     uint8_t *flagsStr = new uint8_t[7];  // 7: maximum 6 flags + '\0'
     size_t flagsLen = 0;
     if (flags & RegExpParser::FLAG_GLOBAL) {
@@ -1691,6 +1705,7 @@ JSTaggedValue BuiltinsRegExp::RegExpInitialize(JSThread *thread, const JSHandle<
                                                const JSHandle<JSTaggedValue> &pattern,
                                                const JSHandle<JSTaggedValue> &flags)
 {
+    BUILTINS_API_TRACE(thread, RegExp, RegExpInitialize);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> patternStrHandle;
     uint8_t flagsBits = 0;
@@ -1792,6 +1807,7 @@ JSTaggedValue BuiltinsRegExp::RegExpCreate(JSThread *thread, const JSHandle<JSTa
 EcmaString *BuiltinsRegExp::EscapeRegExpPattern(JSThread *thread, const JSHandle<JSTaggedValue> &src,
                                                 const JSHandle<JSTaggedValue> &flags)
 {
+    BUILTINS_API_TRACE(thread, RegExp, EscapeRegExpPattern);
     // String -> CString
     JSHandle<EcmaString> srcStr(thread, static_cast<EcmaString *>(src->GetTaggedObject()));
     JSHandle<EcmaString> flagsStr(thread, static_cast<EcmaString *>(flags->GetTaggedObject()));

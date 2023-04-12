@@ -28,6 +28,7 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsListFormat::ListFormatConstructor(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, ListFormat, Constructor);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -59,6 +60,7 @@ JSTaggedValue BuiltinsListFormat::ListFormatConstructor(EcmaRuntimeCallInfo *arg
 JSTaggedValue BuiltinsListFormat::SupportedLocalesOf(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, ListFormat, SupportedLocalesOf);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let availableLocales be %ListFormat%.[[AvailableLocales]].
@@ -80,6 +82,7 @@ JSTaggedValue BuiltinsListFormat::SupportedLocalesOf(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsListFormat::Format(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, ListFormat, Format);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let lf be the this value.
@@ -106,6 +109,7 @@ JSTaggedValue BuiltinsListFormat::Format(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsListFormat::FormatToParts(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, ListFormat, FormatToParts);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let lf be the this value.
@@ -133,6 +137,7 @@ JSTaggedValue BuiltinsListFormat::FormatToParts(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsListFormat::ResolvedOptions(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, ListFormat, ResolvedOptions);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let lf be the this value.

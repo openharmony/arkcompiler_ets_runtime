@@ -27,6 +27,7 @@ using PathHelper = base::PathHelper;
 JSTaggedValue BuiltinsCjsModule::CjsModuleConstructor(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, CjsModule, CjsModuleConstructor);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     LOG_ECMA(ERROR) << "BuiltinsCjsModule::CjsModuleConstructor : can not be call";
@@ -37,6 +38,7 @@ JSTaggedValue BuiltinsCjsModule::Compiler(EcmaRuntimeCallInfo *msg)
 {
     ASSERT(msg);
     JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, CjsModule, Compiler);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return JSTaggedValue::Hole();
 }
@@ -45,6 +47,7 @@ JSTaggedValue BuiltinsCjsModule::Load(EcmaRuntimeCallInfo *msg)
 {
     ASSERT(msg);
     JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, CjsModule, Load);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return JSTaggedValue::Hole();
 }
@@ -53,6 +56,7 @@ JSTaggedValue BuiltinsCjsModule::ResolveFilename(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, CjsModule, ResolveFilename);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     uint32_t length = argv->GetArgsNumber();
@@ -76,6 +80,7 @@ JSTaggedValue BuiltinsCjsModule::Require(EcmaRuntimeCallInfo *msg)
 {
     ASSERT(msg);
     JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, CjsModule, Require);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return JSTaggedValue::Hole();
 }
@@ -84,6 +89,7 @@ JSTaggedValue BuiltinsCjsModule::GetExportsForCircularRequire(EcmaRuntimeCallInf
 {
     ASSERT(msg);
     JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, CjsModule, GetExportsForCircularRequire);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return JSTaggedValue::Hole();
 }
@@ -92,6 +98,7 @@ JSTaggedValue BuiltinsCjsModule::UpdateChildren(EcmaRuntimeCallInfo *msg)
 {
     ASSERT(msg);
     JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, CjsModule, UpdateChildren);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return JSTaggedValue::Hole();
 }

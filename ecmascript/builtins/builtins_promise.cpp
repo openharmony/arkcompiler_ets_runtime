@@ -321,6 +321,7 @@ JSTaggedValue BuiltinsPromise::Reject(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsPromise::GetSpecies(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), Promise, GetSpecies);
     return JSTaggedValue(GetThis(argv).GetTaggedValue());
 }
 
@@ -386,6 +387,7 @@ JSTaggedValue BuiltinsPromise::PerformPromiseThen(JSThread *thread, const JSHand
                                                   const JSHandle<PromiseCapability> &capability)
 {
     auto ecmaVm = thread->GetEcmaVM();
+    BUILTINS_API_TRACE(thread, Promise, PerformPromiseThen);
     JSHandle<job::MicroJobQueue> job = ecmaVm->GetMicroJobQueue();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -446,6 +448,7 @@ JSHandle<CompletionRecord> BuiltinsPromise::PerformPromiseAll(JSThread *thread,
                                                               const JSHandle<PromiseCapability> &capa)
 {
     auto ecmaVm = thread->GetEcmaVM();
+    BUILTINS_API_TRACE(thread, Promise, PerformPromiseAll);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ObjectFactory *factory = ecmaVm->GetFactory();
     // 1. Assert: constructor is a constructor function.
@@ -578,6 +581,7 @@ JSHandle<CompletionRecord> BuiltinsPromise::PerformPromiseRace(JSThread *thread,
     //    i. ReturnIfAbrupt(nextPromise).
     //    j. Let result be Invoke(nextPromise, "then", «promiseCapability.[[Resolve]], promiseCapability.[[Reject]]»).
     //    k. ReturnIfAbrupt(result).
+    BUILTINS_API_TRACE(thread, Promise, PerformPromiseRace);
     auto ecmaVm = thread->GetEcmaVM();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -633,6 +637,7 @@ JSHandle<CompletionRecord> BuiltinsPromise::PerformPromiseRace(JSThread *thread,
 
 JSTaggedValue BuiltinsPromise::GetPromiseResolve(JSThread *thread, JSHandle<JSTaggedValue> promiseConstructor)
 {
+    BUILTINS_API_TRACE(thread, Promise, GetPromiseResolve);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // 1. Let promiseResolve be ? Get(promiseConstructor, "resolve").
     JSHandle<JSTaggedValue> resolveKey = globalConst->GetHandledPromiseResolveString();
@@ -706,6 +711,7 @@ JSHandle<CompletionRecord> BuiltinsPromise::PerformPromiseAny(JSThread *thread,
                                                               const JSHandle<PromiseCapability> &resultCapability,
                                                               const JSHandle<JSTaggedValue> &promiseResolve)
 {
+    BUILTINS_API_TRACE(thread, Promise, PerformPromiseAny);
     auto ecmaVm = thread->GetEcmaVM();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -888,6 +894,7 @@ JSHandle<CompletionRecord> BuiltinsPromise::PerformPromiseAllSettled(JSThread *t
                                                                      const JSHandle<PromiseCapability> &resultCapa,
                                                                      const JSHandle<JSTaggedValue> &promiseResolve)
 {
+    BUILTINS_API_TRACE(thread, Promise, PerformPromiseAllSettled);
     auto ecmaVm = thread->GetEcmaVM();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ObjectFactory *factory = ecmaVm->GetFactory();

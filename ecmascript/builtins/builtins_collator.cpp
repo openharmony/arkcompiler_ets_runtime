@@ -29,6 +29,7 @@ constexpr uint32_t FUNCTION_LENGTH_TWO = 2;
 JSTaggedValue BuiltinsCollator::CollatorConstructor(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Collator, CollatorConstructor);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -63,6 +64,7 @@ JSTaggedValue BuiltinsCollator::CollatorConstructor(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsCollator::SupportedLocalesOf(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Collator, SupportedLocalesOf);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let availableLocales be %Collator%.[[AvailableLocales]].
     JSHandle<TaggedArray> availableLocales = JSCollator::GetAvailableLocales(thread);
@@ -83,6 +85,7 @@ JSTaggedValue BuiltinsCollator::SupportedLocalesOf(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsCollator::Compare(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Collator, Compare);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let collator be this value.
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);
@@ -114,6 +117,7 @@ JSTaggedValue BuiltinsCollator::AnonymousCollator(EcmaRuntimeCallInfo *argv)
     // A Collator compare function is an anonymous built-in function that has a [[Collator]] internal slot.
     // When a Collator compare function F is called with arguments x and y, the following steps are taken:
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Collator, AnonymousCollator);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     JSHandle<JSIntlBoundFunction> intlBoundFunc = JSHandle<JSIntlBoundFunction>::Cast(GetConstructor(argv));
 
@@ -144,6 +148,7 @@ JSTaggedValue BuiltinsCollator::AnonymousCollator(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsCollator::ResolvedOptions(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Collator, ResolvedOptions);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);
     if (!thisValue->IsJSCollator()) {

@@ -21,6 +21,7 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsRelativeTimeFormat::RelativeTimeFormatConstructor(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RelativeTimeFormat, Constructor);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
@@ -65,6 +66,7 @@ JSTaggedValue BuiltinsRelativeTimeFormat::RelativeTimeFormatConstructor(EcmaRunt
 JSTaggedValue BuiltinsRelativeTimeFormat::SupportedLocalesOf(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RelativeTimeFormat, SupportedLocalesOf);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let availableLocales be %RelativeTimeFormat%.[[AvailableLocales]].
@@ -87,6 +89,7 @@ JSTaggedValue BuiltinsRelativeTimeFormat::SupportedLocalesOf(EcmaRuntimeCallInfo
 JSTaggedValue BuiltinsRelativeTimeFormat::Format(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RelativeTimeFormat, Format);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let relativeTimeFormat be the this value.
@@ -119,6 +122,7 @@ JSTaggedValue BuiltinsRelativeTimeFormat::Format(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsRelativeTimeFormat::FormatToParts(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RelativeTimeFormat, FormatToParts);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let relativeTimeFormat be the this value.
@@ -151,6 +155,7 @@ JSTaggedValue BuiltinsRelativeTimeFormat::FormatToParts(EcmaRuntimeCallInfo *arg
 JSTaggedValue BuiltinsRelativeTimeFormat::ResolvedOptions(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RelativeTimeFormat, ResolvedOptions);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let relativeTimeFormat be the this value.

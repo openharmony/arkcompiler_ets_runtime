@@ -209,6 +209,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
 
 JSTaggedValue BuiltinsPromiseJob::CatchException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> reject)
 {
+    BUILTINS_API_TRACE(thread, PromiseJob, CatchException);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     ASSERT(thread->HasPendingException());
     JSHandle<JSTaggedValue> thenResult = JSPromise::IfThrowGetThrowValue(thread);

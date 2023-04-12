@@ -263,6 +263,7 @@ namespace panda::ecmascript {
     V(Array, Splice)                          \
     V(Array, ToLocaleString)                  \
     V(Array, ToString)                        \
+    V(Array, Unscopables)                     \
     V(Array, Unshift)                         \
     V(Array, Values)                          \
     V(Array, Includes)                        \
@@ -270,25 +271,72 @@ namespace panda::ecmascript {
     V(Array, FlatMap)                         \
     V(ArrayBuffer, Constructor)               \
     V(ArrayBuffer, Slice)                     \
+    V(ArrayBuffer, Species)                   \
+    V(ArrayBuffer, GetByteLength)             \
     V(ArrayBuffer, GetValueFromBuffer)        \
     V(ArrayBuffer, SetValueInBuffer)          \
     V(ArrayBuffer, CloneArrayBuffer)          \
     V(ArrayBuffer, AllocateArrayBuffer)       \
+    V(ArrayBuffer, IsView)                    \
     V(SharedArrayBuffer, Constructor)         \
     V(SharedArrayBuffer, Slice)               \
     V(SharedArrayBuffer, AllocateSharedArrayBuffer) \
     V(SharedArrayBuffer, IsSharedArrayBuffer) \
+    V(SharedArrayBuffer, IsView)              \
     V(SharedArrayBuffer, Species)             \
     V(SharedArrayBuffer, GetByteLength)       \
+    V(AsyncFromSyncIterator, Next)            \
+    V(AsyncFromSyncIterator, Throw)           \
+    V(AsyncFromSyncIterator, Return)          \
     V(AsyncFunction, Constructor)             \
+    V(Boolean, BooleanPrototypeToString)      \
+    V(Boolean, BooleanPrototypeValueOf)       \
     V(Boolean, Constructor)                   \
     V(Boolean, ThisBooleanValue)              \
+    V(CjsExports, CjsExportsConstructor)      \
+    V(CjsModule, CjsModuleConstructor)        \
+    V(CjsModule, Compiler)                    \
+    V(CjsModule, Load)                        \
+    V(CjsModule, ResolveFilename)             \
+    V(CjsModule, Require)                     \
+    V(CjsModule, GetExportsForCircularRequire) \
+    V(CjsModule, UpdateChildren)              \
+    V(CjsRequire, CjsRequireConstructor)      \
+    V(CjsRequire, Main)                       \
+    V(CjsRequire, Resolve)                    \
+    V(Collator, CollatorConstructor)          \
+    V(Collator, SupportedLocalesOf)           \
+    V(Collator, Compare)                      \
+    V(Collator, AnonymousCollator)            \
+    V(Collator, ResolvedOptions)              \
     V(DataView, Constructor)                  \
     V(DataView, GetBuffer)                    \
     V(DataView, GetByteLength)                \
     V(DataView, GetOffset)                    \
     V(DataView, GetViewValue)                 \
     V(DataView, SetViewValue)                 \
+    V(DataView, GetFloat32)                   \
+    V(DataView, GetFloat64)                   \
+    V(DataView, GetInt8)                      \
+    V(DataView, GetInt16)                     \
+    V(DataView, GetInt32)                     \
+    V(DataView, GetUint8)                     \
+    V(DataView, GetUint16)                    \
+    V(DataView, GetUint32)                    \
+    V(DataView, GetBigInt64)                  \
+    V(DataView, GetBigUint64)                 \
+    V(DataView, SetFloat32)                   \
+    V(DataView, SetFloat64)                   \
+    V(DataView, SetInt8)                      \
+    V(DataView, SetInt16)                     \
+    V(DataView, SetInt32)                     \
+    V(DataView, SetUint8)                     \
+    V(DataView, SetUint16)                    \
+    V(DataView, SetUint32)                    \
+    V(DataView, SetBigInt64)                  \
+    V(DataView, SetBigUint64)                 \
+    V(DataView, GetTypedValue)                \
+    V(DataView, SetTypedValue)                \
     V(Date, Constructor)                      \
     V(Date, Now)                              \
     V(Date, UTC)                              \
@@ -299,31 +347,87 @@ namespace panda::ecmascript {
     V(Date, ToJSON)                           \
     V(Date, ValueOf)                          \
     V(Date, ToPrimitive)                      \
+    V(Date, ToLocaleString)                   \
+    V(Date, ToLocaleDateString)               \
+    V(Date, ToLocaleTimeString)               \
+    V(DateTimeFormat, Constructor)            \
+    V(DateTimeFormat, SupportedLocalesOf)     \
+    V(DateTimeFormat, Format)                 \
+    V(DateTimeFormat, AnonymousDateTimeFormat) \
+    V(DateTimeFormat, FormatToParts)          \
+    V(DateTimeFormat, ResolvedOptions)        \
+    V(DateTimeFormat, FormatRange)            \
+    V(DateTimeFormat, FormatRangeToParts)     \
+    V(DisplayNames, Constructor)              \
+    V(DisplayNames, SupportedLocalesOf)       \
+    V(DisplayNames, Of)                       \
+    V(DisplayNames, ResolvedOptions)          \
+    V(Error, ErrorConstructor)                \
+    V(Error, ErrorToString)                   \
+    V(Error, RangeErrorConstructor)           \
+    V(Error, RangeErrorToString)              \
+    V(Error, ReferenceErrorConstructor)       \
+    V(Error, ReferenceErrorToString)          \
+    V(Error, TypeErrorConstructor)            \
+    V(Error, TypeErrorToString)               \
+    V(Error, ThrowTypeError)                  \
+    V(Error, URIErrorConstructor)             \
+    V(Error, URIErrorToString)                \
+    V(Error, SyntaxErrorConstructor)          \
+    V(Error, SyntaxErrorToString)             \
+    V(Error, EvalErrorConstructor)            \
+    V(Error, EvalErrorToString)               \
+    V(Error, AggregateErrorConstructor)       \
+    V(Error, AggregateErrorToString)          \
+    V(Error, OOMErrorConstructor)             \
+    V(Error, OOMErrorToString)                \
     V(Function, Constructor)                  \
     V(Function, PrototypeApply)               \
     V(Function, PrototypeBind)                \
     V(Function, PrototypeCall)                \
     V(Function, PrototypeToString)            \
     V(Function, PrototypeHasInstance)         \
+    V(Function, PrototypeInvokeSelf)          \
     V(Generator, Constructor)                 \
     V(Generator, PrototypeNext)               \
     V(Generator, PrototypeReturn)             \
     V(Generator, PrototypeThrow)              \
     V(Global, IsFinite)                       \
+    V(Global, NotSupportEval)                 \
+    V(Global, Encode)                         \
     V(Global, IsNaN)                          \
     V(Global, PrintEntryPoint)                \
-    V(Global, NewobjRange)                 \
+    V(Global, NewobjRange)                    \
+    V(Global, Decode)                         \
+    V(Global, PrintString)                    \
+    V(Global, StartRuntimeStat)               \
+    V(Global, StopRuntimeStat)                \
     V(Global, CallJsBoundFunction)            \
     V(Global, CallJsProxy)                    \
     V(Global, DecodeURI)                      \
     V(Global, EncodeURI)                      \
     V(Global, DecodeURIComponent)             \
     V(Global, EncodeURIComponent)             \
+    V(Intl, GetCanonicalLocales)              \
     V(Iterator, Constructor)                  \
     V(Iterator, Next)                         \
     V(Iterator, Throw)                        \
     V(Iterator, Return)                       \
     V(Iterator, GetObj)                       \
+    V(Locale, Constructor)                    \
+    V(Locale, Maximize)                       \
+    V(Locale, Minimize)                       \
+    V(Locale, ToString)                       \
+    V(Locale, GetBaseName)                    \
+    V(Locale, GetCalendar)                    \
+    V(Locale, GetCaseFirst)                   \
+    V(Locale, GetCollation)                   \
+    V(Locale, GetHourCycle)                   \
+    V(Locale, GetNumeric)                     \
+    V(Locale, GetNumberingSystem)             \
+    V(Locale, GetLanguage)                    \
+    V(Locale, GetScript)                      \
+    V(Locale, GetRegion)                      \
     V(AsyncIterator, Constructor)             \
     V(AsyncIterator, Next)                    \
     V(AsyncIterator, Throw)                   \
@@ -343,6 +447,7 @@ namespace panda::ecmascript {
     V(Map, GetSize)                           \
     V(Map, Values)                            \
     V(Map, ForEach)                           \
+    V(Map, AddEntriesFromIterable)            \
     V(Math, Abs)                              \
     V(Math, Acos)                             \
     V(Math, Acosh)                            \
@@ -378,8 +483,24 @@ namespace panda::ecmascript {
     V(Math, Tan)                              \
     V(Math, Tanh)                             \
     V(Math, Trunc)                            \
+    V(NumberFormat, Constructor)              \
+    V(NumberFormat, SupportedLocalesOf)       \
+    V(NumberFormat, Format)                   \
+    V(NumberFormat, FormatToParts)            \
+    V(NumberFormat, ResolvedOptions)          \
+    V(Atomics, AtomicReadModifyWrite)         \
+    V(Atomics, AtomicReadModifyWriteCase)     \
     V(Atomics, Add)                           \
     V(Atomics, And)                           \
+    V(Atomics, DoWait)                        \
+    V(Atomics, HandleWithUint8)               \
+    V(Atomics, HandleWithInt8)                \
+    V(Atomics, HandleWithUint16)              \
+    V(Atomics, HandleWithInt16)               \
+    V(Atomics, HandleWithUint32)              \
+    V(Atomics, HandleWithInt32)               \
+    V(Atomics, HandleWithBigInt64)            \
+    V(Atomics, HandleWithBigUint64)           \
     V(Atomics, Or)                            \
     V(Atomics, Xor)                           \
     V(Atomics, Sub)                           \
@@ -429,6 +550,11 @@ namespace panda::ecmascript {
     V(Object, GetOwnPropertySymbols)          \
     V(Object, GetPrototypeOf)                 \
     V(Object, Is)                             \
+    V(Object, IsExtensible)                   \
+    V(Object, IsFrozen)                       \
+    V(Object, IsSealed)                       \
+    V(Object, PropertyIsEnumerable)           \
+    V(Object, CreateRealm)                    \
     V(Object, Keys)                           \
     V(Object, Values)                         \
     V(Object, PreventExtensions)              \
@@ -442,6 +568,10 @@ namespace panda::ecmascript {
     V(Object, ValueOf)                        \
     V(Object, ProtoGetter)                    \
     V(Object, ProtoSetter)                    \
+    V(PluralRules, Constructor)               \
+    V(PluralRules, SupportedLocalesOf)        \
+    V(PluralRules, Select)                    \
+    V(PluralRules, ResolvedOptions)           \
     V(PromiseHandler, Resolve)                \
     V(PromiseHandler, Reject)                 \
     V(PromiseHandler, Executor)               \
@@ -449,15 +579,24 @@ namespace panda::ecmascript {
     V(PromiseHandler, AllSettledResolveElementFunction) \
     V(PromiseHandler, AllSettledRejectElementFunction) \
     V(PromiseHandler, AnyRejectElementFunction) \
+    V(PromiseHandler, AsyncAwaitRejected)     \
+    V(PromiseHandler, AsyncAwaitFulfilled)    \
+    V(PromiseHandler, valueThunkFunction)     \
+    V(PromiseHandler, throwerFunction)        \
+    V(PromiseHandler, ThenFinally)            \
+    V(PromiseHandler, CatchFinally)           \
+    V(PromiseHandler, PromiseResolve)         \
     V(PromiseJob, Reaction)                   \
     V(PromiseJob, ResolveThenableJob)         \
     V(PromiseJob, DynamicImportJob)           \
+    V(PromiseJob, CatchException)             \
     V(Promise, Constructor)                   \
     V(Promise, All)                           \
     V(Promise, Race)                          \
     V(Promise, Reject)                        \
     V(Promise, Resolve)                       \
     V(Promise, GetSpecies)                    \
+    V(Promise, GetPromiseResolve)             \
     V(Promise, Catch)                         \
     V(Promise, Then)                          \
     V(Promise, PerformPromiseThen)            \
@@ -465,6 +604,8 @@ namespace panda::ecmascript {
     V(Promise, Any)                           \
     V(Promise, PerformPromiseAny)             \
     V(Promise, AllSettled)                    \
+    V(Promise, PerformPromiseRace)            \
+    V(Promise, PerformPromiseAll)             \
     V(Promise, PerformPromiseAllSettled)      \
     V(Proxy, Constructor)                     \
     V(Proxy, Revocable)                       \
@@ -493,6 +634,29 @@ namespace panda::ecmascript {
     V(RegExp, Search)                         \
     V(RegExp, Split)                          \
     V(RegExp, Create)                         \
+    V(RegExp, GetGlobal)                      \
+    V(RegExp, GetIgnoreCase)                  \
+    V(RegExp, GetMultiline)                   \
+    V(RegExp, GetDotAll)                      \
+    V(RegExp, GetSource)                      \
+    V(RegExp, GetSticky)                      \
+    V(RegExp, GetUnicode)                     \
+    V(RegExp, RegExpReplaceFast)              \
+    V(RegExp, Matcher)                        \
+    V(RegExp, GetFlagsInternal)               \
+    V(RegExp, RegExpBuiltinExec)              \
+    V(RegExp, RegExpExec)                     \
+    V(RegExp, UpdateExpressionFlags)          \
+    V(RegExp, RegExpAlloc)                    \
+    V(RegExp, GetDollarString)                \
+    V(RegExp, RegExpInitialize)               \
+    V(RegExp, EscapeRegExpPattern)            \
+    V(RegExp, FlagsBitsToString)              \
+    V(RelativeTimeFormat, Constructor)        \
+    V(RelativeTimeFormat, SupportedLocalesOf) \
+    V(RelativeTimeFormat, Format)             \
+    V(RelativeTimeFormat, FormatToParts)      \
+    V(RelativeTimeFormat, ResolvedOptions)    \
     V(Set, Constructor)                       \
     V(Set, Species)                           \
     V(Set, Add)                               \
@@ -543,6 +707,9 @@ namespace panda::ecmascript {
     V(String, TrimRight)                      \
     V(String, GetStringIterator)              \
     V(String, SubStr)                         \
+    V(String, GetLength)                      \
+    V(String, ThisStringValue)                \
+    V(String, Pad)                            \
     V(Symbol, Constructor)                    \
     V(Symbol, ToString)                       \
     V(Symbol, ValueOf)                        \
@@ -553,6 +720,29 @@ namespace panda::ecmascript {
     V(Symbol, ToPrimitive)                    \
     V(Symbol, SymbolDescriptiveString)        \
     V(TypedArray, BaseConstructor)            \
+    V(TypedArray, Int8ArrayConstructor)       \
+    V(TypedArray, Uint8ArrayConstructor)      \
+    V(TypedArray, Uint8ClampedArrayConstructor) \
+    V(TypedArray, Int16ArrayConstructor)      \
+    V(TypedArray, Uint16ArrayConstructor)     \
+    V(TypedArray, Int32ArrayConstructor)      \
+    V(TypedArray, Uint32ArrayConstructor)     \
+    V(TypedArray, Float32ArrayConstructor)    \
+    V(TypedArray, Float64ArrayConstructor)    \
+    V(TypedArray, BigInt64ArrayConstructor)   \
+    V(TypedArray, BigUint64ArrayConstructor)  \
+    V(TypedArray, Fill)                       \
+    V(TypedArray, Find)                       \
+    V(TypedArray, FindIndex)                  \
+    V(TypedArray, IndexOf)                    \
+    V(TypedArray, LastIndexOf)                \
+    V(TypedArray, Reduce)                     \
+    V(TypedArray, ReduceRight)                \
+    V(TypedArray, Reverse)                    \
+    V(TypedArray, Some)                       \
+    V(TypedArray, ToLocaleString)             \
+    V(TypedArray, ToString)                   \
+    V(TypedArray, Includes)                   \
     V(TypedArray, From)                       \
     V(TypedArray, Of)                         \
     V(TypedArray, Species)                    \
@@ -612,6 +802,11 @@ namespace panda::ecmascript {
     V(ArrayList, Get)                         \
     V(ArrayList, Set)                         \
     V(ArrayList, GetSize)                     \
+    V(ListFormat, Constructor)                \
+    V(ListFormat, SupportedLocalesOf)         \
+    V(ListFormat, Format)                     \
+    V(ListFormat, FormatToParts)              \
+    V(ListFormat, ResolvedOptions)            \
     V(LightWeightMap, Constructor)            \
     V(LightWeightMap, HasAll)                 \
     V(LightWeightMap, HasKey)                 \

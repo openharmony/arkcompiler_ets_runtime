@@ -28,6 +28,7 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsDateTimeFormat::DateTimeFormatConstructor(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DateTimeFormat, Constructor);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
@@ -81,6 +82,7 @@ JSTaggedValue BuiltinsDateTimeFormat::DateTimeFormatConstructor(EcmaRuntimeCallI
 JSTaggedValue BuiltinsDateTimeFormat::SupportedLocalesOf(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DateTimeFormat, SupportedLocalesOf);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let availableLocales be %DateTimeFormat%.[[AvailableLocales]].
     JSHandle<TaggedArray> availableLocales = JSDateTimeFormat::GainAvailableLocales(thread);
@@ -101,6 +103,7 @@ JSTaggedValue BuiltinsDateTimeFormat::SupportedLocalesOf(EcmaRuntimeCallInfo *ar
 JSTaggedValue BuiltinsDateTimeFormat::Format(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DateTimeFormat, Format);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let dtf be this value.
@@ -141,6 +144,7 @@ JSTaggedValue BuiltinsDateTimeFormat::AnonymousDateTimeFormat(EcmaRuntimeCallInf
     // A DateTime format function is an anonymous built-in function that has a [[DateTimeFormat]] internal slot.
     // When a DateTime format function F is called with optional argument date, the following steps are taken:
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DateTimeFormat, AnonymousDateTimeFormat);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     JSHandle<JSIntlBoundFunction> intlBoundFunc = JSHandle<JSIntlBoundFunction>::Cast(GetConstructor(argv));
 
@@ -174,6 +178,7 @@ JSTaggedValue BuiltinsDateTimeFormat::AnonymousDateTimeFormat(EcmaRuntimeCallInf
 JSTaggedValue BuiltinsDateTimeFormat::FormatToParts(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DateTimeFormat, FormatToParts);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let dtf be this value.
     JSHandle<JSTaggedValue> dtf = GetThis(argv);
@@ -212,6 +217,7 @@ JSTaggedValue BuiltinsDateTimeFormat::FormatToParts(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDateTimeFormat::ResolvedOptions(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DateTimeFormat, ResolvedOptions);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let dtf be this value.
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);
@@ -237,6 +243,7 @@ JSTaggedValue BuiltinsDateTimeFormat::ResolvedOptions(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDateTimeFormat::FormatRange(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DateTimeFormat, FormatRange);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. Let dtf be this value.
@@ -283,6 +290,7 @@ JSTaggedValue BuiltinsDateTimeFormat::FormatRange(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDateTimeFormat::FormatRangeToParts(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DateTimeFormat, FormatRangeToParts);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     // 1. Let dtf be this value.
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);

@@ -23,23 +23,26 @@
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsAsyncIterator::AsyncIteratorConstructor([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), AsyncIterator, Constructor);
     return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue BuiltinsAsyncIterator::Next([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), AsyncIterator, Next);
     return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue BuiltinsAsyncIterator::Throw([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), AsyncIterator, Throw);
     return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue BuiltinsAsyncIterator::Return(EcmaRuntimeCallInfo *argv)
 {
-    BUILTINS_API_TRACE(argv->GetThread(), AsyncIterator, Return);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, AsyncIterator, Return);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
@@ -57,6 +60,7 @@ JSTaggedValue BuiltinsAsyncIterator::Return(EcmaRuntimeCallInfo *argv)
 
 JSTaggedValue BuiltinsAsyncIterator::GetAsyncIteratorObj(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), AsyncIterator, GetObj);
     return base::BuiltinsBase::GetThis(argv).GetTaggedValue();
 }
 }  // namespace panda::ecmascript::builtins

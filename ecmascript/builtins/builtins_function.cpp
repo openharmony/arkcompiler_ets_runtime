@@ -29,6 +29,7 @@ JSTaggedValue BuiltinsFunction::FunctionConstructor(EcmaRuntimeCallInfo *argv)
 {
     // not support
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Function, Constructor);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     THROW_TYPE_ERROR_AND_RETURN(thread, "Not support eval. Forbidden using new Function()/Function().",
                                 JSTaggedValue::Exception());
@@ -38,6 +39,7 @@ JSTaggedValue BuiltinsFunction::FunctionConstructor(EcmaRuntimeCallInfo *argv)
 //             When invoked, it accepts any arguments and returns undefined.
 JSTaggedValue BuiltinsFunction::FunctionPrototypeInvokeSelf([[maybe_unused]] EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Function, PrototypeInvokeSelf);
     return JSTaggedValue::Undefined();
 }
 namespace {
@@ -92,8 +94,8 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
 JSTaggedValue BuiltinsFunction::FunctionPrototypeApply(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Function, PrototypeApply);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Function, PrototypeApply);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. If IsCallable(func) is false, throw a TypeError exception.

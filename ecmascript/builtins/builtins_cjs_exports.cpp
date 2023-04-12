@@ -22,6 +22,7 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsCjsExports::CjsExportsConstructor(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, CjsExports, CjsExportsConstructor);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     LOG_ECMA(ERROR) << "BuiltinsCjsExports::CjsExportsConstructor : can not be call";
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Hole());
