@@ -29,7 +29,6 @@ public:
     void LowerTypedCallBuitin(GateRef gate);
     GateRef LowerCallTargetCheck(Environment *env, GateRef gate);
     void LowerTypedSqrt(GateRef gate);
-    static BuiltinsStubCSigns::ID GetBuiltinId(std::string idStr);
     GateRef CheckPara(GateRef gate, GateRef funcCheck);
 private:
     void LowerTypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);

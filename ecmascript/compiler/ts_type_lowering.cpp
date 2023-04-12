@@ -875,7 +875,7 @@ BuiltinsStubCSigns::ID TSTypeLowering::GetBuiltinId(GateRef func)
         return BuiltinsStubCSigns::ID::NONE;
     }
     std::string name = tsManager_->GetFuncName(funcType);
-    BuiltinsStubCSigns::ID id = BuiltinLowering::GetBuiltinId(name);
+    BuiltinsStubCSigns::ID id = BuiltinsStubCSigns::GetBuiltinId(name);
     return id;
 }
 

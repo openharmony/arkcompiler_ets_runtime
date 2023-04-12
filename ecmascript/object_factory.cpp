@@ -149,10 +149,11 @@ ObjectFactory::ObjectFactory(JSThread *thread, Heap *heap)
     : thread_(thread), vm_(thread->GetEcmaVM()), heap_(heap) {}
 
 JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, FunctionKind kind,
-                                                           kungfu::BuiltinsStubCSigns::ID builtinId)
+                                                           kungfu::BuiltinsStubCSigns::ID builtinId,
+                                                           MemSpaceType spaceType)
 {
     uint32_t numArgs = 2;  // function object and this
-    auto method = NewMethod(nullptr);
+    auto method = NewMethod(nullptr, spaceType);
     method->SetNativePointer(const_cast<void *>(func));
     method->SetNativeBit(true);
     if (builtinId != kungfu::BuiltinsStubCSigns::INVALID) {
@@ -1400,9 +1401,10 @@ JSHandle<JSObject> ObjectFactory::OrdinaryNewJSObjectCreate(const JSHandle<JSTag
 }
 
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc,
-                                                  FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId)
+                                                  FunctionKind kind, kungfu::BuiltinsStubCSigns::ID builtinId,
+                                                  MemSpaceType spaceType)
 {
-    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, kind, builtinId);
+    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, kind, builtinId, spaceType);
     return NewJSFunction(env, target);
 }
 
@@ -1575,11 +1577,17 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const void *func, cons
     return function;
 }
 
-JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral)
+JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType)
 {
     NewObjectHook();
-    TaggedObject *header = heap_->AllocateOldOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetMethodClass().GetTaggedObject()));
+    TaggedObject *header = nullptr;
+    if (spaceType == NON_MOVABLE) {
+        header = heap_->AllocateNonMovableOrHugeObject(
+            JSHClass::Cast(thread_->GlobalConstants()->GetMethodClass().GetTaggedObject()));
+    } else {
+        header = heap_->AllocateOldOrHugeObject(
+            JSHClass::Cast(thread_->GlobalConstants()->GetMethodClass().GetTaggedObject()));
+    }
     JSHandle<Method> method(thread_, header);
     if (methodLiteral != nullptr) {
         method->SetCallField(methodLiteral->GetCallField());

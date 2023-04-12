@@ -178,51 +178,14 @@ GateRef BuiltinLowering::TypedAbs(GateRef gate)
 GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
 {
     builder_.SetEnvironment(env);
-    Label entry(&builder_);
-    env->SubCfgEntry(&entry);
+    GateRef idGate = acc_.GetValueIn(gate, 1);
+    BuiltinsStubCSigns::ID id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef constantFunction =
+        builder_.GetGlobalConstantValue(VariableType::JS_POINTER(), glue, GET_TYPED_CONSTANT_INDEX(id));
 
     GateRef function = acc_.GetValueIn(gate, 0); // 0: function
-    GateRef id = acc_.GetValueIn(gate, 1); // 1: buitin id
-    Label isHeapObject(&builder_);
-    Label funcIsCallable(&builder_);
-    Label exit(&builder_);
-    GateRef isObject = builder_.TaggedIsHeapObject(function);
-    DEFVAlUE(result, (&builder_), VariableType::BOOL(), builder_.False());
-    builder_.Branch(isObject, &isHeapObject, &exit);
-    builder_.Bind(&isHeapObject);
-    {
-        GateRef callable = builder_.IsCallable(function);
-        builder_.Branch(callable, &funcIsCallable, &exit);
-        builder_.Bind(&funcIsCallable);
-        {
-            GateRef method = builder_.Load(VariableType::JS_ANY(), function,
-                builder_.IntPtr(JSFunctionBase::METHOD_OFFSET));
-            GateRef builtinId = builder_.GetCallBuiltinId(method);
-            result = builder_.Int64Equal(builtinId, id);
-            builder_.Jump(&exit);
-        }
-    }
-    builder_.Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-BuiltinsStubCSigns::ID BuiltinLowering::GetBuiltinId(std::string idStr)
-{
-    const std::map<std::string, BuiltinsStubCSigns::ID> str2BuiltinId = {
-        {"sqrt", BUILTINS_STUB_ID(SQRT)},
-        {"cos", BUILTINS_STUB_ID(COS)},
-        {"sin", BUILTINS_STUB_ID(SIN)},
-        {"acos", BUILTINS_STUB_ID(ACOS)},
-        {"atan", BUILTINS_STUB_ID(ATAN)},
-        {"abs", BUILTINS_STUB_ID(ABS)},
-        {"floor", BUILTINS_STUB_ID(FLOOR)},
-    };
-    if (str2BuiltinId.count(idStr) > 0) {
-        return str2BuiltinId.at(idStr);
-    }
-    return BUILTINS_STUB_ID(NONE);
+    return builder_.Equal(function, constantFunction);
 }
 
 GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)

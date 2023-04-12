@@ -73,6 +73,7 @@ private:
     GateRef VisitIndexCheck(GateRef gate);
     GateRef VisitLoadElement(GateRef gate);
     GateRef VisitStoreElement(GateRef gate);
+    GateRef VisitStoreProperty(GateRef gate);
     GateRef VisitNumberRelated(GateRef gate);
     GateRef VisitCallBuiltins(GateRef gate);
     GateRef VisitOthers(GateRef gate);

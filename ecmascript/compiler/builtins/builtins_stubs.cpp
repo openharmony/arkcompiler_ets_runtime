@@ -965,8 +965,7 @@ DECLARE_BUILTINS(ArrayConstructor)
         GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
         GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
         auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-        Branch(Equal(ChangeTaggedPointerToInt64(arrayFunc), ChangeTaggedPointerToInt64(newTarget)), &fastGetHclass,
-            &slowPath);
+        Branch(Equal(arrayFunc, newTarget), &fastGetHclass, &slowPath);
         Bind(&fastGetHclass);
         GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
         DEFVARIABLE(arrayLength, VariableType::INT64(), Int64(0));

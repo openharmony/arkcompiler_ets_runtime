@@ -102,7 +102,7 @@ HWTEST_F_L0(LoweringRelateGateTests, HeapAllocTest)
     auto arg1 = builder.Arguments(2);
     auto array = builder.HeapAlloc(arg0, GateType::AnyType(), RegionSpaceFlag::IN_YOUNG_SPACE);
 
-    auto offset = builder.Int64(JSThread::GlueData::GetGlueGlobalConstOffset(false));
+    auto offset = builder.Int64(JSThread::GlueData::GetGlobalConstOffset(false));
     auto globalEnv = builder.Load(VariableType::JS_POINTER(), glue, offset);
     auto lenthOffset = builder.IntPtr(GlobalEnvConstants::GetOffsetOfLengthString());
     auto lengthString = builder.Load(VariableType::JS_POINTER(), globalEnv, lenthOffset);

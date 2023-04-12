@@ -18,6 +18,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/global_env_constants.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -103,6 +104,63 @@ public:
     {
         return builtinId > NONE && builtinId < NUM_OF_BUILTINS_STUBS;
     }
+
+    static bool IsTypedBuiltin(ID builtinId)
+    {
+        switch (builtinId) {
+            case BuiltinsStubCSigns::ID::COS:
+            case BuiltinsStubCSigns::ID::SIN:
+            case BuiltinsStubCSigns::ID::ACOS:
+            case BuiltinsStubCSigns::ID::ATAN:
+            case BuiltinsStubCSigns::ID::ABS:
+            case BuiltinsStubCSigns::ID::FLOOR:
+            case BuiltinsStubCSigns::ID::SQRT:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static ConstantIndex GetConstantIndex(ID builtinId)
+    {
+        switch (builtinId) {
+            case BuiltinsStubCSigns::ID::COS:
+                return ConstantIndex::MATH_COS_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::SIN:
+                return ConstantIndex::MATH_SIN_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::ACOS:
+                return ConstantIndex::MATH_ACOS_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::ATAN:
+                return ConstantIndex::MATH_ATAN_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::ABS:
+                return ConstantIndex::MATH_ABS_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::FLOOR:
+                return ConstantIndex::MATH_FLOOR_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::SQRT:
+                return ConstantIndex::MATH_SQRT_FUNCTION_INDEX;
+            default:
+                LOG_COMPILER(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+        }
+    }
+
+    static ID GetBuiltinId(std::string idStr)
+    {
+        const std::map<std::string, BuiltinsStubCSigns::ID> str2BuiltinId = {
+            {"sqrt", SQRT},
+            {"cos", COS},
+            {"sin", SIN},
+            {"acos", ACOS},
+            {"atan", ATAN},
+            {"abs", ABS},
+            {"floor", FLOOR},
+        };
+        if (str2BuiltinId.count(idStr) > 0) {
+            return str2BuiltinId.at(idStr);
+        }
+        return NONE;
+    }
+
 private:
     static CallSignature callSigns_[NUM_OF_BUILTINS_STUBS];
     static CallSignature builtinsCSign_;
@@ -123,5 +181,7 @@ enum class BuiltinsArgs : size_t {
 };
 
 #define BUILTINS_STUB_ID(name) kungfu::BuiltinsStubCSigns::name
+#define IS_TYPED_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltin(id)
+#define GET_TYPED_CONSTANT_INDEX(id) kungfu::BuiltinsStubCSigns::GetConstantIndex(id)
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H

@@ -70,6 +70,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitConstant(gate);
         case OpCode::TYPED_CALL_BUILTIN:
             return VisitCallBuiltins(gate);
+        case OpCode::STORE_PROPERTY:
+            return VisitStoreProperty(gate);
         default:
             return VisitOthers(gate);
     }
@@ -660,6 +662,32 @@ GateRef NumberSpeculativeRetype::VisitStoreElement(GateRef gate)
         acc_.ReplaceDependIn(gate, builder_.GetDepend());
     }
 
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitStoreProperty(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
+    }
+    if (IsConvert()) {
+        GateRef value = acc_.GetValueIn(gate, 2);
+        TypeInfo valueType = typeInfos_[acc_.GetId(value)];
+        switch (valueType) {
+            case TypeInfo::INT1:
+            case TypeInfo::INT32:
+            case TypeInfo::FLOAT64:
+                builder_.StorePropertyNoBarrier(gate);
+                break;
+            default:
+                break;
+        }
+        size_t valueNum = acc_.GetNumValueIn(gate);
+        for (size_t i = 0; i < valueNum; ++i) {
+            GateRef input = acc_.GetValueIn(gate, i);
+            acc_.ReplaceValueIn(gate, ConvertToTagged(input), i);
+        }
+    }
     return Circuit::NullGate();
 }
 
