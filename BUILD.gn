@@ -625,6 +625,7 @@ ecma_source = [
   "ecmascript/jspandafile/class_info_extractor.cpp",
   "ecmascript/jspandafile/debug_info_extractor.cpp",
   "ecmascript/jspandafile/literal_data_extractor.cpp",
+  "ecmascript/jspandafile/type_literal_extractor.cpp",
   "ecmascript/jspandafile/accessor/module_data_accessor.cpp",
   "ecmascript/jspandafile/panda_file_translator.cpp",
   "ecmascript/jspandafile/js_pandafile_executor.cpp",

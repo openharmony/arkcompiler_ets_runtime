@@ -15,11 +15,9 @@
 
 #include "ecmascript/compiler/type_recorder.h"
 
-#include "ecmascript/jspandafile/literal_data_extractor.h"
+#include "ecmascript/jspandafile/type_literal_extractor.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
-
-#include "libpandafile/method_data_accessor-inl.h"
 
 namespace panda::ecmascript::kungfu {
 TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
@@ -38,60 +36,34 @@ TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *
 void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
                              TSManager *tsManager, const CString &recordName)
 {
-    JSThread *thread = tsManager->GetThread();
     TSTypeParser typeParser(tsManager);
-    const panda_file::File *pf = jsPandaFile->GetPandaFile();
     panda_file::File::EntityId fieldId = methodLiteral->GetMethodId();
-    panda_file::MethodDataAccessor mda(*pf, fieldId);
-    mda.EnumerateAnnotations([&](panda_file::File::EntityId annotationId) {
-        panda_file::AnnotationDataAccessor ada(*pf, annotationId);
-        auto *annotationName = reinterpret_cast<const char *>(jsPandaFile->GetStringData(ada.GetClassId()).data);
-        ASSERT(annotationName != nullptr);
-        if (::strcmp("L_ESTypeAnnotation;", annotationName) != 0) {
+    TypeAnnotationExtractor annoExtractor(jsPandaFile, fieldId.GetOffset());
+    GlobalTSTypeRef thisGT;
+    GlobalTSTypeRef funcGT;
+    annoExtractor.EnumerateInstsAndTypes([this, &typeParser, &jsPandaFile, &recordName, &thisGT,
+        &funcGT](const int32_t bcOffset, const uint32_t typeId) {
+        GlobalTSTypeRef gt = typeParser.CreateGT(jsPandaFile, recordName, typeId);
+        if (gt.IsDefault()) {
             return;
         }
-        uint32_t length = ada.GetCount();
-        for (uint32_t i = 0; i < length; i++) {
-            panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-            auto *elemName = reinterpret_cast<const char *>(jsPandaFile->GetStringData(adae.GetNameId()).data);
-            ASSERT(elemName != nullptr);
-            if (::strcmp("_TypeOfInstruction", elemName) != 0) {
-                continue;
-            }
 
-            panda_file::ScalarValue sv = adae.GetScalarValue();
-            panda_file::File::EntityId literalOffset(sv.GetValue());
-            JSHandle<TaggedArray> typeOfInstruction =
-                LiteralDataExtractor::GetTypeLiteral(thread, jsPandaFile, literalOffset);
-
-            GlobalTSTypeRef thisGT = GlobalTSTypeRef::Default();
-            GlobalTSTypeRef funcGT = GlobalTSTypeRef::Default();
-            for (uint32_t j = 0; j < typeOfInstruction->GetLength(); j = j + 2) {  // + 2 means bcOffset and typeId
-                int32_t bcOffset = typeOfInstruction->Get(j).GetInt();
-                uint32_t typeId = static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
-                GlobalTSTypeRef gt = typeParser.CreateGT(jsPandaFile, recordName, typeId);
-                if (gt.IsDefault()) {
-                    continue;
-                }
-
-                // The type of a function is recorded as (-1, funcTypeId). If the function is a member of a class,
-                // the type of the class or its instance is is recorded as (-2, classTypeId). If it is a static
-                // member, the type id refers to the type of the class; otherwise, it links to the type of the
-                // instances of the class.
-                if (bcOffset == METHOD_ANNOTATION_THIS_TYPE_OFFSET) {
-                    thisGT = gt;
-                    continue;
-                }
-                if (bcOffset == METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET) {
-                    funcGT = gt;
-                    continue;
-                }
-                auto type = GateType(gt);
-                bcOffsetGtMap_.emplace(bcOffset, type);
-            }
-            LoadArgTypes(tsManager, funcGT, thisGT);
+        // The type of a function is recorded as (-1, funcTypeId). If the function is a member of a class,
+        // the type of the class or its instance is is recorded as (-2, classTypeId). If it is a static
+        // member, the type id refers to the type of the class; otherwise, it links to the type of the
+        // instances of the class.
+        if (bcOffset == METHOD_ANNOTATION_THIS_TYPE_OFFSET) {
+            thisGT = gt;
+            return;
         }
+        if (bcOffset == METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET) {
+            funcGT = gt;
+            return;
+        }
+        auto type = GateType(gt);
+        bcOffsetGtMap_.emplace(bcOffset, type);
     });
+    LoadArgTypes(tsManager, funcGT, thisGT);
 }
 
 void TypeRecorder::LoadTypesFromPGO(const MethodLiteral *methodLiteral, const CString &recordName)

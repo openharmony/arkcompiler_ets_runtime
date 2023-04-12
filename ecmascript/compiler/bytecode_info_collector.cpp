@@ -18,6 +18,7 @@
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/jspandafile/type_literal_extractor.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
 #include "libpandafile/code_data_accessor.h"
 
@@ -79,7 +80,7 @@ void BytecodeInfoCollector::ProcessClasses()
         cda.EnumerateMethods([this, methods, &methodIdx, pf, &processedInsns,
             &recordNames, &methodPcInfos, &recordName] (panda_file::MethodDataAccessor &mda) {
             auto methodId = mda.GetMethodId();
-            CollectFunctionTypeId(vm_->GetJSThread(), methodId);
+            CollectFunctionTypeId(methodId);
 
             // Generate all constpool
             vm_->FindOrCreateConstPool(jsPandaFile_, methodId);
@@ -142,99 +143,50 @@ void BytecodeInfoCollector::CollectClassLiteralInfo(const MethodLiteral *method,
     }
 }
 
-void BytecodeInfoCollector::CollectFunctionTypeId(JSThread *thread, panda_file::File::EntityId fieldId)
+void BytecodeInfoCollector::CollectFunctionTypeId(panda_file::File::EntityId fieldId)
 {
-    const panda_file::File *pf = jsPandaFile_->GetPandaFile();
-    panda_file::MethodDataAccessor mda(*pf, fieldId);
-    mda.EnumerateAnnotations([this, fieldId, pf, thread] (panda_file::File::EntityId annotationId) {
-        panda_file::AnnotationDataAccessor ada(*pf, annotationId);
-        auto *annotationName = reinterpret_cast<const char *>(jsPandaFile_->GetStringData(ada.GetClassId()).data);
-        ASSERT(annotationName != nullptr);
-        if (::strcmp("L_ESTypeAnnotation;", annotationName) != 0) {
-            return;
-        }
-        uint32_t length = ada.GetCount();
-        for (uint32_t i = 0; i < length; i++) {
-            panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-            auto *elemName = reinterpret_cast<const char *>(jsPandaFile_->GetStringData(adae.GetNameId()).data);
-            ASSERT(elemName != nullptr);
-            if (::strcmp("_TypeOfInstruction", elemName) != 0) {
-                continue;
+    uint32_t offset = fieldId.GetOffset();
+    TypeAnnotationExtractor annoExtractor(jsPandaFile_, offset);
+    annoExtractor.EnumerateInstsAndTypes(
+        [this, offset](const int32_t bcOffset, const uint32_t typeId) {
+            if (bcOffset == TypeRecorder::METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET) {
+                bytecodeInfo_.SetFunctionTypeIDAndMethodOffset(typeId, offset);
+                return;
             }
-
-            panda_file::ScalarValue sv = adae.GetScalarValue();
-            panda_file::File::EntityId literalOffset(sv.GetValue());
-            JSHandle<TaggedArray> typeOfInstruction =
-                LiteralDataExtractor::GetTypeLiteral(thread, jsPandaFile_, literalOffset);
-
-            for (uint32_t j = 0; j < typeOfInstruction->GetLength(); j = j + 2) {  // + 2 means bcOffset and typeId
-                int32_t bcOffset = typeOfInstruction->Get(j).GetInt();
-                uint32_t typeId = static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
-                if (bcOffset == TypeRecorder::METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET) {
-                    bytecodeInfo_.SetFunctionTypeIDAndMethodOffset(typeId, fieldId.GetOffset());
-                    return;
-                }
-            }
-        }
-    });
+        });
 }
 
 void BytecodeInfoCollector::IterateLiteral(const MethodLiteral *method,
                                            std::vector<uint32_t> &classOffsetVector)
 {
-    const panda_file::File *pf = jsPandaFile_->GetPandaFile();
     panda_file::File::EntityId fieldId = method->GetMethodId();
     uint32_t defineMethodOffset = fieldId.GetOffset();
-    panda_file::MethodDataAccessor methodDataAccessor(*pf, fieldId);
-
-    methodDataAccessor.EnumerateAnnotations([&](panda_file::File::EntityId annotation_id) {
-        panda_file::AnnotationDataAccessor ada(*pf, annotation_id);
-        std::string annotationName = std::string(utf::Mutf8AsCString(pf->GetStringData(ada.GetClassId()).data));
-        if (annotationName.compare("L_ESTypeAnnotation;") != 0) {
-            return;
-        }
-        uint32_t length = ada.GetCount();
-        for (uint32_t i = 0; i < length; i++) {
-            panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-            std::string elemName = std::string(utf::Mutf8AsCString(pf->GetStringData(adae.GetNameId()).data));
-            if (elemName.compare("_TypeOfInstruction") != 0) {
-                continue;
+    TypeAnnotationExtractor annoExtractor(jsPandaFile_, defineMethodOffset);
+    std::map<int32_t, uint32_t> offsetTypeMap;
+    annoExtractor.EnumerateInstsAndTypes(
+        [this, &offsetTypeMap, defineMethodOffset](const int32_t bcOffset, const uint32_t typeOffset) {
+            if (classDefBCIndexes_.find(bcOffset) != classDefBCIndexes_.end() ||
+                classDefBCIndexes_.find(bcOffset - 1) != classDefBCIndexes_.end()) { // for getter setter
+                bytecodeInfo_.SetClassTypeOffsetAndDefMethod(typeOffset, defineMethodOffset);
             }
-
-            panda_file::ScalarValue sv = adae.GetScalarValue();
-            panda_file::File::EntityId literalOffset(sv.GetValue());
-            JSHandle<TaggedArray> typeOfInstruction =
-                LiteralDataExtractor::GetTypeLiteral(vm_->GetJSThread(), jsPandaFile_, literalOffset);
-            std::map<int32_t, uint32_t> offsetTypeMap;
-            for (uint32_t j = 0; j < typeOfInstruction->GetLength(); j = j + 2) {  // 2: Two parsing once
-                int32_t bcOffset = typeOfInstruction->Get(j).GetInt();
-                uint32_t typeOffset = static_cast<uint32_t>(typeOfInstruction->Get(j + 1).GetInt());
-                if (classDefBCIndexes_.find(bcOffset) != classDefBCIndexes_.end() ||
-                    classDefBCIndexes_.find(bcOffset - 1) != classDefBCIndexes_.end()) { // for getter setter
-                    bytecodeInfo_.SetClassTypeOffsetAndDefMethod(typeOffset, defineMethodOffset);
-                }
-                if (bcOffset != TypeRecorder::METHOD_ANNOTATION_THIS_TYPE_OFFSET &&
-                    typeOffset > TSTypeParser::USER_DEFINED_TYPE_OFFSET) {
-                    offsetTypeMap.insert(std::make_pair(bcOffset, typeOffset));
-                }
+            if (bcOffset != TypeRecorder::METHOD_ANNOTATION_THIS_TYPE_OFFSET &&
+                typeOffset > TSTypeParser::USER_DEFINED_TYPE_OFFSET) {
+                offsetTypeMap.insert(std::make_pair(bcOffset, typeOffset));
             }
+        });
 
-            for (auto item : offsetTypeMap) {
-                uint32_t typeOffset = item.second;
-                StoreClassTypeOffset(typeOffset, classOffsetVector);
-            }
-        }
-    });
+    for (auto item : offsetTypeMap) {
+        uint32_t typeOffset = item.second;
+        StoreClassTypeOffset(typeOffset, classOffsetVector);
+    }
+
     classDefBCIndexes_.clear();
 }
 
 void BytecodeInfoCollector::StoreClassTypeOffset(const uint32_t typeOffset, std::vector<uint32_t> &classOffsetVector)
 {
-    panda_file::File::EntityId offset(typeOffset);
-    JSHandle<TaggedArray> literal =
-        LiteralDataExtractor::GetTypeLiteral(vm_->GetJSThread(), jsPandaFile_, offset);
-    int typeKind = literal->Get(0).GetInt();
-    if (typeKind != static_cast<int>(TSTypeKind::CLASS)) {
+    TypeLiteralExtractor typeLiteralExtractor(jsPandaFile_, typeOffset);
+    if (typeLiteralExtractor.GetTypeKind() != TSTypeKind::CLASS) {
         return;
     }
 
@@ -566,26 +518,12 @@ void BytecodeInfoCollector::CollectExportIndexs(const CString &recordName, uint3
 bool BytecodeInfoCollector::CheckExportName(const CString &recordName, const JSHandle<EcmaString> &exportStr)
 {
     auto tsManager = vm_->GetTSManager();
-    // To compare with the exportTable, we need to parse the literalbuffer in abc TypeAnnotation.
-    // If the exportTable already exist, we will use it directly. OtherWise, we will parse and store it.
-    // In type system parser at a later stage, we will also use these arrays to avoid duplicate parsing.
-    if (tsManager->HasResolvedExportTable(jsPandaFile_, recordName)) {
-        JSTaggedValue exportTypeTable = tsManager->GetResolvedExportTable(jsPandaFile_, recordName);
-        JSHandle<TaggedArray> table(vm_->GetJSThread(), exportTypeTable);
-        return IsEffectiveExportName(exportStr, table);
-    }
-    JSHandle<TaggedArray> newResolvedTable = tsManager->GenerateExportTableFromLiteral(jsPandaFile_, recordName);
-    return IsEffectiveExportName(exportStr, newResolvedTable);
-}
-
-bool BytecodeInfoCollector::IsEffectiveExportName(const JSHandle<EcmaString> &exportNameStr,
-                                                  const JSHandle<TaggedArray> &exportTypeTable)
-{
+    JSHandle<TaggedArray> exportTypeTable = tsManager->GetExportTableFromLiteral(jsPandaFile_, recordName);
     uint32_t length = exportTypeTable->GetLength();
     for (uint32_t i = 0; i < length; i = i + 2) { // 2: skip a pair of key and value
         EcmaString *valueString = EcmaString::Cast(exportTypeTable->Get(i).GetTaggedObject());
         uint32_t typeId = static_cast<uint32_t>(exportTypeTable->Get(i + 1).GetInt());
-        if (EcmaStringAccessor::StringsAreEqual(*exportNameStr, valueString) && typeId != 0) {
+        if (EcmaStringAccessor::StringsAreEqual(*exportStr, valueString) && typeId != 0) {
             return true;
         }
     }

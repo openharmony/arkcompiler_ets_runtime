@@ -16,12 +16,13 @@
 #ifndef ECMASCRIPT_TS_TYPES_TS_MANAGER_H
 #define ECMASCRIPT_TS_TYPES_TS_MANAGER_H
 
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/ts_types/global_ts_type_ref.h"
-#include "ecmascript/ts_types/ts_obj_layout_info.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/compilation_driver.h"
+#include "ecmascript/js_handle.h"
+#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/jspandafile/type_literal_extractor.h"
+#include "ecmascript/ts_types/global_ts_type_ref.h"
+#include "ecmascript/ts_types/ts_obj_layout_info.h"
 
 namespace panda::ecmascript {
 enum class MTableIdx : uint8_t {
@@ -411,7 +412,7 @@ public:
     V(Array, TSTypeKind::ARRAY)                         \
     V(Object, TSTypeKind::OBJECT)                       \
     V(Import, TSTypeKind::IMPORT)                       \
-    V(Interface, TSTypeKind::INTERFACE_KIND)            \
+    V(Interface, TSTypeKind::INTERFACE)                 \
     V(IteratorInstance, TSTypeKind::ITERATOR_INSTANCE)  \
 
 #define IS_TSTYPEKIND(NAME, TSTYPEKIND)                                                \
@@ -440,7 +441,11 @@ public:
                                                bool isImportType = false)
     {
         auto key = std::make_pair(jsPandaFile, offset);
-        literalOffsetGTMap_.emplace(key, gt);
+        if (literalOffsetGTMap_.find(key) != literalOffsetGTMap_.end()) {
+            literalOffsetGTMap_[key] = gt;
+        } else {
+            literalOffsetGTMap_.emplace(key, gt);
+        }
         if (!isImportType) {
             auto value = std::make_pair(recordName, offset);
             gtLiteralOffsetMap_.emplace(gt, value);
@@ -693,13 +698,15 @@ public:
 
     kungfu::GateType TryNarrowUnionType(kungfu::GateType gateType);
 
-    JSHandle<TaggedArray> GenerateExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName);
+    JSHandle<TaggedArray> GetExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName);
 
 private:
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);
 
     GlobalTSTypeRef AddTSTypeToTypeTable(const JSHandle<TSType> &type, int tableId) const;
+
+    JSHandle<TaggedArray> GenerateExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName);
 
     GlobalTSTypeRef FindUnionInTypeTable(JSHandle<TSTypeTable> table, JSHandle<TSUnionType> unionType) const;
 

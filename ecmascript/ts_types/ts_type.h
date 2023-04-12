@@ -77,7 +77,6 @@ class TSClassType : public TSType {
 public:
     CAST_CHECK(TSClassType, IsTSClassType);
 
-    static constexpr size_t FIELD_LENGTH = 4;  // every field record name, typeIndex, accessFlag, readonly
     static constexpr size_t INSTANCE_TYPE_OFFSET = TSType::SIZE;
 
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
@@ -148,9 +147,6 @@ public:
 class TSInterfaceType : public TSType {
 public:
     CAST_CHECK(TSInterfaceType, IsTSInterfaceType);
-
-    // every field record name, typeIndex, accessFlag, readonly
-    static constexpr size_t FIELD_LENGTH = 4;
 
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSInterfaceType> classInstanceType,
                                          JSHandle<JSTaggedValue> propName);

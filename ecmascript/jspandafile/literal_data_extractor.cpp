@@ -19,7 +19,6 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/tagged_array-inl.h"
@@ -442,48 +441,6 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                 uint32_t oldLength = literals->GetLength();
                 literals->Trim(thread, oldLength - 1);
             }
-        });
-    return literals;
-}
-
-// use for parsing specific literal which record TS type info
-JSHandle<TaggedArray> LiteralDataExtractor::GetTypeLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                           EntityId offset)
-{
-    LiteralDataAccessor lda = jsPandaFile->GetLiteralDataAccessor();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    uint32_t num = lda.GetLiteralValsNum(offset) / 2;  // 2: half
-    JSHandle<TaggedArray> literals = factory->NewOldSpaceTaggedArray(num);
-    uint32_t pos = 0;
-    lda.EnumerateLiteralVals(
-        offset, [literals, &pos, factory, thread, jsPandaFile](const LiteralValue &value, const LiteralTag &tag) {
-            JSTaggedValue jt = JSTaggedValue::Null();
-            switch (tag) {
-                case LiteralTag::INTEGER: {
-                    jt = JSTaggedValue(base::bit_cast<int32_t>(std::get<uint32_t>(value)));
-                    break;
-                }
-                case LiteralTag::LITERALARRAY: {
-                    ASSERT(std::get<uint32_t>(value) > LITERALARRAY_VALUE_LOW_BOUNDARY);
-                    jt = JSTaggedValue(std::get<uint32_t>(value));
-                    break;
-                }
-                case LiteralTag::BUILTINTYPEINDEX: {
-                    jt = JSTaggedValue(std::get<uint8_t>(value));
-                    break;
-                }
-                case LiteralTag::STRING: {
-                    StringData sd = jsPandaFile->GetStringData(EntityId(std::get<uint32_t>(value)));
-                    EcmaString *str = factory->GetRawStringFromStringTable(sd, MemSpaceType::OLD_SPACE);
-                    jt = JSTaggedValue(str);
-                    break;
-                }
-                default: {
-                    LOG_FULL(FATAL) << "type literal should not exist LiteralTag: " << static_cast<uint8_t>(tag);
-                    break;
-                }
-            }
-            literals->Set(thread, pos++, jt);
         });
     return literals;
 }

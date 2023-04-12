@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_LITERAL_DATA_EXTRACTOR_H
 #define ECMASCRIPT_JSPANDAFILE_LITERAL_DATA_EXTRACTOR_H
 
-#include "ecmascript/jspandafile/panda_file_translator.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "libpandafile/literal_data_accessor-inl.h"
 
@@ -57,9 +57,6 @@ public:
 
     static void PUBLIC_API GetMethodOffsets(const JSPandaFile *jsPandaFile, EntityId id,
                                             std::vector<uint32_t> &methodOffsets);
-
-    static JSHandle<TaggedArray> PUBLIC_API GetTypeLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                           EntityId offset);
 private:
     static JSHandle<TaggedArray> EnumerateLiteralVals(JSThread *thread, panda_file::LiteralDataAccessor &lda,
         const JSPandaFile *jsPandaFile, size_t index, JSHandle<ConstantPool> constpool,

@@ -20,7 +20,6 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/subtyping_operator.h"
-#include "ecmascript/ts_types/ts_type_parser.h"
 #include "ecmascript/ts_types/ts_type_table_generator.h"
 #include "ecmascript/vtable.h"
 
@@ -235,7 +234,7 @@ TSTypeKind TSManager::GetTypeKind(const GlobalTSTypeRef &gt) const
                 case JSType::TS_OBJECT_TYPE:
                     return TSTypeKind::OBJECT;
                 case JSType::TS_INTERFACE_TYPE:
-                    return TSTypeKind::INTERFACE_KIND;
+                    return TSTypeKind::INTERFACE;
                 case JSType::TS_ITERATOR_INSTANCE_TYPE:
                     return TSTypeKind::ITERATOR_INSTANCE;
                 default:
@@ -909,7 +908,7 @@ std::string TSManager::GetTypeStr(kungfu::GateType gateType) const
             return "object";
         case TSTypeKind::IMPORT:
             return "import";
-        case TSTypeKind::INTERFACE_KIND:
+        case TSTypeKind::INTERFACE:
             return "interface";
         case TSTypeKind::ITERATOR_INSTANCE:
             return "iterator_instance";
@@ -1220,12 +1219,36 @@ kungfu::GateType TSManager::TryNarrowUnionType(kungfu::GateType gateType)
     return gateType;
 }
 
+JSHandle<TaggedArray> TSManager::GetExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName)
+{
+    // To compare with the exportTable, we need to parse the literalbuffer in abc TypeAnnotation.
+    // If the exportTable already exist, we will use it directly. OtherWise, we will parse and store it.
+    // In type system parser at a later stage, we will also use these arrays to avoid duplicate parsing.
+    if (HasResolvedExportTable(jsPandaFile, recordName)) {
+        JSTaggedValue exportTypeTable = GetResolvedExportTable(jsPandaFile, recordName);
+        JSHandle<TaggedArray> table(vm_->GetJSThread(), exportTypeTable);
+        return table;
+    }
+
+    JSHandle<TaggedArray> typeOfExportedSymbols = GenerateExportTableFromLiteral(jsPandaFile, recordName);
+    AddResolvedExportTable(jsPandaFile, recordName, typeOfExportedSymbols.GetTaggedValue());
+    return typeOfExportedSymbols;
+}
+
 JSHandle<TaggedArray> TSManager::GenerateExportTableFromLiteral(const JSPandaFile *jsPandaFile,
                                                                 const CString &recordName)
 {
-    TSTypeParser parser(this);
-    JSHandle<TaggedArray> typeOfExportedSymbols = parser.GetExportDataFromRecord(jsPandaFile, recordName);
-    AddResolvedExportTable(jsPandaFile, recordName, typeOfExportedSymbols.GetTaggedValue());
+    bool isBuiltinTable = (std::strcmp(recordName.c_str(), TSTypeTable::BUILTINS_TABLE_NAME) == 0);
+    ExportTypeTableExtractor exTableExtractor(jsPandaFile, recordName, isBuiltinTable);
+    uint32_t length = exTableExtractor.GetLength();
+    JSHandle<TaggedArray> typeOfExportedSymbols = factory_->NewOldSpaceTaggedArray(length);
+    uint32_t index = 0;
+    exTableExtractor.EnumerateModuleTypes(
+        [this, &typeOfExportedSymbols, &index](const CString &name, const uint32_t typeId) {
+            JSHandle<EcmaString> str = factory_->NewFromUtf8(name);
+            typeOfExportedSymbols->Set(thread_, index++, JSTaggedValue(str.GetTaggedValue()));
+            typeOfExportedSymbols->Set(thread_, index++, JSTaggedValue(typeId));
+        });
     return typeOfExportedSymbols;
 }
 
@@ -1285,12 +1308,11 @@ void TSManager::GenerateBuiltinSummary()
     SetBuiltinPandaFile(jsPandaFile.get());
     CString builtinsRecordName(TSTypeTable::BUILTINS_TABLE_NAME);
     SetBuiltinRecordName(builtinsRecordName);
-    panda_file::File::EntityId summaryOffset(jsPandaFile->GetTypeSummaryOffset(builtinsRecordName));
-    JSHandle<TaggedArray> builtinOffsets =
-        LiteralDataExtractor::GetTypeLiteral(thread_, jsPandaFile.get(), summaryOffset);
-    for (uint32_t i = 0; i <= static_cast<uint32_t>(BuiltinTypeId::NUM_OF_BUILTIN_TYPES); i++) {
-        builtinOffsets_.emplace_back(static_cast<uint32_t>(builtinOffsets->Get(i).GetInt()));
-    }
+    TypeSummaryExtractor summExtractor(jsPandaFile.get(), builtinsRecordName);
+    summExtractor.EnumerateTypeOffsets(static_cast<uint32_t>(BuiltinTypeId::NUM_OF_BUILTIN_TYPES),
+        [this](const uint32_t typeOffset) {
+            builtinOffsets_.emplace_back(typeOffset);
+        });
 }
 
 void TSManager::PrintNumOfTypes() const
