@@ -13,377 +13,13 @@
  * limitations under the License.
  */
 
-#include <queue>
-#include <stack>
-
 #include "ecmascript/compiler/early_elimination.h"
 
 namespace panda::ecmascript::kungfu {
 
-GateRef DependChainInfo::LookUpElement(ElementInfo info) const
-{
-    if ((elementMap_ != nullptr) && (elementMap_->count(info) > 0)) {
-        return elementMap_->at(info);
-    } else {
-        return Circuit::NullGate();
-    }
-}
-
-GateRef DependChainInfo::LookUpProperty(PropertyInfo info) const
-{
-    if ((propertyMap_ != nullptr) && (propertyMap_->count(info) > 0)) {
-        return propertyMap_->at(info);
-    } else {
-        return Circuit::NullGate();
-    }
-}
-
-GateRef DependChainInfo::LookUpArrayLength(ArrayLengthInfo info) const
-{
-    if ((arrayLengthMap_ != nullptr) && (arrayLengthMap_->count(info) > 0)) {
-        return arrayLengthMap_->at(info);
-    } else {
-        return Circuit::NullGate();
-    }
-}
-
-GateRef DependChainInfo::LookUpLoadConstOffset(LoadConstInfo info) const
-{
-    if ((loadConstMap_ != nullptr) && (loadConstMap_->count(info) > 0)) {
-        return loadConstMap_->at(info);
-    } else {
-        return Circuit::NullGate();
-    }
-}
-
-bool DependChainInfo::LookUpGateTypeCheck(GateTypeCheckInfo info) const
-{
-    return (gateTypeCheckSet_ != nullptr) && (gateTypeCheckSet_->count(info) > 0);
-}
-
-GateTypeCheckInfo DependChainInfo::LookUpGateTypeCheck(GateRef gate) const
-{
-    if (gateTypeCheckSet_ == nullptr) {
-        return GateTypeCheckInfo();
-    }
-    auto findFunc = [] (const GateTypeCheckInfo& info, const GateRef &value) {
-        return info.GetValue() < value;
-    };
-    const auto &it = std::lower_bound(gateTypeCheckSet_->begin(),
-        gateTypeCheckSet_->end(), gate, findFunc);
-    if (it != gateTypeCheckSet_->end() && it->GetValue() == gate) {
-        return *it;
-    }
-    return GateTypeCheckInfo();
-}
-
-bool DependChainInfo::LookUpInt32OverflowCheck(Int32OverflowCheckInfo info) const
-{
-    return (int32OverflowCheckSet_ != nullptr) && (int32OverflowCheckSet_->count(info) > 0);
-}
-
-bool DependChainInfo::LookUpStableArrayCheck(StableArrayCheckInfo info) const
-{
-    return (stableArrayCheckSet_ != nullptr) && (stableArrayCheckSet_->count(info) > 0);
-}
-
-bool DependChainInfo::LookUpObjectTypeCheck(ObjectTypeCheckInfo info) const
-{
-    return (objectTypeCheckSet_ != nullptr) && (objectTypeCheckSet_->count(info) > 0);
-}
-
-bool DependChainInfo::LookUpIndexCheck(IndexCheckInfo info) const
-{
-    return (indexCheckSet_ != nullptr) && (indexCheckSet_->count(info) > 0);
-}
-
-bool DependChainInfo::LookUpTypedCallCheck(TypedCallCheckInfo info) const
-{
-    return (typedCallCheckSet_ != nullptr) && (typedCallCheckSet_->count(info) > 0);
-}
-
-GateRef DependChainInfo::LookUpFrameState() const
-{
-    return frameState_;
-}
-
-DependChainInfo* DependChainInfo::UpdateProperty(PropertyInfo info, GateRef gate)
-{
-    DependChainInfo* that = new (chunk_) DependChainInfo(*this);
-    if (propertyMap_ != nullptr) {
-        that->propertyMap_ = new ChunkMap<PropertyInfo, GateRef>(*propertyMap_);
-    } else {
-        that->propertyMap_ = new ChunkMap<PropertyInfo, GateRef>(chunk_);
-    }
-    that->propertyMap_->insert(std::make_pair(info, gate));
-    return that;
-}
-
-DependChainInfo* DependChainInfo::UpdateElement(ElementInfo info, GateRef gate)
-{
-    DependChainInfo* that = new (chunk_) DependChainInfo(*this);
-    if (elementMap_ != nullptr) {
-        that->elementMap_ = new ChunkMap<ElementInfo, GateRef>(*elementMap_);
-    } else {
-        that->elementMap_ = new ChunkMap<ElementInfo, GateRef>(chunk_);
-    }
-    that->elementMap_->insert(std::make_pair(info, gate));
-    return that;
-}
-
-DependChainInfo* DependChainInfo::UpdateArrayLength(ArrayLengthInfo info, GateRef gate)
-{
-    DependChainInfo* that = new (chunk_) DependChainInfo(*this);
-    if (arrayLengthMap_ != nullptr) {
-        that->arrayLengthMap_ = new ChunkMap<ArrayLengthInfo, GateRef>(*arrayLengthMap_);
-    } else {
-        that->arrayLengthMap_ = new ChunkMap<ArrayLengthInfo, GateRef>(chunk_);
-    }
-    that->arrayLengthMap_->insert(std::make_pair(info, gate));
-    return that;
-}
-
-DependChainInfo* DependChainInfo::UpdateLoadConstOffset(LoadConstInfo info, GateRef gate)
-{
-    DependChainInfo* that = new (chunk_) DependChainInfo(*this);
-    if (loadConstMap_ != nullptr) {
-        that->loadConstMap_ = new ChunkMap<LoadConstInfo, GateRef>(*loadConstMap_);
-    } else {
-        that->loadConstMap_ = new ChunkMap<LoadConstInfo, GateRef>(chunk_);
-    }
-    that->loadConstMap_->insert(std::make_pair(info, gate));
-    return that;
-}
-
-DependChainInfo* DependChainInfo::UpdateGateTypeCheck(GateTypeCheckInfo info)
-{
-    DependChainInfo* that = new (chunk_) DependChainInfo(*this);
-    if (gateTypeCheckSet_ != nullptr) {
-        that->gateTypeCheckSet_ = new ChunkSet<GateTypeCheckInfo>(*gateTypeCheckSet_);
-    } else {
-        that->gateTypeCheckSet_ = new ChunkSet<GateTypeCheckInfo>(chunk_);
-    }
-    that->gateTypeCheckSet_->insert(info);
-    return that;
-}
-
-DependChainInfo* DependChainInfo::UpdateInt32OverflowCheck(Int32OverflowCheckInfo info)
-{
-    DependChainInfo* that = new (chunk_) DependChainInfo(*this);
-    if (int32OverflowCheckSet_ != nullptr) {
-        that->int32OverflowCheckSet_ = new ChunkSet<Int32OverflowCheckInfo>(*int32OverflowCheckSet_);
-    } else {
-        that->int32OverflowCheckSet_ = new ChunkSet<Int32OverflowCheckInfo>(chunk_);
-    }
-    that->int32OverflowCheckSet_->insert(info);
-    return that;
-}
-
-DependChainInfo* DependChainInfo::UpdateStableArrayCheck(StableArrayCheckInfo info)
-{
-    DependChainInfo* that = new (chunk_) DependChainInfo(*this);
-    if (stableArrayCheckSet_ != nullptr) {
-        that->stableArrayCheckSet_ = new ChunkSet<StableArrayCheckInfo>(*stableArrayCheckSet_);
-    } else {
-        that->stableArrayCheckSet_ = new ChunkSet<StableArrayCheckInfo>(chunk_);
-    }
-    that->stableArrayCheckSet_->insert(info);
-    return that;
-}
-
-DependChainInfo* DependChainInfo::UpdateObjectTypeCheck(ObjectTypeCheckInfo info)
-{
-    DependChainInfo* that = new (chunk_) DependChainInfo(*this);
-    if (objectTypeCheckSet_ != nullptr) {
-        that->objectTypeCheckSet_ = new ChunkSet<ObjectTypeCheckInfo>(*objectTypeCheckSet_);
-    } else {
-        that->objectTypeCheckSet_ = new ChunkSet<ObjectTypeCheckInfo>(chunk_);
-    }
-    that->objectTypeCheckSet_->insert(info);
-    return that;
-}
-
-DependChainInfo* DependChainInfo::UpdateIndexCheck(IndexCheckInfo info)
-{
-    DependChainInfo* that = new (chunk_) DependChainInfo(*this);
-    if (indexCheckSet_ != nullptr) {
-        that->indexCheckSet_ = new ChunkSet<IndexCheckInfo>(*indexCheckSet_);
-    } else {
-        that->indexCheckSet_ = new ChunkSet<IndexCheckInfo>(chunk_);
-    }
-    that->indexCheckSet_->insert(info);
-    return that;
-}
-
-DependChainInfo* DependChainInfo::UpdateTypedCallCheck(TypedCallCheckInfo info)
-{
-    DependChainInfo* that = new (chunk_) DependChainInfo(*this);
-    if (typedCallCheckSet_ != nullptr) {
-        that->typedCallCheckSet_ = new ChunkSet<TypedCallCheckInfo>(*typedCallCheckSet_);
-    } else {
-        that->typedCallCheckSet_ = new ChunkSet<TypedCallCheckInfo>(chunk_);
-    }
-    that->typedCallCheckSet_->insert(info);
-    return that;
-}
-
-DependChainInfo* DependChainInfo::UpdateFrameState(GateRef gate)
-{
-    DependChainInfo* that = new (chunk_) DependChainInfo(*this);
-    that->frameState_ = gate;
-    return that;
-}
-
-DependChainInfo* DependChainInfo::UpdateWrite()
-{
-    // save gateTypeCheckSet_ and int32OverflowCheckSet_ since these checks have no side effect
-    DependChainInfo* that = new (chunk_) DependChainInfo(chunk_);
-    that->gateTypeCheckSet_ = gateTypeCheckSet_;
-    that->int32OverflowCheckSet_ = int32OverflowCheckSet_;
-    return that;
-}
-
-bool DependChainInfo::Empty() const {
-    return (elementMap_ == nullptr) &&
-           (propertyMap_ == nullptr) &&
-           (arrayLengthMap_ == nullptr) &&
-           (loadConstMap_ == nullptr) &&
-           (gateTypeCheckSet_ == nullptr) &&
-           (int32OverflowCheckSet_ == nullptr) &&
-           (stableArrayCheckSet_ == nullptr) &&
-           (objectTypeCheckSet_ == nullptr) &&
-           (indexCheckSet_ == nullptr) &&
-           (typedCallCheckSet_ == nullptr) &&
-           (frameState_ == Circuit::NullGate());
-}
-
-template<typename K, typename V>
-bool DependChainInfo::EqualsMap(ChunkMap<K, V>* thisMap, ChunkMap<K, V>* thatMap)
-{
-    if (thisMap == thatMap) {
-        return true;
-    } else if (thisMap == nullptr || thatMap == nullptr) {
-        return false;
-    } else {
-        return *thisMap == *thatMap;
-    }
-}
-
-template<typename K>
-bool DependChainInfo::EqualsSet(ChunkSet<K>* thisSet, ChunkSet<K>* thatSet)
-{
-    if (thisSet == thatSet) {
-        return true;
-    } else if (thisSet == nullptr || thatSet == nullptr) {
-        return false;
-    } else {
-        return *thisSet == *thatSet;
-    }
-}
-
-bool DependChainInfo::Equals(DependChainInfo* that)
-{
-    if (this == that) return true;
-    if (that == nullptr) return false;
-    if (frameState_ != that->frameState_) {
-        return false;
-    }
-    if (!EqualsMap<ElementInfo, GateRef>(elementMap_, that->elementMap_)) {
-        return false;
-    }
-    if (!EqualsMap<PropertyInfo, GateRef>(propertyMap_, that->propertyMap_)) {
-        return false;
-    }
-    if (!EqualsMap<ArrayLengthInfo, GateRef>(arrayLengthMap_, that->arrayLengthMap_)) {
-        return false;
-    }
-    if (!EqualsMap<LoadConstInfo, GateRef>(loadConstMap_, that->loadConstMap_)) {
-        return false;
-    }
-    if (!EqualsSet<GateTypeCheckInfo>(gateTypeCheckSet_, that->gateTypeCheckSet_)) {
-        return false;
-    }
-    if (!EqualsSet<Int32OverflowCheckInfo>(int32OverflowCheckSet_, that->int32OverflowCheckSet_)) {
-        return false;
-    }
-    if (!EqualsSet<StableArrayCheckInfo>(stableArrayCheckSet_, that->stableArrayCheckSet_)) {
-        return false;
-    }
-    if (!EqualsSet<ObjectTypeCheckInfo>(objectTypeCheckSet_, that->objectTypeCheckSet_)) {
-        return false;
-    }
-    if (!EqualsSet<IndexCheckInfo>(indexCheckSet_, that->indexCheckSet_)) {
-        return false;
-    }
-    if (!EqualsSet<TypedCallCheckInfo>(typedCallCheckSet_, that->typedCallCheckSet_)) {
-        return false;
-    }
-    return true;
-}
-
-template<typename K, typename V>
-ChunkMap<K, V>* DependChainInfo::MergeMap(ChunkMap<K, V>* thisMap, ChunkMap<K, V>* thatMap)
-{
-    if (thisMap == thatMap) {
-        return thisMap;
-    } else if (thisMap == nullptr || thatMap == nullptr) {
-        return nullptr;
-    } else {
-        auto newMap = new ChunkMap<K, V>(chunk_);
-        const auto &tempMap = *thisMap;
-        for (const auto &pr : tempMap) {
-            if (thatMap->count(pr.first) && thatMap->at(pr.first) == pr.second) {
-                newMap->insert(pr);
-            }
-        }
-        return newMap;
-    }
-}
-
-template<typename K>
-ChunkSet<K>* DependChainInfo::MergeSet(ChunkSet<K>* thisSet, ChunkSet<K>* thatSet)
-{
-    if (thisSet == thatSet) {
-        return thisSet;
-    } else if (thisSet == nullptr || thatSet == nullptr) {
-        return nullptr;
-    } else {
-        auto newSet = new ChunkSet<K>(chunk_);
-        const auto &tempSet = *thisSet;
-        for (const auto &it : tempSet) {
-            if (thatSet->count(it)) {
-                newSet->insert(it);
-            }
-        }
-        return newSet;
-    }
-}
-
-DependChainInfo* DependChainInfo::Merge(DependChainInfo* that)
-{
-    if (Equals(that)) {
-        return that;
-    }
-    DependChainInfo* newInfo = new (chunk_) DependChainInfo(*this);
-    newInfo->elementMap_ = MergeMap<ElementInfo, GateRef>(elementMap_, that->elementMap_);
-    newInfo->propertyMap_ = MergeMap<PropertyInfo, GateRef>(propertyMap_, that->propertyMap_);
-    newInfo->arrayLengthMap_ = MergeMap<ArrayLengthInfo, GateRef>(arrayLengthMap_, that->arrayLengthMap_);
-    newInfo->loadConstMap_ = MergeMap<LoadConstInfo, GateRef>(loadConstMap_, that->loadConstMap_);
-    newInfo->gateTypeCheckSet_ =
-        MergeSet<GateTypeCheckInfo>(gateTypeCheckSet_, that->gateTypeCheckSet_);
-    newInfo->int32OverflowCheckSet_ =
-        MergeSet<Int32OverflowCheckInfo>(int32OverflowCheckSet_, that->int32OverflowCheckSet_);
-    newInfo->stableArrayCheckSet_ = MergeSet<StableArrayCheckInfo>(stableArrayCheckSet_, that->stableArrayCheckSet_);
-    newInfo->objectTypeCheckSet_ = MergeSet<ObjectTypeCheckInfo>(objectTypeCheckSet_, that->objectTypeCheckSet_);
-    newInfo->indexCheckSet_ = MergeSet<IndexCheckInfo>(indexCheckSet_, that->indexCheckSet_);
-    newInfo->typedCallCheckSet_ = MergeSet<TypedCallCheckInfo>(typedCallCheckSet_, that->typedCallCheckSet_);
-    newInfo->frameState_ = frameState_ == that->frameState_ ? frameState_ : Circuit::NullGate();
-    return newInfo;
-}
-
 void EarlyElimination::Run()
 {
-    dependInfos_.resize(circuit_->GetMaxGateId() + 1, nullptr); // 1: +1 for size
+    dependChains_.resize(circuit_->GetMaxGateId() + 1, nullptr); // 1: +1 for size
     GateRef entry = acc_.GetDependRoot();
     VisitDependEntry(entry);
     VisitGraph();
@@ -392,7 +28,7 @@ void EarlyElimination::Run()
         LOG_COMPILER(INFO) << "";
         LOG_COMPILER(INFO) << "\033[34m"
                            << "===================="
-                           << " After early eliminating "
+                           << " After early elimination "
                            << "[" << GetMethodName() << "]"
                            << "===================="
                            << "\033[0m";
@@ -401,10 +37,17 @@ void EarlyElimination::Run()
     }
 }
 
-bool EarlyElimination::IsSideEffectLoop(GateRef depend)
+DependInfoNode* EarlyElimination::GetLoopDependInfo(GateRef depend)
 {
-    ChunkSet<GateRef> visited(GetChunk());
-    ChunkQueue<GateRef> workList(GetChunk());
+    auto depIn = acc_.GetDep(depend);
+    auto dependChain = GetDependChain(depIn);
+    if (dependChain == nullptr) {
+        return nullptr;
+    }
+    auto newChain = new (chunk_) DependInfoNode(chunk_);
+    newChain->CopyFrom(dependChain);
+    ChunkSet<GateRef> visited(chunk_);
+    ChunkQueue<GateRef> workList(chunk_);
     workList.push(depend);
     visited.insert(acc_.GetDep(depend));
     while (!workList.empty()) {
@@ -414,7 +57,7 @@ bool EarlyElimination::IsSideEffectLoop(GateRef depend)
             continue;
         }
         if (!acc_.IsNotWrite(curDep)) {
-            return true;
+            newChain = UpdateWrite(curDep, newChain);
         }
         visited.insert(curDep);
         auto depCount = acc_.GetDependCount(curDep);
@@ -422,65 +65,13 @@ bool EarlyElimination::IsSideEffectLoop(GateRef depend)
             workList.push(acc_.GetDep(curDep, i));
         }
     }
-    return false;
+    return newChain;
 }
 
-ElementInfo EarlyElimination::GetElementInfo(GateRef gate) const
+GateRef EarlyElimination::VisitDependEntry(GateRef gate)
 {
-    auto op = acc_.GetTypedLoadOp(gate);
-    auto v0 = acc_.GetValueIn(gate, 0);
-    auto v1 = acc_.GetValueIn(gate, 1);
-    return ElementInfo(op, v0, v1);
-}
-
-PropertyInfo EarlyElimination::GetPropertyInfo(GateRef gate) const
-{
-    auto v0 = acc_.GetValueIn(gate, 0);
-    auto v1 = acc_.GetValueIn(gate, 1);
-    return PropertyInfo(v0, v1);
-}
-
-ArrayLengthInfo EarlyElimination::GetArrayLengthInfo(GateRef gate) const
-{
-    auto v0 = acc_.GetValueIn(gate, 0);
-    return ArrayLengthInfo(v0);
-}
-
-LoadConstInfo EarlyElimination::GetLoadConstInfo(GateRef gate) const
-{
-    auto receiver = acc_.GetValueIn(gate, 0);
-    auto offset = acc_.GetOffset(gate);
-    return LoadConstInfo(receiver, offset);
-}
-
-Int32OverflowCheckInfo EarlyElimination::GetInt32OverflowCheckInfo(GateRef gate) const
-{
-    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
-    auto op = accessor.GetTypedUnOp();
-    auto v0 = acc_.GetValueIn(gate, 0);
-    return Int32OverflowCheckInfo(op, v0);
-}
-
-StableArrayCheckInfo EarlyElimination::GetStableArrayCheckInfo(GateRef gate) const
-{
-    auto v0 =  acc_.GetValueIn(gate, 0);
-    return StableArrayCheckInfo(v0);
-}
-
-IndexCheckInfo EarlyElimination::GetIndexCheckInfo(GateRef gate) const
-{
-    auto type = acc_.GetParamGateType(gate);
-    auto v0 = acc_.GetValueIn(gate, 0);
-    auto v1 = acc_.GetValueIn(gate, 1);
-    return IndexCheckInfo(type, v0, v1);
-}
-
-TypedCallCheckInfo EarlyElimination::GetTypedCallCheckInfo(GateRef gate) const
-{
-    auto v0 = acc_.GetValueIn(gate, 0);
-    auto v1 = acc_.GetValueIn(gate, 1);
-    auto v2 = acc_.GetValueIn(gate, 2);
-    return TypedCallCheckInfo(v0, v1, v2);
+    auto empty = new (chunk_) DependInfoNode(chunk_);
+    return UpdateDependChain(gate, empty);
 }
 
 GateRef EarlyElimination::VisitGate(GateRef gate)
@@ -488,34 +79,22 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
     auto opcode = acc_.GetOpCode(gate);
     switch (opcode) {
         case OpCode::LOAD_PROPERTY:
-            return TryEliminateProperty(gate);
         case OpCode::LOAD_ELEMENT:
-            return TryEliminateElement(gate);
         case OpCode::LOAD_ARRAY_LENGTH:
-            return TryEliminateArrayLength(gate);
-        case OpCode::LOAD_CONST_OFFSET:
-            return TryEliminateLoadConstOffset(gate);
         case OpCode::TYPED_ARRAY_CHECK:
         case OpCode::OBJECT_TYPE_CHECK:
-            return TryEliminateObjectTypeCheck(gate);
-        case OpCode::PRIMITIVE_TYPE_CHECK:
-            return TryEliminateGateTypeCheck(gate);
         case OpCode::INT32_OVERFLOW_CHECK:
-            return TryEliminateInt32OverflowCheck(gate);
         case OpCode::STABLE_ARRAY_CHECK:
-            return TryEliminateStableArrayCheck(gate);
         case OpCode::INDEX_CHECK:
-            return TryEliminateIndexCheck(gate);
         case OpCode::TYPED_CALL_CHECK:
-            return TryEliminateTypedCallCheck(gate);
+        case OpCode::LOAD_CONST_OFFSET:
+        case OpCode::TYPED_BINARY_OP:
+        case OpCode::TYPED_UNARY_OP:
+            return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
-            return TryEliminateStateSplitAndFrameState(gate);
+            return TryEliminateFrameState(gate);
         case OpCode::DEPEND_SELECTOR:
             return TryEliminateDependSelector(gate);
-        case OpCode::TYPED_BINARY_OP:
-            return VisitTypedBinaryOp(gate);
-        case OpCode::TYPED_UNARY_OP:
-            return VisitTypedUnaryOp(gate);
         default:
             if (acc_.GetDependCount(gate) == 1) { // 1: depend in is 1
                 return TryEliminateOther(gate);
@@ -524,338 +103,314 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
     return Circuit::NullGate();
 }
 
-GateRef EarlyElimination::VisitTypedBinaryOp(GateRef gate)
-{
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
-
-    GateType valueType = acc_.GetGateType(gate);
-    if (!valueType.IsNumberType() || valueType.IsIntType()) {
-        return UpdateDependInfo(gate, dependInfo);
-    }
-    auto info = GateTypeCheckInfo(gate, valueType);
-    if (dependInfo->LookUpGateTypeCheck(info)) {
-        return UpdateDependInfo(gate, dependInfo);
-    }
-    dependInfo = dependInfo->UpdateGateTypeCheck(info);
-    return UpdateDependInfo(gate, dependInfo);
-}
-
-GateRef EarlyElimination::VisitTypedUnaryOp(GateRef gate)
-{
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
-    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
-    GateType valueType = accessor.GetTypeValue();
-    if (!valueType.IsNumberType() || valueType.IsIntType()) {
-        return UpdateDependInfo(gate, dependInfo);
-    }
-    auto info = GateTypeCheckInfo(gate, valueType);
-    if (dependInfo->LookUpGateTypeCheck(info)) {
-        return UpdateDependInfo(gate, dependInfo);
-    }
-    dependInfo = dependInfo->UpdateGateTypeCheck(info);
-    return UpdateDependInfo(gate, dependInfo);
-}
-
-GateRef EarlyElimination::VisitDependEntry(GateRef gate)
-{
-    auto emptyInfo = new (GetChunk()) DependChainInfo(GetChunk());
-    return UpdateDependInfo(gate, emptyInfo);
-}
-
-GateRef EarlyElimination::TryEliminateElement(GateRef gate)
-{
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
-    auto info = GetElementInfo(gate);
-    auto preGate = dependInfo->LookUpElement(info);
-    if (preGate != Circuit::NullGate()) {
-        return preGate;
-    }
-    dependInfo = dependInfo->UpdateElement(info, gate);
-    return UpdateDependInfo(gate, dependInfo);
-}
-
-GateRef EarlyElimination::TryEliminateProperty(GateRef gate)
-{
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
-    auto info = GetPropertyInfo(gate);
-    auto preGate = dependInfo->LookUpProperty(info);
-    if (preGate != Circuit::NullGate()) {
-        return preGate;
-    }
-    dependInfo = dependInfo->UpdateProperty(info, gate);
-    return UpdateDependInfo(gate, dependInfo);
-}
-
-GateRef EarlyElimination::TryEliminateArrayLength(GateRef gate)
-{
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
-    auto info = GetArrayLengthInfo(gate);
-    auto preGate = dependInfo->LookUpArrayLength(info);
-    if (preGate != Circuit::NullGate()) {
-        return preGate;
-    }
-
-    // update arrayLength as number Type
-    auto typeInfo = GateTypeCheckInfo(gate, GateType::NumberType());
-    if (!dependInfo->LookUpGateTypeCheck(typeInfo)) {
-        dependInfo = dependInfo->UpdateGateTypeCheck(typeInfo);
-    }
-
-    dependInfo = dependInfo->UpdateArrayLength(info, gate);
-    return UpdateDependInfo(gate, dependInfo);
-}
-
-GateRef EarlyElimination::TryEliminateLoadConstOffset(GateRef gate)
-{
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
-    auto info = GetLoadConstInfo(gate);
-    auto preGate = dependInfo->LookUpLoadConstOffset(info);
-    if (preGate != Circuit::NullGate()) {
-        return preGate;
-    }
-
-    dependInfo = dependInfo->UpdateLoadConstOffset(info, gate);
-    return UpdateDependInfo(gate, dependInfo);
-}
-
-GateRef EarlyElimination::TryEliminateObjectTypeCheck(GateRef gate)
-{
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
-
-    auto type = acc_.GetParamGateType(gate);
-    auto value = acc_.GetValueIn(gate, 0);
-    auto info = ObjectTypeCheckInfo(type, value);
-    if (dependInfo->LookUpObjectTypeCheck(info)) {
-        return circuit_->DeadGate();
-    }
-
-    dependInfo = dependInfo->UpdateObjectTypeCheck(info);
-    return UpdateDependInfo(gate, dependInfo);
-}
-
-GateRef EarlyElimination::TryEliminateGateTypeCheck(GateRef gate)
-{
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
-
-    auto type = acc_.GetParamGateType(gate);
-    auto value = acc_.GetValueIn(gate, 0);
-    auto info = GateTypeCheckInfo(value, type);
-    if (dependInfo->LookUpGateTypeCheck(info)) {
-        return circuit_->DeadGate();
-    }
-
-    dependInfo = dependInfo->UpdateGateTypeCheck(info);
-    return UpdateDependInfo(gate, dependInfo);
-}
-
-GateRef EarlyElimination::TryEliminateInt32OverflowCheck(GateRef gate)
-{
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
-    auto info = GetInt32OverflowCheckInfo(gate);
-    if (dependInfo->LookUpInt32OverflowCheck(info)) {
-        return circuit_->DeadGate();
-    }
-    dependInfo = dependInfo->UpdateInt32OverflowCheck(info);
-    return UpdateDependInfo(gate, dependInfo);
-}
-
-GateRef EarlyElimination::TryEliminateStableArrayCheck(GateRef gate)
-{
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
-    auto info = GetStableArrayCheckInfo(gate);
-    if (dependInfo->LookUpStableArrayCheck(info)) {
-        return circuit_->DeadGate();
-    }
-    dependInfo = dependInfo->UpdateStableArrayCheck(info);
-    return UpdateDependInfo(gate, dependInfo);
-}
-
-GateRef EarlyElimination::TryEliminateIndexCheck(GateRef gate)
-{
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
-    auto info = GetIndexCheckInfo(gate);
-    if (dependInfo->LookUpIndexCheck(info)) {
-        return circuit_->DeadGate();
-    }
-    dependInfo = dependInfo->UpdateIndexCheck(info);
-    return UpdateDependInfo(gate, dependInfo);
-}
-
-GateRef EarlyElimination::TryEliminateTypedCallCheck(GateRef gate)
-{
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
-    auto info = GetTypedCallCheckInfo(gate);
-    if (dependInfo->LookUpTypedCallCheck(info)) {
-        return circuit_->DeadGate();
-    }
-    dependInfo = dependInfo->UpdateTypedCallCheck(info);
-    return UpdateDependInfo(gate, dependInfo);
-}
-
-GateRef EarlyElimination::TryEliminateStateSplitAndFrameState(GateRef gate)
-{
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
-    auto frameState = dependInfo->LookUpFrameState();
-    auto curFrameState = acc_.GetFrameState(gate);
-    if ((frameState != Circuit::NullGate())) {
-        if (curFrameState != frameState) {
-            acc_.UpdateAllUses(curFrameState, frameState);
-            acc_.DeleteGate(curFrameState);
-        }
-        return UpdateDependInfo(gate, dependInfo);
-    }
-    dependInfo = dependInfo->UpdateFrameState(curFrameState);
-    return UpdateDependInfo(gate, dependInfo);
-}
-
 GateRef EarlyElimination::TryEliminateOther(GateRef gate)
+{
+    ASSERT(acc_.GetDependCount(gate) >= 1);
+    auto depIn = acc_.GetDep(gate);
+    auto dependChain = GetDependChain(depIn);
+    if (dependChain == nullptr) {
+        return Circuit::NullGate();
+    }
+
+    if (!acc_.IsNotWrite(gate)) {
+        dependChain = UpdateWrite(gate, dependChain);
+    }
+
+    return UpdateDependChain(gate, dependChain);
+}
+
+GateRef EarlyElimination::TryEliminateGate(GateRef gate)
 {
     ASSERT(acc_.GetDependCount(gate) == 1);
     auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
+    auto dependChain = GetDependChain(depIn);
+    // dependChain is null
+    if (dependChain == nullptr) {
         return Circuit::NullGate();
     }
+
     if (!acc_.IsNotWrite(gate)) {
-        dependInfo = dependInfo->UpdateWrite();
+        dependChain = UpdateWrite(gate, dependChain);
+        return UpdateDependChain(gate, dependChain);
     }
-    return UpdateDependInfo(gate, dependInfo);
+
+    // lookup gate, replace
+    auto preGate = dependChain->LookupNode(this, gate);
+    if (preGate != Circuit::NullGate()) {
+        return preGate;
+    }
+    // update gate, for others elimination
+    dependChain = dependChain->UpdateNode(gate);
+    return UpdateDependChain(gate, dependChain);
+}
+
+GateRef EarlyElimination::TryEliminateFrameState(GateRef gate)
+{
+    ASSERT(acc_.GetOpCode(gate) == OpCode::STATE_SPLIT);
+    auto depIn = acc_.GetDep(gate);
+    auto dependChain = GetDependChain(depIn);
+    // dependChain is null
+    if (dependChain == nullptr) {
+        return Circuit::NullGate();
+    }
+    // lookup gate, replace
+    auto preFrame = dependChain->LookupFrameState();
+    auto curFrame = acc_.GetFrameState(gate);
+    if ((preFrame != Circuit::NullGate()) && (preFrame != curFrame)) {
+        acc_.UpdateAllUses(curFrame, preFrame);
+        acc_.DeleteGate(curFrame);
+    } else {
+        dependChain = dependChain->UpdateFrameState(curFrame);
+    }
+    // update gate, for others elimination
+    
+    return UpdateDependChain(gate, dependChain);
 }
 
 GateRef EarlyElimination::TryEliminateDependSelector(GateRef gate)
 {
-    auto depIn = acc_.GetDep(gate);
-    auto dependInfo = dependInfos_[acc_.GetId(depIn)];
-    if (dependInfo == nullptr) {
-        return Circuit::NullGate();
-    }
     auto state = acc_.GetState(gate);
     if (acc_.IsLoopHead(state)) {
-        if (IsSideEffectLoop(gate)) {
-            dependInfo = dependInfo->UpdateWrite();
+        auto dependChain = GetLoopDependInfo(gate);
+        if (dependChain == nullptr) {
+            return Circuit::NullGate();
         }
-        auto loopBackDepend = acc_.GetDep(gate, 1); // 1: loop back depend
-        auto tempInfo = dependInfos_[acc_.GetId(loopBackDepend)];
-        if (tempInfo == nullptr) {
-            return UpdateDependInfo(gate, dependInfo);
-        }
-    } else {
-        auto dependCount = acc_.GetDependCount(gate);
-        for (size_t i = 1; i < dependCount; ++i) {
-            auto depend = acc_.GetDep(gate, i);
-            auto tempInfo = dependInfos_[acc_.GetId(depend)];
-            if (tempInfo == nullptr) {
-                return Circuit::NullGate();
-            }
-        }
-        for (size_t i = 1; i < dependCount; ++i) {
-            auto depend = acc_.GetDep(gate, i);
-            auto tempInfo = dependInfos_[acc_.GetId(depend)];
-            dependInfo = dependInfo->Merge(tempInfo);
+        return UpdateDependChain(gate, dependChain);
+    }
+
+    auto dependCount = acc_.GetDependCount(gate);
+    for (size_t i = 0; i < dependCount; ++i) {
+        auto depend = acc_.GetDep(gate, i);
+        auto dependChain = GetDependChain(depend);
+        if (dependChain == nullptr) {
+            return Circuit::NullGate();
         }
     }
 
-    auto uses = acc_.Uses(state);
-    for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
-        auto opcode = acc_.GetOpCode(*useIt);
-        if (opcode == OpCode::VALUE_SELECTOR) {
-            dependInfo = UpadateDependInfoForPhi(dependInfo, gate, *useIt);
-        }
+    // all depend done.
+    auto depend = acc_.GetDep(gate);
+    auto dependChain = GetDependChain(depend);
+    DependInfoNode* copy = new (chunk_) DependInfoNode(chunk_);
+    copy->CopyFrom(dependChain);
+    for (size_t i = 1; i < dependCount; ++i) { // 1: second in
+        auto dependIn = acc_.GetDep(gate, i);
+        auto tempChain = GetDependChain(dependIn);
+        copy->Merge(this, tempChain);
     }
-
-    return UpdateDependInfo(gate, dependInfo);
+    return UpdateDependChain(gate, copy);
 }
 
-DependChainInfo* EarlyElimination::UpadateDependInfoForPhi(
-    DependChainInfo* outDependInfo, GateRef dependPhi, GateRef phi)
+GateRef EarlyElimination::UpdateDependChain(GateRef gate, DependInfoNode* dependChain)
 {
-    GateRef value = acc_.GetValueIn(phi, 0); // 0: value 0
-    GateRef depend = acc_.GetDep(dependPhi, 0); // 0: depend 0
-    auto dependInfo = dependInfos_[acc_.GetId(depend)];
-    auto checkInfo = dependInfo->LookUpGateTypeCheck(value);
-    if (checkInfo.IsEmpty()) {
-        return outDependInfo;
-    }
-
-    auto numValueIns = acc_.GetNumValueIn(phi);
-    for (size_t i = 1; i < numValueIns; i++) {
-        GateRef input = acc_.GetValueIn(phi, i);
-        GateRef dependInput = acc_.GetDep(dependPhi, i); // 0: depend 0
-        dependInfo = dependInfos_[acc_.GetId(dependInput)];
-        auto otherInfo = dependInfo->LookUpGateTypeCheck(input);
-        if (otherInfo.IsEmpty()) {
-            return outDependInfo;
-        }
-        if (checkInfo.GetType() != otherInfo.GetType()) {
-            return outDependInfo;
-        }
-    }
-
-    checkInfo = GateTypeCheckInfo(phi, checkInfo.GetType());
-    return outDependInfo->UpdateGateTypeCheck(checkInfo);
-}
-
-GateRef EarlyElimination::UpdateDependInfo(GateRef gate, DependChainInfo* dependInfo)
-{
-    ASSERT(dependInfo != nullptr);
-    auto oldDependInfo = dependInfos_[acc_.GetId(gate)];
-    if (dependInfo->Equals(oldDependInfo)) {
+    ASSERT(dependChain != nullptr);
+    auto oldDependChain = GetDependChain(gate);
+    if (dependChain->Equals(oldDependChain)) {
         return Circuit::NullGate();
     }
-    dependInfos_[acc_.GetId(gate)] = dependInfo;
+    dependChains_[acc_.GetId(gate)] = dependChain;
     return gate;
+}
+
+DependInfoNode* EarlyElimination::UpdateWrite(GateRef gate, DependInfoNode* dependInfo)
+{
+    auto op = acc_.GetOpCode(gate);
+    switch (op) {
+        case OpCode::STORE_PROPERTY:
+            return dependInfo->UpdateStoreProperty(this, gate);
+        default:
+            return new (chunk_) DependInfoNode(chunk_);
+    }
+}
+
+bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
+{
+    auto lop = acc_.GetOpCode(lhs);
+    ASSERT(acc_.GetOpCode(rhs) == OpCode::STORE_PROPERTY);
+    if (lop == OpCode::LOAD_PROPERTY) {
+        auto loff = acc_.GetValueIn(lhs, 1);
+        auto roff = acc_.GetValueIn(rhs, 1);
+        ASSERT(acc_.GetOpCode(loff) == OpCode::CONSTANT);
+        ASSERT(acc_.GetOpCode(roff) == OpCode::CONSTANT);
+        return loff == roff;
+    } else {
+        return false;
+    }
+}
+
+bool EarlyElimination::CompareOrder(GateRef lhs, GateRef rhs)
+{
+    return GetGateOrder(lhs) < GetGateOrder(rhs);
+}
+
+bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
+{
+    if (acc_.GetMetaData(lhs) != acc_.GetMetaData(rhs)) {
+        if (acc_.GetOpCode(lhs) != acc_.GetOpCode(rhs)) {
+            return false;
+        }
+    }
+
+    size_t valueCount = acc_.GetNumValueIn(lhs);
+    for (size_t i = 0; i < valueCount; i++) {
+        if (acc_.GetValueIn(lhs, i) != acc_.GetValueIn(rhs, i)) {
+            return false;
+        }
+    }
+
+    auto opcode = acc_.GetOpCode(lhs);
+    switch (opcode) {
+        case OpCode::LOAD_ELEMENT: {
+            if (acc_.GetTypedLoadOp(lhs) != acc_.GetTypedLoadOp(rhs)) {
+                return false;
+            }
+            break;
+        }
+        case OpCode::TYPED_BINARY_OP: {
+            auto lhsOp = acc_.GetTypedBinaryOp(lhs);
+            auto rhsOp = acc_.GetTypedBinaryOp(rhs);
+            if (lhsOp != rhsOp) {
+                return false;
+            }
+            break;
+        }
+        case OpCode::TYPED_UNARY_OP:
+        case OpCode::INT32_OVERFLOW_CHECK: {
+            auto lhsOp = TypedUnaryAccessor(acc_.TryGetValue(lhs)).GetTypedUnOp();
+            auto rhsOp = TypedUnaryAccessor(acc_.TryGetValue(rhs)).GetTypedUnOp();
+            if (lhsOp != rhsOp) {
+                return false;
+            }
+            break;
+        }
+        case OpCode::TYPED_ARRAY_CHECK:
+        case OpCode::OBJECT_TYPE_CHECK:
+        case OpCode::INDEX_CHECK: {
+            if (acc_.GetParamGateType(lhs) != acc_.GetParamGateType(rhs)) {
+                return false;
+            }
+            break;
+        }
+        case OpCode::LOAD_CONST_OFFSET: {
+            if (acc_.GetOffset(lhs) != acc_.GetOffset(rhs)) {
+                return false;
+            }
+            break;
+        }
+        default:
+            break;
+    }
+    return true;
+}
+
+void DependInfoNode::Merge(EarlyElimination* elimination, DependInfoNode* that)
+{
+    auto siz = this->size_; // size of lhs-chain
+    auto lhs = this->head_;
+    auto rhs = that->head_;
+    ChunkStack<GateRef> gateStack(chunk_);
+    while (lhs != rhs) {
+        if (lhs == nullptr || rhs == nullptr) {
+            siz = 0;
+            lhs = nullptr;
+            break;
+        } else if (lhs->gate == rhs->gate) {
+            gateStack.push(lhs->gate);
+            siz--;
+            lhs = lhs->next;
+            rhs = rhs->next;
+        } else if (elimination->CompareOrder(lhs->gate, rhs->gate)) {
+            rhs = rhs->next;
+        } else {
+            siz--;
+            lhs = lhs->next;
+        }
+    }
+    // lhs : common suffix of lhs-chain and rhs-chain
+    this->head_ = lhs;
+    this->size_ = siz;
+    while (!gateStack.empty()) {
+        Node* node = chunk_->New<Node>(gateStack.top(), head_);
+        gateStack.pop();
+        this->size_++;
+        this->head_ = node;
+    }
+    if (this->frameState_ != that->frameState_) {
+        this->frameState_ = Circuit::NullGate();
+    }
+}
+
+bool DependInfoNode::Equals(DependInfoNode* that)
+{
+    if (that == nullptr) {
+        return false;
+    }
+    if (size_ != that->size_ || frameState_ != that->frameState_) {
+        return false;
+    }
+    auto lhs = this->head_;
+    auto rhs = that->head_;
+    while (lhs != rhs) {
+        if (lhs->gate != rhs->gate) {
+            return false;
+        }
+        lhs = lhs->next;
+        rhs = rhs->next;
+    }
+    return true;
+}
+
+GateRef DependInfoNode::LookupFrameState() const
+{
+    return frameState_;
+}
+
+GateRef DependInfoNode::LookupNode(EarlyElimination* elimination, GateRef gate)
+{
+    for (Node* node = head_; node != nullptr; node = node->next) {
+        if (elimination->CheckReplacement(node->gate, gate)) {
+            return node->gate;
+        }
+    }
+    return Circuit::NullGate();
+}
+
+DependInfoNode* DependInfoNode::UpdateNode(GateRef gate)
+{
+    // assign node->next to head
+    Node* node = chunk_->New<Node>(gate, head_);
+    DependInfoNode* that = new (chunk_) DependInfoNode(chunk_);
+    // assign head to node
+    that->head_ = node;
+    that->size_ = size_ + 1;
+    that->frameState_ = frameState_;
+    return that;
+}
+
+DependInfoNode* DependInfoNode::UpdateFrameState(GateRef framestate)
+{
+    // assign node->next to head
+    DependInfoNode* that = new (chunk_) DependInfoNode(chunk_);
+    // assign head to node
+    that->head_ = head_;
+    that->size_ = size_;
+    that->frameState_ = framestate;
+    return that;
+}
+
+DependInfoNode* DependInfoNode::UpdateStoreProperty(EarlyElimination* elimination, GateRef gate)
+{
+    DependInfoNode* that = new (chunk_) DependInfoNode(chunk_);
+    ChunkStack<GateRef> gateStack(chunk_);
+    for (Node* node = head_; node != nullptr; node = node->next) {
+        if (!elimination->MayAccessOneMemory(node->gate, gate)) {
+            gateStack.push(node->gate);
+        }
+    }
+    while (!gateStack.empty()) {
+        that = that->UpdateNode(gateStack.top());
+        gateStack.pop();
+    }
+    return that;
 }
 
 }  // namespace panda::ecmascript::kungfu

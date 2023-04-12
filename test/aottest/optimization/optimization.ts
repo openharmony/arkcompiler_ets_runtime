@@ -75,3 +75,22 @@ function foo(arr : number[]) {
     return sum;
 }
 print(foo(array));
+
+class Obj {
+    a:number;
+    b:number;
+    constructor() {
+        this.a = 1;
+        this.b = 4;
+    }
+}
+function LoadPropertyOpt(obj : Obj) : number {
+    let x1 = obj.a;  // 1
+    let y1 = obj.b;  // 4
+    obj.a = 16;
+    let x2 = obj.a;
+    let y2 = obj.b;
+    return x1 + y1 + x2 + y2;
+}
+let obj : Obj = new Obj();
+print(LoadPropertyOpt(obj));

@@ -26,12 +26,14 @@ class GraphVisitor {
 public:
     GraphVisitor(Circuit *circuit, Chunk* chunk)
         : circuit_(circuit), acc_(circuit),
-        chunk_(chunk), workList_(chunk), changedList_(chunk) {}
+        chunk_(chunk), workList_(chunk), changedList_(chunk), orderList_(chunk) {}
 
     virtual ~GraphVisitor() = default;
 
     void VisitGraph();
     void ReVisitGate(GateRef gate);
+    int32_t GetGateOrder(GateRef gate) const;
+    void SetGateOrder(GateRef gate, int32_t orderId);
 
     virtual GateRef VisitGate(GateRef gate) = 0;
 protected:
@@ -68,6 +70,8 @@ protected:
     Chunk* chunk_ {nullptr};
     ChunkDeque<Edge> workList_;
     ChunkDeque<GateRef> changedList_;
+    ChunkVector<int32_t> orderList_;
+    uint32_t orderCount_ {0};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_GRAPH_VISITOR_H
