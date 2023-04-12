@@ -14,8 +14,23 @@
  */
 
 #include "ecmascript/compiler/compilation_driver.h"
+#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
+CompilationDriver::CompilationDriver(PGOProfilerLoader &profilerLoader, BytecodeInfoCollector* collector)
+    : vm_(collector->GetVM()),
+      jsPandaFile_(collector->GetJSPandaFile()),
+      pfLoader_(profilerLoader),
+      bytecodeInfo_(collector->GetBytecodeInfo())
+{
+    vm_->GetTSManager()->SetCompilationDriver(this);
+}
+
+CompilationDriver::~CompilationDriver()
+{
+    vm_->GetTSManager()->SetCompilationDriver(nullptr);
+}
+
 void CompilationDriver::UpdatePGO()
 {
     std::unordered_set<EntityId> newMethodIds;

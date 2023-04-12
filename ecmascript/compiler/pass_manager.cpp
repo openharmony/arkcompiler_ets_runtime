@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/pass_manager.h"
-
-#include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/pass.h"
 #include "ecmascript/compiler/compilation_driver.h"
@@ -25,10 +23,15 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
+bool PassManager::ShouldCollect() const
+{
+    return passOptions_->EnableTypeInfer() && (profilerLoader_.IsLoaded() || vm_->GetTSManager()->AssertTypes());
+}
 
 bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generator)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(vm_->GetJSThread());
+
     JSPandaFile *jsPandaFile = CreateAndVerifyJSPandaFile(fileName.c_str());
     if (jsPandaFile == nullptr) {
         LOG_COMPILER(ERROR) << "Cannot execute panda file '" << fileName << "'";
@@ -39,9 +42,6 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         LOG_COMPILER(ERROR) << "Load and verify profiler failure";
         return false;
     }
-    bool enableCollectLiteralInfo = passOptions_->EnableTypeInfer() &&
-        (profilerLoader_.IsLoaded() || vm_->GetTSManager()->AssertTypes());
-    BytecodeInfoCollector bcInfoCollector(vm_, jsPandaFile, maxAotMethodSize_, enableCollectLiteralInfo);
 
     if (!IsReleasedPandaFile(jsPandaFile)) {
         LOG_COMPILER(ERROR) << "The input panda file [" << fileName
@@ -49,27 +49,18 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     }
 
     ResolveModule(jsPandaFile, fileName);
-    LLVMModule* aotModule = new LLVMModule(fileName, triple_);
-    LLVMAssembler* aotAssembler = new LLVMAssembler(aotModule->GetModule(), LOptions(optLevel_, true, relocMode_));
+    Module *m = generator.AddModule(fileName, triple_, LOptions(optLevel_, true, relocMode_));
 
-    CompilationConfig cmpCfg(triple_, false, log_->IsTraceBC(), vm_->GetJSOptions().GetOptCodeProfiler());
-    Bytecodes bytecodes;
-    auto &bytecodeInfo = bcInfoCollector.GetBytecodeInfo();
-    auto lexEnvManager = LexEnvManager(bytecodeInfo);
+    BytecodeInfoCollector collector(vm_, jsPandaFile, maxAotMethodSize_, ShouldCollect());
+    PassContext ctx(triple_, log_, &collector, m->GetModule());
+    CompilationDriver cmpDriver(profilerLoader_, &collector);
 
-    CompilationDriver cmpDriver(jsPandaFile, profilerLoader_, bytecodeInfo);
-    // ts type system
-    TSManager *tsManager = vm_->GetTSManager();
-    tsManager->SetCompilationDriver(&cmpDriver);
-    tsManager->SetBytecodeInfoCollector(&bcInfoCollector);
-    PassInfo info(tsManager, &bytecodes, &lexEnvManager, &cmpCfg, log_, jsPandaFile, &bcInfoCollector, aotModule);
-
-    cmpDriver.Run([this, &fileName, &info]
+    cmpDriver.Run([this, &fileName, &ctx]
         (const CString recordName, const std::string &methodName, MethodLiteral *methodLiteral,
          uint32_t methodOffset, const MethodPcInfo &methodPCInfo, MethodInfo &methodInfo) {
-        auto jsPandaFile = info.GetJSPandaFile();
-        auto cmpCfg = info.GetCompilerConfig();
-        auto tsManager = info.GetTSManager();
+        auto jsPandaFile = ctx.GetJSPandaFile();
+        auto cmpCfg = ctx.GetCompilerConfig();
+        auto tsManager = ctx.GetTSManager();
         // note: TSManager need to set current constantpool before all pass
         tsManager->SetCurConstantPool(jsPandaFile, methodOffset);
 
@@ -86,18 +77,19 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
             LOG_COMPILER(INFO) << "record: " << recordName << " has no types";
         }
 
-        Circuit circuit(vm_->GetNativeAreaAllocator(), cmpCfg->Is64Bit());
+        Circuit circuit(vm_->GetNativeAreaAllocator(), ctx.GetAOTModule()->GetDebugInfo(), cmpCfg->Is64Bit());
         circuit.SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
         PGOProfilerLoader *loader = passOptions_->EnableOptPGOType() ? &profilerLoader_ : nullptr;
+
         BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, tsManager, &circuit,
-                                       info.GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
+                                       ctx.GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
                                        passOptions_->EnableTypeLowering(), fullName, recordName, loader);
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
             builder.BytecodeToCircuit();
         }
 
-        PassData data(&builder, &circuit, &info, log_, fullName, &methodInfo, hasTypes, recordName,
+        PassData data(&builder, &circuit, &ctx, log_, fullName, &methodInfo, hasTypes, recordName,
                       methodLiteral, methodOffset, vm_->GetNativeAreaAllocator());
         PassRunner<PassData> pipeline(&data);
         if (passOptions_->EnableTypeInfer()) {
@@ -124,10 +116,15 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         pipeline.RunPass<SchedulingPass>();
         pipeline.RunPass<LLVMIRGenPass>();
     });
-    LOG_COMPILER(INFO) << bytecodeInfo.GetSkippedMethodSize() << " methods in "
-                       << fileName << " have been skipped";
-    generator.AddModule(aotModule, aotAssembler, &bcInfoCollector);
+    ProcessConstantPool(&collector);
     return true;
+}
+
+void PassManager::ProcessConstantPool(BytecodeInfoCollector *collector)
+{
+    LOG_COMPILER(INFO) << collector->GetBytecodeInfo().GetSkippedMethodSize()
+                       << " methods have been skipped";
+    vm_->GetTSManager()->ProcessSnapshotConstantPool(collector);
 }
 
 JSPandaFile *PassManager::CreateAndVerifyJSPandaFile(const CString &fileName)

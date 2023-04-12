@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/compiler/debug_info.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
@@ -2148,7 +2149,7 @@ void LLVMIRBuilder::GenDeoptEntry(LLVMModuleRef &module)
     llvmModule_->SetFunction(LLVMModule::kDeoptEntryOffset, function);
 
     LLVMBasicBlockRef entry = LLVMAppendBasicBlock(function, "entry");
-    LLVMBuilderRef builder = LLVMCreateBuilder();
+    LLVMBuilderRef builder = LLVMCreateBuilder(); // need to use another fresh builder.
     LLVMPositionBuilderAtEnd(builder, entry);
 
     auto reservedSlotsSize = OptimizedFrame::ComputeReservedSize(slotSize_);
@@ -2236,7 +2237,8 @@ void LLVMIRBuilder::VisitDeopt(GateRef gate)
     gate2LValue_[gate] = runtimeCall;
 }
 
-LLVMModule::LLVMModule(const std::string &name, const std::string &triple, bool enablePGOProfiler)
+LLVMModule::LLVMModule(NativeAreaAllocator* allocator, const std::string &name,
+                       const std::string &triple, bool enablePGOProfiler)
     : cfg_(triple, enablePGOProfiler)
 {
     module_ = LLVMModuleCreateWithName(name.c_str());
@@ -2246,6 +2248,7 @@ LLVMModule::LLVMModule(const std::string &name, const std::string &triple, bool 
     dUnitMD_ = LLVMDIBuilderCreateCompileUnit(dBuilder_, LLVMDWARFSourceLanguageC_plus_plus, dFileMD_, "ArkCompiler",
                                               11, 0, NULL, 0, 0, NULL, 0, LLVMDWARFEmissionFull,
                                               0, 0, 0, "/", 1, "", 0);
+    debugInfo_ = new DebugInfo(allocator);
 }
 
 LLVMModule::~LLVMModule()
@@ -2257,6 +2260,10 @@ LLVMModule::~LLVMModule()
     if (dBuilder_ != nullptr) {
         LLVMDisposeDIBuilder(dBuilder_);
         dBuilder_ = nullptr;
+    }
+    if (debugInfo_ != nullptr) {
+        delete debugInfo_;
+        debugInfo_ = nullptr;
     }
 }
 
@@ -2374,6 +2381,7 @@ LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodL
     auto function = LLVMAddFunction(module_, name.c_str(), funcType);
     ASSERT(offsetInPandaFile != LLVMModule::kDeoptEntryOffset);
     SetFunction(offsetInPandaFile, function);
+
     return function;
 }
 

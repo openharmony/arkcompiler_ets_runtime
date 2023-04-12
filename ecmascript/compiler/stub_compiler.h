@@ -43,7 +43,7 @@ public:
         return logList_;
     }
 private:
-    void RunPipeline(LLVMModule *module) const;
+    void RunPipeline(LLVMModule *module, NativeAreaAllocator *allocator) const;
     void InitializeCS() const;
     std::string triple_ {};
     std::string filePath_ {};

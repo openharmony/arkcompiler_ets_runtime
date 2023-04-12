@@ -93,17 +93,16 @@ private:
     std::unique_ptr<CodeGeneratorImpl> llvmImpl_ {nullptr};
 };
 
-void StubCompiler::RunPipeline(LLVMModule *module) const
+void StubCompiler::RunPipeline(LLVMModule *module, NativeAreaAllocator *allocator) const
 {
     auto callSigns = module->GetCSigns();
     CompilerLog *log = GetLog();
     auto logList = GetLogList();
     auto cconfig = module->GetCompilationConfig();
-    NativeAreaAllocator allocator;
 
     bool enableMethodLog = !log->NoneMethod();
     for (size_t i = 0; i < callSigns.size(); i++) {
-        Circuit circuit(&allocator, cconfig->Is64Bit());
+        Circuit circuit(allocator, module->GetDebugInfo(), cconfig->Is64Bit());
         Stub stub(callSigns[i], &circuit);
         ASSERT(callSigns[i]->HasConstructor());
         void* env = reinterpret_cast<void*>(stub.GetEnvironment());
@@ -139,35 +138,38 @@ bool StubCompiler::BuildStubModuleAndSave() const
     size_t res = 0;
     CompilerLog *log = GetLog();
     const MethodLogList *logList = GetLogList();
+
+    NativeAreaAllocator allocator;
     StubFileGenerator generator(log, logList, triple_, enablePGOProfiler_);
     if (!filePath_.empty()) {
         LOG_COMPILER(INFO) << "=============== compiling bytecode handler stubs ===============";
-        LLVMModule bcStubModule("bc_stub", triple_, enablePGOProfiler_);
+        LLVMModule bcStubModule(&allocator, "bc_stub", triple_, enablePGOProfiler_);
         LLVMAssembler bcStubAssembler(bcStubModule.GetModule(), LOptions(optLevel_, false, relocMode_));
         bcStubModule.SetUpForBytecodeHandlerStubs();
-        RunPipeline(&bcStubModule);
+        RunPipeline(&bcStubModule, &allocator);
         generator.AddModule(&bcStubModule, &bcStubAssembler);
         res++;
 
         LOG_COMPILER(INFO) << "=============== compiling common stubs ===============";
-        LLVMModule comStubModule("com_stub", triple_, enablePGOProfiler_);
+        LLVMModule comStubModule(&allocator, "com_stub", triple_, enablePGOProfiler_);
         LLVMAssembler comStubAssembler(comStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
         comStubModule.SetUpForCommonStubs();
-        RunPipeline(&comStubModule);
+        RunPipeline(&comStubModule, &allocator);
         generator.AddModule(&comStubModule, &comStubAssembler);
         res++;
 
         LOG_COMPILER(INFO) << "=============== compiling builtins stubs ===============";
-        LLVMModule builtinsStubModule("builtins_stub", triple_, enablePGOProfiler_);
+        LLVMModule builtinsStubModule(&allocator, "builtins_stub", triple_, enablePGOProfiler_);
         LLVMAssembler builtinsStubAssembler(builtinsStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
         builtinsStubModule.SetUpForBuiltinsStubs();
-        RunPipeline(&builtinsStubModule);
+        RunPipeline(&builtinsStubModule, &allocator);
         generator.AddModule(&builtinsStubModule, &builtinsStubAssembler);
         res++;
         generator.SaveStubFile(filePath_);
     }
     return (res > 0);
 }
+
 std::string GetHelper()
 {
     std::string str;

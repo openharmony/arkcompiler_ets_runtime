@@ -16,17 +16,11 @@
 #ifndef ECMASCRIPT_COMPILER_FILE_GENERATORS_H
 #define ECMASCRIPT_COMPILER_FILE_GENERATORS_H
 
-#include <tuple>
-
+#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
-#include "ecmascript/compiler/bytecode_info_collector.h"
-#include "ecmascript/compiler/bytecode_circuit_builder.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/aot_file_manager.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
 
 namespace panda::ecmascript::kungfu {
 class Module {
@@ -38,105 +32,17 @@ public:
     }
 
     void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, StubFileInfo &stubInfo,
-                              uint32_t moduleIndex, const CompilerLog &log)
-    {
-        auto engine = assembler_->GetEngine();
-        auto callSigns = llvmModule_->GetCSigns();
-        std::map<uintptr_t, int> addr2FpToPrevFrameSpDelta;
-        std::vector<uint64_t> funSizeVec;
-        std::vector<uintptr_t> entrys;
-        for (size_t j = 0; j < llvmModule_->GetFuncCount(); j++) {
-            LLVMValueRef func = llvmModule_->GetFunction(j);
-            ASSERT(func != nullptr);
-            uintptr_t entry = reinterpret_cast<uintptr_t>(LLVMGetPointerToGlobal(engine, func));
-            entrys.push_back(entry);
-        }
-        auto codeBuff = assembler_->GetSectionAddr(ElfSecName::TEXT);
-        const size_t funcCount = llvmModule_->GetFuncCount();
-        funcCount_ = funcCount;
-        startIndex_ = stubInfo.GetEntrySize();
-        for (size_t j = 0; j < funcCount; j++) {
-            auto cs = callSigns[j];
-            LLVMValueRef func = llvmModule_->GetFunction(j);
-            ASSERT(func != nullptr);
-            int delta = assembler_->GetFpDeltaPrevFramSp(func, log);
-            ASSERT(delta >= 0 && (delta % sizeof(uintptr_t) == 0));
-            uint32_t funcSize = 0;
-            if (j < funcCount - 1) {
-                funcSize = entrys[j + 1] - entrys[j];
-            } else {
-                funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - entrys[j];
-            }
-            kungfu::CalleeRegAndOffsetVec info = assembler_->GetCalleeReg2Offset(func, log);
-            stubInfo.AddEntry(cs->GetTargetKind(), false, cs->GetID(), entrys[j] - codeBuff, moduleIndex, delta,
-                              funcSize, info);
-            ASSERT(!cs->GetName().empty());
-            addr2name[entrys[j]] = cs->GetName();
-        }
-    }
+                              uint32_t moduleIndex, const CompilerLog &log);
 
     void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo,
-                              uint32_t moduleIndex, const CompilerLog &log)
-    {
-        auto engine = assembler_->GetEngine();
-        std::vector<std::tuple<uint64_t, size_t, int>> funcInfo; // entry idx delta
-        std::vector<kungfu::CalleeRegAndOffsetVec> calleeSaveRegisters; // entry idx delta
-        llvmModule_->IteratefuncIndexMap([&](size_t idx, LLVMValueRef func) {
-            uint64_t funcEntry = reinterpret_cast<uintptr_t>(LLVMGetPointerToGlobal(engine, func));
-            uint64_t length = 0;
-            std::string funcName(LLVMGetValueName2(func, reinterpret_cast<size_t *>(&length)));
-            ASSERT(length != 0);
-            addr2name[funcEntry] = funcName;
-            int delta = assembler_->GetFpDeltaPrevFramSp(func, log);
-            ASSERT(delta >= 0 && (delta % sizeof(uintptr_t) == 0));
-            funcInfo.emplace_back(std::tuple(funcEntry, idx, delta));
-            kungfu::CalleeRegAndOffsetVec info = assembler_->GetCalleeReg2Offset(func, log);
-            calleeSaveRegisters.emplace_back(info);
-        });
-        auto codeBuff = assembler_->GetSectionAddr(ElfSecName::TEXT);
-        const size_t funcCount = funcInfo.size();
-        funcCount_ = funcCount;
-        startIndex_ = aotInfo.GetEntrySize();
-        for (size_t i = 0; i < funcInfo.size(); i++) {
-            uint64_t funcEntry;
-            size_t idx;
-            int delta;
-            uint32_t funcSize;
-            std::tie(funcEntry, idx, delta) = funcInfo[i];
-            if (i < funcCount - 1) {
-                funcSize = std::get<0>(funcInfo[i + 1]) - funcEntry;
-            } else {
-                funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - funcEntry;
-            }
-            auto found = addr2name[funcEntry].find(panda::ecmascript::JSPandaFile::ENTRY_FUNCTION_NAME);
-            bool isMainFunc = found != std::string::npos;
-            aotInfo.AddEntry(CallSignature::TargetKind::JSFUNCTION, isMainFunc, idx,
-                             funcEntry - codeBuff, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
-        }
-    }
+                              uint32_t moduleIndex, const CompilerLog &log);
 
     bool IsRelaSection(ElfSecName sec) const
     {
         return sec == ElfSecName::RELATEXT || sec == ElfSecName::STRTAB || sec == ElfSecName::SYMTAB;
     }
 
-    void CollectModuleSectionDes(ModuleSectionDes &moduleDes, bool stub = false) const
-    {
-        ASSERT(assembler_ != nullptr);
-        assembler_->IterateSecInfos([&](size_t i, std::pair<uint8_t *, size_t> secInfo) {
-            auto curSec = ElfSection(i);
-            ElfSecName sec = curSec.GetElfEnumValue();
-            if (stub && IsRelaSection(sec)) {
-                moduleDes.EraseSec(sec);
-            } else { // aot need relocated; stub don't need collect relocated section
-                moduleDes.SetSecAddr(reinterpret_cast<uint64_t>(secInfo.first), sec);
-                moduleDes.SetSecSize(secInfo.second, sec);
-                moduleDes.SetStartIndex(startIndex_);
-                moduleDes.SetFuncCount(funcCount_);
-            }
-        });
-        CollectStackMapDes(moduleDes);
-    }
+    void CollectModuleSectionDes(ModuleSectionDes &moduleDes, bool stub = false) const;
 
     void CollectStackMapDes(ModuleSectionDes &moduleDes) const;
 
@@ -145,38 +51,22 @@ public:
         return llvmModule_->GetCompilationConfig();
     }
 
-    uint32_t GetSectionSize(ElfSecName sec) const
-    {
-        return assembler_->GetSectionSize(sec);
-    }
+    uint32_t GetSectionSize(ElfSecName sec) const;
 
-    uintptr_t GetSectionAddr(ElfSecName sec) const
-    {
-        return assembler_->GetSectionAddr(sec);
-    }
+    uintptr_t GetSectionAddr(ElfSecName sec) const;
 
-    void RunAssembler(const CompilerLog &log)
-    {
-        assembler_->Run(log);
-    }
+    void RunAssembler(const CompilerLog &log);
 
     void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name,
-        const CompilerLog &log, const MethodLogList &logList)
+                          const CompilerLog &log, const MethodLogList &logList);
+
+    void DestoryModule();
+
+    LLVMModule* GetModule() const
     {
-        assembler_->Disassemble(addr2name, log, logList);
+        return llvmModule_;
     }
 
-    void DestoryModule()
-    {
-        if (llvmModule_ != nullptr) {
-            delete llvmModule_;
-            llvmModule_ = nullptr;
-        }
-        if (assembler_ != nullptr) {
-            delete assembler_;
-            assembler_ = nullptr;
-        }
-    }
 private:
     LLVMModule *llvmModule_ {nullptr};
     LLVMAssembler *assembler_ {nullptr};
@@ -230,25 +120,14 @@ public:
 
     ~AOTFileGenerator() override = default;
 
-    void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler, BytecodeInfoCollector *bcInfoCollector)
-    {
-        vm_->GetTSManager()->ProcessSnapshotConstantPool(bcInfoCollector);
-        modulePackage_.emplace_back(Module(llvmModule, assembler));
-    }
+    Module* AddModule(const std::string &name, const std::string &triple, LOptions option);
 
-    void GenerateMethodToEntryIndexMap()
-    {
-        const std::vector<AOTFileInfo::FuncEntryDes> &entries = aotInfo_.GetStubs();
-        uint32_t entriesSize = entries.size();
-        for (uint32_t i = 0; i < entriesSize; ++i) {
-            const AOTFileInfo::FuncEntryDes &entry = entries[i];
-            methodToEntryIndexMap_[entry.indexInKindOrMethodId_] = i;
-        }
-    }
+    void GenerateMethodToEntryIndexMap();
 
     // save function for aot files containing normal func translated from JS/TS
     void SaveAOTFile(const std::string &filename);
     void SaveSnapshotFile();
+
 private:
     AnFileInfo aotInfo_;
     EcmaVM* vm_;
@@ -272,14 +151,15 @@ public:
     void DisassembleAsmStubs(std::map<uintptr_t, std::string> &addr2name);
     // save function funcs for aot files containing stubs
     void SaveStubFile(const std::string &filename);
-private:
-    StubFileInfo stubInfo_;
-    AssemblerModule asmModule_;
-    CompilationConfig cfg_;
 
+private:
     void RunAsmAssembler();
     void CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> &addr2name, uint32_t bridgeModuleIdx);
     void CollectCodeInfo();
+
+    StubFileInfo stubInfo_;
+    AssemblerModule asmModule_;
+    CompilationConfig cfg_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_FILE_GENERATORS_H

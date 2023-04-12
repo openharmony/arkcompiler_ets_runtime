@@ -21,13 +21,9 @@
 namespace panda::ecmascript::kungfu {
 class CompilationDriver {
 public:
-    CompilationDriver(JSPandaFile *jsPandaFile, PGOProfilerLoader &profilerLoader,
-                      BCInfo &bytecodeInfo)
-        : jsPandaFile_(jsPandaFile), pfLoader_(profilerLoader), bytecodeInfo_(bytecodeInfo)
-    {
-    }
+    CompilationDriver(PGOProfilerLoader &profilerLoader, BytecodeInfoCollector* collector);
+    ~CompilationDriver();
 
-    ~CompilationDriver() = default;
     NO_COPY_SEMANTIC(CompilationDriver);
     NO_MOVE_SEMANTIC(CompilationDriver);
 
@@ -190,7 +186,8 @@ private:
     bool FilterMethod(const CString &recordName, const MethodLiteral *methodLiteral,
                       const MethodPcInfo &methodPCInfo) const;
 
-    JSPandaFile *jsPandaFile_ {nullptr};
+    EcmaVM *vm_ {nullptr};
+    const JSPandaFile *jsPandaFile_ {nullptr};
     PGOProfilerLoader &pfLoader_;
     BCInfo &bytecodeInfo_;
     std::queue<uint32_t> compileQueue_ {};

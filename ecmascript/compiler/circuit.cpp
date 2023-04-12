@@ -15,15 +15,22 @@
 
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/debug_info.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript::kungfu {
-Circuit::Circuit(NativeAreaAllocator* allocator, bool isArch64)
-    : circuitSize_(0), gateCount_(0), time_(1),
-      isArch64_(isArch64), chunk_(allocator),
-      root_(Circuit::NullGate()), metaBuilder_(chunk())
+Circuit::Circuit(NativeAreaAllocator* allocator, DebugInfo* debugInfo, bool isArch64)
+    : circuitSize_(0),
+      gateCount_(0),
+      time_(1),
+      isArch64_(isArch64),
+      chunk_(allocator),
+      root_(Circuit::NullGate()),
+      metaBuilder_(chunk()),
+      gateToDInfo_(chunk()),
+      debugInfo_(debugInfo)
 #ifndef NDEBUG
       , allGates_(chunk())
 #endif
@@ -62,9 +69,21 @@ Gate *Circuit::AllocateGateSpace(size_t numIns)
     return reinterpret_cast<Gate *>(AllocateSpace(Gate::GetGateSize(numIns)) + Gate::GetOutListSize(numIns));
 }
 
+bool Circuit::AddComment(GateRef g, const char* str)
+{
+    auto it = gateToDInfo_.find(g);
+    if (it == gateToDInfo_.end()) {
+        ASSERT(debugInfo_ != nullptr);
+        size_t index = debugInfo_->AddComment(str);
+        gateToDInfo_[g] = index;
+        return true;
+    }
+    return false;
+}
+
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType,
-    size_t numIns, const GateRef inList[], GateType type)
+GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType, size_t numIns, const GateRef inList[],
+                         GateType type, const char* comment)
 {
 #ifndef NDEBUG
     if (numIns != meta->GetNumIns()) {
@@ -84,23 +103,27 @@ GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType,
 #ifndef NDEBUG
     allGates_.push_back(GetGateRef(newGate));
 #endif
-    return GetGateRef(newGate);
+    GateRef result = GetGateRef(newGate);
+    if (comment != nullptr) {
+        AddComment(result, comment);
+    }
+    return result;
 }
 
-GateRef Circuit::NewGate(const GateMetaData *meta, const std::vector<GateRef> &inList)
+GateRef Circuit::NewGate(const GateMetaData *meta, const std::vector<GateRef> &inList, const char* comment)
 {
-    return NewGate(meta, MachineType::NOVALUE, inList.size(), inList.data(), GateType::Empty());
+    return NewGate(meta, MachineType::NOVALUE, inList.size(), inList.data(), GateType::Empty(), comment);
 }
 
 GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType,
-    const std::initializer_list<GateRef>& args, GateType type)
+    const std::initializer_list<GateRef>& args, GateType type, const char* comment)
 {
-    return NewGate(meta, machineType, args.size(), args.begin(), type);
+    return NewGate(meta, machineType, args.size(), args.begin(), type, comment);
 }
 
-GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType, GateType type)
+GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType, GateType type, const char* comment)
 {
-    return NewGate(meta, machineType, {}, type);
+    return NewGate(meta, machineType, {}, type, comment);
 }
 
 void Circuit::PrintAllGates() const

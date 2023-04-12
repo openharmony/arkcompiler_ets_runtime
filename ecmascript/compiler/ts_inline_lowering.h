@@ -46,9 +46,14 @@ class TSInlineLowering {
 public:
     static constexpr size_t MAX_INLINE_BYTECODE_COUNT = 10;
     static constexpr size_t MAX_INLINE_CALL_ALLOWED = 5;
-    TSInlineLowering(Circuit *circuit, PassInfo *info, bool enableLog, const std::string& name)
-        : circuit_(circuit), acc_(circuit), builder_(circuit, info->GetCompilerConfig()),
-          tsManager_(info->GetTSManager()), info_(info), enableLog_(enableLog), methodName_(name) {}
+    TSInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string& name)
+        : circuit_(circuit),
+          acc_(circuit),
+          builder_(circuit, ctx->GetCompilerConfig()),
+          tsManager_(ctx->GetTSManager()),
+          ctx_(ctx),
+          enableLog_(enableLog),
+          methodName_(name) {}
 
     ~TSInlineLowering() = default;
 
@@ -86,7 +91,7 @@ private:
     GateAccessor acc_;
     CircuitBuilder builder_;
     TSManager *tsManager_ {nullptr};
-    PassInfo *info_ {nullptr};
+    PassContext *ctx_ {nullptr};
     bool enableLog_ {false};
     std::string methodName_;
     size_t inlinedCall_ { 0 };

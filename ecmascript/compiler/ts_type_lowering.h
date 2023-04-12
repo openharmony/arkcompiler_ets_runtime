@@ -25,14 +25,17 @@
 namespace panda::ecmascript::kungfu {
 class TSTypeLowering {
 public:
-    TSTypeLowering(Circuit *circuit, PassInfo *info,
+    TSTypeLowering(Circuit *circuit, PassContext *ctx,
                    bool enableLog, const std::string& name)
-        : circuit_(circuit), acc_(circuit), builder_(circuit, info->GetCompilerConfig()),
+        : circuit_(circuit),
+          acc_(circuit),
+          builder_(circuit, ctx->GetCompilerConfig()),
           dependEntry_(circuit->GetDependRoot()),
-          tsManager_(info->GetTSManager()),
+          tsManager_(ctx->GetTSManager()),
           enableLog_(enableLog),
-          profiling_(info->GetCompilerConfig()->IsProfiling()),
-          methodName_(name), glue_(acc_.GetGlueFromArgList()),
+          profiling_(ctx->GetCompilerConfig()->IsProfiling()),
+          methodName_(name),
+          glue_(acc_.GetGlueFromArgList()),
           argAcc_(circuit) {}
 
     ~TSTypeLowering() = default;
