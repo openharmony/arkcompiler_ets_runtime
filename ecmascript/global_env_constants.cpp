@@ -286,7 +286,7 @@ void GlobalEnvConstants::InitGlobalConstantSpecial(JSThread *thread)
     auto vm = thread->GetEcmaVM();
     SetConstant(ConstantIndex::EMPTY_STRING_OBJECT_INDEX, JSTaggedValue(EcmaStringAccessor::CreateEmptyString(vm)));
     SetConstant(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX, factory->NewEmptyArray());
-    SetConstant(ConstantIndex::EMPTY_WEAK_VECTOR_OBJECT_INDEX, WeakVector::Create(thread, 0));
+    SetConstant(ConstantIndex::EMPTY_WEAK_VECTOR_OBJECT_INDEX, factory->NewEmptyArray());
     SetConstant(ConstantIndex::EMPTY_LAYOUT_INFO_OBJECT_INDEX, factory->CreateLayoutInfo(0));
     SetConstant(ConstantIndex::EMPTY_TAGGED_QUEUE_OBJECT_INDEX, factory->NewTaggedQueue(0));
 }

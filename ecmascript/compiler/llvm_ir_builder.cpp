@@ -207,6 +207,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::SUB_WITH_OVERFLOW, &LLVMIRBuilder::HandleSubWithOverflow},
         {OpCode::MUL_WITH_OVERFLOW, &LLVMIRBuilder::HandleMulWithOverflow},
         {OpCode::EXTRACT_VALUE, &LLVMIRBuilder::HandleExtractValue},
+        {OpCode::SQRT, &LLVMIRBuilder::HandleSqrt},
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
@@ -1768,6 +1769,29 @@ void LLVMIRBuilder::VisitExtractValue(GateRef gate, GateRef e1, GateRef e2)
     ASSERT((acc_.GetOpCode(e2) == OpCode::CONSTANT) && acc_.GetMachineType(e2) == MachineType::I32);
     uint32_t index = static_cast<uint32_t>(acc_.GetConstantValue(e2));
     LLVMValueRef result = LLVMBuildExtractValue(builder_, e1Value, index, "");
+    gate2LValue_[gate] = result;
+}
+
+void LLVMIRBuilder::HandleSqrt(GateRef gate)
+{
+    GateRef param = acc_.GetIn(gate, 0);
+    VisitSqrt(gate, param);
+}
+
+void LLVMIRBuilder::VisitSqrt(GateRef gate, GateRef e1)
+{
+    LLVMValueRef e1Value = gate2LValue_[e1];
+    std::vector<LLVMValueRef> args = { e1Value };
+    auto fn = LLVMGetNamedFunction(module_, "llvm.sqrt.f64");
+    if (!fn) {
+        /* init instrinsic function declare */
+        LLVMTypeRef paramTys1[] = {
+            LLVMDoubleType(),
+        };
+        auto fnTy = LLVMFunctionType(LLVMDoubleType(), paramTys1, 1, 0);
+        fn = LLVMAddFunction(module_, "llvm.sqrt.f64", fnTy);
+    }
+    LLVMValueRef result = LLVMBuildCall(builder_, fn, args.data(), 1, "");
     gate2LValue_[gate] = result;
 }
 

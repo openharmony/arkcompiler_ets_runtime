@@ -28,14 +28,13 @@ public:
     ~BuiltinLowering() = default;
     void LowerTypedCallBuitin(GateRef gate);
     GateRef LowerCallTargetCheck(Environment *env, GateRef gate);
+    void LowerTypedSqrt(GateRef gate);
     static BuiltinsStubCSigns::ID GetBuiltinId(std::string idStr);
-    GateRef CheckPara(GateRef gate);
+    GateRef CheckPara(GateRef gate, GateRef funcCheck);
 private:
     void LowerTypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
     GateRef TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
     GateRef IntToTaggedIntPtr(GateRef x);
-    void LowerTypedSqrt(GateRef gate);
-    GateRef TypedSqrt(GateRef gate);
     void LowerTypedAbs(GateRef gate);
     GateRef TypedAbs(GateRef gate);
 

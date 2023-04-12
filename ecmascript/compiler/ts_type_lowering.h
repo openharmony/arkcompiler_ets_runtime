@@ -112,8 +112,8 @@ private:
     template<TypedUnOp Op>
     void SpeculateNumber(GateRef gate);
     void SpeculateConditionJump(GateRef gate);
-    void SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID Op);
-    BuiltinsStubCSigns::ID GetBuiltinId(GateRef func, GateRef receiver);
+    void SpeculateCallBuiltin(GateRef gate, GateRef func, GateRef a0, BuiltinsStubCSigns::ID Op);
+    BuiltinsStubCSigns::ID GetBuiltinId(GateRef func);
 
     void AddProfiling(GateRef gate);
     Circuit *circuit_ {nullptr};

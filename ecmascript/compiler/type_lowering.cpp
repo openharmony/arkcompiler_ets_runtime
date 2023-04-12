@@ -1592,8 +1592,7 @@ void TypeLowering::LowerCallTargetCheck(GateRef gate)
 
     BuiltinLowering lowering(circuit_);
     GateRef funcheck = lowering.LowerCallTargetCheck(&env, gate);
-    GateRef paracheck = lowering.CheckPara(gate);
-    GateRef check = builder_.BoolAnd(paracheck, funcheck);
+    GateRef check = lowering.CheckPara(gate, funcheck);
     builder_.DeoptCheck(check, frameState, DeoptType::NOTCALLTGT);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -1696,14 +1695,12 @@ GateRef TypeLowering::LoadSupers(GateRef hclass)
 
 GateRef TypeLowering::GetLengthFromSupers(GateRef supers)
 {
-    GateRef length = builder_.GetValueFromTaggedArray(supers, builder_.Int32(WeakVector::END_INDEX));
-    return builder_.TaggedGetInt(length);
+    return builder_.Load(VariableType::INT32(), supers, builder_.Int32(TaggedArray::EXTRACT_LENGTH_OFFSET));
 }
 
 GateRef TypeLowering::GetValueFromSupers(GateRef supers, GateRef index)
 {
-    GateRef val = builder_.GetValueFromTaggedArray(supers,
-        builder_.Int32Add(index, builder_.Int32(WeakVector::ELEMENTS_START_INDEX)));
+    GateRef val = builder_.GetValueFromTaggedArray(supers, index);
     return builder_.LoadObjectFromWeakRef(val);
 }
 

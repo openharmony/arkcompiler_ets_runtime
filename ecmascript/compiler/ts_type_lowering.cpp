@@ -858,11 +858,9 @@ void TSTypeLowering::LowerTypedSuperCall(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
-void TSTypeLowering::SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID id)
+void TSTypeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, GateRef a0, BuiltinsStubCSigns::ID id)
 {
-    GateRef function = acc_.GetValueIn(gate, 2); // 2:function
-    GateRef a0 = acc_.GetValueIn(gate, 1);
-    builder_.CallTargetCheck(function, builder_.IntPtr(static_cast<int64_t>(id)), a0);
+    builder_.CallTargetCheck(func, builder_.IntPtr(static_cast<int64_t>(id)), a0);
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.TypedCallBuiltin(gate, a0, id);
@@ -870,14 +868,10 @@ void TSTypeLowering::SpeculateCallBuiltin(GateRef gate, BuiltinsStubCSigns::ID i
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-BuiltinsStubCSigns::ID TSTypeLowering::GetBuiltinId(GateRef func, GateRef receiver)
+BuiltinsStubCSigns::ID TSTypeLowering::GetBuiltinId(GateRef func)
 {
-    GateType receiverType = acc_.GetGateType(receiver);
-    if (!tsManager_->IsBuiltinMath(receiverType)) {
-        return BuiltinsStubCSigns::ID::NONE;
-    }
     GateType funcType = acc_.GetGateType(func);
-    if (!tsManager_->IsBuiltin(funcType)) {
+    if (!tsManager_->IsBuiltinMath(funcType)) {
         return BuiltinsStubCSigns::ID::NONE;
     }
     std::string name = tsManager_->GetFuncName(funcType);
@@ -937,26 +931,33 @@ void TSTypeLowering::LowerTypedCallArg1(GateRef gate)
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
-    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
-        EcmaOpcode::CALLARG1_IMM8_V8));
-    GateRef newTarget = builder_.Undefined();
-    GateRef thisObj = builder_.Undefined();
     GateRef a0Value = acc_.GetValueIn(gate, 0);
-    if (IsLoadVtable(func)) {
-        builder_.JSCallThisTargetTypeCheck(funcType, func);
-        std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0Value };
-        GateRef result = builder_.TypedAotCall(gate, args);
-        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    GateType a0Type = acc_.GetGateType(a0Value);
+    BuiltinsStubCSigns::ID id = GetBuiltinId(func);
+    if (id != BuiltinsStubCSigns::ID::NONE && a0Type.IsNumberType()) {
+        AddProfiling(gate);
+        SpeculateCallBuiltin(gate, func, a0Value, id);
     } else {
-        int methodIndex = tsManager_->GetMethodIndex(funcGt);
-        if (methodIndex == -1) {
-            acc_.DeleteStateSplitAndFrameState(gate);
-            return;
+        GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+            EcmaOpcode::CALLARG1_IMM8_V8));
+        GateRef newTarget = builder_.Undefined();
+        GateRef thisObj = builder_.Undefined();
+        if (IsLoadVtable(func)) {
+            builder_.JSCallThisTargetTypeCheck(funcType, func);
+            std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0Value };
+            GateRef result = builder_.TypedAotCall(gate, args);
+            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+        } else {
+            int methodIndex = tsManager_->GetMethodIndex(funcGt);
+            if (methodIndex == -1) {
+                acc_.DeleteStateSplitAndFrameState(gate);
+                return;
+            }
+            builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
+            std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0Value };
+            GateRef result = builder_.TypedAotCall(gate, args);
+            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
         }
-        builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
-        std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0Value };
-        GateRef result = builder_.TypedAotCall(gate, args);
-        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     }
 }
 
@@ -1140,10 +1141,10 @@ void TSTypeLowering::LowerTypedCallthis1(GateRef gate)
     GateRef a0 = acc_.GetValueIn(gate, 1); // 1:parameter index
     GateType a0Type = acc_.GetGateType(a0);
     GateRef func = acc_.GetValueIn(gate, 2); // 2:function
-    BuiltinsStubCSigns::ID id = GetBuiltinId(func, thisObj);
+    BuiltinsStubCSigns::ID id = GetBuiltinId(func);
     if (id != BuiltinsStubCSigns::ID::NONE && a0Type.IsNumberType()) {
         AddProfiling(gate);
-        SpeculateCallBuiltin(gate, id);
+        SpeculateCallBuiltin(gate, func, a0, id);
     } else {
         if (!CanOptimizeAsFastCall(func, 1)) {
             acc_.DeleteStateSplitAndFrameState(gate);
