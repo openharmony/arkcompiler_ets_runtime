@@ -231,7 +231,7 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
     __ Push(rdx);
 
     AsmInterpreterCall::PushBuiltinFrame(assembler, glueReg, FrameType::BUILTIN_CALL_LEAVE_FRAME);
-    __ Leaq(Operand(rbp, 2 * FRAME_SLOT_SIZE), rdi); // 16: skip rbp & return Addr
+    __ Leaq(Operand(rbp, 2 * FRAME_SLOT_SIZE), rdi); // 2: skip rbp & return Addr
     AsmInterpreterCall::CallNativeInternal(assembler, nativeCode);
     __ Pop(rdx);
     __ Movq(rdx, Operand(rsp, 0));

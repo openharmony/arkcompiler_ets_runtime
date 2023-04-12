@@ -307,7 +307,7 @@ void Heap::EnableParallelGC()
     if (auto totalThreadNum = workManager_->GetTotalThreadNum();
         totalThreadNum != maxEvacuateTaskCount_ + 1) {
         LOG_ECMA_MEM(WARN) << "TheadNum mismatch, totalThreadNum(workerManager): " << totalThreadNum << ", "
-                           << "totalThreadNum(taskpool): " << maxEvacuateTaskCount_ + 1;
+                           << "totalThreadNum(taskpool): " << (maxEvacuateTaskCount_ + 1);
         delete workManager_;
         workManager_ = new WorkManager(this, maxEvacuateTaskCount_ + 1);
     }
