@@ -12,6 +12,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import T from './cjsC.js'
-print(T.name)
-export {T}
+
+/*
+ * @tc.name:module
+ * @tc.desc:test module
+ * @tc.type: FUNC
+ * @tc.require: issueI5RC2C
+ */
+
+var apple = "apple"
+var str = "get fun"
+var zip = "zip"
+export {str, apple, zip}
+export {str as tmp}
+export function f() {
+    print("load function f()");
+}

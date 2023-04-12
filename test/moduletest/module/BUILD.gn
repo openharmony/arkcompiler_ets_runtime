@@ -33,12 +33,18 @@ host_moduletest_action("D") {
   is_module = true
 }
 
+host_moduletest_action("exportas") {
+  deps = []
+  is_module = true
+}
+
 host_moduletest_action("module") {
   deps = [
     ":gen_A_abc",
     ":gen_B_abc",
     ":gen_C_abc",
     ":gen_D_abc",
+    ":gen_exportas_abc",
   ]
   is_module = true
 }
