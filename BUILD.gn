@@ -476,7 +476,10 @@ config("ark_jsruntime_common_config") {
 
 # ecmascript unit testcase config
 config("ecma_test_config") {
-  visibility = [ ":*" ]
+  visibility = [
+    "./ecmascript/*",
+    "./test/fuzztest/*",
+  ]
 
   configs = [
     "$js_root:ark_jsruntime_public_config",
