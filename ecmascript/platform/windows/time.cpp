@@ -16,7 +16,7 @@
 #include "ecmascript/platform/time.h"
 
 #include <timezoneapi.h>
-#include <time.h>
+#include <ctime>
 
 namespace panda::ecmascript {
 static constexpr uint16_t THOUSAND = 1000;
