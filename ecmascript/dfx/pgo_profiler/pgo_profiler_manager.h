@@ -131,7 +131,7 @@ private:
 
 class PGOProfilerHeader : public base::FileHeader {
 public:
-    static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 1};
+    static constexpr VersionType LAST_VERSION = {0, 0, 0, 1};
 
     PGOProfilerHeader() : base::FileHeader(LAST_VERSION) {}
 

@@ -24,14 +24,44 @@
 
 namespace panda::ecmascript::base {
 class FileHeader {
-protected:
+public:
     static constexpr size_t MAGIC_SIZE = 8;
     static constexpr size_t VERSION_SIZE = 4;
     static constexpr std::array<uint8_t, MAGIC_SIZE> MAGIC = {'P', 'A', 'N', 'D', 'A', '\0', '\0', '\0'};
+    using VersionType = std::array<uint8_t, VERSION_SIZE>;
+    
+    static const VersionType ToVersion(uint32_t versionNumber)
+    {
+        VersionUnion helper = {.versionNumber = ReverseBytes(versionNumber)};
+        return helper.version;
+    }
 
-    FileHeader(const std::array<uint8_t, VERSION_SIZE> &lastVersion) : magic_(MAGIC), version_(lastVersion) {}
+    static uint32_t ToVersionNumber(const VersionType &version)
+    {
+        VersionUnion helper = {.version = version};
+        return ReverseBytes(helper.versionNumber);
+    }
 
-    bool VerifyInner(const char* fileDesc, const std::array<uint8_t, VERSION_SIZE> &lastVersion) const
+    static bool VerifyVersion(const char *fileDesc, uint32_t currVersion, uint32_t lastVersion)
+    {
+        return VerifyVersion(fileDesc, ToVersion(currVersion), ToVersion(lastVersion));
+    }
+
+protected:
+
+    FileHeader(const VersionType &lastVersion) : magic_(MAGIC), version_(lastVersion) {}
+
+    static bool VerifyVersion(const char *fileDesc, const VersionType &currVersion, const VersionType &lastVersion)
+    {
+        if (currVersion > lastVersion) {
+            LOG_HOST_TOOL_ERROR << fileDesc << " version error, expected version should be less or equal than "
+                                << ConvToStr(lastVersion) << ", but got " << ConvToStr(currVersion);
+            return false;
+        }
+        return true;
+    }
+
+    bool VerifyInner(const char* fileDesc, const VersionType &lastVersion) const
     {
         if (magic_ != MAGIC) {
             LOG_HOST_TOOL_ERROR << "Magic mismatch, please make sure " << fileDesc <<
@@ -40,9 +70,7 @@ protected:
                             << ", but got " << ConvToStr(magic_);
             return false;
         }
-        if (version_ > lastVersion) {
-            LOG_HOST_TOOL_ERROR << fileDesc << " version error, expected version should be less or equal than "
-                            << ConvToStr(lastVersion) << ", but got " << GetVersionInner();
+        if (!VerifyVersion(fileDesc, version_, lastVersion)) {
             return false;
         }
         LOG_ECMA(DEBUG) << "Magic:" << ConvToStr(magic_) << ", version:" << GetVersionInner();
@@ -73,8 +101,14 @@ protected:
     }
 
 private:
+    union VersionUnion {
+        VersionType version;
+        uint32_t versionNumber;
+        static_assert(sizeof(VersionType) == sizeof(uint32_t));
+    };
+
     template <size_t size>
-    std::string ConvToStr(std::array<uint8_t, size> array) const
+    static std::string ConvToStr(const std::array<uint8_t, size> &array)
     {
         std::string ret = "";
         for (size_t i = 0; i < size; ++i) {
@@ -87,7 +121,7 @@ private:
     }
 
     std::array<uint8_t, MAGIC_SIZE> magic_;
-    std::array<uint8_t, VERSION_SIZE> version_;
+    VersionType version_;
 };
 
 }  // namespace panda::ecmascript::base

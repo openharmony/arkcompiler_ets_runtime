@@ -43,7 +43,7 @@ public:
 private:
     struct SnapShotHeader : public base::FileHeader {
     public:
-        static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 1};
+        static constexpr VersionType LAST_VERSION = {0, 0, 0, 1};
 
         SnapShotHeader() : base::FileHeader(LAST_VERSION) {}
 
