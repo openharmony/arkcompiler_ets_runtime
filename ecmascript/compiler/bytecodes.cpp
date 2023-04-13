@@ -760,7 +760,6 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(Immediate(level));
             info.inputs.emplace_back(Immediate(slot));
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
-            info.vregOut.emplace_back(builder->GetEnvVregIdx());
             break;
         }
         case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16: {
@@ -769,7 +768,6 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(Immediate(level));
             info.inputs.emplace_back(Immediate(slot));
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
-            info.vregOut.emplace_back(builder->GetEnvVregIdx());
             break;
         }
         case EcmaOpcode::NEWLEXENV_IMM8: {
