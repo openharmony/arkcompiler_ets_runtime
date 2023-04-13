@@ -202,6 +202,7 @@ void Heap::Resume(TriggerGCType gcType)
     }
 
     toSpace_->SetWaterLine();
+    PrepareRecordRegionsForReclaim();
     if (paralledGc_) {
         isClearTaskFinished_ = false;
         Platform::GetCurrentPlatform()->PostTask(std::make_unique<AsyncClearTask>(this, gcType));

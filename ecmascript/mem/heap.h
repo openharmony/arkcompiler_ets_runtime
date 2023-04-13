@@ -179,8 +179,22 @@ public:
 
     inline void SwapNewSpace();
 
+    // record lastRegion for each space, which will be used in ReclaimRegions()
+    void PrepareRecordRegionsForReclaim()
+    {
+        toSpace_->SetRecordRegion();
+        oldSpace_->SetRecordRegion();
+        snapshotSpace_->SetRecordRegion();
+        nonMovableSpace_->SetRecordRegion();
+        hugeObjectSpace_->SetRecordRegion();
+        machineCodeSpace_->SetRecordRegion();
+    }
+
     template<class Callback>
     void EnumerateOldSpaceRegions(const Callback &cb, Region *region = nullptr) const;
+
+    template<class Callback>
+    void EnumerateNonNewSpaceRegionsWithRecord(const Callback &cb) const;
 
     template<class Callback>
     void EnumerateNonNewSpaceRegions(const Callback &cb) const;

@@ -56,6 +56,16 @@ void Heap::EnumerateNonNewSpaceRegions(const Callback &cb) const
 }
 
 template<class Callback>
+void Heap::EnumerateNonNewSpaceRegionsWithRecord(const Callback &cb) const
+{
+    oldSpace_->EnumerateRegionsWithRecord(cb);
+    snapshotSpace_->EnumerateRegionsWithRecord(cb);
+    nonMovableSpace_->EnumerateRegionsWithRecord(cb);
+    hugeObjectSpace_->EnumerateRegionsWithRecord(cb);
+    machineCodeSpace_->EnumerateRegionsWithRecord(cb);
+}
+
+template<class Callback>
 void Heap::EnumerateNewSpaceRegions(const Callback &cb) const
 {
     toSpace_->EnumerateRegions(cb);
@@ -272,7 +282,7 @@ void Heap::SwapNewSpace()
 
 void Heap::ReclaimRegions(TriggerGCType gcType)
 {
-    toSpace_->EnumerateRegions([] (Region *region) {
+    toSpace_->EnumerateRegionsWithRecord([] (Region *region) {
         region->ClearMarkBitmap();
         region->ClearCrossRegionRememberedSet();
         region->ResetAliveObject();
@@ -286,7 +296,7 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
     fromSpace_->ReclaimRegions();
 
     sweeper_->WaitAllTaskFinished();
-    EnumerateNonNewSpaceRegions([] (Region *region) {
+    EnumerateNonNewSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkBitmap();
         region->ClearCrossRegionRememberedSet();
     });
