@@ -346,9 +346,7 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(kungfu::DeoptType type)
         method->SetDeoptType(type);
         method->SetDeoptThreshold(--deoptThreshold);
     } else {
-        method->SetAotCodeBit(false);
-        method->SetDeoptType(kungfu::DeoptType::NOTCHECK);
-        method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(nullptr));
+        method->ClearAOTFlags();
     }
 
     FrameWriter frameWriter(this);
