@@ -469,7 +469,6 @@ public:
     GateRef ChangeInt32ToFloat64(GateRef x);
     GateRef ChangeUInt32ToFloat64(GateRef x);
     GateRef ChangeFloat64ToInt32(GateRef x);
-    GateRef ChangeTaggedPointerToInt64(GateRef x);
     GateRef Int64ToTaggedPtr(GateRef x);
     GateRef TruncInt16ToInt8(GateRef x);
     GateRef CastInt32ToFloat32(GateRef x);
@@ -608,6 +607,7 @@ public:
     GateRef ToNumber(GateRef glue, GateRef tagged);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
+    GateRef ChangeTaggedPointerToInt64(GateRef x);
     template<OpCode Op>
     GateRef FastAddSubAndMul(GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastBinaryOp(GateRef left, GateRef right,

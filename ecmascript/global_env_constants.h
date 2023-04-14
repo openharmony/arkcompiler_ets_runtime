@@ -130,7 +130,15 @@ class JSThread;
     V(JSTaggedValue, EmptyArray, EMPTY_ARRAY_OBJECT_INDEX, ecma_roots_special)                         \
     V(JSTaggedValue, EmptyWeakVector, EMPTY_WEAK_VECTOR_OBJECT_INDEX, ecma_roots_special)              \
     V(JSTaggedValue, EmptyTaggedQueue, EMPTY_TAGGED_QUEUE_OBJECT_INDEX, ecma_roots_special)            \
-    V(JSTaggedValue, UndefinedCompletionRecord, UNDEFINED_COMPLRTION_RECORD_INDEX, ecma_roots_special)
+    V(JSTaggedValue, UndefinedCompletionRecord, UNDEFINED_COMPLRTION_RECORD_INDEX, ecma_roots_special) \
+    V(JSTaggedValue, MathSqrtFunction, MATH_SQRT_FUNCTION_INDEX, ecma_roots_special)                   \
+    V(JSTaggedValue, MathCosFunction, MATH_COS_FUNCTION_INDEX, ecma_roots_special)                     \
+    V(JSTaggedValue, MathSinFunction, MATH_SIN_FUNCTION_INDEX, ecma_roots_special)                     \
+    V(JSTaggedValue, MathACosFunction, MATH_ACOS_FUNCTION_INDEX, ecma_roots_special)                   \
+    V(JSTaggedValue, MathATanFunction, MATH_ATAN_FUNCTION_INDEX, ecma_roots_special)                   \
+    V(JSTaggedValue, MathAbsFunction, MATH_ABS_FUNCTION_INDEX, ecma_roots_special)                     \
+    V(JSTaggedValue, MathFloorFunction, MATH_FLOOR_FUNCTION_INDEX, ecma_roots_special)
+
 /* GlobalConstant */
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_CONSTANT(V)                                                                               \

@@ -40,7 +40,6 @@ private:
     void VisitConstant(GateRef gate);
     void VisitPhi(GateRef gate);
     void VisitUndefinedStrictEq(GateRef gate);
-    void VisitStoreProperty(GateRef gate);
     void VisitCallBuiltins(GateRef gate);
 
     template<TypedBinOp Op>

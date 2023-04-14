@@ -38,6 +38,7 @@ using namespace panda::ecmascript;
 class Environment;
 class Label;
 class Variable;
+class StubBuilder;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                            \
     V(Int16Add, Add, MachineType::I16)                                    \
@@ -109,7 +110,6 @@ class Variable;
     V(TruncFloatToInt32, TruncFloatToInt32, MachineType::I32)          \
     V(ExtFloat32ToDouble, Fext, MachineType::F64)                      \
     V(TruncDoubleToFloat32, Ftrunc, MachineType::F32)                  \
-    V(ChangeTaggedPointerToInt64, TaggedToInt64, MachineType::I64)     \
     V(ChangeInt32ToFloat64, SignedIntToFloat, MachineType::F64)        \
     V(ChangeInt32ToFloat32, SignedIntToFloat, MachineType::F32)        \
     V(ChangeUInt32ToFloat64, UnsignedIntToFloat, MachineType::F64)     \
@@ -118,6 +118,9 @@ class Variable;
     V(SExtInt16ToInt32, Sext, MachineType::I32)                        \
     V(SExtInt8ToInt32, Sext, MachineType::I32)                         \
     V(SExtInt8ToInt64, Sext, MachineType::I64)                         \
+
+#define UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH_PRIVATE(V)          \
+    V(ChangeTaggedPointerToInt64, TaggedToInt64, MachineType::I64)
 
 #define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                              \
     V(DoubleLessThan, Fcmp, static_cast<BitField>(FCmpCondition::OLT))                  \
@@ -568,10 +571,20 @@ public:
     GateRef IsBase(GateRef ctor);
 
 private:
+#define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                            \
+    inline GateRef NAME(GateRef x)                                                                  \
+    {                                                                                               \
+        return circuit_->NewGate(circuit_->OPCODEID(), MACHINETYPEID, { x }, GateType::NJSValue()); \
+    }
+
+    UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH_PRIVATE(ARITHMETIC_UNARY_OP_WITH_BITWIDTH)
+#undef ARITHMETIC_UNARY_OP_WITH_BITWIDTH
+
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     Environment *env_ {nullptr};
     CompilationConfig *cmpCfg_ {nullptr};
+    friend StubBuilder;
 };
 
 class Label {

@@ -2716,11 +2716,15 @@ JSHandle<JSFunction> Builtins::NewFunction(const JSHandle<GlobalEnv> &env, const
                                            kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
     JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
-        FunctionKind::NORMAL_FUNCTION, builtinId);
+        FunctionKind::NORMAL_FUNCTION, builtinId, MemSpaceType::NON_MOVABLE);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSFunctionBase> baseFunction(function);
     JSHandle<JSTaggedValue> handleUndefine(thread_, JSTaggedValue::Undefined());
     JSFunction::SetFunctionName(thread_, baseFunction, key, handleUndefine);
+    if (IS_TYPED_BUILTINS_ID(builtinId)) {
+        auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+        globalConst->SetConstant(GET_TYPED_CONSTANT_INDEX(builtinId), function);
+    }
     return function;
 }
 

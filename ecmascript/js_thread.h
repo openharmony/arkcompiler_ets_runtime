@@ -816,11 +816,6 @@ public:
             return GetOffset<static_cast<size_t>(Index::GlueGlobalEnvIndex)>(isArch32);
         }
 
-        static size_t GetGlueGlobalConstOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::GlobalConstIndex)>(isArch32);
-        }
-
         static size_t GetAllowCrossThreadExecutionOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::AllowCrossThreadExecutionIndex)>(isArch32);
