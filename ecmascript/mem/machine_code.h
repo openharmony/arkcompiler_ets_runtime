@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef PANDA_RUNTIME_ECMASCRIPT_MEM_MACHINE_CODE_H
-#define PANDA_RUNTIME_ECMASCRIPT_MEM_MACHINE_CODE_H
+#ifndef ECMASCRIPT_MEM_MACHINE_CODE_H
+#define ECMASCRIPT_MEM_MACHINE_CODE_H
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value.h"
@@ -75,4 +75,4 @@ public:
     }
 };
 }  // namespace panda::ecmascript
-#endif  // PANDA_RUNTIME_ECMASCRIPT_MEM_MACHINE_CODE_H
+#endif  // ECMASCRIPT_MEM_MACHINE_CODE_H
