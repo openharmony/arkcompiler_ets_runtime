@@ -559,6 +559,8 @@ ecma_source = [
   "ecmascript/builtins/builtins_weak_ref.cpp",
   "ecmascript/builtins/builtins_weak_set.cpp",
   "ecmascript/byte_array.cpp",
+  "ecmascript/compiler/aot_file/elf_builder.cpp",
+  "ecmascript/compiler/aot_file/elf_reader.cpp",
   "ecmascript/containers/containers_arraylist.cpp",
   "ecmascript/containers/containers_deque.cpp",
   "ecmascript/containers/containers_errors.cpp",
@@ -799,9 +801,49 @@ ecma_profiler_source += [
 ecma_platform_source = []
 
 ecma_platform_source += [ "ecmascript/platform/common/map.cpp" ]
+
+config("include_llvm") {
+  if (compile_llvm_online) {
+    include_dirs = [
+      "//third_party/third_party_llvm-project/build/include",
+      "//third_party/third_party_llvm-project/llvm/include/",
+    ]
+  } else {
+    if (is_mingw) {
+      include_dirs = [
+        "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/llvm/include",
+        "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/build/include",
+      ]
+    } else if (is_mac) {
+      if (host_cpu == "arm64") {
+        include_dirs = [
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_arm64/llvm/include",
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_arm64/build/include",
+        ]
+      } else {
+        include_dirs = [
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_x64/llvm/include",
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_x64/build/include",
+        ]
+      }
+    } else {
+      if (current_cpu == "arm64") {
+        include_dirs = [
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/llvm/include",
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/build/include",
+        ]
+      } else {
+        include_dirs = [
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/llvm/include",
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/include",
+        ]
+      }
+    }
+  }
+}
+
 if (is_mingw) {
   ecma_platform_source += [
-    "ecmascript/platform/common/elf.cpp",
     "ecmascript/platform/windows/backtrace.cpp",
     "ecmascript/platform/windows/map.cpp",
     "ecmascript/platform/windows/file.cpp",
@@ -816,7 +858,6 @@ if (is_mingw) {
   ]
   if (is_mac || target_os == "ios") {
     ecma_platform_source += [
-      "ecmascript/platform/common/elf.cpp",
       "ecmascript/platform/unix/mac/os.cpp",
       "ecmascript/platform/unix/mac/backtrace.cpp",
     ]
@@ -824,13 +865,11 @@ if (is_mingw) {
     ecma_platform_source += [
       "ecmascript/platform/unix/linux/os.cpp",
       "ecmascript/platform/unix/ohos/backtrace.cpp",
-      "ecmascript/platform/unix/elf.cpp",
     ]
   } else if (is_linux) {
     ecma_platform_source += [
       "ecmascript/platform/unix/linux/os.cpp",
       "ecmascript/platform/unix/linux/backtrace.cpp",
-      "ecmascript/platform/unix/elf.cpp",
     ]
   } else {
     print("Invalid os!")
@@ -846,6 +885,7 @@ ohos_source_set("libark_jsruntime_set") {
   sources += ecma_platform_source
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
+  public_configs += [ ":include_llvm" ]
 
   configs = [
     "$js_root:ark_jsruntime_common_config",
@@ -920,6 +960,7 @@ ohos_source_set("libark_jsruntime_test_set") {
   }
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
+  public_configs += [ ":include_llvm" ]
 
   configs = [
     "$js_root:ark_jsruntime_common_config",
@@ -1006,6 +1047,9 @@ ohos_shared_library("libark_jsruntime_test") {
     ":libark_jsruntime_test_set",
     "$ark_root/libpandafile:libarkfile_static",
   ]
+
+  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
+  public_configs += [ ":include_llvm" ]
 
   ldflags = []
   if (enable_coverage) {

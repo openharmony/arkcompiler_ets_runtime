@@ -18,6 +18,12 @@
 #include "ecmascript/mem/dyn_chunk.h"
 
 namespace panda::ecmascript {
+enum class Triple {
+    TRIPLE_AMD64,
+    TRIPLE_AARCH64,
+    TRIPLE_ARM32,
+};
+
 class GCStackMapRegisters {
 public:
 #if defined(PANDA_TARGET_AMD64)

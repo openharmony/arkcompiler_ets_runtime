@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_CIRCUIT_BUILDER_H
 
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/call_signature.h"
@@ -27,7 +28,6 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/platform/elf.h"
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript::kungfu {
