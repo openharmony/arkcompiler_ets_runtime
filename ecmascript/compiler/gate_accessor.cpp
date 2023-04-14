@@ -632,6 +632,13 @@ void GateAccessor::DeleteStateSplitAndFrameState(GateRef gate)
 
 void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value)
 {
+    if (value != Circuit::NullGate()) {
+        GateType type = GetGateType(gate);
+        if (!type.IsAnyType()) {
+            SetGateType(value, type);
+        }
+    }
+
     auto uses = Uses(gate);
     for (auto useIt = uses.begin(); useIt != uses.end();) {
         if (IsStateIn(useIt)) {

@@ -15,7 +15,6 @@
 #ifndef ECMASCRIPT_AOT_FILE_MANAGER_H
 #define ECMASCRIPT_AOT_FILE_MANAGER_H
 
-#include "ecmascript/base/file_header.h"
 #include "ecmascript/compiler/binary_section.h"
 #include "ecmascript/deoptimizer/calleeReg.h"
 #include "ecmascript/js_function.h"
@@ -383,13 +382,19 @@ public:
 
     void Destroy() override;
 
-    void RewriteRelcateDeoptHandler(EcmaVM *vm);
+    bool RewriteRelcateDeoptHandler(EcmaVM *vm);
+
+    Elf64_Ehdr GetHeader()
+    {
+        return header_;
+    }
 
 private:
     bool Load(const std::string &filename);
-    void RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
+    bool RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
     std::unordered_map<uint32_t, uint64_t> mainEntryMap_ {};
     bool isLoad_ {false};
+    Elf64_Ehdr header_;
 
     friend class AnFileDataManager;
 };
@@ -532,7 +537,6 @@ public:
     explicit AOTFileManager(EcmaVM *vm);
     virtual ~AOTFileManager();
 
-    static constexpr base::FileHeader::VersionType AOT_VERSION = {0, 0, 0, 1};
     static constexpr char FILE_EXTENSION_AN[] = ".an";
     static constexpr char FILE_EXTENSION_AI[] = ".ai";
     static constexpr uint8_t DESERI_CP_ITEM_SIZE = 2;

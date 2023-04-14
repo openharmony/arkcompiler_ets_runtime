@@ -116,7 +116,7 @@ private:
     static void IncreaseStackForArguments(ExtendedAssembler *assembler, Register argC, Register fp);
     static void PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
     static void PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
-    static void PushOptimizedFrame(ExtendedAssembler *assembler);
+    static void PushAsmBridgeFrame(ExtendedAssembler *assembler);
     static void PopOptimizedFrame(ExtendedAssembler *assembler);
     static void JSCallInternal(ExtendedAssembler *assembler, Register jsfunc, bool isNew = false);
     static void ConstructorJSCallInternal(ExtendedAssembler *assembler, Register jsfunc);

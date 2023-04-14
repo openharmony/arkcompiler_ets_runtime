@@ -90,6 +90,7 @@ JSTaggedValue FrameIterator::GetFunction() const
         }
         case FrameType::OPTIMIZED_FRAME:
         case FrameType::OPTIMIZED_ENTRY_FRAME:
+        case FrameType::ASM_BRIDGE_FRAME:
         case FrameType::LEAVE_FRAME:
         case FrameType::LEAVE_FRAME_WITH_ARGV:
         case FrameType::INTERPRETER_ENTRY_FRAME:
@@ -134,6 +135,16 @@ void FrameIterator::Advance()
             if constexpr (GCVisit == GCVisitedFlag::VISITED) {
                 optimizedReturnAddr_ = 0;
                 optimizedCallSiteSp_ = 0;
+            }
+            current_ = frame->GetPrevFrameFp();
+            break;
+        }
+        case FrameType::ASM_BRIDGE_FRAME : {
+            auto frame = GetFrame<AsmBridgeFrame>();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                needCalCallSiteInfo = true;
             }
             current_ = frame->GetPrevFrameFp();
             break;
@@ -288,10 +299,6 @@ void FrameIterator::Advance()
         std::tie(textStart, stackMapAddr_, fpDeltaPrevFrameSp_, calleeRegInfo_) = CalCallSiteInfo(optimizedReturnAddr_);
         ASSERT(optimizedReturnAddr_ >= textStart);
         optimizedReturnAddr_ = optimizedReturnAddr_ - textStart;
-        if (t == FrameType::LEAVE_FRAME && fpDeltaPrevFrameSp_ == 0) {
-            // it may be asm code stub's leave frame.
-            fpDeltaPrevFrameSp_ = 2 * sizeof(uintptr_t); // 2: skip prev and return addr
-        }
     }
 }
 template void FrameIterator::Advance<GCVisitedFlag::VISITED>();
@@ -333,6 +340,10 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp([[maybe_unused]] uintptr_t curPc
             ASSERT(thread_ != nullptr);
             auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + fpDeltaPrevFrameSp_;
             return callSiteSp;
+        }
+        case FrameType::ASM_BRIDGE_FRAME: {
+            auto frame = GetFrame<AsmBridgeFrame>();
+            return frame->GetCallSiteSp();
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME: {
             auto frame = GetFrame<OptimizedJSFunctionUnfoldArgVFrame>();
@@ -701,6 +712,10 @@ bool GetTypeOffsetAndPrevOffsetFromFrameType(uintptr_t frameType, uintptr_t &typ
         case FrameType::OPTIMIZED_ENTRY_FRAME:
             typeOffset = OptimizedEntryFrame::GetTypeOffset();
             prevOffset = OptimizedEntryFrame::GetLeaveFrameFpOffset();
+            break;
+        case FrameType::ASM_BRIDGE_FRAME:
+            typeOffset = AsmBridgeFrame::GetTypeOffset();
+            prevOffset = AsmBridgeFrame::GetPrevOffset();
             break;
         case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME:
             typeOffset = OptimizedJSFunctionUnfoldArgVFrame::GetTypeOffset();

@@ -51,6 +51,7 @@ private:
     bool HasRelocateText() const;
     std::optional<Elf64_Word> GetSymbol(const char* symbol) const;
     bool Relocate(Elf64_Rela *sec, uintptr_t symbolAddr, uintptr_t patchAddr);
+    static bool BlInRange(intptr_t imm);
 
     Elf64_Word GetSymbol(Elf64_Rela *cur) const
     {
