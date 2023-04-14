@@ -26,8 +26,8 @@ static const size_t MALLOC_SIZE_LIMIT = 2147483648; // Max internal memory used 
 
 JSPandaFileManager *JSPandaFileManager::GetInstance()
 {
-    static JSPandaFileManager jsFileManager;
-    return &jsFileManager;
+    static JSPandaFileManager *jsFileManager = new JSPandaFileManager();
+    return jsFileManager;
 }
 
 JSPandaFileManager::~JSPandaFileManager()
