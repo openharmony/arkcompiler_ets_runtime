@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef RUNTIME_ECMASCRIPT_CHUNK_ALLOCATOR_H
-#define RUNTIME_ECMASCRIPT_CHUNK_ALLOCATOR_H
+#ifndef ECMASCRIPT_MEM_CHUNK_ALLOCATOR_H
+#define ECMASCRIPT_MEM_CHUNK_ALLOCATOR_H
 
 #include "ecmascript/mem/chunk.h"
 
@@ -148,4 +148,4 @@ private:
 };
 }  // namespace panda::ecmascript
 
-#endif  // RUNTIME_ECMASCRIPT_CHUNK_ALLOCATOR_H
+#endif  // ECMASCRIPT_MEM_CHUNK_ALLOCATOR_H

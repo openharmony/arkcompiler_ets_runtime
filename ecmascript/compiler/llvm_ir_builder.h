@@ -406,4 +406,4 @@ private:
     LLVMMetadataRef dFuncMD_ {nullptr};
 };
 }  // namespace panda::ecmascript::kungfu
-#endif  // PANDA_RUNTIME_ECMASCRIPT_COMPILER_LLVM_IR_BUILDER_H
+#endif  // ECMASCRIPT_COMPILER_LLVM_IR_BUILDER_H

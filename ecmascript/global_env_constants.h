@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef RUNTIME_ECMASCRIPT_ECMA_ROOTS_H
-#define RUNTIME_ECMASCRIPT_ECMA_ROOTS_H
+#ifndef ECMASCRIPT_GLOBAL_ENV_CONSTANTS_H
+#define ECMASCRIPT_GLOBAL_ENV_CONSTANTS_H
 
 #include <cstdint>
 
@@ -546,4 +546,4 @@ private:
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(GlobalEnvConstants), GlobalEnvConstants::SizeArch32, GlobalEnvConstants::SizeArch64);
 }  // namespace panda::ecmascript
-#endif  // RUNTIME_ECMASCRIPT_ECMA_ROOTS_H
+#endif  // ECMASCRIPT_GLOBAL_ENV_CONSTANTS_H

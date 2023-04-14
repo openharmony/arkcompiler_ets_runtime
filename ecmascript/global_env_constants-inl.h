@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef RUNTIME_ECMASCRIPT_GLOBAL_ENV_CONSTANTS_INL_H
-#define RUNTIME_ECMASCRIPT_GLOBAL_ENV_CONSTANTS_INL_H
+#ifndef ECMASCRIPT_GLOBAL_ENV_CONSTANTS_INL_H
+#define ECMASCRIPT_GLOBAL_ENV_CONSTANTS_INL_H
 
 #include "ecmascript/global_env_constants.h"
 
@@ -77,4 +77,4 @@ inline uintptr_t GlobalEnvConstants::GetGlobalConstantAddr(ConstantIndex index) 
 #undef DECL_GET_IMPL
 // clang-format on
 }  // namespace panda::ecmascript
-#endif  // RUNTIME_ECMASCRIPT_GLOBAL_ENV_CONSTANTS_INL_H
+#endif  // ECMASCRIPT_GLOBAL_ENV_CONSTANTS_INL_H
