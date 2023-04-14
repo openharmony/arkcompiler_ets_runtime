@@ -97,7 +97,8 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
         const std::string methodName(
             MethodLiteral::GetMethodName(jsPandaFile, inlinedMethod->GetMethodId()));
         std::string fileName = jsPandaFile->GetFileName();
-        std::string fullName = methodName + "@" + fileName;
+        const std::string recordName(MethodLiteral::GetRecordName(jsPandaFile, inlinedMethod->GetMethodId()));
+        std::string fullName = methodName + "@" + recordName + "@" + fileName;
         LOG_COMPILER(INFO) << "";
         LOG_COMPILER(INFO) << "\033[34m"
                            << "===================="
@@ -149,7 +150,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     }
     const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
     std::string fileName = jsPandaFile->GetFileName();
-    std::string fullName = methodName + "@" + fileName;
+    std::string fullName = methodName + "@" + std::string(recordName) + "@" + fileName;
 
     circuit_->InitRoot();
     BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo,
