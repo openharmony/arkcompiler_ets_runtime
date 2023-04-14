@@ -188,21 +188,21 @@ void TSInlineLowering::ReplaceCallInput(GateRef gate, bool isCallThis)
     GateRef thisObj = Circuit::NullGate();
     size_t fixedInputsNum = 0;
     if (isCallThis) {
-        fixedInputsNum = 1;
+        fixedInputsNum = 2; // 2: call target and this
         thisObj = acc_.GetValueIn(gate, 0);
     } else {
+        fixedInputsNum = 1; // 1: call target
         thisObj = builder_.Undefined();
     }
     // -1: callTarget
     size_t actualArgc = numIns + NUM_MANDATORY_JSFUNC_ARGS - fixedInputsNum;
     vec.emplace_back(glue); // glue
-    vec.emplace_back(builder_.Undefined()); // env
     vec.emplace_back(builder_.Int64(actualArgc)); // argc
     vec.emplace_back(callTarget);
     vec.emplace_back(builder_.Undefined()); // newTarget
     vec.emplace_back(thisObj);
     // -1: call Target
-    for (size_t i = fixedInputsNum; i < numIns - 1; i++) {
+    for (size_t i = fixedInputsNum - 1; i < numIns - 1; i++) {
         vec.emplace_back(acc_.GetValueIn(gate, i));
     }
     LowerToInlineCall(gate, vec);

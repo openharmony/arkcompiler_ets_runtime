@@ -187,7 +187,8 @@ GateRef FrameStateBuilder::GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *p
     }
 
     ASSERT(gateAcc_.GetNumValueIn(phi) == bb->numOfStatePreds);
-    for (size_t i = 0; i < bb->numOfStatePreds; ++i) {
+    // The phi input nodes need to be traversed in reverse order, because there is a bb with multiple def points
+    for (size_t i = bb->numOfStatePreds - 1; i >= 0; --i) {
         auto predId = std::get<0>(bb->expandedPreds.at(i));
         if (predId == predBb->id) {
             return gateAcc_.GetValueIn(phi, i);
