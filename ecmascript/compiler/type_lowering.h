@@ -187,10 +187,9 @@ private:
     void LowerArrayIndexCheck(GateRef gate);
     void LowerLoadProperty(GateRef gate);
     void LowerCallGetter(GateRef gate, GateRef glue);
-    void LowerStoreProperty(GateRef gate, GateRef glue);
+    void LowerStoreProperty(GateRef gate);
     void LowerCallSetter(GateRef gate, GateRef glue);
     void LowerLoadArrayLength(GateRef gate);
-    void LowerLoadConstOffset(GateRef gate);
     void LowerStoreElement(GateRef gate, GateRef glue);
     void LowerLoadElement(GateRef gate);
     void LowerLoadFromTaggedArray(GateRef gate);
@@ -265,12 +264,12 @@ private:
         return acc_.GetFrameState(gate);
     }
 
-    GateRef LoadVTable(GateRef object);
-    GateRef GetOwnerFromVTable(GateRef vtable, GateRef offset);
-    GateRef GetOffsetFromVTable(GateRef vtable, GateRef offset);
     GateRef LoadSupers(GateRef hclass);
     GateRef GetLengthFromSupers(GateRef supers);
-    GateRef GetValueFromSupers(GateRef supers, GateRef index);
+    GateRef GetValueFromSupers(GateRef supers, size_t index);
+    GateRef LoadFromTaggedArray(GateRef array, size_t index);
+    GateRef LoadFromConstPool(GateRef jsFunc, size_t index);
+    GateRef LoadFromVTable(GateRef receiver, size_t index);
 
     Circuit *circuit_;
     GateAccessor acc_;

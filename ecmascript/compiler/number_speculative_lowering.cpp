@@ -274,7 +274,7 @@ void NumberSpeculativeLowering::VisitNumberDiv(GateRef gate)
     GateRef right = acc_.GetValueIn(gate, 1);
     GateRef rightNotZero = builder_.NotEqual(right, builder_.Double(0.0));
     GateRef frameState = acc_.GetFrameState(builder_.GetDepend());
-    builder_.DeoptCheck(rightNotZero, frameState);
+    builder_.DeoptCheck(rightNotZero, frameState, DeoptType::DIVZERO);
     GateRef result = builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, left, right);
     acc_.SetMachineType(gate, MachineType::F64);
     acc_.SetGateType(gate, GateType::NJSValue());
@@ -342,7 +342,7 @@ void NumberSpeculativeLowering::VisitCallBuiltins(GateRef gate)
 
 void NumberSpeculativeLowering::VisitConstant(GateRef gate)
 {
-    TypeInfo output = typeInfos_[acc_.GetId(gate)];
+    TypeInfo output = GetOutputType(gate);
     switch (output) {
         case TypeInfo::INT32: {
             int value = acc_.GetInt32FromConstant(gate);
@@ -361,7 +361,7 @@ void NumberSpeculativeLowering::VisitConstant(GateRef gate)
 
 void NumberSpeculativeLowering::VisitPhi(GateRef gate)
 {
-    TypeInfo output = typeInfos_[acc_.GetId(gate)];
+    TypeInfo output = GetOutputType(gate);
     switch (output) {
         case TypeInfo::INT1: {
             acc_.SetGateType(gate, GateType::NJSValue());

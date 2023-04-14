@@ -873,12 +873,6 @@ GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef propertyLookupRe
     return ret;
 }
 
-GateRef CircuitBuilder::StorePropertyNoBarrier(GateRef gate)
-{
-    acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
-    return gate;
-}
-
 GateRef CircuitBuilder::LoadArrayLength(GateRef array)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -894,11 +888,36 @@ GateRef CircuitBuilder::LoadArrayLength(GateRef array)
 GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, size_t offset)
 {
     auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
 
     auto ret = GetCircuit()->NewGate(circuit_->LoadConstOffset(offset), type.GetMachineType(),
-                                     { currentControl, currentDepend, receiver }, type.GetGateType());
+                                     { currentDepend, receiver }, type.GetGateType());
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::StoreConstOffset(VariableType type,
+    GateRef receiver, size_t offset, GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+
+    auto ret = GetCircuit()->NewGate(circuit_->StoreConstOffset(offset), type.GetMachineType(),
+        { currentControl, currentDepend, receiver, value }, type.GetGateType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ConvertHoleAsUndefined(GateRef receiver)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+
+    auto ret = GetCircuit()->NewGate(circuit_->ConvertHoleAsUndefined(),
+        { currentControl, currentDepend, receiver });
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -1322,8 +1341,9 @@ Environment::Environment(GateRef hir, Circuit *circuit, CircuitBuilder *builder)
     }
 }
 
-Environment::Environment(GateRef stateEntry, GateRef dependEntry, std::vector<GateRef>& inlist,
-    Circuit *circuit, CircuitBuilder *builder) : circuit_(circuit), circuitBuilder_(builder)
+Environment::Environment(GateRef stateEntry, GateRef dependEntry,
+    const std::initializer_list<GateRef>& args, Circuit *circuit, CircuitBuilder *builder)
+    : circuit_(circuit), circuitBuilder_(builder)
 {
     circuitBuilder_->SetEnvironment(this);
     SetCompilationConfig(circuitBuilder_->GetCompilationConfig());
@@ -1331,7 +1351,7 @@ Environment::Environment(GateRef stateEntry, GateRef dependEntry, std::vector<Ga
     currentLabel_ = &entry_;
     currentLabel_->Seal();
     currentLabel_->SetDepend(dependEntry);
-    for (auto in : inlist) {
+    for (auto in : args) {
         inputList_.emplace_back(in);
     }
 }

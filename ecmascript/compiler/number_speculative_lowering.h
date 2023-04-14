@@ -71,6 +71,13 @@ private:
     GateRef MonocularInt(GateRef gate);
     template<TypedUnOp Op>
     GateRef MonocularDouble(GateRef gate);
+
+    TypeInfo GetOutputType(GateRef gate) const
+    {
+        auto index = acc_.GetId(gate);
+        ASSERT(index < typeInfos_.size());
+        return typeInfos_[index];
+    }
     Circuit* circuit_;
     GateAccessor acc_;
     CircuitBuilder builder_;

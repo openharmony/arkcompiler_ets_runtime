@@ -766,8 +766,7 @@ void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     GateRef length = builder_.LoadArrayLength(receiver);
     builder_.IndexCheck(receiverType, length, propKey);
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
-    GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
-    GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(element, propKey);
+    GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, propKey);
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }

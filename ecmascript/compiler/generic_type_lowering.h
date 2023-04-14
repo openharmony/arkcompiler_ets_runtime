@@ -48,6 +48,9 @@ private:
     void LowerHeapObjectCheck(GateRef gate);
     void LowerHClassStableArrayCheck(GateRef gate);
     void LowerGetConstPool(GateRef gate);
+    void LowerLoadConstOffset(GateRef gate);
+    void LowerStoreConstOffset(GateRef gate);
+    void LowerConvertHoleAsUndefined(GateRef gate);
 
     Circuit *circuit_;
     GateAccessor acc_;

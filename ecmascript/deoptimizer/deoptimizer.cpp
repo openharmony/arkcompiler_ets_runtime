@@ -301,6 +301,8 @@ std::string Deoptimizier::DisplayItems(kungfu::DeoptType type)
     switch (type) {
         case kungfu::DeoptType::NOTINT:
             return "NOT INT";
+        case kungfu::DeoptType::DIVZERO:
+            return "DIV ZERO";
         case kungfu::DeoptType::NOTDOUBLE:
             return "NOT DOUBLE";
         case kungfu::DeoptType::NOTNUMBER:

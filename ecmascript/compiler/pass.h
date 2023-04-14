@@ -203,8 +203,9 @@ public:
         TimeScope timescope("TypeInferPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         if (data->HasTypes()) {
             bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
-            TypeInfer typeInfer(data->GetBuilder(), data->GetCircuit(), data->GetPassContext(), data->GetMethodInfoIndex(),
-                                enableLog, data->GetMethodName(), data->GetRecordName(), data->GetMethodInfo());
+            TypeInfer typeInfer(data->GetBuilder(), data->GetCircuit(), data->GetPassContext(),
+                                data->GetMethodInfoIndex(), enableLog, data->GetMethodName(),
+                                data->GetRecordName(), data->GetMethodInfo());
             typeInfer.TraverseCircuit();
         }
         return true;

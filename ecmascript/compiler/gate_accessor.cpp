@@ -98,7 +98,8 @@ ConstDataId GateAccessor::GetConstDataId(GateRef gate) const
 
 size_t GateAccessor::GetOffset(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::LOAD_CONST_OFFSET);
+    ASSERT(GetOpCode(gate) == OpCode::LOAD_CONST_OFFSET ||
+           GetOpCode(gate) == OpCode::STORE_CONST_OFFSET);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }
