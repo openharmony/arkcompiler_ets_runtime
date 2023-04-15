@@ -519,15 +519,14 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "start to execute ark file in context: " << fileName;
-    EcmaContext *context = EcmaContext::Create(vm);
-    context->MountContext();
-    // JSThread *thread = vm->GetAssociatedJSThread();
-    if (!ecmascript::JSPandaFileExecutor::ExecuteFromFileInContext(context, fileName.c_str(), entry, needUpdate)) {
+    JSThread *thread = vm->GetAssociatedJSThread();
+    EcmaContext::MountContext(thread);
+    if (!ecmascript::JSPandaFileExecutor::ExecuteFromFile(thread, fileName.c_str(), entry, needUpdate)) {
         LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
                         << "' with entry '" << entry << "'" << std::endl;
         return false;
     }
-    context->UnmountContext();
+    EcmaContext::UnmountContext(thread);
     return true;
 }
 

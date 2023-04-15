@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/dfx/vm_thread_control.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/mem/visitor.h"
@@ -863,6 +864,13 @@ public:
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
+    void PushContext(EcmaContext *context);
+    void PopContext();
+
+    EcmaContext *GetCurrentEcmaContext() {
+        return contexts_.back();
+    }
+
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
@@ -872,6 +880,10 @@ private:
     static size_t GetAsmStackLimit();
 
     static bool IsMainThread();
+
+    CVector<EcmaContext *> GetEcmaContexts() {
+        return contexts_;
+    }
 
     static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
     static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;
@@ -916,8 +928,11 @@ private:
 
     bool finalizationCheckState_ {false};
 
+    CVector<EcmaContext *> contexts_;
+
     friend class EcmaHandleScope;
     friend class GlobalHandleCollection;
+    friend class EcmaVM;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_THREAD_H

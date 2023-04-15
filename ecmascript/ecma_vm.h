@@ -586,8 +586,6 @@ public:
     }
 
 
-    void PushContext(EcmaContext *context);
-    void PopContext(EcmaContext *context);
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -714,7 +712,6 @@ private:
             : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
     };
     std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
-    CVector<EcmaContext *> contexts_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;

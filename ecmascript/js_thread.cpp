@@ -121,6 +121,11 @@ JSThread::~JSThread()
         delete vmThreadControl_;
         vmThreadControl_ = nullptr;
     }
+
+    for (auto item : contexts_) {
+        delete item;
+    }
+    contexts_.clear();
 }
 
 void JSThread::SetException(JSTaggedValue exception)
@@ -246,6 +251,10 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
                 visitor(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             }
         });
+    }
+
+    for (EcmaContext *context : contexts_) {
+        context->Iterate(visitor, rangeVisitor);
     }
 }
 
@@ -615,5 +624,15 @@ bool JSThread::IsMainThread()
 #else
     return true;
 #endif
+}
+
+void JSThread::PushContext(EcmaContext *context)
+{
+    contexts_.emplace_back(context);
+}
+
+void JSThread::PopContext()
+{
+    contexts_.pop_back();
 }
 }  // namespace panda::ecmascript

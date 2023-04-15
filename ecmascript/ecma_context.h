@@ -15,10 +15,16 @@
 #ifndef ECMASCRIPT_ECMA_CONTEXT_H
 #define ECMASCRIPT_ECMA_CONTEXT_H
 
+#include <optional>
+
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_thread.h"
+#include "ecmascript/mem/c_containers.h"
+#include "ecmascript/mem/visitor.h"
+
+#include "libpandafile/file.h"
+// #include "ecmascript/js_thread.h"
 
 namespace panda {
 namespace panda_file {
@@ -45,11 +51,11 @@ class JsDebuggerManager;
 
 class EcmaContext {
 public:
-    static EcmaContext *Create(EcmaVM *vm);
+    static EcmaContext *Create(JSThread *thread);
 
     static bool Destroy(EcmaContext *context);
 
-    EcmaContext(EcmaVM *vm);
+    EcmaContext(JSThread *thread);
     ~EcmaContext();
 
     EcmaVM *GetEcmaVM() const
@@ -102,8 +108,8 @@ public:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo);
     void Iterate(const RootVisitor &v, const RootRangeVisitor &rv);
-    void MountContext();
-    void UnmountContext();
+    static void MountContext(JSThread *thread);
+    static void UnmountContext(JSThread *thread);
 
 private:
     void SetGlobalEnv(GlobalEnv *global);
@@ -115,9 +121,9 @@ private:
     NO_MOVE_SEMANTIC(EcmaContext);
     NO_COPY_SEMANTIC(EcmaContext);
 
+    JSThread *thread_ {nullptr};
     EcmaVM *vm_ {nullptr};
     ObjectFactory *factory_ {nullptr};
-    JSThread *thread_ {nullptr};
 
     bool isUncaughtExceptionRegistered_ {false};
     bool isProcessingPendingJob_ {false};

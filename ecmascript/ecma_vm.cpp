@@ -49,6 +49,7 @@
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants-inl.h"
@@ -259,6 +260,8 @@ bool EcmaVM::Initialize()
     optCodeProfiler_ = new OptCodeProfiler();
     callTimer_ = new FunctionCallTimer();
 
+    EcmaContext *context = EcmaContext::Create(thread_);
+    thread_->PushContext(context);
     initialized_ = true;
     return true;
 }
@@ -429,11 +432,7 @@ EcmaVM::~EcmaVM()
 
 JSHandle<GlobalEnv> EcmaVM::GetGlobalEnv() const
 {
-    // if (contexts_.empty()) {
-    if (!initialized_ || contexts_.empty()) {
-        return JSHandle<GlobalEnv>(reinterpret_cast<uintptr_t>(&globalEnv_));
-    }
-    return contexts_.back()->GetGlobalEnv();
+    return JSHandle<GlobalEnv>(reinterpret_cast<uintptr_t>(&globalEnv_));
 }
 
 JSHandle<job::MicroJobQueue> EcmaVM::GetMicroJobQueue() const
@@ -1080,15 +1079,5 @@ void EcmaVM::DumpCallTimeInfo()
     if (callTimer_ != nullptr) {
         callTimer_->PrintAllStats();
     }
-}
-
-void EcmaVM::PushContext(EcmaContext *context)
-{
-    contexts_.emplace_back(context);
-}
-
-void EcmaVM::PopContext([[maybe_unused]] EcmaContext *context)
-{
-    contexts_.pop_back();
 }
 }  // namespace panda::ecmascript

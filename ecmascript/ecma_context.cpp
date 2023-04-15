@@ -31,22 +31,23 @@
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
-EcmaContext::EcmaContext(EcmaVM *vm)
-    : factory_(vm->GetFactory()),
-      thread_(vm->GetAssociatedJSThread()),
-      stringTable_(new EcmaStringTable(vm))
+EcmaContext::EcmaContext(JSThread *thread)
+    : thread_(thread),
+      vm_(thread->GetEcmaVM()),
+      factory_(vm_->GetFactory()),
+      stringTable_(new EcmaStringTable(vm_))
 {
 }
 
 /* static */
-EcmaContext *EcmaContext::Create(EcmaVM *vm)
+EcmaContext *EcmaContext::Create(JSThread *thread)
 {
-    auto context = new EcmaContext(vm);
+    LOG_ECMA(INFO) << "EcmaContext::Create";
+    auto context = new EcmaContext(thread);
     if (UNLIKELY(context == nullptr)) {
         LOG_ECMA(ERROR) << "Failed to create ecma context";
         return nullptr;
     }
-    context->vm_ = vm;
     context->Initialize();
     return context;
 }
@@ -54,6 +55,7 @@ EcmaContext *EcmaContext::Create(EcmaVM *vm)
 // static
 bool EcmaContext::Destroy(EcmaContext *context)
 {
+    LOG_ECMA(INFO) << "EcmaContext::Destroy";
     if (context != nullptr) {
         delete context;
         context = nullptr;
@@ -64,14 +66,12 @@ bool EcmaContext::Destroy(EcmaContext *context)
 
 bool EcmaContext::Initialize()
 {
+    LOG_ECMA(INFO) << "EcmaContext::Initialize";
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaContext::Initialize");
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    JSHandle<JSHClass> hClassHandle = factory_->InitClassClass();
-    JSHandle<JSHClass> globalEnvClass = factory_->NewEcmaHClass(*hClassHandle,
-                                                               GlobalEnv::SIZE,
-                                                               JSType::GLOBAL_ENV);
-    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
-    globalConst->Init(thread_, *hClassHandle);
+    // JSHandle<JSHClass> hClassHandle = factory_->InitClassClass();
+    JSHClass *hClass = JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject());
+    JSHandle<JSHClass> globalEnvClass = factory_->NewEcmaHClass(hClass, GlobalEnv::SIZE, JSType::GLOBAL_ENV);
 
     JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
     globalEnv->Init(thread_);
@@ -90,6 +90,7 @@ bool EcmaContext::Initialize()
 
 EcmaContext::~EcmaContext()
 {
+    LOG_ECMA(INFO) << "~EcmaContext";
     ClearBufferData();
     // clear c_address: c++ pointer delete
     if (!vm_->IsBundlePack()) {
@@ -328,14 +329,17 @@ JSHandle<job::MicroJobQueue> EcmaContext::GetMicroJobQueue() const
     return JSHandle<job::MicroJobQueue>(reinterpret_cast<uintptr_t>(&microJobQueue_));
 }
 
-void EcmaContext::MountContext()
+void EcmaContext::MountContext(JSThread *thread)
 {
-    vm_->PushContext(this);
+    EcmaContext *context = EcmaContext::Create(thread);
+    thread->PushContext(context);
 }
 
-void EcmaContext::UnmountContext()
+void EcmaContext::UnmountContext(JSThread *thread)
 {
-    vm_->PopContext(this);
+    EcmaContext *context = thread->GetCurrentEcmaContext();
+    thread->PopContext();
+    Destroy(context);
 }
 
 
