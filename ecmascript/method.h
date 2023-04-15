@@ -369,13 +369,6 @@ public:
         SetCodeEntryOrLiteral(codeEntry);
     }
 
-    void ClearAOTFlags()
-    {
-        SetAotCodeBit(false);
-        SetDeoptType(kungfu::DeoptType::NOTCHECK);
-        SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(nullptr));
-    }
-
     static constexpr size_t Size()
     {
         return sizeof(Method);

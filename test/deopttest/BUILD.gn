@@ -15,7 +15,6 @@ group("ark_deopt_test") {
   testonly = true
   test_list = [
     "arithmetic",
-    "async_deopt",
     "comparison",
     "dec",
     "div",

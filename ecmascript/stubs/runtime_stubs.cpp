@@ -2152,12 +2152,7 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
         regsArray->Set(thread, i, value);
     }
     context->SetRegsArray(thread, regsArray.GetTaggedValue());
-    JSTaggedValue function = frameHandler.GetFunction();
-    Method *method = JSFunction::Cast(function.GetTaggedObject())->GetCallTarget();
-    if (method->IsAotWithCallField()) {
-        method->ClearAOTFlags();
-    }
-    context->SetMethod(thread, function);
+    context->SetMethod(thread, frameHandler.GetFunction());
     context->SetThis(thread, frameHandler.GetThis());
 
     BytecodeInstruction ins(frameHandler.GetPc());
