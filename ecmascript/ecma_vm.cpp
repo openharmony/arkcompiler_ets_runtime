@@ -896,13 +896,22 @@ void EcmaVM::LoadStubFile()
     aotFileManager_->LoadStubFile(stubFile);
 }
 
-void EcmaVM::LoadAOTFiles(const std::string& aotFileName)
+bool EcmaVM::LoadAOTFiles(const std::string& aotFileName)
 {
     std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
-    aotFileManager_->LoadAnFile(anFile);
+    if (!aotFileManager_->LoadAnFile(anFile)) {
+        LOG_ECMA(ERROR) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";
+        ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
+        return false;
+    }
 
     std::string aiFile = aotFileName + AOTFileManager::FILE_EXTENSION_AI;
-    aotFileManager_->LoadAiFile(aiFile);
+    if (!aotFileManager_->LoadAiFile(aiFile)) {
+        LOG_ECMA(ERROR) << "Load " << aiFile << " failed. Destroy aot data and rollback to interpreter";
+        ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
+        return false;
+    }
+    return true;
 }
 
 void EcmaVM::DumpAOTInfo() const

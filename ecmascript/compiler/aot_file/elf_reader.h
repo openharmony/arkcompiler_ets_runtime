@@ -29,7 +29,7 @@ class ElfReader {
 public:
     ElfReader(MemMap fileMapMem) : fileMapMem_(fileMapMem) {};
     ~ElfReader() = default;
-    bool VerifyELFHeader(uint32_t version);
+    bool VerifyELFHeader(uint32_t version, bool strictMatch);
     void ParseELFSections(ModuleSectionDes &des, std::vector<ElfSecName> &secs);
     bool ParseELFSegment();
 

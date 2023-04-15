@@ -132,7 +132,7 @@ void Snapshot::SerializeBuiltins(const CString &fileName)
     WriteToFile(write, nullptr, rootObjSize, processor);
 }
 
-const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool isBuiltins)
+bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool isBuiltins)
 {
     std::string realPath;
     if (!RealPath(std::string(snapshotFile), realPath, false)) {
@@ -152,10 +152,10 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
     }
     auto readFile = ToUintPtr(fileMap.GetOriginAddr());
     auto hdr = *ToNativePtr<const SnapShotHeader>(readFile);
-    if (!hdr.Verify()) {
+    if (!hdr.Verify(GetLastVersion())) {
         FileUnMap(fileMap);
-        LOG_FULL(FATAL) << "file verify failed";
-        UNREACHABLE();
+        LOG_ECMA(ERROR) << "file verify failed.";
+        return false;
     }
     uintptr_t oldSpaceBegin = readFile + sizeof(SnapShotHeader);
     processor.DeserializeObjectExcludeString(oldSpaceBegin, hdr.oldSpaceObjSize, hdr.nonMovableObjSize,
@@ -176,7 +176,7 @@ const JSPandaFile *Snapshot::Deserialize(SnapshotType type, const CString &snaps
     // relocate object field
     processor.Relocate(type, jsPandaFile.get(), hdr.rootObjectSize);
     LOG_COMPILER(INFO) << "loaded ai file: " << snapshotFile.c_str();
-    return jsPandaFile.get();
+    return true;
 }
 
 size_t Snapshot::AlignUpPageSize(size_t spaceSize)
@@ -205,7 +205,7 @@ void Snapshot::WriteToFile(std::fstream &writer, const JSPandaFile *jsPandaFile,
         totalObjSize += objSize;
     }
     uint32_t pandaFileBegin = RoundUp(totalObjSize + sizeof(SnapShotHeader), Constants::PAGE_SIZE_ALIGN_UP);
-    SnapShotHeader hdr;
+    SnapShotHeader hdr(GetLastVersion());
     hdr.oldSpaceObjSize = objSizeVector[0]; // 0: oldSpaceObj
     hdr.nonMovableObjSize = objSizeVector[1]; // 1: nonMovableObj
     hdr.machineCodeObjSize = objSizeVector[2]; // 2: machineCodeObj

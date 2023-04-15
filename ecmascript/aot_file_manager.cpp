@@ -14,6 +14,7 @@
  */
 #include "ecmascript/aot_file_manager.h"
 #include "ecmascript/base/config.h"
+#include "ecmascript/base/file_header.h"
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/aot_file/elf_reader.h"
 #include "ecmascript/compiler/bc_call_signature.h"
@@ -269,7 +270,7 @@ void AnFileInfo::Save(const std::string &filename, Triple triple)
 
     ElfBuilder builder(des);
     llvm::ELF::Elf64_Ehdr header;
-    builder.PackELFHeader(header, AOTFileManager::AOT_VERSION, triple);
+    builder.PackELFHeader(header, base::FileHeader::ToVersionNumber(AOTFileVersion::AI_VERSION), triple);
     file.write(reinterpret_cast<char *>(&header), sizeof(llvm::ELF::Elf64_Shdr));
     builder.PackELFSections(file);
     builder.PackELFSegment(file);
@@ -300,7 +301,8 @@ bool AnFileInfo::Load(const std::string &filename)
 
     ElfReader reader(fileMapMem_);
     std::vector<ElfSecName> secs = GetDumpSectionNames();
-    if (!reader.VerifyELFHeader(AOTFileManager::AOT_VERSION)) {
+    if (!reader.VerifyELFHeader(base::FileHeader::ToVersionNumber(AOTFileVersion::AI_VERSION),
+                                AOTFileVersion::AN_STRICT_MATCH)) {
         return false;
     }
     reader.ParseELFSections(des, secs);
@@ -317,6 +319,15 @@ bool AnFileInfo::Load(const std::string &filename)
     des.SetStartIndex(0);
     des.SetFuncCount(entryNum_);
 
+    RelocateTextSection();
+
+    LOG_COMPILER(INFO) << "loaded an file: " << filename.c_str();
+    isLoad_ = true;
+    return true;
+}
+
+void AnFileInfo::RelocateTextSection()
+{
     size_t len = entries_.size();
     for (size_t i = 0; i < len; i++) {
         FuncEntryDes& funcDes = entries_[i];
@@ -330,17 +341,21 @@ bool AnFileInfo::Load(const std::string &filename)
 #endif
         }
     }
-
-    LOG_COMPILER(INFO) << "loaded an file: " << filename.c_str();
-    isLoad_ = true;
-    return true;
 }
 
-const std::vector<ElfSecName> & AnFileInfo::GetDumpSectionNames()
+const std::vector<ElfSecName> &AnFileInfo::GetDumpSectionNames()
 {
-    static const std::vector<ElfSecName> secNames = {ElfSecName::RODATA_CST8, ElfSecName::TEXT, ElfSecName::STRTAB,
-                                                     ElfSecName::SYMTAB, ElfSecName::ARK_STACKMAP, ElfSecName::ARK_FUNCENTRY};
+    static const std::vector<ElfSecName> secNames = {ElfSecName::RODATA_CST8,  ElfSecName::TEXT,
+                                                     ElfSecName::STRTAB,       ElfSecName::SYMTAB,
+                                                     ElfSecName::ARK_STACKMAP, ElfSecName::ARK_FUNCENTRY};
     return secNames;
+}
+
+void AnFileInfo::Destroy()
+{
+    mainEntryMap_.clear();
+    isLoad_ = false;
+    AOTFileInfo::Destroy();
 }
 
 void AnFileInfo::Dump() const
@@ -398,19 +413,19 @@ void AOTFileManager::LoadStubFile(const std::string &fileName)
     InitializeStubEntries(stubs);
 }
 
-void AOTFileManager::LoadAnFile(const std::string &fileName)
+bool AOTFileManager::LoadAnFile(const std::string &fileName)
 {
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
-    if (!anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::AOT)) {
-        return;
-    }
+    return anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::AOT);
 }
 
-void AOTFileManager::LoadAiFile([[maybe_unused]] const std::string &filename)
+bool AOTFileManager::LoadAiFile([[maybe_unused]] const std::string &filename)
 {
     Snapshot snapshot(vm_);
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
-    snapshot.Deserialize(SnapshotType::AI, filename.c_str());
+    return snapshot.Deserialize(SnapshotType::AI, filename.c_str());
+#else
+    return true;
 #endif
 }
 
@@ -764,6 +779,16 @@ void BinaryBufferParser::ParseBuffer(uint8_t *dst, uint32_t count, uint8_t *src)
     }
 }
 
+void AOTFileInfo::Destroy()
+{
+    entryNum_ = 0;
+    moduleNum_ = 0;
+    totalCodeSize_ = 0;
+    entries_.clear();
+    des_.clear();
+    ExecutedMemoryAllocator::DestroyBuf(stubsMem_);
+}
+
 bool AOTFileInfo::CalCallSiteInfo(uintptr_t retAddr,
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec>& ret) const
 {
@@ -819,10 +844,10 @@ AnFileDataManager *AnFileDataManager::GetInstance()
 
 AnFileDataManager::~AnFileDataManager()
 {
-    SafeDestoryAllData();
+    SafeDestroyAllData();
 }
 
-void AnFileDataManager::DestoryFileMapMem(MemMap &fileMapMem)
+void AnFileDataManager::DestroyFileMapMem(MemMap &fileMapMem)
 {
     if (fileMapMem.GetOriginAddr() != nullptr && fileMapMem.GetSize() > 0) {
         FileUnMap(fileMapMem);
@@ -830,18 +855,31 @@ void AnFileDataManager::DestoryFileMapMem(MemMap &fileMapMem)
     }
 }
 
-void AnFileDataManager::SafeDestoryAllData()
+void AnFileDataManager::SafeDestroyAllData()
 {
     os::memory::WriteLockHolder lock(lock_);
     if (loadedStub_ != nullptr) {
-        ExecutedMemoryAllocator::DestoryBuf(loadedStub_->GetStubsMem());
+        ExecutedMemoryAllocator::DestroyBuf(loadedStub_->GetStubsMem());
         loadedStub_ = nullptr;
     }
 
     for (auto &iter : loadedAn_) {
-        DestoryFileMapMem(iter->GetFileMapMem());
+        DestroyFileMapMem(iter->GetFileMapMem());
     }
     loadedAn_.clear();
+    anFileNameToIndexMap_.clear();
+}
+
+void AnFileDataManager::SafeDestroyAnData(const std::string &fileName)
+{
+    os::memory::WriteLockHolder lock(lock_);
+    std::string anBasename = JSFilePath::GetBaseName(fileName);
+    auto index = UnSafeGetFileInfoIndex(anBasename);
+    if (index == INVALID_INDEX) {
+        return;
+    }
+    auto info = UnSafeGetAnFileInfo(index);
+    info->Destroy();
 }
 
 bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type)
@@ -906,9 +944,8 @@ bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName)
     return true;
 }
 
-uint32_t AnFileDataManager::SafeGetFileInfoIndex(const std::string &fileName)
+uint32_t AnFileDataManager::UnSafeGetFileInfoIndex(const std::string &fileName)
 {
-    os::memory::ReadLockHolder lock(lock_);
     auto iter = anFileNameToIndexMap_.find(fileName);
     if (iter == anFileNameToIndexMap_.end()) {
         return INVALID_INDEX;
@@ -916,10 +953,16 @@ uint32_t AnFileDataManager::SafeGetFileInfoIndex(const std::string &fileName)
     return anFileNameToIndexMap_.at(fileName);
 }
 
+uint32_t AnFileDataManager::SafeGetFileInfoIndex(const std::string &fileName)
+{
+    os::memory::ReadLockHolder lock(lock_);
+    return UnSafeGetFileInfoIndex(fileName);
+}
+
 std::shared_ptr<AnFileInfo> AnFileDataManager::SafeGetAnFileInfo(uint32_t index)
 {
     os::memory::ReadLockHolder lock(lock_);
-    return loadedAn_.at(index);
+    return UnSafeGetAnFileInfo(index);
 }
 
 std::shared_ptr<StubFileInfo> AnFileDataManager::SafeGetStubFileInfo()
@@ -928,7 +971,7 @@ std::shared_ptr<StubFileInfo> AnFileDataManager::SafeGetStubFileInfo()
     return loadedStub_;
 }
 
-// Using for cpuprofiler to check if the ReadLock can be held in singal handler, to avoid the reentrancy deadlock.
+// Using for cpuprofiler to check if the ReadLock can be held in signal handler, to avoid the reentrancy deadlock.
 bool AnFileDataManager::SafeTryReadLock()
 {
     // Try to acquire the lock when the signal callback starts to execute. At this time, the vm thread is interrupted,
@@ -1000,5 +1043,52 @@ AOTFileInfo::CallSiteInfo AnFileDataManager::SafeCalCallSiteInfo(uintptr_t retAd
         }
     }
     return callsiteInfo;
+}
+
+void ExecutedMemoryAllocator::DestroyBuf(ExeMem &exeMem)
+{
+    if (exeMem.addr_ != nullptr) {
+        MachineCodePageUnmap(MemMap(exeMem.addr_, exeMem.size_));
+        exeMem.addr_ = nullptr;
+        exeMem.size_ = 0;
+    }
+}
+
+std::string ModuleSectionDes::GetSecName(const ElfSecName idx)
+{
+    switch (idx) {
+        case ElfSecName::RODATA:
+            return ".rodata";
+        case ElfSecName::RODATA_CST4:
+            return ".rodata.cst4";
+        case ElfSecName::RODATA_CST8:
+            return ".rodata.cst8";
+        case ElfSecName::RODATA_CST16:
+            return ".rodata.cst16";
+        case ElfSecName::RODATA_CST32:
+            return ".rodata.cst32";
+        case ElfSecName::TEXT:
+            return ".text";
+        case ElfSecName::DATA:
+            return ".data";
+        case ElfSecName::GOT:
+            return ".got";
+        case ElfSecName::RELATEXT:
+            return ".rela.text";
+        case ElfSecName::STRTAB:
+            return ".strtab";
+        case ElfSecName::SYMTAB:
+            return ".symtab";
+        case ElfSecName::LLVM_STACKMAP:
+            return ".llvm_stackmaps";
+        case ElfSecName::ARK_STACKMAP:
+            return ".ark_stackmaps";
+        case ElfSecName::ARK_FUNCENTRY:
+            return ".ark_funcentry";
+        default: {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+        }
+    }
 }
 }

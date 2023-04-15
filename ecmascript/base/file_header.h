@@ -18,47 +18,92 @@
 
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/log_wrapper.h"
+#include "utils/bit_utils.h"
 #include <array>
 #include <stddef.h>
 #include <stdint.h>
 
 namespace panda::ecmascript::base {
 class FileHeader {
-protected:
+public:
     static constexpr size_t MAGIC_SIZE = 8;
     static constexpr size_t VERSION_SIZE = 4;
     static constexpr std::array<uint8_t, MAGIC_SIZE> MAGIC = {'P', 'A', 'N', 'D', 'A', '\0', '\0', '\0'};
+    using VersionType = std::array<uint8_t, VERSION_SIZE>;
 
-    FileHeader(const std::array<uint8_t, VERSION_SIZE> &lastVersion) : magic_(MAGIC), version_(lastVersion) {}
-
-    bool VerifyInner(const char* fileDesc, const std::array<uint8_t, VERSION_SIZE> &lastVersion) const
+    static const VersionType ToVersion(uint32_t versionNumber)
     {
-        if (magic_ != MAGIC) {
-            LOG_HOST_TOOL_ERROR << "Magic mismatch, please make sure " << fileDesc << " and the source code are matched";
-            LOG_ECMA(ERROR) << "magic error, expected magic is " << ConvToStr(MAGIC)
-                            << ", but got " << ConvToStr(magic_);
+        VersionUnion helper = {.versionNumber = ReverseBytes(versionNumber)};
+        return helper.version;
+    }
+
+    static uint32_t ToVersionNumber(const VersionType &version)
+    {
+        VersionUnion helper = {.version = version};
+        return ReverseBytes(helper.versionNumber);
+    }
+
+    static bool VerifyVersion(const char *fileDesc, uint32_t currVersion, uint32_t lastVersion, bool strictMatch)
+    {
+        return VerifyVersion(fileDesc, ToVersion(currVersion), ToVersion(lastVersion), strictMatch);
+    }
+
+    template <size_t size>
+    static std::string ConvToStr(const std::array<uint8_t, size> &array)
+    {
+        std::string ret;
+        for (size_t i = 0; i < size; ++i) {
+            if (i) {
+                ret += ".";
+            }
+            ret += std::to_string(array.at(i));
+        }
+        return ret;
+    }
+
+protected:
+    explicit FileHeader(const VersionType &lastVersion) : magic_(MAGIC), version_(lastVersion) {}
+
+    static bool VerifyVersion(const char *fileDesc, const VersionType &currVersion, const VersionType &lastVersion,
+                              bool strictMatch)
+    {
+        bool matched = strictMatch ? currVersion == lastVersion : currVersion <= lastVersion;
+        if (!matched) {
+            LOG_HOST_TOOL_ERROR << fileDesc << " version error, expected version should be "
+                                << (strictMatch ? "equal to " : "less or equal than ") << ConvToStr(lastVersion)
+                                << ", but got " << ConvToStr(currVersion);
             return false;
         }
-        if (version_ > lastVersion) {
-            LOG_HOST_TOOL_ERROR << fileDesc << " version error, expected version should be less or equal than "
-                            << ConvToStr(lastVersion) << ", but got " << GetVersionInner();
-            return false;
-        }
-        LOG_ECMA(DEBUG) << "Magic:" << ConvToStr(magic_) << ", version:" << GetVersionInner();
         return true;
     }
 
-    bool VerifyVersionInner(const std::array<uint8_t, VERSION_SIZE> &expectVersion) const
+    bool InternalVerify(const char *fileDesc, const VersionType &lastVersion, bool strictMatch) const
+    {
+        if (magic_ != MAGIC) {
+            LOG_HOST_TOOL_ERROR << "Magic mismatch, please make sure " << fileDesc
+                                << " and the source code are matched";
+            LOG_ECMA(ERROR) << "magic error, expected magic is " << ConvToStr(MAGIC) << ", but got "
+                            << ConvToStr(magic_);
+            return false;
+        }
+        if (!VerifyVersion(fileDesc, version_, lastVersion, strictMatch)) {
+            return false;
+        }
+        LOG_ECMA(DEBUG) << "Magic:" << ConvToStr(magic_) << ", version:" << InternalGetVersion();
+        return true;
+    }
+
+    bool InternalVerifyVersion(const VersionType &expectVersion) const
     {
         return version_ >= expectVersion;
     }
 
-    std::string GetVersionInner() const
+    std::string InternalGetVersion() const
     {
         return ConvToStr(version_);
     }
 
-    bool SetVersionInner(std::string version)
+    bool InternalSetVersion(const std::string &version)
     {
         std::vector<std::string> versionNumber = StringHelper::SplitString(version, ".");
         if (versionNumber.size() != VERSION_SIZE) {
@@ -66,32 +111,24 @@ protected:
             return false;
         }
         for (uint32_t i = 0; i < VERSION_SIZE; i++) {
-            uint32_t result;
+            uint32_t result = 0;
             if (!StringHelper::StrToUInt32(versionNumber[i].c_str(), &result)) {
                 LOG_ECMA(ERROR) << "version: " << version << " format error";
                 return false;
             }
-            version_[i] = static_cast<uint8_t>(result);
+            version_.at(i) = static_cast<uint8_t>(result);
         }
         return true;
     }
 
 private:
-    template <size_t size>
-    std::string ConvToStr(std::array<uint8_t, size> array) const
-    {
-        std::string ret = "";
-        for (size_t i = 0; i < size; ++i) {
-            if (i) {
-                ret += ".";
-            }
-            ret += std::to_string(array[i]);
-        }
-        return ret;
-    }
-
+    union VersionUnion {
+        VersionType version;
+        uint32_t versionNumber;
+        static_assert(sizeof(VersionType) == sizeof(uint32_t));
+    };
     std::array<uint8_t, MAGIC_SIZE> magic_;
-    std::array<uint8_t, VERSION_SIZE> version_;
+    VersionType version_;
 };
 
 }  // namespace panda::ecmascript::base

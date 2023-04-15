@@ -585,7 +585,7 @@ private:
 
     void ClearBufferData();
 
-    void LoadAOTFiles(const std::string& aotFileName);
+    bool LoadAOTFiles(const std::string& aotFileName);
     void LoadStubFile();
 
     void CheckStartCpuProfiler();

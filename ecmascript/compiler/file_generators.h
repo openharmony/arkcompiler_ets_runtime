@@ -60,7 +60,7 @@ public:
     void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name,
                           const CompilerLog &log, const MethodLogList &logList);
 
-    void DestoryModule();
+    void DestroyModule();
 
     LLVMModule* GetModule() const
     {
@@ -103,10 +103,10 @@ protected:
         }
     }
 
-    void DestoryModule()
+    void DestroyModule()
     {
         for (auto m : modulePackage_) {
-            m.DestoryModule();
+            m.DestroyModule();
         }
     }
 

@@ -240,7 +240,7 @@ void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
     EcmaVM::Destroy(ecmaVm);
     vmCount_--;
     if (vmCount_ <= 0) {
-        DestoryAnDataManager();
+        DestroyAnDataManager();
         DestroyMemMapAllocator();
         DestroyPGOProfiler();
         initialize_ = false;
@@ -763,9 +763,9 @@ void JSNApi::DestroyPGOProfiler()
     ecmascript::PGOProfilerManager::GetInstance()->Destroy();
 }
 
-void JSNApi::DestoryAnDataManager()
+void JSNApi::DestroyAnDataManager()
 {
-    ecmascript::AnFileDataManager::GetInstance()->SafeDestoryAllData();
+    ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAllData();
 }
 
 // ----------------------------------- HandleScope -------------------------------------

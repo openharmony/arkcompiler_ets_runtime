@@ -15,11 +15,12 @@
 
 #include "ecmascript/compiler/aot_file/elf_reader.h"
 
+#include "ecmascript/base/file_header.h"
 #include "ecmascript/ecma_macros.h"
 #include "securec.h"
 
 namespace panda::ecmascript {
-bool ElfReader::VerifyELFHeader(uint32_t version)
+bool ElfReader::VerifyELFHeader(uint32_t version, bool strictMatch)
 {
     llvm::ELF::Elf64_Ehdr header = *(reinterpret_cast<llvm::ELF::Elf64_Ehdr *>(fileMapMem_.GetOriginAddr()));
     if (header.e_ident[llvm::ELF::EI_MAG0] != llvm::ELF::ElfMagic[llvm::ELF::EI_MAG0]
@@ -31,9 +32,7 @@ bool ElfReader::VerifyELFHeader(uint32_t version)
                         << header.e_ident[llvm::ELF::EI_MAG2] << header.e_ident[llvm::ELF::EI_MAG3];
         return false;
     }
-    if (header.e_version > version) {
-        LOG_ECMA(ERROR) << "Elf format error, expected version should be less or equal than "
-                        << version << ", but got " << header.e_version;
+    if (!base::FileHeader::VerifyVersion("Elf ", header.e_version, version, strictMatch)) {
         return false;
     }
     return true;
