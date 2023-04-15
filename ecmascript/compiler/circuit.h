@@ -40,7 +40,8 @@ enum class VisitState : uint8_t {
 
 class Circuit {  // note: calling NewGate could make all saved Gate* invalid
 public:
-    explicit Circuit(NativeAreaAllocator* allocator, DebugInfo* dInfo = nullptr, bool isArch64 = true);
+    explicit Circuit(NativeAreaAllocator* allocator, DebugInfo* dInfo = nullptr, const char* funcName = nullptr,
+                     bool isArch64 = true);
     ~Circuit();
     NO_COPY_SEMANTIC(Circuit);
     NO_MOVE_SEMANTIC(Circuit);
@@ -189,6 +190,8 @@ public:
     {
         return frameType_ == panda::ecmascript::FrameType::OPTIMIZED_JS_FUNCTION_FRAME;
     }
+
+    bool GetDebugInfo(GateRef g, size_t &index) const;
 
 private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB

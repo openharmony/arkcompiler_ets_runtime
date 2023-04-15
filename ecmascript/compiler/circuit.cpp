@@ -21,7 +21,7 @@
 #include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript::kungfu {
-Circuit::Circuit(NativeAreaAllocator* allocator, DebugInfo* debugInfo, bool isArch64)
+Circuit::Circuit(NativeAreaAllocator* allocator, DebugInfo* debugInfo, const char* funcName, bool isArch64)
     : circuitSize_(0),
       gateCount_(0),
       time_(1),
@@ -35,6 +35,9 @@ Circuit::Circuit(NativeAreaAllocator* allocator, DebugInfo* debugInfo, bool isAr
       , allGates_(chunk())
 #endif
 {
+    if (funcName != nullptr && debugInfo_->IsEnable()) {
+        debugInfo_->AddFuncDebugInfo(funcName);
+    }
     space_ = panda::ecmascript::PageMap(CIRCUIT_SPACE, PAGE_PROT_READWRITE).GetMem();
     InitRoot();
 }
@@ -42,6 +45,8 @@ Circuit::Circuit(NativeAreaAllocator* allocator, DebugInfo* debugInfo, bool isAr
 Circuit::~Circuit()
 {
     panda::ecmascript::PageUnmap(MemMap(space_, CIRCUIT_SPACE));
+    debugInfo_ = nullptr;
+    space_ = nullptr;
 }
 
 void Circuit::InitRoot()
@@ -71,6 +76,10 @@ Gate *Circuit::AllocateGateSpace(size_t numIns)
 
 bool Circuit::AddComment(GateRef g, const char* str)
 {
+    ASSERT(debugInfo_ != nullptr);
+    if (!debugInfo_->IsEnable()) {
+        return false;
+    }
     auto it = gateToDInfo_.find(g);
     if (it == gateToDInfo_.end()) {
         ASSERT(debugInfo_ != nullptr);
@@ -81,9 +90,20 @@ bool Circuit::AddComment(GateRef g, const char* str)
     return false;
 }
 
+bool Circuit::GetDebugInfo(GateRef g, size_t &index) const
+{
+    auto it = gateToDInfo_.find(g);
+    if (it != gateToDInfo_.end()) {
+        index = it->second;
+        return true;
+    } else {
+        return false;
+    }
+}
+
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType, size_t numIns, const GateRef inList[],
-                         GateType type, const char* comment)
+GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType, size_t numIns,
+                         const GateRef inList[], GateType type, const char* comment)
 {
 #ifndef NDEBUG
     if (numIns != meta->GetNumIns()) {

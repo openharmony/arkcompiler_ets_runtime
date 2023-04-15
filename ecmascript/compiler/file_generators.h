@@ -46,13 +46,6 @@ public:
 
     void CollectStackMapDes(ModuleSectionDes &moduleDes) const;
 
-    Triple GetTriple() const;
-
-    const CompilationConfig *GetCompilationConfig()
-    {
-        return llvmModule_->GetCompilationConfig();
-    }
-
     uint32_t GetSectionSize(ElfSecName sec) const;
 
     uintptr_t GetSectionAddr(ElfSecName sec) const;
@@ -122,7 +115,7 @@ public:
 
     ~AOTFileGenerator() override = default;
 
-    Module* AddModule(const std::string &name, const std::string &triple, LOptions option);
+    Module* AddModule(const std::string &name, const std::string &triple, LOptions option, bool logDebug);
 
     void GenerateMethodToEntryIndexMap();
 
@@ -141,15 +134,24 @@ private:
     void CollectCodeInfo();
 };
 
+enum class StubFileKind {
+    BC,
+    COM,
+    BUILTIN
+};
+
 class StubFileGenerator : public FileGenerator {
 public:
-    StubFileGenerator(const CompilerLog *log, const MethodLogList *logList, const std::string &triple,
-        bool enablePGOProfiler) : FileGenerator(log, logList), cfg_(triple, enablePGOProfiler) {};
-    ~StubFileGenerator() override = default;
-    void AddModule(LLVMModule *llvmModule, LLVMAssembler *assembler)
+    StubFileGenerator(const CompilerLog *log, const MethodLogList *logList, const std::string &triple)
+        : FileGenerator(log, logList),
+          cfg_(triple)
     {
-        modulePackage_.emplace_back(Module(llvmModule, assembler));
     }
+    ~StubFileGenerator() override = default;
+
+    Module* AddModule(NativeAreaAllocator *allocator, const std::string &name, const std::string &triple,
+                      LOptions option, bool logDebug, StubFileKind k);
+
     void DisassembleAsmStubs(std::map<uintptr_t, std::string> &addr2name);
     // save function funcs for aot files containing stubs
     void SaveStubFile(const std::string &filename);

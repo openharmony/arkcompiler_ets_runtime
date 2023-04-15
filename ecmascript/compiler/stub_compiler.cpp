@@ -34,17 +34,20 @@ namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {
 public:
     StubPassData(Stub *stub, LLVMModule *module, CompilerLog *log)
-        : PassData(nullptr, nullptr, nullptr, log, "stubs"), module_(module), stub_(stub) {}
+        : PassData(nullptr, nullptr, nullptr, log, "stubs"),
+          cfg_(module->GetTripleStr()),
+          module_(module),
+          stub_(stub) {}
     ~StubPassData() = default;
 
     const CompilationConfig *GetCompilationConfig() const
     {
-        return module_->GetCompilationConfig();
+        return &cfg_;
     }
 
     Circuit *GetCircuit() const
     {
-        return stub_->GetEnvironment()->GetCircuit();
+        return stub_->GetCircuit();
     }
 
     LLVMModule *GetStubModule() const
@@ -58,6 +61,7 @@ public:
     }
 
 private:
+    CompilationConfig cfg_;
     LLVMModule *module_;
     Stub *stub_;
 };
@@ -82,7 +86,7 @@ public:
 
     bool Run(StubPassData *data, size_t index)
     {
-        bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputCIR();
+        bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->OutputASM();
         auto stubModule = data->GetStubModule();
         CreateCodeGen(stubModule, enableLog);
         CodeGenerator codegen(llvmImpl_, "stubs");
@@ -97,22 +101,11 @@ void StubCompiler::RunPipeline(LLVMModule *module, NativeAreaAllocator *allocato
 {
     auto callSigns = module->GetCSigns();
     CompilerLog *log = GetLog();
-    auto logList = GetLogList();
-    auto cconfig = module->GetCompilationConfig();
-
-    bool enableMethodLog = !log->NoneMethod();
     for (size_t i = 0; i < callSigns.size(); i++) {
-        Circuit circuit(allocator, module->GetDebugInfo(), cconfig->Is64Bit());
-        Stub stub(callSigns[i], &circuit);
-        ASSERT(callSigns[i]->HasConstructor());
-        void* env = reinterpret_cast<void*>(stub.GetEnvironment());
-        StubBuilder* stubBuilder = static_cast<StubBuilder*>(callSigns[i]->GetConstructor()(env));
-        stub.SetStubBuilder(stubBuilder);
-
-        if (log->CertainMethod()) {
-            enableMethodLog = logList->IncludesMethod(stub.GetMethodName());
-        }
-        log->SetEnableMethodLog(enableMethodLog);
+        auto &cs = callSigns[i];
+        Circuit circuit(allocator, module->GetDebugInfo(), cs->GetName().c_str(), module->Is64Bit());
+        Stub stub(cs, &circuit);
+        log->SetStubLog(stub.GetMethodName(), GetLogList());
 
         StubPassData data(&stub, module, log);
         PassRunner<StubPassData> pipeline(&data);
@@ -120,7 +113,6 @@ void StubCompiler::RunPipeline(LLVMModule *module, NativeAreaAllocator *allocato
         pipeline.RunPass<VerifierPass>();
         pipeline.RunPass<SchedulingPass>();
         pipeline.RunPass<StubLLVMIRGenPass>(i);
-        delete stubBuilder;
     }
 }
 
@@ -134,40 +126,35 @@ void StubCompiler::InitializeCS() const
 
 bool StubCompiler::BuildStubModuleAndSave() const
 {
+    if (filePath_.empty()) {
+        return false;
+    }
+
     InitializeCS();
-    size_t res = 0;
     CompilerLog *log = GetLog();
-    const MethodLogList *logList = GetLogList();
+    MethodLogList *logList = GetLogList();
 
     NativeAreaAllocator allocator;
-    StubFileGenerator generator(log, logList, triple_, enablePGOProfiler_);
-    if (!filePath_.empty()) {
-        LOG_COMPILER(INFO) << "=============== compiling bytecode handler stubs ===============";
-        LLVMModule bcStubModule(&allocator, "bc_stub", triple_, enablePGOProfiler_);
-        LLVMAssembler bcStubAssembler(bcStubModule.GetModule(), LOptions(optLevel_, false, relocMode_));
-        bcStubModule.SetUpForBytecodeHandlerStubs();
-        RunPipeline(&bcStubModule, &allocator);
-        generator.AddModule(&bcStubModule, &bcStubAssembler);
-        res++;
+    StubFileGenerator generator(log, logList, triple_);
 
-        LOG_COMPILER(INFO) << "=============== compiling common stubs ===============";
-        LLVMModule comStubModule(&allocator, "com_stub", triple_, enablePGOProfiler_);
-        LLVMAssembler comStubAssembler(comStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
-        comStubModule.SetUpForCommonStubs();
-        RunPipeline(&comStubModule, &allocator);
-        generator.AddModule(&comStubModule, &comStubAssembler);
-        res++;
+    LOG_COMPILER(INFO) << "=============== compiling bytecode handler stubs ===============";
+    LOptions stubOp(optLevel_, FPFlag::ELIM_FP, relocMode_);
+    Module* stubM = generator.AddModule(&allocator, "bc_stub", triple_, stubOp, log->OutputASM(), StubFileKind::BC);
+    RunPipeline(stubM->GetModule(), &allocator);
 
-        LOG_COMPILER(INFO) << "=============== compiling builtins stubs ===============";
-        LLVMModule builtinsStubModule(&allocator, "builtins_stub", triple_, enablePGOProfiler_);
-        LLVMAssembler builtinsStubAssembler(builtinsStubModule.GetModule(), LOptions(optLevel_, true, relocMode_));
-        builtinsStubModule.SetUpForBuiltinsStubs();
-        RunPipeline(&builtinsStubModule, &allocator);
-        generator.AddModule(&builtinsStubModule, &builtinsStubAssembler);
-        res++;
-        generator.SaveStubFile(filePath_);
-    }
-    return (res > 0);
+    LOG_COMPILER(INFO) << "=============== compiling common stubs ===============";
+    LOptions comOp(optLevel_, FPFlag::RESERVE_FP, relocMode_);
+    Module* comM = generator.AddModule(&allocator, "com_stub", triple_, comOp, log->OutputASM(), StubFileKind::COM);
+    RunPipeline(comM->GetModule(), &allocator);
+
+    LOG_COMPILER(INFO) << "=============== compiling builtins stubs ===============";
+    LOptions builtinOp(optLevel_, FPFlag::RESERVE_FP, relocMode_);
+    Module* builtinM = generator.AddModule(&allocator, "builtin_stub", triple_, builtinOp, log->OutputASM(),
+                                           StubFileKind::BUILTIN);
+    RunPipeline(builtinM->GetModule(), &allocator);
+
+    generator.SaveStubFile(filePath_);
+    return true;
 }
 
 std::string GetHelper()
@@ -195,11 +182,10 @@ int main(const int argc, const char **argv)
     size_t relocMode = runtimeOptions.GetRelocMode();
     std::string logOption = runtimeOptions.GetCompilerLogOption();
     std::string methodsList = runtimeOptions.GetMethodsListForLog();
-    bool enablePGOProfiler = runtimeOptions.IsEnablePGOProfiler();
+
     panda::ecmascript::kungfu::CompilerLog logOpt(logOption);
     panda::ecmascript::kungfu::MethodLogList logList(methodsList);
-    panda::ecmascript::kungfu::StubCompiler compiler(
-        triple, stubFile, optLevel, relocMode, &logOpt, &logList, enablePGOProfiler);
+    panda::ecmascript::kungfu::StubCompiler compiler(triple, stubFile, optLevel, relocMode, &logOpt, &logList);
 
     bool res = compiler.BuildStubModuleAndSave();
     LOG_COMPILER(INFO) << "stub compiler run finish, result condition(T/F):" << std::boolalpha << res;

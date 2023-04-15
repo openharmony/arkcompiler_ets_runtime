@@ -154,7 +154,8 @@ public:
     GateRef CallRuntime(GateRef glue, int index, GateRef argc, GateRef argv);
     GateRef CallNGCRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
-    GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew = false);
+    GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args,
+                               bool isNew = false, const char* comment = nullptr);
     void DebugPrint(GateRef thread, std::initializer_list<GateRef> args);
     void FatalPrint(GateRef thread, std::initializer_list<GateRef> args);
     // memory

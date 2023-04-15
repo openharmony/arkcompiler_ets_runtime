@@ -113,8 +113,7 @@ struct BasicBlockImpl {
 
 class LLVMModule {
 public:
-    LLVMModule(NativeAreaAllocator* allocator, const std::string &name, const std::string &triple,
-               bool enablePGOProfiler = false);
+    LLVMModule(NativeAreaAllocator* allocator, const std::string &name, bool logDbg, const std::string &triple);
     ~LLVMModule();
     void SetUpForCommonStubs();
     void SetUpForBytecodeHandlerStubs();
@@ -144,6 +143,16 @@ public:
         return nullptr;
     }
 
+    bool Is64Bit() const
+    {
+        return is64Bit_;
+    }
+
+    bool Is32Bit() const
+    {
+        return !is64Bit_;
+    }
+
     size_t GetFuncCount() const
     {
         return funcIndexMap_.size();
@@ -162,9 +171,9 @@ public:
         return callSigns_[index];
     }
 
-    const CompilationConfig *GetCompilationConfig() const
+    const std::string &GetTripleStr() const
     {
-        return &cfg_;
+        return tripleStr_;
     }
 
     const std::vector<const CallSignature*> &GetCSigns() const
@@ -189,6 +198,13 @@ public:
         return debugInfo_;
     }
 
+    Triple GetTriple() const
+    {
+        return triple_;
+    }
+
+    std::string GetFuncName(const panda::ecmascript::MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile);
+
     static constexpr int kDeoptEntryOffset = 0;
 
 private:
@@ -206,7 +222,9 @@ private:
     LLVMMetadataRef dUnitMD_ {nullptr};
     LLVMDIBuilderRef dBuilder_ {nullptr};
     DebugInfo* debugInfo_ {nullptr};
-    CompilationConfig cfg_;
+    std::string tripleStr_;
+    bool is64Bit_ {false};
+    Triple triple_;
 };
 
 
@@ -264,7 +282,7 @@ private:
     V(SubWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \
     V(MulWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \
     V(ExtractValue, (GateRef gate, GateRef e1, GateRef e2))                               \
-    V(Sqrt, (GateRef gate, GateRef e1))                                                   \
+    V(Sqrt, (GateRef gate, GateRef e1))
 
 // runtime/common stub ID, opcodeOffset for bc stub
 using StubIdType = std::variant<RuntimeStubCSigns::ID, CommonStubCSigns::ID, LLVMValueRef>;
@@ -333,7 +351,7 @@ private:
     LLVMValueRef GetCallee(const std::vector<GateRef> &inList, const CallSignature *signature,
                            const std::string &realName = "");
     LLVMValueRef GetFunctionFromGlobalValue(LLVMValueRef glue, const CallSignature *signature,
-        LLVMValueRef reloc) const;
+                                            LLVMValueRef reloc) const;
     bool IsInterpreted() const;
     bool IsOptimized() const;
     bool IsOptimizedJSFunction() const;
@@ -369,8 +387,8 @@ private:
     LLVMValueRef GetBuiltinsStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBaseOffset(GateRef gate, LLVMValueRef glue);
     CallExceptionKind GetCallExceptionKind(size_t index, OpCode op) const;
-    void ComputeArgCountAndPCOffset(size_t &actualNumArgs, LLVMValueRef &pcOffset, const std::vector<GateRef> &inList,
-                                    CallExceptionKind kind);
+    void ComputeArgCountAndPCOffset(size_t &actualNumArgs, LLVMValueRef &pcOffset,
+                                    const std::vector<GateRef> &inList, CallExceptionKind kind);
     void SaveLexicalEnvOnOptJSFuncFrame(LLVMValueRef value);
     void SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value);
     void SaveFrameTypeOnFrame(FrameType frameType, LLVMBuilderRef builder);
@@ -379,6 +397,7 @@ private:
     LLVMValueRef GetExperimentalDeopt(LLVMModuleRef &module);
     void GenDeoptEntry(LLVMModuleRef &module);
     LLVMMetadataRef GetFunctionTypeMD(LLVMMetadataRef dFile);
+    bool SetDebugInfo(GateRef g, LLVMValueRef r);
 
     const CompilationConfig *compCfg_ {nullptr};
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};
@@ -388,7 +407,7 @@ private:
     int lineNumber_ {0};
 
     LLVMModuleRef module_ {nullptr};
-    LLVMContextRef context_;
+    LLVMContextRef context_ {nullptr};
     LLVMValueRef function_ {nullptr};
     LLVMBuilderRef builder_ {nullptr};
     std::map<GateId, int> instID2bbID_;

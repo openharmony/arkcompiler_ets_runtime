@@ -29,7 +29,7 @@ bool PassManager::ShouldCollect() const
         (profilerLoader_.IsLoaded() || vm_->GetTSManager()->AssertTypes() || log_->OutputType());
 }
 
-bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generator)
+bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(vm_->GetJSThread());
 
@@ -50,36 +50,41 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
     }
 
     ResolveModule(jsPandaFile, fileName);
-    Module *m = generator.AddModule(fileName, triple_, LOptions(optLevel_, true, relocMode_));
+    Module *m = gen.AddModule(fileName, triple_, LOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_),
+                              log_->OutputASM());
 
     BytecodeInfoCollector collector(vm_, jsPandaFile, maxAotMethodSize_, ShouldCollect());
     PassContext ctx(triple_, log_, &collector, m->GetModule());
     CompilationDriver cmpDriver(profilerLoader_, &collector);
 
-    cmpDriver.Run([this, &fileName, &ctx]
-        (const CString recordName, const std::string &methodName, MethodLiteral *methodLiteral,
-         uint32_t methodOffset, const MethodPcInfo &methodPCInfo, MethodInfo &methodInfo) {
+    cmpDriver.Run([this, &fileName, &ctx](const CString recordName,
+                                          const std::string &methodName,
+                                          MethodLiteral *methodLiteral,
+                                          uint32_t methodOffset,
+                                          const MethodPcInfo &methodPCInfo,
+                                          MethodInfo &methodInfo) {
         auto jsPandaFile = ctx.GetJSPandaFile();
         auto cmpCfg = ctx.GetCompilerConfig();
         auto tsManager = ctx.GetTSManager();
+        auto module = ctx.GetAOTModule();
         // note: TSManager need to set current constantpool before all pass
         tsManager->SetCurConstantPool(jsPandaFile, methodOffset);
-
         log_->SetMethodLog(fileName, methodName, logList_);
 
-        std::string fullName = methodName + "@" + std::string(recordName) + "@" + fileName;
+        std::string fullName = module->GetFuncName(methodLiteral, jsPandaFile);
         bool enableMethodLog = log_->GetEnableMethodLog();
         if (enableMethodLog) {
             LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fullName << "] log:" << "\033[0m";
         }
-
         bool hasTypes = jsPandaFile->HasTSTypes(recordName);
         if (UNLIKELY(!hasTypes)) {
             LOG_COMPILER(INFO) << "record: " << recordName << " has no types";
         }
 
-        Circuit circuit(vm_->GetNativeAreaAllocator(), ctx.GetAOTModule()->GetDebugInfo(), cmpCfg->Is64Bit());
+        Circuit circuit(vm_->GetNativeAreaAllocator(), ctx.GetAOTModule()->GetDebugInfo(),
+                        fullName.c_str(), cmpCfg->Is64Bit());
         circuit.SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+
         PGOProfilerLoader *loader = passOptions_->EnableOptPGOType() ? &profilerLoader_ : nullptr;
 
         BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, tsManager, &circuit,
@@ -92,6 +97,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
 
         PassData data(&builder, &circuit, &ctx, log_, fullName, &methodInfo, hasTypes, recordName,
                       methodLiteral, methodOffset, vm_->GetNativeAreaAllocator());
+
         PassRunner<PassData> pipeline(&data);
         if (passOptions_->EnableTypeInfer()) {
             pipeline.RunPass<TypeInferPass>();

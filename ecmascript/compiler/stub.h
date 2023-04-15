@@ -25,26 +25,27 @@ class StubBuilder;
 class Stub {
 public:
     Stub(const CallSignature *callSignature, Circuit *circuit);
+    ~Stub();
     NO_MOVE_SEMANTIC(Stub);
     NO_COPY_SEMANTIC(Stub);
 
-    Environment *GetEnvironment()
-    {
-        return &env_;
-    }
     const CallSignature *GetCallSignature() const
     {
         return callSignature_;
     }
-    void SetStubBuilder(StubBuilder *stubBuilder)
-    {
-        stubBuilder_ = stubBuilder;
-    }
+
     const std::string &GetMethodName() const
     {
         return callSignature_->GetName();
     }
+
+    Circuit *GetCircuit()
+    {
+        return env_.GetCircuit();
+    }
+
     void GenerateCircuit(const CompilationConfig *cfg);
+
 private:
     void InitializeArguments();
     const CallSignature *callSignature_;

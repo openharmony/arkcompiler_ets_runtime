@@ -40,7 +40,7 @@ class Label;
 class Variable;
 class StubBuilder;
 
-#define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                            \
+#define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                    \
     V(Int16Add, Add, MachineType::I16)                                    \
     V(Int32Add, Add, MachineType::I32)                                    \
     V(Int64Add, Add, MachineType::I64)                                    \
@@ -117,12 +117,12 @@ class StubBuilder;
     V(SExtInt16ToInt64, Sext, MachineType::I64)                        \
     V(SExtInt16ToInt32, Sext, MachineType::I32)                        \
     V(SExtInt8ToInt32, Sext, MachineType::I32)                         \
-    V(SExtInt8ToInt64, Sext, MachineType::I64)                         \
+    V(SExtInt8ToInt64, Sext, MachineType::I64)
 
 #define UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH_PRIVATE(V)          \
     V(ChangeTaggedPointerToInt64, TaggedToInt64, MachineType::I64)
 
-#define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                              \
+#define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                      \
     V(DoubleLessThan, Fcmp, static_cast<BitField>(FCmpCondition::OLT))                  \
     V(DoubleLessThanOrEqual, Fcmp, static_cast<BitField>(FCmpCondition::OLE))           \
     V(DoubleGreaterThan, Fcmp, static_cast<BitField>(FCmpCondition::OGT))               \
@@ -143,10 +143,8 @@ class StubBuilder;
 
 class CompilationConfig {
 public:
-    explicit CompilationConfig(const std::string &triple, bool enablePGOProfiler = false, bool isTraceBC = false,
-                               bool profiling = false)
-        : tripleStr_(triple), triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC),
-          enablePGOProfiler_(enablePGOProfiler), profiling_(profiling)
+    explicit CompilationConfig(const std::string &triple, bool isTraceBC = false, bool profiling = false)
+        : tripleStr_(triple), triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), profiling_(profiling)
     {
     }
     ~CompilationConfig() = default;
@@ -186,11 +184,6 @@ public:
         return isTraceBc_;
     }
 
-    bool IsEnablePGOProfiler() const
-    {
-        return enablePGOProfiler_;
-    }
-
     bool IsProfiling() const
     {
         return profiling_;
@@ -216,7 +209,6 @@ private:
     std::string tripleStr_;
     Triple triple_;
     bool isTraceBc_;
-    bool enablePGOProfiler_;
     bool profiling_;
 };
 
@@ -241,7 +233,7 @@ public:
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
-    GateRef CallTargetCheck(GateRef function, GateRef id, GateRef param);
+    GateRef CallTargetCheck(GateRef function, GateRef id, GateRef param, const char* comment = nullptr);
     GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex);
     GateRef JSCallThisTargetTypeCheck(GateType type, GateRef func);
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
@@ -327,17 +319,25 @@ public:
     inline GateRef Undefined();
 
     // call operation
-    GateRef CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args);
-    GateRef CallBCDebugger(GateRef glue, GateRef target, const std::vector<GateRef> &args);
-    GateRef CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args);
-    GateRef CallBuiltinWithArgv(GateRef glue, GateRef target, const std::vector<GateRef> &args);
-    GateRef CallRuntimeVarargs(GateRef glue, int index, GateRef argc, GateRef argv);
-    GateRef CallRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args, GateRef hirGate);
-    GateRef CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args, GateRef hirGate);
-    GateRef CallStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args);
-    GateRef CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew = false);
+    GateRef CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args,
+                          const char* comment = nullptr);
+    GateRef CallBCDebugger(GateRef glue, GateRef target, const std::vector<GateRef> &args,
+                           const char* comment = nullptr);
+    GateRef CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args,
+                        const char* comment = nullptr);
+    GateRef CallBuiltinWithArgv(GateRef glue, GateRef target, const std::vector<GateRef> &args,
+                                const char* comment = nullptr);
+    GateRef CallRuntimeVarargs(GateRef glue, int index, GateRef argc, GateRef argv, const char* comment = nullptr);
+    GateRef CallRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args, GateRef hirGate,
+                        const char* comment = nullptr);
+    GateRef CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args,
+                           GateRef hirGate, const char* comment = nullptr);
+    GateRef CallStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
+                     const char* comment = nullptr);
+    GateRef CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
+                               bool isNew = false, const char* comment = nullptr);
     GateRef Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,
-                 const std::vector<GateRef> &args, GateRef hirGate);
+                 const std::vector<GateRef> &args, GateRef hirGate, const char* comment = nullptr);
 
     // memory
     inline GateRef Load(VariableType type, GateRef base, GateRef offset);
@@ -366,7 +366,7 @@ public:
 #define CMP_BINARY_OP_WITHOUT_BITWIDTH(NAME, OPCODEID, CONDITION)                         \
     inline GateRef NAME(GateRef x, GateRef y)                                             \
     {                                                                                     \
-        return BinaryCmp(circuit_->OPCODEID(static_cast<uint64_t>(CONDITION)), x, y);                            \
+        return BinaryCmp(circuit_->OPCODEID(static_cast<uint64_t>(CONDITION)), x, y);     \
     }
 
     BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(CMP_BINARY_OP_WITHOUT_BITWIDTH)
@@ -479,8 +479,9 @@ public:
     GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
     GateRef TypedAotCall(GateRef hirGate, std::vector<GateRef> args);
-    GateRef CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult);
-    GateRef CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult, GateRef value);
+    GateRef CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult, const char* comment = nullptr);
+    GateRef CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult,
+                       GateRef value, const char* comment = nullptr);
     GateRef GetConstPool(GateRef jsFunc);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset);
     GateRef StoreConstOffset(VariableType type, GateRef receiver, size_t offset, GateRef value);
@@ -771,10 +772,6 @@ public:
     inline GateRef GetArgument(size_t index) const
     {
         return arguments_.at(index);
-    }
-    inline bool IsEnablePGOProfiler() const
-    {
-        return ccfg_->IsEnablePGOProfiler();
     }
 
     inline Label GetLabelFromSelector(GateRef sel);

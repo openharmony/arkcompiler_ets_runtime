@@ -113,6 +113,13 @@ public:
         ASSERT(index < NUM_OF_STUBS);
         return &callSigns_[index];
     }
+
+    static const std::string &GetName(size_t index)
+    {
+        ASSERT(index < NUM_OF_STUBS);
+        return callSigns_[index].GetName();
+    }
+
 private:
     static CallSignature callSigns_[NUM_OF_STUBS];
 };

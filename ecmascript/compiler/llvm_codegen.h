@@ -95,18 +95,24 @@ private:
     std::vector<std::pair<uint8_t *, uintptr_t>> codeInfo_ {}; // info for disasssembler, planed to be deprecated
 };
 
+enum class FPFlag : uint32_t {
+    ELIM_FP = 0,
+    RESERVE_FP = 1
+};
+
 struct LOptions {
     uint32_t optLevel : 2; // 2 bits for optimized level 0-4
     uint32_t genFp : 1; // 1 bit for whether to generated frame pointer or not
     uint32_t relocMode : 3; // 3 bits for relocation mode
     // 3: default optLevel, 1: generating fp, 2: PIC mode
-    LOptions() : optLevel(3), genFp(1), relocMode(2) {};
-    LOptions(size_t level, bool genFp, size_t relocMode) : optLevel(level), genFp(genFp), relocMode(relocMode) {};
+    LOptions() : optLevel(3), genFp(static_cast<uint32_t>(FPFlag::RESERVE_FP)), relocMode(2) {};
+    LOptions(size_t level, FPFlag flag, size_t relocMode)
+        : optLevel(level), genFp(static_cast<uint32_t>(flag)), relocMode(relocMode) {};
 };
 
 class LLVMAssembler {
 public:
-    explicit LLVMAssembler(LLVMModuleRef module, LOptions option = LOptions());
+    explicit LLVMAssembler(LLVMModule *lm, LOptions option = LOptions());
     virtual ~LLVMAssembler();
     void Run(const CompilerLog &log);
     const LLVMExecutionEngineRef &GetEngine()
@@ -174,7 +180,8 @@ private:
     uint64_t GetTextSectionIndex() const;
 
     LLVMMCJITCompilerOptions options_ {};
-    LLVMModuleRef module_;
+    LLVMModule *llvmModule_ {nullptr};
+    LLVMModuleRef module_ {nullptr};
     const llvm::object::ObjectFile* objFile_ {nullptr};
     LLVMExecutionEngineRef engine_ {nullptr};
     AOTEventListener listener_;

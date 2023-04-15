@@ -194,33 +194,40 @@ inline void StubBuilder::Bind(Label *label)
 inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args)
 {
     SavePcIfNeeded(glue);
-    GateRef result = env_->GetBuilder()->CallRuntime(glue, index, Gate::InvalidGateRef, args, Circuit::NullGate());
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
+    GateRef result = env_->GetBuilder()->CallRuntime(glue, index, Gate::InvalidGateRef, args,
+                                                     Circuit::NullGate(), name.c_str());
     return result;
 }
 
 inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, GateRef argc, GateRef argv)
 {
     SavePcIfNeeded(glue);
-    GateRef result = env_->GetBuilder()->CallRuntimeVarargs(glue, index, argc, argv);
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
+    GateRef result = env_->GetBuilder()->CallRuntimeVarargs(glue, index, argc, argv, name.c_str());
     return result;
 }
 
 inline GateRef StubBuilder::CallNGCRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args)
 {
-    GateRef result = env_->GetBuilder()->CallNGCRuntime(glue, index, Gate::InvalidGateRef, args, Circuit::NullGate());
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
+    GateRef result = env_->GetBuilder()->CallNGCRuntime(glue, index, Gate::InvalidGateRef, args,
+                                                        Circuit::NullGate(), name.c_str());
     return result;
 }
 
 inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args)
 {
     SavePcIfNeeded(glue);
-    GateRef result = env_->GetBuilder()->CallStub(glue, Circuit::NullGate(), index, args);
+    const std::string name = CommonStubCSigns::GetName(index);
+    GateRef result = env_->GetBuilder()->CallStub(glue, Circuit::NullGate(), index, args, name.c_str());
     return result;
 }
 
-inline GateRef StubBuilder::CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew)
+inline GateRef StubBuilder::CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args,
+                                               bool isNew, const char* comment)
 {
-    GateRef result = env_->GetBuilder()->CallBuiltinRuntime(glue, Gate::InvalidGateRef, args, isNew);
+    GateRef result = env_->GetBuilder()->CallBuiltinRuntime(glue, Gate::InvalidGateRef, args, isNew, comment);
     return result;
 }
 

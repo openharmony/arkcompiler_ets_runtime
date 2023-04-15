@@ -140,7 +140,7 @@ public:
     GateRef GetArg(GateRef numArgs, GateRef index);
 
     GateRef CallSlowPath(GateRef nativeCode, GateRef glue, GateRef thisValue, GateRef numArgs, GateRef func,
-                         GateRef newTarget);
+                         GateRef newTarget, const char* comment = nullptr);
 
     inline GateRef IsNumberYearMonthDay(GateRef year, GateRef month, GateRef day)
     {

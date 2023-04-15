@@ -16,10 +16,13 @@
 #include "ecmascript/compiler/debug_info.h"
 
 namespace panda::ecmascript::kungfu {
-DebugInfo::DebugInfo(NativeAreaAllocator* allocator)
+std::string DebugInfo::FuncDebugInfo::EMPTY_COMMENT = "";
+
+DebugInfo::DebugInfo(NativeAreaAllocator* allocator, bool enable)
     : chunk_(allocator),
       funcToDInfo_(&chunk_),
-      dInfos_(&chunk_)
+      dInfos_(&chunk_),
+      enable_(enable)
 {
 }
 
@@ -35,10 +38,9 @@ DebugInfo::~DebugInfo()
 
 void DebugInfo::AddFuncName(const std::string &name)
 {
-    ASSERT(dInfos_.size() > 1);
-    if (dInfos_.size() > 1) {
+    ASSERT(enable_);
+    if (dInfos_.size() > 0) {
         FuncDebugInfo *info = dInfos_.back();
-        ASSERT(info->Name().empty());
         info->SetName(name);
         ASSERT(funcToDInfo_.find(name) == funcToDInfo_.end());
         size_t index = dInfos_.size() - 1;
@@ -48,16 +50,30 @@ void DebugInfo::AddFuncName(const std::string &name)
 
 size_t DebugInfo::AddComment(const char* str)
 {
-    ASSERT(dInfos_.size() > 1);
+    ASSERT(enable_);
+    ASSERT(dInfos_.size() > 0);
     FuncDebugInfo *info = dInfos_.back();
-    ASSERT(info->Name().empty());
     size_t index = info->Add(str);
     return index;
 }
 
-void DebugInfo::AddFuncDebugInfo()
+void DebugInfo::AddFuncDebugInfo(const std::string& name)
 {
+    ASSERT(enable_);
     FuncDebugInfo *info = new FuncDebugInfo(&chunk_);
     dInfos_.push_back(info);
+    AddFuncName(name);
+}
+
+const std::string &DebugInfo::GetComment(const std::string &funcName, size_t index) const
+{
+    auto it = funcToDInfo_.find(funcName);
+    if (it != funcToDInfo_.end()) {
+        ASSERT(dInfos_.size() > it->second);
+        FuncDebugInfo* info = dInfos_[it->second];
+        ASSERT(info->Name() == funcName);
+        return info->GetComment(index);
+    }
+    return FuncDebugInfo::EmptyComment();
 }
 }  // namespace panda::ecmascript::kungfu

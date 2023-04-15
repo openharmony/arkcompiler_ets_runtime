@@ -274,7 +274,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)                \
     V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                              \
     V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)                     \
-    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                       \
+    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                                  \
     V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                           \
@@ -303,7 +303,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(CONSTSTRING)
 
 #define LOAD_PROPERTY_LIST(V)                                           \
-    V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)        \
+    V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)
 
 enum class OpCode : uint8_t {
     NOP = 0,

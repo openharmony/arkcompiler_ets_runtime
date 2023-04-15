@@ -374,7 +374,7 @@ GateRef CircuitBuilder::TryPrimitiveTypeCheck(GateType type, GateRef gate)
     return ret;
 }
 
-GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id, GateRef param)
+GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id, GateRef param, const char* comment)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
@@ -382,7 +382,10 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id, GateRef pa
     ASSERT(acc_.HasFrameState(currentDepend));
     auto frameState = acc_.GetFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallCheck(),
-        MachineType::I1, { currentControl, currentDepend, function, id, param, frameState}, GateType::NJSValue());
+                                        MachineType::I1,
+                                        { currentControl, currentDepend, function, id, param, frameState},
+                                        GateType::NJSValue(),
+                                        comment);
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -622,52 +625,56 @@ GateRef CircuitBuilder::BinaryCmp(const GateMetaData* meta, GateRef left, GateRe
     return GetCircuit()->NewGate(meta, MachineType::I1, { left, right }, GateType::NJSValue());
 }
 
-GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args)
+GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args,
+                                      const char* comment)
 {
     ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     const CallSignature *cs = BytecodeStubCSigns::BCHandler();
     ASSERT(cs->IsBCStub());
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate());
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
     return result;
 }
 
-GateRef CircuitBuilder::CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args)
+GateRef CircuitBuilder::CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args,
+                                    const char* comment)
 {
     ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     const CallSignature *cs = BuiltinsStubCSigns::BuiltinsCSign();
     ASSERT(cs->IsBuiltinsStub());
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate());
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
     return result;
 }
 
-GateRef CircuitBuilder::CallBuiltinWithArgv(GateRef glue, GateRef target, const std::vector<GateRef> &args)
+GateRef CircuitBuilder::CallBuiltinWithArgv(GateRef glue, GateRef target, const std::vector<GateRef> &args,
+                                            const char* comment)
 {
     ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     const CallSignature *cs = BuiltinsStubCSigns::BuiltinsWithArgvCSign();
     ASSERT(cs->IsBuiltinsWithArgvStub());
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate());
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
     return result;
 }
 
-GateRef CircuitBuilder::CallBCDebugger(GateRef glue, GateRef target, const std::vector<GateRef> &args)
+GateRef CircuitBuilder::CallBCDebugger(GateRef glue, GateRef target, const std::vector<GateRef> &args,
+                                       const char* comment)
 {
     ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     const CallSignature *cs = BytecodeStubCSigns::BCDebuggerHandler();
     ASSERT(cs->IsBCDebuggerStub());
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate());
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
     return result;
 }
 
 GateRef CircuitBuilder::CallRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args,
-                                    GateRef hirGate)
+                                    GateRef hirGate, const char* comment)
 {
     GateRef target = IntPtr(index);
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
@@ -681,11 +688,11 @@ GateRef CircuitBuilder::CallRuntime(GateRef glue, int index, GateRef depend, con
         ASSERT(hirGate != Circuit::NullGate());
         filteredHirGate = hirGate;
     }
-    GateRef result = Call(cs, glue, target, depend, args, filteredHirGate);
+    GateRef result = Call(cs, glue, target, depend, args, filteredHirGate, comment);
     return result;
 }
 
-GateRef CircuitBuilder::CallRuntimeVarargs(GateRef glue, int index, GateRef argc, GateRef argv)
+GateRef CircuitBuilder::CallRuntimeVarargs(GateRef glue, int index, GateRef argc, GateRef argv, const char* comment)
 {
     ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntimeWithArgv));
@@ -693,12 +700,12 @@ GateRef CircuitBuilder::CallRuntimeVarargs(GateRef glue, int index, GateRef argc
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     ASSERT(cs->IsRuntimeVAStub());
-    GateRef result = Call(cs, glue, target, depend, {argc, argv}, Circuit::NullGate());
+    GateRef result = Call(cs, glue, target, depend, {argc, argv}, Circuit::NullGate(), comment);
     return result;
 }
 
 GateRef CircuitBuilder::CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args,
-                                       GateRef hirGate)
+                                       GateRef hirGate, const char* comment)
 {
     const CallSignature *cs = RuntimeStubCSigns::Get(index);
     ASSERT(cs->IsRuntimeNGCStub());
@@ -712,11 +719,12 @@ GateRef CircuitBuilder::CallNGCRuntime(GateRef glue, int index, GateRef depend, 
         ASSERT(hirGate != Circuit::NullGate());
         filteredHirGate = hirGate;
     }
-    GateRef result = Call(cs, glue, target, depend, args, filteredHirGate);
+    GateRef result = Call(cs, glue, target, depend, args, filteredHirGate, comment);
     return result;
 }
 
-GateRef CircuitBuilder::CallStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args)
+GateRef CircuitBuilder::CallStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
+                                 const char* comment)
 {
     const CallSignature *cs = CommonStubCSigns::Get(index);
     ASSERT(cs->IsCommonStub());
@@ -726,14 +734,15 @@ GateRef CircuitBuilder::CallStub(GateRef glue, GateRef hirGate, int index, const
     GateRef result;
     if (GetCircuit()->IsOptimizedJSFunctionFrame()) {
         ASSERT(hirGate != Circuit::NullGate());
-        result = Call(cs, glue, target, depend, args, hirGate);
+        result = Call(cs, glue, target, depend, args, hirGate, comment);
     } else {
-        result = Call(cs, glue, target, depend, args, Circuit::NullGate());
+        result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
     }
     return result;
 }
 
-GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew)
+GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
+                                           bool isNew, const char* comment)
 {
     ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
     int index = 0;
@@ -749,12 +758,12 @@ GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const s
     if (depend == Gate::InvalidGateRef) {
         depend = label->GetDepend();
     }
-    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate());
+    GateRef result = Call(cs, glue, target, depend, args, Circuit::NullGate(), comment);
     return result;
 }
 
 GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,
-                             const std::vector<GateRef> &args, GateRef hirGate)
+                             const std::vector<GateRef> &args, GateRef hirGate, const char* comment)
 {
     std::vector<GateRef> inputs { depend, target, glue };
     inputs.insert(inputs.end(), args.begin(), args.end());
@@ -785,12 +794,12 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     } else if (cs->IsAotStub()) {
         meta = circuit_->AotCall(numValuesIn);
     } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
+        LOG_ECMA(FATAL) << "unknown call operator";
         UNREACHABLE();
     }
     MachineType machineType = cs->GetReturnType().GetMachineType();
     GateType type = cs->GetReturnType().GetGateType();
-    GateRef result = GetCircuit()->NewGate(meta, machineType, inputs.size(), inputs.data(), type);
+    GateRef result = GetCircuit()->NewGate(meta, machineType, inputs.size(), inputs.data(), type, comment);
     auto label = GetCurrentLabel();
     label->SetDepend(result);
     return result;
@@ -967,7 +976,8 @@ GateRef CircuitBuilder::TypedAotCall(GateRef hirGate, std::vector<GateRef> args)
     return callGate;
 }
 
-GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult)
+GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult,
+                                   const char* comment)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
     uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
@@ -976,15 +986,18 @@ GateRef CircuitBuilder::CallGetter(GateRef hirGate, GateRef receiver, GateRef pr
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto callGate = GetCircuit()->NewGate(circuit_->CallGetter(pcOffset), MachineType::I64,
+    auto callGate = GetCircuit()->NewGate(circuit_->CallGetter(pcOffset),
+                                          MachineType::I64,
                                           { currentControl, currentDepend, receiver, propertyLookupResult },
-                                          GateType::AnyType());
+                                          GateType::AnyType(),
+                                          comment);
     currentLabel->SetControl(callGate);
     currentLabel->SetDepend(callGate);
     return callGate;
 }
 
-GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult, GateRef value)
+GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult,
+                                   GateRef value, const char* comment)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
     uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
@@ -993,9 +1006,11 @@ GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef pr
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto callGate = GetCircuit()->NewGate(circuit_->CallSetter(pcOffset), MachineType::I64,
+    auto callGate = GetCircuit()->NewGate(circuit_->CallSetter(pcOffset),
+                                          MachineType::I64,
                                           { currentControl, currentDepend, receiver, propertyLookupResult, value },
-                                          GateType::AnyType());
+                                          GateType::AnyType(),
+                                          comment);
     currentLabel->SetControl(callGate);
     currentLabel->SetDepend(callGate);
     return callGate;

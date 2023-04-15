@@ -35,7 +35,7 @@ public:
           bcInfoCollector_(collector),
           tsManager_(vm_->GetTSManager()),
           lexEnvManager_(bcInfoCollector_->GetEnvManager()),
-          cmpCfg_(triple, false, log->IsTraceBC(), vm_->GetJSOptions().GetOptCodeProfiler()),
+          cmpCfg_(triple, log->IsTraceBC(), vm_->GetJSOptions().GetOptCodeProfiler()),
           log_(log),
           jsPandaFile_(collector->GetJSPandaFile()),
           aotModule_(aotModule)
