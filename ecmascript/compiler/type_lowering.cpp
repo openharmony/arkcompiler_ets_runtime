@@ -343,8 +343,7 @@ void TypeLowering::LowerFloat32ArrayIndexCheck(GateRef gate)
 void TypeLowering::LowerOverflowCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
-    auto op = accessor.GetTypedUnOp();
+    auto op = acc_.GetTypedUnAccessor(gate).GetTypedUnOp();
     switch (op) {
         case TypedUnOp::TYPED_INC: {
             LowerTypedIncOverflowCheck(gate);
@@ -855,9 +854,8 @@ void TypeLowering::LowerTypedBinaryOp(GateRef gate)
 void TypeLowering::LowerTypedUnaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
-    GateType valueType = accessor.GetTypeValue();
-    auto op = accessor.GetTypedUnOp();
+    GateType valueType = acc_.GetTypedUnAccessor(gate).GetTypeValue();
+    auto op = acc_.GetTypedUnAccessor(gate).GetTypedUnOp();
     switch (op) {
         case TypedUnOp::TYPED_TONUMBER:
             break;

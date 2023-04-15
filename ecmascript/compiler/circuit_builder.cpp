@@ -527,6 +527,14 @@ GateRef CircuitBuilder::TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, 
         type, inList.size(), inList.data(), gateType);
 }
 
+GateRef CircuitBuilder::TypedConditionJump(MachineType type, TypedJumpOp jumpOp, GateType typeVal,
+                                           const std::vector<GateRef>& inList)
+{
+    uint64_t value = TypedJumpAccessor::ToValue(typeVal, jumpOp);
+    return GetCircuit()->NewGate(circuit_->TypedConditionJump(value),
+        type, inList.size(), inList.data(), GateType::Empty());
+}
+
 GateRef CircuitBuilder::Int8(int8_t val)
 {
     return GetCircuit()->GetConstantGate(MachineType::I8, val, GateType::NJSValue());

@@ -72,7 +72,10 @@ enum class TypedUnOp : uint8_t {
     TYPED_DEC,
     TYPED_ISFALSE,
     TYPED_ISTRUE,
-    TYPED_JEQZ,
+};
+
+enum class TypedJumpOp : uint8_t {
+    TYPED_JEQZ = 0,
     TYPED_JNEZ,
 };
 
@@ -264,6 +267,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                \
     V(Int32OverflowCheck, INT32_OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)               \
     V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                            \
+    V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)                \
     V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                              \
     V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)                     \
     V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                       \
@@ -738,6 +742,35 @@ public:
 private:
     using TypedValueBits = panda::BitField<uint32_t, 0, OPRAND_TYPE_BITS>;
     using TypedUnOpBits = TypedValueBits::NextField<TypedUnOp, OPRAND_TYPE_BITS>;
+
+    uint64_t bitField_;
+};
+
+class TypedJumpAccessor {
+public:
+    // type bits shift
+    static constexpr int OPRAND_TYPE_BITS = 32;
+    explicit TypedJumpAccessor(uint64_t value) : bitField_(value) {}
+
+    GateType GetTypeValue() const
+    {
+        return GateType(TypedValueBits::Get(bitField_));
+    }
+
+    TypedJumpOp GetTypedJumpOp() const
+    {
+        return TypedJumpOpBits::Get(bitField_);
+    }
+
+    static uint64_t ToValue(GateType typeValue, TypedJumpOp jumpOp)
+    {
+        return TypedValueBits::Encode(typeValue.Value())
+            | TypedJumpOpBits::Encode(jumpOp);
+    }
+
+private:
+    using TypedValueBits = panda::BitField<uint32_t, 0, OPRAND_TYPE_BITS>;
+    using TypedJumpOpBits = TypedValueBits::NextField<TypedJumpOp, OPRAND_TYPE_BITS>;
 
     uint64_t bitField_;
 };

@@ -56,6 +56,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitTypedBinaryOp(gate);
         case OpCode::TYPED_UNARY_OP:
             return VisitTypedUnaryOp(gate);
+        case OpCode::TYPED_CONDITION_JUMP:
+            return VisitTypedConditionJump(gate);
         case OpCode::INT32_OVERFLOW_CHECK:
             return VisitOverflowCheck(gate);
         case OpCode::INDEX_CHECK:
@@ -185,8 +187,7 @@ GateRef NumberSpeculativeRetype::VisitNumberBinaryOp(GateRef gate)
 GateRef NumberSpeculativeRetype::VisitTypedUnaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
-    TypedUnOp Op = accessor.GetTypedUnOp();
+    TypedUnOp Op = acc_.GetTypedUnAccessor(gate).GetTypedUnOp();
     switch (Op) {
         case TypedUnOp::TYPED_INC:
         case TypedUnOp::TYPED_DEC:
@@ -194,10 +195,21 @@ GateRef NumberSpeculativeRetype::VisitTypedUnaryOp(GateRef gate)
             return VisitNumberMonocular(gate);
         case TypedUnOp::TYPED_NOT:
             return VisitNumberNot(gate);
-        case TypedUnOp::TYPED_JEQZ:
-            return VisitTypedJeqz(gate);
         default:
             return VisitNumberRelated(gate);
+    }
+}
+
+GateRef NumberSpeculativeRetype::VisitTypedConditionJump(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
+    auto type = accessor.GetTypeValue();
+    if (type.IsBooleanType()) {
+        return VisitBooleanJump(gate);
+    } else {
+        UNREACHABLE();
+        return Circuit::NullGate();
     }
 }
 
@@ -312,19 +324,7 @@ GateRef NumberSpeculativeRetype::VisitNumberNot(GateRef gate)
     return Circuit::NullGate();
 }
 
-GateRef NumberSpeculativeRetype::VisitTypedJeqz(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
-    GateType type = accessor.GetTypeValue();
-    if (type.IsBooleanType()) {
-        return VisitBooleanJeqz(gate);
-    } else {
-        return VisitNumberRelated(gate);
-    }
-}
-
-GateRef NumberSpeculativeRetype::VisitBooleanJeqz(GateRef gate)
+GateRef NumberSpeculativeRetype::VisitBooleanJump(GateRef gate)
 {
     if (IsRetype()) {
         return SetOutputType(gate, GateType::AnyType());

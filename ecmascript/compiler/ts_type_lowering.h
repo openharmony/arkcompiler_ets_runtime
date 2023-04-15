@@ -76,7 +76,7 @@ private:
     void LowerTypedDec(GateRef gate);
     void LowerTypeToNumeric(GateRef gate);
     void LowerPrimitiveTypeToNumber(GateRef gate);
-    void LowerConditionJump(GateRef gate);
+    void LowerConditionJump(GateRef gate, bool flag);
     void LowerTypedNeg(GateRef gate);
     void LowerTypedNot(GateRef gate);
     void LowerTypedLdObjByName(GateRef gate);
@@ -114,7 +114,7 @@ private:
     void SpeculateNumbers(GateRef gate);
     template<TypedUnOp Op>
     void SpeculateNumber(GateRef gate);
-    void SpeculateConditionJump(GateRef gate);
+    void SpeculateConditionJump(GateRef gate, bool flag);
     void SpeculateCallBuiltin(GateRef gate, GateRef func, GateRef a0, BuiltinsStubCSigns::ID Op);
     BuiltinsStubCSigns::ID GetBuiltinId(GateRef func);
 

@@ -59,7 +59,7 @@ private:
 
     GateRef VisitNumberMonocular(GateRef gate);
     GateRef VisitNumberNot(GateRef gate);
-    GateRef VisitTypedJeqz(GateRef gate);
+    GateRef VisitTypedConditionJump(GateRef gate);
 
     GateRef VisitIntMonocular(GateRef gate);
     GateRef VisitDoubleMonocular(GateRef gate);
@@ -68,7 +68,7 @@ private:
     GateRef VisitNumberCompare(GateRef gate);
     GateRef VisitNumberShiftAndLogical(GateRef gate);
     GateRef VisitNumberDiv(GateRef gate);
-    GateRef VisitBooleanJeqz(GateRef gate);
+    GateRef VisitBooleanJump(GateRef gate);
     GateRef VisitOverflowCheck(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);
     GateRef VisitLoadElement(GateRef gate);

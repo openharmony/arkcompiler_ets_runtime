@@ -36,7 +36,7 @@ private:
     void VisitNumberBinaryOp(GateRef gate);
     void VisitTypedUnaryOp(GateRef gate);
     void VisitNumberNot(GateRef gate);
-    void VisitTypedJeqz(GateRef gate);
+    void VisitTypedConditionJump(GateRef gate);
     void VisitConstant(GateRef gate);
     void VisitPhi(GateRef gate);
     void VisitUndefinedStrictEq(GateRef gate);
@@ -53,7 +53,7 @@ private:
     template<TypedUnOp Op>
     void VisitNumberMonocular(GateRef gate);
     void VisitNumberDiv(GateRef gate);
-    void VisitBooleanJeqz(GateRef gate);
+    void VisitBooleanJump(GateRef gate);
 
     template<TypedBinOp Op>
     GateRef CalculateInts(GateRef left, GateRef right);
