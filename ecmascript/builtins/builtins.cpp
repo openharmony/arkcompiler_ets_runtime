@@ -276,6 +276,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         InitializeSymbolWithRealm(env, primRefObjHClass);
         InitializeBigIntWithRealm(env);
     }
+
     InitializeArray(env, objFuncPrototypeVal);
     if (lazyInit) {
         LazyInitializeDate(env);
@@ -308,7 +309,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeRegExp(env);
     InitializeString(env, primRefObjHClass);
 
-    JSHandle<JSHClass> argumentsClass = factory_->CreateJSArguments();
+    JSHandle<JSHClass> argumentsClass = factory_->CreateJSArguments(env);
     env->SetArgumentsClass(thread_, argumentsClass);
     SetArgumentsSharedAccessor(env);
 

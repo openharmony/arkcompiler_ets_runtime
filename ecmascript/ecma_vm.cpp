@@ -429,7 +429,11 @@ EcmaVM::~EcmaVM()
 
 JSHandle<GlobalEnv> EcmaVM::GetGlobalEnv() const
 {
-    return JSHandle<GlobalEnv>(reinterpret_cast<uintptr_t>(&globalEnv_));
+    // if (contexts_.empty()) {
+    if (!initialized_ || contexts_.empty()) {
+        return JSHandle<GlobalEnv>(reinterpret_cast<uintptr_t>(&globalEnv_));
+    }
+    return contexts_.back()->GetGlobalEnv();
 }
 
 JSHandle<job::MicroJobQueue> EcmaVM::GetMicroJobQueue() const
@@ -896,6 +900,13 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
     }
+
+    if (pgoProfiler_ != nullptr) {
+        pgoProfiler_->Iterate(v);
+    }
+    for (EcmaContext *context : contexts_) {
+        context->Iterate(v, rv);
+    }
 }
 
 void EcmaVM::SetGlobalEnv(GlobalEnv *global)
@@ -1069,5 +1080,15 @@ void EcmaVM::DumpCallTimeInfo()
     if (callTimer_ != nullptr) {
         callTimer_->PrintAllStats();
     }
+}
+
+void EcmaVM::PushContext(EcmaContext *context)
+{
+    contexts_.emplace_back(context);
+}
+
+void EcmaVM::PopContext([[maybe_unused]] EcmaContext *context)
+{
+    contexts_.pop_back();
 }
 }  // namespace panda::ecmascript

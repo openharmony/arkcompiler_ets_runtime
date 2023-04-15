@@ -313,7 +313,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
             PathHelper::CroppingRecord(entry);
         }
     }
-
     // will be refactored, temporarily use the function IsModule to verify realEntry
     [[maybe_unused]] bool isModule = jsPandaFile->IsModule(thread, entry, realEntry);
     if (thread->HasPendingException()) {
@@ -321,6 +320,97 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
         return Unexpected(false);
     }
     ASSERT(isModule);
-    return CommonExecuteBuffer(thread, name, entry, jsPandaFile.get());
+    return CommonExecuteBuffer(thread, isBundle, name, entry, buffer, size);
+}
+
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFileInContext(EcmaContext *context,
+    const CString &filename, std::string_view entryPoint, bool needUpdate, bool excuteFromJob)
+{
+    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename in context " << filename;
+    CString entry;
+    CString name;
+    CString normalName = PathHelper::NormalizePath(filename);
+    EcmaVM *vm = context->GetEcmaVM();
+    JSThread *thread = context->GetJSThread();
+    if (!vm->IsBundlePack()) {
+#if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST)
+        name = filename;
+        entry = entryPoint.data();
+#else
+        if (excuteFromJob) {
+            entry = entryPoint.data();
+        } else {
+            entry = PathHelper::ParseOhmUrl(vm, normalName, name);
+        }
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
+        if (name.empty()) {
+            name = vm->GetAssetPath();
+        }
+#elif defined(PANDA_TARGET_WINDOWS)
+        CString assetPath = vm->GetAssetPath();
+        name = assetPath + "\\" + JSPandaFile::MERGE_ABC_NAME;
+#else
+        CString assetPath = vm->GetAssetPath();
+        name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
+#endif
+#endif
+    } else {
+        name = filename;
+        entry = entryPoint.data();
+    }
+
+    const JSPandaFile *jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), needUpdate);
+    if (jsPandaFile == nullptr) {
+        CString msg = "Load file with filename '" + name + "' failed";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+    }
+    // If it is an old record, delete the bundleName and moduleName
+    if (!jsPandaFile->IsBundlePack() && !excuteFromJob && !vm->GetBundleName().empty()) {
+        const_cast<JSPandaFile *>(jsPandaFile)->CheckIsRecordWithBundleName(vm);
+        if (!jsPandaFile->IsRecordWithBundleName()) {
+            PathHelper::CroppingRecord(entry);
+        }
+    }
+
+    // will be refactored, temporarily use the function IsModule to verify realEntry
+    bool isModule = jsPandaFile->IsModule(thread, entry.c_str());
+    if (thread->HasPendingException()) {
+        vm->HandleUncaughtException(thread->GetException());
+        return Unexpected(false);
+    }
+    if (isModule) {
+        [[maybe_unused]] EcmaHandleScope scope(thread);
+        ModuleManager *moduleManager = vm->GetModuleManager();
+        JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
+        if (jsPandaFile->IsBundlePack()) {
+            moduleRecord = moduleManager->HostResolveImportedModule(name);
+        } else {
+            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(name, entry.c_str());
+        }
+        SourceTextModule::Instantiate(thread, moduleRecord);
+        if (thread->HasPendingException()) {
+            if (!excuteFromJob) {
+                vm->HandleUncaughtException(thread->GetException());
+            }
+            return Unexpected(false);
+        }
+        JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
+        module->SetStatus(ModuleStatus::INSTANTIATED);
+        SourceTextModule::Evaluate(thread, module, nullptr, 0, excuteFromJob);
+        return JSTaggedValue::Undefined();
+    }
+    return JSPandaFileExecutor::ExecuteInContext(context, jsPandaFile, entry.c_str(), excuteFromJob);
+}
+
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteInContext(EcmaContext *context,
+    const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool excuteFromJob)
+{
+    Expected<JSTaggedValue, bool> result = context->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, excuteFromJob);
+    // if (result) {
+    //     QuickFixManager *quickFixManager = vm->GetQuickFixManager();
+    //     quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
+    // }
+    return result;
 }
 }  // namespace panda::ecmascript

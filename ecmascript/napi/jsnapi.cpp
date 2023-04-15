@@ -34,6 +34,7 @@
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
@@ -169,6 +170,7 @@ using ecmascript::DebugInfoExtractor;
 using ecmascript::PatchErrorCode;
 using ecmascript::base::NumberHelper;
 using ecmascript::Log;
+using ecmascript::EcmaContext;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
@@ -512,6 +514,21 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
     aotFileName += moduleName;
     LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
     vm->LoadAOTFiles(aotFileName);
+}
+
+bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)
+{
+    LOG_ECMA(DEBUG) << "start to execute ark file in context: " << fileName;
+    EcmaContext *context = EcmaContext::Create(vm);
+    context->MountContext();
+    // JSThread *thread = vm->GetAssociatedJSThread();
+    if (!ecmascript::JSPandaFileExecutor::ExecuteFromFileInContext(context, fileName.c_str(), entry, needUpdate)) {
+        LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
+                        << "' with entry '" << entry << "'" << std::endl;
+        return false;
+    }
+    context->UnmountContext();
+    return true;
 }
 
 bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)

@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H
 #define ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H
 
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
@@ -46,6 +47,12 @@ public:
                                                                    bool needUpdate = false);
     static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, const CString &filename,
                                                              const CString &entry, const JSPandaFile *jsPandaFile);
+    // In Context
+    static Expected<JSTaggedValue, bool> ExecuteFromFileInContext(EcmaContext *context, const CString &filename,
+                                                                  std::string_view entryPoint, bool needUpdate = false,
+                                                                  bool excuteFromJob = false);
+    static Expected<JSTaggedValue, bool> ExecuteInContext(EcmaContext *context, const JSPandaFile *jsPandaFile,
+                                                          std::string_view entryPoint, bool excuteFromJob = false);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_EXECUTOR_H

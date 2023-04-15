@@ -20,6 +20,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_method_index.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
@@ -585,6 +586,8 @@ public:
     }
 
 
+    void PushContext(EcmaContext *context);
+    void PopContext(EcmaContext *context);
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -668,7 +671,7 @@ private:
     void* data_ {nullptr};
 
     bool isProcessingPendingJob_ = false;
-	// atomics
+    // atomics
     bool AllowAtomicWait_ {true};
     WaiterListNode waiterListNode_;
 
@@ -711,6 +714,7 @@ private:
             : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
     };
     std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
+    CVector<EcmaContext *> contexts_;
 
     friend class Snapshot;
     friend class SnapshotProcessor;
@@ -718,6 +722,7 @@ private:
     friend class ValueSerializer;
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
+    friend class EcmaContext;
     CMap<uint32_t, EcmaVM *> workerList_ {};
     os::memory::Mutex mutex_;
     void *loop_ {nullptr};

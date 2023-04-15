@@ -700,7 +700,7 @@ private:
 
     JSHandle<TaggedArray> NewEmptyArray();  // only used for EcmaVM.
 
-    JSHandle<JSHClass> CreateJSArguments();
+    JSHandle<JSHClass> CreateJSArguments(const JSHandle<GlobalEnv> &env);
     JSHandle<JSHClass> CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto);
     JSHandle<JSHClass> CreateJSRegExpInstanceClass(JSHandle<JSTaggedValue> proto);
 
@@ -719,6 +719,7 @@ private:
     friend class ModuleDataExtractor;
     friend class ModuleDataAccessor;
     friend class ConstantPool;
+    friend class EcmaContext;
     friend class kungfu::TSHClassGenerator;
 };
 
