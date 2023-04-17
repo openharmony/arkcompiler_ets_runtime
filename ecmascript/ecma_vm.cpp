@@ -888,7 +888,11 @@ void EcmaVM::LoadStubFile()
 void EcmaVM::LoadAOTFiles(const std::string& aotFileName)
 {
     std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
-    aotFileManager_->LoadAnFile(anFile);
+    if (!aotFileManager_->LoadAnFile(anFile)) {
+        LOG_ECMA(ERROR) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";
+        ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
+        return;
+    }
 
     std::string aiFile = aotFileName + AOTFileManager::FILE_EXTENSION_AI;
     aotFileManager_->LoadAiFile(aiFile);

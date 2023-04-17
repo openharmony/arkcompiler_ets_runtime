@@ -52,7 +52,11 @@ public:
     }
 
     static void DestoryBuf(ExeMem &exeMem) {
-        MachineCodePageUnmap(MemMap(exeMem.addr_, exeMem.size_));
+        if (exeMem.addr_ != nullptr) {
+            MachineCodePageUnmap(MemMap(exeMem.addr_, exeMem.size_));
+            exeMem.addr_ = nullptr;
+            exeMem.size_ = 0;
+        }
     }
 };
 
@@ -328,6 +332,8 @@ public:
 
     bool CalCallSiteInfo(uintptr_t retAddr, CallSiteInfo& ret) const;
 
+    virtual void Destroy();
+
 protected:
     ExecutedMemoryAllocator::ExeMem& GetExeMem() {
         return exeMem_;
@@ -374,13 +380,21 @@ public:
         return isLoad_;
     }
 
-    void RewriteRelcateDeoptHandler(EcmaVM *vm);
+    void Destroy() override;
+
+    bool RewriteRelcateDeoptHandler(EcmaVM *vm);
+
+    Elf64_Ehdr GetHeader()
+    {
+        return header_;
+    }
 
 private:
     bool Load(const std::string &filename);
-    void RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
+    bool RewriteRelcateTextSection(const char* symbol, uintptr_t patchAddr);
     std::unordered_map<uint32_t, uint64_t> mainEntryMap_ {};
     bool isLoad_ {false};
+    Elf64_Ehdr header_;
 
     friend class AnFileDataManager;
 };
@@ -476,6 +490,8 @@ public:
     bool SafeInsideAOT(uintptr_t pc);
     AOTFileInfo::CallSiteInfo SafeCalCallSiteInfo(uintptr_t retAddr);
     void SafeDestoryAllData();
+    void SafeDestroyAnData(const std::string &fileName);
+
     const std::string& GetDir() const
     {
         return anDir_;
@@ -489,7 +505,7 @@ public:
     // only main thread call this, only call once, no need to lock
     void SetDir(std::string dir)
     {
-        anDir_ = dir;
+        anDir_ = std::move(dir);
     }
 
     void SetEnable(bool enable)
@@ -497,11 +513,16 @@ public:
         anEnable_ = enable;
     }
 
-public:
+private:
     AnFileDataManager() = default;
     std::shared_ptr<AnFileInfo> UnsafeFind(const std::string &fileName) const;
     bool UnsafeLoadFromAOT(const std::string &fileName, EcmaVM *vm);
     bool UnsafeLoadFromStub();
+    uint32_t UnSafeGetFileInfoIndex(const std::string &fileName);
+    std::shared_ptr<AnFileInfo> UnSafeGetAnFileInfo(uint32_t index)
+    {
+        return loadedAn_.at(index);
+    }
 
     os::memory::RWLock lock_;
     std::unordered_map<std::string, uint32_t> anFileNameToIndexMap_;
@@ -516,14 +537,12 @@ public:
     explicit AOTFileManager(EcmaVM *vm);
     virtual ~AOTFileManager();
 
-    static constexpr uint32_t AOT_VERSION = 1;
     static constexpr char FILE_EXTENSION_AN[] = ".an";
     static constexpr char FILE_EXTENSION_AI[] = ".ai";
     static constexpr uint8_t DESERI_CP_ITEM_SIZE = 2;
 
     void LoadStubFile(const std::string &fileName);
-    void LoadAnFile(const std::string &fileName);
-    void LoadAnFile(JSPandaFile *jsPandaFile);
+    bool LoadAnFile(const std::string &fileName);
     AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr) const;
     bool TryReadLock() const;
     bool InsideStub(uintptr_t pc) const;
@@ -539,7 +558,7 @@ public:
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex);
     void SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,
                                    const AOTLiteralInfo *entryIndexes);
-    void LoadAiFile([[maybe_unused]] const std::string& filename);
+    void LoadAiFile([[maybe_unused]] const std::string &filename);
     void LoadAiFile(const JSPandaFile *jsPandaFile);
     kungfu::ArkStackMapParser* GetStackMapParser() const;
     static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
@@ -569,5 +588,5 @@ private:
     friend class AnFileInfo;
     friend class StubFileInfo;
 };
-}
+}  // namespace panda::ecmascript
 #endif // ECMASCRIPT_AOT_FILE_MANAGER_H

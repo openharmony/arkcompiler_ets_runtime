@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_H
 #define ECMASCRIPT_JSPANDAFILE_JS_PANDAFILE_H
 
+#include "ecmascript/base/file_header.h"
 #include "ecmascript/common.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/jspandafile/constpool_value.h"
@@ -333,7 +334,7 @@ private:
     void InitializeMergedPF();
 
     static constexpr size_t VERSION_SIZE = 4;
-    static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
+    static constexpr base::FileHeader::VersionType OLD_VERSION {0, 0, 0, 2};
 
     uint32_t constpoolIndex_ {0};
     uint32_t checksum_ {0};

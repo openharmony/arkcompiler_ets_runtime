@@ -15,6 +15,7 @@
 
 #include "ecmascript/platform/elf.h"
 
+#include "ecmascript/base/file_header.h"
 #include "ecmascript/ecma_macros.h"
 #include "securec.h"
 
@@ -59,9 +60,7 @@ bool VerifyELFHeader(const Elf64_Ehdr &header, uint32_t version)
                         << header.e_ident[EI_MAG2] << header.e_ident[EI_MAG3];
         return false;
     }
-    if (header.e_version > version) {
-        LOG_ECMA(ERROR) << "Elf format error, expected version should be less or equal than "
-                        << version << ", but got " << header.e_version;
+    if (!base::FileHeader::VerifyVersion("Elf ", header.e_version, version)) {
         return false;
     }
     return true;

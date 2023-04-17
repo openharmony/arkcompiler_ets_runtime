@@ -14,6 +14,8 @@
  */
 #include "ecmascript/aot_file_manager.h"
 
+#include "ecmascript/aot_version.h"
+#include "ecmascript/base/file_header.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/bc_call_signature.h"
@@ -247,7 +249,7 @@ void AnFileInfo::Save(const std::string &filename, kungfu::Triple triple)
     SetStubNum(entries_.size());
 
     Elf64_Ehdr header;
-    PackELFHeader(header, AOTFileManager::AOT_VERSION, triple);
+    PackELFHeader(header, base::FileHeader::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
     file.write(reinterpret_cast<char *>(&header), sizeof(Elf64_Ehdr));
     file.write(reinterpret_cast<char *>(&entryNum_), sizeof(entryNum_));
     file.write(reinterpret_cast<char *>(entries_.data()), sizeof(FuncEntryDes) * entryNum_);
@@ -262,16 +264,18 @@ void AnFileInfo::Save(const std::string &filename, kungfu::Triple triple)
 }
 
 
-void AnFileInfo::RewriteRelcateDeoptHandler([[maybe_unused]] EcmaVM *vm)
+bool AnFileInfo::RewriteRelcateDeoptHandler([[maybe_unused]] EcmaVM *vm)
 {
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
     JSThread *thread = vm->GetJSThread();
     uintptr_t patchAddr = thread->GetRTInterface(RTSTUB_ID(DeoptHandlerAsm));
-    RewriteRelcateTextSection(LLVM_DEOPT_RELOCATE_SYMBOL, patchAddr);
+    return RewriteRelcateTextSection(Deoptimizier::GetLLVMDeoptRelocateSymbol(), patchAddr);
+#else
+    return false;
 #endif
 }
 
-void AnFileInfo::RewriteRelcateTextSection([[maybe_unused]] const char* symbol,
+bool AnFileInfo::RewriteRelcateTextSection([[maybe_unused]] const char* symbol,
     [[maybe_unused]] uintptr_t patchAddr)
 {
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
@@ -290,9 +294,14 @@ void AnFileInfo::RewriteRelcateTextSection([[maybe_unused]] const char* symbol,
 #ifndef NDEBUG
             relocate.DumpRelocateText();
 #endif
-            relocate.RelocateBySymbol(symbol, patchAddr);
+            if (!relocate.RelocateBySymbol(symbol, patchAddr)) {
+                return false;
+            }
         }
     }
+    return true;
+#else
+    return false;
 #endif
 }
 
@@ -313,9 +322,8 @@ bool AnFileInfo::Load(const std::string &filename)
         return false;
     }
 
-    Elf64_Ehdr header;
-    file.read(reinterpret_cast<char *>(&header), sizeof(Elf64_Ehdr));
-    if (!VerifyELFHeader(header, AOTFileManager::AOT_VERSION)) {
+    file.read(reinterpret_cast<char *>(&header_), sizeof(Elf64_Ehdr));
+    if (!VerifyELFHeader(header_, base::FileHeader::ToVersionNumber(AOTFileVersion::AN_VERSION))) {
         file.close();
         return false;
     }
@@ -357,6 +365,13 @@ bool AnFileInfo::Load(const std::string &filename)
     return true;
 }
 
+void AnFileInfo::Destroy()
+{
+    mainEntryMap_.clear();
+    isLoad_ = false;
+    AOTFileInfo::Destroy();
+}
+
 bool AnFileInfo::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const
 {
     auto methodId = jsPandaFile->GetMainMethodIndex(entry);
@@ -390,12 +405,10 @@ void AOTFileManager::LoadStubFile(const std::string &fileName)
     InitializeStubEntries(stubs);
 }
 
-void AOTFileManager::LoadAnFile(const std::string &fileName)
+bool AOTFileManager::LoadAnFile(const std::string &fileName)
 {
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
-    if (!anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::AOT, vm_)) {
-        return;
-    }
+    return anFileDataManager->SafeLoad(fileName, AnFileDataManager::Type::AOT, vm_);
 }
 
 void AOTFileManager::LoadAiFile([[maybe_unused]] const std::string &filename)
@@ -678,8 +691,8 @@ void AOTFileManager::AddConstantPool(const CString &snapshotFileName, JSTaggedVa
 
 JSHandle<JSTaggedValue> AOTFileManager::GetDeserializedConstantPool(const JSPandaFile *jsPandaFile, int32_t cpID)
 {
-    //The deserialization of the 'ai' data used by the multi-work 
-    // is not implemented yet, so there may be a case where 
+    //The deserialization of the 'ai' data used by the multi-work
+    // is not implemented yet, so there may be a case where
     // desCPs_ is empty, in which case the Hole will be returned
     if (desCPs_.size() == 0) {
         return JSHandle<JSTaggedValue>(vm_->GetJSThread(), JSTaggedValue::Hole());
@@ -755,6 +768,16 @@ void BinaryBufferParser::ParseBuffer(uint8_t *dst, uint32_t count, uint8_t *src)
     }
 }
 
+void AOTFileInfo::Destroy()
+{
+    entryNum_ = 0;
+    moduleNum_ = 0;
+    totalCodeSize_ = 0;
+    entries_.clear();
+    des_.clear();
+    ExecutedMemoryAllocator::DestoryBuf(exeMem_);
+}
+
 bool AOTFileInfo::CalCallSiteInfo(uintptr_t retAddr,
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec>& ret) const
 {
@@ -826,6 +849,18 @@ void AnFileDataManager::SafeDestoryAllData()
     loadedAn_.clear();
 }
 
+void AnFileDataManager::SafeDestroyAnData(const std::string &fileName)
+{
+    os::memory::WriteLockHolder lock(lock_);
+    std::string anBasename = JSFilePath::GetBaseName(fileName);
+    auto index = UnSafeGetFileInfoIndex(anBasename);
+    if (index == INVALID_INDEX) {
+        return;
+    }
+    auto info = UnSafeGetAnFileInfo(index);
+    info->Destroy();
+}
+
 bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type, EcmaVM* vm)
 {
     os::memory::WriteLockHolder lock(lock_);
@@ -874,16 +909,28 @@ bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName, EcmaVM *v
     if (!info->Load(fileName)) {
         return false;
     }
-    info->RewriteRelcateDeoptHandler(vm);
+
+    // '.an' file with version 1 needs to use the old relocate operations
+    LOG_COMPILER(INFO) << "Verify that the an file needs to relocate deoptHandler";
+    bool match = VerifyELFHeader(info->GetHeader(), base::FileHeader::ToVersionNumber(AOTFileVersion::REWRITE_RELOCATE_AN_VERSION));
+    if (match) {
+        if (!info->RewriteRelcateDeoptHandler(vm)) {
+            // relocating deoptHandler failed, need to rollback to interpreter
+            return false;
+        }
+        LOG_COMPILER(INFO) << "Relocate deoptHandler success";
+    } else {
+        LOG_COMPILER(INFO) << "an file with a version number greater than 1 does not need to be relocated";
+    }
+
     std::string anBasename = JSFilePath::GetBaseName(fileName);
     anFileNameToIndexMap_.insert({anBasename, loadedAn_.size()});
     loadedAn_.emplace_back(info);
     return true;
 }
 
-uint32_t AnFileDataManager::SafeGetFileInfoIndex(const std::string &fileName)
+uint32_t AnFileDataManager::UnSafeGetFileInfoIndex(const std::string &fileName)
 {
-    os::memory::ReadLockHolder lock(lock_);
     auto iter = anFileNameToIndexMap_.find(fileName);
     if (iter == anFileNameToIndexMap_.end()) {
         return JSPandaFile::INVALID_INDEX;
@@ -891,10 +938,16 @@ uint32_t AnFileDataManager::SafeGetFileInfoIndex(const std::string &fileName)
     return anFileNameToIndexMap_.at(fileName);
 }
 
+uint32_t AnFileDataManager::SafeGetFileInfoIndex(const std::string &fileName)
+{
+    os::memory::ReadLockHolder lock(lock_);
+    return UnSafeGetFileInfoIndex(fileName);
+}
+
 std::shared_ptr<AnFileInfo> AnFileDataManager::SafeGetAnFileInfo(uint32_t index)
 {
     os::memory::ReadLockHolder lock(lock_);
-    return loadedAn_.at(index);
+    return UnSafeGetAnFileInfo(index);
 }
 
 std::shared_ptr<StubFileInfo> AnFileDataManager::SafeGetStubFileInfo()

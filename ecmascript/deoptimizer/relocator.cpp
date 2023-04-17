@@ -52,9 +52,11 @@ bool Relocator::Relocate(Elf64_Rela *sec, uintptr_t symbolAddr, uintptr_t patchA
             P: is the address of the place beging relocated(derived from r_offset)
             */
             intptr_t imm = patchAddr + addend - symbolAddr;
-            ASSERT(-(1 << 27) <= imm && imm < (1 << 27));  // 27: "Check that -2^27 <= result < 2^27".
-            imm = (imm & 0x0FFFFFFC) >> 2; // 0x0FFFFFFC: get immediate file to bits [27:2]
-            *(reinterpret_cast<uint32_t *>(symbolAddr)) = imm | panda::ecmascript::aarch64::CallOpCode::BL;
+            if (BlInRange(imm)) {
+                imm = (imm & 0x0FFFFFFC) >> 2; // 0x0FFFFFFC: get immediate file to bits [27:2]
+                *(reinterpret_cast<uint32_t *>(symbolAddr)) = imm | panda::ecmascript::aarch64::CallOpCode::BL;
+                ret = true;
+            }
             break;
         }
         case R_X86_64_PLT32: {
@@ -170,6 +172,11 @@ void Relocator::DumpRelocateText()
             << std::left << std::setw(leftAdjustment) << std::dec << cur->st_name
             << std::left << std::setw(leftAdjustment) << name;
     }
+}
+
+bool Relocator::BlInRange(intptr_t imm)
+{
+    return -(1 << 27) <= imm && imm < (1 << 27);
 }
 } // namespace panda::ecmascript
 #endif

@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_SNAPSHOT_MEM_SNAPSHOT_H
 #define ECMASCRIPT_SNAPSHOT_MEM_SNAPSHOT_H
 
+#include "ecmascript/aot_version.h"
 #include "ecmascript/common.h"
 #include "ecmascript/snapshot/mem/encode_bit.h"
 #include "ecmascript/snapshot/mem/snapshot_processor.h"
@@ -43,13 +44,11 @@ public:
 private:
     struct SnapShotHeader : public base::FileHeader {
     public:
-        static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 1};
-
-        SnapShotHeader() : base::FileHeader(LAST_VERSION) {}
+        SnapShotHeader() : base::FileHeader(AOTFileVersion::AI_VERSION) {}
 
         bool Verify()
         {
-            return VerifyInner("snapshot file", LAST_VERSION);
+            return VerifyInner("snapshot file", AOTFileVersion::AI_VERSION);
         }
 
         uint32_t oldSpaceObjSize;

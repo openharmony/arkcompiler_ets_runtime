@@ -74,7 +74,7 @@ static constexpr size_t ALIGN_SIZE = 4;
  */
 class PGOProfilerHeader : public base::FileHeader {
 public:
-    static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 1};
+    static constexpr VersionType LAST_VERSION = {0, 0, 0, 1};
     static constexpr size_t SECTION_SIZE = 2;
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;

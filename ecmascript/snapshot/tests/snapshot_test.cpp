@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/base/file_header.h"
 #include "ecmascript/tests/test_helper.h"
 
 #include "ecmascript/ecma_vm.h"
@@ -274,5 +275,13 @@ HWTEST_F_L0(SnapshotTest, SerializeHugeObject)
     EXPECT_TRUE(array3->Get(2).IsJSFunction());
     EXPECT_TRUE(array3->Get(3).IsJSFunction());
     std::remove(fileName.c_str());
+}
+
+HWTEST_F_L0(SnapshotTest, VersionTest)
+{
+    base::FileHeader::VersionType version = {4, 3, 2, 1};
+    uint32_t versionNumber = 0x04030201U;
+    EXPECT_EQ(version, base::FileHeader::ToVersion(versionNumber));
+    EXPECT_EQ(versionNumber, base::FileHeader::ToVersionNumber(version));
 }
 }  // namespace panda::test
