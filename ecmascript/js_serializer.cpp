@@ -586,12 +586,7 @@ bool JSSerializer::WriteEcmaString(const JSHandle<JSTaggedValue> &value)
     if (!WriteType(SerializationUID::ECMASTRING)) {
         return false;
     }
-    bool isUtf8 = EcmaStringAccessor(string).IsUtf8();
-    // write utf encode flag
-    if (!WriteBoolean(isUtf8)) {
-        bufferSize_ = oldSize;
-        return false;
-    }
+
     size_t length = EcmaStringAccessor(string).GetLength();
     if (!WriteInt(static_cast<int32_t>(length))) {
         bufferSize_ = oldSize;
@@ -600,6 +595,13 @@ bool JSSerializer::WriteEcmaString(const JSHandle<JSTaggedValue> &value)
     // skip writeRawData for empty EcmaString
     if (length == 0) {
         return true;
+    }
+
+    bool isUtf8 = EcmaStringAccessor(string).IsUtf8();
+    // write utf encode flag
+    if (!WriteBoolean(isUtf8)) {
+        bufferSize_ = oldSize;
+        return false;
     }
     if (isUtf8) {
         const uint8_t *data = EcmaStringAccessor(string).GetDataUtf8();
@@ -883,19 +885,6 @@ bool JSSerializer::IsNativeBindingObject(std::vector<JSTaggedValue> keyVector)
     }
     return false;
 }
-
-bool JSSerializer::IsTargetSymbol(JSTaggedValue symbolVal)
-{
-    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> detach = env->GetDetachSymbol();
-    JSHandle<JSTaggedValue> attach = env->GetAttachSymbol();
-    if (JSTaggedValue::Equal(thread_, detach, JSHandle<JSTaggedValue>(thread_, symbolVal)) ||
-        JSTaggedValue::Equal(thread_, attach, JSHandle<JSTaggedValue>(thread_, symbolVal))) {
-        return true;
-    }
-    return false;
-}
-
 
 bool JSSerializer::WritePlainObject(const JSHandle<JSTaggedValue> &objValue)
 {
@@ -1464,21 +1453,22 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArray()
 JSHandle<JSTaggedValue> JSDeserializer::ReadEcmaString()
 {
     int32_t stringLength;
+    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&stringLength)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    if (stringLength == 0) {
+        JSHandle<JSTaggedValue> emptyString = JSHandle<JSTaggedValue>::Cast(factory_->GetEmptyString());
+        referenceMap_.emplace(objectId_++, emptyString);
+        return emptyString;
+    }
+
     bool isUtf8 = false;
     if (!ReadBoolean(&isUtf8)) {
         return JSHandle<JSTaggedValue>();
     }
-    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&stringLength)) {
-        return JSHandle<JSTaggedValue>();
-    }
+
     JSHandle<JSTaggedValue> stringTag;
     if (isUtf8) {
-        if (stringLength == 0) {
-            JSHandle<JSTaggedValue> emptyString = JSHandle<JSTaggedValue>::Cast(factory_->GetEmptyString());
-            referenceMap_.emplace(objectId_++, emptyString);
-            return emptyString;
-        }
-
         uint8_t *string = reinterpret_cast<uint8_t*>(GetBuffer(stringLength + 1));
         if (string == nullptr) {
             return JSHandle<JSTaggedValue>();
@@ -1540,6 +1530,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadNativeBindingObject()
         LOG_ECMA(ERROR) << "NativeBindingObject is empty";
         attachVal = JSValueRef::Undefined(thread_->GetEcmaVM());
     }
+    objectId_++;
     return JSNApiHelper::ToJSHandle(attachVal);
 }
 

@@ -88,7 +88,7 @@ public:
         Destroy();
     }
 
-    void JSPlainObjectTest(std::pair<uint8_t *, size_t> data)
+    void JSPlainObjectTest1(std::pair<uint8_t *, size_t> data)
     {
         Init();
         JSDeserializer deserializer(thread, data.first, data.second);
@@ -124,7 +124,7 @@ public:
         Destroy();
     }
 
-    void JSPlainObjectTest01(std::pair<uint8_t *, size_t> data)
+    void JSPlainObjectTest2(std::pair<uint8_t *, size_t> data)
     {
         Init();
         ObjectFactory *factory = ecmaVm->GetFactory();
@@ -147,7 +147,7 @@ public:
         Destroy();
     }
 
-    void NativeBindingObjectTest(std::pair<uint8_t *, size_t> data)
+    void NativeBindingObjectTest1(std::pair<uint8_t *, size_t> data)
     {
         Init();
         JSDeserializer deserializer(thread, data.first, data.second);
@@ -165,20 +165,73 @@ public:
         Destroy();
     }
 
-    void NativeBindingObjectTest1(std::pair<uint8_t *, size_t> data)
+    void NativeBindingObjectTest2(std::pair<uint8_t *, size_t> data)
     {
         Init();
+        ObjectFactory *factory = ecmaVm->GetFactory();
         JSDeserializer deserializer(thread, data.first, data.second);
         JSHandle<JSTaggedValue> objValue1 = deserializer.Deserialize();
         [[maybe_unused]] JSHandle<JSTaggedValue> objValue2 = deserializer.Deserialize();
 
         JSHandle<JSObject> retObj1 = JSHandle<JSObject>::Cast(objValue1);
         EXPECT_FALSE(retObj1.IsEmpty());
-
         JSHandle<TaggedArray> array1 = JSObject::GetOwnPropertyKeys(thread, retObj1);
         uint32_t length1 = array1->GetLength();
         EXPECT_EQ(length1, 4U); // 4 : test case
+        JSHandle<JSTaggedValue> key1(factory->NewFromASCII("abc"));
+        JSHandle<JSTaggedValue> key2(factory->NewFromASCII("8"));
+        JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(6));
+        JSHandle<JSTaggedValue> value2 = JSHandle<JSTaggedValue>::Cast(factory->GetEmptyString());
+        OperationResult res1 = JSObject::GetProperty(thread, objValue1, key1);
+        JSHandle<JSTaggedValue> resValue1 = res1.GetRawValue();
+        EXPECT_EQ(resValue1, value1);
+        OperationResult res2 = JSObject::GetProperty(thread, objValue1, key2);
+        JSHandle<JSTaggedValue> resValue2 = res2.GetRawValue();
+        EXPECT_EQ(resValue2, value2);
+        Destroy();
+    }
 
+    void NativeBindingObjectTest3(std::pair<uint8_t *, size_t> data)
+    {
+        Init();
+        ObjectFactory *factory = ecmaVm->GetFactory();
+        JSDeserializer deserializer(thread, data.first, data.second);
+        [[maybe_unused]] JSHandle<JSTaggedValue> objValue1 = deserializer.Deserialize();
+        JSHandle<JSTaggedValue> objValue2 = deserializer.Deserialize();
+
+        JSHandle<JSTaggedValue> key1(factory->NewFromASCII("root1"));
+        JSHandle<JSTaggedValue> key2(factory->NewFromASCII("root2"));
+        JSHandle<JSTaggedValue> key3(factory->NewFromASCII("root3"));
+        JSHandle<JSTaggedValue> key4(factory->NewFromASCII("name"));
+        JSHandle<JSTaggedValue> key5(factory->NewFromASCII("version"));
+        JSHandle<JSTaggedValue> key6(factory->NewFromASCII("product"));
+        JSHandle<JSTaggedValue> key7(factory->NewFromASCII("os"));
+        JSHandle<JSTaggedValue> key8(factory->NewFromASCII("system"));
+        JSHandle<JSTaggedValue> value1(factory->NewFromASCII(""));
+        OperationResult res1 = JSObject::GetProperty(thread, objValue2, key1);
+        JSHandle<JSTaggedValue> resValue1 = res1.GetRawValue();
+        EXPECT_EQ(resValue1, value1);
+        OperationResult res2 = JSObject::GetProperty(thread, objValue2, key2);
+        JSHandle<JSTaggedValue> resValue2 = res2.GetRawValue();
+        EXPECT_EQ(resValue2, value1);
+        OperationResult res3 = JSObject::GetProperty(thread, objValue2, key3);
+        JSHandle<JSTaggedValue> resValue3 = res3.GetRawValue();
+        EXPECT_EQ(resValue3, value1);
+        OperationResult res4 = JSObject::GetProperty(thread, objValue2, key4);
+        JSHandle<JSTaggedValue> resValue4 = res4.GetRawValue();
+        EXPECT_EQ(resValue4, value1);
+        OperationResult res5 = JSObject::GetProperty(thread, objValue2, key5);
+        JSHandle<JSTaggedValue> resValue5 = res5.GetRawValue();
+        EXPECT_EQ(resValue5, value1);
+        OperationResult res6 = JSObject::GetProperty(thread, objValue2, key6);
+        JSHandle<JSTaggedValue> resValue6 = res6.GetRawValue();
+        EXPECT_EQ(resValue6, value1);
+        OperationResult res7 = JSObject::GetProperty(thread, objValue2, key7);
+        JSHandle<JSTaggedValue> resValue7 = res7.GetRawValue();
+        EXPECT_EQ(resValue7, value1);
+        OperationResult res8 = JSObject::GetProperty(thread, objValue2, key8);
+        JSHandle<JSTaggedValue> resValue8 = res8.GetRawValue();
+        EXPECT_EQ(resValue8, value1);
         Destroy();
     }
 
@@ -785,7 +838,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSSpecialValue)
     delete serializer;
 };
 
-HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject)
+HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject1)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
@@ -825,12 +878,12 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject)
     EXPECT_TRUE(success2);
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
-    std::thread t1(&JSDeserializerTest::JSPlainObjectTest, jsDeserializerTest, data);
+    std::thread t1(&JSDeserializerTest::JSPlainObjectTest1, jsDeserializerTest, data);
     t1.join();
     delete serializer;
 };
 
-HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject01)
+HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject2)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
@@ -873,7 +926,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSPlainObject01)
     EXPECT_TRUE(success1);
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
-    std::thread t1(&JSDeserializerTest::JSPlainObjectTest01, jsDeserializerTest, data);
+    std::thread t1(&JSDeserializerTest::JSPlainObjectTest2, jsDeserializerTest, data);
     t1.join();
     delete serializer;
 };
@@ -896,7 +949,7 @@ static void* attach([[maybe_unused]] void *enginePointer, [[maybe_unused]] void 
     return nullptr;
 }
 
-HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject)
+HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject1)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
@@ -944,13 +997,13 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject)
     EXPECT_TRUE(success3);
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
-    std::thread t1(&JSDeserializerTest::NativeBindingObjectTest, jsDeserializerTest, data);
+    std::thread t1(&JSDeserializerTest::NativeBindingObjectTest1, jsDeserializerTest, data);
     t1.join();
     delete serializer;
 }
 
 // not support native object without detach and attach
-HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject1)
+HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject2)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
@@ -982,7 +1035,51 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject1)
     EXPECT_FALSE(success2);
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
-    std::thread t1(&JSDeserializerTest::NativeBindingObjectTest1, jsDeserializerTest, data);
+    std::thread t1(&JSDeserializerTest::NativeBindingObjectTest2, jsDeserializerTest, data);
+    t1.join();
+    delete serializer;
+}
+
+HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject3)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+    JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
+    JSHandle<JSObject> obj2 = factory->NewEmptyJSObject();
+
+    JSHandle<JSTaggedValue> key1 = env->GetDetachSymbol();
+    JSHandle<JSTaggedValue> key2 = env->GetAttachSymbol();
+    JSHandle<JSTaggedValue> key3(factory->NewFromASCII("root1"));
+    JSHandle<JSTaggedValue> key4(factory->NewFromASCII("root2"));
+    JSHandle<JSTaggedValue> key5(factory->NewFromASCII("root3"));
+    JSHandle<JSTaggedValue> key6(factory->NewFromASCII("name"));
+    JSHandle<JSTaggedValue> key7(factory->NewFromASCII("version"));
+    JSHandle<JSTaggedValue> key8(factory->NewFromASCII("product"));
+    JSHandle<JSTaggedValue> key9(factory->NewFromASCII("os"));
+    JSHandle<JSTaggedValue> key10(factory->NewFromASCII("system"));
+    JSHandle<JSTaggedValue> value1(factory->NewJSNativePointer(reinterpret_cast<void*>(detach)));
+    JSHandle<JSTaggedValue> value2(factory->NewJSNativePointer(reinterpret_cast<void*>(attach)));
+    JSHandle<JSTaggedValue> value3(factory->NewFromASCII(""));
+
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key1, value1);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key2, value2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key3, value3);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key4, value3);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key5, value3);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key6, value3);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key7, value3);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key8, value3);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key9, value3);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj2), key10, value3);
+
+    JSSerializer *serializer = new JSSerializer(thread);
+    bool success1 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(obj1));
+    bool success2 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(obj2));
+    EXPECT_TRUE(success1);
+    EXPECT_TRUE(success2);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::NativeBindingObjectTest3, jsDeserializerTest, data);
     t1.join();
     delete serializer;
 }
