@@ -358,9 +358,15 @@ void FrameStateBuilder::ComputeLiveOutBC(uint32_t index, const BytecodeInfo &byt
             UpdateVirtualRegister(vreg, def);
         }
     }
-    if (bytecodeInfo.GetOpcode() == EcmaOpcode::SUSPENDGENERATOR_V8) {
+    if (IsAsyncResolveOrSusp(bytecodeInfo)) {
         UpdateVirtualRegistersOfSuspend(gate);
     }
+}
+
+bool FrameStateBuilder::IsAsyncResolveOrSusp(const BytecodeInfo &bytecodeInfo)
+{
+    EcmaOpcode opcode = bytecodeInfo.GetOpcode();
+    return opcode == EcmaOpcode::SUSPENDGENERATOR_V8 || opcode == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8;
 }
 
 void FrameStateBuilder::BindStateSplit(size_t size)

@@ -113,51 +113,45 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
         }
 
         if (opcode == OpCode::LOOP_BEGIN) {
-            // This constant gate must be created by the NewGate method to distinguish whether the while
-            // loop needs to modify the phi node or not.
-            GateRef emptyOffsetGate = circuit_->GetConstantGate(MachineType::I32, static_cast<uint64_t>(-1),
-                                                                GateType::NJSValue());
-            // 2: valuesIn
-            GateRef bcOffsetPhiGate = circuit_->NewGate(circuit_->ValueSelector(2), MachineType::I32,
-                                                        {stateInGate, restoreOffsetGate, emptyOffsetGate},
-                                                        GateType::NJSValue());
+            bool resumeInLoopBody = false;
+            CheckResumeInLoopBody(stateInGate, resumeInLoopBody);
+            if (resumeInLoopBody) {
+                // This constant gate must be created by the NewGate method to distinguish whether the while
+                // loop needs to modify the phi node or not.
+                GateRef emptyOffsetGate = circuit_->GetConstantGate(MachineType::I32, static_cast<uint64_t>(-1),
+                                                                    GateType::NJSValue());
+                // 2: valuesIn
+                GateRef bcOffsetPhiGate = circuit_->NewGate(circuit_->ValueSelector(2), MachineType::I32,
+                                                            {stateInGate, restoreOffsetGate, emptyOffsetGate},
+                                                            GateType::NJSValue());
 
-            GateRef condition = builder_.Equal(offsetConstantGate, bcOffsetPhiGate);
-            GateRef ifBranch = circuit_->NewGate(circuit_->IfBranch(), {stateInGate, condition});
-            GateRef ifTrue = circuit_->NewGate(circuit_->IfTrue(), {ifBranch});
-            GateRef ifFalse = circuit_->NewGate(circuit_->IfFalse(), {ifBranch});
+                GateRef condition = builder_.Equal(offsetConstantGate, bcOffsetPhiGate);
+                GateRef ifBranch = circuit_->NewGate(circuit_->IfBranch(), {stateInGate, condition});
+                GateRef ifTrue = circuit_->NewGate(circuit_->IfTrue(), {ifBranch});
+                GateRef ifFalse = circuit_->NewGate(circuit_->IfFalse(), {ifBranch});
 
-            GateRef resumeStateGate = accessor_.GetState(resumeGate);
-            if (accessor_.GetOpCode(resumeStateGate) != OpCode::IF_TRUE) {
-                accessor_.ReplaceStateIn(resumeGate, ifTrue);
-                accessor_.ReplaceValueIn(resumeGate, newTarget);
-                accessor_.ReplaceDependIn(firstRestoreRegGate, bcOffsetPhiGate);
-                circuit_->NewGate(circuit_->Return(), MachineType::NOVALUE,
-                    { stateGate, suspendGate, suspendGate, circuit_->GetReturnRoot() },
-                    GateType::AnyType());
-            } else {
-                // Handling multi-layer for loops
-                UpdateValueSelector(prevLoopBeginGate, ifTrue, prevBcOffsetPhiGate);
-                accessor_.ReplaceValueIn(prevBcOffsetPhiGate, bcOffsetPhiGate);
-            }
-            accessor_.ReplaceStateIn(ifBranch, stateInGate);
-
-            // Find the node with LOOP_BEGIN as State input and modify its
-            // state input to the newly created IF_FALSE node.
-            auto uses = accessor_.Uses(stateInGate);
-            for (auto useIt = uses.begin(); useIt != uses.end();) {
-                if (accessor_.GetMetaData(*useIt)->IsState() && *useIt != ifBranch) {
-                    useIt = accessor_.ReplaceIn(useIt, ifFalse);
+                GateRef resumeStateGate = accessor_.GetState(resumeGate);
+                if (accessor_.GetOpCode(resumeStateGate) != OpCode::IF_TRUE) {
+                    accessor_.ReplaceStateIn(resumeGate, ifTrue);
+                    accessor_.ReplaceValueIn(resumeGate, newTarget);
+                    accessor_.ReplaceDependIn(firstRestoreRegGate, bcOffsetPhiGate);
+                    circuit_->NewGate(circuit_->Return(), MachineType::NOVALUE,
+                        { stateGate, suspendGate, suspendGate, circuit_->GetReturnRoot() },
+                        GateType::AnyType());
                 } else {
-                    useIt++;
+                    // Handling multi-layer for loops
+                    UpdateValueSelector(prevLoopBeginGate, ifTrue, prevBcOffsetPhiGate);
+                    accessor_.ReplaceValueIn(prevBcOffsetPhiGate, bcOffsetPhiGate);
                 }
-            }
+                accessor_.ReplaceStateIn(ifBranch, stateInGate);
+                ModifyStateInput(stateInGate, ifBranch, ifFalse);
 
-            prevLoopBeginGate = stateInGate;
-            prevBcOffsetPhiGate = bcOffsetPhiGate;
-            stateInGate = accessor_.GetState(stateInGate);
-            flag = false;
-            continue;
+                prevLoopBeginGate = stateInGate;
+                prevBcOffsetPhiGate = bcOffsetPhiGate;
+                stateInGate = accessor_.GetState(stateInGate);
+                flag = false;
+                continue;
+            }
         }
         if (loopBeginStateIn != Circuit::NullGate()) {
             UpdateValueSelector(prevLoopBeginGate, loopBeginStateIn, prevBcOffsetPhiGate);
@@ -207,6 +201,55 @@ void AsyncFunctionLowering::UpdateValueSelector(GateRef prevLoopBeginGate,
 bool AsyncFunctionLowering::IsAsyncRelated() const
 {
     return bcBuilder_->GetAsyncRelatedGates().size() > 0;
+}
+
+void AsyncFunctionLowering::ModifyStateInput(GateRef stateInGate, GateRef ifBranch, GateRef ifFalse)
+{
+    // Find the node with LOOP_BEGIN as State input and modify its
+    // state input to the newly created IF_FALSE node.
+    auto uses = accessor_.Uses(stateInGate);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        if (accessor_.GetMetaData(*useIt)->IsState() && *useIt != ifBranch) {
+            useIt = accessor_.ReplaceIn(useIt, ifFalse);
+        } else {
+            useIt++;
+        }
+    }
+}
+
+void AsyncFunctionLowering::CheckResumeInLoopBody(GateRef stateInGate, bool &resumeInLoopBody)
+{
+    GateRef findBack = accessor_.GetIn(stateInGate, 0);
+    if (accessor_.GetOpCode(findBack) != OpCode::LOOP_BACK) {
+        findBack = accessor_.GetIn(stateInGate, 1);
+    }
+    ChunkQueue<GateRef> resuemList(circuit_->chunk());
+    resuemList.push(findBack);
+    ChunkVector<VisitState> visited(circuit_->GetMaxGateId() + 1, VisitState::UNVISITED, circuit_->chunk());
+    auto findBackId = accessor_.GetId(findBack);
+    visited[findBackId] = VisitState::VISITED;
+    while (!resuemList.empty()) {
+        GateRef curGate = resuemList.front();
+        if (curGate == stateInGate) {
+            break;
+        }
+        if (accessor_.GetOpCode(curGate) == OpCode::JS_BYTECODE &&
+            accessor_.GetByteCodeOpcode(curGate) == EcmaOpcode::RESUMEGENERATOR) {
+            resumeInLoopBody = true;
+            break;
+        }
+        resuemList.pop();
+        size_t stateStart = 0;
+        size_t stateEnd = accessor_.GetStateCount(curGate);
+        for (size_t idx = stateStart; idx < stateEnd; idx++) {
+            GateRef gate = accessor_.GetState(curGate, idx);
+            auto id = accessor_.GetId(gate);
+            if (visited[id] == VisitState::UNVISITED) {
+                visited[id] = VisitState::VISITED;
+                resuemList.push(gate);
+            }
+        }
+    }
 }
 
 GateRef AsyncFunctionLowering::GetFirstRestoreRegister(GateRef gate) const

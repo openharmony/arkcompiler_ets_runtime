@@ -264,6 +264,8 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(NotifyBytecodePcChanged)            \
     V(OptNewLexicalEnvWithName)           \
     V(OptSuspendGenerator)                \
+    V(OptAsyncGeneratorResolve)           \
+    V(OptCreateObjectWithExcludedKeys)    \
     V(OptNewObjRange)                     \
     V(GetTypeArrayPropertyByIndex)        \
     V(SetTypeArrayPropertyByIndex)        \
@@ -617,6 +619,16 @@ private:
     static inline JSTaggedValue RuntimeOptCopyRestArgs(JSThread *thread, uint32_t actualArgc, uint32_t restIndex);
     static inline JSTaggedValue RuntimeOptSuspendGenerator(JSThread *thread, const JSHandle<JSTaggedValue> &genObj,
                                                            const JSHandle<JSTaggedValue> &value);
+    static inline JSTaggedValue RuntimeOptAsyncGeneratorResolve(JSThread *thread, JSHandle<JSTaggedValue> asyncFuncObj,
+                                                                JSHandle<JSTaggedValue> value, JSTaggedValue flag);
+    static inline JSTaggedValue CommonCreateObjectWithExcludedKeys(JSThread *thread,
+                                                                   const JSHandle<JSTaggedValue> &objVal,
+                                                                   uint32_t numExcludedKeys,
+                                                                   JSHandle<TaggedArray> excludedKeys);
+    static inline JSTaggedValue RuntimeOptCreateObjectWithExcludedKeys(JSThread *thread, uint16_t numKeys,
+                                                                       const JSHandle<JSTaggedValue> &objVal,
+                                                                       uint16_t firstArgRegIdx,
+                                                                       uintptr_t argv, uint32_t argc);
     static inline JSTaggedValue RuntimeOptNewObjRange(JSThread *thread, uintptr_t argv, uint32_t argc);
     static inline JSTaggedValue RuntimeOptConstruct(JSThread *thread, JSHandle<JSTaggedValue> ctor,
                                                     JSHandle<JSTaggedValue> newTarget, JSHandle<JSTaggedValue> preArgs,

@@ -1521,7 +1521,7 @@ void SlowPathLowering::LowerSetGeneratorState(GateRef gate)
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     auto result = LowerCallRuntime(gate, RTSTUB_ID(SetGeneratorState),
-        {index, acc_.GetValueIn(gate, 1), jsFunc}, true);
+        {acc_.GetValueIn(gate, 1), index, jsFunc}, true);
     ReplaceHirWithValue(gate, result, true);
 }
 
@@ -1818,13 +1818,29 @@ void SlowPathLowering::LowerCopyDataProperties(GateRef gate)
 
 void SlowPathLowering::LowerCreateObjectWithExcludedKeys(GateRef gate)
 {
-    const int id = RTSTUB_ID(CreateObjectWithExcludedKeys);
+    const int id = RTSTUB_ID(OptCreateObjectWithExcludedKeys);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef numKeys = acc_.GetValueIn(gate, 0);
     GateRef obj = acc_.GetValueIn(gate, 1);
     GateRef firstArgRegIdx = acc_.GetValueIn(gate, 2);
-    auto args = { builder_.ToTaggedInt(numKeys), obj, builder_.ToTaggedInt(firstArgRegIdx) };
+    GateRef depGate = acc_.GetDep(gate);
+    acc_.SetDep(gate, acc_.GetDep(depGate));
+    builder_.SetDepend(acc_.GetDep(depGate));
+    
+    std::vector<GateRef> args;
+    size_t numIn = acc_.GetNumValueIn(depGate);
+    GateRef length = builder_.Int32(numIn);
+    GateRef taggedLength = builder_.ToTaggedInt(builder_.ZExtInt32ToInt64(length));
+    args.emplace_back(builder_.ToTaggedInt(numKeys));
+    args.emplace_back(obj);
+    args.emplace_back(builder_.ToTaggedInt(firstArgRegIdx));
+    args.emplace_back(taggedLength);
+    for (size_t idx = 0; idx < numIn; idx++) {
+        GateRef tmpGate = acc_.GetValueIn(depGate, idx);
+        args.emplace_back(tmpGate);
+    }
+    acc_.DeleteGate(depGate);
     GateRef newGate = LowerCallRuntime(gate, id, args);
     ReplaceHirWithValue(gate, newGate);
 }
@@ -2397,12 +2413,12 @@ void SlowPathLowering::LowerCreateAsyncGeneratorObj(GateRef gate)
 
 void SlowPathLowering::LowerAsyncGeneratorResolve(GateRef gate)
 {
-    int id = RTSTUB_ID(AsyncGeneratorResolve);
-    // 3: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef asyncGen = acc_.GetValueIn(gate, 0);
-    GateRef value = acc_.GetValueIn(gate, 1);
-    GateRef flag = acc_.GetValueIn(gate, 2);
+    SaveFrameToContext(gate);
+    acc_.SetDep(gate, builder_.GetDepend());
+    int id = RTSTUB_ID(OptAsyncGeneratorResolve);
+    GateRef asyncGen = acc_.GetValueIn(gate, 1);
+    GateRef value = acc_.GetValueIn(gate, 2);
+    GateRef flag = acc_.GetValueIn(gate, 3);
     GateRef newGate = LowerCallRuntime(gate, id, {asyncGen, value, flag});
     ReplaceHirWithValue(gate, newGate);
 }

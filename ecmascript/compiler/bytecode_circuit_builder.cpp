@@ -77,6 +77,7 @@ int32_t BytecodeCircuitBuilder::GetJumpOffset(uint32_t bcIndex) const
         case EcmaOpcode::RETURN:
         case EcmaOpcode::RETURNUNDEFINED:
         case EcmaOpcode::SUSPENDGENERATOR_V8:
+        case EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8:
         case EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8:
             offset = -(static_cast<int32_t>(pc - GetFirstPC()));
             break;
@@ -908,7 +909,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
                                  inList.data(), GateType::Empty());
     }
     byteCodeToJSGate_[iterator.Index()] = gate;
-    if (bytecodeInfo.IsSuspend()) {
+    if (bytecodeInfo.IsSuspend() || bytecodeInfo.IsGeneratorResolve()) {
         auto offsetGate = circuit_->GetConstantGate(MachineType::I32,
                                                     GetJumpOffset(iterator.Index()),
                                                     GateType::NJSValue());
@@ -951,7 +952,10 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
         state = ifSuccess;
     }
     if (bytecodeInfo.IsGeneratorRelative()) {
-        if (bytecodeInfo.GetOpcode() == EcmaOpcode::SUSPENDGENERATOR_V8) {
+        //exclude...
+        if (bytecodeInfo.GetOpcode() == EcmaOpcode::SUSPENDGENERATOR_V8 ||
+            bytecodeInfo.GetOpcode() == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8 ||
+            bytecodeInfo.GetOpcode() == EcmaOpcode::CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8) {
             auto hole = circuit_->GetConstantGate(MachineType::I64,
                                                   JSTaggedValue::VALUE_HOLE,
                                                   GateType::TaggedValue());
@@ -1253,7 +1257,8 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
         SetExistingRestore(resumeGate, tmpReg, ans);
         gateAcc_.SetDep(resumeGate, ans);
         auto saveRegGate = ResolveDef(bbId, iterator.Index() - 1, tmpReg, tmpAcc);
-        ASSERT(Bytecodes::GetOpcode(iterator.PeekPrevPc(2)) == EcmaOpcode::SUSPENDGENERATOR_V8); // 2: prev bc
+        [[maybe_unused]] EcmaOpcode opcode = Bytecodes::GetOpcode(iterator.PeekPrevPc(2)); // 2: prev bc
+        ASSERT(opcode == EcmaOpcode::SUSPENDGENERATOR_V8 || opcode == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8);
         GateRef suspendGate = byteCodeToJSGate_.at(iterator.Index() - 2); // 2: prev bc
         GateRef saveRegs = gateAcc_.GetDep(suspendGate);
         gateAcc_.ReplaceValueIn(saveRegs, saveRegGate, tmpReg);
@@ -1294,6 +1299,11 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
         ASSERT(!tmpAcc);
         if (tmpReg == GetEnvVregIdx()) {
             ans = gateAcc_.GetInitialEnvGate(argAcc_.GetCommonArgGate(CommonArgIdx::FUNC));
+        } else if (argAcc_.ArgGateNotExisted(tmpReg)) {
+            // when GetArgGate fail, return hole
+            ans = circuit_->GetConstantGate(MachineType::I64,
+                                            JSTaggedValue::VALUE_HOLE,
+                                            GateType::TaggedValue());
         } else {
             ans = argAcc_.GetArgGate(tmpReg);
         }
@@ -1356,6 +1366,15 @@ void BytecodeCircuitBuilder::BuildCircuit()
                 auto inIdx = valueIdx + valueStarts;
                 if (!gateAcc_.IsInGateNull(gate, inIdx)) {
                     continue;
+                }
+                if (bytecodeInfo.GetOpcode() == EcmaOpcode::CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8) {
+                    GateRef depIn = gateAcc_.GetDep(gate);
+                    size_t depCount = gateAcc_.GetNumValueIn(depIn);
+                    GateRef defVreg = Circuit::NullGate();
+                    for (size_t idx = 0; idx < depCount; idx++) {
+                        defVreg = ResolveDef(bbIndex, bcIndex - 1, idx, false);
+                        gateAcc_.ReplaceValueIn(depIn, defVreg, idx);
+                    }
                 }
                 if (valueIdx < bytecodeInfo.inputs.size()) {
                     auto vregId = std::get<VirtualRegister>(bytecodeInfo.inputs.at(valueIdx)).GetId();

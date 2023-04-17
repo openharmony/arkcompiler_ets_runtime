@@ -68,7 +68,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope scope(thread);
     auto vm = thread->GetEcmaVM();
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    const GlobalEnvConstants *globalConstant = thread->GlobalConstants();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1.Let O be the this value.
     JSHandle<JSTaggedValue> input(BuiltinsBase::GetThis(argv));
@@ -81,16 +81,17 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
     JSHandle<AsyncIteratorRecord> syncIteratorRecord(thread, asyncIterator->GetSyncIteratorRecord());
     JSHandle<JSTaggedValue> syncIterator(thread, syncIteratorRecord->GetIterator());
     // 5.Let return be GetMethod(syncIterator, "throw").
-    JSHandle<JSTaggedValue> throwString = thread->GlobalConstants()->GetHandledThrowString();
+    JSHandle<JSTaggedValue> throwString = globalConstant->GetHandledThrowString();
     JSHandle<JSTaggedValue> throwResult = JSObject::GetMethod(thread, syncIterator, throwString);
+    RETURN_REJECT_PROMISE_IF_ABRUPT(thread, throwString, pcap);
     JSHandle<JSTaggedValue> value = base::BuiltinsBase::GetCallArg(argv, 0);
-    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
+    JSHandle<JSTaggedValue> undefinedValue = globalConstant->GetHandledUndefined();
     // 7.If throw is undefined, then
     if (throwResult->IsUndefined()) {
         JSHandle<JSObject> iterResult = JSIterator::CreateIterResultObject(thread, value, true);
         JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve());
         EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
+            EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefinedValue, undefinedValue, 1);
         info->SetCallArg(iterResult.GetTaggedValue());
         return pcap->GetPromise();
     }
@@ -98,15 +99,16 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
     // 8.If value is present, then
     if (value->IsNull()) {
         EcmaRuntimeCallInfo *callInfo =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, throwResult, syncIterator, undefined, 0);
+            EcmaInterpreter::NewRuntimeCallInfo(thread, throwResult, syncIterator, undefinedValue, 0);
         ret = JSFunction::Call(callInfo);
     } else {
         EcmaRuntimeCallInfo *callInfo =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, throwResult, syncIterator, undefined, 1);
+            EcmaInterpreter::NewRuntimeCallInfo(thread, throwResult, syncIterator, undefinedValue, 1);
         callInfo->SetCallArg(value.GetTaggedValue());
         ret = JSFunction::Call(callInfo);
     }
     JSHandle<JSTaggedValue> result(thread, ret);
+    RETURN_REJECT_PROMISE_IF_ABRUPT(thread, result, pcap);
     // 11.If Type(result) is not Object, then
     if (!result->IsECMAObject()) {
         // a.Perform ! Call(promiseCapability.[[Reject]], undefined, « a newly created TypeError object »).
@@ -114,7 +116,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
             factory->GetJSError(ErrorType::TYPE_ERROR, "AsyncFromSyncIteratorPrototype.throw: is not Object.");
         JSHandle<JSTaggedValue> reject(thread, pcap->GetReject());
         EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefined, undefined, 1);
+            EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefinedValue, undefinedValue, 1);
         info->SetCallArg(resolutionError.GetTaggedValue());
         JSFunction::Call(info);
 
@@ -131,7 +133,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope scope(thread);
     auto vm = thread->GetEcmaVM();
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    const GlobalEnvConstants *globalConstant = thread->GlobalConstants();
     ObjectFactory *factory = vm->GetFactory();
     // 1.Let O be the this value.
     JSHandle<JSTaggedValue> thisValue = GetThis(argv);
@@ -148,17 +150,18 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
     JSHandle<AsyncIteratorRecord> syncIteratorRecord(thread, asyncIterator->GetSyncIteratorRecord());
     JSHandle<JSTaggedValue> syncIterator(thread, syncIteratorRecord->GetIterator());
     // 5.Let return be GetMethod(syncIterator, "return").
-    JSHandle<JSTaggedValue> returnString = globalConst->GetHandledReturnString();
+    JSHandle<JSTaggedValue> returnString = globalConstant->GetHandledReturnString();
     JSHandle<JSTaggedValue> returnResult = JSObject::GetMethod(thread, syncIterator, returnString);
+    RETURN_REJECT_PROMISE_IF_ABRUPT(thread, returnResult, pcap);
     JSHandle<JSTaggedValue> value = base::BuiltinsBase::GetCallArg(argv, 0);
-    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
+    JSHandle<JSTaggedValue> undefinedValue = globalConstant->GetHandledUndefined();
     // 7.If return is undefined, then
     if (returnResult->IsUndefined()) {
         JSHandle<JSObject> iterResult = JSIterator::CreateIterResultObject(thread, value, true);
         JSHandle<JSTaggedValue> its = JSHandle<JSTaggedValue>::Cast(iterResult);
         JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve());
         EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
+            EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefinedValue, undefinedValue, 1);
         info->SetCallArg(its.GetTaggedValue());
         JSHandle<JSObject> promise(thread, pcap->GetPromise());
         return promise.GetTaggedValue();
@@ -167,15 +170,16 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
     // 8.If value is present, then
     if (value->IsNull()) {
         EcmaRuntimeCallInfo *callInfo =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, returnResult, syncIterator, undefined, 0);
+            EcmaInterpreter::NewRuntimeCallInfo(thread, returnResult, syncIterator, undefinedValue, 0);
         ret = JSFunction::Call(callInfo);
     } else {
         EcmaRuntimeCallInfo *callInfo =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, returnResult, syncIterator, undefined, 1);
+            EcmaInterpreter::NewRuntimeCallInfo(thread, returnResult, syncIterator, undefinedValue, 1);
         callInfo->SetCallArg(value.GetTaggedValue());
         ret = JSFunction::Call(callInfo);
     }
     JSHandle<JSTaggedValue> result(thread, ret);
+    RETURN_REJECT_PROMISE_IF_ABRUPT(thread, result, pcap);
     // 11.If Type(result) is not Object, then
     if (!result->IsECMAObject()) {
         // a.Perform ! Call(promiseCapability.[[Reject]], undefined, « a newly created TypeError object »).
@@ -184,7 +188,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> rstErr = JSHandle<JSTaggedValue>::Cast(resolutionError);
         JSHandle<JSTaggedValue> reject(thread, pcap->GetReject());
         EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefined, undefined, 1);
+            EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefinedValue, undefinedValue, 1);
         info->SetCallArg(rstErr.GetTaggedValue());
         JSFunction::Call(info);
 

@@ -61,6 +61,7 @@ enum BytecodeKind : uint32_t {
     SET_CONSTANT,
     SUSPEND,
     RESUME,
+    GENERATOR_RESOLVE,
     DISCARDED,
 };
 
@@ -166,9 +167,16 @@ public:
         return HasFlag(BytecodeFlags::GENERAL_BC);
     }
 
+    bool IsGeneratorResolve() const
+    {
+        return GetKind() == BytecodeKind::GENERATOR_RESOLVE;
+    }
+
     bool IsGeneratorRelative() const
     {
-        return (GetKind() == BytecodeKind::RESUME) || (GetKind() == BytecodeKind::SUSPEND);
+        BytecodeKind kind = GetKind();
+        return (kind == BytecodeKind::RESUME) || (kind == BytecodeKind::SUSPEND) ||
+               (kind == BytecodeKind::GENERATOR_RESOLVE);
     }
 
     bool IsDiscarded() const
@@ -555,6 +563,11 @@ public:
     bool IsSuspend() const
     {
         return metaData_.IsSuspend();
+    }
+
+    bool IsGeneratorResolve() const
+    {
+        return metaData_.IsGeneratorResolve();
     }
 
     bool IsDiscarded() const

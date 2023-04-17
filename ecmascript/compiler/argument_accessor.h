@@ -60,6 +60,7 @@ public:
     size_t GetActualNumArgs() const;
     // method must be set
     GateRef GetArgGate(const size_t currentVreg) const;
+    bool ArgGateNotExisted(const size_t currentVreg);
     GateRef ArgsAt(const size_t index) const
     {
         return args_.at(index);

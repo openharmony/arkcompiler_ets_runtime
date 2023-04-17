@@ -1936,9 +1936,10 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectHavingMethod(JSThread *thread, Ob
     return objLiteral.GetTaggedValue();
 }
 
-JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread, uint16_t numKeys,
-                                                                const JSHandle<JSTaggedValue> &objVal,
-                                                                uint16_t firstArgRegIdx)
+JSTaggedValue RuntimeStubs::CommonCreateObjectWithExcludedKeys(JSThread *thread,
+                                                               const JSHandle<JSTaggedValue> &objVal,
+                                                               uint32_t numExcludedKeys,
+                                                               JSHandle<TaggedArray> excludedKeys)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> restObj = factory->NewEmptyJSObject();
@@ -1946,19 +1947,6 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
         return restObj.GetTaggedValue();
     }
     JSHandle<JSObject> obj(JSTaggedValue::ToObject(thread, objVal));
-
-    uint32_t numExcludedKeys = 0;
-    JSHandle<TaggedArray> excludedKeys = factory->NewTaggedArray(numKeys + 1);
-    FrameHandler frameHandler(thread);
-    JSTaggedValue excludedKey = frameHandler.GetVRegValue(firstArgRegIdx);
-    if (!excludedKey.IsUndefined()) {
-        numExcludedKeys = numKeys + 1;
-        excludedKeys->Set(thread, 0, excludedKey);
-        for (uint32_t i = 1; i < numExcludedKeys; i++) {
-            excludedKey = frameHandler.GetVRegValue(firstArgRegIdx + i);
-            excludedKeys->Set(thread, i, excludedKey);
-        }
-    }
 
     JSHandle<TaggedArray> allKeys = JSObject::GetOwnPropertyKeys(thread, obj);
     uint32_t numAllKeys = allKeys->GetLength();
@@ -1985,6 +1973,47 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
         }
     }
     return restObj.GetTaggedValue();
+}
+
+JSTaggedValue RuntimeStubs::RuntimeOptCreateObjectWithExcludedKeys(JSThread *thread, uint16_t numKeys,
+                                                                   const JSHandle<JSTaggedValue> &objVal,
+                                                                   uint16_t firstArgRegIdx,
+                                                                   uintptr_t argv, uint32_t argc)
+{
+    firstArgRegIdx += 4; // firstArgRegIdx + 4: means the remain parameter
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t numExcludedKeys = 0;
+    JSHandle<TaggedArray> excludedKeys = factory->NewTaggedArray(numKeys + 1);
+    JSTaggedValue excludedKey = GetArg(argv, argc, firstArgRegIdx);
+    if (!excludedKey.IsUndefined()) {
+        numExcludedKeys = numKeys + 1;
+        excludedKeys->Set(thread, 0, excludedKey);
+        for (uint32_t i = 1; i < numExcludedKeys; i++) {
+            excludedKey = GetArg(argv, argc, firstArgRegIdx + i);
+            excludedKeys->Set(thread, i, excludedKey);
+        }
+    }
+    return CommonCreateObjectWithExcludedKeys(thread, objVal, numExcludedKeys, excludedKeys);
+}
+
+JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread, uint16_t numKeys,
+                                                                const JSHandle<JSTaggedValue> &objVal,
+                                                                uint16_t firstArgRegIdx)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t numExcludedKeys = 0;
+    JSHandle<TaggedArray> excludedKeys = factory->NewTaggedArray(numKeys + 1);
+    FrameHandler frameHandler(thread);
+    JSTaggedValue excludedKey = frameHandler.GetVRegValue(firstArgRegIdx);
+    if (!excludedKey.IsUndefined()) {
+        numExcludedKeys = numKeys + 1;
+        excludedKeys->Set(thread, 0, excludedKey);
+        for (uint32_t i = 1; i < numExcludedKeys; i++) {
+            excludedKey = frameHandler.GetVRegValue(firstArgRegIdx + i);
+            excludedKeys->Set(thread, i, excludedKey);
+        }
+    }
+    return CommonCreateObjectWithExcludedKeys(thread, objVal, numExcludedKeys, excludedKeys);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
@@ -2274,8 +2303,6 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const J
         JSHandle<JSAsyncGeneratorObject> generatorObjectHandle(genObj);
         // change state to SuspendedYield
         if (generatorObjectHandle->IsExecuting()) {
-            generatorObjectHandle->SetAsyncGeneratorState(JSAsyncGeneratorState::SUSPENDED_YIELD);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             return value.GetTaggedValue();
         }
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2295,6 +2322,19 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuspendGenerator(JSThread *thread, const J
     }
 
     return RuntimeThrowTypeError(thread, "RuntimeSuspendGenerator failed");
+}
+
+JSTaggedValue RuntimeStubs::RuntimeOptAsyncGeneratorResolve(JSThread *thread, JSHandle<JSTaggedValue> asyncFuncObj,
+                                                            JSHandle<JSTaggedValue> value, JSTaggedValue flag)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSAsyncGeneratorObject> asyncGeneratorObjHandle(asyncFuncObj);
+    JSHandle<JSTaggedValue> valueHandle(value);
+    JSHandle<GeneratorContext> genContextHandle(thread, asyncGeneratorObjHandle->GetGeneratorContext());
+    ASSERT(flag.IsBoolean());
+    bool done = flag.IsTrue();
+    return JSAsyncGeneratorObject::AsyncGeneratorResolve(thread, asyncGeneratorObjHandle, valueHandle, done);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeOptConstruct(JSThread *thread, JSHandle<JSTaggedValue> ctor,

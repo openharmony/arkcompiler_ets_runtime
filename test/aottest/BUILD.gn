@@ -40,6 +40,8 @@ group("ark_aot_ts_test") {
     "and",
     "ashr",
     "asyncgenerator",
+    "asyncgeneratormultiloop",
+    "asyncgeneratorrest",
     "async_context",
     "await",
     "bind",
