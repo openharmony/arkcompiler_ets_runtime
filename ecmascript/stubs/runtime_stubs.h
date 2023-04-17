@@ -74,9 +74,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(CallRuntimeWithArgv)                   \
     V(JSFunctionEntry)                       \
     V(JSCall)                                \
-    V(ConstructorJSCall)                     \
     V(JSCallWithArgV)                        \
-    V(ConstructorJSCallWithArgV)             \
     V(JSProxyCallInternalWithArgV)           \
     V(OptimizedCallOptimized)                \
     V(DeoptHandlerAsm)                       \

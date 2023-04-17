@@ -14,3 +14,11 @@
 3
 Calculate sum: 1,2
 30
+Calculate sum: 1,2
+30
+3
+3
+4
+1 2
+undefined
+3

@@ -4785,7 +4785,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     break;
                 case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
                 case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
-                    result = CallNGCRuntime(glue, RTSTUB_ID(ConstructorJSCallWithArgV),
+                    result = CallNGCRuntime(glue, RTSTUB_ID(JSCallNewWithArgV),
                         { glue, ZExtInt32ToInt64(actualNumArgs), func, func, data[2], data[1]});
                     result = ConstructorCheck(glue, func, *result, data[2]);  // 2: the second index
                     Jump(&exit);
