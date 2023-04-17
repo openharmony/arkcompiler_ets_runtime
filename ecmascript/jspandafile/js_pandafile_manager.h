@@ -44,6 +44,8 @@ public:
 
     DebugInfoExtractor *GetJSPtExtractor(const JSPandaFile *jsPandaFile);
 
+    DebugInfoExtractor *CpuProfilerGetJSPtExtractor(const JSPandaFile *jsPandaFile);
+
     // for debugger
     template<typename Callback>
     void EnumerateJSPandaFiles(Callback cb)

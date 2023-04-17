@@ -56,6 +56,11 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         }
         if (jsPandaFile != nullptr) {
             InsertJSPandaFileVmUnlocked(thread->GetEcmaVM(), jsPandaFile);
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+            if (thread->GetIsProfiling()) {
+                GetJSPtExtractor(jsPandaFile.get());
+            }
+#endif
             return jsPandaFile;
         }
     }
@@ -83,7 +88,14 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         LOG_ECMA(ERROR) << "open file " << filename << " error";
         return nullptr;
     }
-    return GenerateJSPandaFile(thread, pf.release(), filename, entryPoint);
+
+    std::shared_ptr<JSPandaFile> jsPandaFile = GenerateJSPandaFile(thread, pf.release(), filename, entryPoint);
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (thread->GetIsProfiling()) {
+        GetJSPtExtractor(jsPandaFile.get());
+    }
+#endif
+    return jsPandaFile;
 }
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
@@ -107,6 +119,11 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         }
         if (jsPandaFile != nullptr) {
             InsertJSPandaFileVmUnlocked(thread->GetEcmaVM(), jsPandaFile);
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+            if (thread->GetIsProfiling()) {
+                GetJSPtExtractor(jsPandaFile.get());
+            }
+#endif
             return jsPandaFile;
         }
     }
@@ -119,7 +136,14 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
 
     // JSPandaFile desc cannot be empty, if buffer with empty filename, use pf filename as a descriptor.
     const CString &desc = filename.empty() ? pf->GetFilename().c_str() : filename;
-    return GenerateJSPandaFile(thread, pf.release(), desc, entryPoint);
+
+    std::shared_ptr<JSPandaFile> jsPandaFile = GenerateJSPandaFile(thread, pf.release(), desc, entryPoint);
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (thread->GetIsProfiling()) {
+        GetJSPtExtractor(jsPandaFile.get());
+    }
+#endif
+    return jsPandaFile;
 }
 
 JSHandle<Program> JSPandaFileManager::GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile,
@@ -295,6 +319,21 @@ DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractor(const JSPandaFile *jsPa
         DebugInfoExtractor *extractor = extractorPtr.get();
         extractors_[jsPandaFile] = std::move(extractorPtr);
         return extractor;
+    }
+
+    return iter->second.get();
+}
+
+DebugInfoExtractor *JSPandaFileManager::CpuProfilerGetJSPtExtractor(const JSPandaFile *jsPandaFile)
+{
+    auto const &filename = jsPandaFile->GetJSPandaFileDesc();
+    if (loadedJSPandaFiles_.find(filename) == loadedJSPandaFiles_.end()) {
+        return nullptr;
+    }
+
+    auto iter = extractors_.find(jsPandaFile);
+    if (iter == extractors_.end()) {
+        return nullptr;
     }
 
     return iter->second.get();

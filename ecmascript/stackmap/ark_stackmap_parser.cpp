@@ -53,6 +53,9 @@ void ArkStackMapParser::GetArkDeopt(uintptr_t callSiteAddr, uint8_t *stackmapAdd
 {
     StackMapSecHead *head = reinterpret_cast<StackMapSecHead *>(stackmapAddr);
     ASSERT(head != nullptr);
+    if (head == nullptr) {
+        return;
+    }
     uint32_t callsiteNum = head->callsiteNum;
     uint32_t length = head->totalSize;
     ASSERT((head->callsitEnd - head->callsitStart) == ((callsiteNum - 1) * sizeof(CallsiteHead)));

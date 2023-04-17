@@ -2228,13 +2228,13 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
 
     JsiRuntimeCallInfo jsiRuntimeCallInfo(ecmaRuntimeCallInfo, extraInfo->GetData());
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (thread->GetCallNapiGetStack() && function->IsCallNapi()) {
+    if (thread->GetIsProfiling() && function->IsCallNapi()) {
         thread->GetEcmaVM()->GetProfiler()->GetStackCallNapi(thread, true);
     }
 #endif
     Local<JSValueRef> result = nativeFunc(&jsiRuntimeCallInfo);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (thread->GetCallNapiGetStack() && function->IsCallNapi()) {
+    if (thread->GetIsProfiling() && function->IsCallNapi()) {
         thread->GetEcmaVM()->GetProfiler()->GetStackCallNapi(thread, false);
     }
 #endif
