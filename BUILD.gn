@@ -362,6 +362,9 @@ config("ark_jsruntime_common_config") {
       "PANDA_USE_FUTEX",
       "EXCLUDE_C_INTERPRETER",
     ]
+    if (!ark_standalone_build) {
+      defines += [ "ENABLE_ANLOG" ]
+    }
   } else if (target_os == "ios") {
     defines += [
       "PANDA_TARGET_IOS",
@@ -1022,7 +1025,7 @@ ohos_shared_library("libark_jsruntime") {
     relative_install_dir = "ark"
   }
 
-  if (target_os == "android") {
+  if (target_os == "android" && !ark_standalone_build) {
     libs = [ "log" ]
     version_script = "libark_jsruntime.map"
   }

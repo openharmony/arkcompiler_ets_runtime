@@ -17,7 +17,7 @@
 #include "ecmascript/log.h"
 #include "generated/base_options.h"
 
-#ifdef PANDA_TARGET_ANDROID
+#ifdef ENABLE_ANLOG
 #include <android/log.h>
 #endif
 
@@ -140,7 +140,7 @@ void Log::Initialize(const JSRuntimeOptions &options)
     Logger::SetMobileLogPrintEntryPointByPtr(reinterpret_cast<void *>(Log::PrintLogger));
 }
 
-#ifdef PANDA_TARGET_ANDROID
+#ifdef ENABLE_ANLOG
 const char *tag = "ArkCompiler";
 template<>
 PUBLIC_API AndroidLog<VERBOSE>::~AndroidLog()

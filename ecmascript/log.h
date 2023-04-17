@@ -146,7 +146,7 @@ public:
 private:
     std::ostringstream stream_;
 };
-#elif defined(PANDA_TARGET_ANDROID)  // PANDA_TARGET_ANDROID
+#elif defined(ENABLE_ANLOG)  // ENABLE_ANLOG
 template<Level level>
 class PUBLIC_API AndroidLog {
 public:
@@ -204,7 +204,7 @@ private:
 #if defined(ENABLE_HILOG)
 #define ARK_LOG(level, component) panda::ecmascript::LOGGABLE_##level && \
                                   panda::ecmascript::HiLog<LOG_##level, (component)>()
-#elif defined(PANDA_TARGET_ANDROID)
+#elif defined(ENABLE_ANLOG)
 #define ARK_LOG(level, component) panda::ecmascript::AndroidLog<(level)>()
 #else
 #if defined(OHOS_UNIT_TEST)
