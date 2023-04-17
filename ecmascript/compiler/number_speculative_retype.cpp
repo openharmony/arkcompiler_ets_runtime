@@ -22,7 +22,7 @@
 namespace panda::ecmascript::kungfu {
 GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, GateType gateType)
 {
-    TypeInfo& type = typeInfos_[acc_.GetId(gate)];
+    TypeInfo type = GetOutputTypeInfo(gate);
     TypeInfo old = type;
     if (gateType.IsIntType()) {
         type = TypeInfo::INT32;
@@ -33,18 +33,20 @@ GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, GateType gateType)
     } else {
         type = TypeInfo::TAGGED;
     }
+    SetOutputTypeInfo(gate, type);
     return old == type ? Circuit::NullGate() : gate;
 }
 
 GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, PGOSampleType pgoType)
 {
-    TypeInfo& type = typeInfos_[acc_.GetId(gate)];
+    TypeInfo type = GetOutputTypeInfo(gate);
     TypeInfo old = type;
     if (pgoType.IsInt()) {
         type = TypeInfo::INT32;
     } else {
         type = TypeInfo::FLOAT64;
     }
+    SetOutputTypeInfo(gate, type);
     return old == type ? Circuit::NullGate() : gate;
 }
 
@@ -64,14 +66,14 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitLoadElement(gate);
         case OpCode::STORE_ELEMENT:
             return VisitStoreElement(gate);
+        case OpCode::STORE_PROPERTY:
+            return VisitStoreProperty(gate);
         case OpCode::VALUE_SELECTOR:
             return VisitPhi(gate);
         case OpCode::CONSTANT:
             return VisitConstant(gate);
         case OpCode::TYPED_CALL_BUILTIN:
             return VisitCallBuiltins(gate);
-        case OpCode::STORE_PROPERTY:
-            return VisitStoreProperty(gate);
         default:
             return VisitOthers(gate);
     }
@@ -124,7 +126,7 @@ GateRef NumberSpeculativeRetype::VisitPhi(GateRef gate)
         TypeInfo tempType = TypeInfo::NONE;
         for (size_t i = 0; i < valueNum; ++i) {
             GateRef input = acc_.GetValueIn(gate, i);
-            TypeInfo inputInfo = typeInfos_[acc_.GetId(input)];
+            TypeInfo inputInfo = GetOutputTypeInfo(input);
             if (tempType == TypeInfo::NONE) {
                 tempType = inputInfo;
             } else if ((tempType != inputInfo) && (inputInfo != TypeInfo::NONE)) {
@@ -132,15 +134,15 @@ GateRef NumberSpeculativeRetype::VisitPhi(GateRef gate)
                 break;
             }
         }
-        TypeInfo& typeInfo = typeInfos_[acc_.GetId(gate)];
+        TypeInfo typeInfo = GetOutputTypeInfo(gate);
         if (typeInfo != tempType) {
-            typeInfo = tempType;
+            SetOutputTypeInfo(gate, tempType);
             return gate;
         }
     }
 
     if (IsConvert()) {
-        TypeInfo output = typeInfos_[acc_.GetId(gate)];
+        TypeInfo output = GetOutputTypeInfo(gate);
         if (output == TypeInfo::TAGGED) {
             return VisitOthers(gate);
         }
@@ -400,7 +402,7 @@ GateRef NumberSpeculativeRetype::VisitOthers(GateRef gate)
 
 GateRef NumberSpeculativeRetype::CheckAndConvertToBool(GateRef gate, [[maybe_unused]]GateType gateType)
 {
-    TypeInfo output = typeInfos_[acc_.GetId(gate)];
+    TypeInfo output = GetOutputTypeInfo(gate);
     switch (output) {
         case TypeInfo::INT1:
             return gate;
@@ -491,7 +493,7 @@ void NumberSpeculativeRetype::ConvertForDoubleOperator(GateRef gate, GateType le
 
 GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType gateType)
 {
-    TypeInfo output = typeInfos_[acc_.GetId(gate)];
+    TypeInfo output = GetOutputTypeInfo(gate);
     switch (output) {
         case TypeInfo::INT32:
             return gate;
@@ -516,7 +518,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
 
 GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType gateType)
 {
-    TypeInfo output = typeInfos_[acc_.GetId(gate)];
+    TypeInfo output = GetOutputTypeInfo(gate);
     switch (output) {
         case TypeInfo::INT32:
             return builder_.ConvertInt32ToFloat64(gate);
@@ -541,7 +543,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
 
 GateRef NumberSpeculativeRetype::CheckAndConvertToTagged(GateRef gate, GateType gateType)
 {
-    TypeInfo output = typeInfos_[acc_.GetId(gate)];
+    TypeInfo output = GetOutputTypeInfo(gate);
     switch (output) {
         case TypeInfo::INT1:
             return builder_.ConvertBoolToTaggedBoolean(gate);
@@ -562,7 +564,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToTagged(GateRef gate, GateType 
 
 GateRef NumberSpeculativeRetype::ConvertToTagged(GateRef gate)
 {
-    TypeInfo output = typeInfos_[acc_.GetId(gate)];
+    TypeInfo output = GetOutputTypeInfo(gate);
     switch (output) {
         case TypeInfo::INT1:
             return builder_.ConvertBoolToTaggedBoolean(gate);
@@ -670,25 +672,19 @@ GateRef NumberSpeculativeRetype::VisitStoreProperty(GateRef gate)
     if (IsRetype()) {
         return SetOutputType(gate, GateType::AnyType());
     }
-    if (IsConvert()) {
-        GateRef value = acc_.GetValueIn(gate, 2);
-        TypeInfo valueType = typeInfos_[acc_.GetId(value)];
-        switch (valueType) {
-            case TypeInfo::INT1:
-            case TypeInfo::INT32:
-            case TypeInfo::FLOAT64:
-                builder_.StorePropertyNoBarrier(gate);
-                break;
-            default:
-                break;
-        }
-        size_t valueNum = acc_.GetNumValueIn(gate);
-        for (size_t i = 0; i < valueNum; ++i) {
-            GateRef input = acc_.GetValueIn(gate, i);
-            acc_.ReplaceValueIn(gate, ConvertToTagged(input), i);
-        }
+    ASSERT(IsConvert());
+    GateRef value = acc_.GetValueIn(gate, 2); // 2: value
+    TypeInfo output = GetOutputTypeInfo(value);
+    switch (output) {
+        case TypeInfo::INT1:
+        case TypeInfo::INT32:
+        case TypeInfo::FLOAT64:
+            acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
+            break;
+        default:
+            break;
     }
-    return Circuit::NullGate();
+    return VisitOthers(gate);
 }
 
 GateRef NumberSpeculativeRetype::VisitNumberDiv(GateRef gate)

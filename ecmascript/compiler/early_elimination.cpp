@@ -163,7 +163,7 @@ GateRef EarlyElimination::TryEliminateFrameState(GateRef gate)
         dependChain = dependChain->UpdateFrameState(curFrame);
     }
     // update gate, for others elimination
-    
+
     return UpdateDependChain(gate, dependChain);
 }
 
@@ -216,6 +216,8 @@ DependInfoNode* EarlyElimination::UpdateWrite(GateRef gate, DependInfoNode* depe
     auto op = acc_.GetOpCode(gate);
     switch (op) {
         case OpCode::STORE_PROPERTY:
+        case OpCode::STORE_PROPERTY_NO_BARRIER:
+        case OpCode::STORE_CONST_OFFSET:
             return dependInfo->UpdateStoreProperty(this, gate);
         default:
             return new (chunk_) DependInfoNode(chunk_);
@@ -225,12 +227,18 @@ DependInfoNode* EarlyElimination::UpdateWrite(GateRef gate, DependInfoNode* depe
 bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
 {
     auto lop = acc_.GetOpCode(lhs);
-    ASSERT(acc_.GetOpCode(rhs) == OpCode::STORE_PROPERTY);
+    ASSERT(acc_.GetOpCode(rhs) == OpCode::STORE_PROPERTY ||
+           acc_.GetOpCode(rhs) == OpCode::STORE_PROPERTY_NO_BARRIER ||
+           acc_.GetOpCode(rhs) == OpCode::STORE_CONST_OFFSET);
     if (lop == OpCode::LOAD_PROPERTY) {
         auto loff = acc_.GetValueIn(lhs, 1);
         auto roff = acc_.GetValueIn(rhs, 1);
         ASSERT(acc_.GetOpCode(loff) == OpCode::CONSTANT);
         ASSERT(acc_.GetOpCode(roff) == OpCode::CONSTANT);
+        return loff == roff;
+    } else if (lop == OpCode::LOAD_CONST_OFFSET) {
+        auto loff = acc_.GetOffset(lhs);
+        auto roff = acc_.GetOffset(rhs);
         return loff == roff;
     } else {
         return false;

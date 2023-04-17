@@ -94,6 +94,7 @@ enum class DeoptType : uint8_t {
     NOTNEGOV,
     NOTCALLTGT,
     NOTJSCALLTGT,
+    DIVZERO,
 };
 
 enum class ICmpCondition : uint8_t {
@@ -204,14 +205,14 @@ std::string MachineTypeToStr(MachineType machineType);
     V(GetConstPool, GET_CONSTPOOL, GateFlags::NO_WRITE, 0, 1, 1)                        \
     V(StateSplit, STATE_SPLIT, GateFlags::CHECKABLE, 1, 1, 0)                           \
     V(Deopt, DEOPT, GateFlags::NONE_FLAG, 0, 1, 3)                                      \
-    V(Load, LOAD, GateFlags::NONE_FLAG, 0, 1, 1)                                        \
+    V(Load, LOAD, GateFlags::NO_WRITE, 0, 1, 1)                                         \
     V(Store, STORE, GateFlags::NONE_FLAG, 0, 1, 2)                                      \
     V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, 3)                  \
     V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                \
     V(StableArrayCheck, STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)              \
     V(ArrayGuardianCheck, ARRAY_GUARDIAN_CHECK, GateFlags::CHECKABLE, 1, 1, 0)          \
     V(HClassStableArrayCheck, HCLASS_STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1) \
-    V(DeoptCheck, DEOPT_CHECK, GateFlags::NONE_FLAG, 1, 1, 3)                           \
+    V(DeoptCheck, DEOPT_CHECK, GateFlags::NO_WRITE, 1, 1, 3)                            \
     V(StoreProperty, STORE_PROPERTY, GateFlags::NONE_FLAG, 1, 1, 3)                     \
     V(StorePropertyNoBarrier, STORE_PROPERTY_NO_BARRIER, GateFlags::NONE_FLAG, 1, 1, 3) \
     V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)                               \
@@ -224,6 +225,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(Dead, DEAD, GateFlags::NONE_FLAG, 0, 0, 0)                                        \
     V(FrameArgs, FRAME_ARGS, GateFlags::NONE_FLAG, 0, 0, 4)                             \
     V(GetEnv, GET_ENV, GateFlags::NONE_FLAG, 0, 0, 1)                                   \
+    V(ConvertHoleAsUndefined, CONVERT_HOLE_AS_UNDEFINED, GateFlags::NO_WRITE, 1, 1, 1)  \
     BINARY_GATE_META_DATA_CACHE_LIST(V)                                                 \
     UNARY_GATE_META_DATA_CACHE_LIST(V)
 
@@ -268,20 +270,21 @@ std::string MachineTypeToStr(MachineType machineType);
     V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)                     \
     V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                       \
 
-#define GATE_META_DATA_LIST_WITH_VALUE(V)                                \
-    V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                         \
-    V(Fcmp, FCMP, GateFlags::NONE_FLAG, 0, 0, 2)                         \
-    V(Alloca, ALLOCA, GateFlags::NONE_FLAG, 0, 0, 0)                     \
-    V(SwitchBranch, SWITCH_BRANCH, GateFlags::CONTROL, 1, 0, 1)          \
-    V(SwitchCase, SWITCH_CASE, GateFlags::CONTROL, 1, 0, 0)              \
-    V(HeapAlloc, HEAP_ALLOC, GateFlags::NONE_FLAG, 1, 1, 1)              \
-    V(LoadConstOffset, LOAD_CONST_OFFSET, GateFlags::NO_WRITE, 1, 1, 1)  \
-    V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 2)           \
-    V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 3)        \
-    V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 1, 0)  \
-    V(ConstData, CONST_DATA, GateFlags::NONE_FLAG, 0, 0, 1)              \
-    V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                 \
-    V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)  \
+#define GATE_META_DATA_LIST_WITH_VALUE(V)                                  \
+    V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                           \
+    V(Fcmp, FCMP, GateFlags::NONE_FLAG, 0, 0, 2)                           \
+    V(Alloca, ALLOCA, GateFlags::NONE_FLAG, 0, 0, 0)                       \
+    V(SwitchBranch, SWITCH_BRANCH, GateFlags::CONTROL, 1, 0, 1)            \
+    V(SwitchCase, SWITCH_CASE, GateFlags::CONTROL, 1, 0, 0)                \
+    V(HeapAlloc, HEAP_ALLOC, GateFlags::NONE_FLAG, 1, 1, 1)                \
+    V(LoadConstOffset, LOAD_CONST_OFFSET, GateFlags::NO_WRITE, 0, 1, 1)    \
+    V(StoreConstOffset, STORE_CONST_OFFSET, GateFlags::NONE_FLAG, 1, 1, 2) \
+    V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 2)             \
+    V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 3)          \
+    V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 1, 0)    \
+    V(ConstData, CONST_DATA, GateFlags::NONE_FLAG, 0, 0, 1)                \
+    V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                   \
+    V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)
 
 #define GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     V(Arg, ARG, GateFlags::HAS_ROOT, 0, 0, 0)             \

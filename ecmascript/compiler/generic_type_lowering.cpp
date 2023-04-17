@@ -43,6 +43,15 @@ void GenericTypeLowering::Run()
             case OpCode::HEAP_OBJECT_CHECK:
                 LowerHeapObjectCheck(gate);
                 break;
+            case OpCode::LOAD_CONST_OFFSET:
+                LowerLoadConstOffset(gate);
+                break;
+            case OpCode::STORE_CONST_OFFSET:
+                LowerStoreConstOffset(gate);
+                break;
+            case OpCode::CONVERT_HOLE_AS_UNDEFINED:
+                LowerConvertHoleAsUndefined(gate);
+                break;
             default:
                 break;
         }
@@ -57,6 +66,47 @@ void GenericTypeLowering::Run()
         circuit_->PrintAllGatesWithBytecode();
         LOG_COMPILER(INFO) << "\033[34m" << "=========================== End ===========================" << "\033[0m";
     }
+}
+
+void GenericTypeLowering::LowerConvertHoleAsUndefined(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+
+    Label returnUndefined(&builder_);
+    Label exit(&builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), receiver);
+
+    builder_.Branch(builder_.TaggedIsHole(*result), &returnUndefined, &exit);
+    builder_.Bind(&returnUndefined);
+    {
+        result = builder_.UndefineConstant();
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void GenericTypeLowering::LowerLoadConstOffset(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef offset = builder_.IntPtr(acc_.GetOffset(gate));
+    VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
+    GateRef result = builder_.Load(type, receiver, offset);
+    acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
+}
+
+void GenericTypeLowering::LowerStoreConstOffset(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
+    GateRef offset = builder_.IntPtr(acc_.GetOffset(gate));
+    VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
+    builder_.Store(type, glue_, receiver, offset, value);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void GenericTypeLowering::LowerHeapObjectCheck(GateRef gate)

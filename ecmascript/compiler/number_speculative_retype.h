@@ -91,6 +91,20 @@ private:
     GateRef CheckAndConvertToTagged(GateRef gate, GateType gateType);
     GateRef ConvertToTagged(GateRef gate);
 
+    TypeInfo GetOutputTypeInfo(GateRef gate) const
+    {
+        auto index = acc_.GetId(gate);
+        ASSERT(index < typeInfos_.size());
+        return typeInfos_[index];
+    }
+
+    void SetOutputTypeInfo(GateRef gate, TypeInfo info)
+    {
+        auto index = acc_.GetId(gate);
+        ASSERT(index < typeInfos_.size());
+        typeInfos_[index] = info;
+    }
+
     GateAccessor acc_;
     CircuitBuilder builder_;
     ChunkVector<TypeInfo>& typeInfos_;

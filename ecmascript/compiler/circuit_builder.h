@@ -244,7 +244,7 @@ public:
     GateRef CallTargetCheck(GateRef function, GateRef id, GateRef param);
     GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex);
     GateRef JSCallThisTargetTypeCheck(GateType type, GateRef func);
-    GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type = DeoptType::NOTCHECK);
+    GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
     GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
                                 std::vector<GateRef> inList, GateType gateType, PGOSampleType sampleType);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args);
@@ -265,6 +265,7 @@ public:
     GateRef ConvertFloat64ToInt32(GateRef gate);
     GateRef ConvertInt32ToFloat64(GateRef gate);
     GateRef CheckAndConvert(GateRef gate, ValueType src, ValueType dst);
+    GateRef ConvertHoleAsUndefined(GateRef receiver);
     GateRef CheckTaggedIntAndConvertToInt32(GateRef gate);
     GateRef CheckTaggedDoubleAndConvertToInt32(GateRef gate);
     GateRef CheckTaggedNumberAndConvertToInt32(GateRef gate);
@@ -469,7 +470,6 @@ public:
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
     GateRef LoadProperty(GateRef receiver, GateRef propertyLookupResult, bool isFunction);
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
-    GateRef StorePropertyNoBarrier(GateRef gate);
     GateRef LoadArrayLength(GateRef array);
     GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
@@ -478,7 +478,7 @@ public:
     GateRef CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult, GateRef value);
     GateRef GetConstPool(GateRef jsFunc);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset);
-
+    GateRef StoreConstOffset(VariableType type, GateRef receiver, size_t offset, GateRef value);
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
     inline GateRef HasAotCode(GateRef method);
@@ -704,7 +704,7 @@ class Environment {
 public:
     using LabelImpl = Label::LabelImpl;
     Environment(GateRef hir, Circuit *circuit, CircuitBuilder *builder);
-    Environment(GateRef stateEntry, GateRef dependEntry, std::vector<GateRef>& inlist,
+    Environment(GateRef stateEntry, GateRef dependEntry, const std::initializer_list<GateRef>& args,
                 Circuit *circuit, CircuitBuilder *builder);
     Environment(size_t arguments, CircuitBuilder *builder);
     ~Environment();
