@@ -69,18 +69,18 @@ private:
     JSTaggedType *top_;
 };
 
-void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle)
+void Deoptimizier::CollectVregs(const std::vector<ARKDeopt>& deoptBundle)
 {
     deoptVregs_.clear();
     for (size_t i = 0; i < deoptBundle.size(); i++) {
-        kungfu::ARKDeopt deopt = deoptBundle.at(i);
+        ARKDeopt deopt = deoptBundle.at(i);
         JSTaggedType v;
-        kungfu::OffsetType id = deopt.Id;
-        if (std::holds_alternative<kungfu::DwarfRegAndOffsetType>(deopt.value)) {
-            ASSERT(deopt.kind == kungfu::LocationTy::Kind::INDIRECT);
-            auto value = std::get<kungfu::DwarfRegAndOffsetType>(deopt.value);
-            kungfu::DwarfRegType dwarfReg = value.first;
-            kungfu::OffsetType offset = value.second;
+        VRegId id = deopt.id;
+        if (std::holds_alternative<DwarfRegAndOffsetType>(deopt.value)) {
+            ASSERT(deopt.kind == LocationTy::Kind::INDIRECT);
+            auto value = std::get<DwarfRegAndOffsetType>(deopt.value);
+            DwarfRegType dwarfReg = value.first;
+            OffsetType offset = value.second;
             ASSERT (dwarfReg == GCStackMapRegisters::FP || dwarfReg == GCStackMapRegisters::SP);
             uintptr_t addr;
             if (dwarfReg == GCStackMapRegisters::SP) {
@@ -89,16 +89,16 @@ void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle
                 addr = context_.callsiteFp + offset;
             }
             v = *(reinterpret_cast<JSTaggedType *>(addr));
-        } else if (std::holds_alternative<kungfu::LargeInt>(deopt.value)) {
-            ASSERT(deopt.kind == kungfu::LocationTy::Kind::CONSTANTNDEX);
-            v = JSTaggedType(static_cast<int64_t>(std::get<kungfu::LargeInt>(deopt.value)));
+        } else if (std::holds_alternative<LargeInt>(deopt.value)) {
+            ASSERT(deopt.kind == LocationTy::Kind::CONSTANTNDEX);
+            v = JSTaggedType(static_cast<int64_t>(std::get<LargeInt>(deopt.value)));
         } else {
-            ASSERT(std::holds_alternative<kungfu::OffsetType>(deopt.value));
-            ASSERT(deopt.kind == kungfu::LocationTy::Kind::CONSTANT);
-            v = JSTaggedType(static_cast<int64_t>(std::get<kungfu::OffsetType>(deopt.value)));
+            ASSERT(std::holds_alternative<IntType>(deopt.value));
+            ASSERT(deopt.kind == LocationTy::Kind::CONSTANT);
+            v = JSTaggedType(static_cast<int64_t>(std::get<IntType>(deopt.value)));
         }
-        if (id != static_cast<kungfu::OffsetType>(SpecVregIndex::PC_OFFSET_INDEX)) {
-            if (id == static_cast<kungfu::OffsetType>(SpecVregIndex::ENV_INDEX)) {
+        if (id != static_cast<VRegId>(SpecVregIndex::PC_OFFSET_INDEX)) {
+            if (id == static_cast<VRegId>(SpecVregIndex::ENV_INDEX)) {
                 env_ = JSTaggedValue(v);
             } else {
                 deoptVregs_[id] = JSTaggedValue(v);
@@ -155,7 +155,7 @@ void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle
 //               |       .........          |               v
 //               |--------------------------| ---------------
 
-void Deoptimizier::CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle)
+void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
 {
     JSTaggedType *lastLeave = const_cast<JSTaggedType *>(thread_->GetLastLeaveFrame());
     FrameIterator it(lastLeave, thread_);
@@ -166,7 +166,7 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBun
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
                 auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
                 frame->GetDeoptBundleInfo(it, deoptBundle);
-                kungfu::CalleeRegAndOffsetVec calleeRegInfo;
+                CalleeRegAndOffsetVec calleeRegInfo;
                 frame->GetFuncCalleeRegAndOffset(it, calleeRegInfo);
                 context_.calleeRegAndOffset = calleeRegInfo;
                 context_.callsiteSp = it.GetCallSiteSp();
@@ -208,7 +208,7 @@ Method* Deoptimizier::GetMethod(JSTaggedValue &target)
 
 void Deoptimizier::RelocateCalleeSave()
 {
-    kungfu::CalleeReg callreg;
+    CalleeReg callreg;
     for (auto &it: context_.calleeRegAndOffset) {
         auto reg = it.first;
         auto offset = it.second;
@@ -249,7 +249,7 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
         JSTaggedValue value = JSTaggedValue::Undefined();
         // deopt value
         if (HasDeoptValue(virtualIndex)) {
-            value = deoptVregs_.at(static_cast<kungfu::OffsetType>(virtualIndex));
+            value = deoptVregs_.at(static_cast<VRegId>(virtualIndex));
         } else {
             value = GetActualFrameArgs(i);
         }
@@ -259,17 +259,17 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
 
     // [reserved args]
     if (method->HaveThisWithCallField()) {
-        JSTaggedValue value = deoptVregs_.at(static_cast<kungfu::OffsetType>(SpecVregIndex::THIS_OBJECT_INDEX));
+        JSTaggedValue value = deoptVregs_.at(static_cast<VRegId>(SpecVregIndex::THIS_OBJECT_INDEX));
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
     if (method->HaveNewTargetWithCallField()) {
-        JSTaggedValue value = deoptVregs_.at(static_cast<kungfu::OffsetType>(SpecVregIndex::NEWTARGET_INDEX));
+        JSTaggedValue value = deoptVregs_.at(static_cast<VRegId>(SpecVregIndex::NEWTARGET_INDEX));
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
     if (method->HaveFuncWithCallField()) {
-        JSTaggedValue value = deoptVregs_.at(static_cast<kungfu::OffsetType>(SpecVregIndex::FUNC_INDEX));
+        JSTaggedValue value = deoptVregs_.at(static_cast<VRegId>(SpecVregIndex::FUNC_INDEX));
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
@@ -283,7 +283,7 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
     return true;
 }
 
-void Deoptimizier::Dump(Method* method, kungfu::DeoptType type)
+void Deoptimizier::Dump(Method* method, DeoptType type)
 {
     if (traceDeopt_) {
         std::string checkType = DisplayItems(type);
@@ -296,40 +296,40 @@ void Deoptimizier::Dump(Method* method, kungfu::DeoptType type)
     }
 }
 
-std::string Deoptimizier::DisplayItems(kungfu::DeoptType type)
+std::string Deoptimizier::DisplayItems(DeoptType type)
 {
     switch (type) {
-        case kungfu::DeoptType::NOTINT:
+        case DeoptType::NOTINT:
             return "NOT INT";
-        case kungfu::DeoptType::DIVZERO:
+        case DeoptType::DIVZERO:
             return "DIV ZERO";
-        case kungfu::DeoptType::NOTDOUBLE:
+        case DeoptType::NOTDOUBLE:
             return "NOT DOUBLE";
-        case kungfu::DeoptType::NOTNUMBER:
+        case DeoptType::NOTNUMBER:
             return "NOT NUMBER";
-        case kungfu::DeoptType::NOTBOOL:
+        case DeoptType::NOTBOOL:
             return "NOT BOOL";
-        case kungfu::DeoptType::NOTHEAPOBJECT:
+        case DeoptType::NOTHEAPOBJECT:
             return "NOT HEAP OBJECT";
-        case kungfu::DeoptType::NOTSARRAY:
+        case DeoptType::NOTSARRAY:
             return "NOT SARRAY";
-        case kungfu::DeoptType::NOTF32ARRAY:
+        case DeoptType::NOTF32ARRAY:
             return "NOT F32ARRAY";
-        case kungfu::DeoptType::INCONSISTENTHCLASS:
+        case DeoptType::INCONSISTENTHCLASS:
             return "INCONSISTENT HCLASS";
         case kungfu::DeoptType::NOTNEWOBJ:
             return "NOT NEWOBJ TYPE";
-        case kungfu::DeoptType::NOTARRAYIDX:
+        case DeoptType::NOTARRAYIDX:
             return "NOT ARRAY IDX";
-        case kungfu::DeoptType::NOTF32ARRAYIDX:
+        case DeoptType::NOTF32ARRAYIDX:
             return "NOT F32 ARRAY IDX";
-        case kungfu::DeoptType::NOTINCOV:
+        case DeoptType::NOTINCOV:
             return "NOT INC OVERFLOW";
-        case kungfu::DeoptType::NOTDECOV:
+        case DeoptType::NOTDECOV:
             return "NOT DEC OVERFLOW";
-        case kungfu::DeoptType::NOTNEGOV:
+        case DeoptType::NOTNEGOV:
             return "NOT NEG OVERFLOW";
-        case kungfu::DeoptType::NOTCALLTGT:
+        case DeoptType::NOTCALLTGT:
             return "NOT CALL TARGET";
         default: {
             return "NOT CHECK";
@@ -337,7 +337,7 @@ std::string Deoptimizier::DisplayItems(kungfu::DeoptType type)
     }
 }
 
-JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(kungfu::DeoptType type)
+JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(DeoptType type)
 {
     JSTaggedValue callTarget = GetDeoptValue(static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
     auto method = GetMethod(callTarget);

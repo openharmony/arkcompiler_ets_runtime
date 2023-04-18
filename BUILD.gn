@@ -726,6 +726,7 @@ ecma_source = [
   "ecmascript/stackmap/ark_stackmap_builder.cpp",
   "ecmascript/stackmap/ark_stackmap_parser.cpp",
   "ecmascript/stackmap/llvm_stackmap_parser.cpp",
+  "ecmascript/stackmap/llvm_stackmap_type.cpp",
   "ecmascript/subtyping_operator.cpp",
   "ecmascript/taskpool/taskpool.cpp",
   "ecmascript/taskpool/runner.cpp",

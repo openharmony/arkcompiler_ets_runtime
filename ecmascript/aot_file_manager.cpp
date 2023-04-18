@@ -288,7 +288,6 @@ bool AnFileInfo::Load(const std::string &filename)
     }
 
     fileMapMem_ = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
-
     if (fileMapMem_.GetOriginAddr() == nullptr) {
         LOG_ECMA(ERROR) << "File mmap failed";
         return false;
@@ -790,7 +789,7 @@ void AOTFileInfo::Destroy()
 }
 
 bool AOTFileInfo::CalCallSiteInfo(uintptr_t retAddr,
-    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec>& ret) const
+    std::tuple<uint64_t, uint8_t *, int, CalleeRegAndOffsetVec>& ret) const
 {
     uint64_t textStart = 0;
     uint8_t *stackmapAddr = nullptr;
@@ -823,11 +822,11 @@ bool AOTFileInfo::CalCallSiteInfo(uintptr_t retAddr,
         ASSERT(it != t);
         ASSERT((it->codeAddr_ <= target.codeAddr_) && (target.codeAddr_ < it->codeAddr_ + it->funcSize_));
         delta = it->fpDeltaPrevFrameSp_;
-        kungfu::CalleeRegAndOffsetVec calleeRegInfo;
+        CalleeRegAndOffsetVec calleeRegInfo;
         for (uint32_t j = 0; j < it->calleeRegisterNum_; j++) {
-            kungfu::DwarfRegType reg = static_cast<kungfu::DwarfRegType>(it->CalleeReg2Offset_[2 * j]);
-            kungfu::OffsetType offset = static_cast<kungfu::OffsetType>(it->CalleeReg2Offset_[2 * j + 1]);
-            kungfu::DwarfRegAndOffsetType regAndOffset = std::make_pair(reg, offset);
+            DwarfRegType reg = static_cast<DwarfRegType>(it->CalleeReg2Offset_[2 * j]);
+            OffsetType offset = static_cast<OffsetType>(it->CalleeReg2Offset_[2 * j + 1]);
+            DwarfRegAndOffsetType regAndOffset = std::make_pair(reg, offset);
             calleeRegInfo.emplace_back(regAndOffset);
         }
         ret = std::make_tuple(textStart, stackmapAddr, delta, calleeRegInfo);

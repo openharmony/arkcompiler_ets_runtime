@@ -39,6 +39,46 @@ public:
     static constexpr int SP = -1;
     static constexpr int FP = -1;
 #endif
+
+static int GetFpRegByTriple(Triple triple)
+{
+    int fp = -1;
+    switch (triple) {
+        case Triple::TRIPLE_AMD64:
+            fp = 6;
+            break;
+        case Triple::TRIPLE_ARM32:
+            fp = 11;
+            break;
+        case Triple::TRIPLE_AARCH64:
+            fp = 29;
+            break;
+        default:
+            UNREACHABLE();
+            break;
+    }
+    return fp;
+}
+
+static int GetSpRegByTriple(Triple triple)
+{
+    int sp = -1;
+    switch (triple) {
+        case Triple::TRIPLE_AMD64:
+            sp = 7;
+            break;
+        case Triple::TRIPLE_ARM32:
+            sp = 13;
+            break;
+        case Triple::TRIPLE_AARCH64:
+            sp = 31;
+            break;
+        default:
+            UNREACHABLE();
+            break;
+    }
+    return sp;
+}
 };
 
 enum Distance {

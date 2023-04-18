@@ -22,7 +22,7 @@
 namespace panda::ecmascript::kungfu {
 #if defined(PANDA_TARGET_AMD64)
 static const int MAX_CALLEE_SAVE_REIGISTER_NUM = 32;
-enum class DwarfReg: DwarfRegType {
+enum class DwarfReg: LLVMStackMapType::DwarfRegType {
     RBX = 3,
     R12 = 12,
     R13 = 13,
@@ -31,7 +31,7 @@ enum class DwarfReg: DwarfRegType {
 };
 #elif defined(PANDA_TARGET_ARM64)
 static const int MAX_CALLEE_SAVE_REIGISTER_NUM = 32;
-enum class DwarfReg: DwarfRegType {
+enum class DwarfReg: LLVMStackMapType::DwarfRegType {
     D8 = 72,
     D9 = 73,
     D10 = 74,
@@ -54,14 +54,14 @@ enum class DwarfReg: DwarfRegType {
 };
 #else
 static const int MAX_CALLEE_SAVE_REIGISTER_NUM = 16;
-enum class DwarfReg: DwarfRegType {
+enum class DwarfReg: LLVMStackMapType::DwarfRegType {
 };
 #endif
 class CalleeReg {
 public:
     PUBLIC_API CalleeReg();
     virtual PUBLIC_API ~CalleeReg() = default;
-    int PUBLIC_API FindCallRegOrder(const DwarfRegType reg) const;
+    int PUBLIC_API FindCallRegOrder(const LLVMStackMapType::DwarfRegType reg) const;
     int PUBLIC_API FindCallRegOrder(const DwarfReg reg) const;
     int PUBLIC_API GetCallRegNum() const;
 private:

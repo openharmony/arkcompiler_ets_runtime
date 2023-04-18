@@ -21,10 +21,13 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <iomanip>
 
 #include "ecmascript/frames.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
+#include "ecmascript/stackmap/llvm_stackmap_type.h"
 
+#include "libpandabase/utils/leb128.h"
 namespace panda::ecmascript {
     class BinaryBufferParser;
 }
@@ -39,10 +42,23 @@ public:
     {
         return offset_;
     }
+    void AlignOffset()
+    {
+        offset_ = AlignUp(offset_, LLVMStackMapType::STACKMAP_ALIGN_BYTES);
+    }
 private:
     uint8_t *buffer_ {nullptr};
     uint32_t length_ {0};
     uint32_t offset_ {0};
+};
+
+struct StackMapDumper {
+    uint32_t callsiteHeadSize {0};
+    uint32_t arkStackMapSize {0};
+    uint32_t deoptSize {0};
+    uint32_t callsiteNum {0};
+    uint32_t stackmapNum {0};
+    uint32_t deoptNum {0};
 };
 
 class ArkStackMapBuilder {
@@ -50,22 +66,33 @@ public:
     ArkStackMapBuilder() = default;
     ~ArkStackMapBuilder() = default;
     std::pair<std::shared_ptr<uint8_t>, uint32_t> PUBLIC_API Run(std::unique_ptr<uint8_t []> stackMapAddr,
-        uintptr_t hostCodeSectionAddr);
+        uintptr_t hostCodeSectionAddr, Triple triple);
+    
+    void SetTraceStackMap(bool flag)
+    {
+        traceStackMap_ = flag;
+    }
+
 private:
+    static constexpr int DECIMAL_LENS = 2;
+    StackMapDumper dumper_;
+
     template <class Vec>
     void SortCallSite(std::vector<std::unordered_map<uintptr_t, Vec>> &infos,
         std::vector<std::pair<uintptr_t, Vec>>& result);
-
-    void CalcCallsitePc(std::vector<std::pair<uintptr_t, DeoptInfoType>> &pc2Deopt,
-        std::vector<std::pair<uintptr_t, CallSiteInfo>> &pc2StackMap, std::vector<intptr_t> &callsitePcs);
-
-    void GenArkCallsiteAOTFileInfo(std::vector<Pc2CallSiteInfo> &pc2stackMaps,
-        std::vector<Pc2Deopt>& pc2DeoptVec, ARKCallsiteAOTFileInfo &result);
-    void SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer);
-    void SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer);
-    void SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t length, const ARKCallsiteAOTFileInfo& info);
+    void CalcCallsitePc(std::vector<std::pair<uintptr_t, LLVMStackMapType::DeoptInfoType>> &pc2Deopt,
+                        std::vector<std::pair<uintptr_t, LLVMStackMapType::CallSiteInfo>> &pc2StackMap,
+                        std::vector<intptr_t> &callsitePcs);
+    void GenArkCallsiteAOTFileInfo(std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2StackMaps,
+        std::vector<LLVMStackMapType::Pc2Deopt>& pc2DeoptVec, ARKCallsiteAOTFileInfo &result, Triple triple);
+    void SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple);
+    void SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple);
+    void SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t length, const ARKCallsiteAOTFileInfo& info, Triple triple);
     int FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc);
-    void GenARKDeopt(const DeoptInfoType& deopt, std::pair<uint32_t, std::vector<kungfu::ARKDeopt>> &sizeAndArkDeopt);
+    void GenARKDeopt(const LLVMStackMapType::DeoptInfoType& deopt,
+        std::pair<uint32_t, std::vector<ARKDeopt>> &sizeAndArkDeopt, Triple triple);
+    void Dump(const StackMapDumper& dumpInfo) const;
+    bool traceStackMap_{false};
 };
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_ARK_STACKMAP_BUILD_H

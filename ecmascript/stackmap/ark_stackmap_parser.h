@@ -37,22 +37,20 @@ public:
     {
         enableLog_ = false;
     }
-    void GetConstInfo(uintptr_t callsite, ConstInfo &info, uint8_t *stackmapAddr = nullptr) const;
-    bool IteratorStackMap(const RootVisitor &visitor,
-                          const RootBaseAndDerivedVisitor &derivedVisitor,
+    void GetConstInfo(uintptr_t callsite, LLVMStackMapType::ConstInfo& info, uint8_t *stackmapAddr = nullptr) const;
+    bool IteratorStackMap(const RootVisitor& visitor,
+                          const RootBaseAndDerivedVisitor& derivedVisitor,
                           uintptr_t callSiteAddr, uintptr_t callsiteFp,
                           uintptr_t callSiteSp, uint8_t *stackmapAddr) const;
-    void GetArkDeopt(uintptr_t callSiteAddr, uint8_t *stackmapAddr, std::vector<kungfu::ARKDeopt>& deopts) const;
+    void GetArkDeopt(uintptr_t callSiteAddr, uint8_t *stackmapAddr, std::vector<ARKDeopt>& deopts) const;
 private:
-    int BinaraySearch(CallsiteHead *callsiteHead, uint32_t callsiteNum, uintptr_t callSiteAddr) const;
-    void GetArkDeopt(uint8_t *stackmapAddr, uint32_t length, const CallsiteHead& callsiteHead,
-                     std::vector<kungfu::ARKDeopt>& deopt) const;
-    void ParseArkDeopt(const CallsiteHead& callsiteHead, BinaryBufferParser& binBufparser,
-                       uint8_t *ptr, std::vector<kungfu::ARKDeopt> &deopts) const;
-    void ParseArkStackMap(const CallsiteHead& callsiteHead, BinaryBufferParser& binBufparser,
-                          uint8_t *ptr, ArkStackMap &stackMap) const;
+    int BinaraySearch(CallsiteHeader *callsiteHead, uint32_t callsiteNum, uintptr_t callSiteAddr) const;
+    void GetArkDeopt(uint8_t *stackmapAddr, const CallsiteHeader& callsiteHead,
+                     std::vector<ARKDeopt>& deopt) const;
+    void ParseArkDeopt(const CallsiteHeader& callsiteHead, uint8_t *ptr, std::vector<ARKDeopt>& deopts) const;
+    void ParseArkStackMap(const CallsiteHeader& callsiteHead, uint8_t *ptr, ArkStackMap& stackMap) const;
     void ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) const;
-    uintptr_t GetStackSlotAddress(const DwarfRegAndOffsetType info,
+    uintptr_t GetStackSlotAddress(const LLVMStackMapType::DwarfRegAndOffsetType info,
                                   uintptr_t callSiteSp, uintptr_t callsiteFp) const;
     friend class ArkStackMapBuilder;
     bool enableLog_ {false};

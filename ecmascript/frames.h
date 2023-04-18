@@ -439,6 +439,7 @@ struct OptimizedJSFunctionFrame : public base::AlignedStruct<JSTaggedValue::Tagg
                                                              base::AlignedPointer,
                                                              base::AlignedPointer> {
 public:
+    using ConstInfo = kungfu::LLVMStackMapType::ConstInfo;
     enum class Index : size_t {
         JSFuncIndex = 0,
         TypeIndex,
@@ -477,7 +478,7 @@ public:
 
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor) const;
-    void CollectPcOffsetInfo(const FrameIterator &it, kungfu::ConstInfo &info) const;
+    void CollectPcOffsetInfo(const FrameIterator &it, ConstInfo &info) const;
 
     inline JSTaggedValue GetFunction() const
     {
@@ -1427,6 +1428,7 @@ enum class GCVisitedFlag : bool {
 
 class FrameIterator {
 public:
+    using ConstInfo = kungfu::LLVMStackMapType::ConstInfo;
     explicit FrameIterator(JSTaggedType *sp, const JSThread *thread = nullptr);
     FrameType GetFrameType() const
     {
@@ -1483,7 +1485,7 @@ public:
         return thread_;
     }
     bool IteratorStackMap(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const;
-    void CollectPcOffsetInfo(kungfu::ConstInfo &info) const;
+    void CollectPcOffsetInfo(ConstInfo &info) const;
     void CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const;
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
     int GetCallSiteDelta(uintptr_t retAddr) const;

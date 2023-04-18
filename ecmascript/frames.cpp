@@ -393,7 +393,7 @@ uint32_t FrameIterator::GetBytecodeOffset() const
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             auto frame = this->GetFrame<OptimizedJSFunctionFrame>();
-            kungfu::ConstInfo constInfo;
+            ConstInfo constInfo;
             frame->CollectPcOffsetInfo(*this, constInfo);
             if (!constInfo.empty()) {
                 return constInfo[0];
@@ -460,7 +460,7 @@ ARK_INLINE void OptimizedFrame::GCIterate(const FrameIterator &it,
     }
 }
 
-void FrameIterator::CollectPcOffsetInfo(kungfu::ConstInfo &info) const
+void FrameIterator::CollectPcOffsetInfo(ConstInfo &info) const
 {
     arkStackMapParser_->GetConstInfo(optimizedReturnAddr_, info, stackMapAddr_);
 }
@@ -486,7 +486,7 @@ ARK_INLINE uintptr_t* OptimizedJSFunctionFrame::ComputePrevFrameSp(const FrameIt
 }
 
 
-void OptimizedJSFunctionFrame::CollectPcOffsetInfo(const FrameIterator &it, kungfu::ConstInfo &info) const
+void OptimizedJSFunctionFrame::CollectPcOffsetInfo(const FrameIterator &it, ConstInfo &info) const
 {
     it.CollectPcOffsetInfo(info);
 }

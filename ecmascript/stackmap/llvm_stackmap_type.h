@@ -21,27 +21,96 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <cmath>
+#include "ecmascript/base/bit_helper.h"
 #include "ecmascript/common.h"
+#include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/mem/mem.h"
+
+#include "libpandabase/utils/leb128.h"
 
 namespace panda::ecmascript::kungfu {
-using OffsetType = int32_t;
-using DwarfRegType = uint16_t;
-using LargeInt = int64_t;
-using DwarfRegAndOffsetType = std::pair<DwarfRegType, OffsetType>;
-using CallSiteInfo = std::vector<DwarfRegAndOffsetType>;
-using Fun2InfoType = std::pair<uintptr_t, DwarfRegAndOffsetType>;
-using Pc2CallSiteInfo = std::unordered_map<uintptr_t, CallSiteInfo>;
-using FpDelta = std::pair<int, uint32_t>;
-using Func2FpDelta = std::unordered_map<uintptr_t, FpDelta>; // value: fpDelta & funcSize
-using ConstInfo = std::vector<OffsetType>;
-using DeoptInfoType = std::vector<std::variant<OffsetType, LargeInt, DwarfRegAndOffsetType>>;
-using Pc2Deopt = std::unordered_map<uintptr_t, DeoptInfoType>;
+struct LocationTy {
+    enum class Kind: uint8_t {
+        REGISTER = 1,
+        DIRECT = 2,
+        INDIRECT = 3,
+        CONSTANT = 4,
+        CONSTANTNDEX = 5,
+    };
+    static constexpr int CONSTANT_FIRST_ELEMENT_INDEX = 3;
+    static constexpr int CONSTANT_DEOPT_CNT_INDEX = 2;
+
+    Kind location;
+    uint8_t reserved_0;
+    uint16_t locationSize;
+    uint16_t dwarfRegNum;
+    uint16_t reserved_1;
+    int32_t offsetOrSmallConstant;
+
+    std::string PUBLIC_API TypeToString(Kind loc) const;
+
+    void Print() const
+    {
+        LOG_COMPILER(DEBUG)  << TypeToString(location);
+        LOG_COMPILER(DEBUG) << ", size:" << std::dec << locationSize;
+        LOG_COMPILER(DEBUG) << "\tDwarfRegNum:" << dwarfRegNum;
+        LOG_COMPILER(DEBUG) << "\t OffsetOrSmallConstant:" << offsetOrSmallConstant;
+    }
+};
+
+class LLVMStackMapType {
+public:
+    using OffsetType = int32_t;
+    using DwarfRegType = uint16_t;
+    using IntType = int32_t;
+    using LargeInt = int64_t;
+    using RegType = int8_t;
+    using KindType = int8_t;
+    using VRegId = int16_t;
+    using SLeb128Type = int64_t;
+    using DwarfRegAndOffsetType = std::pair<DwarfRegType, OffsetType>;
+    using CallSiteInfo = std::vector<DwarfRegAndOffsetType>;
+    using Fun2InfoType = std::pair<uintptr_t, DwarfRegAndOffsetType>;
+    using Pc2CallSiteInfo = std::unordered_map<uintptr_t, CallSiteInfo>;
+    using FpDelta = std::pair<int, uint32_t>;
+    using Func2FpDelta = std::unordered_map<uintptr_t, FpDelta>; // value: fpDelta & funcSize
+    using ConstInfo = std::vector<IntType>;
+    using DeoptInfoType = std::vector<std::variant<IntType, LargeInt, DwarfRegAndOffsetType>>;
+    using Pc2Deopt = std::unordered_map<uintptr_t, DeoptInfoType>;
+
+    static constexpr size_t STACKMAP_ALIGN_BYTES = 2;
+    static constexpr KindType CONSTANT_TYPE = 0;
+    static constexpr KindType OFFSET_TYPE = 1;
+
+    template <typename T>
+    static void EncodeData(std::vector<uint8_t> &outData, size_t &dataSize, T value)
+    {
+        static_assert(std::is_signed_v<T>, "T must be signed");
+        SLeb128Type data = value;
+        size_t valueSize = panda::leb128::SignedEncodingSize(data);
+        outData.resize(valueSize);
+        dataSize = panda::leb128::EncodeSigned(data, outData.data());
+    }
+
+    static void EncodeRegAndOffset(std::vector<uint8_t> &regOffset, size_t &regOffsetSize,
+        DwarfRegType reg, OffsetType offset, Triple triple);
+    static void DecodeRegAndOffset(SLeb128Type regOffset, DwarfRegType &reg, OffsetType &offset);
+    static void EncodeVRegsInfo(std::vector<uint8_t> &vregsInfo, size_t &vregsInfoSize,
+        VRegId id, LocationTy::Kind kind);
+    static void DecodeVRegsInfo(SLeb128Type vregsInfo, VRegId &id, KindType &kind);
+
+private:
+    static constexpr size_t STACKMAP_TYPE_NUM = 2;
+    static constexpr RegType FP_VALUE = 0;
+    static constexpr RegType SP_VALUE = 1;
+};
 
 struct Header {
     uint8_t  stackmapversion; // Stack Map Version (current version is 3)
-    uint8_t  Reserved0; // Reserved (expected to be 0)
-    uint16_t Reserved1; // Reserved (expected to be 0)
+    uint8_t  reserved0; // Reserved (expected to be 0)
+    uint16_t reserved1; // Reserved (expected to be 0)
     void Print() const
     {
         LOG_COMPILER(DEBUG) << "----- head ----";
@@ -51,7 +120,7 @@ struct Header {
 };
 
 #pragma pack(1)
-struct StkSizeRecordTy {
+struct StkMapSizeRecordTy {
     uintptr_t functionAddress;
     uint64_t stackSize;
     uint64_t recordCount;
@@ -65,79 +134,50 @@ struct StkSizeRecordTy {
 #pragma pack()
 
 struct ConstantsTy {
-    uintptr_t LargeConstant;
+    uintptr_t largeConstant;
     void Print() const
     {
-        LOG_COMPILER(DEBUG) << "               LargeConstant:0x" << std::hex << LargeConstant;
+        LOG_COMPILER(DEBUG) << "               LargeConstant:0x" << std::hex << largeConstant;
     }
 };
 
 struct StkMapRecordHeadTy {
-    uint64_t PatchPointID;
-    uint32_t InstructionOffset;
-    uint16_t Reserved;
-    uint16_t NumLocations;
+    uint64_t patchPointID;
+    uint32_t instructionOffset;
+    uint16_t reserved;
+    uint16_t numLocations;
     void Print() const
     {
-        LOG_COMPILER(DEBUG) << "               PatchPointID:0x" << std::hex << PatchPointID;
-        LOG_COMPILER(DEBUG) << "               instructionOffset:0x" << std::hex << InstructionOffset;
-        LOG_COMPILER(DEBUG) << "               Reserved:0x" << std::hex << Reserved;
-        LOG_COMPILER(DEBUG) << "               NumLocations:0x" << std::hex << NumLocations;
+        LOG_COMPILER(DEBUG) << "               PatchPointID:0x" << std::hex << patchPointID;
+        LOG_COMPILER(DEBUG) << "               instructionOffset:0x" << std::hex << instructionOffset;
+        LOG_COMPILER(DEBUG) << "               Reserved:0x" << std::hex << reserved;
+        LOG_COMPILER(DEBUG) << "               NumLocations:0x" << std::hex << numLocations;
     }
 };
-
-struct LocationTy {
-    enum class Kind: uint8_t {
-        REGISTER = 1,
-        DIRECT = 2,
-        INDIRECT = 3,
-        CONSTANT = 4,
-        CONSTANTNDEX = 5,
-    };
-    static constexpr int CONSTANT_FIRST_ELEMENT_INDEX = 3;
-    static constexpr int CONSTANT_DEOPT_CNT_INDEX = 2;
-    Kind location;
-    uint8_t Reserved_0;
-    uint16_t LocationSize;
-    uint16_t DwarfRegNum;
-    uint16_t Reserved_1;
-    OffsetType OffsetOrSmallConstant;
-
-    std::string PUBLIC_API TypeToString(Kind loc) const;
-
-    void Print() const
-    {
-        LOG_COMPILER(DEBUG)  << TypeToString(location);
-        LOG_COMPILER(DEBUG) << ", size:" << std::dec << LocationSize;
-        LOG_COMPILER(DEBUG) << "\tDwarfRegNum:" << DwarfRegNum;
-        LOG_COMPILER(DEBUG) << "\t OffsetOrSmallConstant:" << OffsetOrSmallConstant;
-    }
-};
-
 struct LiveOutsTy {
-    DwarfRegType DwarfRegNum;
-    uint8_t Reserved;
-    uint8_t SizeinBytes;
+    LLVMStackMapType::DwarfRegType dwarfRegNum;
+    uint8_t reserved;
+    uint8_t sizeinBytes;
     void Print() const
     {
-        LOG_COMPILER(DEBUG) << "                  Dwarf RegNum:" << DwarfRegNum;
-        LOG_COMPILER(DEBUG) << "                  Reserved:" << Reserved;
-        LOG_COMPILER(DEBUG) << "                  SizeinBytes:" << SizeinBytes;
+        LOG_COMPILER(DEBUG) << "                  Dwarf RegNum:" << dwarfRegNum;
+        LOG_COMPILER(DEBUG) << "                  Reserved:" << reserved;
+        LOG_COMPILER(DEBUG) << "                  SizeinBytes:" << sizeinBytes;
     }
 };
 struct StkMapRecordTy {
     struct StkMapRecordHeadTy head;
-    std::vector<struct LocationTy> Locations;
-    std::vector<struct LiveOutsTy> LiveOuts;
+    std::vector<struct LocationTy> locations;
+    std::vector<struct LiveOutsTy> liveOuts;
     void Print() const
     {
         head.Print();
-        auto size = Locations.size();
+        auto size = locations.size();
         for (size_t i = 0; i < size; i++) {
             LOG_COMPILER(DEBUG) << "                   #" << std::dec << i << ":";
-            Locations[i].Print();
+            locations[i].Print();
         }
-        size = LiveOuts.size();
+        size = liveOuts.size();
         for (size_t i = 0; i < size; i++) {
             LOG_COMPILER(DEBUG) << "               liveOuts[" << i << "] info:";
         }
@@ -170,23 +210,23 @@ private:
 
 struct LLVMStackMap {
     struct Header head;
-    std::vector<struct StkSizeRecordTy> StkSizeRecords;
-    std::vector<struct ConstantsTy> Constants;
-    std::vector<struct StkMapRecordTy> StkMapRecord;
+    std::vector<struct StkMapSizeRecordTy> stkSizeRecords;
+    std::vector<struct ConstantsTy> constants;
+    std::vector<struct StkMapRecordTy> stkMapRecord;
     void Print() const
     {
         head.Print();
-        for (size_t i = 0; i < StkSizeRecords.size(); i++) {
-            LOG_COMPILER(DEBUG) << "stkSizeRecord[" << i << "] info:";
-            StkSizeRecords[i].Print();
+        for (size_t i = 0; i < stkSizeRecords.size(); i++) {
+            LOG_COMPILER(DEBUG) << "StkSizeRecord[" << i << "] info:";
+            stkSizeRecords[i].Print();
         }
-        for (size_t i = 0; i < Constants.size(); i++) {
-            LOG_COMPILER(DEBUG) << "constants[" << i << "] info:";
-            Constants[i].Print();
+        for (size_t i = 0; i < constants.size(); i++) {
+            LOG_COMPILER(DEBUG) << "Constants[" << i << "] info:";
+            constants[i].Print();
         }
-        for (size_t i = 0; i < StkMapRecord.size(); i++) {
+        for (size_t i = 0; i < stkMapRecord.size(); i++) {
             LOG_COMPILER(DEBUG) << "StkMapRecord[" << i << "] info:";
-            StkMapRecord[i].Print();
+            stkMapRecord[i].Print();
         }
     }
 };

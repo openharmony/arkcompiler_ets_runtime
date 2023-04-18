@@ -35,10 +35,15 @@ void Module::CollectStackMapDes(ModuleSectionDes& des) const
     std::shared_ptr<uint8_t> ptr = nullptr;
     uint32_t size = 0;
     ArkStackMapBuilder builder;
-    std::tie(ptr, size) = builder.Run(std::move(stackmapPtr), textAddr);
+    std::tie(ptr, size) = builder.Run(std::move(stackmapPtr), textAddr, GetTriple());
     des.EraseSec(ElfSecName::LLVM_STACKMAP);
     des.SetArkStackMapPtr(ptr);
     des.SetArkStackMapSize(size);
+}
+
+Triple Module::GetTriple() const
+{
+    return llvmModule_->GetCompilationConfig()->GetTriple();
 }
 
 void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, StubFileInfo &stubInfo,

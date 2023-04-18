@@ -52,7 +52,7 @@ CalleeReg::CalleeReg()
 #endif
 }
 
-int CalleeReg::FindCallRegOrder(const DwarfRegType reg) const
+int CalleeReg::FindCallRegOrder(const LLVMStackMapType::DwarfRegType reg) const
 {
     auto it = reg2Location_.find(static_cast<DwarfReg>(reg));
     if (it != reg2Location_.end()) {
@@ -65,7 +65,7 @@ int CalleeReg::FindCallRegOrder(const DwarfRegType reg) const
 
 int CalleeReg::FindCallRegOrder(const DwarfReg reg) const
 {
-    auto order = FindCallRegOrder(static_cast<DwarfRegType>(reg));
+    auto order = FindCallRegOrder(static_cast<LLVMStackMapType::DwarfRegType>(reg));
     return order;
 }
 
