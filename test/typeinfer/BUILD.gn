@@ -109,6 +109,7 @@ group("ark_typeinfer_test") {
   }
 
   deps += [ "module_test:ark_typeinfer_module_test" ]
+  deps += [ "es2abc_feature:ark_typeinfer_es2abc_feature_test" ]
 
   if (is_enable_typeinfer_automatedcases) {
     foreach(file, ts_files) {

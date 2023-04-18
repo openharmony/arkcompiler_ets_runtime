@@ -25,7 +25,8 @@
 namespace panda::ecmascript::kungfu {
 bool PassManager::ShouldCollect() const
 {
-    return passOptions_->EnableTypeInfer() && (profilerLoader_.IsLoaded() || vm_->GetTSManager()->AssertTypes());
+    return passOptions_->EnableTypeInfer() &&
+        (profilerLoader_.IsLoaded() || vm_->GetTSManager()->AssertTypes() || log_->OutputType());
 }
 
 bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generator)
@@ -66,7 +67,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
 
         log_->SetMethodLog(fileName, methodName, logList_);
 
-        std::string fullName = methodName + "@" + fileName;
+        std::string fullName = methodName + "@" + std::string(recordName) + "@" + fileName;
         bool enableMethodLog = log_->GetEnableMethodLog();
         if (enableMethodLog) {
             LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fullName << "] log:" << "\033[0m";
