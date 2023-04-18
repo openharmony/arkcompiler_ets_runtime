@@ -98,6 +98,8 @@ enum class DeoptType : uint8_t {
     NOTCALLTGT,
     NOTJSCALLTGT,
     DIVZERO,
+    NEGTIVEINDEX,
+    LARGEINDEX,
 };
 
 enum class ICmpCondition : uint8_t {
@@ -346,6 +348,48 @@ public:
         uint32_t statesIn, uint16_t dependsIn, uint32_t valuesIn)
         : opcode_(opcode), flags_(flags),
         statesIn_(statesIn), dependsIn_(dependsIn), valuesIn_(valuesIn) {}
+
+    static TypedBinOp GetRevCompareOp(TypedBinOp op)
+    {
+        switch (op) {
+            case TypedBinOp::TYPED_LESS:
+                return TypedBinOp::TYPED_GREATEREQ;
+            case TypedBinOp::TYPED_LESSEQ:
+                return TypedBinOp::TYPED_GREATER;
+            case TypedBinOp::TYPED_GREATER:
+                return TypedBinOp::TYPED_LESSEQ;
+            case TypedBinOp::TYPED_GREATEREQ:
+                return TypedBinOp::TYPED_LESS;
+            case TypedBinOp::TYPED_EQ:
+                return TypedBinOp::TYPED_NOTEQ;
+            case TypedBinOp::TYPED_NOTEQ:
+                return TypedBinOp::TYPED_EQ;
+            default:
+                UNREACHABLE();
+                return op;
+        }
+    }
+
+    static TypedBinOp GetSwapCompareOp(TypedBinOp op)
+    {
+        switch (op) {
+            case TypedBinOp::TYPED_LESS:
+                return TypedBinOp::TYPED_GREATER;
+            case TypedBinOp::TYPED_LESSEQ:
+                return TypedBinOp::TYPED_GREATEREQ;
+            case TypedBinOp::TYPED_GREATER:
+                return TypedBinOp::TYPED_LESS;
+            case TypedBinOp::TYPED_GREATEREQ:
+                return TypedBinOp::TYPED_LESSEQ;
+            case TypedBinOp::TYPED_EQ:
+                return TypedBinOp::TYPED_EQ;
+            case TypedBinOp::TYPED_NOTEQ:
+                return TypedBinOp::TYPED_NOTEQ;
+            default:
+                UNREACHABLE();
+                return op;
+        }
+    }
 
     size_t GetStateCount() const
     {

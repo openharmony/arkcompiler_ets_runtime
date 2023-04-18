@@ -82,5 +82,151 @@ public:
 private:
     uint8_t tag_ {0};
 };
+
+class RangeInfo {
+public:
+    RangeInfo() {}
+    RangeInfo(int32_t min, int32_t max)
+    {
+        if (min == max) {
+            min_ = max_ = min;
+        } else {
+            auto it = std::upper_bound(rangeBounds_.begin(), rangeBounds_.end(), min);
+            ASSERT(it != rangeBounds_.begin());
+            it--;
+            min_ = *it;
+            max_ = *std::lower_bound(rangeBounds_.begin(), rangeBounds_.end(), max);
+        }
+    }
+    
+    static constexpr int32_t UINT30_MAX = 0x3fffffff;
+    static const inline std::vector<int32_t> rangeBounds_ = { INT32_MIN, INT32_MIN + 1,
+                                                              -1, 0, 1, UINT30_MAX, UINT30_MAX + 1,
+                                                              INT32_MAX - 1, INT32_MAX };
+
+    static RangeInfo NONE()
+    {
+        return RangeInfo(INT32_MAX, INT32_MIN);
+    }
+    
+    static RangeInfo ANY()
+    {
+        return RangeInfo(INT32_MIN, INT32_MAX);
+    }
+
+    int32_t GetMin() const
+    {
+        return min_;
+    }
+
+    int32_t GetMax() const
+    {
+        return max_;
+    }
+
+    RangeInfo Union(const RangeInfo &rhs) const
+    {
+        return RangeInfo(std::min(min_, rhs.min_), std::max(max_, rhs.max_));
+    }
+
+    RangeInfo intersection(const RangeInfo &rhs) const
+    {
+        return RangeInfo(std::max(min_, rhs.min_), std::min(max_, rhs.max_));
+    }
+
+    bool MaybeAddOverflow(const RangeInfo &rhs) const
+    {
+        return (rhs.max_ > 0) && (max_ > INT32_MAX - rhs.max_);
+    }
+
+    bool MaybeAddUnderflow(const RangeInfo &rhs) const
+    {
+        return (rhs.min_ < 0) && (min_ < INT32_MIN - rhs.min_);
+    }
+
+    bool MaybeAddOverflowOrUnderflow(const RangeInfo &rhs) const
+    {
+        return MaybeAddOverflow(rhs) || MaybeAddUnderflow(rhs);
+    }
+
+    RangeInfo operator+ (const RangeInfo &rhs) const
+    {
+        int32_t nmax = MaybeAddOverflow(rhs) ? INT32_MAX : max_ + rhs.max_;
+        int32_t nmin = MaybeAddUnderflow(rhs) ? INT32_MIN : min_ + rhs.min_;
+        return RangeInfo(nmin, nmax);
+    }
+
+    bool MaybeSubOverflow(const RangeInfo &rhs) const
+    {
+        return (rhs.min_ < 0) && (max_ > INT32_MAX + rhs.min_);
+    }
+
+    bool MaybeSubUnderflow(const RangeInfo &rhs) const
+    {
+        return (rhs.max_ > 0) && (min_ < INT32_MIN + rhs.max_);
+    }
+
+    bool MaybeSubOverflowOrUnderflow(const RangeInfo &rhs) const
+    {
+        return MaybeSubOverflow(rhs) || MaybeSubUnderflow(rhs);
+    }
+
+    RangeInfo operator- (const RangeInfo &rhs) const
+    {
+        int32_t nmax = MaybeSubOverflow(rhs) ? INT32_MAX : max_ - rhs.min_;
+        int32_t nmin = MaybeSubUnderflow(rhs) ? INT32_MIN : min_ - rhs.max_;
+        return RangeInfo(nmin, nmax);
+    }
+
+    bool MaybeShrOverflow(const RangeInfo &rhs) const
+    {
+        if (rhs.max_ != rhs.min_) {
+            return true;
+        }
+        return ((rhs.max_ & 0x1f) == 0) && (min_< 0);   // 0x1f : shift bits
+    }
+
+    RangeInfo SHR(const RangeInfo &rhs) const
+    {
+        if (MaybeShrOverflow(rhs)) {
+            // assume no overflow occurs since overflow will lead to deopt
+            return RangeInfo(0, std::max(0, GetMax()));
+        }
+        int32_t shift = rhs.max_ & 0x1f;    // 0x1f : shift bits
+        uint32_t tempMin = bit_cast<uint32_t>((max_ >= 0) ? std::max(0, min_) : min_);
+        uint32_t tempMax = bit_cast<uint32_t>((min_ < 0) ? std::min(-1, max_) : max_);
+        int32_t nmin = bit_cast<int32_t>(tempMin >> shift);
+        int32_t nmax = bit_cast<int32_t>(tempMax >> shift);
+        return RangeInfo(nmin, nmax);
+    }
+
+    RangeInfo ASHR(const RangeInfo &rhs) const
+    {
+        ASSERT(rhs.max_ == rhs.min_);
+        int32_t shift = rhs.max_ & 0x1f;    // 0x1f : shift bits
+        int32_t nmin = min_ >> shift;
+        int32_t nmax = max_ >> shift;
+        return RangeInfo(nmin, nmax);
+    }
+
+    bool operator== (const RangeInfo &rhs) const
+    {
+        return (min_ == rhs.min_) && (max_ == rhs.max_);
+    }
+
+    bool operator!= (const RangeInfo &rhs) const
+    {
+        return (min_ != rhs.min_) || (max_ != rhs.max_);
+    }
+
+    bool IsNone() const
+    {
+        return (min_ == INT32_MAX) && (max_ == INT32_MIN);
+    }
+    
+private:
+    int32_t min_ {INT32_MIN};
+    int32_t max_ {INT32_MAX};
+};
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NUMBER_GATE_INFO_H

@@ -239,7 +239,7 @@ private:
     GateType GetRightType(GateRef gate);
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
     GateRef ConvertNumberToBool(GateRef gate, GateType valueType);
-    GateRef ConvertBooleanToBool(GateRef gate);
+    GateRef ConvertTaggedBooleanToBool(GateRef gate);
 
     void LowerConvert(GateRef gate);
     void LowerCheckAndConvert(GateRef gate);

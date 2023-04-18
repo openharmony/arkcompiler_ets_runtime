@@ -20,6 +20,7 @@ namespace panda::ecmascript::kungfu {
 void EarlyElimination::Run()
 {
     dependChains_.resize(circuit_->GetMaxGateId() + 1, nullptr); // 1: +1 for size
+    renames_.resize(circuit_->GetMaxGateId() + 1, Circuit::NullGate()); // 1: +1 for size
     GateRef entry = acc_.GetDependRoot();
     VisitDependEntry(entry);
     VisitGraph();
@@ -132,6 +133,15 @@ GateRef EarlyElimination::TryEliminateGate(GateRef gate)
     if (!acc_.IsNotWrite(gate)) {
         dependChain = UpdateWrite(gate, dependChain);
         return UpdateDependChain(gate, dependChain);
+    }
+
+    auto numIns = acc_.GetNumValueIn(gate);
+    for (size_t i = 0; i < numIns; ++i) {
+        auto origin = acc_.GetValueIn(gate, i);
+        auto checkd = dependChain->LookupCheckedNode(this, origin);
+        if (origin != checkd) {
+            acc_.ReplaceValueIn(gate, checkd, i);
+        }
     }
 
     // lookup gate, replace
@@ -260,7 +270,7 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
 
     size_t valueCount = acc_.GetNumValueIn(lhs);
     for (size_t i = 0; i < valueCount; i++) {
-        if (acc_.GetValueIn(lhs, i) != acc_.GetValueIn(rhs, i)) {
+        if (Rename(acc_.GetValueIn(lhs, i)) != Rename(acc_.GetValueIn(rhs, i))) {
             return false;
         }
     }
@@ -308,6 +318,56 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             break;
     }
     return true;
+}
+
+bool EarlyElimination::CheckRenameReplacement(GateRef lhs, GateRef rhs)
+{
+    auto opcode = acc_.GetOpCode(lhs);
+    switch (opcode) {
+        case OpCode::INDEX_CHECK: {
+            auto index = acc_.GetValueIn(lhs, 1);
+            if (Rename(index) == Rename(rhs)) {
+                return true;
+            }
+            break;
+        }
+        default:
+            break;
+    }
+    return false;
+}
+
+GateRef EarlyElimination::Rename(GateRef gate)
+{
+    ChunkStack<GateRef> gateStack(chunk_);
+    while (true) {
+        auto op = acc_.GetOpCode(gate);
+        bool renamed = false;
+        switch (op) {
+            case OpCode::INDEX_CHECK: {
+                GateRef ans = renames_[acc_.GetId(gate)];
+                if (ans == Circuit::NullGate()) {
+                    renamed = true;
+                    gateStack.push(gate);
+                    gate = acc_.GetValueIn(gate, 1);
+                } else {
+                    gate = ans;
+                }
+                break;
+            }
+            default:
+                break;
+        }
+        if (!renamed) {
+            break;
+        }
+    }
+    while (!gateStack.empty()) {
+        auto topGate = gateStack.top();
+        gateStack.pop();
+        renames_[acc_.GetId(topGate)] = gate;
+    }
+    return gate;
 }
 
 void DependInfoNode::Merge(EarlyElimination* elimination, DependInfoNode* that)
@@ -372,6 +432,16 @@ GateRef DependInfoNode::LookupFrameState() const
     return frameState_;
 }
 
+GateRef DependInfoNode::LookupCheckedNode(EarlyElimination* elimination, GateRef gate)
+{
+    for (Node* node = head_; node != nullptr; node = node->next) {
+        if (elimination->CheckRenameReplacement(node->gate, gate)) {
+            return node->gate;
+        }
+    }
+    return gate;
+}
+
 GateRef DependInfoNode::LookupNode(EarlyElimination* elimination, GateRef gate)
 {
     for (Node* node = head_; node != nullptr; node = node->next) {
@@ -420,5 +490,4 @@ DependInfoNode* DependInfoNode::UpdateStoreProperty(EarlyElimination* eliminatio
     }
     return that;
 }
-
 }  // namespace panda::ecmascript::kungfu

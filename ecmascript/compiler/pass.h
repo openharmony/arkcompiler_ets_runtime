@@ -297,7 +297,8 @@ public:
         TimeScope timescope("NumberSpeculativePass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        NumberSpeculativeRunner(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
+        NumberSpeculativeRunner(data->GetCircuit(), data->GetTSManager(),
+                                enableLog, data->GetMethodName(), &chunk).Run();
         return true;
     }
 };
