@@ -113,7 +113,9 @@ void GraphVisitor::VisitTopGate(Edge& current)
     auto numIns = acc_.GetNumIns(gate);
     for (size_t i = current.GetIndex(); i < numIns; i++) {
         GateRef input = acc_.GetIn(gate, i);
-        ASSERT(input != gate);
+        if (input == gate) {
+            continue;
+        }
         // find not visited gate, push stack
         if (acc_.GetMark(input) < MarkCode::VISITED) {
             PushGate(input, 0);

@@ -283,6 +283,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::LDSUPERBYVALUE_IMM8_V8:
         case EcmaOpcode::LDSUPERBYVALUE_IMM16_V8:
         case EcmaOpcode::STSUPERBYVALUE_IMM16_V8_V8:
+        case EcmaOpcode::STSUPERBYVALUE_IMM8_V8_V8:
         case EcmaOpcode::TRYSTGLOBALBYNAME_IMM8_ID16:
         case EcmaOpcode::TRYSTGLOBALBYNAME_IMM16_ID16:
         case EcmaOpcode::LDGLOBALVAR_IMM16_ID16:
