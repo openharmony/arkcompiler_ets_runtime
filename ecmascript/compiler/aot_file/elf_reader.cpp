@@ -43,6 +43,7 @@ void ElfReader::ParseELFSections(ModuleSectionDes &des, std::vector<ElfSecName> 
     llvm::ELF::Elf64_Ehdr *ehdr = reinterpret_cast<llvm::ELF::Elf64_Ehdr *>(fileMapMem_.GetOriginAddr());
     char *addr = reinterpret_cast<char *>(ehdr);
     llvm::ELF::Elf64_Shdr *shdr = reinterpret_cast<llvm::ELF::Elf64_Shdr *>(addr + ehdr->e_shoff);
+    ASSERT(ehdr->e_shstrndx != static_cast<llvm::ELF::Elf64_Half>(-1));
     llvm::ELF::Elf64_Shdr strdr = shdr[ehdr->e_shstrndx];
     for (size_t j = 0; j < secs.size(); ++j) {
         int secId = -1;
@@ -71,8 +72,146 @@ void ElfReader::ParseELFSections(ModuleSectionDes &des, std::vector<ElfSecName> 
             des.SetArkStackMapPtr(reinterpret_cast<uint8_t *>(secAddr));
             des.SetArkStackMapSize(secSize);
         } else {
-            des.SetSecAddr(secAddr, sec);
-            des.SetSecSize(secSize, sec);
+            des.SetSecAddrAndSize(sec, secAddr, secSize);
+        }
+    }
+}
+
+ModuleSectionDes::ModuleRegionInfo ElfReader::GetCurModuleInfo(uint32_t i, llvm::ELF::Elf64_Off offset)
+{
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(fileMapMem_.GetOriginAddr());
+    return *(reinterpret_cast<ModuleSectionDes::ModuleRegionInfo *>
+        (codeAddress + offset + i * sizeof(ModuleSectionDes::ModuleRegionInfo)));
+}
+
+void ElfReader::ParseELFSections(std::vector<ModuleSectionDes> &des, std::vector<ElfSecName> &secs)
+{
+    ASSERT(des.size() == ASMSTUB_MODULE_NUM);
+    llvm::ELF::Elf64_Ehdr *ehdr = reinterpret_cast<llvm::ELF::Elf64_Ehdr *>(fileMapMem_.GetOriginAddr());
+    char *addr = reinterpret_cast<char *>(ehdr);
+    llvm::ELF::Elf64_Shdr *shdrs = reinterpret_cast<llvm::ELF::Elf64_Shdr *>(addr + ehdr->e_shoff);
+    ASSERT(ehdr->e_shstrndx != static_cast<llvm::ELF::Elf64_Half>(-1));
+    llvm::ELF::Elf64_Shdr strdr = shdrs[ehdr->e_shstrndx];
+    ASSERT(ehdr->e_flags != static_cast<llvm::ELF::Elf64_Word>(-1));
+    llvm::ELF::Elf64_Shdr moduledr = shdrs[ehdr->e_flags];
+    [[maybe_unused]] size_t moduleInfoSize = moduledr.sh_size;
+    ASSERT(moduleInfoSize % sizeof(ModuleSectionDes::ModuleRegionInfo) == 0);
+    std::set<ElfSecName> secSet(secs.begin(), secs.end());
+    for (ElfSecName sec : secSet) {
+        int secId = -1;
+        std::string sectionName = ModuleSectionDes::GetSecName(sec);
+        for (size_t i = 0; i < ehdr->e_shnum; ++i) {
+            llvm::ELF::Elf64_Word shName = shdrs[i].sh_name;
+            char *curShName = reinterpret_cast<char *>(addr) + shName + strdr.sh_offset;
+            if (sectionName.compare(curShName) == 0) {
+                secId = i;
+                break;
+            }
+        }
+        if (secId == -1) {
+            LOG_COMPILER(DEBUG) << "sectionName: " << sectionName << " not found in strtab";
+            continue;
+        }
+        ASSERT(secId > 0 && secId < ehdr->e_shnum);
+        llvm::ELF::Elf64_Shdr secShdr = shdrs[secId];
+        uintptr_t secAddr = reinterpret_cast<uintptr_t>(addr + secShdr.sh_offset);
+        uint32_t secSize = secShdr.sh_size;
+        switch (sec) {
+            case ElfSecName::TEXT: {
+                llvm::ELF::Elf64_Off secOffset = 0;
+                SeparateTextSections(des, secAddr, secOffset, moduledr.sh_offset);
+                ASSERT(static_cast<uint32_t>(secOffset) == secSize);
+                break;
+            }
+            case ElfSecName::ARK_STACKMAP: {
+                llvm::ELF::Elf64_Off secOffset = 0;
+                SeparateArkStackMapSections(des, secAddr, secOffset, moduledr.sh_offset);
+                ASSERT(static_cast<uint32_t>(secOffset) == secSize);
+                break;
+            }
+            case ElfSecName::STRTAB:
+            case ElfSecName::ARK_FUNCENTRY:
+            case ElfSecName::ARK_ASMSTUB:
+            case ElfSecName::ARK_MODULEINFO: {
+                if (sec == ElfSecName::ARK_FUNCENTRY) {
+                    ASSERT((secSize > 0) && (secSize % sizeof(AOTFileInfo::FuncEntryDes) == 0));
+                }
+                des[0].SetSecAddrAndSize(sec, secAddr, secSize);
+                break;
+            }
+            default: {
+                LOG_ECMA(FATAL) << "this section should not dump to stub file";
+                break;
+            }
+        }
+    }
+}
+
+void ElfReader::ParseELFSections(BinaryBufferParser &parser, std::vector<ModuleSectionDes> &des, std::vector<ElfSecName> &secs)
+{
+    ASSERT(des.size() == ASMSTUB_MODULE_NUM);
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(stubsMem_.addr_);
+    llvm::ELF::Elf64_Ehdr ehdr;
+    parser.ParseBuffer(&ehdr, sizeof(ehdr), 0);
+    std::vector<llvm::ELF::Elf64_Shdr> shdrs(ehdr.e_shnum);
+    parser.ParseBuffer(shdrs.data(), sizeof(llvm::ELF::Elf64_Shdr) * ehdr.e_shnum, ehdr.e_shoff);
+
+    ASSERT(ehdr.e_shstrndx != static_cast<llvm::ELF::Elf64_Half>(-1));
+    llvm::ELF::Elf64_Shdr strdr = shdrs[ehdr.e_shstrndx];
+    ASSERT(ehdr.e_flags != static_cast<llvm::ELF::Elf64_Word>(-1));
+    llvm::ELF::Elf64_Shdr moduledr = shdrs[ehdr.e_flags];
+    [[maybe_unused]] size_t moduleInfoSize = moduledr.sh_size;
+    ASSERT(moduleInfoSize % sizeof(ModuleSectionDes::ModuleRegionInfo) == 0);
+    moduleInfo_.resize(ASMSTUB_MODULE_NUM);
+    parser.ParseBuffer(moduleInfo_.data(), sizeof(ModuleSectionDes::ModuleRegionInfo) * ASMSTUB_MODULE_NUM, moduledr.sh_offset);
+    std::set<ElfSecName> secSet(secs.begin(), secs.end());
+    for (ElfSecName sec : secSet) {
+        int secId = -1;
+        std::string sectionName = ModuleSectionDes::GetSecName(sec);
+        for (size_t i = 0; i < ehdr.e_shnum; ++i) {
+            llvm::ELF::Elf64_Word shName = shdrs[i].sh_name;
+            char *curShName = reinterpret_cast<char *>(parser.GetAddr()) + shName + strdr.sh_offset;
+            if (sectionName.compare(curShName) == 0) {
+                secId = i;
+                break;
+            }
+        }
+        if (secId == -1) {
+            LOG_COMPILER(DEBUG) << "sectionName: " << sectionName << " not found in strtab";
+            continue;
+        }
+        ASSERT(secId > 0 && secId < ehdr.e_shnum);
+        llvm::ELF::Elf64_Shdr secShdr = shdrs[secId];
+        uint64_t secAddr = static_cast<uint64_t>(codeAddress + secShdr.sh_offset);
+        uint32_t secSize = secShdr.sh_size;
+        switch (sec) {
+            case ElfSecName::TEXT: {
+                llvm::ELF::Elf64_Off secOffset = 0;
+                SeparateTextSections(parser, des, secAddr, secOffset, secShdr.sh_offset);
+                ASSERT(static_cast<uint32_t>(secOffset) == secSize);
+                break;
+            }
+            case ElfSecName::ARK_STACKMAP: {
+                llvm::ELF::Elf64_Off secOffset = 0;
+                SeparateArkStackMapSections(parser, des, secAddr, secOffset, secShdr.sh_offset);
+                ASSERT(static_cast<uint32_t>(secOffset) == secSize);
+                break;
+            }
+            case ElfSecName::STRTAB:
+            case ElfSecName::ARK_FUNCENTRY:
+            case ElfSecName::ARK_ASMSTUB:
+            case ElfSecName::ARK_MODULEINFO: {
+                if (sec == ElfSecName::ARK_FUNCENTRY) {
+                    ASSERT((secSize > 0) && (secSize % sizeof(AOTFileInfo::FuncEntryDes) == 0));
+                }
+                parser.ParseBuffer(reinterpret_cast<void *>(secAddr), secSize, secShdr.sh_offset);
+                des[0].SetSecAddrAndSize(sec, secAddr, secSize);
+                break;
+            }
+            default: {
+                LOG_ECMA(FATAL) << "this section should not dump to stub file";
+                break;
+            }
         }
     }
 }
@@ -105,5 +244,84 @@ bool ElfReader::ParseELFSegment()
         }
     }
     return true;
+}
+
+void ElfReader::SeparateTextSections(std::vector<ModuleSectionDes> &des,
+                                     const uintptr_t &secAddr,
+                                     llvm::ELF::Elf64_Off &secOffset,
+                                     const llvm::ELF::Elf64_Off &moduleInfoOffset)
+{
+    for (size_t i = 0; i < des.size(); ++i) {
+        auto moduleInfo = GetCurModuleInfo(i, moduleInfoOffset);
+        secOffset = AlignUp(secOffset, TEXT_SEC_ALIGN);
+        uint32_t rodataSize = moduleInfo.rodataSize;
+        if (rodataSize > 0) {
+            des[i].SetSecAddrAndSize(ElfSecName::RODATA_CST8, secAddr + secOffset, rodataSize);
+            secOffset += rodataSize;
+        }
+        uint32_t textSize = moduleInfo.textSize;
+        des[i].SetSecAddrAndSize(ElfSecName::TEXT, secAddr + secOffset, textSize);
+        secOffset += textSize;
+    }
+}
+
+void ElfReader::SeparateArkStackMapSections(std::vector<ModuleSectionDes> &des,
+                                            const uintptr_t &secAddr,
+                                            llvm::ELF::Elf64_Off &secOffset,
+                                            const llvm::ELF::Elf64_Off &moduleInfoOffset)
+{
+    for (size_t i = 0; i < des.size(); ++i) {
+        auto moduleInfo = GetCurModuleInfo(i, moduleInfoOffset);
+        uint32_t stackMapSize = moduleInfo.stackMapSize;
+        des[i].SetArkStackMapPtr(reinterpret_cast<uint8_t *>(secAddr + secOffset));
+        des[i].SetArkStackMapSize(stackMapSize);
+        uint32_t index = moduleInfo.startIndex;
+        uint32_t cnt = moduleInfo.funcCount;
+        des[i].SetStartIndex(index);
+        des[i].SetFuncCount(cnt);
+        secOffset += stackMapSize;
+    }
+}
+
+void ElfReader::SeparateTextSections(BinaryBufferParser &parser,
+                                     std::vector<ModuleSectionDes> &des,
+                                     const uint64_t &secAddr,
+                                     llvm::ELF::Elf64_Off &secOffset,
+                                     const llvm::ELF::Elf64_Off &curShOffset)
+{
+    for (size_t i = 0; i < des.size(); ++i) {
+        auto moduleInfo = moduleInfo_[i];
+        secOffset = AlignUp(secOffset, TEXT_SEC_ALIGN);
+        uint32_t rodataSize = moduleInfo.rodataSize;
+        if (rodataSize > 0) {
+            parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), rodataSize, curShOffset + secOffset);
+            des[i].SetSecAddrAndSize(ElfSecName::RODATA_CST8, secAddr + secOffset, rodataSize);
+            secOffset += rodataSize;
+        }
+        uint32_t textSize = moduleInfo.textSize;
+        parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), textSize, curShOffset + secOffset);
+        des[i].SetSecAddrAndSize(ElfSecName::TEXT, secAddr + secOffset, textSize);
+        secOffset += textSize;
+    }
+}
+
+void ElfReader::SeparateArkStackMapSections(BinaryBufferParser &parser,
+                                            std::vector<ModuleSectionDes> &des,
+                                            const uint64_t &secAddr,
+                                            llvm::ELF::Elf64_Off &secOffset,
+                                            const llvm::ELF::Elf64_Off &curShOffset)
+{
+    for (size_t i = 0; i < des.size(); ++i) {
+        auto moduleInfo = moduleInfo_[i];
+        uint32_t stackMapSize = moduleInfo.stackMapSize;
+        parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), stackMapSize, curShOffset + secOffset);
+        des[i].SetArkStackMapPtr(reinterpret_cast<uint8_t *>(secAddr + secOffset));
+        des[i].SetArkStackMapSize(stackMapSize);
+        uint32_t index = moduleInfo.startIndex;
+        uint32_t cnt = moduleInfo.funcCount;
+        des[i].SetStartIndex(index);
+        des[i].SetFuncCount(cnt);
+        secOffset += stackMapSize;
+    }
 }
 }  // namespace panda::ecmascript

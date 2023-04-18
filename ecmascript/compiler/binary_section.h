@@ -30,6 +30,7 @@ enum class ElfSecName : uint8_t {
     RODATA_CST16,
     RODATA_CST32,
     TEXT,
+    ARK_ASMSTUB,
     DATA,
     GOT,
     RELATEXT,
@@ -38,6 +39,7 @@ enum class ElfSecName : uint8_t {
     LLVM_STACKMAP,
     ARK_FUNCENTRY,
     ARK_STACKMAP,
+    ARK_MODULEINFO,
     SIZE
 };
 
@@ -88,12 +90,16 @@ public:
             value_ = ElfSecName::STRTAB;
         } else if (str.compare(".symtab") == 0) {
             value_ = ElfSecName::SYMTAB;
-        }  else if (str.compare(".llvm_stackmaps") == 0) {
+        } else if (str.compare(".llvm_stackmaps") == 0) {
             value_ = ElfSecName::LLVM_STACKMAP;
-        }  else if (str.compare(".ark_stackmaps") == 0) {
+        } else if (str.compare(".ark_stackmaps") == 0) {
             value_ = ElfSecName::ARK_STACKMAP;
-        }  else if (str.compare(".ark_funcentry") == 0) {
+        } else if (str.compare(".ark_funcentry") == 0) {
             value_ = ElfSecName::ARK_FUNCENTRY;
+        } else if (str.compare(".ark_asmstub") == 0) {
+            value_ = ElfSecName::ARK_ASMSTUB;
+        } else if (str.compare(".ark_moduleinfo") == 0) {
+            value_ = ElfSecName::ARK_MODULEINFO;
         }
         InitShTypeAndFlag();
     }
@@ -108,11 +114,11 @@ public:
             case ElfSecName::RODATA_CST16:
             case ElfSecName::RODATA_CST32:
             case ElfSecName::TEXT:
-            case ElfSecName::DATA:
-            case ElfSecName::SYMTAB:
             case ElfSecName::STRTAB:
             case ElfSecName::ARK_FUNCENTRY:
-            case ElfSecName::ARK_STACKMAP: {
+            case ElfSecName::ARK_ASMSTUB:
+            case ElfSecName::ARK_STACKMAP:
+            case ElfSecName::ARK_MODULEINFO: {
                 saveForAot = true;
                 break;
             }
@@ -121,6 +127,26 @@ public:
             }
         }
         return saveForAot;
+    }
+
+    bool ShouldDumpToStubFile() const
+    {
+        bool saveForStub = false;
+        switch (value_) {
+            case ElfSecName::TEXT:
+            case ElfSecName::STRTAB:
+            case ElfSecName::ARK_FUNCENTRY:
+            case ElfSecName::ARK_ASMSTUB:
+            case ElfSecName::ARK_STACKMAP:
+            case ElfSecName::ARK_MODULEINFO: {
+                saveForStub = true;
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+        return saveForStub;
     }
 
     ElfSecName Value() const
@@ -150,6 +176,7 @@ public:
             {ElfSecName::RODATA_CST16, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE}},
             {ElfSecName::RODATA_CST32, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_MERGE}},
             {ElfSecName::TEXT, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_EXECINSTR}},
+            {ElfSecName::ARK_ASMSTUB, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_EXECINSTR}},
             {ElfSecName::DATA, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_WRITE}},
             {ElfSecName::GOT, {llvm::ELF::SHT_PROGBITS, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_WRITE}},
             {ElfSecName::RELATEXT, {llvm::ELF::SHT_RELA, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_WRITE}},
@@ -158,6 +185,7 @@ public:
             {ElfSecName::LLVM_STACKMAP, {llvm::ELF::SHT_RELA, llvm::ELF::SHF_ALLOC}},
             {ElfSecName::ARK_FUNCENTRY, {llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC}},
             {ElfSecName::ARK_STACKMAP, {llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC}},
+            {ElfSecName::ARK_MODULEINFO, {llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC}},
         };
         auto it = nameToTypeAndFlag.find(value_);
         if (it == nameToTypeAndFlag.end()) {

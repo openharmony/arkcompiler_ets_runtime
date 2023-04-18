@@ -23,7 +23,12 @@ public:
     BinaryBufferParser(uint8_t *buffer, uint32_t length) : buffer_(buffer), length_(length) {}
     ~BinaryBufferParser() = default;
     void ParseBuffer(void *dst, uint32_t count);
+    void ParseBuffer(void *dst, uint32_t count, uint32_t offset);
     void ParseBuffer(uint8_t *dst, uint32_t count, uint8_t *src);
+    uint8_t *GetAddr() const
+    {
+        return buffer_;
+    }
 
 private:
     uint8_t *buffer_ {nullptr};

@@ -29,6 +29,12 @@ void BinaryBufferParser::ParseBuffer(void *dst, uint32_t count)
     }
 }
 
+void BinaryBufferParser::ParseBuffer(void *dst, uint32_t count, uint32_t offset)
+{
+    offset_ = offset;
+    ParseBuffer(dst, count);
+}
+
 void BinaryBufferParser::ParseBuffer(uint8_t *dst, uint32_t count, uint8_t *src)
 {
     if (src >= buffer_ && src + count <= buffer_ + length_) {

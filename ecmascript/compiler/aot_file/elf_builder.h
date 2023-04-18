@@ -30,38 +30,58 @@ class ModuleSectionDes;
 
 class ElfBuilder {
 public:
-    ElfBuilder(ModuleSectionDes sectionDes);
+    ElfBuilder(const std::vector<ModuleSectionDes> &des, const std::vector<ElfSecName> &sections);
     ~ElfBuilder();
     void PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, Triple triple);
-    void PackELFSections(std::ofstream &elfFile);
+    void PackAnELFSections(std::ofstream &elfFile);
+    void PackStubELFSections(std::ofstream &elfFile);
     void PackELFSegment(std::ofstream &elfFile);
+    void MergeTextSections(std::ofstream &elfFile,
+        std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
+    void MergeArkStackMapSections(std::ofstream &elfFile,
+        std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
     static llvm::ELF::Elf64_Word FindShName(std::string name, uintptr_t strTabPtr, int strTabSize);
+    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> GetCurrentSecInfo() const
+    {
+        return des_[0].GetSectionsInfo();
+    }
+    ModuleSectionDes GetCurrentDes() const
+    {
+        return des_[0];
+    }
     void SetEnableSecDump(bool flag)
     {
         enableSecDump_ = flag;
     }
 
 private:
-    llvm::ELF::Elf64_Half GetShStrNdx(std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections) const;
-    llvm::ELF::Elf64_Half GetSecSize() const;
+    uint32_t GetShIndex(ElfSecName section) const;
     ElfSecName FindLastSection(ElfSecName segment) const;
     int GetSegmentNum() const;
     int GetSecNum() const;
     unsigned GetPFlag(ElfSecName segment) const;
+    ElfSecName GetSegmentName(const ElfSecName &secName) const;
     std::pair<uint64_t, uint32_t> FindStrTab() const;
+    void AllocateShdr(std::unique_ptr<llvm::ELF::Elf64_Shdr []> &shdr, const uint32_t &secNum);
+    llvm::ELF::Elf64_Off ComputeEndAddrOfShdr(const uint32_t &secNum) const;
     bool SupportELF();
     void AddArkStackMapSection();
     void DumpSection() const;
     void ModifyStrTabSection();
+    void RemoveNotNeedSection();
 
+    static constexpr uint32_t DATA_SEC_ALIGN = 8;
     static constexpr uint32_t TEXT_SEC_ALIGN = 16;
-    ModuleSectionDes sectionDes_;
+    static constexpr uint32_t ASMSTUB_MODULE_NUM = 3;
+    static constexpr uint32_t AOT_MODULE_NUM = 1;
+    std::vector<ModuleSectionDes> des_ {};
     std::unique_ptr<char []> strTabPtr_ {nullptr};
     std::map<ElfSecName, llvm::ELF::Elf64_Shdr> sectionToShdr_;
     std::map<ElfSecName, llvm::ELF::Elf64_Xword> sectionToAlign_;
     std::map<ElfSecName, ElfSecName> sectionToSegment_;
     std::map<ElfSecName, uintptr_t> sectionToFileOffset_;
     std::map<ElfSecName, unsigned> segmentToFlag_;
+    std::vector<ElfSecName> sections_ {};
     std::set<ElfSecName> segments_;
     bool enableSecDump_ {false};
 };

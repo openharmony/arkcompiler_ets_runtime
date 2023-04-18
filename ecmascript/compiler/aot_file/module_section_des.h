@@ -24,6 +24,13 @@
 namespace panda::ecmascript {
 class ModuleSectionDes {
 public:
+    struct ModuleRegionInfo {
+        uint32_t startIndex {0};
+        uint32_t funcCount {0};
+        uint32_t rodataSize {0};
+        uint32_t textSize {0};
+        uint32_t stackMapSize {0};
+    };
     static std::string GetSecName(ElfSecName idx);
 
     void SetArkStackMapPtr(std::shared_ptr<uint8_t> ptr)
@@ -88,25 +95,21 @@ public:
 
     ModuleSectionDes() = default;
 
-    void SetSecAddr(uint64_t addr, ElfSecName idx)
+    void EraseSec(ElfSecName idx)
+    {
+        sectionsInfo_.erase(idx);
+    }
+
+    void SetSecAddrAndSize(ElfSecName idx, uint64_t addr, uint32_t size)
     {
         sectionsInfo_[idx].first = addr;
+        sectionsInfo_[idx].second = size;
     }
 
     uint64_t GetSecAddr(const ElfSecName idx) const
     {
         auto it = sectionsInfo_.find(idx);
         return it == sectionsInfo_.end() ? 0 : it->second.first;
-    }
-
-    void EraseSec(ElfSecName idx)
-    {
-        sectionsInfo_.erase(idx);
-    }
-
-    void SetSecSize(uint32_t size, ElfSecName idx)
-    {
-        sectionsInfo_[idx].second = size;
     }
 
     uint32_t GetSecSize(const ElfSecName idx) const
@@ -126,12 +129,6 @@ public:
         uint64_t stubEndAddr = stubStartAddr + GetSecSize(ElfSecName::TEXT);
         return (pc >= stubStartAddr && pc <= stubEndAddr);
     }
-
-    void SaveSectionsInfo(std::ofstream &file);
-    void LoadSectionsInfo(BinaryBufferParser &parser, uint32_t &curUnitOffset, uint64_t codeAddress);
-    void LoadStackMapSection(BinaryBufferParser &parser, uintptr_t secBegin, uint32_t &curUnitOffset);
-    void LoadSectionsInfo(std::ifstream &file, uint32_t &curUnitOffset, uint64_t codeAddress);
-    void LoadStackMapSection(std::ifstream &file, uintptr_t secBegin, uint32_t &curUnitOffset);
 
 private:
     static constexpr int DECIMAL_LENS = 2;
