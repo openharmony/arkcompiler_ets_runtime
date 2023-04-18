@@ -925,7 +925,7 @@ GateRef CircuitBuilder::ConvertHoleAsUndefined(GateRef receiver)
     auto currentDepend = currentLabel->GetDepend();
 
     auto ret = GetCircuit()->NewGate(circuit_->ConvertHoleAsUndefined(),
-        { currentControl, currentDepend, receiver });
+        MachineType::I64, { currentControl, currentDepend, receiver }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
