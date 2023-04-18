@@ -78,13 +78,9 @@ public:
 
     static void JSCall(ExtendedAssembler *assembler);
 
-    static void ConstructorJSCall(ExtendedAssembler *assembler);
-
     static void CallRuntimeWithArgv(ExtendedAssembler *assembler);
 
     static void JSCallWithArgV(ExtendedAssembler *assembler);
-
-    static void ConstructorJSCallWithArgV(ExtendedAssembler *assembler);
 
     static void DeoptHandlerAsm(ExtendedAssembler *assembler);
 
@@ -119,7 +115,6 @@ private:
     static void PushAsmBridgeFrame(ExtendedAssembler *assembler);
     static void PopOptimizedFrame(ExtendedAssembler *assembler);
     static void JSCallInternal(ExtendedAssembler *assembler, Register jsfunc, bool isNew = false);
-    static void ConstructorJSCallInternal(ExtendedAssembler *assembler, Register jsfunc);
 };
 
 class AsmInterpreterCall : public CommonCall {

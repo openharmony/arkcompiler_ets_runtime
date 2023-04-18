@@ -54,13 +54,9 @@ public:
 
     static void JSCall(ExtendedAssembler *assembler);
 
-    static void ConstructorJSCall(ExtendedAssembler *assembler);
-
     static void CallRuntimeWithArgv(ExtendedAssembler *assembler);
 
     static void JSCallWithArgV(ExtendedAssembler *assembler);
-
-    static void ConstructorJSCallWithArgV(ExtendedAssembler *assembler);
 
     static void DeoptHandlerAsm(ExtendedAssembler *assembler);
 

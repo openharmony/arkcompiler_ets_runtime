@@ -165,9 +165,11 @@ JSTaggedValue BuiltinsArkTools::RemoveAOTFlag(EcmaRuntimeCallInfo *info)
 
     ASSERT(info->GetArgsNumber() == 1);
     JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
-    JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(object);
-    JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
-    method->SetAotCodeBit(false);
+    if (object->IsHeapObject() && object->IsJSFunction()) {
+        JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(object);
+        JSHandle<Method> method = JSHandle<Method>(thread, func->GetMethod());
+        method->SetAotCodeBit(false);
+    }
 
     return JSTaggedValue::Undefined();
 }

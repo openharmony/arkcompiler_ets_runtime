@@ -136,7 +136,6 @@ void OptimizedCall::OptimizedCallOptimized(ExtendedAssembler *assembler)
     Label lPopFrame1;
     __ Pushq(rbp);
     __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME));
-    // 2: skip jsFunc and frameType
     __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
     // callee save
     __ Pushq(r14);
@@ -210,7 +209,7 @@ void OptimizedCall::OptimizedCallAsmInterpreter(ExtendedAssembler *assembler)
 //          +--------------------------+ -----------------
 //          |       argc               |                 ^
 //          |--------------------------|                 |
-//          |       env or thread      |                 |
+//          |       thread             |                 |
 //          |--------------------------|                 |
 //          |       returnAddr         |    OptimizedBuiltinLeaveFrame
 //  sp ---> |--------------------------|                 |
@@ -227,7 +226,7 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
     Register nativeCode = rsi;
 
     __ Movq(Operand(rsp, 0), rdx);
-    __ Movq(rax, Operand(rsp, 0));
+    __ Movq(glueReg, Operand(rsp, 0));
     __ Push(rdx);
 
     AsmInterpreterCall::PushBuiltinFrame(assembler, glueReg, FrameType::BUILTIN_CALL_LEAVE_FRAME);
@@ -275,7 +274,8 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
     {
         __ Movq(glueReg, rdi);
         glueReg = rdi;
-        __ Movq(Operand(rsp, TRIPLE_SLOT_SIZE), rax); // get jsFunc
+        auto jsFuncSlotOffset = kungfu::ArgumentAccessor::GetExtraArgsNum() + 1;  // 1: return addr
+        __ Movq(Operand(rsp, jsFuncSlotOffset * FRAME_SLOT_SIZE), rax); // get jsFunc
     }
     __ Bind(&lJSCallStart);
     Register jsFuncReg = rax;
@@ -341,14 +341,15 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
     Register argV = r9;
     {
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
-        __ Movl(Operand(rsp, FRAME_SLOT_SIZE), argc); // sp + 8 actual argc
+        __ Movl(Operand(rsp, FRAME_SLOT_SIZE), argc); // skip return addr
         __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
         __ Btq(MethodLiteral::IsNativeBit::START_BIT, methodCallField); // is native
         __ Jb(&lCallNativeMethod);
         __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
         __ Jb(&lCallOptimziedMethod);
         __ Movq(rsp, argV);
-        __ Addq(TRIPLE_SLOT_SIZE, argV); // sp + 24 get aot argv
+        auto argvSlotOffset = kungfu::ArgumentAccessor::GetExtraArgsNum() + 1;  // 1: return addr
+        __ Addq(argvSlotOffset * FRAME_SLOT_SIZE, argV); // skip return addr and argc
         __ Subq(Immediate(kungfu::ArgumentAccessor::GetFixArgsNum()), argc);
         // argv + 24 get asm interpreter argv
         __ Addq(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE, argV);
@@ -366,9 +367,10 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
         __ Addl(NUM_MANDATORY_JSFUNC_ARGS, methodCallField); // add mandatory argument
         __ Movq(rsp, r8);
         argvReg = r8;
-        __ Addq(DOUBLE_SLOT_SIZE, argvReg); // get argv
+        auto argvSlotOffset = kungfu::ArgumentAccessor::GetExtraArgsNum() + 1;  // 1: return addr
+        __ Addq(argvSlotOffset * FRAME_SLOT_SIZE, argvReg); // skip return addr and argc
         __ Cmpl(expectedNumArgsReg, rdx); // expectedNumArgs <= actualNumArgs
-        __ Jg(&lDirectCallCodeEntry);
+        __ Jge(&lDirectCallCodeEntry);
         __ CallAssemblerStub(RTSTUB_ID(OptimizedCallOptimized), true);
     }
 
@@ -394,7 +396,7 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
         __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
         __ Pushq(r10); // callee save
         __ Movq(rsp, rdx);
-        __ Addq(QUADRUPLE_SLOT_SIZE, rdx); // sp + 32 argv
+        __ Addq(QUADRUPLE_SLOT_SIZE, rdx); // skip return addr, prevFp, frame type and callee save
         __ Mov(Operand(rdx, 0), rax); // get origin argc
         __ Movq(rax, r10);
         // get bound target
@@ -418,7 +420,7 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
 
     __ Bind(&lCopyArgument2);
     {
-        __ Movq(Operand(rdx, rax, Scale::Times8, 3 * FRAME_SLOT_SIZE), rcx); // 24: slot size
+        __ Movq(Operand(rdx, rax, Scale::Times8, kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE), rcx);
         __ Pushq(rcx);
         __ Addq(-1, rax);
         __ Jne(&lCopyArgument2);
@@ -468,9 +470,9 @@ void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
     __ Bind(&lJSProxy);
     __ Movq(rsp, rcx);
     __ Movq(jsFuncReg, rdx);
-    __ Addq(DOUBLE_SLOT_SIZE, rcx); // skip returnAddr
+    __ Addq(FRAME_SLOT_SIZE, rcx); // skip returnAddr
     __ Mov(Operand(rcx, 0), rsi); // get origin argc
-    __ Addq(FRAME_SLOT_SIZE, rcx); // 8: sp + 8 argv
+    __ Addq(FRAME_SLOT_SIZE, rcx); // skip argc
     __ Movq(kungfu::CommonStubCSigns::JsProxyCallInternal, r9);
     __ Movq(Operand(rdi, r9, Scale::Times8, JSThread::GlueData::GetCOStubEntriesOffset(false)), r8);
     __ Jmp(r8);
@@ -567,7 +569,7 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
     {
         Label lCallConstructor;
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
-        __ Movl(Operand(rsp, FRAME_SLOT_SIZE), argc); // sp + 8 actual argc
+        __ Movl(Operand(rsp, FRAME_SLOT_SIZE), argc); // skip return addr
         __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
         __ Btq(MethodLiteral::IsNativeBit::START_BIT, methodCallField); // is native
         __ Jb(&lCallNativeMethod);
@@ -578,7 +580,8 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
         __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
         __ Jb(&lCallOptimziedMethod);
         __ Movq(rsp, argV);
-        __ Addq(DOUBLE_SLOT_SIZE, argV); // sp + 16 get aot argv
+        auto argvSlotOffset = kungfu::ArgumentAccessor::GetExtraArgsNum() + 1;  // 1: return addr
+        __ Addq(argvSlotOffset * FRAME_SLOT_SIZE, argV); // skip return addr and argc
         __ Subq(Immediate(kungfu::ArgumentAccessor::GetFixArgsNum()), argc);
         // argv + 24 get asm interpreter argv
         __ Addq(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE, argV);
@@ -662,7 +665,9 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
         argV = rax;
 
         __ Movq(rsp, argV);
-        __ Addq(QUINTUPLE_SLOT_SIZE, argV);
+        auto argvSlotOffset = kungfu::ArgumentAccessor::GetFixArgsNum() +
+            kungfu::ArgumentAccessor::GetExtraArgsNum() + 1;  // 1: return addr
+        __ Addq(argvSlotOffset *FRAME_SLOT_SIZE, argV);
         __ Pushq(rbp);
         __ Pushq(static_cast<int32_t>(FrameType::ASM_BRIDGE_FRAME));
         __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
@@ -738,90 +743,6 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
     JSProxyCallInternal(assembler, jsFuncReg);
 }
 
-void OptimizedCall::ConstructorJSCall(ExtendedAssembler *assembler)
-{
-    __ BindAssemblerStub(RTSTUB_ID(ConstructorJSCall));
-    Label constructorJsCall;
-    Label lConstructorJSCallStart;
-    Label lNotJSFunction;
-    Label lNonCallable;
-    Label lJSFunctionCall;
-    Label lJSBoundFunction;
-    Label lJSProxy;
-    Label lCallOptimziedMethod;
-    Label lCallNativeMethod;
-    Register glueReg = rax;
-    __ Bind(&constructorJsCall);
-    {
-        __ Movq(glueReg, rdi);
-        glueReg = rdi;
-        __ Movq(Operand(rsp, DOUBLE_SLOT_SIZE), rax); // sp + 16 get jsFunc
-    }
-    __ Bind(&lConstructorJSCallStart);
-    Register jsFuncReg = rax;
-    {
-        JSCallCheck(assembler, jsFuncReg, &lNonCallable, &lNotJSFunction, &lJSFunctionCall);
-    }
-
-    __ Bind(&lNotJSFunction);
-    {
-        __ Cmpb(static_cast<uint8_t>(JSType::JS_BOUND_FUNCTION), rax); // IsBoundFunction
-        __ Je(&lJSBoundFunction);
-        __ Cmpb(static_cast<uint8_t>(JSType::JS_PROXY), rax); // IsJsProxy
-        __ Je(&lJSProxy);
-    }
-
-    __ Bind(&lNonCallable);
-    {
-        ThrowNonCallableInternal(assembler, glueReg);
-    }
-
-    __ Bind(&lJSFunctionCall);
-    jsFuncReg = rsi;
-    Register argc = r8;
-    Register methodCallField = rcx;
-    Register method = rdx;
-    Register argV = r9;
-    {
-        __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
-        __ Movl(Operand(rsp, FRAME_SLOT_SIZE), argc); // sp + 8 actual argc
-        __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
-        __ Btq(MethodLiteral::IsNativeBit::START_BIT, methodCallField); // is native
-        __ Jb(&lCallNativeMethod);
-        __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
-        __ Jb(&lCallOptimziedMethod);
-        __ Movq(rsp, argV);
-        __ Addq(TRIPLE_SLOT_SIZE, argV); // sp + 24 get aot argv
-        // argv + 24 get asm interpreter argv
-        __ Addq(kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE, argV);
-        OptimizedCallAsmInterpreter(assembler);
-    }
-
-    __ Bind(&lCallOptimziedMethod);
-    Register codeAddrReg = rsi;
-    Register expectedNumArgsReg = rcx;
-    {
-        CallOptimziedMethodInternal(assembler, glueReg, jsFuncReg,
-                                    methodCallField, argc, codeAddrReg, expectedNumArgsReg);
-    }
-
-    __ Bind(&lCallNativeMethod);
-    {
-        __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // Get MethodLiteral
-        Register nativePointer = rsi;
-        __ Mov(Operand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativePointer); // native pointer
-        __ Movq(glueReg, rax);
-        CallBuiltinTrampoline(assembler);
-    }
-
-    __ Bind(&lJSBoundFunction);
-    {
-        JSBoundFunctionCallInternal(assembler, jsFuncReg, &constructorJsCall);
-    }
-    __ Bind(&lJSProxy);
-    JSProxyCallInternal(assembler, jsFuncReg);
-}
-
 void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg,
                                 Label *lNonCallable, Label *lNotJSFunction, Label *lJSFunctionCall)
 {
@@ -884,7 +805,8 @@ void OptimizedCall::CallOptimziedMethodInternal(ExtendedAssembler *assembler, Re
     __ Addl(NUM_MANDATORY_JSFUNC_ARGS, methodCallField); // add mandatory argumentr
     __ Movq(rsp, r8);
     Register argvReg = r8;
-    __ Addq(2 * FRAME_SLOT_SIZE, argvReg); // 2 : sp + 2 * 8 argv
+    auto funcSlotOffset = kungfu::ArgumentAccessor::GetExtraArgsNum() + 1;  // 1: return addr
+    __ Addq(funcSlotOffset * FRAME_SLOT_SIZE, argvReg); // skip return addr and argc
     __ Cmpl(expectedNumArgsReg, rdx); // expectedNumArgs <= actualNumArgs
     __ Jge(&lDirectCallCodeEntry);
     __ CallAssemblerStub(RTSTUB_ID(OptimizedCallOptimized), true);
@@ -908,7 +830,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
     __ Pushq(r10); // callee save
     __ Movq(rsp, rdx);
-    __ Addq(QUADRUPLE_SLOT_SIZE, rdx); // sp + 32 argv
+    __ Addq(QUADRUPLE_SLOT_SIZE, rdx); // skip return addr, prevFp, frame type and callee save
     __ Mov(Operand(rdx, 0), rax); // get origin argc
     __ Movq(rax, r10);
     // get bound target
@@ -931,7 +853,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
 
     __ Bind(&lCopyArgument2);
     {
-        __ Movq(Operand(rdx, rax, Scale::Times8, 3 * FRAME_SLOT_SIZE), rcx); // 24 : disp
+        __ Movq(Operand(rdx, rax, Scale::Times8, kungfu::ArgumentAccessor::GetFixArgsNum() * FRAME_SLOT_SIZE), rcx);
         __ Pushq(rcx);
         __ Addq(-1, rax);
         __ Jne(&lCopyArgument2);
@@ -985,9 +907,9 @@ void OptimizedCall::JSProxyCallInternal(ExtendedAssembler *assembler, Register j
 {
     __ Movq(jsFuncReg, rdx); // calltarget
     __ Movq(rsp, rcx);
-    __ Addq(FRAME_SLOT_SIZE, rcx); // sp + 8 skip returnAddr
+    __ Addq(FRAME_SLOT_SIZE, rcx); // skip returnAddr
     __ Mov(Operand(rcx, 0), rsi); // get origin argc
-    __ Addq(FRAME_SLOT_SIZE, rcx); // 8: sp + 8 argv
+    __ Addq(kungfu::ArgumentAccessor::GetExtraArgsNum() * FRAME_SLOT_SIZE, rcx); // skip extra args: argc
     __ Movq(kungfu::CommonStubCSigns::JsProxyCallInternal, r9);
     __ Movq(Operand(rdi, r9, Scale::Times8, JSThread::GlueData::GetCOStubEntriesOffset(false)), r8);
     __ Jmp(r8);
@@ -1318,43 +1240,6 @@ void OptimizedCall::JSCallNewWithArgV(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(JSCallNewWithArgV));
     GenJSCallWithArgV(assembler, true);
-}
-
-void OptimizedCall::ConstructorJSCallWithArgV(ExtendedAssembler *assembler)
-{
-    __ BindAssemblerStub(RTSTUB_ID(ConstructorJSCallWithArgV));
-    Register sp(rsp);
-    Register glue(rdi);
-    Register actualNumArgs(rsi);
-    Register jsfunc(rdx);
-    Register newTarget(rcx);
-    Register thisObj(r8);
-    Register argV(r9);
-    Register callsiteSp = __ AvailableRegister2();
-    Label align16Bytes;
-    Label pushCallThis;
-
-    __ Movq(sp, callsiteSp);
-    __ Addq(Immediate(FRAME_SLOT_SIZE), callsiteSp);   // 8 : 8 means skip pc to get last callsitesp
-    PushOptimizedUnfoldArgVFrame(assembler, callsiteSp);
-    __ Testb(1, actualNumArgs);
-    __ Je(&align16Bytes);
-    __ PushAlignBytes();
-    __ Bind(&align16Bytes);
-    __ Cmp(Immediate(0), actualNumArgs);
-    __ Jz(&pushCallThis);
-    __ Mov(actualNumArgs, rax);
-    CopyArgumentWithArgV(assembler, rax, argV);
-    __ Bind(&pushCallThis);
-    PushMandatoryJSArgs(assembler, jsfunc, thisObj, newTarget);
-    __ Addq(Immediate(NUM_MANDATORY_JSFUNC_ARGS), actualNumArgs);
-    __ Pushq(actualNumArgs);
-    __ Movq(glue, rax);
-    __ CallAssemblerStub(RTSTUB_ID(ConstructorJSCall), false);
-    __ Mov(Operand(sp, 0), actualNumArgs);
-    PopJSFunctionArgs(assembler, actualNumArgs);
-    PopOptimizedUnfoldArgVFrame(assembler);
-    __ Ret();
 }
 
 // Input: %rdi - glue

@@ -76,6 +76,11 @@ public:
         return static_cast<size_t>(CommonArgIdx::NUM_OF_ARGS) - static_cast<size_t>(CommonArgIdx::FUNC);
     }
 
+    static size_t GetExtraArgsNum()
+    {
+        return static_cast<size_t>(CommonArgIdx::ACTUAL_ARGC) - static_cast<size_t>(CommonArgIdx::GLUE);
+    }
+
     GateRef GetFrameArgs() const
     {
         return frameArgs_;
