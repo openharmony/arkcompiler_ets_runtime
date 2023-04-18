@@ -123,7 +123,9 @@ void BytecodeCircuitBuilder::CollectRegionInfo(uint32_t bcIndex)
             regionsInfo_.InsertSplit(nextIndex);
             regionsInfo_.InsertJump(targetIndex, bcIndex, false);
         } else {
-            regionsInfo_.InsertHead(nextIndex);
+            if (bcIndex != GetLastBcIndex()) {
+                regionsInfo_.InsertHead(nextIndex);
+            }
             regionsInfo_.InsertJump(targetIndex, bcIndex, true);
         }
     } else if (info.IsReturn() || info.IsThrow()) {
@@ -644,6 +646,11 @@ void BytecodeCircuitBuilder::NewLoopBegin(BytecodeRegion &bb, GateRef &state, Ga
     // 2: the number of depend inputs and it is in accord with LOOP_BEGIN
     auto loopDepend = circuit_->NewGate(circuit_->DependSelector(2),
         { loopBegin, Circuit::NullGate(), Circuit::NullGate() });
+    if (state == circuit_->GetStateRoot()) {
+        ASSERT(depend == circuit_->GetDependRoot());
+        gateAcc_.NewIn(loopBegin, 0, state);
+        gateAcc_.NewIn(loopDepend, 1, depend);
+    }
     state = loopBegin;
     depend = loopDepend;
 }

@@ -539,6 +539,7 @@ void SlowPathLowering::Lower(GateRef gate)
             LowerLdSuperByValue(gate);
             break;
         case EcmaOpcode::STSUPERBYVALUE_IMM16_V8_V8:
+        case EcmaOpcode::STSUPERBYVALUE_IMM8_V8_V8:
             LowerStSuperByValue(gate);
             break;
         case EcmaOpcode::TRYSTGLOBALBYNAME_IMM8_ID16:
