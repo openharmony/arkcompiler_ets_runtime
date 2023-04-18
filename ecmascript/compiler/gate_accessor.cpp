@@ -104,11 +104,18 @@ size_t GateAccessor::GetOffset(GateRef gate) const
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }
 
-TypedUnaryAccessor GateAccessor::GetTypedUnOp(GateRef gate) const
+TypedUnaryAccessor GateAccessor::GetTypedUnAccessor(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::TYPED_UNARY_OP);
+    ASSERT((GetOpCode(gate) == OpCode::TYPED_UNARY_OP) || GetOpCode(gate) == OpCode::INT32_OVERFLOW_CHECK);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return TypedUnaryAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
+TypedJumpAccessor GateAccessor::GetTypedJumpAccessor(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::TYPED_CONDITION_JUMP);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return TypedJumpAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
 TypedLoadOp GateAccessor::GetTypedLoadOp(GateRef gate) const

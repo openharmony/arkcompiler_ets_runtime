@@ -94,3 +94,9 @@ function LoadPropertyOpt(obj : Obj) : number {
 }
 let obj : Obj = new Obj();
 print(LoadPropertyOpt(obj));
+
+let x = 1;
+const size = (x === undefined) ? 1 : 2;
+const cleanupFunc = (x === undefined) ? 1 : 2;
+print(size);
+print(cleanupFunc);

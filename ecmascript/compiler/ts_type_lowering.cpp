@@ -191,7 +191,12 @@ void TSTypeLowering::Lower(GateRef gate)
         case EcmaOpcode::JEQZ_IMM8:
         case EcmaOpcode::JEQZ_IMM16:
         case EcmaOpcode::JEQZ_IMM32:
-            LowerConditionJump(gate);
+            LowerConditionJump(gate, false);
+            break;
+        case EcmaOpcode::JNEZ_IMM8:
+        case EcmaOpcode::JNEZ_IMM16:
+        case EcmaOpcode::JNEZ_IMM32:
+            LowerConditionJump(gate, true);
             break;
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
@@ -499,22 +504,27 @@ void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSTypeLowering::LowerConditionJump(GateRef gate)
+void TSTypeLowering::LowerConditionJump(GateRef gate, bool flag)
 {
     GateRef condition = acc_.GetValueIn(gate, 0);
     GateType conditionType = acc_.GetGateType(condition);
     if (conditionType.IsBooleanType() && IsTrustedType(condition)) {
         AddProfiling(gate);
-        SpeculateConditionJump(gate);
+        SpeculateConditionJump(gate, flag);
     }
 }
 
-void TSTypeLowering::SpeculateConditionJump(GateRef gate)
+void TSTypeLowering::SpeculateConditionJump(GateRef gate, bool flag)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
-    GateRef jeqz = builder_.TypedUnaryOp<TypedUnOp::TYPED_JEQZ>(value, valueType, GateType::Empty());
-    acc_.ReplaceGate(gate, jeqz, jeqz, Circuit::NullGate());
+    GateRef jump = Circuit::NullGate();
+    if (flag) {
+        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JNEZ>(value, valueType);
+    } else {
+        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JEQZ>(value, valueType);
+    }
+    acc_.ReplaceGate(gate, jump, jump, Circuit::NullGate());
 }
 
 void TSTypeLowering::LowerTypedNeg(GateRef gate)

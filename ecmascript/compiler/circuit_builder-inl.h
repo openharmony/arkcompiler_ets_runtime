@@ -780,6 +780,19 @@ GateRef CircuitBuilder::TypedUnaryOp(GateRef x, GateType xType, GateType gateTyp
     return numberUnaryOp;
 }
 
+template<TypedJumpOp Op>
+GateRef CircuitBuilder::TypedConditionJump(GateRef x, GateType xType)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto machineType = MachineType::NOVALUE;
+    auto jumpOp = TypedConditionJump(machineType, Op, xType, {currentControl, currentDepend, x});
+    currentLabel->SetControl(jumpOp);
+    currentLabel->SetDepend(jumpOp);
+    return jumpOp;
+}
+
 template<TypedLoadOp Op>
 GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index)
 {

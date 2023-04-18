@@ -48,6 +48,10 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitTypedUnaryOp(gate);
             break;
         }
+        case OpCode::TYPED_CONDITION_JUMP: {
+            VisitTypedConditionJump(gate);
+            break;
+        }
         case OpCode::VALUE_SELECTOR: {
             VisitPhi(gate);
             break;
@@ -155,8 +159,7 @@ void NumberSpeculativeLowering::VisitNumberBinaryOp(GateRef gate)
 void NumberSpeculativeLowering::VisitTypedUnaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
-    TypedUnOp Op = accessor.GetTypedUnOp();
+    TypedUnOp Op = acc_.GetTypedUnAccessor(gate).GetTypedUnOp();
     switch (Op) {
         case TypedUnOp::TYPED_INC: {
             VisitNumberMonocular<TypedUnOp::TYPED_INC>(gate);
@@ -174,21 +177,19 @@ void NumberSpeculativeLowering::VisitTypedUnaryOp(GateRef gate)
             VisitNumberNot(gate);
             return;
         }
-        case TypedUnOp::TYPED_JEQZ: {
-            VisitTypedJeqz(gate);
-            return;
-        }
         default:
             break;
     }
 }
 
-void NumberSpeculativeLowering::VisitTypedJeqz(GateRef gate)
+void NumberSpeculativeLowering::VisitTypedConditionJump(GateRef gate)
 {
-    TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
-    GateType type = accessor.GetTypeValue();
+    Environment env(gate, circuit_, &builder_);
+    GateType type = acc_.GetTypedJumpAccessor(gate).GetTypeValue();
     if (type.IsBooleanType()) {
-        VisitBooleanJeqz(gate);
+        VisitBooleanJump(gate);
+    } else {
+        UNREACHABLE();
     }
 }
 
@@ -310,9 +311,14 @@ void NumberSpeculativeLowering::VisitNumberNot(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void NumberSpeculativeLowering::VisitBooleanJeqz(GateRef gate)
+void NumberSpeculativeLowering::VisitBooleanJump(GateRef gate)
 {
-    GateRef condition = builder_.BoolNot(acc_.GetValueIn(gate, 0));
+    TypedJumpOp jumpOp = acc_.GetTypedJumpAccessor(gate).GetTypedJumpOp();
+    ASSERT((jumpOp == TypedJumpOp::TYPED_JEQZ) || (jumpOp == TypedJumpOp::TYPED_JNEZ));
+    GateRef condition = acc_.GetValueIn(gate, 0);
+    if (jumpOp == TypedJumpOp::TYPED_JEQZ) {
+        condition = builder_.BoolNot(condition);
+    }
     GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition);
     acc_.ReplaceGate(gate, ifBranch, acc_.GetDep(gate), Circuit::NullGate());
 }

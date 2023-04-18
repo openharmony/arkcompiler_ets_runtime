@@ -283,8 +283,8 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         }
         case OpCode::TYPED_UNARY_OP:
         case OpCode::INT32_OVERFLOW_CHECK: {
-            auto lhsOp = TypedUnaryAccessor(acc_.TryGetValue(lhs)).GetTypedUnOp();
-            auto rhsOp = TypedUnaryAccessor(acc_.TryGetValue(rhs)).GetTypedUnOp();
+            auto lhsOp = acc_.GetTypedUnAccessor(lhs).GetTypedUnOp();
+            auto rhsOp = acc_.GetTypedUnAccessor(rhs).GetTypedUnOp();
             if (lhsOp != rhsOp) {
                 return false;
             }

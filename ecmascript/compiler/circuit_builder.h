@@ -274,6 +274,8 @@ public:
     GateRef CheckTaggedNumberAndConvertToFloat64(GateRef gate);
     GateRef TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
                                const std::vector<GateRef>& inList, GateType gateType);
+    GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, GateType typeVal,
+                               const std::vector<GateRef>& inList);
     GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);
     GateRef TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget, GateRef frameState);
     GateRef GetSuperConstructor(GateRef ctor);
@@ -456,6 +458,8 @@ public:
         PGOSampleType sampleType);
     template<TypedUnOp Op>
     inline GateRef TypedUnaryOp(GateRef x, GateType xType, GateType gateType);
+    template<TypedJumpOp Op>
+    inline GateRef TypedConditionJump(GateRef x, GateType xType);
 
     // middle ir: Number operations
     template<TypedBinOp Op>

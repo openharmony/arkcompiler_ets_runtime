@@ -382,7 +382,8 @@ public:
     PGOSampleType GetTypedBinaryType(GateRef gate) const;
     bool HasNumberType(GateRef gate) const;
     GateType GetParamGateType(GateRef gate) const;
-    TypedUnaryAccessor GetTypedUnOp(GateRef gate) const;
+    TypedUnaryAccessor GetTypedUnAccessor(GateRef gate) const;
+    TypedJumpAccessor GetTypedJumpAccessor(GateRef gate) const;
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;
