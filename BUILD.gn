@@ -814,7 +814,7 @@ config("include_llvm") {
         "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/llvm/include",
         "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/build/include",
       ]
-    } else if (is_mac) {
+    } else if (is_mac || is_ios) {
       if (host_cpu == "arm64") {
         include_dirs = [
           "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_arm64/llvm/include",
