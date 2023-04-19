@@ -1209,6 +1209,7 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
         gateAcc_.NewIn(currentPhi, 1, forwardValue);   // 1: index of forward value input
         gateAcc_.NewIn(currentPhi, 2, loopBackValue);  // 2: index of loop-back value input
     }
+    bb.phiGate.insert(currentPhi);
 }
 
 // recursive variables renaming algorithm
@@ -1289,10 +1290,10 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
     }
     // find def-site in value selectors of vregs
     if (ans == Circuit::NullGate() && !tmpAcc && bb.phi.count(tmpReg)) {
-        if (!bb.vregToValSelectorGate.count(tmpReg)) {
-            NewPhi(bb, tmpReg, tmpAcc, bb.vregToValSelectorGate[tmpReg]);
+        if (!bb.vregToValueGate.count(tmpReg)) {
+            NewPhi(bb, tmpReg, tmpAcc, bb.vregToValueGate[tmpReg]);
         }
-        ans = bb.vregToValSelectorGate.at(tmpReg);
+        ans = bb.vregToValueGate.at(tmpReg);
     }
     // find def-site in value selectors of acc
     if (ans == Circuit::NullGate() && tmpAcc && bb.phiAcc) {

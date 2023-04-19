@@ -129,6 +129,7 @@ private:
     void UpdateVirtualRegistersOfResume(GateRef gate);
     void SaveBBBeginStateInfo(size_t bbId);
     FrameStateInfo *GetCurrentFrameInfo(BytecodeRegion &bb, uint32_t bcId);
+    GateRef GetPreBBInput(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef gate);
     GateRef GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef phi);
 
     BytecodeCircuitBuilder *builder_{nullptr};

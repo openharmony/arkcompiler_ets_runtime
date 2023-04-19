@@ -36,7 +36,7 @@ interface IteratorReturnResult {
     value: any;
 }
 
-interface Iterator {
+declare class Iterator {
     next(...args: [] | [any]): IteratorYieldResult | IteratorReturnResult;
     return?(value?: any): IteratorYieldResult | IteratorReturnResult;
     throw?(e?: any): IteratorYieldResult | IteratorReturnResult;
@@ -71,7 +71,7 @@ declare class RegExpMatchArray extends Array {
     input?: string;
 }
 
-interface RegExp {
+declare class RegExp {
     readonly flags: string;
 
     readonly sticky: boolean;

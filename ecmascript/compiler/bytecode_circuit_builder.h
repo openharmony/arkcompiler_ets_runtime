@@ -174,6 +174,7 @@ struct BytecodeRegion {
     bool isLoopBody {false};
     size_t loopHead {0};
     std::set<uint16_t> phi {}; // phi node
+    std::set<GateRef> phiGate {}; // phi gate
     size_t numOfStatePreds {0};
     size_t numOfLoopBacks {0};
     size_t statePredIndex {0};
@@ -188,7 +189,7 @@ struct BytecodeRegion {
     GateRef dependMerge {Circuit::NullGate()};
     GateRef loopBackStateMerge {Circuit::NullGate()};
     GateRef loopBackDependMerge {Circuit::NullGate()};
-    std::unordered_map<uint16_t, GateRef> vregToValSelectorGate {}; // corresponding ValueSelector gates of vregs
+    std::unordered_map<uint16_t, GateRef> vregToValueGate {}; // corresponding value gates of vregs
     GateRef valueSelectorAccGate {Circuit::NullGate()};
     BytecodeIterator bytecodeIterator_ {};
 
