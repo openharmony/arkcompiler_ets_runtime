@@ -912,7 +912,8 @@ bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName, EcmaVM *v
 
     // '.an' file with version 1 needs to use the old relocate operations
     LOG_COMPILER(INFO) << "Verify that the an file needs to relocate deoptHandler";
-    bool match = VerifyELFHeader(info->GetHeader(), base::FileHeader::ToVersionNumber(AOTFileVersion::REWRITE_RELOCATE_AN_VERSION));
+    bool match = VerifyELFHeader(info->GetHeader(),
+                                 base::FileHeader::ToVersionNumber(AOTFileVersion::REWRITE_RELOCATE_AN_VERSION), true);
     if (match) {
         if (!info->RewriteRelcateDeoptHandler(vm)) {
             // relocating deoptHandler failed, need to rollback to interpreter

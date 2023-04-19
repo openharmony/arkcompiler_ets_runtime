@@ -51,16 +51,18 @@ void PackELFHeader(Elf64_Ehdr &header, uint32_t version, kungfu::Triple triple)
     header.e_version = version;
 }
 
-bool VerifyELFHeader(const Elf64_Ehdr &header, uint32_t version)
+bool VerifyELFHeader(const Elf64_Ehdr &header, uint32_t version, bool silent)
 {
     if (header.e_ident[EI_MAG0] != ELFMAG0 || header.e_ident[EI_MAG1] != ELFMAG1 ||
         header.e_ident[EI_MAG2] != ELFMAG2 || header.e_ident[EI_MAG3] != ELFMAG3) {
-        LOG_ECMA(ERROR) << "ELF format error, expected magic is " << ELFMAG
-                        << ", but got " << header.e_ident[EI_MAG0] << header.e_ident[EI_MAG1]
-                        << header.e_ident[EI_MAG2] << header.e_ident[EI_MAG3];
+        if (!silent) {
+            LOG_ECMA(ERROR) << "ELF format error, expected magic is " << ELFMAG << ", but got "
+                            << header.e_ident[EI_MAG0] << header.e_ident[EI_MAG1] << header.e_ident[EI_MAG2]
+                            << header.e_ident[EI_MAG3];
+        }
         return false;
     }
-    if (!base::FileHeader::VerifyVersion("Elf ", header.e_version, version)) {
+    if (!base::FileHeader::VerifyVersion("Elf ", header.e_version, version, silent)) {
         return false;
     }
     return true;

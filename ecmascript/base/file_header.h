@@ -42,20 +42,23 @@ public:
         return ReverseBytes(helper.versionNumber);
     }
 
-    static bool VerifyVersion(const char *fileDesc, uint32_t currVersion, uint32_t lastVersion)
+    static bool VerifyVersion(const char *fileDesc, uint32_t currVersion, uint32_t lastVersion, bool silent)
     {
-        return VerifyVersion(fileDesc, ToVersion(currVersion), ToVersion(lastVersion));
+        return VerifyVersion(fileDesc, ToVersion(currVersion), ToVersion(lastVersion), silent);
     }
 
 protected:
 
     FileHeader(const VersionType &lastVersion) : magic_(MAGIC), version_(lastVersion) {}
 
-    static bool VerifyVersion(const char *fileDesc, const VersionType &currVersion, const VersionType &lastVersion)
+    static bool VerifyVersion(const char *fileDesc, const VersionType &currVersion, const VersionType &lastVersion,
+                              bool silent = false)
     {
         if (currVersion > lastVersion) {
-            LOG_HOST_TOOL_ERROR << fileDesc << " version error, expected version should be less or equal than "
-                                << ConvToStr(lastVersion) << ", but got " << ConvToStr(currVersion);
+            if (!silent) {
+                LOG_HOST_TOOL_ERROR << fileDesc << " version error, expected version should be less or equal than "
+                                    << ConvToStr(lastVersion) << ", but got " << ConvToStr(currVersion);
+            }
             return false;
         }
         return true;

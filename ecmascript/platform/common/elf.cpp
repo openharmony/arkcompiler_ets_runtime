@@ -75,7 +75,8 @@ void PackELFHeader(Elf64_Ehdr &header, uint32_t version, kungfu::Triple triple)
     header.e_version = version;
 }
 
-bool VerifyELFHeader([[maybe_unused]] const Elf64_Ehdr &header, [[maybe_unused]] uint32_t version)
+bool VerifyELFHeader([[maybe_unused]] const Elf64_Ehdr &header, [[maybe_unused]] uint32_t version,
+                     [[maybe_unused]] bool silent)
 {
     LOG_ECMA(ERROR) << "Elf is not supported on windows platform";
     return false;
