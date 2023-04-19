@@ -28,6 +28,7 @@ class EcmaString;
 class JSTaggedValue;
 
 using CString = std::basic_string<char, std::char_traits<char>, CAddressAllocator<char>>;
+using CS16tring = std::basic_string<char16_t, std::char_traits<char16_t>, CAddressAllocator<char16_t>>;
 using CStringStream = std::basic_stringstream<char, std::char_traits<char>, CAddressAllocator<char>>;
 
 struct CStringHash {

@@ -238,6 +238,38 @@ private:
         return CopyDataRegionUtf8(buf, 0, GetLength(), maxLength, true, isWriteBuffer) + 1;
     }
 
+    size_t CopyDataToUtf16(uint16_t *buf, uint32_t length, uint32_t bufLength) const
+    {
+        if (IsUtf16()) {
+            CVector<uint16_t> tmpBuf;
+            const uint16_t *data = EcmaString::GetUtf16DataFlat(this, tmpBuf);
+            if (length > bufLength) {
+                if (memcpy_s(buf, bufLength * sizeof(uint16_t), data, bufLength * sizeof(uint16_t)) != EOK) {
+                    LOG_FULL(FATAL) << "memcpy_s failed when length > bufLength";
+                    UNREACHABLE();
+                }
+                return bufLength;
+            }
+            if (memcpy_s(buf, bufLength * sizeof(uint16_t), data, length * sizeof(uint16_t)) != EOK) {
+                LOG_FULL(FATAL) << "memcpy_s failed";
+                UNREACHABLE();
+            }
+            return length;
+        }
+        CVector<uint8_t> tmpBuf;
+        const uint8_t *data = EcmaString::GetUtf8DataFlat(this, tmpBuf);
+        if (length > bufLength) {
+            return base::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, bufLength, bufLength, 0);
+        }
+        return base::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, length, bufLength, 0);
+    }
+
+    // It allows user to copy into buffer even if maxLength < length
+    inline size_t WriteUtf16(uint16_t *buf, uint32_t length, uint32_t bufLength) const
+    {
+        return CopyDataToUtf16(buf, length, bufLength);
+    }
+
     size_t WriteOneByte(uint8_t *buf, size_t maxLength) const
     {
         if (maxLength == 0) {
@@ -734,6 +766,11 @@ public:
     uint32_t WriteToFlatUtf8(uint8_t *buf, uint32_t maxLength, bool isWriteBuffer = false)
     {
         return string_->WriteUtf8(buf, maxLength, isWriteBuffer);
+    }
+
+    uint32_t WriteToUtf16(uint16_t *buf, uint32_t bufLength)
+    {
+        return string_->WriteUtf16(buf, GetLength(), bufLength);
     }
 
     uint32_t WriteToOneByte(uint8_t *buf, uint32_t maxLength)
