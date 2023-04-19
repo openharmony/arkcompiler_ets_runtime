@@ -76,6 +76,10 @@
       panda::os::unix::memory::*;
       panda::ecmascript::JSHClass::*;
     };
+    extern "C" {
+      get_ark_js_heap_crash_info;
+      step_ark_managed_native_frame;
+    };
   local:
     *;
 };

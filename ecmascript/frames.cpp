@@ -797,6 +797,10 @@ bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t 
                                [[maybe_unused]] char *buf, [[maybe_unused]] size_t bufSize)
 {
     uintptr_t currentPtr = *fp;
+    if (currentPtr == 0) {
+        LOG_ECMA(ERROR) << "fp is nullptr in StepArkManagedNativeFrame()!";
+        return false;
+    }
     while (true) {
         currentPtr -= sizeof(FrameType);
         uintptr_t frameType = 0;
@@ -815,6 +819,10 @@ bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t 
         currentPtr -= typeOffset;
         currentPtr += prevOffset;
         if (!ReadUintptrFromAddr(pid, currentPtr, currentPtr)) {
+            return false;
+        }
+        if (currentPtr == 0) {
+            LOG_ECMA(ERROR) << "currentPtr is nullptr in StepArkManagedNativeFrame()!";
             return false;
         }
     }
