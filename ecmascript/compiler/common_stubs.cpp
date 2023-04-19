@@ -719,7 +719,7 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
         Branch(TaggedIsUndefined(method), &isUndefined, &isNotUndefined);
         Bind(&isUndefined);
         {
-            result = CallNGCRuntime(glue, RTSTUB_ID(JSProxyCallInternalWithArgV), {glue, argc, target, argv});
+            result = CallNGCRuntime(glue, RTSTUB_ID(JSProxyCallInternalWithArgV), {glue, target});
             Return(*result);
         }
         Bind(&isNotUndefined);

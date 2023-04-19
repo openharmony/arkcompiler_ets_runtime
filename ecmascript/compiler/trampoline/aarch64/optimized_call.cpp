@@ -684,21 +684,18 @@ void OptimizedCall::JSProxyCallInternal(ExtendedAssembler *assembler, Register s
     __ Br(codeAddress);
 }
 
-// * uint64_t JSProxyCallInternalWithArgV(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, uintptr_t argv[])
+// * uint64_t JSProxyCallInternalWithArgV(uintptr_t glue, JSTaggedType calltarget)
 // * c++ calling convention call js function
 // * Arguments:
 //        %x0 - glue
-//        %x1 - argc
-//        %x2 - calltarget
-//        %x3 - argV[] = { calltarget, newtarget, thisObj, arg[0], arg[1], ..., arg[N-1])
+//        %x1 - calltarget
 
 void OptimizedCall::JSProxyCallInternalWithArgV(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(JSProxyCallInternalWithArgV));
     Register jsfunc(X1);
-    Register argv(X3);
-    __ Mov(jsfunc, Register(X2));
-    __ Str(jsfunc, MemoryOperand(argv, 0));
+    Register sp(SP);
+    __ Str(jsfunc, MemoryOperand(sp, FRAME_SLOT_SIZE));
     JSCallInternal(assembler, jsfunc);
 }
 
