@@ -378,8 +378,14 @@ private:
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON", JSTaggedValue::Exception());
             }
             value = ParseJSONText<true>();
-            ObjectFastOperator::SetPropertyByValue<true>(
-                thread_, result.GetTaggedValue(), keyHandle.GetTaggedValue(), value);
+            // fast path
+            JSTaggedValue res = ObjectFastOperator::SetPropertyByValue<true>(thread_, result.GetTaggedValue(),
+                                                                             keyHandle.GetTaggedValue(), value);
+            if (res.IsHole()) {
+                // slow path
+                JSTaggedValue::SetProperty(thread_, JSHandle<JSTaggedValue>(result), keyHandle,
+                                           JSHandle<JSTaggedValue>(thread_, value), true);
+            }
             GetNextNonSpaceChar();
             if (*current_ == ',') {
                 current_++;
