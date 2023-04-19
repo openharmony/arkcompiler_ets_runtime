@@ -177,7 +177,7 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 }
 int JSNApi::vmCount_ = 0;
 bool JSNApi::initialize_ = false;
-static os::memory::Mutex mutex;
+static os::memory::Mutex *mutex = new panda::os::memory::Mutex();
 
 // ------------------------------------ Panda -----------------------------------------------
 EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
@@ -212,7 +212,7 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
 EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
 {
     {
-        os::memory::LockHolder lock(mutex);
+        os::memory::LockHolder lock(*mutex);
         vmCount_++;
         if (!initialize_) {
             ecmascript::Log::Initialize(options);
@@ -231,7 +231,7 @@ EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
 
 void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
 {
-    os::memory::LockHolder lock(mutex);
+    os::memory::LockHolder lock(*mutex);
     if (!initialize_) {
         return;
     }

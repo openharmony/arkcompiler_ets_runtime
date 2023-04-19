@@ -837,8 +837,8 @@ bool AOTFileInfo::CalCallSiteInfo(uintptr_t retAddr,
 
 AnFileDataManager *AnFileDataManager::GetInstance()
 {
-    static AnFileDataManager anFileDataManager;
-    return &anFileDataManager;
+    static AnFileDataManager *anFileDataManager = new AnFileDataManager();
+    return anFileDataManager;
 }
 
 AnFileDataManager::~AnFileDataManager()
