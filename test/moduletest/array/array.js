@@ -111,3 +111,8 @@ print(arr13.length); // 10
 for (var i = 0; i < arr13.length; i++) {
     print(arr13[i]); // undefined, undefined, undefined, undefined, undefined, undefined, undefined, 1, 2, 3
 }
+
+var arr14 = Array.apply(null, Array(16));
+print(arr14.length);
+var arr15 = Array.apply(null, [1, 2, 3, 4, 5, 6]);
+print(arr15.length);
