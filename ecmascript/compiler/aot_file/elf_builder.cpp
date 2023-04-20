@@ -25,7 +25,7 @@ void ElfBuilder::ModifyStrTabSection()
     uint64_t strTabAddr = 0;
     uint32_t strTabSize = 0;
     std::vector<std::string> sectionNames;
-    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.sectionsInfo_;
+    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.GetSectionsInfo();
     // modify strtab
     for (auto &s : sections) {
         if (s.first == ElfSecName::STRTAB) {
@@ -87,7 +87,7 @@ void ElfBuilder::ModifyStrTabSection()
 
 void ElfBuilder::DumpSection() const
 {
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.sectionsInfo_;
+    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.GetSectionsInfo();
     // dump
     for (auto &s : sections) {
         ElfSection section = ElfSection(s.first);
@@ -102,10 +102,10 @@ void ElfBuilder::DumpSection() const
 void ElfBuilder::AddArkStackMapSection()
 {
     // add arkstackmap
-    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.sectionsInfo_;
+    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.GetSectionsInfo();
     std::shared_ptr<uint8_t> ptr = sectionDes_.GetArkStackMapSharePtr();
     uint64_t arkStackMapAddr = reinterpret_cast<uint64_t>(ptr.get());
-    uint32_t arkStackMapSize = sectionDes_.arkStackMapSize_;
+    uint32_t arkStackMapSize = sectionDes_.GetArkStackMapSize();
     if (arkStackMapSize > 0) {
         sections[ElfSecName::ARK_STACKMAP] = std::pair(arkStackMapAddr, arkStackMapSize);
     }
@@ -171,7 +171,7 @@ llvm::ELF::Elf64_Half ElfBuilder::GetShStrNdx(std::map<ElfSecName, std::pair<uin
 llvm::ELF::Elf64_Half ElfBuilder::GetSecSize() const
 {
     llvm::ELF::Elf64_Half secsSize = 0;
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.sectionsInfo_;
+    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.GetSectionsInfo();
     for (auto &s : sections) {
         ElfSection section = ElfSection(s.first);
         if (!section.ShouldDumpToAOTFile()) {
@@ -186,7 +186,7 @@ llvm::ELF::Elf64_Half ElfBuilder::GetSecSize() const
 int ElfBuilder::GetSecNum() const
 {
     int secNum = 0;
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.sectionsInfo_;
+    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.GetSectionsInfo();
     for (auto &s : sections) {
         ElfSection section = ElfSection(s.first);
         if (!section.ShouldDumpToAOTFile()) {
@@ -250,7 +250,7 @@ void ElfBuilder::PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, 
             break;
     }
     header.e_version = version;
-    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.sectionsInfo_;
+    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.GetSectionsInfo();
     // start of section headers
     header.e_shoff = sizeof(llvm::ELF::Elf64_Ehdr);
     // size of ehdr
@@ -268,7 +268,7 @@ void ElfBuilder::PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, 
 
 int ElfBuilder::GetSegmentNum() const
 {
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.sectionsInfo_;
+    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.GetSectionsInfo();
     std::set<ElfSecName> segments;
     for (auto &s: sections) {
         ElfSection section = ElfSection(s.first);
@@ -286,7 +286,7 @@ int ElfBuilder::GetSegmentNum() const
 ElfSecName ElfBuilder::FindLastSection(ElfSecName segment) const
 {
     ElfSecName ans = ElfSecName::NONE;
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.sectionsInfo_;
+    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.GetSectionsInfo();
     for (auto &s: sections) {
         ElfSection section = ElfSection(s.first);
         if (!section.ShouldDumpToAOTFile()) {
@@ -322,7 +322,7 @@ llvm::ELF::Elf64_Word ElfBuilder::FindShName(std::string name, uintptr_t strTabP
 
 std::pair<uint64_t, uint32_t> ElfBuilder::FindStrTab() const
 {
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.sectionsInfo_;
+    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.GetSectionsInfo();
     uint64_t strTabAddr = 0;
     uint32_t strTabSize = 0;
     for (auto &s: sections) {
@@ -351,7 +351,7 @@ Section Headers:
 */
 void ElfBuilder::PackELFSections(std::ofstream &file)
 {
-    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.sectionsInfo_;
+    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.GetSectionsInfo();
     uint32_t secNum = sections.size() + 1; // 1 : section id = 0 is null section
     std::unique_ptr<llvm::ELF::Elf64_Shdr []> shdr = std::make_unique<llvm::ELF::Elf64_Shdr []>(secNum);
     if (memset_s(reinterpret_cast<void *>(&shdr[0]), sizeof(llvm::ELF::Elf64_Shdr), 0, sizeof(llvm::ELF::Elf64_Shdr)) != EOK) {
@@ -450,7 +450,7 @@ void ElfBuilder::PackELFSegment(std::ofstream &file)
     std::map<ElfSecName, llvm::ELF::Elf64_Off> segmentToMaxAddress;
     std::set<ElfSecName> segments;
     // SecName -> addr & size
-    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.sectionsInfo_;
+    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = sectionDes_.GetSectionsInfo();
     llvm::ELF::Elf64_Off offset = e_phoff;
     for (auto &s: sections) {
         ElfSection section = ElfSection(s.first);

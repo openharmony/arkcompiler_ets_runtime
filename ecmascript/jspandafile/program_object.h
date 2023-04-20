@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_PROGRAM_OBJECT_H
 #define ECMASCRIPT_JSPANDAFILE_PROGRAM_OBJECT_H
 
-#include "ecmascript/aot_file_manager.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"

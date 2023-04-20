@@ -29,8 +29,6 @@ public:
     static constexpr bool AN_STRICT_MATCH = true;
     static constexpr base::FileHeader::VersionType AI_VERSION = {4, 0, 0, 1};
     static constexpr bool AI_STRICT_MATCH = true;
-    static constexpr base::FileHeader::VersionType AP_VERSION = {0, 0, 0, 2};
-    static constexpr bool AP_STRICT_MATCH = false;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_AOT_VERSION_H

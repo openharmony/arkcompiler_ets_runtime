@@ -12,9 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/stackmap/ark_stackmap_builder.h"
 #include <map>
-#include "ecmascript/aot_file_manager.h"
+
+#include "ecmascript/stackmap/ark_stackmap_builder.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"

@@ -14,7 +14,7 @@
  */
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 
-#include "ecmascript/aot_file_manager.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/stackmap/ark_stackmap_builder.h"

@@ -21,12 +21,12 @@
 #include <utility>
 #include <stdint.h>
 #include <string>
-#include "ecmascript/aot_file_manager.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/binary_section.h"
 
 namespace panda::ecmascript {
 
-struct ModuleSectionDes;
+class ModuleSectionDes;
 
 class ElfBuilder {
 public:

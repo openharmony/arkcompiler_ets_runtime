@@ -18,7 +18,7 @@
 #include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
 #include <vector>
 
-#include "ecmascript/aot_file_manager.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/compiler_log.h"

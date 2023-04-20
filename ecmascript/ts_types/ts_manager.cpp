@@ -15,13 +15,13 @@
 
 #include "ecmascript/ts_types/ts_manager.h"
 
-#include "ecmascript/aot_file_manager.h"
-#include "ecmascript/subtyping_operator.h"
-#include "ecmascript/vtable.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/ts_types/ts_type_table_generator.h"
+#include "ecmascript/vtable.h"
 
 namespace panda::ecmascript {
 TSManager::TSManager(EcmaVM *vm) : vm_(vm), thread_(vm_->GetJSThread()), factory_(vm_->GetFactory()),

@@ -31,16 +31,14 @@ public:
     static constexpr std::array<uint8_t, MAGIC_SIZE> MAGIC = {'P', 'A', 'N', 'D', 'A', '\0', '\0', '\0'};
     using VersionType = std::array<uint8_t, VERSION_SIZE>;
 
-    static const VersionType ToVersion(uint32_t versionNumber)
+    static VersionType ToVersion(uint32_t versionNumber)
     {
-        VersionUnion helper = {.versionNumber = ReverseBytes(versionNumber)};
-        return helper.version;
+        return bit_cast<VersionType>(ReverseBytes(versionNumber));
     }
 
     static uint32_t ToVersionNumber(const VersionType &version)
     {
-        VersionUnion helper = {.version = version};
-        return ReverseBytes(helper.versionNumber);
+        return ReverseBytes(bit_cast<uint32_t>(version));
     }
 
     static bool VerifyVersion(const char *fileDesc, uint32_t currVersion, uint32_t lastVersion, bool strictMatch)
@@ -122,11 +120,6 @@ protected:
     }
 
 private:
-    union VersionUnion {
-        VersionType version;
-        uint32_t versionNumber;
-        static_assert(sizeof(VersionType) == sizeof(uint32_t));
-    };
     std::array<uint8_t, MAGIC_SIZE> magic_;
     VersionType version_;
 };
