@@ -122,6 +122,68 @@ GateRef NewObjectStubBuilder::NewJSObject(GateRef glue, GateRef hclass)
     return ret;
 }
 
+GateRef NewObjectStubBuilder::NewTaggedArray(GateRef glue, GateRef len)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isEmpty(env);
+    Label notEmpty(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    SetGlue(glue);
+    Branch(Int32Equal(len, Int32(0)), &isEmpty, &notEmpty);
+    Bind(&isEmpty);
+    {
+        result = GetGlobalConstantValue(
+            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+        Jump(&exit);
+    }
+    Bind(&notEmpty);
+    {
+        Label next(env);
+        Label slowPath(env);
+        Branch(Int32LessThan(len, Int32(MAX_TAGGED_ARRAY_LENGTH)), &next, &slowPath);
+        Bind(&next);
+        {
+            size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(len));
+            Label afterAllocate(env);
+            // Be careful. NO GC is allowed when initization is not complete.
+            AllocateInYoung(&result, &afterAllocate);
+            Bind(&afterAllocate);
+            Label hasPendingException(env);
+            Label noException(env);
+            Branch(TaggedIsException(*result), &hasPendingException, &noException);
+            Bind(&noException);
+            {
+                auto hclass = GetGlobalConstantValue(
+                    VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_CLASS_INDEX);
+                StoreHClass(glue_, *result, hclass);
+                Label afterInitialize(env);
+                InitializeTaggedArrayWithSpeicalValue(&afterInitialize,
+                    *result, Hole(), Int32(0), len);
+                Bind(&afterInitialize);
+                Jump(&exit);
+            }
+            Bind(&hasPendingException);
+            {
+                Jump(&exit);
+            }
+        }
+        Bind(&slowPath);
+        {
+            result = CallRuntime(glue_, RTSTUB_ID(NewTaggedArray), { IntToTaggedInt(len) });
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 void NewObjectStubBuilder::NewArgumentsList(Variable *result, Label *exit,
     GateRef sp, GateRef startIdx, GateRef numArgs)
 {

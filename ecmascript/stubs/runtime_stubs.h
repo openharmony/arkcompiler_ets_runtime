@@ -267,6 +267,7 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(OptNewObjRange)                     \
     V(GetTypeArrayPropertyByIndex)        \
     V(SetTypeArrayPropertyByIndex)        \
+    V(FastCopyElementToArray)             \
     V(JSObjectGetMethod)                  \
     V(DebugAOTPrint)                      \
     V(ProfileOptimizedCode)               \

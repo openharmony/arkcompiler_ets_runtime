@@ -30,6 +30,7 @@ public:
     NO_COPY_SEMANTIC(TypedArrayStubBuilder);
     void GenerateCircuit() override {}
     GateRef FastGetPropertyByIndex(GateRef glue, GateRef array, GateRef index, GateRef jsType);
+    GateRef FastCopyElementToArray(GateRef glue, GateRef typedArray, GateRef array);
     GateRef GetValueFromBuffer(GateRef buffer, GateRef index, GateRef offset, GateRef jsType);
     GateRef IsDetachedBuffer(GateRef buffer);
     GateRef GetDataPointFromBuffer(GateRef arrBuf);
