@@ -22,7 +22,7 @@
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/js_thread.h"
 
-#include "libpandabase/os/mutex.h"
+#include "os/mutex.h"
 
 namespace panda::ecmascript {
 using JSTaggedType = uint64_t;
@@ -69,22 +69,6 @@ private:
     JSThread *thread_ = nullptr;
 };
 
-class CallNapiScope {
-public:
-    inline explicit CallNapiScope(SamplesRecord *generator)
-    {
-        generator_ = generator;
-        generator_->SetFrameStackCallNapi(true);
-    }
-
-    inline ~CallNapiScope()
-    {
-        generator_->SetFrameStackCallNapi(false);
-    }
-private:
-    SamplesRecord *generator_ = nullptr;
-};
-
 class CpuProfiler {
 public:
     static const int CPUPROFILER_DEFAULT_INTERVAL = 500; // 500:Default Sampling interval 500 microseconds
@@ -101,8 +85,9 @@ public:
     void StartCpuProfilerForFile(const std::string &fileName);
     void StopCpuProfilerForFile();
     void SetCpuSamplingInterval(int interval);
-    void SetCallNapiGetStack(bool getStack);
     void RecordCallNapiInfo(const std::string &methodAddr);
+    void SetBuildNapiStack(bool flag);
+    bool GetBuildNapiStack();
     explicit CpuProfiler(const EcmaVM *vm, const int interval = CPUPROFILER_DEFAULT_INTERVAL);
     virtual ~CpuProfiler();
 
@@ -131,8 +116,25 @@ private:
     pthread_t tid_ = 0;
     const EcmaVM *vm_ = nullptr;
     uint32_t interval_ = 0;
-    bool callNapiGetStack_ = true;
     uint64_t beforeCallNapiTimeStamp_ = 0;
+    std::atomic_bool isBuildNapiStack_ {false};
+    bool enableVMTag_ {false};
+};
+
+class CallNapiScope {
+public:
+    inline explicit CallNapiScope(CpuProfiler *profiler)
+    {
+        profiler_ = profiler;
+        profiler_->SetBuildNapiStack(true);
+    }
+
+    inline ~CallNapiScope()
+    {
+        profiler_->SetBuildNapiStack(false);
+    }
+private:
+    CpuProfiler *profiler_ {nullptr};
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_CPU_PROFILE_H

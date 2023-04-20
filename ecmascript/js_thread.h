@@ -496,14 +496,14 @@ public:
         return getStackSignal_;
     }
 
-    void SetCallNapiGetStack(bool needGetStack)
+    void SetIsProfiling(bool isProfiling)
     {
-        callNapiGetStack_ = needGetStack;
+        isProfiling_ = isProfiling;
     }
 
-    bool GetCallNapiGetStack()
+    bool GetIsProfiling()
     {
-        return callNapiGetStack_;
+        return isProfiling_;
     }
 
     void SetGcState(bool gcState)
@@ -892,7 +892,7 @@ private:
 
     // Run-time state
     bool getStackSignal_ {false};
-    bool callNapiGetStack_ {false};
+    bool isProfiling_ {false};
     bool gcState_ {false};
     bool runtimeState_ {false};
     bool isAsmInterpreter_ {false};

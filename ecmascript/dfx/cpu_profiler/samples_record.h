@@ -62,7 +62,7 @@ struct MethodKey {
 };
 
 struct NodeKey {
-    struct MethodKey methodKey = {};
+    struct MethodKey methodKey = {0};
     int parentId = 0;
     bool operator < (const NodeKey &nodeKey) const
     {
@@ -74,8 +74,8 @@ struct NodeKey {
 struct FrameInfo {
     std::string codeType = "";
     std::string functionName = "";
-    int columnNumber = 0;
-    int lineNumber = 0;
+    int columnNumber = -1;
+    int lineNumber = -1;
     int scriptId = 0;
     std::string url = "";
 };
@@ -111,11 +111,11 @@ struct ProfileInfo {
 struct FrameInfoTemp {
     char codeType[20] = {0}; // 20:the maximum size of the codeType
     char functionName[100] = {0}; // 100:the maximum size of the functionName
-    int columnNumber = 0;
-    int lineNumber = 0;
+    int columnNumber = -1;
+    int lineNumber = -1;
     int scriptId = 0;
     char url[500] = {0}; // 500:the maximum size of the url
-    struct MethodKey methodKey = {};
+    struct MethodKey methodKey = {0};
 };
 
 struct FrameStackAndInfo {
@@ -123,7 +123,7 @@ struct FrameStackAndInfo {
     struct MethodKey frameStack[MAX_STACK_SIZE] = {};
     int frameInfoTempsLength {};
     int frameStackLength {};
-    uint64_t timeStamp{};
+    uint64_t timeStamp {};
 };
 
 class SamplesQueue {
@@ -144,20 +144,13 @@ public:
     int GetSize();
     int GetFrontIndex();
     int GetRearIndex();
-    void SetFrameStackCallNapi(bool flag);
-    bool GetFrameStackCallNapi();
     bool CheckAndCopy(char *dest, size_t length, const char *src) const;
-    FrameStackAndInfo GetFront();
-    FrameStackAndInfo GetRear();
-    uint64_t GetLastPostTime();
 
 private:
     FrameStackAndInfo frames_[QUEUE_CAPACITY] = {};
     int front_ = 0;
     int rear_ = 0;
-    std::atomic_bool isFrameStackCallNapi = false;
     os::memory::Mutex mtx_;
-    uint64_t lastPostTime_ = 0;
 };
 
 class SamplesRecord {
@@ -165,8 +158,9 @@ public:
     SamplesRecord();
     virtual ~SamplesRecord();
 
+    void NodeInit();
     void AddSample(FrameStackAndInfo *frame);
-    void AddRootSample();
+    void AddSpecialSample(int sampleNodeId);
     void StringifySampleData();
     int GetMethodNodeCount() const;
     int GetframeStackLength() const;
@@ -213,7 +207,6 @@ public:
     void PostFrame();
     void PostNapiFrame();
     void ResetFrameLength();
-    void SetFrameStackCallNapi(bool flag);
     uint64_t GetCallTimeStamp();
     void SetCallTimeStamp(uint64_t timeStamp);
     std::ofstream fileHandle_;
@@ -245,7 +238,6 @@ private:
     std::atomic_bool afterCallNapi_ = false;
     std::atomic_bool callNapi_ = false;
     std::unique_ptr<struct ProfileInfo> profileInfo_;
-    CVector<int> stackTopLines_;
     CMap<struct NodeKey, int> nodeMap_;
     std::string sampleData_ = "";
     std::string fileName_ = "";

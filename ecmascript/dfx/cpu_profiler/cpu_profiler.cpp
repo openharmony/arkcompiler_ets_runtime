@@ -32,8 +32,10 @@ os::memory::Mutex CpuProfiler::synchronizationMutex_;
 CMap<pthread_t, const EcmaVM *> CpuProfiler::profilerMap_ = CMap<pthread_t, const EcmaVM *>();
 CpuProfiler::CpuProfiler(const EcmaVM *vm, const int interval) : vm_(vm), interval_(interval)
 {
+    enableVMTag_ = const_cast<EcmaVM *>(vm)->GetJSOptions().EnableCpuProfilerVMTag();
     generator_ = new SamplesRecord();
-    generator_->SetEnableVMTag(const_cast<EcmaVM *>(vm)->GetJSOptions().EnableCpuProfilerVMTag());
+    generator_->SetEnableVMTag(enableVMTag_);
+    generator_->NodeInit();
     if (generator_->SemInit(0, 0, 0) != 0) {
         LOG_ECMA(ERROR) << "sem_[0] init failed";
     }
@@ -47,8 +49,7 @@ CpuProfiler::CpuProfiler(const EcmaVM *vm, const int interval) : vm_(vm), interv
 
 void CpuProfiler::StartCpuProfilerForInfo()
 {
-    LOG_ECMA(INFO) << "StartCpuProfilerForInfo, Sampling interval is: " << interval_
-                   << " ,napi active record is: " << callNapiGetStack_;
+    LOG_ECMA(INFO) << "StartCpuProfilerForInfo, Sampling interval is: " << interval_;
     if (isProfiling_) {
         LOG_ECMA(ERROR) << "Can not StartCpuProfilerForInfo when CpuProfiler is Profiling";
         return;
@@ -72,7 +73,7 @@ void CpuProfiler::StartCpuProfilerForInfo()
         os::memory::LockHolder lock(synchronizationMutex_);
         profilerMap_[tid_] = vm_;
     }
-    vm_->GetJSThread()->SetCallNapiGetStack(callNapiGetStack_);
+    vm_->GetJSThread()->SetIsProfiling(true);
     generator_->SetIsStart(true);
     Taskpool::GetCurrentTaskpool()->PostTask(
         std::make_unique<SamplingProcessor>(vm_->GetJSThread()->GetThreadId(), generator_, interval_));
@@ -80,8 +81,7 @@ void CpuProfiler::StartCpuProfilerForInfo()
 
 void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
 {
-    LOG_ECMA(INFO) << "StartCpuProfilerForFile, Sampling interval is: " << interval_
-                   << " ,napi active record is: " << callNapiGetStack_;
+    LOG_ECMA(INFO) << "StartCpuProfilerForFile, Sampling interval is: " << interval_;
     if (isProfiling_) {
         LOG_ECMA(ERROR) << "Can not StartCpuProfilerForFile when CpuProfiler is Profiling";
         return;
@@ -125,7 +125,7 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
         profilerMap_[tid_] = vm_;
     }
     outToFile_ = true;
-    vm_->GetJSThread()->SetCallNapiGetStack(callNapiGetStack_);
+    vm_->GetJSThread()->SetIsProfiling(true);
     generator_->SetIsStart(true);
     Taskpool::GetCurrentTaskpool()->PostTask(
         std::make_unique<SamplingProcessor>(vm_->GetJSThread()->GetThreadId(), generator_, interval_));
@@ -145,7 +145,7 @@ std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
         return profileInfo;
     }
     isProfiling_ = false;
-    vm_->GetJSThread()->SetCallNapiGetStack(false);
+    vm_->GetJSThread()->SetIsProfiling(false);
     generator_->SetIsStart(false);
     generator_->SetIsBreakSampleFlag(true);
     if (generator_->SemPost(0) != 0) {
@@ -165,11 +165,6 @@ void CpuProfiler::SetCpuSamplingInterval(int interval)
     interval_ = static_cast<uint32_t>(interval);
 }
 
-void CpuProfiler::SetCallNapiGetStack(bool getStack)
-{
-    callNapiGetStack_ = getStack;
-}
-
 void CpuProfiler::StopCpuProfilerForFile()
 {
     LOG_ECMA(INFO) << "StopCpuProfilerForFile enter";
@@ -186,7 +181,7 @@ void CpuProfiler::StopCpuProfilerForFile()
     }
 
     isProfiling_ = false;
-    vm_->GetJSThread()->SetCallNapiGetStack(false);
+    vm_->GetJSThread()->SetIsProfiling(false);
     generator_->SetIsStart(false);
     generator_->SetIsBreakSampleFlag(true);
     if (generator_->SemPost(0) != 0) {
@@ -276,19 +271,24 @@ RunningState CpuProfiler::GetRunningState(const FrameIterator &it,
         }
         return RunningState::BUILTIN;
     }
-    if (it.IsLeaveFrame()) {
-        return RunningState::RUNTIME;
+
+    if (enableVMTag_) {
+        if (it.IsLeaveFrame()) {
+            return RunningState::RUNTIME;
+        }
+        if (it.IsOptimizedJSFunctionFrame()) {
+            return RunningState::AOT;
+        }
+        if (topFrame && thread->GetRuntimeState()) {
+            return RunningState::RUNTIME;
+        }
+        if (thread->IsAsmInterpreter()) {
+            return RunningState::AINT;
+        }
+        return RunningState::CINT;
     }
-    if (it.IsOptimizedJSFunctionFrame()) {
-        return RunningState::AOT;
-    }
-    if (topFrame && thread->GetRuntimeState()) {
-        return RunningState::RUNTIME;
-    }
-    if (thread->IsAsmInterpreter()) {
-        return RunningState::AINT;
-    }
-    return RunningState::CINT;
+
+    return RunningState::OTHER;
 }
 
 void CpuProfiler::GetStack(FrameIterator &it)
@@ -344,7 +344,7 @@ void CpuProfiler::GetStackCallNapi(JSThread *thread, bool beforeCallNapi)
             return;
         }
     }
-    [[maybe_unused]] CallNapiScope scope(generator_);
+    [[maybe_unused]] CallNapiScope scope(this);
     const CMap<struct MethodKey, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     generator_->ClearNapiStack();
     bool topFrame = true;
@@ -398,18 +398,11 @@ bool CpuProfiler::ParseMethodInfo(struct MethodKey &methodKey,
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
     JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
     if (extraInfoValue.CheckIsJSNativePointer() || jsPandaFile == nullptr) {
-        if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "other")) {
-            return false;
-        }
         FrameIterator itNext(it.GetSp(), it.GetThread());
         itNext.Advance<GCVisitedFlag::IGNORED>();
         GetNativeMethodCallPos(itNext, codeEntry);
         GetNativeStack(it, codeEntry.functionName, sizeof(codeEntry.functionName));
     } else {
-        if (!CheckAndCopy(codeEntry.codeType, sizeof(codeEntry.codeType), "JS")) {
-            return false;
-        }
-
         EntityId methodId = reinterpret_cast<MethodLiteral *>(methodKey.methodIdentifier)->GetMethodId();
         const char *tempVariable = MethodLiteral::GetMethodName(jsPandaFile, methodId);
         uint8_t length = strlen(tempVariable);
@@ -428,7 +421,10 @@ bool CpuProfiler::ParseMethodInfo(struct MethodKey &methodKey,
         }
         // source file
         DebugInfoExtractor *debugExtractor =
-            JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+            JSPandaFileManager::GetInstance()->CpuProfilerGetJSPtExtractor(jsPandaFile);
+        if (debugExtractor == nullptr) {
+            return false;
+        }
         const std::string &sourceFile = debugExtractor->GetSourceFile(methodId);
         if (sourceFile.empty()) {
             tempVariable = "";
@@ -510,6 +506,14 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
             return;
         }
     }
+
+    if (profiler->GetBuildNapiStack()) {
+        if (profiler->generator_->SemPost(0) != 0) {
+            LOG_ECMA(ERROR) << "sem_[0] post failed";
+        }
+        return;
+    }
+
     uint64_t pc = 0;
     if (thread->IsAsmInterpreter()) {
         // If the attempt fails, the callback will be terminated directly to avoid the reentrancy deadlock,
@@ -717,8 +721,15 @@ void CpuProfiler::GetNativeMethodCallPos(FrameIterator &it, FrameInfoTemp &codeE
     JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
     if (!extraInfoValue.IsJSNativePointer() && nextMethod->GetJSPandaFile() != nullptr) {
         DebugInfoExtractor *debugExtractor =
-            JSPandaFileManager::GetInstance()->GetJSPtExtractor(nextMethod->GetJSPandaFile());
-        panda_file::File::EntityId methodId = nextMethod->GetMethodLiteral()->GetMethodId();
+            JSPandaFileManager::GetInstance()->CpuProfilerGetJSPtExtractor(nextMethod->GetJSPandaFile());
+        if (debugExtractor == nullptr) {
+            return;
+        }
+        MethodLiteral *methodLiteral = nextMethod->GetMethodLiteral();
+        if (methodLiteral == nullptr) {
+            return;
+        }
+        panda_file::File::EntityId methodId = methodLiteral->GetMethodId();
         const std::string &sourceFile = debugExtractor->GetSourceFile(methodId);
         const char *tempVariable;
         if (sourceFile.empty()) {
@@ -749,5 +760,15 @@ void CpuProfiler::GetNativeMethodCallPos(FrameIterator &it, FrameInfoTemp &codeE
         codeEntry.lineNumber = lineNumber;
         codeEntry.columnNumber = columnNumber;
     }
+}
+
+void CpuProfiler::SetBuildNapiStack(bool flag)
+{
+    isBuildNapiStack_.store(flag);
+}
+
+bool CpuProfiler::GetBuildNapiStack()
+{
+    return isBuildNapiStack_.load();
 }
 } // namespace panda::ecmascript

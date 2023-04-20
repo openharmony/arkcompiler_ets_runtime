@@ -64,7 +64,8 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
             break;
         }
         if (generator_->samplesQueue_->IsEmpty()) {
-            generator_->AddRootSample();
+            int nodeId = 2;  // program node id
+            generator_->AddSpecialSample(nodeId);
         } else {
             while (!generator_->samplesQueue_->IsEmpty()) {
                 FrameStackAndInfo *frame = generator_->samplesQueue_->PopFrame();
