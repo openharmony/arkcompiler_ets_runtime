@@ -139,11 +139,11 @@ public:
         CString entryPoint;
         if (pos != CString::npos) {
             pos = inputFileName.find('/', startStrLen);
-            ASSERT(pos != CString::npos);
-            CString moduleName = inputFileName.substr(startStrLen, pos - startStrLen);
-            if (moduleName != vm->GetModuleName()) {
-                outFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
+            if (pos == CString::npos) {
+                LOG_FULL(FATAL) << "Invalid Ohm url, please check.";
             }
+            CString moduleName = inputFileName.substr(startStrLen, pos - startStrLen);
+            outFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
             entryPoint = vm->GetBundleName() + "/" + inputFileName.substr(startStrLen);
         } else {
             // Temporarily handle the relative path sent by arkui
@@ -151,7 +151,11 @@ public:
                 entryPoint = inputFileName.substr(PREFIX_BUNDLE_LEN);
                 outFileName = ParseUrl(vm, entryPoint);
             } else {
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
+                entryPoint = vm->GetBundleName() + "/" +  inputFileName;
+#else
                 entryPoint = vm->GetBundleName() + "/" + vm->GetModuleName() + MODULE_DEFAULE_ETS + inputFileName;
+#endif
             }
         }
         if (StringHelper::StringEndWith(entryPoint, EXT_NAME_ABC)) {
@@ -187,11 +191,9 @@ public:
             // Cross-application
             baseFileName =
                 BUNDLE_INSTALL_PATH + bundleName + "/" + moduleName + "/" + moduleName + MERGE_ABC_ETS_MODULES;
-        } else if (moduleName != vm->GetModuleName()) {
+        } else {
             // Intra-application cross hap
             baseFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
-        } else {
-            baseFileName = CString();
         }
         return baseFileName;
     }
@@ -222,7 +224,7 @@ public:
     }
 
     static CString ParsePrefixBundle(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                     [[maybe_unused]] CString &baseFileName, CString moduleRequestName)
+        [[maybe_unused]] CString &baseFileName, CString moduleRequestName, [[maybe_unused]] CString recordName)
     {
         EcmaVM *vm = thread->GetEcmaVM();
         moduleRequestName = moduleRequestName.substr(PREFIX_BUNDLE_LEN);
@@ -231,7 +233,7 @@ public:
             CVector<CString> vec;
             StringHelper::SplitString(moduleRequestName, vec, 0, SEGMENTS_LIMIT_TWO);
             if (vec.size() < SEGMENTS_LIMIT_TWO) {
-                LOG_ECMA(DEBUG) << "SplitString filed, please check moduleRequestName";
+                LOG_ECMA(INFO) << "SplitString filed, please check moduleRequestName";
                 return CString();
             }
             CString bundleName = vec[0];
@@ -242,13 +244,19 @@ public:
             if (bundleName != vm->GetBundleName()) {
                 baseFileName =
                     BUNDLE_INSTALL_PATH + bundleName + '/' + moduleName + '/' + moduleName + MERGE_ABC_ETS_MODULES;
-            } else if (moduleName != vm->GetModuleName()) {
-                baseFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
             } else {
-                baseFileName = vm->GetAssetPath();
+                baseFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
             }
 #else
-            if (bundleName != vm->GetBundleName() || moduleName != vm->GetModuleName()) {
+            CVector<CString> currentVec;
+            StringHelper::SplitString(recordName, currentVec, 0, SEGMENTS_LIMIT_TWO);
+            if (vec.size() < SEGMENTS_LIMIT_TWO) {
+                LOG_ECMA(INFO) << "SplitString filed, please check moduleRequestName";
+                return CString();
+            }
+            CString currentModuleName = currentVec[1];
+            CropNamespaceIfAbsent(currentModuleName);
+            if (bundleName != vm->GetBundleName() || moduleName != currentModuleName) {
                 entryPoint = PREVIEW_OF_ACROSS_HAP_FLAG;
                 LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
             }
@@ -510,7 +518,7 @@ public:
     {
         CString entryPoint;
         if (StringHelper::StringStartWith(requestName, PREFIX_BUNDLE)) {
-            entryPoint = ParsePrefixBundle(thread, jsPandaFile, baseFileName, requestName);
+            entryPoint = ParsePrefixBundle(thread, jsPandaFile, baseFileName, requestName, recordName);
         } else if (StringHelper::StringStartWith(requestName, PREFIX_PACKAGE)) {
             entryPoint = requestName.substr(PREFIX_PACKAGE_LEN);
         } else if (IsImportFile(requestName)) { // load a relative pathName.
