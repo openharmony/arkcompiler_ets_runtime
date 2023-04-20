@@ -394,7 +394,6 @@ bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::ve
     } else {
         vm = hostVm->GetWorkerVm(tid);
         if (vm == nullptr) {
-            LOG_ECMA(INFO) << "WorkerVm is nullptr or has been damaged!";
             return false;
         }
     }

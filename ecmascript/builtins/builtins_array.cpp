@@ -391,6 +391,7 @@ JSTaggedValue BuiltinsArray::Of(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsArray::Species(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), Array, Species);
     // 1. Return the this value.
     return GetThis(argv).GetTaggedValue();
 }
@@ -2726,6 +2727,7 @@ JSTaggedValue BuiltinsArray::Values(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsArray::Unscopables(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Array, Unscopables);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -2770,7 +2772,7 @@ JSTaggedValue BuiltinsArray::Unscopables(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsArray::Flat(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Array, Values);
+    BUILTINS_API_TRACE(argv->GetThread(), Array, Flat);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
@@ -2820,7 +2822,7 @@ JSTaggedValue BuiltinsArray::Flat(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsArray::FlatMap(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Array, Values);
+    BUILTINS_API_TRACE(argv->GetThread(), Array, FlatMap);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 

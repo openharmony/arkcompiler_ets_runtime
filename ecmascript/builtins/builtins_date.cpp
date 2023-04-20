@@ -245,6 +245,7 @@ JSTaggedValue BuiltinsDate::ToLocaleString(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Date, ToLocaleString);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     [[maybe_unused]] ObjectFactory *factory = ecmaVm->GetFactory();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -325,6 +326,7 @@ JSTaggedValue BuiltinsDate::ToLocaleDateString(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Date, ToLocaleDateString);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     [[maybe_unused]] ObjectFactory *factory = ecmaVm->GetFactory();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -405,6 +407,7 @@ JSTaggedValue BuiltinsDate::ToLocaleTimeString(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Date, ToLocaleTimeString);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     [[maybe_unused]] ObjectFactory *factory = ecmaVm->GetFactory();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);

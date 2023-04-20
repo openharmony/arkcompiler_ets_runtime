@@ -218,6 +218,7 @@ JSTaggedValue BuiltinsPromiseHandler::ResolveElementFunction(EcmaRuntimeCallInfo
 JSTaggedValue BuiltinsPromiseHandler::AsyncAwaitFulfilled(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), PromiseHandler, AsyncAwaitFulfilled);
     [[maybe_unused]] EcmaHandleScope handleScope(argv->GetThread());
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
@@ -228,6 +229,7 @@ JSTaggedValue BuiltinsPromiseHandler::AsyncAwaitFulfilled(EcmaRuntimeCallInfo *a
 JSTaggedValue BuiltinsPromiseHandler::AsyncAwaitRejected(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), PromiseHandler, AsyncAwaitRejected);
     [[maybe_unused]] EcmaHandleScope handleScope(argv->GetThread());
 
     JSHandle<JSTaggedValue> reason = GetCallArg(argv, 0);
@@ -237,6 +239,7 @@ JSTaggedValue BuiltinsPromiseHandler::AsyncAwaitRejected(EcmaRuntimeCallInfo *ar
 
 JSTaggedValue BuiltinsPromiseHandler::valueThunkFunction(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), PromiseHandler, valueThunkFunction);
     JSHandle<JSPromiseValueThunkOrThrowerFunction> valueThunk =
         JSHandle<JSPromiseValueThunkOrThrowerFunction>::Cast(GetConstructor(argv));
     return valueThunk->GetResult();
@@ -245,6 +248,7 @@ JSTaggedValue BuiltinsPromiseHandler::valueThunkFunction(EcmaRuntimeCallInfo *ar
 JSTaggedValue BuiltinsPromiseHandler::throwerFunction(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, PromiseHandler, throwerFunction);
     JSHandle<JSPromiseValueThunkOrThrowerFunction> thrower =
         JSHandle<JSPromiseValueThunkOrThrowerFunction>::Cast(GetConstructor(argv));
     JSTaggedValue undefined = thread->GlobalConstants()->GetUndefined();
@@ -255,6 +259,7 @@ JSTaggedValue BuiltinsPromiseHandler::ThenFinally(EcmaRuntimeCallInfo *argv)
 {
     // 1. Let F be the active function object.
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, PromiseHandler, ThenFinally);
     auto ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -296,6 +301,7 @@ JSTaggedValue BuiltinsPromiseHandler::CatchFinally(EcmaRuntimeCallInfo *argv)
 {
     // 1. Let F be the active function object.
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, PromiseHandler, CatchFinally);
     auto ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -337,6 +343,7 @@ JSHandle<JSTaggedValue> BuiltinsPromiseHandler::PromiseResolve(JSThread *thread,
                                                                const JSHandle<JSTaggedValue> &constructor,
                                                                const JSHandle<JSTaggedValue> &xValue)
 {
+    BUILTINS_API_TRACE(thread, PromiseHandler, PromiseResolve);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // 1. Assert: Type(C) is Object.
     ASSERT_PRINT(constructor->IsECMAObject(), "PromiseResolve : is not callable");
@@ -376,6 +383,7 @@ JSTaggedValue BuiltinsPromiseHandler::AllSettledResolveElementFunction(EcmaRunti
 {
     // 1. Let F be the active function object.
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, PromiseHandler, AllSettledResolveElementFunction);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSPromiseAllSettledElementFunction> resolveElement =
@@ -438,6 +446,7 @@ JSTaggedValue BuiltinsPromiseHandler::AllSettledRejectElementFunction(EcmaRuntim
 {
     // 1. Let F be the active function object.
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, PromiseHandler, AllSettledRejectElementFunction);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSPromiseAllSettledElementFunction> rejectElement =
@@ -500,6 +509,7 @@ JSTaggedValue BuiltinsPromiseHandler::AnyRejectElementFunction(EcmaRuntimeCallIn
 {
     // 1. Let F be the active function object.
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, PromiseHandler, AnyRejectElementFunction);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSPromiseAnyRejectElementFunction> rejectElement =

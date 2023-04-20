@@ -29,8 +29,8 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsDataView::DataViewConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), DataView, Constructor);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DataView, Constructor);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> ctor = GetConstructor(argv);
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
@@ -108,8 +108,8 @@ JSTaggedValue BuiltinsDataView::DataViewConstructor(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::GetBuffer(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), DataView, GetBuffer);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DataView, GetBuffer);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let O be the this value.
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
@@ -132,8 +132,8 @@ JSTaggedValue BuiltinsDataView::GetBuffer(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::GetByteLength(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), DataView, GetByteLength);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DataView, GetByteLength);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let O be the this value.
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
@@ -162,8 +162,8 @@ JSTaggedValue BuiltinsDataView::GetByteLength(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::GetOffset(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), DataView, GetOffset);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DataView, GetOffset);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let O be the this value.
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
@@ -192,6 +192,7 @@ JSTaggedValue BuiltinsDataView::GetOffset(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::GetFloat32(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, GetFloat32);
     return GetTypedValue(argv, DataViewType::FLOAT32);
 }
 
@@ -199,6 +200,7 @@ JSTaggedValue BuiltinsDataView::GetFloat32(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::GetFloat64(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, GetFloat64);
     return GetTypedValue(argv, DataViewType::FLOAT64);
 }
 
@@ -206,6 +208,7 @@ JSTaggedValue BuiltinsDataView::GetFloat64(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::GetInt8(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, GetInt8);
     return GetTypedValue(argv, DataViewType::INT8);
 }
 
@@ -213,6 +216,7 @@ JSTaggedValue BuiltinsDataView::GetInt8(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::GetInt16(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, GetInt16);
     return GetTypedValue(argv, DataViewType::INT16);
 }
 
@@ -220,6 +224,7 @@ JSTaggedValue BuiltinsDataView::GetInt16(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::GetInt32(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, GetInt32);
     return GetTypedValue(argv, DataViewType::INT32);
 }
 
@@ -227,6 +232,7 @@ JSTaggedValue BuiltinsDataView::GetInt32(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::GetUint8(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, GetUint8);
     return GetTypedValue(argv, DataViewType::UINT8);
 }
 
@@ -234,6 +240,7 @@ JSTaggedValue BuiltinsDataView::GetUint8(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::GetUint16(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, GetUint16);
     return GetTypedValue(argv, DataViewType::UINT16);
 }
 
@@ -241,24 +248,28 @@ JSTaggedValue BuiltinsDataView::GetUint16(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::GetUint32(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, GetUint32);
     return GetTypedValue(argv, DataViewType::UINT32);
 }
 // 25.3.4.5
 JSTaggedValue BuiltinsDataView::GetBigInt64(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, GetBigInt64);
     return GetTypedValue(argv, DataViewType::BIGINT64);
 }
 // 25.3.4.6
 JSTaggedValue BuiltinsDataView::GetBigUint64(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, GetBigUint64);
     return GetTypedValue(argv, DataViewType::BIGUINT64);
 }
 // 24.2.4.13
 JSTaggedValue BuiltinsDataView::SetFloat32(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, SetFloat32);
     return SetTypedValue(argv, DataViewType::FLOAT32);
 }
 
@@ -266,6 +277,7 @@ JSTaggedValue BuiltinsDataView::SetFloat32(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::SetFloat64(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, SetFloat64);
     return SetTypedValue(argv, DataViewType::FLOAT64);
 }
 
@@ -273,6 +285,7 @@ JSTaggedValue BuiltinsDataView::SetFloat64(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::SetInt8(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, SetInt8);
     return SetTypedValue(argv, DataViewType::INT8);
 }
 
@@ -280,6 +293,7 @@ JSTaggedValue BuiltinsDataView::SetInt8(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::SetInt16(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, SetInt16);
     return SetTypedValue(argv, DataViewType::INT16);
 }
 
@@ -287,6 +301,7 @@ JSTaggedValue BuiltinsDataView::SetInt16(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::SetInt32(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, SetInt32);
     return SetTypedValue(argv, DataViewType::INT32);
 }
 
@@ -294,6 +309,7 @@ JSTaggedValue BuiltinsDataView::SetInt32(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::SetUint8(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, SetUint8);
     return SetTypedValue(argv, DataViewType::UINT8);
 }
 
@@ -301,6 +317,7 @@ JSTaggedValue BuiltinsDataView::SetUint8(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::SetUint16(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, SetUint16);
     return SetTypedValue(argv, DataViewType::UINT16);
 }
 
@@ -308,6 +325,7 @@ JSTaggedValue BuiltinsDataView::SetUint16(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::SetUint32(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, SetUint32);
     return SetTypedValue(argv, DataViewType::UINT32);
 }
 
@@ -315,6 +333,7 @@ JSTaggedValue BuiltinsDataView::SetUint32(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::SetBigInt64(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, SetBigInt64);
     return SetTypedValue(argv, DataViewType::BIGINT64);
 }
 
@@ -322,6 +341,7 @@ JSTaggedValue BuiltinsDataView::SetBigInt64(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsDataView::SetBigUint64(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), DataView, SetBigUint64);
     return SetTypedValue(argv, DataViewType::BIGUINT64);
 }
 
@@ -437,6 +457,7 @@ JSTaggedValue BuiltinsDataView::SetViewValue(JSThread *thread, const JSHandle<JS
 JSTaggedValue BuiltinsDataView::GetTypedValue(EcmaRuntimeCallInfo *argv, DataViewType type)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DataView, GetTypedValue);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSTaggedValue> offsetHandle = GetCallArg(argv, 0);
@@ -450,6 +471,7 @@ JSTaggedValue BuiltinsDataView::GetTypedValue(EcmaRuntimeCallInfo *argv, DataVie
 JSTaggedValue BuiltinsDataView::SetTypedValue(EcmaRuntimeCallInfo *argv, DataViewType type)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, DataView, SetTypedValue);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSTaggedValue> offsetHandle = GetCallArg(argv, 0);

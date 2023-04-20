@@ -29,50 +29,59 @@ using ErrorType = base::ErrorType;
 // Error
 JSTaggedValue BuiltinsError::ErrorConstructor(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, ErrorConstructor);
     return ErrorHelper::ErrorCommonConstructor(argv, ErrorType::ERROR);
 }
 
 JSTaggedValue BuiltinsError::ToString(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, ErrorToString);
     return ErrorHelper::ErrorCommonToString(argv, ErrorType::ERROR);
 }
 
 // RangeError
 JSTaggedValue BuiltinsRangeError::RangeErrorConstructor(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, RangeErrorConstructor);
     return ErrorHelper::ErrorCommonConstructor(argv, ErrorType::RANGE_ERROR);
 }
 
 JSTaggedValue BuiltinsRangeError::ToString(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, RangeErrorToString);
     return ErrorHelper::ErrorCommonToString(argv, ErrorType::RANGE_ERROR);
 }
 
 // ReferenceError
 JSTaggedValue BuiltinsReferenceError::ReferenceErrorConstructor(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, ReferenceErrorConstructor);
     return ErrorHelper::ErrorCommonConstructor(argv, ErrorType::REFERENCE_ERROR);
 }
 
 JSTaggedValue BuiltinsReferenceError::ToString(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, ReferenceErrorToString);
     return ErrorHelper::ErrorCommonToString(argv, ErrorType::REFERENCE_ERROR);
 }
 
 // TypeError
 JSTaggedValue BuiltinsTypeError::TypeErrorConstructor(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, TypeErrorConstructor);
     return ErrorHelper::ErrorCommonConstructor(argv, ErrorType::TYPE_ERROR);
 }
 
 JSTaggedValue BuiltinsTypeError::ToString(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, TypeErrorToString);
     return ErrorHelper::ErrorCommonToString(argv, ErrorType::TYPE_ERROR);
 }
 
 JSTaggedValue BuiltinsTypeError::ThrowTypeError(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Error, ThrowTypeError);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     THROW_TYPE_ERROR_AND_RETURN(thread, "type error", JSTaggedValue::Exception());
 }
@@ -80,33 +89,39 @@ JSTaggedValue BuiltinsTypeError::ThrowTypeError(EcmaRuntimeCallInfo *argv)
 // URIError
 JSTaggedValue BuiltinsURIError::URIErrorConstructor(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, URIErrorConstructor);
     return ErrorHelper::ErrorCommonConstructor(argv, ErrorType::URI_ERROR);
 }
 
 JSTaggedValue BuiltinsURIError::ToString(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, URIErrorToString);
     return ErrorHelper::ErrorCommonToString(argv, ErrorType::URI_ERROR);
 }
 
 // SyntaxError
 JSTaggedValue BuiltinsSyntaxError::SyntaxErrorConstructor(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, SyntaxErrorConstructor);
     return ErrorHelper::ErrorCommonConstructor(argv, ErrorType::SYNTAX_ERROR);
 }
 
 JSTaggedValue BuiltinsSyntaxError::ToString(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, SyntaxErrorToString);
     return ErrorHelper::ErrorCommonToString(argv, ErrorType::SYNTAX_ERROR);
 }
 
 // EvalError
 JSTaggedValue BuiltinsEvalError::EvalErrorConstructor(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, EvalErrorConstructor);
     return ErrorHelper::ErrorCommonConstructor(argv, ErrorType::EVAL_ERROR);
 }
 
 JSTaggedValue BuiltinsEvalError::ToString(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, EvalErrorToString);
     return ErrorHelper::ErrorCommonToString(argv, ErrorType::EVAL_ERROR);
 }
 
@@ -114,6 +129,7 @@ JSTaggedValue BuiltinsEvalError::ToString(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsAggregateError::AggregateErrorConstructor(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(argv->GetThread(), Error, AggregateErrorConstructor);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -158,17 +174,20 @@ JSTaggedValue BuiltinsAggregateError::AggregateErrorConstructor(EcmaRuntimeCallI
 
 JSTaggedValue BuiltinsAggregateError::ToString(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, AggregateErrorToString);
     return ErrorHelper::ErrorCommonToString(argv, ErrorType::AGGREGATE_ERROR);
 }
 
 // OOMError
 JSTaggedValue BuiltinsOOMError::OOMErrorConstructor(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, OOMErrorConstructor);
     return ErrorHelper::ErrorCommonConstructor(argv, ErrorType::OOM_ERROR);
 }
 
 JSTaggedValue BuiltinsOOMError::ToString(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Error, OOMErrorToString);
     return ErrorHelper::ErrorCommonToString(argv, ErrorType::OOM_ERROR);
 }
 }  // namespace panda::ecmascript::builtins

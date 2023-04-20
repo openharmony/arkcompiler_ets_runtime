@@ -52,6 +52,7 @@ JSTaggedValue BuiltinsTypedArray::TypedArrayBaseConstructor(EcmaRuntimeCallInfo 
 JSTaggedValue BuiltinsTypedArray::Int8ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Int8ArrayConstructor);
     JSThread *thread = argv->GetThread();
     return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledInt8ArrayString(),
                                                    DataViewType::INT8);
@@ -60,6 +61,7 @@ JSTaggedValue BuiltinsTypedArray::Int8ArrayConstructor(EcmaRuntimeCallInfo *argv
 JSTaggedValue BuiltinsTypedArray::Uint8ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Uint8ArrayConstructor);
     JSThread *thread = argv->GetThread();
     return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledUint8ArrayString(),
                                                    DataViewType::UINT8);
@@ -68,6 +70,7 @@ JSTaggedValue BuiltinsTypedArray::Uint8ArrayConstructor(EcmaRuntimeCallInfo *arg
 JSTaggedValue BuiltinsTypedArray::Uint8ClampedArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Uint8ClampedArrayConstructor);
     JSThread *thread = argv->GetThread();
     return TypedArrayHelper::TypedArrayConstructor(argv,
                                                    thread->GlobalConstants()->GetHandledUint8ClampedArrayString(),
@@ -77,6 +80,7 @@ JSTaggedValue BuiltinsTypedArray::Uint8ClampedArrayConstructor(EcmaRuntimeCallIn
 JSTaggedValue BuiltinsTypedArray::Int16ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Int16ArrayConstructor);
     JSThread *thread = argv->GetThread();
     return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledInt16ArrayString(),
                                                    DataViewType::INT16);
@@ -85,6 +89,7 @@ JSTaggedValue BuiltinsTypedArray::Int16ArrayConstructor(EcmaRuntimeCallInfo *arg
 JSTaggedValue BuiltinsTypedArray::Uint16ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Uint16ArrayConstructor);
     JSThread *thread = argv->GetThread();
     return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledUint16ArrayString(),
                                                    DataViewType::UINT16);
@@ -93,6 +98,7 @@ JSTaggedValue BuiltinsTypedArray::Uint16ArrayConstructor(EcmaRuntimeCallInfo *ar
 JSTaggedValue BuiltinsTypedArray::Int32ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Int32ArrayConstructor);
     JSThread *thread = argv->GetThread();
     return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledInt32ArrayString(),
                                                    DataViewType::INT32);
@@ -101,6 +107,7 @@ JSTaggedValue BuiltinsTypedArray::Int32ArrayConstructor(EcmaRuntimeCallInfo *arg
 JSTaggedValue BuiltinsTypedArray::Uint32ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Uint32ArrayConstructor);
     JSThread *thread = argv->GetThread();
     return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledUint32ArrayString(),
                                                    DataViewType::UINT32);
@@ -109,6 +116,7 @@ JSTaggedValue BuiltinsTypedArray::Uint32ArrayConstructor(EcmaRuntimeCallInfo *ar
 JSTaggedValue BuiltinsTypedArray::Float32ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Float32ArrayConstructor);
     JSThread *thread = argv->GetThread();
     return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledFloat32ArrayString(),
                                                    DataViewType::FLOAT32);
@@ -117,6 +125,7 @@ JSTaggedValue BuiltinsTypedArray::Float32ArrayConstructor(EcmaRuntimeCallInfo *a
 JSTaggedValue BuiltinsTypedArray::Float64ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Float64ArrayConstructor);
     JSThread *thread = argv->GetThread();
     return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledFloat64ArrayString(),
                                                    DataViewType::FLOAT64);
@@ -125,6 +134,7 @@ JSTaggedValue BuiltinsTypedArray::Float64ArrayConstructor(EcmaRuntimeCallInfo *a
 JSTaggedValue BuiltinsTypedArray::BigInt64ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, BigInt64ArrayConstructor);
     JSThread *thread = argv->GetThread();
     return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledBigInt64ArrayString(),
                                                    DataViewType::BIGINT64);
@@ -133,6 +143,7 @@ JSTaggedValue BuiltinsTypedArray::BigInt64ArrayConstructor(EcmaRuntimeCallInfo *
 JSTaggedValue BuiltinsTypedArray::BigUint64ArrayConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, BigUint64ArrayConstructor);
     JSThread *thread = argv->GetThread();
     return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledBigUint64ArrayString(),
                                                    DataViewType::BIGUINT64);
@@ -339,6 +350,7 @@ JSTaggedValue BuiltinsTypedArray::Of(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::Species(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Species);
     // 1. Return the this value.
     return GetThis(argv).GetTaggedValue();
 }
@@ -535,6 +547,7 @@ JSTaggedValue BuiltinsTypedArray::Every(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::Fill(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Fill);
     if (!GetThis(argv)->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
@@ -631,6 +644,7 @@ JSTaggedValue BuiltinsTypedArray::Filter(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::Find(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Find);
     if (!GetThis(argv)->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
@@ -641,6 +655,7 @@ JSTaggedValue BuiltinsTypedArray::Find(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::FindIndex(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, FindIndex);
     if (!GetThis(argv)->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
@@ -715,6 +730,7 @@ JSTaggedValue BuiltinsTypedArray::ForEach(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::IndexOf(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, IndexOf);
     if (!GetThis(argv)->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
@@ -837,6 +853,7 @@ JSTaggedValue BuiltinsTypedArray::Keys(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::LastIndexOf(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, LastIndexOf);
     if (!GetThis(argv)->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
@@ -944,6 +961,7 @@ JSTaggedValue BuiltinsTypedArray::Map(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::Reduce(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Reduce);
     if (!GetThis(argv)->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
@@ -954,6 +972,7 @@ JSTaggedValue BuiltinsTypedArray::Reduce(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::ReduceRight(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, ReduceRight);
     if (!GetThis(argv)->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
@@ -964,6 +983,7 @@ JSTaggedValue BuiltinsTypedArray::ReduceRight(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::Reverse(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Reverse);
     if (!GetThis(argv)->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
@@ -1340,6 +1360,7 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::Some(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Some);
     if (!GetThis(argv)->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
@@ -1504,6 +1525,7 @@ JSTaggedValue BuiltinsTypedArray::Subarray(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::ToLocaleString(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, ToLocaleString);
     if (!GetThis(argv)->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
@@ -1514,6 +1536,7 @@ JSTaggedValue BuiltinsTypedArray::ToLocaleString(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::ToString(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, ToString);
     if (!GetThis(argv)->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
@@ -1569,6 +1592,7 @@ JSTaggedValue BuiltinsTypedArray::ToStringTag(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::Includes(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Includes);
     if (!GetThis(argv)->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }

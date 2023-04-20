@@ -37,8 +37,8 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsArrayBuffer::ArrayBufferConstructor(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), ArrayBuffer, Constructor);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, ArrayBuffer, Constructor);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     // 1. If NewTarget is undefined, throw a TypeError exception.
@@ -56,7 +56,9 @@ JSTaggedValue BuiltinsArrayBuffer::ArrayBufferConstructor(EcmaRuntimeCallInfo *a
 JSTaggedValue BuiltinsArrayBuffer::IsView(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    [[maybe_unused]] EcmaHandleScope handleScope(argv->GetThread());
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, ArrayBuffer, IsView);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> arg = GetCallArg(argv, 0);
     // 1. If Type(arg) is not Object, return false.
     if (!arg->IsECMAObject()) {
@@ -74,6 +76,7 @@ JSTaggedValue BuiltinsArrayBuffer::IsView(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsArrayBuffer::Species(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), ArrayBuffer, Species);
     return GetThis(argv).GetTaggedValue();
 }
 
@@ -81,8 +84,10 @@ JSTaggedValue BuiltinsArrayBuffer::Species(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsArrayBuffer::GetByteLength(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    [[maybe_unused]] EcmaHandleScope handleScope(argv->GetThread());
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, ArrayBuffer, GetByteLength);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    
     // 1. Let O be the this value.
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     // 2. If Type(O) is not Object, throw a TypeError exception.
@@ -108,8 +113,8 @@ JSTaggedValue BuiltinsArrayBuffer::GetByteLength(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsArrayBuffer::Slice(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), ArrayBuffer, Slice);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, ArrayBuffer, Slice);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     // 1. Let O be the this value.

@@ -273,6 +273,7 @@ JSTaggedValue BuiltinsAtomics::AtomicReadModifyWrite(JSThread *thread, const JSH
                                                      JSHandle<JSTaggedValue> &index, EcmaRuntimeCallInfo *argv,
                                                      const callbackfun &op)
 {
+    BUILTINS_API_TRACE(thread, Atomics, AtomicReadModifyWrite);
     if (!typedArray->IsTypedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
@@ -304,6 +305,7 @@ JSTaggedValue BuiltinsAtomics::AtomicReadModifyWriteCase(JSThread *thread, JSTag
                                                          DataViewType type, uint32_t indexedPosition,
                                                          EcmaRuntimeCallInfo *argv, const callbackfun &op)
 {
+    BUILTINS_API_TRACE(thread, Atomics, AtomicReadModifyWriteCase);
     void *pointer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrBuf);
     uint8_t *block = reinterpret_cast<uint8_t *>(pointer);
     uint32_t size = argv->GetArgsNumber();
@@ -336,6 +338,7 @@ JSTaggedValue BuiltinsAtomics::HandleWithUint8(JSThread *thread, uint32_t size, 
                                                uint32_t indexedPosition,
                                                EcmaRuntimeCallInfo *argv, const callbackfun &op)
 {
+    BUILTINS_API_TRACE(thread, Atomics, HandleWithUint8);
     JSHandle<JSTaggedValue> value = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
     uint8_t tag = JSTaggedValue::ToUint8(thread, value);
     if (size == 3) { // the number of parameters is 3
@@ -356,6 +359,7 @@ JSTaggedValue BuiltinsAtomics::HandleWithInt8(JSThread *thread, uint32_t size, u
                                               uint32_t indexedPosition,
                                               EcmaRuntimeCallInfo *argv, const callbackfun &op)
 {
+    BUILTINS_API_TRACE(thread, Atomics, HandleWithInt8);
     JSHandle<JSTaggedValue> value = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
     int8_t tag = JSTaggedValue::ToInt8(thread, value);
     if (size == 3) { // the number of parameters is 3
@@ -376,6 +380,7 @@ JSTaggedValue BuiltinsAtomics::HandleWithUint16(JSThread *thread, uint32_t size,
                                                 uint32_t indexedPosition,
                                                 EcmaRuntimeCallInfo *argv, const callbackfun &op)
 {
+    BUILTINS_API_TRACE(thread, Atomics, HandleWithUint16);
     JSHandle<JSTaggedValue> value = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
     uint16_t tag = JSTaggedValue::ToUint16(thread, value);
     if (size == 3) { // the number of parameters is 3
@@ -396,6 +401,7 @@ JSTaggedValue BuiltinsAtomics::HandleWithInt16(JSThread *thread, uint32_t size, 
                                                uint32_t indexedPosition,
                                                EcmaRuntimeCallInfo *argv, const callbackfun &op)
 {
+    BUILTINS_API_TRACE(thread, Atomics, HandleWithInt16);
     JSHandle<JSTaggedValue> value = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
     int16_t tag = JSTaggedValue::ToInt16(thread, value);
     if (size == 3) { // the number of parameters is 3
@@ -416,6 +422,7 @@ JSTaggedValue BuiltinsAtomics::HandleWithUint32(JSThread *thread, uint32_t size,
                                                 uint32_t indexedPosition,
                                                 EcmaRuntimeCallInfo *argv, const callbackfun &op)
 {
+    BUILTINS_API_TRACE(thread, Atomics, HandleWithUint32);
     JSHandle<JSTaggedValue> value = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
     uint32_t tag = JSTaggedValue::ToUint32(thread, value);
     if (size == 3) { // the number of parameters is 3
@@ -436,6 +443,7 @@ JSTaggedValue BuiltinsAtomics::HandleWithInt32(JSThread *thread, uint32_t size, 
                                                uint32_t indexedPosition,
                                                EcmaRuntimeCallInfo *argv, const callbackfun &op)
 {
+    BUILTINS_API_TRACE(thread, Atomics, HandleWithInt32);
     JSHandle<JSTaggedValue> value = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
     int32_t tag = JSTaggedValue::ToInt32(thread, value);
     if (size == 3) { // the number of parameters is 3
@@ -456,6 +464,7 @@ JSTaggedValue BuiltinsAtomics::HandleWithBigInt64(JSThread *thread, uint32_t siz
                                                   uint32_t indexedPosition,
                                                   EcmaRuntimeCallInfo *argv, const callbackfun &op)
 {
+    BUILTINS_API_TRACE(thread, Atomics, HandleWithBigInt64);
     JSHandle<JSTaggedValue> value = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
     int64_t val = 0;
     bool lossless = true;
@@ -479,6 +488,7 @@ JSTaggedValue BuiltinsAtomics::HandleWithBigUint64(JSThread *thread, uint32_t si
                                                    uint32_t indexedPosition,
                                                    EcmaRuntimeCallInfo *argv, const callbackfun &op)
 {
+    BUILTINS_API_TRACE(thread, Atomics, HandleWithBigUint64);
     JSHandle<JSTaggedValue> value = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
     uint64_t val = 0;
     bool lossless = true;
@@ -501,6 +511,7 @@ template <typename T>
 WaitResult BuiltinsAtomics::DoWait(JSThread *thread, JSHandle<JSTaggedValue> &arrayBuffer,
                                    size_t index, T execpt, double timeout)
 {
+    BUILTINS_API_TRACE(thread, Atomics, DoWait);
     MutexGuard lockGuard(g_mutex);
     void *buffer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrayBuffer.GetTaggedValue());
     ASSERT(buffer != nullptr);

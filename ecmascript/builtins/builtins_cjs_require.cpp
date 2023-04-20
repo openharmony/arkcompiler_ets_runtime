@@ -27,6 +27,7 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsCjsRequire::CjsRequireConstructor(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, CjsRequire, CjsRequireConstructor);
     [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // 1. If NewTarget is not undefined, throw a TypeError exception.
@@ -49,6 +50,7 @@ JSTaggedValue BuiltinsCjsRequire::Main(EcmaRuntimeCallInfo *msg)
 {
     ASSERT(msg);
     JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, CjsRequire, Main);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return JSTaggedValue(0);
 }
@@ -57,6 +59,7 @@ JSTaggedValue BuiltinsCjsRequire::Resolve(EcmaRuntimeCallInfo *msg)
 {
     ASSERT(msg);
     JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, CjsRequire, Resolve);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return JSTaggedValue::Hole();
 }

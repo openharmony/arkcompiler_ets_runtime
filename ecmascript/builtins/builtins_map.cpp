@@ -212,6 +212,7 @@ JSTaggedValue BuiltinsMap::ForEach(EcmaRuntimeCallInfo *argv)
 
 JSTaggedValue BuiltinsMap::Species(EcmaRuntimeCallInfo *argv)
 {
+    BUILTINS_API_TRACE(argv->GetThread(), Map, Species);
     return GetThis(argv).GetTaggedValue();
 }
 
@@ -265,6 +266,7 @@ JSTaggedValue BuiltinsMap::AddEntriesFromIterable(JSThread *thread, const JSHand
                                                   const JSHandle<JSTaggedValue> &iterable,
                                                   const JSHandle<JSTaggedValue> &adder, ObjectFactory *factory)
 {
+    BUILTINS_API_TRACE(thread, Map, AddEntriesFromIterable);
     // If IsCallable(adder) is false, throw a TypeError exception
     if (!adder->IsCallable()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "adder is not callable", adder.GetTaggedValue());

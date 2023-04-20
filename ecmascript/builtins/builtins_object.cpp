@@ -470,6 +470,7 @@ JSTaggedValue BuiltinsObject::IsExtensible(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, IsExtensible);
     // 1.If Type(O) is not Object, return false.
     JSTaggedValue obj = GetCallArg(argv, 0).GetTaggedValue();
     if (!obj.IsHeapObject()) {
@@ -484,6 +485,7 @@ JSTaggedValue BuiltinsObject::IsExtensible(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::IsFrozen(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), Object, IsFrozen);
     // 1.If Type(O) is not Object, return true.
     JSHandle<JSTaggedValue> obj = GetCallArg(argv, 0);
     if (!obj->IsECMAObject()) {
@@ -502,7 +504,7 @@ JSTaggedValue BuiltinsObject::IsFrozen(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsObject::IsSealed(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-
+    BUILTINS_API_TRACE(argv->GetThread(), Object, IsSealed);
     // 1.If Type(O) is not Object, return true.
     JSHandle<JSTaggedValue> obj = GetCallArg(argv, 0);
     if (!obj->IsECMAObject()) {
@@ -738,6 +740,7 @@ JSTaggedValue BuiltinsObject::PropertyIsEnumerable(EcmaRuntimeCallInfo *argv)
     ASSERT(argv);
     // 1. Let P be ToPropertyKey(V).
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, PropertyIsEnumerable);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> property = JSTaggedValue::ToPropertyKey(thread, msg);
@@ -949,6 +952,7 @@ JSTaggedValue BuiltinsObject::CreateRealm(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, CreateRealm);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSRealm> realm = factory->NewJSRealm();

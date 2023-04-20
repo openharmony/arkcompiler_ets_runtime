@@ -31,6 +31,7 @@ namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsAsyncFromSyncIterator::Next(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, AsyncFromSyncIterator, Next);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     auto vm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
@@ -66,6 +67,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Next(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, AsyncFromSyncIterator, Throw);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     auto vm = thread->GetEcmaVM();
     const GlobalEnvConstants *globalConstant = thread->GlobalConstants();
@@ -131,6 +133,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, AsyncFromSyncIterator, Return);
     [[maybe_unused]] EcmaHandleScope scope(thread);
     auto vm = thread->GetEcmaVM();
     const GlobalEnvConstants *globalConstant = thread->GlobalConstants();
