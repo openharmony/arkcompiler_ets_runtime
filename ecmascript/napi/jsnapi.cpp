@@ -2924,7 +2924,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
     return false;
 }
 
-void JSNApi::SetBundleName(EcmaVM *vm, std::string bundleName)
+void JSNApi::SetBundleName(EcmaVM *vm, const std::string &bundleName)
 {
     ecmascript::CString name = bundleName.c_str();
     vm->SetBundleName(name);
@@ -2935,7 +2935,7 @@ std::string JSNApi::GetBundleName(EcmaVM *vm)
     return vm->GetBundleName().c_str();
 }
 
-void JSNApi::SetModuleName(EcmaVM *vm, std::string moduleName)
+void JSNApi::SetModuleName(EcmaVM *vm, const std::string &moduleName)
 {
     ecmascript::CString name = moduleName.c_str();
     vm->SetModuleName(name);

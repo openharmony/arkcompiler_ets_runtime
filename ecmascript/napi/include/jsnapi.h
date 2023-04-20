@@ -987,7 +987,7 @@ public:
         arkProperties_ = prop;
     }
 
-    void SetArkBundleName(std::string bundleName) {
+    void SetArkBundleName(const std::string &bundleName) {
         arkBundleName_ = bundleName;
     }
 
@@ -1305,9 +1305,9 @@ public:
     static std::string GetAssetPath(EcmaVM *vm);
     static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
     static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func);
-    static void SetBundleName(EcmaVM *vm, std::string bundleName);
+    static void SetBundleName(EcmaVM *vm, const std::string &bundleName);
     static std::string GetBundleName(EcmaVM *vm);
-    static void SetModuleName(EcmaVM *vm, std::string moduleName);
+    static void SetModuleName(EcmaVM *vm, const std::string &moduleName);
     static std::string GetModuleName(EcmaVM *vm);
     static void AllowCrossThreadExecution(EcmaVM *vm);
 
