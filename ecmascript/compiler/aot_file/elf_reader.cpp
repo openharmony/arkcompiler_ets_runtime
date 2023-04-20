@@ -52,7 +52,7 @@ void ElfReader::ParseELFSections(ModuleSectionDes &des, std::vector<ElfSecName> 
             llvm::ELF::Elf64_Word shName = shdr[i].sh_name;
             char *curShName = reinterpret_cast<char *>(addr) + shName + strdr.sh_offset;
             if (sectionName.compare(curShName) == 0) {
-                secId = i;
+                secId = static_cast<int>(i);
                 break;
             }
         }

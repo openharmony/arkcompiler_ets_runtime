@@ -416,7 +416,10 @@ static uint32_t GetInstrValue(size_t instrSize, uint8_t *instrAddr)
 {
     uint32_t value = 0;
     if (instrSize <= sizeof(uint32_t)) {
-        memcpy_s(&value, sizeof(uint32_t), instrAddr, instrSize);
+        if (memcpy_s(&value, sizeof(uint32_t), instrAddr, instrSize) != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed";
+            UNREACHABLE();
+        }
     }
     return value;
 }
@@ -479,7 +482,10 @@ static void DecodeDebugInfo(uint64_t addr, uint64_t secIndex, char* outString, s
         debugInfo += std::string(">");
         size_t len = strlen(outString);
         if (len + debugInfo.size() <= outStringSize) {
-            strcpy_s(outString + len, outStringSize - len, debugInfo.c_str());
+            if (strcpy_s(outString + len, outStringSize - len, debugInfo.c_str()) != EOK) {
+                LOG_FULL(FATAL) << "strcpy_s failed";
+                UNREACHABLE();
+            }
         }
     }
 }

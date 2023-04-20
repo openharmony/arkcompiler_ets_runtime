@@ -3958,7 +3958,8 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm16Imm8V8)
         Bind(&ctorNotBase);
         GateRef argv = PtrAdd(sp, PtrMul(
             PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function
-        GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM16_IMM8_V8));
+        GateRef jumpSize =
+            IntPtr(-static_cast<int64_t>(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM16_IMM8_V8)));
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize, hotnessCounter,
                              JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
                              { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj }, callback);

@@ -306,7 +306,7 @@ ElfSecName ElfBuilder::FindLastSection(ElfSecName segment) const
 llvm::ELF::Elf64_Word ElfBuilder::FindShName(std::string name, uintptr_t strTabPtr, int strTabSize)
 {
     llvm::ELF::Elf64_Word ans = -1;
-    int len = name.size();
+    int len = static_cast<int>(name.size());
     if (strTabSize < len + 1) {
         return ans;
     }
@@ -387,7 +387,7 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
             curSecOffset = AlignUp(curSecOffset, TEXT_SEC_ALIGN);
             file.seekp(curSecOffset);
         }
-        sectionToFileOffset_[s.first] = file.tellp();
+        sectionToFileOffset_[s.first] = static_cast<uint8_t>(file.tellp());
         file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
         llvm::ELF::Elf64_Word shName = FindShName(secName, strTab.first, strTab.second);
         ASSERT(shName != static_cast<llvm::ELF::Elf64_Word>(-1));
@@ -411,7 +411,7 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
         LOG_COMPILER(DEBUG) << "  shdr[i].sh_entsize " << std::hex << shdr[i].sh_entsize << std::endl;
         ++i;
     }
-    uint32_t secEnd = file.tellp();
+    uint32_t secEnd = static_cast<uint32_t>(file.tellp());
     file.seekp(sizeof(llvm::ELF::Elf64_Ehdr));
     file.write(reinterpret_cast<char *>(shdr.get()), secNum * sizeof(llvm::ELF::Elf64_Shdr));
     file.seekp(secEnd);
@@ -437,7 +437,7 @@ Program Headers:
 */
 void ElfBuilder::PackELFSegment(std::ofstream &file)
 {
-    llvm::ELF::Elf64_Off e_phoff = file.tellp();
+    llvm::ELF::Elf64_Off e_phoff = static_cast<uint64_t>(file.tellp());
     long phoff = (long)offsetof(struct llvm::ELF::Elf64_Ehdr, e_phoff);
     // write Elf32_Off e_phoff
     file.seekp(phoff);
