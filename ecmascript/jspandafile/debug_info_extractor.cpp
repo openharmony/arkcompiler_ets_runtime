@@ -17,8 +17,6 @@
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 
-#include "libpandabase/utils/utf.h"
-#include "libpandafile/class_data_accessor-inl.h"
 #include "libpandafile/debug_data_accessor-inl.h"
 #include "libpandafile/line_number_program.h"
 
@@ -34,12 +32,6 @@ using panda::panda_file::ProtoDataAccessor;
 static const char *GetStringFromConstantPool(const panda_file::File &pf, uint32_t offset)
 {
     return reinterpret_cast<const char *>(pf.GetStringData(panda_file::File::EntityId(offset)).data);
-}
-
-DebugInfoExtractor::DebugInfoExtractor(const JSPandaFile *jsPandaFile)
-{
-    jsPandaFile_ = jsPandaFile;
-    Extract();
 }
 
 class LineNumberProgramHandler {
@@ -167,115 +159,117 @@ private:
     ColumnNumberTable cnt_;
 };
 
-void DebugInfoExtractor::Extract()
-{
-    auto &pandaFile = *jsPandaFile_->GetPandaFile();
-    auto classes = jsPandaFile_->GetClasses();
-    for (size_t i = 0; i < classes.Size(); i++) {
-        panda_file::File::EntityId id(classes[i]);
-        if (jsPandaFile_->IsExternal(id)) {
-            continue;
-        }
-
-        ClassDataAccessor cda(pandaFile, id);
-
-        auto sourceFileId = cda.GetSourceFileId();
-
-        cda.EnumerateMethods([&](MethodDataAccessor &mda) {
-            auto debugInfoId = mda.GetDebugInfoId();
-            if (!debugInfoId) {
-                return;
-            }
-
-            DebugInfoDataAccessor dda(pandaFile, debugInfoId.value());
-            const uint8_t *program = dda.GetLineNumberProgram();
-            LineProgramState state(pandaFile, sourceFileId.value_or(panda_file::File::EntityId(0)), dda.GetLineStart(),
-                                   dda.GetConstantPool());
-
-            LineNumberProgramHandler handler(&state);
-            LineNumberProgramProcessor<LineNumberProgramHandler> programProcessor(program, &handler);
-            programProcessor.Process();
-
-            const char *sourceFile = "";
-            if (state.HasFile()) {
-                sourceFile = reinterpret_cast<const char *>(handler.GetFile());
-            }
-            const char *sourceCode = "";
-            if (state.HasSourceCode()) {
-                sourceCode = reinterpret_cast<const char *>(handler.GetSourceCode());
-            }
-            panda_file::File::EntityId methodId = mda.GetMethodId();
-            methods_.emplace(methodId.GetOffset(), MethodDebugInfo {sourceFile, sourceCode,
-                                           handler.GetLineNumberTable(),
-                                           handler.GetColumnNumberTable(),
-                                           handler.GetLocalVariableTable()});
-        });
-    }
-}
-
-const LineNumberTable &DebugInfoExtractor::GetLineNumberTable(panda_file::File::EntityId methodId) const
+const LineNumberTable &DebugInfoExtractor::GetLineNumberTable(const panda_file::File::EntityId methodId)
 {
     static const LineNumberTable EMPTY_LINE_TABLE {};
 
     auto iter = methods_.find(methodId.GetOffset());
     if (iter == methods_.end()) {
-        return EMPTY_LINE_TABLE;
+        if (!ExtractorMethodDebugInfo(methodId)) {
+            return EMPTY_LINE_TABLE;
+        }
+        return methods_[methodId.GetOffset()].lineNumberTable;
     }
+    ASSERT(iter != methods_.end());
     return iter->second.lineNumberTable;
 }
 
-const ColumnNumberTable &DebugInfoExtractor::GetColumnNumberTable(panda_file::File::EntityId methodId) const
+const ColumnNumberTable &DebugInfoExtractor::GetColumnNumberTable(const panda_file::File::EntityId methodId)
 {
     static const ColumnNumberTable EMPTY_COLUMN_TABLE {};
 
     auto iter = methods_.find(methodId.GetOffset());
     if (iter == methods_.end()) {
-        return EMPTY_COLUMN_TABLE;
+        if (!ExtractorMethodDebugInfo(methodId)) {
+            return EMPTY_COLUMN_TABLE;
+        }
+        return methods_[methodId.GetOffset()].columnNumberTable;
     }
+    ASSERT(iter != methods_.end());
     return iter->second.columnNumberTable;
 }
 
-const LocalVariableTable &DebugInfoExtractor::GetLocalVariableTable(panda_file::File::EntityId methodId) const
+const LocalVariableTable &DebugInfoExtractor::GetLocalVariableTable(const panda_file::File::EntityId methodId)
 {
     static const LocalVariableTable EMPTY_VARIABLE_TABLE {};
 
     auto iter = methods_.find(methodId.GetOffset());
     if (iter == methods_.end()) {
-        return EMPTY_VARIABLE_TABLE;
+        if (!ExtractorMethodDebugInfo(methodId)) {
+            return EMPTY_VARIABLE_TABLE;
+        }
+        return methods_[methodId.GetOffset()].localVariableTable;
     }
+    ASSERT(iter != methods_.end());
     return iter->second.localVariableTable;
 }
 
-const std::string &DebugInfoExtractor::GetSourceFile(panda_file::File::EntityId methodId) const
+const std::string &DebugInfoExtractor::GetSourceFile(const panda_file::File::EntityId methodId)
 {
+    static const char *sourceFile = "";
+
     auto iter = methods_.find(methodId.GetOffset());
     if (iter == methods_.end()) {
-        LOG_DEBUGGER(FATAL) << "Get source file of unknown method id: " << methodId.GetOffset();
+        if (!ExtractorMethodDebugInfo(methodId)) {
+            return sourceFile;
+        }
+        return methods_[methodId.GetOffset()].sourceFile;
     }
+    ASSERT(iter != methods_.end());
     return iter->second.sourceFile;
 }
 
-const std::string &DebugInfoExtractor::GetSourceCode(panda_file::File::EntityId methodId) const
+const std::string &DebugInfoExtractor::GetSourceCode(const panda_file::File::EntityId methodId)
 {
+    static const char *sourceCode = "";
+
     auto iter = methods_.find(methodId.GetOffset());
     if (iter == methods_.end()) {
-        LOG_DEBUGGER(FATAL) << "Get source code of unknown method id: " << methodId.GetOffset();
+        if (!ExtractorMethodDebugInfo(methodId)) {
+            return sourceCode;
+        }
+        return methods_[methodId.GetOffset()].sourceCode;
     }
+    ASSERT(iter != methods_.end());
     return iter->second.sourceCode;
 }
 
-CVector<panda_file::File::EntityId> DebugInfoExtractor::GetMethodIdList() const
+bool DebugInfoExtractor::ExtractorMethodDebugInfo(const panda_file::File::EntityId methodId)
 {
-    CVector<panda_file::File::EntityId> list;
-
-    for (const auto &method : methods_) {
-        list.push_back(panda_file::File::EntityId(method.first));
+    auto &pandaFile = *jsPandaFile_->GetPandaFile();
+    if (!methodId.IsValid() || methodId.GetOffset() > jsPandaFile_->GetFileSize()) {
+        return false;
     }
-    return list;
-}
+    MethodDataAccessor mda(pandaFile, methodId);
+    ClassDataAccessor cda(pandaFile, mda.GetClassId());
+    auto sourceFileId = cda.GetSourceFileId();
+    auto debugInfoId = mda.GetDebugInfoId();
+    if (!debugInfoId) {
+        return false;
+    }
 
-bool DebugInfoExtractor::ContainsMethod(panda_file::File::EntityId methodId) const
-{
-    return methods_.find(methodId.GetOffset()) != methods_.end();
+    DebugInfoDataAccessor dda(pandaFile, debugInfoId.value());
+    const uint8_t *program = dda.GetLineNumberProgram();
+    LineProgramState state(pandaFile, sourceFileId.value_or(panda_file::File::EntityId(0)), dda.GetLineStart(),
+                            dda.GetConstantPool());
+
+    LineNumberProgramHandler handler(&state);
+    LineNumberProgramProcessor<LineNumberProgramHandler> programProcessor(program, &handler);
+    programProcessor.Process();
+
+    const char *sourceFile = "";
+    if (state.HasFile()) {
+        sourceFile = reinterpret_cast<const char *>(handler.GetFile());
+    }
+
+    const char *sourceCode = "";
+    if (state.HasSourceCode()) {
+        sourceCode = reinterpret_cast<const char *>(handler.GetSourceCode());
+    }
+
+    MethodDebugInfo methodDebugInfo = {sourceFile, sourceCode, handler.GetLineNumberTable(),
+        handler.GetColumnNumberTable(), handler.GetLocalVariableTable()};
+    methods_.emplace(methodId.GetOffset(), std::move(methodDebugInfo));
+    return true;
 }
 }  // namespace panda::ecmascript

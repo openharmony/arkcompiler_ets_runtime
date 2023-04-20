@@ -72,12 +72,13 @@ void HotReloadManager::ExtractPatch(const JSPandaFile *jsPandaFile)
     const auto &recordInfos = jsPandaFile->GetJSRecordInfo();
     for (const auto &[recordName, _] : recordInfos) {
         auto mainMethodIndex = panda_file::File::EntityId(jsPandaFile->GetMainMethodIndex(recordName));
-        if (patchExtractor->ContainsMethod(mainMethodIndex)) {
-            auto *notificationMgr = vm_->GetJsDebuggerManager()->GetNotificationManager();
-            notificationMgr->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc(), recordName);
-            const std::string &url = patchExtractor->GetSourceFile(mainMethodIndex);
-            patchExtractors_[url] = patchExtractor;
+        auto *notificationMgr = vm_->GetJsDebuggerManager()->GetNotificationManager();
+        const std::string &url = patchExtractor->GetSourceFile(mainMethodIndex);
+        if (url.empty()) {
+            continue;
         }
+        notificationMgr->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc(), recordName);
+        patchExtractors_[url] = patchExtractor;
     }
 }
 }  // namespace panda::ecmascript::tooling
