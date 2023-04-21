@@ -58,9 +58,9 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      'cercir' or 'cer0': print IR for methods in 'mlist-for-log',\n"
     "                                      'cerasm' or 'cer2': print log for methods in 'mlist-for-log',\n"
     "                                      Default: 'none'\n"
-    "--compiler-log-methods:               Specific method list for compiler log, only used when compiler-log."
+    "--compiler-log-methods:               Specific method list for compiler log, only used when compiler-log. "
                                            "Default: 'none'\n"
-    "--compiler-type-threshold:            enable to skip methods whose type is no more than threshold.. Default: -1\n"
+    "--compiler-type-threshold:            enable to skip methods whose type is no more than threshold. Default: -1\n"
     "--compiler-log-snapshot:              Enable to print snapshot information. Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
     "--enable-ark-tools:                   Enable ark tools to debug. Default: 'false'\n"
@@ -76,11 +76,12 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--entry-point:                        Full name of entrypoint function. Default: '_GLOBAL::func_main_0'\n"
     "--force-full-gc:                      If true trigger full gc, else trigger semi and old gc. Default: 'true'\n"
     "--framework-abc-file:                 Snapshot file. Default: 'strip.native.min.abc'\n"
-    "--gcThreadNum:                        Set gcThreadNum. Default: '7'\n"
+    "--gc-long-paused-time:                Set gc's longPauseTime in millisecond. Default: '40'\n"
+    "--gc-thread-num:                      Set gc thread number. Default: '7'\n"
     "--heap-size-limit:                    Max heap size (MB). Default: '512'\n"
     "--help:                               Print this message and exit\n"
     "--icu-data-path:                      Path to generated icu data file. Default: 'default'\n"
-    "--IsWorker:                           Whether is worker vm. Default: 'false'\n"
+    "--enable-worker:                      Whether is worker vm. Default: 'false'\n"
     "--log-level:                          Log level: ['debug', 'info', 'warning', 'error', 'fatal'].\n"
     "--log-components:                     Enable logs from specified components: ['all', 'gc', 'ecma',\n"
     "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'all']. \n"
@@ -100,9 +101,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--log-warning:                        Enable warning log for components: ['all', 'gc', 'ecma',\n"
     "                                      'interpreter', 'debugger', 'compiler', 'builtins', \n"
     "                                      'all']. Default: 'all'\n"
-    "--longPauseTime:                      Set longPauseTime in millisecond. Default: '40'\n"
-    "--maxAotMethodSize:                   Enable aot compiler to skip method larger than limit (KB). Default: '32'\n"
-    "--maxNonmovableSpaceCapacity:         Set max non-movable space capacity\n"
+    "--max-aot-method:                     Enable aot compiler to skip method larger than limit (KB). Default: '32'\n"
+    "--max-unmovable-space:                Set max unmovable space capacity\n"
     "--merge-abc:                          ABC file is merge abc. Default: 'false'\n"
     "--opt-level:                          Optimization level configuration of aot compiler. Default: '3'\n"
     "--options:                            Print compiler and runtime options\n"
@@ -149,11 +149,11 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-opt-pgotype", required_argument, nullptr, OPTION_ENABLE_OPT_PGOTYPE},
         {"entry-point", required_argument, nullptr, OPTION_ENTRY_POINT},
         {"force-full-gc", required_argument, nullptr, OPTION_FORCE_FULL_GC},
-        {"gcThreadNum", required_argument, nullptr, OPTION_GC_THREADNUM},
+        {"gc-thread-num", required_argument, nullptr, OPTION_GC_THREADNUM},
         {"heap-size-limit", required_argument, nullptr, OPTION_HEAP_SIZE_LIMIT},
         {"help", no_argument, nullptr, OPTION_HELP},
         {"icu-data-path", required_argument, nullptr, OPTION_ICU_DATA_PATH},
-        {"IsWorker", required_argument, nullptr, OPTION_IS_WORKER},
+        {"enable-worker", required_argument, nullptr, OPTION_ENABLE_WORKER},
         {"log-components", required_argument, nullptr, OPTION_LOG_COMPONENTS},
         {"log-debug", required_argument, nullptr, OPTION_LOG_DEBUG},
         {"log-error", required_argument, nullptr, OPTION_LOG_ERROR},
@@ -161,9 +161,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"log-info", required_argument, nullptr, OPTION_LOG_INFO},
         {"log-level", required_argument, nullptr, OPTION_LOG_LEVEL},
         {"log-warning", required_argument, nullptr, OPTION_LOG_WARNING},
-        {"longPauseTime", required_argument, nullptr, OPTION_LONG_PAUSE_TIME},
-        {"maxAotMethodSize", required_argument, nullptr, OPTION_MAX_AOTMETHODSIZE},
-        {"maxNonmovableSpaceCapacity", required_argument, nullptr, OPTION_MAX_NONMOVABLE_SPACE_CAPACITY},
+        {"gc-long-paused-time", required_argument, nullptr, OPTION_GC_LONG_PAUSED_TIME},
+        {"max-aot-method", required_argument, nullptr, OPTION_MAX_AOT_METHOD},
+        {"max-unmovable-space", required_argument, nullptr, OPTION_MAX_UNMOVABLE_SPACE},
         {"merge-abc", required_argument, nullptr, OPTION_MERGE_ABC},
         {"opt-level", required_argument, nullptr, OPTION_ASM_OPT_LEVEL},
         {"options", no_argument, nullptr, OPTION_OPTIONS},
@@ -339,7 +339,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_GC_THREADNUM:
-                ret = ParseUint32Param("gcThreadNum", &argUint32);
+                ret = ParseUint32Param("gc-thread-num", &argUint32);
                 if (ret) {
                     SetGcThreadNum(argUint32);
                 } else {
@@ -359,7 +359,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             case OPTION_ICU_DATA_PATH:
                 SetIcuDataPath(optarg);
                 break;
-            case OPTION_IS_WORKER:
+            case OPTION_ENABLE_WORKER:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetIsWorker(argBool);
@@ -394,16 +394,16 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ParseListArgParam(optarg, &argListStr, COLON);
                 SetLogWarning(argListStr);
                 break;
-            case OPTION_LONG_PAUSE_TIME:
-                ret = ParseUint32Param("longPauseTime", &argUint32);
+            case OPTION_GC_LONG_PAUSED_TIME:
+                ret = ParseUint32Param("gc-long-paused-time", &argUint32);
                 if (ret) {
                     SetLongPauseTime(argUint32);
                 } else {
                     return false;
                 }
                 break;
-            case OPTION_MAX_AOTMETHODSIZE:
-                ret = ParseUint32Param("maxAotMethodSize", &argUint32);
+            case OPTION_MAX_AOT_METHOD:
+                ret = ParseUint32Param("max-aot-method", &argUint32);
                 if (ret) {
                     SetMaxAotMethodSize(argUint32);
                 } else {
@@ -418,8 +418,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_MAX_NONMOVABLE_SPACE_CAPACITY:
-                ret = ParseUint32Param("maxNonmovableSpaceCapacity", &argUint32);
+            case OPTION_MAX_UNMOVABLE_SPACE:
+                ret = ParseUint32Param("max-unmovable-space", &argUint32);
                 if (ret) {
                     SetMaxNonmovableSpaceCapacity(argUint32);
                 } else {

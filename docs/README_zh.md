@@ -653,8 +653,8 @@ ark_aot_compiler [选项] 输入文件
 | ----------------------- | ----------------------------------------------------------------------------------- |
 | --aot-file              | AOT输出文件的路径（不需要文件后缀）。默认值：“aot_file”                           |
 | --enable-type-lowering  | 利用类型信息，生成优化级别更高的机器码。默认值：“true”                             |
-| --maxAotMethodSize      | 设置AOT编译方法的大小阈值，当方法的大小超过该值时，则不进行编译。默认值：“32KB”               |
-| --opt-level             | 设置LLVM的优化级别。默认值：“3”                                                  |
+| --max-aot-method        | 设置AOT编译方法的大小阈值，当方法的大小超过该值时，则不进行编译。默认值：“32KB”               |
+| --opt-level             | 设置AOT的优化级别。默认值：“3”                                                  |
 | --compiler-log          | AOT的日志选项，可打印出AOT生成的IR图、汇编码等信息。默认值“none”                   |
 | --compiler-log-snapshot | 打印与序列化有关的日志信息。默认值“false”                                         |
 | --compiler-log-time     | 打印AOT过程中各个优化pass的耗时情况。默认值值“false”                               |
