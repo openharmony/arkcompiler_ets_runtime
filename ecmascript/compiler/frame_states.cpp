@@ -153,9 +153,22 @@ bool FrameStateBuilder::MergeIntoPredBC(uint32_t predPc)
     return changed;
 }
 
+GateRef FrameStateBuilder::GetPreBBInput(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef gate)
+{
+    if (gateAcc_.GetOpCode(gate) == OpCode::VALUE_SELECTOR) {
+        return GetPhiComponent(bb, predBb, gate);
+    }
+    return gate;
+}
+
 GateRef FrameStateBuilder::GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef phi)
 {
     ASSERT(gateAcc_.GetOpCode(phi) == OpCode::VALUE_SELECTOR);
+
+    if (bb->phiGate.find(phi) == bb->phiGate.end()) {
+        return Circuit::NullGate();
+    }
+
     if (bb->numOfLoopBacks != 0) {
         ASSERT(bb->loopbackBlocks.size() != 0);
         auto forwardValue = gateAcc_.GetValueIn(phi, 0); // 0: fowward
@@ -209,18 +222,21 @@ bool FrameStateBuilder::MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *pred
         auto phi = bb->valueSelectorAccGate;
         auto value = predLiveout->ValuesAt(accumulatorIndex_);
         if (value == phi) {
-            auto target = GetPhiComponent(bb, predBb, phi);
-            ASSERT(target != Circuit::NullGate());
-            predLiveout->SetValuesAt(accumulatorIndex_, target);
+            auto target = GetPreBBInput(bb, predBb, phi);
+            if (target != Circuit::NullGate()) {
+                predLiveout->SetValuesAt(accumulatorIndex_, target);
+            }
         }
     }
-    for (auto &it : bb->vregToValSelectorGate) {
+    for (auto &it : bb->vregToValueGate) {
         auto reg = it.first;
-        auto phi = it.second;
+        auto gate = it.second;
         auto value = predLiveout->ValuesAt(reg);
-        if (value == phi) {
-            auto target = GetPhiComponent(bb, predBb, phi);
-            ASSERT(target != Circuit::NullGate());
+        if (value == gate) {
+            auto target = GetPreBBInput(bb, predBb, gate);
+            if (target == Circuit::NullGate()) {
+                continue;
+            }
             predLiveout->SetValuesAt(reg, target);
         }
     }
@@ -252,7 +268,7 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
     SaveBBBeginStateInfo(bbId);
 
     bool defPhi = bb.valueSelectorAccGate != Circuit::NullGate() ||
-        bb.vregToValSelectorGate.size() != 0;
+        bb.vregToValueGate.size() != 0;
     // merge current into pred bb
     for (auto bbPred : bb.preds) {
         if (bbPred->isDead) {
