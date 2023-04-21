@@ -487,16 +487,19 @@ bool JSThread::CheckSafepoint()
     if (vmThreadControl_->VMNeedSuspension()) {
         vmThreadControl_->SuspendVM();
     }
+    bool gcTriggered = false;
 #ifndef NDEBUG
     if (vm_->GetJSOptions().EnableForceGC()) {
         GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
+        gcTriggered = true;
     }
 #endif
     if (IsMarkFinished()) {
         auto heap = GetEcmaVM()->GetHeap();
         heap->GetConcurrentMarker()->HandleMarkingFinished();
+        gcTriggered = true;
     }
-    return false;
+    return gcTriggered;
 }
 
 void JSThread::CheckJSTaggedType(JSTaggedType value) const
