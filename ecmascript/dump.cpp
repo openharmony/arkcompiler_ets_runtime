@@ -442,6 +442,18 @@ CString JSHClass::DumpJSType(JSType type)
             return "ClassLiteral";
         case JSType::VTABLE:
             return "VTable";
+        case JSType::SOURCE_TEXT_MODULE_RECORD:
+            return "SourceTextModuleRecord";
+        case JSType::RESOLVEDBINDING_RECORD:
+            return "ResolvedBingingRecord";
+        case JSType::RESOLVEDINDEXBINDING_RECORD:
+            return "ResolvedIndexBingingRecord";
+        case JSType::IMPORTENTRY_RECORD:
+            return "ImportEntry";
+        case JSType::LOCAL_EXPORTENTRY_RECORD:
+            return "LocalExportEntry";
+        case JSType::STAR_EXPORTENTRY_RECORD:
+            return "StarExportEntry";
         default: {
             CString ret = "unknown type ";
             return ret + static_cast<char>(type);

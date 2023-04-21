@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/bytecode_info_collector.h"
 
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
@@ -64,7 +65,6 @@ void BytecodeInfoCollector::ProcessClasses()
     std::map<const uint8_t *, std::pair<size_t, uint32_t>> processedInsns;
     Span<const uint32_t> classIndexes = jsPandaFile_->GetClasses();
 
-    auto &mainMethodIndexes = bytecodeInfo_.GetMainMethodIndexes();
     auto &recordNames = bytecodeInfo_.GetRecordNames();
     auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
 
@@ -75,8 +75,9 @@ void BytecodeInfoCollector::ProcessClasses()
         }
         panda_file::ClassDataAccessor cda(*pf, classId);
         CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
-        cda.EnumerateMethods([this, methods, &methodIdx, pf, &processedInsns, &desc,
-            &mainMethodIndexes, &recordNames, &methodPcInfos] (panda_file::MethodDataAccessor &mda) {
+        const CString recordName = JSPandaFile::ParseEntryPoint(desc);
+        cda.EnumerateMethods([this, methods, &methodIdx, pf, &processedInsns,
+            &recordNames, &methodPcInfos, &recordName] (panda_file::MethodDataAccessor &mda) {
             auto methodId = mda.GetMethodId();
             CollectFunctionTypeId(vm_->GetJSThread(), methodId);
 
@@ -86,9 +87,7 @@ void BytecodeInfoCollector::ProcessClasses()
             auto methodOffset = methodId.GetOffset();
             CString name = reinterpret_cast<const char *>(jsPandaFile_->GetStringData(mda.GetNameId()).data);
             if (JSPandaFile::IsEntryOrPatch(name)) {
-                const CString recordName = JSPandaFile::ParseEntryPoint(desc);
                 jsPandaFile_->UpdateMainMethodIndex(methodOffset, recordName);
-                mainMethodIndexes.emplace_back(methodOffset);
                 recordNames.emplace_back(recordName);
             }
 
@@ -110,7 +109,7 @@ void BytecodeInfoCollector::ProcessClasses()
             auto it = processedInsns.find(insns);
             if (it == processedInsns.end()) {
                 std::vector<std::string> classNameVec;
-                CollectMethodPcsFromBC(codeSize, insns, methodLiteral, classNameVec);
+                CollectMethodPcsFromBC(codeSize, insns, methodLiteral, classNameVec, recordName);
                 processedInsns[insns] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
                 // collect className and literal offset for type infer
                 if (EnableCollectLiteralInfo()) {
@@ -122,6 +121,8 @@ void BytecodeInfoCollector::ProcessClasses()
             jsPandaFile_->SetMethodLiteralToMap(methodLiteral);
         });
     }
+    // Collect import(infer-needed) and export relationship among all records.
+    CollectRecordReferenceREL();
     LOG_COMPILER(INFO) << "Total number of methods in file: "
                        << jsPandaFile_->GetJSPandaFileDesc()
                        << " is: "
@@ -243,7 +244,8 @@ void BytecodeInfoCollector::StoreClassTypeOffset(const uint32_t typeOffset, std:
 }
 
 void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
-                                                   const MethodLiteral *method, std::vector<std::string> &classNameVec)
+                                                   const MethodLiteral *method, std::vector<std::string> &classNameVec,
+                                                   const CString &recordName)
 {
     auto bcIns = BytecodeInst(insArr);
     auto bcInsLast = bcIns.JumpTo(insSz);
@@ -255,6 +257,7 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
         CollectMethodInfoFromBC(bcIns, method, classNameVec, bcIndex);
+        CollectModuleInfoFromBC(bcIns, method, recordName);
         CollectConstantPoolIndexInfoFromBC(bcIns, method);
         curPc = bcIns.GetAddress();
         auto nextInst = bcIns.GetNext();
@@ -272,6 +275,7 @@ void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,
     uint32_t numOfLexVars = 0;
     LexicalEnvStatus status = LexicalEnvStatus::VIRTUAL_LEXENV;
     auto &methodList = bytecodeInfo_.GetMethodList();
+    std::set<uint32_t> indexSet{};
     // Methods with the same instructions in abc files have the same static information. Since
     // information from bytecodes is collected only once, methods other than the processed method
     // will obtain static information from the processed method.
@@ -280,6 +284,7 @@ void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,
         const MethodInfo &processedMethod = processedIter->second;
         numOfLexVars = processedMethod.GetNumOfLexVars();
         status = processedMethod.GetLexEnvStatus();
+        indexSet = processedMethod.GetImportIndexes();
     }
 
     auto iter = methodList.find(methodOffset);
@@ -288,10 +293,13 @@ void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,
         methodInfo.SetMethodPcInfoIndex(processedMethodPcInfoIndex);
         methodInfo.SetNumOfLexVars(numOfLexVars);
         methodInfo.SetLexEnvStatus(status);
+        // if these methods have the same bytecode, their import indexs must be the same.
+        methodInfo.CopyImportIndex(indexSet);
         return;
     }
     MethodInfo info(GetMethodInfoID(), processedMethodPcInfoIndex, LexEnv::DEFAULT_ROOT,
         MethodInfo::DEFAULT_OUTMETHOD_OFFSET, numOfLexVars, status);
+    info.CopyImportIndex(indexSet);
     methodList.emplace(methodOffset, info);
 }
 
@@ -455,6 +463,210 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
             }
             default:
                 break;
+        }
+    }
+}
+
+void BytecodeInfoCollector::CollectModuleInfoFromBC(const BytecodeInstruction &bcIns,
+                                                    const MethodLiteral *method,
+                                                    const CString &recordName)
+{
+    auto methodOffset = method->GetMethodId().GetOffset();
+    // For records without tsType, we don't need to collect its export info.
+    if (jsPandaFile_->HasTSTypes(recordName) && !(bcIns.HasFlag(BytecodeInstruction::Flags::STRING_ID) &&
+        BytecodeInstruction::HasId(BytecodeInstruction::GetFormat(bcIns.GetOpcode()), 0))) {
+        BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
+        switch (opcode) {
+            case BytecodeInstruction::Opcode::STMODULEVAR_IMM8: {
+                auto imm = bcIns.GetImm<BytecodeInstruction::Format::IMM8>();
+                // The export syntax only exists in main function.
+                if (jsPandaFile_->GetMainMethodIndex(recordName) == methodOffset) {
+                    CollectExportIndexs(recordName, imm);
+                }
+                break;
+            }
+            case BytecodeInstruction::Opcode::WIDE_STMODULEVAR_PREF_IMM16: {
+                auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16>();
+                if (jsPandaFile_->GetMainMethodIndex(recordName) == methodOffset) {
+                    CollectExportIndexs(recordName, imm);
+                }
+                break;
+            }
+            case BytecodeInstruction::Opcode::LDEXTERNALMODULEVAR_IMM8:{
+                auto imm = bcIns.GetImm<BytecodeInstruction::Format::IMM8>();
+                CollectImportIndexs(methodOffset, imm);
+                break;
+            }
+            case BytecodeInstruction::Opcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:{
+                auto imm = bcIns.GetImm<BytecodeInstruction::Format::PREF_IMM16>();
+                CollectImportIndexs(methodOffset, imm);
+                break;
+            }
+            default:
+                break;
+        }
+    }
+}
+
+void BytecodeInfoCollector::CollectImportIndexs(uint32_t methodOffset, uint32_t index)
+{
+    auto &methodList = bytecodeInfo_.GetMethodList();
+    auto iter = methodList.find(methodOffset);
+    if (iter != methodList.end()) {
+        MethodInfo &methodInfo = iter->second;
+        // Collect import indexs of each method in its MethodInfo to do accurate Pgo compilation analysis.
+        methodInfo.AddImportIndex(index);
+        return;
+    }
+    MethodInfo info(GetMethodInfoID(), 0, LexEnv::DEFAULT_ROOT);
+    info.AddImportIndex(index);
+    methodList.emplace(methodOffset, info);
+}
+
+void BytecodeInfoCollector::CollectExportIndexs(const CString &recordName, uint32_t index)
+{
+    ModuleManager *moduleManager = vm_->GetModuleManager();
+    JSThread *thread = vm_->GetJSThread();
+    CString exportLocalName = "*default*";
+    ObjectFactory *objFactory = vm_->GetFactory();
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+    JSHandle<SourceTextModule> currentModule = moduleManager->HostGetImportedModule(recordName);
+    if (currentModule->GetLocalExportEntries().IsUndefined()) {
+        return;
+    }
+    // localExportEntries contain all local element info exported in this record.
+    JSHandle<TaggedArray> localExportArray(thread, currentModule->GetLocalExportEntries());
+    ASSERT(index < localExportArray->GetLength());
+    JSHandle<LocalExportEntry> currentExportEntry(thread, localExportArray->Get(index));
+    JSHandle<JSTaggedValue> exportName(thread, currentExportEntry->GetExportName());
+    JSHandle<JSTaggedValue> localName(thread, currentExportEntry->GetLocalName());
+
+    JSHandle<JSTaggedValue> exportLocalNameHandle =
+        JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportLocalName));
+    JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
+    /* if current exportName is "default", but localName not "*default*" like "export default class A{},
+     * localName is A, exportName is default in exportEntry". this will be recorded as "A:classType" in
+     * exportTable in typeSystem. At this situation, we will use localName to judge whether it has a actual
+     * Type record. Otherwise, we will use exportName.
+     */
+    if (JSTaggedValue::SameValue(exportName, defaultName) &&
+        !JSTaggedValue::SameValue(localName, exportLocalNameHandle)) {
+        exportName = localName;
+    }
+
+    JSHandle<EcmaString> exportNameStr(thread, EcmaString::Cast(exportName->GetTaggedObject()));
+    // When a export element whose name is not recorded in exportTypeTable or recorded as Any, we will think it
+    // as an infer needed type and add it to the ExportRecordInfo of this record.
+    // What we do is to reduce redundant compilation.
+    if (!CheckExportName(recordName, exportNameStr)) {
+        bytecodeInfo_.AddExportIndexToRecord(recordName, index);
+    }
+}
+
+bool BytecodeInfoCollector::CheckExportName(const CString &recordName, const JSHandle<EcmaString> &exportStr)
+{
+    auto tsManager = vm_->GetTSManager();
+    // To compare with the exportTable, we need to parse the literalbuffer in abc TypeAnnotation.
+    // If the exportTable already exist, we will use it directly. OtherWise, we will parse and store it.
+    // In type system parser at a later stage, we will also use these arrays to avoid duplicate parsing.
+    if (tsManager->HasResolvedExportTable(jsPandaFile_, recordName)) {
+        JSTaggedValue exportTypeTable = tsManager->GetResolvedExportTable(jsPandaFile_, recordName);
+        JSHandle<TaggedArray> table(vm_->GetJSThread(), exportTypeTable);
+        return IsEffectiveExportName(exportStr, table);
+    }
+    JSHandle<TaggedArray> newResolvedTable = tsManager->GenerateExportTableFromLiteral(jsPandaFile_, recordName);
+    return IsEffectiveExportName(exportStr, newResolvedTable);
+}
+
+bool BytecodeInfoCollector::IsEffectiveExportName(const JSHandle<EcmaString> &exportNameStr,
+                                                  const JSHandle<TaggedArray> &exportTypeTable)
+{
+    uint32_t length = exportTypeTable->GetLength();
+    for (uint32_t i = 0; i < length; i = i + 2) { // 2: skip a pair of key and value
+        EcmaString *valueString = EcmaString::Cast(exportTypeTable->Get(i).GetTaggedObject());
+        uint32_t typeId = static_cast<uint32_t>(exportTypeTable->Get(i + 1).GetInt());
+        if (EcmaStringAccessor::StringsAreEqual(*exportNameStr, valueString) && typeId != 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void BytecodeInfoCollector::CollectRecordReferenceREL()
+{
+    auto &recordNames = bytecodeInfo_.GetRecordNames();
+    for (auto &record : recordNames) {
+        if (jsPandaFile_->HasTSTypes(record) && jsPandaFile_->IsModule(vm_->GetJSThread(), record)) {
+            CollectRecordImportInfo(record);
+            CollectRecordExportInfo(record);
+        }
+    }
+}
+
+/* Each import index is corresponded to a ResolvedIndexBinding in the Environment of its module.
+ * Through ResolvedIndexBinding, we can get the export module and its export index. Only when the
+ * export index is in the non-type-record set which we have collected in CollectExportIndexs function,
+ * this export element can be infer-needed. We will collect the map as (key: import index , value: (exportRecord,
+ * exportIndex)) for using in pgo analysis and type infer.
+ */
+void BytecodeInfoCollector::CollectRecordImportInfo(const CString &recordName)
+{
+    auto thread = vm_->GetJSThread();
+    ModuleManager *moduleManager = vm_->GetModuleManager();
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+    JSHandle<SourceTextModule> currentModule = moduleManager->HostGetImportedModule(recordName);
+    // Collect Import Info
+    JSTaggedValue moduleEnvironment = currentModule->GetEnvironment();
+    if (moduleEnvironment.IsUndefined()) {
+        return;
+    }
+    ASSERT(moduleEnvironment.IsTaggedArray());
+    JSHandle<TaggedArray> moduleArray(thread, moduleEnvironment);
+    auto length = moduleArray->GetLength();
+    for (size_t index = 0; index < length; index++) {
+        JSTaggedValue resolvedBinding = moduleArray->Get(index);
+        // if resolvedBinding.IsHole(), means that importname is * or it belongs to empty Aot module.
+        if (resolvedBinding.IsHole()) {
+            continue;
+        }
+        ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
+        CString resolvedRecord = ModuleManager::GetRecordName(binding->GetModule());
+        auto bindingIndex = binding->GetIndex();
+        if (bytecodeInfo_.HasExportIndexToRecord(resolvedRecord, bindingIndex)) {
+            bytecodeInfo_.AddImportRecordInfoToRecord(recordName, resolvedRecord, index, bindingIndex);
+        }
+    }
+}
+
+// For type infer under retranmission (export * from "xxx"), we collect the star export records in this function.
+void BytecodeInfoCollector::CollectRecordExportInfo(const CString &recordName)
+{
+    auto thread = vm_->GetJSThread();
+    ModuleManager *moduleManager = vm_->GetModuleManager();
+    [[maybe_unused]] EcmaHandleScope scope(thread);
+    JSHandle<SourceTextModule> currentModule = moduleManager->HostGetImportedModule(recordName);
+    // Collect Star Export Info
+    JSTaggedValue starEntries = currentModule->GetStarExportEntries();
+    if (starEntries.IsUndefined()) {
+        return;
+    }
+    ASSERT(starEntries.IsTaggedArray());
+    JSHandle<TaggedArray> starEntriesArray(thread, starEntries);
+    auto starLength = starEntriesArray->GetLength();
+    JSMutableHandle<StarExportEntry> starExportEntry(thread, JSTaggedValue::Undefined());
+    for (size_t index = 0; index < starLength; index++) {
+        starExportEntry.Update(starEntriesArray->Get(index));
+        JSTaggedValue moduleRequest = starExportEntry->GetModuleRequest();
+        CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest.GetTaggedObject()));
+        auto [isNative, _] = ModuleManager::CheckNativeModule(moduleRequestName);
+        if (isNative) {
+            return;
+        }
+        CString baseFileName = jsPandaFile_->GetJSPandaFileDesc();
+        CString entryPoint = base::PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile_,
+            baseFileName, recordName, moduleRequestName);
+        if (jsPandaFile_->HasTypeSummaryOffset(entryPoint)) {
+            bytecodeInfo_.AddStarExportToRecord(recordName, entryPoint);
         }
     }
 }

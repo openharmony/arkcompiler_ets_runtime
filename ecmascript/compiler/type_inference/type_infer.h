@@ -116,6 +116,7 @@ private:
     bool InferStLexVarDyn(GateRef gate);
     bool InferStModuleVar(GateRef gate);
     bool InferLdLocalModuleVar(GateRef gate);
+    bool InferLdExternalModuleVar(GateRef gate);
     bool IsNewLexEnv(EcmaOpcode opcode) const;
     bool InferGetIterator(GateRef gate);
     bool InferLoopBeginPhiGate(GateRef gate);

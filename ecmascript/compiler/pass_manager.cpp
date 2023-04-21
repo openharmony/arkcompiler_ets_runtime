@@ -167,11 +167,14 @@ void PassManager::ResolveModule(const JSPandaFile *jsPandaFile, const std::strin
     const auto &recordInfo = jsPandaFile->GetJSRecordInfo();
     ModuleManager *moduleManager = vm_->GetModuleManager();
     JSThread *thread = vm_->GetJSThread();
+    [[maybe_unused]] EcmaHandleScope scope(thread);
     for (auto info: recordInfo) {
         auto recordName = info.first;
         if (jsPandaFile->IsModule(thread, recordName)) {
             ASSERT(!thread->HasPendingException());
-            moduleManager->HostResolveImportedModuleWithMerge(fileName.c_str(), recordName);
+            JSHandle<JSTaggedValue> moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(fileName.c_str(),
+                recordName);
+            SourceTextModule::Instantiate(thread, moduleRecord);
         }
     }
 }

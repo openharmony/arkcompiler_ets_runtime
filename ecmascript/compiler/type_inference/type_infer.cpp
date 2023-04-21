@@ -327,6 +327,9 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
             return InferLdLocalModuleVar(gate);
+        case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
+        case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
+            return InferLdExternalModuleVar(gate);
         default:
             break;
     }
@@ -930,7 +933,7 @@ bool TypeInfer::InferStModuleVar(GateRef gate)
     auto defineGate = gateAccessor_.GetValueIn(gate, 1);
     auto defineType = gateAccessor_.GetGateType(defineGate);
     if (!defineType.IsAnyType()) {
-        tsManager_->AddTypeToLocalModuleVarGtMap(jsPandaFile, recordName_, index, defineType.GetGTRef());
+        tsManager_->AddTypeToModuleVarGtMap(jsPandaFile, recordName_, index, defineType.GetGTRef());
         return true;
     }
     return false;
@@ -945,6 +948,55 @@ bool TypeInfer::InferLdLocalModuleVar(GateRef gate)
     }
     auto type = tsManager_->GetGTFromModuleMap(jsPandaFile, recordName_, index);
     return UpdateType(gate, type);
+}
+
+bool TypeInfer::InferLdExternalModuleVar(GateRef gate)
+{
+    auto index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
+    auto loadType = gateAccessor_.GetGateType(gate);
+    auto bcInfoCollector = tsManager_->GetBytecodeInfoCollector();
+    ASSERT(bcInfoCollector != nullptr);
+    const auto &bcInfo = bcInfoCollector->GetBytecodeInfo();
+    const auto &importRecordsInfos = bcInfo.GetImportRecordsInfos();
+    auto iter = importRecordsInfos.find(recordName_);
+    const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
+    CString resolvedRecord = "";
+    uint32_t resolvedIndex = 0;
+    if (loadType.IsAnyType() && iter != importRecordsInfos.end()) {
+        const auto &importIdToExportRecord = iter->second.GetImportIdToExportRecord();
+        if (importIdToExportRecord.find(index) != importIdToExportRecord.end()) {
+            std::tie(resolvedRecord, resolvedIndex) = importIdToExportRecord.at(index);
+            if (tsManager_->HasExportGT(jsPandaFile, resolvedRecord, resolvedIndex)) {
+                return UpdateType(gate, tsManager_->GetGTFromModuleMap(jsPandaFile, resolvedRecord, resolvedIndex));
+            }
+        }
+    }
+    // if we can't find type in exportRecords, we will try to find type using resolved index binding directly.
+    // However, this compilation order is not guaranteed, so the export type may not have been infered.
+    if (UNLIKELY(loadType.IsAnyType())) {
+        auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+        ModuleManager *moduleManager = tsManager_->GetEcmaVM()->GetModuleManager();
+        [[maybe_unused]] EcmaHandleScope scope(thread);
+        JSHandle<SourceTextModule> currentModule = moduleManager->HostGetImportedModule(recordName_);
+        JSTaggedValue moduleEnvironment = currentModule->GetEnvironment();
+        if (moduleEnvironment.IsUndefined()) {
+            return UpdateType(gate, GateType::AnyType());
+        }
+        ASSERT(moduleEnvironment.IsTaggedArray());
+        JSHandle<TaggedArray> moduleArray(thread, moduleEnvironment);
+        JSTaggedValue resolvedBinding = moduleArray->Get(index);
+        // if resolvedBinding.IsHole(), means that importname is * or it belongs to empty Aot module.
+        if (resolvedBinding.IsHole()) {
+            return UpdateType(gate, GateType::AnyType());
+        }
+        ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
+        resolvedRecord = ModuleManager::GetRecordName(binding->GetModule());
+        resolvedIndex = binding->GetIndex();
+        if (tsManager_->HasExportGT(jsPandaFile, resolvedRecord, resolvedIndex)) {
+            return UpdateType(gate, tsManager_->GetGTFromModuleMap(jsPandaFile, resolvedRecord, resolvedIndex));
+        }
+    }
+    return UpdateType(gate, GateType::AnyType());
 }
 
 bool TypeInfer::InferLoopBeginPhiGate(GateRef gate)
@@ -1189,7 +1241,7 @@ void TypeInfer::VerifyTypePercent()
             normalInferNum_++;
         }
     }
-    double rate = (double)normalInferNum_ / (double)shouldInferNum_;
+    double rate = needInferGates_.empty() ? 0.0 : (double)normalInferNum_ / (double)shouldInferNum_;
     auto typeThreshold = tsManager_->GetTypeThreshold();
     if (rate <= typeThreshold) {
         methodInfo_->SetTypeInferAbort(true);

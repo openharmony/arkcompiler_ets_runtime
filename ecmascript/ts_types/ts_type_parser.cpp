@@ -24,6 +24,17 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript {
+TSTypeParser::TSTypeParser(TSManager *tsManager)
+    : tsManager_(tsManager), vm_(tsManager->GetEcmaVM()),
+      thread_(vm_->GetJSThread()), factory_(vm_->GetFactory()),
+      tableGenerator_(tsManager_)
+{
+    auto bcInfoCollector = tsManager_->GetBytecodeInfoCollector();
+    if (bcInfoCollector != nullptr) {
+        bcInfo_ = bcInfoCollector->GetBytecodeInfoPtr();
+    }
+}
+
 GlobalTSTypeRef TSTypeParser::CreateGT(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId)
 {
     if (typeId <= BUILDIN_TYPE_OFFSET) {
@@ -133,7 +144,8 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
     JSHandle<JSTaggedValue> exportTable = GenerateExportTableFromRecord(jsPandaFile, entryPoint, table);
     JSHandle<TaggedArray> arrayWithGT(exportTable);
     JSHandle<EcmaString> targetVarName = GenerateImportVar(importVarNamePath);
-    GlobalTSTypeRef importedGT = GetExportGTByName(targetVarName, arrayWithGT);
+    std::unordered_set<CString> markSet;
+    GlobalTSTypeRef importedGT = GetExportGTByName(targetVarName, arrayWithGT, jsPandaFile, entryPoint, markSet);
     return GetAndStoreImportGT(jsPandaFile, typeId, recordName, importedGT);
 }
 
@@ -489,7 +501,13 @@ JSHandle<JSTaggedValue> TSTypeParser::GenerateExportTableFromRecord(const JSPand
     JSHandle<JSTaggedValue> exportValeTable = TSTypeTable::GetExportValueTable(thread_, table);
     if (exportValeTable->IsUndefined()) {
         // Read export-data from annotation of the .abc File
-        JSHandle<TaggedArray> exportTable = GetExportDataFromRecord(jsPandaFile, recordName);
+        JSHandle<TaggedArray> exportTable;
+        if (tsManager_->HasResolvedExportTable(jsPandaFile, recordName)) {
+            JSTaggedValue resolvedTable = tsManager_->GetResolvedExportTable(jsPandaFile, recordName);
+            exportTable = JSHandle<TaggedArray>::Cast(JSHandle<JSTaggedValue>(thread_, resolvedTable));
+        } else {
+            exportTable = GetExportDataFromRecord(jsPandaFile, recordName);
+        }
         uint32_t length = exportTable->GetLength();
 
         // Replace typeIds with GT
@@ -528,7 +546,9 @@ JSHandle<EcmaString> TSTypeParser::GenerateImportVar(JSHandle<EcmaString> import
     return factory_->NewFromUtf8(target); // #A#./A -> A
 }
 
-GlobalTSTypeRef TSTypeParser::GetExportGTByName(JSHandle<EcmaString> target, JSHandle<TaggedArray> &exportTable) const
+GlobalTSTypeRef TSTypeParser::GetExportGTByName(JSHandle<EcmaString> target, JSHandle<TaggedArray> &exportTable,
+                                                const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                std::unordered_set<CString> &markSet)
 {
     uint32_t length = exportTable->GetLength();
     // the exportTable is arranged as follows ["A", "101", "B", "102"]
@@ -538,6 +558,35 @@ GlobalTSTypeRef TSTypeParser::GetExportGTByName(JSHandle<EcmaString> target, JSH
         if (EcmaStringAccessor::StringsAreEqual(*target, valueString)) {
             // Transform raw data of JSTaggedValue to GT
             return GlobalTSTypeRef(exportTable->Get(i + 1).GetInt());
+        }
+    }
+    // if we can't find the exportName in exportTable of this record, we will try to search in its starExportRecords.
+    return IterateStarExport(target, jsPandaFile, recordName, markSet);
+}
+
+GlobalTSTypeRef TSTypeParser::IterateStarExport(JSHandle<EcmaString> target, const JSPandaFile *jsPandaFile,
+                                                const CString &recordName, std::unordered_set<CString> &markSet)
+{
+    if (bcInfo_->HasStarExportToRecord(recordName)) {
+        const auto &starRecords = bcInfo_->GetstarExportToRecord(recordName);
+        markSet.insert(recordName);
+        JSMutableHandle<TaggedArray> starTable(thread_, JSTaggedValue::Undefined());
+        for (const auto &star : starRecords) {
+            // use markSet to avoid circular import
+            if (markSet.find(star) != markSet.end()) {
+                continue;
+            }
+            uint32_t starModuleId = tableGenerator_.TryGetModuleId(star);
+            if (UNLIKELY(!GlobalTSTypeRef::IsVaildModuleId(starModuleId))) {
+                continue;
+            }
+            JSHandle<TSTypeTable> table = tableGenerator_.GetOrGenerateTSTypeTable(jsPandaFile, star, starModuleId);
+            starTable.Update(GenerateExportTableFromRecord(jsPandaFile, star, table));
+            // the target name will be the same under retransmission.
+            auto gt = GetExportGTByName(target, starTable, jsPandaFile, star, markSet);
+            if (!gt.IsDefault()) {
+                return gt;
+            }
         }
     }
     return GlobalTSTypeRef::Default();

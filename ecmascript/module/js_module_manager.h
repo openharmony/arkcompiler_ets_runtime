@@ -91,6 +91,10 @@ private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
 
+    bool SkipDefaultBundleFile(const CString &moduleFileName) const;
+    JSHandle<JSTaggedValue> ResolveModuleInMergedABC(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                     const CString &recordName);
+    JSHandle<JSTaggedValue> CreateEmptyModule();
     JSTaggedValue GetModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule);
     void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
                                   int32_t index, JSTaggedValue value);
@@ -109,7 +113,7 @@ private:
 
     JSHandle<JSTaggedValue> ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile);
     JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                   const CString &recodeName);
+                                                   const CString &recordName);
 
     static Local<JSValueRef> GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType);
     static CString GetStrippedModuleName(const CString &moduleRequestName);
@@ -118,6 +122,7 @@ private:
 
     EcmaVM *vm_ {nullptr};
     JSTaggedValue resolvedModules_ {JSTaggedValue::Hole()};
+    JSTaggedValue cachedEmptyModule_ {JSTaggedValue::Hole()};
     bool isExecuteBuffer_ {false};
 
     friend class EcmaVM;

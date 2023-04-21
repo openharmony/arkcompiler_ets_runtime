@@ -208,7 +208,10 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
     }
     // 6. If SameValue(exportName, "default") is true, then
     JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
-    if (JSTaggedValue::SameValue(exportName, defaultString)) {
+    // In Aot static parse phase, some importModule maybe empty aot module, all elements will be undefined, it will
+    // return hole for resolve index binding at the end to skip error.
+    if (JSTaggedValue::SameValue(exportName, defaultString) &&
+        thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
         // a. Assert: A default export was not explicitly defined by this module.
         // b. Return null.
         // c. NOTE: A default export cannot be provided by an export *.
@@ -219,6 +222,10 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
     // 8. For each ExportEntry Record e in module.[[StarExportEntries]], do
     JSTaggedValue starExportEntriesTv = module->GetStarExportEntries();
     if (starExportEntriesTv.IsUndefined()) {
+        // return Hole in Aot static parse phase to skip error.
+        if (!thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
+            starResolution.Update(JSTaggedValue::Hole());
+        }
         return starResolution;
     }
     JSMutableHandle<StarExportEntry> ee(thread, globalConstants->GetUndefined());
@@ -1197,6 +1204,13 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
     JSHandle<JSTaggedValue> resolution =
         SourceTextModule::ResolveExport(thread, importedModule, exportName, resolveVector);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+    // if step into GetStarResolution in aot phase, the module must be a normal SourceTextModule not an empty
+    // aot module. Sometimes for normal module, if indirectExportEntries, localExportEntries, starExportEntries
+    // all don't have right exportName which means the export element is not from this module,
+    // it should return null but now will be hole.
+    if (!thread->GetEcmaVM()->EnableReportModuleResolvingFailure() && resolution->IsHole()) {
+        return globalConstants->GetHandledNull();
+    }
     // c. If resolution is "ambiguous", return "ambiguous".
     if (resolution->IsString()) { // if resolution is string, resolution must be "ambiguous"
         return globalConstants->GetHandledAmbiguousString();
