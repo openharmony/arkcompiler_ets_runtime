@@ -55,6 +55,6 @@ enum class Triple {
 namespace panda::ecmascript {
 void PackELFHeader(Elf64_Ehdr &header, uint32_t version, kungfu::Triple triple);
 bool SupportELF();
-bool VerifyELFHeader(const Elf64_Ehdr &header, uint32_t version);
+bool VerifyELFHeader(const Elf64_Ehdr &header, uint32_t version, bool silent = false);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_ELF_H
