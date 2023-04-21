@@ -92,14 +92,25 @@ bool GateMetaData::IsFixed() const
 
 bool GateMetaData::IsSchedulable() const
 {
-    return (opcode_ != OpCode::NOP) && (!IsProlog()) && (!IsRoot()) &&
-        (!IsFixed()) && (GetStateCount() == 0);
+    ASSERT(!IsNop());
+#ifndef NDEBUG
+    if (GetStateCount() == 0) {
+        ASSERT(!IsFixed());
+    }
+#endif
+    return (!IsProlog()) && (!IsRoot()) && (GetStateCount() == 0);
 }
 
 bool GateMetaData::IsState() const
 {
-    return (opcode_ != OpCode::NOP) && (!IsProlog()) && (!IsRoot()) &&
-        (!IsFixed()) && (GetStateCount() > 0);
+    ASSERT(!IsNop());
+#ifndef NDEBUG
+    if (GetStateCount() > 0) {
+        ASSERT(!IsProlog());
+        ASSERT(!IsRoot());
+    }
+#endif
+    return (!IsVirtualState()) && (!IsFixed()) && (GetStateCount() > 0);
 }
 
 bool GateMetaData::IsGeneralState() const

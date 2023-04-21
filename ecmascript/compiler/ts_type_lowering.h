@@ -117,6 +117,7 @@ private:
     void SpeculateConditionJump(GateRef gate, bool flag);
     void SpeculateCallBuiltin(GateRef gate, GateRef func, GateRef a0, BuiltinsStubCSigns::ID Op);
     BuiltinsStubCSigns::ID GetBuiltinId(GateRef func);
+    void DeleteConstDataIfNoUser(GateRef gate);
 
     void AddProfiling(GateRef gate);
     Circuit *circuit_ {nullptr};

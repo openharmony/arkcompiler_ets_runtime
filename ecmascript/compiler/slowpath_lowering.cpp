@@ -1828,7 +1828,7 @@ void SlowPathLowering::LowerCreateObjectWithExcludedKeys(GateRef gate)
     GateRef depGate = acc_.GetDep(gate);
     acc_.SetDep(gate, acc_.GetDep(depGate));
     builder_.SetDepend(acc_.GetDep(depGate));
-    
+
     std::vector<GateRef> args;
     size_t numIn = acc_.GetNumValueIn(depGate);
     GateRef length = builder_.Int32(numIn);

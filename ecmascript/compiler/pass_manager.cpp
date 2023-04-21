@@ -116,7 +116,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &generat
         }
         pipeline.RunPass<SlowPathLoweringPass>();
         pipeline.RunPass<VerifierPass>();
-        pipeline.RunPass<SchedulingPass>();
+        pipeline.RunPass<GraphLinearizerPass>();
         pipeline.RunPass<LLVMIRGenPass>();
     });
     ProcessConstantPool(&collector);

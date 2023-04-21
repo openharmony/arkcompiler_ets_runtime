@@ -25,12 +25,9 @@ void GenericTypeLowering::Run()
     for (const auto &gate : gateList) {
         auto op = acc_.GetOpCode(gate);
         switch (op) {
-            case OpCode::GET_CONSTPOOL: {
-                // initialize label manager
-                Environment env(gate, circuit_, &builder_);
+            case OpCode::GET_CONSTPOOL:
                 LowerGetConstPool(gate);
                 break;
-            }
             case OpCode::STATE_SPLIT:
                 DeleteStateSplit(gate);
                 break;
@@ -123,7 +120,7 @@ void GenericTypeLowering::LowerHeapObjectCheck(GateRef gate)
 
 void GenericTypeLowering::LowerGetConstPool(GateRef gate)
 {
-    Environment env(0, &builder_);
+    Environment env(gate, circuit_, &builder_);
     GateRef jsFunc = acc_.GetValueIn(gate, 0); // 0: this object
     GateRef newGate = builder_.GetConstPoolFromFunction(jsFunc);
 
