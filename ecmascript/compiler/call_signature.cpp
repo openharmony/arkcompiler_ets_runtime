@@ -960,15 +960,13 @@ DEF_CALL_SIGNATURE(JSCallNew)
 
 DEF_CALL_SIGNATURE(JSProxyCallInternalWithArgV)
 {
-    // 4 : 4 input parameters
-    CallSignature jSProxyCallInternalWithArgV("JSProxyCallInternalWithArgV", 0, 4,
+    // 2 : 2 input parameters
+    CallSignature jSProxyCallInternalWithArgV("JSProxyCallInternalWithArgV", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = jSProxyCallInternalWithArgV;
-    std::array<VariableType, 4> params = { // 4 : 4 input parameters
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
         VariableType::NATIVE_POINTER(),     // glue
-        VariableType::INT64(),       // actual argC
         VariableType::JS_ANY(),      // call target
-        VariableType::NATIVE_POINTER(),    // argv
     };
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
