@@ -130,6 +130,7 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTagg
     // 9.Set throwawayCapability.[[Promise]].[[PromiseIsHandled]] to true.
     JSHandle<PromiseCapability> tcap =
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSPromise>(thread, tcap->GetPromise())->SetPromiseIsHandled(true);
 
     // 10.Perform ! PerformPromiseThen(promiseCapability.[[Promise]], onFulfilled, onRejected, throwawayCapability).
