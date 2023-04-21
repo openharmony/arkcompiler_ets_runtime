@@ -450,7 +450,7 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     // old pages url
     instance->SetBundleName("com.bundleName.test");
     instance->SetModuleName("moduleName");
-    CString inputFileName = "pages/index.abc";
+    CString inputFileName = "moduleName/ets/pages/index.abc";
     CString outFileName = "";
     CString res1 = "com.bundleName.test/moduleName/ets/pages/index";
     CString entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
@@ -461,7 +461,7 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     inputFileName = "@bundle:com.bundleName.test/moduleName/ets/pages/index.abc";
     entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
     EXPECT_EQ(entryPoint, res1);
-    EXPECT_EQ(outFileName, "");
+    EXPECT_EQ(outFileName, "/data/storage/el1/bundle/moduleName/ets/modules.abc");
 
     // new pages url Intra-application cross hap
     inputFileName = "@bundle:com.bundleName.test/moduleName1/ets/pages/index.abc";
@@ -493,6 +493,6 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     CString res5 = "com.bundleName.test/moduleName/ets/mainAbility";
     entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
     EXPECT_EQ(entryPoint, res5);
-    EXPECT_EQ(outFileName, "");
+    EXPECT_EQ(outFileName, "/data/storage/el1/bundle/moduleName/ets/modules.abc");
 }
 }  // namespace panda::test
