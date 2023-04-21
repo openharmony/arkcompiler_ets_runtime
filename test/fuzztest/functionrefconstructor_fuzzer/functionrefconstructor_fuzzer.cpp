@@ -39,12 +39,9 @@ namespace OHOS {
         FunctionCallback nativeFunc = FuncRefConCallbackForTest;
         Deleter deleter = nullptr;
         Local<FunctionRef> func = FunctionRef::New(vm, nativeFunc, deleter, (void *)(data + size));
-        const int32_t argvLen = 3;
-        Local<JSValueRef> argv[argvLen];
-        for (int32_t i = 0; i < argvLen; i++) {
-            argv[i] = JSValueRef::Undefined(vm);
-        }
-        func->Constructor(vm, argv, argvLen);
+        Local<JSValueRef> argv[1];
+        argv[0] = NumberRef::New(vm, 1.3); // 1.3 : test case of input
+        func->Constructor(vm, argv, 1);
         JSNApi::DestroyJSVM(vm);
     }
 }

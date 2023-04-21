@@ -41,7 +41,7 @@ namespace OHOS {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }
-        const int32_t MaxMenory = 1073741824;
+        const int32_t MaxMenory = 1024;
         if (input > MaxMenory) {
             input = MaxMenory;
         }

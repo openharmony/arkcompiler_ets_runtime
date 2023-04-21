@@ -1311,10 +1311,10 @@ DEF_CALL_SIGNATURE(PGOProfiler)
 
 DEF_CALL_SIGNATURE(PGOTypeProfiler)
 {
-    // 4 : 4 input parameters
+    // 4: 4 input parameters
     CallSignature typeProfInstruction("PGOTypeProfiler", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = typeProfInstruction;
-    // 4 : 4 input parameters
+    // 4: 4 input parameters
     std::array<VariableType, 4> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),

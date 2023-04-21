@@ -51,8 +51,6 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, S
 {
     auto engine = assembler_->GetEngine();
     auto callSigns = llvmModule_->GetCSigns();
-    std::map<uintptr_t, int> addr2FpToPrevFrameSpDelta;
-    std::vector<uint64_t> funSizeVec;
     std::vector<uintptr_t> entrys;
     for (size_t j = 0; j < llvmModule_->GetFuncCount(); j++) {
         LLVMValueRef func = llvmModule_->GetFunction(j);
