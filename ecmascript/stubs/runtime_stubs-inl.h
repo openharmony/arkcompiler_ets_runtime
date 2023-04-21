@@ -19,8 +19,8 @@
 #include "ecmascript/stubs/runtime_stubs.h"
 
 #include "ecmascript/builtins/builtins_regexp.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/ecma_string_table.h"
-#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -33,15 +33,14 @@
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_promise.h"
+#include "ecmascript/jspandafile/class_info_extractor.h"
+#include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 #include "ecmascript/template_string.h"
 #include "ecmascript/ts_types/ts_manager.h"
-#include "ecmascript/jspandafile/class_info_extractor.h"
-#include "ecmascript/jspandafile/literal_data_extractor.h"
-#include "ecmascript/jspandafile/scope_info_extractor.h"
 
 namespace panda::ecmascript {
 JSTaggedValue RuntimeStubs::RuntimeInc(JSThread *thread, const JSHandle<JSTaggedValue> &value)

@@ -17,14 +17,14 @@
 
 #include <cerrno>
 
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jobs/micro_job_queue.h"
-#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/object_factory.h"

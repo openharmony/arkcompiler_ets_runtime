@@ -12,29 +12,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef ECMASCRIPT_COMPILER_AOT_FILE_BINARY_BUFFER_PARSER_H
+#define ECMASCRIPT_COMPILER_AOT_FILE_BINARY_BUFFER_PARSER_H
 
-#ifndef ECMASCRIPT_COMPILER_AOT_FILE_ELF_READER_H
-#define ECMASCRIPT_COMPILER_AOT_FILE_ELF_READER_H
+#include <cstdint>
 
-#include <utility>
-#include <stdint.h>
-#include <string>
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
-#include "ecmascript/compiler/binary_section.h"
 namespace panda::ecmascript {
-
-class ModuleSectionDes;
-
-class ElfReader {
+class BinaryBufferParser {
 public:
-    ElfReader(MemMap fileMapMem) : fileMapMem_(fileMapMem) {};
-    ~ElfReader() = default;
-    bool VerifyELFHeader(uint32_t version, bool strictMatch);
-    void ParseELFSections(ModuleSectionDes &des, std::vector<ElfSecName> &secs);
-    bool ParseELFSegment();
+    BinaryBufferParser(uint8_t *buffer, uint32_t length) : buffer_(buffer), length_(length) {}
+    ~BinaryBufferParser() = default;
+    void ParseBuffer(void *dst, uint32_t count);
+    void ParseBuffer(uint8_t *dst, uint32_t count, uint8_t *src);
 
 private:
-    MemMap fileMapMem_ {};
+    uint8_t *buffer_ {nullptr};
+    uint32_t length_ {0};
+    uint32_t offset_ {0};
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_COMPILER_AOT_FILE_ELF_READER_H
+#endif  // ECMASCRIPT_COMPILER_AOT_FILE_BINARY_BUFFER_PARSER_H

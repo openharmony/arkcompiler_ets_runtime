@@ -14,7 +14,7 @@
  */
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
-#include "ecmascript/aot_file_manager.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/mem/slots.h"

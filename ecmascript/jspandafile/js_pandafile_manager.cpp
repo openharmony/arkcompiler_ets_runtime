@@ -15,10 +15,11 @@
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
-#include "ecmascript/aot_file_manager.h"
 #include "ecmascript/base/path_helper.h"
-#include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/js_file_path.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 namespace panda::ecmascript {

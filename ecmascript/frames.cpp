@@ -15,7 +15,7 @@
 
 #include "ecmascript/frames.h"
 
-#include "ecmascript/aot_file_manager.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/frame_handler.h"

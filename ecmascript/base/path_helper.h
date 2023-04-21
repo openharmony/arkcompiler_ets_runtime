@@ -15,7 +15,7 @@
 #ifndef ECMASCRIPT_BASE_PATH_HELPER_H
 #define ECMASCRIPT_BASE_PATH_HELPER_H
 
-#include "ecmascript/aot_file_manager.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_string.h"
