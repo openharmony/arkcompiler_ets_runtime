@@ -33,8 +33,8 @@ FullGC::FullGC(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManager()) {
 void FullGC::RunPhases()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::RunPhases");
+    TRACE_GC(GCStats::Scope::ScopeId::TotalGC, heap_->GetEcmaVM()->GetEcmaGCStats());
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), FullGC_RunPhases);
-    ClockScope clockScope;
 
     if (heap_->CheckOngoingConcurrentMarking()) {
         LOG_GC(DEBUG) << "FullGC after ConcurrentMarking";
@@ -44,10 +44,6 @@ void FullGC::RunPhases()
     Mark();
     Sweep();
     Finish();
-    heap_->GetEcmaVM()->GetEcmaGCStats()->StatisticFullGC(clockScope.GetPauseTime(), youngAndOldAliveSize_,
-                                                          youngSpaceCommitSize_, oldSpaceCommitSize_,
-                                                          nonMoveSpaceFreeSize_, nonMoveSpaceCommitSize_);
-    LOG_GC(DEBUG) << "FullGC::RunPhases " << clockScope.TotalSpentTime();
 }
 
 void FullGC::RunPhasesForAppSpawn()
@@ -61,6 +57,7 @@ void FullGC::RunPhasesForAppSpawn()
 void FullGC::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Initialize");
+    TRACE_GC(GCStats::Scope::ScopeId::Initialize, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->Prepare();
     auto callback = [](Region *current) {
         current->ResetAliveObject();
@@ -85,6 +82,7 @@ void FullGC::Initialize()
 void FullGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Mark");
+    TRACE_GC(GCStats::Scope::ScopeId::Mark, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->GetCompressGCMarker()->MarkRoots(MAIN_THREAD_INDEX);
     heap_->GetCompressGCMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningTaskFinished();
@@ -93,6 +91,7 @@ void FullGC::Mark()
 void FullGC::Sweep()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Sweep");
+    TRACE_GC(GCStats::Scope::ScopeId::Sweep, heap_->GetEcmaVM()->GetEcmaGCStats());
     // process weak reference
     uint32_t totalThreadCount = 1; // 1 : mainthread
     if (heap_->IsParallelGCEnabled()) {
@@ -155,6 +154,7 @@ void FullGC::Sweep()
 void FullGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Finish");
+    TRACE_GC(GCStats::Scope::ScopeId::Finish, heap_->GetEcmaVM()->GetEcmaGCStats());
     if (!forAppSpawn_) {
         heap_->SwapOldSpace();
     }

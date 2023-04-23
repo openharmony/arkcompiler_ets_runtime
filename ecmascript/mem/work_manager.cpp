@@ -21,6 +21,7 @@
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/mark_stack.h"
+#include "ecmascript/mem/parallel_marker-inl.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/mem/tlab_allocator-inl.h"
@@ -77,7 +78,8 @@ void WorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
     if (!inNode->IsEmpty()) {
         workStack_.Push(inNode);
         inNode = AllocateWorkNode();
-        if (postTask && heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask()) {
+        if (postTask && heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask() &&
+            !(heap_->GetJSThread()->IsMarking() && heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark())) {
             heap_->PostParallelGCTask(parallelGCTaskPhase_);
         }
     }

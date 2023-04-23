@@ -46,16 +46,15 @@ void ParallelEvacuator::Finalize()
 
 void ParallelEvacuator::Evacuate()
 {
-    ClockScope clockScope;
     Initialize();
     EvacuateSpace();
     UpdateReference();
     Finalize();
-    heap_->GetEcmaVM()->GetEcmaGCStats()->StatisticConcurrentEvacuate(clockScope.GetPauseTime());
 }
 
 void ParallelEvacuator::EvacuateSpace()
 {
+    TRACE_GC(GCStats::Scope::ScopeId::EvacuateSpace, heap_->GetEcmaVM()->GetEcmaGCStats());
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelEvacuator);
     heap_->GetFromSpaceDuringEvacuation()->EnumerateRegions([this] (Region *current) {
         AddWorkload(std::make_unique<EvacuateWorkload>(this, current));
@@ -173,6 +172,7 @@ void ParallelEvacuator::VerifyHeapObject(TaggedObject *object)
 
 void ParallelEvacuator::UpdateReference()
 {
+    TRACE_GC(GCStats::Scope::ScopeId::UpdateReference, heap_->GetEcmaVM()->GetEcmaGCStats());
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelUpdateReference);
     // Update reference pointers
     uint32_t youngeRegionMoveCount = 0;

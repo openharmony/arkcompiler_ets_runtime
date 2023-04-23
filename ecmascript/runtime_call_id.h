@@ -1040,10 +1040,12 @@ namespace panda::ecmascript {
 
 #define MEM_ALLOCATE_AND_GC_LIST(V)  \
     V(FullGC_RunPhases)              \
-    V(PartialGC_RunPhases)               \
+    V(PartialGC_RunPhases)           \
     V(STWYoungGC_RunPhases)          \
     V(ConcurrentMarking)             \
     V(ConcurrentMarkingInitialize)   \
+    V(IncrementalMarking)            \
+    V(IncrementalMarkingInitialize)  \
     V(WaitConcurrentMarkingFinished) \
     V(ReMarking)                     \
     V(ConcurrentSweepingInitialize)  \

@@ -710,6 +710,7 @@ ecma_source = [
   "ecmascript/mem/gc_stats.cpp",
   "ecmascript/mem/heap.cpp",
   "ecmascript/mem/heap_region_allocator.cpp",
+  "ecmascript/mem/incremental_marker.cpp",
   "ecmascript/mem/linear_space.cpp",
   "ecmascript/mem/mem_controller.cpp",
   "ecmascript/mem/mem_map_allocator.cpp",

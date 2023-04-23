@@ -19,6 +19,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/sparse_space.h"
@@ -32,15 +33,23 @@ class EcmaVM;
 class FullGC;
 class HeapRegionAllocator;
 class HeapTracker;
+class IncrementalMarker;
+class JSNativePointer;
 class Marker;
 class MemController;
 class NativeAreaAllocator;
 class ParallelEvacuator;
 class PartialGC;
 class STWYoungGC;
-class JSNativePointer;
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
+
+enum class IdleTaskType : uint8_t {
+    NO_TASK,
+    YOUNG_GC,
+    FINISH_MARKING,
+    INCREMENTAL_MARK
+};
 
 enum class MarkType : uint8_t {
     MARK_YOUNG,
@@ -57,47 +66,6 @@ enum class HeapMode {
     NORMAL,
     SPAWN,
     SHARE,
-};
-
-enum class IdleHeapSizePtr : uint8_t {
-    IDLE_HEAP_SIZE_1 = 0,
-    IDLE_HEAP_SIZE_2,
-    IDLE_HEAP_SIZE_3
-};
-
-struct IdleData {
-    int64_t idleHeapObjectSize1 {0};
-    int64_t idleHeapObjectSize2 {0};
-    int64_t idleHeapObjectSize3 {0};
-    IdleHeapSizePtr curPtr_ {IdleHeapSizePtr::IDLE_HEAP_SIZE_1};
-
-    static constexpr int64_t REST_HEAP_GROWTH_LIMIT = 300_KB;
-    bool CheckIsRest()
-    {
-        return abs(idleHeapObjectSize1 - idleHeapObjectSize2) < REST_HEAP_GROWTH_LIMIT &&
-            abs(idleHeapObjectSize2 - idleHeapObjectSize3) < REST_HEAP_GROWTH_LIMIT;
-    }
-
-    void SetNextValue(int64_t idleHeapObjectSize)
-    {
-        switch (curPtr_) {
-            case IdleHeapSizePtr::IDLE_HEAP_SIZE_1:
-                idleHeapObjectSize1 = idleHeapObjectSize;
-                curPtr_ = IdleHeapSizePtr::IDLE_HEAP_SIZE_2;
-                break;
-            case IdleHeapSizePtr::IDLE_HEAP_SIZE_2:
-                idleHeapObjectSize2 = idleHeapObjectSize;
-                curPtr_ = IdleHeapSizePtr::IDLE_HEAP_SIZE_3;
-                break;
-            case IdleHeapSizePtr::IDLE_HEAP_SIZE_3:
-                idleHeapObjectSize3 = idleHeapObjectSize;
-                curPtr_ = IdleHeapSizePtr::IDLE_HEAP_SIZE_1;
-                break;
-            default:
-                LOG_ECMA(FATAL) << "this branch is unreachable";
-                UNREACHABLE();
-        }
-    }
 };
 
 class Heap {
@@ -213,6 +181,11 @@ public:
         return concurrentMarker_;
     }
 
+    IncrementalMarker *GetIncrementalMarker() const
+    {
+        return incrementalMarker_;
+    }
+
     Marker *GetNonMovableMarker() const
     {
         return nonMovableMarker_;
@@ -289,7 +262,7 @@ public:
      * GC triggers.
      */
 
-    void CollectGarbage(TriggerGCType gcType);
+    void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
 
     void CheckAndTriggerOldGC(size_t size = 0);
 
@@ -313,6 +286,10 @@ public:
     void TryTriggerConcurrentMarking();
     void AdjustBySurvivalRate(size_t originalNewSpaceSize);
     void TriggerConcurrentMarking();
+
+    void TryTriggerIdleCollection();
+    void TryTriggerIncrementalMarking();
+    void CalculateIdleDuration();
 
     /*
      * Wait for existing concurrent marking tasks to be finished (if any).
@@ -402,10 +379,7 @@ public:
     /*
      * Receive callback function to control idletime.
      */
-    void InitializeIdleStatusControl(std::function<void(bool)> callback)
-    {
-        notifyIdleStatusCallback = callback;
-    }
+    inline void InitializeIdleStatusControl(std::function<void(bool)> callback);
 
     void DisableNotifyIdle()
     {
@@ -416,9 +390,20 @@ public:
 
     void EnableNotifyIdle()
     {
-        if (notifyIdleStatusCallback != nullptr) {
+        if (enableIdleGC_ && notifyIdleStatusCallback != nullptr) {
             notifyIdleStatusCallback(false);
         }
+    }
+
+    void SetIdleTask(IdleTaskType task)
+    {
+        idleTask_ = task;
+    }
+
+    void ClearIdleTask()
+    {
+        SetIdleTask(IdleTaskType::NO_TASK);
+        DisableNotifyIdle();
     }
 
     /*
@@ -531,12 +516,23 @@ public:
     {
         return nonNewSpaceNativeBindingSize_;
     }
+
+    void NotifyHeapAliveSizeAfterGC(size_t size)
+    {
+        if (heapAliveSizeAfterGC_ == 0) {
+            heapAliveSizeAfterGC_ = size;
+        } else {
+            heapAliveSizeAfterGC_ = (heapAliveSizeAfterGC_ + size) >> 1;
+        }
+    }
+
+    size_t GetHeapAliveSizeAfterGC()
+    {
+        return heapAliveSizeAfterGC_;
+    }
 private:
-    static constexpr int64_t WAIT_FOR_APP_START_UP = 200;
-    static constexpr int IDLE_TIME_REMARK = 10;
     static constexpr int IDLE_TIME_LIMIT = 15;  // if idle time over 15ms we can do something
-    static constexpr int MIN_OLD_GC_LIMIT = 10000;  // 10s
-    static constexpr int REST_HEAP_GROWTH_LIMIT = 2_MB;
+    static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
     void FatalOutOfMemoryError(size_t size, std::string functionName);
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
@@ -631,6 +627,9 @@ private:
     // Parallel evacuator which evacuates objects from one space to another one.
     ParallelEvacuator *evacuator_ {nullptr};
 
+    // Incremental marker which coordinates actions of GC markers in idle time.
+    IncrementalMarker *incrementalMarker_ {nullptr};
+
     /*
      * Different kinds of markers used by different collectors.
      * Depending on the collector algorithm, some markers can do simple marking
@@ -651,9 +650,7 @@ private:
     bool oldSpaceLimitAdjusted_ {false};
     bool shouldThrowOOMError_ {false};
     bool runningNativeFinalizeCallbacks_ {false};
-    bool enableIdleGC_ {true};
-    bool waitForStartUp_ {true};
-    bool couldIdleGC_ {false};
+    bool enableIdleGC_ {false};
     HeapMode mode_ { HeapMode::NORMAL };
 
     size_t globalSpaceAllocLimit_ {0};
@@ -661,14 +658,11 @@ private:
     size_t semiSpaceCopiedSize_ {0};
     size_t nonNewSpaceNativeBindingSize_{0};
     size_t globalSpaceNativeLimit_ {0};
-    size_t idleOldSpace_ {16_MB};
-    size_t triggerRestIdleSize_ {0};
     MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};
 
     bool clearTaskFinished_ {true};
     os::memory::Mutex waitClearTaskFinishedMutex_;
     os::memory::ConditionVariable waitClearTaskFinishedCV_;
-    int64_t idleTime_ {0};
     uint32_t runningTaskCount_ {0};
     // parallel marker task number.
     uint32_t maxMarkTaskCount_ {0};
@@ -690,9 +684,11 @@ private:
     // The tracker tracking heap object allocation and movement events.
     HeapTracker *tracker_ {nullptr};
 
-    IdleData *idleData_;
     IdleNotifyStatusCallback notifyIdleStatusCallback {nullptr};
 
+    IdleTaskType idleTask_ {IdleTaskType::NO_TASK};
+    float idlePredictDuration_ {0.0f};
+    size_t heapAliveSizeAfterGC_ {0};
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     bool isVerifying_ {false};
 #endif

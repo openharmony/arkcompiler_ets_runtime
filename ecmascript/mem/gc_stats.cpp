@@ -15,243 +15,556 @@
 
 #include "ecmascript/mem/gc_stats.h"
 
+#include <iomanip>
 #include "ecmascript/mem/heap.h"
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/mem.h"
 
+constexpr int DESCRIPTION_LENGTH = 25;
+constexpr int DATA_LENGTH = 8;
+
+#define STATS_DESCRIPTION_FORMAT(description)    \
+    std::left << std::setw(DESCRIPTION_LENGTH) << (description)
+
+#define STATS_DATA_FORMAT(data)    \
+    std::setw(DATA_LENGTH) << (data)
+
 namespace panda::ecmascript {
-void GCStats::PrintStatisticResult(bool force)
+void GCStats::PrintStatisticResult()
 {
     LOG_GC(INFO) << "/******************* GCStats statistic: *******************/";
-    PrintSemiStatisticResult(force);
-    PrintPartialStatisticResult(force);
-    PrintCompressStatisticResult(force);
-    PrintHeapStatisticResult(force);
+    PrintGCSummaryStatistic(GCType::STW_YOUNG_GC);
+    PrintGCSummaryStatistic(GCType::PARTIAL_YOUNG_GC);
+    PrintGCSummaryStatistic(GCType::PARTIAL_OLD_GC);
+    PrintGCSummaryStatistic(GCType::COMPRESS_GC);
+    PrintGCMemoryStatistic();
 }
 
-void GCStats::PrintSemiStatisticResult(bool force)
+void GCStats::PrintGCStatistic()
 {
-    if ((force && semiGCCount_ != 0) || (!force && semiGCCount_ != lastSemiGCCount_)) {
-        lastSemiGCCount_ = semiGCCount_;
-        LOG_GC(INFO) << " STWYoungGC statistic: total semi gc count " << semiGCCount_;
-        LOG_GC(INFO) << " MIN pause time: " << PrintTimeMilliseconds(semiGCMinPause_) << "ms"
-                            << " MAX pause time: " << PrintTimeMilliseconds(semiGCMaxPause_) << "ms"
-                            << " total pause time: " << PrintTimeMilliseconds(semiGCTotalPause_) << "ms"
-                            << " average pause time: " << PrintTimeMilliseconds(semiGCTotalPause_ / semiGCCount_)
-                            << "ms"
-                            << " tatal alive size: " << sizeToMB(semiTotalAliveSize_) << "MB"
-                            << " average alive size: " << sizeToMB(semiTotalAliveSize_ / semiGCCount_) << "MB"
-                            << " tatal commit size: " << sizeToMB(semiTotalCommitSize_) << "MB"
-                            << " average commit size: " << sizeToMB(semiTotalCommitSize_ / semiGCCount_) << "MB"
-                            << " semi aliveRate: " << double(semiTotalAliveSize_) / semiTotalCommitSize_
-                            << " total promote size: " << sizeToMB(semiTotalPromoteSize_) << "MB"
-                            << " average promote size: " << sizeToMB(semiTotalPromoteSize_ / semiGCCount_) << "MB";
+    if (heap_->GetEcmaVM()->GetJSOptions().EnableGCTracer() || CheckIfLongTimePause()) {
+        LOG_GC(INFO) << " [ " << GetGCTypeName() << " ] "
+                        << sizeToMB(recordData_[(uint8_t)RecordData::START_OBJ_SIZE]) << " ("
+                        << sizeToMB(recordData_[(uint8_t)RecordData::START_COMMIT_SIZE]) << ") -> "
+                        << sizeToMB(recordData_[(uint8_t)RecordData::END_OBJ_SIZE]) << " ("
+                        << sizeToMB(recordData_[(uint8_t)RecordData::END_COMMIT_SIZE]) << ") MB, "
+                        << scopeDuration_[Scope::ScopeId::TotalGC] << "(+"
+                        << GetConcurrrentMarkDuration()
+                        << ")ms, " << GCReasonToString();
+
+        // print verbose gc statsistics
+        PrintVerboseGCStatistic();
+    }
+    InitializeRecordList();
+}
+
+const char *GCStats::GetGCTypeName()
+{
+    switch (gcType_) {
+        case GCType::STW_YOUNG_GC:
+            return "STWYoungGC";
+        case GCType::PARTIAL_YOUNG_GC:
+            return "HPP YoungGC";
+        case GCType::PARTIAL_OLD_GC:
+            return "HPP OldGC";
+        case GCType::COMPRESS_GC:
+            return "CompressGC";
+        default:
+            return "UnknownType";
     }
 }
 
-void GCStats::PrintPartialStatisticResult(bool force)
+const char *GCStats::GCReasonToString()
 {
-    if ((force && partialGCCount_ != 0) || (!force && lastOldGCCount_ != partialGCCount_)) {
-        lastOldGCCount_ = partialGCCount_;
-        LOG_GC(INFO) << " PartialGC with non-concurrent mark statistic: total old gc count " << partialGCCount_;
-        LOG_GC(INFO) << " Pause time statistic:: MIN pause time: " << PrintTimeMilliseconds(partialGCMinPause_)
-                            << "ms"
-                            << " MAX pause time: " << PrintTimeMilliseconds(partialGCMaxPause_) << "ms"
-                            << " total pause time: " << PrintTimeMilliseconds(partialGCTotalPause_) << "ms"
-                            << " average pause time: " << PrintTimeMilliseconds(partialGCTotalPause_ / partialGCCount_)
-                            << "ms";
-        if (!force) {
-            PrintHeapStatisticResult(true);
+    switch (reason_) {
+        case GCReason::ALLOCATION_LIMIT:
+            return "Memory reach limit";
+        case GCReason::ALLOCATION_FAILED:
+            return "Allocate object failed";
+        case GCReason::IDLE:
+            return "Idle time task";
+        default:
+            return "Other";
+    }
+}
+
+float GCStats::GetConcurrrentMarkDuration()
+{
+    return concurrentMark_ ? scopeDuration_[Scope::ScopeId::ConcurrentMark] : 0;
+}
+
+void GCStats::PrintVerboseGCStatistic()
+{
+    PrintGCDurationStatistic();
+    PrintGCMemoryStatistic();
+    PrintGCSummaryStatistic();
+}
+
+void GCStats::PrintGCMemoryStatistic()
+{
+    NativeAreaAllocator *nativeAreaAllocator = heap_->GetNativeAreaAllocator();
+    HeapRegionAllocator *heapRegionAllocator = heap_->GetHeapRegionAllocator();
+    LOG_GC(INFO) << "/****************** GC Memory statistic: *****************/";
+    LOG_GC(INFO) << "AllSpaces        used:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetHeapObjectSize())) << "KB"
+                    << "     committed:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetCommittedSize())) << "KB\n"
+                    << "ActiveSemiSpace  used:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetNewSpace()->GetHeapObjectSize())) << "KB"
+                    << "     committed:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetNewSpace()->GetCommittedSize())) << "KB\n"
+                    << "OldSpace         used:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetOldSpace()->GetHeapObjectSize())) << "KB"
+                    << "     committed:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetOldSpace()->GetCommittedSize())) << "KB\n"
+                    << "HugeObjectSpace  used:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetHugeObjectSpace()->GetHeapObjectSize())) << "KB"
+                    << "     committed:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetHugeObjectSpace()->GetCommittedSize())) << "KB\n"
+                    << "NonMovableSpace  used:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetNonMovableSpace()->GetHeapObjectSize())) << "KB"
+                    << "     committed:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetNonMovableSpace()->GetCommittedSize())) << "KB\n"
+                    << "MachineCodeSpace used:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetMachineCodeSpace()->GetHeapObjectSize())) << "KB"
+                    << "     committed:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetMachineCodeSpace()->GetCommittedSize())) << "KB\n"
+                    << "SnapshotSpace    used:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetSnapshotSpace()->GetHeapObjectSize())) << "KB"
+                    << "     committed:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetSnapshotSpace()->GetCommittedSize())) << "KB\n"
+                    << "AppSpawnSpace    used:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetAppSpawnSpace()->GetHeapObjectSize())) << "KB"
+                    << "     committed:"
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetAppSpawnSpace()->GetCommittedSize())) << "KB";
+
+    LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Anno memory usage size:")
+                    << STATS_DATA_FORMAT(sizeToMB(heapRegionAllocator->GetAnnoMemoryUsage())) << "MB\n"
+                    << STATS_DESCRIPTION_FORMAT("Native memory usage size:")
+                    << STATS_DATA_FORMAT(sizeToMB(nativeAreaAllocator->GetNativeMemoryUsage())) << "MB\n"
+                    << STATS_DESCRIPTION_FORMAT("NativeBindingSize:")
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeBindingSize())) << "MB";
+
+    switch (gcType_) {
+        case GCType::STW_YOUNG_GC: {
+            double copiedRate = double(GetRecordData(RecordData::SEMI_ALIVE_SIZE)) /
+                                GetRecordData(RecordData::SEMI_COMMIT_SIZE);
+            double premotedRate = double(GetRecordData(RecordData::SEMI_PROMOTE_SIZE)) /
+                                  GetRecordData(RecordData::SEMI_COMMIT_SIZE);
+            double survivalRate = std::min(copiedRate + premotedRate, 1.0);
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Young copied rate:") << STATS_DATA_FORMAT(copiedRate) << "\n"
+                << STATS_DESCRIPTION_FORMAT("Young promoted rate:") << STATS_DATA_FORMAT(premotedRate) << "\n"
+                << STATS_DESCRIPTION_FORMAT("Young survival rate:") << STATS_DATA_FORMAT(survivalRate);
+            break;
         }
-    }
-
-    if ((force && partialConcurrentMarkGCCount_ != 0) ||
-            (!force && lastOldConcurrentMarkGCCount_ != partialConcurrentMarkGCCount_)) {
-        lastOldConcurrentMarkGCCount_ = partialConcurrentMarkGCCount_;
-        LOG_GC(INFO) << " PartialCollector with concurrent mark statistic: total old gc count "
-                            << partialConcurrentMarkGCCount_;
-        LOG_GC(INFO) << " Pause time statistic:: Current GC pause time: "
-                            << PrintTimeMilliseconds(partialConcurrentMarkGCPauseTime_) << "ms"
-                            << " Concurrent mark pause time: " << PrintTimeMilliseconds(partialConcurrentMarkMarkPause_)
-                            << "ms"
-                            << " Concurrent mark wait time: " << PrintTimeMilliseconds(partialConcurrentMarkWaitPause_)
-                            << "ms"
-                            << " Remark pause time: " << PrintTimeMilliseconds(partialConcurrentMarkRemarkPause_)
-                            << "ms"
-                            << " Evacuate pause time: " << PrintTimeMilliseconds(partialConcurrentMarkEvacuatePause_)
-                            << "ms"
-                            << " MIN pause time: " << PrintTimeMilliseconds(partialConcurrentMarkGCMinPause_) << "ms"
-                            << " MAX pause time: " << PrintTimeMilliseconds(partialConcurrentMarkGCMaxPause_) << "ms"
-                            << " total pause time: " << PrintTimeMilliseconds(partialConcurrentMarkGCTotalPause_)
-                            << "ms"
-                            << " average pause time: "
-                            << PrintTimeMilliseconds(partialConcurrentMarkGCTotalPause_ / partialConcurrentMarkGCCount_)
-                            << "ms";
-        if (!force) {
-            PrintHeapStatisticResult(true);
+        case GCType::PARTIAL_YOUNG_GC: {
+            double copiedRate = double(GetRecordData(RecordData::YOUNG_ALIVE_SIZE)) /
+                                GetRecordData(RecordData::YOUNG_COMMIT_SIZE);
+            double premotedRate = double(GetRecordData(RecordData::YOUNG_PROMOTE_SIZE)) /
+                                  GetRecordData(RecordData::YOUNG_COMMIT_SIZE);
+            double survivalRate = std::min(copiedRate + premotedRate, 1.0);
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Young copied rate:") << STATS_DATA_FORMAT(copiedRate) << "\n"
+                << STATS_DESCRIPTION_FORMAT("Young promoted rate:") << STATS_DATA_FORMAT(premotedRate) << "\n"
+                << STATS_DESCRIPTION_FORMAT("Young survival rate:") << STATS_DATA_FORMAT(survivalRate);
+            break;
         }
+        case GCType::PARTIAL_OLD_GC: {
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Heap alive rate:")
+                << STATS_DATA_FORMAT(double(GetRecordData(RecordData::OLD_ALIVE_SIZE)) /
+                                     GetRecordData(RecordData::OLD_COMMIT_SIZE));
+            break;
+        }
+        case GCType::COMPRESS_GC: {
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Heap alive rate:")
+                << STATS_DATA_FORMAT(double(GetRecordData(RecordData::COMPRESS_ALIVE_SIZE)) /
+                                     GetRecordData(RecordData::COMPRESS_COMMIT_SIZE));
+            break;
+        }
+        default:
+            break;
     }
 }
 
-void GCStats::PrintCompressStatisticResult(bool force)
+void GCStats::PrintGCDurationStatistic()
 {
-    if ((force && fullGCCount_ != 0) || (!force && fullGCCount_ != lastFullGCCount_)) {
-        lastFullGCCount_ = fullGCCount_;
-        LOG_GC(INFO) << " FullGC statistic: total compress gc count " << fullGCCount_;
-        LOG_GC(INFO)
-            << " MIN pause time: " << PrintTimeMilliseconds(fullGCMinPause_) << "ms"
-            << " MAX pause time: " << PrintTimeMilliseconds(fullGCMaxPause_) << "ms"
-            << " total pause time: " << PrintTimeMilliseconds(fullGCTotalPause_) << "ms"
-            << " average pause time: " << PrintTimeMilliseconds(fullGCTotalPause_ / fullGCCount_) << "ms"
-            << " young and old total alive size: " << sizeToMB(compressYoungAndOldAliveSize_) << "MB"
-            << " young and old average alive size: " << sizeToMB(compressYoungAndOldAliveSize_ / fullGCCount_)
-            << "MB"
-            << " young total commit size: " << sizeToMB(compressYoungCommitSize_) << "MB"
-            << " old total commit size: " << sizeToMB(compressOldCommitSize_) << "MB"
-            << " young and old average commit size: "
-            << sizeToMB((compressYoungCommitSize_ + compressOldCommitSize_) / fullGCCount_) << "MB"
-            << " young and old free rate: "
-            << 1 - float(compressYoungAndOldAliveSize_) / (compressYoungCommitSize_ + compressOldCommitSize_)
-            << " non move total free size: " << sizeToMB(compressNonMoveTotalFreeSize_) << "MB"
-            << " non move total commit size: " << sizeToMB(compressNonMoveTotalCommitSize_) << "MB"
-            << " non move free rate: " << float(compressNonMoveTotalFreeSize_) / compressNonMoveTotalCommitSize_;
+    LOG_GC(INFO) << "/***************** GC Duration statistic: ****************/";
+    switch (gcType_) {
+        case GCType::STW_YOUNG_GC:
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("TotalGC:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::TotalGC]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Initialize:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Initialize]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Mark:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Mark]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("MarkRoots:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::MarkRoots]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ProcessMarkStack:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ProcessMarkStack]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Sweep:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Finish:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms";
+            break;
+        case GCType::PARTIAL_YOUNG_GC:
+        case GCType::PARTIAL_OLD_GC:
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("TotalGC:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::TotalGC]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Initialize:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Initialize]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Mark:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Mark]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("MarkRoots:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::MarkRoots]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ConcurrentMark pause:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ConcurrentMark]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("WaitConcurrentMarkFinish:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::WaitConcurrentMarkFinished]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ProcessMarkStack:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ProcessMarkStack]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ReMark:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ReMark]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Sweep:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ClearNativeObject:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ClearNativeObject]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Evacuate:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Evacuate]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("UpdateReference:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::UpdateReference]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("EvacuateSpace:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::EvacuateSpace]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Finish:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms";
+            break;
+        case GCType::COMPRESS_GC:
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("TotalGC:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::TotalGC]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Initialize:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Initialize]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Mark:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Mark]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("MarkRoots:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::MarkRoots]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ProcessMarkStack:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ProcessMarkStack]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Sweep:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Finish:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms";
+            break;
+        default:
+            break;
     }
 }
 
-void GCStats::PrintHeapStatisticResult(bool force)
+bool GCStats::CheckIfNeedPrint(GCType type)
 {
-    if (force && heap_ != nullptr) {
-        NativeAreaAllocator *nativeAreaAllocator = heap_->GetNativeAreaAllocator();
-        HeapRegionAllocator *heapRegionAllocator = heap_->GetHeapRegionAllocator();
-        LOG_GC(INFO) << "/******************* Memory statistic: *******************/";
-        LOG_GC(INFO) << " Anno memory usage size: " << sizeToMB(heapRegionAllocator->GetAnnoMemoryUsage())
-                            << "MB"
-                            << " anno memory max usage size: " << sizeToMB(heapRegionAllocator->GetMaxAnnoMemoryUsage())
-                            << "MB"
-                            << " native memory usage size: " << sizeToMB(nativeAreaAllocator->GetNativeMemoryUsage())
-                            << "MB"
-                            << " native memory max usage size: "
-                            << sizeToMB(nativeAreaAllocator->GetMaxNativeMemoryUsage()) << "MB";
-        LOG_GC(INFO) << " Semi space commit size: " << sizeToMB(heap_->GetNewSpace()->GetCommittedSize()) << "MB"
-                            << " semi space heap object size: " << sizeToMB(heap_->GetNewSpace()->GetHeapObjectSize())
-                            << "MB"
-                            << " old space commit size: "
-                            << sizeToMB(heap_->GetOldSpace()->GetCommittedSize()) << "MB"
-                            << " old space heap object size: " << sizeToMB(heap_->GetOldSpace()->GetHeapObjectSize())
-                            << "MB"
-                            << " non move space commit size: "
-                            << sizeToMB(heap_->GetNonMovableSpace()->GetCommittedSize()) << "MB"
-                            << " huge object space commit size: "
-                            << sizeToMB(heap_->GetHugeObjectSpace()->GetCommittedSize()) << "MB"
-                            <<  ", AppSpawn space commit size: "
-                            << sizeToMB(heap_->GetAppSpawnSpace()->GetCommittedSize()) << "MB";
+    uint32_t gcCount = 0;
+    switch (type) {
+        case GCType::STW_YOUNG_GC:
+            gcCount = GetRecordData(RecordData::SEMI_COUNT);
+            break;
+        case GCType::PARTIAL_YOUNG_GC:
+            gcCount = GetRecordData(RecordData::YOUNG_COUNT);
+            break;
+        case GCType::PARTIAL_OLD_GC:
+            gcCount = GetRecordData(RecordData::OLD_COUNT);
+            break;
+        case GCType::COMPRESS_GC:
+            gcCount = GetRecordData(RecordData::COMPRESS_COUNT);
+            break;
+        default:
+            break;
     }
+
+    if (gcCount > 0) {
+        return true;
+    }
+    return false;
 }
 
-void GCStats::StatisticSTWYoungGC(Duration time, size_t aliveSize, size_t promotedSize, size_t commitSize)
+void GCStats::PrintGCSummaryStatistic(GCType type)
 {
-    auto timeInMS = TimeToMicroseconds(time);
-    if (semiGCCount_ == 0) {
-        semiGCMinPause_ = timeInMS;
-        semiGCMaxPause_ = timeInMS;
+    if (type != GCType::START && !CheckIfNeedPrint(type)) {
+        return;
     } else {
-        semiGCMinPause_ = std::min(semiGCMinPause_, timeInMS);
-        semiGCMaxPause_ = std::max(semiGCMaxPause_, timeInMS);
+        type = type == GCType::START ? gcType_ : type;
     }
-    semiGCTotalPause_ += timeInMS;
-    semiTotalAliveSize_ += aliveSize;
-    semiTotalCommitSize_ += commitSize;
-    semiTotalPromoteSize_ += promotedSize;
-    semiGCCount_++;
-    currentGcType_ = "STWYoungGC";
-    currentPauseTime_ = timeInMS / THOUSAND;
-}
-
-void GCStats::StatisticPartialGC(bool concurrentMark, Duration time, size_t freeSize)
-{
-    auto timeInMS = TimeToMicroseconds(time);
-    if (concurrentMark) {
-        timeInMS += partialConcurrentMarkMarkPause_;
-        timeInMS += partialConcurrentMarkWaitPause_;
-        if (partialConcurrentMarkGCCount_ == 0) {
-            partialConcurrentMarkGCMinPause_ = timeInMS;
-            partialConcurrentMarkGCMaxPause_ = timeInMS;
-        } else {
-            partialConcurrentMarkGCMinPause_ = std::min(partialConcurrentMarkGCMinPause_, timeInMS);
-            partialConcurrentMarkGCMaxPause_ = std::max(partialConcurrentMarkGCMaxPause_, timeInMS);
+    LOG_GC(INFO) << "/***************** GC summary statistic: *****************/";
+    switch (type) {
+        case GCType::STW_YOUNG_GC: {
+            double copiedRate = double(GetRecordData(RecordData::SEMI_TOTAL_ALIVE)) /
+                                GetRecordData(RecordData::SEMI_TOTAL_COMMIT);
+            double promotedRate = double(GetRecordData(RecordData::SEMI_TOTAL_PROMOTE)) /
+                                  GetRecordData(RecordData::SEMI_TOTAL_COMMIT);
+            double survivalRate = std::min(copiedRate + promotedRate, 1.0);
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("STWYoungGC occurs count")
+                << STATS_DATA_FORMAT(GetRecordData(RecordData::SEMI_COUNT)) << "\n"
+                << STATS_DESCRIPTION_FORMAT("STWYoungGC max pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::SEMI_MAX_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("STWYoungGC min pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::SEMI_MIN_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("STWYoungGC average pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::SEMI_TOTAL_PAUSE) /
+                                     GetRecordData(RecordData::SEMI_COUNT)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("Young average copied rate:") << STATS_DATA_FORMAT(copiedRate) << "\n"
+                << STATS_DESCRIPTION_FORMAT("Young average promoted rate:") << STATS_DATA_FORMAT(promotedRate) << "\n"
+                << STATS_DESCRIPTION_FORMAT("Young average survival rate:") << STATS_DATA_FORMAT(survivalRate);
+            break;
         }
-        partialConcurrentMarkGCPauseTime_ = timeInMS;
-        partialConcurrentMarkGCTotalPause_ += timeInMS;
-        partialOldSpaceConcurrentMarkFreeSize_ = freeSize;
-        partialConcurrentMarkGCCount_++;
-    } else {
-        if (partialGCCount_ == 0) {
-            partialGCMinPause_ = timeInMS;
-            partialGCMaxPause_ = timeInMS;
-        } else {
-            partialGCMinPause_ = std::min(partialGCMinPause_, timeInMS);
-            partialGCMaxPause_ = std::max(partialGCMaxPause_, timeInMS);
+        case GCType::PARTIAL_YOUNG_GC: {
+            double copiedRate = double(GetRecordData(RecordData::YOUNG_TOTAL_ALIVE)) /
+                                GetRecordData(RecordData::YOUNG_TOTAL_COMMIT);
+            double promotedRate = double(GetRecordData(RecordData::YOUNG_TOTAL_PROMOTE)) /
+                                  GetRecordData(RecordData::YOUNG_TOTAL_COMMIT);
+            double survivalRate =  std::min(copiedRate + promotedRate, 1.0);
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("YoungGC occurs count")
+                << STATS_DATA_FORMAT(GetRecordData(RecordData::YOUNG_COUNT)) << "\n"
+                << STATS_DESCRIPTION_FORMAT("YoungGC max pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::YOUNG_MAX_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("YoungGC min pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::YOUNG_MIN_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("YoungGC average pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::YOUNG_TOTAL_PAUSE) /
+                                     GetRecordData(RecordData::YOUNG_COUNT)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("Young average copied rate:") << STATS_DATA_FORMAT(copiedRate) << "\n"
+                << STATS_DESCRIPTION_FORMAT("Young average promoted rate:") << STATS_DATA_FORMAT(promotedRate) << "\n"
+                << STATS_DESCRIPTION_FORMAT("Young average survival rate:") << STATS_DATA_FORMAT(survivalRate);
+            break;
         }
-        partialGCTotalPause_ += timeInMS;
-        partialOldSpaceFreeSize_ = freeSize;
-        partialGCCount_++;
-    }
-    currentGcType_ = "PartialGC";
-    currentPauseTime_ = timeInMS / THOUSAND;
-}
-
-void GCStats::StatisticFullGC(Duration time, size_t youngAndOldAliveSize, size_t youngCommitSize,
-                              size_t oldCommitSize, size_t nonMoveSpaceFreeSize,
-                              size_t nonMoveSpaceCommitSize)
-{
-    auto timeInMS = TimeToMicroseconds(time);
-    if (fullGCCount_ == 0) {
-        fullGCMinPause_ = timeInMS;
-        fullGCMaxPause_ = timeInMS;
-    } else {
-        fullGCMinPause_ = std::min(fullGCMinPause_, timeInMS);
-        fullGCMaxPause_ = std::max(fullGCMaxPause_, timeInMS);
-    }
-    fullGCTotalPause_ += timeInMS;
-    compressYoungAndOldAliveSize_ += youngAndOldAliveSize;
-    compressYoungCommitSize_ += youngCommitSize;
-    compressOldCommitSize_ += oldCommitSize;
-    compressNonMoveTotalFreeSize_ += nonMoveSpaceFreeSize;
-    compressNonMoveTotalCommitSize_ += nonMoveSpaceCommitSize;
-    fullGCCount_++;
-    currentGcType_ = "FullGC";
-    currentPauseTime_ = timeInMS / THOUSAND;
-}
-
-void GCStats::CheckIfLongTimePause()
-{
-    if (currentPauseTime_ > longPauseTime_) {
-        LOG_GC(INFO) << "Has checked a long time gc; gc type = " << currentGcType_ << "; pause time = "
-                            << currentPauseTime_ << "ms";
-        LOG_GC(INFO) << "/******************* GCStats statistic: *******************/";
-        PrintSemiStatisticResult(true);
-        PrintPartialStatisticResult(true);
-        PrintCompressStatisticResult(true);
-        PrintHeapStatisticResult(true);
+        case GCType::PARTIAL_OLD_GC: {
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("OldGC occurs count")
+                << STATS_DATA_FORMAT(GetRecordData(RecordData::OLD_COUNT)) << "\n"
+                << STATS_DESCRIPTION_FORMAT("OldGC max pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::OLD_MAX_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("OldGC min pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::OLD_MIN_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("OldGC average pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::OLD_TOTAL_PAUSE) /
+                                     GetRecordData(RecordData::OLD_COUNT)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("Heap average alive rate:")
+                << STATS_DATA_FORMAT(double(GetRecordData(RecordData::OLD_TOTAL_ALIVE)) /
+                                     GetRecordData(RecordData::OLD_TOTAL_COMMIT));
+            break;
+        }
+        case GCType::COMPRESS_GC: {
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("CompressGC occurs count")
+                << STATS_DATA_FORMAT(GetRecordData(RecordData::COMPRESS_COUNT)) << "\n"
+                << STATS_DESCRIPTION_FORMAT("CompressGC max pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::COMPRESS_MAX_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("CompressGC min pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::COMPRESS_MIN_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("CompressGC average pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::COMPRESS_TOTAL_PAUSE) /
+                                     GetRecordData(RecordData::COMPRESS_COUNT)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("Heap average alive rate:")
+                << STATS_DATA_FORMAT(double(GetRecordData(RecordData::COMPRESS_TOTAL_ALIVE)) /
+                                     GetRecordData(RecordData::COMPRESS_TOTAL_COMMIT));
+            break;
+        }
+        default:
+            break;
     }
 }
 
-void GCStats::StatisticConcurrentMark(Duration time)
+void GCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
 {
-    partialConcurrentMarkMarkPause_ = TimeToMicroseconds(time);
+    SetRecordData(RecordData::START_OBJ_SIZE, heap_->GetHeapObjectSize());
+    SetRecordData(RecordData::START_COMMIT_SIZE, heap_->GetCommittedSize());
+    SetRecordData(RecordData::START_YOUNG_OBJ_SIZE, heap_->GetNewSpace()->GetHeapObjectSize());
+    SetRecordData(RecordData::START_NATIVE_POINTER_NUM, heap_->GetEcmaVM()->GetNativePointerListSize());
+    gcType_ = GetGCType(gcType);
+    reason_ = reason;
+
+    switch (gcType_) {
+        case GCType::STW_YOUNG_GC: {
+            size_t semiCommitSize = heap_->GetNewSpace()->GetCommittedSize();
+            SetRecordData(RecordData::SEMI_COMMIT_SIZE, semiCommitSize);
+            IncreaseRecordData(RecordData::SEMI_TOTAL_COMMIT, semiCommitSize);
+            break;
+        }
+        case GCType::PARTIAL_YOUNG_GC: {
+            size_t youngCommitSize = heap_->GetNewSpace()->GetCommittedSize();
+            SetRecordData(RecordData::YOUNG_COMMIT_SIZE, youngCommitSize);
+            IncreaseRecordData(RecordData::YOUNG_TOTAL_COMMIT, youngCommitSize);
+            break;
+        }
+        case GCType::PARTIAL_OLD_GC: {
+            size_t oldCommitSize = heap_->GetCommittedSize();
+            SetRecordData(RecordData::OLD_COMMIT_SIZE, oldCommitSize);
+            IncreaseRecordData(RecordData::OLD_TOTAL_COMMIT, oldCommitSize);
+            break;
+        }
+        case GCType::COMPRESS_GC: {
+            size_t compressCommitSize = heap_->GetCommittedSize();
+            SetRecordData(RecordData::COMPRESS_COMMIT_SIZE, compressCommitSize);
+            IncreaseRecordData(RecordData::COMPRESS_TOTAL_COMMIT, compressCommitSize);
+            break;
+        }
+        default:
+            break;
+    }
 }
 
-void GCStats::StatisticConcurrentMarkWait(Duration time)
+void GCStats::RecordStatisticAfterGC()
 {
-    partialConcurrentMarkWaitPause_ = TimeToMicroseconds(time);
+    SetRecordData(RecordData::END_OBJ_SIZE, heap_->GetHeapObjectSize());
+    SetRecordData(RecordData::END_COMMIT_SIZE, heap_->GetCommittedSize());
+
+    float duration = scopeDuration_[Scope::ScopeId::TotalGC];
+    switch (gcType_) {
+        case GCType::STW_YOUNG_GC: {
+            if (GetRecordData(RecordData::SEMI_COUNT) == 0) {
+                SetRecordDuration(RecordDuration::SEMI_MIN_PAUSE, duration);
+                SetRecordDuration(RecordDuration::SEMI_MAX_PAUSE, duration);
+            } else {
+                SetRecordDuration(RecordDuration::SEMI_MIN_PAUSE,
+                    std::min(GetRecordDuration(RecordDuration::SEMI_MIN_PAUSE), duration));
+                SetRecordDuration(RecordDuration::SEMI_MAX_PAUSE,
+                    std::max(GetRecordDuration(RecordDuration::SEMI_MAX_PAUSE), duration));
+            }
+            IncreaseRecordData(RecordData::SEMI_COUNT);
+            IncreaseRecordDuration(RecordDuration::SEMI_TOTAL_PAUSE, duration);
+            size_t semiAliveSize = heap_->GetNewSpace()->GetHeapObjectSize();
+            SetRecordData(RecordData::SEMI_ALIVE_SIZE, semiAliveSize);
+            IncreaseRecordData(RecordData::SEMI_TOTAL_ALIVE, semiAliveSize);
+            size_t promotedSize = heap_->GetPromotedSize();
+            SetRecordData(RecordData::SEMI_PROMOTE_SIZE, promotedSize);
+            IncreaseRecordData(RecordData::SEMI_TOTAL_PROMOTE, promotedSize);
+            break;
+        }
+        case GCType::PARTIAL_YOUNG_GC: {
+            if (GetRecordData(RecordData::YOUNG_COUNT) == 0) {
+                SetRecordDuration(RecordDuration::YOUNG_MIN_PAUSE, duration);
+                SetRecordDuration(RecordDuration::YOUNG_MAX_PAUSE, duration);
+            } else {
+                SetRecordDuration(RecordDuration::YOUNG_MIN_PAUSE,
+                    std::min(GetRecordDuration(RecordDuration::YOUNG_MIN_PAUSE), duration));
+                SetRecordDuration(RecordDuration::YOUNG_MAX_PAUSE,
+                    std::max(GetRecordDuration(RecordDuration::YOUNG_MAX_PAUSE), duration));
+            }
+            IncreaseRecordData(RecordData::YOUNG_COUNT);
+            float concurrentMarkDuration = scopeDuration_[Scope::ScopeId::ConcurrentMark];
+            IncreaseRecordDuration(RecordDuration::YOUNG_TOTAL_PAUSE, duration + concurrentMarkDuration);
+            size_t youngAliveSize = heap_->GetNewSpace()->GetHeapObjectSize();
+            SetRecordData(RecordData::YOUNG_ALIVE_SIZE, youngAliveSize);
+            IncreaseRecordData(RecordData::YOUNG_TOTAL_ALIVE, youngAliveSize);
+            size_t promotedSize = heap_->GetPromotedSize();
+            SetRecordData(RecordData::YOUNG_PROMOTE_SIZE, promotedSize);
+            IncreaseRecordData(RecordData::YOUNG_TOTAL_PROMOTE, promotedSize);
+            break;
+        }
+        case GCType::PARTIAL_OLD_GC: {
+            if (GetRecordData(RecordData::OLD_COUNT) == 0) {
+                SetRecordDuration(RecordDuration::OLD_MIN_PAUSE, duration);
+                SetRecordDuration(RecordDuration::OLD_MAX_PAUSE, duration);
+            } else {
+                SetRecordDuration(RecordDuration::OLD_MIN_PAUSE,
+                    std::min(GetRecordDuration(RecordDuration::OLD_MIN_PAUSE), duration));
+                SetRecordDuration(RecordDuration::OLD_MAX_PAUSE,
+                    std::max(GetRecordDuration(RecordDuration::OLD_MAX_PAUSE), duration));
+            }
+            IncreaseRecordData(RecordData::OLD_COUNT);
+            float concurrentMarkDuration = scopeDuration_[Scope::ScopeId::ConcurrentMark];
+            IncreaseRecordDuration(RecordDuration::OLD_TOTAL_PAUSE, duration + concurrentMarkDuration);
+            size_t oldAliveSize = heap_->GetHeapObjectSize();
+            SetRecordData(RecordData::OLD_ALIVE_SIZE, oldAliveSize);
+            IncreaseRecordData(RecordData::OLD_TOTAL_ALIVE, oldAliveSize);
+            break;
+        }
+        case GCType::COMPRESS_GC: {
+            if (GetRecordData(RecordData::COMPRESS_COUNT) == 0) {
+                SetRecordDuration(RecordDuration::COMPRESS_MIN_PAUSE, duration);
+                SetRecordDuration(RecordDuration::COMPRESS_MAX_PAUSE, duration);
+            } else {
+                SetRecordDuration(RecordDuration::COMPRESS_MIN_PAUSE,
+                    std::min(GetRecordDuration(RecordDuration::COMPRESS_MIN_PAUSE), duration));
+                SetRecordDuration(RecordDuration::COMPRESS_MAX_PAUSE,
+                    std::max(GetRecordDuration(RecordDuration::COMPRESS_MAX_PAUSE), duration));
+            }
+            IncreaseRecordData(RecordData::COMPRESS_COUNT);
+            IncreaseRecordDuration(RecordDuration::COMPRESS_TOTAL_PAUSE, duration);
+            size_t compressAliveSize = heap_->GetHeapObjectSize();
+            SetRecordData(RecordData::COMPRESS_ALIVE_SIZE, compressAliveSize);
+            IncreaseRecordData(RecordData::COMPRESS_TOTAL_ALIVE, compressAliveSize);
+            break;
+        }
+        default:
+            break;
+    }
+    RecordGCSpeed();
 }
 
-void GCStats::StatisticConcurrentEvacuate(Duration time)
+void GCStats::RecordGCSpeed()
 {
-    partialConcurrentMarkEvacuatePause_ = TimeToMicroseconds(time);
+    double survivalRate = GetAvgSurvivalRate();
+    size_t clearNativeSpeed = GetRecordData(RecordData::START_NATIVE_POINTER_NUM) /
+                              scopeDuration_[Scope::ScopeId::ClearNativeObject];
+
+    if (gcType_ == GCType::PARTIAL_YOUNG_GC) {
+        gcSpeed_[(uint8_t)SpeedData::MARK_SPEED] =
+            GetRecordData(RecordData::START_YOUNG_OBJ_SIZE) / scopeDuration_[Scope::ScopeId::Mark];
+        size_t evacuateSpeed = survivalRate * GetRecordData(RecordData::START_YOUNG_OBJ_SIZE) /
+                               scopeDuration_[Scope::ScopeId::Evacuate];
+        gcSpeed_[(uint8_t)SpeedData::EVACUATE_SPEED] =
+            (evacuateSpeed + gcSpeed_[(uint8_t)SpeedData::EVACUATE_SPEED]) / 2;  // 2 means half
+        gcSpeed_[(uint8_t)SpeedData::YOUNG_CLEAR_NATIVE_OBJ_SPEED] =
+            (clearNativeSpeed + gcSpeed_[(uint8_t)SpeedData::YOUNG_CLEAR_NATIVE_OBJ_SPEED]) / 2;  // 2 means half
+    } else if (gcType_ == GCType::PARTIAL_OLD_GC) {
+        gcSpeed_[(uint8_t)SpeedData::MARK_SPEED] =
+            GetRecordData(RecordData::START_OBJ_SIZE) / scopeDuration_[Scope::ScopeId::Mark];
+        size_t sweepSpeed = GetRecordData(RecordData::START_OBJ_SIZE) / scopeDuration_[Scope::ScopeId::Sweep];
+        gcSpeed_[(uint8_t)SpeedData::SWEEP_SPEED] =
+            (sweepSpeed + gcSpeed_[(uint8_t)SpeedData::SWEEP_SPEED]) / 2;  // 2 means half
+        gcSpeed_[(uint8_t)SpeedData::OLD_CLEAR_NATIVE_OBJ_SPEED] =
+            (clearNativeSpeed + gcSpeed_[(uint8_t)SpeedData::OLD_CLEAR_NATIVE_OBJ_SPEED]) / 2;  // 2 means half
+
+        size_t evacuateSpaceSpeed = (survivalRate * GetRecordData(RecordData::START_YOUNG_OBJ_SIZE) +
+            GetRecordData(RecordData::COLLECT_REGION_SET_SIZE)) / scopeDuration_[Scope::ScopeId::EvacuateSpace];
+        gcSpeed_[(uint8_t)SpeedData::OLD_EVACUATE_SPACE_SPEED] =
+            (evacuateSpaceSpeed + gcSpeed_[(uint8_t)SpeedData::OLD_EVACUATE_SPACE_SPEED]) / 2;  // 2 means half
+    }
+
+    size_t updateReferenceSpeed = GetRecordData(RecordData::START_OBJ_SIZE) /
+                                  scopeDuration_[Scope::ScopeId::UpdateReference];
+    gcSpeed_[(uint8_t)SpeedData::UPDATE_REFERENCE_SPEED] =
+        (updateReferenceSpeed + gcSpeed_[(uint8_t)SpeedData::UPDATE_REFERENCE_SPEED]) / 2;  // 2 means half
 }
 
-void GCStats::StatisticConcurrentRemark(Duration time)
+GCType GCStats::GetGCType(TriggerGCType gcType)
 {
-    partialConcurrentMarkRemarkPause_ = TimeToMicroseconds(time);
+    if (!heap_->GetJSThread()->IsReadyToMark()) {
+        return heap_->IsFullMark() ? GCType::PARTIAL_OLD_GC : GCType::PARTIAL_YOUNG_GC;
+    }
+    switch (gcType) {
+        case TriggerGCType::YOUNG_GC:
+            return GCType::PARTIAL_YOUNG_GC;
+        case TriggerGCType::OLD_GC:
+            return GCType::PARTIAL_OLD_GC;
+        case TriggerGCType::FULL_GC:
+            return GCType::COMPRESS_GC;
+        default:
+            return GCType::OTHER;
+    }
+}
+
+void GCStats::InitializeRecordList()
+{
+    for (float &duration : scopeDuration_) {
+        duration = 0.0f;
+    }
+    for (int idx = 0; idx <= GetRecordDataIndex(RecordData::END_RECORD_OVERWRITE); idx++) {
+        recordData_[idx] = 0;
+    }
+    concurrentMark_ = false;
+}
+
+bool GCStats::CheckIfLongTimePause()
+{
+    if (scopeDuration_[Scope::ScopeId::TotalGC] > longPauseTime_) {
+        LOG_GC(INFO) << "Has checked a long time gc";
+        return true;
+    }
+    return false;
 }
 }  // namespace panda::ecmascript

@@ -96,6 +96,11 @@ public:
     {
         return enableMarkType_ == EnableConcurrentMarkType::CONFIG_DISABLE;
     }
+
+    bool IsTriggeredConcurrentMark() const
+    {
+        return isConcurrentMarking_;
+    }
     void Mark();
     void Finish();
     void ReMark();
@@ -154,6 +159,7 @@ private:
 
     bool notifyMarkingFinished_ {false};         // notify js-thread that marking is finished and sweeping is needed
     bool vmThreadWaitMarkingFinished_ {false};   // jsMainThread waiting for concurrentGC FINISHED
+    bool isConcurrentMarking_ {false};
     os::memory::Mutex waitMarkingFinishedMutex_;
     os::memory::ConditionVariable waitMarkingFinishedCV_;
 };

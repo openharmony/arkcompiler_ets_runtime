@@ -338,7 +338,7 @@ EcmaVM::~EcmaVM()
 
     if (gcStats_ != nullptr) {
         if (options_.EnableGCStatsPrint()) {
-            gcStats_->PrintStatisticResult(true);
+            gcStats_->PrintStatisticResult();
         }
         chunk_.Delete(gcStats_);
         gcStats_ = nullptr;
@@ -844,9 +844,9 @@ bool EcmaVM::ExecutePromisePendingJob()
     return false;
 }
 
-void EcmaVM::CollectGarbage(TriggerGCType gcType) const
+void EcmaVM::CollectGarbage(TriggerGCType gcType, GCReason reason) const
 {
-    heap_->CollectGarbage(gcType);
+    heap_->CollectGarbage(gcType, reason);
 }
 
 void EcmaVM::StartHeapTracking(HeapTracker *tracker)

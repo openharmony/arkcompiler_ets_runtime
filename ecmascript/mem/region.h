@@ -449,6 +449,11 @@ public:
         return aliveObject_ > MOST_OBJECT_ALIVE_THRESHOLD_PERCENT * GetSize();
     }
 
+    bool BelowCompressThreasholdAlive() const
+    {
+        return aliveObject_ < COMPRESS_THREASHOLD_PERCENT * GetSize();
+    }
+
     void ResetWasted()
     {
         wasted_ = 0;
@@ -546,8 +551,11 @@ public:
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(PackedData), PackedData::SizeArch32, PackedData::SizeArch64);
 
-private:
     static constexpr double MOST_OBJECT_ALIVE_THRESHOLD_PERCENT = 0.8;
+    static constexpr double AVERAGE_REGION_EVACUATE_SIZE = (1 - MOST_OBJECT_ALIVE_THRESHOLD_PERCENT) *
+                                                           DEFAULT_REGION_SIZE;
+private:
+    static constexpr double COMPRESS_THREASHOLD_PERCENT = 0.5;
 
     RememberedSet *CreateRememberedSet();
     RememberedSet *GetOrCreateCrossRegionRememberedSet();

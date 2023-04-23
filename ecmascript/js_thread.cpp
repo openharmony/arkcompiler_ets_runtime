@@ -494,7 +494,7 @@ bool JSThread::CheckSafepoint()
         gcTriggered = true;
     }
 #endif
-    if (IsMarkFinished()) {
+    if (IsMarkFinished() && GetEcmaVM()->GetHeap()->GetConcurrentMarker()->IsTriggeredConcurrentMark()) {
         auto heap = GetEcmaVM()->GetHeap();
         heap->GetConcurrentMarker()->HandleMarkingFinished();
         gcTriggered = true;

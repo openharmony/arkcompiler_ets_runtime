@@ -57,16 +57,15 @@ void ConcurrentMarker::EnableConcurrentMarking(EnableConcurrentMarkType type)
 
 void ConcurrentMarker::Mark()
 {
+    TRACE_GC(GCStats::Scope::ScopeId::ConcurrentMark, heap_->GetEcmaVM()->GetEcmaGCStats());
     LOG_GC(DEBUG) << "ConcurrentMarker: Concurrent Marking Begin";
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ConcurrentMarker::Mark");
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ConcurrentMarking);
-    ClockScope scope;
     InitializeMarking();
     Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<MarkerTask>(heap_->GetJSThread()->GetThreadId(), heap_));
     if (!heap_->IsFullMark() && heap_->IsParallelGCEnabled()) {
         heap_->PostParallelGCTask(ParallelGCTaskPhase::CONCURRENT_HANDLE_OLD_TO_NEW_TASK);
     }
-    heap_->GetEcmaVM()->GetEcmaGCStats()->StatisticConcurrentMark(scope.GetPauseTime());
 }
 
 void ConcurrentMarker::Finish()
@@ -76,9 +75,9 @@ void ConcurrentMarker::Finish()
 
 void ConcurrentMarker::ReMark()
 {
+    TRACE_GC(GCStats::Scope::ScopeId::ReMark, heap_->GetEcmaVM()->GetEcmaGCStats());
     LOG_GC(DEBUG) << "ConcurrentMarker: Remarking Begin";
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ReMarking);
-    ClockScope scope;
     Marker *nonMovableMarker = heap_->GetNonMovableMarker();
     nonMovableMarker->MarkRoots(MAIN_THREAD_INDEX);
     if (!heap_->IsFullMark() && !heap_->IsParallelGCEnabled()) {
@@ -88,14 +87,14 @@ void ConcurrentMarker::ReMark()
         nonMovableMarker->ProcessMarkStack(MAIN_THREAD_INDEX);
     }
     heap_->WaitRunningTaskFinished();
-    heap_->GetEcmaVM()->GetEcmaGCStats()->StatisticConcurrentRemark(scope.GetPauseTime());
 }
 
 void ConcurrentMarker::HandleMarkingFinished()  // js-thread wait for sweep
 {
     os::memory::LockHolder lock(waitMarkingFinishedMutex_);
     if (notifyMarkingFinished_) {
-        heap_->CollectGarbage(heap_->IsFullMark() ? TriggerGCType::OLD_GC : TriggerGCType::YOUNG_GC);
+        heap_->CollectGarbage(heap_->IsFullMark() ? TriggerGCType::OLD_GC : TriggerGCType::YOUNG_GC,
+                              GCReason::ALLOCATION_LIMIT);
     }
 }
 
@@ -112,6 +111,7 @@ void ConcurrentMarker::Reset(bool revertCSet)
 {
     Finish();
     thread_->SetMarkStatus(MarkStatus::READY_TO_MARK);
+    isConcurrentMarking_ = false;
     notifyMarkingFinished_ = false;
     if (revertCSet) {
         // Partial gc clear cset when evacuation allocator finalize
@@ -134,6 +134,7 @@ void ConcurrentMarker::InitializeMarking()
 {
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ConcurrentMarkingInitialize);
     heap_->Prepare();
+    isConcurrentMarking_ = true;
     thread_->SetMarkStatus(MarkStatus::MARKING);
 
     if (heap_->IsFullMark()) {

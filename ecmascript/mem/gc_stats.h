@@ -20,11 +20,50 @@
 #include <cstring>
 #include <ctime>
 
-#include "libpandabase/macros.h"
+#include "ecmascript/common.h"
+#include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/mem_common.h"
+#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 class Heap;
+
+enum class GCType : int {
+    STW_YOUNG_GC = 0,
+    PARTIAL_YOUNG_GC,
+    PARTIAL_OLD_GC,
+    COMPRESS_GC,
+    OTHER,
+    START,
+};
+
+enum class RecordData : uint8_t {
+#define DEFINE_SCOPE(scope) scope,
+    RECORD_DATA(DEFINE_SCOPE)
+#undef DEFINE_SCOPE
+    NUM_OF_DATA,
+    FIRST_DATA = START_OBJ_SIZE,
+    END_RECORD_OVERWRITE = COLLECT_REGION_SET_SIZE,
+};
+
+enum class SpeedData : uint8_t {
+#define DEFINE_SCOPE(scope) scope,
+    TRACE_GC_SPEED(DEFINE_SCOPE)
+#undef DEFINE_SCOPE
+    NUM_OF_SPEED,
+};
+
+enum class RecordDuration : uint8_t {
+#define DEFINE_SCOPE(scope) scope,
+    RECORD_DURATION(DEFINE_SCOPE)
+#undef DEFINE_SCOPE
+    NUM_OF_DURATION,
+    FIRST_DATA = SEMI_MIN_PAUSE,
+};
+
+#define TRACE_GC(scope_id, gc_stats)    \
+    [[maybe_unused]] GCStats::Scope sp(scope_id, gc_stats)
+
 class GCStats {
     using Duration = std::chrono::duration<uint64_t, std::nano>;
 
@@ -34,23 +73,115 @@ public:
         longPauseTime_(longPuaseTime) {}
     ~GCStats() = default;
 
-    void PrintStatisticResult(bool force = false);
-    void PrintHeapStatisticResult(bool force = true);
+    void PrintStatisticResult();
+    void PrintGCMemoryStatistic();
+    bool CheckIfLongTimePause();
+    void PrintGCStatistic();
 
-    void StatisticSTWYoungGC(Duration time, size_t aliveSize, size_t promotedSize, size_t commitSize);
-    void StatisticPartialGC(bool concurrentMark, Duration time, size_t freeSize);
-    void StatisticFullGC(Duration time, size_t youngAndOldAliveSize, size_t youngCommitSize,
-                         size_t oldCommitSize, size_t nonMoveSpaceFreeSize, size_t nonMoveSpaceCommitSize);
-    void StatisticConcurrentMark(Duration time);
-    void StatisticConcurrentMarkWait(Duration time);
-    void StatisticConcurrentRemark(Duration time);
-    void StatisticConcurrentEvacuate(Duration time);
+    float GetGCSpeed(SpeedData data)
+    {
+        return gcSpeed_[(uint8_t)data];
+    }
 
-    void CheckIfLongTimePause();
+    void SetRecordData(RecordData dataIdx, size_t value)
+    {
+        recordData_[GetRecordDataIndex(dataIdx)] = value;
+    }
+
+    size_t GetRecordData(RecordData dataIdx)
+    {
+        return recordData_[GetRecordDataIndex(dataIdx)];
+    }
+
+    double GetAvgSurvivalRate()
+    {
+        double copiedRate = double(GetRecordData(RecordData::YOUNG_TOTAL_ALIVE)) /
+                            GetRecordData(RecordData::YOUNG_TOTAL_COMMIT);
+        double promotedRate = double(GetRecordData(RecordData::YOUNG_TOTAL_PROMOTE)) /
+                              GetRecordData(RecordData::YOUNG_TOTAL_COMMIT);
+        return std::min(copiedRate + promotedRate, 1.0);
+    }
+
+    void RecordGCSpeed();
+    void RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason);
+    void RecordStatisticAfterGC();
+
+    class Scope : public ClockScope {
+    public:
+        enum ScopeId : uint8_t {
+#define DEFINE_SCOPE(scope) scope,
+            SCOPE_LIST(DEFINE_SCOPE)
+#undef DEFINE_SCOPE
+            SCOPE_NUM,
+        };
+
+        Scope(ScopeId id, GCStats* stats) : id_(id), stats_(stats)
+        {
+            if (id_ == ScopeId::ConcurrentMark) {
+                stats_->NotifyConcurrentMark();
+            }
+        }
+        ~Scope()
+        {
+            float duration = stats_->PrintTimeMilliseconds(stats_->TimeToMicroseconds(GetPauseTime()));
+            stats_->SetScopeId(id_, duration);
+        }
+
+    private:
+        ScopeId id_;
+        GCStats* stats_;
+    };
+
 private:
-    void PrintSemiStatisticResult(bool force);
-    void PrintPartialStatisticResult(bool force);
-    void PrintCompressStatisticResult(bool force);
+    bool CheckIfNeedPrint(GCType type);
+    void PrintVerboseGCStatistic();
+    void PrintGCDurationStatistic();
+    void PrintGCSummaryStatistic(GCType type = GCType::START);
+    GCType GetGCType(TriggerGCType gcType);
+    const char *GCReasonToString();
+    void InitializeRecordList();
+    const char *GetGCTypeName();
+    float GetConcurrrentMarkDuration();
+
+    int GetRecordDurationIndex(RecordDuration durationIdx)
+    {
+        return (int)durationIdx - (int)RecordDuration::FIRST_DATA;
+    }
+
+    float GetRecordDuration(RecordDuration durationIdx)
+    {
+        return recordDuration_[GetRecordDurationIndex(durationIdx)];
+    }
+
+    void SetRecordDuration(RecordDuration durationIdx, float value)
+    {
+        recordDuration_[GetRecordDurationIndex(durationIdx)] = value;
+    }
+
+    void IncreaseRecordDuration(RecordDuration durationIdx, float value)
+    {
+        recordDuration_[GetRecordDurationIndex(durationIdx)] += value;
+    }
+
+    int GetRecordDataIndex(RecordData dataIdx)
+    {
+        return (int)dataIdx - (int)RecordData::FIRST_DATA;
+    }
+
+    void IncreaseRecordData(RecordData dataIdx, size_t value = 1)
+    {
+        recordData_[GetRecordDataIndex(dataIdx)] += value;
+    }
+
+    void SetScopeId(int pos, float duration)
+    {
+        scopeDuration_[pos] = duration;
+    }
+
+    void NotifyConcurrentMark()
+    {
+        concurrentMark_ = true;
+    }
 
     size_t TimeToMicroseconds(Duration time)
     {
@@ -67,49 +198,28 @@ private:
         return (float)size / 1_MB;
     }
 
-    size_t lastSemiGCCount_ = 0;
-    size_t semiGCCount_ = 0;
-    size_t semiGCMinPause_ = 0;
-    size_t semiGCMaxPause_ = 0;
-    size_t semiGCTotalPause_ = 0;
-    size_t semiTotalAliveSize_ = 0;
-    size_t semiTotalCommitSize_ = 0;
-    size_t semiTotalPromoteSize_ = 0;
-
-    size_t lastOldGCCount_ = 0;
-    size_t partialGCCount_ = 0;
-    size_t partialGCMinPause_ = 0;
-    size_t partialGCMaxPause_ = 0;
-    size_t partialGCTotalPause_ = 0;
-    size_t partialOldSpaceFreeSize_ = 0;
-
-    size_t lastOldConcurrentMarkGCCount_ = 0;
-    size_t partialConcurrentMarkGCPauseTime_ = 0;
-    size_t partialConcurrentMarkMarkPause_ = 0;
-    size_t partialConcurrentMarkWaitPause_ = 0;
-    size_t partialConcurrentMarkRemarkPause_ = 0;
-    size_t partialConcurrentMarkEvacuatePause_ = 0;
-    size_t partialConcurrentMarkGCCount_ = 0;
-    size_t partialConcurrentMarkGCMinPause_ = 0;
-    size_t partialConcurrentMarkGCMaxPause_ = 0;
-    size_t partialConcurrentMarkGCTotalPause_ = 0;
-    size_t partialOldSpaceConcurrentMarkFreeSize_ = 0;
-
-    size_t lastFullGCCount_ = 0;
-    size_t fullGCCount_ = 0;
-    size_t fullGCMinPause_ = 0;
-    size_t fullGCMaxPause_ = 0;
-    size_t fullGCTotalPause_ = 0;
-    size_t compressYoungAndOldAliveSize_ = 0;
-    size_t compressYoungCommitSize_ = 0;
-    size_t compressOldCommitSize_ = 0;
-    size_t compressNonMoveTotalFreeSize_ = 0;
-    size_t compressNonMoveTotalCommitSize_ = 0;
+    float sizeToKB(size_t size)
+    {
+        return (float)size / 1_KB;
+    }
 
     const Heap *heap_;
-    std::string currentGcType_ = "";
-    size_t currentPauseTime_ = 0;
     size_t longPauseTime_ = 0;
+
+    static constexpr size_t DEFAULT_UPDATE_REFERENCE_SPEED = 10_MB;
+    static constexpr size_t DEFAULT_OLD_CLEAR_NATIVE_OBJ_SPEED = 1_KB;
+    static constexpr size_t DEFAULT_OLD_EVACUATE_SPACE_SPEED = 600_KB;
+    static constexpr size_t DEFAULT_YOUNG_CLEAR_NATIVE_OBJ_SPEED = 3_KB;
+
+    GCType gcType_ {GCType::START};
+    GCReason reason_ {GCReason::OTHER};
+    float scopeDuration_[Scope::ScopeId::SCOPE_NUM];
+    size_t recordData_[(uint8_t)RecordData::NUM_OF_DATA];
+    size_t gcSpeed_ [(uint8_t)SpeedData::NUM_OF_SPEED] = {
+        DEFAULT_UPDATE_REFERENCE_SPEED, DEFAULT_OLD_CLEAR_NATIVE_OBJ_SPEED,
+        DEFAULT_OLD_EVACUATE_SPACE_SPEED, DEFAULT_YOUNG_CLEAR_NATIVE_OBJ_SPEED};
+    float recordDuration_[(uint8_t)RecordDuration::NUM_OF_DURATION];
+    bool concurrentMark_ {false};
 
     static constexpr uint32_t THOUSAND = 1000;
 

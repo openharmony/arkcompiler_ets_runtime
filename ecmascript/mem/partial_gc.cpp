@@ -36,8 +36,8 @@ PartialGC::PartialGC(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManage
 void PartialGC::RunPhases()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::RunPhases" + std::to_string(heap_->IsFullMark()));
+    TRACE_GC(GCStats::Scope::ScopeId::TotalGC, heap_->GetEcmaVM()->GetEcmaGCStats());
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), PartialGC_RunPhases);
-    ClockScope clockScope;
 
     markingInProgress_ = heap_->CheckOngoingConcurrentMarking();
 
@@ -50,14 +50,16 @@ void PartialGC::RunPhases()
         heap_->GetSweeper()->PostTask();
     }
     Finish();
-    heap_->GetEcmaVM()->GetEcmaGCStats()->StatisticPartialGC(markingInProgress_, clockScope.GetPauseTime(), freeSize_);
-    LOG_GC(DEBUG) << "PartialGC::RunPhases " << clockScope.TotalSpentTime();
+    if (heap_->IsFullMark()) {
+        heap_->NotifyHeapAliveSizeAfterGC(heap_->GetHeapObjectSize());
+    }
 }
 
 void PartialGC::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Initialize");
-    if (!markingInProgress_) {
+    TRACE_GC(GCStats::Scope::ScopeId::Initialize, heap_->GetEcmaVM()->GetEcmaGCStats());
+    if (!markingInProgress_ && !heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark()) {
         LOG_GC(DEBUG) << "No ongoing Concurrent marking. Initializing...";
         heap_->Prepare();
         if (heap_->IsFullMark()) {
@@ -82,8 +84,11 @@ void PartialGC::Initialize()
 void PartialGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Finish");
+    TRACE_GC(GCStats::Scope::ScopeId::Finish, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->Resume(OLD_GC);
-    if (markingInProgress_) {
+    if (heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark()) {
+        heap_->GetIncrementalMarker()->Reset();
+    } else if (markingInProgress_) {
         auto marker = heap_->GetConcurrentMarker();
         marker->Reset(false);
     } else {
@@ -97,6 +102,7 @@ void PartialGC::Finish()
 void PartialGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Mark");
+    TRACE_GC(GCStats::Scope::ScopeId::Mark, heap_->GetEcmaVM()->GetEcmaGCStats());
     if (markingInProgress_) {
         heap_->GetConcurrentMarker()->ReMark();
         return;
@@ -116,12 +122,14 @@ void PartialGC::Sweep()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Sweep");
     ProcessNativeDelete();
     if (heap_->IsFullMark()) {
+        TRACE_GC(GCStats::Scope::ScopeId::Sweep, heap_->GetEcmaVM()->GetEcmaGCStats());
         heap_->GetSweeper()->Sweep();
     }
 }
 
 void PartialGC::ProcessNativeDelete()
 {
+    TRACE_GC(GCStats::Scope::ScopeId::ClearNativeObject, heap_->GetEcmaVM()->GetEcmaGCStats());
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         if (!objectRegion->InYoungSpaceOrCSet() && !heap_->IsFullMark()) {
@@ -138,6 +146,7 @@ void PartialGC::ProcessNativeDelete()
 void PartialGC::Evacuate()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Evacuate");
+    TRACE_GC(GCStats::Scope::ScopeId::Evacuate, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->GetEvacuator()->Evacuate();
 }
 }  // namespace panda::ecmascript

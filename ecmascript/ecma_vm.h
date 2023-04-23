@@ -25,6 +25,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/waiter_list.h"
@@ -246,7 +247,7 @@ public:
         return heap_;
     }
 
-    void CollectGarbage(TriggerGCType gcType) const;
+    void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER) const;
 
     void StartHeapTracking(HeapTracker *tracker);
 
@@ -334,6 +335,11 @@ public:
     NativePtrGetter GetNativePtrGetter() const
     {
         return nativePtrGetter_;
+    }
+
+    size_t GetNativePointerListSize()
+    {
+        return nativePointerList_.size();
     }
 
     void SetHostPromiseRejectionTracker(HostPromiseRejectionTracker cb)

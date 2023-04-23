@@ -197,7 +197,7 @@ bool DFXJSNApi::StopHeapTracking([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 void DFXJSNApi::PrintStatisticResult(const EcmaVM *vm)
 {
     ecmascript::GCStats gcstats(vm->GetHeap());
-    gcstats.PrintStatisticResult(true);
+    gcstats.PrintStatisticResult();
 }
 
 void DFXJSNApi::StartRuntimeStat(EcmaVM *vm)
