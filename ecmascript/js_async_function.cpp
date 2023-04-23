@@ -45,6 +45,7 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSAsyn
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<PromiseCapability> pcap =
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // 3.Let resolveResult be ! Call(promiseCapability.[[Resolve]], undefined, « value »).
     JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve());
@@ -74,6 +75,7 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSAsyn
     // 9.Set throwawayCapability.[[Promise]].[[PromiseIsHandled]] to true.
     JSHandle<PromiseCapability> tcap =
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSPromise>(thread, tcap->GetPromise())->SetPromiseIsHandled(true);
 
     // 10.Perform ! PerformPromiseThen(promiseCapability.[[Promise]], onFulfilled, onRejected, throwawayCapability).
