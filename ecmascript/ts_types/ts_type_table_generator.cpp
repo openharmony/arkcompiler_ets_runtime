@@ -16,7 +16,7 @@
 #include "ecmascript/ts_types/ts_type_table_generator.h"
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/literal_data_extractor.h"
+#include "ecmascript/jspandafile/type_literal_extractor.h"
 
 namespace panda::ecmascript {
 void TSTypeTableGenerator::GenerateDefaultTSTypeTables()

@@ -17,7 +17,6 @@
 
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/type_literal_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
 
 namespace panda::ecmascript {
@@ -80,8 +79,8 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
         return GlobalTSTypeRef::Default();
     }
 
-    if (typeLiteralExtractor.GetTypeKind() == TSTypeKind::IMPORT) {
-        return ResolveImportType(jsPandaFile, recordName, &typeLiteralExtractor);
+    if (IsNeedResolve(&typeLiteralExtractor)) {
+        return ResolveType(jsPandaFile, recordName, &typeLiteralExtractor);
     }
 
     uint32_t moduleId = tableGenerator_.TryGetModuleId(recordName);
@@ -110,6 +109,23 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
     SetTSType(table, type, gt);
     tsManager_->CollectTypeOffsets(gt);  // collect types that need to generate hclasses
     return gt;
+}
+
+GlobalTSTypeRef TSTypeParser::ResolveType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                          TypeLiteralExtractor *typeLiteralExtractor)
+{
+    auto kind = typeLiteralExtractor->GetTypeKind();
+    switch (kind) {
+        case TSTypeKind::IMPORT: {
+            return ResolveImportType(jsPandaFile, recordName, typeLiteralExtractor);
+        }
+        case TSTypeKind::INDEXSIG: {
+            return ParseIndexSigType(jsPandaFile, recordName, typeLiteralExtractor);
+        }
+        default: {
+            return GlobalTSTypeRef::Default();
+        }
+    }
 }
 
 GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, const CString &recordName,
@@ -151,6 +167,39 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
     std::unordered_set<CString> markSet;
     GlobalTSTypeRef importedGT = GetExportGTByName(targetVarName, arrayWithGT, jsPandaFile, entryPoint, markSet);
     return GetAndStoreImportGT(jsPandaFile, typeId, recordName, importedGT);
+}
+
+GlobalTSTypeRef TSTypeParser::ParseIndexSigType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                TypeLiteralExtractor *typeLiteralExtractor)
+{
+    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::INDEXSIG);
+    uint32_t length = typeLiteralExtractor->GetIntValue(NUM_INDEX_SIG_INDEX);
+    JSHandle<TSObjLayoutInfo> indexSignInfo = factory_->CreateTSObjLayoutInfo(length);
+    typeLiteralExtractor->EnumerateTypesWithIntKey(NUM_INDEX_SIG_INDEX,
+        [this, &jsPandaFile, &recordName, &indexSignInfo](const uint32_t literalTag, const uint32_t literalValue) {
+            auto keyGT = CreateGT(jsPandaFile, recordName, literalTag);
+            auto valueGT = CreateGT(jsPandaFile, recordName, literalValue);
+            indexSignInfo->AddKeyAndType(thread_, JSTaggedValue(keyGT.GetType()), JSTaggedValue(valueGT.GetType()));
+        });
+
+    uint32_t oriTypeId = typeLiteralExtractor->GetIntValue(DEFAULT_INDEX);
+    auto oriGT = CreateGT(jsPandaFile, recordName, oriTypeId);
+    JSHandle<JSTaggedValue> type = tsManager_->GetTSType(oriGT);
+    if (type->IsTSClassType()) {
+        JSHandle<TSClassType> classType(type);
+        classType->SetIndexSigns(thread_, indexSignInfo);
+    } else if (type->IsTSObjectType()) {
+        JSHandle<TSObjectType> objectType(type);
+        objectType->SetIndexSigns(thread_, indexSignInfo);
+    } else if (type->IsTSInterfaceType()) {
+        JSHandle<TSInterfaceType> interfaceType(type);
+        interfaceType->SetIndexSigns(thread_, indexSignInfo);
+    } else {
+        LOG_COMPILER(DEBUG) << "Unsupport TSType with index signature: "
+                            << static_cast<uint32_t>(typeLiteralExtractor->GetTypeKind());
+    }
+    uint32_t typeId = typeLiteralExtractor->GetTypeOffset();
+    return GetAndStoreGT(jsPandaFile, typeId, recordName, oriGT.GetModuleId(), oriGT.GetLocalId());
 }
 
 JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPandaFile, const CString &recordName,

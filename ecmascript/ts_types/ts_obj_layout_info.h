@@ -86,6 +86,8 @@ public:
 
     int GetElementIndexByKey(JSTaggedValue key) const;
 
+    JSTaggedValue TryGetTypeByIndexSign(const uint32_t typeId);
+
 private:
     inline void SetKey(const JSThread *thread, int index, const JSTaggedValue &key)
     {

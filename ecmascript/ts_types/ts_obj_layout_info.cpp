@@ -44,4 +44,17 @@ int TSObjLayoutInfo::GetElementIndexByKey(JSTaggedValue key) const
     }
     return -1;
 }
+
+JSTaggedValue TSObjLayoutInfo::TryGetTypeByIndexSign(const uint32_t keyType)
+{
+    uint32_t length = GetNumOfProperties();
+    for (uint32_t i = 0; i < length; i++) {
+        if (static_cast<uint32_t>(GetKey(i).GetInt()) == keyType) {
+            JSTaggedValue value = GetTypeId(i);
+            ASSERT(value.IsInt());
+            return value;
+        }
+    }
+    return JSTaggedValue::Undefined();
+}
 }  // namespace panda::ecmascript

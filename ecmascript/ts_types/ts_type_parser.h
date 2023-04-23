@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_TS_TYPES_TS_TYPE_PARSER_H
 #define ECMASCRIPT_TS_TYPES_TS_TYPE_PARSER_H
 
+#include "ecmascript/jspandafile/type_literal_extractor.h"
 #include "ecmascript/ts_types/ts_type_table_generator.h"
 
 namespace panda::ecmascript {
@@ -41,6 +42,7 @@ public:
 private:
     static constexpr size_t BUILDIN_TYPE_OFFSET = 20;
     static constexpr size_t DEFAULT_INDEX = 0;
+    static constexpr size_t NUM_INDEX_SIG_INDEX = 1;
 
     inline GlobalTSTypeRef GetAndStoreGT(const JSPandaFile *jsPandaFile, uint32_t typeId, const CString &recordName,
                                          uint32_t moduleId = 0, uint32_t localId = 0)
@@ -65,11 +67,23 @@ private:
         table->Set(thread_, localId, type);
     }
 
+    inline bool IsNeedResolve(const TypeLiteralExtractor *typeLiteralExtractor) const
+    {
+        TSTypeKind kind = typeLiteralExtractor->GetTypeKind();
+        return kind == TSTypeKind::IMPORT || kind == TSTypeKind::INDEXSIG;
+    }
+
     GlobalTSTypeRef ParseType(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId);
 
     GlobalTSTypeRef ParseBuiltinObjType(uint32_t typeId);
 
+    GlobalTSTypeRef ResolveType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                TypeLiteralExtractor *typeLiteralExtractor);
+
     GlobalTSTypeRef ResolveImportType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                      TypeLiteralExtractor *typeLiteralExtractor);
+
+    GlobalTSTypeRef ParseIndexSigType(const JSPandaFile *jsPandaFile, const CString &recordName,
                                       TypeLiteralExtractor *typeLiteralExtractor);
 
     JSHandle<JSTaggedValue> ParseNonImportType(const JSPandaFile *jsPandaFile, const CString &recordName,

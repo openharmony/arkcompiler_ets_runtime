@@ -123,18 +123,10 @@ private:
     bool GetObjPropWithName(GateRef gate, GateType objType, uint64_t index);
     bool GetSuperProp(GateRef gate, uint64_t index, bool isString = true);
     GlobalTSTypeRef ConvertPrimitiveToBuiltin(const GateType &gateType);
+    GlobalTSTypeRef GetPropType(const GateType type, const JSTaggedValue propertyName) const;
+    GlobalTSTypeRef GetPropType(const GateType type, const uint64_t key) const;
     void UpdateQueueForLoopPhi();
     void TraverseInfer();
-
-    inline GlobalTSTypeRef GetPropType(const GateType &type, const JSTaggedValue propertyName) const
-    {
-        return tsManager_->GetPropType(type, propertyName);
-    }
-
-    inline GlobalTSTypeRef GetPropType(const GateType &type, const uint64_t key) const
-    {
-        return tsManager_->GetPropType(type, key);
-    }
 
     inline bool ShouldInferWithLdObjByValue(const GateType &type) const
     {

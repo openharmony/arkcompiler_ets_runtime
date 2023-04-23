@@ -19,6 +19,7 @@
 #include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/jspandafile/type_literal_extractor.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/ts_types/ts_type_table_generator.h"
 #include "ecmascript/vtable.h"
@@ -135,13 +136,33 @@ GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, JSHandle<JSTaggedValu
         JSHandle<TSIteratorInstanceType> iteratorInstance(type);
         return TSIteratorInstanceType::GetPropTypeGT(thread, iteratorInstance, propertyName);
     } else if (type->IsTSInterfaceType()) {
-        JSHandle<TSInterfaceType> objectType(type);
-        return TSInterfaceType::GetPropTypeGT(thread, objectType, propertyName);
-    } else {
-        LOG_COMPILER(ERROR) << "unsupport TSType GetPropType: "
-                            << static_cast<uint8_t>(type->GetTaggedObject()->GetClass()->GetObjectType());
-        return GlobalTSTypeRef::Default();
+        JSHandle<TSInterfaceType> interfaceType(type);
+        return TSInterfaceType::GetPropTypeGT(thread, interfaceType, propertyName);
     }
+    return GlobalTSTypeRef::Default();
+}
+
+
+GlobalTSTypeRef TSManager::GetIndexSignType(GlobalTSTypeRef objType, kungfu::GateType indexType) const
+{
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<JSTaggedValue> type = GetTSType(objType);
+    ASSERT(type->IsTSType());
+
+    uint32_t typeId = indexType.Value();
+    if (type->IsTSClassInstanceType()) {
+        JSHandle<TSClassInstanceType> classInstanceType(type);
+        return TSClassInstanceType::GetIndexSignType(thread, classInstanceType, typeId);
+    } else if (type->IsTSObjectType()) {
+        JSHandle<TSObjectType> objectType(type);
+        return TSObjectType::GetIndexSignType(thread, objectType, typeId);
+    } else if (type->IsTSInterfaceType()) {
+        JSHandle<TSInterfaceType> interfaceType(type);
+        return TSInterfaceType::GetIndexSignType(thread, interfaceType, typeId);
+    }
+    LOG_COMPILER(DEBUG) << "Unsupport TSType GetIndexSignType: "
+                        << static_cast<uint32_t>(type->GetTaggedObject()->GetClass()->GetObjectType());
+    return GlobalTSTypeRef::Default();
 }
 
 bool TSManager::IsStaticFunc(GlobalTSTypeRef gt) const

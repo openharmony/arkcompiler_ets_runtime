@@ -3138,6 +3138,15 @@ void TSObjectType::Dump(std::ostream &os) const
     os << "\n";
     os << "  - ObjLayoutInfo: ";
     DumpArrayClass(TaggedArray::Cast(GetObjLayoutInfo().GetTaggedObject()), os);
+
+    os << " - Index signature: ";
+    if (GetIndexSigns().IsUndefined()) {
+        os << " no index signature type " << "\n";
+    } else {
+        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), os);
+    }
+    os << "\n";
+
     os << "  - HClass: ";
     GetHClass().Dump(os);
 }
@@ -3190,6 +3199,14 @@ void TSClassType::Dump(std::ostream &os) const
         prototypeType->Dump(os);
         os << "\n";
     }
+
+    os << " - Index signature: ";
+    if (GetIndexSigns().IsUndefined()) {
+        os << " no index signature type " << "\n";
+    } else {
+        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), os);
+    }
+    os << "\n";
 }
 
 void TSInterfaceType::Dump(std::ostream &os) const
@@ -3220,6 +3237,14 @@ void TSInterfaceType::Dump(std::ostream &os) const
         fieldsType->Dump(os);
         os << "\n";
     }
+
+    os << " - Index signature: ";
+    if (GetIndexSigns().IsUndefined()) {
+        os << " no index signature type " << "\n";
+    } else {
+        DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), os);
+    }
+    os << "\n";
 }
 
 void TSClassInstanceType::Dump(std::ostream &os) const
