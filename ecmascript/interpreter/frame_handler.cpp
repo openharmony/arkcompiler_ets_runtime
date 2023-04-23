@@ -187,6 +187,7 @@ JSTaggedValue FrameHandler::GetFunction() const
                 auto *frame = OptimizedJSFunctionFrame::GetFrameFromSp(sp_);
                 return frame->GetFunction();
             }
+            case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME :
             case FrameType::INTERPRETER_FRAME:
             case FrameType::INTERPRETER_FAST_NEW_FRAME:
             case FrameType::INTERPRETER_ENTRY_FRAME:
@@ -298,6 +299,7 @@ ARK_INLINE uintptr_t FrameHandler::GetInterpretedFrameEnd(JSTaggedType *prevSp) 
             end = ToUintPtr(frame);
             break;
         }
+        case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME :
         case FrameType::BUILTIN_FRAME_WITH_ARGV:
         case FrameType::BUILTIN_ENTRY_FRAME:
         case FrameType::BUILTIN_FRAME:
@@ -426,6 +428,7 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &vis
                 frame->GCIterate(it, visitor, rangeVisitor);
                 break;
             }
+            case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
             case FrameType::OPTIMIZED_ENTRY_FRAME:

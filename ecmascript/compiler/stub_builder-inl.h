@@ -608,6 +608,10 @@ inline GateRef StubBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
     return env_->GetBuilder()->TaggedIsAsyncGeneratorObject(x);
 }
 
+inline GateRef StubBuilder::TaggedIsJSGlobalObject(GateRef x)
+{
+    return env_->GetBuilder()->TaggedIsJSGlobalObject(x);
+}
 
 inline GateRef StubBuilder::TaggedIsWeak(GateRef x)
 {
@@ -2225,6 +2229,29 @@ inline void StubBuilder::SetExtensibleToBitfield(GateRef glue, GateRef obj, bool
 inline void StubBuilder::Comment(GateRef glue, const std::string &str)
 {
     CallNGCRuntime(glue, RTSTUB_ID(Comment), { StringPtr(str) });
+}
+
+inline GateRef StubBuilder::IsStableElements(GateRef hClass)
+{
+    return env_->GetBuilder()->IsStableElements(hClass);
+}
+
+inline GateRef StubBuilder::IsStableArguments(GateRef hClass)
+{
+    return env_->GetBuilder()->IsStableArguments(hClass);
+}
+
+inline GateRef StubBuilder::IsStableArray(GateRef hClass)
+{
+    return env_->GetBuilder()->IsStableArray(hClass);
+}
+
+inline GateRef StubBuilder::IsTypedArray(GateRef obj)
+{
+    GateRef jsHclass = LoadHClass(obj);
+    GateRef jsType = GetObjectType(jsHclass);
+    return BoolAnd(Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
+                   Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), jsType));
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

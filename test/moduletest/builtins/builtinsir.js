@@ -34,4 +34,15 @@ print(str1.indexOf("hjs", 19));
 print(str1.indexOf("jk", 3));
 print(str1.indexOf(undefined));
 print(str1.indexOf(null));
+var person = {
+fullName: function(city, country) {
+    return this.firstName + " " + this.lastName + "," + city + "," + country;
+}
+}
+var person1 = {
+firstName:"Bill",
+lastName: "Gates"
+}
+var a = new Uint32Array([1,2]);
+print(person.fullName.apply(person1, a));
 print("builtins ir end");

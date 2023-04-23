@@ -70,7 +70,7 @@ void ContainersStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef thisV
             Label isCall(env);
             Label notCall(env);
             Label isHeapObj(env);
-            callbackFnHandle = GetCallArg0();
+            callbackFnHandle = GetCallArg0(numArgs);
             Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
             Bind(&isHeapObj);
             Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
@@ -82,7 +82,7 @@ void ContainersStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef thisV
                 Bind(&thisArgUndefined);
                 Jump(&nextCount);
                 Bind(&thisArgNotUndefined);
-                thisArg = GetCallArg1();
+                thisArg = GetCallArg1(numArgs);
                 Jump(&nextCount);
             }
         }
@@ -188,7 +188,7 @@ void ContainersStubBuilder::QueueCommonFuncCall(GateRef glue, GateRef thisValue,
             Label isCall(env);
             Label notCall(env);
             Label isHeapObj(env);
-            callbackFnHandle = GetCallArg0();
+            callbackFnHandle = GetCallArg0(numArgs);
             Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
             Bind(&isHeapObj);
             Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
@@ -200,7 +200,7 @@ void ContainersStubBuilder::QueueCommonFuncCall(GateRef glue, GateRef thisValue,
                 Bind(&thisArgUndefined);
                 Jump(&nextCount);
                 Bind(&thisArgNotUndefined);
-                thisArg = GetCallArg1();
+                thisArg = GetCallArg1(numArgs);
                 Jump(&nextCount);
             }
         }
@@ -294,7 +294,7 @@ void ContainersStubBuilder::DequeCommonFuncCall(GateRef glue, GateRef thisValue,
             Label isCall(env);
             Label notCall(env);
             Label isHeapObj(env);
-            callbackFnHandle = GetCallArg0();
+            callbackFnHandle = GetCallArg0(numArgs);
             Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
             Bind(&isHeapObj);
             Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
@@ -306,7 +306,7 @@ void ContainersStubBuilder::DequeCommonFuncCall(GateRef glue, GateRef thisValue,
                 Bind(&thisArgUndefined);
                 Jump(&nextCount);
                 Bind(&thisArgNotUndefined);
-                thisArg = GetCallArg1();
+                thisArg = GetCallArg1(numArgs);
                 Jump(&nextCount);
             }
         }
@@ -402,7 +402,7 @@ void ContainersStubBuilder::ContainersLightWeightCall(GateRef glue, GateRef this
             Label isCall(env);
             Label notCall(env);
             Label isHeapObj(env);
-            callbackFnHandle = GetCallArg0();
+            callbackFnHandle = GetCallArg0(numArgs);
             Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, slowPath);
             Bind(&isHeapObj);
             Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
@@ -414,7 +414,7 @@ void ContainersStubBuilder::ContainersLightWeightCall(GateRef glue, GateRef this
                 Bind(&thisArgUndefined);
                 Jump(&nextCount);
                 Bind(&thisArgNotUndefined);
-                thisArg = GetCallArg1();
+                thisArg = GetCallArg1(numArgs);
                 Jump(&nextCount);
             }
         }
@@ -514,7 +514,7 @@ void ContainersStubBuilder::ContainersHashCall(GateRef glue, GateRef thisValue,
             Label isCall(env);
             Label notCall(env);
             Label isHeapObj(env);
-            callbackFnHandle = GetCallArg0();
+            callbackFnHandle = GetCallArg0(numArgs);
             Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, &notCall);
             Bind(&isHeapObj);
             Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
@@ -526,7 +526,7 @@ void ContainersStubBuilder::ContainersHashCall(GateRef glue, GateRef thisValue,
                 Bind(&thisArgUndefined);
                 Jump(&nextCount);
                 Bind(&thisArgNotUndefined);
-                thisArg = GetCallArg1();
+                thisArg = GetCallArg1(numArgs);
                 Jump(&nextCount);
             }
         }
@@ -646,7 +646,7 @@ void ContainersStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef thisV
             Label isCall(env);
             Label notCall(env);
             Label isHeapObj(env);
-            callbackFnHandle = GetCallArg0();
+            callbackFnHandle = GetCallArg0(numArgs);
             Branch(TaggedIsHeapObject(callbackFnHandle), &isHeapObj, &notCall);
             Bind(&isHeapObj);
             Branch(IsCallable(callbackFnHandle), &isCall, &notCall);
@@ -658,7 +658,7 @@ void ContainersStubBuilder::ContainersLinkedListCall(GateRef glue, GateRef thisV
                 Bind(&thisArgUndefined);
                 Jump(&nextCount);
                 Bind(&thisArgNotUndefined);
-                thisArg = GetCallArg1();
+                thisArg = GetCallArg1(numArgs);
                 Jump(&nextCount);
             }
         }

@@ -226,6 +226,7 @@ public:
     GateRef InYoungGeneration(GateRef region);
     GateRef TaggedIsGeneratorObject(GateRef x);
     GateRef TaggedIsAsyncGeneratorObject(GateRef x);
+    GateRef TaggedIsJSGlobalObject(GateRef x);
     GateRef TaggedIsWeak(GateRef x);
     GateRef TaggedIsPrototypeHandler(GateRef x);
     GateRef TaggedIsStoreTSHandler(GateRef x);
@@ -243,6 +244,7 @@ public:
     GateRef TaggedIsFalse(GateRef x);
     GateRef TaggedIsBoolean(GateRef x);
     GateRef TaggedGetInt(GateRef x);
+    GateRef TaggedGetNumber(GateRef x);
     GateRef Int8ToTaggedInt(GateRef x);
     GateRef Int16ToTaggedInt(GateRef x);
     GateRef IntToTaggedPtr(GateRef x);
@@ -282,6 +284,8 @@ public:
     GateRef ChangeInt64ToIntPtr(GateRef val);
     GateRef ZExtInt32ToPtr(GateRef val);
     GateRef ChangeIntPtrToInt32(GateRef val);
+    GateRef ToLength(GateRef glue, GateRef target);
+
     // math operation
     GateRef Sqrt(GateRef x);
     GateRef GetSetterFromAccessor(GateRef accessor);
@@ -292,6 +296,7 @@ public:
     void SetPropertiesArray(VariableType type, GateRef glue, GateRef object, GateRef propsArray);
     void SetHash(GateRef glue, GateRef object, GateRef hash);
     GateRef GetLengthOfTaggedArray(GateRef array);
+    GateRef GetLengthOfJsArray(GateRef glue, GateRef array);
     // object operation
     GateRef IsJSHClass(GateRef obj);
     GateRef LoadHClass(GateRef object);
@@ -301,6 +306,7 @@ public:
     GateRef IsDictionaryMode(GateRef object);
     GateRef IsDictionaryModeByHClass(GateRef hClass);
     GateRef IsDictionaryElement(GateRef hClass);
+    GateRef IsStableElements(GateRef hClass);
     GateRef IsClassConstructorFromBitField(GateRef bitfield);
     GateRef IsClassConstructor(GateRef object);
     GateRef IsClassPrototype(GateRef object);
@@ -371,7 +377,12 @@ public:
     void TryFastHasInstance(GateRef glue, GateRef instof, GateRef target, GateRef object, Label *fastPath,
                             Label *exit, Variable *result);
     GateRef SameValue(GateRef glue, GateRef left, GateRef right);
-
+    GateRef HasStableElements(GateRef glue, GateRef obj);
+    GateRef IsStableJSArguments(GateRef glue, GateRef obj);
+    GateRef IsStableJSArray(GateRef glue, GateRef obj);
+    GateRef IsTypedArray(GateRef obj);
+    GateRef IsStableArguments(GateRef hClass);
+    GateRef IsStableArray(GateRef hClass);
     // SetDictionaryOrder func in property_attribute.h
     GateRef SetDictionaryOrderFieldInPropAttr(GateRef attr, GateRef value);
     GateRef GetPrototypeFromHClass(GateRef hClass);
@@ -510,6 +521,7 @@ public:
     GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index);
     GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key);
     GateRef FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key);
+    GateRef FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index);
     GateRef GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue);
     GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn);
     GateRef SetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
@@ -538,6 +550,9 @@ public:
     GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     GateRef GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
+    GateRef CreateListFromArrayLike(GateRef glue, GateRef arrayObj);
+    GateRef BuildArgumentsListFastElements(GateRef glue, GateRef arrayObj);
+    GateRef MakeArgListWithHole(GateRef glue, GateRef argv, GateRef length);
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
 
     // fast path

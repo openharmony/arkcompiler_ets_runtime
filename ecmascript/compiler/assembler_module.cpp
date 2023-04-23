@@ -107,6 +107,7 @@ int AssemblerModule::GetArgcFromJSCallMode(JSCallMode mode)
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
+        case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             return -1;
         case JSCallMode::CALL_GETTER:
             return 0;
@@ -142,6 +143,7 @@ bool AssemblerModule::IsCallNew(JSCallMode mode)
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+        case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             return false;
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
@@ -180,6 +182,7 @@ bool AssemblerModule::JSModeHaveThisArg(JSCallMode mode)
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+        case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             return true;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -209,6 +212,7 @@ bool AssemblerModule::JSModeHaveNewTargetArg(JSCallMode mode)
         case JSCallMode::CALL_THIS_ARG1:
         case JSCallMode::CALL_THIS_ARG2:
         case JSCallMode::CALL_THIS_ARG3:
+        case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             return false;
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
@@ -249,6 +253,7 @@ bool AssemblerModule::IsJumpToCallCommonEntry(JSCallMode mode)
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_GENERATOR:
         case JSCallMode::CALL_FROM_AOT:
+        case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             return false;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";

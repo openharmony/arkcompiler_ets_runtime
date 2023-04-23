@@ -378,6 +378,15 @@ GateRef CircuitBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
     return LogicAnd(isHeapObj, isAsyncGeneratorObj);
 }
 
+GateRef CircuitBuilder::TaggedIsJSGlobalObject(GateRef x)
+{
+    GateRef isHeapObj = TaggedIsHeapObject(x);
+    GateRef objType = GetObjectType(LoadHClass(x));
+    GateRef isGlobal = Equal(objType,
+        Int32(static_cast<int32_t>(JSType::JS_GLOBAL_OBJECT)));
+    return LogicAnd(isHeapObj, isGlobal);
+}
+
 GateRef CircuitBuilder::TaggedIsGeneratorObject(GateRef x)
 {
     GateRef isHeapObj = TaggedIsHeapObject(x);
@@ -637,6 +646,32 @@ GateRef CircuitBuilder::IsDictionaryElement(GateRef hClass)
         Int32(JSHClass::DictionaryElementBits::START_BIT)),
         Int32((1LU << JSHClass::DictionaryElementBits::SIZE) - 1)),
         Int32(0));
+}
+
+GateRef CircuitBuilder::IsStableElements(GateRef hClass)
+{
+    GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    return NotEqual(Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::IsStableElementsBit::START_BIT)),
+        Int32((1LU << JSHClass::IsStableElementsBit::SIZE) - 1)),
+        Int32(0));
+}
+
+GateRef CircuitBuilder::IsStableArguments(GateRef hClass)
+{
+    GateRef objectType = GetObjectType(hClass);
+    GateRef isJsArguments = Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_ARGUMENTS)));
+    GateRef isStableElements = IsStableElements(hClass);
+    return BoolAnd(isStableElements, isJsArguments);
+}
+
+GateRef CircuitBuilder::IsStableArray(GateRef hClass)
+{
+    GateRef objectType = GetObjectType(hClass);
+    GateRef isJsArray = Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
+    GateRef isStableElements = IsStableElements(hClass);
+    return BoolAnd(isStableElements, isJsArray);
 }
 
 GateRef CircuitBuilder::IsClassConstructor(GateRef object)
