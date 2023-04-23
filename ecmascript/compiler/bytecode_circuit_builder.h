@@ -123,10 +123,10 @@ public:
         const auto &it = std::upper_bound(blockItems_.begin(),
             blockItems_.end(), bcIndex, findFunc);
         if (it == blockItems_.end()) {
-            return blockItems_.size() - 1; // 1: last bb
+            return blockItems_.size();
         }
         // blockItems_[0]'s value is 0, bcIndex must be: bcIndex > blockItems_.begin()
-        return std::distance(blockItems_.begin(), it) - 1; // 1: -1 for bbIndx
+        return std::distance(blockItems_.begin(), it);
     }
 
     const std::vector<BytecodeSplitItem> &GetSplitItems() const
@@ -334,6 +334,10 @@ public:
     template <class Callback>
     void EnumerateBlock(BytecodeRegion &bb, const Callback &cb)
     {
+        // Entry block is a empry block
+        if (IsEntryBlock(bb.id)) {
+            return;
+        }
         auto &iterator = bb.GetBytecodeIterator();
         for (iterator.GotoStart(); !iterator.Done(); ++iterator) {
             auto &bytecodeInfo = iterator.GetBytecodeInfo();
@@ -430,6 +434,7 @@ public:
 private:
     void CollectTryCatchBlockInfo(ExceptionInfo &Exception);
     void BuildCatchBlocks(const ExceptionInfo &Exception);
+    void BuildEntryBlock();
     void BuildRegions(const ExceptionInfo &Exception);
     void ComputeDominatorTree();
     void BuildImmediateDominator(const std::vector<size_t> &immDom);
@@ -477,9 +482,14 @@ private:
         return bbId == 0;
     }
 
+    inline bool IsFirstBasicBlock(const size_t bbId) const
+    {
+        return bbId == 1;
+    }
+
     inline bool IsFirstBCEnvIn(const size_t bbId, const size_t bcIndex, const uint16_t reg) const
     {
-        return (IsEntryBlock(bbId) && bcIndex == 0 && reg == GetNumberVRegs());
+        return (IsFirstBasicBlock(bbId) && bcIndex == 0 && reg == GetNumberVRegs());
     }
 
     TSManager *tsManager_;
