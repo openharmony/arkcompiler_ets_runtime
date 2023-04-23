@@ -396,6 +396,16 @@
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define RETURN_COMPLETION_VALUE_IF_ABRUPT(thread, value)                          \
+    do {                                                                          \
+        if ((thread)->HasPendingException()) {                                    \
+            JSHandle<CompletionRecord> completionRecord =                         \
+                factory->NewCompletionRecord(CompletionRecordType::THROW, value); \
+            return (completionRecord).GetTaggedValue();                           \
+        }                                                                         \
+    } while (false)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_DUMP()                                  \
     void Dump(std::ostream &os) const DUMP_API_ATTR; \
     void Dump() const DUMP_API_ATTR                  \

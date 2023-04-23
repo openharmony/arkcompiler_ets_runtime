@@ -142,7 +142,8 @@ JSTaggedValue BuiltinsPromise::All(EcmaRuntimeCallInfo *argv)
     bool done = false;
     JSHandle<PromiseIteratorRecord> itRecord = factory->NewPromiseIteratorRecord(itor, done);
     // 11. Let result be PerformPromiseAll(iteratorRecord, C, promiseCapability).
-    JSHandle<CompletionRecord> result = PerformPromiseAll(thread, itRecord, ctor, capa);
+    JSTaggedValue resultValue = PerformPromiseAll(thread, itRecord, ctor, capa);
+    JSHandle<CompletionRecord> result = JSHandle<CompletionRecord>(thread, resultValue);
     // 12. If result is an abrupt completion,
     if (result->IsThrow()) {
         thread->ClearException();
@@ -442,10 +443,10 @@ JSTaggedValue BuiltinsPromise::PerformPromiseThen(JSThread *thread, const JSHand
     return capability->GetPromise();
 }
 
-JSHandle<CompletionRecord> BuiltinsPromise::PerformPromiseAll(JSThread *thread,
-                                                              const JSHandle<PromiseIteratorRecord> &itRecord,
-                                                              const JSHandle<JSTaggedValue> &ctor,
-                                                              const JSHandle<PromiseCapability> &capa)
+JSTaggedValue BuiltinsPromise::PerformPromiseAll(JSThread *thread,
+                                                 const JSHandle<PromiseIteratorRecord> &itRecord,
+                                                 const JSHandle<JSTaggedValue> &ctor,
+                                                 const JSHandle<PromiseCapability> &capa)
 {
     auto ecmaVm = thread->GetEcmaVM();
     BUILTINS_API_TRACE(thread, Promise, PerformPromiseAll);
@@ -467,6 +468,7 @@ JSHandle<CompletionRecord> BuiltinsPromise::PerformPromiseAll(JSThread *thread,
     JSHandle<JSTaggedValue> itor(thread, itRecord->GetIterator());
     JSMutableHandle<JSTaggedValue> next(thread, globalConst->GetUndefined());
     while (true) {
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
         // a. Let next be IteratorStep(iteratorRecord.[[iterator]]).
         next.Update(JSIterator::IteratorStep(thread, itor).GetTaggedValue());
         // b. If next is an abrupt completion, set iteratorRecord.[[done]] to true.
@@ -475,7 +477,7 @@ JSHandle<CompletionRecord> BuiltinsPromise::PerformPromiseAll(JSThread *thread,
             next.Update(JSPromise::IfThrowGetThrowValue(thread).GetTaggedValue());
         }
         // c. ReturnIfAbrupt(next).
-        RETURN_COMPLETION_IF_ABRUPT(thread, next);
+        RETURN_COMPLETION_VALUE_IF_ABRUPT(thread, next);
         // d. If next is false,
         JSHandle<JSTaggedValue> undefined(globalConst->GetHandledUndefined());
         if (next->IsFalse()) {
@@ -492,17 +494,17 @@ JSHandle<CompletionRecord> BuiltinsPromise::PerformPromiseAll(JSThread *thread,
                 JSHandle<JSTaggedValue> resCapaFunc(thread, capa->GetResolve());
                 EcmaRuntimeCallInfo *info =
                     EcmaInterpreter::NewRuntimeCallInfo(thread, resCapaFunc, undefined, undefined, 1);
-                RETURN_COMPLETION_IF_ABRUPT(thread, next);
+                RETURN_COMPLETION_VALUE_IF_ABRUPT(thread, next);
                 info->SetCallArg(jsArrayValues.GetTaggedValue());
                 JSTaggedValue resolveRes = JSFunction::Call(info);
                 // 3. ReturnIfAbrupt(resolveResult)
                 JSHandle<JSTaggedValue> resolveAbrupt(thread, resolveRes);
-                RETURN_COMPLETION_IF_ABRUPT(thread, resolveAbrupt);
+                RETURN_COMPLETION_VALUE_IF_ABRUPT(thread, resolveAbrupt);
             }
             // iv. Return resultCapability.[[Promise]].
             JSHandle<CompletionRecord> resRecord = factory->NewCompletionRecord(
                 CompletionRecordType::NORMAL, JSHandle<JSTaggedValue>(thread, capa->GetPromise()));
-            return resRecord;
+            return resRecord.GetTaggedValue();
         }
         // e. Let nextValue be IteratorValue(next).
         JSHandle<JSTaggedValue> nextVal = JSIterator::IteratorValue(thread, next);
@@ -513,7 +515,7 @@ JSHandle<CompletionRecord> BuiltinsPromise::PerformPromiseAll(JSThread *thread,
         }
 
         // g. ReturnIfAbrupt(nextValue).
-        RETURN_COMPLETION_IF_ABRUPT(thread, nextVal);
+        RETURN_COMPLETION_VALUE_IF_ABRUPT(thread, nextVal);
         // h. Append undefined to values.
         JSHandle<TaggedArray> valuesArray =
             JSHandle<TaggedArray>::Cast(JSHandle<JSTaggedValue>(thread, values->GetValue()));
@@ -523,12 +525,12 @@ JSHandle<CompletionRecord> BuiltinsPromise::PerformPromiseAll(JSThread *thread,
         // i. Let nextPromise be Invoke(constructor, "resolve", «‍nextValue»).
         JSHandle<JSTaggedValue> resolveKey = globalConst->GetHandledPromiseResolveString();
         EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, undefined, ctor, undefined, 1);
-        RETURN_COMPLETION_IF_ABRUPT(thread, nextVal);
+        RETURN_COMPLETION_VALUE_IF_ABRUPT(thread, nextVal);
         info->SetCallArg(nextVal.GetTaggedValue());
         JSTaggedValue taggedNextPromise = JSFunction::Invoke(info, resolveKey);
         // j. ReturnIfAbrupt(nextPromise).
         JSHandle<JSTaggedValue> nextPromise(thread, taggedNextPromise);
-        RETURN_COMPLETION_IF_ABRUPT(thread, nextPromise);
+        RETURN_COMPLETION_VALUE_IF_ABRUPT(thread, nextPromise);
         // k. Let resolveElement be a new built-in function object as defined in Promise.all
         //    Resolve Element Functions.
         JSHandle<JSPromiseAllResolveElementFunction> resoleveElement = factory->NewJSPromiseAllResolveElementFunction();
@@ -551,12 +553,12 @@ JSHandle<CompletionRecord> BuiltinsPromise::PerformPromiseAll(JSThread *thread,
         EcmaRuntimeCallInfo *runtimeInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, undefined, nextPromise,
             undefined, 2); // 2: «‍resolveElement, resultCapability.[[Reject]]»
-        RETURN_COMPLETION_IF_ABRUPT(thread, nextPromise);
+        RETURN_COMPLETION_VALUE_IF_ABRUPT(thread, nextPromise);
         runtimeInfo->SetCallArg(resoleveElement.GetTaggedValue(), capa->GetReject());
         JSTaggedValue taggedResult = JSFunction::Invoke(runtimeInfo, thenKey);
         JSHandle<JSTaggedValue> result(thread, taggedResult);
         // s. ReturnIfAbrupt(result).
-        RETURN_COMPLETION_IF_ABRUPT(thread, result);
+        RETURN_COMPLETION_VALUE_IF_ABRUPT(thread, result);
         // t. Set index to index + 1.
         ++index;
     }
