@@ -165,7 +165,7 @@ group("ark_aot_ts_test") {
     "suspendgenerator",
     "suspendgeneratorbranch",
 
-    # "suspendgeneratorfor",
+    "suspendgeneratorfor",
     "suspendgeneratorphi",
     "suspendgeneratorreturn",
     "suspendgeneratorthrow",
