@@ -99,8 +99,9 @@ void FrameStateBuilder::BuildPostOrderList(size_t size)
     postOrderList_.clear();
     std::deque<size_t> pendingList;
     std::vector<bool> visited(size, false);
-    auto entryId = 0;
-    pendingList.emplace_back(entryId);
+    // entry block (bbid=0) is a empty block, need skip
+    auto firstBlockId = 1;
+    pendingList.emplace_back(firstBlockId);
 
     while (!pendingList.empty()) {
         size_t curBlockId = pendingList.back();

@@ -174,18 +174,35 @@ void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(ExceptionInfo &byteCodeExc
     });
 }
 
+void BytecodeCircuitBuilder::BuildEntryBlock()
+{
+    BytecodeRegion &entryBlock = graph_[0];
+    BytecodeRegion &nextBlock = graph_[1];
+    entryBlock.succs.emplace_back(&nextBlock);
+    nextBlock.preds.emplace_back(&entryBlock);
+    entryBlock.bytecodeIterator_.Reset(this, INVALID_INDEX, INVALID_INDEX);
+}
+
 void BytecodeCircuitBuilder::BuildRegions(const ExceptionInfo &byteCodeException)
 {
     auto &items = regionsInfo_.GetBlockItems();
     auto blockSize = items.size();
-    graph_.resize(blockSize);
+
+    // 1 : entry block. if the loop head is in the first bb block, the variables used in the head cannot correctly
+    // generate Phi nodes through the dominator-tree algorithm, resulting in an infinite loop. Therefore, an empty
+    // BB block is generated as an entry block
+    graph_.resize(blockSize + 1);
+
+    // build entry block
+    BuildEntryBlock();
+
     // build basic block
-    size_t blockId = 0;
+    size_t blockId = 1;
     for (const auto &item : items) {
         auto &curBlock = GetBasicBlockById(blockId);
         curBlock.id = blockId;
         curBlock.start = item.GetStartBcIndex();
-        if (blockId != 0) {
+        if (blockId != 1) {
             auto &prevBlock = graph_[blockId - 1];
             prevBlock.end = curBlock.start - 1;
             prevBlock.bytecodeIterator_.Reset(this, prevBlock.start, prevBlock.end);
@@ -1106,6 +1123,12 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
         auto dependCur = bb.dependCurrent;
         ASSERT(stateCur != Circuit::NullGate());
         ASSERT(dependCur != Circuit::NullGate());
+        if (IsEntryBlock(bb.id)) {
+            auto &bbNext = graph_[bb.id + 1];
+            SetBlockPred(bb, bbNext, stateCur, dependCur);
+            bbNext.expandedPreds.push_back({bb.id, bb.end, false});
+            continue;
+        }
         if (!bb.trys.empty()) {
             dependCur = circuit_->NewGate(circuit_->GetException(),
                 MachineType::I64, {stateCur, dependCur}, GateType::AnyType());
@@ -1449,8 +1472,12 @@ void BytecodeCircuitBuilder::PrintGraph(const char* title)
             log += std::to_string(bb.preds[k]->id) + ", ";
         }
         LOG_COMPILER(INFO) << log;
-        LOG_COMPILER(INFO) << "\tBytecodePC: [" << std::to_string(bb.start) << ", "
-                           << std::to_string(bb.end) << ")";
+        if (IsEntryBlock(bb.id)) {
+            LOG_COMPILER(INFO) << "\tBytecodePC: Empty";
+        } else {
+            LOG_COMPILER(INFO) << "\tBytecodePC: [" << std::to_string(bb.start) << ", "
+                << std::to_string(bb.end) << ")";
+        }
 
         std::string log1("\tSucces: ");
         for (size_t j = 0; j < bb.succs.size(); j++) {
@@ -1499,6 +1526,10 @@ void BytecodeCircuitBuilder::PrintGraph(const char* title)
 void BytecodeCircuitBuilder::PrintBytecodeInfo(BytecodeRegion& bb)
 {
     if (bb.isDead) {
+        return;
+    }
+    if (IsEntryBlock(bb.id)) {
+        LOG_COMPILER(INFO) << "\tBytecode[] = Empty";
         return;
     }
     LOG_COMPILER(INFO) << "\tBytecode[] = ";
