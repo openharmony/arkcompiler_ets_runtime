@@ -302,7 +302,8 @@ void ArkStackMapBuilder::GenArkCallsiteAOTFileInfo(std::vector<LLVMStackMapType:
         ASSERT(loc >= 0 && loc < static_cast<int>(callsiteNum));
         LLVMStackMapType::DeoptInfoType deopt = x.second;
         result.callsites[static_cast<uint32_t>(loc)].head.calliteOffset = x.first;
-        ASSERT(std::numeric_limits<uint16_t>::min() <= deopt.size() && deopt.size() <= std::numeric_limits<uint16_t>::max());
+        ASSERT(std::numeric_limits<uint16_t>::min() <= deopt.size()
+            && deopt.size() <= std::numeric_limits<uint16_t>::max());
         result.callsites[static_cast<uint32_t>(loc)].head.deoptNum = deopt.size();
         result.callsites[static_cast<uint32_t>(loc)].head.deoptOffset = secSize;
         std::pair<uint32_t, std::vector<ARKDeopt>> sizeAndArkDeopt;

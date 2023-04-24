@@ -12,31 +12,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { nop } from './module.js'
+import { nop } from './module.js';
 
 function foo() {
-    print("base foo()")
+    print('base foo()');
 }
 
 class A {
-    constructor(a) {
-        this.a = a;
-    }
+  constructor(a) {
+    this.a = a;
+  }
 
-    onCreate() {
-        print(this.a);
-        print("base A onCreate");
-    }
+  onCreate() {
+    print(this.a);
+    print('base A onCreate');
+  }
 
-    get message() {
-        return "base helloworld";
-    }
+  get message() {
+    return 'base helloworld';
+  }
 
-    set message(newValue) {
-        this.a = "base helloworld!"
-    }
+  set message(newValue) {
+    this.a = 'base helloworld!';
+  }
 
-    render() {
-        print("base A render ")
-    }
+  render() {
+    print('base A render ');
+  }
 }

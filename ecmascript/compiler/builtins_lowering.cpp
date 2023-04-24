@@ -109,7 +109,8 @@ GateRef BuiltinLowering::TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID
     return ret;
 }
 
-void BuiltinLowering::LowerTypedSqrt(GateRef gate) {
+void BuiltinLowering::LowerTypedSqrt(GateRef gate)
+{
     Environment env(gate, circuit_, &builder_);
     GateRef param = acc_.GetValueIn(gate, 0);
     // 20.2.2.32

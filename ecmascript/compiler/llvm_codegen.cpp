@@ -469,7 +469,7 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> *addr2nam
 }
 
 static void DecodeDebugInfo(uint64_t addr, uint64_t secIndex, char* outString, size_t outStringSize,
-                                    DWARFContext *ctx)
+    DWARFContext *ctx)
 {
     object::SectionedAddress secAddr = {addr, secIndex};
     DILineInfoSpecifier spec;

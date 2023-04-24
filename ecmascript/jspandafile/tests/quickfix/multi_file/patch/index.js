@@ -13,31 +13,31 @@
  * limitations under the License.
  */
 
-import { nop } from './module.js'
+import { nop } from './module.js';
 
 function foo() {
-    print("patch foo()")
+  print('patch foo()');
 }
 
 class A {
-    constructor(a) {
-        this.a = a;
-    }
+  constructor(a) {
+    this.a = a;
+  }
 
-    onCreate() {
-        print(this.a);
-        print("patch A onCreate");
-    }
+  onCreate() {
+    print(this.a);
+    print('patch A onCreate');
+  }
 
-    get message() {
-        return "patch helloworld";
-    }
+  get message() {
+    return 'patch helloworld';
+  }
 
-    set message(newValue) {
-        this.a = "patch helloworld!"
-    }
+  set message(newValue) {
+    this.a = 'patch helloworld!';
+  }
 
-    render() {
-        print("patch A render")
-    }
+  render() {
+    print('patch A render');
+  }
 }
