@@ -1205,21 +1205,26 @@ DEF_CALL_SIGNATURE(CallContainersArgs3)
     PUSH_CALL_ARGS_AND_DISPATCH_NATIVE_RANGE_SIGNATURE(CallContainersArgs3)
 }
 
+DEF_CALL_SIGNATURE(CallReturnWithArgv)
+{
+    PUSH_CALL_ARGS_AND_DISPATCH_NATIVE_RANGE_SIGNATURE(CallReturnWithArgv)
+}
+
 DEF_CALL_SIGNATURE(JSCallWithArgV)
 {
-    // 6 : 6 input parameters
-    CallSignature jSCallWithArgV("JSCallWithArgV", 0, 6,
+    // 5 : 5 input parameters
+    CallSignature jSCallWithArgV("JSCallWithArgV", 0, 5,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = jSCallWithArgV;
-    // 6 : 6 input parameters
-    std::array<VariableType, 6> params = {
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
         VariableType::NATIVE_POINTER(),   // glue
         VariableType::INT64(),            // actualNumArgs
         VariableType::JS_ANY(),           // jsfunc
         VariableType::JS_ANY(),           // newTarget
         VariableType::JS_ANY(),           // this
-        VariableType::NATIVE_POINTER(),   // argV
     };
+    callSign->SetVariadicArgs(true);
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);

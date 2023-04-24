@@ -89,6 +89,7 @@ JSTaggedValue FrameIterator::GetFunction() const
             auto *frame = OptimizedBuiltinLeaveFrame::GetFrameFromSp(GetSp());
             return JSTaggedValue(*(frame->GetArgv()));
         }
+        case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME :
         case FrameType::OPTIMIZED_FRAME:
         case FrameType::OPTIMIZED_ENTRY_FRAME:
         case FrameType::ASM_BRIDGE_FRAME:
@@ -260,6 +261,16 @@ void FrameIterator::Advance()
             current_ = frame->GetPrevFrameFp();
             break;
         }
+        case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME : {
+            auto frame = GetFrame<BuiltinWithArgvFrame>();
+            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+                needCalCallSiteInfo = true;
+            }
+            current_ = frame->GetPrevFrameFp();
+            break;
+        }
         case FrameType::INTERPRETER_ENTRY_FRAME : {
             auto frame = GetFrame<InterpretedEntryFrame>();
             if constexpr (GCVisit == GCVisitedFlag::VISITED) {
@@ -326,6 +337,10 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp() const
             return frame->GetCallSiteSp();
         }
         case FrameType::BUILTIN_FRAME_WITH_ARGV: {
+            auto frame = GetFrame<BuiltinWithArgvFrame>();
+            return frame->GetCallSiteSp();
+        }
+        case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME: {
             auto frame = GetFrame<BuiltinWithArgvFrame>();
             return frame->GetCallSiteSp();
         }
@@ -774,6 +789,10 @@ bool GetTypeOffsetAndPrevOffsetFromFrameType(uintptr_t frameType, uintptr_t &typ
             prevOffset = MEMBER_OFFSET(BuiltinFrame, prevFp);
             break;
         case FrameType::BUILTIN_FRAME_WITH_ARGV:
+            typeOffset = MEMBER_OFFSET(BuiltinWithArgvFrame, type);
+            prevOffset = MEMBER_OFFSET(BuiltinWithArgvFrame, prevFp);
+            break;
+        case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME:
             typeOffset = MEMBER_OFFSET(BuiltinWithArgvFrame, type);
             prevOffset = MEMBER_OFFSET(BuiltinWithArgvFrame, prevFp);
             break;

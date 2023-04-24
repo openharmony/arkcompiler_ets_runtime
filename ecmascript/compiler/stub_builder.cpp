@@ -19,11 +19,13 @@
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/typed_array_stub_builder.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_object.h"
+#include "ecmascript/js_arguments.h"
 #include "ecmascript/mem/remembered_set.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_type.h"
@@ -3268,6 +3270,35 @@ GateRef StubBuilder::FastGetPropertyByName(GateRef glue, GateRef obj, GateRef ke
     return ret;
 }
 
+GateRef StubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label fastPath(env);
+    Label slowPath(env);
+
+    Branch(TaggedIsHeapObject(obj), &fastPath, &slowPath);
+    Bind(&fastPath);
+    {
+        result = GetPropertyByIndex(glue, obj, index);
+        Label notHole(env);
+        Branch(TaggedIsHole(*result), &slowPath, &exit);
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(LdObjByIndex),
+            { obj, IntToTaggedInt(index), TaggedFalse(), Undefined() });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj)
 {
     auto env = GetEnvironment();
@@ -4402,6 +4433,121 @@ GateRef StubBuilder::GetObjectLiteralFromConstPool(GateRef glue, GateRef constpo
                                                       ConstPoolType::OBJECT_LITERAL);
 }
 
+// return elements
+GateRef StubBuilder::BuildArgumentsListFastElements(GateRef glue, GateRef arrayObj)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label hasStableElements(env);
+    Label targetIsStableJSArguments(env);
+    Label targetNotStableJSArguments(env);
+    Label targetIsInt(env);
+    Label hClassEqual(env);
+    Label targetIsStableJSArray(env);
+    Label targetNotStableJSArray(env);
+
+    Branch(HasStableElements(glue, arrayObj), &hasStableElements, &exit);
+    Bind(&hasStableElements);
+    {
+        Branch(IsStableJSArguments(glue, arrayObj), &targetIsStableJSArguments, &targetNotStableJSArguments);
+        Bind(&targetIsStableJSArguments);
+        {
+            GateRef hClass = LoadHClass(arrayObj);
+            GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+            GateRef argmentsClass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                                      GlobalEnv::ARGUMENTS_CLASS);
+            Branch(Int32Equal(hClass, argmentsClass), &hClassEqual, &exit);
+            Bind(&hClassEqual);
+            {
+                GateRef PropertyInlinedPropsOffset = IntPtr(JSArguments::LENGTH_INLINE_PROPERTY_INDEX);
+                GateRef result = GetPropertyInlinedProps(arrayObj, hClass, PropertyInlinedPropsOffset);
+                Branch(TaggedIsInt(result), &targetIsInt, &exit);
+                Bind(&targetIsInt);
+                {
+                    res = GetElementsArray(arrayObj);
+                    Jump(&exit);
+                }
+            }
+        }
+        Bind(&targetNotStableJSArguments);
+        {
+            Branch(IsStableJSArray(glue, arrayObj), &targetIsStableJSArray, &targetNotStableJSArray);
+            Bind(&targetIsStableJSArray);
+            {
+                res = GetElementsArray(arrayObj);
+                Jump(&exit);
+            }
+            Bind(&targetNotStableJSArray);
+            {
+                FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable)) });
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::MakeArgListWithHole(GateRef glue, GateRef argv, GateRef length)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(res, VariableType::INT32(), length);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    Label exit(env);
+
+    GateRef argsLength = GetLengthOfTaggedArray(argv);
+
+    Label lengthGreaterThanArgsLength(env);
+    Label lengthLessThanArgsLength(env);
+    Branch(Int32GreaterThan(length, argsLength), &lengthGreaterThanArgsLength, &lengthLessThanArgsLength);
+    Bind(&lengthGreaterThanArgsLength);
+    {
+        res = argsLength;
+        Jump(&lengthLessThanArgsLength);
+    }
+    Bind(&lengthLessThanArgsLength);
+    {
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label afterLoop(env);
+        Label targetIsHole(env);
+        Label targetNotHole(env);
+        Branch(Int32UnsignedLessThan(*i, *res), &loopHead, &afterLoop);
+        LoopBegin(&loopHead);
+        {
+            GateRef value = GetValueFromTaggedArray(argv, *i);
+            Branch(TaggedIsHole(value), &targetIsHole, &targetNotHole);
+            Bind(&targetIsHole);
+            {
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, argv, *i, Undefined());
+                Jump(&targetNotHole);
+            }
+            Bind(&targetNotHole);
+            i = Int32Add(*i, Int32(1));
+            Branch(Int32UnsignedLessThan(*i, *res), &loopEnd, &afterLoop);
+        }
+        Bind(&loopEnd);
+        LoopEnd(&loopHead);
+        Bind(&afterLoop);
+        {
+            res = length;
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef index)
 {
     auto env = GetEnvironment();
@@ -4670,6 +4816,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                       newTarget, thisValue, data[0], data[1], data[2] }); // 2: args2
                 break;
             case JSCallMode::CALL_THIS_WITH_ARGV:
+            case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV: {
                 thisValue = data[2]; // 2: this input
                 [[fallthrough]];
@@ -4774,6 +4921,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     Jump(&exit);
                     break;
                 case JSCallMode::CALL_THIS_WITH_ARGV:
+                case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
                 case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
                     thisValue = data[2]; // 2: this input
                     [[fallthrough]];
@@ -4893,6 +5041,11 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
                     { glue, func, method, callField, data[1], data[2], data[3], data[0] });
                 Jump(&exit);
                 break;
+            case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
+                result = CallNGCRuntime(glue, RTSTUB_ID(CallReturnWithArgv),
+                    { glue, func, method, callField, data[0], data[1], data[2] });
+                Jump(&exit);
+                break;
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -4909,27 +5062,27 @@ void StubBuilder::CallFastPath(GateRef glue, GateRef nativeCode, GateRef func, G
     std::initializer_list<GateRef> args, JSCallMode mode)
 {
     auto env = GetEnvironment();
-    Label isFastBuiltins(env);
     auto data = std::begin(args);
+    Label isFastBuiltins(env);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
     GateRef isFastBuiltinsMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsFastBuiltinBit::START_BIT);
-    Branch(Int64NotEqual(Int64And(callField, isFastBuiltinsMask), Int64(0)),
-        &isFastBuiltins, notFastBuiltins);
+    Branch(Int64NotEqual(Int64And(callField, isFastBuiltinsMask), Int64(0)), &isFastBuiltins, notFastBuiltins);
     Bind(&isFastBuiltins);
     {
         GateRef builtinId = GetBuiltinId(method);
         GateRef ret;
         switch (mode) {
             case JSCallMode::CALL_THIS_ARG0:
-                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, Undefined(), thisValue, numArgs });
+                ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, Undefined(), thisValue, numArgs,
+                    Undefined(), Undefined(), Undefined()});
                 break;
             case JSCallMode::CALL_THIS_ARG1:
                 ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, Undefined(),
-                                                          thisValue, numArgs, data[0] });
+                                                          thisValue, numArgs, data[0], Undefined(), Undefined() });
                 break;
             case JSCallMode::CALL_THIS_ARG2:
                 ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, Undefined(), thisValue,
-                                                          numArgs, data[0], data[1] });
+                                                          numArgs, data[0], data[1], Undefined() });
                 break;
             case JSCallMode::CALL_THIS_ARG3:
                 ret = DispatchBuiltins(glue, builtinId, { glue, nativeCode, func, Undefined(), thisValue,
@@ -5283,5 +5436,359 @@ GateRef StubBuilder::ToNumber(GateRef glue, GateRef tagged)
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+GateRef StubBuilder::GetLengthOfJsArray(GateRef glue, GateRef array)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isInt(env);
+    Label notInt(env);
+    Label notDouble(env);
+    Label isDouble(env);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    GateRef len = Load(VariableType::JS_ANY(), array, IntPtr(JSArray::LENGTH_OFFSET));
+    Branch(TaggedIsInt(len), &isInt, &notInt);
+    Bind(&isInt);
+    {
+        result = TaggedGetInt(len);
+        Jump(&exit);
+    }
+    Bind(&notInt);
+    {
+        Branch(TaggedIsDouble(len), &isDouble, &notDouble);
+        Bind(&isDouble);
+        {
+            result = DoubleToInt(glue, GetDoubleOfTDouble(len));
+            Jump(&exit);
+        }
+        Bind(&notDouble);
+        {
+            FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable)) });
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::CreateListFromArrayLike(GateRef glue, GateRef arrayObj)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+    Label exit(env);
+
+    // 3. If Type(obj) is Object, throw a TypeError exception.
+    Label targetIsHeapObject(env);
+    Label targetIsEcmaObject(env);
+    Label targetNotEcmaObject(env);
+    Branch(TaggedIsHeapObject(arrayObj), &targetIsHeapObject, &targetNotEcmaObject);
+    Bind(&targetIsHeapObject);
+    Branch(TaggedObjectIsEcmaObject(arrayObj), &targetIsEcmaObject, &targetNotEcmaObject);
+    Bind(&targetNotEcmaObject);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(TargetTypeNotObject));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        Jump(&exit);
+    }
+    Bind(&targetIsEcmaObject);
+    {
+        // 4. Let len be ToLength(Get(obj, "length")).
+        GateRef lengthString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                      ConstantIndex::LENGTH_STRING_INDEX);
+        GateRef value = FastGetPropertyByName(glue, arrayObj, lengthString);
+        GateRef number = ToLength(glue, value);
+        // 5. ReturnIfAbrupt(len).
+        Label isPendingException1(env);
+        Label noPendingException1(env);
+        Branch(HasPendingException(glue), &isPendingException1, &noPendingException1);
+        Bind(&isPendingException1);
+        {
+            Jump(&exit);
+        }
+        Bind(&noPendingException1);
+        {
+            Label indexInRange(env);
+            Label indexOutRange(env);
+            GateRef doubleLen = GetDoubleOfTNumber(number);
+            Branch(DoubleGreaterThan(doubleLen, Double(JSObject::MAX_ELEMENT_INDEX)), &indexOutRange, &indexInRange);
+            Bind(&indexOutRange);
+            {
+                GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(LenGreaterThanMax));
+                CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+                Jump(&exit);
+            }
+            Bind(&indexInRange);
+            {
+                GateRef int32Len = DoubleToInt(glue, doubleLen);
+                // 6. Let list be an empty List.
+                NewObjectStubBuilder newBuilder(this);
+                GateRef array = newBuilder.NewTaggedArray(glue, int32Len);
+                Label targetIsTypeArray(env);
+                Label targetNotTypeArray(env);
+                Branch(IsTypedArray(arrayObj), &targetIsTypeArray, &targetNotTypeArray);
+                Bind(&targetIsTypeArray);
+                {
+                    TypedArrayStubBuilder arrayStubBuilder(this);
+                    arrayStubBuilder.FastCopyElementToArray(glue, arrayObj, array);
+                    // c. ReturnIfAbrupt(next).
+                    Label isPendingException2(env);
+                    Label noPendingException2(env);
+                    Branch(HasPendingException(glue), &isPendingException2, &noPendingException2);
+                    Bind(&isPendingException2);
+                    {
+                        Jump(&exit);
+                    }
+                    Bind(&noPendingException2);
+                    {
+                        res = array;
+                        Jump(&exit);
+                    }
+                }
+                Bind(&targetNotTypeArray);
+                // 8. Repeat while index < len
+                Label loopHead(env);
+                Label loopEnd(env);
+                Label afterLoop(env);
+                Label isPendingException3(env);
+                Label noPendingException3(env);
+                Label storeValue(env);
+                Jump(&loopHead);
+                LoopBegin(&loopHead);
+                {
+                    Branch(Int32UnsignedLessThan(*index, int32Len), &storeValue, &afterLoop);
+                    Bind(&storeValue);
+                    {
+                        GateRef next = FastGetPropertyByIndex(glue, arrayObj, *index);
+                        // c. ReturnIfAbrupt(next).
+                        Branch(HasPendingException(glue), &isPendingException3, &noPendingException3);
+                        Bind(&isPendingException3);
+                        {
+                            Jump(&exit);
+                        }
+                        Bind(&noPendingException3);
+                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, next);
+                        index = Int32Add(*index, Int32(1));
+                        Jump(&loopEnd);
+                    }
+                }
+                Bind(&loopEnd);
+                LoopEnd(&loopHead);
+                Bind(&afterLoop);
+                {
+                    res = array;
+                    Jump(&exit);
+                }
+            }
+        }
+    }
+    Bind(&exit);
+    GateRef ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::ToLength(GateRef glue, GateRef target)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+
+    GateRef number = ToNumber(glue, target);
+    Label isPendingException(env);
+    Label noPendingException(env);
+    Branch(HasPendingException(glue), &isPendingException, &noPendingException);
+    Bind(&isPendingException);
+    {
+        Jump(&exit);
+    }
+    Bind(&noPendingException);
+    {
+        GateRef num = GetDoubleOfTNumber(number);
+        Label targetLessThanZero(env);
+        Label targetGreaterThanZero(env);
+        Label targetLessThanSafeNumber(env);
+        Label targetGreaterThanSafeNumber(env);
+        Branch(DoubleLessThan(num, Double(0.0)), &targetLessThanZero, &targetGreaterThanZero);
+        Bind(&targetLessThanZero);
+        {
+            res = DoubleToTaggedDoublePtr(Double(0.0));
+            Jump(&exit);
+        }
+        Bind(&targetGreaterThanZero);
+        Branch(DoubleGreaterThan(num, Double(SAFE_NUMBER)), &targetGreaterThanSafeNumber, &targetLessThanSafeNumber);
+        Bind(&targetGreaterThanSafeNumber);
+        {
+            res = DoubleToTaggedDoublePtr(Double(SAFE_NUMBER));
+            Jump(&exit);
+        }
+        Bind(&targetLessThanSafeNumber);
+        {
+            res = number;
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::TaggedGetNumber(GateRef x)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    Label exit(env);
+    env->SubCfgEntry(&subentry);
+
+    Label targetIsInt(env);
+    Label targetIsDouble(env);
+    DEFVAlUE(number, env_, VariableType::FLOAT64(), Double(0));
+    Branch(TaggedIsInt(x), &targetIsInt, &targetIsDouble);
+    Bind(&targetIsInt);
+    {
+        number = ChangeInt32ToFloat64(TaggedGetInt(x));
+        Jump(&exit);
+    }
+    Bind(&targetIsDouble);
+    {
+        number = GetDoubleOfTDouble(x);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    GateRef ret = *number;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::HasStableElements(GateRef glue, GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label exit(env);
+    Label targetIsHeapObject(env);
+    Label targetIsStableElements(env);
+
+    Branch(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
+    Bind(&targetIsHeapObject);
+    {
+        GateRef jsHclass = LoadHClass(obj);
+        Branch(IsStableElements(jsHclass), &targetIsStableElements, &exit);
+        Bind(&targetIsStableElements);
+        {
+            GateRef guardiansOffset = IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
+            GateRef guardians = Load(VariableType::JS_ANY(), glue, guardiansOffset);
+            Label targetIsTaggedTrue(env);
+            Label targetIsTaggedFalse(env);
+            Branch(TaggedIsTrue(guardians), &targetIsTaggedTrue, &targetIsTaggedFalse);
+            Bind(&targetIsTaggedTrue);
+            {
+                result = True();
+                Jump(&exit);
+            }
+            Bind(&targetIsTaggedFalse);
+            {
+                result = False();
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto res = *result;
+    env->SubCfgExit();
+    return res;
+}
+
+GateRef StubBuilder::IsStableJSArguments(GateRef glue, GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label exit(env);
+    Label targetIsHeapObject(env);
+    Label targetIsStableArguments(env);
+
+    Branch(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
+    Bind(&targetIsHeapObject);
+    {
+        GateRef jsHclass = LoadHClass(obj);
+        Branch(IsStableArguments(jsHclass), &targetIsStableArguments, &exit);
+        Bind(&targetIsStableArguments);
+        {
+            GateRef guardiansOffset = IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
+            GateRef guardians = Load(VariableType::JS_ANY(), glue, guardiansOffset);
+
+            Label targetIsTaggedTrue(env);
+            Label targetIsTaggedFalse(env);
+            Branch(TaggedIsTrue(guardians), &targetIsTaggedTrue, &targetIsTaggedFalse);
+            Bind(&targetIsTaggedTrue);
+            {
+                result = True();
+                Jump(&exit);
+            }
+            Bind(&targetIsTaggedFalse);
+            {
+                result = False();
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto res = *result;
+    env->SubCfgExit();
+    return res;
+}
+
+GateRef StubBuilder::IsStableJSArray(GateRef glue, GateRef obj)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label exit(env);
+    Label targetIsHeapObject(env);
+    Label targetIsStableArray(env);
+
+    Branch(TaggedIsHeapObject(obj), &targetIsHeapObject, &exit);
+    Bind(&targetIsHeapObject);
+    {
+        GateRef jsHclass = LoadHClass(obj);
+        Branch(IsStableArray(jsHclass), &targetIsStableArray, &exit);
+        Bind(&targetIsStableArray);
+        {
+            GateRef guardiansOffset = IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
+            GateRef guardians = Load(VariableType::JS_ANY(), glue, guardiansOffset);
+
+            Label targetIsTaggedTrue(env);
+            Label targetIsTaggedFalse(env);
+            Branch(TaggedIsTrue(guardians), &targetIsTaggedTrue, &targetIsTaggedFalse);
+            Bind(&targetIsTaggedTrue);
+            {
+                result = True();
+                Jump(&exit);
+            }
+            Bind(&targetIsTaggedFalse);
+            {
+                result = False();
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto res = *result;
+    env->SubCfgExit();
+    return res;
 }
 }  // namespace panda::ecmascript::kungfu

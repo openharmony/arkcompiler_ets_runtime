@@ -67,7 +67,8 @@ using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, con
     V(ResumeUncaughtFrameAndReturn)          \
     V(CallSetter)                            \
     V(CallGetter)                            \
-    V(CallContainersArgs3)
+    V(CallContainersArgs3)                   \
+    V(CallReturnWithArgv)
 
 #define JS_CALL_TRAMPOLINE_LIST(V)           \
     V(CallRuntime)                           \

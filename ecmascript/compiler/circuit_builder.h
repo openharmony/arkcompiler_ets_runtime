@@ -402,6 +402,7 @@ public:
     inline GateRef TaggedIsSpecial(GateRef x);
     inline GateRef TaggedIsHeapObject(GateRef x);
     inline GateRef TaggedIsAsyncGeneratorObject(GateRef x);
+    inline GateRef TaggedIsJSGlobalObject(GateRef x);
     inline GateRef TaggedIsGeneratorObject(GateRef x);
     inline GateRef TaggedIsPropertyBox(GateRef x);
     inline GateRef TaggedIsWeak(GateRef x);
@@ -493,6 +494,9 @@ public:
     inline GateRef GetObjectType(GateRef hClass);
     inline GateRef IsDictionaryModeByHClass(GateRef hClass);
     inline GateRef IsIsStableElementsByHClass(GateRef hClass);
+    inline GateRef IsStableElements(GateRef hClass);
+    inline GateRef IsStableArguments(GateRef hClass);
+    inline GateRef IsStableArray(GateRef hClass);
     inline GateRef DoubleIsINF(GateRef x);
     inline GateRef IsDictionaryElement(GateRef hClass);
     inline GateRef IsClassConstructor(GateRef object);

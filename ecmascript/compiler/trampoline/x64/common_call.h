@@ -137,6 +137,8 @@ public:
 
     static void CallContainersArgs3(ExtendedAssembler *assembler);
 
+    static void CallReturnWithArgv(ExtendedAssembler *assembler);
+
     static void ResumeCaughtFrameAndDispatch(ExtendedAssembler *assembler);
 
     static void ResumeUncaughtFrameAndReturn(ExtendedAssembler *assembler);

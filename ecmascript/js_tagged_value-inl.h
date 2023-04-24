@@ -39,7 +39,6 @@
 
 namespace panda::ecmascript {
 // ecma6 7.1 Type Conversion
-static constexpr double SAFE_NUMBER = 9007199254740991LL;
 static constexpr uint32_t MAX_ELEMENT_INDEX_LEN = 10;
 
 inline bool JSTaggedValue::ToBoolean() const

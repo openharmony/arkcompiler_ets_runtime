@@ -439,6 +439,7 @@ private:
     V(JSCallNewWithArgV)                    \
     V(TimeClip)                             \
     V(SetDateValues)                        \
+    V(CallReturnWithArgv)                   \
     TEST_STUB_SIGNATRUE_LIST(V)
 
 #define DECL_CALL_SIGNATURE(name)                                  \

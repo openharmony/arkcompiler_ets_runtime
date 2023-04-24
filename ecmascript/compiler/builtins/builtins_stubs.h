@@ -64,19 +64,65 @@ public:
         return Load(VariableType::JS_ANY(), info, thisOffset);
     }
 
-    inline GateRef GetCallArg0()
+    inline GateRef GetCallArg0(GateRef numArg)
     {
-        return TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
+        auto env = GetEnvironment();
+        Label subentry(env);
+        env->SubCfgEntry(&subentry);
+        DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+        Label isValid(env);
+        Label exit(env);
+        Branch(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(0)), &isValid, &exit);
+        Bind(&isValid);
+        {
+            result = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
+            Jump(&exit);
+        }
+        Bind(&exit);
+        auto res = *result;
+        env->SubCfgExit();
+        return res;
     }
 
-    inline GateRef GetCallArg1()
+    inline GateRef GetCallArg1(GateRef numArg)
     {
-        return TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG1));
+        auto env = GetEnvironment();
+        Label subentry(env);
+        env->SubCfgEntry(&subentry);
+        DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+        Label isValid(env);
+        Label exit(env);
+        Branch(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(1)), &isValid, &exit);
+        Bind(&isValid);
+        {
+            result = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG1));
+            Jump(&exit);
+        }
+        Bind(&exit);
+        auto res = *result;
+        env->SubCfgExit();
+        return res;
     }
 
-    inline GateRef GetCallArg2()
+    inline GateRef GetCallArg2(GateRef numArg)
     {
-        return TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));
+        auto env = GetEnvironment();
+        Label subentry(env);
+        env->SubCfgEntry(&subentry);
+        DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+        Label isValid(env);
+        Label exit(env);
+        // 2: 2 args
+        Branch(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(2)), &isValid, &exit);
+        Bind(&isValid);
+        {
+            result = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));
+            Jump(&exit);
+        }
+        Bind(&exit);
+        auto res = *result;
+        env->SubCfgExit();
+        return res;
     }
 
     inline GateRef GetArgv()

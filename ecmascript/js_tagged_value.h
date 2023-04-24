@@ -35,6 +35,8 @@ class OperationResult;
 class EcmaString;
 class JSThread;
 
+static constexpr double SAFE_NUMBER = 9007199254740991LL;
+
 // Don't switch the order!
 enum PreferredPrimitiveType : uint8_t { PREFER_NUMBER = 0, PREFER_STRING, NO_PREFERENCE };
 

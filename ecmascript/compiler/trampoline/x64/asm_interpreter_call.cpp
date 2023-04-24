@@ -568,6 +568,9 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
         }
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
             return __ CppJSCallAvailableRegister2();
+        case JSCallMode::CALL_THIS_ARGV_WITH_RETURN: {
+            return __ CppJSCallAvailableRegister1();
+        }
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -816,13 +819,12 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     __ Bind(&stackOverflow);
     {
         Label aligneThrow;
-        __ Movq(rsp, Operand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
-        __ Pushq(static_cast<int32_t>(FrameType::BUILTIN_FRAME_WITH_ARGV));  // frame type
+        __ Movq(static_cast<int32_t>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME),
+            Operand(rsp, FRAME_SLOT_SIZE));
         __ Pushq(0);  // argc
         __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // this
         __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // newTarget
         __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // callTarget
-        __ Leaq(Operand(rsp, 5 * FRAME_SLOT_SIZE), rbp);  // 40: skip frame type, numArgs, func, newTarget and this
 
         __ Testq(0xf, rsp);  // 0xf: 0x1111
         __ Jz(&aligneThrow, Distance::Near);
@@ -922,9 +924,7 @@ void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler,
     __ Pushq(rbp);
     __ Movq(rsp, Operand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
     __ Pushq(static_cast<int32_t>(type));
-    if (type != FrameType::BUILTIN_FRAME_WITH_ARGV) {
-        __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);  // 8: skip frame type
-    }
+    __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);  // 8: skip frame type
 }
 
 void AsmInterpreterCall::CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode)
@@ -1069,6 +1069,29 @@ void AsmInterpreterCall::CallSetter(ExtendedAssembler *assembler)
     __ Ret();
     __ Bind(&target);
     JSCallCommonEntry(assembler, JSCallMode::CALL_SETTER);
+}
+
+// Input: glue             - %rdi
+//        callTarget       - %rsi
+//        method           - %rdx
+//        callField        - %rcx
+//        arg0(argc)       - %r8
+//        arg1(arglist)    - %r9
+//        argthis          - stack
+void AsmInterpreterCall::CallReturnWithArgv(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallReturnWithArgv));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    Register r13 = __ CppJSCallAvailableRegister1();
+    __ Movq(Operand(rbp, FRAME_SLOT_SIZE), r13);
+    __ Callq(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARGV_WITH_RETURN);
+    }
 }
 
 void AsmInterpreterCall::CallContainersArgs3(ExtendedAssembler *assembler)

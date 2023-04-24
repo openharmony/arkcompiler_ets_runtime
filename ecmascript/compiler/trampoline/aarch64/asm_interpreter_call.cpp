@@ -326,6 +326,7 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
         case JSCallMode::CALL_THIS_ARG2:
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_THIS_WITH_ARGV:
+        case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             return __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG2);
         case JSCallMode::CALL_THIS_ARG3:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
@@ -521,7 +522,7 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
         Register frameType(X11);
         __ Ldr(temp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
         __ Mov(spRegister, temp);
-        __ Mov(frameType, Immediate(static_cast<int32_t>(FrameType::BUILTIN_FRAME_WITH_ARGV)));
+        __ Mov(frameType, Immediate(static_cast<int32_t>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME)));
         // 2: frame type and argc
         __ Stp(Register(Zero), frameType, MemoryOperand(Register(SP), -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
         __ Mov(temp, Immediate(JSTaggedValue::VALUE_UNDEFINED));
@@ -529,8 +530,6 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
         __ Stp(temp, temp, MemoryOperand(spRegister, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
         // 2: fill func&align slots
         __ Stp(Register(Zero), temp, MemoryOperand(spRegister, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
-        __ Mov(temp, spRegister);
-        __ Add(Register(FP), temp, Immediate(48));  // 48: skip frame type, numArgs, func, newTarget, this and align
 
         Register runtimeId(X11);
         Register trampoline(X12);
@@ -614,14 +613,10 @@ void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register
         // 16: type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type
-    } else if (type == FrameType::BUILTIN_ENTRY_FRAME) {
+    } else {
         // 16: type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));  // 16: skip next and frame type
-    } else {
-        ASSERT(type == FrameType::BUILTIN_FRAME_WITH_ARGV);
-        // 16: type & next
-        __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     }
 }
 
@@ -879,6 +874,28 @@ void AsmInterpreterCall::CallContainersArgs3(ExtendedAssembler *assembler)
     __ Bind(&target);
     {
         JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+    }
+}
+
+// c++ calling convention
+// X0 - glue
+// X1 - callTarget
+// X2 - method
+// X3 - callField
+// X4 - arg0(argc)
+// X5 - arg1(arglist)
+// X6 - arg3(argthis)
+void AsmInterpreterCall::CallReturnWithArgv(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallReturnWithArgv));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARGV_WITH_RETURN);
     }
 }
 

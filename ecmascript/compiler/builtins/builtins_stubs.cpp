@@ -107,7 +107,7 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
         Branch(Int64Equal(numArgs, IntPtr(1)), &callThis1, &notcallThis1);
         Bind(&callThis1);
         {
-            GateRef arg0 = GetCallArg0();
+            GateRef arg0 = GetCallArg0(numArgs);
             result =
                 CallBuiltinRuntime(glue, { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0 });
             Jump(&exit);
@@ -117,17 +117,17 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
             Branch(Int64Equal(numArgs, IntPtr(2)), &callThis2, &callThis3); // 2: args2
             Bind(&callThis2);
             {
-                GateRef arg0 = GetCallArg0();
-                GateRef arg1 = GetCallArg1();
+                GateRef arg0 = GetCallArg0(numArgs);
+                GateRef arg1 = GetCallArg1(numArgs);
                 result = CallBuiltinRuntime(glue,
                     { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0, arg1 });
                 Jump(&exit);
             }
             Bind(&callThis3);
             {
-                GateRef arg0 = GetCallArg0();
-                GateRef arg1 = GetCallArg1();
-                GateRef arg2 = GetCallArg2();
+                GateRef arg0 = GetCallArg0(numArgs);
+                GateRef arg1 = GetCallArg1(numArgs);
+                GateRef arg2 = GetCallArg2(numArgs);
                 result = CallBuiltinRuntime(glue,
                     { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0, arg1, arg2 });
                 Jump(&exit);
@@ -172,7 +172,7 @@ DECLARE_BUILTINS(CharCodeAt)
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
             Bind(&posTagNotUndefined);
             {
-                GateRef posTag = GetCallArg0();
+                GateRef posTag = GetCallArg0(numArgs);
                 Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
                 pos = GetInt32OfTInt(posTag);
@@ -238,7 +238,7 @@ DECLARE_BUILTINS(IndexOf)
         Branch(IsString(thisValue), &isString, &slowPath);
         Bind(&isString);
         {
-            GateRef searchTag = GetCallArg0();
+            GateRef searchTag = GetCallArg0(numArgs);
             Branch(TaggedIsHeapObject(searchTag), &searchTagIsHeapObject, &slowPath);
             Bind(&searchTagIsHeapObject);
             Branch(IsString(searchTag), &isSearchString, &slowPath);
@@ -248,7 +248,7 @@ DECLARE_BUILTINS(IndexOf)
                 Branch(Int64GreaterThanOrEqual(IntPtr(1), numArgs), &next, &posTagNotUndefined);
                 Bind(&posTagNotUndefined);
                 {
-                    GateRef posTag = GetCallArg1();
+                    GateRef posTag = GetCallArg1(numArgs);
                     Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                     Bind(&posTagIsInt);
                     pos = GetInt32OfTInt(posTag);
@@ -356,7 +356,7 @@ DECLARE_BUILTINS(Substring)
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &startTagNotUndefined);
             Bind(&startTagNotUndefined);
             {
-                GateRef startTag = GetCallArg0();
+                GateRef startTag = GetCallArg0(numArgs);
                 Branch(TaggedIsInt(startTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
                 start = GetInt32OfTInt(startTag);
@@ -377,7 +377,7 @@ DECLARE_BUILTINS(Substring)
                 }
                 Bind(&endTagNotUndefined);
                 {
-                    GateRef endTag = GetCallArg1();
+                    GateRef endTag = GetCallArg1(numArgs);
                     Branch(TaggedIsInt(endTag), &endTagIsInt, &endTagNotInt);
                     Bind(&endTagIsInt);
                     end = GetInt32OfTInt(endTag);
@@ -504,7 +504,7 @@ DECLARE_BUILTINS(CharAt)
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
             Bind(&posTagNotUndefined);
             {
-                GateRef posTag = GetCallArg0();
+                GateRef posTag = GetCallArg0(numArgs);
                 Branch(TaggedIsInt(posTag), &posTagIsInt, &posTagNotInt);
                 Bind(&posTagIsInt);
                 pos = GetInt32OfTInt(posTag);
@@ -817,6 +817,102 @@ DECLARE_BUILTINS(ArrayListReplaceAllElements)
     ContainersStubBuilder containersBuilder(this);
     containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
         &slowPath, ContainersType::ARRAYLIST_REPLACEALLELEMENTS);
+    Bind(&slowPath);
+    {
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+DECLARE_BUILTINS(FunctionPrototypeApply)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+    Label slowPath(env);
+    Label targetIsCallable(env);
+    Label targetIsUndefined(env);
+    Label targetNotUndefined(env);
+    Label isHeapObject(env);
+    //1. If IsCallable(func) is false, throw a TypeError exception
+    Branch(TaggedIsHeapObject(thisValue), &isHeapObject, &slowPath);
+    Bind(&isHeapObject);
+    {
+        Branch(IsCallable(thisValue), &targetIsCallable, &slowPath);
+        Bind(&targetIsCallable);
+        {
+            GateRef thisArg = GetCallArg0(numArgs);
+            GateRef arrayObj = GetCallArg1(numArgs);
+            // 2. If argArray is null or undefined, then
+            Branch(TaggedIsUndefined(arrayObj), &targetIsUndefined, &targetNotUndefined);
+            Bind(&targetIsUndefined);
+            {
+                // a. Return Call(func, thisArg).
+                res = JSCallDispatch(glue, thisValue, Int32(0), 0, Circuit::NullGate(),
+                    JSCallMode::CALL_GETTER, { thisArg });
+                Jump(&exit);
+            }
+            Bind(&targetNotUndefined);
+            {
+                // 3. Let argList be CreateListFromArrayLike(argArray).
+                GateRef elements = BuildArgumentsListFastElements(glue, arrayObj);
+                Label targetIsHole(env);
+                Label targetNotHole(env);
+                Branch(TaggedIsHole(elements), &targetIsHole, &targetNotHole);
+                Bind(&targetIsHole);
+                {
+                    GateRef argList = CreateListFromArrayLike(glue, arrayObj);
+                    // 4. ReturnIfAbrupt(argList).
+                    Label isPendingException(env);
+                    Label noPendingException(env);
+                    Branch(HasPendingException(glue), &isPendingException, &noPendingException);
+                    Bind(&isPendingException);
+                    {
+                        Jump(&slowPath);
+                    }
+                    Bind(&noPendingException);
+                    {
+                        GateRef argsLength = GetLengthOfTaggedArray(argList);
+                        GateRef argv = PtrAdd(argList, IntPtr(TaggedArray::DATA_OFFSET));
+                        res = JSCallDispatch(glue, thisValue, argsLength, 0, Circuit::NullGate(),
+                            JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, argv, thisArg });
+                        Jump(&exit);
+                    }
+                }
+                Bind(&targetNotHole);
+                {
+                    // 6. Return Call(func, thisArg, argList).
+                    Label taggedIsStableJsArg(env);
+                    Label taggedNotStableJsArg(env);
+                    Branch(IsStableJSArguments(glue, arrayObj), &taggedIsStableJsArg, &taggedNotStableJsArg);
+                    Bind(&taggedIsStableJsArg);
+                    {
+                        GateRef hClass = LoadHClass(arrayObj);
+                        GateRef PropertyInlinedPropsOffset = IntPtr(JSArguments::LENGTH_INLINE_PROPERTY_INDEX);
+                        GateRef result = GetPropertyInlinedProps(arrayObj, hClass, PropertyInlinedPropsOffset);
+                        GateRef length = TaggedGetInt(result);
+                        GateRef argsLength = MakeArgListWithHole(glue, elements, length);
+                        GateRef elementArgv = PtrAdd(elements, IntPtr(TaggedArray::DATA_OFFSET));
+                        res = JSCallDispatch(glue, thisValue, argsLength, 0, Circuit::NullGate(),
+                            JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, elementArgv, thisArg });
+                        Jump(&exit);
+                    }
+                    Bind(&taggedNotStableJsArg);
+                    {
+                        GateRef length = GetLengthOfJsArray(glue, arrayObj);
+                        GateRef argsLength = MakeArgListWithHole(glue, elements, length);
+                        GateRef elementArgv = PtrAdd(elements, IntPtr(TaggedArray::DATA_OFFSET));
+                        res = JSCallDispatch(glue, thisValue, argsLength, 0, Circuit::NullGate(),
+                            JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, elementArgv, thisArg });
+                        Jump(&exit);
+                    }
+                }
+            }
+        }
+    }
+    
     Bind(&slowPath);
     {
         res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
