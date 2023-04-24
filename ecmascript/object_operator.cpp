@@ -225,7 +225,8 @@ void ObjectOperator::ToPropertyDescriptor(PropertyDescriptor &desc) const
         desc.SetValue(JSHandle<JSTaggedValue>(thread_, val));
     } else {
         auto result = GetValue();
-        if (result.IsPropertyBox()) {
+        bool isPropertyBox = result.IsPropertyBox();
+        if (isPropertyBox) {
             result = PropertyBox::Cast(result.GetTaggedObject())->GetValue();
         }
         AccessorData *accessor = AccessorData::Cast(result.GetTaggedObject());
@@ -233,7 +234,13 @@ void ObjectOperator::ToPropertyDescriptor(PropertyDescriptor &desc) const
         if (UNLIKELY(accessor->IsInternal())) {
             desc.SetWritable(IsWritable());
             auto val = accessor->CallInternalGet(thread_, JSHandle<JSObject>::Cast(GetHolder()));
-            desc.SetValue(JSHandle<JSTaggedValue>(thread_, val));
+            JSMutableHandle<JSTaggedValue> value(thread_, val);
+            if (isPropertyBox) {
+                JSHandle<PropertyBox> cell(value_);
+                cell->SetValue(thread_, val);
+                value.Update(cell);
+            }
+            desc.SetValue(value);
         } else {
             desc.SetGetter(JSHandle<JSTaggedValue>(thread_, accessor->GetGetter()));
             desc.SetSetter(JSHandle<JSTaggedValue>(thread_, accessor->GetSetter()));
@@ -443,6 +450,11 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
     if (receiver->IsJSGlobalObject()) {
         // need update cell type ?
         auto *dict = GlobalDictionary::Cast(receiver->GetProperties().GetTaggedObject());
+        if (isInternalAccessor && !value->IsAccessor()) {
+            PropertyAttributes attr = dict->GetAttributes(GetIndex());
+            attr.SetIsAccessor(false);
+            dict->SetAttributes(thread_, GetIndex(), attr);
+        }
         PropertyBox *cell = dict->GetBox(GetIndex());
         cell->SetValue(thread_, value.GetTaggedValue());
         return true;

@@ -123,6 +123,7 @@ using Object = builtins::BuiltinsObject;
 using Date = builtins::BuiltinsDate;
 using Symbol = builtins::BuiltinsSymbol;
 using Boolean = builtins::BuiltinsBoolean;
+using BuiltinsLazyCallback = builtins::BuiltinsLazyCallback;
 using BuiltinsMap = builtins::BuiltinsMap;
 using BuiltinsSet = builtins::BuiltinsSet;
 using BuiltinsWeakMap = builtins::BuiltinsWeakMap;
@@ -184,7 +185,7 @@ using SharedArrayBuffer = builtins::BuiltinsSharedArrayBuffer;
 using BuiltinsAsyncIterator = builtins::BuiltinsAsyncIterator;
 using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
 
-void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
+void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit)
 {
     thread_ = thread;
     vm_ = thread->GetEcmaVM();
@@ -202,6 +203,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     // Object.prototype_or_hclass
     JSHandle<JSHClass> objFuncClass =
         factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
+    env->SetObjectFunctionClass(thread_, objFuncClass);
 
     // GLobalObject.prototype_or_hclass
     JSHandle<JSHClass> globalObjFuncClass =
@@ -274,25 +276,37 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
         InitializeSymbolWithRealm(env, primRefObjHClass);
         InitializeBigIntWithRealm(env);
     }
-
+    InitializeArray(env, objFuncPrototypeVal);
+    if (lazyInit) {
+        LazyInitializeDate(env);
+        LazyInitializeSet(env);
+        LazyInitializeMap(env);
+        LazyInitializeWeakMap(env);
+        LazyInitializeWeakSet(env);
+        LazyInitializeWeakRef(env);
+        LazyInitializeFinalizationRegistry(env);
+        LazyInitializeTypedArray(env);
+        LazyInitializeArrayBuffer(env);
+        LazyInitializeDataView(env);
+        LazyInitializeSharedArrayBuffer(env);
+    } else {
+        InitializeDate(env, objFuncClass);
+        InitializeSet(env, objFuncClass);
+        InitializeMap(env, objFuncClass);
+        InitializeWeakMap(env, objFuncClass);
+        InitializeWeakSet(env, objFuncClass);
+        InitializeWeakRef(env, objFuncClass);
+        InitializeFinalizationRegistry(env, objFuncClass);
+        InitializeTypedArray(env, objFuncClass);
+        InitializeArrayBuffer(env, objFuncClass);
+        InitializeDataView(env, objFuncClass);
+        InitializeSharedArrayBuffer(env, objFuncClass);
+    }
     InitializeNumber(env, globalObject, primRefObjHClass);
-    InitializeDate(env, objFuncClass);
     InitializeObject(env, objFuncPrototype, objectFunction);
     InitializeBoolean(env, primRefObjHClass);
-
     InitializeRegExp(env);
-    InitializeSet(env, objFuncClass);
-    InitializeMap(env, objFuncClass);
-    InitializeWeakMap(env, objFuncClass);
-    InitializeWeakSet(env, objFuncClass);
-    InitializeWeakRef(env, objFuncClass);
-    InitializeFinalizationRegistry(env, objFuncClass);
-    InitializeArray(env, objFuncPrototypeVal);
-    InitializeTypedArray(env, objFuncClass);
     InitializeString(env, primRefObjHClass);
-    InitializeArrayBuffer(env, objFuncClass);
-    InitializeDataView(env, objFuncClass);
-    InitializeSharedArrayBuffer(env, objFuncClass);
 
     JSHandle<JSHClass> argumentsClass = factory_->CreateJSArguments();
     env->SetArgumentsClass(thread_, argumentsClass);
@@ -316,14 +330,25 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     InitializePromiseJob(env);
 #ifdef ARK_SUPPORT_INTL
     InitializeIntl(env, objFuncPrototypeVal);
-    InitializeLocale(env);
-    InitializeDateTimeFormat(env);
-    InitializeNumberFormat(env);
-    InitializeRelativeTimeFormat(env);
-    InitializeCollator(env);
-    InitializePluralRules(env);
-    InitializeDisplayNames(env);
-    InitializeListFormat(env);
+    if (lazyInit) {
+        LazyInitializeLocale(env);
+        LazyInitializeDateTimeFormat(env);
+        LazyInitializeNumberFormat(env);
+        LazyInitializeRelativeTimeFormat(env);
+        LazyInitializeCollator(env);
+        LazyInitializePluralRules(env);
+        LazyInitializeDisplayNames(env);
+        LazyInitializeListFormat(env);
+    } else {
+        InitializeLocale(env);
+        InitializeDateTimeFormat(env);
+        InitializeNumberFormat(env);
+        InitializeRelativeTimeFormat(env);
+        InitializeCollator(env);
+        InitializePluralRules(env);
+        InitializeDisplayNames(env);
+        InitializeListFormat(env);
+    }
 #endif
     InitializeModuleNamespace(env, objFuncClass);
     InitializeCjsModule(env);
@@ -346,6 +371,14 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread)
     env->SetAsyncFunctionClass(thread_, asyncFuncClass);
     thread_->ResetGuardians();
 }
+
+void Builtins::SetLazyAccessor(const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &key,
+    const JSHandle<AccessorData> &accessor) const
+{
+    PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(accessor), true, false, true);
+    JSObject::DefineOwnProperty(thread_, object, key, descriptor);
+}
+
 void Builtins::InitializeForSnapshot(JSThread *thread)
 {
     thread_ = thread;
@@ -903,6 +936,16 @@ void Builtins::InitializeDate(const JSHandle<GlobalEnv> &env, const JSHandle<JSH
     env->SetDateFunction(thread_, dateFunction);
 }
 
+void Builtins::LazyInitializeDate(const JSHandle<GlobalEnv> &env) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("Date"));
+    auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::Date));
+    SetLazyAccessor(globalObject, key, accessor);
+    env->SetDateFunction(thread_, accessor);
+}
+
 void Builtins::InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &primRefObjHClass) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
@@ -1281,6 +1324,16 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     env->SetBuiltinsSetFunction(thread_, setFunction);
 }
 
+void Builtins::LazyInitializeSet(const JSHandle<GlobalEnv> &env)
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("Set"));
+    auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::Set));
+    SetLazyAccessor(globalObject, key, accessor);
+    env->SetBuiltinsSetFunction(thread_, accessor);
+}
+
 void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
@@ -1346,6 +1399,17 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     env->SetMapPrototype(thread_, mapFuncPrototype);
 }
 
+void Builtins::LazyInitializeMap(const JSHandle<GlobalEnv> &env) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("Map"));
+    auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::Map));
+    SetLazyAccessor(globalObject, key, accessor);
+    env->SetBuiltinsMapFunction(thread_, accessor);
+    env->SetMapPrototype(thread_, accessor);
+}
+
 void Builtins::InitializeWeakMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
@@ -1382,6 +1446,16 @@ void Builtins::InitializeWeakMap(const JSHandle<GlobalEnv> &env, const JSHandle<
     env->SetBuiltinsWeakMapFunction(thread_, weakMapFunction);
 }
 
+void Builtins::LazyInitializeWeakMap(const JSHandle<GlobalEnv> &env) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("WeakMap"));
+    auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::WeakMap));
+    SetLazyAccessor(globalObject, key, accessor);
+    env->SetBuiltinsWeakMapFunction(thread_, accessor);
+}
+
 void Builtins::InitializeWeakSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
@@ -1411,6 +1485,16 @@ void Builtins::InitializeWeakSet(const JSHandle<GlobalEnv> &env, const JSHandle<
     SetStringTagSymbol(env, weakSetFuncPrototype, "WeakSet");
 
     env->SetBuiltinsWeakSetFunction(thread_, weakSetFunction);
+}
+
+void Builtins::LazyInitializeWeakSet(const JSHandle<GlobalEnv> &env) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("WeakSet"));
+    auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::WeakSet));
+    SetLazyAccessor(globalObject, key, accessor);
+    env->SetBuiltinsWeakSetFunction(thread_, accessor);
 }
 
 void Builtins::InitializeAtomics(const JSHandle<GlobalEnv> &env,
@@ -1468,6 +1552,16 @@ void Builtins::InitializeWeakRef(const JSHandle<GlobalEnv> &env, const JSHandle<
     env->SetBuiltinsWeakRefFunction(thread_, weakRefFunction);
 }
 
+void Builtins::LazyInitializeWeakRef(const JSHandle<GlobalEnv> &env) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("WeakRef"));
+    auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::WeakRef));
+    SetLazyAccessor(globalObject, key, accessor);
+    env->SetBuiltinsWeakRefFunction(thread_, accessor);
+}
+
 void Builtins::InitializeFinalizationRegistry(const JSHandle<GlobalEnv> &env,
                                               const JSHandle<JSHClass> &objFuncClass) const
 {
@@ -1500,6 +1594,17 @@ void Builtins::InitializeFinalizationRegistry(const JSHandle<GlobalEnv> &env,
     SetStringTagSymbol(env, finalizationRegistryFuncPrototype, "FinalizationRegistry");
 
     env->SetBuiltinsFinalizationRegistryFunction(thread_, finalizationRegistryFunction);
+}
+
+void Builtins::LazyInitializeFinalizationRegistry(const JSHandle<GlobalEnv> &env) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("FinalizationRegistry"));
+    auto accessor = factory_->NewInternalAccessor(nullptr,
+        reinterpret_cast<void *>(BuiltinsLazyCallback::FinalizationRegistry));
+    SetLazyAccessor(globalObject, key, accessor);
+    env->SetBuiltinsFinalizationRegistryFunction(thread_, accessor);
 }
 
 void Builtins::InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const
@@ -2134,6 +2239,30 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHand
     InitializeBigUint64Array(env, typedArrFuncInstanceHClass);
 }
 
+void Builtins::LazyInitializeTypedArray(const JSHandle<GlobalEnv> &env) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("TypedArray"));
+    auto accessor = factory_->NewInternalAccessor(nullptr,
+        reinterpret_cast<void *>(BuiltinsLazyCallback::TypedArray));
+    SetLazyAccessor(globalObject, key, accessor);
+    env->SetTypedArrayFunction(thread_, accessor);
+    env->SetTypedArrayPrototype(thread_, accessor);
+    env->SetSpecificTypedArrayFunctionClass(thread_, accessor);
+    LazyInitializeInt8Array(env);
+    LazyInitializeUint8Array(env);
+    LazyInitializeUint8ClampedArray(env);
+    LazyInitializeInt16Array(env);
+    LazyInitializeUint16Array(env);
+    LazyInitializeInt32Array(env);
+    LazyInitializeUint32Array(env);
+    LazyInitializeFloat32Array(env);
+    LazyInitializeFloat64Array(env);
+    LazyInitializeBigInt64Array(env);
+    LazyInitializeBigUint64Array(env);
+}
+
 void Builtins::InitializeInt8Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
@@ -2181,6 +2310,20 @@ void Builtins::InitializeUint8Array(const JSHandle<GlobalEnv> &env, const JSHand
     SetConstant(JSHandle<JSObject>(uint8ArrayFunction), "BYTES_PER_ELEMENT", JSTaggedValue(bytesPerElement));
     env->SetUint8ArrayFunction(thread_, uint8ArrayFunction);
 }
+
+#define TYPED_ARRAY_LAZY_INITIALIZE(type)                                                                             \
+    void Builtins::LazyInitialize##type(const JSHandle<GlobalEnv> &env) const                                         \
+    {                                                                                                                 \
+         [[maybe_unused]] EcmaHandleScope scope(thread_);                                                             \
+        JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());                                             \
+        JSHandle<JSTaggedValue> key(factory_->NewFromUtf8(#type));                                                    \
+        auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::type)); \
+        SetLazyAccessor(globalObject, key, accessor);                                                                 \
+        env->Set##type##Function(thread_, accessor);                                                                  \
+    }
+
+ITERATE_TYPED_ARRAY(TYPED_ARRAY_LAZY_INITIALIZE)
+#undef TYPED_ARRAY_LAZY_INITIALIZE
 
 void Builtins::InitializeUint8ClampedArray(const JSHandle<GlobalEnv> &env,
                                            const JSHandle<JSHClass> &objFuncClass) const
@@ -2443,6 +2586,17 @@ void Builtins::InitializeArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHan
     env->SetArrayBufferFunction(thread_, arrayBufferFunction.GetTaggedValue());
 }
 
+void Builtins::LazyInitializeArrayBuffer(const JSHandle<GlobalEnv> &env) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("ArrayBuffer"));
+    auto accessor = factory_->NewInternalAccessor(nullptr,
+        reinterpret_cast<void *>(BuiltinsLazyCallback::ArrayBuffer));
+    SetLazyAccessor(globalObject, key, accessor);
+    env->SetArrayBufferFunction(thread_, accessor);
+}
+
 void Builtins::InitializeReflect(const JSHandle<GlobalEnv> &env,
                                  const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const
 {
@@ -2520,6 +2674,16 @@ void Builtins::InitializeSharedArrayBuffer(const JSHandle<GlobalEnv> &env,
     SetStringTagSymbol(env, sharedArrayBufferFuncPrototype, "SharedArrayBuffer");
 
     env->SetSharedArrayBufferFunction(thread_, SharedArrayBufferFunction.GetTaggedValue());
+}
+
+void Builtins::LazyInitializeSharedArrayBuffer(const JSHandle<GlobalEnv> &env) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("SharedArrayBuffer"));
+    auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::SharedArrayBuffer));
+    SetLazyAccessor(globalObject, key, accessor);
+    env->SetSharedArrayBufferFunction(thread_, accessor);
 }
 
 void Builtins::InitializePromise(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &promiseFuncClass)
@@ -2684,6 +2848,16 @@ void Builtins::InitializeDataView(const JSHandle<GlobalEnv> &env, const JSHandle
     // 24.2.4.21 DataView.prototype[ @@toStringTag ]
     SetStringTagSymbol(env, dataViewFuncPrototype, "DataView");
     env->SetDataViewFunction(thread_, dataViewFunction.GetTaggedValue());
+}
+
+void Builtins::LazyInitializeDataView(const JSHandle<GlobalEnv> &env) const
+{
+    [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
+    JSHandle<JSTaggedValue> key(factory_->NewFromUtf8("DataView"));
+    auto accessor = factory_->NewInternalAccessor(nullptr, reinterpret_cast<void *>(BuiltinsLazyCallback::DataView));
+    SetLazyAccessor(globalObject, key, accessor);
+    env->SetDataViewFunction(thread_, accessor);
 }
 
 JSHandle<JSFunction> Builtins::NewBuiltinConstructor(const JSHandle<GlobalEnv> &env,
@@ -3084,6 +3258,21 @@ JSHandle<JSFunction> Builtins::NewIntlConstructor(const JSHandle<GlobalEnv> &env
     InitializeIntlCtor(env, prototype, ctor, name, length);
     return ctor;
 }
+
+#define INTL_LAZY_INITIALIZE(type)                                               \
+    void Builtins::LazyInitialize##type(const JSHandle<GlobalEnv> &env) const    \
+    {                                                                            \
+        [[maybe_unused]] EcmaHandleScope scope(thread_);                         \
+        JSHandle<JSObject> intlObject(env->GetIntlFunction());                   \
+        JSHandle<JSTaggedValue> key(factory_->NewFromUtf8(#type));               \
+        auto accessor = factory_->NewInternalAccessor(nullptr,                   \
+            reinterpret_cast<void *>(BuiltinsLazyCallback::type));               \
+        SetLazyAccessor(intlObject, key, accessor);                              \
+        env->Set##type##Function(thread_, accessor);                             \
+    }
+
+ITERATE_INTL(INTL_LAZY_INITIALIZE)
+#undef INTL_LAZY_INITIALIZE
 
 void Builtins::InitializeIntlCtor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
                                   const JSHandle<JSFunction> &ctor, const char *name, int length)

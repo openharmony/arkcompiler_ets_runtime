@@ -167,6 +167,9 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
 
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
+    if (op.GetValue().IsInternalAccessor()) {
+        op = ObjectOperator(GetThread(), receiver, key);
+    }
     if (!op.IsFound() && kind == ICKind::NamedGlobalTryLoadIC) {
         return SlowRuntimeStub::ThrowReferenceError(GetThread(), key.GetTaggedValue(), " is not defined");
     }

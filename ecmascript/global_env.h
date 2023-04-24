@@ -29,6 +29,7 @@ class JSThread;
 #define GLOBAL_ENV_FIELDS(V)                                                                        \
     /* Function */                                                                                  \
     V(JSTaggedValue, ObjectFunction, OBJECT_FUNCTION_INDEX)                                         \
+    V(JSTaggedValue, ObjectFunctionClass, OBJECT_FUNCTION_CLASS_INDEX)                              \
     V(JSTaggedValue, ObjectFunctionPrototype, OBJECT_FUNCTION_PROTOTYPE_INDEX)                      \
     V(JSTaggedValue, ObjectFunctionPrototypeClass, OBJECT_FUNCTION_PROTOTYPE_CLASS_INDEX)           \
     V(JSTaggedValue, FunctionFunction, FUNCTION_FUNCTION_INDEX)                                     \
@@ -231,12 +232,23 @@ public:
         const uintptr_t address =                                                                       \
             reinterpret_cast<uintptr_t>(this) + HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();  \
         JSHandle<type> result(address);                                                                 \
+        if (result.GetTaggedValue().IsInternalAccessor()) {                                             \
+            JSThread *thread = GetJSThread();                                                           \
+            AccessorData *accessor = AccessorData::Cast(result.GetTaggedValue().GetTaggedObject());     \
+            accessor->CallInternalGet(thread, JSHandle<JSObject>::Cast(GetJSGlobalObject()));           \
+        }                                                                                               \
         return result;                                                                                  \
     }                                                                                                   \
     inline JSTaggedValue GetTagged##name() const                                                        \
     {                                                                                                   \
         uint32_t offset = HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();                        \
-        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(this, offset));                           \
+        JSTaggedValue result(Barriers::GetValue<JSTaggedType>(this, offset));                           \
+        if (result.IsInternalAccessor()) {                                                              \
+            JSThread *thread = GetJSThread();                                                           \
+            AccessorData *accessor = AccessorData::Cast(result.GetTaggedObject());                      \
+            accessor->CallInternalGet(thread, JSHandle<JSObject>::Cast(GetJSGlobalObject()));           \
+        }                                                                                               \
+        return result;                                                                                  \
     }                                                                                                   \
     template<typename T>                                                                                \
     inline void Set##name(const JSThread *thread, JSHandle<T> value, BarrierMode mode = WRITE_BARRIER)  \
