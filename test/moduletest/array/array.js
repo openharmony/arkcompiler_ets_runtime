@@ -58,3 +58,8 @@ print(arr5);
 var arr6 = [1,2,3,4,5];
 arr6.reverse();
 print(arr6);
+
+var arr7 = Array.apply(null, Array(16));
+print(arr7.length);
+var arr8 = Array.apply(null, [1, 2, 3, 4, 5, 6]);
+print(arr8.length);

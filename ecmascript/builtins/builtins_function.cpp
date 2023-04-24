@@ -79,6 +79,11 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
         JSHandle<JSArray> argList = JSHandle<JSArray>::Cast(arrayObj);
         TaggedArray *elements = TaggedArray::Cast(argList->GetElements().GetTaggedObject());
         size_t length = argList->GetArrayLength();
+        if (elements->GetLength() == 0 && length != 0) {
+            JSHandle<TaggedArray> array =
+                thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length, JSTaggedValue::Undefined());
+            return std::make_pair(*array, length);
+        }
         size_t res = MakeArgListWithHole(thread, elements, length);
         return std::make_pair(elements, res);
     } else {
