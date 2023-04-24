@@ -219,20 +219,20 @@ void AsyncFunctionLowering::ModifyStateInput(GateRef stateInGate, GateRef ifBran
 
 void AsyncFunctionLowering::CheckResumeInLoopBody(GateRef stateInGate, bool &resumeInLoopBody)
 {
-    GateRef findBack = accessor_.GetIn(stateInGate, 0);
-    if (accessor_.GetOpCode(findBack) != OpCode::LOOP_BACK) {
-        findBack = accessor_.GetIn(stateInGate, 1);
+    ASSERT(accessor_.GetOpCode(stateInGate) == OpCode::LOOP_BEGIN);
+    GateRef loopBack = accessor_.GetIn(stateInGate, 0);
+    if (accessor_.GetOpCode(loopBack) != OpCode::LOOP_BACK) {
+        loopBack = accessor_.GetIn(stateInGate, 1);
     }
     ChunkQueue<GateRef> resuemList(circuit_->chunk());
-    resuemList.push(findBack);
+    resuemList.push(loopBack);
     ChunkVector<VisitState> visited(circuit_->GetMaxGateId() + 1, VisitState::UNVISITED, circuit_->chunk());
-    auto findBackId = accessor_.GetId(findBack);
-    visited[findBackId] = VisitState::VISITED;
+    auto loopBeginId = accessor_.GetId(stateInGate);
+    visited[loopBeginId] = VisitState::VISITED;
+    auto loopBackId = accessor_.GetId(loopBack);
+    visited[loopBackId] = VisitState::VISITED;
     while (!resuemList.empty()) {
         GateRef curGate = resuemList.front();
-        if (curGate == stateInGate) {
-            break;
-        }
         if (accessor_.GetOpCode(curGate) == OpCode::JS_BYTECODE &&
             accessor_.GetByteCodeOpcode(curGate) == EcmaOpcode::RESUMEGENERATOR) {
             resumeInLoopBody = true;
