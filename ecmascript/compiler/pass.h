@@ -31,6 +31,7 @@
 #include "ecmascript/compiler/ts_type_lowering.h"
 #include "ecmascript/compiler/type_inference/type_infer.h"
 #include "ecmascript/compiler/type_lowering.h"
+#include "ecmascript/compiler/value_numbering.h"
 #include "ecmascript/compiler/verifier.h"
 
 namespace panda::ecmascript::kungfu {
@@ -322,6 +323,18 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         LaterElimination(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
+        return true;
+    }
+};
+
+class ValueNumberingPass {
+public:
+    bool Run(PassData* data)
+    {
+        TimeScope timescope("ValueNumberingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        Chunk chunk(data->GetNativeAreaAllocator());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        ValueNumbering(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
         return true;
     }
 };
