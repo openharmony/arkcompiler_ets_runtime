@@ -17,13 +17,16 @@
 
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/literal_data_extractor.h"
+#include "ecmascript/jspandafile/type_literal_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
 
-#include "libpandafile/annotation_data_accessor.h"
-#include "libpandafile/class_data_accessor-inl.h"
-
 namespace panda::ecmascript {
+// For each property of one class, object or interface, it's name and typeIndex are recorded in order,
+// and if it is a field, then accessFlag and readonly of this property will be additionally recorded.
+static constexpr uint32_t FIELD_LENGTH = 4;
+static constexpr uint32_t METHOD_LENGTH = 2;
+static constexpr uint32_t INDEX_OCCUPIED_OFFSET = 1;
+
 TSTypeParser::TSTypeParser(TSManager *tsManager)
     : tsManager_(tsManager), vm_(tsManager->GetEcmaVM()),
       thread_(vm_->GetJSThread()), factory_(vm_->GetFactory()),
@@ -72,14 +75,13 @@ GlobalTSTypeRef TSTypeParser::ParseBuiltinObjType(uint32_t typeId)
 
 GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId)
 {
-    panda_file::File::EntityId offset(typeId);
-    JSHandle<TaggedArray> literal = LiteralDataExtractor::GetTypeLiteral(thread_, jsPandaFile, offset);
-    if (literal->GetLength() == 0) {  // typeLiteral maybe hole in d.abc
-        return GetAndStoreGT(jsPandaFile, typeId, recordName);
+    TypeLiteralExtractor typeLiteralExtractor(jsPandaFile, typeId);
+    if (!typeLiteralExtractor.IsVaildTypeLiteral()) {  // typeLiteral maybe hole in d.abc
+        return GlobalTSTypeRef::Default();
     }
-    TSTypeKind kind = static_cast<TSTypeKind>(literal->Get(TYPE_KIND_INDEX_IN_LITERAL).GetInt());
-    if (kind == TSTypeKind::IMPORT) {
-        return ResolveImportType(jsPandaFile, recordName, literal, typeId);
+
+    if (typeLiteralExtractor.GetTypeKind() == TSTypeKind::IMPORT) {
+        return ResolveImportType(jsPandaFile, recordName, &typeLiteralExtractor);
     }
 
     uint32_t moduleId = tableGenerator_.TryGetModuleId(recordName);
@@ -100,7 +102,7 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
 
     table->SetNumberOfTypes(thread_, localId);
     GlobalTSTypeRef gt = GetAndStoreGT(jsPandaFile, typeId, recordName, moduleId, localId);
-    JSHandle<JSTaggedValue> type = ParseNonImportType(jsPandaFile, recordName, literal, kind, typeId);
+    JSHandle<JSTaggedValue> type = ParseNonImportType(jsPandaFile, recordName, &typeLiteralExtractor);
     if (UNLIKELY(type->IsUndefined())) {
         return GetAndStoreGT(jsPandaFile, typeId, recordName);
     }
@@ -111,9 +113,11 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
 }
 
 GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                JSHandle<TaggedArray> literal, uint32_t typeId)
+                                                TypeLiteralExtractor *typeLiteralExtractor)
 {
-    JSHandle<EcmaString> importVarNamePath(thread_, literal->Get(IMPORT_PATH_OFFSET_IN_LITERAL)); // #A#./A
+    uint32_t typeId = typeLiteralExtractor->GetTypeOffset();
+    JSHandle<EcmaString> importVarNamePath =
+        factory_->NewFromUtf8(typeLiteralExtractor->GetStringValue(DEFAULT_INDEX));
     JSHandle<EcmaString> relativePath = GenerateImportRelativePath(importVarNamePath);
     CString cstringRelativePath = ConvertToString(*relativePath);
     // skip @ohos:|@app:|@native: prefixed imports
@@ -135,7 +139,7 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
 
     uint32_t moduleId = tableGenerator_.TryGetModuleId(entryPoint);
     if (UNLIKELY(!GlobalTSTypeRef::IsVaildModuleId(moduleId))) {
-        LOG_COMPILER(DEBUG) << "The maximum number of TSTypeTables is reached. All TSTypes in the recored "
+        LOG_COMPILER(DEBUG) << "The maximum number of TSTypeTables is reached. All TSTypes in the record "
                             << entryPoint << " will not be parsed and will be treated as any.";
         return GetAndStoreGT(jsPandaFile, typeId, recordName);
     }
@@ -150,40 +154,43 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
 }
 
 JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPandaFile, const CString &recordName,
-    JSHandle<TaggedArray> literal, TSTypeKind kind, uint32_t typeId)
+                                                         TypeLiteralExtractor *typeLiteralExtractor)
 {
+    auto kind = typeLiteralExtractor->GetTypeKind();
     switch (kind) {
         case TSTypeKind::CLASS: {
-            JSHandle<TSClassType> classType = ParseClassType(jsPandaFile, recordName, literal, typeId);
+            JSHandle<TSClassType> classType = ParseClassType(jsPandaFile, recordName, typeLiteralExtractor);
             return JSHandle<JSTaggedValue>(classType);
         }
         case TSTypeKind::CLASS_INSTANCE: {
-            JSHandle<TSClassInstanceType> classInstanceType = ParseClassInstanceType(jsPandaFile, recordName, literal);
+            JSHandle<TSClassInstanceType> classInstanceType =
+                ParseClassInstanceType(jsPandaFile, recordName, typeLiteralExtractor);
             return JSHandle<JSTaggedValue>(classInstanceType);
         }
-        case TSTypeKind::INTERFACE_KIND: {
-            JSHandle<TSInterfaceType> interfaceType = ParseInterfaceType(jsPandaFile, recordName, literal);
+        case TSTypeKind::INTERFACE: {
+            JSHandle<TSInterfaceType> interfaceType = ParseInterfaceType(jsPandaFile, recordName, typeLiteralExtractor);
             return JSHandle<JSTaggedValue>(interfaceType);
         }
         case TSTypeKind::UNION: {
-            JSHandle<TSUnionType> unionType = ParseUnionType(jsPandaFile, recordName, literal);
+            JSHandle<TSUnionType> unionType = ParseUnionType(jsPandaFile, recordName, typeLiteralExtractor);
             return JSHandle<JSTaggedValue>(unionType);
         }
         case TSTypeKind::FUNCTION: {
-            JSHandle<TSFunctionType> functionType = ParseFunctionType(jsPandaFile, recordName, literal, typeId);
+            JSHandle<TSFunctionType> functionType =
+                ParseFunctionType(jsPandaFile, recordName, typeLiteralExtractor);
             return JSHandle<JSTaggedValue>(functionType);
         }
         case TSTypeKind::ARRAY: {
-            JSHandle<TSArrayType> arrayType = ParseArrayType(jsPandaFile, recordName, literal);
+            JSHandle<TSArrayType> arrayType = ParseArrayType(jsPandaFile, recordName, typeLiteralExtractor);
             return JSHandle<JSTaggedValue>(arrayType);
         }
         case TSTypeKind::OBJECT: {
-            JSHandle<TSObjectType> objectType = ParseObjectType(jsPandaFile, recordName, literal);
+            JSHandle<TSObjectType> objectType = ParseObjectType(jsPandaFile, recordName, typeLiteralExtractor);
             return JSHandle<JSTaggedValue>(objectType);
         }
         default: {
             LOG_COMPILER(DEBUG) << "Do not support parse types with kind " << static_cast<uint32_t>(kind) << ". "
-                                << "Please check whether the type literal " << typeId
+                                << "Please check whether the type literal " << typeLiteralExtractor->GetTypeOffset()
                                 << " recorded in the record " << recordName << " is correct.";
             return thread_->GlobalConstants()->GetHandledUndefined();
         }
@@ -191,20 +198,228 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPa
 }
 
 JSHandle<TSClassType> TSTypeParser::ParseClassType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                   const JSHandle<TaggedArray> &literal, uint32_t typeId)
+                                                   TypeLiteralExtractor *typeLiteralExtractor)
 {
-    JSHandle<TSClassType> classType = factory_->NewTSClassType();
+    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::CLASS);
+    ClassLiteralInfo classLitInfo(typeLiteralExtractor);
+    uint32_t numNonStaticFieldsIndex = classLitInfo.numNonStaticFieldsIndex;
+    uint32_t numNonStaticMethodsIndex = classLitInfo.numNonStaticMethodsIndex;
+    uint32_t numStaticFieldsIndex = classLitInfo.numStaticFieldsIndex;
+    uint32_t numStaticMethodsIndex = classLitInfo.numStaticMethodsIndex;
 
-    std::string className = tsManager_->GetClassNameByOffset(jsPandaFile, typeId);
+    JSHandle<TSClassType> classType = factory_->NewTSClassType();
+    SetClassName(classType, jsPandaFile, typeLiteralExtractor);
+    SetSuperClassType(classType, jsPandaFile, recordName, typeLiteralExtractor);
+
+    // resolve instance type
+    uint32_t numFields = typeLiteralExtractor->GetIntValue(numNonStaticFieldsIndex);
+    JSHandle<TSObjectType> instanceType = factory_->NewTSObjectType(numFields);
+    FillPropTypes(jsPandaFile, recordName, instanceType, typeLiteralExtractor, numNonStaticFieldsIndex, FIELD_LENGTH);
+    classType->SetInstanceType(thread_, instanceType);
+
+    // resolve prototype type
+    uint32_t numNonStatic = typeLiteralExtractor->GetIntValue(numNonStaticMethodsIndex);
+    JSHandle<TSObjectType> prototypeType = factory_->NewTSObjectType(numNonStatic);
+    FillPropTypes(jsPandaFile, recordName, prototypeType, typeLiteralExtractor,
+                  numNonStaticMethodsIndex, METHOD_LENGTH);
+    classType->SetPrototypeType(thread_, prototypeType);
+
+    // resolve constructor type
+    uint32_t numStaticFields = typeLiteralExtractor->GetIntValue(numStaticFieldsIndex);
+    uint32_t numStaticMethods = typeLiteralExtractor->GetIntValue(numStaticMethodsIndex);
+    uint32_t numStatic = numStaticFields + numStaticMethods;
+    JSHandle<TSObjectType> constructorType = factory_->NewTSObjectType(numStatic);
+    FillPropTypes(jsPandaFile, recordName, constructorType, typeLiteralExtractor, numStaticFieldsIndex, FIELD_LENGTH);
+    FillPropTypes(jsPandaFile, recordName, constructorType, typeLiteralExtractor,
+                  numStaticMethodsIndex, METHOD_LENGTH);
+    classType->SetConstructorType(thread_, constructorType);
+    return classType;
+}
+
+JSHandle<TSClassInstanceType> TSTypeParser::ParseClassInstanceType(const JSPandaFile *jsPandaFile,
+                                                                   const CString &recordName,
+                                                                   TypeLiteralExtractor *typeLiteralExtractor)
+{
+    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::CLASS_INSTANCE);
+    JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
+    // classTypeId is stored in the first position
+    uint32_t classTypeId = typeLiteralExtractor->GetIntValue(DEFAULT_INDEX);
+    auto classGT = CreateGT(jsPandaFile, recordName, classTypeId);
+    classInstanceType->SetClassGT(classGT);
+    return classInstanceType;
+}
+
+JSHandle<TSInterfaceType> TSTypeParser::ParseInterfaceType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                           TypeLiteralExtractor *typeLiteralExtractor)
+{
+    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::INTERFACE);
+    JSHandle<TSInterfaceType> interfaceType = factory_->NewTSInterfaceType();
+    InterfaceLiteralInfo interfaceLitInfo(typeLiteralExtractor);
+    uint32_t numFieldsIndex = interfaceLitInfo.numFieldsIndex;
+    uint32_t numMethodsIndex = interfaceLitInfo.numMethodsIndex;
+
+    // resolve extends of interface
+    uint32_t numExtends = typeLiteralExtractor->GetIntValue(InterfaceLiteralInfo::NUM_EXTENDS_INDEX);
+    JSHandle<TaggedArray> extendsId = factory_->NewTaggedArray(numExtends);
+    uint32_t extendsIndex = 0;
+    typeLiteralExtractor->EnumerateElements(InterfaceLiteralInfo::NUM_EXTENDS_INDEX,
+        [this, &jsPandaFile, &recordName, &extendsIndex, &extendsId](const uint32_t literalValue) {
+            auto extendGT = CreateGT(jsPandaFile, recordName, literalValue);
+            extendsId->Set(thread_, extendsIndex++, JSTaggedValue(extendGT.GetType()));
+        });
+    interfaceType->SetExtends(thread_, extendsId);
+
+    uint32_t numFields = typeLiteralExtractor->GetIntValue(numFieldsIndex);
+    uint32_t numMethods = typeLiteralExtractor->GetIntValue(numMethodsIndex);
+    uint32_t totalFields = numFields + numMethods;
+    JSHandle<TSObjectType> fieldsType = factory_->NewTSObjectType(totalFields);
+    FillPropTypes(jsPandaFile, recordName, fieldsType, typeLiteralExtractor, numFieldsIndex, FIELD_LENGTH);
+    FillInterfaceMethodTypes(jsPandaFile, recordName, fieldsType, typeLiteralExtractor, numMethodsIndex);
+    interfaceType->SetFields(thread_, fieldsType);
+    return interfaceType;
+}
+
+JSHandle<TSUnionType> TSTypeParser::ParseUnionType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                   TypeLiteralExtractor *typeLiteralExtractor)
+{
+    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::UNION);
+    // the number of union types is stored in the first position
+    uint32_t numOfUnionMembers = typeLiteralExtractor->GetIntValue(DEFAULT_INDEX);
+    JSHandle<TSUnionType> unionType = factory_->NewTSUnionType(numOfUnionMembers);
+
+    JSHandle<TaggedArray> components(thread_, unionType->GetComponents());
+    uint32_t index = 0;
+    typeLiteralExtractor->EnumerateElements(DEFAULT_INDEX,
+        [this, &jsPandaFile, &recordName, &index, &components](const uint32_t literalValue) {
+            auto componentGT = CreateGT(jsPandaFile, recordName, literalValue);
+            components->Set(thread_, index++, JSTaggedValue(componentGT.GetType()));
+        });
+    unionType->SetComponents(thread_, components);
+    return unionType;
+}
+
+JSHandle<TSFunctionType> TSTypeParser::ParseFunctionType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                         TypeLiteralExtractor *typeLiteralExtractor)
+{
+    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::FUNCTION);
+    FunctionLiteralInfo functionLitInfo(typeLiteralExtractor);
+    uint32_t numParasIndex = functionLitInfo.numParasIndex;
+    uint32_t returnTypeIndex = functionLitInfo.returnTypeIndex;
+
+    uint32_t length = typeLiteralExtractor->GetIntValue(numParasIndex);
+    JSHandle<TSFunctionType> functionType = factory_->NewTSFunctionType(length);
+
+    SetFunctionThisType(functionType, jsPandaFile, recordName, typeLiteralExtractor);
+    JSHandle<TaggedArray> parameterTypes(thread_, functionType->GetParameterTypes());
+    uint32_t index = 0;
+    typeLiteralExtractor->EnumerateElements(numParasIndex,
+        [this, &jsPandaFile, &recordName, &index, &parameterTypes](const uint32_t literalValue) {
+            auto parameterGT = CreateGT(jsPandaFile, recordName, literalValue);
+            if (tsManager_->IsClassTypeKind(parameterGT)) {
+                parameterGT = tsManager_->CreateClassInstanceType(parameterGT);
+            }
+            parameterTypes->Set(thread_, index++, JSTaggedValue(parameterGT.GetType()));
+        });
+    functionType->SetParameterTypes(thread_, parameterTypes);
+
+    JSHandle<JSTaggedValue> functionName(
+        factory_->NewFromUtf8(typeLiteralExtractor->GetStringValue(FunctionLiteralInfo::NAME_INDEX)));
+    functionType->SetName(thread_, functionName);
+
+    uint32_t returntypeId = typeLiteralExtractor->GetIntValue(returnTypeIndex);
+    auto returnGT = CreateGT(jsPandaFile, recordName, returntypeId);
+    functionType->SetReturnGT(returnGT);
+
+    uint32_t bitField = typeLiteralExtractor->GetIntValue(FunctionLiteralInfo::BITFIELD_INDEX);
+    functionType->SetBitField(bitField);
+
+    StoreMethodOffset(functionType, typeLiteralExtractor);
+    return functionType;
+}
+
+JSHandle<TSArrayType> TSTypeParser::ParseArrayType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                   TypeLiteralExtractor *typeLiteralExtractor)
+{
+    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::ARRAY);
+    JSHandle<TSArrayType> arrayType = factory_->NewTSArrayType();
+    // the type of elements of array is stored in the first position
+    auto elemetnGT = CreateGT(jsPandaFile, recordName, typeLiteralExtractor->GetIntValue(DEFAULT_INDEX));
+    if (tsManager_->IsClassTypeKind(elemetnGT)) {
+        elemetnGT = tsManager_->CreateClassInstanceType(elemetnGT);
+    }
+    arrayType->SetElementGT(elemetnGT);
+    return arrayType;
+}
+
+JSHandle<TSObjectType> TSTypeParser::ParseObjectType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                     TypeLiteralExtractor *typeLiteralExtractor)
+{
+    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::OBJECT);
+    // the number of properties of object is stored in the first position
+    uint32_t length = typeLiteralExtractor->GetIntValue(DEFAULT_INDEX);
+    JSHandle<TSObjectType> objectType = factory_->NewTSObjectType(length);
+    FillPropTypes(jsPandaFile, recordName, objectType, typeLiteralExtractor, DEFAULT_INDEX, METHOD_LENGTH);
+    return objectType;
+}
+
+void TSTypeParser::FillPropTypes(const JSPandaFile *jsPandaFile,
+                                 const CString &recordName,
+                                 const JSHandle<TSObjectType> &objectType,
+                                 TypeLiteralExtractor *typeLiteralExtractor,
+                                 const uint32_t numOfFieldIndex,
+                                 const uint32_t gap)
+{
+    JSHandle<TSObjLayoutInfo> layout(thread_, objectType->GetObjLayoutInfo());
+    JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
+    typeLiteralExtractor->EnumerateProperties(numOfFieldIndex, gap,
+        [this, &key, &jsPandaFile, &recordName, &layout](const CString &literalKey, const uint32_t literalValue) {
+            JSHandle<JSTaggedValue> propName(factory_->NewFromUtf8(literalKey));
+            key.Update(propName.GetTaggedValue());
+            ASSERT(key->IsString());
+            auto gt = CreateGT(jsPandaFile, recordName, literalValue);
+            if (tsManager_->IsClassTypeKind(gt)) {
+                gt = tsManager_->CreateClassInstanceType(gt);
+            }
+            layout->AddKeyAndType(thread_, key.GetTaggedValue(), JSTaggedValue(gt.GetType()));
+        });
+}
+
+void TSTypeParser::FillInterfaceMethodTypes(const JSPandaFile *jsPandaFile,
+                                            const CString &recordName,
+                                            const JSHandle<TSObjectType> &objectType,
+                                            TypeLiteralExtractor *typeLiteralExtractor,
+                                            const uint32_t numExtends)
+{
+    JSHandle<TSObjLayoutInfo> layout(thread_, objectType->GetObjLayoutInfo());
+    JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
+    typeLiteralExtractor->EnumerateElements(numExtends,
+        [this, &jsPandaFile, &recordName, &layout, &key](const uint32_t literalValue) {
+            auto gt = CreateGT(jsPandaFile, recordName, literalValue);
+            if (tsManager_->IsFunctionTypeKind(gt)) {
+                JSHandle<JSTaggedValue> tsType = tsManager_->GetTSType(gt);
+                ASSERT(tsType->IsTSFunctionType());
+                JSHandle<TSFunctionType> functionType(tsType);
+                key.Update(functionType->GetName());
+            };
+            layout->AddKeyAndType(thread_, key.GetTaggedValue(), JSTaggedValue(gt.GetType()));
+        });
+}
+
+void TSTypeParser::SetClassName(const JSHandle<TSClassType> &classType,
+                                const JSPandaFile *jsPandaFile,
+                                TypeLiteralExtractor *typeLiteralExtractor)
+{
+    std::string className = tsManager_->GetClassNameByOffset(jsPandaFile, typeLiteralExtractor->GetTypeOffset());
     JSHandle<EcmaString> classEcmaString = factory_->NewFromStdString(className);
     classType->SetName(thread_, classEcmaString.GetTaggedValue());
+}
 
-    uint32_t index = 0;
-    ASSERT(static_cast<TSTypeKind>(literal->Get(index).GetInt()) == TSTypeKind::CLASS);
-
-    const uint32_t ignoreLength = 2;  // 2: ignore accessFlag and readonly
-    index += ignoreLength;
-    int extendsTypeId = literal->Get(index++).GetInt();
+void TSTypeParser::SetSuperClassType(const JSHandle<TSClassType> &classType,
+                                     const JSPandaFile *jsPandaFile,
+                                     const CString &recordName,
+                                     TypeLiteralExtractor *typeLiteralExtractor)
+{
+    uint32_t extendsTypeId = typeLiteralExtractor->GetIntValue(ClassLiteralInfo::SUPER_CLASS_INDEX);
     if (TSClassType::IsBaseClassType(extendsTypeId)) {
         classType->SetHasLinked(true);
     } else {
@@ -214,284 +429,32 @@ JSHandle<TSClassType> TSTypeParser::ParseClassType(const JSPandaFile *jsPandaFil
             classType->SetHasLinked(true);
         }
     }
-
-    // ignore implement
-    uint32_t numImplement = literal->Get(index++).GetInt();
-    index += numImplement;
-
-    // resolve instance type
-    uint32_t numFields = static_cast<uint32_t>(literal->Get(index++).GetInt());
-
-    JSHandle<TSObjectType> instanceType = factory_->NewTSObjectType(numFields);
-    JSHandle<TSObjLayoutInfo> instanceTypeInfo(thread_, instanceType->GetObjLayoutInfo());
-    ASSERT(instanceTypeInfo->GetPropertiesCapacity() == numFields);
-    FillPropertyTypes(jsPandaFile, recordName, instanceTypeInfo, literal, 0, numFields, index, true);
-    classType->SetInstanceType(thread_, instanceType);
-
-    // resolve prototype type
-    uint32_t numNonStatic = literal->Get(index++).GetInt();
-    JSHandle<TSObjectType> prototypeType = factory_->NewTSObjectType(numNonStatic);
-
-    JSHandle<TSObjLayoutInfo> nonStaticTypeInfo(thread_, prototypeType->GetObjLayoutInfo());
-    ASSERT(nonStaticTypeInfo->GetPropertiesCapacity() == static_cast<uint32_t>(numNonStatic));
-    FillPropertyTypes(jsPandaFile, recordName, nonStaticTypeInfo, literal, 0, numNonStatic, index, false);
-    classType->SetPrototypeType(thread_, prototypeType);
-
-    // resolve constructor type
-    // static include fields and methods, which the former takes up 4 spaces and the latter takes up 2 spaces.
-    uint32_t numStaticFields = literal->Get(index++).GetInt();
-    uint32_t numStaticMethods = literal->Get(index + numStaticFields * TSClassType::FIELD_LENGTH).GetInt();
-    uint32_t numStatic = numStaticFields + numStaticMethods;
-    // new function type when support it
-    JSHandle<TSObjectType> constructorType = factory_->NewTSObjectType(numStatic);
-
-    JSHandle<TSObjLayoutInfo> staticTypeInfo(thread_, constructorType->GetObjLayoutInfo());
-    ASSERT(staticTypeInfo->GetPropertiesCapacity() == static_cast<uint32_t>(numStatic));
-    FillPropertyTypes(jsPandaFile, recordName, staticTypeInfo, literal, 0, numStaticFields, index, true);
-    index++;  // jmp over numStaticMethods
-    // static methods
-    FillPropertyTypes(jsPandaFile, recordName, staticTypeInfo, literal, numStaticFields, numStatic, index, false);
-    classType->SetConstructorType(thread_, constructorType);
-    return classType;
 }
 
-JSHandle<TSClassInstanceType> TSTypeParser::ParseClassInstanceType(const JSPandaFile *jsPandaFile,
-                                                                   const CString &recordName,
-                                                                   const JSHandle<TaggedArray> &literal)
+void TSTypeParser::SetFunctionThisType(const JSHandle<TSFunctionType> &functionType,
+                                       const JSPandaFile *jsPandaFile,
+                                       const CString &recordName,
+                                       TypeLiteralExtractor *typeLiteralExtractor)
 {
-    ASSERT(static_cast<TSTypeKind>(literal->Get(TYPE_KIND_INDEX_IN_LITERAL).GetInt()) ==
-                                   TSTypeKind::CLASS_INSTANCE);
-    JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
-    uint32_t classTypeId = static_cast<uint32_t>(literal->Get(TSClassInstanceType::CREATE_CLASS_OFFSET).GetInt());
-    auto classGT = CreateGT(jsPandaFile, recordName, classTypeId);
-    classInstanceType->SetClassGT(classGT);
-    return classInstanceType;
-}
-
-JSHandle<TSInterfaceType> TSTypeParser::ParseInterfaceType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                           const JSHandle<TaggedArray> &literal)
-{
-    uint32_t index = 0;
-    JSHandle<TSInterfaceType> interfaceType = factory_->NewTSInterfaceType();
-    ASSERT(static_cast<TSTypeKind>(literal->Get(index).GetInt()) == TSTypeKind::INTERFACE_KIND);
-
-    index++;
-    // resolve extends of interface
-    uint32_t numExtends = literal->Get(index++).GetInt();
-    JSHandle<TaggedArray> extendsId = factory_->NewTaggedArray(numExtends);
-    JSMutableHandle<JSTaggedValue> extendsType(thread_, JSTaggedValue::Undefined());
-    for (uint32_t extendsIndex = 0; extendsIndex < numExtends; extendsIndex++) {
-        auto typeId = literal->Get(index++).GetInt();
-        auto extendGT = CreateGT(jsPandaFile, recordName, typeId);
-        extendsType.Update(JSTaggedValue(extendGT.GetType()));
-        extendsId->Set(thread_, extendsIndex, extendsType);
-    }
-    interfaceType->SetExtends(thread_, extendsId);
-
-    // resolve fields and methods of interface
-    uint32_t numFields = static_cast<uint32_t>(literal->Get(index++).GetInt());
-    // field takes up 4 spaces and method takes up 2 spaces.
-    uint32_t numMethods = static_cast<uint32_t>(literal->Get(index +
-                                                             numFields * TSInterfaceType::FIELD_LENGTH).GetInt());
-    uint32_t totalFields = numFields + numMethods;
-
-    JSHandle<TSObjectType> fieldsType = factory_->NewTSObjectType(totalFields);
-    JSHandle<TSObjLayoutInfo> fieldsTypeInfo(thread_, fieldsType->GetObjLayoutInfo());
-    ASSERT(fieldsTypeInfo->GetPropertiesCapacity() == static_cast<uint32_t>(totalFields));
-    FillPropertyTypes(jsPandaFile, recordName, fieldsTypeInfo, literal, 0, numFields, index, true);
-    index++;  // jmp over numMethod
-    FillInterfaceMethodTypes(jsPandaFile, recordName, fieldsTypeInfo, literal, numFields, totalFields, index);
-    interfaceType->SetFields(thread_, fieldsType);
-    return interfaceType;
-}
-
-JSHandle<TSUnionType> TSTypeParser::ParseUnionType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                   const JSHandle<TaggedArray> &literal)
-{
-    uint32_t literalIndex = 0;
-    ASSERT(static_cast<TSTypeKind>(literal->Get(literalIndex).GetInt()) == TSTypeKind::UNION);
-    literalIndex++;
-    uint32_t numOfUnionMembers = literal->Get(literalIndex++).GetInt();
-
-    JSHandle<TSUnionType> unionType = factory_->NewTSUnionType(numOfUnionMembers);
-    JSHandle<TaggedArray> components(thread_, unionType->GetComponents());
-    for (uint32_t index = 0; index < numOfUnionMembers; ++index) {
-        uint32_t componentTypeId = literal->Get(literalIndex++).GetInt();
-        auto componentGT = CreateGT(jsPandaFile, recordName, componentTypeId);
-        components->Set(thread_, index, JSTaggedValue(componentGT.GetType()));
-    }
-    unionType->SetComponents(thread_, components);
-    return unionType;
-}
-
-JSHandle<TSFunctionType> TSTypeParser::ParseFunctionType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                         const JSHandle<TaggedArray> &literal, uint32_t functionId)
-{
-    uint32_t index = 0;
-    ASSERT(static_cast<TSTypeKind>(literal->Get(index).GetInt()) == TSTypeKind::FUNCTION);
-    index++;
-
-    int32_t bitField = literal->Get(index++).GetInt();
-
-    JSHandle<JSTaggedValue> functionName(thread_, literal->Get(index++));
-    bool hasThisType = static_cast<bool>(literal->Get(index++).GetInt());
-    int32_t thisTypeId = 0;
+    bool hasThisType = static_cast<bool>(typeLiteralExtractor->GetIntValue(FunctionLiteralInfo::HAS_THIS_TYPE_INDEX));
     if (hasThisType) {
-        thisTypeId = literal->Get(index++).GetInt();
-    }
-
-    int32_t length = literal->Get(index++).GetInt();
-    JSHandle<TSFunctionType> functionType = factory_->NewTSFunctionType(length);
-    JSHandle<TaggedArray> parameterTypes(thread_, functionType->GetParameterTypes());
-    JSMutableHandle<JSTaggedValue> parameterTypeRef(thread_, JSTaggedValue::Undefined());
-    for (int32_t i = 0; i < length; ++i) {
-        auto typeId = literal->Get(index++).GetInt();
-        auto parameterGT = CreateGT(jsPandaFile, recordName, typeId);
-        if (tsManager_->IsClassTypeKind(parameterGT)) {
-            parameterGT = tsManager_->CreateClassInstanceType(parameterGT);
-        }
-        parameterTypeRef.Update(JSTaggedValue(parameterGT.GetType()));
-        parameterTypes->Set(thread_, i, parameterTypeRef);
-    }
-    int32_t returntypeId = literal->Get(index++).GetInt();
-
-    functionType->SetName(thread_, functionName);
-    if (hasThisType) {
+        // if hasThisType is true, then the next position will store typeId of this
+        uint32_t thisTypeId = typeLiteralExtractor->GetIntValue(FunctionLiteralInfo::HAS_THIS_TYPE_INDEX + 1);
         auto thisGT = CreateGT(jsPandaFile, recordName, thisTypeId);
         functionType->SetThisGT(thisGT);
     }
+}
 
-    functionType->SetParameterTypes(thread_, parameterTypes);
-    auto returnGT = CreateGT(jsPandaFile, recordName, returntypeId);
-    functionType->SetReturnGT(returnGT);
-    functionType->SetBitField(bitField);
-    auto bcInfoCollector = tsManager_->GetBytecodeInfoCollector();
-    if (bcInfoCollector != nullptr) {
-        auto &bcInfo = bcInfoCollector->GetBytecodeInfo();
-        uint32_t methodOffset = bcInfo.IterateFunctionTypeIDAndMethodOffset(functionId);
+void TSTypeParser::StoreMethodOffset(const JSHandle<TSFunctionType> &functionType,
+                                     TypeLiteralExtractor *typeLiteralExtractor)
+{
+    if (bcInfo_ != nullptr) {
+        uint32_t typeOffset = typeLiteralExtractor->GetTypeOffset();
+        uint32_t methodOffset = bcInfo_->IterateFunctionTypeIDAndMethodOffset(typeOffset);
         if (methodOffset != 0) {
             functionType->SetMethodOffset(methodOffset);
         }
     }
-    return functionType;
-}
-
-JSHandle<TSArrayType> TSTypeParser::ParseArrayType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                   const JSHandle<TaggedArray> &literal)
-{
-    uint32_t index = 0;
-    ASSERT(static_cast<TSTypeKind>(literal->Get(index).GetInt()) == TSTypeKind::ARRAY);
-    index++;
-    JSHandle<JSTaggedValue> elementTypeId(thread_, literal->Get(index++));
-    ASSERT(elementTypeId->IsInt());
-    JSHandle<TSArrayType> arrayType = factory_->NewTSArrayType();
-    auto elemetnGT = CreateGT(jsPandaFile, recordName, elementTypeId->GetInt());
-    if (tsManager_->IsClassTypeKind(elemetnGT)) {
-        elemetnGT = tsManager_->CreateClassInstanceType(elemetnGT);
-    }
-    arrayType->SetElementGT(elemetnGT);
-    return arrayType;
-}
-
-JSHandle<TSObjectType> TSTypeParser::ParseObjectType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                     const JSHandle<TaggedArray> &literal)
-{
-    uint32_t index = 0;
-    ASSERT(static_cast<TSTypeKind>(literal->Get(index).GetInt()) == TSTypeKind::OBJECT);
-    index++;
-    uint32_t length = literal->Get(index++).GetInt();
-    JSHandle<TSObjectType> objectType = factory_->NewTSObjectType(length);
-    JSHandle<TSObjLayoutInfo> propertyTypeInfo(thread_, objectType->GetObjLayoutInfo());
-    ASSERT(propertyTypeInfo->GetPropertiesCapacity() == static_cast<uint32_t>(length));
-    FillPropertyTypes(jsPandaFile, recordName, propertyTypeInfo, literal, 0, length, index, false);
-    objectType->SetObjLayoutInfo(thread_, propertyTypeInfo);
-    return objectType;
-}
-
-void TSTypeParser::FillPropertyTypes(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                     JSHandle<TSObjLayoutInfo> &layout, const JSHandle<TaggedArray> &literal,
-                                     uint32_t startIndex, uint32_t lastIndex, uint32_t &index, bool isField)
-{
-    JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> value(thread_, JSTaggedValue::Undefined());
-    for (uint32_t fieldIndex = startIndex; fieldIndex < lastIndex; ++fieldIndex) {
-        key.Update(literal->Get(index++));
-        ASSERT(key->IsString());
-        auto gt = CreateGT(jsPandaFile, recordName, literal->Get(index++).GetInt());
-        if (tsManager_->IsClassTypeKind(gt)) {
-            gt = tsManager_->CreateClassInstanceType(gt);
-        }
-        value.Update(JSTaggedValue(gt.GetType()));
-        layout->AddKeyAndType(thread_, key.GetTaggedValue(), value.GetTaggedValue());
-        if (isField) {
-            index += 2;  // 2: ignore accessFlag and readonly
-        }
-    }
-}
-
-void TSTypeParser::FillInterfaceMethodTypes(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                            JSHandle<TSObjLayoutInfo> &layout, const JSHandle<TaggedArray> &literal,
-                                            uint32_t startIndex, uint32_t lastIndex, uint32_t &index)
-{
-    JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> value(thread_, JSTaggedValue::Undefined());
-    for (uint32_t methodIndex = startIndex; methodIndex < lastIndex; ++methodIndex) {
-        auto gt = CreateGT(jsPandaFile, recordName, literal->Get(index++).GetInt());
-        value.Update(JSTaggedValue(gt.GetType()));
-
-        if (tsManager_->IsFunctionTypeKind(gt)) {
-            JSHandle<JSTaggedValue> tsType = tsManager_->GetTSType(gt);
-            ASSERT(tsType->IsTSFunctionType());
-
-            JSHandle<TSFunctionType> functionType(tsType);
-            key.Update(functionType->GetName());
-        };
-
-        layout->AddKeyAndType(thread_, key.GetTaggedValue(), value.GetTaggedValue());
-    }
-}
-
-JSHandle<TaggedArray> TSTypeParser::GetExportDataFromRecord(const JSPandaFile *jsPandaFile,
-                                                            const CString &recordName)
-{
-    const panda_file::File &pf = *jsPandaFile->GetPandaFile();
-    panda_file::File::EntityId methodId(jsPandaFile->GetMainMethodIndex(recordName));
-    panda_file::MethodDataAccessor mda(pf, methodId);
-
-    const char *symbolTypes;
-    auto *fileName = pf.GetFilename().c_str();
-    if (::strcmp(TSTypeTable::BUILTINS_TABLE_NAME, fileName) == 0) {
-        symbolTypes = DECLARED_SYMBOL_TYPES;
-    } else {
-        symbolTypes = EXPORTED_SYMBOL_TYPES;
-    }
-
-    JSHandle<TaggedArray> typeOfExportedSymbols(thread_, thread_->GlobalConstants()->GetEmptyArray());
-    mda.EnumerateAnnotations([&](panda_file::File::EntityId annotationId) {
-        panda_file::AnnotationDataAccessor ada(pf, annotationId);
-        auto *annotationName = reinterpret_cast<const char *>(jsPandaFile->GetStringData(ada.GetClassId()).data);
-        ASSERT(annotationName != nullptr);
-        if (::strcmp("L_ESTypeAnnotation;", annotationName) != 0) {
-            return;
-        }
-        uint32_t length = ada.GetCount();
-        for (uint32_t i = 0; i < length; i++) {
-            panda_file::AnnotationDataAccessor::Elem adae = ada.GetElement(i);
-            auto *elemName = reinterpret_cast<const char *>(jsPandaFile->GetStringData(adae.GetNameId()).data);
-            ASSERT(elemName != nullptr);
-
-            if (::strcmp(symbolTypes, elemName) != 0) {
-                continue;
-            }
-
-            panda_file::ScalarValue sv = adae.GetScalarValue();
-            panda_file::File::EntityId literalOffset(sv.GetValue());
-            typeOfExportedSymbols = LiteralDataExtractor::GetTypeLiteral(thread_, jsPandaFile, literalOffset);
-            // typeOfExprotedSymbols: "symbol0", "type0", "symbol1", "type1" ...
-        }
-    });
-
-    return typeOfExportedSymbols;
 }
 
 JSHandle<JSTaggedValue> TSTypeParser::GenerateExportTableFromRecord(const JSPandaFile *jsPandaFile,
@@ -501,24 +464,15 @@ JSHandle<JSTaggedValue> TSTypeParser::GenerateExportTableFromRecord(const JSPand
     JSHandle<JSTaggedValue> exportValeTable = TSTypeTable::GetExportValueTable(thread_, table);
     if (exportValeTable->IsUndefined()) {
         // Read export-data from annotation of the .abc File
-        JSHandle<TaggedArray> exportTable;
-        if (tsManager_->HasResolvedExportTable(jsPandaFile, recordName)) {
-            JSTaggedValue resolvedTable = tsManager_->GetResolvedExportTable(jsPandaFile, recordName);
-            exportTable = JSHandle<TaggedArray>::Cast(JSHandle<JSTaggedValue>(thread_, resolvedTable));
-        } else {
-            exportTable = GetExportDataFromRecord(jsPandaFile, recordName);
-        }
+        JSHandle<TaggedArray> exportTable = tsManager_->GetExportTableFromLiteral(jsPandaFile, recordName);
         uint32_t length = exportTable->GetLength();
-
-        // Replace typeIds with GT
-        JSTaggedValue target;
         for (uint32_t i = 1; i < length; i += 2) {  // 2: skip a pair of key and value
-            target = exportTable->Get(i);
+            JSTaggedValue target = exportTable->Get(i);
             // Create GT based on typeId, and wrapped it into a JSTaggedValue
             uint32_t typeId = static_cast<uint32_t>(target.GetInt());
-            GlobalTSTypeRef typeGT = CreateGT(jsPandaFile, recordName, typeId);
+            GlobalTSTypeRef gt = CreateGT(jsPandaFile, recordName, typeId);
             // Set the wrapped GT to exportTable
-            exportTable->Set(thread_, i, JSTaggedValue(typeGT.GetType()));
+            exportTable->Set(thread_, i, JSTaggedValue(gt.GetType()));
         }
         TSTypeTable::SetExportValueTable(thread_, table, exportTable);
         return JSHandle<JSTaggedValue>(exportTable);
@@ -590,5 +544,36 @@ GlobalTSTypeRef TSTypeParser::IterateStarExport(JSHandle<EcmaString> target, con
         }
     }
     return GlobalTSTypeRef::Default();
+}
+
+static uint32_t CalculateNextNumIndex(const TypeLiteralExtractor *typeLiteralExtractor,
+                                      uint32_t startIndex = 0,
+                                      uint32_t gap = 1)
+{
+    return startIndex + INDEX_OCCUPIED_OFFSET + (typeLiteralExtractor->GetIntValue(startIndex) * gap);
+}
+
+ClassLiteralInfo::ClassLiteralInfo(const TypeLiteralExtractor *typeLiteralExtractor)
+{
+    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::CLASS);
+    numNonStaticFieldsIndex = CalculateNextNumIndex(typeLiteralExtractor, NUM_IMPLEMENTS_INDEX);
+    numNonStaticMethodsIndex = CalculateNextNumIndex(typeLiteralExtractor, numNonStaticFieldsIndex, FIELD_LENGTH);
+    numStaticFieldsIndex = CalculateNextNumIndex(typeLiteralExtractor, numNonStaticMethodsIndex, METHOD_LENGTH);
+    numStaticMethodsIndex = CalculateNextNumIndex(typeLiteralExtractor, numStaticFieldsIndex, FIELD_LENGTH);
+}
+
+InterfaceLiteralInfo::InterfaceLiteralInfo(const TypeLiteralExtractor *typeLiteralExtractor)
+{
+    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::INTERFACE);
+    numFieldsIndex = CalculateNextNumIndex(typeLiteralExtractor, NUM_EXTENDS_INDEX);
+    numMethodsIndex = CalculateNextNumIndex(typeLiteralExtractor, numFieldsIndex, FIELD_LENGTH);
+}
+
+FunctionLiteralInfo::FunctionLiteralInfo(const TypeLiteralExtractor *typeLiteralExtractor)
+{
+    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::FUNCTION);
+    numParasIndex = HAS_THIS_TYPE_INDEX + INDEX_OCCUPIED_OFFSET +
+                    typeLiteralExtractor->GetIntValue(HAS_THIS_TYPE_INDEX);
+    returnTypeIndex = CalculateNextNumIndex(typeLiteralExtractor, numParasIndex);
 }
 }  // namespace panda::ecmascript

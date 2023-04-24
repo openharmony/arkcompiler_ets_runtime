@@ -17,14 +17,12 @@
 #define ECMASCRIPT_JSPANDAFILE_PANDA_FILE_TRANSLATOR_H
 
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/jspandafile/bytecode_inst/old_instruction.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 
 #include "libpandabase/utils/bit_field.h"
 #include "libpandafile/code_data_accessor-inl.h"
-#include "libpandafile/file-inl.h"
-
-#include "ecmascript/jspandafile/bytecode_inst/old_instruction.h"
 
 namespace panda::ecmascript {
 class Program;

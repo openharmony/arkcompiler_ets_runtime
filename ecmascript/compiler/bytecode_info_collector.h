@@ -715,13 +715,10 @@ private:
     void IterateLiteral(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
     void StoreClassTypeOffset(const uint32_t typeOffset, std::vector<uint32_t> &classOffsetVector);
     void CollectClassLiteralInfo(const MethodLiteral *method, const std::vector<std::string> &classNameVec);
-    void CollectFunctionTypeId(JSThread *thread, panda_file::File::EntityId fieldId);
+    void CollectFunctionTypeId(panda_file::File::EntityId fieldId);
     void CollectImportIndexs(uint32_t methodOffset, uint32_t index);
     void CollectExportIndexs(const CString &recordName, uint32_t index);
-    bool CheckExportName(const CString &recordName,
-                         const JSHandle<EcmaString> &exportStr);
-    bool IsEffectiveExportName(const JSHandle<EcmaString> &exportNameStr,
-                               const JSHandle<TaggedArray> &exportTypeTable);
+    bool CheckExportName(const CString &recordName, const JSHandle<EcmaString> &exportStr);
     void CollectRecordReferenceREL();
     void CollectRecordImportInfo(const CString &recordName);
     void CollectRecordExportInfo(const CString &recordName);

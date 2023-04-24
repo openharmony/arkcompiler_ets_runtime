@@ -36,17 +36,11 @@ public:
 
     GlobalTSTypeRef PUBLIC_API CreateGT(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId);
 
-    JSHandle<TaggedArray> GetExportDataFromRecord(const JSPandaFile *jsPandaFile, const CString &recordName);
-
     static constexpr size_t USER_DEFINED_TYPE_OFFSET = 100;
 
 private:
-    static constexpr size_t TYPE_KIND_INDEX_IN_LITERAL = 0;
     static constexpr size_t BUILDIN_TYPE_OFFSET = 20;
-    static constexpr size_t IMPORT_PATH_OFFSET_IN_LITERAL = 1;
-
-    static constexpr const char* DECLARED_SYMBOL_TYPES = "declaredSymbolTypes";
-    static constexpr const char* EXPORTED_SYMBOL_TYPES = "exportedSymbolTypes";
+    static constexpr size_t DEFAULT_INDEX = 0;
 
     inline GlobalTSTypeRef GetAndStoreGT(const JSPandaFile *jsPandaFile, uint32_t typeId, const CString &recordName,
                                          uint32_t moduleId = 0, uint32_t localId = 0)
@@ -76,45 +70,60 @@ private:
     GlobalTSTypeRef ParseBuiltinObjType(uint32_t typeId);
 
     GlobalTSTypeRef ResolveImportType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                      JSHandle<TaggedArray> literal, uint32_t typeId);
+                                      TypeLiteralExtractor *typeLiteralExtractor);
 
     JSHandle<JSTaggedValue> ParseNonImportType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                               JSHandle<TaggedArray> literal, TSTypeKind kind, uint32_t typeId);
+                                               TypeLiteralExtractor *typeLiteralExtractor);
 
     JSHandle<TSClassType> ParseClassType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                         const JSHandle<TaggedArray> &literal, uint32_t typeId);
+                                         TypeLiteralExtractor *typeLiteralExtractor);
 
     JSHandle<TSClassInstanceType> ParseClassInstanceType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                         const JSHandle<TaggedArray> &literal);
+                                                         TypeLiteralExtractor *typeLiteralExtractor);
 
     JSHandle<TSInterfaceType> ParseInterfaceType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                 const JSHandle<TaggedArray> &literal);
+                                                 TypeLiteralExtractor *typeLiteralExtractor);
 
     JSHandle<TSUnionType> ParseUnionType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                         const JSHandle<TaggedArray> &literal);
+                                         TypeLiteralExtractor *typeLiteralExtractor);
 
     JSHandle<TSFunctionType> ParseFunctionType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                               const JSHandle<TaggedArray> &literal, uint32_t functionId);
+                                               TypeLiteralExtractor *typeLiteralExtractor);
 
     JSHandle<TSArrayType> ParseArrayType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                         const JSHandle<TaggedArray> &literal);
+                                         TypeLiteralExtractor *typeLiteralExtractor);
 
     JSHandle<TSObjectType> ParseObjectType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                           const JSHandle<TaggedArray> &literal);
+                                           TypeLiteralExtractor *typeLiteralExtractor);
 
-    void FillPropertyTypes(const JSPandaFile *jsPandaFile,
-                           const CString &recordName,
-                           JSHandle<TSObjLayoutInfo> &layout,
-                           const JSHandle<TaggedArray> &literal,
-                           uint32_t startIndex, uint32_t lastIndex,
-                           uint32_t &index, bool isField);
+    void FillPropTypes(const JSPandaFile *jsPandaFile,
+                       const CString &recordName,
+                       const JSHandle<TSObjectType> &objectType,
+                       TypeLiteralExtractor *typeLiteralExtractor,
+                       const uint32_t numOfFieldIndex,
+                       const uint32_t gap);
 
     void FillInterfaceMethodTypes(const JSPandaFile *jsPandaFile,
                                   const CString &recordName,
-                                  JSHandle<TSObjLayoutInfo> &layout,
-                                  const JSHandle<TaggedArray> &literal,
-                                  uint32_t startIndex, uint32_t lastIndex,
-                                  uint32_t &index);
+                                  const JSHandle<TSObjectType> &objectType,
+                                  TypeLiteralExtractor *typeLiteralExtractor,
+                                  const uint32_t numExtends);
+
+    void SetClassName(const JSHandle<TSClassType> &classType,
+                      const JSPandaFile *jsPandaFile,
+                      TypeLiteralExtractor *typeLiteralExtractor);
+
+    void SetSuperClassType(const JSHandle<TSClassType> &classType,
+                           const JSPandaFile *jsPandaFile,
+                           const CString &recordName,
+                           TypeLiteralExtractor *typeLiteralExtractor);
+
+    void SetFunctionThisType(const JSHandle<TSFunctionType> &functionType,
+                             const JSPandaFile *jsPandaFile,
+                             const CString &recordName,
+                             TypeLiteralExtractor *typeLiteralExtractor);
+
+    void StoreMethodOffset(const JSHandle<TSFunctionType> &functionType, TypeLiteralExtractor *typeLiteralExtractor);
 
     JSHandle<JSTaggedValue> GenerateExportTableFromRecord(const JSPandaFile *jsPandaFile, const CString &recordName,
                                                           const JSHandle<TSTypeTable> &table);
@@ -136,6 +145,41 @@ private:
     ObjectFactory *factory_ {nullptr};
     TSTypeTableGenerator tableGenerator_;
     kungfu::BCInfo *bcInfo_ {nullptr};
+};
+
+struct ClassLiteralInfo {
+    explicit ClassLiteralInfo(const TypeLiteralExtractor *typeLiteralExtractor);
+    ~ClassLiteralInfo() = default;
+
+    static constexpr uint32_t SUPER_CLASS_INDEX = 1;
+    static constexpr uint32_t NUM_IMPLEMENTS_INDEX = 2;
+
+    uint32_t numNonStaticFieldsIndex {0};
+    uint32_t numNonStaticMethodsIndex {0};
+    uint32_t numStaticFieldsIndex {0};
+    uint32_t numStaticMethodsIndex {0};
+};
+
+struct InterfaceLiteralInfo {
+    explicit InterfaceLiteralInfo(const TypeLiteralExtractor *typeLiteralExtractor);
+    ~InterfaceLiteralInfo() = default;
+
+    static constexpr uint32_t NUM_EXTENDS_INDEX = 0;
+
+    uint32_t numFieldsIndex {0};
+    uint32_t numMethodsIndex {0};
+};
+
+struct FunctionLiteralInfo {
+    explicit FunctionLiteralInfo(const TypeLiteralExtractor *typeLiteralExtractor);
+    ~FunctionLiteralInfo() = default;
+
+    static constexpr uint32_t BITFIELD_INDEX = 0;
+    static constexpr uint32_t NAME_INDEX = 1;
+    static constexpr uint32_t HAS_THIS_TYPE_INDEX = 2;
+
+    uint32_t numParasIndex {0};
+    uint32_t returnTypeIndex {0};
 };
 }  // panda::ecmascript
 #endif  // ECMASCRIPT_TS_TYPES_TS_TYPE_PARSER_H

@@ -55,16 +55,8 @@ JSHandle<TSTypeTable> TSTypeTableGenerator::GetOrGenerateTSTypeTable(const JSPan
         return tsManager_->GetTSTypeTable(moduleId);
     }
     JSHandle<EcmaString> recordNameStr = factory_->NewFromUtf8(recordName);
-    // read type summary literal
-    // struct of summaryLiteral: {numTypes, literalOffset0, literalOffset1, ...}
-    panda_file::File::EntityId summaryOffset(jsPandaFile->GetTypeSummaryOffset(recordName));
-    JSHandle<TaggedArray> summaryLiteral =
-        LiteralDataExtractor::GetTypeLiteral(thread_, jsPandaFile, summaryOffset);
-    uint32_t numIdx = static_cast<uint32_t>(BuiltinTypeId::NUM_INDEX_IN_SUMMARY);
-    uint32_t numTypes = static_cast<uint32_t>(summaryLiteral->Get(numIdx).GetInt());
-
-    // Initialize a empty TSTypeTable with length of (numTypes + RESERVE_TABLE_LENGTH)
-    JSHandle<TSTypeTable> table = AddTypeTable(recordNameStr, numTypes);
+    TypeSummaryExtractor summExtractor(jsPandaFile, recordName);
+    JSHandle<TSTypeTable> table = AddTypeTable(recordNameStr, summExtractor.GetNumOfTypes());
     return table;
 }
 

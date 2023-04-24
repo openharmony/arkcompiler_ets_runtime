@@ -22,7 +22,7 @@
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
 
-#include "libpandafile/file.h"
+#include "libpandafile/file-inl.h"
 #include "libpandafile/file_items.h"
 #include "libpandafile/literal_data_accessor.h"
 
