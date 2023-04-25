@@ -180,7 +180,7 @@ public:
         EXPECT_EQ(length1, 4U); // 4 : test case
         JSHandle<JSTaggedValue> key1(factory->NewFromASCII("abc"));
         JSHandle<JSTaggedValue> key2(factory->NewFromASCII("8"));
-        JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(6));
+        JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(6)); // 6 : test case
         JSHandle<JSTaggedValue> value2 = JSHandle<JSTaggedValue>::Cast(factory->GetEmptyString());
         OperationResult res1 = JSObject::GetProperty(thread, objValue1, key1);
         JSHandle<JSTaggedValue> resValue1 = res1.GetRawValue();

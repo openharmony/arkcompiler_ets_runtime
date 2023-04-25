@@ -473,8 +473,8 @@ void ContainersPrivate::InitializeLightWeightSetIterator(JSThread *thread)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
-    JSHandle<JSHClass> iteratorClass = JSHandle<JSHClass>(thread, globalConst->GetHandledJSAPIIteratorFuncHClass().
-                                                             GetObject<JSHClass>());
+    JSHandle<JSHClass> iteratorClass =
+        JSHandle<JSHClass>(thread, globalConst->GetHandledJSAPIIteratorFuncHClass().GetObject<JSHClass>());
     JSHandle<JSObject> lightWeightSetIteratorPrototype(factory->NewJSObject(iteratorClass));
     SetFrozenFunction(
         thread, lightWeightSetIteratorPrototype, "next", JSAPILightWeightSetIterator::Next, FuncLength::ONE);
@@ -695,9 +695,8 @@ void ContainersPrivate::InitializePlainArrayIterator(JSThread *thread)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
-    JSHandle<JSHClass> iteratorClass = JSHandle<JSHClass>(thread, globalConst->
-                                                             GetHandledJSAPIIteratorFuncHClass().
-                                                             GetObject<JSHClass>());
+    JSHandle<JSHClass> iteratorClass =
+        JSHandle<JSHClass>(thread, globalConst->GetHandledJSAPIIteratorFuncHClass().GetObject<JSHClass>());
     JSHandle<JSObject> plainarrayIteratorPrototype(factory->NewJSObject(iteratorClass));
     SetFrozenFunction(thread, plainarrayIteratorPrototype, "next", JSAPIPlainArrayIterator::Next, FuncLength::ONE);
     SetStringTagSymbol(thread, env, plainarrayIteratorPrototype, "PlainArray Iterator");
