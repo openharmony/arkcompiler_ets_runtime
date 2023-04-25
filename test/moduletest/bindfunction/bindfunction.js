@@ -27,7 +27,6 @@ const module = {
 };
 
 const unboundGetX = module.getX;
-// print(unboundGetX()); // expected output: undefined
   
 const boundGetX = unboundGetX.bind(module);
 print(boundGetX()); // expected output: 42

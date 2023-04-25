@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { nop } from './module.js'
+import { nop } from './module.js';
 
 function foo() {
   print('base foo()');
@@ -24,8 +24,8 @@ class A {
   }
 
   onCreate() {
-      print(this.a);
-      print('base A onCreate');
+    print(this.a);
+    print('base A onCreate');
   }
 
   get message() {
