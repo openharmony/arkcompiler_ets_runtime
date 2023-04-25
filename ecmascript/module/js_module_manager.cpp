@@ -355,9 +355,8 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const 
     JSHandle<JSTaggedValue> moduleRecord = ResolveModuleWithMerge(thread, jsPandaFile, recordName);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<NameDictionary> handleDict(thread, resolvedModules_);
-    resolvedModules_ = NameDictionary::Put(thread, handleDict, JSHandle<JSTaggedValue>(recordNameHandle),
-                                           JSHandle<JSTaggedValue>(moduleRecord), PropertyAttributes::Default())
-                                           .GetTaggedValue();
+    resolvedModules_ = NameDictionary::Put(thread, handleDict,JSHandle<JSTaggedValue>(recordNameHandle),
+        JSHandle<JSTaggedValue>(moduleRecord), PropertyAttributes::Default()).GetTaggedValue();
 
     return moduleRecord;
 }

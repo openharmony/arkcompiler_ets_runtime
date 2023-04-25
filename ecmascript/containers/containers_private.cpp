@@ -356,8 +356,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightMap(JSThread *th
     JSHandle<JSTaggedValue> lightWeightMapFunction(NewContainerConstructor(
         thread, funcPrototype, ContainersLightWeightMap::LightWeightMapConstructor, "LightWeightMap",
         FuncLength::ZERO));
-    JSHandle<JSFunction>::Cast(lightWeightMapFunction)->
-                               SetFunctionPrototype(thread, lightWeightMapInstanceClass.GetTaggedValue());
+    JSHandle<JSFunction>::Cast(lightWeightMapFunction)->SetFunctionPrototype(thread,
+        lightWeightMapInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -472,8 +472,8 @@ void ContainersPrivate::InitializeLightWeightSetIterator(JSThread *thread)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
-    JSHandle<JSHClass> iteratorClass = JSHandle<JSHClass>(thread, globalConst->GetHandledJSAPIIteratorFuncHClass().
-                                                          GetObject<JSHClass>());
+    JSHandle<JSHClass> iteratorClass =
+        JSHandle<JSHClass>(thread, globalConst->GetHandledJSAPIIteratorFuncHClass().GetObject<JSHClass>());
     JSHandle<JSObject> lightWeightSetIteratorPrototype(factory->NewJSObject(iteratorClass));
     SetFrozenFunction(
         thread, lightWeightSetIteratorPrototype, "next", JSAPILightWeightSetIterator::Next, FuncLength::ONE);
@@ -694,9 +694,8 @@ void ContainersPrivate::InitializePlainArrayIterator(JSThread *thread)
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
-    JSHandle<JSHClass> iteratorClass = JSHandle<JSHClass>(thread, globalConst->
-                                                          GetHandledJSAPIIteratorFuncHClass().
-                                                          GetObject<JSHClass>());
+    JSHandle<JSHClass> iteratorClass = JSHandle<JSHClass>(thread,
+        globalConst->GetHandledJSAPIIteratorFuncHClass().GetObject<JSHClass>());
     JSHandle<JSObject> plainarrayIteratorPrototype(factory->NewJSObject(iteratorClass));
     SetFrozenFunction(thread, plainarrayIteratorPrototype, "next", JSAPIPlainArrayIterator::Next, FuncLength::ONE);
     SetStringTagSymbol(thread, env, plainarrayIteratorPrototype, "PlainArray Iterator");

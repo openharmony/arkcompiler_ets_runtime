@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { nop } from './module.js'
+import { nop } from './module.js';
 
 function foo() {
   print('patch foo()');

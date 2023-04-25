@@ -13,4 +13,4 @@
  * limitations under the License.
  */
 
-export let nop = undefined
+export let nop = undefined;
