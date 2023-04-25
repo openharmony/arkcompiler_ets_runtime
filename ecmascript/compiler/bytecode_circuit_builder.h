@@ -284,6 +284,7 @@ public:
     void PUBLIC_API BytecodeToCircuit();
     int32_t GetJumpOffset(uint32_t bcIndex) const;
     void CollectRegionInfo(uint32_t bcIndex);
+    GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc);
 
     [[nodiscard]] Circuit* GetCircuit() const
     {
@@ -465,7 +466,6 @@ private:
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
     GateRef NewLoopBackPhi(BytecodeRegion &bb, uint16_t reg, bool acc);
     GateRef NewLoopForwardPhi(BytecodeRegion &bb, uint16_t reg, bool acc);
-    GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc);
     void BuildCircuit();
     GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
     void SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate);

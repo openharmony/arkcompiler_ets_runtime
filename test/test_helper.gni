@@ -517,6 +517,10 @@ template("host_aot_test_action") {
         src_js = rebase_path(_test_ts_path_)
       }
 
+      if (defined(invoker.is_debug_abc) && invoker.is_debug_abc) {
+        extra_args += [ "--debug" ]
+      }
+
       in_puts = [
         _test_ts_path_,
         _test_expect_path_,
@@ -541,6 +545,10 @@ template("host_aot_test_action") {
         "--module",
         "--type-extractor",
       ]
+
+      if (defined(invoker.is_debug_abc) && invoker.is_debug_abc) {
+        extra_args += [ "--debug" ]
+      }
 
       in_puts = [
         _test_ts_path_,

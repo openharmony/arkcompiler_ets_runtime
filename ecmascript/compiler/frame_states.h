@@ -108,7 +108,7 @@ private:
     void BuildPostOrderList(size_t size);
     bool ComputeLiveOut(size_t bbId);
     void ComputeLiveState();
-    void ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo);
+    void ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo, size_t bbId);
     bool IsAsyncResolveOrSusp(const BytecodeInfo &bytecodeInfo);
     bool MergeIntoPredBC(uint32_t predPc);
     bool MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb);

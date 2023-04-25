@@ -257,7 +257,7 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
     liveOutResult_->CopyFrom(liveout);
     while (true) {
         auto &bytecodeInfo = iterator.GetBytecodeInfo();
-        ComputeLiveOutBC(iterator.Index(), bytecodeInfo);
+        ComputeLiveOutBC(iterator.Index(), bytecodeInfo, bbId);
         --iterator;
         if (iterator.Done()) {
             break;
@@ -324,7 +324,7 @@ void FrameStateBuilder::BuildFrameState(GateRef frameArgs)
     BindStateSplit(size);
 }
 
-void FrameStateBuilder::ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo)
+void FrameStateBuilder::ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo, size_t bbId)
 {
     if (bytecodeInfo.IsMov()) {
         auto gate = Circuit::NullGate();
@@ -338,10 +338,17 @@ void FrameStateBuilder::ComputeLiveOutBC(uint32_t index, const BytecodeInfo &byt
             UpdateVirtualRegister(out, Circuit::NullGate());
         }
         // variable use
+        // when alive gate is null, find def
         if (bytecodeInfo.AccIn()) {
+            if (gate == Circuit::NullGate()) {
+                gate = builder_->ResolveDef(bbId, index, 0, true);
+            }
             UpdateAccumulator(gate);
         } else if (bytecodeInfo.inputs.size() != 0) {
             auto vreg = std::get<VirtualRegister>(bytecodeInfo.inputs.at(0)).GetId();
+            if (gate == Circuit::NullGate()) {
+                gate = builder_->ResolveDef(bbId, index, vreg, false);
+            }
             UpdateVirtualRegister(vreg, gate);
         }
         return;
