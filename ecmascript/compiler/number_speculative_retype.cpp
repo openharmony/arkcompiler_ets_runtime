@@ -64,6 +64,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitOverflowCheck(gate);
         case OpCode::INDEX_CHECK:
             return VisitIndexCheck(gate);
+        case OpCode::LOAD_ARRAY_LENGTH:
+            return VisitLoadArrayLength(gate);
         case OpCode::LOAD_ELEMENT:
             return VisitLoadElement(gate);
         case OpCode::STORE_ELEMENT:
@@ -602,17 +604,19 @@ GateRef NumberSpeculativeRetype::VisitOverflowCheck(GateRef gate)
 GateRef NumberSpeculativeRetype::VisitIndexCheck(GateRef gate)
 {
     if (IsRetype()) {
-        return SetOutputType(gate, GateType::AnyType());
+        return SetOutputType(gate, GateType::IntType());
     }
 
     if (IsConvert()) {
         Environment env(gate, circuit_, &builder_);
         GateRef receiver = acc_.GetValueIn(gate, 0);
         GateRef index = acc_.GetValueIn(gate, 1);
+        GateType gateType = acc_.GetParamGateType(gate);
         GateType receiverType = acc_.GetGateType(receiver);
         GateType indexType = acc_.GetGateType(index);
-        if (receiverType.IsNumberType()) {
+        if (tsManager_->IsArrayTypeKind(gateType)) {
             // IndexCheck receive length at first value input.
+            ASSERT(receiverType.IsNumberType());
             acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(receiver, receiverType), 0);
         }
         if (indexType.IsNumberType()) {
@@ -622,6 +626,15 @@ GateRef NumberSpeculativeRetype::VisitIndexCheck(GateRef gate)
         acc_.ReplaceDependIn(gate, builder_.GetDepend());
     }
 
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitLoadArrayLength(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::IntType());
+    }
+    
     return Circuit::NullGate();
 }
 

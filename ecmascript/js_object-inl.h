@@ -270,7 +270,12 @@ inline bool JSObject::ShouldTransToDict(uint32_t capacity, uint32_t index)
     if (index < capacity) {
         return false;
     }
+    
     if (index - capacity > MAX_GAP) {
+        return true;
+    }
+
+    if (index >= static_cast<uint32_t>(INT32_MAX)) {
         return true;
     }
 

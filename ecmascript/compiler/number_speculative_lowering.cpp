@@ -32,7 +32,14 @@ void NumberSpeculativeLowering::Run()
     std::vector<GateRef> gateList;
     acc_.GetAllGates(gateList);
     for (auto gate : gateList) {
-        VisitGate(gate);
+        if (acc_.GetOpCode(gate) != OpCode::INDEX_CHECK) {
+            VisitGate(gate);
+        } else {
+            checkedGates_.push_back(gate);
+        }
+    }
+    for (auto check : checkedGates_) {
+        VisitIndexCheck(check);
     }
 }
 
@@ -210,6 +217,7 @@ void NumberSpeculativeLowering::VisitNumberCalculate(GateRef gate)
     GateRef result = Circuit::NullGate();
     if (gateType.IsIntType()) {
         result = CalculateInts<Op>(left, right);    // int op int
+        UpdateRange(result, GetRange(gate));
         acc_.SetMachineType(gate, MachineType::I32);
     } else {
         result = CalculateDoubles<Op>(left, right); // float op float
@@ -253,6 +261,7 @@ void NumberSpeculativeLowering::VisitNumberShift(GateRef gate)
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     GateRef result = ShiftInts<Op>(left, right);  // int op int
+    UpdateRange(result, GetRange(gate));
     acc_.SetMachineType(gate, MachineType::I32);
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -264,6 +273,7 @@ void NumberSpeculativeLowering::VisitNumberLogical(GateRef gate)
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     GateRef result = LogicalInts<Op>(left, right);  // int op int
+    UpdateRange(result, GetRange(gate));
     acc_.SetMachineType(gate, MachineType::I32);
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -292,6 +302,7 @@ void NumberSpeculativeLowering::VisitNumberMonocular(GateRef gate)
     GateRef result = Circuit::NullGate();
     if (type.IsIntType()) {
         result = MonocularInt<Op>(value);
+        UpdateRange(result, GetRange(gate));
         acc_.SetMachineType(gate, MachineType::I32);
     } else {
         result = MonocularDouble<Op>(value);
@@ -306,6 +317,7 @@ void NumberSpeculativeLowering::VisitNumberNot(GateRef gate)
     ASSERT(TypedUnaryAccessor(acc_.TryGetValue(gate)).GetTypeValue().IsNumberType());
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef result = builder_.Int32Not(value);
+    UpdateRange(result, GetRange(gate));
     acc_.SetMachineType(gate, MachineType::I32);
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
@@ -352,7 +364,8 @@ void NumberSpeculativeLowering::VisitConstant(GateRef gate)
     switch (output) {
         case TypeInfo::INT32: {
             int value = acc_.GetInt32FromConstant(gate);
-            acc_.UpdateAllUses(gate, builder_.Int32(value));
+            GateRef ConstGate = GetConstInt32(value);
+            acc_.UpdateAllUses(gate, ConstGate);
             break;
         }
         case TypeInfo::FLOAT64: {
@@ -389,17 +402,47 @@ void NumberSpeculativeLowering::VisitPhi(GateRef gate)
     }
 }
 
+void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)
+{
+    auto type = acc_.GetParamGateType(gate);
+    if (!tsManager_->IsArrayTypeKind(type)) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef length = acc_.GetValueIn(gate, 0);
+    GateRef index = acc_.GetValueIn(gate, 1);
+    RangeInfo indexRange = GetRange(index);
+    if (indexRange.GetMin() < 0) {
+        GateRef condition = builder_.Int32LessThanOrEqual(builder_.Int32(0), index);
+        builder_.DeoptCheck(condition, frameState, DeoptType::NEGTIVEINDEX);
+    }
+    GateRef condition = builder_.Int32LessThan(index, length);
+    builder_.DeoptCheck(condition, frameState, DeoptType::LARGEINDEX);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), index);
+}
+
 template<TypedBinOp Op>
 GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
 {
     GateRef res = Circuit::NullGate();
+    RangeInfo leftRange = GetRange(left);
+    RangeInfo rightRange = GetRange(right);
     switch (Op) {
-        case TypedBinOp::TYPED_ADD:
+        case TypedBinOp::TYPED_ADD: {
+            if (!leftRange.MaybeAddOverflowOrUnderflow(rightRange)) {
+                return builder_.Int32Add(left, right);
+            }
             res = builder_.AddWithOverflow(left, right);
             break;
-        case TypedBinOp::TYPED_SUB:
+        }
+        case TypedBinOp::TYPED_SUB: {
+            if (!leftRange.MaybeSubOverflowOrUnderflow(rightRange)) {
+                return builder_.Int32Sub(left, right);
+            }
             res = builder_.SubWithOverflow(left, right);
             break;
+        }
         case TypedBinOp::TYPED_MUL:
             res = builder_.MulWithOverflow(left, right);
             break;
@@ -407,9 +450,9 @@ GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
             break;
     }
     // DeoptCheckForOverFlow
-    GateRef condition = builder_.BoolNot(builder_.ExtractValue(MachineType::I1, res, builder_.Int32(1)));
+    GateRef condition = builder_.BoolNot(builder_.ExtractValue(MachineType::I1, res, GetConstInt32(1)));
     builder_.DeoptCheck(condition, acc_.GetFrameState(builder_.GetDepend()), DeoptType::NOTINT);
-    return builder_.ExtractValue(MachineType::I32, res, builder_.Int32(0));
+    return builder_.ExtractValue(MachineType::I32, res, GetConstInt32(0));
 }
 
 template<TypedBinOp Op>
@@ -494,7 +537,7 @@ template<TypedBinOp Op>
 GateRef NumberSpeculativeLowering::ShiftInts(GateRef left, GateRef right)
 {
     GateRef value = Circuit::NullGate();
-    GateRef shift = builder_.Int32And(right, builder_.Int32(0x1f)); // 0x1f: bit mask of shift value
+    GateRef shift = builder_.Int32And(right, GetConstInt32(0x1f)); // 0x1f: bit mask of shift value
     switch (Op) {
         case TypedBinOp::TYPED_SHL: {
             value = builder_.Int32LSL(left, shift);
@@ -502,8 +545,13 @@ GateRef NumberSpeculativeLowering::ShiftInts(GateRef left, GateRef right)
         }
         case TypedBinOp::TYPED_SHR: {
             value = builder_.Int32LSR(left, shift);
+            RangeInfo leftRange = GetRange(left);
+            RangeInfo rightRange = GetRange(right);
+            if (!leftRange.MaybeShrOverflow(rightRange)) {
+                return value;
+            }
             GateRef frameState = acc_.GetFrameState(builder_.GetDepend());
-            GateRef condition = builder_.Int32UnsignedLessThanOrEqual(value, builder_.Int32(INT32_MAX));
+            GateRef condition = builder_.Int32UnsignedLessThanOrEqual(value, GetConstInt32(INT32_MAX));
             builder_.DeoptCheck(condition, frameState, DeoptType::NOTINT);
             break;
         }
@@ -545,18 +593,18 @@ GateRef NumberSpeculativeLowering::LogicalInts(GateRef left, GateRef right)
 }
 
 template<TypedUnOp Op>
-GateRef NumberSpeculativeLowering::MonocularInt(GateRef vlaue)
+GateRef NumberSpeculativeLowering::MonocularInt(GateRef value)
 {
     GateRef res = Circuit::NullGate();
     switch (Op) {
         case TypedUnOp::TYPED_INC:
-            res = CalculateInts<TypedBinOp::TYPED_ADD>(vlaue, builder_.Int32(1));
+            res = CalculateInts<TypedBinOp::TYPED_ADD>(value, GetConstInt32(1));
             break;
         case TypedUnOp::TYPED_DEC:
-            res = CalculateInts<TypedBinOp::TYPED_SUB>(vlaue, builder_.Int32(1));
+            res = CalculateInts<TypedBinOp::TYPED_SUB>(value, GetConstInt32(1));
             break;
         case TypedUnOp::TYPED_NEG:
-            res = builder_.Int32Sub(builder_.Int32(0), vlaue);
+            res = builder_.Int32Sub(GetConstInt32(0), value);
             break;
         default:
             break;
@@ -565,22 +613,42 @@ GateRef NumberSpeculativeLowering::MonocularInt(GateRef vlaue)
 }
 
 template<TypedUnOp Op>
-GateRef NumberSpeculativeLowering::MonocularDouble(GateRef vlaue)
+GateRef NumberSpeculativeLowering::MonocularDouble(GateRef value)
 {
     GateRef res = Circuit::NullGate();
     switch (Op) {
         case TypedUnOp::TYPED_INC:
-            res = builder_.DoubleAdd(vlaue, builder_.Double(1));
+            res = builder_.DoubleAdd(value, builder_.Double(1));
             break;
         case TypedUnOp::TYPED_DEC:
-            res = builder_.DoubleSub(vlaue, builder_.Double(1));
+            res = builder_.DoubleSub(value, builder_.Double(1));
             break;
         case TypedUnOp::TYPED_NEG:
-            res = builder_.DoubleSub(builder_.Double(0), vlaue);
+            res = builder_.DoubleSub(builder_.Double(0), value);
             break;
         default:
             break;
     }
     return res;
+}
+
+void NumberSpeculativeLowering::UpdateRange(GateRef gate, const RangeInfo& range)
+{
+    auto id = acc_.GetId(gate);
+    rangeInfos_.resize(id + 1, RangeInfo::ANY());
+    rangeInfos_[id] = range;
+}
+
+RangeInfo NumberSpeculativeLowering::GetRange(GateRef gate) const
+{
+    ASSERT(!rangeInfos_[acc_.GetId(gate)].IsNone());
+    return rangeInfos_[acc_.GetId(gate)];
+}
+
+GateRef NumberSpeculativeLowering::GetConstInt32(int32_t v)
+{
+    auto val = builder_.Int32(v);
+    UpdateRange(val, RangeInfo(v, v));
+    return val;
 }
 }  // namespace panda::ecmascript

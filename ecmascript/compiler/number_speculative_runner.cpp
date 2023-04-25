@@ -13,16 +13,17 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/number_speculative_runner.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/number_speculative_lowering.h"
+#include "ecmascript/compiler/number_speculative_runner.h"
+#include "ecmascript/compiler/range_analysis.h"
 
 namespace panda::ecmascript::kungfu {
 void NumberSpeculativeRunner::Run()
 {
     auto maxId = circuit_->GetMaxGateId();
     typeInfos_.resize(maxId + 1, TypeInfo::NONE);
-    NumberSpeculativeRetype retype(circuit_, chunk_, typeInfos_);
+    NumberSpeculativeRetype retype(circuit_, chunk_, tsManager_, typeInfos_);
     retype.Run();
 
     if (IsLogEnabled()) {
@@ -36,7 +37,24 @@ void NumberSpeculativeRunner::Run()
         circuit_->PrintAllGatesWithBytecode();
         LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
     }
-    NumberSpeculativeLowering lowering(circuit_, typeInfos_);
+
+    maxId = circuit_->GetMaxGateId();
+    rangeInfos_.resize(maxId + 1, RangeInfo::NONE());
+    RangeAnalysis rangeAnalysis(circuit_, chunk_, typeInfos_, rangeInfos_);
+    rangeAnalysis.Run();
+    if (IsLogEnabled()) {
+        LOG_COMPILER(INFO) << "";
+        LOG_COMPILER(INFO) << "\033[34m"
+                           << "===================="
+                           << " After range analysis "
+                           << "[" << GetMethodName() << "]"
+                           << "===================="
+                           << "\033[0m";
+        rangeAnalysis.PrintRangeInfo();
+        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+    }
+
+    NumberSpeculativeLowering lowering(circuit_, chunk_, tsManager_, typeInfos_, rangeInfos_);
     lowering.Run();
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";

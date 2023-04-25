@@ -22,12 +22,15 @@
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/mem/chunk_containers.h"
+#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeLowering {
 public:
-    NumberSpeculativeLowering(Circuit *circuit, ChunkVector<TypeInfo>& typeInfos)
-        : circuit_(circuit), acc_(circuit), builder_(circuit), typeInfos_(typeInfos) {}
+    NumberSpeculativeLowering(Circuit* circuit, Chunk* chunk, TSManager* tsManager,
+        ChunkVector<TypeInfo>& typeInfos, ChunkVector<RangeInfo>& rangeInfos)
+        : circuit_(circuit), acc_(circuit), builder_(circuit), tsManager_(tsManager),
+          typeInfos_(typeInfos), rangeInfos_(rangeInfos), checkedGates_(chunk) {}
     void Run();
 
 private:
@@ -41,6 +44,7 @@ private:
     void VisitPhi(GateRef gate);
     void VisitUndefinedStrictEq(GateRef gate);
     void VisitCallBuiltins(GateRef gate);
+    void VisitIndexCheck(GateRef gate);
 
     template<TypedBinOp Op>
     void VisitNumberCalculate(GateRef gate);
@@ -78,10 +82,18 @@ private:
         ASSERT(index < typeInfos_.size());
         return typeInfos_[index];
     }
+    
+    void UpdateRange(GateRef gate, const RangeInfo& range);
+    RangeInfo GetRange(GateRef gate) const;
+    GateRef GetConstInt32(int32_t v);
+
     Circuit* circuit_;
     GateAccessor acc_;
     CircuitBuilder builder_;
+    TSManager* tsManager_ {nullptr};
     ChunkVector<TypeInfo>& typeInfos_;
+    ChunkVector<RangeInfo>& rangeInfos_;
+    ChunkVector<GateRef> checkedGates_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NUMBER_SPECULATIVE_LOWERING_H

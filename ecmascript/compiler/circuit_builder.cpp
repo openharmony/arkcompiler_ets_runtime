@@ -222,7 +222,7 @@ GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
     }
     auto frameState = acc_.GetFrameState(statesplit);
     GateRef ret = GetCircuit()->NewGate(circuit_->IndexCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
+        MachineType::I32, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

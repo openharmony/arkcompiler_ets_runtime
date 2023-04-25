@@ -23,12 +23,14 @@
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/mem/chunk_containers.h"
+#include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeRetype : public GraphVisitor {
 public:
-    NumberSpeculativeRetype(Circuit *circuit, Chunk* chunk, ChunkVector<TypeInfo>& typeInfos)
-        : GraphVisitor(circuit, chunk), acc_(circuit), builder_(circuit), typeInfos_(typeInfos) {}
+    NumberSpeculativeRetype(Circuit *circuit, Chunk* chunk, TSManager* tsManager, ChunkVector<TypeInfo>& typeInfos)
+        : GraphVisitor(circuit, chunk), acc_(circuit), builder_(circuit),
+          tsManager_(tsManager), typeInfos_(typeInfos) {}
     void Run();
     GateRef VisitGate(GateRef gate);
 
@@ -71,6 +73,7 @@ private:
     GateRef VisitBooleanJump(GateRef gate);
     GateRef VisitOverflowCheck(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);
+    GateRef VisitLoadArrayLength(GateRef gate);
     GateRef VisitLoadElement(GateRef gate);
     GateRef VisitStoreElement(GateRef gate);
     GateRef VisitStoreProperty(GateRef gate);
@@ -107,6 +110,7 @@ private:
 
     GateAccessor acc_;
     CircuitBuilder builder_;
+    TSManager* tsManager_ {nullptr};
     ChunkVector<TypeInfo>& typeInfos_;
     State state_ {0};
 };

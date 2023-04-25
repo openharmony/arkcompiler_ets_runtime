@@ -31,6 +31,7 @@ public:
 
     GateRef LookupFrameState() const;
     GateRef LookupNode(EarlyElimination* elimination, GateRef gate);
+    GateRef LookupCheckedNode(EarlyElimination* elimination, GateRef gate);
     DependInfoNode* UpdateNode(GateRef gate);
     DependInfoNode* UpdateFrameState(GateRef framestate);
     DependInfoNode* UpdateStoreProperty(EarlyElimination* elimination, GateRef gate);
@@ -58,7 +59,7 @@ class EarlyElimination : public GraphVisitor {
 public:
     EarlyElimination(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
         : GraphVisitor(circuit, chunk), enableLog_(enableLog),
-        methodName_(name), dependChains_(chunk) {}
+        methodName_(name), dependChains_(chunk), renames_(chunk) {}
 
     ~EarlyElimination() = default;
 
@@ -66,6 +67,7 @@ public:
 
     GateRef VisitGate(GateRef gate) override;
     bool CheckReplacement(GateRef lhs, GateRef rhs);
+    bool CheckRenameReplacement(GateRef lhs, GateRef rhs);
     bool MayAccessOneMemory(GateRef lhs, GateRef rhs);
     bool CompareOrder(GateRef lhs, GateRef rhs);
 private:
@@ -94,10 +96,12 @@ private:
     GateRef TryEliminateOther(GateRef gate);
     GateRef TryEliminateDependSelector(GateRef gate);
     DependInfoNode* GetLoopDependInfo(GateRef depend);
+    GateRef Rename(GateRef gate);
 
     bool enableLog_ {false};
     std::string methodName_;
     ChunkVector<DependInfoNode*> dependChains_;
+    ChunkVector<GateRef> renames_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_EARLY_ELIMINATION_H

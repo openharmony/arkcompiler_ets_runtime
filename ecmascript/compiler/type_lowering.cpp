@@ -319,7 +319,7 @@ void TypeLowering::LowerArrayIndexCheck(GateRef gate)
     GateRef check = builder_.BoolAnd(lengthCheck, nonNegativeCheck);
     builder_.DeoptCheck(check, frameState, DeoptType::NOTARRAYIDX);
 
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), hclassIndex);
 }
 
 void TypeLowering::LowerFloat32ArrayIndexCheck(GateRef gate)
@@ -335,7 +335,7 @@ void TypeLowering::LowerFloat32ArrayIndexCheck(GateRef gate)
     GateRef check = builder_.BoolAnd(nonNegativeCheck, lengthCheck);
     builder_.DeoptCheck(check, frameState, DeoptType::NOTF32ARRAYIDX);
 
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), index);
 }
 
 void TypeLowering::LowerOverflowCheck(GateRef gate)
@@ -570,7 +570,9 @@ void TypeLowering::LowerLoadArrayLength(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef array = acc_.GetValueIn(gate, 0);
     GateRef offset = builder_.IntPtr(JSArray::LENGTH_OFFSET);
-    GateRef result = builder_.Load(VariableType::JS_ANY(), array, offset);
+    GateRef length = builder_.Load(VariableType::JS_ANY(), array, offset);
+    GateRef result = ConvertTaggedIntToInt32(length);
+    acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
@@ -856,7 +858,7 @@ void TypeLowering::LowerTypedIsTrue(GateRef gate, GateType value)
     if (value.IsNumberType()) {
         boolValue = ConvertNumberToBool(gate, value);
     } else if (value.IsBooleanType()) {
-        boolValue = ConvertBooleanToBool(gate);
+        boolValue = ConvertTaggedBooleanToBool(acc_.GetValueIn(gate, 0));
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -871,7 +873,7 @@ void TypeLowering::LowerTypedIsFalse(GateRef gate, GateType value)
     if (value.IsNumberType()) {
         boolValue = ConvertNumberToBool(gate, value);
     } else if (value.IsBooleanType()) {
-        boolValue = ConvertBooleanToBool(gate);
+        boolValue = ConvertTaggedBooleanToBool(acc_.GetValueIn(gate, 0));
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -937,9 +939,8 @@ GateRef TypeLowering::ConvertNumberToBool(GateRef gate, GateType valueType)
     return ret;
 }
 
-GateRef TypeLowering::ConvertBooleanToBool(GateRef gate)
+GateRef TypeLowering::ConvertTaggedBooleanToBool(GateRef value)
 {
-    GateRef value = acc_.GetValueIn(gate, 0);
     GateRef result = builder_.TaggedIsTrue(value);
     return result;
 }
@@ -1719,8 +1720,13 @@ void TypeLowering::LowerConvert(GateRef gate)
         ASSERT(dstType == ValueType::TAGGED_DOUBLE);
         result = ConvertFloat64ToTaggedDouble(value);
     } else {
-        ASSERT((srcType == ValueType::TAGGED_BOOLEAN) && (dstType == ValueType::BOOL));
-        result = ConvertBooleanToBool(gate);
+        if (srcType == ValueType::TAGGED_BOOLEAN) {
+            ASSERT((dstType == ValueType::BOOL));
+            result = ConvertTaggedBooleanToBool(value);
+        } else {
+            ASSERT(srcType == ValueType::TAGGED_INT);
+            result = ConvertTaggedIntToInt32(value);
+        }
     }
     acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), result);
 }
