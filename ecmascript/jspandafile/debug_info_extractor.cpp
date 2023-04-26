@@ -161,6 +161,7 @@ private:
 
 const LineNumberTable &DebugInfoExtractor::GetLineNumberTable(const panda_file::File::EntityId methodId)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     static const LineNumberTable EMPTY_LINE_TABLE {};
 
     auto iter = methods_.find(methodId.GetOffset());
@@ -176,6 +177,7 @@ const LineNumberTable &DebugInfoExtractor::GetLineNumberTable(const panda_file::
 
 const ColumnNumberTable &DebugInfoExtractor::GetColumnNumberTable(const panda_file::File::EntityId methodId)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     static const ColumnNumberTable EMPTY_COLUMN_TABLE {};
 
     auto iter = methods_.find(methodId.GetOffset());
@@ -191,6 +193,7 @@ const ColumnNumberTable &DebugInfoExtractor::GetColumnNumberTable(const panda_fi
 
 const LocalVariableTable &DebugInfoExtractor::GetLocalVariableTable(const panda_file::File::EntityId methodId)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     static const LocalVariableTable EMPTY_VARIABLE_TABLE {};
 
     auto iter = methods_.find(methodId.GetOffset());
@@ -206,6 +209,7 @@ const LocalVariableTable &DebugInfoExtractor::GetLocalVariableTable(const panda_
 
 const std::string &DebugInfoExtractor::GetSourceFile(const panda_file::File::EntityId methodId)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     static const char *sourceFile = "";
 
     auto iter = methods_.find(methodId.GetOffset());
@@ -221,6 +225,7 @@ const std::string &DebugInfoExtractor::GetSourceFile(const panda_file::File::Ent
 
 const std::string &DebugInfoExtractor::GetSourceCode(const panda_file::File::EntityId methodId)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     static const char *sourceCode = "";
 
     auto iter = methods_.find(methodId.GetOffset());

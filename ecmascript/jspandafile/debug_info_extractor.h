@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_DEBUG_INFO_EXTRACTOR_H
 #define ECMASCRIPT_JSPANDAFILE_DEBUG_INFO_EXTRACTOR_H
 
+#include <mutex>
+
 #include "ecmascript/common.h"
 #include "ecmascript/debugger/js_pt_location.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
@@ -72,9 +74,6 @@ public:
 
     ~DebugInfoExtractor() = default;
 
-    DEFAULT_COPY_SEMANTIC(DebugInfoExtractor);
-    DEFAULT_MOVE_SEMANTIC(DebugInfoExtractor);
-
     const LineNumberTable &GetLineNumberTable(const panda_file::File::EntityId methodId);
 
     const ColumnNumberTable &GetColumnNumberTable(const panda_file::File::EntityId methodId);
@@ -84,8 +83,6 @@ public:
     const std::string &GetSourceFile(const panda_file::File::EntityId methodId);
 
     const std::string &GetSourceCode(const panda_file::File::EntityId methodId);
-
-    bool ExtractorMethodDebugInfo(const panda_file::File::EntityId methodId);
 
     template<class Callback>
     bool MatchWithLocation(const Callback &cb, int32_t line, int32_t column,
@@ -187,6 +184,7 @@ public:
     constexpr static int32_t SPECIAL_LINE_MARK = -1;
 
 private:
+    bool ExtractorMethodDebugInfo(const panda_file::File::EntityId methodId);
     struct MethodDebugInfo {
         std::string sourceFile;
         std::string sourceCode;
@@ -195,6 +193,7 @@ private:
         LocalVariableTable localVariableTable;
     };
 
+    std::mutex mutex_;
     CUnorderedMap<uint32_t, MethodDebugInfo> methods_;
     const JSPandaFile *jsPandaFile_ {nullptr};
 };
