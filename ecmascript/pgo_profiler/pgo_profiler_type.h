@@ -47,8 +47,8 @@ public:
 
     PGOSampleType() : type_(Type::NONE) {};
 
-    PGOSampleType(Type type) : type_(type) {};
-    PGOSampleType(uint32_t type) : type_(Type(type)) {};
+    explicit PGOSampleType(Type type) : type_(type) {};
+    explicit PGOSampleType(uint32_t type) : type_(Type(type)) {};
 
     static PGOSampleType NoneType()
     {

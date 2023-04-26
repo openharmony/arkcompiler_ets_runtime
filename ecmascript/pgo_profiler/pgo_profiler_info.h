@@ -221,7 +221,7 @@ public:
     static constexpr int METHOD_MODE_INDEX = 2;
     static constexpr int METHOD_NAME_INDEX = 3;
 
-    PGOMethodInfo(EntityId id) : id_(id) {}
+    explicit PGOMethodInfo(EntityId id) : id_(id) {}
 
     PGOMethodInfo(EntityId id, uint32_t count, SampleMode mode, const char *methodName)
         : id_(id), count_(count), mode_(mode)
@@ -357,7 +357,7 @@ public:
 
     void AddType(uint32_t offset, PGOSampleType type)
     {
-        auto result = typeInfoSet_.find(offset);
+        auto result = typeInfoSet_.find(PGOMethodTypeInfo(offset));
         if (result != typeInfoSet_.end()) {
             typeInfoSet_.erase(result);
         }
@@ -386,7 +386,7 @@ public:
 private:
     class PGOMethodTypeInfo {
     public:
-        PGOMethodTypeInfo(uint32_t offset) : offset_(offset) {}
+        explicit PGOMethodTypeInfo(uint32_t offset) : offset_(offset) {}
         PGOMethodTypeInfo(uint32_t offset, PGOSampleType type)
             : size_(sizeof(PGOMethodTypeInfo)), offset_(offset), type_(type) {}
 
