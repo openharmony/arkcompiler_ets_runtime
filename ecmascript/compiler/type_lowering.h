@@ -196,6 +196,7 @@ private:
     void LowerStoreToTaggedArray(GateRef gate, GateRef glue);
     void LowerArrayLoadElement(GateRef gate);
     void LowerFloat32ArrayLoadElement(GateRef gate);
+    void LowerArrayStoreElement(GateRef gate, GateRef glue);
     void LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue);
     void LowerHeapAllocate(GateRef gate, GateRef glue);
     void LowerHeapAllocateInYoung(GateRef gate, GateRef glue);

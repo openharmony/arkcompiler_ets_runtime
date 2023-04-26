@@ -230,6 +230,10 @@ void TSTypeLowering::Lower(GateRef gate)
         case EcmaOpcode::LDTHISBYVALUE_IMM16:
             LowerTypedLdObjByValue(gate, true);
             break;
+        case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
+        case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
+            LowerTypedStObjByValue(gate);
+            break;
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
         case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
@@ -320,10 +324,12 @@ void TSTypeLowering::LowerTypedStrictEq(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     GateType gateType = acc_.GetGateType(gate);
     PGOSampleType sampleType = acc_.TryGetPGOType(gate);
-    if (acc_.IsConstantUndefined(left) || acc_.IsConstantUndefined(right)) {
+    if (acc_.IsConstantUndefined(left) || acc_.IsConstantUndefined(right) || HasNumberType(gate, left, right)) {
         GateRef result = builder_.TypedBinaryOp<TypedBinOp::TYPED_STRICTEQ>(
             left, right, leftType, rightType, gateType, sampleType);
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    } else {
+        acc_.DeleteStateSplitAndFrameState(gate);
     }
 }
 
@@ -718,7 +724,8 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
     GateType receiverType = acc_.GetGateType(receiver);
     GateType valueType = acc_.GetGateType(value);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    if ((!tsManager_->IsFloat32ArrayType(receiverType)) || (!valueType.IsNumberType())) { // slowpath
+    if (((!tsManager_->IsFloat32ArrayType(receiverType)) && (!tsManager_->IsArrayTypeKind(receiverType)))
+        || (!valueType.IsNumberType())) { // slowpath
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
@@ -727,6 +734,8 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
 
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
         builder_.TypedArrayCheck(receiverType, receiver);
+    } else if (tsManager_->IsArrayTypeKind(receiverType)) {
+        builder_.StableArrayCheck(receiver);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -739,6 +748,8 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
         builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value);
+    } else if (tsManager_->IsArrayTypeKind(receiverType)) {
+        builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, index, value);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -779,6 +790,30 @@ void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, propKey);
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+}
+
+void TSTypeLowering::LowerTypedStObjByValue(GateRef gate)
+{
+    ASSERT(acc_.GetNumValueIn(gate) == 4);  // 4: num of value ins
+    GateRef receiver = acc_.GetValueIn(gate, 1);    // 1: receiver
+    GateRef propKey = acc_.GetValueIn(gate, 2);  // 2: key
+    GateRef value = acc_.GetValueIn(gate, 3);   // 3: value
+    GateType receiverType = acc_.GetGateType(receiver);
+    GateType propKeyType = acc_.GetGateType(propKey);
+    receiverType = tsManager_->TryNarrowUnionType(receiverType);
+    if (!tsManager_->IsArrayTypeKind(receiverType) || !propKeyType.IsNumberType()) { // slowpath
+        acc_.DeleteStateSplitAndFrameState(gate);
+        return;
+    }
+
+    AddProfiling(gate);
+    builder_.StableArrayCheck(receiver);
+    GateRef length = builder_.LoadArrayLength(receiver);
+    builder_.IndexCheck(receiverType, length, propKey);
+    ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
+    builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
 void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)

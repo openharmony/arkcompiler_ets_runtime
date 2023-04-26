@@ -133,6 +133,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::LESSEQ_IMM8_V8:
         case EcmaOpcode::GREATER_IMM8_V8:
         case EcmaOpcode::GREATEREQ_IMM8_V8:
+        case EcmaOpcode::STRICTEQ_IMM8_V8:
         case EcmaOpcode::TONUMERIC_IMM8:
         case EcmaOpcode::ISTRUE:
         case EcmaOpcode::ISFALSE:
@@ -159,6 +160,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::WIDE_STOBJBYINDEX_PREF_V8_IMM32:
         case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
         case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
+        case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
+        case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
         case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
