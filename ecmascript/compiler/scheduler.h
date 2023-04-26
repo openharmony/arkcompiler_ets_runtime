@@ -47,6 +47,9 @@ public:
 private:
     static void PrintUpperBoundError(const Circuit *circuit, GateRef curGate,
                                      GateRef predUpperBound, GateRef curUpperBound);
+    static void CalculateFixedGatesList(const Circuit *circuit,
+                                        const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                        std::vector<GateRef> &bbAndFixedGatesList);
 };
 };  // namespace panda::ecmascript::kungfu
 

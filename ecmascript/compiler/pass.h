@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/early_elimination.h"
 #include "ecmascript/compiler/generic_type_lowering.h"
+#include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
@@ -347,6 +348,18 @@ public:
         TimeScope timescope("SchedulingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Scheduler::Run(data->GetCircuit(), data->GetCfg(), data->GetMethodName(), enableLog);
+        return true;
+    }
+};
+
+class GraphLinearizerPass {
+public:
+    bool Run(PassData* data)
+    {
+        TimeScope timescope("GraphLinearizerPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        Chunk chunk(data->GetNativeAreaAllocator());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        GraphLinearizer(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run(data->GetCfg());
         return true;
     }
 };

@@ -566,10 +566,19 @@ void TSTypeLowering::LowerTypedLdArrayLength(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
+void TSTypeLowering::DeleteConstDataIfNoUser(GateRef gate)
+{
+    auto uses = acc_.Uses(gate);
+    if (uses.begin() == uses.end()) {
+        acc_.DeleteGate(gate);
+    }
+}
+
 void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    uint16_t propIndex = acc_.GetConstDataId(acc_.GetValueIn(gate, 1)).GetId();
+    auto constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
+    uint16_t propIndex = acc_.GetConstDataId(constData).GetId();
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
     auto prop = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), propIndex);
@@ -620,12 +629,14 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
     }
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    DeleteConstDataIfNoUser(constData);
 }
 
 void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    uint16_t propIndex = acc_.GetConstDataId(acc_.GetValueIn(gate, 1)).GetId();
+    auto constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
+    uint16_t propIndex = acc_.GetConstDataId(constData).GetId();
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
     auto prop = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), propIndex);
@@ -676,6 +687,7 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     }
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    DeleteConstDataIfNoUser(constData);
 }
 
 void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)

@@ -119,12 +119,6 @@ void Scheduler::CalculateDominatorTree(const Circuit *circuit,
 void Scheduler::Run(const Circuit *circuit, ControlFlowGraph &result,
                     [[maybe_unused]] const std::string& methodName, [[maybe_unused]] bool enableLog)
 {
-#ifndef NDEBUG
-    if (!Verifier::Run(circuit, methodName, enableLog)) {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
-    }
-#endif
     GateAccessor acc(const_cast<Circuit*>(circuit));
     std::vector<GateRef> bbGatesList;
     std::unordered_map<GateRef, size_t> bbGatesAddrToIdx;
@@ -335,15 +329,11 @@ void Scheduler::PrintUpperBoundError(const Circuit *circuit, GateRef curGate,
                         << predUpperBound << ", there is no dominator relationship between them.";
 }
 
-void Scheduler::CalculateSchedulingLowerBound(const Circuit *circuit,
-                                              const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
-                                              const std::function<size_t(size_t, size_t)> &lowestCommonAncestor,
-                                              std::unordered_map<GateRef, size_t> &lowerBound,
-                                              std::vector<GateRef> *order)
+void Scheduler::CalculateFixedGatesList(const Circuit *circuit,
+                                        const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                        std::vector<GateRef> &bbAndFixedGatesList)
 {
     GateAccessor acc(const_cast<Circuit*>(circuit));
-    std::unordered_map<GateRef, size_t> useCount;
-    std::vector<GateRef> bbAndFixedGatesList;
     for (const auto &item : bbGatesAddrToIdx) {
         bbAndFixedGatesList.push_back(item.first);
         auto uses = acc.Uses(item.first);
@@ -354,6 +344,18 @@ void Scheduler::CalculateSchedulingLowerBound(const Circuit *circuit,
             }
         }
     }
+}
+
+void Scheduler::CalculateSchedulingLowerBound(const Circuit *circuit,
+                                              const std::unordered_map<GateRef, size_t> &bbGatesAddrToIdx,
+                                              const std::function<size_t(size_t, size_t)> &lowestCommonAncestor,
+                                              std::unordered_map<GateRef, size_t> &lowerBound,
+                                              std::vector<GateRef> *order)
+{
+    GateAccessor acc(const_cast<Circuit*>(circuit));
+    std::vector<GateRef> bbAndFixedGatesList;
+    CalculateFixedGatesList(circuit, bbGatesAddrToIdx, bbAndFixedGatesList);
+    std::unordered_map<GateRef, size_t> useCount;
     struct DFSVisitState {
         std::vector<GateRef> prevGates;
         size_t idx = 0;
