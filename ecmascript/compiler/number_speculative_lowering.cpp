@@ -130,6 +130,10 @@ void NumberSpeculativeLowering::VisitNumberBinaryOp(GateRef gate)
             VisitNumberCompare<TypedBinOp::TYPED_NOTEQ>(gate);
             break;
         }
+        case TypedBinOp::TYPED_STRICTEQ: {
+            VisitNumberCompare<TypedBinOp::TYPED_STRICTEQ>(gate);
+            break;
+        }
         case TypedBinOp::TYPED_SHL: {
             VisitNumberShift<TypedBinOp::TYPED_SHL>(gate);
             break;
@@ -493,6 +497,7 @@ GateRef NumberSpeculativeLowering::CompareInts(GateRef left, GateRef right)
             condition = builder_.Int32GreaterThanOrEqual(left, right);
             break;
         case TypedBinOp::TYPED_EQ:
+        case TypedBinOp::TYPED_STRICTEQ:
             condition = builder_.Int32Equal(left, right);
             break;
         case TypedBinOp::TYPED_NOTEQ:
@@ -527,6 +532,13 @@ GateRef NumberSpeculativeLowering::CompareDoubles(GateRef left, GateRef right)
         case TypedBinOp::TYPED_NOTEQ:
             condition = builder_.DoubleNotEqual(left, right);
             break;
+        case TypedBinOp::TYPED_STRICTEQ: {
+            GateRef leftNotNan = builder_.BoolNot(builder_.DoubleIsNAN(left));
+            GateRef rightNotNan = builder_.BoolNot(builder_.DoubleIsNAN(right));
+            GateRef doubleEqual = builder_.DoubleEqual(left, right);
+            condition = builder_.BoolAnd(builder_.BoolAnd(leftNotNan, rightNotNan), doubleEqual);
+            break;
+        }
         default:
             break;
     }

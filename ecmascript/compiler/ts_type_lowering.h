@@ -85,6 +85,7 @@ private:
     void LowerTypedLdObjByIndex(GateRef gate);
     void LowerTypedStObjByIndex(GateRef gate);
     void LowerTypedLdObjByValue(GateRef gate, bool isThis);
+    void LowerTypedStObjByValue(GateRef gate);
     void LowerTypedIsTrueOrFalse(GateRef gate, bool flag);
     void LowerTypedNewObjRange(GateRef gate);
     void LowerTypedSuperCall(GateRef gate);

@@ -169,7 +169,8 @@ GateRef NumberSpeculativeRetype::VisitNumberBinaryOp(GateRef gate)
         case TypedBinOp::TYPED_GREATER:
         case TypedBinOp::TYPED_GREATEREQ:
         case TypedBinOp::TYPED_EQ:
-        case TypedBinOp::TYPED_NOTEQ: {
+        case TypedBinOp::TYPED_NOTEQ:
+        case TypedBinOp::TYPED_STRICTEQ: {
             return VisitNumberCompare(gate);
         }
         case TypedBinOp::TYPED_SHL:

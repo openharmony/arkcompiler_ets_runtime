@@ -650,6 +650,9 @@ void TypeLowering::LowerStoreElement(GateRef gate, GateRef glue)
     Environment env(gate, circuit_, &builder_);
     auto op = acc_.GetTypedStoreOp(gate);
     switch (op) {
+        case TypedStoreOp::ARRAY_STORE_ELEMENT:
+            LowerArrayStoreElement(gate, glue);
+            break;
         case TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT:
             LowerFloat32ArrayStoreElement(gate, glue);
             break;
@@ -657,6 +660,19 @@ void TypeLowering::LowerStoreElement(GateRef gate, GateRef glue)
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
+}
+
+// for JSArray
+void TypeLowering::LowerArrayStoreElement(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);    // 0: receiver
+    GateRef index = acc_.GetValueIn(gate, 1);   // 1: index
+    GateRef value = acc_.GetValueIn(gate, 2);   // 2: value
+    GateRef element = builder_.LoadConstOffset(
+        VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
+    builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, element, index, value);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 // for Float32Array
