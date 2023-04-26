@@ -45,6 +45,7 @@ group("ark_aot_ts_test") {
     "async_context",
     "async_env",
     "await",
+    "await_loop",
     "bind",
     "builtinmath",
     "call_same_bytecode_func",

@@ -195,6 +195,20 @@ void AsyncFunctionLowering::UpdateValueSelector(GateRef prevLoopBeginGate,
                                                       gateType);
             accessor_.ReplaceValueIn(use, newValueSelector);
         }
+        // if there is a dependSelector in the use node of the loop-begin, a new dependSelector node needs
+        // to be generated. This node is bound to the merge node (newGate) before the loop-begin, and its
+        // input corresponds to the 'dependEntry' (not the frist time enter the function) and
+        // 'loopBeginFirstState' (the first time enter the function) nodes.
+        if (accessor_.GetOpCode(use) == OpCode::DEPEND_SELECTOR) {
+            size_t dependCount = accessor_.GetDependCount(use);
+            for (size_t i = 0; i < dependCount; ++i) {
+                if (accessor_.GetDep(use, i) == loopBeginFirstState) {
+                    auto newDependSelector = circuit_->NewGate(circuit_->DependSelector(2), // 2: num of dependIn
+                        {newGate, circuit_->GetDependRoot(), loopBeginFirstState});
+                    accessor_.ReplaceDependIn(use, newDependSelector, i);
+                }
+            }
+        }
     }
 }
 

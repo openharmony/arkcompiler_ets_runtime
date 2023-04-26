@@ -334,7 +334,7 @@ public:
     template <class Callback>
     void EnumerateBlock(BytecodeRegion &bb, const Callback &cb)
     {
-        // Entry block is a empry block
+        // Entry block is a empty block
         if (IsEntryBlock(bb.id)) {
             return;
         }
