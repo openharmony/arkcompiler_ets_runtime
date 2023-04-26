@@ -325,21 +325,49 @@ template("host_aot_js_test_action") {
   _test_aot_log_level = "info"
   _test_expect_path_ = "./expect_output.txt"
 
-  ts2abc_gen_abc("gen_${_target_name_}_abc") {
-    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-    extra_dependencies = _deps_
-    src_js = rebase_path(_test_ts_path_)
-    dst_file = rebase_path(_test_abc_path_)
-    extra_args = [
-      "--merge-abc",
-      "--module",
-    ]
+  is_enable_ts2abc = false
 
-    in_puts = [
-      _test_ts_path_,
-      _test_expect_path_,
-    ]
-    out_puts = [ _test_abc_path_ ]
+  if (is_enable_ts2abc) {
+    ts2abc_gen_abc("gen_${_target_name_}_abc") {
+      extra_visibility =
+          [ ":*" ]  # Only targets in this file can depend on this.
+      extra_dependencies = _deps_
+      src_js = rebase_path(_test_ts_path_)
+      dst_file = rebase_path(_test_abc_path_)
+      extra_args = [
+        "--merge-abc",
+        "--module",
+      ]
+
+      in_puts = [
+        _test_ts_path_,
+        _test_expect_path_,
+      ]
+      out_puts = [ _test_abc_path_ ]
+    }
+  } else {
+    es2abc_gen_abc("gen_${_target_name_}_abc") {
+      extra_visibility =
+          [ ":*" ]  # Only targets in this file can depend on this.
+      extra_dependencies = _deps_
+      if (defined(invoker.run_multi_file_tests) &&
+          invoker.run_multi_file_tests) {
+        src_js = rebase_path("./")
+      } else {
+        src_js = rebase_path(_test_ts_path_)
+      }
+      dst_file = rebase_path(_test_abc_path_)
+      extra_args = [
+        "--merge-abc",
+        "--module",
+      ]
+
+      in_puts = [
+        _test_ts_path_,
+        _test_expect_path_,
+      ]
+      out_puts = [ _test_abc_path_ ]
+    }
   }
 
   _script_args_ = rebase_path(_test_abc_path_)
@@ -462,33 +490,64 @@ template("host_aot_test_action") {
   _test_aot_log_level = "info"
   _test_expect_path_ = "./expect_output.txt"
 
-  ts2abc_gen_abc("gen_${_target_name_}_abc") {
-    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
-    extra_dependencies = _deps_
-    dst_file = rebase_path(_test_abc_path_)
-    extra_args = [
-      "--merge-abc",
-      "--module",
-    ]
+  is_enable_ts2abc = false
 
-    if (defined(invoker.run_multi_file_tests) && invoker.run_multi_file_tests) {
-      _test_ts_source_path_ = "$target_out_dir/${_target_name_}.ts"
-      extra_args += [ "--output-proto" ]
-      run_multi_file_tests = true
+  if (is_enable_ts2abc) {
+    ts2abc_gen_abc("gen_${_target_name_}_abc") {
+      extra_visibility =
+          [ ":*" ]  # Only targets in this file can depend on this.
+      extra_dependencies = _deps_
+      dst_file = rebase_path(_test_abc_path_)
+      extra_args = [
+        "--merge-abc",
+        "--module",
+      ]
 
-      # current dir is not work dir and the source code will be copied to work dir
-      src_js = rebase_path(_test_ts_source_path_)
-      src_ts = rebase_path(".")
-    } else {
-      # current dir is work dir
-      src_js = rebase_path(_test_ts_path_)
+      if (defined(invoker.run_multi_file_tests) &&
+          invoker.run_multi_file_tests) {
+        _test_ts_source_path_ = "$target_out_dir/${_target_name_}.ts"
+        extra_args += [ "--output-proto" ]
+        run_multi_file_tests = true
+
+        # current dir is not work dir and the source code will be copied to work dir
+        src_js = rebase_path(_test_ts_source_path_)
+        src_ts = rebase_path(".")
+      } else {
+        # current dir is work dir
+        src_js = rebase_path(_test_ts_path_)
+      }
+
+      in_puts = [
+        _test_ts_path_,
+        _test_expect_path_,
+      ]
+      out_puts = [ _test_abc_path_ ]
     }
+  } else {
+    es2abc_gen_abc("gen_${_target_name_}_abc") {
+      extra_visibility =
+          [ ":*" ]  # Only targets in this file can depend on this.
+      extra_dependencies = _deps_
+      if (defined(invoker.run_multi_file_tests) &&
+          invoker.run_multi_file_tests) {
+        src_js = rebase_path("./")
+      } else {
+        src_js = rebase_path(_test_ts_path_)
+      }
+      dst_file = rebase_path(_test_abc_path_)
+      extension = "ts"
+      extra_args = [
+        "--merge-abc",
+        "--module",
+        "--type-extractor",
+      ]
 
-    in_puts = [
-      _test_ts_path_,
-      _test_expect_path_,
-    ]
-    out_puts = [ _test_abc_path_ ]
+      in_puts = [
+        _test_ts_path_,
+        _test_expect_path_,
+      ]
+      out_puts = [ _test_abc_path_ ]
+    }
   }
 
   _script_args_ = rebase_path(_test_abc_path_)
@@ -516,8 +575,15 @@ template("host_aot_test_action") {
     }
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {
-      deps += [ "//arkcompiler/ets_runtime:ts2abc_gen_builtins_d_abc" ]
-      _aot_compile_options_ += " --builtins-dts=" + rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/ts2abc/lib_ark_builtins.d.abc"
+      if (is_enable_ts2abc) {
+        deps += [ "//arkcompiler/ets_runtime:ts2abc_gen_builtins_d_abc" ]
+        _aot_compile_options_ += " --builtins-dts=" +
+                                 rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/ts2abc/lib_ark_builtins.d.abc"
+      } else {
+        deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
+        _aot_compile_options_ += " --builtins-dts=" +
+                                 rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
+      }
     }
     if (defined(invoker.is_enable_opt_inlining) &&
         invoker.is_enable_opt_inlining) {
@@ -572,8 +638,15 @@ template("host_aot_test_action") {
 
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {
-      deps += [ "//arkcompiler/ets_runtime:ts2abc_gen_builtins_d_abc" ]
-      _aot_compile_options_ += " --builtins-dts=" + rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/ts2abc/lib_ark_builtins.d.abc"
+      if (is_enable_ts2abc) {
+        deps += [ "//arkcompiler/ets_runtime:ts2abc_gen_builtins_d_abc" ]
+        _aot_compile_options_ += " --builtins-dts=" +
+                                 rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/ts2abc/lib_ark_builtins.d.abc"
+      } else {
+        deps += [ "//arkcompiler/ets_runtime:es2abc_gen_builtins_d_abc" ]
+        _aot_compile_options_ += " --builtins-dts=" +
+                                 rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
+      }
     }
 
     if (defined(invoker.is_enable_opt_inlining) &&

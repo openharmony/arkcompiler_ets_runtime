@@ -19,11 +19,11 @@ group("ark_aot_js_test") {
     "call_default_args",
     "constructor_returns_non_object",
 
-    #"dynamicimport",
+    "dynamicimport",
     "emptyif",
     "formatrangetoparts",
 
-    #"module",
+    "module",
     "undefined",
   ]
 
@@ -54,7 +54,7 @@ group("ark_aot_ts_test") {
     "class_method_signature",
     "closeiterator",
 
-    # "continue_from_finally",
+    "continue_from_finally",
     "copyrestargs",
     "createarraywithbuffer",
     "createemptyarray",
