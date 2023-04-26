@@ -51,6 +51,7 @@
 
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/compiler_log.h"
+#include "ecmascript/compiler/debug_info.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/mem/region.h"
@@ -274,7 +275,10 @@ void LLVMAssembler::BuildAndRunPasses()
     LLVMDisposePassManager(modPass);
 }
 
-LLVMAssembler::LLVMAssembler(LLVMModuleRef module, LOptions option) : module_(module), listener_(this)
+LLVMAssembler::LLVMAssembler(LLVMModule *lm, LOptions option)
+    : llvmModule_(lm),
+      module_(llvmModule_->GetModule()),
+      listener_(this)
 {
     Initialize(option);
 }
@@ -301,7 +305,7 @@ void LLVMAssembler::Run(const CompilerLog &log)
     char *error = nullptr;
     std::string originName = llvm::unwrap(module_)->getModuleIdentifier() + ".ll";
     std::string optName = llvm::unwrap(module_)->getModuleIdentifier() + "_opt.ll";
-    if (!log.NoneMethod() && log.OutputLLIR()) {
+    if (log.OutputLLIR()) {
         LLVMPrintModuleToFile(module_, originName.c_str(), &error);
         std::string errInfo = (error != nullptr) ? error : "";
         LOG_COMPILER(INFO) << "generate " << originName << " " << errInfo;
@@ -314,7 +318,7 @@ void LLVMAssembler::Run(const CompilerLog &log)
     }
     llvm::unwrap(engine_)->setProcessAllSections(true);
     BuildAndRunPasses();
-    if (!log.NoneMethod() && log.OutputLLIR()) {
+    if (log.OutputLLIR()) {
         error = nullptr;
         LLVMPrintModuleToFile(module_, optName.c_str(), &error);
         std::string errInfo = (error != nullptr) ? error : "";
@@ -381,9 +385,10 @@ kungfu::CalleeRegAndOffsetVec LLVMAssembler::GetCalleeReg2Offset(LLVMValueRef fn
         if (Attr.isStringAttribute()) {
             std::string str = std::string(Attr.getKindAsString().data());
             std::string expectedKey = "DwarfReg";
-            if (str.size() >= expectedKey.size() &&
-                str.substr(0, expectedKey.size()) == expectedKey) {
-                int RegNum = std::stoi(str.substr(expectedKey.size(), str.size() - expectedKey.size()));
+            size_t keySZ = expectedKey.size();
+            size_t strSZ = str.size();
+            if (strSZ >= keySZ && str.substr(0, keySZ) == expectedKey) {
+                int RegNum = std::stoi(str.substr(keySZ, strSZ - keySZ));
                 auto value = std::stoi(std::string(Attr.getValueAsString()));
                 info.push_back(std::make_pair(RegNum, value));
                 (void)log;
@@ -397,8 +402,8 @@ int LLVMAssembler::GetFpDeltaPrevFramSp(LLVMValueRef fn, const CompilerLog &log)
 {
     int fpToCallerSpDelta = 0;
     const char attrKey[] = "fpToCallerSpDelta"; // this key must consistent with llvm backend.
-    LLVMAttributeRef attrirbuteRef = LLVMGetStringAttributeAtIndex(fn,
-        llvm::AttributeList::FunctionIndex, attrKey, strlen(attrKey));
+    LLVMAttributeRef attrirbuteRef = LLVMGetStringAttributeAtIndex(fn, llvm::AttributeList::FunctionIndex,
+                                                                   attrKey, strlen(attrKey));
     if (attrirbuteRef) {
         llvm::Attribute attr = llvm::unwrap(attrirbuteRef);
         auto value = attr.getValueAsString().data();
@@ -469,7 +474,7 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> *addr2nam
 }
 
 static void DecodeDebugInfo(uint64_t addr, uint64_t secIndex, char* outString, size_t outStringSize,
-    DWARFContext *ctx)
+                            DWARFContext *ctx, LLVMModule* module, const std::string &funcName)
 {
     object::SectionedAddress secAddr = {addr, secIndex};
     DILineInfoSpecifier spec;
@@ -477,9 +482,8 @@ static void DecodeDebugInfo(uint64_t addr, uint64_t secIndex, char* outString, s
 
     DILineInfo info = ctx->getLineInfoForAddress(secAddr, spec);
     if (info && info.Line > 0) {
-        std::string debugInfo = std::string("\t<line=");
-        debugInfo += std::to_string(info.Line);
-        debugInfo += std::string(">");
+        std::string debugInfo = "\t\t;";
+        debugInfo += module->GetDebugInfo()->GetComment(funcName, info.Line - 1);
         size_t len = strlen(outString);
         if (len + debugInfo.size() <= outStringSize) {
             if (strcpy_s(outString + len, outStringSize - len, debugInfo.c_str()) != EOK) {
@@ -540,7 +544,8 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2nam
             }
 
             size_t instSize = LLVMDisasmInstruction(disCtx, instrAddr, numBytes, instrOffset, outString, outStringSize);
-            DecodeDebugInfo(instrOffset, textSecIndex, outString, outStringSize, dwarfCtx.get());
+            DecodeDebugInfo(instrOffset, textSecIndex, outString, outStringSize,
+                            dwarfCtx.get(), llvmModule_, methodName);
             PrintInstAndStep(instrOffset, &instrAddr, numBytes, instSize, outString, logFlag);
         }
     }

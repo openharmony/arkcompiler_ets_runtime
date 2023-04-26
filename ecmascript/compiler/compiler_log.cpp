@@ -18,19 +18,13 @@
 namespace panda::ecmascript::kungfu {
 CompilerLog::CompilerLog(const std::string &logOpt, bool TraceBC)
 {
-    outputCIR_ = logOpt.find("cir") != std::string::npos ||
-        logOpt.find("0") != std::string::npos;
-    outputLLIR_ = logOpt.find("llir") != std::string::npos ||
-        logOpt.find("1") != std::string::npos;
-    outputASM_ = logOpt.find("asm") != std::string::npos ||
-        logOpt.find("2") != std::string::npos;
-    outputType_ = logOpt.find("type") != std::string::npos ||
-        logOpt.find("3") != std::string::npos;
+    outputCIR_ = (logOpt.find("cir") != std::string::npos) || (logOpt.find("0") != std::string::npos);
+    outputLLIR_ = (logOpt.find("llir") != std::string::npos) || (logOpt.find("1") != std::string::npos);
+    outputASM_ = (logOpt.find("asm") != std::string::npos) || (logOpt.find("2") != std::string::npos);
+    outputType_ = (logOpt.find("type") != std::string::npos) || (logOpt.find("3") != std::string::npos);
     allMethod_ = logOpt.find("all") != std::string::npos;
-    cerMethod_ = logOpt.find("all") == std::string::npos &&
-        logOpt.find("cer") != std::string::npos;
-    noneMethod_ = logOpt.find("all") == std::string::npos &&
-        logOpt.find("cer") == std::string::npos;
+    cerMethod_ = (logOpt.find("all") == std::string::npos) && (logOpt.find("cer") != std::string::npos);
+    noneMethod_ = (logOpt.find("all") == std::string::npos) && (logOpt.find("cer") == std::string::npos);
     traceBc_ = TraceBC;
 }
 
@@ -40,6 +34,15 @@ void CompilerLog::SetMethodLog(const std::string &fileName,
     bool enableMethodLog = !NoneMethod();
     if (CertainMethod()) {
         enableMethodLog = logList->IncludesMethod(fileName, methodName);
+    }
+    SetEnableMethodLog(enableMethodLog);
+}
+
+void CompilerLog::SetStubLog(const std::string &stubName, MethodLogList *logList)
+{
+    bool enableMethodLog = !NoneMethod();
+    if (CertainMethod()) {
+        enableMethodLog = logList->IncludesMethod(stubName);
     }
     SetEnableMethodLog(enableMethodLog);
 }

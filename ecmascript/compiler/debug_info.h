@@ -21,11 +21,15 @@
 namespace panda::ecmascript::kungfu {
 class DebugInfo {
 public:
-    DebugInfo(NativeAreaAllocator* allocator);
+    DebugInfo(NativeAreaAllocator* allocator, bool enable = false);
     ~DebugInfo();
-    void AddFuncName(const std::string &name);
+    bool IsEnable() const
+    {
+        return enable_;
+    }
     size_t AddComment(const char* str);
-    void AddFuncDebugInfo();
+    void AddFuncDebugInfo(const std::string &name);
+    const std::string &GetComment(const std::string &funcName, size_t index) const;
 
 private:
     class FuncDebugInfo {
@@ -34,6 +38,7 @@ private:
         {
             comments_ = new ChunkVector<std::string>(chunk_);
         }
+
         ~FuncDebugInfo()
         {
             if (comments_ != nullptr) {
@@ -41,28 +46,50 @@ private:
                 comments_ = nullptr;
             }
         }
+
         const std::string &Name() const
         {
             return name_;
         }
+
         void SetName(const std::string &n)
         {
             name_ = n;
         }
+
         size_t Add(const std::string &str)
         {
             comments_->push_back(str);
             return comments_->size() - 1;
         }
+
+        const std::string &GetComment(size_t index)
+        {
+            ASSERT(comments_ != nullptr);
+            if (index < comments_->size()) {
+                return comments_->at(index);
+            }
+            return EmptyComment();
+        }
+
+        static const std::string &EmptyComment()
+        {
+            return EMPTY_COMMENT;
+        }
+
     private:
+        static std::string EMPTY_COMMENT;
         Chunk* chunk_ {nullptr};
         std::string name_;
         ChunkVector<std::string> *comments_ {nullptr};
     };
 
+    void AddFuncName(const std::string &name);
+
     Chunk chunk_;
     ChunkMap<std::string, size_t> funcToDInfo_;
     ChunkVector<FuncDebugInfo*> dInfos_;
+    bool enable_ {false};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_DEBUG_INFO_H

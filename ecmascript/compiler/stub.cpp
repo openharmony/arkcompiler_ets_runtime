@@ -18,9 +18,13 @@
 
 namespace panda::ecmascript::kungfu {
 Stub::Stub(const CallSignature *callSignature, Circuit *circuit)
-    : callSignature_(callSignature), builder_(circuit),
-      acc_(circuit), env_(callSignature->GetParametersCount(), &builder_)
+    : callSignature_(callSignature),
+      builder_(circuit),
+      acc_(circuit),
+      env_(callSignature->GetParametersCount(), &builder_)
 {
+    ASSERT(callSignature_->HasConstructor());
+    stubBuilder_ = static_cast<StubBuilder*>(callSignature_->GetConstructor()(&env_));
 }
 
 void Stub::InitializeArguments()
@@ -44,5 +48,13 @@ void Stub::GenerateCircuit(const CompilationConfig *cfg)
     env_.SetCompilationConfig(cfg);
     InitializeArguments();
     stubBuilder_->GenerateCircuit();
+}
+
+Stub::~Stub()
+{
+    if (stubBuilder_ != nullptr) {
+        delete stubBuilder_;
+        stubBuilder_ = nullptr;
+    }
 }
 }  // namespace panda::ecmascript::kungfu

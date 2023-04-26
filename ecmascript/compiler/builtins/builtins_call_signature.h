@@ -50,12 +50,12 @@ namespace panda::ecmascript::kungfu {
     V(ListForEach)                                  \
     V(ArrayListForEach)                             \
     V(ArrayListReplaceAllElements)                  \
-    V(FunctionPrototypeApply)                       \
+    V(FunctionPrototypeApply)
 
 #define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
     V(BooleanConstructor)                           \
     V(DateConstructor)                              \
-    V(ArrayConstructor)                             \
+    V(ArrayConstructor)
 
 #define AOT_BUILTINS_STUB_LIST(V)                   \
     V(SQRT)                                         \
@@ -64,7 +64,7 @@ namespace panda::ecmascript::kungfu {
     V(ACOS)                                         \
     V(ATAN)                                         \
     V(ABS)                                          \
-    V(FLOOR)                                        \
+    V(FLOOR)
 
 class BuiltinsStubCSigns {
 public:
@@ -89,6 +89,12 @@ public:
     {
         ASSERT(index < NUM_OF_BUILTINS_STUBS);
         return &callSigns_[index];
+    }
+
+    static const std::string &GetName(int index)
+    {
+        ASSERT(index < NUM_OF_BUILTINS_STUBS);
+        return callSigns_[index].GetName();
     }
 
     static const CallSignature* BuiltinsCSign()

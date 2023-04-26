@@ -599,6 +599,22 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
         LLVMSetInstructionCallConv(runtimeCall, LLVMWebKitJSCallConv);
     }
     gate2LValue_[gate] = runtimeCall;
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, runtimeCall);
+    }
+}
+
+bool LLVMIRBuilder::SetDebugInfo(GateRef g, LLVMValueRef r)
+{
+    size_t index = 0;
+    if (circuit_->GetDebugInfo(g, index)) {
+        LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(context_, index + 1, 0, dFuncMD_, NULL);
+        LLVMInstructionSetDebugLoc(r, loc);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 void LLVMIRBuilder::HandleRuntimeCallWithArgv(GateRef gate)
@@ -634,6 +650,10 @@ void LLVMIRBuilder::VisitRuntimeCallWithArgv(GateRef gate, const std::vector<Gat
     callee = LLVMBuildPointerCast(builder_, callee, LLVMPointerType(funcType, 0), "");
     LLVMValueRef runtimeCall = LLVMBuildCall2(builder_, funcType, callee, params.data(), inList.size() - 1, "");
     gate2LValue_[gate] = runtimeCall;
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, runtimeCall);
+    }
 }
 
 LLVMValueRef LLVMIRBuilder::GetCurrentSP()
@@ -873,6 +893,10 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     }
     SetCallConvAttr(calleeDescriptor, call);
     gate2LValue_[gate] = call;
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, call);
+    }
 }
 
 void LLVMIRBuilder::VisitBytecodeCall(GateRef gate, const std::vector<GateRef> &inList)
@@ -904,6 +928,10 @@ void LLVMIRBuilder::VisitBytecodeCall(GateRef gate, const std::vector<GateRef> &
     LLVMSetTailCall(call, true);
     LLVMSetInstructionCallConv(call, LLVMGHCCallConv);
     gate2LValue_[gate] = call;
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, call);
+    }
 }
 
 LLVMValueRef LLVMIRBuilder::GetBaseOffset(GateRef gate, LLVMValueRef glue)
@@ -928,8 +956,9 @@ void LLVMIRBuilder::VisitAlloca(GateRef gate)
 {
     uint64_t machineRep = acc_.TryGetValue(gate);
     LLVMTypeRef dataType = GetMachineRepType(static_cast<MachineRep>(machineRep));
-    gate2LValue_[gate] = LLVMBuildPtrToInt(builder_, LLVMBuildAlloca(builder_, dataType, ""),
-                                              ConvertLLVMTypeFromGate(gate), "");
+    gate2LValue_[gate] = LLVMBuildPtrToInt(builder_,
+                                           LLVMBuildAlloca(builder_, dataType, ""),
+                                           ConvertLLVMTypeFromGate(gate), "");
 }
 
 void LLVMIRBuilder::HandlePhi(GateRef gate)
@@ -2237,18 +2266,20 @@ void LLVMIRBuilder::VisitDeopt(GateRef gate)
     gate2LValue_[gate] = runtimeCall;
 }
 
-LLVMModule::LLVMModule(NativeAreaAllocator* allocator, const std::string &name,
-                       const std::string &triple, bool enablePGOProfiler)
-    : cfg_(triple, enablePGOProfiler)
+LLVMModule::LLVMModule(NativeAreaAllocator* allocator, const std::string &name, bool logDbg, const std::string &triple)
 {
+    tripleStr_ = triple;
+    CompilationConfig cfg(tripleStr_);
+    is64Bit_ = cfg.Is64Bit();
+    triple_ = cfg.GetTriple();
     module_ = LLVMModuleCreateWithName(name.c_str());
     LLVMSetTarget(module_, triple.c_str());
     dBuilder_ = LLVMCreateDIBuilder(module_);
     dFileMD_ = LLVMDIBuilderCreateFile(dBuilder_, name.c_str(), name.size(), ".", 1);
     dUnitMD_ = LLVMDIBuilderCreateCompileUnit(dBuilder_, LLVMDWARFSourceLanguageC_plus_plus, dFileMD_, "ArkCompiler",
-                                              11, 0, NULL, 0, 0, NULL, 0, LLVMDWARFEmissionFull,
+                                              0, 0, NULL, 0, 0, NULL, 0, LLVMDWARFEmissionFull,
                                               0, 0, 0, "/", 1, "", 0);
-    debugInfo_ = new DebugInfo(allocator);
+    debugInfo_ = new DebugInfo(allocator, logDbg);
 }
 
 LLVMModule::~LLVMModule()
@@ -2351,13 +2382,23 @@ LLVMTypeRef LLVMModule::ConvertLLVMTypeFromVariableType(VariableType type)
         {VariableType::JS_POINTER(), LLVMPointerType(LLVMInt64Type(), 1)},
         {VariableType::JS_ANY(), LLVMPointerType(LLVMInt64Type(), 1)},
     };
-    if (cfg_.Is32Bit()) {
+    if (Is32Bit()) {
         machineTypeMap[VariableType::NATIVE_POINTER()] = LLVMInt32Type();
         LLVMTypeRef vectorType = LLVMVectorType(LLVMPointerType(LLVMInt8Type(), 1), 2);  // 2: packed vector type
         machineTypeMap[VariableType::JS_POINTER()] = vectorType;
         machineTypeMap[VariableType::JS_ANY()] = vectorType;
     }
     return machineTypeMap[type];
+}
+
+std::string LLVMModule::GetFuncName(const panda::ecmascript::MethodLiteral *methodLiteral,
+                                    const JSPandaFile *jsPandaFile)
+{
+    auto offset = methodLiteral->GetMethodId().GetOffset();
+    std::string fileName = jsPandaFile->GetFileName();
+    std::string name = MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId());
+    name += std::string("@") + std::to_string(offset) + std::string("@") + fileName;
+    return name;
 }
 
 LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile)
@@ -2372,12 +2413,9 @@ LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodL
     auto numOfRestArgs = paramCount - funcIndex;
     paramTys.insert(paramTys.end(), numOfRestArgs, NewLType(MachineType::I64, GateType::TaggedValue()));
     auto funcType = LLVMFunctionType(returnType, paramTys.data(), paramCount, false); // not variable args
+
+    std::string name = GetFuncName(methodLiteral, jsPandaFile);
     auto offsetInPandaFile = methodLiteral->GetMethodId().GetOffset();
-
-    std::string fileName = jsPandaFile->GetFileName();
-    std::string name = MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId());
-    name += std::string("@") + std::to_string(offsetInPandaFile) + std::string("@") + fileName;
-
     auto function = LLVMAddFunction(module_, name.c_str(), funcType);
     ASSERT(offsetInPandaFile != LLVMModule::kDeoptEntryOffset);
     SetFunction(offsetInPandaFile, function);

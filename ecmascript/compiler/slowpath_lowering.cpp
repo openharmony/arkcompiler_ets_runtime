@@ -703,26 +703,28 @@ void SlowPathLowering::Lower(GateRef gate)
 
 GateRef SlowPathLowering::LowerCallRuntime(GateRef gate, int index, const std::vector<GateRef> &args, bool useLabel)
 {
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
     if (useLabel) {
-        GateRef result = builder_.CallRuntime(glue_, index, Gate::InvalidGateRef, args, gate);
+        GateRef result = builder_.CallRuntime(glue_, index, Gate::InvalidGateRef, args, gate, name.c_str());
         return result;
     } else {
         const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
         GateRef target = builder_.IntPtr(index);
-        GateRef result = builder_.Call(cs, glue_, target, builder_.GetDepend(), args, gate);
+        GateRef result = builder_.Call(cs, glue_, target, builder_.GetDepend(), args, gate, name.c_str());
         return result;
     }
 }
 
 GateRef SlowPathLowering::LowerCallNGCRuntime(GateRef gate, int index, const std::vector<GateRef> &args, bool useLabel)
 {
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
     if (useLabel) {
-        GateRef result = builder_.CallNGCRuntime(glue_, index, Gate::InvalidGateRef, args, gate);
+        GateRef result = builder_.CallNGCRuntime(glue_, index, Gate::InvalidGateRef, args, gate, name.c_str());
         return result;
     } else {
         const CallSignature *cs = RuntimeStubCSigns::Get(index);
         GateRef target = builder_.IntPtr(index);
-        GateRef result = builder_.Call(cs, glue_, target, builder_.GetDepend(), args, gate);
+        GateRef result = builder_.Call(cs, glue_, target, builder_.GetDepend(), args, gate, name.c_str());
         return result;
     }
 }

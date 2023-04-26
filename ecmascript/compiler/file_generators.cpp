@@ -35,15 +35,10 @@ void Module::CollectStackMapDes(ModuleSectionDes& des) const
     std::shared_ptr<uint8_t> ptr = nullptr;
     uint32_t size = 0;
     ArkStackMapBuilder builder;
-    std::tie(ptr, size) = builder.Run(std::move(stackmapPtr), textAddr, GetTriple());
+    std::tie(ptr, size) = builder.Run(std::move(stackmapPtr), textAddr, llvmModule_->GetTriple());
     des.EraseSec(ElfSecName::LLVM_STACKMAP);
     des.SetArkStackMapPtr(ptr);
     des.SetArkStackMapSize(size);
-}
-
-Triple Module::GetTriple() const
-{
-    return llvmModule_->GetCompilationConfig()->GetTriple();
 }
 
 void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, StubFileInfo &stubInfo,
@@ -173,8 +168,7 @@ void Module::DestroyModule()
     }
 }
 
-void StubFileGenerator::CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> &addr2name,
-                                               uint32_t bridgeModuleIdx)
+void StubFileGenerator::CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> &addr2name, uint32_t bridgeModuleIdx)
 {
     uint32_t funSize = 0;
     for (size_t i = 0; i < asmModule_.GetFunctionCount(); i++) {
@@ -232,10 +226,10 @@ void AOTFileGenerator::CollectCodeInfo()
     }
 }
 
-Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &triple, LOptions option)
+Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &triple, LOptions option, bool logDebug)
 {
-    LLVMModule* m = new LLVMModule(vm_->GetNativeAreaAllocator(), name, triple);
-    LLVMAssembler* ass = new LLVMAssembler(m->GetModule(), option);
+    LLVMModule* m = new LLVMModule(vm_->GetNativeAreaAllocator(), name, logDebug, triple);
+    LLVMAssembler* ass = new LLVMAssembler(m, option);
     modulePackage_.emplace_back(Module(m, ass));
     return &modulePackage_.back();
 }
@@ -248,6 +242,23 @@ void AOTFileGenerator::GenerateMethodToEntryIndexMap()
         const AOTFileInfo::FuncEntryDes &entry = entries[i];
         methodToEntryIndexMap_[entry.indexInKindOrMethodId_] = i;
     }
+}
+
+Module* StubFileGenerator::AddModule(NativeAreaAllocator *allocator, const std::string &name, const std::string &triple,
+                                     LOptions option, bool logDebug, StubFileKind kind)
+{
+    LLVMModule* m = new LLVMModule(allocator, name, logDebug, triple);
+    if (kind == StubFileKind::BC) {
+        m->SetUpForBytecodeHandlerStubs();
+    } else if (kind == StubFileKind::COM) {
+        m->SetUpForCommonStubs();
+    } else {
+        ASSERT(kind == StubFileKind::BUILTIN);
+        m->SetUpForBuiltinsStubs();
+    }
+    LLVMAssembler* ass = new LLVMAssembler(m, option);
+    modulePackage_.emplace_back(Module(m, ass));
+    return &modulePackage_.back();
 }
 
 void StubFileGenerator::RunAsmAssembler()

@@ -82,7 +82,7 @@ GateRef BuiltinsStubBuilder::GetArg(GateRef numArgs, GateRef index)
 }
 
 GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, GateRef thisValue,
-    GateRef numArgs, GateRef func, GateRef newTarget)
+                                          GateRef numArgs, GateRef func, GateRef newTarget, const char* comment)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -99,7 +99,8 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
     Branch(Int64Equal(numArgs, IntPtr(0)), &callThis0, &notcallThis0);
     Bind(&callThis0);
     {
-        result = CallBuiltinRuntime(glue, { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue });
+        auto args = { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue };
+        result = CallBuiltinRuntime(glue, args, false, comment);
         Jump(&exit);
     }
     Bind(&notcallThis0);
@@ -108,8 +109,8 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
         Bind(&callThis1);
         {
             GateRef arg0 = GetCallArg0(numArgs);
-            result =
-                CallBuiltinRuntime(glue, { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0 });
+            auto args = { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0 };
+            result = CallBuiltinRuntime(glue, args, false, comment);
             Jump(&exit);
         }
         Bind(&notcallThis1);
@@ -119,8 +120,8 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
             {
                 GateRef arg0 = GetCallArg0(numArgs);
                 GateRef arg1 = GetCallArg1(numArgs);
-                result = CallBuiltinRuntime(glue,
-                    { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0, arg1 });
+                auto args = { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0, arg1 };
+                result = CallBuiltinRuntime(glue, args, false, comment);
                 Jump(&exit);
             }
             Bind(&callThis3);
@@ -128,8 +129,8 @@ GateRef BuiltinsStubBuilder::CallSlowPath(GateRef nativeCode, GateRef glue, Gate
                 GateRef arg0 = GetCallArg0(numArgs);
                 GateRef arg1 = GetCallArg1(numArgs);
                 GateRef arg2 = GetCallArg2(numArgs);
-                result = CallBuiltinRuntime(glue,
-                    { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0, arg1, arg2 });
+                auto args = { nativeCode, glue, runtimeCallInfoArgs, func, newTarget, thisValue, arg0, arg1, arg2 };
+                result = CallBuiltinRuntime(glue, args, false, comment);
                 Jump(&exit);
             }
         }
@@ -201,6 +202,7 @@ DECLARE_BUILTINS(CharCodeAt)
     }
     Bind(&slowPath);
     {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(CharCodeAt));
         res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
         Jump(&exit);
     }
@@ -300,7 +302,8 @@ DECLARE_BUILTINS(IndexOf)
     }
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(IndexOf));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -465,7 +468,8 @@ DECLARE_BUILTINS(Substring)
 
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(Substring));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -539,7 +543,8 @@ DECLARE_BUILTINS(CharAt)
     }
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(CharAt));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -556,10 +561,11 @@ DECLARE_BUILTINS(VectorForEach)
     
     ContainersStubBuilder containersBuilder(this);
     containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::VECTOR_FOREACH);
+                                               &slowPath, ContainersType::VECTOR_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(VectorForEach));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -579,7 +585,8 @@ DECLARE_BUILTINS(VectorReplaceAllElements)
         &slowPath, ContainersType::VECTOR_REPLACEALLELEMENTS);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(VectorReplaceAllElements));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -599,7 +606,8 @@ DECLARE_BUILTINS(StackForEach)
         &slowPath, ContainersType::STACK_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(StackForEach));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -619,7 +627,8 @@ DECLARE_BUILTINS(PlainArrayForEach)
         &slowPath, ContainersType::PLAINARRAY_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(PlainArrayForEach));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -639,7 +648,8 @@ DECLARE_BUILTINS(QueueForEach)
         &slowPath, ContainersType::QUEUE_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(QueueForEach));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -659,7 +669,8 @@ DECLARE_BUILTINS(DequeForEach)
         &slowPath, ContainersType::DEQUE_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(DequeForEach));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -679,7 +690,8 @@ DECLARE_BUILTINS(LightWeightMapForEach)
         &slowPath, ContainersType::LIGHTWEIGHTMAP_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(LightWeightMapForEach));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -699,7 +711,8 @@ DECLARE_BUILTINS(LightWeightSetForEach)
         &slowPath, ContainersType::LIGHTWEIGHTSET_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(LightWeightSetForEach));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -719,7 +732,8 @@ DECLARE_BUILTINS(HashMapForEach)
         &slowPath, ContainersType::HASHMAP_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(HashMapForEach));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -739,7 +753,8 @@ DECLARE_BUILTINS(HashSetForEach)
         &slowPath, ContainersType::HASHSET_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(HashSetForEach));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -759,7 +774,8 @@ DECLARE_BUILTINS(LinkedListForEach)
         &slowPath, ContainersType::LINKEDLIST_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(LinkedListForEach));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -779,7 +795,8 @@ DECLARE_BUILTINS(ListForEach)
         &slowPath, ContainersType::LIST_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ListForEach));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -799,7 +816,8 @@ DECLARE_BUILTINS(ArrayListForEach)
         &slowPath, ContainersType::ARRAYLIST_FOREACH);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayListForEach));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -819,7 +837,8 @@ DECLARE_BUILTINS(ArrayListReplaceAllElements)
         &slowPath, ContainersType::ARRAYLIST_REPLACEALLELEMENTS);
     Bind(&slowPath);
     {
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayListReplaceAllElements));
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -955,8 +974,10 @@ DECLARE_BUILTINS(BooleanConstructor)
     }
     Bind(&slowPath);
     {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(BooleanConstructor));
         GateRef argv = GetArgv();
-        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true);
+        auto args = { glue, nativeCode, func, thisValue, numArgs, argv };
+        res = CallBuiltinRuntime(glue, args, true, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -1036,8 +1057,9 @@ DECLARE_BUILTINS(DateConstructor)
     }
     Bind(&slowPath);
     {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(DateConstructor));
         GateRef argv = GetArgv();
-        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true);
+        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true, name.c_str());
         Jump(&exit);
     }
     Bind(&exit);
@@ -1144,8 +1166,9 @@ DECLARE_BUILTINS(ArrayConstructor)
     }
     Bind(&slowPath);
     {
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayConstructor));
         GateRef argv = GetArgv();
-        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true);
+        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true, name.c_str());
         Jump(&exit);
     }
 
