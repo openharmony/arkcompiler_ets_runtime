@@ -1390,7 +1390,8 @@ void BytecodeCircuitBuilder::BuildCircuit()
             auto valueCount = gateAcc_.GetInValueCount(gate);
             [[maybe_unused]] size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
             [[maybe_unused]] size_t numValueOutputs = bytecodeInfo.ComputeOutCount();
-            ASSERT(numValueInputs == valueCount);
+            // RETURNUNDEFINED has value input, but not from acc
+            ASSERT(numValueInputs == valueCount || bytecodeInfo.GetOpcode() == EcmaOpcode::RETURNUNDEFINED);
             ASSERT(numValueOutputs <= 1 + (bytecodeInfo.EnvOut() ? 1 : 0));
             auto valueStarts = gateAcc_.GetInValueStarts(gate);
             for (size_t valueIdx = 0; valueIdx < valueCount; valueIdx++) {

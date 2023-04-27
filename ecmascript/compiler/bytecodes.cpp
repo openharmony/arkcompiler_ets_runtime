@@ -179,10 +179,10 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
             flags |= BytecodeFlags::SUPPORT_DEOPT;
             break;
-        case EcmaOpcode::RETURNUNDEFINED:
+        case EcmaOpcode::RETURN:
             flags |= BytecodeFlags::READ_ACC;
             [[fallthrough]];
-        case EcmaOpcode::RETURN:
+        case EcmaOpcode::RETURNUNDEFINED:
             kind = BytecodeKind::RETURN_BC;
             break;
         case EcmaOpcode::SUSPENDGENERATOR_V8:

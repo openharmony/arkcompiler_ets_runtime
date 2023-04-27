@@ -401,6 +401,10 @@ void NumberSpeculativeLowering::VisitPhi(GateRef gate)
             acc_.SetMachineType(gate, MachineType::F64);
             break;
         }
+        case TypeInfo::NONE: {  // retype not visit it, it's unused
+            acc_.DeleteGate(gate);
+            break;
+        }
         default:
             break;
     }
