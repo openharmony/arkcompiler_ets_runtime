@@ -57,10 +57,10 @@ public:
     static JSTaggedValue GetPromiseResolve(JSThread *thread, JSHandle<JSTaggedValue> promiseConstructor);
 
 private:
-    static JSHandle<CompletionRecord> PerformPromiseAll(JSThread *thread,
-                                                        const JSHandle<PromiseIteratorRecord> &itRecord,
-                                                        const JSHandle<JSTaggedValue> &ctor,
-                                                        const JSHandle<PromiseCapability> &capa);
+    static JSTaggedValue PerformPromiseAll(JSThread *thread,
+                                           const JSHandle<PromiseIteratorRecord> &itRecord,
+                                           const JSHandle<JSTaggedValue> &ctor,
+                                           const JSHandle<PromiseCapability> &capa);
 
     static JSHandle<CompletionRecord> PerformPromiseRace(JSThread *thread,
                                                          const JSHandle<PromiseIteratorRecord> &iteratorRecord,
