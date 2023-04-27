@@ -138,6 +138,9 @@ GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, JSHandle<JSTaggedValu
     } else if (type->IsTSInterfaceType()) {
         JSHandle<TSInterfaceType> interfaceType(type);
         return TSInterfaceType::GetPropTypeGT(thread, interfaceType, propertyName);
+    } else if (type->IsTSNamespaceType()) {
+        JSHandle<TSNamespaceType> namespaceType(type);
+        return TSNamespaceType::GetPropTypeGT(thread, namespaceType, propertyName);
     }
     return GlobalTSTypeRef::Default();
 }
@@ -257,6 +260,8 @@ TSTypeKind TSManager::GetTypeKind(const GlobalTSTypeRef &gt) const
                     return TSTypeKind::INTERFACE;
                 case JSType::TS_ITERATOR_INSTANCE_TYPE:
                     return TSTypeKind::ITERATOR_INSTANCE;
+                case JSType::TS_NAMESPACE_TYPE:
+                    return TSTypeKind::NAMESPACE;
                 default:
                     LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
@@ -535,6 +540,21 @@ GlobalTSTypeRef TSManager::CreateClassInstanceType(GlobalTSTypeRef gt)
     JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
     classInstanceType->SetClassGT(gt);
     return AddTSTypeToInferredTable(JSHandle<TSType>(classInstanceType));
+}
+
+GlobalTSTypeRef TSManager::CreateNamespaceType()
+{
+    JSHandle<TSNamespaceType> namespaceType = factory_->NewTSNamespaceType();
+    return AddTSTypeToInferredTable(JSHandle<TSType>(namespaceType));
+}
+
+void TSManager::AddNamespacePropType(kungfu::GateType objType, JSTaggedValue name, kungfu::GateType valueType)
+{
+    JSHandle<JSTaggedValue> tsType = GetTSType(GlobalTSTypeRef(objType.Value()));
+    JSHandle<TSNamespaceType> namespaceType(tsType);
+    JSHandle<JSTaggedValue> key(thread_, name);
+    JSHandle<JSTaggedValue> value(thread_, JSTaggedValue(valueType.Value()));
+    TSNamespaceType::AddKeyAndValue(thread_, namespaceType, key, value);
 }
 
 GlobalTSTypeRef TSManager::GetClassType(GlobalTSTypeRef classInstanceGT) const
@@ -929,6 +949,8 @@ std::string TSManager::GetTypeStr(kungfu::GateType gateType) const
             return "iterator_instance";
         case TSTypeKind::UNKNOWN:
             return "unknown";
+        case TSTypeKind::NAMESPACE:
+            return "namespace";
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();

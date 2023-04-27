@@ -13,15 +13,29 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/type_inference/type_infer.h"
+#include "ecmascript/compiler/type_inference/method_type_infer.h"
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
 
 namespace panda::ecmascript::kungfu {
-void TypeInfer::TraverseCircuit()
+MethodTypeInfer::MethodTypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit, PassContext *ctx, size_t methodId,
+                                 bool enableLog, const std::string &name, const CString &recordName,
+                                 MethodInfo *methodInfo, const MethodLiteral *methodLiteral,
+                                 bool enableGlobalTypeInfer)
+    : builder_(builder), circuit_(circuit), gateAccessor_(circuit), tsManager_(ctx->GetTSManager()), ctx_(ctx),
+      lexEnvManager_(ctx->GetLexEnvManager()), methodId_(methodId), enableLog_(enableLog), methodName_(name),
+      recordName_(recordName), methodInfo_(methodInfo), methodLiteral_(methodLiteral),
+      inQueue_(circuit_->GetGateCount(), true), enableGlobalTypeInfer_(enableGlobalTypeInfer)
 {
+    if (enableGlobalTypeInfer_ && methodInfo->IsNamespace()) {
+        uint32_t methodOffset = methodLiteral_->GetMethodId().GetOffset();
+        if (tsManager_->HasInferredNamespaceType(methodOffset)) {
+            SetNamespaceArgType(tsManager_->GetNamespaceObjType(methodOffset));
+        }
+    }
+
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
     for (auto gate : gateList) {
@@ -36,8 +50,10 @@ void TypeInfer::TraverseCircuit()
             jsgateToBytecode_[gate] = index;
         }
     }
-    TraverseInfer();
+}
 
+void MethodTypeInfer::CheckAndPrint()
+{
     if (IsLogEnabled()) {
         PrintAllByteCodesTypes();
     }
@@ -64,9 +80,8 @@ void TypeInfer::TraverseCircuit()
     }
 }
 
-void TypeInfer::TraverseInfer()
+std::pair<GateType, uint32_t> MethodTypeInfer::TraverseInfer()
 {
-    bool needUpdateForLoopPhi = true;
     // main type infer for all gates
     while (!pendingQueue_.empty()) {
         auto curGate = pendingQueue_.front();
@@ -79,16 +94,20 @@ void TypeInfer::TraverseInfer()
                 inQueue_[gateId] = true;
                 pendingQueue_.push(*useIt);
             }
+            if (enableGlobalTypeInfer_ && IsNamespace(*useIt)) {
+                return SetAndReturnNamespaceObjType(*useIt);
+            }
         }
-        if (pendingQueue_.empty() && needUpdateForLoopPhi) {
+        if (pendingQueue_.empty() && needUpdateForLoopPhi_) {
             // only for loop begin phi
             UpdateQueueForLoopPhi();
-            needUpdateForLoopPhi = false;
+            needUpdateForLoopPhi_ = false;
         }
     }
+    return std::make_pair(GateType::AnyType(), 0);  // 0: defaule value
 }
 
-void TypeInfer::UpdateQueueForLoopPhi()
+void MethodTypeInfer::UpdateQueueForLoopPhi()
 {
     for (auto it = loopPhiState_.begin(); it != loopPhiState_.end(); it++) {
         auto curGate = it->first;
@@ -112,7 +131,7 @@ void TypeInfer::UpdateQueueForLoopPhi()
     }
 }
 
-bool TypeInfer::UpdateType(GateRef gate, const GateType type, bool savePreType)
+bool MethodTypeInfer::UpdateType(GateRef gate, const GateType type, bool savePreType)
 {
     GateType preType = gateAccessor_.GetGateType(gate);
     needInferGates_.insert(gate);
@@ -128,13 +147,13 @@ bool TypeInfer::UpdateType(GateRef gate, const GateType type, bool savePreType)
     return false;
 }
 
-bool TypeInfer::UpdateType(GateRef gate, const GlobalTSTypeRef &typeRef, bool savePreType)
+bool MethodTypeInfer::UpdateType(GateRef gate, const GlobalTSTypeRef &typeRef, bool savePreType)
 {
     auto type = GateType(typeRef);
     return UpdateType(gate, type, savePreType);
 }
 
-bool TypeInfer::IsNewLexEnv(EcmaOpcode opcode) const
+bool MethodTypeInfer::IsNewLexEnv(EcmaOpcode opcode) const
 {
     switch (opcode) {
         case EcmaOpcode::NEWLEXENV_IMM8:
@@ -147,7 +166,7 @@ bool TypeInfer::IsNewLexEnv(EcmaOpcode opcode) const
     }
 }
 
-bool TypeInfer::ShouldInfer(const GateRef gate) const
+bool MethodTypeInfer::ShouldInfer(const GateRef gate) const
 {
     auto opcode = gateAccessor_.GetOpCode(gate);
     // handle phi gates
@@ -172,7 +191,7 @@ bool TypeInfer::ShouldInfer(const GateRef gate) const
     return !bytecodeInfo.IsJump() && !IsNewLexEnv(bytecodeInfo.GetOpcode());
 }
 
-bool TypeInfer::Infer(GateRef gate)
+bool MethodTypeInfer::Infer(GateRef gate)
 {
     if (!ShouldInfer(gate)) {
         return false;
@@ -330,13 +349,16 @@ bool TypeInfer::Infer(GateRef gate)
         case EcmaOpcode::LDEXTERNALMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_LDEXTERNALMODULEVAR_PREF_IMM16:
             return InferLdExternalModuleVar(gate);
+        case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+            return InferStObjByName(gate);
         default:
             break;
     }
     return false;
 }
 
-bool TypeInfer::InferPhiGate(GateRef gate)
+bool MethodTypeInfer::InferPhiGate(GateRef gate)
 {
     ASSERT(gateAccessor_.GetOpCode(gate) == OpCode::VALUE_SELECTOR);
     CVector<GlobalTSTypeRef> typeList;
@@ -377,68 +399,68 @@ bool TypeInfer::InferPhiGate(GateRef gate)
     return UpdateType(gate, type, false);
 }
 
-bool TypeInfer::SetIntType(GateRef gate)
+bool MethodTypeInfer::SetIntType(GateRef gate)
 {
     auto intType = GateType::IntType();
     return UpdateType(gate, intType);
 }
 
-bool TypeInfer::SetNumberType(GateRef gate)
+bool MethodTypeInfer::SetNumberType(GateRef gate)
 {
     auto numberType = GateType::NumberType();
     return UpdateType(gate, numberType);
 }
 
-bool TypeInfer::SetBigIntType(GateRef gate)
+bool MethodTypeInfer::SetBigIntType(GateRef gate)
 {
     auto bigIntType = GateType::BigIntType();
     return UpdateType(gate, bigIntType);
 }
 
-bool TypeInfer::SetBooleanType(GateRef gate)
+bool MethodTypeInfer::SetBooleanType(GateRef gate)
 {
     auto booleanType = GateType::BooleanType();
     return UpdateType(gate, booleanType);
 }
 
-bool TypeInfer::InferLdUndefined(GateRef gate)
+bool MethodTypeInfer::InferLdUndefined(GateRef gate)
 {
     auto undefinedType = GateType::UndefinedType();
     return UpdateType(gate, undefinedType);
 }
 
-bool TypeInfer::InferLdNull(GateRef gate)
+bool MethodTypeInfer::InferLdNull(GateRef gate)
 {
     auto nullType = GateType::NullType();
     return UpdateType(gate, nullType);
 }
 
-bool TypeInfer::InferLdai(GateRef gate)
+bool MethodTypeInfer::InferLdai(GateRef gate)
 {
     auto intType = GateType::IntType();
     return UpdateType(gate, intType);
 }
 
-bool TypeInfer::InferFLdai(GateRef gate)
+bool MethodTypeInfer::InferFLdai(GateRef gate)
 {
     auto doubleType = GateType::DoubleType();
     return UpdateType(gate, doubleType);
 }
 
-bool TypeInfer::InferLdSymbol(GateRef gate)
+bool MethodTypeInfer::InferLdSymbol(GateRef gate)
 {
     auto symbolType = GateType::SymbolType();
     return UpdateType(gate, symbolType);
 }
 
-bool TypeInfer::InferThrow(GateRef gate)
+bool MethodTypeInfer::InferThrow(GateRef gate)
 {
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
     auto gateType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
     return UpdateType(gate, gateType);
 }
 
-bool TypeInfer::InferTypeOf(GateRef gate)
+bool MethodTypeInfer::InferTypeOf(GateRef gate)
 {
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
     auto gateType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
@@ -455,7 +477,7 @@ bool TypeInfer::InferTypeOf(GateRef gate)
  * double + double = double
  * string + string = string
  */
-bool TypeInfer::InferAdd2(GateRef gate)
+bool MethodTypeInfer::InferAdd2(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
@@ -486,7 +508,7 @@ bool TypeInfer::InferAdd2(GateRef gate)
  * int    - double = double
  * double - double = double
  */
-bool TypeInfer::InferSub2(GateRef gate)
+bool MethodTypeInfer::InferSub2(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
@@ -511,7 +533,7 @@ bool TypeInfer::InferSub2(GateRef gate)
  * int    * double = double
  * double * double = double
  */
-bool TypeInfer::InferMul2(GateRef gate)
+bool MethodTypeInfer::InferMul2(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
@@ -540,7 +562,7 @@ bool TypeInfer::InferMul2(GateRef gate)
  * any    / number = number
  * number / any    = number
  */
-bool TypeInfer::InferDiv2(GateRef gate)
+bool MethodTypeInfer::InferDiv2(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
@@ -561,7 +583,7 @@ bool TypeInfer::InferDiv2(GateRef gate)
  * double++ = double
  * double-- = double
  */
-bool TypeInfer::InferIncDec(GateRef gate)
+bool MethodTypeInfer::InferIncDec(GateRef gate)
 {
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
     auto firInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
@@ -574,7 +596,7 @@ bool TypeInfer::InferIncDec(GateRef gate)
     return UpdateType(gate, GateType::NumberType());
 }
 
-bool TypeInfer::InferLdObjByIndex(GateRef gate)
+bool MethodTypeInfer::InferLdObjByIndex(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
@@ -597,7 +619,7 @@ bool TypeInfer::InferLdObjByIndex(GateRef gate)
     return UpdateType(gate, GateType::AnyType());
 }
 
-bool TypeInfer::SetStGlobalBcType(GateRef gate, bool hasIC)
+bool MethodTypeInfer::SetStGlobalBcType(GateRef gate, bool hasIC)
 {
     auto &byteCodeInfo = GetByteCodeInfo(gate);
     uint16_t stringId = 0;
@@ -625,7 +647,7 @@ bool TypeInfer::SetStGlobalBcType(GateRef gate, bool hasIC)
     return UpdateType(gate, inValueType);
 }
 
-bool TypeInfer::InferLdGlobalVar(GateRef gate)
+bool MethodTypeInfer::InferLdGlobalVar(GateRef gate)
 {
     auto &byteCodeInfo = GetByteCodeInfo(gate);
     ASSERT(byteCodeInfo.inputs.size() == 2);  // 2: number of value inputs
@@ -637,20 +659,20 @@ bool TypeInfer::InferLdGlobalVar(GateRef gate)
     return UpdateType(gate, GateType::AnyType());
 }
 
-bool TypeInfer::InferReturnUndefined(GateRef gate)
+bool MethodTypeInfer::InferReturnUndefined(GateRef gate)
 {
     auto undefinedType = GateType::UndefinedType();
     return UpdateType(gate, undefinedType);
 }
 
-bool TypeInfer::InferReturn(GateRef gate)
+bool MethodTypeInfer::InferReturn(GateRef gate)
 {
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
     auto gateType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
     return UpdateType(gate, gateType);
 }
 
-bool TypeInfer::InferLdObjByName(GateRef gate)
+bool MethodTypeInfer::InferLdObjByName(GateRef gate)
 {
     // 3: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 3);
@@ -679,7 +701,29 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     return UpdateType(gate, GateType::AnyType());
 }
 
-bool TypeInfer::InferNewObject(GateRef gate)
+bool MethodTypeInfer::InferStObjByName(GateRef gate)
+{
+    GateRef value = gateAccessor_.GetValueIn(gate, 3);  // 3: index of value
+    GateType valueType = gateAccessor_.GetGateType(value);
+    if (valueType.IsAnyType()) {
+        return false;
+    }
+
+    GateRef receiver = gateAccessor_.GetValueIn(gate, 2);  // 2: index of receiver
+    GateType receiverType = gateAccessor_.GetGateType(receiver);
+    if (!tsManager_->IsNamespaceTypeKind(receiverType)) {
+        return false;
+    }
+
+    uint16_t index = gateAccessor_.GetConstDataId(gateAccessor_.GetValueIn(gate, 1)).GetId();  // 1: index of key
+    JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
+    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+    JSTaggedValue propKey = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), index);
+    tsManager_->AddNamespacePropType(receiverType, propKey, valueType);
+    return true;
+}
+
+bool MethodTypeInfer::InferNewObject(GateRef gate)
 {
     auto objType = gateAccessor_.GetGateType(gate);
     if (!tsManager_->IsClassInstanceTypeKind(objType) && !tsManager_->IsArrayTypeKind(objType)) {
@@ -693,13 +737,13 @@ bool TypeInfer::InferNewObject(GateRef gate)
     return UpdateType(gate, GateType::AnyType());
 }
 
-bool TypeInfer::InferLdStr(GateRef gate)
+bool MethodTypeInfer::InferLdStr(GateRef gate)
 {
     auto stringType = GateType::StringType();
     return UpdateType(gate, stringType);
 }
 
-bool TypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_t index)
+bool MethodTypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_t index)
 {
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
@@ -724,7 +768,7 @@ bool TypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_t inde
     return UpdateType(gate, type);
 }
 
-bool TypeInfer::InferCallFunction(GateRef gate)
+bool MethodTypeInfer::InferCallFunction(GateRef gate)
 {
     // 1: last one elem is function
     size_t funcIndex = gateAccessor_.GetNumValueIn(gate) - 1;
@@ -771,7 +815,7 @@ bool TypeInfer::InferCallFunction(GateRef gate)
     return UpdateType(gate, GateType::AnyType());
 }
 
-bool TypeInfer::InferLdObjByValue(GateRef gate)
+bool MethodTypeInfer::InferLdObjByValue(GateRef gate)
 {
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
     objType = tsManager_->TryNarrowUnionType(objType);
@@ -800,20 +844,20 @@ bool TypeInfer::InferLdObjByValue(GateRef gate)
     return UpdateType(gate, GateType::AnyType());
 }
 
-bool TypeInfer::InferGetNextPropName(GateRef gate)
+bool MethodTypeInfer::InferGetNextPropName(GateRef gate)
 {
     auto stringType = GateType::StringType();
     return UpdateType(gate, stringType);
 }
 
-bool TypeInfer::InferDefineGetterSetterByValue(GateRef gate)
+bool MethodTypeInfer::InferDefineGetterSetterByValue(GateRef gate)
 {
     // 0 : the index of obj
     auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
     return UpdateType(gate, objType);
 }
 
-bool TypeInfer::InferSuperCall(GateRef gate)
+bool MethodTypeInfer::InferSuperCall(GateRef gate)
 {
     ArgumentAccessor argAcc(circuit_);
     auto newTarget = argAcc.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
@@ -825,13 +869,13 @@ bool TypeInfer::InferSuperCall(GateRef gate)
     return UpdateType(gate, GateType::AnyType());
 }
 
-bool TypeInfer::InferSuperPropertyByName(GateRef gate)
+bool MethodTypeInfer::InferSuperPropertyByName(GateRef gate)
 {
     uint16_t index = gateAccessor_.GetConstDataId(gateAccessor_.GetValueIn(gate, 0)).GetId();
     return GetSuperProp(gate, index);
 }
 
-bool TypeInfer::InferSuperPropertyByValue(GateRef gate)
+bool MethodTypeInfer::InferSuperPropertyByValue(GateRef gate)
 {
     auto valueGate = gateAccessor_.GetValueIn(gate, 1);
     if (IsByteCodeGate(valueGate) && GetByteCodeInfo(valueGate).IsBc(EcmaOpcode::LDA_STR_ID16)) {
@@ -847,7 +891,7 @@ bool TypeInfer::InferSuperPropertyByValue(GateRef gate)
     return UpdateType(gate, GateType::AnyType());
 }
 
-bool TypeInfer::GetSuperProp(GateRef gate, uint64_t index, bool isString)
+bool MethodTypeInfer::GetSuperProp(GateRef gate, uint64_t index, bool isString)
 {
     ArgumentAccessor argAcc(circuit_);
     auto func = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
@@ -872,7 +916,7 @@ bool TypeInfer::GetSuperProp(GateRef gate, uint64_t index, bool isString)
     return UpdateType(gate, GateType::AnyType());
 }
 
-bool TypeInfer::InferGetIterator(GateRef gate)
+bool MethodTypeInfer::InferGetIterator(GateRef gate)
 {
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 1);
     GateType inValueType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
@@ -890,7 +934,7 @@ bool TypeInfer::InferGetIterator(GateRef gate)
     return UpdateType(gate, iteratorInstanceType);
 }
 
-bool TypeInfer::InferTryLdGlobalByName(GateRef gate)
+bool MethodTypeInfer::InferTryLdGlobalByName(GateRef gate)
 {
     // todo by hongtao, should consider function of .d.ts
     auto &byteCodeInfo = GetByteCodeInfo(gate);
@@ -903,7 +947,7 @@ bool TypeInfer::InferTryLdGlobalByName(GateRef gate)
     return UpdateType(gate, GateType::AnyType());
 }
 
-bool TypeInfer::InferLdLexVarDyn(GateRef gate)
+bool MethodTypeInfer::InferLdLexVarDyn(GateRef gate)
 {
     auto level = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
     auto slot = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 1));
@@ -911,7 +955,7 @@ bool TypeInfer::InferLdLexVarDyn(GateRef gate)
     return UpdateType(gate, type);
 }
 
-bool TypeInfer::InferStLexVarDyn(GateRef gate)
+bool MethodTypeInfer::InferStLexVarDyn(GateRef gate)
 {
     auto level = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
     auto slot = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 1));
@@ -926,7 +970,7 @@ bool TypeInfer::InferStLexVarDyn(GateRef gate)
     return false;
 }
 
-bool TypeInfer::InferStModuleVar(GateRef gate)
+bool MethodTypeInfer::InferStModuleVar(GateRef gate)
 {
     auto index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
     const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
@@ -939,7 +983,7 @@ bool TypeInfer::InferStModuleVar(GateRef gate)
     return false;
 }
 
-bool TypeInfer::InferLdLocalModuleVar(GateRef gate)
+bool MethodTypeInfer::InferLdLocalModuleVar(GateRef gate)
 {
     auto index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
     const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
@@ -950,7 +994,7 @@ bool TypeInfer::InferLdLocalModuleVar(GateRef gate)
     return UpdateType(gate, type);
 }
 
-bool TypeInfer::InferLdExternalModuleVar(GateRef gate)
+bool MethodTypeInfer::InferLdExternalModuleVar(GateRef gate)
 {
     auto index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
     auto loadType = gateAccessor_.GetGateType(gate);
@@ -999,7 +1043,7 @@ bool TypeInfer::InferLdExternalModuleVar(GateRef gate)
     return UpdateType(gate, GateType::AnyType());
 }
 
-bool TypeInfer::InferLoopBeginPhiGate(GateRef gate)
+bool MethodTypeInfer::InferLoopBeginPhiGate(GateRef gate)
 {
     // loop-begin phi gate has 3 ins: loop_begin(stateWire), loopInGate(valueWire), loopBackGate(valueWire)
     auto loopInGate = gateAccessor_.GetValueIn(gate);
@@ -1026,7 +1070,7 @@ bool TypeInfer::InferLoopBeginPhiGate(GateRef gate)
     return UpdateType(gate, loopInType, false);
 }
 
-GlobalTSTypeRef TypeInfer::ConvertPrimitiveToBuiltin(const GateType &gateType)
+GlobalTSTypeRef MethodTypeInfer::ConvertPrimitiveToBuiltin(const GateType &gateType)
 {
     GlobalTSTypeRef builtinGt = GlobalTSTypeRef::Default();
     if (!tsManager_->IsBuiltinsDTSEnabled()) {
@@ -1072,7 +1116,7 @@ GlobalTSTypeRef TypeInfer::ConvertPrimitiveToBuiltin(const GateType &gateType)
     return builtinGt;
 }
 
-GlobalTSTypeRef TypeInfer::GetPropType(const GateType type, const JSTaggedValue propertyName) const
+GlobalTSTypeRef MethodTypeInfer::GetPropType(const GateType type, const JSTaggedValue propertyName) const
 {
     GlobalTSTypeRef objGT(type.Value());
     GlobalTSTypeRef propGT = tsManager_->GetPropType(objGT, propertyName);
@@ -1082,7 +1126,7 @@ GlobalTSTypeRef TypeInfer::GetPropType(const GateType type, const JSTaggedValue 
     return tsManager_->GetIndexSignType(objGT, GateType::StringType());
 }
 
-GlobalTSTypeRef TypeInfer::GetPropType(const GateType type, const uint64_t key) const
+GlobalTSTypeRef MethodTypeInfer::GetPropType(const GateType type, const uint64_t key) const
 {
     GlobalTSTypeRef objGT(type.Value());
     GlobalTSTypeRef propGT = tsManager_->GetPropType(objGT, key);
@@ -1092,7 +1136,96 @@ GlobalTSTypeRef TypeInfer::GetPropType(const GateType type, const uint64_t key) 
     return tsManager_->GetIndexSignType(objGT, GateType::NumberType());
 }
 
-void TypeInfer::PrintAllByteCodesTypes() const
+// In TS, a namespace can be thought of as a formalization of the IIFE pattern.
+// The function has only one parameter, which corresponds to the namespace object.
+void MethodTypeInfer::SetNamespaceArgType(GateType type)
+{
+    ArgumentAccessor argAcc(circuit_, methodLiteral_);
+    // the last position is where the only parameter of the function are placed
+    auto gate = argAcc.ArgsAt(argAcc.ArgsCount() - 1);
+    gateAccessor_.SetGateType(gate, type);
+}
+
+// When a IIFE which corresponds to namespaces declaration being called,
+// A namespace type will be set to the namespace object.
+std::pair<GateType, uint32_t> MethodTypeInfer::SetAndReturnNamespaceObjType(GateRef gate)
+{
+    GateRef func = gateAccessor_.GetValueIn(gate, 1);  // 1: index of func
+    uint16_t id = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(func, 0));  // 0: index of methodId
+    GateRef obj = gateAccessor_.GetValueIn(gate, 0);  // 0: index of obj
+    // the obj must be phi gate due to the conversion of syntax sugar of namespace
+    ASSERT(gateAccessor_.IsSelector(obj));
+    GlobalTSTypeRef gt = TryGetNamespaceType(obj);
+
+    uint32_t methodId = ctx_->GetJSPandaFile()->ResolveMethodIndex(methodLiteral_->GetMethodId(), id).GetOffset();
+    uint32_t length = gateAccessor_.GetNumValueIn(obj);
+    for (uint32_t i = 0; i < length; i++) {
+        GateRef namespaceObj = gateAccessor_.GetValueIn(obj, i);
+        if (!IsByteCodeGate(namespaceObj)) {
+            continue;
+        }
+        auto &bytecodeInfo = GetByteCodeInfo(namespaceObj);
+        if (!bytecodeInfo.IsBc(EcmaOpcode::CREATEEMPTYOBJECT)) {
+            continue;
+        }
+
+        if (gt.IsDefault()) {
+            gt = tsManager_->CreateNamespaceType();
+        }
+        gateAccessor_.SetGateType(namespaceObj, GateType(gt));
+        return std::make_pair(GateType(gt), methodId);
+    }
+
+    return std::make_pair((GateType(gt)), methodId);
+}
+
+GlobalTSTypeRef MethodTypeInfer::TryGetNamespaceType(GateRef gate) const
+{
+    ASSERT(gateAccessor_.IsSelector(gate));
+    uint32_t length = gateAccessor_.GetNumValueIn(gate);
+    for (uint32_t i = 0; i < length; i++) {
+        GateRef namespaceObj = gateAccessor_.GetValueIn(gate, i);
+        GateType type = gateAccessor_.GetGateType(namespaceObj);
+        GlobalTSTypeRef namespaceGT(type.Value());
+        if (tsManager_->IsNamespaceTypeKind(namespaceGT)) {
+            return namespaceGT;
+        }
+    }
+    return GlobalTSTypeRef::Default();
+}
+
+bool MethodTypeInfer::IsNamespace(GateRef gate) const
+{
+    if (IsByteCodeGate(gate)) {
+        auto &bytecodeInfo = GetByteCodeInfo(gate);
+        if (bytecodeInfo.IsBc(EcmaOpcode::CALLARG1_IMM8_V8)) {
+            GateRef obj = gateAccessor_.GetValueIn(gate, 0);  // 0: index of obj
+            GateRef func = gateAccessor_.GetValueIn(gate, 1);  // 1: index of func
+            return CheckNamespaceFunc(func) && gateAccessor_.IsSelector(obj);
+        }
+    }
+    return false;
+}
+
+bool MethodTypeInfer::CheckNamespaceFunc(GateRef func) const
+{
+    if (IsByteCodeGate(func)) {
+        auto &bytecodeInfo = GetByteCodeInfo(func);
+        if (bytecodeInfo.IsBc(EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8) ||
+            bytecodeInfo.IsBc(EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8)) {
+            uint16_t id = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(func, 0));  // 0: index of methodId
+            uint32_t methodId =
+                ctx_->GetJSPandaFile()->ResolveMethodIndex(methodLiteral_->GetMethodId(), id).GetOffset();
+            auto &bcInfo = ctx_->GetBytecodeInfo();
+            auto &methodLists = bcInfo.GetMethodList();
+            auto &methodInfo = methodLists.at(methodId);
+            return methodInfo.IsNamespace();
+        }
+    }
+    return false;
+}
+
+void MethodTypeInfer::PrintAllByteCodesTypes() const
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
@@ -1124,7 +1257,7 @@ void TypeInfer::PrintAllByteCodesTypes() const
     LOG_COMPILER(INFO) << "}";
 }
 
-void TypeInfer::Verify() const
+void MethodTypeInfer::Verify() const
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
@@ -1142,7 +1275,7 @@ void TypeInfer::Verify() const
  * in ts-file and call it with arguments v and t, where t is the expected type string.
  * The following interface performs such a check at compile time.
  */
-void TypeInfer::TypeCheck(GateRef gate) const
+void MethodTypeInfer::TypeCheck(GateRef gate) const
 {
     auto &info = GetByteCodeInfo(gate);
     if (!info.IsBc(EcmaOpcode::CALLARGS2_IMM8_V8_V8)) {
@@ -1183,7 +1316,7 @@ void TypeInfer::TypeCheck(GateRef gate) const
     }
 }
 
-void TypeInfer::FilterAnyTypeGates() const
+void MethodTypeInfer::FilterAnyTypeGates() const
 {
     const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
     EntityId methodId = builder_->GetMethod()->GetMethodId();
@@ -1206,8 +1339,8 @@ void TypeInfer::FilterAnyTypeGates() const
     LOG_COMPILER(INFO) << log << "[TypeFilter] end";
 }
 
-std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *debugExtractor,
-                                              const std::string &logPreFix) const
+std::string MethodTypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *debugExtractor,
+                                                    const std::string &logPreFix) const
 {
     std::string log(logPreFix);
     log += "gate id: "+ std::to_string(gateAccessor_.GetId(gate)) + ", ";
@@ -1253,7 +1386,7 @@ std::string TypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *
     return log;
 }
 
-void TypeInfer::VerifyTypePercent()
+void MethodTypeInfer::VerifyTypePercent()
 {
     shouldInferNum_ = needInferGates_.size();
     for (auto gate : needInferGates_) {

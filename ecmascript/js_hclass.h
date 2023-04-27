@@ -244,6 +244,7 @@ class PropertyLookupResult;
         TS_CLASS_INSTANCE_TYPE,  /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         TS_INTERFACE_TYPE,    /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         TS_ITERATOR_INSTANCE_TYPE,    /* //////////////////////////////////////////////////////////////////-PADDING */ \
+        TS_NAMESPACE_TYPE,  /* ////////////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         VTABLE,                       /* //////////////////////////////////////////////////////////////////-PADDING */ \
         AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -274,7 +275,7 @@ class PropertyLookupResult;
         MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         TS_TYPE_FIRST = TS_ARRAY_TYPE, /* /////////////////////////////////////////////////////////////////-PADDING */ \
-        TS_TYPE_LAST = TS_ITERATOR_INSTANCE_TYPE, /* ///////////////////////////////////////////////////////-PADDING */\
+        TS_TYPE_LAST = TS_NAMESPACE_TYPE, /* ///////////////////////////////////////////////////////////////-PADDING */\
                                                                                                                        \
         STRING_FIRST = LINE_STRING, /* /////////////////////////////////////////////////////////////////////-PADDING */\
         STRING_LAST = TREE_STRING  /* /////////////////////////////////////////////////////////////////////-PADDING */
@@ -1335,6 +1336,11 @@ public:
     inline bool IsTSIteratorInstanceType() const
     {
         return GetObjectType() == JSType::TS_ITERATOR_INSTANCE_TYPE;
+    }
+
+    inline bool IsTSNamespaceType() const
+    {
+        return GetObjectType() == JSType::TS_NAMESPACE_TYPE;
     }
 
     inline bool IsAOTLiteralInfo() const

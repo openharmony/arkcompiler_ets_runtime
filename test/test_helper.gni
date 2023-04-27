@@ -924,6 +924,11 @@ template("host_typeinfer_test_action") {
       _aot_compile_options_ += " --builtins-dts=" + rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc"
     }
 
+    if (defined(invoker.is_enable_global_typeinfer) &&
+        invoker.is_enable_global_typeinfer) {
+      _aot_compile_options_ += " --compiler-opt-global-typeinfer=true"
+    }
+
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",

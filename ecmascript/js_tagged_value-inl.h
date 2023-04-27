@@ -1319,6 +1319,11 @@ inline bool JSTaggedValue::IsTSIteratorInstanceType() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSIteratorInstanceType();
 }
 
+inline bool JSTaggedValue::IsTSNamespaceType() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTSNamespaceType();
+}
+
 inline bool JSTaggedValue::IsModuleRecord() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsModuleRecord();

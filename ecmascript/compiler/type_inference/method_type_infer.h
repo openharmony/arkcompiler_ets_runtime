@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H
-#define ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H
+#ifndef ECMASCRIPT_COMPILER_TYPE_INFERENCE_METHOD_TYPE_INFER_H
+#define ECMASCRIPT_COMPILER_TYPE_INFERENCE_METHOD_TYPE_INFER_H
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
@@ -33,46 +33,35 @@ enum InferState : uint8_t {
     NUMBER_INFERED,
 };
 
-class TypeInfer {
+class MethodTypeInfer {
 public:
-    TypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit,
-              PassContext *ctx, size_t methodId, bool enableLog,
-              const std::string &name, const CString &recordName,
-              MethodInfo *methodInfo)
-        : builder_(builder),
-          circuit_(circuit),
-          gateAccessor_(circuit),
-          tsManager_(ctx->GetTSManager()),
-          lexEnvManager_(ctx->GetLexEnvManager()),
-          methodId_(methodId),
-          enableLog_(enableLog),
-          methodName_(name),
-          recordName_(recordName),
-          methodInfo_(methodInfo),
-          inQueue_(circuit_->GetGateCount(), true)
-    {
-    }
+    MethodTypeInfer(BytecodeCircuitBuilder *builder, Circuit *circuit,
+                    PassContext *ctx, size_t methodId, bool enableLog,
+                    const std::string &name, const CString &recordName,
+                    MethodInfo *methodInfo, const MethodLiteral *methodLiteral,
+                    bool enableGlobalTypeInfer);
+    ~MethodTypeInfer() = default;
 
-    ~TypeInfer() = default;
+    NO_COPY_SEMANTIC(MethodTypeInfer);
+    NO_MOVE_SEMANTIC(MethodTypeInfer);
 
-    NO_COPY_SEMANTIC(TypeInfer);
-    NO_MOVE_SEMANTIC(TypeInfer);
-
-    void TraverseCircuit();
+    std::pair<GateType, uint32_t> TraverseInfer();
+    void CheckAndPrint();
+    void SetNamespaceArgType(GateType type);
 
     bool IsLogEnabled() const
     {
         return enableLog_;
     }
 
-    const std::string& GetMethodName() const
-    {
-        return methodName_;
-    }
-
 private:
     static constexpr int PERCENT_LENS = 2;
     static constexpr int HUNDRED_TIME = 100;
+
+    const std::string &GetMethodName() const
+    {
+        return methodName_;
+    }
 
     // savePreType: save the previous type, which is true by default
     bool UpdateType(GateRef gate, const GateType type, bool savePreType = true);
@@ -117,6 +106,7 @@ private:
     bool InferStModuleVar(GateRef gate);
     bool InferLdLocalModuleVar(GateRef gate);
     bool InferLdExternalModuleVar(GateRef gate);
+    bool InferStObjByName(GateRef gate);
     bool IsNewLexEnv(EcmaOpcode opcode) const;
     bool InferGetIterator(GateRef gate);
     bool InferLoopBeginPhiGate(GateRef gate);
@@ -126,7 +116,6 @@ private:
     GlobalTSTypeRef GetPropType(const GateType type, const JSTaggedValue propertyName) const;
     GlobalTSTypeRef GetPropType(const GateType type, const uint64_t key) const;
     void UpdateQueueForLoopPhi();
-    void TraverseInfer();
 
     inline bool ShouldInferWithLdObjByValue(const GateType &type) const
     {
@@ -139,7 +128,7 @@ private:
     inline bool ShouldInferWithLdObjByName(const GateType &type) const
     {
         return ShouldInferWithLdObjByValue(type) || tsManager_->IsIteratorInstanceTypeKind(type) ||
-            tsManager_->IsInterfaceTypeKind(type);
+            tsManager_->IsInterfaceTypeKind(type) || tsManager_->IsNamespaceTypeKind(type);
     }
 
     inline bool ShouldConvertToBuiltinArray(const GateType &type) const
@@ -162,6 +151,11 @@ private:
         return builder_->GetBytecodeInfo(bcIndex);
     }
 
+    std::pair<GateType, uint32_t> SetAndReturnNamespaceObjType(GateRef gate);
+    GlobalTSTypeRef TryGetNamespaceType(GateRef gate) const;
+    bool IsNamespace(GateRef gate) const;
+    bool CheckNamespaceFunc(GateRef func) const;
+
     bool IsByteCodeGate(const GateRef gate) const
     {
         return jsgateToBytecode_.find(gate) != jsgateToBytecode_.end();
@@ -171,6 +165,7 @@ private:
     Circuit *circuit_ {nullptr};
     GateAccessor gateAccessor_;
     TSManager *tsManager_ {nullptr};
+    PassContext *ctx_ {nullptr};
     LexEnvManager *lexEnvManager_ {nullptr};
     size_t methodId_ {0};
     bool enableLog_ {false};
@@ -182,9 +177,12 @@ private:
     size_t shouldInferNum_ {0};
     size_t normalInferNum_ {0};
     MethodInfo *methodInfo_ {nullptr};
+    const MethodLiteral *methodLiteral_ {nullptr};
     std::vector<bool> inQueue_;
     std::unordered_set<GateRef> needInferGates_ {};
     std::queue<GateRef> pendingQueue_ {};
+    bool needUpdateForLoopPhi_ {true};
+    bool enableGlobalTypeInfer_ {false};
 };
 }  // namespace panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_TYPE_INFER_H
+#endif  // ECMASCRIPT_COMPILER_TYPE_INFERENCE_METHOD_TYPE_INFER_H

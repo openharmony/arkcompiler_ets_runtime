@@ -62,6 +62,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
                                            "Default: 'none'\n"
     "--compiler-type-threshold:            enable to skip methods whose type is no more than threshold. Default: -1\n"
     "--compiler-log-snapshot:              Enable to print snapshot information. Default: 'false'\n"
+    "--compiler-opt-global-typeinfer:      Enable global typeinfer for aot compiler: Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
     "--enable-ark-tools:                   Enable ark tools to debug. Default: 'false'\n"
     "--trace-bc:                           Enable tracing bytecode for aot runtime. Default: 'false'\n"
@@ -135,6 +136,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-log-methods", required_argument, nullptr, OPTION_COMPILER_LOG_METHODS},
         {"compiler-log-snapshot", required_argument, nullptr, OPTION_COMPILER_LOG_SNAPSHOT},
         {"compiler-log-time", required_argument, nullptr, OPTION_COMPILER_LOG_TIME},
+        {"compiler-opt-global-typeinfer", required_argument, nullptr, OPTION_COMPILER_OPT_GLOBAL_TYPEINFER},
         {"compiler-type-threshold", required_argument, nullptr, OPTION_COMPILER_TYPE_THRESHOLD},
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
         {"trace-bc", required_argument, nullptr, OPTION_TRACE_BC},
@@ -537,6 +539,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableOptPGOType(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_GLOBAL_TYPEINFER:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableGlobalTypeInfer(argBool);
                 } else {
                     return false;
                 }

@@ -1035,6 +1035,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(iteratorInstanceType)
                 break;
             }
+            case JSType::TS_NAMESPACE_TYPE: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSNamespaceType::SIZE, 2U);
+                JSHandle<TSNamespaceType> namespaceType = factory->NewTSNamespaceType();
+                DUMP_FOR_HANDLE(namespaceType)
+                break;
+            }
             case JSType::JS_API_ARRAY_LIST: {
                 // 1 : 1 dump fileds number
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSAPIArrayList::SIZE, 1U);

@@ -234,6 +234,23 @@ public:
 
     DECL_DUMP()
 };
+
+class TSNamespaceType : public TSType {
+public:
+    CAST_CHECK(TSNamespaceType, IsTSNamespaceType);
+    static constexpr size_t PROTOTYPE_TYPE_OFFSET = TSType::SIZE;
+
+    ACCESSORS(PropertyType, PROTOTYPE_TYPE_OFFSET, SIZE);
+
+    static void AddKeyAndValue(const JSThread *thread, const JSHandle<TSNamespaceType> &namespaceType,
+                               const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
+
+    static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, const JSHandle<TSNamespaceType> &namespaceType,
+                                         const JSHandle<JSTaggedValue> &propName);
+
+    DECL_VISIT_OBJECT(PROTOTYPE_TYPE_OFFSET, SIZE)
+    DECL_DUMP()
+};
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_TS_TYPES_TS_TYPE_H

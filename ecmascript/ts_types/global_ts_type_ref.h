@@ -37,6 +37,7 @@ enum class TSTypeKind : uint8_t {
 
     // the following typekinds are not recorded in abc files and will be created at compile time
     ITERATOR_INSTANCE,
+    NAMESPACE,
     UNKNOWN,
 
     TYPEKIND_FIRST = CLASS,

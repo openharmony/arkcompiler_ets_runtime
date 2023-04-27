@@ -370,6 +370,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "TSArrayType";
         case JSType::TS_ITERATOR_INSTANCE_TYPE:
             return "TSIteratorInstanceType";
+        case JSType::TS_NAMESPACE_TYPE:
+            return "TSNamespaceType";
         case JSType::JS_API_ARRAYLIST_ITERATOR:
             return "JSArraylistIterator";
         case JSType::LINKED_NODE:
@@ -957,6 +959,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::TS_ITERATOR_INSTANCE_TYPE:
             TSIteratorInstanceType::Cast(obj)->Dump(os);
+            break;
+        case JSType::TS_NAMESPACE_TYPE:
+            TSNamespaceType::Cast(obj)->Dump(os);
             break;
         case JSType::LINKED_NODE:
         case JSType::RB_TREENODE:
@@ -3373,6 +3378,26 @@ void TSIteratorInstanceType::Dump(std::ostream &os) const
     os << "\n";
 }
 
+void TSNamespaceType::Dump(std::ostream &os) const
+{
+    os << " - Dump Namespace Type - " << "\n";
+    os << " - TSNamespaceType globalTSTypeRef: ";
+    GlobalTSTypeRef gt = GetGT();
+    uint64_t globalTSTypeRef = gt.GetType();
+    os << globalTSTypeRef;
+    os << "\n";
+    os << " - TSNamespaceType moduleId: ";
+    uint32_t moduleId = gt.GetModuleId();
+    os << moduleId;
+    os << "\n";
+    os << " - TSNamespaceType localTypeId: ";
+    uint32_t localTypeId = gt.GetLocalId();
+    os << localTypeId;
+    os << "\n";
+    os << "  - Properties: ";
+    DumpArrayClass(TaggedArray::Cast(GetPropertyType().GetTaggedObject()), os);
+}
+
 void SourceTextModule::Dump(std::ostream &os) const
 {
     os << " - Environment: ";
@@ -4077,6 +4102,9 @@ static void DumpObject(TaggedObject *obj,
                 return;
             case JSType::TS_ITERATOR_INSTANCE_TYPE:
                 TSIteratorInstanceType::Cast(obj)->DumpForSnapshot(vec);
+                return;
+            case JSType::TS_NAMESPACE_TYPE:
+                TSNamespaceType::Cast(obj)->DumpForSnapshot(vec);
                 return;
             case JSType::METHOD:
                 Method::Cast(obj)->DumpForSnapshot(vec);
@@ -5273,6 +5301,11 @@ void TSIteratorInstanceType::DumpForSnapshot(std::vector<std::pair<CString, JSTa
 {
     vec.emplace_back("kindGT", JSTaggedValue(GetKindGT().GetType()));
     vec.emplace_back("elementGT", JSTaggedValue(GetElementGT().GetType()));
+}
+
+void TSNamespaceType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
+{
+    vec.emplace_back("PropertyType", GetPropertyType());
 }
 
 void SourceTextModule::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

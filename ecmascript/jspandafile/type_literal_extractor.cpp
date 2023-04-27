@@ -167,6 +167,7 @@ void TypeSummaryExtractor::ProcessTypeSummary(const JSPandaFile *jsPandaFile, co
 TypeAnnotationExtractor::TypeAnnotationExtractor(const JSPandaFile *jsPandaFile, const uint32_t methodOffset)
 {
     ProcessTypeAnnotation(jsPandaFile, methodOffset);
+    CollectTSMethodKind();
 }
 
 void TypeAnnotationExtractor::ProcessTypeAnnotation(const JSPandaFile *jsPandaFile, const uint32_t methodOffset)
@@ -187,10 +188,12 @@ void TypeAnnotationExtractor::ProcessTypeAnnotation(const JSPandaFile *jsPandaFi
             }
             case LiteralTag::LITERALARRAY: {
                 typeIds_.emplace_back(std::get<uint32_t>(value));
+                tags_.emplace_back(tag);
                 break;
             }
             case LiteralTag::BUILTINTYPEINDEX: {
                 typeIds_.emplace_back(static_cast<uint32_t>(std::get<uint8_t>(value)));
+                tags_.emplace_back(tag);
                 break;
             }
             default: {
@@ -200,6 +203,28 @@ void TypeAnnotationExtractor::ProcessTypeAnnotation(const JSPandaFile *jsPandaFi
         }
     });
     ASSERT(bcOffsets_.size() == typeIds_.size());
+    ASSERT(tags_.size() == typeIds_.size());
+}
+
+void TypeAnnotationExtractor::CollectTSMethodKind()
+{
+    ASSERT(bcOffsets_.size() == typeIds_.size());
+    uint32_t length = bcOffsets_.size();
+    for (uint32_t i = 0; i < length; ++i) {
+        if (bcOffsets_[i] != METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET) {
+            continue;
+        }
+
+        if (tags_[i] != LiteralTag::BUILTINTYPEINDEX) {
+            methodTypeOffset_ = typeIds_[i];
+            return;
+        }
+
+        if (typeIds_[i] == METHOD_ANNOTATION_NAMESPACE) {
+            isNamespace_ = true;
+        }
+        typeIds_[i] = 0;  // set default value
+    }
 }
 
 ExportTypeTableExtractor::ExportTypeTableExtractor(const JSPandaFile *jsPandaFile,

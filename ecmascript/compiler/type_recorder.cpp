@@ -39,10 +39,10 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
     TSTypeParser typeParser(tsManager);
     panda_file::File::EntityId fieldId = methodLiteral->GetMethodId();
     TypeAnnotationExtractor annoExtractor(jsPandaFile, fieldId.GetOffset());
+    GlobalTSTypeRef funcGT = typeParser.CreateGT(jsPandaFile, recordName, annoExtractor.GetMethodTypeOffset());
     GlobalTSTypeRef thisGT;
-    GlobalTSTypeRef funcGT;
-    annoExtractor.EnumerateInstsAndTypes([this, &typeParser, &jsPandaFile, &recordName, &thisGT,
-        &funcGT](const int32_t bcOffset, const uint32_t typeId) {
+    annoExtractor.EnumerateInstsAndTypes([this, &typeParser, &jsPandaFile, &recordName,
+        &thisGT](const int32_t bcOffset, const uint32_t typeId) {
         GlobalTSTypeRef gt = typeParser.CreateGT(jsPandaFile, recordName, typeId);
         if (TypeNeedFilter(gt)) {
             return;
@@ -54,10 +54,6 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
         // instances of the class.
         if (bcOffset == METHOD_ANNOTATION_THIS_TYPE_OFFSET) {
             thisGT = gt;
-            return;
-        }
-        if (bcOffset == METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET) {
-            funcGT = gt;
             return;
         }
         auto type = GateType(gt);

@@ -18,7 +18,8 @@ namespace panda::ecmascript {
 void TSObjLayoutInfo::AddKeyAndType(const JSThread *thread, const JSTaggedValue &key, const JSTaggedValue &typeIdVal)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    int number = static_cast<int>(GetNumOfProperties());
+    uint32_t number = GetNumOfProperties();
+    ASSERT(number + 1 <= GetPropertiesCapacity());
     SetNumOfProperties(thread, number + 1);
     SetKey(thread, number, key);
     SetTypeId(thread, number, typeIdVal);
@@ -56,5 +57,33 @@ JSTaggedValue TSObjLayoutInfo::TryGetTypeByIndexSign(const uint32_t keyType)
         }
     }
     return JSTaggedValue::Undefined();
+}
+
+JSHandle<TSObjLayoutInfo> TSObjLayoutInfo::PushBack(const JSThread *thread,
+                                                    const JSHandle<TSObjLayoutInfo> &oldLayout,
+                                                    const JSHandle<JSTaggedValue> &key,
+                                                    const JSHandle<JSTaggedValue> &value)
+{
+    if (oldLayout->GetNumOfProperties() < oldLayout->GetPropertiesCapacity()) {
+        oldLayout->AddKeyAndType(thread, key.GetTaggedValue(), value.GetTaggedValue());
+        return oldLayout;
+    }
+
+    JSHandle<TSObjLayoutInfo> newLayout = ExtendTSObjLayoutInfo(thread, oldLayout);
+    newLayout->AddKeyAndType(thread, key.GetTaggedValue(), value.GetTaggedValue());
+    return newLayout;
+}
+
+JSHandle<TSObjLayoutInfo> TSObjLayoutInfo::ExtendTSObjLayoutInfo(const JSThread *thread,
+                                                                 const JSHandle<TSObjLayoutInfo> &oldLayout,
+                                                                 JSTaggedValue initVal)
+{
+    uint32_t oldLength = oldLayout->GetPropertiesCapacity();
+    ASSERT(oldLength == oldLayout->GetNumOfProperties());
+    uint32_t arrayLength = TSObjLayoutInfo::ComputeArrayLength(TSObjLayoutInfo::ComputeGrowCapacity(oldLength));
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TSObjLayoutInfo> newLayout(factory->ExtendArray(JSHandle<TaggedArray>(oldLayout), arrayLength, initVal));
+    newLayout->SetNumOfProperties(thread, oldLength);
+    return newLayout;
 }
 }  // namespace panda::ecmascript
