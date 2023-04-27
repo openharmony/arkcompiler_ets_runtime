@@ -640,16 +640,22 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
             SourceTextModule::ResolveExport(thread, importedModule, importName, resolveVector);
         // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
         if (resolution->IsNull() || resolution->IsString()) {
-            CString msg = "the requested module '" +
-                          ConvertToString(moduleRequest.GetTaggedValue()) +
-                          "' does not provide an export named '" +
-                          ConvertToString(importName.GetTaggedValue());
-            if (!module->GetEcmaModuleRecordName().IsUndefined()) {
-                msg += "' which imported by '" + ConvertToString(module->GetEcmaModuleRecordName()) + "'";
+            if (thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
+                CString msg = "the requested module '" +
+                            ConvertToString(moduleRequest.GetTaggedValue()) +
+                            "' does not provide an export named '" +
+                            ConvertToString(importName.GetTaggedValue());
+                if (!module->GetEcmaModuleRecordName().IsUndefined()) {
+                    msg += "' which imported by '" + ConvertToString(module->GetEcmaModuleRecordName()) + "'";
+                } else {
+                    msg += "' which imported by '" + ConvertToString(module->GetEcmaModuleFilename()) + "'";
+                }
+                THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
             } else {
-                msg += "' which imported by '" + ConvertToString(module->GetEcmaModuleFilename()) + "'";
+                // if in aot compiation, we should skip this error.
+                envRec->Set(thread, idx, JSTaggedValue::Hole());
+                continue;
             }
-            THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // iii. Call envRec.CreateImportBinding(
         //    in.[[LocalName]], resolution.[[Module]], resolution.[[BindingName]]).
