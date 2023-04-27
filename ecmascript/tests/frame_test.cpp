@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/frames.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;

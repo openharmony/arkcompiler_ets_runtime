@@ -45,6 +45,7 @@
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
 #include "ecmascript/ecma_string_table.h"
@@ -92,6 +93,7 @@
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
 using RandomGenerator = base::RandomGenerator;
+AOTFileManager *JsStackInfo::loader = nullptr;
 /* static */
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &config)
 {
@@ -108,6 +110,12 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &
     auto jsThread = JSThread::Create(vm);
     vm->thread_ = jsThread;
     vm->Initialize();
+    JsStackInfo::loader = vm->GetAOTFileManager();
+#ifdef __aarch64__
+    if (SetThreadInfoCallback != nullptr) {
+        SetThreadInfoCallback(CrashCallback);
+    }
+#endif
     return vm;
 }
 

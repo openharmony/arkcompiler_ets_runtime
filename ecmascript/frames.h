@@ -745,6 +745,16 @@ public:
     {
         return sizeof(InterpretedFrame) / JSTaggedValue::TaggedTypeSize();
     }
+
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(InterpretedFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, type);
+    }
+
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(InterpretedFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, prev);
+    }
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 
     alignas(EAS) JSTaggedValue constpool {JSTaggedValue::Hole()};
@@ -796,6 +806,16 @@ struct InterpretedBuiltinFrame : public base::AlignedStruct<JSTaggedValue::Tagge
     static uint32_t NumOfMembers()
     {
         return sizeof(InterpretedBuiltinFrame) / JSTaggedValue::TaggedTypeSize();
+    }
+
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(InterpretedBuiltinFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, type);
+    }
+
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(InterpretedBuiltinFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, prev);
     }
 
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
@@ -942,6 +962,16 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
         return pc;
     }
 
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(AsmInterpretedFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, type);
+    }
+
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(AsmInterpretedFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, prev);
+    }
+
     alignas(EAS) JSTaggedValue function {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue thisObj {JSTaggedValue::Hole()};
     alignas(EAS) JSTaggedValue acc {JSTaggedValue::Hole()};
@@ -990,6 +1020,16 @@ struct InterpretedEntryFrame : public base::AlignedStruct<JSTaggedValue::TaggedT
         return sizeof(InterpretedEntryFrame) / JSTaggedValue::TaggedTypeSize();
     }
 
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(InterpretedEntryFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, type);
+    }
+
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(InterpretedEntryFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, prev);
+    }
+
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor,
         const RootRangeVisitor &rangeVisitor) const;
     alignas(EAS) const uint8_t *pc {nullptr};
@@ -1033,6 +1073,16 @@ struct AsmInterpretedEntryFrame : public base::AlignedStruct<JSTaggedValue::Tagg
     static AsmInterpretedEntryFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
         return reinterpret_cast<AsmInterpretedEntryFrame *>(const_cast<JSTaggedType *>(sp)) - 1;
+    }
+
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(AsmInterpretedEntryFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, type);
+    }
+
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(AsmInterpretedEntryFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, prev);
     }
 
     alignas(EAS) const uint8_t *pc {nullptr};
@@ -1081,6 +1131,19 @@ struct AsmInterpretedBridgeFrame : public base::AlignedStruct<base::AlignedPoint
     static constexpr size_t GetSize(bool isArch32)
     {
         return isArch32 ? AsmInterpretedBridgeFrame::SizeArch32 : AsmInterpretedBridgeFrame::SizeArch64;
+    }
+
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(AsmInterpretedBridgeFrame, entry) +
+               MEMBER_OFFSET(AsmInterpretedEntryFrame, base) +
+               MEMBER_OFFSET(InterpretedFrameBase, type);
+    }
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(AsmInterpretedBridgeFrame, entry) +
+               MEMBER_OFFSET(AsmInterpretedEntryFrame, base) +
+               MEMBER_OFFSET(InterpretedFrameBase, prev);
     }
 
     AsmInterpretedEntryFrame entry;
@@ -1136,6 +1199,15 @@ struct OptimizedLeaveFrame {
     {
         return returnAddr;
     }
+
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(OptimizedLeaveFrame, type);
+    }
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(OptimizedLeaveFrame, callsiteFp);
+    }
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 };
 
@@ -1177,6 +1249,14 @@ struct OptimizedWithArgvLeaveFrame {
     uintptr_t GetReturnAddr() const
     {
         return returnAddr;
+    }
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, type);
+    }
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, callsiteFp);
     }
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 };
@@ -1337,6 +1417,15 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
     {
         return returnAddr;
     }
+
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(BuiltinFrame, type);
+    }
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(BuiltinFrame, prevFp);
+    }
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
     alignas(EAS) FrameType type;
     alignas(EAS) JSTaggedType *prevFp;
@@ -1414,6 +1503,14 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
     uintptr_t GetReturnAddr() const
     {
         return returnAddr;
+    }
+    static size_t GetTypeOffset()
+    {
+        return MEMBER_OFFSET(BuiltinWithArgvFrame, type);
+    }
+    static size_t GetPrevOffset()
+    {
+        return MEMBER_OFFSET(BuiltinWithArgvFrame, prevFp);
     }
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
     // argv(... this, new.target, function)
@@ -1540,8 +1637,4 @@ private:
     kungfu::CalleeRegAndOffsetVec calleeRegInfo_;
 };
 }  // namespace panda::ecmascript
-extern "C" int step_ark_managed_native_frame(
-    int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, char *buf, size_t buf_sz);
-extern "C" int get_ark_js_heap_crash_info(
-    int pid, uintptr_t *x20, uintptr_t *fp, int out_js_info, char *buf, size_t buf_sz);
 #endif // ECMASCRIPT_FRAMES_H
