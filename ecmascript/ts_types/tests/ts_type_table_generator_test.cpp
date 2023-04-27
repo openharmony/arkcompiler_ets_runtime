@@ -25,6 +25,8 @@ using namespace panda::ecmascript;
 using namespace panda::panda_file;
 using namespace panda::pandasm;
 
+static constexpr uint16_t FIRST_USER_DEFINE_MODULE_ID = static_cast<uint32_t>(ModuleTableIdx::NUM_OF_DEFAULT_TABLES);
+
 class TSTypeTableGeneratorTest : public testing::Test {
 public:
     static void SetUpTestCase()
@@ -61,12 +63,14 @@ HWTEST_F_L0(TSTypeTableGeneratorTest, TestTryGetModuleId)
     uint32_t builtinTableId = tableGenerator.TryGetModuleId(TSTypeTable::BUILTINS_TABLE_NAME);
     uint32_t inferTableId = tableGenerator.TryGetModuleId(TSTypeTable::INFER_TABLE_NAME);
     uint32_t runtimeTableId = tableGenerator.TryGetModuleId(TSTypeTable::RUNTIME_TABLE_NAME);
+    uint32_t genericsTableId = tableGenerator.TryGetModuleId(TSTypeTable::GENERICS_TABLE_NAME);
     uint32_t firstUserModuleId = tableGenerator.TryGetModuleId("test");
-    EXPECT_EQ(primitiveTableId, static_cast<uint32_t>(TSModuleTable::PRIMITIVE_TABLE_ID));
-    EXPECT_EQ(builtinTableId, static_cast<uint32_t>(TSModuleTable::BUILTINS_TABLE_ID));
-    EXPECT_EQ(inferTableId, static_cast<uint32_t>(TSModuleTable::INFER_TABLE_ID));
-    EXPECT_EQ(runtimeTableId, static_cast<uint32_t>(TSModuleTable::RUNTIME_TABLE_ID));
-    EXPECT_EQ(firstUserModuleId, 4U);
+    EXPECT_EQ(primitiveTableId, static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE));
+    EXPECT_EQ(builtinTableId, static_cast<uint32_t>(ModuleTableIdx::BUILTIN));
+    EXPECT_EQ(inferTableId, static_cast<uint32_t>(ModuleTableIdx::INFERRED));
+    EXPECT_EQ(runtimeTableId, static_cast<uint32_t>(ModuleTableIdx::RUNTIME));
+    EXPECT_EQ(genericsTableId, static_cast<uint32_t>(ModuleTableIdx::GENERICS));
+    EXPECT_EQ(firstUserModuleId, FIRST_USER_DEFINE_MODULE_ID);
 }
 
 HWTEST_F_L0(TSTypeTableGeneratorTest, TestTryGetLocalId)

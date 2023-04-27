@@ -63,6 +63,8 @@ private:
     // This function tries to get the type of the function. On failure, the type 'any' is returned.
     GateType TryGetFuncType(GlobalTSTypeRef funcGT) const;
 
+    bool TypeNeedFilter(GlobalTSTypeRef gt) const;
+
     std::unordered_map<int32_t, GateType> bcOffsetGtMap_ {};
     std::unordered_map<int32_t, PGOSampleType> bcOffsetPGOTypeMap_ {};
     std::vector<GateType> argTypes_;

@@ -24,13 +24,6 @@
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 
 namespace panda::ecmascript {
-enum class MTableIdx : uint8_t {
-    PRIMITIVE = 0,
-    BUILTIN,
-    INFERRED_UNTION,
-    NUM_OF_DEFAULT_TABLES,
-};
-
 enum class PropertyType : uint8_t {
     NORMAL = 0,
     STATIC,
@@ -150,12 +143,6 @@ public:
     static constexpr int INITIAL_CAPACITY = ELEMENTS_LENGTH + 1;
     static constexpr int NUMBER_OF_TABLES_INDEX = 0;
     static constexpr int INCREASE_CAPACITY_RATE = 2;
-    // primitive table, builtins table, infer table and runtime table
-    static constexpr int DEFAULT_NUMBER_OF_TABLES = 4;
-    static constexpr int PRIMITIVE_TABLE_ID = 0;
-    static constexpr int BUILTINS_TABLE_ID = 1;
-    static constexpr int INFER_TABLE_ID = 2;
-    static constexpr int RUNTIME_TABLE_ID = 3;
     static constexpr int NOT_FOUND = -1;
 
     static TSModuleTable *Cast(TaggedObject *object)
@@ -374,9 +361,7 @@ public:
 
     inline bool IsUserDefinedClassTypeKind(const GlobalTSTypeRef &gt) const
     {
-        uint32_t m = gt.GetModuleId();
-        return (IsClassTypeKind(gt)) &&
-               (m != TSModuleTable::BUILTINS_TABLE_ID);
+        return IsClassTypeKind(gt) && (!gt.IsBuiltinModule());
     }
 
     EcmaVM *GetEcmaVM() const
@@ -510,18 +495,14 @@ public:
 
     bool IsTSIterator(GlobalTSTypeRef gt) const
     {
-        uint32_t m = gt.GetModuleId();
         uint32_t l = gt.GetLocalId();
-        return (m == static_cast<uint32_t>(TSModuleTable::RUNTIME_TABLE_ID)) &&
-               (l == static_cast<uint32_t>(TSRuntimeType::ITERATOR));
+        return gt.IsRuntimeModule() && (l == static_cast<uint32_t>(TSRuntimeType::ITERATOR));
     }
 
     bool IsTSIteratorResult(GlobalTSTypeRef gt) const
     {
-        uint32_t m = gt.GetModuleId();
         uint32_t l = gt.GetLocalId();
-        return (m == static_cast<uint32_t>(TSModuleTable::RUNTIME_TABLE_ID)) &&
-               (l == static_cast<uint32_t>(TSRuntimeType::ITERATOR_RESULT));
+        return gt.IsRuntimeModule() && (l == static_cast<uint32_t>(TSRuntimeType::ITERATOR_RESULT));
     }
 
     void PUBLIC_API SetCurConstantPool(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
@@ -685,6 +666,31 @@ public:
     kungfu::GateType TryNarrowUnionType(kungfu::GateType gateType);
 
     JSHandle<TaggedArray> GetExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName);
+
+#define TSTYPETABLE_ACCESSOR_LIST(V)       \
+    V(Builtin, ModuleTableIdx::BUILTIN)    \
+    V(Inferred, ModuleTableIdx::INFERRED)  \
+    V(Runtime, ModuleTableIdx::RUNTIME)    \
+    V(Generics, ModuleTableIdx::GENERICS)
+
+#define TSTYPETABLE_ACCESSOR(NAME, MODULEID)                                             \
+    inline GlobalTSTypeRef AddTSTypeTo##NAME##Table(const JSHandle<TSType> &type) const  \
+    {                                                                                    \
+        return AddTSTypeToTypeTable(type, static_cast<uint32_t>(MODULEID));              \
+    }                                                                                    \
+                                                                                         \
+    inline JSHandle<TSTypeTable> Get##NAME##Table() const                                \
+    {                                                                                    \
+        return GetTSTypeTable(static_cast<uint32_t>(MODULEID));                          \
+    }                                                                                    \
+                                                                                         \
+    inline void Set##NAME##Table(const JSHandle<TSTypeTable> &table)                     \
+    {                                                                                    \
+        SetTSTypeTable(table, static_cast<uint32_t>(MODULEID));                          \
+    }
+
+    TSTYPETABLE_ACCESSOR_LIST(TSTYPETABLE_ACCESSOR)
+#undef TSTYPETABLE_ACCESSOR
 
 private:
     NO_COPY_SEMANTIC(TSManager);

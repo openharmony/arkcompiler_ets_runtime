@@ -117,7 +117,7 @@ public:
 
     inline bool IsBaseClassType() const
     {
-        return GetExtensionGT() == GlobalTSTypeRef::Default();
+        return GetExtensionGT().IsDefault();
     }
 };
 

@@ -43,6 +43,8 @@ private:
     static constexpr size_t BUILDIN_TYPE_OFFSET = 20;
     static constexpr size_t DEFAULT_INDEX = 0;
     static constexpr size_t NUM_INDEX_SIG_INDEX = 1;
+    static constexpr size_t NUM_GENERICS_PARA_INDEX = 1;
+    static constexpr size_t GENERICS_PARA_OFFSET = BUILDIN_TYPE_OFFSET + 1;
 
     inline GlobalTSTypeRef GetAndStoreGT(const JSPandaFile *jsPandaFile, uint32_t typeId, const CString &recordName,
                                          uint32_t moduleId = 0, uint32_t localId = 0)
@@ -67,10 +69,35 @@ private:
         table->Set(thread_, localId, type);
     }
 
-    inline bool IsNeedResolve(const TypeLiteralExtractor *typeLiteralExtractor) const
+    inline bool TypeNeedResolve(const TypeLiteralExtractor *typeLiteralExtractor) const
     {
+        if (typeLiteralExtractor->IsGenerics()) {
+            return true;
+        }
+
         TSTypeKind kind = typeLiteralExtractor->GetTypeKind();
         return kind == TSTypeKind::IMPORT || kind == TSTypeKind::INDEXSIG;
+    }
+
+    // Primitive typetable does not correspond to a real TSTypeTable.
+    // We use gt with moduleId of ModuleTableIdx::PRIMITIVE to represent some special values.
+    // In particular, localId after GENERICS_PARA_OFFSET is denotes to
+    // the index of type parameters in generics types by subtracting this offset.
+    inline GlobalTSTypeRef EncodeParaType(const uint32_t typeId)
+    {
+        uint32_t absValue = (~typeId);
+        return GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE), absValue + GENERICS_PARA_OFFSET);
+    }
+
+    inline uint32_t DecodePrarIndex(GlobalTSTypeRef gt)
+    {
+        ASSERT(IsGenericsParaType(gt));
+        return (gt.GetLocalId() - GENERICS_PARA_OFFSET);
+    }
+
+    inline bool IsGenericsParaType(GlobalTSTypeRef gt) const
+    {
+        return gt.IsPrimitiveModule() && (gt.GetLocalId() >= GENERICS_PARA_OFFSET);
     }
 
     GlobalTSTypeRef ParseType(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId);
@@ -152,6 +179,29 @@ private:
 
     GlobalTSTypeRef IterateStarExport(JSHandle<EcmaString> target, const JSPandaFile *jsPandaFile,
                                       const CString &recordName, std::unordered_set<CString> &markSet);
+
+    GlobalTSTypeRef ParseGenericsType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                      TypeLiteralExtractor *typeLiteralExtractor);
+
+    JSHandle<JSTaggedValue> ParseGenericsInstanceType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                      TypeLiteralExtractor *typeLiteralExtractor);
+
+    JSHandle<JSTaggedValue> InstantiateGenericsType(const JSHandle<JSTaggedValue> &genericsType,
+                                                    const std::vector<GlobalTSTypeRef> &paras);
+
+    JSHandle<TSFunctionType> InstantiateFuncGenericsType(const JSHandle<TSFunctionType> &genericsType,
+                                                         const std::vector<GlobalTSTypeRef> &paras);
+
+    JSHandle<TSClassType> InstantiateClassGenericsType(const JSHandle<TSClassType> &genericsType,
+                                                       const std::vector<GlobalTSTypeRef> &paras);
+
+    JSHandle<TSInterfaceType> InstantiateInterfaceGenericsType(const JSHandle<TSInterfaceType> &genericsType,
+                                                               const std::vector<GlobalTSTypeRef> &paras);
+
+    JSHandle<TSObjectType> InstantiateObjGenericsType(const JSHandle<TSObjectType> &oldObjType,
+                                                      const std::vector<GlobalTSTypeRef> &paras);
+
+    GlobalTSTypeRef TryReplaceTypePara(GlobalTSTypeRef gt, const std::vector<GlobalTSTypeRef> &paras);
 
     TSManager *tsManager_ {nullptr};
     EcmaVM *vm_ {nullptr};
