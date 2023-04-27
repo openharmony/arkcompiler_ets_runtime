@@ -385,9 +385,10 @@ template("host_aot_js_test_action") {
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-    _aot_compile_options_ = " --aot-file=" + rebase_path(_test_aot_arg_) +
-                            " --log-level=" + _test_aot_log_level +
-                            " --log-components=all --enable-type-lowering=false"
+    _aot_compile_options_ =
+        " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
+        _test_aot_log_level +
+        " --log-components=compiler --enable-type-lowering=false"
 
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
@@ -575,7 +576,7 @@ template("host_aot_test_action") {
 
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
-        _test_aot_log_level + " --log-components=all"
+        _test_aot_log_level + " --log-components=compiler"
 
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
@@ -637,7 +638,7 @@ template("host_aot_test_action") {
 
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_slowpath_) +
-        " --log-level=" + _test_aot_log_level + " --log-components=all" +
+        " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
         "  --enable-type-lowering=false"
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {

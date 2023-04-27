@@ -282,7 +282,6 @@ public:
     NO_COPY_SEMANTIC(BytecodeCircuitBuilder);
     NO_MOVE_SEMANTIC(BytecodeCircuitBuilder);
     void PUBLIC_API BytecodeToCircuit();
-    int32_t GetJumpOffset(uint32_t bcIndex) const;
     void CollectRegionInfo(uint32_t bcIndex);
     GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc);
 

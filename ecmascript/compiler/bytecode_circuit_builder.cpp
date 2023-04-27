@@ -53,42 +53,6 @@ void BytecodeCircuitBuilder::BuildRegionInfo()
     }
 }
 
-int32_t BytecodeCircuitBuilder::GetJumpOffset(uint32_t bcIndex) const
-{
-    auto pc = GetPCByIndex(bcIndex);
-    auto &info = GetBytecodeInfo(bcIndex);
-    int32_t offset = 0;
-    switch (info.GetOpcode()) {
-        case EcmaOpcode::JEQZ_IMM8:
-        case EcmaOpcode::JNEZ_IMM8:
-        case EcmaOpcode::JMP_IMM8:
-            offset = static_cast<int8_t>(READ_INST_8_0());
-            break;
-        case EcmaOpcode::JNEZ_IMM16:
-        case EcmaOpcode::JEQZ_IMM16:
-        case EcmaOpcode::JMP_IMM16:
-            offset = static_cast<int16_t>(READ_INST_16_0());
-            break;
-        case EcmaOpcode::JMP_IMM32:
-        case EcmaOpcode::JNEZ_IMM32:
-        case EcmaOpcode::JEQZ_IMM32:
-            offset = static_cast<int32_t>(READ_INST_32_0());
-            break;
-        case EcmaOpcode::RETURN:
-        case EcmaOpcode::RETURNUNDEFINED:
-        case EcmaOpcode::SUSPENDGENERATOR_V8:
-        case EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8:
-        case EcmaOpcode::DEPRECATED_SUSPENDGENERATOR_PREF_V8_V8:
-            offset = -(static_cast<int32_t>(pc - GetFirstPC()));
-            break;
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-            break;
-    }
-    return offset;
-}
-
 void BytecodeCircuitBuilder::CollectRegionInfo(uint32_t bcIndex)
 {
     auto pc = pcOffsets_[bcIndex];
@@ -933,18 +897,8 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
                                  inList.data(), GateType::Empty());
     }
     byteCodeToJSGate_[iterator.Index()] = gate;
-    if (bytecodeInfo.IsSuspend() || bytecodeInfo.IsGeneratorResolve()) {
-        auto offsetGate = circuit_->GetConstantGate(MachineType::I32,
-                                                    GetJumpOffset(iterator.Index()),
-                                                    GateType::NJSValue());
-        GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
-        auto updateHotness = circuit_->NewGate(circuit_->UpdateHotness(), {state, depend, offsetGate, jsFunc});
-        gateAcc_.NewIn(gate, 0, updateHotness);
-        gateAcc_.NewIn(gate, 1, updateHotness);
-    } else {
-        gateAcc_.NewIn(gate, 0, state);
-        gateAcc_.NewIn(gate, 1, depend);
-    }
+    gateAcc_.NewIn(gate, 0, state);
+    gateAcc_.NewIn(gate, 1, depend);
     state = gate;
     if (bytecodeInfo.IsThrow()) {
         depend = gate;
@@ -1000,7 +954,6 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, GateRef &state, GateRef
     auto &iterator = bb.GetBytecodeIterator();
     const BytecodeInfo& bytecodeInfo = iterator.GetBytecodeInfo();
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
-    auto offset = GetJumpOffset(iterator.Index());
     if (bytecodeInfo.IsCondJump()) {
         size_t pcOffset = GetPcOffset(iterator.Index());
         auto meta = circuit_->JSBytecode(numValueInputs, bytecodeInfo.GetOpcode(), pcOffset, false, false);
@@ -1010,15 +963,6 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, GateRef &state, GateRef
         gateAcc_.NewIn(gate, 1, depend);
         auto ifTrue = circuit_->NewGate(circuit_->IfTrue(), {gate});
         auto trueRelay = circuit_->NewGate(circuit_->DependRelay(), {ifTrue, gate});
-        if (offset < 0) {
-            // place update hotness Gate when offset is negative.
-            auto offsetGate = circuit_->GetConstantGate(MachineType::I32,
-                                                        offset,
-                                                        GateType::NJSValue());
-            GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
-            ifTrue = circuit_->NewGate(circuit_->UpdateHotness(), {ifTrue, trueRelay, offsetGate, jsFunc});
-            trueRelay = ifTrue;
-        }
         auto ifFalse = circuit_->NewGate(circuit_->IfFalse(), {gate});
         auto falseRelay = circuit_->NewGate(circuit_->DependRelay(), {ifFalse, gate});
         if (bb.succs.size() == 1) {
@@ -1048,16 +992,6 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, GateRef &state, GateRef
     } else {
         ASSERT(bb.succs.size() == 1);
         auto &bbNext = bb.succs.at(0);
-        if (offset < 0) {
-            // place update hotness Gate when offset is negative.
-            auto offsetGate = circuit_->GetConstantGate(MachineType::I32,
-                                                        offset,
-                                                        GateType::NJSValue());
-            GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
-            auto updateHotness = circuit_->NewGate(circuit_->UpdateHotness(), {state, depend, offsetGate, jsFunc});
-            state = updateHotness;
-            depend = updateHotness;
-        }
         SetBlockPred(bb, *bbNext, state, depend);
         bbNext->expandedPreds.push_back({bb.id, iterator.Index(), false});
     }
@@ -1068,15 +1002,10 @@ void BytecodeCircuitBuilder::NewReturn(BytecodeRegion &bb, GateRef &state, GateR
     ASSERT(bb.succs.empty());
     auto &iterator = bb.GetBytecodeIterator();
     const BytecodeInfo& bytecodeInfo = iterator.GetBytecodeInfo();
-    auto offsetGate = circuit_->GetConstantGate(MachineType::I32,
-                                                GetJumpOffset(iterator.Index()),
-                                                GateType::NJSValue());
-    GateRef jsFunc = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
-    auto updateHotness = circuit_->NewGate(circuit_->UpdateHotness(), {state, depend, offsetGate, jsFunc});
     if (bytecodeInfo.GetOpcode() == EcmaOpcode::RETURN) {
         // handle return.dyn bytecode
         auto gate = circuit_->NewGate(circuit_->Return(),
-            { updateHotness, updateHotness, Circuit::NullGate(), circuit_->GetReturnRoot() });
+            { state, depend, Circuit::NullGate(), circuit_->GetReturnRoot() });
         byteCodeToJSGate_[iterator.Index()] = gate;
     } else if (bytecodeInfo.GetOpcode() == EcmaOpcode::RETURNUNDEFINED) {
         // handle returnundefined bytecode
@@ -1084,7 +1013,7 @@ void BytecodeCircuitBuilder::NewReturn(BytecodeRegion &bb, GateRef &state, GateR
                                                   JSTaggedValue::VALUE_UNDEFINED,
                                                   GateType::TaggedValue());
         auto gate = circuit_->NewGate(circuit_->Return(),
-            { updateHotness, updateHotness, constant, circuit_->GetReturnRoot() });
+            { state, depend, constant, circuit_->GetReturnRoot() });
         byteCodeToJSGate_[iterator.Index()] = gate;
     }
 }
@@ -1124,6 +1053,8 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
         ASSERT(stateCur != Circuit::NullGate());
         ASSERT(dependCur != Circuit::NullGate());
         if (IsEntryBlock(bb.id)) {
+            stateCur = circuit_->NewGate(circuit_->UpdateHotness(), {stateCur, dependCur});
+            dependCur = stateCur;
             auto &bbNext = graph_[bb.id + 1];
             SetBlockPred(bb, bbNext, stateCur, dependCur);
             bbNext.expandedPreds.push_back({bb.id, bb.end, false});

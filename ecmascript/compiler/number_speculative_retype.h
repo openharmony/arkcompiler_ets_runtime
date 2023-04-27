@@ -80,6 +80,7 @@ private:
     GateRef VisitNumberRelated(GateRef gate);
     GateRef VisitCallBuiltins(GateRef gate);
     GateRef VisitOthers(GateRef gate);
+    GateRef VisitTypeConvert(GateRef gate);
 
     GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);
 
@@ -93,6 +94,7 @@ private:
     GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType);
     GateRef CheckAndConvertToTagged(GateRef gate, GateType gateType);
     GateRef ConvertToTagged(GateRef gate);
+    GateRef TryConvertConstant(GateRef gate, bool needInt32);
 
     TypeInfo GetOutputTypeInfo(GateRef gate) const
     {
@@ -105,6 +107,16 @@ private:
     {
         auto index = acc_.GetId(gate);
         ASSERT(index < typeInfos_.size());
+        typeInfos_[index] = info;
+    }
+
+    void ResizeAndSetTypeInfo(GateRef gate, TypeInfo info)
+    {
+        auto index = acc_.GetId(gate);
+        if (index >= typeInfos_.size()) {
+            // +1: for size
+            typeInfos_.resize(index + 1, TypeInfo::NONE);
+        }
         typeInfos_[index] = info;
     }
 

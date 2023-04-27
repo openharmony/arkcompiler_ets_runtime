@@ -296,7 +296,11 @@ GateRef CircuitBuilder::TaggedIsInt(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsDouble(GateRef x)
 {
-    return BoolAnd(TaggedIsNumber(x), BoolNot(TaggedIsInt(x)));
+    x = ChangeTaggedPointerToInt64(x);
+    x = Int64And(x, Int64(JSTaggedValue::TAG_MARK));
+    auto left = NotEqual(x, Int64(JSTaggedValue::TAG_INT));
+    auto right = NotEqual(x, Int64(JSTaggedValue::TAG_OBJECT));
+    return BoolAnd(left, right);
 }
 
 GateRef CircuitBuilder::TaggedIsObject(GateRef x)
