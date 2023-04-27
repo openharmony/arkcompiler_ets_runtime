@@ -255,7 +255,7 @@ private:
 private:
     alignas(sizeof(JSTaggedType)) JSThread *thread_ {nullptr};
     alignas(sizeof(JSTaggedType)) uint32_t numArgs_ {0};  // include func, newTarget, this, equal to stackArgs size.
-    __extension__ JSTaggedType stackArgs_[0];  // NOLINT(modernize-avoid-c-arrays)
+    __extension__ alignas(sizeof(JSTaggedType)) JSTaggedType stackArgs_[0];  // NOLINT(modernize-avoid-c-arrays)
 };
 }  // namespace panda::ecmascript
 
