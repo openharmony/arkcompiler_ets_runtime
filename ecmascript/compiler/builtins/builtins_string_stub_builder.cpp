@@ -121,16 +121,20 @@ GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef ob
     return ret;
 }
 
-GateRef BuiltinsStringStubBuilder::FastSubUtf8String(GateRef glue, GateRef thisValue, GateRef from, GateRef len)
+GateRef BuiltinsStringStubBuilder::FastSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len)
 {
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
-    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
+    DEFVARIABLE(result, VariableType::JS_POINTER(), thisValue);
 
     Label exit(env);
     Label lenEqualZero(env);
     Label lenNotEqualZero(env);
+    Label fromEqualZero(env);
+    Label next(env);
+    Label isUtf8(env);
+    Label isUtf16(env);
 
     Branch(Int32Equal(len, Int32(0)), &lenEqualZero, &lenNotEqualZero);
     Bind(&lenEqualZero);
@@ -141,17 +145,51 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf8String(GateRef glue, GateRef thisV
     }
     Bind(&lenNotEqualZero);
     {
-        NewObjectStubBuilder newBuilder(this);
-        newBuilder.SetParameters(glue, 0);
-        Label afterNew(env);
-        newBuilder.AllocLineStringObject(&result, &afterNew, len, true);
-        Bind(&afterNew);
+        Branch(Int32Equal(from, Int32(0)), &fromEqualZero, &next);
+        Bind(&fromEqualZero);
         {
-            GateRef dst = PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET));
-            GateRef source = PtrAdd(PtrAdd(thisValue, IntPtr(LineEcmaString::DATA_OFFSET)), ZExtInt32ToPtr(from));
-            CopyChars(glue, dst, source, len, IntPtr(sizeof(uint8_t)), VariableType::INT8());
-            Jump(&exit);
+            GateRef thisLen = GetLengthFromString(thisValue);
+            Branch(Int32Equal(len, thisLen), &exit, &next);
         }
+        Bind(&next);
+        {
+            Branch(IsUtf8String(thisValue), &isUtf8, &isUtf16);
+            Bind(&isUtf8);
+            {
+                result = FastSubUtf8String(glue, thisValue, from, len);
+                Jump(&exit);
+            }
+            Bind(&isUtf16);
+            {
+                result = FastSubUtf16String(glue, thisValue, from, len);
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsStringStubBuilder::FastSubUtf8String(GateRef glue, GateRef thisValue, GateRef from, GateRef len)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Undefined());
+    Label exit(env);
+
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    Label afterNew(env);
+    newBuilder.AllocLineStringObject(&result, &afterNew, len, true);
+    Bind(&afterNew);
+    {
+        GateRef dst = PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET));
+        GateRef source = PtrAdd(PtrAdd(thisValue, IntPtr(LineEcmaString::DATA_OFFSET)), ZExtInt32ToPtr(from));
+        CopyChars(glue, dst, source, len, IntPtr(sizeof(uint8_t)), VariableType::INT8());
+        Jump(&exit);
     }
     Bind(&exit);
     auto ret = *result;
@@ -171,48 +209,36 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef this
     Label isUtf8(env);
     Label isUtf8Next(env);
     Label isUtf16Next(env);
-    Label lenEqualZero(env);
-    Label lenNotEqualZero(env);
 
-    Branch(Int32Equal(len, Int32(0)), &lenEqualZero, &lenNotEqualZero);
-    Bind(&lenEqualZero);
+    GateRef fromOffset = PtrMul(ZExtInt32ToPtr(from), IntPtr(sizeof(uint16_t) / sizeof(uint8_t)));
+    GateRef source = PtrAdd(PtrAdd(thisValue, IntPtr(LineEcmaString::DATA_OFFSET)), fromOffset);
+    GateRef canBeCompressed = CanBeCompressed(source, len, true);
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+    Label afterNew(env);
+    Branch(canBeCompressed, &isUtf8, &isUtf16);
+    Bind(&isUtf8);
     {
-        result = GetGlobalConstantValue(
-            VariableType::JS_POINTER(), glue, ConstantIndex::EMPTY_STRING_OBJECT_INDEX);
-        Jump(&exit);
+        newBuilder.AllocLineStringObject(&result, &afterNew, len, true);
     }
-    Bind(&lenNotEqualZero);
+    Bind(&isUtf16);
     {
-        GateRef fromOffset = PtrMul(ZExtInt32ToPtr(from), IntPtr(sizeof(uint16_t) / sizeof(uint8_t)));
-        GateRef source = PtrAdd(PtrAdd(thisValue, IntPtr(LineEcmaString::DATA_OFFSET)), fromOffset);
-        GateRef canBeCompressed = CanBeCompressed(source, len, true);
-        NewObjectStubBuilder newBuilder(this);
-        newBuilder.SetParameters(glue, 0);
-        Label afterNew(env);
-        Branch(canBeCompressed, &isUtf8, &isUtf16);
-        Bind(&isUtf8);
+        newBuilder.AllocLineStringObject(&result, &afterNew, len, false);
+    }
+    Bind(&afterNew);
+    {
+        GateRef source1 = PtrAdd(PtrAdd(thisValue, IntPtr(LineEcmaString::DATA_OFFSET)), fromOffset);
+        GateRef dst = PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET));
+        Branch(canBeCompressed, &isUtf8Next, &isUtf16Next);
+        Bind(&isUtf8Next);
         {
-            newBuilder.AllocLineStringObject(&result, &afterNew, len, true);
+            CopyUtf16AsUtf8(glue, source1, dst, len);
+            Jump(&exit);
         }
-        Bind(&isUtf16);
+        Bind(&isUtf16Next);
         {
-            newBuilder.AllocLineStringObject(&result, &afterNew, len, false);
-        }
-        Bind(&afterNew);
-        {
-            GateRef source1 = PtrAdd(PtrAdd(thisValue, IntPtr(LineEcmaString::DATA_OFFSET)), fromOffset);
-            GateRef dst = PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET));
-            Branch(canBeCompressed, &isUtf8Next, &isUtf16Next);
-            Bind(&isUtf8Next);
-            {
-                CopyUtf16AsUtf8(glue, source1, dst, len);
-                Jump(&exit);
-            }
-            Bind(&isUtf16Next);
-            {
-                CopyChars(glue, dst, source1, len, IntPtr(sizeof(uint16_t)), VariableType::INT16());
-                Jump(&exit);
-            }
+            CopyChars(glue, dst, source1, len, IntPtr(sizeof(uint16_t)), VariableType::INT16());
+            Jump(&exit);
         }
     }
     Bind(&exit);
@@ -337,7 +363,7 @@ void BuiltinsStringStubBuilder::CopyUtf16AsUtf8(GateRef glue, GateRef src, GateR
     return;
 }
 
-GateRef BuiltinsStringStubBuilder::GetUtf16Date(GateRef stringData, GateRef index)
+GateRef BuiltinsStringStubBuilder::GetUtf16Data(GateRef stringData, GateRef index)
 {
     return ZExtInt16ToInt32(Load(VariableType::INT16(), PtrAdd(stringData,
         PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint16_t))))));
@@ -348,7 +374,7 @@ GateRef BuiltinsStringStubBuilder::IsASCIICharacter(GateRef data)
     return Int32LessThan(Int32Sub(data, Int32(1)), Int32(base::utf_helper::UTF8_1B_MAX));
 }
 
-GateRef BuiltinsStringStubBuilder::GetUtf8Date(GateRef stringData, GateRef index)
+GateRef BuiltinsStringStubBuilder::GetUtf8Data(GateRef stringData, GateRef index)
 {
     return ZExtInt8ToInt32(Load(VariableType::INT8(), PtrAdd(stringData,
         PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint8_t))))));
@@ -391,9 +417,9 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8
         Label loopEnd1(env);
         GateRef lhsTemp;
         if (lhsIsUtf8) {
-            lhsTemp = GetUtf8Date(lhsData, *i);
+            lhsTemp = GetUtf8Data(lhsData, *i);
         } else {
-            lhsTemp = GetUtf16Date(lhsData, *i);
+            lhsTemp = GetUtf16Data(lhsData, *i);
         }
         Branch(Int32NotEqual(lhsTemp, first), &nextCount1, &nextCount);
         Bind(&nextCount1);
@@ -408,9 +434,9 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8
             {
                 GateRef lhsTemp1;
                 if (lhsIsUtf8) {
-                    lhsTemp1 = GetUtf8Date(lhsData, *i);
+                    lhsTemp1 = GetUtf8Data(lhsData, *i);
                 } else {
-                    lhsTemp1 = GetUtf16Date(lhsData, *i);
+                    lhsTemp1 = GetUtf16Data(lhsData, *i);
                 }
                 Branch(Int32NotEqual(lhsTemp1, first), &lhsNotEqualFirst, &nextCount);
                 Bind(&lhsNotEqualFirst);
@@ -440,15 +466,15 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8
                     {
                         GateRef lhsTemp2;
                         if (lhsIsUtf8) {
-                            lhsTemp2 = GetUtf8Date(lhsData, *j);
+                            lhsTemp2 = GetUtf8Data(lhsData, *j);
                         } else {
-                            lhsTemp2 = GetUtf16Date(lhsData, *j);
+                            lhsTemp2 = GetUtf16Data(lhsData, *j);
                         }
                         GateRef rhsTemp;
                         if (rhsIsUtf8) {
-                            rhsTemp = GetUtf8Date(rhsData, *k);
+                            rhsTemp = GetUtf8Data(rhsData, *k);
                         } else {
-                            rhsTemp = GetUtf16Date(rhsData, *k);
+                            rhsTemp = GetUtf16Data(rhsData, *k);
                         }
                         Branch(Int32Equal(lhsTemp2, rhsTemp), &loopEnd2, &nextCount2);
                     }
@@ -493,6 +519,7 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhs, GateRef rhs, GateR
     Label maxNotLessZero(env);
     Label rhsIsUtf8(env);
     Label rhsIsUtf16(env);
+    Label posRMaxNotGreaterLhs(env);
 
     GateRef lhsCount = GetLengthFromString(lhs);
     GateRef rhsCount = GetLengthFromString(rhs);
@@ -520,6 +547,9 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhs, GateRef rhs, GateR
                 Branch(Int32LessThan(max, Int32(0)), &exit, &maxNotLessZero);
                 Bind(&maxNotLessZero);
                 {
+                    GateRef posRMax = Int32Add(*posTag, rhsCount);
+                    Branch(Int32GreaterThan(posRMax, lhsCount), &exit, &posRMaxNotGreaterLhs);
+                    Bind(&posRMaxNotGreaterLhs);
                     GateRef rhsData = PtrAdd(rhs, IntPtr(LineEcmaString::DATA_OFFSET));
                     GateRef lhsData = PtrAdd(lhs, IntPtr(LineEcmaString::DATA_OFFSET));
                     Branch(IsUtf8String(rhs), &rhsIsUtf8, &rhsIsUtf16);

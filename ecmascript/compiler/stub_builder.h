@@ -619,6 +619,7 @@ public:
     void Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel);
 
     GateRef FlattenString(GateRef glue, GateRef str);
+    void FlattenString(GateRef str, Variable *flatStr, Label *fastPath, Label *slowPath);
     void Comment(GateRef glue, const std::string &str);
     GateRef ToNumber(GateRef glue, GateRef tagged);
 private:
