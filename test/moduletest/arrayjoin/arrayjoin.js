@@ -19,5 +19,13 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-var a=new Array(1).join("  ");
+var a = new Array(1).join("  ");
 print(a.length);
+var str1 = JSON.stringify(Array(3).join("0"));
+print(str1);
+var str2 = JSON.stringify(new Array(3).join("0"));
+print(str2);
+const arr = []
+arr.length = 3
+var str3 = JSON.stringify(arr.join("0"));
+print(str3)

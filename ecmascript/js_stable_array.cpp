@@ -242,10 +242,16 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     CVector<JSHandle<EcmaString>> vec;
     JSMutableHandle<JSTaggedValue> elementHandle(thread, JSTaggedValue::Undefined());
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    uint32_t elementslength = elements->GetLength();
-    uint32_t len = elementslength > length ? length : elementslength;
+    uint32_t elementsLength = elements->GetLength();
+    uint32_t len = elementsLength > length ? length : elementsLength;
+    if (elementsLength == 0 && length != 0) {
+        len = length;
+    }
     for (uint32_t k = 0; k < len; k++) {
-        JSTaggedValue element = elements->Get(k);
+        JSTaggedValue element = JSTaggedValue::Undefined();
+        if (k < elementsLength) {
+            element = elements->Get(k);
+        }
         if (!element.IsUndefinedOrNull() && !element.IsHole()) {
             if (!element.IsString()) {
                 elementHandle.Update(element);
