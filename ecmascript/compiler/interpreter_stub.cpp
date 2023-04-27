@@ -3218,8 +3218,7 @@ DECLARE_ASM_HANDLER(HandleGetmodulenamespaceImm8)
 
     GateRef index = ReadInst8_0(pc);
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndex), { IntToTaggedInt(index) });
-    varAcc = moduleRef;
-    DISPATCH_WITH_ACC(GETMODULENAMESPACE_IMM8);
+    CHECK_EXCEPTION_WITH_VARACC(moduleRef, INT_PTR(GETMODULENAMESPACE_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleWideGetmodulenamespacePrefImm16)
@@ -3228,8 +3227,7 @@ DECLARE_ASM_HANDLER(HandleWideGetmodulenamespacePrefImm16)
 
     GateRef index = ReadInst16_1(pc);
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespaceByIndex), { Int16ToTaggedInt(index) });
-    varAcc = moduleRef;
-    DISPATCH_WITH_ACC(WIDE_GETMODULENAMESPACE_PREF_IMM16);
+    CHECK_EXCEPTION_WITH_VARACC(moduleRef, INT_PTR(WIDE_GETMODULENAMESPACE_PREF_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedGetmodulenamespacePrefId32)
@@ -3239,8 +3237,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedGetmodulenamespacePrefId32)
     GateRef stringId = ReadInst32_1(pc);
     GateRef prop = GetStringFromConstPool(glue, constpool, stringId);
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(GetModuleNamespace), { prop });
-    varAcc = moduleRef;
-    DISPATCH_WITH_ACC(DEPRECATED_GETMODULENAMESPACE_PREF_ID32);
+    CHECK_EXCEPTION_WITH_VARACC(moduleRef, INT_PTR(DEPRECATED_GETMODULENAMESPACE_PREF_ID32));
 }
 
 DECLARE_ASM_HANDLER(HandleLdlocalmodulevarImm8)
@@ -3249,8 +3246,7 @@ DECLARE_ASM_HANDLER(HandleLdlocalmodulevarImm8)
 
     GateRef index = ReadInst8_0(pc);
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndex), { Int8ToTaggedInt(index) });
-    varAcc = moduleRef;
-    DISPATCH_WITH_ACC(LDLOCALMODULEVAR_IMM8);
+    CHECK_EXCEPTION_WITH_VARACC(moduleRef, INT_PTR(LDLOCALMODULEVAR_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleWideLdlocalmodulevarPrefImm16)
@@ -3259,8 +3255,7 @@ DECLARE_ASM_HANDLER(HandleWideLdlocalmodulevarPrefImm16)
 
     GateRef index = ReadInst16_1(pc);
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndex), { Int16ToTaggedInt(index) });
-    varAcc = moduleRef;
-    DISPATCH_WITH_ACC(WIDE_LDLOCALMODULEVAR_PREF_IMM16);
+    CHECK_EXCEPTION_WITH_VARACC(moduleRef, INT_PTR(WIDE_LDLOCALMODULEVAR_PREF_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
@@ -3269,8 +3264,7 @@ DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
 
     GateRef index = ReadInst8_0(pc);
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndex), { Int8ToTaggedInt(index) });
-    varAcc = moduleRef;
-    DISPATCH_WITH_ACC(LDEXTERNALMODULEVAR_IMM8);
+    CHECK_EXCEPTION_WITH_VARACC(moduleRef, INT_PTR(LDEXTERNALMODULEVAR_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
@@ -3279,8 +3273,7 @@ DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
 
     GateRef index = ReadInst16_1(pc);
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndex), { Int16ToTaggedInt(index) });
-    varAcc = moduleRef;
-    DISPATCH_WITH_ACC(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16);
+    CHECK_EXCEPTION_WITH_VARACC(moduleRef, INT_PTR(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16));
 }
 
 DECLARE_ASM_HANDLER(HandleDeprecatedLdmodulevarPrefId32Imm8)
@@ -3291,8 +3284,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedLdmodulevarPrefId32Imm8)
     GateRef flag = ZExtInt8ToInt32(ReadInst8_5(pc));
     GateRef key = GetStringFromConstPool(glue, constpool, stringId);
     GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdModuleVar), { key, IntToTaggedInt(flag) });
-    varAcc = moduleRef;
-    DISPATCH_WITH_ACC(DEPRECATED_LDMODULEVAR_PREF_ID32_IMM8);
+    CHECK_EXCEPTION_WITH_VARACC(moduleRef, INT_PTR(DEPRECATED_LDMODULEVAR_PREF_ID32_IMM8));
 }
 
 DECLARE_ASM_HANDLER(HandleStmodulevarImm8)
