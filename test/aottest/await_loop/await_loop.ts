@@ -18,11 +18,17 @@ function bar() {
     print(5);
 }
 
+function bar2() {
+    print(6);
+}
 async function foo() {
     let a:number[] = [];
-    for (let i = 0; i<3; ++i) {
+    for (let i = 0; i<2; ++i) {
         await bar();
+        for (let j = 0; j<2; ++j) {
+            await bar2();
+        }
     }
 }
 
-foo();
+foo()
