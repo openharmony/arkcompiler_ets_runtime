@@ -14,6 +14,10 @@
  */
 
 #include "ecmascript/compiler/aot_file/stub_file_info.h"
+#include "ecmascript/compiler/aot_file/aot_version.h"
+#include "ecmascript/compiler/aot_file/elf_builder.h"
+#include "ecmascript/compiler/aot_file/elf_reader.h"
+#include "ecmascript/compiler/binary_section.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/platform/file.h"
 
@@ -21,32 +25,86 @@ extern const uint8_t _binary_stub_an_start[];
 extern const uint32_t _binary_stub_an_length;
 
 namespace panda::ecmascript {
-void StubFileInfo::Save(const std::string &filename)
+void StubFileInfo::Save(const std::string &filename, Triple triple)
 {
     std::string realPath;
     if (!RealPath(filename, realPath, false)) {
         return;
     }
 
-    if (totalCodeSize_ == 0) {
-        LOG_COMPILER(FATAL) << "error: code size of generated stubs is empty!";
+    std::ofstream file(realPath.c_str(), std::ofstream::binary);
+    ASSERT(GetCodeUnitsNum() == ASMSTUB_MODULE_NUM);
+    SetStubNum(entries_.size());
+    ModuleSectionDes &des = des_[0];
+    // add section
+    uint64_t funcEntryAddr = reinterpret_cast<uint64_t>(entries_.data());
+    uint32_t funcEntrySize = sizeof(FuncEntryDes) * entryNum_;
+    des.SetSecAddrAndSize(ElfSecName::ARK_FUNCENTRY, funcEntryAddr, funcEntrySize);
+    uint64_t asmStubAddr = GetAsmStubAddr();
+    uint32_t asmStubSize = GetAsmStubSize();
+    des.SetSecAddrAndSize(ElfSecName::ARK_ASMSTUB, asmStubAddr, asmStubSize);
+    std::vector<uint32_t> moduleInfo = {1};
+    uint64_t secSizeInfoAddr = reinterpret_cast<uint64_t>(moduleInfo.data());
+    des.SetSecAddrAndSize(ElfSecName::ARK_MODULEINFO, secSizeInfoAddr, sizeof(uint32_t));
+
+    ElfBuilder builder(des_, GetDumpSectionNames());
+    llvm::ELF::Elf64_Ehdr header;
+    builder.PackELFHeader(header, base::FileHeader::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
+    file.write(reinterpret_cast<char *>(&header), sizeof(llvm::ELF::Elf64_Ehdr));
+    builder.PackStubELFSections(file);
+    builder.PackELFSegment(file);
+    file.close();
+}
+
+bool StubFileInfo::MmapLoad()
+{
+    std::string filename = STUB_AN_FILE;
+    std::string realPath;
+    if (!RealPath(filename, realPath, false)) {
+        LOG_COMPILER(ERROR) << "Can not load stub file from path [ " << filename << " ], "
+                            << "please execute ark_stub_compiler with options --stub-file.";
+        return false;
     }
 
-    std::ofstream file(realPath.c_str(), std::ofstream::binary);
-    SetStubNum(entries_.size());
-    file.write(reinterpret_cast<char *>(&entryNum_), sizeof(entryNum_));
-    file.write(reinterpret_cast<char *>(entries_.data()), sizeof(FuncEntryDes) * entryNum_);
-    uint32_t moduleNum = GetCodeUnitsNum();
-    file.write(reinterpret_cast<char *>(&moduleNum), sizeof(moduleNum_));
-    file.write(reinterpret_cast<char *>(&totalCodeSize_), sizeof(totalCodeSize_));
-    uint32_t asmStubSize = GetAsmStubSize();
-    file.write(reinterpret_cast<char *>(&asmStubSize), sizeof(asmStubSize));
-    uint64_t asmStubAddr = GetAsmStubAddr();
-    file.write(reinterpret_cast<char *>(asmStubAddr), asmStubSize);
-    for (size_t i = 0; i < moduleNum; i++) {
-        des_[i].SaveSectionsInfo(file);
+    fileMapMem_ = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
+    if (fileMapMem_.GetOriginAddr() == nullptr) {
+        LOG_ECMA(ERROR) << "File mmap failed";
+        return false;
     }
-    file.close();
+    PagePreRead(fileMapMem_.GetOriginAddr(), fileMapMem_.GetSize());
+    moduleNum_ = ASMSTUB_MODULE_NUM;
+    des_.resize(moduleNum_);
+
+    ElfReader reader(fileMapMem_);
+    std::vector<ElfSecName> secs = GetDumpSectionNames();
+    reader.ParseELFSections(des_, secs);
+    if (!reader.ParseELFSegment()) {
+        LOG_ECMA(ERROR) << "modify mmap area permission failed";
+        return false;
+    }
+
+    ModuleSectionDes &des = des_[0];
+    uint64_t funcEntryAddr = des.GetSecAddr(ElfSecName::ARK_FUNCENTRY);
+    uint32_t funcEntrySize = des.GetSecSize(ElfSecName::ARK_FUNCENTRY);
+    FuncEntryDes *entryDes = reinterpret_cast<FuncEntryDes *>(funcEntryAddr);
+    entryNum_ = funcEntrySize / sizeof(FuncEntryDes);
+    entries_.assign(entryDes, entryDes + entryNum_);
+    uint64_t asmStubAddr = des.GetSecAddr(ElfSecName::ARK_ASMSTUB);
+    uint32_t asmStubSize = des.GetSecSize(ElfSecName::ARK_ASMSTUB);
+    SetAsmStubAddr(asmStubAddr);
+    SetAsmStubSize(asmStubSize);
+
+    for (auto &entry : entries_) {
+        if (entry.IsGeneralRTStub()) {
+            uint64_t begin = GetAsmStubAddr();
+            entry.codeAddr_ += begin;
+        } else {
+            auto moduleDes = des_[entry.moduleIndex_];
+            entry.codeAddr_ += moduleDes.GetSecAddr(ElfSecName::TEXT);
+        }
+    }
+    LOG_COMPILER(INFO) << "loaded stub file successfully";
+    return true;
 }
 
 bool StubFileInfo::Load()
@@ -57,31 +115,25 @@ bool StubFileInfo::Load()
     }
 
     BinaryBufferParser binBufparser(const_cast<uint8_t *>(_binary_stub_an_start), _binary_stub_an_length);
-    binBufparser.ParseBuffer(&entryNum_, sizeof(entryNum_));
-    entries_.resize(entryNum_);
-    binBufparser.ParseBuffer(entries_.data(), sizeof(FuncEntryDes) * entryNum_);
-    binBufparser.ParseBuffer(&moduleNum_, sizeof(moduleNum_));
+    moduleNum_ = ASMSTUB_MODULE_NUM;
     des_.resize(moduleNum_);
-    binBufparser.ParseBuffer(&totalCodeSize_, sizeof(totalCodeSize_));
 
-    if (totalCodeSize_ == 0) {
-        LOG_COMPILER(ERROR) << "error: code in the binary stub is empty!";
-        return false;
-    }
+    ExecutedMemoryAllocator::AllocateBuf(_binary_stub_an_length, stubsMem_);
 
-    ExecutedMemoryAllocator::AllocateBuf(totalCodeSize_, stubsMem_);
-    uint64_t codeAddress = reinterpret_cast<uint64_t>(stubsMem_.addr_);
-    uint32_t curUnitOffset = 0;
-    uint32_t asmStubSize = 0;
-    binBufparser.ParseBuffer(&asmStubSize, sizeof(asmStubSize));
+    ElfReader reader(stubsMem_);
+    std::vector<ElfSecName> secs = GetDumpSectionNames();
+    reader.ParseELFSections(binBufparser, des_, secs);
+    
+    ModuleSectionDes &des = des_[0];
+    uint64_t funcEntryAddr = des.GetSecAddr(ElfSecName::ARK_FUNCENTRY);
+    uint32_t funcEntrySize = des.GetSecSize(ElfSecName::ARK_FUNCENTRY);
+    FuncEntryDes *entryDes = reinterpret_cast<FuncEntryDes *>(funcEntryAddr);
+    entryNum_ = funcEntrySize / sizeof(FuncEntryDes);
+    entries_.assign(entryDes, entryDes + entryNum_);
+    uint64_t asmStubAddr = des.GetSecAddr(ElfSecName::ARK_ASMSTUB);
+    uint32_t asmStubSize = des.GetSecSize(ElfSecName::ARK_ASMSTUB);
+    SetAsmStubAddr(asmStubAddr);
     SetAsmStubSize(asmStubSize);
-    binBufparser.ParseBuffer(reinterpret_cast<void *>(codeAddress), asmStubSize);
-    SetAsmStubAddr(codeAddress);
-    curUnitOffset += asmStubSize;
-
-    for (size_t i = 0; i < moduleNum_; i++) {
-        des_[i].LoadSectionsInfo(binBufparser, curUnitOffset, codeAddress);
-    }
 
     for (auto &entry : entries_) {
         if (entry.IsGeneralRTStub()) {
@@ -95,6 +147,14 @@ bool StubFileInfo::Load()
     LOG_COMPILER(INFO) << "loaded stub file successfully";
     PageProtect(stubsMem_.addr_, stubsMem_.size_, PAGE_PROT_EXEC_READ);
     return true;
+}
+
+const std::vector<ElfSecName> &StubFileInfo::GetDumpSectionNames()
+{
+    static const std::vector<ElfSecName> secNames = {ElfSecName::TEXT,         ElfSecName::STRTAB,
+                                                     ElfSecName::ARK_STACKMAP, ElfSecName::ARK_FUNCENTRY,
+                                                     ElfSecName::ARK_ASMSTUB,  ElfSecName::ARK_MODULEINFO};
+    return secNames;
 }
 
 void StubFileInfo::Dump() const

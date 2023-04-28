@@ -22,7 +22,7 @@ class PUBLIC_API StubFileInfo : public AOTFileInfo {
 public:
     StubFileInfo() = default;
     ~StubFileInfo() override = default;
-    void Save(const std::string &filename);
+    void Save(const std::string &filename, Triple triple);
 
     void AddModuleDes(ModuleSectionDes &moduleDes)
     {
@@ -75,7 +75,11 @@ public:
     void Dump() const DUMP_API_ATTR;
 
 private:
+    static constexpr uint32_t ASMSTUB_MODULE_NUM = 3;
+
+    bool MmapLoad();
     bool Load();
+    const std::vector<ElfSecName> &GetDumpSectionNames();
     void *asmStubAddr_ {nullptr};
     size_t asmStubSize_ {0};
     std::vector<int> asmStubTempHolder_ {};

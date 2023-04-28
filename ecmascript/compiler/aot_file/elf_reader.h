@@ -27,14 +27,30 @@ class ModuleSectionDes;
 
 class ElfReader {
 public:
-    ElfReader(MemMap fileMapMem) : fileMapMem_(fileMapMem) {};
+    ElfReader(const MemMap &fileMapMem) : fileMapMem_(fileMapMem) {};
+    ElfReader(ExecutedMemoryAllocator::ExeMem &stubsMem) : stubsMem_(stubsMem) {};
     ~ElfReader() = default;
     bool VerifyELFHeader(uint32_t version, bool strictMatch);
     void ParseELFSections(ModuleSectionDes &des, std::vector<ElfSecName> &secs);
+    void ParseELFSections(std::vector<ModuleSectionDes> &des, std::vector<ElfSecName> &secs);
+    void ParseELFSections(BinaryBufferParser &parser, std::vector<ModuleSectionDes> &des, std::vector<ElfSecName> &secs);
     bool ParseELFSegment();
+    ModuleSectionDes::ModuleRegionInfo GetCurModuleInfo(uint32_t i, llvm::ELF::Elf64_Off offset);
+    void SeparateTextSections(std::vector<ModuleSectionDes> &des, const uintptr_t &secAddr,
+        llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &moduleInfoOffset);
+    void SeparateArkStackMapSections(std::vector<ModuleSectionDes> &des, const uintptr_t &secAddr,
+        llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &moduleInfoOffset);
+    void SeparateTextSections(BinaryBufferParser &parser, std::vector<ModuleSectionDes> &des,
+        const uint64_t &secAddr, llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &curShOffset);
+    void SeparateArkStackMapSections(BinaryBufferParser &parser, std::vector<ModuleSectionDes> &des,
+        const uint64_t &secAddr, llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &curShOffset);
 
 private:
+    static constexpr uint32_t TEXT_SEC_ALIGN = 16;
+    static constexpr uint32_t ASMSTUB_MODULE_NUM = 3;
+    ExecutedMemoryAllocator::ExeMem stubsMem_ {};
     MemMap fileMapMem_ {};
+    std::vector<ModuleSectionDes::ModuleRegionInfo> moduleInfo_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_AOT_FILE_ELF_READER_H

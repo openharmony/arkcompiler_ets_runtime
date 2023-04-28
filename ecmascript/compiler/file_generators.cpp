@@ -126,8 +126,7 @@ void Module::CollectModuleSectionDes(ModuleSectionDes &moduleDes, bool stub) con
         if (stub && IsRelaSection(sec)) {
             moduleDes.EraseSec(sec);
         } else { // aot need relocated; stub don't need collect relocated section
-            moduleDes.SetSecAddr(reinterpret_cast<uint64_t>(secInfo.first), sec);
-            moduleDes.SetSecSize(secInfo.second, sec);
+            moduleDes.SetSecAddrAndSize(sec, reinterpret_cast<uint64_t>(secInfo.first), secInfo.second);
             moduleDes.SetStartIndex(startIndex_);
             moduleDes.SetFuncCount(funcCount_);
         }
@@ -281,7 +280,7 @@ void StubFileGenerator::SaveStubFile(const std::string &filename)
     RunLLVMAssembler();
     RunAsmAssembler();
     CollectCodeInfo();
-    stubInfo_.Save(filename);
+    stubInfo_.Save(filename, cfg_.GetTriple());
 }
 
 void AOTFileGenerator::SaveAOTFile(const std::string &filename)
