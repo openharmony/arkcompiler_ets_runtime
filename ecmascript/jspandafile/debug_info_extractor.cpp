@@ -210,7 +210,7 @@ const LocalVariableTable &DebugInfoExtractor::GetLocalVariableTable(const panda_
 const std::string &DebugInfoExtractor::GetSourceFile(const panda_file::File::EntityId methodId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    static const char *sourceFile = "";
+    static const std::string sourceFile = "";
 
     auto iter = methods_.find(methodId.GetOffset());
     if (iter == methods_.end()) {
@@ -226,7 +226,7 @@ const std::string &DebugInfoExtractor::GetSourceFile(const panda_file::File::Ent
 const std::string &DebugInfoExtractor::GetSourceCode(const panda_file::File::EntityId methodId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    static const char *sourceCode = "";
+    static const std::string sourceCode = "";
 
     auto iter = methods_.find(methodId.GetOffset());
     if (iter == methods_.end()) {
