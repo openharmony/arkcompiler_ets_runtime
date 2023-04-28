@@ -170,9 +170,7 @@ struct BytecodeRegion {
     std::set<size_t> loopbackBlocks {}; // List of loopback block ids
     bool isDead {false};
     bool phiAcc {false};
-    bool isLoopExit {false};
-    bool isLoopBody {false};
-    size_t loopHead {0};
+    size_t loopDepth {0};
     std::set<uint16_t> phi {}; // phi node
     std::set<GateRef> phiGate {}; // phi gate
     size_t numOfStatePreds {0};
@@ -273,9 +271,11 @@ public:
           enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
           pcOffsets_(methodPCInfo.pcOffsets),
           frameStateBuilder_(this, circuit, methodLiteral),
-          loopAnalysis_(this, circuit->chunk()),
           methodName_(name), recordName_(recordName),
-          bytecodes_(bytecodes)
+          bytecodes_(bytecodes),
+          dfsList_(circuit->chunk()),
+          loopExitToVregGate_(circuit->chunk()),
+          loopExitToAccGate_(circuit->chunk())
     {
     }
     ~BytecodeCircuitBuilder() = default;
@@ -292,8 +292,36 @@ public:
 
     GateRef GetGateByBcIndex(uint32_t bcIndex) const
     {
-        ASSERT(bcIndex < byteCodeToJSGate_.size());
-        return byteCodeToJSGate_[bcIndex];
+        ASSERT(bcIndex < byteCodeToJSGates_.size());
+        if (byteCodeToJSGates_[bcIndex].size() > 0) {
+            ASSERT(byteCodeToJSGates_[bcIndex].size() == 1);
+            return byteCodeToJSGates_[bcIndex].at(0);
+        }
+        return Circuit::NullGate();
+    }
+
+    const std::vector<GateRef>& GetGatesByBcIndex(uint32_t bcIndex) const
+    {
+        ASSERT(bcIndex < byteCodeToJSGates_.size());
+        return byteCodeToJSGates_[bcIndex];
+    }
+
+    uint32_t GetBcIndexByGate(GateRef gate) const
+    {
+        return jsGatesToByteCode_.at(gate);
+    }
+
+    void UpdateBcIndexGate(GateRef gate, uint32_t bcIndex)
+    {
+        ASSERT(gateAcc_.GetOpCode(gate) == OpCode::JS_BYTECODE);
+        ASSERT(bcIndex < byteCodeToJSGates_.size());
+        byteCodeToJSGates_[bcIndex].emplace_back(gate);
+        jsGatesToByteCode_[gate] = bcIndex;
+    }
+
+    const std::vector<std::pair<size_t, GateRef>>& GetLoopHeads() const
+    {
+        return loopHeads_;
     }
 
     [[nodiscard]] const MethodLiteral* GetMethod() const
@@ -325,6 +353,11 @@ public:
     {
         return suspendAndResumeGates_;
     }
+    
+    void UpdateAsyncRelatedGate(GateRef gate)
+    {
+        suspendAndResumeGates_.emplace_back(gate);
+    };
 
     inline bool HasTypes() const
     {
@@ -440,6 +473,11 @@ public:
     {
         return frameStateBuilder_.GetNumOfFrameState();
     }
+    
+    bool EnableLoopOptimization() const
+    {
+        return (!HasTryCatch()) && (loopHeads_.size() != 0);
+    }
 
 private:
     void CollectTryCatchBlockInfo(ExceptionInfo &Exception);
@@ -459,13 +497,13 @@ private:
     void CollectPredsInfo();
     void NewMerge(GateRef &state, GateRef &depend, size_t numOfIns);
     void NewLoopBegin(BytecodeRegion &bb, GateRef &state, GateRef &depend);
-    void NewLoopExit(BytecodeRegion &bb, GateRef &state, GateRef &depend);
+    void NewLoopExit(GateRef &state, GateRef &depend);
+    void TryInsertLoopExit(BytecodeRegion &bb, BytecodeRegion &bbNext, GateRef &state, GateRef &depend);
     void BuildBlockCircuitHead(BytecodeRegion &bb, GateRef &state, GateRef &depend);
     std::vector<GateRef> CreateGateInList(const BytecodeInfo &info, const GateMetaData *meta);
     void SetBlockPred(BytecodeRegion &bb, BytecodeRegion &bbNext, const GateRef &state, const GateRef &depend);
     void SetLoopBlockPred(BytecodeRegion &bb, BytecodeRegion &bbNext,
                           GateRef &state, GateRef &depend);
-    void SetLoopExitBlockPred(BytecodeRegion &bb, GateRef &state, GateRef &depend);
     GateRef NewConst(const BytecodeInfo &info);
     void NewJSGate(BytecodeRegion &bb, GateRef &state, GateRef &depend);
     void NewJump(BytecodeRegion &bb, GateRef &state, GateRef &depend);
@@ -475,6 +513,13 @@ private:
     void NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, GateRef &currentPhi);
     GateRef NewLoopBackPhi(BytecodeRegion &bb, uint16_t reg, bool acc);
     GateRef NewLoopForwardPhi(BytecodeRegion &bb, uint16_t reg, bool acc);
+    bool IsLoopExitValueExists(GateRef loopExit, uint16_t reg, bool acc);
+    GateRef GetLoopExitValue(GateRef loopExit, uint16_t reg, bool acc);
+    GateRef CreateLoopExitValue(GateRef loopExit, uint16_t reg, bool acc, GateRef value);
+    GateRef NewLoopExitValue(GateRef loopExit, uint16_t reg, bool acc, GateRef value);
+    GateRef NewValueFromPredBB(BytecodeRegion &bb, size_t idx, GateRef exit, uint16_t reg, bool acc);
+    
+
     void BuildCircuit();
     GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
     void SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate);
@@ -485,6 +530,10 @@ private:
     void PrintDefsitesInfo(const std::unordered_map<uint16_t, std::set<size_t>> &defsitesInfo);
     void BuildRegionInfo();
     void BuildFrameArgs();
+    size_t LoopExitCount(size_t from, size_t to);
+    void CollectLoopBack();
+    void ComputeLoopDepth(size_t loopHead);
+    void CountLoopBackEdge(size_t fromId, size_t toId);
 
     inline bool IsEntryBlock(const size_t bbId) const
     {
@@ -503,7 +552,8 @@ private:
 
     TSManager *tsManager_;
     Circuit *circuit_;
-    std::vector<GateRef> byteCodeToJSGate_;
+    std::vector<std::vector<GateRef>> byteCodeToJSGates_;
+    std::unordered_map<GateRef, size_t> jsGatesToByteCode_;
     BytecodeGraph graph_;
     const JSPandaFile *file_ {nullptr};
     const MethodLiteral *method_ {nullptr};
@@ -517,13 +567,17 @@ private:
     std::vector<const uint8_t*> pcOffsets_;
     std::map<std::pair<kungfu::GateRef, uint16_t>, kungfu::GateRef> resumeRegToRestore_ {};
     FrameStateBuilder frameStateBuilder_;
-    LoopAnalysis loopAnalysis_;
     std::string methodName_;
     const CString &recordName_;
     Bytecodes *bytecodes_;
     RegionsInfo regionsInfo_{};
     std::vector<BytecodeInfo> infoData_ {};
     bool hasTryCatch_ {false};
+    std::vector<std::pair<size_t, GateRef>> loopHeads_;
+    size_t loopSize_{0};
+    ChunkVector<size_t> dfsList_;
+    ChunkMap<std::pair<GateRef, uint16_t>, GateRef> loopExitToVregGate_;
+    ChunkMap<GateRef, GateRef> loopExitToAccGate_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

@@ -430,7 +430,10 @@ public:
     int GetInt32FromConstant(GateRef gate) const;
     bool IsInGateNull(GateRef gate, size_t idx) const;
     bool IsSelector(GateRef g) const;
+    bool IsValueSelector(GateRef g) const;
     bool IsControlCase(GateRef gate) const;
+    bool IsLoopExit(GateRef gate) const;
+    bool IsLoopExitRelated(GateRef gate) const;
     bool IsLoopHead(GateRef gate) const;
     bool IsLoopBack(GateRef gate) const;
     bool IsState(GateRef gate) const;
@@ -463,6 +466,7 @@ public:
     void GetDependUses(GateRef gate, std::vector<GateRef>& dependUses);
     bool IsFrameStateIn(GateRef gate, size_t index) const;
     void DeleteStateSplitAndFrameState(GateRef gate);
+    void EliminateRedundantPhi();
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
     GateType GetLeftType(GateRef gate) const;
     GateType GetRightType(GateRef gate) const;
@@ -584,6 +588,7 @@ private:
     friend class Circuit;
     friend class LLVMIRBuilder;
     friend class Scheduler;
+    friend class LoopPeeling;
 };
 
 class ConstGateAccessor {

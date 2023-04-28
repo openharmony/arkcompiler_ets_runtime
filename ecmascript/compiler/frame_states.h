@@ -119,8 +119,10 @@ private:
     void ComputeLiveState();
     void ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo, size_t bbId);
     bool IsAsyncResolveOrSusp(const BytecodeInfo &bytecodeInfo);
-    bool MergeIntoPredBC(uint32_t predPc);
+    bool MergeIntoPredBC(uint32_t predPc, size_t diff);
     bool MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb);
+    size_t LoopExitCount(BytecodeRegion *bb, BytecodeRegion *bbNext);
+    GateRef TryGetLoopExitValue(GateRef value, size_t diff);
     FrameStateInfo *GetOrOCreateBCEndStateInfo(uint32_t bcIndex)
     {
         auto currentInfo = bcEndStateInfos_[bcIndex];

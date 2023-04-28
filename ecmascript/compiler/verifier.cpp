@@ -17,11 +17,15 @@
 
 #include <cmath>
 #include <stack>
+#include <string>
 #include <unordered_set>
+#include <vector>
 
+#include "ecmascript/compiler/gate_meta_data.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/ecma_macros.h"
+#include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript::kungfu {
 bool Verifier::RunDataIntegrityCheck(const Circuit *circuit)

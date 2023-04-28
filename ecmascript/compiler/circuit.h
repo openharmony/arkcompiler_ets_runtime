@@ -219,6 +219,7 @@ private:
     bool IsFirstOutNull(GateRef gate) const;
     bool IsInGateNull(GateRef gate, size_t idx) const;
     GateRef GetIn(GateRef gate, size_t idx) const;
+    bool IsValueSelector(GateRef gate) const;
     bool IsSelector(GateRef gate) const;
     bool IsControlCase(GateRef gate) const;
     bool IsLoopHead(GateRef gate) const;
