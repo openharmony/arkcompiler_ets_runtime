@@ -988,19 +988,19 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::TS_OBJECT_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSObjectType::SIZE, 3U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSObjectType::SIZE, 4U);
                 JSHandle<TSObjectType> objectType = factory->NewTSObjectType(0);
                 DUMP_FOR_HANDLE(objectType)
                 break;
             }
             case JSType::TS_CLASS_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSClassType::SIZE, 6U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSClassType::SIZE, 7U);
                 JSHandle<TSClassType> classType = factory->NewTSClassType();
                 DUMP_FOR_HANDLE(classType)
                 break;
             }
             case JSType::TS_INTERFACE_TYPE: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSInterfaceType::SIZE, 3U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), TSInterfaceType::SIZE, 4U);
                 JSHandle<TSInterfaceType> interfaceType = factory->NewTSInterfaceType();
                 DUMP_FOR_HANDLE(interfaceType)
                 break;

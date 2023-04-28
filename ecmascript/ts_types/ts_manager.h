@@ -20,7 +20,6 @@
 #include "ecmascript/compiler/compilation_driver.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/jspandafile/type_literal_extractor.h"
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 
@@ -230,25 +229,14 @@ public:
         return builtinOffsets_[index - static_cast<uint32_t>(BuiltinTypeId::BUILTIN_OFFSET)];
     }
 
-    inline GlobalTSTypeRef PUBLIC_API GetPropType(kungfu::GateType gateType, JSTaggedValue propertyName) const
+    inline GlobalTSTypeRef PUBLIC_API GetPropType(GlobalTSTypeRef gt, JSTaggedValue propertyName) const
     {
-        return GetPropType(gateType, JSHandle<JSTaggedValue>(vm_->GetJSThread(), propertyName));
+        return GetPropType(gt, JSHandle<JSTaggedValue>(thread_, propertyName));
     }
 
-    inline GlobalTSTypeRef PUBLIC_API GetPropType(kungfu::GateType gateType, JSHandle<JSTaggedValue> propertyName) const
-    {
-        GlobalTSTypeRef gt = gateType.GetGTRef();
-        return GetPropType(gt, propertyName);
-    }
+    GlobalTSTypeRef PUBLIC_API GetPropType(GlobalTSTypeRef gt, const uint64_t key) const;
 
-    GlobalTSTypeRef PUBLIC_API GetPropType(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> propertyName) const;
-
-    // use for object
-    inline GlobalTSTypeRef PUBLIC_API GetPropType(kungfu::GateType gateType, const uint64_t key) const
-    {
-        GlobalTSTypeRef gt = gateType.GetGTRef();
-        return GetPropType(gt, key);
-    }
+    GlobalTSTypeRef PUBLIC_API GetIndexSignType(GlobalTSTypeRef objType, kungfu::GateType indexType) const;
 
     inline GlobalTSTypeRef PUBLIC_API CreateClassInstanceType(kungfu::GateType gateType)
     {
@@ -261,8 +249,6 @@ public:
     GlobalTSTypeRef PUBLIC_API GetClassType(GlobalTSTypeRef classInstanceGT) const;
 
     JSHandle<TSClassType> GetExtendedClassType(JSHandle<TSClassType> classType) const;
-
-    GlobalTSTypeRef PUBLIC_API GetPropType(GlobalTSTypeRef gt, const uint64_t key) const;
 
     uint32_t PUBLIC_API GetUnionTypeLength(GlobalTSTypeRef gt) const;
 
@@ -712,7 +698,9 @@ private:
 
     GlobalTSTypeRef FindIteratorInstanceInInferTable(GlobalTSTypeRef kindGt, GlobalTSTypeRef elementGt) const;
 
-    TSTypeKind PUBLIC_API GetTypeKind(const GlobalTSTypeRef &gt) const;
+    GlobalTSTypeRef GetPropType(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> propertyName) const;
+
+    TSTypeKind GetTypeKind(const GlobalTSTypeRef &gt) const;
 
     std::string GetClassTypeStr(GlobalTSTypeRef gt) const;
 

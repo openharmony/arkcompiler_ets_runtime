@@ -288,6 +288,32 @@ GlobalTSTypeRef TSClassInstanceType::GetPropTypeGT(JSThread *thread, JSHandle<TS
     return propTypeGT;
 }
 
+GlobalTSTypeRef TSClassInstanceType::GetIndexSignType(JSThread *thread,
+                                                      const JSHandle<TSClassInstanceType> &classInstanceType,
+                                                      const uint32_t typeId)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    GlobalTSTypeRef classTypeGT = classInstanceType->GetClassGT();
+    JSHandle<JSTaggedValue> type = tsManager->GetTSType(classTypeGT);
+    // Es2abc no longer obeys that what is stored in classinstance types must be classtype,
+    // Retains the follwoing branch until they change it.
+    if (!type->IsTSClassType()) {
+        return GlobalTSTypeRef::Default();
+    }
+    JSHandle<TSClassType> classType(type);
+    if (classType->GetIndexSigns().IsUndefined()) {
+        return GlobalTSTypeRef::Default();
+    }
+
+    JSHandle<TSObjLayoutInfo> indexSignInfo(thread, classType->GetIndexSigns());
+    JSTaggedValue valueType = indexSignInfo->TryGetTypeByIndexSign(typeId);
+    if (valueType.IsInt()) {
+        return GlobalTSTypeRef(static_cast<uint32_t>(valueType.GetInt()));
+    }
+    return GlobalTSTypeRef::Default();
+}
+
 GlobalTSTypeRef TSObjectType::GetPropTypeGT(JSThread *thread, JSHandle<TSObjectType> objectType,
                                             JSHandle<JSTaggedValue> propName)
 {
@@ -304,6 +330,21 @@ GlobalTSTypeRef TSObjectType::GetPropTypeGT(JSThread *thread, JSHandle<TSObjectT
         return GlobalTSTypeRef(gtRawData);
     }
 
+    return GlobalTSTypeRef::Default();
+}
+
+GlobalTSTypeRef TSObjectType::GetIndexSignType(JSThread *thread, const JSHandle<TSObjectType> &objectType,
+                                               const uint32_t typeId)
+{
+    if (objectType->GetIndexSigns().IsUndefined()) {
+        return GlobalTSTypeRef::Default();
+    }
+    DISALLOW_GARBAGE_COLLECTION;
+    JSHandle<TSObjLayoutInfo> indexSignInfo(thread, objectType->GetIndexSigns());
+    JSTaggedValue valueType = indexSignInfo->TryGetTypeByIndexSign(typeId);
+    if (valueType.IsInt()) {
+        return GlobalTSTypeRef(static_cast<uint32_t>(valueType.GetInt()));
+    }
     return GlobalTSTypeRef::Default();
 }
 
@@ -388,5 +429,20 @@ GlobalTSTypeRef TSInterfaceType::GetPropTypeGT(JSThread *thread, JSHandle<TSInte
     }
 
     return propTypeGT;
+}
+
+GlobalTSTypeRef TSInterfaceType::GetIndexSignType(JSThread *thread, const JSHandle<TSInterfaceType> &interfaceType,
+                                                  const uint32_t typeId)
+{
+    if (interfaceType->GetIndexSigns().IsUndefined()) {
+        return GlobalTSTypeRef::Default();
+    }
+    DISALLOW_GARBAGE_COLLECTION;
+    JSHandle<TSObjLayoutInfo> indexSignInfo(thread, interfaceType->GetIndexSigns());
+    JSTaggedValue valueType = indexSignInfo->TryGetTypeByIndexSign(typeId);
+    if (valueType.IsInt()) {
+        return GlobalTSTypeRef(static_cast<uint32_t>(valueType.GetInt()));
+    }
+    return GlobalTSTypeRef::Default();
 }
 } // namespace panda::ecmascript

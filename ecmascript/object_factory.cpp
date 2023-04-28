@@ -3205,6 +3205,7 @@ JSHandle<TSObjectType> ObjectFactory::NewTSObjectType(uint32_t numOfKeys)
     JSHandle<TSObjectType> objectType(thread_, header);
     objectType->SetHClass(thread_, JSTaggedValue::Undefined());
     objectType->SetObjLayoutInfo(thread_, JSTaggedValue::Undefined());
+    objectType->SetIndexSigns(thread_, JSTaggedValue::Undefined());
     objectType->SetGT(GlobalTSTypeRef::Default());
 
     JSHandle<TSObjLayoutInfo> tsPropInfo = CreateTSObjLayoutInfo(numOfKeys);
@@ -3225,6 +3226,7 @@ JSHandle<TSClassType> ObjectFactory::NewTSClassType()
     classType->SetConstructorType(thread_, JSTaggedValue::Undefined());
     classType->SetPrototypeType(thread_, JSTaggedValue::Undefined());
     classType->SetName(thread_, JSTaggedValue::Undefined());
+    classType->SetIndexSigns(thread_, JSTaggedValue::Undefined());
     classType->SetExtensionGT(GlobalTSTypeRef::Default());
     classType->SetHasLinked(false);
 
@@ -3243,6 +3245,7 @@ JSHandle<TSInterfaceType> ObjectFactory::NewTSInterfaceType()
     interfaceType->SetGT(GlobalTSTypeRef::Default());
     interfaceType->SetExtends(thread_, extends);
     interfaceType->SetFields(thread_, JSTaggedValue::Undefined());
+    interfaceType->SetIndexSigns(thread_, JSTaggedValue::Undefined());
 
     return interfaceType;
 }

@@ -61,7 +61,11 @@ public:
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSObjectType> objectType,
                                          JSHandle<JSTaggedValue> propName);
 
-    ACCESSORS(ObjLayoutInfo, PROPERTIES_OFFSET, HCLASS_OFFSET);
+    static GlobalTSTypeRef GetIndexSignType(JSThread *thread, const JSHandle<TSObjectType> &objectType,
+                                            const uint32_t typeId);
+
+    ACCESSORS(ObjLayoutInfo, PROPERTIES_OFFSET, INDEX_SIGNS_OFFSET);
+    ACCESSORS(IndexSigns, INDEX_SIGNS_OFFSET, HCLASS_OFFSET);
     ACCESSORS(HClass, HCLASS_OFFSET, SIZE);
 
     DECL_VISIT_OBJECT(PROPERTIES_OFFSET, SIZE)
@@ -91,7 +95,8 @@ public:
     ACCESSORS(InstanceType, INSTANCE_TYPE_OFFSET, CONSTRUCTOR_TYPE_OFFSET);
     ACCESSORS(ConstructorType, CONSTRUCTOR_TYPE_OFFSET, PROTOTYPE_TYPE_OFFSET);
     ACCESSORS(PrototypeType, PROTOTYPE_TYPE_OFFSET, NAME_OFFSET);
-    ACCESSORS(Name, NAME_OFFSET, EXTENSION_GT_OFFSET);
+    ACCESSORS(Name, NAME_OFFSET, INDEX_SIGNS_OFFSET);
+    ACCESSORS(IndexSigns, INDEX_SIGNS_OFFSET, EXTENSION_GT_OFFSET);
     ACCESSORS_ATTACHED_TYPEREF(ExtensionGT, EXTENSION_GT_OFFSET, BIT_FIELD_OFFSET);
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
@@ -123,6 +128,9 @@ public:
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSClassInstanceType> classInstanceType,
                                          JSHandle<JSTaggedValue> propName);
 
+    static GlobalTSTypeRef GetIndexSignType(JSThread *thread, const JSHandle<TSClassInstanceType> &classInstanceType,
+                                            const uint32_t typeId);
+
     static constexpr size_t CLASS_GT_OFFSET = TSType::SIZE;
     static constexpr size_t CREATE_CLASS_OFFSET = 1;
     ACCESSORS_ATTACHED_TYPEREF(ClassGT, CLASS_GT_OFFSET, LAST_OFFSET);
@@ -151,9 +159,13 @@ public:
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSInterfaceType> classInstanceType,
                                          JSHandle<JSTaggedValue> propName);
 
+    static GlobalTSTypeRef GetIndexSignType(JSThread *thread, const JSHandle<TSInterfaceType> &interfaceType,
+                                            const uint32_t typeId);
+
     static constexpr size_t EXTENDS_TYPE_ID_OFFSET = TSType::SIZE;
     ACCESSORS(Extends, EXTENDS_TYPE_ID_OFFSET, KEYS_OFFSET);
-    ACCESSORS(Fields, KEYS_OFFSET, SIZE);
+    ACCESSORS(Fields, KEYS_OFFSET, INDEX_SIGNS_OFFSET);
+    ACCESSORS(IndexSigns, INDEX_SIGNS_OFFSET, SIZE);
 
     DECL_VISIT_OBJECT(EXTENDS_TYPE_ID_OFFSET, SIZE)
     DECL_DUMP()

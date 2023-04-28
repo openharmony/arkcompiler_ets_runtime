@@ -590,7 +590,7 @@ bool TypeInfer::InferLdObjByIndex(GateRef gate)
     }
 
     if (ShouldInferWithLdObjByValue(inValueType)) {
-        auto key = gateAccessor_.GetConstantValue((gateAccessor_.GetValueIn(gate, 0)));
+        uint64_t key = gateAccessor_.GetConstantValue((gateAccessor_.GetValueIn(gate, 0)));  // 0: index of key
         auto type = GetPropType(inValueType, key);
         return UpdateType(gate, type);
     }
@@ -787,7 +787,7 @@ bool TypeInfer::InferLdObjByValue(GateRef gate)
             if (tsManager_->IsTypedArrayType(objType)) {
                 return UpdateType(gate, GateType::NumberType());
             }
-            auto value = gateAccessor_.GetConstantValue(valueGate);
+            uint64_t value = gateAccessor_.GetConstantValue(valueGate);
             auto type = GetPropType(objType, value);
             return UpdateType(gate, type);
         }
@@ -1070,6 +1070,26 @@ GlobalTSTypeRef TypeInfer::ConvertPrimitiveToBuiltin(const GateType &gateType)
             builtinGt = GlobalTSTypeRef::Default();
     }
     return builtinGt;
+}
+
+GlobalTSTypeRef TypeInfer::GetPropType(const GateType type, const JSTaggedValue propertyName) const
+{
+    GlobalTSTypeRef objGT(type.Value());
+    GlobalTSTypeRef propGT = tsManager_->GetPropType(objGT, propertyName);
+    if (!propGT.IsDefault()) {
+        return propGT;
+    }
+    return tsManager_->GetIndexSignType(objGT, GateType::StringType());
+}
+
+GlobalTSTypeRef TypeInfer::GetPropType(const GateType type, const uint64_t key) const
+{
+    GlobalTSTypeRef objGT(type.Value());
+    GlobalTSTypeRef propGT = tsManager_->GetPropType(objGT, key);
+    if (!propGT.IsDefault()) {
+        return propGT;
+    }
+    return tsManager_->GetIndexSignType(objGT, GateType::NumberType());
 }
 
 void TypeInfer::PrintAllByteCodesTypes() const

@@ -82,6 +82,22 @@ public:
     }
 
     template <class Callback>
+    void EnumerateTypesWithIntKey(const uint32_t numIndex, const Callback &callback)
+    {
+        ASSERT(numIndex < array_.size());
+        const uint32_t gap = 2;
+        uint32_t length = std::get<uint32_t>(array_[numIndex]);
+        ASSERT(numIndex + length * gap < array_.size());
+        for (uint32_t i = 0; i < length; i++) {
+            uint32_t keyIndex = numIndex + i * gap + KEY_OFFSET;
+            uint32_t valueIndex = numIndex + i * gap + VALUE_OFFSET;
+            uint32_t key = GetIntValue(keyIndex);
+            uint32_t value = GetIntValue(valueIndex);
+            callback(key, value);
+        }
+    }
+
+    template <class Callback>
     void EnumerateProperties(const uint32_t numIndex, const uint32_t gap, const Callback &callback)
     {
         ASSERT(numIndex < array_.size());
