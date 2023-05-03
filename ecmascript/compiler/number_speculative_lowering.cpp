@@ -414,6 +414,9 @@ void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)
 {
     auto type = acc_.GetParamGateType(gate);
     if (!tsManager_->IsArrayTypeKind(type)) {
+        // return checked index value
+        acc_.SetGateType(gate, GateType::NJSValue());
+        acc_.SetMachineType(gate, MachineType::I32);
         return;
     }
     Environment env(gate, circuit_, &builder_);
@@ -427,6 +430,9 @@ void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)
     }
     GateRef condition = builder_.Int32LessThan(index, length);
     builder_.DeoptCheck(condition, frameState, DeoptType::LARGEINDEX);
+    // return checked index value
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.SetMachineType(gate, MachineType::I32);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), index);
 }
 
@@ -439,14 +445,14 @@ GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
     switch (Op) {
         case TypedBinOp::TYPED_ADD: {
             if (!leftRange.MaybeAddOverflowOrUnderflow(rightRange)) {
-                return builder_.Int32Add(left, right);
+                return builder_.Int32Add(left, right, GateType::NJSValue());
             }
             res = builder_.AddWithOverflow(left, right);
             break;
         }
         case TypedBinOp::TYPED_SUB: {
             if (!leftRange.MaybeSubOverflowOrUnderflow(rightRange)) {
-                return builder_.Int32Sub(left, right);
+                return builder_.Int32Sub(left, right, GateType::NJSValue());
             }
             res = builder_.SubWithOverflow(left, right);
             break;
@@ -469,13 +475,13 @@ GateRef NumberSpeculativeLowering::CalculateDoubles(GateRef left, GateRef right)
     GateRef res = Circuit::NullGate();
     switch (Op) {
         case TypedBinOp::TYPED_ADD:
-            res = builder_.DoubleAdd(left, right);
+            res = builder_.DoubleAdd(left, right, GateType::NJSValue());
             break;
         case TypedBinOp::TYPED_SUB:
-            res = builder_.DoubleSub(left, right);
+            res = builder_.DoubleSub(left, right, GateType::NJSValue());
             break;
         case TypedBinOp::TYPED_MUL:
-            res = builder_.DoubleMul(left, right);
+            res = builder_.DoubleMul(left, right, GateType::NJSValue());
             break;
         default:
             break;
@@ -553,14 +559,15 @@ template<TypedBinOp Op>
 GateRef NumberSpeculativeLowering::ShiftInts(GateRef left, GateRef right)
 {
     GateRef value = Circuit::NullGate();
-    GateRef shift = builder_.Int32And(right, GetConstInt32(0x1f)); // 0x1f: bit mask of shift value
+    GateRef bitmask = GetConstInt32(0x1f); // 0x1f: bit mask of shift value
+    GateRef shift = builder_.Int32And(right, bitmask, GateType::NJSValue());
     switch (Op) {
         case TypedBinOp::TYPED_SHL: {
-            value = builder_.Int32LSL(left, shift);
+            value = builder_.Int32LSL(left, shift, GateType::NJSValue());
             break;
         }
         case TypedBinOp::TYPED_SHR: {
-            value = builder_.Int32LSR(left, shift);
+            value = builder_.Int32LSR(left, shift, GateType::NJSValue());
             RangeInfo leftRange = GetRange(left);
             RangeInfo rightRange = GetRange(right);
             if (!leftRange.MaybeShrOverflow(rightRange)) {
@@ -572,7 +579,7 @@ GateRef NumberSpeculativeLowering::ShiftInts(GateRef left, GateRef right)
             break;
         }
         case TypedBinOp::TYPED_ASHR: {
-            value = builder_.Int32ASR(left, shift);
+            value = builder_.Int32ASR(left, shift, GateType::NJSValue());
             break;
         }
         default:
@@ -589,15 +596,15 @@ GateRef NumberSpeculativeLowering::LogicalInts(GateRef left, GateRef right)
     GateRef value = Circuit::NullGate();
     switch (Op) {
         case TypedBinOp::TYPED_AND: {
-            value = builder_.Int32And(left, right);
+            value = builder_.Int32And(left, right, GateType::NJSValue());
             break;
         }
         case TypedBinOp::TYPED_OR: {
-            value = builder_.Int32Or(left, right);
+            value = builder_.Int32Or(left, right, GateType::NJSValue());
             break;
         }
         case TypedBinOp::TYPED_XOR: {
-            value = builder_.Int32Xor(left, right);
+            value = builder_.Int32Xor(left, right, GateType::NJSValue());
             break;
         }
         default:
@@ -620,7 +627,7 @@ GateRef NumberSpeculativeLowering::MonocularInt(GateRef value)
             res = CalculateInts<TypedBinOp::TYPED_SUB>(value, GetConstInt32(1));
             break;
         case TypedUnOp::TYPED_NEG:
-            res = builder_.Int32Sub(GetConstInt32(0), value);
+            res = builder_.Int32Sub(GetConstInt32(0), value, GateType::NJSValue());
             break;
         default:
             break;

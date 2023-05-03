@@ -305,7 +305,7 @@ public:
     GateRef DefaultCase(GateRef switchBranch);
     GateRef DependRelay(GateRef state, GateRef depend);
     GateRef BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
-        GateRef left, GateRef right);
+        GateRef left, GateRef right, GateType gateType = GateType::Empty());
     GateRef BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right);
     static MachineType GetMachineTypeFromVariableType(VariableType type);
     GateRef GetCallBuiltinId(GateRef method);
@@ -346,9 +346,9 @@ public:
     void StoreWithNoBarrier(VariableType type, GateRef base, GateRef offset, GateRef value);
 
 #define ARITHMETIC_BINARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                 \
-    inline GateRef NAME(GateRef x, GateRef y)                                             \
+    inline GateRef NAME(GateRef x, GateRef y, GateType type = GateType::Empty())          \
     {                                                                                     \
-        return BinaryArithmetic(circuit_->OPCODEID(), MACHINETYPEID, x, y);               \
+        return BinaryArithmetic(circuit_->OPCODEID(), MACHINETYPEID, x, y, type);         \
     }
 
     BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(ARITHMETIC_BINARY_OP_WITH_BITWIDTH)
