@@ -28,6 +28,7 @@ public:
     void GenerateCircuit() override {}
 
     GateRef StringAt(GateRef obj, GateRef index);
+    GateRef FastSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len);
     GateRef FastSubUtf8String(GateRef glue, GateRef thisValue, GateRef from, GateRef len);
     GateRef FastSubUtf16String(GateRef glue, GateRef thisValue, GateRef from, GateRef len);
     void CopyChars(GateRef glue, GateRef dst, GateRef source, GateRef sourceLength, GateRef size, VariableType type);
@@ -38,9 +39,9 @@ public:
     GateRef CreateFromEcmaString(GateRef glue, GateRef obj, GateRef index);
 private:
     GateRef CanBeCompressed(GateRef utf16Data, GateRef utf16Len, bool isUtf16);
-    GateRef GetUtf16Date(GateRef stringData, GateRef index);
+    GateRef GetUtf16Data(GateRef stringData, GateRef index);
     GateRef IsASCIICharacter(GateRef data);
-    GateRef GetUtf8Date(GateRef stringData, GateRef index);
+    GateRef GetUtf8Data(GateRef stringData, GateRef index);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_STRING_STUB_BUILDER_H

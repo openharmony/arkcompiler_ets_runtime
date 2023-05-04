@@ -160,6 +160,7 @@ DECLARE_BUILTINS(CharCodeAt)
     Label exit(env);
     Label posTagIsDouble(env);
     Label thisIsHeapobject(env);
+    Label flattenFastPath(env);
 
     Branch(TaggedIsUndefinedOrNull(thisValue), &slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
@@ -169,7 +170,10 @@ DECLARE_BUILTINS(CharCodeAt)
         Branch(IsString(thisValue), &isString, &slowPath);
         Bind(&isString);
         {
-            GateRef thisLen = GetLengthFromString(thisValue);
+            DEFVARIABLE(thisFlat, VariableType::JS_POINTER(), thisValue);
+            FlattenString(thisValue, &thisFlat, &flattenFastPath, &slowPath);
+            Bind(&flattenFastPath);
+            GateRef thisLen = GetLengthFromString(*thisFlat);
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
             Bind(&posTagNotUndefined);
             {
@@ -193,7 +197,7 @@ DECLARE_BUILTINS(CharCodeAt)
                     Bind(&posNotLessZero);
                     {
                         BuiltinsStringStubBuilder stringBuilder(this);
-                        res = IntToTaggedPtr(stringBuilder.StringAt(thisValue, *pos));
+                        res = IntToTaggedPtr(stringBuilder.StringAt(*thisFlat, *pos));
                         Jump(&exit);
                     }
                 }
@@ -231,6 +235,8 @@ DECLARE_BUILTINS(IndexOf)
     Label nextCount(env);
     Label posNotLessThanLen(env);
     Label thisIsHeapobject(env);
+    Label flattenFastPath(env);
+    Label flattenFastPath1(env);
 
     Branch(TaggedIsUndefinedOrNull(thisValue), &slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
@@ -282,8 +288,14 @@ DECLARE_BUILTINS(IndexOf)
                     }
                     Bind(&nextCount);
                     {
+                        DEFVARIABLE(thisFlat, VariableType::JS_POINTER(), thisValue);
+                        DEFVARIABLE(searchFlat, VariableType::JS_POINTER(), searchTag);
+                        FlattenString(thisValue, &thisFlat, &flattenFastPath, &slowPath);
+                        Bind(&flattenFastPath);
+                        FlattenString(searchTag, &searchFlat, &flattenFastPath1, &slowPath);
+                        Bind(&flattenFastPath1);
                         BuiltinsStringStubBuilder stringBuilder(this);
-                        GateRef resPos = stringBuilder.StringIndexOf(thisValue, searchTag, *pos);
+                        GateRef resPos = stringBuilder.StringIndexOf(*thisFlat, *searchFlat, *pos);
                         Branch(Int32GreaterThanOrEqual(resPos, Int32(0)), &resPosGreaterZero, &exit);
                         Bind(&resPosGreaterZero);
                         {
@@ -345,6 +357,7 @@ DECLARE_BUILTINS(Substring)
     Label startGreatEnd(env);
     Label startNotGreatEnd(env);
     Label thisIsHeapobject(env);
+    Label flattenFastPath(env);
 
     Branch(TaggedIsUndefinedOrNull(thisValue), &slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
@@ -447,19 +460,13 @@ DECLARE_BUILTINS(Substring)
             }
             Bind(&countRes);
             {
-                BuiltinsStringStubBuilder stringBuilder(this);
                 GateRef len = Int32Sub(*to, *from);
-                Label isUtf8(env);
-                Label isUtf16(env);
-                Branch(IsUtf8String(thisValue), &isUtf8, &isUtf16);
-                Bind(&isUtf8);
+                DEFVARIABLE(thisFlat, VariableType::JS_POINTER(), thisValue);
+                FlattenString(thisValue, &thisFlat, &flattenFastPath, &slowPath);
+                Bind(&flattenFastPath);
                 {
-                    res = stringBuilder.FastSubUtf8String(glue, thisValue, *from, len);
-                    Jump(&exit);
-                }
-                Bind(&isUtf16);
-                {
-                    res = stringBuilder.FastSubUtf16String(glue, thisValue, *from, len);
+                    BuiltinsStringStubBuilder stringBuilder(this);
+                    res = stringBuilder.FastSubString(glue, *thisFlat, *from, len);
                     Jump(&exit);
                 }
             }
@@ -495,6 +502,7 @@ DECLARE_BUILTINS(CharAt)
     Label exit(env);
     Label posTagIsDouble(env);
     Label thisIsHeapobject(env);
+    Label flattenFastPath(env);
 
     Branch(TaggedIsUndefinedOrNull(thisValue), &slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
@@ -504,7 +512,10 @@ DECLARE_BUILTINS(CharAt)
         Branch(IsString(thisValue), &isString, &slowPath);
         Bind(&isString);
         {
-            GateRef thisLen = GetLengthFromString(thisValue);
+            DEFVARIABLE(thisFlat, VariableType::JS_POINTER(), thisValue);
+            FlattenString(thisValue, &thisFlat, &flattenFastPath, &slowPath);
+            Bind(&flattenFastPath);
+            GateRef thisLen = GetLengthFromString(*thisFlat);
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
             Bind(&posTagNotUndefined);
             {
@@ -528,7 +539,7 @@ DECLARE_BUILTINS(CharAt)
                     Bind(&posNotLessZero);
                     {
                         BuiltinsStringStubBuilder stringBuilder(this);
-                        res = stringBuilder.CreateFromEcmaString(glue, thisValue, *pos);
+                        res = stringBuilder.CreateFromEcmaString(glue, *thisFlat, *pos);
                         Jump(&exit);
                     }
                 }

@@ -5379,6 +5379,35 @@ GateRef StubBuilder::FlattenString(GateRef glue, GateRef str)
     return ret;
 }
 
+void StubBuilder::FlattenString(GateRef str, Variable *flatStr, Label *fastPath, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label notLineString(env);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_POINTER(), str);
+    Branch(IsLineString(str), &exit, &notLineString);
+    Bind(&notLineString);
+    {
+        Label isTreeString(env);
+        Branch(IsTreeString(str), &isTreeString, &exit);
+        Bind(&isTreeString);
+        {
+            Label isFlat(env);
+            Branch(TreeStringIsFlat(str), &isFlat, slowPath);
+            Bind(&isFlat);
+            {
+                result = GetFirstFromTreeString(str);
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    {
+        flatStr->WriteVariable(*result);
+        Jump(fastPath);
+    }
+}
+
 GateRef StubBuilder::ToNumber(GateRef glue, GateRef tagged)
 {
     auto env = GetEnvironment();
