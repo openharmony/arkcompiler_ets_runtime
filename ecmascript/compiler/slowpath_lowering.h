@@ -151,7 +151,6 @@ private:
     void LowerExceptionHandler(GateRef hirGate);
     // environment must be initialized
     GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
-    GateRef GetProfileTypeInfo(GateRef jsFunc);
     void Lower(GateRef gate);
     void LowerAdd2(GateRef gate);
     void LowerCreateIterResultObj(GateRef gate);
@@ -277,6 +276,7 @@ private:
     void LowerDefineMethod(GateRef gate);
     void LowerGetUnmappedArgs(GateRef gate);
     void LowerCopyRestArgs(GateRef gate);
+    void LowerCallStubWithIC(GateRef gate, int sign, const std::vector<GateRef> &args);
     GateRef LowerCallRuntime(GateRef gate, int index, const std::vector<GateRef> &args, bool useLabel = false);
     GateRef LowerCallNGCRuntime(GateRef gate, int index, const std::vector<GateRef> &args, bool useLabel = false);
     void LowerCreateAsyncGeneratorObj(GateRef gate);

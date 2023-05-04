@@ -2260,5 +2260,11 @@ inline GateRef StubBuilder::IsTypedArray(GateRef obj)
     return BoolAnd(Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
                    Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), jsType));
 }
+
+inline GateRef StubBuilder::GetProfileTypeInfo(GateRef jsFunc)
+{
+    GateRef method = GetMethodFromFunction(jsFunc);
+    return Load(VariableType::JS_POINTER(), method, IntPtr(Method::PROFILE_TYPE_INFO_OFFSET));
+}
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

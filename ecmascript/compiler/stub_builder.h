@@ -384,6 +384,8 @@ public:
     GateRef IsTypedArray(GateRef obj);
     GateRef IsStableArguments(GateRef hClass);
     GateRef IsStableArray(GateRef hClass);
+    GateRef GetProfileTypeInfo(GateRef jsFunc);
+    GateRef UpdateProfileTypeInfo(GateRef glue, GateRef jsFunc);
     // SetDictionaryOrder func in property_attribute.h
     GateRef SetDictionaryOrderFieldInPropAttr(GateRef attr, GateRef value);
     GateRef GetPrototypeFromHClass(GateRef hClass);

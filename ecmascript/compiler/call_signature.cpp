@@ -226,7 +226,7 @@ DEF_CALL_SIGNATURE(SetPropertyByName)
         VariableType::JS_ANY(),           // receiver
         VariableType::JS_POINTER(),       // key
         VariableType::JS_ANY(),           // value
-        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
     };
     callSign->SetParameters(params.data());
@@ -275,12 +275,12 @@ DEF_CALL_SIGNATURE(SetPropertyByValue)
     *callSign = setPropertyByName;
     // 6 : 6 input parameters
     std::array<VariableType, 6> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::JS_ANY(),
-        VariableType::JS_POINTER(),
-        VariableType::INT32(),
+        VariableType::NATIVE_POINTER(),    // glue
+        VariableType::JS_POINTER(),        // receiver
+        VariableType::JS_ANY(),            // key
+        VariableType::JS_ANY(),            // value
+        VariableType::JS_ANY(),            // jsFunc
+        VariableType::INT32(),             // slot id
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
@@ -330,7 +330,7 @@ DEF_CALL_SIGNATURE(GetPropertyByName)
         VariableType::NATIVE_POINTER(),   // glue
         VariableType::JS_ANY(),           // receiver
         VariableType::JS_POINTER(),       // key
-        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
     };
     callSign->SetParameters(params.data());
@@ -347,7 +347,7 @@ DEF_CALL_SIGNATURE(Instanceof)
         VariableType::NATIVE_POINTER(),   // glue
         VariableType::JS_ANY(),           // object
         VariableType::JS_ANY(),           // target
-        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
     };
     callSign->SetParameters(params.data());
@@ -379,7 +379,7 @@ DEF_CALL_SIGNATURE(TryLdGlobalByName)
     std::array<VariableType, 4> params = {
         VariableType::NATIVE_POINTER(),   // glue
         VariableType::JS_POINTER(),       // key
-        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
     };
     callSign->SetParameters(params.data());
@@ -396,7 +396,7 @@ DEF_CALL_SIGNATURE(TryStGlobalByName)
         VariableType::NATIVE_POINTER(),   // glue
         VariableType::JS_POINTER(),       // key
         VariableType::JS_ANY(),           // value
-        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
     };
     callSign->SetParameters(params.data());
@@ -412,7 +412,7 @@ DEF_CALL_SIGNATURE(LdGlobalVar)
     std::array<VariableType, 4> params = {
         VariableType::NATIVE_POINTER(),   // glue
         VariableType::JS_POINTER(),       // key
-        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
     };
     callSign->SetParameters(params.data());
@@ -429,7 +429,7 @@ DEF_CALL_SIGNATURE(StGlobalVar)
         VariableType::NATIVE_POINTER(),   // glue
         VariableType::JS_POINTER(),       // key
         VariableType::JS_ANY(),           // value
-        VariableType::JS_POINTER(),       // profileTypeInfo
+        VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
     };
     callSign->SetParameters(params.data());
@@ -494,11 +494,11 @@ DEF_CALL_SIGNATURE(GetPropertyByValue)
     *callSign = getPropertyByValue;
     // 5 : 5 input parameters
     std::array<VariableType, 5> params = {
-        VariableType::NATIVE_POINTER(),
-        VariableType::JS_POINTER(),
-        VariableType::JS_ANY(),
-        VariableType::JS_POINTER(),
-        VariableType::INT32(),
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::JS_POINTER(),       // receiver
+        VariableType::JS_ANY(),           // key
+        VariableType::JS_ANY(),           // jsFunc
+        VariableType::INT32(),            // slot id
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);

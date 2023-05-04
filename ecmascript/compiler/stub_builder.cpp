@@ -5820,4 +5820,24 @@ GateRef StubBuilder::IsStableJSArray(GateRef glue, GateRef obj)
     env->SubCfgExit();
     return res;
 }
+
+GateRef StubBuilder::UpdateProfileTypeInfo(GateRef glue, GateRef jsFunc)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label needUpdate(env);
+    Label exit(env);
+    DEFVARIABLE(profileTypeInfo, VariableType::JS_POINTER(), GetProfileTypeInfo(jsFunc));
+    Branch(TaggedIsUndefined(*profileTypeInfo), &needUpdate, &exit);
+    Bind(&needUpdate);
+    {
+        profileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { jsFunc });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *profileTypeInfo;
+    env->SubCfgExit();
+    return ret;
+}
 }  // namespace panda::ecmascript::kungfu
