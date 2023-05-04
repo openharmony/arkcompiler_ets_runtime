@@ -70,6 +70,7 @@
 #include "ecmascript/method.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_type.h"
 
@@ -286,7 +287,8 @@ void GlobalEnvConstants::InitGlobalConstantSpecial(JSThread *thread)
     auto vm = thread->GetEcmaVM();
     SetConstant(ConstantIndex::EMPTY_STRING_OBJECT_INDEX, JSTaggedValue(EcmaStringAccessor::CreateEmptyString(vm)));
     SetConstant(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX, factory->NewEmptyArray());
-    SetConstant(ConstantIndex::EMPTY_WEAK_VECTOR_OBJECT_INDEX, factory->NewEmptyArray());
+    SetConstant(ConstantIndex::DEFAULT_SUPERS_INDEX,
+                WeakVector::Create(thread, SubtypingOperator::DEFAULT_SUPERS_CAPACITY));
     SetConstant(ConstantIndex::EMPTY_LAYOUT_INFO_OBJECT_INDEX, factory->CreateLayoutInfo(0));
     SetConstant(ConstantIndex::EMPTY_TAGGED_QUEUE_OBJECT_INDEX, factory->NewTaggedQueue(0));
 }

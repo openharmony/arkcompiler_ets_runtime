@@ -536,8 +536,12 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
         transtions.Dump(os);
     }
 
-    os << " - Supers :" << std::setw(DUMP_TYPE_OFFSET);
     JSTaggedValue supers = jshclass->GetSupers();
+    uint32_t length = 0;
+    if (supers.IsTaggedArray()) {
+        length = WeakVector::Cast(supers.GetTaggedObject())->GetExtraLength();
+    }
+    os << " - Supers[" << std::dec << length << "]:\n";
     supers.DumpTaggedValue(os);
     os << "\n";
     if (withDetail && !supers.IsUndefined()) {

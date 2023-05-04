@@ -11,28 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("base_hole_test") {
-  testonly = true
-  test_list = [
-    "base",
-    "hole",
-    "level_check",
-    "special_object",
-    "forin",
-  ]
-
-  deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}AotAction" ]
-  }
-}
-
-group("vtable_test") {
-  testonly = true
-  deps = [
-    ":base_hole_test",
-    "break_inherit_info:break_inherit_info_test",
-    "maintain_inherit_info:maintain_inherit_info_test",
-    "not_inherit_info:not_inherit_info_test",
-  ]
-}
+1
+undefined
+undefined
+true

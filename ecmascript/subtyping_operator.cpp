@@ -186,11 +186,13 @@ void SubtypingOperator::GenVTable(const JSThread *thread, const JSHandle<JSHClas
 void SubtypingOperator::AddSuper(const JSThread *thread, const JSHandle<JSHClass> &iHClass,
                                  const JSHandle<JSHClass> &superHClass)
 {
-    JSHandle<WeakVector> supersHandle(thread, iHClass->GetSupers());
-    if (!superHClass.GetTaggedValue().IsUndefined()) {
-        JSHandle<WeakVector> old(thread, superHClass->GetSupers());
-        supersHandle = WeakVector::Copy(thread, old, old->Full());
+    JSHandle<WeakVector> old;
+    if (superHClass.GetTaggedValue().IsUndefined()) {
+        old = JSHandle<WeakVector>(thread, iHClass->GetSupers());
+    } else {
+        old = JSHandle<WeakVector>(thread, superHClass->GetSupers());
     }
+    JSHandle<WeakVector> supersHandle = WeakVector::Copy(thread, old, old->Full());
 
     JSHandle<JSTaggedValue> iHClassVal(iHClass);
     JSHandle<WeakVector> newSupers = WeakVector::Append(thread, supersHandle,
