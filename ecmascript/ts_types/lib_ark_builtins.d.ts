@@ -549,12 +549,12 @@ declare class Array extends Object {
     flat(
         this: any,
         depth?: any
-    ): any[]
+    ): any[];
 
     flatMap(
         callback: (this: any, value: any, index: number, array: any[]) => any,
         thisArg?: any
-    ): any[]
+    ): any[];
 
     static from<T, U>(arrayLike: ArrayLike<T>, mapfn: (v: T, k: number) => U, thisArg?: any): U[];
 
@@ -1765,7 +1765,7 @@ declare class Atomics extends Object {
 
     sub(typedArray: Int8Array | Uint8Array | Int16Array | Uint16Array | Int32Array | Uint32Array, index: number, value: number): number;
 
-    wait(typedArray: Int32Array, index: number, value: number, timeout?: number): "ok" | "not-equal" | "timed-out";
+    wait(typedArray: Int32Array, index: number, value: number, timeout?: number): 'ok' | 'not-equal' | 'timed-out';
 
     notify(typedArray: Int32Array, index: number, count?: number): number;
 
