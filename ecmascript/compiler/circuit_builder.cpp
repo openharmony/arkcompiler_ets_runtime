@@ -222,7 +222,7 @@ GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
     }
     auto frameState = acc_.GetFrameState(statesplit);
     GateRef ret = GetCircuit()->NewGate(circuit_->IndexCheck(static_cast<size_t>(type.Value())),
-        MachineType::I32, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
+        MachineType::I64, {currentControl, currentDepend, gate, index, frameState}, GateType::IntType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -613,11 +613,14 @@ MachineType CircuitBuilder::GetMachineTypeFromVariableType(VariableType type)
     return type.GetMachineType();
 }
 
-GateRef CircuitBuilder::BinaryArithmetic(const GateMetaData* meta, MachineType machineType, GateRef left, GateRef right)
+GateRef CircuitBuilder::BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
+                                         GateRef left, GateRef right, GateType gateType)
 {
     auto circuit = GetCircuit();
-    GateType type = acc_.GetGateType(left);
-    return circuit->NewGate(meta, machineType, { left, right }, type);
+    if (gateType == GateType::Empty()) {
+        gateType = acc_.GetGateType(left);
+    }
+    return circuit->NewGate(meta, machineType, { left, right }, gateType);
 }
 
 GateRef CircuitBuilder::BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right)

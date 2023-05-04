@@ -232,7 +232,7 @@ void TSTypeLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
         case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
-            LowerTypedStObjByValue(gate);
+            acc_.DeleteStateSplitAndFrameState(gate);
             break;
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
@@ -736,8 +736,7 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
     GateType receiverType = acc_.GetGateType(receiver);
     GateType valueType = acc_.GetGateType(value);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    if (((!tsManager_->IsFloat32ArrayType(receiverType)) && (!tsManager_->IsArrayTypeKind(receiverType)))
-        || (!valueType.IsNumberType())) { // slowpath
+    if ((!tsManager_->IsFloat32ArrayType(receiverType)) || (!valueType.IsNumberType())) { // slowpath
         acc_.DeleteStateSplitAndFrameState(gate);
         return;
     }
@@ -746,8 +745,6 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
 
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
         builder_.TypedArrayCheck(receiverType, receiver);
-    } else if (tsManager_->IsArrayTypeKind(receiverType)) {
-        builder_.StableArrayCheck(receiver);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -760,8 +757,6 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
         builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value);
-    } else if (tsManager_->IsArrayTypeKind(receiverType)) {
-        builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, index, value);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
