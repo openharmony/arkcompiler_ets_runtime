@@ -58,6 +58,7 @@ private:
 enum class PageTagType : uint8_t {
     HEAP,
     MACHINE_CODE,
+    MEMPOOL_CACHE,
 };
 
 #ifdef PANDA_TARGET_WINDOWS

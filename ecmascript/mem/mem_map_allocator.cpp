@@ -61,7 +61,7 @@ MemMap MemMapAllocator::Allocate(size_t size, size_t alignment, bool regular, bo
 void MemMapAllocator::Free(void *mem, size_t size, bool isRegular)
 {
     memMapTotalSize_ -= size;
-    PageClearTag(mem, size);
+    PageTag(mem, size, PageTagType::MEMPOOL_CACHE);
     PageProtect(mem, size, PAGE_PROT_NONE);
     PageRelease(mem, size);
     if (isRegular) {

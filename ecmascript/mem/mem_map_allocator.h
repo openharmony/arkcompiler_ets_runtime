@@ -212,6 +212,7 @@ public:
         memMapTotalSize_ = 0;
         size_t hugeObjectCapacity = std::min(capacity_ / 2, MAX_HUGE_OBJECT_CAPACITY);
         MemMap memMap = PageMap(hugeObjectCapacity, PAGE_PROT_NONE, alignment);
+        PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::MEMPOOL_CACHE);
         PageRelease(memMap.GetMem(), memMap.GetSize());
         memMapFreeList_.Initialize(memMap);
     }
