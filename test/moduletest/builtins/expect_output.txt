@@ -45,4 +45,5 @@ undefined
 AAA
 AAA
 AAA
+true
 builtins regexp end
