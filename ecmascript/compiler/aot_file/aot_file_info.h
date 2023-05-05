@@ -32,6 +32,9 @@ public:
     AOTFileInfo() = default;
     virtual ~AOTFileInfo() = default;
 
+    static constexpr uint32_t DATA_SEC_ALIGN = 8;
+    static constexpr uint32_t TEXT_SEC_ALIGN = 16;
+
     struct FuncEntryDes {
         uint64_t codeAddr_ {};
         CallSignature::TargetKind kind_;
@@ -134,6 +137,14 @@ public:
     const std::vector<ModuleSectionDes> &GetModuleSectionDes() const
     {
         return des_;
+    }
+
+    void UpdateStackMap(std::shared_ptr<uint8_t> ptr, uint32_t size, uint32_t moduleIdx)
+    {
+        ASSERT(moduleIdx < des_.size());
+        ModuleSectionDes &des = des_[moduleIdx];
+        des.SetArkStackMapPtr(ptr);
+        des.SetArkStackMapSize(size);
     }
 
     size_t GetCodeUnitsNum()

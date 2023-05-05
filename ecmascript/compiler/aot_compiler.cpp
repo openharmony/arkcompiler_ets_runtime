@@ -103,6 +103,7 @@ int Main(const int argc, const char **argv)
         std::string logMethodsList = runtimeOptions.GetMethodsListForLog();
         bool compilerLogTime = runtimeOptions.IsEnableCompilerLogTime();
         size_t maxAotMethodSize = runtimeOptions.GetMaxAotMethodSize();
+        size_t maxMethodsInModule = runtimeOptions.GetCompilerModuleMethods();
         bool isEnableTypeLowering = runtimeOptions.IsEnableTypeLowering();
         bool isEnableEarlyElimination = runtimeOptions.IsEnableEarlyElimination();
         bool isEnableLaterElimination = runtimeOptions.IsEnableLaterElimination();
@@ -126,7 +127,7 @@ int Main(const int argc, const char **argv)
             entrypoint = runtimeOptions.GetEntryPoint();
         }
         PassManager passManager(vm, entrypoint, triple, optLevel, relocMode, &log, &logList, maxAotMethodSize,
-                                profilerIn, hotnessThreshold, &passOptions);
+                                maxMethodsInModule, profilerIn, hotnessThreshold, &passOptions);
         for (const auto &fileName : pandaFileNames) {
             auto extendedFilePath = panda::os::file::File::GetExtendedFilePath(fileName);
             LOG_COMPILER(INFO) << "AOT compile: " << extendedFilePath;

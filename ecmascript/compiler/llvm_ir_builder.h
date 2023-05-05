@@ -181,6 +181,11 @@ public:
         return callSigns_;
     }
 
+    LLVMContextRef GetContext() const
+    {
+        return context_;
+    }
+
     LLVMMetadataRef GetDFileMD() const
     {
         return dFileMD_;
@@ -218,6 +223,7 @@ private:
     std::vector<std::pair<size_t, LLVMValueRef>> funcIndexMap_;
     std::vector<const CallSignature *> callSigns_;
     LLVMModuleRef module_ {nullptr};
+    LLVMContextRef context_ {nullptr};
     LLVMMetadataRef dFileMD_ {nullptr};
     LLVMMetadataRef dUnitMD_ {nullptr};
     LLVMDIBuilderRef dBuilder_ {nullptr};
@@ -329,9 +335,9 @@ private:
     LLVMTypeRef GetIntPtr() const
     {
         if (compCfg_->Is32Bit()) {
-            return LLVMInt32Type();
+            return LLVMInt32TypeInContext(context_);
         }
-        return LLVMInt64Type();
+        return LLVMInt64TypeInContext(context_);
     }
     LLVMTypeRef ConvertLLVMTypeFromGate(GateRef gate) const;
     int64_t GetBitWidthFromMachineType(MachineType machineType) const;

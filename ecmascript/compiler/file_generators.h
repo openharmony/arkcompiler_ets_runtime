@@ -42,9 +42,17 @@ public:
         return sec == ElfSecName::RELATEXT || sec == ElfSecName::STRTAB || sec == ElfSecName::SYMTAB;
     }
 
-    void CollectModuleSectionDes(ModuleSectionDes &moduleDes, bool stub = false) const;
+    void CollectModuleSectionDes(ModuleSectionDes &moduleDes) const;
+
+    void CollectAnModuleSectionDes(ModuleSectionDes &moduleDes, uint64_t textOffset,
+        std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
+        std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec) const;
 
     void CollectStackMapDes(ModuleSectionDes &moduleDes) const;
+
+    void CollectAnStackMapDes(ModuleSectionDes& des, uint64_t textOffset,
+        std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
+        std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec) const;
 
     uint32_t GetSectionSize(ElfSecName sec) const;
 
@@ -52,7 +60,7 @@ public:
 
     void RunAssembler(const CompilerLog &log);
 
-    void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name,
+    void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
                           const CompilerLog &log, const MethodLogList &logList);
 
     void DestroyModule();
@@ -63,6 +71,21 @@ public:
     }
 
 private:
+    uintptr_t GetTextAddr() const
+    {
+        return assembler_->GetSectionAddr(ElfSecName::TEXT);
+    }
+
+    uint32_t GetTextSize() const
+    {
+        return assembler_->GetSectionSize(ElfSecName::TEXT);
+    }
+
+    uint32_t GetRODataSize() const
+    {
+        return assembler_->GetSectionSize(ElfSecName::RODATA_CST8);
+    }
+
     LLVMModule *llvmModule_ {nullptr};
     LLVMAssembler *assembler_ {nullptr};
     // record current module first function index in StubFileInfo/AnFileInfo
@@ -94,7 +117,7 @@ protected:
     void DisassembleEachFunc(std::map<uintptr_t, std::string> &addr2name)
     {
         for (auto m : modulePackage_) {
-            m.DisassemblerFunc(addr2name, *(log_), *(logList_));
+            m.DisassemblerFunc(addr2name, 0, *(log_), *(logList_));
         }
     }
 
@@ -115,23 +138,44 @@ public:
 
     ~AOTFileGenerator() override = default;
 
+    Module* GetLatestModule();
+
+    uint32_t GetModuleVecSize() const;
+
     Module* AddModule(const std::string &name, const std::string &triple, LOptions option, bool logDebug);
 
     void GenerateMethodToEntryIndexMap();
+
+    void CompileLatestModuleThenDestroy();
+
+    void DestroyCollectedStackMapInfo();
+
+    void GenerateMergedStackmapSection();
 
     // save function for aot files containing normal func translated from JS/TS
     void SaveAOTFile(const std::string &filename);
     void SaveSnapshotFile();
 
+    std::vector<LLVMStackMapType::Pc2CallSiteInfo> &GetPc2StackMapVec()
+    {
+        return pc2CallSiteInfoVec_;
+    }
+    std::vector<LLVMStackMapType::Pc2Deopt> &GetPc2Deopt()
+    {
+        return pc2DeoptVec_;
+    }
+
 private:
     AnFileInfo aotInfo_;
+    std::vector<LLVMStackMapType::Pc2CallSiteInfo> pc2CallSiteInfoVec_;
+    std::vector<LLVMStackMapType::Pc2Deopt> pc2DeoptVec_;
     EcmaVM* vm_;
     CompilationConfig cfg_;
     // MethodID->EntryIndex
     std::map<uint32_t, uint32_t> methodToEntryIndexMap_ {};
 
     // collect aot component info
-    void CollectCodeInfo();
+    void CollectCodeInfo(Module *module, uint32_t moduleIdx);
 };
 
 enum class StubFileKind {

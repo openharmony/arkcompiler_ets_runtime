@@ -67,7 +67,15 @@ public:
     ~ArkStackMapBuilder() = default;
     std::pair<std::shared_ptr<uint8_t>, uint32_t> PUBLIC_API Run(std::unique_ptr<uint8_t []> stackMapAddr,
         uintptr_t hostCodeSectionAddr, Triple triple);
-    
+    std::pair<std::shared_ptr<uint8_t>, uint32_t> GenerateArkStackMap(
+        std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
+        std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec,
+        Triple triple);
+    void Collect(std::unique_ptr<uint8_t []> stackMapAddr,
+                 uintptr_t hostCodeSectionAddr,
+                 uintptr_t hostCodeSectionOffset,
+                 std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
+                 std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec);
     void SetTraceStackMap(bool flag)
     {
         traceStackMap_ = flag;

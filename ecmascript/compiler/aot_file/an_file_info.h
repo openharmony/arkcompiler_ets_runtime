@@ -45,6 +45,21 @@ public:
         return static_cast<uintptr_t>(it->second);
     }
 
+    void AlignTextSec()
+    {
+        curTextSecOffset_ = AlignUp(curTextSecOffset_, TEXT_SEC_ALIGN);
+    }
+
+    void UpdateCurTextSecOffset(uint64_t size)
+    {
+        curTextSecOffset_ += size;
+    }
+
+    uint64_t GetCurTextSecOffset() const
+    {
+        return curTextSecOffset_;
+    }
+
     bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
 
     bool IsLoad() const
@@ -59,7 +74,9 @@ public:
 private:
     static const std::vector<ElfSecName> &GetDumpSectionNames();
     bool Load(const std::string &filename);
-    void RelocateTextSection();
+    void ParseFunctionEntrySection(ModuleSectionDes &moduleDes);
+    void UpdateFuncEntries();
+    uint64_t curTextSecOffset_ {0};
     std::unordered_map<uint32_t, uint64_t> mainEntryMap_ {};
     bool isLoad_ {false};
 

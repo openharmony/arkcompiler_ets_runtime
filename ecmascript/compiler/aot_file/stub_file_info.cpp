@@ -51,7 +51,7 @@ void StubFileInfo::Save(const std::string &filename, Triple triple)
     llvm::ELF::Elf64_Ehdr header;
     builder.PackELFHeader(header, base::FileHeader::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
     file.write(reinterpret_cast<char *>(&header), sizeof(llvm::ELF::Elf64_Ehdr));
-    builder.PackStubELFSections(file);
+    builder.PackELFSections(file);
     builder.PackELFSegment(file);
     file.close();
 }
@@ -72,12 +72,13 @@ bool StubFileInfo::MmapLoad()
         return false;
     }
     PagePreRead(fileMapMem_.GetOriginAddr(), fileMapMem_.GetSize());
-    moduleNum_ = ASMSTUB_MODULE_NUM;
-    des_.resize(moduleNum_);
 
     ElfReader reader(fileMapMem_);
     std::vector<ElfSecName> secs = GetDumpSectionNames();
     reader.ParseELFSections(des_, secs);
+    moduleNum_ = des_.size();
+    ASSERT(moduleNum_ == ASMSTUB_MODULE_NUM);
+
     if (!reader.ParseELFSegment()) {
         LOG_ECMA(ERROR) << "modify mmap area permission failed";
         return false;
@@ -151,9 +152,14 @@ bool StubFileInfo::Load()
 
 const std::vector<ElfSecName> &StubFileInfo::GetDumpSectionNames()
 {
-    static const std::vector<ElfSecName> secNames = {ElfSecName::TEXT,         ElfSecName::STRTAB,
-                                                     ElfSecName::ARK_STACKMAP, ElfSecName::ARK_FUNCENTRY,
-                                                     ElfSecName::ARK_ASMSTUB,  ElfSecName::ARK_MODULEINFO};
+    static const std::vector<ElfSecName> secNames = {
+        ElfSecName::TEXT,
+        ElfSecName::STRTAB,
+        ElfSecName::ARK_STACKMAP,
+        ElfSecName::ARK_FUNCENTRY,
+        ElfSecName::ARK_ASMSTUB,
+        ElfSecName::ARK_MODULEINFO
+    };
     return secNames;
 }
 

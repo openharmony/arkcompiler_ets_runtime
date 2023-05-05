@@ -14,16 +14,30 @@
  */
 
 #include "ecmascript/compiler/compilation_driver.h"
+#include "ecmascript/compiler/file_generators.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
-CompilationDriver::CompilationDriver(PGOProfilerLoader &profilerLoader, BytecodeInfoCollector *collector,
+CompilationDriver::CompilationDriver(PGOProfilerLoader &profilerLoader,
+                                     BytecodeInfoCollector *collector,
                                      const std::string &optionSelectMethods,
-                                     const std::string &optionSkipMethods)
+                                     const std::string &optionSkipMethods,
+                                     AOTFileGenerator *fileGenerator,
+                                     const std::string &fileName,
+                                     const std::string &triple,
+                                     LOptions *lOptions,
+                                     bool outputAsm,
+                                     size_t maxMethodsInModule)
     : vm_(collector->GetVM()),
       jsPandaFile_(collector->GetJSPandaFile()),
       pfLoader_(profilerLoader),
-      bytecodeInfo_(collector->GetBytecodeInfo())
+      bytecodeInfo_(collector->GetBytecodeInfo()),
+      fileGenerator_(fileGenerator),
+      fileName_(fileName),
+      triple_(triple),
+      lOptions_(lOptions),
+      outputAsm_(outputAsm),
+      maxMethodsInModule_(maxMethodsInModule)
 {
     vm_->GetTSManager()->SetCompilationDriver(this);
 
@@ -44,6 +58,36 @@ CompilationDriver::CompilationDriver(PGOProfilerLoader &profilerLoader, Bytecode
 CompilationDriver::~CompilationDriver()
 {
     vm_->GetTSManager()->SetCompilationDriver(nullptr);
+}
+
+Module *CompilationDriver::GetModule()
+{
+    return IsCurModuleFull() ? fileGenerator_->AddModule(fileName_, triple_, *lOptions_, outputAsm_)
+                                : fileGenerator_->GetLatestModule();
+}
+
+void CompilationDriver::IncCompiledMethod()
+{
+    compiledMethodCnt_++;
+}
+
+bool CompilationDriver::IsCurModuleFull() const
+{
+    return (compiledMethodCnt_ % maxMethodsInModule_ == 0);
+}
+
+void CompilationDriver::CompileModuleThenDestroyIfNeeded()
+{
+    if (IsCurModuleFull()) {
+        fileGenerator_->CompileLatestModuleThenDestroy();
+    }
+}
+
+void CompilationDriver::CompileLastModuleThenDestroyIfNeeded()
+{
+    if (!IsCurModuleFull()) {
+        fileGenerator_->CompileLatestModuleThenDestroy();
+    }
 }
 
 void CompilationDriver::TopologicalSortForRecords()

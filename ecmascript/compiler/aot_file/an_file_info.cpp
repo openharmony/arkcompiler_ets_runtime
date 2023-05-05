@@ -31,7 +31,6 @@ void AnFileInfo::Save(const std::string &filename, Triple triple)
     }
 
     std::ofstream file(realPath.c_str(), std::ofstream::binary);
-    ASSERT(GetCodeUnitsNum() == 1);
     SetStubNum(entries_.size());
     ModuleSectionDes &des = des_[0];
     // add section
@@ -43,7 +42,7 @@ void AnFileInfo::Save(const std::string &filename, Triple triple)
     llvm::ELF::Elf64_Ehdr header;
     builder.PackELFHeader(header, base::FileHeader::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
     file.write(reinterpret_cast<char *>(&header), sizeof(llvm::ELF::Elf64_Ehdr));
-    builder.PackAnELFSections(file);
+    builder.PackELFSections(file);
     builder.PackELFSegment(file);
     file.close();
 }
@@ -79,7 +78,17 @@ bool AnFileInfo::Load(const std::string &filename)
         LOG_ECMA(ERROR) << "modify mmap area permission failed";
         return false;
     }
+    ParseFunctionEntrySection(des);
 
+    UpdateFuncEntries();
+
+    LOG_COMPILER(INFO) << "loaded an file: " << filename.c_str();
+    isLoad_ = true;
+    return true;
+}
+
+void AnFileInfo::ParseFunctionEntrySection(ModuleSectionDes &des)
+{
     uint64_t secAddr = des.GetSecAddr(ElfSecName::ARK_FUNCENTRY);
     uint32_t secSize = des.GetSecSize(ElfSecName::ARK_FUNCENTRY);
     FuncEntryDes *entryDes = reinterpret_cast<FuncEntryDes *>(secAddr);
@@ -87,21 +96,15 @@ bool AnFileInfo::Load(const std::string &filename)
     entries_.assign(entryDes, entryDes + entryNum_);
     des.SetStartIndex(0);
     des.SetFuncCount(entryNum_);
-
-    RelocateTextSection();
-
-    LOG_COMPILER(INFO) << "loaded an file: " << filename.c_str();
-    isLoad_ = true;
-    return true;
 }
 
-void AnFileInfo::RelocateTextSection()
+void AnFileInfo::UpdateFuncEntries()
 {
+    ModuleSectionDes &des = des_[0];
     size_t len = entries_.size();
     for (size_t i = 0; i < len; i++) {
         FuncEntryDes &funcDes = entries_[i];
-        auto moduleDes = des_[funcDes.moduleIndex_];
-        funcDes.codeAddr_ += moduleDes.GetSecAddr(ElfSecName::TEXT);
+        funcDes.codeAddr_ += des.GetSecAddr(ElfSecName::TEXT);
         if (funcDes.isMainFunc_) {
             mainEntryMap_[funcDes.indexInKindOrMethodId_] = funcDes.codeAddr_;
 #ifndef NDEBUG
@@ -114,9 +117,12 @@ void AnFileInfo::RelocateTextSection()
 
 const std::vector<ElfSecName> &AnFileInfo::GetDumpSectionNames()
 {
-    static const std::vector<ElfSecName> secNames = {ElfSecName::RODATA_CST8, ElfSecName::TEXT,
-                                                     ElfSecName::STRTAB,      ElfSecName::ARK_STACKMAP,
-                                                     ElfSecName::ARK_FUNCENTRY};
+    static const std::vector<ElfSecName> secNames = {
+        ElfSecName::TEXT,
+        ElfSecName::STRTAB,
+        ElfSecName::ARK_STACKMAP,
+        ElfSecName::ARK_FUNCENTRY
+    };
     return secNames;
 }
 
@@ -124,6 +130,7 @@ void AnFileInfo::Destroy()
 {
     mainEntryMap_.clear();
     isLoad_ = false;
+    curTextSecOffset_ = 0;
     AOTFileInfo::Destroy();
 }
 

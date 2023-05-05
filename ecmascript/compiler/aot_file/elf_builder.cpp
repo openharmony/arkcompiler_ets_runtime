@@ -84,21 +84,20 @@ void ElfBuilder::AddArkStackMapSection()
 ElfBuilder::ElfBuilder(const std::vector<ModuleSectionDes> &des,
                        const std::vector<ElfSecName> &sections): des_(des), sections_(sections)
 {
-    ASSERT(des_.size() == AOT_MODULE_NUM || des_.size() == ASMSTUB_MODULE_NUM);
     AddArkStackMapSection();
     ModifyStrTabSection();
     sectionToAlign_ = {
-        {ElfSecName::RODATA, TEXT_SEC_ALIGN},
-        {ElfSecName::RODATA_CST4, TEXT_SEC_ALIGN},
-        {ElfSecName::RODATA_CST8, TEXT_SEC_ALIGN},
-        {ElfSecName::RODATA_CST16, TEXT_SEC_ALIGN},
-        {ElfSecName::RODATA_CST32, TEXT_SEC_ALIGN},
-        {ElfSecName::TEXT, TEXT_SEC_ALIGN},
+        {ElfSecName::RODATA, AOTFileInfo::TEXT_SEC_ALIGN},
+        {ElfSecName::RODATA_CST4, AOTFileInfo::TEXT_SEC_ALIGN},
+        {ElfSecName::RODATA_CST8, AOTFileInfo::TEXT_SEC_ALIGN},
+        {ElfSecName::RODATA_CST16, AOTFileInfo::TEXT_SEC_ALIGN},
+        {ElfSecName::RODATA_CST32, AOTFileInfo::TEXT_SEC_ALIGN},
+        {ElfSecName::TEXT, AOTFileInfo::TEXT_SEC_ALIGN},
         {ElfSecName::STRTAB, 1},
-        {ElfSecName::ARK_STACKMAP, DATA_SEC_ALIGN},
-        {ElfSecName::ARK_FUNCENTRY, DATA_SEC_ALIGN},
-        {ElfSecName::ARK_ASMSTUB, DATA_SEC_ALIGN},
-        {ElfSecName::ARK_MODULEINFO, DATA_SEC_ALIGN},
+        {ElfSecName::ARK_STACKMAP, AOTFileInfo::DATA_SEC_ALIGN},
+        {ElfSecName::ARK_FUNCENTRY, AOTFileInfo::DATA_SEC_ALIGN},
+        {ElfSecName::ARK_ASMSTUB, AOTFileInfo::DATA_SEC_ALIGN},
+        {ElfSecName::ARK_MODULEINFO, AOTFileInfo::DATA_SEC_ALIGN},
     };
 
     sectionToSegment_ = {
@@ -333,7 +332,7 @@ void ElfBuilder::MergeTextSections(std::ofstream &file,
         ModuleSectionDes::ModuleRegionInfo &curInfo = moduleInfo[i];
         uint32_t curSecSize = des.GetSecSize(ElfSecName::TEXT);
         uint64_t curSecAddr = des.GetSecAddr(ElfSecName::TEXT);
-        curSecOffset = AlignUp(curSecOffset, TEXT_SEC_ALIGN);
+        curSecOffset = AlignUp(curSecOffset, AOTFileInfo::TEXT_SEC_ALIGN);
         file.seekp(curSecOffset);
         auto curModuleSec = des.GetSectionsInfo();
         if (curModuleSec.find(ElfSecName::RODATA_CST8) != curModuleSec.end()) {
@@ -369,83 +368,19 @@ void ElfBuilder::MergeArkStackMapSections(std::ofstream &file,
 }
 
 /*
-section layout as follows:
-There are 6 section headers, starting at offset 0x40:
+
+section of aot.an layout as follows:
+There are 5 section headers, starting at offset 0x40:
 
 Section Headers:
   [Nr] Name              Type             Address           Offset    Size              EntSize          Flags  Link  Info  Align
   [ 0]                   NULL             0000000000000000  00000000  0000000000000000  0000000000000000           0     0     0
-  [ 1] .rodata.cst8      PROGBITS         0000000000001000  00001000  0000000000000020  0000000000000000  AM       0     0     8
-  [ 2] .text             PROGBITS         0000000000001020  00001020  000000000000112a  0000000000000000  AX       0     0     16
-  [ 3] .strtab           STRTAB           0000000000003000  00003000  000000000000003a  0000000000000000   A       0     0     1
-  [ 4] .ark_funcentry    PROGBITS         0000000000003040  00003040  00000000000006c0  0000000000000000   A       0     0     8
-  [ 5] .ark_stackmaps    PROGBITS         0000000000003700  00003700  0000000000000754  0000000000000000   A       0     0     8
-Key to Flags:
-  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
-  L (link order), O (extra OS processing required), G (group), T (TLS),
-  C (compressed), x (unknown), o (OS specific), E (exclude),
-  D (mbind), l (large), p (processor specific)
-*/
-void ElfBuilder::PackAnELFSections(std::ofstream &file)
-{
-    ASSERT(des_.size() == AOT_MODULE_NUM);
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetCurrentSecInfo();
-    uint32_t secNum = sections.size() + 1; // 1 : section id = 0 is null section
-    std::unique_ptr<llvm::ELF::Elf64_Shdr []> shdr;
-    AllocateShdr(shdr, secNum);
+  [ 1] .text             PROGBITS         0000000000001000  00001000  00000000000013a0  0000000000000000  AX       0     0     16
+  [ 2] .strtab           STRTAB           0000000000003000  00003000  000000000000003d  0000000000000000   A       0     0     1
+  [ 3] .ark_funcentry    PROGBITS         0000000000003040  00003040  00000000000007e0  0000000000000000   A       0     0     8
+  [ 4] .ark_stackmaps    PROGBITS         0000000000003820  00003820  0000000000000892  0000000000000000   A       0     0     8
 
-    llvm::ELF::Elf64_Off curSecOffset = ComputeEndAddrOfShdr(secNum);
-    file.seekp(curSecOffset);
-
-    int i = 1; // 1: skip null section
-    auto strTab = FindStrTab();
-
-    for (auto const &[secName, secInfo] : sections) {
-        auto &curShdr = shdr[i];
-        ElfSection section = ElfSection(secName);
-        if (!section.ShouldDumpToAOTFile()) {
-            continue;
-        }
-        curShdr.sh_addralign = sectionToAlign_[secName];
-        curSecOffset = AlignUp(curSecOffset, curShdr.sh_addralign);
-        file.seekp(curSecOffset);
-        ElfSecName segName = GetSegmentName(secName);
-        segments_.insert(segName);
-        uint32_t curSecSize = GetCurrentDes().GetSecSize(secName);
-        uint64_t curSecAddr = GetCurrentDes().GetSecAddr(secName);
-        std::string secNameStr = ModuleSectionDes::GetSecName(secName);
-        sectionToFileOffset_[secName] = static_cast<uint8_t>(file.tellp());
-        file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
-        llvm::ELF::Elf64_Word shName = FindShName(secNameStr, strTab.first, strTab.second);
-        ASSERT(shName != static_cast<llvm::ELF::Elf64_Word>(-1));
-        curShdr.sh_name = shName;
-        curShdr.sh_type = section.Type();
-        curShdr.sh_flags = section.Flag();
-        curShdr.sh_addr = curSecOffset;
-        curShdr.sh_offset = curSecOffset;
-        LOG_COMPILER(DEBUG) << "curSecOffset:   0x" << std::hex << curSecOffset << "  curSecSize:0x" << curSecSize;
-        curSecOffset += curSecSize;
-        ElfSecName lastSecName = FindLastSection(segName);
-        if (secName == lastSecName) {
-            curSecOffset = AlignUp(curSecOffset, PageSize());
-            file.seekp(curSecOffset);
-        }
-        curShdr.sh_size = curSecSize;
-        curShdr.sh_link = section.Link();
-        curShdr.sh_info = 0;
-        curShdr.sh_entsize = section.Entsize();
-        sectionToShdr_[secName] = curShdr;
-        LOG_COMPILER(DEBUG) << "  shdr[i].sh_entsize " << std::hex << curShdr.sh_entsize << std::endl;
-        ++i;
-    }
-    uint32_t secEnd = static_cast<uint32_t>(file.tellp());
-    file.seekp(sizeof(llvm::ELF::Elf64_Ehdr));
-    file.write(reinterpret_cast<char *>(shdr.get()), secNum * sizeof(llvm::ELF::Elf64_Shdr));
-    file.seekp(secEnd);
-}
-
-/*
-section layout as follows:
+section of stub.an layout as follows:
 There are 7 section headers, starting at offset 0x40:
 
 Section Headers:
@@ -463,14 +398,14 @@ Key to Flags:
   C (compressed), x (unknown), o (OS specific), E (exclude),
   D (mbind), l (large), p (processor specific)
 */
-void ElfBuilder::PackStubELFSections(std::ofstream &file)
+void ElfBuilder::PackELFSections(std::ofstream &file)
 {
-    ASSERT(des_.size() == ASMSTUB_MODULE_NUM);
+    uint32_t moduleNum = des_.size();
     const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetCurrentSecInfo();
     uint32_t secNum = sections.size() + 1; // 1 : section id = 0 is null section
     std::unique_ptr<llvm::ELF::Elf64_Shdr []> shdr;
     AllocateShdr(shdr, secNum);
-    std::vector<ModuleSectionDes::ModuleRegionInfo> moduleInfo(ASMSTUB_MODULE_NUM);
+    std::vector<ModuleSectionDes::ModuleRegionInfo> moduleInfo(moduleNum);
     llvm::ELF::Elf64_Off curSecOffset = ComputeEndAddrOfShdr(secNum);
     file.seekp(curSecOffset);
 
@@ -491,7 +426,7 @@ void ElfBuilder::PackStubELFSections(std::ofstream &file)
         std::string secNameStr = ModuleSectionDes::GetSecName(secName);
         // text section address needs 16 bytes alignment
         if (secName == ElfSecName::TEXT) {
-            curSecOffset = AlignUp(curSecOffset, TEXT_SEC_ALIGN);
+            curSecOffset = AlignUp(curSecOffset, AOTFileInfo::TEXT_SEC_ALIGN);
             file.seekp(curSecOffset);
         }
         llvm::ELF::Elf64_Word shName = FindShName(secNameStr, strTab.first, strTab.second);
@@ -532,6 +467,8 @@ void ElfBuilder::PackStubELFSections(std::ofstream &file)
                 curShdr.sh_size = curSecSize;
                 break;
             }
+            case ElfSecName::RODATA_CST8:  // dealt at the same time of ElfSecName::TEXT
+                break;
             default: {
                 LOG_ECMA(FATAL) << "this section should not dump to stub file";
                 break;

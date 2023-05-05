@@ -35,7 +35,7 @@ public:
     void ParseELFSections(std::vector<ModuleSectionDes> &des, std::vector<ElfSecName> &secs);
     void ParseELFSections(BinaryBufferParser &parser, std::vector<ModuleSectionDes> &des, std::vector<ElfSecName> &secs);
     bool ParseELFSegment();
-    ModuleSectionDes::ModuleRegionInfo GetCurModuleInfo(uint32_t i, llvm::ELF::Elf64_Off offset);
+    ModuleSectionDes::ModuleRegionInfo *GetCurModuleInfo(uint32_t i, llvm::ELF::Elf64_Off offset);
     void SeparateTextSections(std::vector<ModuleSectionDes> &des, const uintptr_t &secAddr,
         llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &moduleInfoOffset);
     void SeparateArkStackMapSections(std::vector<ModuleSectionDes> &des, const uintptr_t &secAddr,
@@ -46,6 +46,12 @@ public:
         const uint64_t &secAddr, llvm::ELF::Elf64_Off &secOffset, const llvm::ELF::Elf64_Off &curShOffset);
 
 private:
+    static uint32_t GetModuleNum(size_t moduleInfoSize)
+    {
+        ASSERT(moduleInfoSize % sizeof(ModuleSectionDes::ModuleRegionInfo) == 0);
+        return moduleInfoSize / sizeof(ModuleSectionDes::ModuleRegionInfo);
+    }
+
     static constexpr uint32_t TEXT_SEC_ALIGN = 16;
     static constexpr uint32_t ASMSTUB_MODULE_NUM = 3;
     ExecutedMemoryAllocator::ExeMem stubsMem_ {};

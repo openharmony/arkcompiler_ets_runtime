@@ -400,6 +400,11 @@ template("host_aot_js_test_action") {
       _aot_compile_options_ += " --compiler-opt-type-lowering=true"
     }
 
+    if (defined(invoker.userDefinedMethodsInModule) &&
+        invoker.userDefinedMethodsInModule) {
+      _aot_compile_options_ += " --compiler-module-methods=2"
+    }
+
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
@@ -599,6 +604,11 @@ template("host_aot_test_action") {
       _aot_compile_options_ += " --compiler-opt-type-lowering=true"
     }
 
+    if (defined(invoker.userDefinedMethodsInModule) &&
+        invoker.userDefinedMethodsInModule) {
+      _aot_compile_options_ += " --compiler-module-methods=2"
+    }
+
     args = [
       "--script-file",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
@@ -661,6 +671,11 @@ template("host_aot_test_action") {
     if (defined(invoker.is_enable_opt_inlining) &&
         invoker.is_enable_opt_inlining) {
       _aot_compile_options_ += " --compiler-opt-type-lowering=true"
+    }
+
+    if (defined(invoker.userDefinedMethodsInModule) &&
+        invoker.userDefinedMethodsInModule) {
+      _aot_compile_options_ += " --compiler-module-methods=2"
     }
 
     args = [

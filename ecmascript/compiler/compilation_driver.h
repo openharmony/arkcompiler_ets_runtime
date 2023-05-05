@@ -18,11 +18,23 @@
 
 #include "ecmascript/compiler/bytecode_info_collector.h"
 
+
 namespace panda::ecmascript::kungfu {
+class AOTFileGenerator;
+struct LOptions;
+class Module;
 class CompilationDriver {
 public:
-    CompilationDriver(PGOProfilerLoader &profilerLoader, BytecodeInfoCollector* collector,
-                      const std::string &compilemMethodsOption, const std::string &compileSkipMethodsOption);
+    CompilationDriver(PGOProfilerLoader &profilerLoader,
+                      BytecodeInfoCollector* collector,
+                      const std::string &compilemMethodsOption,
+                      const std::string &compileSkipMethodsOption,
+                      AOTFileGenerator *fileGenerator,
+                      const std::string &fileName,
+                      const std::string &triple,
+                      LOptions *lOptions,
+                      bool outputAsm,
+                      size_t maxMethodsInModule);
     ~CompilationDriver();
 
     NO_COPY_SEMANTIC(CompilationDriver);
@@ -63,6 +75,22 @@ public:
     }
 
     template <class Callback>
+    void CompileMethod(const Callback &cb,
+                       uint32_t index,
+                       const std::string &methodName,
+                       MethodLiteral *methodLiteral,
+                       uint32_t methodOffset,
+                       const MethodPcInfo &methodPcInfo,
+                       MethodInfo &methodInfo)
+    {
+        Module *module = GetModule();
+        IncCompiledMethod();
+        cb(bytecodeInfo_.GetRecordName(index), methodName, methodLiteral, methodOffset,
+            methodPcInfo, methodInfo, module);
+        CompileModuleThenDestroyIfNeeded();
+    }
+
+    template <class Callback>
     void Run(const Callback &cb)
     {
         UpdatePGO();
@@ -87,13 +115,11 @@ public:
                 } else {
                     if (!methodInfo.IsCompiled()) {
                         methodInfo.SetIsCompiled(true);
-                        cb(bytecodeInfo_.GetRecordName(index), methodName, methodLiteral, compilingMethod,
-                           methodPcInfo, methodInfo);
+                        CompileMethod(cb, index, methodName, methodLiteral, compilingMethod, methodPcInfo, methodInfo);
                     } else if (NeedSecondaryCompile(methodInfo)) {
                         // if a method used to be not full compiled but now it's a deopt resolved method
                         // it should be full compiled again
-                        cb(bytecodeInfo_.GetRecordName(index), methodName, methodLiteral, compilingMethod,
-                           methodPcInfo, methodInfo);
+                        CompileMethod(cb, index, methodName, methodLiteral, compilingMethod, methodPcInfo, methodInfo);
                     }
                 }
                 auto &innerMethods = methodInfo.GetInnerMethods();
@@ -103,6 +129,7 @@ public:
             }
             index++;
         }
+        CompileLastModuleThenDestroyIfNeeded();
     }
 
     void AddResolvedMethod(const CString &recordName, uint32_t classLiteralOffset)
@@ -118,6 +145,19 @@ public:
         UpdateCompileQueue(recordName, resolvedMethodId);
     }
 private:
+    // add maxMethodsInModule_ functions in a module and when a module is
+    // full(maxMethodsInModule_ functions have been put into) or the module is the last module,
+    // compile it and the destroy it.
+    Module *GetModule();
+
+    void IncCompiledMethod();
+
+    bool IsCurModuleFull() const;
+
+    void CompileModuleThenDestroyIfNeeded();
+
+    void CompileLastModuleThenDestroyIfNeeded();
+
     void TopologicalSortForRecords();
 
     void UpdatePGO();
@@ -303,6 +343,13 @@ private:
     std::map<CString, uint32_t> sortedRecords_ {};
     std::map<std::string, std::vector<std::string>> optionSelectMethods_ {};
     std::map<std::string, std::vector<std::string>> optionSkipMethods_ {};
+    uint32_t compiledMethodCnt_ {0};
+    AOTFileGenerator *fileGenerator_ {nullptr};
+    std::string fileName_ {};
+    std::string triple_ {};
+    LOptions *lOptions_ {nullptr};
+    bool outputAsm_ {false};
+    size_t maxMethodsInModule_ {0};
 };
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_COMPILATION_DRIVER_H

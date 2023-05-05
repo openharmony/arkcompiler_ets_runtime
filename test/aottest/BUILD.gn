@@ -131,6 +131,7 @@ group("ark_aot_ts_test") {
     "mod",
     "modules",
     "mul",
+    "multi_module_compilation",
     "neg",
     "new",
     "newlexenv",

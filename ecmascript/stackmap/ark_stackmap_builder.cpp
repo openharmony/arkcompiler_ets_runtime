@@ -58,16 +58,42 @@ void ArkStackMapBuilder::Dump(const StackMapDumper& dumpInfo) const
 std::pair<std::shared_ptr<uint8_t>, uint32_t> ArkStackMapBuilder::Run(std::unique_ptr<uint8_t []> stackMapAddr,
     uintptr_t hostCodeSectionAddr, Triple triple)
 {
-    LLVMStackMapParser parser;
-    auto result = parser.CalculateStackMap(std::move(stackMapAddr), hostCodeSectionAddr);
+    std::vector<LLVMStackMapType::Pc2CallSiteInfo> pc2CallSiteInfoVec;
+    std::vector<LLVMStackMapType::Pc2Deopt> pc2DeoptVec;
+    LLVMStackMapParser parser(pc2CallSiteInfoVec, pc2DeoptVec);
+    auto result = parser.CalculateStackMap(std::move(stackMapAddr), hostCodeSectionAddr, 0);
     if (!result) {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    auto pc2stackMapVec = parser.GetPc2StackMapVec();
-    auto pc2DeoptVec = parser.GetPc2Deopt();
+    std::pair<std::shared_ptr<uint8_t>, uint32_t> info = GenerateArkStackMap(pc2CallSiteInfoVec, pc2DeoptVec, triple);
+    pc2CallSiteInfoVec.clear();
+    pc2DeoptVec.clear();
+    return info;
+}
+
+void ArkStackMapBuilder::Collect(
+    std::unique_ptr<uint8_t []> stackMapAddr,
+    uintptr_t hostCodeSectionAddr,
+    uintptr_t hostCodeSectionOffset,
+    std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
+    std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec)
+{
+    LLVMStackMapParser parser(pc2CallsiteInfoVec, pc2DeoptVec);
+    auto result = parser.CalculateStackMap(std::move(stackMapAddr), hostCodeSectionAddr, hostCodeSectionOffset);
+    if (!result) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+}
+
+std::pair<std::shared_ptr<uint8_t>, uint32_t> ArkStackMapBuilder::GenerateArkStackMap(
+    std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
+    std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec,
+    Triple triple)
+{
     ARKCallsiteAOTFileInfo AOTFileInfo;
-    GenArkCallsiteAOTFileInfo(pc2stackMapVec, pc2DeoptVec, AOTFileInfo, triple);
+    GenArkCallsiteAOTFileInfo(pc2CallsiteInfoVec, pc2DeoptVec, AOTFileInfo, triple);
     uint32_t secSize = AOTFileInfo.secHead.secSize;
     uint8_t *p = new(std::nothrow) uint8_t[secSize];
     if (p == nullptr) {
@@ -80,7 +106,6 @@ std::pair<std::shared_ptr<uint8_t>, uint32_t> ArkStackMapBuilder::Run(std::uniqu
     }
     return std::make_pair(ptr, secSize);
 }
-
 void ArkStackMapBuilder::SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple)
 {
     size_t n = info.callsites.size();
@@ -177,7 +202,6 @@ void ArkStackMapBuilder::SortCallSite(
     std::vector<std::unordered_map<uintptr_t, Vec>> &infos,
     std::vector<std::pair<uintptr_t, Vec>>& result)
 {
-    ASSERT(infos.size() == 1);
     for (auto &info: infos) {
         for (auto &it: info) {
             result.emplace_back(it);

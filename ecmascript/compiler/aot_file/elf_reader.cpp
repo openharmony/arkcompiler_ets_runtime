@@ -38,6 +38,13 @@ bool ElfReader::VerifyELFHeader(uint32_t version, bool strictMatch)
     return true;
 }
 
+ModuleSectionDes::ModuleRegionInfo *ElfReader::GetCurModuleInfo(uint32_t i, llvm::ELF::Elf64_Off offset)
+{
+    uint64_t codeAddress = reinterpret_cast<uint64_t>(fileMapMem_.GetOriginAddr());
+    uint64_t info = codeAddress + offset + i * sizeof(ModuleSectionDes::ModuleRegionInfo);
+    return reinterpret_cast<ModuleSectionDes::ModuleRegionInfo *>(info);
+}
+
 void ElfReader::ParseELFSections(ModuleSectionDes &des, std::vector<ElfSecName> &secs)
 {
     llvm::ELF::Elf64_Ehdr *ehdr = reinterpret_cast<llvm::ELF::Elf64_Ehdr *>(fileMapMem_.GetOriginAddr());
@@ -77,16 +84,8 @@ void ElfReader::ParseELFSections(ModuleSectionDes &des, std::vector<ElfSecName> 
     }
 }
 
-ModuleSectionDes::ModuleRegionInfo ElfReader::GetCurModuleInfo(uint32_t i, llvm::ELF::Elf64_Off offset)
-{
-    uint64_t codeAddress = reinterpret_cast<uint64_t>(fileMapMem_.GetOriginAddr());
-    return *(reinterpret_cast<ModuleSectionDes::ModuleRegionInfo *>
-        (codeAddress + offset + i * sizeof(ModuleSectionDes::ModuleRegionInfo)));
-}
-
 void ElfReader::ParseELFSections(std::vector<ModuleSectionDes> &des, std::vector<ElfSecName> &secs)
 {
-    ASSERT(des.size() == ASMSTUB_MODULE_NUM);
     llvm::ELF::Elf64_Ehdr *ehdr = reinterpret_cast<llvm::ELF::Elf64_Ehdr *>(fileMapMem_.GetOriginAddr());
     char *addr = reinterpret_cast<char *>(ehdr);
     llvm::ELF::Elf64_Shdr *shdrs = reinterpret_cast<llvm::ELF::Elf64_Shdr *>(addr + ehdr->e_shoff);
@@ -94,8 +93,9 @@ void ElfReader::ParseELFSections(std::vector<ModuleSectionDes> &des, std::vector
     llvm::ELF::Elf64_Shdr strdr = shdrs[ehdr->e_shstrndx];
     ASSERT(ehdr->e_flags != static_cast<llvm::ELF::Elf64_Word>(-1));
     llvm::ELF::Elf64_Shdr moduledr = shdrs[ehdr->e_flags];
-    [[maybe_unused]] size_t moduleInfoSize = moduledr.sh_size;
-    ASSERT(moduleInfoSize % sizeof(ModuleSectionDes::ModuleRegionInfo) == 0);
+    size_t moduleInfoSize = moduledr.sh_size;
+    uint32_t moduleNum = GetModuleNum(moduleInfoSize);
+    des.resize(moduleNum);
     std::set<ElfSecName> secSet(secs.begin(), secs.end());
     for (ElfSecName sec : secSet) {
         int secId = -1;
@@ -147,7 +147,9 @@ void ElfReader::ParseELFSections(std::vector<ModuleSectionDes> &des, std::vector
     }
 }
 
-void ElfReader::ParseELFSections(BinaryBufferParser &parser, std::vector<ModuleSectionDes> &des, std::vector<ElfSecName> &secs)
+void ElfReader::ParseELFSections(BinaryBufferParser &parser,
+                                 std::vector<ModuleSectionDes> &des,
+                                 std::vector<ElfSecName> &secs)
 {
     ASSERT(des.size() == ASMSTUB_MODULE_NUM);
     uint64_t codeAddress = reinterpret_cast<uint64_t>(stubsMem_.addr_);
@@ -161,9 +163,10 @@ void ElfReader::ParseELFSections(BinaryBufferParser &parser, std::vector<ModuleS
     ASSERT(ehdr.e_flags != static_cast<llvm::ELF::Elf64_Word>(-1));
     llvm::ELF::Elf64_Shdr moduledr = shdrs[ehdr.e_flags];
     [[maybe_unused]] size_t moduleInfoSize = moduledr.sh_size;
-    ASSERT(moduleInfoSize % sizeof(ModuleSectionDes::ModuleRegionInfo) == 0);
-    moduleInfo_.resize(ASMSTUB_MODULE_NUM);
-    parser.ParseBuffer(moduleInfo_.data(), sizeof(ModuleSectionDes::ModuleRegionInfo) * ASMSTUB_MODULE_NUM, moduledr.sh_offset);
+    uint32_t moduleNum = GetModuleNum(moduleInfoSize);
+    ASSERT(moduleNum == ASMSTUB_MODULE_NUM);
+    moduleInfo_.resize(moduleNum);
+    parser.ParseBuffer(moduleInfo_.data(), moduleInfoSize, moduledr.sh_offset);
     std::set<ElfSecName> secSet(secs.begin(), secs.end());
     for (ElfSecName sec : secSet) {
         int secId = -1;
@@ -254,12 +257,12 @@ void ElfReader::SeparateTextSections(std::vector<ModuleSectionDes> &des,
     for (size_t i = 0; i < des.size(); ++i) {
         auto moduleInfo = GetCurModuleInfo(i, moduleInfoOffset);
         secOffset = AlignUp(secOffset, TEXT_SEC_ALIGN);
-        uint32_t rodataSize = moduleInfo.rodataSize;
+        uint32_t rodataSize = moduleInfo->rodataSize;
         if (rodataSize > 0) {
             des[i].SetSecAddrAndSize(ElfSecName::RODATA_CST8, secAddr + secOffset, rodataSize);
             secOffset += rodataSize;
         }
-        uint32_t textSize = moduleInfo.textSize;
+        uint32_t textSize = moduleInfo->textSize;
         des[i].SetSecAddrAndSize(ElfSecName::TEXT, secAddr + secOffset, textSize);
         secOffset += textSize;
     }
@@ -272,11 +275,11 @@ void ElfReader::SeparateArkStackMapSections(std::vector<ModuleSectionDes> &des,
 {
     for (size_t i = 0; i < des.size(); ++i) {
         auto moduleInfo = GetCurModuleInfo(i, moduleInfoOffset);
-        uint32_t stackMapSize = moduleInfo.stackMapSize;
+        uint32_t stackMapSize = moduleInfo->stackMapSize;
         des[i].SetArkStackMapPtr(reinterpret_cast<uint8_t *>(secAddr + secOffset));
         des[i].SetArkStackMapSize(stackMapSize);
-        uint32_t index = moduleInfo.startIndex;
-        uint32_t cnt = moduleInfo.funcCount;
+        uint32_t index = moduleInfo->startIndex;
+        uint32_t cnt = moduleInfo->funcCount;
         des[i].SetStartIndex(index);
         des[i].SetFuncCount(cnt);
         secOffset += stackMapSize;
