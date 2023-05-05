@@ -180,7 +180,7 @@ std::vector<std::string> PGOMethodInfo::ParseFromText(const std::string &infoStr
 
 void PGOMethodTypeSet::Merge(const PGOMethodTypeSet *info)
 {
-    for (auto &fromType : info->typeInfoSet_) {
+    for (const auto &fromType : info->typeInfoSet_) {
         auto iter = typeInfoSet_.find(fromType);
         if (iter != typeInfoSet_.end()) {
             PGOSampleType combineType = iter->GetType().CombineType(fromType.GetType());
@@ -225,7 +225,7 @@ bool PGOMethodTypeSet::ParseFromText(const std::string &typeString)
 {
     std::vector<std::string> typeInfoVector = base::StringHelper::SplitString(typeString, TYPE_SEPARATOR);
     if (typeInfoVector.size() > 0) {
-        for (auto iter : typeInfoVector) {
+        for (const auto &iter : typeInfoVector) {
             std::vector<std::string> typeStrings = base::StringHelper::SplitString(iter, BLOCK_START);
             if (typeStrings.size() < METHOD_TYPE_INFO_COUNT) {
                 return false;
@@ -335,7 +335,7 @@ void PGOMethodInfoMap::Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos)
         } else {
             auto typeInfoSet = chunk->New<PGOMethodTypeSet>();
             typeInfoSet->Merge(fromTypeInfo);
-            methodTypeInfos_.emplace(methodId, fromTypeInfo);
+            methodTypeInfos_.emplace(methodId, typeInfoSet);
         }
     }
 }

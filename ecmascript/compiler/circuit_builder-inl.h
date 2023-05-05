@@ -866,7 +866,7 @@ GateRef CircuitBuilder::NumberBinaryOp(GateRef x, GateRef y)
     auto numberBinaryOp = TypedBinaryOperator(MachineType::I64, Op,
                                               GateType::NumberType(), GateType::NumberType(),
                                               {currentControl, currentDepend, x, y}, GateType::AnyType(),
-                                              PGOSampleType::Type::NONE);
+                                              PGOSampleType::NoneType());
     currentLabel->SetControl(numberBinaryOp);
     currentLabel->SetDepend(numberBinaryOp);
     return numberBinaryOp;
