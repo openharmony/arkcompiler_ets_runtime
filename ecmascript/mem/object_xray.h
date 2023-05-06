@@ -508,6 +508,9 @@ public:
                 break;
             case JSType::TS_ITERATOR_INSTANCE_TYPE:
                 break;
+            case JSType::TS_NAMESPACE_TYPE:
+                TSNamespaceType::Cast(object)->VisitRangeSlot(visitor);
+                break;
             case JSType::RB_TREENODE:
                 RBTreeNode::Cast(object)->VisitRangeSlot(visitor);
                 break;

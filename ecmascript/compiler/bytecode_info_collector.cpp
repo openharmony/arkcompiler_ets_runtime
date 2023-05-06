@@ -147,13 +147,13 @@ void BytecodeInfoCollector::CollectFunctionTypeId(panda_file::File::EntityId fie
 {
     uint32_t offset = fieldId.GetOffset();
     TypeAnnotationExtractor annoExtractor(jsPandaFile_, offset);
-    annoExtractor.EnumerateInstsAndTypes(
-        [this, offset](const int32_t bcOffset, const uint32_t typeId) {
-            if (bcOffset == TypeRecorder::METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET) {
-                bytecodeInfo_.SetFunctionTypeIDAndMethodOffset(typeId, offset);
-                return;
-            }
-        });
+    uint32_t typeId = annoExtractor.GetMethodTypeOffset();
+    if (typeId != 0) {
+        bytecodeInfo_.SetFunctionTypeIDAndMethodOffset(typeId, offset);
+    }
+    if (annoExtractor.IsNamespace()) {
+        MarkMethodNamespace(offset);
+    }
 }
 
 void BytecodeInfoCollector::IterateLiteral(const MethodLiteral *method,
@@ -285,6 +285,20 @@ void BytecodeInfoCollector::CollectInnerMethods(uint32_t methodId, uint32_t inne
     }
     MethodInfo innerInfo(GetMethodInfoID(), 0, methodInfoId, methodId);
     methodList.emplace(innerMethodOffset, innerInfo);
+}
+
+void BytecodeInfoCollector::MarkMethodNamespace(const uint32_t methodOffset)
+{
+    auto &methodList = bytecodeInfo_.GetMethodList();
+    auto iter = methodList.find(methodOffset);
+    if (iter != methodList.end()) {
+        MethodInfo &methodInfo = iter->second;
+        methodInfo.MarkMethodNamespace();
+        return;
+    }
+    MethodInfo info(GetMethodInfoID(), 0, LexEnv::DEFAULT_ROOT, MethodInfo::DEFAULT_OUTMETHOD_OFFSET,
+        0, LexicalEnvStatus::VIRTUAL_LEXENV, true);
+    methodList.emplace(methodOffset, info);
 }
 
 void BytecodeInfoCollector::CollectInnerMethodsFromLiteral(const MethodLiteral *method, uint64_t index)

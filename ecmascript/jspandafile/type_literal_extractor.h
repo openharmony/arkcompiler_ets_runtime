@@ -157,6 +157,8 @@ private:
 };
 
 class TypeAnnotationExtractor {
+using LiteralTag = panda_file::LiteralTag;
+
 public:
     explicit TypeAnnotationExtractor(const JSPandaFile *jsPandaFile, const uint32_t methodOffset);
     ~TypeAnnotationExtractor() = default;
@@ -173,13 +175,30 @@ public:
         }
     }
     
+    uint32_t GetMethodTypeOffset() const
+    {
+        return methodTypeOffset_;
+    }
+
+    bool IsNamespace() const
+    {
+        return isNamespace_;
+    }
+
 private:
     static constexpr const char *TYPE_ANNO_ELEMENT_NAME = "_TypeOfInstruction";
+    static constexpr int METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET = -1;
+    static constexpr int METHOD_ANNOTATION_NAMESPACE = 255;
+    static constexpr int METHOD_ANNOTATION_ENUM = 254;
 
     void ProcessTypeAnnotation(const JSPandaFile *jsPandaFile, const uint32_t methodOffset);
+    void CollectTSMethodKind();
 
+    uint32_t methodTypeOffset_ {0};
     std::vector<int32_t> bcOffsets_ {};
     std::vector<uint32_t> typeIds_ {};
+    std::vector<LiteralTag> tags_ {};
+    bool isNamespace_ {false};
 };
 
 class ExportTypeTableExtractor {

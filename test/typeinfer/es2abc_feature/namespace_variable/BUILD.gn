@@ -11,24 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("ark_typeinfer_es2abc_feature_test") {
-  testonly = true
-  test_list = [
-    "arrow_function",
-    "indexsignature_class",
-    "indexsignature_object",
-    "generics",
-    "generics_multiple",
-    "namespace_multiple",
-    "namespace_nested",
-    "namespace_type",
-    "namespace_variable",
-    "type_alias",
-    "type_assertion",
-  ]
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
+host_typeinfer_test_action("namespace_variable") {
   deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}Es2abcAotTypeInferAction" ]
-  }
+  is_enable_global_typeinfer = true
 }

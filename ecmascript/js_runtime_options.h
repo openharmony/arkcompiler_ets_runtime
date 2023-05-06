@@ -108,6 +108,7 @@ enum CommandValues {
     OPTION_ENABLE_TYPE_LOWERING,
     OPTION_ENABLE_OPT_INLINING,
     OPTION_ENABLE_OPT_PGOTYPE,
+    OPTION_COMPILER_OPT_GLOBAL_TYPEINFER,
     OPTION_HELP,
     OPTION_PGO_PROFILER_PATH,
     OPTION_PGO_HOTNESS_THRESHOLD,
@@ -873,6 +874,16 @@ public:
         return enableOptPGOType_;
     }
 
+    void SetEnableGlobalTypeInfer(bool value)
+    {
+        enableGlobalTypeInfer_ = value;
+    }
+
+    bool IsEnableGlobalTypeInfer() const
+    {
+        return enableGlobalTypeInfer_;
+    }
+
     void WasSet(int opt)
     {
         wasSet_ |= 1ULL << static_cast<uint64_t>(opt);
@@ -971,6 +982,7 @@ private:
     bool enableTypeLowering_ {true};
     bool enableOptInlining_ {false};
     bool enableOptPGOType_ {true};
+    bool enableGlobalTypeInfer_ {false};
     uint64_t wasSet_ {0};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};

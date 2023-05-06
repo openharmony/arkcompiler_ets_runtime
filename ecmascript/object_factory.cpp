@@ -3360,6 +3360,20 @@ JSHandle<TSIteratorInstanceType> ObjectFactory::NewTSIteratorInstanceType()
 
     return iteratorInstanceType;
 }
+
+JSHandle<TSNamespaceType> ObjectFactory::NewTSNamespaceType()
+{
+    NewObjectHook();
+
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetTSNamespaceTypeClass().GetTaggedObject()));
+    JSHandle<TSNamespaceType> namespaceType(thread_, header);
+
+    namespaceType->SetPropertyType(thread_, JSTaggedValue::Undefined());
+    JSHandle<TSObjLayoutInfo> tsPropInfo = CreateTSObjLayoutInfo(TSObjLayoutInfo::DEFAULT_CAPACITY);
+    namespaceType->SetPropertyType(thread_, tsPropInfo);
+    return namespaceType;
+}
 // ----------------------------------- new string ----------------------------------------
 JSHandle<EcmaString> ObjectFactory::NewFromASCII(const CString &data)
 {

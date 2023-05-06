@@ -189,9 +189,9 @@ class MethodInfo {
 public:
     MethodInfo(uint32_t methodInfoIndex, uint32_t methodPcInfoIndex, uint32_t outMethodIdx,
                uint32_t outMethodOffset = MethodInfo::DEFAULT_OUTMETHOD_OFFSET, uint32_t num = 0,
-               LexicalEnvStatus lexEnvStatus = LexicalEnvStatus::VIRTUAL_LEXENV)
+               LexicalEnvStatus lexEnvStatus = LexicalEnvStatus::VIRTUAL_LEXENV, bool isNamespace = false)
         : methodInfoIndex_(methodInfoIndex), methodPcInfoIndex_(methodPcInfoIndex), outerMethodId_(outMethodIdx),
-          outerMethodOffset_(outMethodOffset), numOfLexVars_(num), status_(lexEnvStatus)
+          outerMethodOffset_(outMethodOffset), numOfLexVars_(num), status_(lexEnvStatus), isNamespace_(isNamespace)
     {
     }
 
@@ -262,6 +262,16 @@ public:
     inline void AddInnerMethod(uint32_t offset)
     {
         innerMethods_.emplace_back(offset);
+    }
+
+    inline void MarkMethodNamespace()
+    {
+        isNamespace_ = true;
+    }
+
+    inline bool IsNamespace() const
+    {
+        return isNamespace_;
     }
 
     inline const std::vector<uint32_t> &GetInnerMethods() const
@@ -354,6 +364,7 @@ private:
     LexicalEnvStatus status_ { LexicalEnvStatus::VIRTUAL_LEXENV };
     std::set<uint32_t> importIndex_ {};
     CompileStateBit compileState_ { 0 };
+    bool isNamespace_ {false};
 };
 
 
@@ -722,6 +733,7 @@ private:
     void CollectRecordReferenceREL();
     void CollectRecordImportInfo(const CString &recordName);
     void CollectRecordExportInfo(const CString &recordName);
+    void MarkMethodNamespace(const uint32_t methodOffset);
 
     EcmaVM *vm_;
     JSPandaFile *jsPandaFile_ {nullptr};

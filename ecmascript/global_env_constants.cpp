@@ -224,6 +224,8 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
     SetConstant(ConstantIndex::TS_ITERATOR_INSTANCE_TYPE_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, TSIteratorInstanceType::SIZE,
                 JSType::TS_ITERATOR_INSTANCE_TYPE));
+    SetConstant(ConstantIndex::TS_NAMESPACE_TYPE_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, TSNamespaceType::SIZE, JSType::TS_NAMESPACE_TYPE));
     SetConstant(ConstantIndex::JS_REGEXP_ITERATOR_CLASS_INDEX,
                 factory->NewEcmaHClass(hClass, JSRegExpIterator::SIZE, JSType::JS_REG_EXP_ITERATOR));
     SetConstant(ConstantIndex::JS_SET_ITERATOR_CLASS_INDEX,

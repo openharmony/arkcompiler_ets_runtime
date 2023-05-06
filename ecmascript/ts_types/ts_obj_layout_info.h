@@ -36,6 +36,8 @@ public:
     static constexpr int ENTRY_SIZE = 2;
     static constexpr int ENTRY_KEY_OFFSET = 0;
     static constexpr int ENTRY_TYPE_OFFSET = 1;
+    static constexpr int DEFAULT_CAPACITY = 1;
+    static constexpr int INCREASE_CAPACITY_RATE = 1;
 
     inline static TSObjLayoutInfo *Cast(TaggedObject *obj)
     {
@@ -45,10 +47,12 @@ public:
 
     inline uint32_t GetPropertiesCapacity() const
     {
+        ASSERT(GetLength() >= ELEMENTS_START_INDEX);
+        ASSERT((GetLength() - ELEMENTS_START_INDEX) % 2 == 0);  // 2: even number
         return static_cast<uint32_t>((GetLength() - ELEMENTS_START_INDEX) / ENTRY_SIZE);
     }
 
-    inline void SetNumOfProperties(const JSThread *thread, int propertiesNum)
+    inline void SetNumOfProperties(const JSThread *thread, const uint32_t propertiesNum)
     {
         return TaggedArray::Set(thread, ELEMENTS_COUNT_INDEX, JSTaggedValue(propertiesNum));
     }
@@ -72,14 +76,29 @@ public:
 
     void AddKeyAndType(const JSThread *thread, const JSTaggedValue &key, const JSTaggedValue &typeIdVal);
 
+    static JSHandle<TSObjLayoutInfo> PushBack(const JSThread *thread,
+                                              const JSHandle<TSObjLayoutInfo> &oldLayout,
+                                              const JSHandle<JSTaggedValue> &key,
+                                              const JSHandle<JSTaggedValue> &value);
+
     inline uint32_t GetLength() const
     {
         return TaggedArray::GetLength();
     }
 
-    static inline uint32_t ComputeArrayLength(uint32_t properties_number)
+    static inline uint32_t ComputeGrowCapacity(const uint32_t oldCapacity)
     {
-        return (properties_number * ENTRY_SIZE) + ELEMENTS_START_INDEX;
+        uint64_t newCapacity = (static_cast<uint64_t>(oldCapacity) << INCREASE_CAPACITY_RATE);
+        ASSERT(newCapacity <= static_cast<uint64_t>(MAX_PROPERTIES_LENGTH));
+        if (newCapacity > static_cast<uint64_t>(MAX_PROPERTIES_LENGTH)) {
+            return MAX_PROPERTIES_LENGTH;
+        }
+        return static_cast<uint32_t>(newCapacity);
+    }
+
+    static inline uint32_t ComputeArrayLength(const uint32_t numOfProperties)
+    {
+        return (numOfProperties * ENTRY_SIZE) + ELEMENTS_START_INDEX;
     }
 
     bool Find(JSTaggedValue key) const;
@@ -111,11 +130,9 @@ private:
         return ELEMENTS_START_INDEX + (static_cast<uint32_t>(index) * ENTRY_SIZE) + ENTRY_TYPE_OFFSET;
     }
 
-    static inline uint32_t ComputeGrowCapacity(uint32_t old_capacity)
-    {
-        uint32_t new_capacity = old_capacity * ENTRY_SIZE  + ELEMENTS_START_INDEX;
-        return new_capacity > MAX_PROPERTIES_LENGTH ? MAX_PROPERTIES_LENGTH : new_capacity;
-    }
+    static JSHandle<TSObjLayoutInfo> ExtendTSObjLayoutInfo(const JSThread *thread,
+                                                           const JSHandle<TSObjLayoutInfo> &old,
+                                                           JSTaggedValue initVal = JSTaggedValue::Hole());
 };
 }  // namespace panda::ecmascript
 

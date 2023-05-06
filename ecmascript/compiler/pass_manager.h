@@ -92,6 +92,11 @@ public:
         return bcInfoCollector_->GetBytecodeInfo();
     }
 
+    NativeAreaAllocator *GetNativeAreaAllocator() const
+    {
+        return vm_->GetNativeAreaAllocator();
+    }
+
 private:
     EcmaVM *vm_ {nullptr};
     BytecodeInfoCollector *bcInfoCollector_ {nullptr};

@@ -318,7 +318,7 @@ GlobalTSTypeRef TSObjectType::GetPropTypeGT(JSThread *thread, JSHandle<TSObjectT
                                             JSHandle<JSTaggedValue> propName)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    TSObjLayoutInfo *layout = TSObjLayoutInfo::Cast(objectType->GetObjLayoutInfo().GetTaggedObject());
+    JSHandle<TSObjLayoutInfo> layout(thread, objectType->GetObjLayoutInfo().GetTaggedObject());
     uint32_t numOfProps = layout->GetNumOfProperties();
     JSMutableHandle<JSTaggedValue> propKey(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < numOfProps; ++i) {
@@ -442,6 +442,46 @@ GlobalTSTypeRef TSInterfaceType::GetIndexSignType(JSThread *thread, const JSHand
     JSTaggedValue valueType = indexSignInfo->TryGetTypeByIndexSign(typeId);
     if (valueType.IsInt()) {
         return GlobalTSTypeRef(static_cast<uint32_t>(valueType.GetInt()));
+    }
+    return GlobalTSTypeRef::Default();
+}
+
+
+void TSNamespaceType::AddKeyAndValue(const JSThread *thread, const JSHandle<TSNamespaceType> &namespaceType,
+                                     const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<TSObjLayoutInfo> propLayout(thread, namespaceType->GetPropertyType());
+    if (propLayout->Find(key.GetTaggedValue())) {
+        return;
+    }
+    JSHandle<TSObjLayoutInfo> newPropLayout = TSObjLayoutInfo::PushBack(thread, propLayout, key, value);
+    namespaceType->SetPropertyType(thread, newPropLayout.GetTaggedValue());
+}
+
+GlobalTSTypeRef TSNamespaceType::GetPropTypeGT(JSThread *thread, const JSHandle<TSNamespaceType> &namespaceType,
+                                               const JSHandle<JSTaggedValue> &propName)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (namespaceType->GetPropertyType().IsUndefined()) {
+        return GlobalTSTypeRef::Default();
+    }
+
+    JSHandle<JSTaggedValue> properties(thread, namespaceType->GetPropertyType());
+
+    if (properties->IsUndefined()) {
+        return GlobalTSTypeRef::Default();
+    }
+
+    JSHandle<TSObjLayoutInfo> layout(thread, namespaceType->GetPropertyType().GetTaggedObject());
+    uint32_t numOfProps = layout->GetNumOfProperties();
+    JSMutableHandle<JSTaggedValue> propKey(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < numOfProps; ++i) {
+        propKey.Update(layout->GetKey(i));
+        if (!JSTaggedValue::Equal(thread, propName, propKey)) {
+            continue;
+        }
+        uint32_t gtRawData = static_cast<uint32_t>(layout->GetTypeId(i).GetInt());
+        return GlobalTSTypeRef(gtRawData);
     }
     return GlobalTSTypeRef::Default();
 }

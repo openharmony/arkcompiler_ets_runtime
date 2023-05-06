@@ -353,6 +353,10 @@ public:
 
     JSTaggedValue PUBLIC_API GetHClassFromCache(uint32_t index);
 
+    GlobalTSTypeRef PUBLIC_API CreateNamespaceType();
+
+    void AddNamespacePropType(kungfu::GateType objType, JSTaggedValue name, kungfu::GateType valueType);
+
     inline bool IsUserDefinedClassTypeKind(const kungfu::GateType &gateType) const
     {
         GlobalTSTypeRef gt = gateType.GetGTRef();
@@ -362,6 +366,22 @@ public:
     inline bool IsUserDefinedClassTypeKind(const GlobalTSTypeRef &gt) const
     {
         return IsClassTypeKind(gt) && (!gt.IsBuiltinModule());
+    }
+
+    inline void StoreNamespaceType(const uint32_t methodOffset, const kungfu::GateType type)
+    {
+        methodOffsetToType_.insert(std::make_pair(methodOffset, type));
+    }
+
+    inline kungfu::GateType GetNamespaceObjType(const uint32_t methodOffset) const
+    {
+        ASSERT(HasInferredNamespaceType(methodOffset));
+        return methodOffsetToType_.at(methodOffset);
+    }
+
+    inline bool HasInferredNamespaceType(const uint32_t methodOffset) const
+    {
+        return methodOffsetToType_.find(methodOffset) != methodOffsetToType_.end();
     }
 
     EcmaVM *GetEcmaVM() const
@@ -385,6 +405,7 @@ public:
     V(Import, TSTypeKind::IMPORT)                       \
     V(Interface, TSTypeKind::INTERFACE)                 \
     V(IteratorInstance, TSTypeKind::ITERATOR_INSTANCE)  \
+    V(Namespace, TSTypeKind::NAMESPACE)
 
 #define IS_TSTYPEKIND(NAME, TSTYPEKIND)                                                \
     inline bool PUBLIC_API Is##NAME##TypeKind(const kungfu::GateType &gateType) const  \
@@ -786,6 +807,7 @@ private:
     kungfu::BytecodeInfoCollector *bcInfoCollector_ {nullptr};
     // use for collect the literal of export type table.
     CMap<std::pair<const JSPandaFile *, CString>, JSTaggedValue> resolvedExportTable_ {};
+    CMap<uint32_t, kungfu::GateType> methodOffsetToType_ {};
 };
 }  // namespace panda::ecmascript
 

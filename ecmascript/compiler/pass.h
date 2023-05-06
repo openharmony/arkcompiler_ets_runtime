@@ -30,7 +30,7 @@
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/compiler/ts_inline_lowering.h"
 #include "ecmascript/compiler/ts_type_lowering.h"
-#include "ecmascript/compiler/type_inference/type_infer.h"
+#include "ecmascript/compiler/type_inference/global_type_infer.h"
 #include "ecmascript/compiler/type_lowering.h"
 #include "ecmascript/compiler/value_numbering.h"
 #include "ecmascript/compiler/verifier.h"
@@ -43,10 +43,11 @@ public:
     PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassContext *ctx, CompilerLog *log,
              std::string methodName, MethodInfo *methodInfo = nullptr, bool hasTypes = false,
              const CString &recordName = "", MethodLiteral *methodLiteral = nullptr,
-             uint32_t methodOffset = 0, NativeAreaAllocator *allocator = nullptr)
+             uint32_t methodOffset = 0, NativeAreaAllocator *allocator = nullptr,
+             PGOProfilerLoader *loader = nullptr)
         : builder_(builder), circuit_(circuit), ctx_(ctx), log_(log), methodName_(methodName),
           methodInfo_(methodInfo), hasTypes_(hasTypes), recordName_(recordName), methodLiteral_(methodLiteral),
-          methodOffset_(methodOffset), allocator_(allocator)
+          methodOffset_(methodOffset), allocator_(allocator), loader_(loader)
     {
     }
 
@@ -142,6 +143,11 @@ public:
         return allocator_;
     }
 
+    PGOProfilerLoader *GetPGOProfilerLoader() const
+    {
+        return loader_;
+    }
+
     bool IsTypeAbort() const
     {
         if (hasTypes_) {
@@ -180,6 +186,7 @@ private:
     MethodLiteral *methodLiteral_ {nullptr};
     uint32_t methodOffset_;
     NativeAreaAllocator *allocator_ {nullptr};
+    PGOProfilerLoader *loader_ {nullptr};
 };
 
 template<typename T1>
@@ -205,10 +212,9 @@ public:
         TimeScope timescope("TypeInferPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         if (data->HasTypes()) {
             bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
-            TypeInfer typeInfer(data->GetBuilder(), data->GetCircuit(), data->GetPassContext(),
-                                data->GetMethodInfoIndex(), enableLog, data->GetMethodName(),
-                                data->GetRecordName(), data->GetMethodInfo());
-            typeInfer.TraverseCircuit();
+            GlobalTypeInfer globalTypeInfer(data->GetPassContext(), data->GetMethodOffset(), data->GetRecordName(),
+                                            data->GetPGOProfilerLoader(), enableLog);
+            globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
         }
         return true;
     }

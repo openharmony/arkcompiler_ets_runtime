@@ -670,6 +670,7 @@ public:
     bool IsTSFunctionType() const;
     bool IsTSArrayType() const;
     bool IsTSIteratorInstanceType() const;
+    bool IsTSNamespaceType() const;
 
     bool IsCjsExports() const;
     bool IsCjsModule() const;

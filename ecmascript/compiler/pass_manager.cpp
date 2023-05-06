@@ -96,7 +96,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
         }
 
         PassData data(&builder, &circuit, &ctx, log_, fullName, &methodInfo, hasTypes, recordName,
-                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator());
+                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), loader);
 
         PassRunner<PassData> pipeline(&data);
         if (passOptions_->EnableTypeInfer()) {
