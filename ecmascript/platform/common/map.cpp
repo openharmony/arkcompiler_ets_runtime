@@ -25,6 +25,8 @@ const char *GetPageTagString(PageTagType type)
             return "ArkTS Heap";
         case PageTagType::MACHINE_CODE:
             return "ArkTS Code";
+        case PageTagType::MEMPOOL_CACHE:
+            return "ArkTS MemPoolCache";
         default: {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
