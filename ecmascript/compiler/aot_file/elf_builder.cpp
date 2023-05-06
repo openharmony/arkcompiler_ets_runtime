@@ -184,7 +184,8 @@ ELF Header:
 */
 void ElfBuilder::PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, Triple triple)
 {
-    if (memset_s(reinterpret_cast<void *>(&header), sizeof(llvm::ELF::Elf64_Ehdr), 0, sizeof(llvm::ELF::Elf64_Ehdr)) != EOK) {
+    if (memset_s(reinterpret_cast<void *>(&header), sizeof(llvm::ELF::Elf64_Ehdr), 0,
+                 sizeof(llvm::ELF::Elf64_Ehdr)) != EOK) {
         UNREACHABLE();
     }
     header.e_ident[llvm::ELF::EI_MAG0] = llvm::ELF::ElfMagic[llvm::ELF::EI_MAG0];

@@ -15,7 +15,7 @@
 import { nop } from './module.js';
 
 function foo() {
-    print('base foo()');
+  print('base foo()');
 }
 
 class A {
