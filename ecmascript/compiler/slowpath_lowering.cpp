@@ -187,12 +187,6 @@ GateRef SlowPathLowering::LoadObjectFromConstPool(GateRef jsFunc, GateRef index)
     return GetValueFromTaggedArray(constPool, index);
 }
 
-GateRef SlowPathLowering::GetProfileTypeInfo(GateRef jsFunc)
-{
-    GateRef method = builder_.GetMethodFromFunction(jsFunc);
-    return builder_.Load(VariableType::JS_ANY(), method, builder_.IntPtr(Method::PROFILE_TYPE_INFO_OFFSET));
-}
-
 void SlowPathLowering::Lower(GateRef gate)
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
@@ -701,6 +695,19 @@ void SlowPathLowering::Lower(GateRef gate)
     }
 }
 
+void SlowPathLowering::LowerCallStubWithIC(GateRef gate, int sign, const std::vector<GateRef> &args)
+{
+    std::vector<GateRef> inputs { glue_ };
+    inputs.insert(inputs.end(), args.begin(), args.end());
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
+    inputs.emplace_back(jsFunc);
+    inputs.emplace_back(slotId);
+
+    GateRef result = builder_.CallStub(glue_, gate, sign, inputs);
+    ReplaceHirWithValue(gate, result);
+}
+
 GateRef SlowPathLowering::LowerCallRuntime(GateRef gate, int index, const std::vector<GateRef> &args, bool useLabel)
 {
     const std::string name = RuntimeStubCSigns::GetRTName(index);
@@ -866,47 +873,19 @@ void SlowPathLowering::LowerAsyncFunctionReject(GateRef gate)
 
 void SlowPathLowering::LowerTryLdGlobalByName(GateRef gate)
 {
-    Label updateProfileTypeInfo(&builder_);
-    Label accessObject(&builder_);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter
-    DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
-    builder_.Branch(builder_.TaggedIsUndefined(*profileTypeInfo), &updateProfileTypeInfo, &accessObject);
-    builder_.Bind(&updateProfileTypeInfo);
-    {
-        profileTypeInfo = LowerCallRuntime(gate, RTSTUB_ID(UpdateHotnessCounter), { jsFunc }, true);
-        builder_.Jump(&accessObject);
-    }
-    builder_.Bind(&accessObject);
-    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::TryLdGlobalByName,
-        { glue_, prop, *profileTypeInfo, slotId });
-    ReplaceHirWithValue(gate, result);
+    LowerCallStubWithIC(gate, CommonStubCSigns::TryLdGlobalByName, { prop });
 }
 
 void SlowPathLowering::LowerStGlobalVar(GateRef gate)
 {
-    Label updateProfileTypeInfo(&builder_);
-    Label accessObject(&builder_);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter
     GateRef value = acc_.GetValueIn(gate, 2);  // 2: the 2nd para is value
-    DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
-    builder_.Branch(builder_.TaggedIsUndefined(*profileTypeInfo), &updateProfileTypeInfo, &accessObject);
-    builder_.Bind(&updateProfileTypeInfo);
-    {
-        profileTypeInfo = LowerCallRuntime(gate, RTSTUB_ID(UpdateHotnessCounter), { jsFunc }, true);
-        builder_.Jump(&accessObject);
-    }
-    builder_.Bind(&accessObject);
-    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::StGlobalVar,
-        { glue_, prop, value, *profileTypeInfo, slotId });
-    ReplaceHirWithValue(gate, result);
+    LowerCallStubWithIC(gate, CommonStubCSigns::StGlobalVar, { prop, value});
 }
 
 void SlowPathLowering::LowerGetIterator(GateRef gate)
@@ -936,7 +915,6 @@ void SlowPathLowering::LowerCallArg0(GateRef gate)
 
 void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate)
 {
-    std::vector<GateRef> vec;
     // this
     size_t fixedInputsNum = 1;
     ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
@@ -947,11 +925,7 @@ void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate)
     GateRef callTarget = acc_.GetValueIn(gate, numIns - callTargetIndex); // acc
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef newTarget = builder_.Undefined();
-    vec.emplace_back(glue_);
-    vec.emplace_back(actualArgc);
-    vec.emplace_back(callTarget);
-    vec.emplace_back(newTarget);
-    vec.emplace_back(thisObj);
+    std::vector<GateRef> vec { glue_, actualArgc, callTarget, newTarget, thisObj };
     // add common args
     for (size_t i = fixedInputsNum; i < numIns - callTargetIndex; i++) {
         vec.emplace_back(acc_.GetValueIn(gate, i));
@@ -993,7 +967,6 @@ void SlowPathLowering::LowerCallSpread(GateRef gate)
 
 void SlowPathLowering::LowerCallrangeImm8Imm8V8(GateRef gate)
 {
-    std::vector<GateRef> vec;
     size_t numArgs = acc_.GetNumValueIn(gate);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLRANGE_IMM8_IMM8_V8));
@@ -1001,11 +974,7 @@ void SlowPathLowering::LowerCallrangeImm8Imm8V8(GateRef gate)
     GateRef callTarget = acc_.GetValueIn(gate, numArgs - callTargetIndex);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
-    vec.emplace_back(glue_);
-    vec.emplace_back(actualArgc);
-    vec.emplace_back(callTarget);
-    vec.emplace_back(newTarget);
-    vec.emplace_back(thisObj);
+    std::vector<GateRef> vec {glue_, actualArgc, callTarget, newTarget, thisObj};
 
     for (size_t i = 0; i < numArgs - callTargetIndex; i++) { // 2: skip acc
         vec.emplace_back(acc_.GetValueIn(gate, i));
@@ -1432,25 +1401,11 @@ void SlowPathLowering::LowerIsIn(GateRef gate)
 
 void SlowPathLowering::LowerInstanceof(GateRef gate)
 {
-    Label updateProfileTypeInfo(&builder_);
-    Label doInstanceofWithIC(&builder_);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef obj = acc_.GetValueIn(gate, 1);     // 1: the second parameter
     GateRef target = acc_.GetValueIn(gate, 2);  // 2: the third parameter
-    DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
-    builder_.Branch(builder_.TaggedIsUndefined(*profileTypeInfo), &updateProfileTypeInfo, &doInstanceofWithIC);
-    builder_.Bind(&updateProfileTypeInfo);
-    {
-        profileTypeInfo = LowerCallRuntime(gate, RTSTUB_ID(UpdateHotnessCounter), { jsFunc }, true);
-        builder_.Jump(&doInstanceofWithIC);
-    }
-    builder_.Bind(&doInstanceofWithIC);
-    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::Instanceof,
-        { glue_, obj, target, *profileTypeInfo, slotId });
-    ReplaceHirWithValue(gate, result);
+    LowerCallStubWithIC(gate, CommonStubCSigns::Instanceof, { obj, target });
 }
 
 void SlowPathLowering::LowerFastStrictNotEqual(GateRef gate)
@@ -1618,13 +1573,11 @@ void SlowPathLowering::LowerGetModuleNamespace(GateRef gate)
 void SlowPathLowering::LowerSuperCall(GateRef gate)
 {
     const int id = RTSTUB_ID(OptSuperCall);
-    std::vector<GateRef> vec;
     ASSERT(acc_.GetNumValueIn(gate) >= 0);
     GateRef func = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef newTarget = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
     size_t numIns = acc_.GetNumValueIn(gate);
-    vec.emplace_back(func);
-    vec.emplace_back(newTarget);
+    std::vector<GateRef> vec { func, newTarget };
     for (size_t i = 0; i < numIns; i++) {
         vec.emplace_back(acc_.GetValueIn(gate, i));
     }
@@ -1635,14 +1588,12 @@ void SlowPathLowering::LowerSuperCall(GateRef gate)
 void SlowPathLowering::LowerSuperCallArrow(GateRef gate)
 {
     const int id = RTSTUB_ID(OptSuperCall);
-    std::vector<GateRef> vec;
     ASSERT(acc_.GetNumValueIn(gate) > 0);
     GateRef newTarget = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
     size_t numIns = acc_.GetNumValueIn(gate);
     size_t funcIndex = numIns - 1;
     GateRef func = acc_.GetValueIn(gate, funcIndex);
-    vec.emplace_back(func);
-    vec.emplace_back(newTarget);
+    std::vector<GateRef> vec { func, newTarget };
     for (size_t i = 0; i < funcIndex; i++) {
         vec.emplace_back(acc_.GetValueIn(gate, i));
     }
@@ -2023,25 +1974,11 @@ void SlowPathLowering::LowerStSuperByValue(GateRef gate)
 
 void SlowPathLowering::LowerTryStGlobalByName(GateRef gate)
 {
-    Label updateProfileTypeInfo(&builder_);
-    Label accessObject(&builder_);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter
     GateRef value = acc_.GetValueIn(gate, 2);  // 2: the 2nd para is value
-    DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
-    builder_.Branch(builder_.TaggedIsUndefined(*profileTypeInfo), &updateProfileTypeInfo, &accessObject);
-    builder_.Bind(&updateProfileTypeInfo);
-    {
-        profileTypeInfo = LowerCallRuntime(gate, RTSTUB_ID(UpdateHotnessCounter), { jsFunc }, true);
-        builder_.Jump(&accessObject);
-    }
-    builder_.Bind(&accessObject);
-    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::TryStGlobalByName,
-        { glue_, prop, value, *profileTypeInfo, slotId });
-    ReplaceHirWithValue(gate, result);
+    LowerCallStubWithIC(gate, CommonStubCSigns::TryStGlobalByName, { prop, value });
 }
 
 void SlowPathLowering::LowerStConstToGlobalRecord(GateRef gate, bool isConst)
@@ -2159,79 +2096,36 @@ void SlowPathLowering::LowerStOwnByNameWithNameSet(GateRef gate)
 
 void SlowPathLowering::LowerLdGlobalVar(GateRef gate)
 {
-    Label updateProfileTypeInfo(&builder_);
-    Label accessObject(&builder_);
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter
-    DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
-    builder_.Branch(builder_.TaggedIsUndefined(*profileTypeInfo), &updateProfileTypeInfo, &accessObject);
-    builder_.Bind(&updateProfileTypeInfo);
-    {
-        profileTypeInfo = LowerCallRuntime(gate, RTSTUB_ID(UpdateHotnessCounter), { jsFunc }, true);
-        builder_.Jump(&accessObject);
-    }
-    builder_.Bind(&accessObject);
-    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::LdGlobalVar,
-        { glue_, prop, *profileTypeInfo, slotId });
-    ReplaceHirWithValue(gate, result);
+    LowerCallStubWithIC(gate, CommonStubCSigns::LdGlobalVar, { prop });
 }
 
 void SlowPathLowering::LowerLdObjByName(GateRef gate)
 {
-    Label updateProfileTypeInfo(&builder_);
-    Label accessObject(&builder_);
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter
     GateRef receiver = acc_.GetValueIn(gate, 2);  // 2: the third parameter
-    DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
-    builder_.Branch(builder_.TaggedIsUndefined(*profileTypeInfo), &updateProfileTypeInfo, &accessObject);
-    builder_.Bind(&updateProfileTypeInfo);
-    {
-        profileTypeInfo = LowerCallRuntime(gate, RTSTUB_ID(UpdateHotnessCounter), { jsFunc }, true);
-        builder_.Jump(&accessObject);
-    }
-    builder_.Bind(&accessObject);
-    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::GetPropertyByName,
-        { glue_, receiver, prop, *profileTypeInfo, slotId });
-    ReplaceHirWithValue(gate, result);
+    LowerCallStubWithIC(gate, CommonStubCSigns::GetPropertyByName, { receiver, prop });
 }
 
 void SlowPathLowering::LowerStObjByName(GateRef gate, bool isThis)
 {
-    Label updateProfileTypeInfo(&builder_);
-    Label accessObject(&builder_);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef receiver;
     GateRef value;
     if (isThis) {
         ASSERT(acc_.GetNumValueIn(gate) == 3); // 3: number of value inputs
         receiver = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
-        value = acc_.GetValueIn(gate, 2);  // 2: the third para is value
+        value = acc_.GetValueIn(gate, 2);      // 2: the third para is value
     } else {
-        // 4: number of value inputs
-        ASSERT(acc_.GetNumValueIn(gate) == 4);
-        receiver = acc_.GetValueIn(gate, 2);  // 2: the third para is receiver
-        value = acc_.GetValueIn(gate, 3);  // 3: the 4th para is value
+        ASSERT(acc_.GetNumValueIn(gate) == 4); // 4: number of value inputs
+        receiver = acc_.GetValueIn(gate, 2);   // 2: the third para is receiver
+        value = acc_.GetValueIn(gate, 3);      // 3: the 4th para is value
     }
-    GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
-    GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter
-    DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
-    builder_.Branch(builder_.TaggedIsUndefined(*profileTypeInfo), &updateProfileTypeInfo, &accessObject);
-    builder_.Bind(&updateProfileTypeInfo);
-    {
-        profileTypeInfo = LowerCallRuntime(gate, RTSTUB_ID(UpdateHotnessCounter), { jsFunc }, true);
-        builder_.Jump(&accessObject);
-    }
-    builder_.Bind(&accessObject);
-    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::SetPropertyByName,
-        { glue_, receiver, prop, value, *profileTypeInfo, slotId });
-    ReplaceHirWithValue(gate, result);
+    GateRef prop = acc_.GetValueIn(gate, 1);   // 1: the second parameter
+    LowerCallStubWithIC(gate, CommonStubCSigns::SetPropertyByName, { receiver, prop, value });
 }
 
 void SlowPathLowering::LowerDefineGetterSetterByValue(GateRef gate)
@@ -2309,42 +2203,22 @@ void SlowPathLowering::LowerStObjByIndex(GateRef gate)
 
 void SlowPathLowering::LowerLdObjByValue(GateRef gate, bool isThis)
 {
-    Label updateProfileTypeInfo(&builder_);
-    Label accessObject(&builder_);
-
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef receiver;
     GateRef propKey;
     if (isThis) {
-        // 2: number of value inputs
-        ASSERT(acc_.GetNumValueIn(gate) == 2);
+        ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: number of value inputs
         receiver = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
         propKey = acc_.GetValueIn(gate, 1);
     } else {
-        // 3: number of value inputs
-        ASSERT(acc_.GetNumValueIn(gate) == 3);
+        ASSERT(acc_.GetNumValueIn(gate) == 3); // 3: number of value inputs
         receiver = acc_.GetValueIn(gate, 1);
-        propKey = acc_.GetValueIn(gate, 2);  // 2: the third parameter
+        propKey = acc_.GetValueIn(gate, 2);    // 2: the third parameter
     }
-    GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
-    DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
-    builder_.Branch(builder_.TaggedIsUndefined(*profileTypeInfo), &updateProfileTypeInfo, &accessObject);
-    builder_.Bind(&updateProfileTypeInfo);
-    {
-        profileTypeInfo = LowerCallRuntime(gate, RTSTUB_ID(UpdateHotnessCounter), { jsFunc }, true);
-        builder_.Jump(&accessObject);
-    }
-    builder_.Bind(&accessObject);
-    GateRef result = builder_.CallStub(
-        glue_, gate, CommonStubCSigns::GetPropertyByValue, {glue_, receiver, propKey, *profileTypeInfo, slotId});
-    ReplaceHirWithValue(gate, result);
+    LowerCallStubWithIC(gate, CommonStubCSigns::GetPropertyByValue, { receiver, propKey });
 }
 
 void SlowPathLowering::LowerStObjByValue(GateRef gate, bool isThis)
 {
-    Label updateProfileTypeInfo(&builder_);
-    Label accessObject(&builder_);
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef receiver;
     GateRef propKey;
     GateRef value;
@@ -2352,26 +2226,15 @@ void SlowPathLowering::LowerStObjByValue(GateRef gate, bool isThis)
         ASSERT(acc_.GetNumValueIn(gate) == 3); // 3: number of value inputs
         receiver = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
         propKey = acc_.GetValueIn(gate, 1);
-        value = acc_.GetValueIn(gate, 2);  // 2: the third parameter
+        value = acc_.GetValueIn(gate, 2);      // 2: the third parameter
     } else {
         // 4: number of value inputs
         ASSERT(acc_.GetNumValueIn(gate) == 4);
         receiver = acc_.GetValueIn(gate, 1);
-        propKey = acc_.GetValueIn(gate, 2);  // 2: the third parameter
-        value = acc_.GetValueIn(gate, 3);  // 3: the 4th parameter
+        propKey = acc_.GetValueIn(gate, 2);   // 2: the third parameter
+        value = acc_.GetValueIn(gate, 3);     // 3: the 4th parameter
     }
-    GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
-    DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
-    builder_.Branch(builder_.TaggedIsUndefined(*profileTypeInfo), &updateProfileTypeInfo, &accessObject);
-    builder_.Bind(&updateProfileTypeInfo);
-    {
-        profileTypeInfo = LowerCallRuntime(gate, RTSTUB_ID(UpdateHotnessCounter), { jsFunc }, true);
-        builder_.Jump(&accessObject);
-    }
-    builder_.Bind(&accessObject);
-    GateRef result = builder_.CallStub(
-        glue_, gate, CommonStubCSigns::SetPropertyByValue, {glue_, receiver, propKey, value, *profileTypeInfo, slotId});
-    ReplaceHirWithValue(gate, result);
+    LowerCallStubWithIC(gate, CommonStubCSigns::SetPropertyByValue, { receiver, propKey, value });
 }
 
 void SlowPathLowering::LowerLdSuperByName(GateRef gate)
@@ -3069,25 +2932,10 @@ void SlowPathLowering::LowerCallthis3Imm8V8V8V8V8(GateRef gate)
 
 void SlowPathLowering::LowerLdThisByName(GateRef gate)
 {
-    Label updateProfileTypeInfo(&builder_);
-    Label accessObject(&builder_);
-
     ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: number of parameter
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef thisObj = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
-    GateRef slotId = builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 0));
     GateRef prop = acc_.GetValueIn(gate, 1);  // 1: the second parameter
-    DEFVAlUE(profileTypeInfo, (&builder_), VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
-    builder_.Branch(builder_.TaggedIsUndefined(*profileTypeInfo), &updateProfileTypeInfo, &accessObject);
-    builder_.Bind(&updateProfileTypeInfo);
-    {
-        profileTypeInfo = LowerCallRuntime(gate, RTSTUB_ID(UpdateHotnessCounter), { jsFunc }, true);
-        builder_.Jump(&accessObject);
-    }
-    builder_.Bind(&accessObject);
-    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::GetPropertyByName,
-        { glue_, thisObj, prop, *profileTypeInfo, slotId });
-    ReplaceHirWithValue(gate, result);
+    LowerCallStubWithIC(gate, CommonStubCSigns::GetPropertyByName, { thisObj, prop });
 }
 
 void SlowPathLowering::LowerConstPoolData(GateRef gate)

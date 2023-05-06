@@ -213,8 +213,9 @@ void InstanceofStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef object = TaggedArgument(1);
     GateRef target = TaggedArgument(2); // 2: 3rd argument
-    GateRef profileTypeInfo = TaggedPointerArgument(3); // 3 : 4th pars
+    GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
     GateRef slotId = Int32Argument(4); // 4 : 5th pars
+    GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(InstanceOf(glue, object, target, profileTypeInfo, slotId));
 }
 
@@ -332,10 +333,11 @@ void GetPropertyByNameStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef prop = TaggedPointerArgument(2); // 2 : 3rd para
-    GateRef profileTypeInfo = TaggedPointerArgument(3); // 3 : 4th para
+    GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
     GateRef slotId = Int32Argument(4); // 4 : 5th para
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.LoadObjByName(glue, receiver, prop, info, profileTypeInfo, slotId));
 }
 
@@ -354,10 +356,11 @@ void SetPropertyByNameStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef prop = TaggedArgument(2); // 2 : 3rd para
     GateRef value = TaggedPointerArgument(3); // 3 : 4th para
-    GateRef profileTypeInfo = TaggedPointerArgument(4); // 4 : 5th para
+    GateRef jsFunc = TaggedArgument(4); // 4 : 5th para
     GateRef slotId = Int32Argument(5); // 5 : 6th para
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.StoreObjByName(glue, receiver, prop, info, value, profileTypeInfo, slotId));
 }
 
@@ -384,9 +387,10 @@ void GetPropertyByValueStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
-    GateRef profileTypeInfo = TaggedPointerArgument(3); // 3 : 4th para
+    GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
     GateRef slotId = Int32Argument(4); // 4 : 5th para
     AccessObjectStubBuilder builder(this);
+    GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.LoadObjByValue(glue, receiver, key, profileTypeInfo, slotId));
 }
 
@@ -402,11 +406,12 @@ void SetPropertyByValueStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
-    GateRef key = TaggedArgument(2);              /* 2 : 3rd parameter is key */
-    GateRef value = TaggedArgument(3);            /* 3 : 4th parameter is value */
-    GateRef profileTypeInfo = TaggedPointerArgument(4); /* 4 : 5th parameter is profileTypeInfo */
-    GateRef slotId = Int32Argument(5); /* 5 : 6th parameter is slotId */
+    GateRef key = TaggedArgument(2);        // 2 : 3rd para
+    GateRef value = TaggedArgument(3);      // 3 : 4th para
+    GateRef jsFunc = TaggedArgument(4);     // 4 : 5th para
+    GateRef slotId = Int32Argument(5);      // 5 : 6th para
     AccessObjectStubBuilder builder(this);
+    GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.StoreObjByValue(glue, receiver, key, value, profileTypeInfo, slotId));
 }
 
@@ -432,10 +437,11 @@ void TryLdGlobalByNameStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef prop = TaggedPointerArgument(1);
-    GateRef profileTypeInfo = TaggedPointerArgument(2); // 2 : 3rd para
+    GateRef jsFunc = TaggedArgument(2); // 2 : 3th para
     GateRef slotId = Int32Argument(3); // 3 : 4th para
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.TryLoadGlobalByName(glue, prop, info, profileTypeInfo, slotId));
 }
 
@@ -444,10 +450,11 @@ void TryStGlobalByNameStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef prop = TaggedPointerArgument(1);
     GateRef value = TaggedArgument(2); // 2 : 3rd para
-    GateRef profileTypeInfo = TaggedPointerArgument(3); // 3 : 4th para
+    GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
     GateRef slotId = Int32Argument(4);  // 4: 5th para
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.TryStoreGlobalByName(glue, prop, info, value, profileTypeInfo, slotId));
 }
 
@@ -455,10 +462,11 @@ void LdGlobalVarStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef prop = TaggedPointerArgument(1);
-    GateRef profileTypeInfo = TaggedPointerArgument(2); // 2 : 3rd para
+    GateRef jsFunc = TaggedArgument(2); // 2 : 3th para
     GateRef slotId = Int32Argument(3); // 3 : 4th para
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.LoadGlobalVar(glue, prop, info, profileTypeInfo, slotId));
 }
 
@@ -467,10 +475,11 @@ void StGlobalVarStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef prop = TaggedPointerArgument(1);
     GateRef value = TaggedArgument(2); // 2 : 3rd para
-    GateRef profileTypeInfo = TaggedPointerArgument(3); // 3 : 4th para
+    GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
     GateRef slotId = Int32Argument(4);  // 4: 5th para
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
+    GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
     Return(builder.StoreGlobalVar(glue, prop, info, value, profileTypeInfo, slotId));
 }
 
