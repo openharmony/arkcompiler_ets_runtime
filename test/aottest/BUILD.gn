@@ -121,6 +121,7 @@ group("ark_aot_ts_test") {
     "ldfunctionpref",
     "ldglobalvar",
     "ldobjbyname",
+    "ldobjbyvalue",
     "ldstlexvar",
     "ldsuperbyname",
     "logic_op",

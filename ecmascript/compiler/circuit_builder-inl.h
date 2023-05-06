@@ -835,7 +835,7 @@ GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(GetCircuit()->LoadElement(opIdx), MachineType::ANYVALUE,
+    auto ret = GetCircuit()->NewGate(GetCircuit()->LoadElement(opIdx), MachineType::I64,
                                      { currentControl, currentDepend, receiver, index }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);

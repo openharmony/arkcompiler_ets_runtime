@@ -400,7 +400,8 @@ bool Verifier::RunSchedulingBoundsCheck(const Circuit *circuit,
         ASSERT(upperBound.size() == lowerBound.size());
         for (const auto &item : lowerBound) {
             if (!isAncestor(upperBound.at(item.first), lowerBound.at(item.first))) {
-                LOG_COMPILER(ERROR) << "[Verifier][Error] Bounds of gate (id=" << circuit->GetId(item.first) << ") is not consistent";
+                LOG_COMPILER(ERROR) << "[Verifier][Error] Bounds of gate (id="
+                                    << circuit->GetId(item.first) << ") is not consistent";
                 LOG_COMPILER(ERROR) << "Proof:";
                 LOG_COMPILER(ERROR) << "Upper bound is BB_" << upperBound.at(item.first);
                 LOG_COMPILER(ERROR) << "Lower bound is BB_" << lowerBound.at(item.first);

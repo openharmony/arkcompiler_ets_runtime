@@ -140,7 +140,9 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
                         GateType::AnyType());
                 } else {
                     // Handling multi-layer for loops
-                    UpdateValueSelector(prevLoopBeginGate, ifTrue, prevBcOffsetPhiGate);
+                    // When in a multi-layer loop, the value-selector node of the prev-loop
+                    // should be used directly instead of generating a new node
+                    UpdateValueSelector(prevLoopBeginGate, ifTrue, prevBcOffsetPhiGate, false);
                     accessor_.ReplaceValueIn(prevBcOffsetPhiGate, bcOffsetPhiGate);
                 }
                 accessor_.ReplaceStateIn(ifBranch, stateInGate);
@@ -166,21 +168,25 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
 
 void AsyncFunctionLowering::UpdateValueSelector(GateRef prevLoopBeginGate,
                                                 GateRef controlStateGate,
-                                                GateRef prevBcOffsetPhiGate)
+                                                GateRef prevBcOffsetPhiGate,
+                                                bool genNewValuePhiGate)
 {
     GateRef loopBeginFirstState = accessor_.GetState(prevLoopBeginGate);
     // 2: statesIn
     GateRef newGate = circuit_->NewGate(circuit_->Merge(2),
                                         {controlStateGate, loopBeginFirstState});
-    GateRef emptyOffsetGate = circuit_->GetConstantGate(MachineType::I32,
-                                                        static_cast<uint64_t>(-1), // -1: distinguish bcoffset
-                                                        GateType::NJSValue());
-    GateRef restoreOffset = accessor_.GetValueIn(prevBcOffsetPhiGate);
-    // this value selector is compatible with await in the loop body
-    GateRef valueSelector = circuit_->NewGate(circuit_->ValueSelector(2), MachineType::I32, // 2: num of valueIn
-                                              {newGate, restoreOffset, emptyOffsetGate},
-                                              GateType::NJSValue());
-    accessor_.ReplaceValueIn(prevBcOffsetPhiGate, valueSelector);
+
+    if (genNewValuePhiGate) {
+        GateRef emptyOffsetGate = circuit_->GetConstantGate(MachineType::I32,
+                                                            static_cast<uint64_t>(-1), // -1: distinguish bcoffset
+                                                            GateType::NJSValue());
+        GateRef restoreOffset = accessor_.GetValueIn(prevBcOffsetPhiGate);
+        // this value selector is compatible with await in the loop body
+        GateRef valueSelector = circuit_->NewGate(circuit_->ValueSelector(2), MachineType::I32, // 2: num of valueIn
+                                                  {newGate, restoreOffset, emptyOffsetGate},
+                                                  GateType::NJSValue());
+        accessor_.ReplaceValueIn(prevBcOffsetPhiGate, valueSelector);
+    }
     accessor_.ReplaceStateIn(prevLoopBeginGate, newGate);
     auto loopBeginUses = accessor_.Uses(prevLoopBeginGate);
     for (auto use : loopBeginUses) {

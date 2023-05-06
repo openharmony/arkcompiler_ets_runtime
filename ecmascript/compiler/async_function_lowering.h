@@ -57,7 +57,8 @@ private:
     void RebuildGeneratorCfg(GateRef resumeGate, GateRef restoreOffsetGate, GateRef ifFalseCondition, GateRef newTarget,
                              GateRef &firstState);
 
-    void UpdateValueSelector(GateRef prevLoopBeginGate, GateRef controlStateGate, GateRef prevBcOffsetPhiGate);
+    void UpdateValueSelector(GateRef prevLoopBeginGate, GateRef controlStateGate, GateRef prevBcOffsetPhiGate,
+                             bool genNewValuePhiGate = true);
 
     void CheckResumeInLoopBody(GateRef stateInGate, bool &resumeInLoopBody);
 
