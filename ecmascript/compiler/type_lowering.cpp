@@ -19,6 +19,7 @@
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_native_pointer.h"
+#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/vtable.h"
 
 namespace panda::ecmascript::kungfu {
@@ -257,36 +258,39 @@ void TypeLowering::LowerTSSubtypingCheck(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(receiver, frameState);
 
-    Label exit(&builder_);
     GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
     ArgumentAccessor argAcc(circuit_);
     GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
     DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
-    {
-        JSTaggedValue aotHC = tsManager_->GetHClassFromCache(acc_.TryGetValue(aotHCIndex));
-        ASSERT(aotHC.IsJSHClass());
+    JSTaggedValue aotHC = tsManager_->GetHClassFromCache(acc_.TryGetValue(aotHCIndex));
+    ASSERT(aotHC.IsJSHClass());
 
-        int32_t level = JSHClass::Cast(aotHC.GetTaggedObject())->GetLevel();
-        ASSERT(level >= 0);
+    int32_t level = JSHClass::Cast(aotHC.GetTaggedObject())->GetLevel();
+    ASSERT(level >= 0);
+
+    GateRef receiverHClass = builder_.LoadConstOffset(
+        VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+    GateRef supers = LoadSupers(receiverHClass);
+
+    auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
+    GateRef aotHCGate = LoadFromConstPool(jsFunc, hclassIndex);
+
+    if (LIKELY(static_cast<uint32_t>(level) < SubtypingOperator::DEFAULT_SUPERS_CAPACITY)) {
+        check = builder_.Equal(aotHCGate, GetValueFromSupers(supers, level));
+    } else {
         GateRef levelGate = builder_.Int32(level);
-
-        GateRef receiverHClass = builder_.LoadConstOffset(
-            VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
-        GateRef supers = LoadSupers(receiverHClass);
         GateRef length = GetLengthFromSupers(supers);
 
-        // Nextly, consider remove level check by guaranteeing not read illegal addresses.
         Label levelValid(&builder_);
+        Label exit(&builder_);
         builder_.Branch(builder_.Int32LessThan(levelGate, length), &levelValid, &exit);
         builder_.Bind(&levelValid);
         {
-            auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
-            GateRef aotHCGate = LoadFromConstPool(jsFunc, hclassIndex);
             check = builder_.Equal(aotHCGate, GetValueFromSupers(supers, level));
             builder_.Jump(&exit);
         }
+        builder_.Bind(&exit);
     }
-    builder_.Bind(&exit);
     builder_.DeoptCheck(*check, frameState, DeoptType::INCONSISTENTHCLASS);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());

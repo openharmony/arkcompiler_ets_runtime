@@ -21,6 +21,8 @@
 namespace panda::ecmascript {
 class SubtypingOperator {
 public:
+    static constexpr uint32_t DEFAULT_SUPERS_CAPACITY = 4;
+
     static bool CheckBaseClass(const JSThread *thread, const JSHandle<TSClassType> &classType);
 
     static bool CheckSubtyping(const JSThread *thread, const JSHandle<TSClassType> &classType);

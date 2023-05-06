@@ -154,7 +154,7 @@ void JSHClass::InitTSInheritInfo(const JSThread *thread)
 {
     // Supers and Level are used to record the relationship between TSHClass.
     if (IsECMAObject()) {
-        SetSupers(thread, thread->GlobalConstants()->GetEmptyWeakVector());
+        SetSupers(thread, thread->GlobalConstants()->GetDefaultSupers());
     } else {
         SetSupers(thread, JSTaggedValue::Undefined());
     }
