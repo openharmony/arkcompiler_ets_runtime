@@ -33,6 +33,9 @@ void TSTypeTableGenerator::GenerateDefaultTSTypeTables()
     AddTypeTable(runtimeTableName);
 
     InitRuntimeTypeTable();
+
+    JSHandle<EcmaString> genericsTableName = factory_->NewFromASCII(TSTypeTable::GENERICS_TABLE_NAME);
+    AddTypeTable(genericsTableName);
 }
 
 void TSTypeTableGenerator::GenerateBuiltinsTypeTable()
@@ -97,7 +100,7 @@ JSHandle<TSTypeTable> TSTypeTableGenerator::AddTypeTable(const JSHandle<EcmaStri
 
 void TSTypeTableGenerator::InitRuntimeTypeTable()
 {
-    JSHandle<TSTypeTable> runtimeTable = tsManager_->GetTSTypeTable(TSModuleTable::RUNTIME_TABLE_ID);
+    JSHandle<TSTypeTable> runtimeTable = tsManager_->GetRuntimeTable();
 
     // add IteratorResult GT
     JSHandle<JSTaggedValue> valueString = thread_->GlobalConstants()->GetHandledValueString();
@@ -108,7 +111,8 @@ void TSTypeTableGenerator::InitRuntimeTypeTable()
     JSHandle<TSObjectType> iteratorResultType = factory_->NewTSObjectType(prop.size());
     JSHandle<TSTypeTable> newRuntimeTable = TSTypeTable::PushBackTypeToTable(thread_,
         runtimeTable, JSHandle<TSType>(iteratorResultType));
-    GlobalTSTypeRef iteratorResultGt(TSModuleTable::RUNTIME_TABLE_ID, newRuntimeTable->GetNumberOfTypes());
+    GlobalTSTypeRef iteratorResultGt(static_cast<uint32_t>(ModuleTableIdx::RUNTIME),
+                                     newRuntimeTable->GetNumberOfTypes());
     iteratorResultType->SetGT(iteratorResultGt);
 
     JSHandle<TSObjLayoutInfo> layoutInfo(thread_, iteratorResultType->GetObjLayoutInfo());
@@ -117,7 +121,8 @@ void TSTypeTableGenerator::InitRuntimeTypeTable()
     // add IteratorFunction GT
     JSHandle<TSFunctionType> iteratorFunctionType = factory_->NewTSFunctionType(0);
     newRuntimeTable = TSTypeTable::PushBackTypeToTable(thread_, runtimeTable, JSHandle<TSType>(iteratorFunctionType));
-    GlobalTSTypeRef functiontGt(TSModuleTable::RUNTIME_TABLE_ID, newRuntimeTable->GetNumberOfTypes());
+    GlobalTSTypeRef functiontGt(static_cast<uint32_t>(ModuleTableIdx::RUNTIME),
+                                                      newRuntimeTable->GetNumberOfTypes());
     iteratorFunctionType->SetGT(functiontGt);
     iteratorFunctionType->SetReturnGT(iteratorResultGt);
 
@@ -130,13 +135,13 @@ void TSTypeTableGenerator::InitRuntimeTypeTable()
 
     JSHandle<TSObjectType> iteratorType = factory_->NewTSObjectType(iteratorProp.size());
     newRuntimeTable = TSTypeTable::PushBackTypeToTable(thread_, runtimeTable, JSHandle<TSType>(iteratorType));
-    GlobalTSTypeRef iteratorGt(TSModuleTable::RUNTIME_TABLE_ID, newRuntimeTable->GetNumberOfTypes());
+    GlobalTSTypeRef iteratorGt(static_cast<uint32_t>(ModuleTableIdx::RUNTIME), newRuntimeTable->GetNumberOfTypes());
     iteratorType->SetGT(iteratorGt);
 
     JSHandle<TSObjLayoutInfo> iteratorLayoutInfo(thread_, iteratorType->GetObjLayoutInfo());
     FillLayoutTypes(iteratorLayoutInfo, iteratorProp, iteratorPropType);
 
-    tsManager_->SetTSTypeTable(newRuntimeTable, TSModuleTable::RUNTIME_TABLE_ID);
+    tsManager_->SetRuntimeTable(newRuntimeTable);
 }
 
 void TSTypeTableGenerator::FillLayoutTypes(const JSHandle<TSObjLayoutInfo> &layout,

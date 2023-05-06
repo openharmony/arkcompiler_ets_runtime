@@ -26,7 +26,7 @@ using namespace panda::panda_file;
 using namespace panda::pandasm;
 using LiteralValueType = std::variant<uint8_t, uint32_t, std::string>;
 
-static constexpr uint16_t FIRST_USER_DEFINE_MODULE_ID = TSModuleTable::DEFAULT_NUMBER_OF_TABLES;
+static constexpr uint16_t FIRST_USER_DEFINE_MODULE_ID = static_cast<uint32_t>(ModuleTableIdx::NUM_OF_DEFAULT_TABLES);
 static constexpr uint16_t FIRST_USER_DEFINE_LOCAL_ID = 1;
 
 class TSTypeParserTest : public testing::Test {
@@ -65,7 +65,7 @@ HWTEST_F_L0(TSTypeParserTest, TestPrimetiveType)
     const CString recordName("");
     uint32_t primetiveTypeId = 0U;
     GlobalTSTypeRef resultGT = tsTypeParser.CreateGT(jsPandaFile, recordName, primetiveTypeId);
-    EXPECT_EQ(resultGT, GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, primetiveTypeId));
+    EXPECT_EQ(resultGT, GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE), primetiveTypeId));
 }
 
 HWTEST_F_L0(TSTypeParserTest, TestBuiltinType)
@@ -77,7 +77,7 @@ HWTEST_F_L0(TSTypeParserTest, TestBuiltinType)
     const CString recordName("");
     uint32_t builtinTypeId = 50U;
     GlobalTSTypeRef builtinGT = tsTypeParser.CreateGT(jsPandaFile, recordName, builtinTypeId);
-    EXPECT_EQ(builtinGT, GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, builtinTypeId));
+    EXPECT_EQ(builtinGT, GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::BUILTIN), builtinTypeId));
 }
 
 HWTEST_F_L0(TSTypeParserTest, TestTSClassType)
@@ -156,8 +156,8 @@ HWTEST_F_L0(TSTypeParserTest, TestTSClassType)
     auto factory = ecmaVm->GetFactory();
     JSHandle<JSTaggedValue> propertyName(factory->NewFromStdString(valueStr));
     GlobalTSTypeRef propGT = TSClassType::GetPropTypeGT(thread, classType, propertyName);
-    EXPECT_EQ(propGT,
-              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::NUMBER)));
+    EXPECT_EQ(propGT, GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE),
+                                      static_cast<uint32_t>(TSPrimitiveType::NUMBER)));
 }
 
 HWTEST_F_L0(TSTypeParserTest, TestTSFunctionType)
@@ -227,12 +227,12 @@ HWTEST_F_L0(TSTypeParserTest, TestTSFunctionType)
     JSHandle<TSFunctionType> functionType(type);
     EXPECT_EQ(resultGT, functionType->GetGT());
     EXPECT_EQ(functionType->GetLength(), numOfParas);
-    EXPECT_EQ(functionType->GetParameterTypeGT(0),
-              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::NUMBER)));
-    EXPECT_EQ(functionType->GetParameterTypeGT(1),
-              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::STRING)));
-    EXPECT_EQ(functionType->GetReturnGT(),
-              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::BOOLEAN)));
+    EXPECT_EQ(functionType->GetParameterTypeGT(0), GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE),
+                                                                   static_cast<uint32_t>(TSPrimitiveType::NUMBER)));
+    EXPECT_EQ(functionType->GetParameterTypeGT(1), GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE),
+                                                                   static_cast<uint32_t>(TSPrimitiveType::STRING)));
+    EXPECT_EQ(functionType->GetReturnGT(), GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE),
+                                                           static_cast<uint32_t>(TSPrimitiveType::BOOLEAN)));
 }
 
 HWTEST_F_L0(TSTypeParserTest, TestTSUnionType)
@@ -294,9 +294,11 @@ HWTEST_F_L0(TSTypeParserTest, TestTSUnionType)
     EXPECT_EQ(resultGT, unionType->GetGT());
     EXPECT_EQ(tsManager->GetUnionTypeLength(resultGT), numOfTypes);
     EXPECT_EQ(tsManager->GetUnionTypeByIndex(resultGT, 0),
-              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::NUMBER)));
+        GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE),
+                        static_cast<uint32_t>(TSPrimitiveType::NUMBER)));
     EXPECT_EQ(tsManager->GetUnionTypeByIndex(resultGT, 1),
-              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::STRING)));
+        GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE),
+                        static_cast<uint32_t>(TSPrimitiveType::STRING)));
 }
 
 HWTEST_F_L0(TSTypeParserTest, TestTSArrayType)
@@ -351,8 +353,8 @@ HWTEST_F_L0(TSTypeParserTest, TestTSArrayType)
 
     JSHandle<TSArrayType> arrayType(type);
     EXPECT_EQ(resultGT, arrayType->GetGT());
-    EXPECT_EQ(arrayType->GetElementGT(),
-              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::NUMBER)));
+    EXPECT_EQ(arrayType->GetElementGT(), GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE),
+                                                         static_cast<uint32_t>(TSPrimitiveType::NUMBER)));
 }
 
 HWTEST_F_L0(TSTypeParserTest, TestTSObjectType)
@@ -420,7 +422,7 @@ HWTEST_F_L0(TSTypeParserTest, TestTSObjectType)
     auto factory = ecmaVm->GetFactory();
     JSHandle<JSTaggedValue> propName(factory->NewFromStdString(ageStr));
     GlobalTSTypeRef propGT = TSObjectType::GetPropTypeGT(thread, objectType, propName);
-    EXPECT_EQ(propGT,
-              GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, static_cast<uint16_t>(TSPrimitiveType::NUMBER)));
+    EXPECT_EQ(propGT, GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE),
+                                      static_cast<uint32_t>(TSPrimitiveType::NUMBER)));
 }
 }  // namespace panda::test

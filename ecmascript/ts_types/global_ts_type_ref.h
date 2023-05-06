@@ -31,8 +31,8 @@ enum class TSTypeKind : uint8_t {
     OBJECT,
     IMPORT,
     INTERFACE,
-    BUILTININST,
-    GENERICINST,
+    BUILTIN_INSTANCE,
+    GENERIC_INSTANCE,
     INDEXSIG,
 
     // the following typekinds are not recorded in abc files and will be created at compile time
@@ -66,6 +66,15 @@ enum class TSRuntimeType : int {
     ITERATOR_RESULT = 1,
     ITERATOR_FUNCTION,
     ITERATOR
+};
+
+enum class ModuleTableIdx : uint8_t {
+    PRIMITIVE = 0,
+    BUILTIN,
+    INFERRED,
+    RUNTIME,
+    GENERICS,
+    NUM_OF_DEFAULT_TABLES,
 };
 
 class GlobalTSTypeRef {
@@ -119,6 +128,22 @@ public:
         return type_ != other.type_;
     }
 
+#define IS_TYPE_MODULE_LIST(V)               \
+    V(Primitive, ModuleTableIdx::PRIMITIVE)  \
+    V(Builtin, ModuleTableIdx::BUILTIN)      \
+    V(Inferred, ModuleTableIdx::INFERRED)    \
+    V(Runtime, ModuleTableIdx::RUNTIME)      \
+    V(Generics, ModuleTableIdx::GENERICS)
+
+#define IS_TYPE_MODULE(NAME, MODULEID)                              \
+    inline bool Is##NAME##Module() const                            \
+    {                                                               \
+        return (GetModuleId() == static_cast<uint32_t>(MODULEID));  \
+    }
+
+    IS_TYPE_MODULE_LIST(IS_TYPE_MODULE)
+#undef IS_TYPE_MODULE
+
     void Dump() const
     {
         uint32_t moduleId = GetModuleId();
@@ -137,7 +162,7 @@ public:
     static constexpr uint32_t SIZE_BITS = LOCAL_ID_BITS + MODULE_ID_BITS;
     // MAX_LOCAL_ID types in one ts file can be stored in TSTypeTable
     static constexpr uint64_t MAX_LOCAL_ID = (1LLU << LOCAL_ID_BITS) - 1;
-    // (MAX_MODULE_ID - TSModuleTable::DEFAULT_NUMBER_OF_TABLES) ts files with types can be stored in TSModuleTable
+    // (MAX_MODULE_ID - ModuleTableIdx::NUM_OF_DEFAULT_TABLES) ts files with types can be stored in TSModuleTable
     static constexpr uint64_t MAX_MODULE_ID = (1LLU << MODULE_ID_BITS) - 1;
 
     FIRST_BIT_FIELD(Type, LocalId, uint32_t, LOCAL_ID_BITS);

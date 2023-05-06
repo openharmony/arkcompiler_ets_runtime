@@ -235,8 +235,7 @@ GlobalTSTypeRef TSManager::GetUnionTypeByIndex(GlobalTSTypeRef gt, int index) co
 
 TSTypeKind TSManager::GetTypeKind(const GlobalTSTypeRef &gt) const
 {
-    uint32_t moduleId = gt.GetModuleId();
-    if (moduleId != static_cast<uint32_t>(MTableIdx::PRIMITIVE)) {
+    if (!gt.IsPrimitiveModule()) {
         JSHandle<JSTaggedValue> type = GetTSType(gt);
         if (type->IsTSType()) {
             JSHandle<TSType> tsType(type);
@@ -282,7 +281,8 @@ void TSManager::Dump()
 GlobalTSTypeRef TSManager::GetOrCreateTSIteratorInstanceType(TSRuntimeType runtimeType, GlobalTSTypeRef elementGt)
 {
     ASSERT((runtimeType >= TSRuntimeType::ITERATOR_RESULT) && (runtimeType <= TSRuntimeType::ITERATOR));
-    GlobalTSTypeRef kindGT = GlobalTSTypeRef(TSModuleTable::RUNTIME_TABLE_ID, static_cast<int>(runtimeType));
+    GlobalTSTypeRef kindGT =
+        GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::RUNTIME), static_cast<int>(runtimeType));
     GlobalTSTypeRef foundTypeRef = FindIteratorInstanceInInferTable(kindGT, elementGt);
     if (!foundTypeRef.IsDefault()) {
         return foundTypeRef;
@@ -292,7 +292,7 @@ GlobalTSTypeRef TSManager::GetOrCreateTSIteratorInstanceType(TSRuntimeType runti
     iteratorInstanceType->SetKindGT(kindGT);
     iteratorInstanceType->SetElementGT(elementGt);
 
-    return AddTSTypeToTypeTable(JSHandle<TSType>(iteratorInstanceType), TSModuleTable::INFER_TABLE_ID);
+    return AddTSTypeToInferredTable(JSHandle<TSType>(iteratorInstanceType));
 }
 
 GlobalTSTypeRef TSManager::GetIteratorInstanceElementGt(GlobalTSTypeRef gt) const
@@ -309,7 +309,7 @@ GlobalTSTypeRef TSManager::FindIteratorInstanceInInferTable(GlobalTSTypeRef kind
 {
     DISALLOW_GARBAGE_COLLECTION;
 
-    JSHandle<TSTypeTable> table = GetTSTypeTable(TSModuleTable::INFER_TABLE_ID);
+    JSHandle<TSTypeTable> table = GetInferredTable();
 
     for (int index = 1; index <= table->GetNumberOfTypes(); ++index) {  // index 0 reseved for num of types
         JSTaggedValue type = table->Get(index);
@@ -382,7 +382,7 @@ GlobalTSTypeRef TSManager::GetOrCreateUnionType(CVector<GlobalTSTypeRef> unionTy
         }
     }
 
-    return AddTSTypeToTypeTable(JSHandle<TSType>(unionType), TSModuleTable::INFER_TABLE_ID);
+    return AddTSTypeToInferredTable(JSHandle<TSType>(unionType));
 }
 
 void TSManager::Iterate(const RootVisitor &v)
@@ -534,7 +534,7 @@ GlobalTSTypeRef TSManager::CreateClassInstanceType(GlobalTSTypeRef gt)
     ASSERT(tsType->IsTSClassType());
     JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
     classInstanceType->SetClassGT(gt);
-    return AddTSTypeToTypeTable(JSHandle<TSType>(classInstanceType), TSModuleTable::INFER_TABLE_ID);
+    return AddTSTypeToInferredTable(JSHandle<TSType>(classInstanceType));
 }
 
 GlobalTSTypeRef TSManager::GetClassType(GlobalTSTypeRef classInstanceGT) const
@@ -636,8 +636,7 @@ JSHandle<JSTaggedValue> TSManager::GetTSType(const GlobalTSTypeRef &gt) const
     uint32_t moduleId = gt.GetModuleId();
     uint32_t localId = gt.GetLocalId();
 
-    if ((moduleId == TSModuleTable::BUILTINS_TABLE_ID && !IsBuiltinsDTSEnabled()) ||
-        (moduleId == TSModuleTable::PRIMITIVE_TABLE_ID)) {
+    if ((gt.IsBuiltinModule() && !IsBuiltinsDTSEnabled()) || gt.IsPrimitiveModule()) {
         return thread_->GlobalConstants()->GetHandledUndefined();
     }
 
@@ -663,10 +662,8 @@ bool TSManager::IsBuiltinArrayType(kungfu::GateType gateType) const
             return (gt == classGT);
         }
     }
-    uint32_t m = classGT.GetModuleId();
     uint32_t l = classGT.GetLocalId();
-    return (m == TSModuleTable::BUILTINS_TABLE_ID) &&
-           (l == static_cast<uint32_t>(BuiltinTypeId::ARRAY));
+    return classGT.IsBuiltinModule() && (l == static_cast<uint32_t>(BuiltinTypeId::ARRAY));
 }
 
 bool TSManager::IsTypedArrayType(kungfu::GateType gateType) const
@@ -686,9 +683,8 @@ bool TSManager::IsTypedArrayType(kungfu::GateType gateType) const
         }
         return false;
     }
-    uint32_t m = classGT.GetModuleId();
     uint32_t l = classGT.GetLocalId();
-    return (m == TSModuleTable::BUILTINS_TABLE_ID) &&
+    return classGT.IsBuiltinModule() &&
            (l >= static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_FIRST)) &&
            (l <= static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_LAST));
 }
@@ -705,10 +701,8 @@ bool TSManager::IsFloat32ArrayType(kungfu::GateType gateType) const
         return (HasCreatedGT(GetBuiltinPandaFile(), GetBuiltinOffset(idx))) &&
                (GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(idx)) == classGT);
     }
-    uint32_t m = classGT.GetModuleId();
     uint32_t l = classGT.GetLocalId();
-    return (m == TSModuleTable::BUILTINS_TABLE_ID) &&
-           (l == static_cast<uint32_t>(BuiltinTypeId::FLOAT32_ARRAY));
+    return classGT.IsBuiltinModule() && (l == static_cast<uint32_t>(BuiltinTypeId::FLOAT32_ARRAY));
 }
 
 std::string TSManager::GetBuiltinsName(uint32_t index) const
@@ -846,7 +840,7 @@ std::string TSManager::GetBuiltinsName(uint32_t index) const
 
 uint32_t TSManager::GetBuiltinIndex(GlobalTSTypeRef builtinGT) const
 {
-    ASSERT(builtinGT.GetModuleId() == TSModuleTable::BUILTINS_TABLE_ID);
+    ASSERT(builtinGT.IsBuiltinModule());
     if (IsBuiltinsDTSEnabled()) {
         for (uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::FUNCTION);
             idx <= static_cast<uint32_t>(BuiltinTypeId::INTL); idx++) {
@@ -861,7 +855,7 @@ uint32_t TSManager::GetBuiltinIndex(GlobalTSTypeRef builtinGT) const
 
 std::string TSManager::GetClassTypeStr(GlobalTSTypeRef gt) const
 {
-    if (gt.GetModuleId() == TSModuleTable::BUILTINS_TABLE_ID) {
+    if (gt.IsBuiltinModule()) {
         uint32_t index = GetBuiltinIndex(gt);
         return GetBuiltinsName(index);
     }
@@ -968,8 +962,7 @@ std::string TSManager::GetPrimitiveStr(const GlobalTSTypeRef &gt) const
         case TSPrimitiveType::BIG_INT:
             return "bigint";
         default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
+            return "unknown";
     }
 }
 
@@ -1277,8 +1270,7 @@ bool TSManager::IsBuiltinMath(kungfu::GateType funcType) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     GlobalTSTypeRef funcGT = funcType.GetGTRef();
-    uint32_t moduleId = funcGT.GetModuleId();
-    if (moduleId != static_cast<uint32_t>(MTableIdx::BUILTIN)) {
+    if (!funcGT.IsBuiltinModule()) {
         return false;
     }
 
@@ -1313,8 +1305,7 @@ bool TSManager::IsBuiltinMath(kungfu::GateType funcType) const
 bool TSManager::IsBuiltin(kungfu::GateType funcType) const
 {
     GlobalTSTypeRef funcGt = funcType.GetGTRef();
-    uint32_t moduleId = funcGt.GetModuleId();
-    return (moduleId == static_cast<uint32_t>(MTableIdx::BUILTIN));
+    return funcGt.IsBuiltinModule();
 }
 
 void TSManager::GenerateBuiltinSummary()

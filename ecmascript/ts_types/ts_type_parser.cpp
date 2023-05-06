@@ -40,17 +40,16 @@ TSTypeParser::TSTypeParser(TSManager *tsManager)
 GlobalTSTypeRef TSTypeParser::CreateGT(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId)
 {
     if (typeId <= BUILDIN_TYPE_OFFSET) {
-        return GlobalTSTypeRef(TSModuleTable::PRIMITIVE_TABLE_ID, typeId);
+        return GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE), typeId);
     }
 
     if (typeId <= USER_DEFINED_TYPE_OFFSET) {
         return ParseBuiltinObjType(typeId);
     }
 
-    // Es2abc uses negative numbers to represent type parameters in generics.
-    // The following code will be replaced by precise implementation when AOT supports parsing generic types.
+    // Negative numbers are used to represent type parameters in generics types.
     if (static_cast<int32_t>(typeId) < 0) {
-        return GlobalTSTypeRef::Default();
+        return EncodeParaType(typeId);
     }
 
     if (tsManager_->HasCreatedGT(jsPandaFile, typeId)) {
@@ -62,7 +61,7 @@ GlobalTSTypeRef TSTypeParser::CreateGT(const JSPandaFile *jsPandaFile, const CSt
 GlobalTSTypeRef TSTypeParser::ParseBuiltinObjType(uint32_t typeId)
 {
     if (!tsManager_->IsBuiltinsDTSEnabled()) {
-        return GlobalTSTypeRef(TSModuleTable::BUILTINS_TABLE_ID, typeId);
+        return GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::BUILTIN), typeId);
     }
     const JSPandaFile *builtinjsPandaFile = tsManager_->GetBuiltinPandaFile();
     if (builtinjsPandaFile == nullptr) {
@@ -79,7 +78,7 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
         return GlobalTSTypeRef::Default();
     }
 
-    if (IsNeedResolve(&typeLiteralExtractor)) {
+    if (TypeNeedResolve(&typeLiteralExtractor)) {
         return ResolveType(jsPandaFile, recordName, &typeLiteralExtractor);
     }
 
@@ -107,13 +106,19 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
     }
 
     SetTSType(table, type, gt);
-    tsManager_->CollectTypeOffsets(gt);  // collect types that need to generate hclasses
+    if (typeLiteralExtractor.GetTypeKind() != TSTypeKind::GENERIC_INSTANCE) {
+        tsManager_->CollectTypeOffsets(gt);  // collect types that need to generate hclasses
+    }
     return gt;
 }
 
 GlobalTSTypeRef TSTypeParser::ResolveType(const JSPandaFile *jsPandaFile, const CString &recordName,
                                           TypeLiteralExtractor *typeLiteralExtractor)
 {
+    if (typeLiteralExtractor->IsGenerics()) {
+        return ParseGenericsType(jsPandaFile, recordName, typeLiteralExtractor);
+    }
+
     auto kind = typeLiteralExtractor->GetTypeKind();
     switch (kind) {
         case TSTypeKind::IMPORT: {
@@ -236,6 +241,9 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPa
         case TSTypeKind::OBJECT: {
             JSHandle<TSObjectType> objectType = ParseObjectType(jsPandaFile, recordName, typeLiteralExtractor);
             return JSHandle<JSTaggedValue>(objectType);
+        }
+        case TSTypeKind::GENERIC_INSTANCE: {
+            return ParseGenericsInstanceType(jsPandaFile, recordName, typeLiteralExtractor);
         }
         default: {
             LOG_COMPILER(DEBUG) << "Do not support parse types with kind " << static_cast<uint32_t>(kind) << ". "
@@ -474,7 +482,7 @@ void TSTypeParser::SetSuperClassType(const JSHandle<TSClassType> &classType,
     } else {
         auto extensionGT = CreateGT(jsPandaFile, recordName, extendsTypeId);
         classType->SetExtensionGT(extensionGT);
-        if (extensionGT == GlobalTSTypeRef::Default()) {
+        if (extensionGT.IsDefault()) {
             classType->SetHasLinked(true);
         }
     }
@@ -593,6 +601,160 @@ GlobalTSTypeRef TSTypeParser::IterateStarExport(JSHandle<EcmaString> target, con
         }
     }
     return GlobalTSTypeRef::Default();
+}
+
+GlobalTSTypeRef TSTypeParser::ParseGenericsType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                TypeLiteralExtractor *typeLiteralExtractor)
+{
+    uint32_t typeId = typeLiteralExtractor->GetTypeOffset();
+    JSHandle<JSTaggedValue> type = ParseNonImportType(jsPandaFile, recordName, typeLiteralExtractor);
+    if (UNLIKELY(type->IsUndefined())) {
+        return GetAndStoreGT(jsPandaFile, typeId, recordName);
+    }
+    auto gt = tsManager_->AddTSTypeToGenericsTable(JSHandle<TSType>(type));
+    return GetAndStoreGT(jsPandaFile, typeId, recordName, gt.GetModuleId(), gt.GetLocalId());
+}
+
+JSHandle<JSTaggedValue> TSTypeParser::ParseGenericsInstanceType(const JSPandaFile *jsPandaFile,
+                                                                const CString &recordName,
+                                                                TypeLiteralExtractor *typeLiteralExtractor)
+{
+    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::GENERIC_INSTANCE);
+    GlobalTSTypeRef genericsGT = CreateGT(jsPandaFile, recordName, typeLiteralExtractor->GetIntValue(DEFAULT_INDEX));
+    JSHandle<JSTaggedValue> genericsType = tsManager_->GetTSType(genericsGT);
+    std::vector<GlobalTSTypeRef> paras {};
+    typeLiteralExtractor->EnumerateElements(NUM_GENERICS_PARA_INDEX,
+        [this, &jsPandaFile, &recordName, &paras](const uint32_t literalValue) {
+            auto gt = CreateGT(jsPandaFile, recordName, literalValue);
+            paras.emplace_back(gt);
+        });
+    return InstantiateGenericsType(genericsType, paras);
+}
+
+JSHandle<JSTaggedValue> TSTypeParser::InstantiateGenericsType(const JSHandle<JSTaggedValue> &genericsType,
+                                                              const std::vector<GlobalTSTypeRef> &paras)
+{
+    if (genericsType->IsTSClassType()) {
+        JSHandle<TSClassType> classType = InstantiateClassGenericsType(JSHandle<TSClassType>(genericsType), paras);
+        return JSHandle<JSTaggedValue>(classType);
+    } else if (genericsType->IsTSFunctionType()) {
+        JSHandle<TSFunctionType> funcType = InstantiateFuncGenericsType(JSHandle<TSFunctionType>(genericsType), paras);
+        return JSHandle<JSTaggedValue>(funcType);
+    } else if (genericsType->IsTSInterfaceType()) {
+        JSHandle<TSInterfaceType> interfaceType =
+            InstantiateInterfaceGenericsType(JSHandle<TSInterfaceType>(genericsType), paras);
+        return JSHandle<JSTaggedValue>(interfaceType);
+    } else if (genericsType->IsTSObjectType()) {
+        JSHandle<TSObjectType> objectType = InstantiateObjGenericsType(JSHandle<TSObjectType>(genericsType), paras);
+        return JSHandle<JSTaggedValue>(objectType);
+    }
+    LOG_COMPILER(DEBUG) << "Unsupport GenericsType Instantiate: "
+                        << static_cast<uint32_t>(genericsType->GetTaggedObject()->GetClass()->GetObjectType());
+    return genericsType;
+}
+
+JSHandle<TSFunctionType> TSTypeParser::InstantiateFuncGenericsType(const JSHandle<TSFunctionType> &genericsType,
+                                                                   const std::vector<GlobalTSTypeRef> &paras)
+{
+    uint32_t length = genericsType->GetLength();
+    JSHandle<TSFunctionType> functionType = factory_->NewTSFunctionType(length);
+    functionType->SetBitField(genericsType->GetBitField());
+    functionType->SetName(thread_, genericsType->GetName());
+    GlobalTSTypeRef thisGT = genericsType->GetThisGT();
+    functionType->SetThisGT(TryReplaceTypePara(thisGT, paras));
+    GlobalTSTypeRef returnGT = genericsType->GetReturnGT();
+    functionType->SetReturnGT(TryReplaceTypePara(returnGT, paras));
+
+    JSHandle<TaggedArray> argumentTypes(thread_, functionType->GetParameterTypes());
+    JSHandle<TaggedArray> parameterTypes(thread_, genericsType->GetParameterTypes());
+    for (uint32_t i = 0; i < length; ++i) {
+        GlobalTSTypeRef parameterGT(parameterTypes->Get(thread_, i).GetInt());
+        GlobalTSTypeRef argumentGT = TryReplaceTypePara(parameterGT, paras);
+        JSTaggedValue parameter(argumentGT.GetType());
+        argumentTypes->Set(thread_, i, parameter);
+    }
+    functionType->SetParameterTypes(thread_, argumentTypes);
+    return functionType;
+}
+
+JSHandle<TSClassType> TSTypeParser::InstantiateClassGenericsType(const JSHandle<TSClassType> &genericsType,
+                                                                 const std::vector<GlobalTSTypeRef> &paras)
+{
+    JSHandle<TSClassType> classType = factory_->NewTSClassType();
+    classType->SetName(thread_, genericsType->GetName());
+    classType->SetExtensionGT(genericsType->GetExtensionGT());
+    classType->SetHasLinked(genericsType->GetHasLinked());
+
+    JSHandle<TSObjectType> oldInstanceType(thread_, genericsType->GetInstanceType());
+    JSHandle<TSObjectType> newInstanceType = InstantiateObjGenericsType(oldInstanceType, paras);
+    classType->SetInstanceType(thread_, newInstanceType);
+
+    JSHandle<TSObjectType> oldPrototypeType(thread_, genericsType->GetPrototypeType());
+    JSHandle<TSObjectType> newPrototypeType = InstantiateObjGenericsType(oldPrototypeType, paras);
+    classType->SetPrototypeType(thread_, newPrototypeType);
+
+    JSHandle<TSObjectType> oldConstructorType(thread_, genericsType->GetConstructorType());
+    JSHandle<TSObjectType> newConstructorType = InstantiateObjGenericsType(oldConstructorType, paras);
+    classType->SetConstructorType(thread_, newConstructorType);
+    return classType;
+}
+
+JSHandle<TSInterfaceType> TSTypeParser::InstantiateInterfaceGenericsType(const JSHandle<TSInterfaceType> &genericsType,
+                                                                         const std::vector<GlobalTSTypeRef> &paras)
+{
+    JSHandle<TSInterfaceType> interfaceType = factory_->NewTSInterfaceType();
+    JSHandle<TaggedArray> oldExtends(thread_, genericsType->GetExtends());
+    uint32_t numExtends = oldExtends->GetLength();
+    JSHandle<TaggedArray> extends = factory_->NewTaggedArray(numExtends);
+    for (uint32_t i = 0; i < numExtends; ++i) {
+        GlobalTSTypeRef parameterGT(oldExtends->Get(thread_, i).GetInt());
+        JSTaggedValue parameter(TryReplaceTypePara(parameterGT, paras).GetType());
+        extends->Set(thread_, i, parameter);
+    }
+
+    JSHandle<TSObjectType> fields(thread_, genericsType->GetFields());
+    JSHandle<TSObjectType> newFields = InstantiateObjGenericsType(fields, paras);
+    interfaceType->SetFields(thread_, newFields);
+    return interfaceType;
+}
+
+JSHandle<TSObjectType> TSTypeParser::InstantiateObjGenericsType(const JSHandle<TSObjectType> &oldObjType,
+                                                                const std::vector<GlobalTSTypeRef> &paras)
+{
+    JSHandle<TSObjLayoutInfo> oldLayout(thread_, oldObjType->GetObjLayoutInfo());
+    uint32_t numOfProps = static_cast<uint32_t>(oldLayout->GetNumOfProperties());
+
+    JSHandle<TSObjectType> newObjType = factory_->NewTSObjectType(numOfProps);
+    JSHandle<TSObjLayoutInfo> newLayout(thread_, newObjType->GetObjLayoutInfo());
+    ASSERT(newLayout->GetPropertiesCapacity() == numOfProps);
+    for (uint32_t i = 0; i < numOfProps; ++i) {
+        GlobalTSTypeRef parameterGT(oldLayout->GetTypeId(i).GetInt());
+        JSTaggedValue parameter(TryReplaceTypePara(parameterGT, paras).GetType());
+        newLayout->AddKeyAndType(thread_, oldLayout->GetKey(i), parameter);
+    }
+    return newObjType;
+}
+
+GlobalTSTypeRef TSTypeParser::TryReplaceTypePara(GlobalTSTypeRef gt, const std::vector<GlobalTSTypeRef> &paras)
+{
+    // replace fields with types of templated
+    if (IsGenericsParaType(gt)) {
+        uint32_t paraTypeIndex = DecodePrarIndex(gt);
+        if (paraTypeIndex < paras.size()) {
+            return paras[paraTypeIndex];
+        }
+        return GlobalTSTypeRef::Default();
+    }
+
+    // replace methods with signature that contains template type parameters
+    if (tsManager_->IsFunctionTypeKind(gt)) {
+        JSHandle<JSTaggedValue> tsType = tsManager_->GetTSType(gt);
+        ASSERT(tsType->IsTSFunctionType());
+        JSHandle<TSFunctionType> funcTSType(tsType);
+        JSHandle<TSFunctionType> funcInst = InstantiateFuncGenericsType(funcTSType, paras);
+        return tsManager_->AddTSTypeToInferredTable(JSHandle<TSType>(funcInst));
+    }
+    return gt;
 }
 
 static uint32_t CalculateNextNumIndex(const TypeLiteralExtractor *typeLiteralExtractor,

@@ -666,7 +666,7 @@ bool TypeInfer::InferLdObjByName(GateRef gate)
     }
     if (tsManager_->IsPrimitiveTypeKind(objType)) {
         GlobalTSTypeRef builtinGt = ConvertPrimitiveToBuiltin(objType);
-        if (builtinGt.GetModuleId() == TSModuleTable::BUILTINS_TABLE_ID) {
+        if (builtinGt.IsBuiltinModule()) {
             auto builtinInstanceType = tsManager_->CreateClassInstanceType(builtinGt);
             objType = GateType(builtinInstanceType);
         }

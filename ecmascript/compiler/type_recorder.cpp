@@ -44,7 +44,7 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
     annoExtractor.EnumerateInstsAndTypes([this, &typeParser, &jsPandaFile, &recordName, &thisGT,
         &funcGT](const int32_t bcOffset, const uint32_t typeId) {
         GlobalTSTypeRef gt = typeParser.CreateGT(jsPandaFile, recordName, typeId);
-        if (gt.IsDefault()) {
+        if (TypeNeedFilter(gt)) {
             return;
         }
 
@@ -158,5 +158,10 @@ PGOSampleType TypeRecorder::GetPGOType(const int32_t offset) const
         return bcOffsetPGOTypeMap_.at(offset);
     }
     return PGOSampleType::NoneType();
+}
+
+bool TypeRecorder::TypeNeedFilter(GlobalTSTypeRef gt) const
+{
+    return gt.IsDefault() || gt.IsGenericsModule();
 }
 }  // namespace panda::ecmascript

@@ -43,11 +43,6 @@ public:
         return isGenerics_;
     }
 
-    inline void SetGenerics()
-    {
-        isGenerics_ = true;
-    }
-
     inline uint32_t GetIntValue(const uint32_t index) const
     {
         ASSERT(index < array_.size());

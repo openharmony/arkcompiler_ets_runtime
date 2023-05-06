@@ -28,6 +28,7 @@ public:
     static constexpr const char* BUILTINS_TABLE_NAME = "lib_ark_builtins.d";
     static constexpr const char* INFER_TABLE_NAME = "inferTypes";
     static constexpr const char* RUNTIME_TABLE_NAME = "runtimeTypes";
+    static constexpr const char* GENERICS_TABLE_NAME = "genericsTypes";
 
     inline static TSTypeTable *Cast(TaggedObject *object)
     {
