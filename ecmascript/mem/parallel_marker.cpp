@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
 #include "ecmascript/mem/visitor.h"
 
@@ -21,6 +22,7 @@ Marker::Marker(Heap *heap) : heap_(heap), objXRay_(heap->GetEcmaVM()), workManag
 
 void Marker::MarkRoots(uint32_t threadId)
 {
+    TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
     objXRay_.VisitVMRoots(
         std::bind(&Marker::HandleRoots, this, threadId, std::placeholders::_1, std::placeholders::_2),
         std::bind(&Marker::HandleRangeRoots, this, threadId, std::placeholders::_1, std::placeholders::_2,
@@ -51,6 +53,7 @@ void Marker::ProcessSnapshotRSet(uint32_t threadId)
 
 void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
 {
+    TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     bool isFullMark = heap_->IsFullMark();
     auto visitor = [this, threadId, isFullMark](TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                                 [[maybe_unused]] bool isNative) {
@@ -89,6 +92,61 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
     }
 }
 
+void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t markStepSize)
+{
+    TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
+    bool isFullMark = heap_->IsFullMark();
+    uint32_t visitAddrNum = 0;
+    auto visitor = [this, threadId, isFullMark, &visitAddrNum](TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                                [[maybe_unused]] bool isNative) {
+        Region *rootRegion = Region::ObjectAddressToRange(root);
+        visitAddrNum += end.SlotAddress() - start.SlotAddress();
+        bool needBarrier = isFullMark && !rootRegion->InYoungSpaceOrCSet();
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            JSTaggedValue value(slot.GetTaggedType());
+            if (value.IsHeapObject()) {
+                TaggedObject *obj = nullptr;
+                if (!value.IsWeakForHeapObject()) {
+                    obj = value.GetTaggedObject();
+                    MarkObject(threadId, obj);
+                } else {
+                    RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()), rootRegion);
+                    obj = value.GetWeakReferentUnChecked();
+                }
+                if (needBarrier) {
+                    Region *valueRegion = Region::ObjectAddressToRange(obj);
+                    if (valueRegion->InCollectSet()) {
+                        rootRegion->AtomicInsertCrossRegionRSet(slot.SlotAddress());
+                    }
+                }
+            }
+        }
+    };
+    TaggedObject *obj = nullptr;
+    double startTime = heap_->GetIncrementalMarker()->GetCurrentTimeInMs();
+    double costTime = startTime;
+    while (true) {
+        obj = nullptr;
+        if (!workManager_->Pop(threadId, &obj)) {
+            if (heap_->GetJSThread()->IsMarking() && heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark()) {
+                costTime = heap_->GetIncrementalMarker()->GetCurrentTimeInMs() - startTime;
+                heap_->GetIncrementalMarker()->UpdateMarkingSpeed(visitAddrNum, costTime);
+                heap_->GetIncrementalMarker()->SetMarkingFinished(true);
+            }
+            break;
+        }
+
+        JSHClass *jsHclass = obj->GetClass();
+        MarkObject(threadId, jsHclass);
+        objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
+        if (heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark() && visitAddrNum >= markStepSize) {
+            costTime = heap_->GetIncrementalMarker()->GetCurrentTimeInMs() - startTime;
+            heap_->GetIncrementalMarker()->UpdateMarkingSpeed(visitAddrNum, costTime);
+            break;
+        }
+    }
+}
+
 void SemiGCMarker::Initialize()
 {
     waterLine_ = heap_->GetNewSpace()->GetWaterLine();
@@ -96,6 +154,7 @@ void SemiGCMarker::Initialize()
 
 void SemiGCMarker::ProcessMarkStack(uint32_t threadId)
 {
+    TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     auto visitor = [this, threadId](TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                     [[maybe_unused]] bool isNative) {
         for (ObjectSlot slot = start; slot < end; slot++) {
@@ -128,6 +187,7 @@ void SemiGCMarker::ProcessMarkStack(uint32_t threadId)
 
 void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
 {
+    TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     auto visitor = [this, threadId]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                     [[maybe_unused]] bool isNative) {
         for (ObjectSlot slot = start; slot < end; slot++) {

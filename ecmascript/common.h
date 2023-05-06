@@ -41,6 +41,94 @@ enum TriggerGCType {
     GC_TYPE_LAST
 };
 
+enum class GCReason : uint8_t {
+    ALLOCATION_LIMIT,
+    ALLOCATION_FAILED,
+    IDLE,
+    OTHER,
+};
+
+#define SCOPE_LIST(V)                    \
+    V(TotalGC)                           \
+    V(Initialize)                        \
+    V(ConcurrentMark)                    \
+    V(WaitConcurrentMarkFinished)        \
+    V(ReMark)                            \
+    V(Mark)                              \
+    V(MarkRoots)                         \
+    V(ProcessMarkStack)                  \
+    V(Sweep)                             \
+    V(ClearNativeObject)                 \
+    V(Evacuate)                          \
+    V(Finish)                            \
+    V(UpdateReference)                   \
+    V(EvacuateSpace)
+
+#define RECORD_DATA(V)                   \
+    V(START_OBJ_SIZE)                    \
+    V(END_OBJ_SIZE)                      \
+    V(START_COMMIT_SIZE)                 \
+    V(END_COMMIT_SIZE)                   \
+    V(START_YOUNG_OBJ_SIZE)              \
+    V(SEMI_ALIVE_SIZE)                   \
+    V(SEMI_COMMIT_SIZE)                  \
+    V(SEMI_PROMOTE_SIZE)                 \
+    V(YOUNG_ALIVE_SIZE)                  \
+    V(YOUNG_COMMIT_SIZE)                 \
+    V(YOUNG_PROMOTE_SIZE)                \
+    V(OLD_ALIVE_SIZE)                    \
+    V(OLD_COMMIT_SIZE)                   \
+    V(COMPRESS_ALIVE_SIZE)               \
+    V(COMPRESS_COMMIT_SIZE)              \
+    V(START_NATIVE_POINTER_NUM)          \
+    V(COLLECT_REGION_SET_SIZE)           \
+    SEMI_RECORD_DATA(V)                  \
+    PARTIAL_RECORD_DATA(V)               \
+    FULL_RECORD_DATA(V)
+
+#define RECORD_DURATION(V)               \
+    V(SEMI_MIN_PAUSE)                    \
+    V(SEMI_MAX_PAUSE)                    \
+    V(SEMI_TOTAL_PAUSE)                  \
+    V(YOUNG_MIN_PAUSE)                   \
+    V(YOUNG_MAX_PAUSE)                   \
+    V(YOUNG_TOTAL_PAUSE)                 \
+    V(OLD_MIN_PAUSE)                     \
+    V(OLD_MAX_PAUSE)                     \
+    V(OLD_TOTAL_PAUSE)                   \
+    V(COMPRESS_MIN_PAUSE)                \
+    V(COMPRESS_MAX_PAUSE)                \
+    V(COMPRESS_TOTAL_PAUSE)
+
+#define SEMI_RECORD_DATA(V)              \
+    V(SEMI_COUNT)                        \
+    V(SEMI_TOTAL_ALIVE)                  \
+    V(SEMI_TOTAL_COMMIT)                 \
+    V(SEMI_TOTAL_PROMOTE)
+
+#define PARTIAL_RECORD_DATA(V)           \
+    V(YOUNG_COUNT)                       \
+    V(YOUNG_TOTAL_ALIVE)                 \
+    V(YOUNG_TOTAL_COMMIT)                \
+    V(YOUNG_TOTAL_PROMOTE)               \
+    V(OLD_COUNT)                         \
+    V(OLD_TOTAL_ALIVE)                   \
+    V(OLD_TOTAL_COMMIT)
+
+#define FULL_RECORD_DATA(V)              \
+    V(COMPRESS_COUNT)                    \
+    V(COMPRESS_TOTAL_ALIVE)              \
+    V(COMPRESS_TOTAL_COMMIT)
+
+#define TRACE_GC_SPEED(V)                \
+    V(UPDATE_REFERENCE_SPEED)            \
+    V(OLD_CLEAR_NATIVE_OBJ_SPEED)        \
+    V(OLD_EVACUATE_SPACE_SPEED)          \
+    V(YOUNG_CLEAR_NATIVE_OBJ_SPEED)      \
+    V(MARK_SPEED)                        \
+    V(SWEEP_SPEED)                       \
+    V(EVACUATE_SPEED)
+
 constexpr uint32_t NUM_MANDATORY_JSFUNC_ARGS = 3;
 constexpr uint32_t INVALID_INDEX = std::numeric_limits<uint32_t>::max();
 

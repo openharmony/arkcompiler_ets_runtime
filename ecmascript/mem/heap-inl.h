@@ -132,10 +132,10 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
 
     auto object = reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
     if (object == nullptr) {
-        CollectGarbage(SelectGCType());
+        CollectGarbage(SelectGCType(), GCReason::ALLOCATION_LIMIT);
         object = reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
         if (object == nullptr) {
-            CollectGarbage(SelectGCType());
+            CollectGarbage(SelectGCType(), GCReason::ALLOCATION_FAILED);
             object = reinterpret_cast<TaggedObject *>(activeSemiSpace_->Allocate(size));
             CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, activeSemiSpace_, "Heap::AllocateYoungOrHugeObject");
         }
@@ -256,7 +256,7 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
 
     auto *object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
     if (UNLIKELY(object == nullptr)) {
-        CollectGarbage(TriggerGCType::OLD_GC);
+        CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
         object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
         if (UNLIKELY(object == nullptr)) {
             // if allocate huge object OOM, temporarily increase space size to avoid vm crash
@@ -409,6 +409,15 @@ int32_t Heap::GetHeapObjectCount() const
         ++count;
     });
     return count;
+}
+
+void Heap::InitializeIdleStatusControl(std::function<void(bool)> callback)
+{
+    notifyIdleStatusCallback = callback;
+    if (callback != nullptr) {
+        OPTIONAL_LOG(ecmaVm_, INFO) << "Received idle status control call back";
+        enableIdleGC_ = ecmaVm_->GetJSOptions().EnableIdleGC();
+    }
 }
 }  // namespace panda::ecmascript
 

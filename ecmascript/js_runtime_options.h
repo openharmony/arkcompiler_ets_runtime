@@ -28,7 +28,7 @@
 namespace panda::ecmascript {
 using arg_list_t = std::vector<std::string>;
 enum ArkProperties {
-    DEFAULT = -1,  // default value 1000001011100
+    DEFAULT = -1,  // default value 1000001011100 -> 0x105c
     OPTIONAL_LOG = 1,
     GC_STATS_PRINT = 1 << 1,
     PARALLEL_GC = 1 << 2,  // default enable
@@ -44,6 +44,7 @@ enum ArkProperties {
     ENABLE_IDLE_GC = 1 << 12,  // default enable
     CPU_PROFILER = 1 << 13,
     ENABLE_CPU_PROFILER_VM_TAG = 1 << 14,
+    ENABLE_GC_TRACER = 1 << 15,
 };
 
 // asm interpreter control parsed option
@@ -333,6 +334,11 @@ public:
     bool EnableIdleGC() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_IDLE_GC) != 0;
+    }
+
+    bool EnableGCTracer() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_GC_TRACER) != 0;
     }
 
     bool EnableGlobalObjectLeakCheck() const

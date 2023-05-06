@@ -39,6 +39,7 @@ host_unittest_action("EcmaVm_001_Test") {
     "glue_regs_test.cpp",
     "handle_leak_test.cpp",
     "huge_object_test.cpp",
+    "incremental_marking_test.cpp",
     "js_api_arraylist_iterator_test.cpp",
     "js_api_arraylist_test.cpp",
     "js_api_deque_iterator_test.cpp",

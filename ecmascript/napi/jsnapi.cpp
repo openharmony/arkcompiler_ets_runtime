@@ -253,7 +253,7 @@ void JSNApi::CleanJSVMCache()
     JSPandaFileManager::GetInstance()->ClearCache();
 }
 
-void JSNApi::TriggerGC(const EcmaVM *vm,  TRIGGER_GC_TYPE gcType)
+void JSNApi::TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType)
 {
     if (vm->GetJSThread() != nullptr && vm->IsInitialized()) {
         switch (gcType) {

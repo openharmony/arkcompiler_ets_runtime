@@ -49,6 +49,12 @@ public:
         LOG_GC(FATAL) << "can not call this method";
     }
 
+    virtual void ProcessIncrementalMarkStack([[maybe_unused]] uint32_t threadId,
+                                             [[maybe_unused]] uint32_t markStepSize)
+    {
+        LOG_GC(FATAL) << "can not call this method";
+    }
+
 protected:
     // non move
     virtual inline void MarkObject([[maybe_unused]] uint32_t threadId, [[maybe_unused]] TaggedObject *object)
@@ -96,6 +102,7 @@ protected:
 
     inline void HandleOldToNewRSet(uint32_t threadId, Region *region) override;
     inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref, Region *objectRegion) override;
+    void ProcessIncrementalMarkStack(uint32_t threadId, uint32_t markStepSize) override;
 };
 
 class MovableMarker : public Marker {

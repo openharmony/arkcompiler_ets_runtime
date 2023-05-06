@@ -127,6 +127,11 @@ public:
         objectSize_ -= bytes;
     }
 
+    size_t GetObjectSize()
+    {
+        return objectSize_;
+    }
+
     size_t GetOutOfMemoryOvershootSize() const
     {
         return outOfMemoryOvershootSize_;

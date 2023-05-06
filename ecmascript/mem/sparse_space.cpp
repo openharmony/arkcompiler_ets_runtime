@@ -71,7 +71,7 @@ uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
     }
 
     if (allowGC) {
-        heap_->CollectGarbage(TriggerGCType::OLD_GC);
+        heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
         object = Allocate(size, false);
         // Size is already increment
     }
@@ -80,7 +80,6 @@ uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
 
 bool SparseSpace::Expand()
 {
-    heap_->EnableNotifyIdle();
     if (committedSize_ >= maximumCapacity_ + outOfMemoryOvershootSize_) {
         LOG_ECMA_MEM(INFO) << "Expand::Committed size " << committedSize_ << " of Sparse Space is too big. ";
         return false;
@@ -414,12 +413,20 @@ void OldSpace::SelectCSet()
         return;
     }
     CheckRegionSize();
-    // 1、Select region which alive object larger than 80%
-    EnumerateRegions([this](Region *region) {
-        if (!region->MostObjectAlive()) {
-            collectRegionSet_.emplace_back(region);
-        }
-    });
+    // 1、Select region which alive object larger than limit
+    if (heap_->GetCommittedSize() > (MAX_GC_FREE_SPACE_RATE + 1) * heap_->GetHeapAliveSizeAfterGC()) {
+        EnumerateRegions([this](Region *region) {
+            if (region->BelowCompressThreasholdAlive()) {
+                collectRegionSet_.emplace_back(region);
+            }
+        });
+    } else {
+        EnumerateRegions([this](Region *region) {
+            if (!region->MostObjectAlive()) {
+                collectRegionSet_.emplace_back(region);
+            }
+        });
+    }
     if (collectRegionSet_.size() < PARTIAL_GC_MIN_COLLECT_REGION_SIZE) {
         LOG_ECMA_MEM(DEBUG) << "Select CSet failure: number is too few";
         collectRegionSet_.clear();
@@ -446,6 +453,8 @@ void OldSpace::SelectCSet()
         collectRegionSet_.resize(selectedRegionNumber);
     }
 
+    heap_->GetEcmaVM()->GetEcmaGCStats()->SetRecordData(
+        RecordData::COLLECT_REGION_SET_SIZE, collectRegionSet_.size() * Region::AVERAGE_REGION_EVACUATE_SIZE);
     EnumerateCollectRegionSet([&](Region *current) {
         RemoveRegion(current);
         DecreaseLiveObjectSize(current->AliveObject());

@@ -38,7 +38,7 @@ STWYoungGC::STWYoungGC(Heap *heap, bool parallelGC)
 void STWYoungGC::RunPhases()
 {
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), STWYoungGC_RunPhases);
-    ClockScope clockScope;
+    TRACE_GC(GCStats::Scope::ScopeId::TotalGC, heap_->GetEcmaVM()->GetEcmaGCStats());
 
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "STWYoungGC::RunPhases");
     if (heap_->CheckOngoingConcurrentMarking()) {
@@ -49,14 +49,12 @@ void STWYoungGC::RunPhases()
     Mark();
     Sweep();
     Finish();
-    heap_->GetEcmaVM()->GetEcmaGCStats()->StatisticSTWYoungGC(clockScope.GetPauseTime(), semiCopiedSize_,
-                                                              promotedSize_, commitSize_);
-    LOG_GC(DEBUG) << "STWYoungGC::RunPhases " << clockScope.TotalSpentTime();
 }
 
 void STWYoungGC::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "STWYoungGC::Initialize");
+    TRACE_GC(GCStats::Scope::ScopeId::Initialize, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->Prepare();
     commitSize_ = heap_->GetNewSpace()->GetCommittedSize();
     heap_->SwapNewSpace();
@@ -69,6 +67,7 @@ void STWYoungGC::Initialize()
 void STWYoungGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "STWYoungGC::Mark");
+    TRACE_GC(GCStats::Scope::ScopeId::Mark, heap_->GetEcmaVM()->GetEcmaGCStats());
     auto region = heap_->GetOldSpace()->GetCurrentRegion();
 
     if (parallelGC_) {
@@ -95,6 +94,7 @@ void STWYoungGC::Mark()
 void STWYoungGC::Sweep()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "STWYoungGC::Sweep");
+    TRACE_GC(GCStats::Scope::ScopeId::Sweep, heap_->GetEcmaVM()->GetEcmaGCStats());
     auto totalThreadCount = static_cast<uint32_t>(
         Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1);  // gc thread and main thread
     for (uint32_t i = 0; i < totalThreadCount; i++) {
@@ -140,6 +140,7 @@ void STWYoungGC::Sweep()
 void STWYoungGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "STWYoungGC::Finish");
+    TRACE_GC(GCStats::Scope::ScopeId::Finish, heap_->GetEcmaVM()->GetEcmaGCStats());
     workManager_->Finish(semiCopiedSize_, promotedSize_);
     heap_->Resume(YOUNG_GC);
 }
