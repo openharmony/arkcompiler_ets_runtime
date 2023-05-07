@@ -948,6 +948,7 @@ public:
         WARN = 5,
         ERROR = 6,
         FATAL = 7,
+        FOLLOW = 100, // if hilog enabled follow hilog, otherwise use INFO level
     };
 
     void SetGcType(GC_TYPE type)
@@ -1067,27 +1068,9 @@ private:
         return gcType;
     }
 
-    std::string GetLogLevel() const
+    LOG_LEVEL GetLogLevel() const
     {
-        std::string logLevel;
-        switch (logLevel_) {
-            case LOG_LEVEL::INFO:
-            case LOG_LEVEL::WARN:
-                logLevel = "info";
-                break;
-            case LOG_LEVEL::ERROR:
-                logLevel = "error";
-                break;
-            case LOG_LEVEL::FATAL:
-                logLevel = "fatal";
-                break;
-            case LOG_LEVEL::DEBUG:
-            default:
-                logLevel = "debug";
-                break;
-        }
-
-        return logLevel;
+        return logLevel_;
     }
 
     uint32_t GetGcPoolSize() const

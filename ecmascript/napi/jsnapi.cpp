@@ -165,6 +165,7 @@ using ecmascript::RegExpParser;
 using ecmascript::DebugInfoExtractor;
 using ecmascript::PatchErrorCode;
 using ecmascript::base::NumberHelper;
+using ecmascript::Log;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
@@ -205,7 +206,7 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     runtimeOptions.SetPGOProfilerPath(option.GetProfileDir());
 
     // Dfx
-    runtimeOptions.SetLogLevel(option.GetLogLevel());
+    runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
     runtimeOptions.SetEnableArkTools(option.GetEnableArkTools());
     return CreateEcmaVM(runtimeOptions);
 }
@@ -446,6 +447,9 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
                     << ", bundle name: " <<  option.GetBundleName();
     jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
     vm->ResetPGOProfiler();
+    JSRuntimeOptions runtimeOptions;
+    runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
+    Log::Initialize(runtimeOptions);
 
     if (jsOption.GetEnableAOT() && option.GetAnDir().size()) {
         ecmascript::AnFileDataManager::GetInstance()->SetDir(option.GetAnDir());
