@@ -18,8 +18,8 @@
         "adapted_system_type": [
             "standard"
         ],
-        "rom": "",
-        "ram": "",
+        "rom": "20MB",
+        "ram": "~8000KB",
         "deps": {
             "components": [],
             "third_party": []
