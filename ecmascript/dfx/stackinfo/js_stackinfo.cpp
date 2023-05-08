@@ -192,7 +192,9 @@ void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((
     Method *method = frame.CheckAndGetMethod();
     while (method == nullptr && !frame.Done()) {
         frame.Advance();
-        method = frame.CheckAndGetMethod();
+        if (!frame.Done()) {
+            method = frame.CheckAndGetMethod();
+        }
     }
     std::string faultInfo;
     if (method != nullptr) {
