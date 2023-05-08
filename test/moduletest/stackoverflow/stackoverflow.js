@@ -27,3 +27,13 @@ try {
         print("stack overflow!");
     }
 }
+
+try {
+    var array = new Uint8Array(15000);
+    var res = String.fromCharCode.apply(null, array);
+    print(res.length);
+} catch (e) {
+    if ((e instanceof RangeError)) {
+        print("stack overflow!");
+    }
+}
