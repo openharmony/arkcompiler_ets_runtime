@@ -61,6 +61,7 @@ config("include_llvm") {
 }
 
 ohos_source_set("libark_jsoptimizer_set") {
+  stack_protector_ret = false
   sources = [
     "access_object_stub_builder.cpp",
     "argument_accessor.cpp",
@@ -259,6 +260,7 @@ ohos_source_set("libark_jsoptimizer_set") {
 }
 
 ohos_source_set("libark_stub_set") {
+  stack_protector_ret = false
   deps = [ ":build_stub_to_cpp" ]
 
   sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_an.cpp" ]
@@ -270,6 +272,7 @@ ohos_source_set("libark_stub_set") {
 }
 
 ohos_source_set("libark_mock_stub_set") {
+  stack_protector_ret = false
   sources = [ "mock/mock_stub_an.cpp" ]
 
   public_configs = [
@@ -279,6 +282,7 @@ ohos_source_set("libark_mock_stub_set") {
 }
 
 ohos_shared_library("libark_jsoptimizer") {
+  stack_protector_ret = false
   deps = [
     ":libark_jsoptimizer_set",
     "$js_root:libark_jsruntime",
@@ -298,6 +302,7 @@ ohos_shared_library("libark_jsoptimizer") {
 }
 
 ohos_shared_library("libark_jsoptimizer_test") {
+  stack_protector_ret = false
   deps = [
     ":libark_jsoptimizer_set",
     "$ark_root/libpandafile:libarkfile_static",

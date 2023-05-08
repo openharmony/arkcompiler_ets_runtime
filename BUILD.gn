@@ -893,6 +893,7 @@ if (is_mingw) {
 }
 
 ohos_source_set("libark_jsruntime_set") {
+  stack_protector_ret = false
   if (is_ohos && is_standard_system) {
     stub_an_file_path = "/system/lib64/module/stub.an"
   } else {
@@ -928,6 +929,7 @@ ohos_source_set("libark_jsruntime_set") {
 }
 
 ohos_source_set("libark_js_intl_set") {
+  stack_protector_ret = false
   sources = intl_sources
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
@@ -951,6 +953,7 @@ config("ark_jsruntime_test_nolto") {
 }
 
 ohos_source_set("libark_jsruntime_test_set") {
+  stack_protector_ret = false
   sources = ecma_source
   sources += intl_sources
   sources += ecma_profiler_source
@@ -1005,6 +1008,7 @@ ohos_source_set("libark_jsruntime_test_set") {
 }
 
 ohos_source_set("libark_jsruntime_static") {
+  stack_protector_ret = false
   deps = [
     ":libark_js_intl_set",
     ":libark_jsruntime_set",
@@ -1023,6 +1027,7 @@ ohos_source_set("libark_jsruntime_static") {
 }
 
 ohos_shared_library("libark_jsruntime") {
+  stack_protector_ret = false
   deps = [
     ":libark_jsruntime_static",
     "$ark_root/libpandafile:libarkfile_static",
@@ -1073,6 +1078,7 @@ ohos_shared_library("libark_jsruntime") {
 }
 
 ohos_shared_library("libark_jsruntime_test") {
+  stack_protector_ret = false
   deps = [
     ":libark_jsruntime_test_set",
     "$ark_root/libpandafile:libarkfile_static",
