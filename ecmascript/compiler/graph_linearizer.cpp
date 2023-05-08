@@ -45,13 +45,11 @@ public:
         // connect region
         for (auto rootGate : linearizer_->rootGateList_) {
             auto toRegion = linearizer_->GateToRegion(rootGate);
-            auto ins = acc_.Ins(rootGate);
-            for (auto it = ins.begin(); it != ins.end(); it++) {
-                auto input = *it;
-                if (!acc_.GetMetaData(input)->IsState() &&
-                    acc_.GetOpCode(input) != OpCode::STATE_ENTRY) {
-                    continue;
-                }
+            auto numStateIn = acc_.GetStateCount(rootGate);
+            for (size_t i = 0; i < numStateIn; i++) {
+                auto input = acc_.GetState(rootGate, i);
+                ASSERT(acc_.GetMetaData(input)->IsState() ||
+                       acc_.GetOpCode(input) == OpCode::STATE_ENTRY);
                 auto fromRegion = linearizer_->GateToRegion(input);
                 fromRegion->AddSucc(toRegion);
             }
@@ -258,7 +256,7 @@ public:
             auto uses = acc_.Uses(fixedGate);
             for (auto it = uses.begin(); it != uses.end(); it++) {
                 GateRef succGate = *it;
-                if (acc_.GetMetaData(succGate)->IsFixed()) {
+                if (acc_.IsStateIn(it) && acc_.GetMetaData(succGate)->IsFixed()) {
                     linearizer_->AddFixedGateToRegion(succGate, region);
                     fixedGateList_.emplace_back(succGate);
                 }

@@ -368,8 +368,8 @@ void NumberSpeculativeLowering::VisitConstant(GateRef gate)
     switch (output) {
         case TypeInfo::INT32: {
             int value = acc_.GetInt32FromConstant(gate);
-            GateRef ConstGate = GetConstInt32(value);
-            acc_.UpdateAllUses(gate, ConstGate);
+            GateRef constGate = GetConstInt32(value);
+            acc_.UpdateAllUses(gate, constGate);
             break;
         }
         case TypeInfo::FLOAT64: {

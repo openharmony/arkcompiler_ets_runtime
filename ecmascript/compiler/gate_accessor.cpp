@@ -807,8 +807,12 @@ double GateAccessor::GetFloat64FromConstant(GateRef gate) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     ASSERT(GetOpCode(gate) == OpCode::CONSTANT);
-    ASSERT(!GetGateType(gate).IsNJSValueType());
-    JSTaggedValue value(GetConstantValue(gate));
+    uint64_t rawValue = GetConstantValue(gate);
+    if (GetGateType(gate).IsNJSValueType()) {
+        ASSERT(GetMachineType(gate) == MachineType::F64);
+        return base::bit_cast<double>(rawValue);
+    }
+    JSTaggedValue value(rawValue);
     return value.GetDouble();
 }
 
@@ -816,8 +820,12 @@ int GateAccessor::GetInt32FromConstant(GateRef gate) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     ASSERT(GetOpCode(gate) == OpCode::CONSTANT);
-    ASSERT(!GetGateType(gate).IsNJSValueType());
-    JSTaggedValue value(GetConstantValue(gate));
+    uint64_t rawValue = GetConstantValue(gate);
+    if (GetGateType(gate).IsNJSValueType()) {
+        ASSERT(GetMachineType(gate) == MachineType::I32);
+        return static_cast<int>(rawValue);
+    }
+    JSTaggedValue value(rawValue);
     return value.GetInt();
 }
 
@@ -896,7 +904,8 @@ void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, Gate
 {
     if (value != Circuit::NullGate()) {
         GateType type = GetGateType(gate);
-        if (!type.IsAnyType()) {
+        GateType valueType = GetGateType(value);
+        if (!type.IsAnyType() && !valueType.IsNJSValueType()) {
             SetGateType(value, type);
         }
     }

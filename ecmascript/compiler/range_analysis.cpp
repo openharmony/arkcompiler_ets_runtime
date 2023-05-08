@@ -30,6 +30,7 @@ GateRef RangeAnalysis::UpdateRange(GateRef gate, const RangeInfo& info)
 
 RangeInfo RangeAnalysis::GetRange(GateRef gate) const
 {
+    ASSERT(acc_.GetId(gate) < rangeInfos_.size());
     return rangeInfos_[acc_.GetId(gate)];
 }
 
@@ -214,7 +215,7 @@ RangeInfo RangeAnalysis::TryGetRangeOfBranch(GateRef state, GateRef value)
     if ((acc_.GetValueIn(condition, 0) != value) && (acc_.GetValueIn(condition, 1) != value)) {
         return range;
     }
-    
+
     // flag = !(jnez ^ if_false) = jnez ^ if_true
     bool flag = acc_.GetOpCode(state) == OpCode::IF_TRUE;
     if (acc_.GetOpCode(jmp) == OpCode::TYPED_CONDITION_JUMP) {

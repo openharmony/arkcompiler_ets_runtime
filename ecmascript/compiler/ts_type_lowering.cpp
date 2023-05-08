@@ -491,7 +491,7 @@ void TSTypeLowering::LowerTypeToNumeric(GateRef gate)
 {
     GateRef src = acc_.GetValueIn(gate, 0);
     GateType srcType = acc_.GetGateType(src);
-    if (srcType.IsDigitablePrimitiveType()) {
+    if (srcType.IsNumberType()) {
         AddProfiling(gate);
         LowerPrimitiveTypeToNumber(gate);
     } else {

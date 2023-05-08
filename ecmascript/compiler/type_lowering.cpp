@@ -423,7 +423,6 @@ GateRef TypeLowering::LowerCallRuntime(GateRef glue, GateRef hirGate, int index,
 void TypeLowering::LowerTypeConvert(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    GateAccessor acc(circuit_);
     auto leftType = acc_.GetLeftType(gate);
     auto rightType = acc_.GetRightType(gate);
     if (rightType.IsNumberType()) {
@@ -574,8 +573,7 @@ void TypeLowering::LowerLoadArrayLength(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef array = acc_.GetValueIn(gate, 0);
     GateRef offset = builder_.IntPtr(JSArray::LENGTH_OFFSET);
-    GateRef length = builder_.Load(VariableType::JS_ANY(), array, offset);
-    GateRef result = ConvertTaggedIntToInt32(length);
+    GateRef result = builder_.Load(VariableType::INT32(), array, offset);
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
