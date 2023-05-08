@@ -311,7 +311,7 @@ void TSInlineLowering::LowerToInlineCall(GateRef callGate, const std::vector<Gat
 
 void TSInlineLowering::RemoveRoot()
 {
-    GateRef circuitRoot = acc_.GetRoot(OpCode::CIRCUIT_ROOT);
+    GateRef circuitRoot = acc_.GetCircuitRoot();
     auto uses = acc_.Uses(circuitRoot);
     for (auto it = uses.begin(); it != uses.end();) {
         it = acc_.DeleteGate(it);

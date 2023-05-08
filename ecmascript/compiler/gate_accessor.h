@@ -469,7 +469,16 @@ public:
     GateRef GetGlueFromArgList() const;
     void GetArgsOuts(std::vector<GateRef>& outs) const;
     void GetReturnOuts(std::vector<GateRef>& outs) const;
+    bool IsFixed(GateRef g) const;
+    bool IsProlog(GateRef g) const;
+    bool MetaDataEqu(GateRef g1, GateRef g2) const;
+    bool IsNop(GateRef g) const;
+    bool IsRoot(GateRef g) const;
 
+    GateRef GetCircuitRoot() const
+    {
+        return GetRoot(OpCode::CIRCUIT_ROOT);
+    }
     GateRef GetStateRoot() const
     {
         return GetRoot(OpCode::STATE_ENTRY);
@@ -493,16 +502,14 @@ public:
     GateRef GetFrameState(GateRef gate) const;
     void ReplaceFrameStateIn(GateRef gate, GateRef in);
     bool HasFrameState(GateRef gate) const;
-    const GateMetaData *GetMetaData(GateRef gate) const;
     void SetMetaData(GateRef gate, const GateMetaData* meta);
 
-    void ReplaceHirWithIfBranch(GateRef hirGate, StateDepend success,
-        StateDepend exception, GateRef value);
+    void ReplaceHirWithIfBranch(GateRef hirGate, StateDepend success, StateDepend exception, GateRef value);
     void ReplaceHirDirectly(GateRef hirGate, StateDepend replacement, GateRef value);
-    void ReplaceHirAndDeleteIfException(GateRef hirGate,
-        StateDepend replacement, GateRef value);
+    void ReplaceHirAndDeleteIfException(GateRef hirGate, StateDepend replacement, GateRef value);
 
 private:
+    const GateMetaData *GetMetaData(GateRef gate) const;
     UseIterator ReplaceHirIfSuccess(const UseIterator &useIt, GateRef state);
     UseIterator ReplaceHirIfException(const UseIterator &useIt, StateDepend replacement);
     void ExceptionReturn(GateRef state, GateRef depend);
@@ -572,11 +579,6 @@ private:
     friend class Circuit;
     friend class LLVMIRBuilder;
     friend class Scheduler;
-    friend class EarlyElimination;
-    friend class ArgumentAccessor;
-    friend class BytecodeCircuitBuilder;
-    friend class TSInlineLowering;
-    friend class GraphVisitor;
 };
 
 class ConstGateAccessor {
@@ -647,6 +649,10 @@ public:
 
     ~ConstGateAccessor() = default;
 
+    bool IsFixed(GateRef g) const;
+    bool IsProlog(GateRef g) const;
+    bool IsSchedulable(GateRef g) const;
+
 private:
     ConstInsIterator ConstInBegin(GateRef gate) const
     {
@@ -659,6 +665,7 @@ private:
         return ConstInsIterator(circuit_,
                                 &reinterpret_cast<const In *>(circuit_->LoadGatePtrConst(gate) + 1)[endIndex]);
     }
+    const GateMetaData *GetMetaData(GateRef g) const;
 
     const Circuit *circuit_;
     friend struct ConstInWrapper;

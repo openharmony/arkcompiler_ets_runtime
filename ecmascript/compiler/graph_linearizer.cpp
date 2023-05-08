@@ -43,13 +43,12 @@ public:
     {
         VisitStateGates();
         // connect region
-        for (auto rootGate : linearizer_->rootGateList_) {
+        for (auto rootGate : linearizer_->regionRootList_) {
             auto toRegion = linearizer_->GateToRegion(rootGate);
             auto numStateIn = acc_.GetStateCount(rootGate);
             for (size_t i = 0; i < numStateIn; i++) {
                 auto input = acc_.GetState(rootGate, i);
-                ASSERT(acc_.GetMetaData(input)->IsState() ||
-                       acc_.GetOpCode(input) == OpCode::STATE_ENTRY);
+                ASSERT(acc_.IsState(input) || acc_.GetOpCode(input) == OpCode::STATE_ENTRY);
                 auto fromRegion = linearizer_->GateToRegion(input);
                 fromRegion->AddSucc(toRegion);
             }
@@ -71,8 +70,7 @@ public:
             if (acc_.GetOpCode(curGate) != OpCode::LOOP_BACK) {
                 auto uses = acc_.Uses(curGate);
                 for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
-                    if (useIt.GetIndex() < acc_.GetStateCount(*useIt) &&
-                        acc_.IsState(*useIt) && acc_.GetMark(*useIt) == MarkCode::NO_MARK) {
+                    if (acc_.IsStateIn(useIt) && acc_.IsState(*useIt) && acc_.GetMark(*useIt) == MarkCode::NO_MARK) {
                         acc_.SetMark(*useIt, MarkCode::VISITED);
                         pendingList_.emplace_back(*useIt);
                     }
@@ -247,16 +245,16 @@ public:
 
     void InitializeFixedGate()
     {
-        auto &rootGateList = linearizer_->rootGateList_;
-        auto size = rootGateList.size();
+        auto &regionRoots = linearizer_->regionRootList_;
+        auto size = regionRoots.size();
         for (size_t i = 0; i < size; i++) {
-            auto fixedGate = rootGateList[i];
+            auto fixedGate = regionRoots[i];
             auto region = linearizer_->GateToRegion(fixedGate);
             // fixed Gate's output
             auto uses = acc_.Uses(fixedGate);
             for (auto it = uses.begin(); it != uses.end(); it++) {
                 GateRef succGate = *it;
-                if (acc_.IsStateIn(it) && acc_.GetMetaData(succGate)->IsFixed()) {
+                if (acc_.IsStateIn(it) && acc_.IsFixed(succGate)) {
                     linearizer_->AddFixedGateToRegion(succGate, region);
                     fixedGateList_.emplace_back(succGate);
                 }
@@ -267,8 +265,9 @@ public:
     void Prepare()
     {
         InitializeFixedGate();
-        auto &rootGateList = linearizer_->rootGateList_;
-        for (const auto rootGate : rootGateList) {
+        auto &regionRoots = linearizer_->regionRootList_;
+        ASSERT(pendingList_.empty());
+        for (const auto rootGate : regionRoots) {
             pendingList_.emplace_back(rootGate);
         }
         while (!pendingList_.empty()) {
@@ -276,15 +275,16 @@ public:
             pendingList_.pop_back();
             auto numIns = acc_.GetNumIns(curGate);
             for (size_t i = 0; i < numIns; i++) {
-                VisitParpareGate(Edge(curGate, i));
+                VisitPreparedGate(Edge(curGate, i));
             }
         }
     }
 
     void ScheduleUpperBound()
     {
-        auto &rootGateList = linearizer_->rootGateList_;
-        for (const auto rootGate : rootGateList) {
+        auto &regionRoots = linearizer_->regionRootList_;
+        ASSERT(pendingList_.empty());
+        for (const auto rootGate : regionRoots) {
             pendingList_.emplace_back(rootGate);
         }
         while (!pendingList_.empty()) {
@@ -294,42 +294,6 @@ public:
             for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
                 VisitUpperBoundGate(useIt.GetEdge());
             }
-        }
-    }
-
-    void ScheduleFloatingGate()
-    {
-        auto &rootGateList = linearizer_->rootGateList_;
-        for (const auto rootGate : rootGateList) {
-            auto ins = acc_.Ins(rootGate);
-            for (auto it = ins.begin(); it != ins.end(); it++) {
-                pendingList_.emplace_back(*it);
-                while (!pendingList_.empty()) {
-                    auto curGate = pendingList_.back();
-                    pendingList_.pop_back();
-                    VisitScheduleGate(curGate);
-                }
-            }
-        }
-    }
-
-    void VisitParpareGate(Edge edge)
-    {
-        auto curGate = edge.GetGate();
-        auto prevGate = acc_.GetIn(curGate, edge.GetIndex());
-        if (!acc_.GetMetaData(prevGate)->IsSchedulable()) {
-            return;
-        }
-        GraphLinearizer::GateInfo& prevInfo = linearizer_->GetGateInfo(prevGate);
-        if (prevInfo.state_ == GraphLinearizer::ScheduleState::NONE) {
-            prevInfo.upperBound = linearizer_->GetEntryRegion();
-            ASSERT(prevInfo.schedulableUseCount == 0);
-            prevInfo.state_ = GraphLinearizer::ScheduleState::SCHEDELABLE;
-            pendingList_.emplace_back(prevGate);
-        }
-        GraphLinearizer::GateInfo& curInfo = linearizer_->GetGateInfo(curGate);
-        if (curInfo.state_ == GraphLinearizer::ScheduleState::SCHEDELABLE) {
-            prevInfo.schedulableUseCount++;
         }
     }
 
@@ -347,6 +311,42 @@ public:
         if (curUpperBound->depth_ > succInfo.upperBound->depth_) {
             succInfo.upperBound = curUpperBound;
             pendingList_.emplace_back(succGate);
+        }
+    }
+
+    void ScheduleFloatingGate()
+    {
+        auto &regionRoots = linearizer_->regionRootList_;
+        for (const auto rootGate : regionRoots) {
+            auto ins = acc_.Ins(rootGate);
+            for (auto it = ins.begin(); it != ins.end(); it++) {
+                pendingList_.emplace_back(*it);
+                while (!pendingList_.empty()) {
+                    auto curGate = pendingList_.back();
+                    pendingList_.pop_back();
+                    VisitScheduleGate(curGate);
+                }
+            }
+        }
+    }
+
+    void VisitPreparedGate(Edge edge)
+    {
+        auto curGate = edge.GetGate();
+        auto prevGate = acc_.GetIn(curGate, edge.GetIndex());
+        if (!acc_.IsSchedulable(prevGate)) {
+            return;
+        }
+        GraphLinearizer::GateInfo& prevInfo = linearizer_->GetGateInfo(prevGate);
+        if (prevInfo.state_ == GraphLinearizer::ScheduleState::NONE) {
+            prevInfo.upperBound = linearizer_->GetEntryRegion();
+            ASSERT(prevInfo.schedulableUseCount == 0);
+            prevInfo.state_ = GraphLinearizer::ScheduleState::SCHEDELABLE;
+            pendingList_.emplace_back(prevGate);
+        }
+        GraphLinearizer::GateInfo& curInfo = linearizer_->GetGateInfo(curGate);
+        if (curInfo.state_ == GraphLinearizer::ScheduleState::SCHEDELABLE) {
+            prevInfo.schedulableUseCount++;
         }
     }
 

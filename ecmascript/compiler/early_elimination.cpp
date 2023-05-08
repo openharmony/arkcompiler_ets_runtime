@@ -266,7 +266,7 @@ bool EarlyElimination::CompareOrder(GateRef lhs, GateRef rhs)
 
 bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
 {
-    if (acc_.GetMetaData(lhs) != acc_.GetMetaData(rhs)) {
+    if (!acc_.MetaDataEqu(lhs, rhs)) {
         if (acc_.GetOpCode(lhs) != acc_.GetOpCode(rhs)) {
             return false;
         }

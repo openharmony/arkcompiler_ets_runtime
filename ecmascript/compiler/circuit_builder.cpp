@@ -1492,7 +1492,7 @@ GateRef Label::LabelImpl::ReadVariable(Variable *var)
     if (valueMap_.find(var) != valueMap_.end()) {
         auto result = valueMap_.at(var);
         GateAccessor acc(env_->GetCircuit());
-        if (!acc.GetMetaData(result)->IsNop()) {
+        if (!acc.IsNop(result)) {
             return result;
         }
     }
@@ -1635,7 +1635,7 @@ GateRef Variable::AddPhiOperand(GateRef val)
     size_t idx = 0;
     for (auto pred : label.GetPredecessors()) {
         auto preVal = pred.ReadVariable(this);
-        ASSERT(!GateAccessor(env_->GetCircuit()).GetMetaData(preVal)->IsNop());
+        ASSERT(!GateAccessor(env_->GetCircuit()).IsNop(preVal));
         idx++;
         val = AddOperandToSelector(val, idx, preVal);
     }

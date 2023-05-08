@@ -212,7 +212,7 @@ void Scheduler::Run(const Circuit *circuit, ControlFlowGraph &result,
             auto uses = acc.Uses(bbGate);
             for (auto i = uses.begin(); i != uses.end(); i++) {
                 GateRef succGate = *i;
-                if (acc.GetMetaData(succGate)->IsFixed()) {
+                if (acc.IsFixed(succGate)) {
                     result[bbGatesAddrToIdx.at(acc.GetIn(succGate, 0))].push_back(succGate);
                 }
             }
@@ -244,13 +244,13 @@ bool Scheduler::CalculateSchedulingUpperBound(const Circuit *circuit,
         if (upperBound.count(gate) > 0) {
             returnValue = upperBound[gate];
             getReturn = true;
-        } else if (acc.GetMetaData(gate)->IsProlog() || acc.GetMetaData(gate)->IsRoot()) {
+        } else if (acc.IsProlog(gate) || acc.IsRoot(gate)) {
             returnValue = 0;
             getReturn = true;
-        } else if (acc.GetMetaData(gate)->IsFixed()) {
+        } else if (acc.IsFixed(gate)) {
             returnValue = bbGatesAddrToIdx.at(acc.GetIn(gate, 0));
             getReturn = true;
-        } else if (acc.GetMetaData(gate)->IsState()) {
+        } else if (acc.IsState(gate)) {
             returnValue = bbGatesAddrToIdx.at(gate);
             getReturn = true;
         }
@@ -339,7 +339,7 @@ void Scheduler::CalculateFixedGatesList(const Circuit *circuit,
         auto uses = acc.Uses(item.first);
         for (auto i = uses.begin(); i != uses.end(); i++) {
             GateRef succGate = *i;
-            if (acc.GetMetaData(succGate)->IsFixed()) {
+            if (acc.IsFixed(succGate)) {
                 bbAndFixedGatesList.push_back(succGate);
             }
         }
@@ -376,7 +376,7 @@ void Scheduler::CalculateSchedulingLowerBound(const Circuit *circuit,
                 continue;
             }
             const auto &prevGate = prevGates[idx];
-            if (!acc.GetMetaData(prevGate)->IsSchedulable()) {
+            if (!acc.IsSchedulable(prevGate)) {
                 ++idx;
                 continue;
             }
@@ -413,15 +413,15 @@ void Scheduler::CalculateSchedulingLowerBound(const Circuit *circuit,
                 continue;
             }
             const auto &prevGate = prevGates[idx];
-            if (!acc.GetMetaData(prevGate)->IsSchedulable()) {
+            if (!acc.IsSchedulable(prevGate)) {
                 ++idx;
                 continue;
             }
             useCount[prevGate]--;
             size_t curLowerBound;
-            if (acc.GetMetaData(curGate)->IsState()) {  // cur_opcode would not be STATE_ENTRY
+            if (acc.IsState(curGate)) {  // cur_opcode would not be STATE_ENTRY
                 curLowerBound = bbGatesAddrToIdx.at(curGate);
-            } else if (acc.GetMetaData(curGate)->IsFixed()) {
+            } else if (acc.IsFixed(curGate)) {
                 ASSERT(idx > 0);
                 curLowerBound = bbGatesAddrToIdx.at(acc.GetIn(acc.GetIn(curGate, 0), idx - 1));
             } else {
@@ -465,7 +465,7 @@ void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circui
         auto ins = acc.Ins(head);
         for (auto i = ins.begin(); i != ins.end(); i++) {
             GateRef predState = *i;
-            if (acc.GetMetaData(predState)->IsState() ||
+            if (acc.IsState(predState) ||
                 acc.GetOpCode(predState) == OpCode::STATE_ENTRY) {
                 LOG_COMPILER(INFO) << (isFirst ? "" : " ") << bbGatesAddrToIdx.at(predState);
                 isFirst = false;
@@ -477,7 +477,7 @@ void Scheduler::Print(const std::vector<std::vector<GateRef>> *cfg, const Circui
         auto uses = acc.Uses(h);
         for (auto i = uses.begin(); i != uses.end(); i++) {
             GateRef succState = *i;
-            if (acc.GetMetaData(succState)->IsState() ||
+            if (acc.IsState(succState) ||
                 acc.GetOpCode(succState) == OpCode::STATE_ENTRY) {
                 LOG_COMPILER(INFO) << (isFirst ? "" : " ") << bbGatesAddrToIdx.at(succState);
                 isFirst = false;
