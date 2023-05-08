@@ -168,7 +168,7 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
 void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((unused)),
                    void *ucontext __attribute__((unused)))
 {
-#ifdef __aarch64__
+#if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     if (ucontext == nullptr) {
         // should not happen
         return;

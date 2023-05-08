@@ -111,7 +111,7 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &
     vm->thread_ = jsThread;
     vm->Initialize();
     JsStackInfo::loader = vm->GetAOTFileManager();
-#ifdef __aarch64__
+#if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     if (SetThreadInfoCallback != nullptr) {
         SetThreadInfoCallback(CrashCallback);
     }
