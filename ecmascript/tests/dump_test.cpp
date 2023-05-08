@@ -781,6 +781,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::LINE_STRING:
+            case JSType::CONSTANT_STRING:
             case JSType::TREE_STRING: {
                 DUMP_FOR_HANDLE(globalEnv->GetObjectFunction())
                 break;

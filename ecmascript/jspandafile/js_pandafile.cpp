@@ -20,6 +20,7 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript {
+bool JSPandaFile::loadedFirstPandaFile = false;
 JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     : pf_(pf), desc_(descriptor)
 {
@@ -32,6 +33,12 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     }
     checksum_ = pf->GetHeader()->checksum;
     isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
+    if (!loadedFirstPandaFile && !isBundlePack_) {
+        // Tag the first merged abc to use constant string. The lifetime of this first panda file is the same
+        // as the vm. And make sure the first pandafile is the same at the compile time and runtime. 
+        isFirstPandafile_ = true;
+        loadedFirstPandaFile = true;
+    }
 }
 
 void JSPandaFile::CheckIsBundlePack()
@@ -197,6 +204,14 @@ MethodLiteral *JSPandaFile::FindMethodLiteral(uint32_t offset) const
         return nullptr;
     }
     return iter->second;
+}
+
+bool JSPandaFile::IsFirstMergedAbc() const
+{
+    if (isFirstPandafile_ && !IsBundlePack()) {
+        return true;
+    }
+    return false;
 }
 
 bool JSPandaFile::IsModule(JSThread *thread, const CString &recordName, CString fullRecordName) const

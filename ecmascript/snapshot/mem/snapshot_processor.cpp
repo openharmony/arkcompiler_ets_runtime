@@ -1314,10 +1314,22 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
     auto oldSpace = const_cast<Heap *>(vm_->GetHeap())->GetOldSpace();
     auto hugeSpace = const_cast<Heap *>(vm_->GetHeap())->GetHugeObjectSpace();
     auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
-    auto stringClass = globalConst->GetLineStringClass();
+    auto lineStringClass = globalConst->GetLineStringClass();
+    auto constantStringClass = globalConst->GetConstantStringClass();
     while (stringBegin < stringEnd) {
         EcmaString *str = reinterpret_cast<EcmaString *>(stringBegin);
-        str->SetClassWithoutBarrier(reinterpret_cast<JSHClass *>(stringClass.GetTaggedObject()));
+        int index = JSTaggedValue(*(reinterpret_cast<JSTaggedType *>(str))).GetInt();
+        if (index == 1) {
+            str->SetClassWithoutBarrier(reinterpret_cast<JSHClass *>(constantStringClass.GetTaggedObject()));
+            std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindMergedJSPandaFile();
+            auto constantStr = ConstantString::Cast(str);
+            uint32_t id = constantStr->GetEntityId();
+            auto stringData = jsPandaFile->GetStringData(EntityId(id)).data;
+            constantStr->SetConstantData(const_cast<uint8_t *>(stringData));
+        } else {
+            ASSERT(index == 0);
+            str->SetClassWithoutBarrier(reinterpret_cast<JSHClass *>(lineStringClass.GetTaggedObject()));
+        }
         size_t strSize = EcmaStringAccessor(str).ObjectSize();
         strSize = AlignUp(strSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         auto strFromTable = stringTable->GetString(str);
@@ -1455,21 +1467,21 @@ void SnapshotProcessor::Relocate(SnapshotType type, const JSPandaFile *jsPandaFi
     auto snapshotSpace = heap->GetSnapshotSpace();
     auto hugeObjectSpace = heap->GetHugeObjectSpace();
 
-    RelocateSpaceObject(oldSpace, type, methods, methodNums, rootObjSize);
-    RelocateSpaceObject(nonMovableSpace, type, methods, methodNums, rootObjSize);
-    RelocateSpaceObject(machineCodeSpace, type, methods, methodNums, rootObjSize);
-    RelocateSpaceObject(snapshotSpace, type, methods, methodNums, rootObjSize);
-    RelocateSpaceObject(hugeObjectSpace, type, methods, methodNums, rootObjSize);
+    RelocateSpaceObject(jsPandaFile, oldSpace, type, methods, methodNums, rootObjSize);
+    RelocateSpaceObject(jsPandaFile, nonMovableSpace, type, methods, methodNums, rootObjSize);
+    RelocateSpaceObject(jsPandaFile, machineCodeSpace, type, methods, methodNums, rootObjSize);
+    RelocateSpaceObject(jsPandaFile, snapshotSpace, type, methods, methodNums, rootObjSize);
+    RelocateSpaceObject(jsPandaFile, hugeObjectSpace, type, methods, methodNums, rootObjSize);
 }
 
-void SnapshotProcessor::RelocateSpaceObject(Space* space, SnapshotType type, MethodLiteral* methods,
-                                            size_t methodNums, size_t rootObjSize)
+void SnapshotProcessor::RelocateSpaceObject(const JSPandaFile *jsPandaFile, Space* space, SnapshotType type,
+                                            MethodLiteral* methods, size_t methodNums, size_t rootObjSize)
 {
     size_t others = 0;
     size_t objIndex = 0;
     size_t constSpecialIndex = 0;
     EcmaStringTable *stringTable = vm_->GetEcmaStringTable();
-    space->EnumerateRegions([stringTable, &others, &objIndex, &rootObjSize, &constSpecialIndex,
+    space->EnumerateRegions([jsPandaFile, stringTable, &others, &objIndex, &rootObjSize, &constSpecialIndex,
                             &type, this, methods, &methodNums](Region *current) {
         if (!current->NeedRelocate()) {
             return;
@@ -1499,6 +1511,12 @@ void SnapshotProcessor::RelocateSpaceObject(Space* space, SnapshotType type, Met
                 auto str = reinterpret_cast<EcmaString *>(begin);
                 EcmaStringAccessor(str).ClearInternString();
                 stringTable->InsertStringIfNotExist(str);
+                if (JSType(objType) == JSType::CONSTANT_STRING) {
+                    auto constantStr = ConstantString::Cast(str);
+                    uint32_t id = constantStr->GetEntityId();
+                    auto stringData = jsPandaFile->GetStringData(EntityId(id)).data;
+                    constantStr->SetConstantData(const_cast<uint8_t *>(stringData));
+                }
             }
             if (objIndex < rootObjSize) {
                 HandleRootObject(type, begin, objType, constSpecialIndex);

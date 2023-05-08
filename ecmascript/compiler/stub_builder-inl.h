@@ -1086,6 +1086,12 @@ inline GateRef StubBuilder::IsLineString(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::LINE_STRING)));
 }
 
+inline GateRef StubBuilder::IsConstantString(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::CONSTANT_STRING)));
+}
+
 inline GateRef StubBuilder::IsTreeString(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));

@@ -148,6 +148,7 @@ CString JSHClass::DumpJSType(JSType type)
         case JSType::COW_TAGGED_ARRAY:
             return "COWArray";
         case JSType::LINE_STRING:
+        case JSType::CONSTANT_STRING:
         case JSType::TREE_STRING:
             return "BaseString";
         case JSType::JS_NATIVE_POINTER:
@@ -626,6 +627,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             VTable::Cast(obj)->Dump(os);
             break;
         case JSType::LINE_STRING:
+        case JSType::CONSTANT_STRING:
         case JSType::TREE_STRING:
             DumpStringClass(EcmaString::Cast(obj), os);
             os << "\n";
@@ -3651,6 +3653,7 @@ static void DumpObject(TaggedObject *obj,
             DumpConstantPoolClass(ConstantPool::Cast(obj), vec);
             return;
         case JSType::LINE_STRING:
+        case JSType::CONSTANT_STRING:
         case JSType::TREE_STRING:
             DumpStringClass(EcmaString::Cast(obj), vec);
             return;

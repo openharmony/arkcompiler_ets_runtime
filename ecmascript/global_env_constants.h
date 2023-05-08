@@ -36,6 +36,7 @@ class JSThread;
     V(JSTaggedValue, FreeObjectWithOneFieldClass, FREE_OBJECT_WITH_ONE_FIELD_CLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, FreeObjectWithTwoFieldClass, FREE_OBJECT_WITH_TWO_FIELD_CLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, LineStringClass, LINE_STRING_CLASS_INDEX, ecma_roots_class)                                      \
+    V(JSTaggedValue, ConstantStringClass, CONSTANT_STRING_CLASS_INDEX, ecma_roots_class)                              \
     V(JSTaggedValue, TreeStringClass, TREE_STRING_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, ArrayClass, ARRAY_CLASS_INDEX, ecma_roots_class)                                                 \
     V(JSTaggedValue, ByteArrayClass, BYTE_ARRAY_CLASS_INDEX, ecma_roots_class)                                        \

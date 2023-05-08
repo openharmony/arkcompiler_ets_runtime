@@ -36,8 +36,10 @@ namespace panda {
 namespace ecmascript {
 template<typename T>
 class JSHandle;
+class JSPandaFile;
 class EcmaVM;
 class LineEcmaString;
+class ConstantString;
 class TreeEcmaString;
 
 class EcmaString : public TaggedObject {
@@ -66,11 +68,13 @@ public:
 private:
     friend class EcmaStringAccessor;
     friend class LineEcmaString;
+    friend class ConstantString;
     friend class TreeEcmaString;
 
     static EcmaString *CreateEmptyString(const EcmaVM *vm);
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-        bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE);
+        bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE, bool isConstantString = false,
+        uint32_t idOffset = 0);
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
         bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE);
     static EcmaString *CreateLineString(const EcmaVM *vm, size_t length, bool compressed);
@@ -79,7 +83,8 @@ private:
         size_t length, bool compressed, MemSpaceType type);
     static EcmaString *CreateTreeString(const EcmaVM *vm,
         const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, uint32_t length, bool compressed);
-
+    static EcmaString *CreateConstantString(const EcmaVM *vm, const uint8_t *utf8Data,
+        size_t length, bool compressed, MemSpaceType type = MemSpaceType::SEMI_SPACE, uint32_t idOffset = 0);
     static EcmaString *Concat(const EcmaVM *vm,
         const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right);
     static EcmaString *FastSubString(const EcmaVM *vm,
@@ -456,10 +461,18 @@ private:
     {
         return GetClass()->IsLineString();
     }
-
+    bool IsConstantString() const
+    {
+        return GetClass()->IsConstantString();
+    }
     bool IsTreeString() const
     {
         return GetClass()->IsTreeString();
+    }
+    bool IsLineOrConstantString() const
+    {
+        auto hclass = GetClass();
+        return hclass->IsLineString() || hclass->IsConstantString();
     }
 
     JSType GetStringType() const
@@ -568,6 +581,46 @@ public:
 };
 static_assert((LineEcmaString::DATA_OFFSET % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
 
+class ConstantString : public EcmaString {
+public:
+    static constexpr size_t ENTITY_ID_OFFSET = EcmaString::SIZE;
+    // ConstantData is the pointer of const string in the pandafile.
+    // String in pandafile is encoded by the utf8 format.
+    ACCESSORS_PRIMITIVE_FIELD(EntityId, uint32_t, ENTITY_ID_OFFSET, CONSTANT_DATA_OFFSET);
+    ACCESSORS_NATIVE_FIELD(ConstantData, uint8_t, CONSTANT_DATA_OFFSET, SIZE);
+
+    CAST_CHECK(ConstantString, IsConstantString);
+
+    static ConstantString *Cast(EcmaString *str)
+    {
+        return static_cast<ConstantString *>(str);
+    }
+
+    static ConstantString *Cast(const EcmaString *str)
+    {
+        return ConstantString::Cast(const_cast<EcmaString *>(str));
+    }
+
+    static size_t ObjectSize()
+    {
+        return ConstantString::SIZE;
+    }
+
+    template<bool verify = true>
+    uint16_t Get(int32_t index) const
+    {
+        int32_t length = static_cast<int32_t>(GetLength());
+        if (verify) {
+            if ((index < 0) || (index >= length)) {
+                return 0;
+            }
+        }
+        ASSERT(IsUtf8());
+        Span<const uint8_t> sp(GetConstantData(), length);
+        return sp[index];
+    }
+};
+
 class TreeEcmaString : public EcmaString {
 public:
     // Minimum length for a tree string
@@ -653,9 +706,16 @@ public:
     }
 
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
-                                      MemSpaceType type = MemSpaceType::SEMI_SPACE)
+                                      MemSpaceType type = MemSpaceType::SEMI_SPACE, bool isConstantString = false,
+                                      uint32_t idOffset = 0)
     {
-        return EcmaString::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
+        return EcmaString::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type, isConstantString, idOffset);
+    }
+
+    static EcmaString *CreateConstantString(const EcmaVM *vm, const uint8_t *utf8Data, size_t length,
+        bool compressed, MemSpaceType type = MemSpaceType::SEMI_SPACE, uint32_t idOffset = 0)
+    {
+        return EcmaString::CreateConstantString(vm, utf8Data, length, compressed, type, idOffset);
     }
 
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
@@ -699,6 +759,8 @@ public:
     {
         if (string_->IsLineString()) {
             return LineEcmaString::ObjectSize(string_);
+        } if (string_->IsConstantString()) {
+            return ConstantString::ObjectSize();
         } else {
             return TreeEcmaString::SIZE;
         }
@@ -707,6 +769,9 @@ public:
     // For TreeString, the calculation result is size of LineString correspondingly.
     size_t GetFlatStringSize() const
     {
+        if (string_->IsConstantString()) {
+            return ConstantString::ObjectSize();
+        }
         return LineEcmaString::ObjectSize(string_);
     }
 
@@ -960,6 +1025,16 @@ public:
     bool IsLineString() const
     {
         return string_->IsLineString();
+    }
+
+    bool IsConstantString() const
+    {
+        return string_->IsConstantString();
+    }
+
+    bool IsLineOrConstantString() const
+    {
+        return string_->IsLineOrConstantString();
     }
 
     bool IsTreeString() const

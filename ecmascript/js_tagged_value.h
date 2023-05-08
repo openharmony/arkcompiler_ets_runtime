@@ -509,6 +509,7 @@ public:
     bool IsBigInt() const;
     bool IsString() const;
     bool IsLineString() const;
+    bool IsConstantString() const;
     bool IsTreeString() const;
     bool IsStringOrSymbol() const;
     bool IsTaggedArray() const;

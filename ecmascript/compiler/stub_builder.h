@@ -317,6 +317,7 @@ public:
     GateRef IsSymbol(GateRef obj);
     GateRef IsString(GateRef obj);
     GateRef IsLineString(GateRef obj);
+    GateRef IsConstantString(GateRef obj);
     GateRef IsTreeString(GateRef obj);
     GateRef TreeStringIsFlat(GateRef string);
     GateRef TaggedIsBigInt(GateRef obj);
@@ -622,6 +623,8 @@ public:
 
     GateRef FlattenString(GateRef glue, GateRef str);
     void FlattenString(GateRef str, Variable *flatStr, Label *fastPath, Label *slowPath);
+    GateRef GetNormalStringData(GateRef str);
+
     void Comment(GateRef glue, const std::string &str);
     GateRef ToNumber(GateRef glue, GateRef tagged);
 private:

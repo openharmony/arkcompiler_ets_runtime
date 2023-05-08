@@ -45,8 +45,8 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
 
     // if the result string is small, make a LineString
     if (newLength < TreeEcmaString::MIN_TREE_ECMASTRING_LENGTH) {
-        ASSERT(strLeft->IsLineString());
-        ASSERT(strRight->IsLineString());
+        ASSERT(strLeft->IsLineOrConstantString());
+        ASSERT(strRight->IsLineOrConstantString());
         auto newString = CreateLineString(vm, newLength, compressed);
         // retrieve strings after gc
         strLeft = *left;
@@ -104,7 +104,7 @@ EcmaString *EcmaString::FastSubString(const EcmaVM *vm,
 
 void EcmaString::WriteData(EcmaString *src, uint32_t start, uint32_t destSize, uint32_t length)
 {
-    ASSERT(IsLineString());
+    ASSERT(IsLineString() && !IsConstantString());
     if (IsUtf8()) {
         ASSERT(src->IsUtf8());
         CVector<uint8_t> buf;
@@ -373,7 +373,7 @@ std::u16string EcmaString::ToU16String(uint32_t len)
 // static
 bool EcmaString::CanBeCompressed(const EcmaString *string)
 {
-    ASSERT(string->IsLineString());
+    ASSERT(string->IsLineOrConstantString());
     if (string->IsUtf8()) {
         return CanBeCompressed(string->GetDataUtf8(), string->GetLength());
     }
@@ -413,8 +413,8 @@ bool EcmaString::CanBeCompressed(const uint16_t *utf16Data, uint32_t utf16Len)
 
 bool EcmaString::EqualToSplicedString(const EcmaString *str1, const EcmaString *str2)
 {
-    ASSERT(IsLineString());
-    ASSERT(str1->IsLineString() && str2->IsLineString());
+    ASSERT(IsLineOrConstantString());
+    ASSERT(str1->IsLineOrConstantString() && str2->IsLineOrConstantString());
     if (GetLength() != str1->GetLength() + str2->GetLength()) {
         return false;
     }
@@ -890,7 +890,7 @@ EcmaString *EcmaString::SlowFlatten(const EcmaVM *vm, const JSHandle<TreeEcmaStr
 EcmaString *EcmaString::Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string)
 {
     EcmaString *s = *string;
-    if (s->IsLineString()) {
+    if (s->IsLineOrConstantString()) {
         return s;
     }
     if (s->IsTreeString()) {
@@ -906,7 +906,7 @@ EcmaString *EcmaString::Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &st
 EcmaString *EcmaString::FlattenNoGC(const EcmaVM *vm, EcmaString *string)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    if (string->IsLineString()) {
+    if (string->IsLineOrConstantString()) {
         return string;
     }
     if (string->IsTreeString()) {

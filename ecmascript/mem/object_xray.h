@@ -333,6 +333,7 @@ public:
                 }
                 break;
             case JSType::LINE_STRING:
+            case JSType::CONSTANT_STRING:
                 break;
             case JSType::TREE_STRING:
                 TreeEcmaString::Cast(object)->VisitRangeSlot(visitor);

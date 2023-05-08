@@ -348,6 +348,8 @@ public:
     static FunctionKind PUBLIC_API GetFunctionKind(panda_file::FunctionKind funcKind);
     static FunctionKind GetFunctionKind(ConstPoolType type);
 
+    bool IsFirstMergedAbc() const;
+
 private:
     void InitializeUnMergedPF();
     void InitializeMergedPF();
@@ -370,6 +372,8 @@ private:
     bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
     CUnorderedMap<CString, JSRecordInfo> jsRecordInfo_;
     bool isRecordWithBundleName_ {true};
+    static bool loadedFirstPandaFile;
+    bool isFirstPandafile_{false};
 };
 }  // namespace ecmascript
 }  // namespace panda
