@@ -342,9 +342,10 @@ public:
             EcmaVM *vm = thread->GetEcmaVM();
             ObjectFactory *factory = vm->GetFactory();
             JSHandle<ConstantPool> constpoolHandle(thread, constpool);
-            auto string = factory->GetRawStringFromStringTable(foundStr, MemSpaceType::OLD_SPACE);
-            val = JSTaggedValue(string);
+            auto string = factory->GetRawStringFromStringTable(foundStr, MemSpaceType::OLD_SPACE,
+                jsPandaFile->IsFirstMergedAbc(), id.GetOffset());
 
+            val = JSTaggedValue(string);
             constpoolHandle->SetObjectToCache(thread, index, val);
         }
 

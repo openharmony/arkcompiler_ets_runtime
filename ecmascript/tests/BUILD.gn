@@ -30,6 +30,7 @@ host_unittest_action("EcmaVm_001_Test") {
     "dump_test.cpp",
 
     # "ecma_string_test.cpp",
+    "constant_string_test.cpp",
     "ecma_string_accessor_test.cpp",
     "ecma_string_table_test.cpp",
     "ecma_vm_test.cpp",

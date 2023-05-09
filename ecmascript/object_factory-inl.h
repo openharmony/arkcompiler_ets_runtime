@@ -47,6 +47,13 @@ EcmaString *ObjectFactory::AllocOldSpaceLineStringObject(size_t size)
         JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()), size));
 }
 
+EcmaString *ObjectFactory::AllocConstantStringObject(MemSpaceType type)
+{
+    NewObjectHook();
+    return reinterpret_cast<EcmaString *>(AllocObjectWithSpaceType(ConstantString::SIZE,
+        JSHClass::Cast(thread_->GlobalConstants()->GetConstantStringClass().GetTaggedObject()), type));
+}
+
 EcmaString *ObjectFactory::AllocTreeStringObject()
 {
     NewObjectHook();

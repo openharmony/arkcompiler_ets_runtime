@@ -32,7 +32,7 @@ GateRef BuiltinsStringStubBuilder::StringAt(GateRef obj, GateRef index)
     Label doIntOp(env);
     Label leftIsNumber(env);
     Label rightIsNumber(env);
-    GateRef dataUtf16 = PtrAdd(obj, IntPtr(LineEcmaString::DATA_OFFSET));
+    GateRef dataUtf16 = GetNormalStringData(obj);
     Branch(IsUtf16String(obj), &isUtf16, &isUtf8);
     Bind(&isUtf16);
     {
@@ -65,7 +65,7 @@ GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef ob
     Label isUtf16(env);
     Label isUtf8(env);
     Label allocString(env);
-    GateRef dataUtf = PtrAdd(obj, IntPtr(LineEcmaString::DATA_OFFSET));
+    GateRef dataUtf = GetNormalStringData(obj);
     Branch(IsUtf16String(obj), &isUtf16, &isUtf8);
     Bind(&isUtf16);
     {
@@ -187,7 +187,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf8String(GateRef glue, GateRef thisV
     Bind(&afterNew);
     {
         GateRef dst = PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET));
-        GateRef source = PtrAdd(PtrAdd(thisValue, IntPtr(LineEcmaString::DATA_OFFSET)), ZExtInt32ToPtr(from));
+        GateRef source = PtrAdd(GetNormalStringData(thisValue), ZExtInt32ToPtr(from));
         CopyChars(glue, dst, source, len, IntPtr(sizeof(uint8_t)), VariableType::INT8());
         Jump(&exit);
     }
@@ -211,7 +211,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef this
     Label isUtf16Next(env);
 
     GateRef fromOffset = PtrMul(ZExtInt32ToPtr(from), IntPtr(sizeof(uint16_t) / sizeof(uint8_t)));
-    GateRef source = PtrAdd(PtrAdd(thisValue, IntPtr(LineEcmaString::DATA_OFFSET)), fromOffset);
+    GateRef source = PtrAdd(GetNormalStringData(thisValue), fromOffset);
     GateRef canBeCompressed = CanBeCompressed(source, len, true);
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
@@ -227,7 +227,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef this
     }
     Bind(&afterNew);
     {
-        GateRef source1 = PtrAdd(PtrAdd(thisValue, IntPtr(LineEcmaString::DATA_OFFSET)), fromOffset);
+        GateRef source1 = PtrAdd(GetNormalStringData(thisValue), fromOffset);
         GateRef dst = PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET));
         Branch(canBeCompressed, &isUtf8Next, &isUtf16Next);
         Bind(&isUtf8Next);
@@ -550,8 +550,8 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhs, GateRef rhs, GateR
                     GateRef posRMax = Int32Add(*posTag, rhsCount);
                     Branch(Int32GreaterThan(posRMax, lhsCount), &exit, &posRMaxNotGreaterLhs);
                     Bind(&posRMaxNotGreaterLhs);
-                    GateRef rhsData = PtrAdd(rhs, IntPtr(LineEcmaString::DATA_OFFSET));
-                    GateRef lhsData = PtrAdd(lhs, IntPtr(LineEcmaString::DATA_OFFSET));
+                    GateRef rhsData = GetNormalStringData(rhs);
+                    GateRef lhsData = GetNormalStringData(lhs);
                     Branch(IsUtf8String(rhs), &rhsIsUtf8, &rhsIsUtf16);
                     Bind(&rhsIsUtf8);
                     {

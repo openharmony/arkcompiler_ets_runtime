@@ -27,7 +27,8 @@ EcmaStringTable::EcmaStringTable(const EcmaVM *vm) : vm_(vm) {}
 EcmaString *EcmaStringTable::GetString(const JSHandle<EcmaString> &firstString,
                                        const JSHandle<EcmaString> &secondString) const
 {
-    ASSERT(EcmaStringAccessor(firstString).IsLineString() && EcmaStringAccessor(secondString).IsLineString());
+    ASSERT(EcmaStringAccessor(firstString).IsLineOrConstantString());
+    ASSERT(EcmaStringAccessor(secondString).IsLineOrConstantString());
     uint32_t hashCode = EcmaStringAccessor(firstString).GetHashcode();
     hashCode = EcmaStringAccessor(secondString).ComputeHashcode(hashCode);
     auto range = table_.equal_range(hashCode);
@@ -71,7 +72,7 @@ EcmaString *EcmaStringTable::GetString(const uint16_t *utf16Data, uint32_t utf16
 
 EcmaString *EcmaStringTable::GetString(EcmaString *string) const
 {
-    ASSERT(EcmaStringAccessor(string).IsLineString());
+    ASSERT(EcmaStringAccessor(string).IsLineOrConstantString());
     auto hashcode = EcmaStringAccessor(string).GetHashcode();
     auto range = table_.equal_range(hashcode);
     auto item = range.first;
@@ -89,7 +90,7 @@ void EcmaStringTable::InternString(EcmaString *string)
     if (EcmaStringAccessor(string).IsInternString()) {
         return;
     }
-    ASSERT(EcmaStringAccessor(string).IsLineString());
+    ASSERT(EcmaStringAccessor(string).IsLineOrConstantString());
     table_.emplace(EcmaStringAccessor(string).GetHashcode(), string);
     EcmaStringAccessor(string).SetInternString();
 }
@@ -169,14 +170,20 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaString *string)
 }
 
 EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf8Len,
-                                                            bool canBeCompress, MemSpaceType type)
+                                                            bool canBeCompress, MemSpaceType type,
+                                                            bool isConstantString, uint32_t idOffset)
 {
     EcmaString *result = GetString(utf8Data, utf8Len, canBeCompress);
     if (result != nullptr) {
         return result;
     }
-
-    result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, type);
+    if (canBeCompress) {
+        // Constant string will be created in this branch.
+        result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, type, isConstantString,
+            idOffset);
+    } else {
+        result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, type);
+    }
     InternString(result);
     return result;
 }
@@ -216,7 +223,7 @@ bool EcmaStringTable::CheckStringTableValidity()
 {
     for (auto itemOuter = table_.begin(); itemOuter != table_.end(); ++itemOuter) {
         auto outerString = itemOuter->second;
-        if (!EcmaStringAccessor(outerString).IsLineString()) {
+        if (!EcmaStringAccessor(outerString).IsLineOrConstantString()) {
             return false;
         }
         int counter = 0;

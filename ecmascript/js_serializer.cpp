@@ -324,6 +324,7 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
         case JSType::JS_SHARED_ARRAY_BUFFER:
             return WriteJSArrayBuffer(value);
         case JSType::LINE_STRING:
+        case JSType::CONSTANT_STRING:
         case JSType::TREE_STRING:
             return WriteEcmaString(value);
         case JSType::JS_OBJECT:

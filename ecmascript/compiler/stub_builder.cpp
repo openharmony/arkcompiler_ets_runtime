@@ -1122,8 +1122,7 @@ GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
         Branch(isUtf16String, &exit, &isUtf8);
         Bind(&isUtf8);
         {
-            GateRef strFlat = FlattenString(glue, string);
-            GateRef dataUtf8 = PtrAdd(strFlat, IntPtr(LineEcmaString::DATA_OFFSET));
+            GateRef dataUtf8 = GetNormalStringData(FlattenString(glue, string));
             DEFVARIABLE(c, VariableType::INT32(), Int32(0));
             c = ZExtInt8ToInt32(Load(VariableType::INT8(), dataUtf8));
             Label isDigitZero(env);
@@ -5126,8 +5125,7 @@ GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
         Label isUtf8(env);
         Branch(IsUtf16String(key), &exit, &isUtf8);
         Bind(&isUtf8);
-        GateRef keyFlat = FlattenString(glue, key);
-        GateRef data = PtrAdd(keyFlat, IntPtr(LineEcmaString::DATA_OFFSET));
+        GateRef data = GetNormalStringData(FlattenString(glue, key));
         DEFVARIABLE(c, VariableType::INT32(), Int32(0));
         c = ZExtInt8ToInt32(Load(VariableType::INT8(), data));
         Label isDigitZero(env);
@@ -5349,29 +5347,51 @@ GateRef StubBuilder::FlattenString(GateRef glue, GateRef str)
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    Label notLineString(env);
     DEFVARIABLE(result, VariableType::JS_POINTER(), str);
-    Branch(IsLineString(str), &exit, &notLineString);
-    Bind(&notLineString);
+    Label isTreeString(env);
+    Branch(IsTreeString(str), &isTreeString, &exit);
+    Bind(&isTreeString);
     {
-        Label isTreeString(env);
-        Branch(IsTreeString(str), &isTreeString, &exit);
-        Bind(&isTreeString);
+        Label isFlat(env);
+        Label notFlat(env);
+        Branch(TreeStringIsFlat(str), &isFlat, &notFlat);
+        Bind(&isFlat);
         {
-            Label isFlat(env);
-            Label notFlat(env);
-            Branch(TreeStringIsFlat(str), &isFlat, &notFlat);
-            Bind(&isFlat);
-            {
-                result = GetFirstFromTreeString(str);
-                Jump(&exit);
-            }
-            Bind(&notFlat);
-            {
-                result = CallRuntime(glue, RTSTUB_ID(SlowFlattenString), { str });
-                Jump(&exit);
-            }
+            result = GetFirstFromTreeString(str);
+            Jump(&exit);
         }
+        Bind(&notFlat);
+        {
+            result = CallRuntime(glue, RTSTUB_ID(SlowFlattenString), { str });
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::GetNormalStringData(GateRef str)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isConstantString(env);
+    Label isLineString(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    Branch(IsConstantString(str), &isConstantString, &isLineString);
+    Bind(&isConstantString);
+    {
+        GateRef address = PtrAdd(str, IntPtr(ConstantString::CONSTANT_DATA_OFFSET));
+        result = Load(VariableType::JS_ANY(), address, IntPtr(0));
+        Jump(&exit);
+    }
+    Bind(&isLineString);
+    {
+        result = PtrAdd(str, IntPtr(LineEcmaString::DATA_OFFSET));
+        Jump(&exit);
     }
     Bind(&exit);
     auto ret = *result;
@@ -5385,7 +5405,7 @@ void StubBuilder::FlattenString(GateRef str, Variable *flatStr, Label *fastPath,
     Label notLineString(env);
     Label exit(env);
     DEFVARIABLE(result, VariableType::JS_POINTER(), str);
-    Branch(IsLineString(str), &exit, &notLineString);
+    Branch(BoolOr(IsLineString(str), IsConstantString(str)), &exit, &notLineString);
     Bind(&notLineString);
     {
         Label isTreeString(env);

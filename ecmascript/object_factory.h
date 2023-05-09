@@ -522,6 +522,7 @@ public:
     inline EcmaString *AllocLineStringObject(size_t size);
     inline EcmaString *AllocOldSpaceLineStringObject(size_t size);
     inline EcmaString *AllocNonMovableLineStringObject(size_t size);
+    inline EcmaString *AllocConstantStringObject(MemSpaceType type);
     inline EcmaString *AllocTreeStringObject();
 
     JSHandle<EcmaString> ConcatFromString(const JSHandle<EcmaString> &firstString,
@@ -667,8 +668,8 @@ private:
     JSHandle<EcmaString> GetStringFromStringTable(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress) const;
     JSHandle<EcmaString> GetStringFromStringTableNonMovable(const uint8_t *utf8Data, uint32_t utf8Len) const;
     // For MUtf-8 string data
-    EcmaString* PUBLIC_API GetRawStringFromStringTable(StringData sd,
-                                                       MemSpaceType type = MemSpaceType::SEMI_SPACE) const;
+    EcmaString* PUBLIC_API GetRawStringFromStringTable(StringData sd, MemSpaceType type = MemSpaceType::SEMI_SPACE,
+                                                       bool isConstantString = false, uint32_t idOffset = 0) const;
 
     JSHandle<EcmaString> GetStringFromStringTable(const uint16_t *utf16Data, uint32_t utf16Len,
                                                   bool canBeCompress) const;

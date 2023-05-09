@@ -2536,7 +2536,8 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(EcmaString *string)
 }
 
 // NB! don't do special case for C0 80, it means '\u0000', so don't convert to UTF-8
-EcmaString *ObjectFactory::GetRawStringFromStringTable(StringData sd, MemSpaceType type) const
+EcmaString *ObjectFactory::GetRawStringFromStringTable(StringData sd, MemSpaceType type, bool isConstantString,
+    uint32_t idOffset) const
 {
     NewObjectHook();
     uint32_t utf16Len = sd.utf16_length;
@@ -2547,7 +2548,9 @@ EcmaString *ObjectFactory::GetRawStringFromStringTable(StringData sd, MemSpaceTy
     bool canBeCompressed = sd.is_ascii;
     const uint8_t *mutf8Data = sd.data;
     if (canBeCompressed) {
-        return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(mutf8Data, utf16Len, true, type);
+        // This branch will use constant string, which has a pointer at the string in the pandafile.
+        return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(mutf8Data, utf16Len, true, type,
+                                                                         isConstantString, idOffset);
     }
 
     CVector<uint16_t> utf16Data(utf16Len);

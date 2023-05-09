@@ -164,7 +164,8 @@ JSHandle<ConstantPool> PandaFileTranslator::ParseConstPool(EcmaVM *vm, const JSP
         if (type == ConstPoolType::STRING) {
             panda_file::File::EntityId id(it.first);
             auto foundStr = jsPandaFile->GetStringData(id);
-            auto string = factory->GetRawStringFromStringTable(foundStr, MemSpaceType::OLD_SPACE);
+            auto string = factory->GetRawStringFromStringTable(foundStr, MemSpaceType::OLD_SPACE,
+                jsPandaFile->IsFirstMergedAbc(), it.first);
             constpool->SetObjectToCache(thread, value.GetConstpoolIndex(), JSTaggedValue(string));
         } else if (type == ConstPoolType::OBJECT_LITERAL) {
             size_t index = static_cast<size_t>(it.first);

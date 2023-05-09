@@ -35,19 +35,24 @@ inline EcmaString *EcmaString::CreateEmptyString(const EcmaVM *vm)
 
 /* static */
 inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-                                              bool canBeCompress, MemSpaceType type)
+                                              bool canBeCompress, MemSpaceType type, bool isConstantString,
+                                              uint32_t idOffset)
 {
     if (utf8Len == 0) {
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
     }
     EcmaString *string = nullptr;
     if (canBeCompress) {
-        string = CreateLineStringWithSpaceType(vm, utf8Len, true, type);
-        ASSERT(string != nullptr);
+        if (isConstantString) {
+            string = CreateConstantString(vm, utf8Data, utf8Len, canBeCompress, type, idOffset);
+        } else {
+            string = CreateLineStringWithSpaceType(vm, utf8Len, true, type);
+            ASSERT(string != nullptr);
 
-        if (memcpy_s(string->GetDataUtf8Writable(), utf8Len, utf8Data, utf8Len) != EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed";
-            UNREACHABLE();
+            if (memcpy_s(string->GetDataUtf8Writable(), utf8Len, utf8Data, utf8Len) != EOK) {
+                LOG_FULL(FATAL) << "memcpy_s failed";
+                UNREACHABLE();
+            }
         }
     } else {
         auto utf16Len = base::utf_helper::Utf8ToUtf16Size(utf8Data, utf8Len);
@@ -134,6 +139,18 @@ inline EcmaString *EcmaString::CreateLineStringWithSpaceType(const EcmaVM *vm, s
     return string;
 }
 
+inline EcmaString *EcmaString::CreateConstantString(const EcmaVM *vm, const uint8_t *utf8Data,
+    size_t length, bool compressed, MemSpaceType type, uint32_t idOffset)
+{
+    auto string = ConstantString::Cast(vm->GetFactory()->AllocConstantStringObject(type));
+    string->SetLength(length, compressed);
+    string->SetRawHashcode(0);
+    string->SetConstantData(const_cast<uint8_t *>(utf8Data));
+    // The string might be serialized, the const data will be replaced by index in the panda file.
+    string->SetEntityId(idOffset);
+    return string;
+}
+
 inline EcmaString *EcmaString::CreateTreeString(const EcmaVM *vm,
     const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, uint32_t length, bool compressed)
 {
@@ -150,7 +167,7 @@ inline EcmaString *EcmaString::CreateTreeString(const EcmaVM *vm,
 EcmaString *EcmaString::FastSubUtf8String(const EcmaVM *vm, const JSHandle<EcmaString> &src, uint32_t start,
                                           uint32_t length)
 {
-    ASSERT(src->IsLineString());
+    ASSERT(src->IsLineOrConstantString());
     auto string = CreateLineString(vm, length, true);
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     Span<uint8_t> dst(string->GetDataUtf8Writable(), length);
@@ -165,7 +182,7 @@ EcmaString *EcmaString::FastSubUtf8String(const EcmaVM *vm, const JSHandle<EcmaS
 EcmaString *EcmaString::FastSubUtf16String(const EcmaVM *vm, const JSHandle<EcmaString> &src, uint32_t start,
                                            uint32_t length)
 {
-    ASSERT(src->IsLineString());
+    ASSERT(src->IsLineOrConstantString());
     bool canBeCompressed = CanBeCompressed(src->GetDataUtf16() + start, length);
     auto string = CreateLineString(vm, length, canBeCompressed);
     if (canBeCompressed) {
@@ -191,6 +208,9 @@ inline uint16_t *EcmaString::GetData() const
 inline const uint8_t *EcmaString::GetDataUtf8() const
 {
     ASSERT_PRINT(IsUtf8(), "EcmaString: Read data as utf8 for utf16 string");
+    if (IsConstantString()) {
+        return ConstantString::Cast(this)->GetConstantData();
+    }
     return reinterpret_cast<uint8_t *>(GetData());
 }
 
@@ -203,6 +223,9 @@ inline const uint16_t *EcmaString::GetDataUtf16() const
 inline uint8_t *EcmaString::GetDataUtf8Writable()
 {
     ASSERT_PRINT(IsUtf8(), "EcmaString: Read data as utf8 for utf16 string");
+    if (IsConstantString()) {
+        return ConstantString::Cast(this)->GetConstantData();
+    }
     return reinterpret_cast<uint8_t *>(GetData());
 }
 
@@ -214,7 +237,7 @@ inline uint16_t *EcmaString::GetDataUtf16Writable()
 
 inline size_t EcmaString::GetUtf8Length(bool modify) const
 {
-    ASSERT(IsLineString());
+    ASSERT(IsLineOrConstantString());
     if (!IsUtf16()) {
         return GetLength() + 1;  // add place for zero in the end
     }
@@ -232,6 +255,8 @@ inline uint16_t EcmaString::At(int32_t index) const
     }
     if (IsLineString()) {
         return LineEcmaString::Cast(this)->Get<verify>(index);
+    } else if (IsConstantString()) {
+        return ConstantString::Cast(this)->Get<verify>(index);
     } else {
         return TreeEcmaString::Cast(this)->Get<verify>(index);
     }
@@ -272,6 +297,11 @@ void EcmaString::WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength)
                 }
                 return;
             }
+            case JSType::CONSTANT_STRING: {
+                ASSERT(src->IsUtf8());
+                CopyChars(buf, src->GetDataUtf8(), length);
+                return;
+            }
             case JSType::TREE_STRING: {
                 TreeEcmaString *treeSrc = TreeEcmaString::Cast(src);
                 EcmaString *first = EcmaString::Cast(treeSrc->GetFirst());
@@ -294,7 +324,7 @@ void EcmaString::WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength)
                     if (secondLength > 0) {
                         if (secondLength == 1) {
                             buf[firstLength] = static_cast<Char>(second->At<false>(0));
-                        } else if (second->IsLineString() && second->IsUtf8()) {
+                        } else if ((second->IsLineOrConstantString()) && second->IsUtf8()) {
                             CopyChars(buf + firstLength, second->GetDataUtf8(), secondLength);
                         } else {
                             WriteToFlat(second, buf + firstLength, maxLength - firstLength);

@@ -247,6 +247,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::HCLASS:
             return GetString("HiddenClass");
         case JSType::LINE_STRING:
+        case JSType::CONSTANT_STRING:
         case JSType::TREE_STRING:
             return GetString("BaseString");
         case JSType::JS_OBJECT: {

@@ -466,6 +466,11 @@ inline bool JSTaggedValue::IsLineString() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsLineString();
 }
 
+inline bool JSTaggedValue::IsConstantString() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsConstantString();
+}
+
 inline bool JSTaggedValue::IsTreeString() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTreeString();

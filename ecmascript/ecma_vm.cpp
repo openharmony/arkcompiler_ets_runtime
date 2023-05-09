@@ -254,12 +254,6 @@ bool EcmaVM::Initialize()
         LoadStubFile();
     }
 
-    if (options_.GetEnableAsmInterpreter() && options_.WasAOTOutputFileSet()) {
-        AnFileDataManager::GetInstance()->SetEnable(true);
-        std::string aotFilename = options_.GetAOTOutputFile();
-        LoadAOTFiles(aotFilename);
-    }
-
     optCodeProfiler_ = new OptCodeProfiler();
 
     initialized_ = true;

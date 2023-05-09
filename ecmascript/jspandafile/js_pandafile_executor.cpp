@@ -16,6 +16,8 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 
 #include "ecmascript/base/path_helper.h"
+#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -60,9 +62,21 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         name = filename;
         entry = entryPoint.data();
     }
- 
+
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, needUpdate);
+
+    if (vm->GetJSOptions().GetEnableAsmInterpreter() && vm->GetJSOptions().WasAOTOutputFileSet()) {
+        auto aotFM = thread->GetEcmaVM()->GetAOTFileManager();
+        AnFileDataManager::GetInstance()->SetEnable(true);
+        std::string aotFilename = vm->GetJSOptions().GetAOTOutputFile();
+        vm->LoadAOTFiles(aotFilename);
+        if (aotFM->IsLoad(jsPandaFile.get())) {
+            uint32_t index = aotFM->GetAnFileIndex(jsPandaFile.get());
+            jsPandaFile->SetAOTFileInfoIndex(index);
+        }
+    }
+
     if (jsPandaFile == nullptr) {
         CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
@@ -75,6 +89,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
             PathHelper::CroppingRecord(realEntry);
         }
     }
+
     bool isModule = jsPandaFile->IsModule(thread, realEntry, entry);
     if (thread->HasPendingException()) {
         vm->HandleUncaughtException(thread->GetException());
@@ -115,7 +130,17 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
         CString msg = "Load file with filename '" + normalName + "' failed, recordName '" + entryPoint.data() + "'";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
-
+    auto vm = thread->GetEcmaVM();
+    if (vm->GetJSOptions().GetEnableAsmInterpreter() && vm->GetJSOptions().WasAOTOutputFileSet()) {
+        auto aotFM = thread->GetEcmaVM()->GetAOTFileManager();
+        AnFileDataManager::GetInstance()->SetEnable(true);
+        std::string aotFilename = vm->GetJSOptions().GetAOTOutputFile();
+        vm->LoadAOTFiles(aotFilename);
+        if (aotFM->IsLoad(jsPandaFile.get())) {
+            uint32_t index = aotFM->GetAnFileIndex(jsPandaFile.get());
+            jsPandaFile->SetAOTFileInfoIndex(index);
+        }
+    }
     CString entry = entryPoint.data();
     bool isModule = jsPandaFile->IsModule(thread, entry);
     if (isModule) {
@@ -148,6 +173,17 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
         CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
+    if (vm->GetJSOptions().GetEnableAsmInterpreter() && vm->GetJSOptions().WasAOTOutputFileSet()) {
+        auto aotFM = thread->GetEcmaVM()->GetAOTFileManager();
+        AnFileDataManager::GetInstance()->SetEnable(true);
+        std::string aotFilename = vm->GetJSOptions().GetAOTOutputFile();
+        vm->LoadAOTFiles(aotFilename);
+        if (aotFM->IsLoad(jsPandaFile.get())) {
+            uint32_t index = aotFM->GetAnFileIndex(jsPandaFile.get());
+            jsPandaFile->SetAOTFileInfoIndex(index);
+        }
+    }
+
     bool isBundle = jsPandaFile->IsBundlePack();
     CString realEntry = entry;
     if (!isBundle) {

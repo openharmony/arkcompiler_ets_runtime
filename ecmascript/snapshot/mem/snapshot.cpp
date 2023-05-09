@@ -215,16 +215,24 @@ void Snapshot::WriteToFile(std::fstream &writer, const JSPandaFile *jsPandaFile,
     hdr.pandaFileBegin = pandaFileBegin;
     hdr.rootObjectSize = static_cast<uint32_t>(size);
     writer.write(reinterpret_cast<char *>(&hdr), sizeof(hdr));
-
     processor.WriteObjectToFile(writer);
 
     for (size_t i = 0; i < stringVector.size(); ++i) {
         auto str = reinterpret_cast<EcmaString *>(stringVector[i]);
         size_t strSize = AlignUp(EcmaStringAccessor(str).ObjectSize(),
             static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-        writer.write(reinterpret_cast<char *>(str), strSize);
+        int index = 0; // 0 represents the line string. Natural number 1 represents the constant string.
+        if (EcmaStringAccessor(str).IsConstantString()) {
+            index = 1;
+        }
+        // Write the index in the head of string.
+        uint8_t headerSize = JSTaggedValue::TaggedTypeSize();
+        JSTaggedType indexHeader = JSTaggedValue(index).GetRawData();
+        writer.write(reinterpret_cast<char *>(&indexHeader), headerSize);
+        writer.write(reinterpret_cast<char *>(str) + headerSize, strSize - headerSize);
         writer.flush();
     }
+
     ASSERT(static_cast<size_t>(writer.tellp()) == totalObjSize + sizeof(SnapShotHeader));
     if (jsPandaFile) {
         writer.seekp(pandaFileBegin);

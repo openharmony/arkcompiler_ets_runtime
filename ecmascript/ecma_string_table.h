@@ -23,6 +23,7 @@
 namespace panda::ecmascript {
 class EcmaString;
 class EcmaVM;
+class JSPandaFile;
 
 class EcmaStringTable {
 public:
@@ -39,7 +40,7 @@ public:
     EcmaString *GetOrInternString(const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress);
     EcmaString *GetOrInternString(EcmaString *string);
     EcmaString *GetOrInternStringWithSpaceType(const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress,
-                                               MemSpaceType type);
+                                               MemSpaceType type, bool isConstantString, uint32_t idOffset);
     EcmaString *GetOrInternStringWithSpaceType(const uint16_t *utf16Data, uint32_t utf16Len, bool canBeCompress,
                                                MemSpaceType type);
 

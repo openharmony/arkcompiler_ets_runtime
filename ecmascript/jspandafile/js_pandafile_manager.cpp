@@ -174,6 +174,17 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFileWithChecksum(con
     return nullptr;
 }
 
+std::shared_ptr<JSPandaFile> JSPandaFileManager::FindMergedJSPandaFile()
+{
+    for (const auto &iter : loadedJSPandaFiles_) {
+        const std::shared_ptr<JSPandaFile> &jsPandafile = iter.second.first;
+        if (jsPandafile->IsFirstMergedAbc()) {
+            return jsPandafile;
+        }
+    }
+    return nullptr;
+}
+
 std::shared_ptr<JSPandaFile> JSPandaFileManager::FindJSPandaFileUnlocked(const CString &filename)
 {
     if (filename.empty()) {
@@ -346,11 +357,6 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
     ASSERT(GetJSPandaFile(pf) == nullptr);
     std::shared_ptr<JSPandaFile> newJsPandaFile = NewJSPandaFile(pf, desc);
     EcmaVM *vm = thread->GetEcmaVM();
-    auto aotFM = vm->GetAOTFileManager();
-    if (aotFM->IsLoad(newJsPandaFile.get())) {
-        uint32_t index = aotFM->GetAnFileIndex(newJsPandaFile.get());
-        newJsPandaFile->SetAOTFileInfoIndex(index);
-    }
 
     CString methodName = entryPoint.data();
     if (newJsPandaFile->IsBundlePack()) {
