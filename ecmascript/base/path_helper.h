@@ -44,6 +44,7 @@ public:
     static constexpr char BUNDLE_SUB_INSTALL_PATH[] = "/data/storage/el1/";
     static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
     static constexpr char NAME_SPACE_TAG[] = "@";
+    static constexpr char PREVIER_TEST_DIR[] = ".test";
 
     static constexpr size_t MAX_PACKAGE_LEVEL = 1;
     static constexpr size_t SEGMENTS_LIMIT_TWO = 2;
@@ -107,7 +108,7 @@ public:
                 CString elem = fileName.substr(prev, curr - prev);
                 if (elem == ".." && !elems.empty()) {
                     elems.pop_back();
-                } else if (elem != ".") {
+                } else if (elem != "." && elem != "..") {
                     elems.push_back(elem);
                 }
             }
@@ -154,7 +155,13 @@ public:
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
                 entryPoint = vm->GetBundleName() + "/" +  inputFileName;
 #else
-                entryPoint = vm->GetBundleName() + "/" + vm->GetModuleName() + MODULE_DEFAULE_ETS + inputFileName;
+                // if the inputFileName starts with '.test', the preview test page is started.
+                // in this case, the path ets does not need to be combined.
+                if (StringHelper::StringStartWith(inputFileName, PREVIER_TEST_DIR)) {
+                    entryPoint = vm->GetBundleName() + "/" + vm->GetModuleName() + "/" + inputFileName;
+                } else {
+                    entryPoint = vm->GetBundleName() + "/" + vm->GetModuleName() + MODULE_DEFAULE_ETS + inputFileName;
+                }
 #endif
             }
         }
