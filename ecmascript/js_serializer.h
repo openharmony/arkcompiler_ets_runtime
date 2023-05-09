@@ -49,7 +49,6 @@ enum class SerializationUID : uint8_t {
     // Number types
     INT32,
     DOUBLE,
-    // Not support yet, BigInt type has not been implemented in ark engine
     BIGINT,
     ECMASTRING,
     C_STRING,
@@ -142,6 +141,7 @@ private:
     bool WriteNativeBindingObject(const JSHandle<JSTaggedValue> &value);
     bool WriteNativePointer(const JSHandle<JSTaggedValue> &value);
     bool WriteJSArrayBuffer(const JSHandle<JSTaggedValue> &value);
+    bool WriteBigInt(const JSHandle<JSTaggedValue> &value);
     bool WriteDesc(const PropertyDescriptor &desc);
     bool IsNativeBindingObject(std::vector<JSTaggedValue> keyVector);
     bool IsTargetSymbol(JSTaggedValue symbolVal);
@@ -199,6 +199,7 @@ private:
     JSHandle<JSTaggedValue> ReadJSArrayBuffer();
     JSHandle<JSTaggedValue> ReadReference();
     JSHandle<JSTaggedValue> ReadNativeBindingObject();
+    JSHandle<JSTaggedValue> ReadBigInt();
     JSHandle<JSTaggedValue> DeserializeJSTaggedValue();
     bool JudgeType(SerializationUID targetUid);
     void *GetBuffer(uint32_t bufferSize);
