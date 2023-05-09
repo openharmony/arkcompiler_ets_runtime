@@ -109,6 +109,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), realEntry.c_str(), excuteFromJob);
 }
 
+// The security interface needs to be modified accordingly.
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *thread,
     const void *buffer, size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
 {
@@ -132,6 +133,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entry);
 }
 
+// The security interface needs to be modified accordingly.
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     JSThread *thread, const void *buffer, size_t size, const CString &filename, bool needUpdate)
 {
@@ -175,6 +177,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     return CommonExecuteBuffer(thread, isBundle, name, realEntry, buffer, size);
 }
 
+// The security interface needs to be modified accordingly.
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread *thread,
     bool isBundle, const CString &filename, const CString &entry, const void *buffer, size_t size)
 {
@@ -230,14 +233,13 @@ void JSPandaFileExecutor::LoadAOTFilesForFile(EcmaVM *vm, JSPandaFile *jsPandaFi
     }
 }
 
-Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *thread,
-    std::unique_ptr<uint8_t[]> buffer, size_t size, std::string_view entryPoint, const CString &filename,
-    bool needUpdate)
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThread *thread, uint8_t* buffer,
+    size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer with secure buffer filename " << filename;
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
-        LoadJSPandaFile(thread, normalName, entryPoint, std::move(buffer), size, needUpdate);
+        LoadJSPandaFileSecure(thread, normalName, entryPoint, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
         CString msg = "Load file with filename '" + normalName + "' failed, recordName '" + entryPoint.data() + "'";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
@@ -277,8 +279,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     return JSTaggedValue::Undefined();
 }
 
-Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(JSThread *thread,
-    std::unique_ptr<uint8_t[]> buffer, size_t size, const CString &filename, bool needUpdate)
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JSThread *thread, uint8_t* buffer,
+    size_t size, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBuffer with secure buffer filename " << filename;
     CString name;
@@ -295,7 +297,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(JSThread 
     CString normalName = PathHelper::NormalizePath(filename);
     CString entry = PathHelper::ParseOhmUrl(vm, normalName, name);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
-        LoadJSPandaFile(thread, name, entry, std::move(buffer), size, needUpdate);
+        LoadJSPandaFileSecure(thread, name, entry, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
         CString msg = "Load file with filename '" + name + "' failed, recordName '" + entry + "'";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));

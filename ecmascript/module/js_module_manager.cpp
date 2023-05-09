@@ -428,6 +428,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const CString &
     return ResolveModule(thread, jsPandaFile.get());
 }
 
+// The security interface needs to be modified accordingly.
 JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const void *buffer, size_t size,
                                                                  const CString &filename)
 {

@@ -100,6 +100,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     return jsPandaFile;
 }
 
+// The security interface needs to be modified accordingly.
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
     std::string_view entryPoint, const void *buffer, size_t size, bool needUpdate)
 {
@@ -148,8 +149,8 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     return jsPandaFile;
 }
 
-std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
-    std::string_view entryPoint, std::unique_ptr<uint8_t[]> buffer, size_t size, bool needUpdate)
+std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread *thread, const CString &filename,
+    std::string_view entryPoint, uint8_t* buffer, size_t size, bool needUpdate)
 {
     if (buffer == nullptr || size == 0) {
         return nullptr;
@@ -158,7 +159,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         os::memory::LockHolder lock(jsPandaFileLock_);
         std::shared_ptr<JSPandaFile> jsPandaFile;
         if (needUpdate) {
-            auto pf = panda_file::OpenPandaFileFromSecureMemory(std::move(buffer), size);
+            auto pf = panda_file::OpenPandaFileFromSecureMemory(buffer, size);
             if (pf == nullptr) {
                 LOG_ECMA(ERROR) << "open file buffer " << filename << " error";
                 return nullptr;
@@ -178,7 +179,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         }
     }
 
-    auto pf = panda_file::OpenPandaFileFromSecureMemory(std::move(buffer), size);
+    auto pf = panda_file::OpenPandaFileFromSecureMemory(buffer, size);
     if (pf == nullptr) {
         LOG_ECMA(ERROR) << "open file " << filename << " error";
         return nullptr;

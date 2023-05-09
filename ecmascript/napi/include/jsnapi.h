@@ -1249,16 +1249,16 @@ public:
      * is the name of the entry function. The filename parameter is used to uniquely identify this
      * memory internally.
      */
-    static bool Execute(EcmaVM *vm, std::unique_ptr<uint8_t[]> data, int32_t size, const std::string &entry,
-                        const std::string &filename = "", bool needUpdate = false);
+    static bool ExecuteSecure(EcmaVM *vm, uint8_t* data, int32_t size, const std::string &entry,
+                                const std::string &filename = "", bool needUpdate = false);
     /*
      * Execute panda file(merge abc) from secure mem. secure memory lifecycle managed externally.
      * The data parameter needs to be created externally by an external caller and managed externally
      * by the external caller. The size parameter is the size of the data memory. The filename parameter
      * is used to uniquely identify this memory internally.
      */
-    static bool ExecuteModuleBuffer(EcmaVM *vm, std::unique_ptr<uint8_t[]> data, int32_t size,
-                                    const std::string &filename = "", bool needUpdate = false);
+    static bool ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t* data, int32_t size, const std::string &filename = "",
+                                          bool needUpdate = false);
 
     // ObjectRef Operation
     static Local<ObjectRef> GetGlobalObject(const EcmaVM *vm);
