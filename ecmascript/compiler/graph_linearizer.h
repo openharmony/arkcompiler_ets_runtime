@@ -73,7 +73,7 @@ public:
     GraphLinearizer(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
         : enableLog_(enableLog), methodName_(name), chunk_(chunk), circuit_(circuit),
         acc_(circuit), gateIdToGateInfo_(chunk),
-        regionList_(chunk), rootGateList_(chunk) {}
+        regionList_(chunk), regionRootList_(chunk) {}
 
     void Run(ControlFlowGraph &result);
 private:
@@ -134,7 +134,9 @@ private:
     void AddFixedGateToRegion(GateRef gate, GateRegion* region)
     {
         GateInfo& info = GetGateInfo(gate);
+        ASSERT(info.upperBound == nullptr);
         info.upperBound = region;
+        ASSERT(info.region == nullptr);
         info.region = region;
         if (acc_.GetOpCode(gate) == OpCode::VALUE_SELECTOR ||
             acc_.GetOpCode(gate) == OpCode::DEPEND_SELECTOR) {
@@ -142,17 +144,19 @@ private:
         } else {
             info.state_ = ScheduleState::FIXED;
         }
-        rootGateList_.emplace_back(gate);
+        regionRootList_.emplace_back(gate);
     }
 
     void AddRootGateToRegion(GateRef gate, GateRegion* region)
     {
         GateInfo& info = GetGateInfo(gate);
+        ASSERT(info.upperBound == nullptr);
         info.upperBound = region;
+        ASSERT(info.region == nullptr);
         info.region = region;
         region->AddGate(gate);
         info.state_ = ScheduleState::FIXED;
-        rootGateList_.emplace_back(gate);
+        regionRootList_.emplace_back(gate);
     }
 
     void ScheduleGate(GateRef gate, GateRegion* region)
@@ -178,7 +182,7 @@ private:
     GateAccessor acc_;
     ChunkVector<GateInfo> gateIdToGateInfo_;
     ChunkVector<GateRegion*> regionList_;
-    ChunkDeque<GateRef> rootGateList_;
+    ChunkDeque<GateRef> regionRootList_;
 
     friend class CFGBuilder;
     friend class GateScheduler;

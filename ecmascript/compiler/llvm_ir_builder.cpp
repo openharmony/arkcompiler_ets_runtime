@@ -244,7 +244,7 @@ void LLVMIRBuilder::Build()
         auto ins = acc_.Ins(bb[0]);
         for (auto i = ins.begin(); i != ins.end(); i++) {
             GateRef r = *i;
-            if (!acc_.GetMetaData(r)->IsState()) {
+            if (!acc_.IsState(r)) {
                 continue;
             }
             predecessors.insert(instID2bbID_[acc_.GetId(r)]);

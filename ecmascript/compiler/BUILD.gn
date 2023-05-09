@@ -13,12 +13,6 @@
 
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
-action("build_llvm_libs") {
-  script = "compile_llvm_lib.sh"
-  sources = [ "$js_root/ecmascript/compiler/compile_llvm_lib.sh" ]
-  outputs = [ "${root_out_dir}/llvm" ]
-}
-
 config("include_llvm") {
   if (compile_llvm_online) {
     include_dirs = [
@@ -83,7 +77,6 @@ ohos_source_set("libark_jsoptimizer_set") {
     "call_signature.cpp",
     "circuit.cpp",
     "circuit_builder.cpp",
-    "circuit_optimizer.cpp",
     "common_stubs.cpp",
     "compilation_driver.cpp",
     "compiler_log.cpp",
@@ -253,10 +246,6 @@ ohos_source_set("libark_jsoptimizer_set") {
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
   deps += hiviewdfx_deps
-
-  if (compile_llvm_online) {
-    deps += [ ":build_llvm_libs" ]
-  }
 }
 
 ohos_source_set("libark_stub_set") {

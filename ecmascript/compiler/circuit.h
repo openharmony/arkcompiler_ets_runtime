@@ -167,11 +167,6 @@ public:
         return metaBuilder_.TypedBinaryOp(value, binOp, type);
     }
 
-    const GateMetaData *GetMetaData(GateRef gate) const
-    {
-        return LoadGatePtrConst(gate)->GetMetaData();
-    }
-
     GateRef DeadGate()
     {
         if (dead_ == 0) {
@@ -230,6 +225,10 @@ private:
     Gate *LoadGatePtr(GateRef shift);
     const Gate *LoadGatePtrConst(GateRef shift) const;
     bool AddComment(GateRef g, const char* str);
+    const GateMetaData *GetMetaData(GateRef gate) const
+    {
+        return LoadGatePtrConst(gate)->GetMetaData();
+    }
 
 private:
     void* space_ {nullptr};

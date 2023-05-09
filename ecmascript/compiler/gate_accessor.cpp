@@ -1000,4 +1000,49 @@ void GateAccessor::SetMetaData(GateRef gate, const GateMetaData* meta)
 {
     return circuit_->LoadGatePtr(gate)->SetMetaData(meta);
 }
+
+bool GateAccessor::IsFixed(GateRef g) const
+{
+    return GetMetaData(g)->IsFixed();
+}
+
+bool GateAccessor::IsProlog(GateRef g) const
+{
+    return GetMetaData(g)->IsProlog();
+}
+
+bool GateAccessor::MetaDataEqu(GateRef g1, GateRef g2) const
+{
+    return GetMetaData(g1) == GetMetaData(g2);
+}
+
+bool GateAccessor::IsNop(GateRef g) const
+{
+    return GetMetaData(g)->IsNop();
+}
+
+bool GateAccessor::IsRoot(GateRef g) const
+{
+    return GetMetaData(g)->IsRoot();
+}
+
+const GateMetaData *ConstGateAccessor::GetMetaData(GateRef g) const
+{
+    return circuit_->LoadGatePtrConst(g)->GetMetaData();
+}
+
+bool ConstGateAccessor::IsFixed(GateRef g) const
+{
+    return GetMetaData(g)->IsFixed();
+}
+
+bool ConstGateAccessor::IsProlog(GateRef g) const
+{
+    return GetMetaData(g)->IsProlog();
+}
+
+bool ConstGateAccessor::IsSchedulable(GateRef g) const
+{
+    return GetMetaData(g)->IsSchedulable();
+}
 }  // namespace panda::ecmascript::kungfu

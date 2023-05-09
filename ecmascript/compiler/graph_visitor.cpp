@@ -106,7 +106,7 @@ void GraphVisitor::VisitTopGate(Edge& current)
 {
     GateRef gate = current.GetGate();
     // gate is delete or dead
-    if (acc_.GetMetaData(gate)->IsNop()) {
+    if (acc_.IsNop(gate)) {
         PopGate(gate);
         return;
     }

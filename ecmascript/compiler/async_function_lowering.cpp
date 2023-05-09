@@ -229,7 +229,8 @@ void AsyncFunctionLowering::ModifyStateInput(GateRef stateInGate, GateRef ifBran
     // state input to the newly created IF_FALSE node.
     auto uses = accessor_.Uses(stateInGate);
     for (auto useIt = uses.begin(); useIt != uses.end();) {
-        if (accessor_.GetMetaData(*useIt)->IsState() && *useIt != ifBranch) {
+        GateRef use = *useIt;
+        if (accessor_.IsState(use) && use != ifBranch) {
             useIt = accessor_.ReplaceIn(useIt, ifFalse);
         } else {
             useIt++;
