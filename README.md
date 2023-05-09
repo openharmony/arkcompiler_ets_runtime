@@ -53,7 +53,7 @@ $./build.sh --product-name hispark_taurus_standard --build-target ark_js_host_li
 
 ### Available APIs
 
-See [NAPI](https://gitee.com/openharmony/ace_napi/blob/master/README.md).
+See [NAPI](https://gitee.com/openharmony/arkui_napi/blob/master/README.md).
 
 ### Usage
 

@@ -65,7 +65,7 @@ $./build.sh --product-name hispark_taurus_standard --build-target ark_js_host_li
 
 ### 接口说明<a name="section175841548124517"></a>
 
-NAPI接口说明参考[NAPI部件](https://gitee.com/openharmony/ace_napi/blob/master/README_zh.md)
+NAPI接口说明参考[NAPI部件](https://gitee.com/openharmony/arkui_napi/blob/master/README_zh.md)
 
 ### 使用说明<a name="section129654513264"></a>
 
