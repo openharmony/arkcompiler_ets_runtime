@@ -336,10 +336,39 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
             return WriteMethod(value);
         case JSType::TAGGED_ARRAY:
             return WriteTaggedArray(value);
+        case JSType::BIGINT:
+            return WriteBigInt(value);
         default:
             break;
     }
     return false;
+}
+
+bool JSSerializer::WriteBigInt(const JSHandle<JSTaggedValue> &value)
+{
+    JSHandle<BigInt> bigInt = JSHandle<BigInt>::Cast(value);
+    size_t oldSize = bufferSize_;
+    if (!WriteType(SerializationUID::BIGINT)) {
+        return false;
+    }
+    uint32_t len = bigInt->GetLength();
+    if (!WriteInt(len)) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    bool sign = bigInt->GetSign();
+    if (!WriteBoolean(sign)) {
+        bufferSize_ = oldSize;
+        return false;
+    }
+    for (uint32_t i = 0; i < len; i++) {
+        uint32_t val = bigInt->GetDigit(i);
+        if (!WriteInt(val)) {
+            bufferSize_ = oldSize;
+            return false;
+        }
+    }
+    return true;
 }
 
 bool JSSerializer::WriteTaggedArray(const JSHandle<JSTaggedValue> &value)
@@ -1224,9 +1253,35 @@ JSHandle<JSTaggedValue> JSDeserializer::DeserializeJSTaggedValue()
             return ReadMethod();
         case SerializationUID::NATIVE_METHOD:
             return ReadNativeMethod();
+        case SerializationUID::BIGINT:
+            return ReadBigInt();
         default:
             return JSHandle<JSTaggedValue>();
     }
+}
+
+JSHandle<JSTaggedValue> JSDeserializer::ReadBigInt()
+{
+    int32_t len = 0;
+    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&len)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    bool sign = false;
+    if (!ReadBoolean(&sign)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<BigInt> bigInt = factory_->NewBigInt(len);
+    bigInt->SetSign(sign);
+    JSHandle<JSTaggedValue> bigIntVal(bigInt);
+    referenceMap_.emplace(objectId_++, bigIntVal);
+    for (int32_t i = 0; i < len; i++) {
+        int32_t val = 0;
+        if (!JudgeType(SerializationUID::INT32) || !ReadInt(&val)) {
+            return JSHandle<JSTaggedValue>();
+        }
+        bigInt->SetDigit(i, val);
+    }
+    return bigIntVal;
 }
 
 JSHandle<JSTaggedValue> JSDeserializer::ReadTaggedArray()

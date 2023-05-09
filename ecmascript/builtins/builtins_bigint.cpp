@@ -34,10 +34,10 @@ JSTaggedValue BuiltinsBigInt::BigIntConstructor(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     // 1. If NewTarget is not undefined, throw a TypeError exception.
-    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     if (!newTarget->IsUndefined()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "BigInt is not a constructor", JSTaggedValue::Exception());
     }
+    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     // 2. Let prim be ? ToPrimitive(value).
     JSHandle<JSTaggedValue> Primitive(thread, JSTaggedValue::ToPrimitive(thread, value));
     // 3. If Type(prim) is Number, return ? NumberToBigInt(prim).

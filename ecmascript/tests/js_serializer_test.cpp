@@ -64,6 +64,7 @@ public:
         thread->ClearException();
         JSNApi::DestroyJSVM(ecmaVm);
     }
+
     void JSSpecialValueTest(std::pair<uint8_t *, size_t> data)
     {
         Init();
@@ -161,7 +162,6 @@ public:
         JSHandle<TaggedArray> array2 = JSObject::GetOwnPropertyKeys(thread, retObj2);
         uint32_t length2 = array2->GetLength();
         EXPECT_EQ(length2, 6U); // 6 : test case
-
         Destroy();
     }
 
@@ -704,7 +704,7 @@ public:
 
         // check taggedArray
         JSHandle<TaggedArray> taggedArray = JSHandle<TaggedArray>::Cast(res);
-        EXPECT_EQ(taggedArray->GetLength(), 4U);
+        EXPECT_EQ(taggedArray->GetLength(), 4U); // 4 : test case
         EcmaString *str11 = reinterpret_cast<EcmaString *>(taggedArray->Get(0).GetTaggedObject());
         EcmaString *str22 = reinterpret_cast<EcmaString *>(taggedArray->Get(1).GetTaggedObject());
         EXPECT_EQ(std::strcmp(EcmaStringAccessor(str11).ToCString().c_str(), "str11"), 0);
@@ -754,6 +754,62 @@ public:
         JSHandle<JSTaggedValue> res = deserializer.Deserialize();
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize JSFunction fail";
         EXPECT_TRUE(res->IsJSFunction()) << "[NotJSFunction] Deserialize JSFunction fail";
+        Destroy();
+    }
+
+    void BigIntTest(std::pair<uint8_t *, size_t> data)
+    {
+        Init();
+        JSDeserializer deserialzier(thread, data.first, data.second);
+        JSHandle<JSTaggedValue> res1 = deserialzier.Deserialize();
+        JSHandle<JSTaggedValue> res2 = deserialzier.Deserialize();
+        JSHandle<JSTaggedValue> res3 = deserialzier.Deserialize();
+        JSHandle<JSTaggedValue> res4 = deserialzier.Deserialize();
+        JSHandle<JSTaggedValue> res5 = deserialzier.Deserialize();
+        JSHandle<JSTaggedValue> res6 = deserialzier.Deserialize();
+        JSHandle<JSTaggedValue> res7 = deserialzier.Deserialize();
+        JSHandle<JSTaggedValue> res8 = deserialzier.Deserialize();
+        JSHandle<JSTaggedValue> res9 = deserialzier.Deserialize();
+        JSHandle<JSTaggedValue> res10 = deserialzier.Deserialize();
+        JSHandle<JSTaggedValue> res11 = deserialzier.Deserialize();
+        JSHandle<JSTaggedValue> res12 = deserialzier.Deserialize();
+        JSHandle<JSTaggedValue> res13 = deserialzier.Deserialize();
+        JSHandle<JSTaggedValue> res14 = deserialzier.Deserialize();
+        EXPECT_TRUE(!res1.IsEmpty() && !res14.IsEmpty()) << "[Empty] Deserialize BigInt fail";
+        EXPECT_TRUE(res3->IsBigInt() && res12->IsBigInt()) << "[NotBigInt] Deserialize BigInt fail";
+
+        CString str1 = "100000000000000000000000000000000000000000000000000000"; // Binary: 2 ^ 53
+        CString str2 = "111111111111111111111111111111111111111111111111111111"; // Binary: 2 ^ 54 - 1
+        CString str3 = "-9007199254740991012345";
+        CString str4 = "1234567890987654321"; // Decimal
+        JSHandle<BigInt> bigInt1 = BigIntHelper::SetBigInt(thread, str1);
+        JSHandle<BigInt> bigInt2 = BigIntHelper::SetBigInt(thread, str2);
+        JSHandle<BigInt> bigInt3 = BigIntHelper::SetBigInt(thread, str3);
+        JSHandle<BigInt> bigInt4 = BigInt::Uint32ToBigInt(thread, 0); // 0 : test case
+        JSHandle<BigInt> bigInt5 = BigIntHelper::SetBigInt(thread, str4, BigInt::DECIMAL);
+        JSHandle<BigInt> bigInt6 = BigInt::Uint64ToBigInt(thread, ULLONG_MAX);
+        JSHandle<BigInt> bigInt7 = BigInt::Uint64ToBigInt(thread, UINT_MAX);
+        JSHandle<BigInt> bigInt8 = BigInt::Uint32ToBigInt(thread, std::numeric_limits<uint32_t>::max());
+        JSHandle<BigInt> bigInt9 = BigInt::Uint32ToBigInt(thread, std::numeric_limits<uint32_t>::min());
+        JSHandle<BigInt> bigInt10 = BigInt::Int64ToBigInt(thread, LLONG_MAX);
+        JSHandle<BigInt> bigInt11 = BigInt::Int64ToBigInt(thread, LLONG_MIN);
+        JSHandle<BigInt> bigInt12 = BigInt::Int64ToBigInt(thread, INT_MAX);
+        JSHandle<BigInt> bigInt13 = BigInt::Int64ToBigInt(thread, INT_MIN);
+        JSHandle<BigInt> bigInt14 = BigInt::Int32ToBigInt(thread, -1); // -1 : test case
+        EXPECT_TRUE(BigInt::Equal(res1.GetTaggedValue(), bigInt1.GetTaggedValue())) << "Not Same BigInt";
+        EXPECT_TRUE(BigInt::Equal(res2.GetTaggedValue(), bigInt2.GetTaggedValue())) << "Not Same BigInt";
+        EXPECT_TRUE(BigInt::Equal(res3.GetTaggedValue(), bigInt3.GetTaggedValue())) << "Not Same BigInt";
+        EXPECT_TRUE(BigInt::Equal(res4.GetTaggedValue(), bigInt4.GetTaggedValue())) << "Not Same BigInt";
+        EXPECT_TRUE(BigInt::Equal(res5.GetTaggedValue(), bigInt5.GetTaggedValue())) << "Not Same BigInt";
+        EXPECT_TRUE(BigInt::Equal(res6.GetTaggedValue(), bigInt6.GetTaggedValue())) << "Not Same BigInt";
+        EXPECT_TRUE(BigInt::Equal(res7.GetTaggedValue(), bigInt7.GetTaggedValue())) << "Not Same BigInt";
+        EXPECT_TRUE(BigInt::Equal(res8.GetTaggedValue(), bigInt8.GetTaggedValue())) << "Not Same BigInt";
+        EXPECT_TRUE(BigInt::Equal(res9.GetTaggedValue(), bigInt9.GetTaggedValue())) << "Not Same BigInt";
+        EXPECT_TRUE(BigInt::Equal(res10.GetTaggedValue(), bigInt10.GetTaggedValue())) << "Not Same BigInt";
+        EXPECT_TRUE(BigInt::Equal(res11.GetTaggedValue(), bigInt11.GetTaggedValue())) << "Not Same BigInt";
+        EXPECT_TRUE(BigInt::Equal(res12.GetTaggedValue(), bigInt12.GetTaggedValue())) << "Not Same BigInt";
+        EXPECT_TRUE(BigInt::Equal(res13.GetTaggedValue(), bigInt13.GetTaggedValue())) << "Not Same BigInt";
+        EXPECT_TRUE(BigInt::Equal(res14.GetTaggedValue(), bigInt14.GetTaggedValue())) << "Not Same BigInt";
         Destroy();
     }
 
@@ -1701,6 +1757,63 @@ HWTEST_F_L0(JSSerializerTest, SerializeFunction)
     t1.join();
     delete serializer;
 };
+
+HWTEST_F_L0(JSSerializerTest, SerializeBigInt)
+{
+    CString str1 = "100000000000000000000000000000000000000000000000000000"; // Binary: 2 ^ 53
+    CString str2 = "111111111111111111111111111111111111111111111111111111"; // Binary: 2 ^ 54 - 1
+    CString str3 = "-9007199254740991012345";
+    CString str4 = "1234567890987654321"; // Decimal
+    JSHandle<BigInt> bigInt1 = BigIntHelper::SetBigInt(thread, str1);
+    JSHandle<BigInt> bigInt2 = BigIntHelper::SetBigInt(thread, str2);
+    JSHandle<BigInt> bigInt3 = BigIntHelper::SetBigInt(thread, str3);
+    JSHandle<BigInt> bigInt4 = BigInt::Uint32ToBigInt(thread, 0); // 0 : test case
+    JSHandle<BigInt> bigInt5 = BigIntHelper::SetBigInt(thread, str4, BigInt::DECIMAL);
+    JSHandle<BigInt> bigInt6 = BigInt::Uint64ToBigInt(thread, ULLONG_MAX);
+    JSHandle<BigInt> bigInt7 = BigInt::Uint64ToBigInt(thread, UINT_MAX);
+    JSHandle<BigInt> bigInt8 = BigInt::Uint32ToBigInt(thread, std::numeric_limits<uint32_t>::max());
+    JSHandle<BigInt> bigInt9 = BigInt::Uint32ToBigInt(thread, std::numeric_limits<uint32_t>::min());
+    JSHandle<BigInt> bigInt10 = BigInt::Int64ToBigInt(thread, LLONG_MAX);
+    JSHandle<BigInt> bigInt11 = BigInt::Int64ToBigInt(thread, LLONG_MIN);
+    JSHandle<BigInt> bigInt12 = BigInt::Int64ToBigInt(thread, INT_MAX);
+    JSHandle<BigInt> bigInt13 = BigInt::Int64ToBigInt(thread, INT_MIN);
+    JSHandle<BigInt> bigInt14 = BigInt::Int32ToBigInt(thread, -1); // -1 : test case
+
+    JSSerializer *serializer = new JSSerializer(thread);
+    bool success1 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt1));
+    bool success2 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt2));
+    bool success3 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt3));
+    bool success4 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt4));
+    bool success5 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt5));
+    bool success6 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt6));
+    bool success7 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt7));
+    bool success8 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt8));
+    bool success9 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt9));
+    bool success10 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt10));
+    bool success11 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt11));
+    bool success12 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt12));
+    bool success13 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt13));
+    bool success14 = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(bigInt14));
+    EXPECT_TRUE(success1);
+    EXPECT_TRUE(success2);
+    EXPECT_TRUE(success3);
+    EXPECT_TRUE(success4);
+    EXPECT_TRUE(success5);
+    EXPECT_TRUE(success6);
+    EXPECT_TRUE(success7);
+    EXPECT_TRUE(success8);
+    EXPECT_TRUE(success9);
+    EXPECT_TRUE(success10);
+    EXPECT_TRUE(success11);
+    EXPECT_TRUE(success12);
+    EXPECT_TRUE(success13);
+    EXPECT_TRUE(success14);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::BigIntTest, jsDeserializerTest, data);
+    t1.join();
+    delete serializer;
+}
 
 // not support function
 HWTEST_F_L0(JSSerializerTest, SerializeObjectWithFunction)
