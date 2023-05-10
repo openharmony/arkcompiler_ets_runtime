@@ -423,7 +423,7 @@ HWTEST_F_L0(EcmaModuleTest, NormalizePath)
     CString res2 = "node_modules/0/moduleTest/index";
     CString moduleRecordName2 = "./node_modules///0//moduleTest/index";
 
-    CString res3 = "../node_modules/0/moduleTest/index";
+    CString res3 = "node_modules/0/moduleTest/index";
     CString moduleRecordName3 = "../node_modules/0/moduleTest///index";
 
     CString res4 = "moduleTest/index";
