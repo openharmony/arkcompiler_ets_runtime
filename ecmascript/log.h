@@ -21,10 +21,13 @@
 #include <sstream>
 
 #include "ecmascript/common.h"
+#include "ecmascript/napi/include/jsnapi.h"
+
 #ifdef ENABLE_HILOG
 #include "hilog/log.h"
 #endif
 
+using LOG_LEVEL = panda::RuntimeOption::LOG_LEVEL;
 enum Level {
     VERBOSE,
     DEBUG,
@@ -59,14 +62,7 @@ constexpr static OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, ARK_DOMAIN, TAG}
 #else
 #define LOG_VERBOSE LOG_LEVEL_MIN
 #endif
-
-static bool LOGGABLE_VERBOSE = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_VERBOSE);
-static bool LOGGABLE_DEBUG = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_DEBUG);
-static bool LOGGABLE_INFO = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_INFO);
-static bool LOGGABLE_WARN = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_WARN);
-static bool LOGGABLE_ERROR = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_ERROR);
-static bool LOGGABLE_FATAL = HiLogIsLoggable(ARK_DOMAIN, TAG, LOG_FATAL);
-#endif // ENABLE_HILOG
+#endif  // ENABLE_HILOG
 
 class JSRuntimeOptions;
 class PUBLIC_API Log {
@@ -100,6 +96,8 @@ public:
                 return "[unknown] ";
         }
     }
+    static std::string LevelToString(Level level);
+    static Level ConvertFromRuntime(LOG_LEVEL level);
 
 private:
     static void SetLogLevelFromString(const std::string& level);
@@ -202,7 +200,7 @@ private:
 #endif
 
 #if defined(ENABLE_HILOG)
-#define ARK_LOG(level, component) panda::ecmascript::LOGGABLE_##level && \
+#define ARK_LOG(level, component) panda::ecmascript::Log::LogIsLoggable(level, component) && \
                                   panda::ecmascript::HiLog<LOG_##level, (component)>()
 #elif defined(ENABLE_ANLOG)
 #define ARK_LOG(level, component) panda::ecmascript::AndroidLog<(level)>()

@@ -22,8 +22,105 @@
 #endif
 
 namespace panda::ecmascript {
+#ifdef ENABLE_HILOG
+namespace {
+Level ConvertToLevel(LogLevel hilogLevel)
+{
+    Level level = Level::ERROR;
+    std::string logLevel;
+    switch (hilogLevel) {
+        case LogLevel::LOG_INFO:
+            level = Level::INFO;
+            break;
+        case LogLevel::LOG_WARN:
+            level = Level::WARN;
+            break;
+        case LogLevel::LOG_ERROR:
+            level = Level::ERROR;
+            break;
+        case LogLevel::LOG_FATAL:
+        case LogLevel::LOG_LEVEL_MAX:
+            level = Level::FATAL;
+            break;
+        case LogLevel::LOG_DEBUG:
+        default:
+            level = Level::DEBUG;
+            break;
+    }
+
+    return level;
+}
+
+LogLevel GetHiLogLevel()
+{
+    for (int32_t level = LogLevel::LOG_LEVEL_MIN; level <= LogLevel::LOG_LEVEL_MAX; level++) {
+        if (HiLogIsLoggable(ARK_DOMAIN, TAG, static_cast<LogLevel>(level))) {
+            return static_cast<LogLevel>(level);
+        }
+    }
+    return LogLevel::LOG_LEVEL_MAX;
+}
+}  // namespace
+#endif
+
 Level Log::level_ = Level::ERROR;
 ComponentMark Log::components_ = Component::ALL;
+
+Level Log::ConvertFromRuntime(LOG_LEVEL level)
+{
+    Level logLevel = Level::INFO;
+    switch (level) {
+        case LOG_LEVEL::FOLLOW:
+#ifdef ENABLE_HILOG
+            logLevel = ConvertToLevel(GetHiLogLevel());
+            break;
+#endif
+        case LOG_LEVEL::INFO:
+            logLevel = Level::INFO;
+            break;
+        case LOG_LEVEL::WARN:
+            logLevel = Level::WARN;
+            break;
+        case LOG_LEVEL::ERROR:
+            logLevel = Level::ERROR;
+            break;
+        case LOG_LEVEL::FATAL:
+            logLevel = Level::FATAL;
+            break;
+        case LOG_LEVEL::DEBUG:
+        default:
+            logLevel = Level::DEBUG;
+            break;
+    }
+
+    return logLevel;
+}
+
+std::string Log::LevelToString(Level level)
+{
+    std::string logLevel;
+    switch (level) {
+        case Level::INFO:
+            logLevel = "info";
+            break;
+        case Level::WARN:
+            logLevel = "warning";
+            break;
+        case Level::ERROR:
+            logLevel = "error";
+            break;
+        case Level::FATAL:
+            logLevel = "fatal";
+            break;
+        case Level::DEBUG:
+        default:
+            logLevel = "debug";
+            break;
+    }
+
+    return logLevel;
+}
+
 void Log::SetLogLevelFromString(const std::string& level)
 {
     if (level == "fatal") {
