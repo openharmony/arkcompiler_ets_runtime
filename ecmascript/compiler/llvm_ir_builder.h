@@ -276,7 +276,7 @@ private:
     V(Mod, (GateRef gate, GateRef e1, GateRef e2))                                        \
     V(ChangeTaggedPointerToInt64, (GateRef gate, GateRef e1))                             \
     V(ChangeInt64ToTagged, (GateRef gate, GateRef e1))                                    \
-    V(Deopt, (GateRef gate))                                                              \
+    V(DeoptCheck, (GateRef gate))                                                         \
     V(TruncFloatToInt, (GateRef gate, GateRef e1))                                        \
     V(AddWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \
     V(SubWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \
@@ -398,6 +398,10 @@ private:
     void GenDeoptEntry(LLVMModuleRef &module);
     LLVMMetadataRef GetFunctionTypeMD(LLVMMetadataRef dFile);
     bool SetDebugInfo(GateRef g, LLVMValueRef r);
+    LLVMValueRef ConvertToTagged(GateRef gate);
+    LLVMValueRef ConvertBoolToTaggedBoolean(GateRef gate);
+    LLVMValueRef ConvertInt32ToTaggedInt(GateRef gate);
+    LLVMValueRef ConvertFloat64ToTaggedDouble(GateRef gate);
 
     const CompilationConfig *compCfg_ {nullptr};
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};

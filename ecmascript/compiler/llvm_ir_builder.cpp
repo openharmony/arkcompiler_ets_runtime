@@ -201,7 +201,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::LSL, &LLVMIRBuilder::HandleIntLsl},
         {OpCode::SMOD, &LLVMIRBuilder::HandleMod},
         {OpCode::FMOD, &LLVMIRBuilder::HandleMod},
-        {OpCode::DEOPT, &LLVMIRBuilder::HandleDeopt},
+        {OpCode::DEOPT_CHECK, &LLVMIRBuilder::HandleDeoptCheck},
         {OpCode::TRUNC_FLOAT_TO_INT64, &LLVMIRBuilder::HandleTruncFloatToInt},
         {OpCode::TRUNC_FLOAT_TO_INT32, &LLVMIRBuilder::HandleTruncFloatToInt},
         {OpCode::ADD_WITH_OVERFLOW, &LLVMIRBuilder::HandleAddWithOverflow},
@@ -2152,9 +2152,30 @@ void LLVMIRBuilder::VisitBitCast(GateRef gate, GateRef e1)
     gate2LValue_[gate] = result;
 }
 
-void LLVMIRBuilder::HandleDeopt(GateRef gate)
+void LLVMIRBuilder::HandleDeoptCheck(GateRef gate)
 {
-    VisitDeopt(gate);
+    int block = instID2bbID_[acc_.GetId(gate)];
+    std::vector<GateRef> outs;
+    acc_.GetOutStates(gate, outs);
+    int bbOut = instID2bbID_[acc_.GetId(outs[0])]; // 0: output
+
+    BasicBlock *trueBB = EnsureBB(bbOut);
+    LLVMBasicBlockRef llvmTrueBB = EnsureLBB(trueBB);
+    std::string buf = "deopt if false B" + std::to_string(block);
+    LLVMBasicBlockRef llvmFalseBB = LLVMAppendBasicBlock(function_, buf.c_str());
+    GateRef cmp = acc_.GetValueIn(gate, 0); // 0: cond
+    LLVMValueRef cond = gate2LValue_[cmp];
+    LLVMValueRef result = LLVMBuildCondBr(builder_, cond, llvmTrueBB, llvmFalseBB);
+    EndCurrentBlock();
+
+    LLVMPositionBuilderAtEnd(builder_, llvmFalseBB);
+    LLVMBasicBlockRef preLBB = EnsureLBB(EnsureBB(block));
+    LLVMMoveBasicBlockBefore(preLBB, llvmFalseBB);
+
+    VisitDeoptCheck(gate);
+    LLVMValueRef returnValue = gate2LValue_[gate];
+    LLVMBuildRet(builder_, returnValue);
+    gate2LValue_[gate] = result;
 }
 
 LLVMTypeRef LLVMIRBuilder::GetExperimentalDeoptTy()
@@ -2213,13 +2234,61 @@ LLVMValueRef LLVMIRBuilder::GetExperimentalDeopt(LLVMModuleRef &module)
     return fn;
 }
 
-void LLVMIRBuilder::VisitDeopt(GateRef gate)
+LLVMValueRef LLVMIRBuilder::ConvertBoolToTaggedBoolean(GateRef gate)
 {
-    LLVMValueRef glue = gate2LValue_.at(acc_.GetIn(gate, 2));
-    GateRef frameState = acc_.GetIn(gate, 1);
+    LLVMValueRef value = gate2LValue_[gate];
+    LLVMValueRef e1Value = LLVMBuildZExt(builder_, value, LLVMInt64TypeInContext(context_), "");
+    auto tagMask = LLVMConstInt(LLVMInt64TypeInContext(context_), JSTaggedValue::TAG_BOOLEAN_MASK, 0);
+    LLVMValueRef result = LLVMBuildOr(builder_, e1Value, tagMask, "");
+    return LLVMBuildIntToPtr(builder_, result, LLVMPointerType(LLVMInt64TypeInContext(context_), 1), "");
+}
+
+LLVMValueRef LLVMIRBuilder::ConvertInt32ToTaggedInt(GateRef gate)
+{
+    LLVMValueRef value = gate2LValue_[gate];
+    LLVMValueRef e1Value = LLVMBuildSExt(builder_, value, LLVMInt64TypeInContext(context_), "");
+    auto tagMask = LLVMConstInt(LLVMInt64TypeInContext(context_), JSTaggedValue::TAG_INT, 0);
+    LLVMValueRef result = LLVMBuildOr(builder_, e1Value, tagMask, "");
+    return LLVMBuildIntToPtr(builder_, result, LLVMPointerType(LLVMInt64TypeInContext(context_), 1), "");
+}
+
+LLVMValueRef LLVMIRBuilder::ConvertFloat64ToTaggedDouble(GateRef gate)
+{
+    LLVMValueRef value = gate2LValue_[gate];
+    LLVMValueRef e1Value = LLVMBuildBitCast(builder_, value, LLVMInt64TypeInContext(context_), "");
+    auto offset = LLVMConstInt(LLVMInt64TypeInContext(context_), JSTaggedValue::DOUBLE_ENCODE_OFFSET, 0);
+    LLVMValueRef result = LLVMBuildAdd(builder_, e1Value, offset, "");
+    return LLVMBuildIntToPtr(builder_, result, LLVMPointerType(LLVMInt64TypeInContext(context_), 1), "");
+}
+
+LLVMValueRef LLVMIRBuilder::ConvertToTagged(GateRef gate)
+{
+    auto machineType = acc_.GetMachineType(gate);
+    switch (machineType) {
+        case MachineType::I1:
+            return ConvertBoolToTaggedBoolean(gate);
+        case MachineType::I32:
+            return ConvertInt32ToTaggedInt(gate);
+        case MachineType::F64:
+            return ConvertFloat64ToTaggedDouble(gate);
+        case MachineType::I64:
+            ASSERT(!acc_.GetGateType(gate).IsNJSValueType());
+            break;
+        default:
+            LOG_COMPILER(FATAL) << "unexpected machineType!";
+            UNREACHABLE();
+            break;
+    }
+    return gate2LValue_.at(gate);
+}
+
+void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
+{
+    LLVMValueRef glue = gate2LValue_.at(acc_.GetGlueFromArgList());
+    GateRef frameState = acc_.GetValueIn(gate, 1); // 1: frame state
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
-    GateRef deoptType = acc_.GetIn(gate, 3);
+    GateRef deoptType = acc_.GetValueIn(gate, 2); // 2: deopt type
     uint64_t v = acc_.GetConstantValue(deoptType);
     params.push_back(LLVMConstInt(LLVMInt64Type(), v, false)); // deoptType
     LLVMValueRef callee = GetExperimentalDeopt(module_);
@@ -2243,24 +2312,24 @@ void LLVMIRBuilder::VisitDeopt(GateRef gate)
             continue;
         }
         values.emplace_back(LLVMConstInt(LLVMInt32Type(), i, false));
-        values.emplace_back(gate2LValue_.at(vregValue));
+        values.emplace_back(ConvertToTagged(vregValue));
     }
     if (!acc_.IsConstantValue(env, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
         values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::ENV_INDEX), false));
-        values.emplace_back(gate2LValue_.at(env));
+        values.emplace_back(ConvertToTagged(env));
     }
     if (!acc_.IsConstantValue(acc, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
         values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::ACC_INDEX), false));
-        values.emplace_back(gate2LValue_.at(acc));
+        values.emplace_back(ConvertToTagged(acc));
     }
     values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX), false));
     values.emplace_back(gate2LValue_.at(pc));
     values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::FUNC_INDEX), false));
-    values.emplace_back(gate2LValue_.at(jsFunc));
+    values.emplace_back(ConvertToTagged(jsFunc));
     values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::NEWTARGET_INDEX), false));
-    values.emplace_back(gate2LValue_.at(newTarget));
+    values.emplace_back(ConvertToTagged(newTarget));
     values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::THIS_OBJECT_INDEX), false));
-    values.emplace_back(gate2LValue_.at(thisObj));
+    values.emplace_back(ConvertToTagged(thisObj));
     LLVMValueRef runtimeCall =
         LLVMBuildCall3(builder_, funcType, callee, params.data(), params.size(), "", values.data(), values.size());
     gate2LValue_[gate] = runtimeCall;

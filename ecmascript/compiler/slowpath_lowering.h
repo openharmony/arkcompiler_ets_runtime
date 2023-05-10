@@ -296,7 +296,6 @@ private:
     void LowerWideStPatchVar(GateRef gate);
     void LowerLdThisByName(GateRef gate);
     void LowerConstPoolData(GateRef gate);
-    void LowerDeoptCheck(GateRef gate);
     void LowerConstruct(GateRef gate);
     void LowerTypedAotCall(GateRef gate);
     void LowerUpdateHotness(GateRef gate);

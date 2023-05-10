@@ -1059,7 +1059,7 @@ private:
     bool enableTypeLowering_ {true};
     bool enableEarlyElimination_ {true};
     bool enableLaterElimination_ {true};
-    bool enableValueNumbering_ {false};
+    bool enableValueNumbering_ {true};
     bool enableOptInlining_ {false};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};

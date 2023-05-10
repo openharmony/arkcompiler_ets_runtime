@@ -19,7 +19,8 @@
 namespace panda::ecmascript::kungfu {
 void GraphLinearizer::Run(ControlFlowGraph &result)
 {
-    LinearizeGraph(result);
+    LinearizeGraph();
+    LinearizeRegions(result);
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";
         LOG_COMPILER(INFO) << "\033[34m"
@@ -241,7 +242,8 @@ class GateScheduler {
 public:
     explicit GateScheduler(GraphLinearizer *linearizer)
         : linearizer_(linearizer), fixedGateList_(linearizer->chunk_),
-        pendingList_(linearizer->chunk_), acc_(linearizer->circuit_) {}
+        pendingList_(linearizer->chunk_), acc_(linearizer->circuit_),
+        scheduleUpperBound_(false) {}
 
     void InitializeFixedGate()
     {
@@ -282,6 +284,9 @@ public:
 
     void ScheduleUpperBound()
     {
+        if (!scheduleUpperBound_) {
+            return;
+        }
         auto &regionRoots = linearizer_->regionRootList_;
         ASSERT(pendingList_.empty());
         for (const auto rootGate : regionRoots) {
@@ -300,8 +305,8 @@ public:
     void VisitUpperBoundGate(Edge edge)
     {
         GateRef succGate = edge.GetGate();
-        GraphLinearizer::GateInfo& succInfo = linearizer_->GetGateInfo(succGate);
-        if (succInfo.state_ != GraphLinearizer::ScheduleState::SCHEDELABLE) {
+        auto& succInfo = linearizer_->GetGateInfo(succGate);
+        if (!succInfo.IsSchedulable()) {
             return;
         }
         ASSERT(succInfo.upperBound != nullptr);
@@ -337,28 +342,34 @@ public:
         if (!acc_.IsSchedulable(prevGate)) {
             return;
         }
-        GraphLinearizer::GateInfo& prevInfo = linearizer_->GetGateInfo(prevGate);
-        if (prevInfo.state_ == GraphLinearizer::ScheduleState::NONE) {
-            prevInfo.upperBound = linearizer_->GetEntryRegion();
+        auto& prevInfo = linearizer_->GetGateInfo(prevGate);
+        if (prevInfo.IsNone()) {
+            if (scheduleUpperBound_) {
+                prevInfo.upperBound = linearizer_->GetEntryRegion();
+            }
             ASSERT(prevInfo.schedulableUseCount == 0);
             prevInfo.state_ = GraphLinearizer::ScheduleState::SCHEDELABLE;
             pendingList_.emplace_back(prevGate);
         }
-        GraphLinearizer::GateInfo& curInfo = linearizer_->GetGateInfo(curGate);
-        if (curInfo.state_ == GraphLinearizer::ScheduleState::SCHEDELABLE) {
+        auto& curInfo = linearizer_->GetGateInfo(curGate);
+        if (curInfo.IsSchedulable()) {
             prevInfo.schedulableUseCount++;
         }
     }
 
     void VisitScheduleGate(GateRef curGate)
     {
-        GraphLinearizer::GateInfo& curInfo = linearizer_->GetGateInfo(curGate);
-        if ((curInfo.state_ != GraphLinearizer::ScheduleState::SCHEDELABLE) ||
+        auto& curInfo = linearizer_->GetGateInfo(curGate);
+        if (!curInfo.IsSchedulable() ||
             (curInfo.schedulableUseCount != 0) || (curInfo.region != nullptr)) {
             return;
         }
         auto region = GetCommonDominatorOfAllUses(curGate);
-        ASSERT(GetCommonDominator(region, curInfo.upperBound) == curInfo.upperBound);
+        if (scheduleUpperBound_) {
+            ASSERT(curInfo.upperBound != nullptr);
+            ASSERT(GetCommonDominator(region, curInfo.upperBound) == curInfo.upperBound);
+            region = curInfo.upperBound;
+        }
         ScheduleGate(curGate, region);
     }
 
@@ -367,8 +378,8 @@ public:
         auto ins = acc_.Ins(gate);
         for (auto it = ins.begin(); it != ins.end(); it++) {
             auto inputGate = *it;
-            GraphLinearizer::GateInfo& inputInfo = linearizer_->GetGateInfo(inputGate);
-            if (inputInfo.state_ != GraphLinearizer::ScheduleState::SCHEDELABLE) {
+            auto& inputInfo = linearizer_->GetGateInfo(inputGate);
+            if (!inputInfo.IsSchedulable()) {
                 continue;
             }
             inputInfo.schedulableUseCount--;
@@ -386,12 +397,12 @@ public:
         auto uses = acc_.Uses(curGate);
         for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
             GateRef useGate = *useIt;
-            GraphLinearizer::GateInfo& useInfo = linearizer_->GetGateInfo(useGate);
-            if (useInfo.state_ == GraphLinearizer::ScheduleState::NONE) {
+            auto& useInfo = linearizer_->GetGateInfo(useGate);
+            if (useInfo.IsNone()) {
                 continue;
             }
             GateRegion* useRegion = useInfo.region;
-            if (useInfo.state_ == GraphLinearizer::ScheduleState::SELECTOR) {
+            if (useInfo.IsSelector()) {
                 GateRef state = acc_.GetState(useGate);
                 useGate = acc_.GetIn(state, useIt.GetIndex() - 1); // -1: for state
                 useRegion = linearizer_->GateToRegion(useGate);
@@ -441,8 +452,8 @@ public:
         std::vector<GateRef> gateList;
         linearizer_->circuit_->GetAllGates(gateList);
         for (const auto &gate : gateList) {
-            GraphLinearizer::GateInfo& GateInfo = linearizer_->GetGateInfo(gate);
-            if (GateInfo.state_ == GraphLinearizer::ScheduleState::SCHEDELABLE) {
+            auto& GateInfo = linearizer_->GetGateInfo(gate);
+            if (GateInfo.IsSchedulable()) {
                 ASSERT(linearizer_->IsScheduled(gate));
             }
         }
@@ -453,11 +464,11 @@ private:
     ChunkVector<GateRef> fixedGateList_;
     ChunkDeque<GateRef> pendingList_;
     GateAccessor acc_;
+    bool scheduleUpperBound_{false};
 };
 
-void GraphLinearizer::LinearizeGraph(ControlFlowGraph &result)
+void GraphLinearizer::LinearizeGraph()
 {
-    ASSERT(result.size() == 0);
     gateIdToGateInfo_.resize(circuit_->GetMaxGateId() + 1, GateInfo{nullptr}); // 1: max + 1 = size
     CFGBuilder builder(this);
     builder.Run();
@@ -468,8 +479,6 @@ void GraphLinearizer::LinearizeGraph(ControlFlowGraph &result)
     scheduler.ScheduleUpperBound();
     scheduler.ScheduleFloatingGate();
     scheduler.ScheduleFixedGate();
-    result.resize(regionList_.size());
-    LinearizeRegions(result);
 }
 
 void GraphLinearizer::CreateGateRegion(GateRef gate)
@@ -478,11 +487,17 @@ void GraphLinearizer::CreateGateRegion(GateRef gate)
     auto region = new (chunk_) GateRegion(chunk_);
     region->id_ = regionList_.size();
     regionList_.emplace_back(region);
+    if (acc_.GetOpCode(gate) == OpCode::LOOP_BEGIN) {
+        loopNumber_++;
+        region->stateKind_ = GateRegion::StateKind::LOOP_HEAD;
+    }
     AddRootGateToRegion(gate, region);
 }
 
 void GraphLinearizer::LinearizeRegions(ControlFlowGraph &result)
 {
+    ASSERT(result.size() == 0);
+    result.resize(regionList_.size());
     auto uses = acc_.Uses(acc_.GetArgRoot());
     for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
         regionList_.front()->gateList_.emplace_back(*useIt);
