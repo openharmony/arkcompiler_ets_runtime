@@ -198,16 +198,6 @@ GateRef CircuitBuilder::Int64NotEqual(GateRef x, GateRef y)
     return NotEqual(x, y);
 }
 
-GateRef CircuitBuilder::DoubleEqual(GateRef x, GateRef y)
-{
-    return Equal(x, y);
-}
-
-GateRef CircuitBuilder::DoubleNotEqual(GateRef x, GateRef y)
-{
-    return NotEqual(x, y);
-}
-
 GateRef CircuitBuilder::Int64Equal(GateRef x, GateRef y)
 {
     return Equal(x, y);

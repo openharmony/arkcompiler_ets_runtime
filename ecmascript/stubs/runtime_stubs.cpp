@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <cmath>
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
@@ -2281,16 +2282,37 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
 DEF_RUNTIME_STUBS(DeoptHandler)
 {
     RUNTIME_STUBS_HEADER(DeoptHandler);
-
-    Deoptimizier deopt(thread);
+    uintptr_t *args = reinterpret_cast<uintptr_t *>(argv);
+    size_t depth = GetTArg(argv, argc, 1);
+    Deoptimizier deopt(thread, depth);
     std::vector<kungfu::ARKDeopt> deoptBundle;
     deopt.CollectDeoptBundleVec(deoptBundle);
     ASSERT(!deoptBundle.empty());
-    deopt.CollectVregs(deoptBundle);
-
-    uintptr_t *args = reinterpret_cast<uintptr_t *>(argv);
+    size_t shift = Deoptimizier::ComputeShift(depth);
+    deopt.CollectVregs(deoptBundle, shift);
     kungfu::DeoptType type = static_cast<kungfu::DeoptType>(args[0]);
-    return deopt.ConstructAsmInterpretFrame(type);
+    deopt.UpdateAndDumpDeoptInfo(type);
+    return deopt.ConstructAsmInterpretFrame();
+}
+
+DEF_RUNTIME_STUBS(AotInlineTrace)
+{
+    RUNTIME_STUBS_HEADER(AotInlineTrace);
+    JSTaggedValue callerFunc = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue inlineFunc = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSFunction *callerJSFunc = JSFunction::Cast(callerFunc);
+    JSFunction *inlineJSFunc = JSFunction::Cast(inlineFunc);
+    Method *callerMethod = Method::Cast(JSFunction::Cast(callerJSFunc)->GetMethod());
+    Method *inlineMethod = Method::Cast(JSFunction::Cast(inlineJSFunc)->GetMethod());
+    auto callerRecordName = callerMethod->GetRecordName();
+    auto inlineRecordNanme = inlineMethod->GetRecordName();
+    const std::string callerFuncName(callerMethod->GetMethodName());
+    const std::string inlineFuncNanme(inlineMethod->GetMethodName());
+    std::string callerFullName = callerFuncName + "@" + std::string(callerRecordName);
+    std::string inlineFullName = inlineFuncNanme + "@" + std::string(inlineRecordNanme);
+
+    LOG_TRACE(INFO) << "aot inline function name: " << inlineFullName << " caller function name: " << callerFullName;
+    return JSTaggedValue::Undefined().GetRawData();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

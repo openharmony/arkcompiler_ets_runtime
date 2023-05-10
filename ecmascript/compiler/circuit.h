@@ -148,6 +148,14 @@ public:
     GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
 
+#define DECLARE_FRAME_STATE_GATE_META(NAME, OP, R, S, D, V)   \
+    const GateMetaData* NAME(uint64_t value)                  \
+    {                                                         \
+        return metaBuilder_.NAME(value);                      \
+    }
+    FRAME_STATE(DECLARE_FRAME_STATE_GATE_META)
+#undef DECLARE_FRAME_STATE_GATE_META
+
     const GateMetaData* Nop()
     {
         return metaBuilder_.Nop();
@@ -236,7 +244,7 @@ private:
     size_t gateCount_ {0};
     TimeStamp time_;
     std::map<std::tuple<MachineType, BitField, GateType>, GateRef> constantCache_ {};
-    std::map<BitField, GateRef> constantDataCache_ {};
+    std::map<std::pair<BitField, GateRef>, GateRef> constantDataCache_ {};
     std::map<GateRef, GateRef> initialEnvCache_ {};
     panda::ecmascript::FrameType frameType_ {panda::ecmascript::FrameType::OPTIMIZED_FRAME};
     bool isArch64_ { false };

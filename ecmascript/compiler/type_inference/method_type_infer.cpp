@@ -39,6 +39,9 @@ MethodTypeInfer::MethodTypeInfer(BytecodeCircuitBuilder *builder, Circuit *circu
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
     for (auto gate : gateList) {
+        if (gateAccessor_.GetOpCode(gate) == OpCode::FRAME_ARGS) {
+            continue;
+        }
         pendingQueue_.push(gate);
     }
     // init jsgateToBytecode

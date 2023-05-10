@@ -503,6 +503,11 @@ public:
     void ReplaceFrameStateIn(GateRef gate, GateRef in);
     bool HasFrameState(GateRef gate) const;
     void SetMetaData(GateRef gate, const GateMetaData* meta);
+    void SetPreFrameState(GateRef gate, GateRef preFrameState);
+    GateRef GetPreFrameState(GateRef gate) const;
+    void SetInlineCallFrameStateFlag(GateRef gate, bool isInline);
+    bool IsInlineCallFrameState(GateRef gate) const;
+    size_t GetFrameStateDepth(GateRef gate) const;
 
     void ReplaceHirWithIfBranch(GateRef hirGate, StateDepend success, StateDepend exception, GateRef value);
     void ReplaceHirDirectly(GateRef hirGate, StateDepend replacement, GateRef value);

@@ -238,7 +238,7 @@ bool GateAccessor::IsVtable(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::LOAD_PROPERTY);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetLoadPropertyMetaDate()->IsVtable();
+    return gatePtr->GetLoadPropertyMetaData()->IsVtable();
 }
 
 uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
@@ -1044,5 +1044,51 @@ bool ConstGateAccessor::IsProlog(GateRef g) const
 bool ConstGateAccessor::IsSchedulable(GateRef g) const
 {
     return GetMetaData(g)->IsSchedulable();
+}
+
+void GateAccessor::SetPreFrameState(GateRef gate, GateRef preFrameState)
+{
+    ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE && GetOpCode(preFrameState) == OpCode::FRAME_STATE);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    const_cast<FrameStateMetaData *>(gatePtr->GetFrameStateMetaData())->SetPreFrameState(preFrameState);
+}
+
+GateRef GateAccessor::GetPreFrameState(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetFrameStateMetaData()->GetPreFrameState();
+}
+
+void GateAccessor::SetInlineCallFrameStateFlag(GateRef gate, bool isInline)
+{
+    ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    const_cast<FrameStateMetaData *>(gatePtr->GetFrameStateMetaData())->SetInlineCallFrameStateFlag(isInline);
+}
+
+bool GateAccessor::IsInlineCallFrameState(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetFrameStateMetaData()->IsInlineCallFrameState();
+}
+
+size_t GateAccessor::GetFrameStateDepth(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    GateRef preFrameState = gatePtr->GetFrameStateMetaData()->GetPreFrameState();
+    size_t depth = 0;
+    while (preFrameState != Circuit::NullGate()) {
+        if (GetOpCode(preFrameState) == OpCode::FRAME_STATE) {
+            Gate *preGatePtr = circuit_->LoadGatePtr(preFrameState);
+            preFrameState = preGatePtr->GetFrameStateMetaData()->GetPreFrameState();
+            depth++;
+        } else {
+            break;
+        }
+    }
+    return depth;
 }
 }  // namespace panda::ecmascript::kungfu

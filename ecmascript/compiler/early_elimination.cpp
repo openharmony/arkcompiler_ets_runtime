@@ -166,7 +166,7 @@ GateRef EarlyElimination::TryEliminateFrameState(GateRef gate)
     // lookup gate, replace
     auto preFrame = dependChain->LookupFrameState();
     auto curFrame = acc_.GetFrameState(gate);
-    if ((preFrame != Circuit::NullGate()) && (preFrame != curFrame)) {
+    if ((preFrame != Circuit::NullGate()) && (preFrame != curFrame) && !acc_.IsInlineCallFrameState(curFrame)) {
         acc_.UpdateAllUses(curFrame, preFrame);
         acc_.DeleteGate(curFrame);
     } else {

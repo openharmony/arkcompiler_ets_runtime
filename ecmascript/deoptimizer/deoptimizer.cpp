@@ -14,6 +14,8 @@
  */
 #include "ecmascript/deoptimizer/deoptimizer.h"
 
+#include <cmath>
+
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/gate_meta_data.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
@@ -63,13 +65,24 @@ public:
         return top_;
     }
 
+    JSTaggedType *GetFirstFrame() const
+    {
+        return firstFrame_;
+    }
+
+    void RecordFirstFrame()
+    {
+        firstFrame_ = top_;
+    }
+
 private:
     JSThread *thread_ {nullptr};
     JSTaggedType *start_;
     JSTaggedType *top_;
+    JSTaggedType *firstFrame_;
 };
 
-void Deoptimizier::CollectVregs(const std::vector<ARKDeopt>& deoptBundle)
+void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle, size_t shift)
 {
     deoptVregs_.clear();
     for (size_t i = 0; i < deoptBundle.size(); i++) {
@@ -97,14 +110,12 @@ void Deoptimizier::CollectVregs(const std::vector<ARKDeopt>& deoptBundle)
             ASSERT(deopt.kind == LocationTy::Kind::CONSTANT);
             v = JSTaggedType(static_cast<int64_t>(std::get<IntType>(deopt.value)));
         }
-        if (id != static_cast<VRegId>(SpecVregIndex::PC_OFFSET_INDEX)) {
-            if (id == static_cast<VRegId>(SpecVregIndex::ENV_INDEX)) {
-                env_ = JSTaggedValue(v);
-            } else {
-                deoptVregs_[id] = JSTaggedValue(v);
-            }
+        size_t curDepth = DecodeDeoptDepth(id, shift);
+        OffsetType vregId = static_cast<OffsetType>(DecodeVregIndex(id, shift));
+        if (vregId != static_cast<OffsetType>(SpecVregIndex::PC_OFFSET_INDEX)) {
+            deoptVregs_.insert({{curDepth, vregId}, JSTaggedValue(v)});
         } else {
-            pc_ = static_cast<uint32_t>(v);
+            pc_.insert({curDepth, static_cast<size_t>(v)});
         }
     }
 }
@@ -154,6 +165,90 @@ void Deoptimizier::CollectVregs(const std::vector<ARKDeopt>& deoptBundle)
 //               |       .........          |               |
 //               |       .........          |               v
 //               |--------------------------| ---------------
+
+// After gathering the necessary information(After Call Runtime), frame layout after constructing
+// asminterpreterframe is shown as the following:
+//               +----------------------------------+---------+
+//               |        ......                    |         ^
+//               |        ......                    |   callerFunction
+//               |        ......                    |         |
+//               |----------------------------------|         |
+//               |        args                      |         v
+//               +----------------------------------+---------+
+//               |       returnAddr                 |         ^
+//               |----------------------------------|         |
+//               |       frameType                  |         |
+//               |----------------------------------|    ASM_INTERPRETER_BRIDGE_FRAME
+//               |       callsiteFp                 |         |
+//               |----------------------------------|         |
+//               |       ...........                |         v
+//               +----------------------------------+---------+
+//               |       returnAddr                 |
+//               |----------------------------------|
+//               |    argv[n-1]                     |
+//               |----------------------------------|
+//               |    ......                        |
+//               |----------------------------------|
+//               |    thisArg [maybe not exist]     |
+//               |----------------------------------|
+//               |    newTarget [maybe not exist]   |
+//               |----------------------------------|
+//               |    ......                        |
+//               |----------------------------------|
+//               |    Vregs [not exist in native]   |
+//               +----------------------------------+--------+
+//               |        .  .  .   .               |        ^
+//               |     InterpretedFrameBase         |        |
+//               |        .  .  .   .               |        |
+//               |----------------------------------|        |
+//               |    pc(bytecode addr)             |        |
+//               |----------------------------------|        |
+//               |    sp(current stack pointer)     |        |
+//               |----------------------------------|   AsmInterpretedFrame 0
+//               |    callSize                      |        |
+//               |----------------------------------|        |
+//               |    env                           |        |
+//               |----------------------------------|        |
+//               |    acc                           |        |
+//               |----------------------------------|        |
+//               |    thisObj                       |        |
+//               |----------------------------------|        |
+//               |    call-target                   |        v
+//               +----------------------------------+--------+
+//               |    argv[n-1]                     |
+//               |----------------------------------|
+//               |    ......                        |
+//               |----------------------------------|
+//               |    thisArg [maybe not exist]     |
+//               |----------------------------------|
+//               |    newTarget [maybe not exist]   |
+//               |----------------------------------|
+//               |    ......                        |
+//               |----------------------------------|
+//               |    Vregs [not exist in native]   |
+//               +----------------------------------+--------+
+//               |        .  .  .   .               |        ^
+//               |     InterpretedFrameBase         |        |
+//               |        .  .  .   .               |        |
+//               |----------------------------------|        |
+//               |    pc(bytecode addr)             |        |
+//               |----------------------------------|        |
+//               |    sp(current stack pointer)     |        |
+//               |----------------------------------|   AsmInterpretedFrame 1
+//               |    callSize                      |        |
+//               |----------------------------------|        |
+//               |    env                           |        |
+//               |----------------------------------|        |
+//               |    acc                           |        |
+//               |----------------------------------|        |
+//               |    thisObj                       |        |
+//               |----------------------------------|        |
+//               |    call-target                   |        v
+//               +----------------------------------+--------+
+//               |        .  .  .   .               |        ^
+//               |        .  .  .   .               |   AsmInterpretedFrame n
+//               |        .  .  .   .               |        v
+//               +----------------------------------+--------+
 
 void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
 {
@@ -218,12 +313,22 @@ void Deoptimizier::RelocateCalleeSave()
     }
 }
 
-bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWriter)
+bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWriter, size_t curDepth)
 {
-    int32_t actualNumArgs = static_cast<int32_t>(frameArgc_) - NUM_MANDATORY_JSFUNC_ARGS;
+    int32_t actualNumArgs = 0;
+    int32_t declaredNumArgs = 0;
+    if (curDepth == 0) {
+        actualNumArgs = static_cast<int32_t>(frameArgc_) - NUM_MANDATORY_JSFUNC_ARGS;
+        declaredNumArgs = static_cast<int32_t>(method->GetNumArgsWithCallField());
+    } else {
+        // inline method actualNumArgs equal to declaredNumArgs
+        actualNumArgs = method->GetNumArgsWithCallField();
+        declaredNumArgs = method->GetNumArgsWithCallField();
+    }
+
     bool haveExtra = method->HaveExtraWithCallField();
-    int32_t declaredNumArgs = static_cast<int32_t>(method->GetNumArgsWithCallField());
     int32_t callFieldNumVregs = static_cast<int32_t>(method->GetNumVregsWithCallField());
+
     // layout of frame:
     // [maybe argc] [actual args] [reserved args] [call field virtual regs]
 
@@ -248,10 +353,12 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
     for (int32_t i = actualNumArgs - 1; i >= 0; i--) {
         JSTaggedValue value = JSTaggedValue::Undefined();
         // deopt value
-        if (HasDeoptValue(virtualIndex)) {
-            value = deoptVregs_.at(static_cast<VRegId>(virtualIndex));
+        if (HasDeoptValue(curDepth, virtualIndex)) {
+            value = GetDeoptValue(curDepth, virtualIndex);
         } else {
-            value = GetActualFrameArgs(i);
+            if (curDepth == 0) {
+                value = GetActualFrameArgs(i);
+            }
         }
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
@@ -259,38 +366,38 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
 
     // [reserved args]
     if (method->HaveThisWithCallField()) {
-        JSTaggedValue value = deoptVregs_.at(static_cast<VRegId>(SpecVregIndex::THIS_OBJECT_INDEX));
+        JSTaggedValue value = deoptVregs_.at({curDepth, static_cast<OffsetType>(SpecVregIndex::THIS_OBJECT_INDEX)});
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
     if (method->HaveNewTargetWithCallField()) {
-        JSTaggedValue value = deoptVregs_.at(static_cast<VRegId>(SpecVregIndex::NEWTARGET_INDEX));
+        JSTaggedValue value = deoptVregs_.at({curDepth, static_cast<OffsetType>(SpecVregIndex::NEWTARGET_INDEX)});
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
     if (method->HaveFuncWithCallField()) {
-        JSTaggedValue value = deoptVregs_.at(static_cast<VRegId>(SpecVregIndex::FUNC_INDEX));
+        JSTaggedValue value = deoptVregs_.at({curDepth, static_cast<OffsetType>(SpecVregIndex::FUNC_INDEX)});
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
 
     // [call field virtual regs]
     for (int32_t i = virtualIndex; i >= 0; i--) {
-        JSTaggedValue value = GetDeoptValue(virtualIndex);
+        JSTaggedValue value = GetDeoptValue(curDepth, virtualIndex);
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
     return true;
 }
 
-void Deoptimizier::Dump(Method* method, DeoptType type)
+void Deoptimizier::Dump(Method* method, kungfu::DeoptType type, size_t depth)
 {
     if (traceDeopt_) {
         std::string checkType = DisplayItems(type);
         LOG_COMPILER(INFO) << "Check Type: " << checkType;
         std::string data = JsStackInfo::BuildJsStackTrace(thread_, true);
         LOG_COMPILER(INFO) << "Deoptimize" << data;
-        const uint8_t *pc = method->GetBytecodeArray() + pc_;
+        const uint8_t *pc = method->GetBytecodeArray() + pc_.at(depth);
         BytecodeInstruction inst(pc);
         LOG_COMPILER(INFO) << inst;
     }
@@ -339,11 +446,88 @@ std::string Deoptimizier::DisplayItems(DeoptType type)
     }
 }
 
-JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(DeoptType type)
+// layout of frameWriter
+//   |--------------------------| --------------> start(n)
+//   |          args            |
+//   |          this            |
+//   |        newTarget         |
+//   |       callTarget         |
+//   |          vregs           |
+//   |---------------------------
+//   |       ASM Interpreter    |
+//   +--------------------------+ --------------> end(n)
+//   |        outputcounts      |          outputcounts = end(n) - start(n)
+//   |--------------------------| --------------> start(n-1)
+//   |          args            |
+//   |          this            |
+//   |        newTarget         |
+//   |       callTarget         |
+//   |          vregs           |
+//   |-------------------------------------------
+//   |       ASM Interpreter    |
+//   +--------------------------+ --------------> end(n-1)
+//   |        outputcounts      |           outputcounts = end(n-1) - start(n-1)
+//   |--------------------------| --------------> start(n-1)
+//   |       ......             |
+//   +--------------------------+ ---------------
+//   |        callerFp_         |               ^
+//   |       returnAddr_        |          stackContext
+//   |      callFrameTop_       |               |
+//   |       inlineDepth        |               v
+//   |--------------------------| ---------------
+
+JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
 {
-    JSTaggedValue callTarget = GetDeoptValue(static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
-    auto method = GetMethod(callTarget);
-    Dump(method, type);
+    FrameWriter frameWriter(this);
+    // Push asm interpreter frame
+    for (int32_t curDepth = inlineDepth_; curDepth >= 0; curDepth--) {
+        auto start = frameWriter.GetTop();
+        JSTaggedValue callTarget = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
+        auto method = GetMethod(callTarget);
+        if (!CollectVirtualRegisters(method, &frameWriter, curDepth)) {
+            return JSTaggedValue::Exception().GetRawData();
+        }
+        AsmInterpretedFrame *statePtr = frameWriter.ReserveAsmInterpretedFrame();
+        const uint8_t *resumePc = method->GetBytecodeArray() + pc_.at(curDepth);
+        JSTaggedValue thisObj = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX));
+        auto acc = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ACC_INDEX));
+        statePtr->function = callTarget;
+        statePtr->acc = acc;
+        statePtr->env = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::ENV_INDEX));
+        statePtr->callSize = GetCallSize(curDepth, resumePc);
+        statePtr->fp = 0;  // need update
+        statePtr->thisObj = thisObj;
+        statePtr->pc = resumePc;
+        // -uintptr_t skip lr
+        if (curDepth == 0) {
+            statePtr->base.prev = reinterpret_cast<JSTaggedType *>(stackContext_.callFrameTop_ - sizeof(uintptr_t));
+        } else {
+            statePtr->base.prev = 0; // need update
+        }
+
+        statePtr->base.type = FrameType::ASM_INTERPRETER_FRAME;
+
+        // construct stack context
+        auto end = frameWriter.GetTop();
+        auto outputCount = start - end;
+        frameWriter.PushRawValue(outputCount);
+    }
+
+    RelocateCalleeSave();
+
+    frameWriter.PushRawValue(stackContext_.callerFp_);
+    frameWriter.PushRawValue(stackContext_.returnAddr_);
+    frameWriter.PushRawValue(stackContext_.callFrameTop_);
+    frameWriter.PushRawValue(inlineDepth_);
+    return reinterpret_cast<JSTaggedType>(frameWriter.GetTop());
+}
+
+void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
+{
+    // depth records the number of layers of nested calls when deopt occurs
+    JSTaggedValue CallTarget = GetDeoptValue(inlineDepth_, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
+    auto method = GetMethod(CallTarget);
+    Dump(method, type, inlineDepth_);
     ASSERT(thread_ != nullptr);
     uint8_t deoptThreshold = method->GetDeoptThreshold();
     if (deoptThreshold > 0) {
@@ -352,40 +536,50 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame(DeoptType type)
     } else {
         method->ClearAOTFlags();
     }
+}
 
-    FrameWriter frameWriter(this);
-    // Push asm interpreter frame
-    if (!CollectVirtualRegisters(method, &frameWriter)) {
-        return JSTaggedValue::Exception().GetRawData();
+// call instructions need compute jumpSize
+size_t Deoptimizier::GetCallSize(size_t curDepth, const uint8_t *resumePc)
+{
+    if (inlineDepth_ > 0 && curDepth != inlineDepth_) {
+        auto op = BytecodeInstruction(resumePc).GetOpcode();
+        size_t jumpSize = BytecodeInstruction::Size(op);
+        return jumpSize;
     }
-    AsmInterpretedFrame *statePtr = frameWriter.ReserveAsmInterpretedFrame();
-    const uint8_t *resumePc = method->GetBytecodeArray() + pc_;
+    return 0;
+}
 
-    JSTaggedValue thisObj = GetDeoptValue(static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX));
-    auto acc = GetDeoptValue(static_cast<int32_t>(SpecVregIndex::ACC_INDEX));
-    statePtr->function = callTarget;
-    statePtr->acc = acc;
-    statePtr->env = env_;
-    statePtr->callSize = 0;
-    statePtr->fp = 0;  // need update
-    statePtr->thisObj = thisObj;
-    statePtr->pc = resumePc;
-    // -uintptr_t skip lr
-    statePtr->base.prev = reinterpret_cast<JSTaggedType *>(
-        stackContext_.callFrameTop_ - sizeof(uintptr_t));
-    statePtr->base.type = FrameType::ASM_INTERPRETER_FRAME;
+int32_t Deoptimizier::EncodeDeoptVregIndex(int32_t index, size_t depth, size_t shift)
+{
+    if (index >= 0) {
+        return (index << shift) | depth;
+    }
+    return -((-index << shift) | depth);
+}
 
-    // construct stack context
-    auto start = frameWriter.GetStart();
-    auto end = frameWriter.GetTop();
-    auto outputCount = start - end;
+size_t Deoptimizier::ComputeShift(size_t depth)
+{
+    size_t shift = 0;
+    if (depth != 0) {
+        shift = std::floor(std::log2(depth)) + 1;
+    }
+    return shift;
+}
 
-    RelocateCalleeSave();
+int32_t Deoptimizier::DecodeVregIndex(OffsetType id, size_t shift)
+{
+    if (id >= 0) {
+        return id >> shift;
+    }
+    return -((-id) >> shift);
+}
 
-    frameWriter.PushRawValue(stackContext_.callerFp_);
-    frameWriter.PushRawValue(stackContext_.returnAddr_);
-    frameWriter.PushRawValue(stackContext_.callFrameTop_);
-    frameWriter.PushRawValue(outputCount);
-    return reinterpret_cast<JSTaggedType>(frameWriter.GetTop());
+size_t Deoptimizier::DecodeDeoptDepth(OffsetType id, size_t shift)
+{
+    size_t mask = (1 << shift) - 1;
+    if (id >= 0) {
+        return id & mask;
+    }
+    return (-id) & mask;
 }
 }  // namespace panda::ecmascript

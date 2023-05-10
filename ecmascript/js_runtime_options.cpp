@@ -68,6 +68,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-ark-tools:                   Enable ark tools to debug. Default: 'false'\n"
     "--compiler-trace-bc:                  Enable tracing bytecode for aot runtime. Default: 'false'\n"
     "--compiler-trace-deopt:               Enable tracing deopt for aot runtime. Default: 'false'\n"
+    "--compiler-trace-inline:              Enable tracing inline function for aot runtime. Default: 'false'\n"
+    "--compiler-max-inline-bytecodes       Set max bytecodes count which aot function can be inlined. Default: '25'\n"
     "--compiler-deopt-threshold:           Set max count which aot function can occur deoptimization. Default: '10'\n"
     "--compiler-stress-deopt:              Enable stress deopt for aot compiler. Default: 'false'\n"
     "--compiler-opt-code-profiler:         Enable opt code Bytecode Statistics for aot runtime. Default: 'false'\n"
@@ -78,7 +80,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-early-elimination:     Enable EarlyElimination for aot compiler. Default: 'true'\n"
     "--compiler-opt-later-elimination:     Enable LaterElimination for aot compiler. Default: 'true'\n"
     "--compiler-opt-value-numbering:       Enable ValueNumbering for aot compiler. Default: 'true'\n"
-    "--compiler-opt-inlining:              Enable inlining function for aot compiler: Default: 'false'\n"
+    "--compiler-opt-inlining:              Enable inlining function for aot compiler: Default: 'true'\n"
     "--compiler-opt-pgotype:               Enable pgo type for aot compiler: Default: 'true'\n"
     "--entry-point:                        Full name of entrypoint function. Default: '_GLOBAL::func_main_0'\n"
     "--force-full-gc:                      If true trigger full gc, else trigger semi and old gc. Default: 'true'\n"
@@ -91,22 +93,22 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-worker:                      Whether is worker vm. Default: 'false'\n"
     "--log-level:                          Log level: ['debug', 'info', 'warning', 'error', 'fatal'].\n"
     "--log-components:                     Enable logs from specified components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'all']. \n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'all']. \n"
     "                                      Default: 'all'\n"
     "--log-debug:                          Enable debug or above logs for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'all'].\n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'all'].\n"
     "                                      Default: 'all'\n"
     "--log-error:                          Enable error log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'all']. \n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'all']. \n"
     "                                      Default: 'all'\n"
     "--log-fatal:                          Enable fatal log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'all']. \n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'all']. \n"
     "                                      Default: 'all'\n"
     "--log-info:                           Enable info log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'all']. \n"
+    "                                      'interpreter', 'debugger', 'compiler', 'builtins', 'trace', 'all']. \n"
     "                                      Default: 'all'\n"
     "--log-warning:                        Enable warning log for components: ['all', 'gc', 'ecma',\n"
-    "                                      'interpreter', 'debugger', 'compiler', 'builtins', \n"
+    "                                      'interpreter', 'debugger', 'compiler', 'trace', 'builtins', \n"
     "                                      'all']. Default: 'all'\n"
     "--compiler-opt-max-method:            Enable aot compiler to skip method larger than limit (KB). Default: '32'\n"
     "--compiler-module-methods:            The number of max compiled methods in a module. Default: '100'\n"
@@ -154,6 +156,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
         {"compiler-trace-bc", required_argument, nullptr, OPTION_COMPILER_TRACE_BC},
         {"compiler-trace-deopt", required_argument, nullptr, OPTION_COMPILER_TRACE_DEOPT},
+        {"compiler-trace-inline", required_argument, nullptr, OPTION_COMPILER_TRACE_INLINE},
+        {"compiler-max-inline-bytecodes", required_argument, nullptr, OPTION_COMPILER_MAX_INLINE_BYTECODES},
         {"compiler-deopt-threshold", required_argument, nullptr, OPTION_COMPILER_DEOPT_THRESHOLD},
         {"compiler-stress-deopt", required_argument, nullptr, OPTION_COMPILER_STRESS_DEOPT},
         {"compiler-opt-code-profiler", required_argument, nullptr, OPTION_COMPILER_OPT_CODE_PROFILER},
@@ -325,6 +329,30 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetTraceDeopt(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_TRACE_INLINE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetTraceInline(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_MAX_INLINE_BYTECODES:
+                ret = ParseUint32Param("max-inline-bytecodes", &argUint32);
+                if (ret) {
+                    SetMaxInlineBytecodes(argUint32);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_DEOPT_THRESHOLD:
+                ret = ParseUint32Param("deopt-threshol", &argUint32);
+                if (ret) {
+                    SetDeoptThreshold(argUint32);
                 } else {
                     return false;
                 }

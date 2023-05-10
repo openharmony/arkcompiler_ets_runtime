@@ -46,6 +46,7 @@ enum Component {
     DEBUGGER = 1ULL << 3ULL,
     ECMASCRIPT = 1ULL << 4ULL,
     BUILTINS = 1ULL << 5ULL,
+    TRACE = 1ULL << 6ULL,
     NO_TAG = 0xFFFFFFFFULL >> 1ULL,
     ALL = 0xFFFFFFFFULL,
 };
@@ -90,6 +91,8 @@ public:
                 return "[compiler] ";
             case Component::BUILTINS:
                 return "[builtins] ";
+            case Component::TRACE:
+                return "[trace] ";
             case Component::ALL:
                 return "[default] ";
             default:

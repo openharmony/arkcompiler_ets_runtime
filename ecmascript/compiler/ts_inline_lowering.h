@@ -44,7 +44,6 @@ private:
 
 class TSInlineLowering {
 public:
-    static constexpr size_t MAX_INLINE_BYTECODE_COUNT = 10;
     static constexpr size_t MAX_INLINE_CALL_ALLOWED = 5;
     TSInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string& name)
         : circuit_(circuit),
@@ -53,7 +52,10 @@ public:
           tsManager_(ctx->GetTSManager()),
           ctx_(ctx),
           enableLog_(enableLog),
-          methodName_(name) {}
+          methodName_(name),
+          enableTypeLowering_(ctx->GetEcmaVM()->GetJSOptions().IsEnableTypeLowering()),
+          traceInline_(ctx->GetEcmaVM()->GetJSOptions().GetTraceInline()),
+          maxInlineBytecodesCount_(ctx->GetEcmaVM()->GetJSOptions().GetMaxInlineBytecodes()) {}
 
     ~TSInlineLowering() = default;
 
@@ -73,10 +75,11 @@ private:
     void TryInline(GateRef gate);
     void TryInline(GateRef gate, bool isCallThis);
     bool FilterInlinedMethod(MethodLiteral* method, std::vector<const uint8_t*> pcOffsets);
-    void InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method);
-    void ReplaceCallInput(GateRef gate, bool isCallThis);
+    bool FilterCallInTryCatch(GateRef gate);
+    void InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method, GateRef gate);
+    void ReplaceCallInput(GateRef gate, bool isCallThis, GateRef glue);
 
-    void ReplaceEntryGate(GateRef callGate);
+    void ReplaceEntryGate(GateRef callGate, GateRef callerFunc, GateRef inlineFunc, GateRef glue);
     void ReplaceReturnGate(GateRef callGate);
 
     void ReplaceHirAndDeleteState(GateRef gate, GateRef state, GateRef depend, GateRef value);
@@ -86,6 +89,8 @@ private:
 
     void LowerToInlineCall(GateRef gate, const std::vector<GateRef> &args);
     void RemoveRoot();
+    void BuildFrameStateChain(GateRef gate, BytecodeCircuitBuilder &builder);
+    GateRef TraceInlineFunction(GateRef glue, GateRef depend, std::vector<GateRef> &args, GateRef callGate);
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
@@ -95,6 +100,10 @@ private:
     bool enableLog_ {false};
     std::string methodName_;
     size_t inlinedCall_ { 0 };
+    bool enableTypeLowering_ {false};
+    bool inlineSuccess_ {false};
+    bool traceInline_ {false};
+    size_t maxInlineBytecodesCount_ {0};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_INLINE_LOWERING_H

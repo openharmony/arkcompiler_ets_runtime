@@ -238,9 +238,14 @@ public:
         return JSBytecodeMetaData::Cast(meta_);
     }
 
-    LoadPropertyMetaDate* GetLoadPropertyMetaDate()
+    LoadPropertyMetaData* GetLoadPropertyMetaData()
     {
-        return LoadPropertyMetaDate::Cast(meta_);
+        return LoadPropertyMetaData::Cast(meta_);
+    }
+
+    const FrameStateMetaData* GetFrameStateMetaData() const
+    {
+        return FrameStateMetaData::Cast(meta_);
     }
 
     std::string MachineTypeStr(MachineType machineType) const;

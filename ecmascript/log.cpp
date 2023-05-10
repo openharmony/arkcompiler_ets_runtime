@@ -175,6 +175,10 @@ void Log::SetLogComponentFromString(const std::vector<std::string>& components)
             components_ |= Component::BUILTINS;
             continue;
         }
+        if (component == "trace") {
+            components_ |= Component::TRACE;
+            continue;
+        }
     }
 }
 

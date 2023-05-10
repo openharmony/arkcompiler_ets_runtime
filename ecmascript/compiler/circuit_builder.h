@@ -128,6 +128,8 @@ class StubBuilder;
     V(DoubleLessThanOrEqual, Fcmp, static_cast<BitField>(FCmpCondition::OLE))           \
     V(DoubleGreaterThan, Fcmp, static_cast<BitField>(FCmpCondition::OGT))               \
     V(DoubleGreaterThanOrEqual, Fcmp, static_cast<BitField>(FCmpCondition::OGE))        \
+    V(DoubleEqual, Fcmp, static_cast<BitField>(FCmpCondition::OEQ))                     \
+    V(DoubleNotEqual, Fcmp, static_cast<BitField>(FCmpCondition::ONE))                  \
     V(Int32LessThan, Icmp, static_cast<BitField>(ICmpCondition::SLT))                   \
     V(Int32LessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SLE))            \
     V(Int32GreaterThan, Icmp, static_cast<BitField>(ICmpCondition::SGT))                \
@@ -357,6 +359,7 @@ public:
                                bool isNew = false, const char* comment = nullptr);
     GateRef Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,
                  const std::vector<GateRef> &args, GateRef hirGate, const char* comment = nullptr);
+    GateRef NoLabelCallRuntime(GateRef glue, GateRef depend, size_t index, std::vector<GateRef> &args, GateRef hirGate);
 
     // memory
     inline GateRef Load(VariableType type, GateRef base, GateRef offset);
@@ -456,8 +459,6 @@ public:
     inline GateRef Int64NotEqual(GateRef x, GateRef y);
     inline GateRef Int32NotEqual(GateRef x, GateRef y);
     inline GateRef Int64Equal(GateRef x, GateRef y);
-    inline GateRef DoubleEqual(GateRef x, GateRef y);
-    inline GateRef DoubleNotEqual(GateRef x, GateRef y);
     inline GateRef Int8Equal(GateRef x, GateRef y);
     inline GateRef Int32Equal(GateRef x, GateRef y);
     inline GateRef IntPtrGreaterThan(GateRef x, GateRef y);

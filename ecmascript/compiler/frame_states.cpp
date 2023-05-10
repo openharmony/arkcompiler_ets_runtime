@@ -78,6 +78,7 @@ void FrameStateBuilder::BindStateSplit(GateRef gate, size_t pcOffset, FrameState
         state = gateAcc_.GetState(state);
     }
     GateRef frameState = FrameState(pcOffset, stateInfo);
+    frameStateList_.emplace_back(frameState);
     GateRef stateSplit = circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
     gateAcc_.ReplaceDependIn(gate, stateSplit);
     if (builder_->IsLogEnabled()) {
@@ -318,6 +319,7 @@ void FrameStateBuilder::BuildFrameState(GateRef frameArgs)
     bcEndStateInfos_.resize(builder_->GetLastBcIndex() + 1, nullptr); // 1: +1 pcOffsets size
     auto size = builder_->GetBasicBlockCount();
     bbBeginStateInfos_.resize(size, nullptr);
+    frameStateList_.clear();
     liveOutResult_ = CreateEmptyStateInfo();
     BuildPostOrderList(size);
     ComputeLiveState();

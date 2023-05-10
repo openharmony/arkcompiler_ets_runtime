@@ -235,7 +235,7 @@ std::string MachineTypeToStr(MachineType machineType);
 
 #define GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                             \
     V(ValueSelector, VALUE_SELECTOR, GateFlags::FIXED, 1, 0, value)                      \
-    V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, value)                  \
+    V(FrameStateChain, FRAME_STATE_CHAIN, GateFlags::NONE_FLAG, 0, 0, value)             \
     V(RuntimeCall, RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)                      \
     V(RuntimeCallWithArgv, RUNTIME_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)    \
     V(NoGcRuntimeCall, NOGC_RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)             \
@@ -304,6 +304,9 @@ std::string MachineTypeToStr(MachineType machineType);
 #define LOAD_PROPERTY_LIST(V)                                           \
     V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)
 
+#define FRAME_STATE(V)                                              \
+    V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, value)  \
+
 enum class OpCode : uint8_t {
     NOP = 0,
 #define DECLARE_GATE_OPCODE(NAME, OP, R, S, D, V) OP,
@@ -313,6 +316,7 @@ enum class OpCode : uint8_t {
     GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(DECLARE_GATE_OPCODE)
     LOAD_PROPERTY_LIST(DECLARE_GATE_OPCODE)
+    FRAME_STATE(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 #define DECLARE_GATE_OPCODE(NAME) NAME,
     GATE_OPCODE_LIST(DECLARE_GATE_OPCODE)
@@ -341,6 +345,7 @@ public:
         MUTABLE_STRING,
         JSBYTECODE,
         TYPED_BINARY_OP,
+        FRAME_STATE,
     };
     GateMetaData() = default;
     GateMetaData(OpCode opcode, GateFlags flags,
@@ -457,6 +462,11 @@ public:
         return GetKind() == Kind::MUTABLE_STRING;
     }
 
+    bool IsFrameState() const
+    {
+        return GetKind() == Kind::FRAME_STATE;
+    }
+
     bool IsRoot() const;
     bool IsProlog() const;
     bool IsFixed() const;
@@ -547,16 +557,16 @@ inline std::ostream& operator<<(std::ostream& os, OpCode opcode)
     return os << GateMetaData::Str(opcode);
 }
 
-class LoadPropertyMetaDate : public GateMetaData {
+class LoadPropertyMetaData : public GateMetaData {
 public:
-    LoadPropertyMetaDate(OpCode opcode, GateFlags flags, uint32_t statesIn,
+    LoadPropertyMetaData(OpCode opcode, GateFlags flags, uint32_t statesIn,
         uint16_t dependsIn, uint32_t valuesIn, bool isVtable)
         : GateMetaData(opcode, flags, statesIn, dependsIn, valuesIn), isVtable_(isVtable) {}
 
-    static LoadPropertyMetaDate* Cast(const GateMetaData* meta)
+    static LoadPropertyMetaData* Cast(const GateMetaData* meta)
     {
         ASSERT(meta->GetOpCode() == OpCode::LOAD_PROPERTY);
-        return static_cast<LoadPropertyMetaDate*>(const_cast<GateMetaData*>(meta));
+        return static_cast<LoadPropertyMetaData*>(const_cast<GateMetaData*>(meta));
     }
 
     bool IsVtable() const
@@ -684,6 +694,48 @@ public:
 
 private:
     ChunkVector<char> stringData_;
+};
+
+class FrameStateMetaData : public GateMetaData {
+public:
+    static constexpr GateRef invalidGate = -1;
+    FrameStateMetaData(uint64_t value)
+        : GateMetaData(OpCode::FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, value)
+    {
+        SetKind(GateMetaData::Kind::FRAME_STATE);
+        preFrameState_ = invalidGate;
+        isInlineCallFrameState_ = false;
+    }
+
+    static const FrameStateMetaData* Cast(const GateMetaData* meta)
+    {
+        ASSERT(meta->IsFrameState());
+        return static_cast<const FrameStateMetaData*>(meta);
+    }
+
+    bool IsInlineCallFrameState() const
+    {
+        return isInlineCallFrameState_;
+    }
+
+    void SetInlineCallFrameStateFlag(bool isInline)
+    {
+        isInlineCallFrameState_ = isInline;
+    }
+
+    GateRef GetPreFrameState() const
+    {
+        return preFrameState_;
+    }
+
+    void SetPreFrameState(GateRef preFrameState)
+    {
+        preFrameState_ = preFrameState;
+    }
+
+private:
+    GateRef preFrameState_ {0};
+    bool isInlineCallFrameState_ {false};
 };
 
 class GateTypeAccessor {

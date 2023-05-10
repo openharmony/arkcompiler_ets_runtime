@@ -1007,18 +1007,39 @@ void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
     Register frameStateBase(X11);
     Register currentSlotRegister(X12);
     Register sp(SP);
+    Register depth(X20);
+    Register tmpReg(X21);
+    Label loopBegin;
+    Label stackOverflow;
+    Label pushArgv;
 
     __ PushFpAndLr();
 
-    __ Mov(currentSlotRegister, sp);
-    __ Ldr(outputCount, MemoryOperand(context, AsmStackContext::GetOutputCountOffset(false)));
-    __ Add(frameStateBase, context, Immediate(AsmStackContext::GetSize(false)));
+    __ Ldr(depth, MemoryOperand(context, AsmStackContext::GetInlineDepthOffset(false)));
+    __ Add(context, context, Immediate(AsmStackContext::GetSize(false)));
+    __ Mov(Register(X23), Immediate(0));
+    __ Bind(&loopBegin);
+    __ Ldr(outputCount, MemoryOperand(context, 0));
+    __ Add(frameStateBase, context, Immediate(FRAME_SLOT_SIZE));
+    __ Cmp(Register(X23), Immediate(0));
+    __ B(Condition::EQ, &pushArgv);
+    __ Mov(tmpReg, sp);
+    __ Add(tmpReg, tmpReg, Immediate(AsmInterpretedFrame::GetSize(false)));
+    __ Add(Register(X9), frameStateBase, Immediate(AsmInterpretedFrame::GetBaseOffset(false)));
+    __ Str(tmpReg, MemoryOperand(Register(X9), InterpretedFrameBase::GetPrevOffset(false)));
 
-    Label stackOverflow;
+    __ Bind(&pushArgv);
     // update fp
+    __ Mov(currentSlotRegister, sp);
+    __ Mov(tmpReg, outputCount);
     __ Str(currentSlotRegister, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetFpOffset(false)));
     PushArgsWithArgv(assembler, glueRegister, outputCount, frameStateBase, opRegister,
                      currentSlotRegister, nullptr, &stackOverflow);
+    __ Add(context, context, Immediate(FRAME_SLOT_SIZE)); // skip outputCount
+    __ Add(context, context, Operand(tmpReg, UXTW, FRAME_SLOT_SIZE_LOG2)); // skip args
+    __ Add(Register(X23), Register(X23), Immediate(1));
+    __ Cmp(depth, Register(X23));
+    __ B(Condition::GE, &loopBegin);
 
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
     Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
@@ -1050,7 +1071,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ PushFpAndLr();
     Register sp(SP);
     Register fp(FP);
-    Register frameType(X2);
+    Register frameType(X3);
     Register glueReg(X0);
 
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::ASM_BRIDGE_FRAME)));
@@ -1059,15 +1080,15 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ CalleeSave();
 
     Register deoptType(X1);
-    Register align(X3);
+    Register depth(X2);
     Register argC(X3);
-    Register runtimeId(X2);
-    __ Stp(deoptType, align, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
-    __ Mov(argC, Immediate(1));
+    Register runtimeId(X4);
+    __ Stp(deoptType, depth, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Mov(argC, Immediate(2)); // 2: argc
     __ Mov(runtimeId, Immediate(RTSTUB_ID(DeoptHandler)));
     __ Stp(runtimeId, argC, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
     __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
-    __ Add(sp, sp, Immediate(2 * DOUBLE_SLOT_SIZE)); // 4: skip runtimeId, argc, deoptType, align
+    __ Add(sp, sp, Immediate(2 * DOUBLE_SLOT_SIZE)); // 4: skip runtimeId, argc, depth, shiftLen
 
     __ CalleeRestore();
     Register context(X2);
