@@ -22,8 +22,7 @@
 #include <fstream>
 #include <semaphore.h>
 
-#include "ecmascript/compiler/gate_meta_data.h"
-#include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/dfx/stackinfo/js_stackgetter.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
@@ -36,40 +35,6 @@ const int MIN_TIME_DELTA = 10; // 10: the minimum value of the time delta
 const int QUEUE_CAPACITY = 51; // the capacity of the circular queue is QUEUE_CAPACITY - 1
 const size_t NAPI_CALL_SETP = 2; // 2: step size of the variable napiCallIdx in while loop
 const size_t PRE_IDX_RANGE = 5; // 5: length of variable preIdx looping backward
-enum class RunningState : size_t {
-    OTHER = 0,
-    GC,
-    CINT,
-    AINT,
-    AOT,
-    BUILTIN,
-    NAPI,
-    ARKUI_ENGINE,
-    RUNTIME
-};
-
-struct MethodKey {
-    void *methodIdentifier = nullptr;
-    RunningState state = RunningState::OTHER;
-    kungfu::DeoptType deoptType = kungfu::DeoptType::NOTCHECK;
-    bool operator < (const MethodKey &methodKey) const
-    {
-        return state < methodKey.state ||
-               (state == methodKey.state && methodIdentifier < methodKey.methodIdentifier) ||
-               (state == methodKey.state && methodIdentifier == methodKey.methodIdentifier &&
-               deoptType < methodKey.deoptType);
-    }
-};
-
-struct NodeKey {
-    struct MethodKey methodKey = {0};
-    int parentId = 0;
-    bool operator < (const NodeKey &nodeKey) const
-    {
-        return parentId < nodeKey.parentId ||
-               (parentId == nodeKey.parentId && methodKey < nodeKey.methodKey);
-    }
-};
 
 struct FrameInfo {
     std::string codeType = "";
@@ -106,16 +71,6 @@ struct ProfileInfo {
     uint64_t arkuiEngineTime = 0;
     uint64_t runtimeTime = 0;
     uint64_t otherTime = 0;
-};
-
-struct FrameInfoTemp {
-    char codeType[20] = {0}; // 20:the maximum size of the codeType
-    char functionName[100] = {0}; // 100:the maximum size of the functionName
-    int columnNumber = -1;
-    int lineNumber = -1;
-    int scriptId = 0;
-    char url[500] = {0}; // 500:the maximum size of the url
-    struct MethodKey methodKey = {0};
 };
 
 struct FrameStackAndInfo {
@@ -178,7 +133,6 @@ public:
     void SetGcState(bool gcState);
     bool GetRuntimeState() const;
     void SetRuntimeState(bool runtimeState);
-    void SetIsBreakSampleFlag(bool sampleFlag);
     int SemInit(int index, int pshared, int value);
     int SemPost(int index);
     int SemWait(int index);
@@ -230,7 +184,6 @@ private:
     int previousId_ = 0;
     RunningState previousState_ = RunningState::OTHER;
     uint64_t previousTimeStamp_ = 0;
-    std::atomic_bool isBreakSample_ = false;
     std::atomic_bool gcState_ = false;
     std::atomic_bool runtimeState_ = false;
     std::atomic_bool isStart_ = false;

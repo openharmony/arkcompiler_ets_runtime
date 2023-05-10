@@ -403,4 +403,39 @@ bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::ve
     }
     return false;
 }
+
+bool DFXJSNApi::StartSampling([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] uint64_t samplingInterval)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPSAMPLING)
+    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
+        const_cast<EcmaVM *>(vm));
+    return heapProfile->StartHeapSampling(samplingInterval);
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap sampling";
+    return false;
+#endif
+}
+
+std::unique_ptr<SamplingInfo> DFXJSNApi::GetAllocationProfile([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPSAMPLING)
+    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
+        const_cast<EcmaVM *>(vm));
+    return heapProfile->GetAllocationProfile();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap sampling";
+    return nullptr;
+#endif
+}
+
+void DFXJSNApi::StopSampling([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPSAMPLING)
+    ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
+        const_cast<EcmaVM *>(vm));
+    heapProfile->StopHeapSampling();
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap sampling";
+#endif
+}
 } // namespace panda

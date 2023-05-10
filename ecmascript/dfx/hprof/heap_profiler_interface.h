@@ -16,12 +16,15 @@
 #ifndef ECMASCRIPT_HPROF_HEAP_PROFILER_INTERFACE_H
 #define ECMASCRIPT_HPROF_HEAP_PROFILER_INTERFACE_H
 
+#include <memory>
+
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 class EcmaVM;
 class Progress;
 class Stream;
+struct SamplingInfo;
 
 enum class DumpFormat { JSON, BINARY, OTHER };
 
@@ -40,6 +43,9 @@ public:
                                    bool traceAllocation = false, bool newThread = true) = 0;
     virtual bool UpdateHeapTracking(Stream *stream) = 0;
     virtual bool StopHeapTracking(Stream *stream, Progress *progress = nullptr, bool newThread = true) = 0;
+    virtual bool StartHeapSampling(uint64_t samplingInterval, int stackDepth = 128) = 0;
+    virtual void StopHeapSampling() = 0;
+    virtual std::unique_ptr<struct SamplingInfo> GetAllocationProfile() = 0;
 
     NO_MOVE_SEMANTIC(HeapProfilerInterface);
     NO_COPY_SEMANTIC(HeapProfilerInterface);

@@ -161,7 +161,7 @@ public:
         return cb(column);
     }
 
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER) || defined(ECMASCRIPT_SUPPORT_HEAPSAMPLING)
     int32_t GetFristLine(panda_file::File::EntityId methodId)
     {
         const LineNumberTable &lineTable = GetLineNumberTable(methodId);

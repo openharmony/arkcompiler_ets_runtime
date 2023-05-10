@@ -72,7 +72,6 @@ bool SamplingProcessor::Run([[maybe_unused]] uint32_t threadIndex)
                 generator_->AddSample(frame);
             }
         }
-        generator_->SetIsBreakSampleFlag(false);
     }
     generator_->SetThreadStopTime();
     pthread_setname_np(tid, "GC_WorkerThread");

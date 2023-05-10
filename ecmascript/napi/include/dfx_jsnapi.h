@@ -35,6 +35,7 @@ class Stream;
 class Progress;
 struct ProfileInfo;
 struct JsFrameInfo;
+struct SamplingInfo;
 }
 class DFXJSNApi;
 using EcmaVM = ecmascript::EcmaVM;
@@ -42,6 +43,7 @@ using Stream = ecmascript::Stream;
 using Progress = ecmascript::Progress;
 using ProfileInfo = ecmascript::ProfileInfo;
 using JsFrameInfo = ecmascript::JsFrameInfo;
+using SamplingInfo = ecmascript::SamplingInfo;
 
 class PUBLIC_API DFXJSNApi {
 public:
@@ -80,6 +82,9 @@ public:
                                         int interval = 500); // 500:Default Sampling interval 500 microseconds
     static std::unique_ptr<ProfileInfo> StopCpuProfilerForInfo(const EcmaVM *vm);
     static void SetCpuSamplingInterval(const EcmaVM *vm, int interval);
+    static bool StartSampling(const EcmaVM *vm, uint64_t samplingInterval);
+    static std::unique_ptr<SamplingInfo> GetAllocationProfile(const EcmaVM *vm);
+    static void StopSampling(const EcmaVM *vm);
 
     static void ResumeVM(const EcmaVM *vm);
     static bool SuspendVM(const EcmaVM *vm);

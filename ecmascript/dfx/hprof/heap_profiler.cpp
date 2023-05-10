@@ -15,13 +15,13 @@
 
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 
+#include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/dfx/hprof/file_stream.h"
 
 namespace panda::ecmascript {
 HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm), chunk_(vm->GetNativeAreaAllocator())
@@ -235,5 +235,30 @@ void HeapProfiler::ClearSnapshot()
         GetChunk()->Delete(snapshot);
     }
     hprofs_.clear();
+}
+
+bool HeapProfiler::StartHeapSampling(uint64_t samplingInterval, int stackDepth)
+{
+    if (heapSampling_.get()) {
+        LOG_ECMA(ERROR) << "Do not start heap sampling twice in a row.";
+        return false;
+    }
+    heapSampling_ = std::make_unique<HeapSampling>(vm_, const_cast<Heap *>(vm_->GetHeap()),
+                                                   samplingInterval, stackDepth);
+    return true;
+}
+
+void HeapProfiler::StopHeapSampling()
+{
+    heapSampling_.reset();
+}
+
+std::unique_ptr<struct SamplingInfo> HeapProfiler::GetAllocationProfile()
+{
+    if (!heapSampling_.get()) {
+        LOG_ECMA(ERROR) << "Heap sampling was not started, please start firstly.";
+        return nullptr;
+    }
+    return heapSampling_->GetAllocationProfile();
 }
 }  // namespace panda::ecmascript
