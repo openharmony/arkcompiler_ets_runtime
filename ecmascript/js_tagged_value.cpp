@@ -30,6 +30,7 @@
 #include "ecmascript/js_api/js_api_stack.h"
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/js_date.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
@@ -270,6 +271,11 @@ bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, co
 ComparisonResult JSTaggedValue::Compare(JSThread *thread, const JSHandle<JSTaggedValue> &x,
                                         const JSHandle<JSTaggedValue> &y)
 {
+    if (x->IsDate() && y->IsDate()) {
+        double timeX = JSDate::Cast(x->GetTaggedObject())->GetTimeValue().GetDouble();
+        double timeY = JSDate::Cast(y->GetTaggedObject())->GetTimeValue().GetDouble();
+        return StrictNumberCompare(timeX, timeY);
+    }
     JSHandle<JSTaggedValue> primX(thread, ToPrimitive(thread, x));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
     JSHandle<JSTaggedValue> primY(thread, ToPrimitive(thread, y));

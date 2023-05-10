@@ -33,6 +33,7 @@ group("ark_js_moduletest") {
     "container",
     "dataproperty",
     "datecase",
+    "datecompare",
     "dateparse",
     "dynamicimport",
     "dyninstruction",
