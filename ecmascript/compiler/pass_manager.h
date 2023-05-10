@@ -35,7 +35,7 @@ public:
           bcInfoCollector_(collector),
           tsManager_(vm_->GetTSManager()),
           lexEnvManager_(bcInfoCollector_->GetEnvManager()),
-          cmpCfg_(triple, log->IsTraceBC(), vm_->GetJSOptions().GetOptCodeProfiler()),
+          cmpCfg_(triple, &vm_->GetJSOptions()),
           log_(log),
           jsPandaFile_(collector->GetJSPandaFile()),
           aotModule_(aotModule)
@@ -111,38 +111,40 @@ private:
 
 class PassOptions {
 public:
-    PassOptions(bool enableTypeLowering, bool enableTypeInfer, bool enableOptInlining, bool enableOptPGOType)
+    PassOptions(bool enableTypeLowering, bool enableEarlyElimination, bool enableLaterElimination,
+                bool enableValueNumbering, bool enableTypeInfer, bool enableOptInlining, bool enableOptPGOType)
         : enableTypeLowering_(enableTypeLowering),
+          enableEarlyElimination_(enableEarlyElimination),
+          enableLaterElimination_(enableLaterElimination),
+          enableValueNumbering_(enableValueNumbering),
           enableTypeInfer_(enableTypeInfer),
           enableOptInlining_(enableOptInlining),
           enableOptPGOType_(enableOptPGOType)
         {
         }
 
-    bool EnableTypeLowering() const
-    {
-        return enableTypeLowering_;
-    }
+#define OPTION_LIST(V)           \
+    V(TypeLowering, true)        \
+    V(EarlyElimination, true)    \
+    V(LaterElimination, true)    \
+    V(ValueNumbering, false)     \
+    V(TypeInfer, false)          \
+    V(OptInlining, false)        \
+    V(OptPGOType, false)
 
-    bool EnableTypeInfer() const
-    {
-        return enableTypeInfer_;
-    }
+#define DECL_OPTION(NAME, DEFAULT)    \
+public:                               \
+    bool Enable##NAME() const         \
+    {                                 \
+        return enable##NAME##_;       \
+    }                                 \
+                                      \
+private:                              \
+    bool enable##NAME##_ {DEFAULT};
 
-    bool EnableOptInlining() const
-    {
-        return enableOptInlining_;
-    }
-
-    bool EnableOptPGOType() const
-    {
-        return enableOptPGOType_;
-    }
-private:
-    bool enableTypeLowering_ {false};
-    bool enableTypeInfer_ {false};
-    bool enableOptInlining_ {false};
-    bool enableOptPGOType_ {false};
+    OPTION_LIST(DECL_OPTION)
+#undef ENABLE_OPTION
+#undef OPTION_LIST
 };
 
 class PassManager {

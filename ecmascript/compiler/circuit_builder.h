@@ -27,6 +27,7 @@
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/js_hclass.h"
+#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tagged_array.h"
 
@@ -143,9 +144,15 @@ class StubBuilder;
 
 class CompilationConfig {
 public:
-    explicit CompilationConfig(const std::string &triple, bool isTraceBC = false, bool profiling = false)
-        : tripleStr_(triple), triple_(GetTripleFromString(triple)), isTraceBc_(isTraceBC), profiling_(profiling)
+    explicit CompilationConfig(const std::string &triple, const JSRuntimeOptions *options = nullptr)
+        : tripleStr_(triple), triple_(GetTripleFromString(triple))
     {
+        if (options != nullptr) {
+            isTraceBc_ = options->IsTraceBC();
+            profiling_ = options->GetOptCodeProfiler();
+            stressDeopt_ = options->GetStressDeopt();
+            verifyVTable_ = options->GetVerifyVTable();
+        }
     }
     ~CompilationConfig() = default;
 
@@ -189,18 +196,28 @@ public:
         return profiling_;
     }
 
+    bool IsStressDeopt() const
+    {
+        return stressDeopt_;
+    }
+
+    bool IsVerifyVTbale() const
+    {
+        return verifyVTable_;
+    }
+
 private:
     inline Triple GetTripleFromString(const std::string &triple)
     {
-        if (triple.compare("x86_64-unknown-linux-gnu") == 0) {
+        if (triple.compare(TARGET_X64) == 0) {
             return Triple::TRIPLE_AMD64;
         }
 
-        if (triple.compare("aarch64-unknown-linux-gnu") == 0) {
+        if (triple.compare(TARGET_AARCH64) == 0) {
             return Triple::TRIPLE_AARCH64;
         }
 
-        if (triple.compare("arm-unknown-linux-gnu") == 0) {
+        if (triple.compare(TARGET_ARM32) == 0) {
             return Triple::TRIPLE_ARM32;
         }
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -208,8 +225,10 @@ private:
     }
     std::string tripleStr_;
     Triple triple_;
-    bool isTraceBc_;
-    bool profiling_;
+    bool isTraceBc_ {false};
+    bool profiling_ {false};
+    bool stressDeopt_ {false};
+    bool verifyVTable_ {false};
 };
 
 class CircuitBuilder {

@@ -409,8 +409,9 @@ action("gen_stub_file") {
   if (current_toolchain == host_toolchain) {
     stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.an"
   } else {
-    stub_option = " --stub-file=" + rebase_path(stub_file_gen_dir) +
-                  "/stub.an" + " --target-triple=aarch64-unknown-linux-gnu"
+    stub_option =
+        " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.an" +
+        " --compiler-target-triple=aarch64-unknown-linux-gnu"
   }
 
   args = [

@@ -388,16 +388,16 @@ template("host_aot_js_test_action") {
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
         _test_aot_log_level +
-        " --log-components=compiler --enable-type-lowering=false"
+        " --log-components=compiler --compiler-opt-type-lowering=false"
 
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
-      _aot_compile_options_ += " --trace-deopt=true"
+      _aot_compile_options_ += " --compiler-trace-deopt=true"
     }
 
     if (defined(invoker.is_enable_opt_inlining) &&
         invoker.is_enable_opt_inlining) {
-      _aot_compile_options_ += " --enable-type-lowering=true"
+      _aot_compile_options_ += " --compiler-opt-type-lowering=true"
     }
 
     args = [
@@ -580,7 +580,7 @@ template("host_aot_test_action") {
 
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
-      _aot_compile_options_ += " --trace-deopt=true"
+      _aot_compile_options_ += " --compiler-trace-deopt=true"
     }
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {
@@ -596,7 +596,7 @@ template("host_aot_test_action") {
     }
     if (defined(invoker.is_enable_opt_inlining) &&
         invoker.is_enable_opt_inlining) {
-      _aot_compile_options_ += " --enable-type-lowering=true"
+      _aot_compile_options_ += " --compiler-opt-type-lowering=true"
     }
 
     args = [
@@ -639,10 +639,10 @@ template("host_aot_test_action") {
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_slowpath_) +
         " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
-        "  --enable-type-lowering=false"
+        "  --compiler-opt-type-lowering=false"
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
-      _aot_compile_options_ += " --trace-deopt=true"
+      _aot_compile_options_ += " --compiler-trace-deopt=true"
     }
 
     if (defined(invoker.is_enable_builtins_dts) &&
@@ -660,7 +660,7 @@ template("host_aot_test_action") {
 
     if (defined(invoker.is_enable_opt_inlining) &&
         invoker.is_enable_opt_inlining) {
-      _aot_compile_options_ += " --enable-type-lowering=true"
+      _aot_compile_options_ += " --compiler-opt-type-lowering=true"
     }
 
     args = [
@@ -874,7 +874,7 @@ template("host_typeinfer_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_compile_options_ =
-        " --assert-types=true" + " --enable-type-lowering=false"
+        " --compiler-assert-types=true" + " --compiler-opt-type-lowering=false"
 
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {
@@ -917,7 +917,7 @@ template("host_typeinfer_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_compile_options_ =
-        " --assert-types=true" + " --enable-type-lowering=false"
+        " --compiler-assert-types=true" + " --compiler-opt-type-lowering=false"
 
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {

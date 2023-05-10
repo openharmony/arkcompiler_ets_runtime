@@ -45,7 +45,7 @@ public:
 
     void SetUp() override
     {
-        InitializeLLVM("aarch64-unknown-linux-gnu");
+        InitializeLLVM(TARGET_AARCH64);
         TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
         chunk_ = thread->GetEcmaVM()->GetChunk();
     }
@@ -65,7 +65,7 @@ public:
 
     void InitializeLLVM(std::string triple)
     {
-        if (triple.compare("x86_64-unknown-linux-gnu") == 0) {
+        if (triple.compare(TARGET_X64) == 0) {
             LLVMInitializeX86TargetInfo();
             LLVMInitializeX86TargetMC();
             LLVMInitializeX86Disassembler();
@@ -73,14 +73,14 @@ public:
             LLVMInitializeX86AsmPrinter();
             LLVMInitializeX86AsmParser();
             LLVMInitializeX86Target();
-        } else if (triple.compare("aarch64-unknown-linux-gnu") == 0) {
+        } else if (triple.compare(TARGET_AARCH64) == 0) {
             LLVMInitializeAArch64TargetInfo();
             LLVMInitializeAArch64TargetMC();
             LLVMInitializeAArch64Disassembler();
             LLVMInitializeAArch64AsmPrinter();
             LLVMInitializeAArch64AsmParser();
             LLVMInitializeAArch64Target();
-        } else if (triple.compare("arm-unknown-linux-gnu") == 0) {
+        } else if (triple.compare(TARGET_ARM32) == 0) {
             LLVMInitializeARMTargetInfo();
             LLVMInitializeARMTargetMC();
             LLVMInitializeARMDisassembler();
@@ -145,7 +145,7 @@ HWTEST_F_L0(AssemblerAarch64Test, Mov)
     __ Mov(Register(X3),  Immediate(0x7fff001234));
     __ Mov(Register(X4).W(),  Immediate(0xff0000ff));
     std::ostringstream oss;
-    DisassembleChunk("aarch64-unknown-linux-gnu", &masm, oss);
+    DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
 }
 
@@ -159,7 +159,7 @@ HWTEST_F_L0(AssemblerAarch64Test, MovReg)
     __ Mov(Register(X2),  Register(SP));
     __ Mov(Register(X1, W),  Register(X2, W));
     std::ostringstream oss;
-    DisassembleChunk("aarch64-unknown-linux-gnu", &masm, oss);
+    DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
 }
 
@@ -176,7 +176,7 @@ HWTEST_F_L0(AssemblerAarch64Test, LdpStp)
     __ Ldp(Register(X3),  Register(X4), MemoryOperand(Register(SP), 8, OFFSET));
     __ Ldp(Register(X3).W(),  Register(X4).W(), MemoryOperand(Register(SP), 8, OFFSET));
     std::ostringstream oss;
-    DisassembleChunk("aarch64-unknown-linux-gnu", &masm, oss);
+    DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
 }
 
@@ -207,7 +207,7 @@ HWTEST_F_L0(AssemblerAarch64Test, LdrStr)
     __ Ldur(Register(X1), MemoryOperand(Register(SP), -8, OFFSET));
     __ Stur(Register(X3), MemoryOperand(Register(SP), -8, OFFSET));
     std::ostringstream oss;
-    DisassembleChunk("aarch64-unknown-linux-gnu", &masm, oss);
+    DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
 }
 
@@ -228,7 +228,7 @@ HWTEST_F_L0(AssemblerAarch64Test, AddSub)
     __ Add(Register(SP), Register(SP), Operand(Register(X2), UXTW, 3));
 
     std::ostringstream oss;
-    DisassembleChunk("aarch64-unknown-linux-gnu", &masm, oss);
+    DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
 }
 
@@ -241,7 +241,7 @@ HWTEST_F_L0(AssemblerAarch64Test, CMP)
     __ Cmp(Register(X1), Immediate(8));
 
     std::ostringstream oss;
-    DisassembleChunk("aarch64-unknown-linux-gnu", &masm, oss);
+    DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
 }
 
@@ -272,7 +272,7 @@ HWTEST_F_L0(AssemblerAarch64Test, Branch)
     }
 
     std::ostringstream oss;
-    DisassembleChunk("aarch64-unknown-linux-gnu", &masm, oss);
+    DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
 }
 
@@ -309,7 +309,7 @@ HWTEST_F_L0(AssemblerAarch64Test, Loop)
         __ Mov(Register(X0), Immediate(0xa));
     }
     std::ostringstream oss;
-    DisassembleChunk("aarch64-unknown-linux-gnu", &masm, oss);
+    DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
 }
 
@@ -347,7 +347,7 @@ HWTEST_F_L0(AssemblerAarch64Test, TbzAndCbz)
         __ Mov(Register(X0), Immediate(0x3));
     }
     std::ostringstream oss;
-    DisassembleChunk("aarch64-unknown-linux-gnu", &masm, oss);
+    DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
 }
 
@@ -369,7 +369,7 @@ HWTEST_F_L0(AssemblerAarch64Test, Call)
         __ Blr(Register(X2));
     }
     std::ostringstream oss;
-    DisassembleChunk("aarch64-unknown-linux-gnu", &masm, oss);
+    DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
 }
 
@@ -384,7 +384,7 @@ HWTEST_F_L0(AssemblerAarch64Test, RetAndBrk)
     __ Brk(Immediate(0));
 
     std::ostringstream oss;
-    DisassembleChunk("aarch64-unknown-linux-gnu", &masm, oss);
+    DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
 }
 #undef __

@@ -624,6 +624,9 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
     GateRef result = Circuit::NullGate();
     if (LIKELY(!plr.IsAccessor())) {
         result = builder_.LoadProperty(receiver, pfrGate, plr.IsVtable());
+        if (UNLIKELY(IsVerifyVTbale())) {
+            AddVTableLoadVerifer(gate, result);
+        }
     } else {
         result = builder_.CallGetter(gate, receiver, pfrGate);
     }
@@ -681,7 +684,10 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef pfrGate = builder_.Int32(plr.GetData());
     if (LIKELY(plr.IsLocal())) {
-        builder_.StoreProperty(receiver, pfrGate, value);
+        GateRef store = builder_.StoreProperty(receiver, pfrGate, value);
+        if (UNLIKELY(IsVerifyVTbale())) {
+            AddVTableStoreVerifer(gate, store, isThis);
+        }
     } else {
         builder_.CallSetter(gate, receiver, pfrGate, value);
     }
@@ -1294,6 +1300,26 @@ void TSTypeLowering::LowerTypedCallthisrange(GateRef gate)
 
 void TSTypeLowering::AddProfiling(GateRef gate)
 {
+    if (IsTraceBC()) {
+        // see stateSplit as a part of JSByteCode if exists
+        GateRef maybeStateSplit = acc_.GetDep(gate);
+        GateRef current = Circuit::NullGate();
+        if (acc_.GetOpCode(maybeStateSplit) == OpCode::STATE_SPLIT) {
+            current = maybeStateSplit;
+        } else {
+            current = gate;
+        }
+
+        EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
+        auto ecmaOpcodeGate = builder_.Int32(static_cast<uint32_t>(ecmaOpcode));
+        GateRef constOpcode = builder_.Int32ToTaggedInt(ecmaOpcodeGate);
+        GateRef typedPath = builder_.Int32ToTaggedInt(builder_.Int32(1));
+        GateRef traceGate = builder_.CallRuntime(glue_, RTSTUB_ID(DebugAOTPrint), acc_.GetDep(current),
+                                                 { constOpcode, typedPath }, gate);
+        acc_.SetDep(current, traceGate);
+        builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: trace or STATE_SPLIT
+    }
+
     if (IsProfiling()) {
         // see stateSplit as a part of JSByteCode if exists
         GateRef maybeStateSplit = acc_.GetDep(gate);
@@ -1314,5 +1340,33 @@ void TSTypeLowering::AddProfiling(GateRef gate)
         acc_.SetDep(current, profiling);
         builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: profiling or STATE_SPLIT
     }
+}
+
+void TSTypeLowering::AddVTableLoadVerifer(GateRef gate, GateRef value)
+{
+    GateRef receiver = acc_.GetValueIn(gate, 2);  // 2: receiver
+    GateRef key = acc_.GetValueIn(gate, 1);       // 1: key
+
+    GateRef verifier = builder_.CallRuntime(glue_, RTSTUB_ID(VerifyVTableLoading), acc_.GetDep(gate),
+                                            { receiver, key, value }, gate);
+    acc_.SetDep(gate, verifier);
+}
+
+void TSTypeLowering::AddVTableStoreVerifer(GateRef gate, GateRef store, bool isThis)
+{
+    GateRef key = acc_.GetValueIn(gate, 1);
+    GateRef receiver = Circuit::NullGate();
+    GateRef value = Circuit::NullGate();
+    if (isThis) {
+        receiver = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
+        value = acc_.GetValueIn(gate, 2);  // 2: acc
+    } else {
+        receiver = acc_.GetValueIn(gate, 2);  // 2: receiver
+        value = acc_.GetValueIn(gate, 3);     // 3: acc
+    }
+
+    GateRef verifier = builder_.CallRuntime(glue_, RTSTUB_ID(VerifyVTableStoring), store,
+                                            { receiver, key, value }, gate);
+    acc_.SetDep(gate, verifier);
 }
 }  // namespace panda::ecmascript

@@ -21,7 +21,8 @@
 namespace panda::ecmascript::kungfu {
 class CompilationDriver {
 public:
-    CompilationDriver(PGOProfilerLoader &profilerLoader, BytecodeInfoCollector* collector);
+    CompilationDriver(PGOProfilerLoader &profilerLoader, BytecodeInfoCollector* collector,
+                      const std::string &compilemMethodsOption, const std::string &compileSkipMethodsOption);
     ~CompilationDriver();
 
     NO_COPY_SEMANTIC(CompilationDriver);
@@ -81,7 +82,7 @@ public:
                 auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
                 auto methodLiteral = jsPandaFile_->FindMethodLiteral(compilingMethod);
                 const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile_, methodLiteral->GetMethodId()));
-                if (FilterMethod(bytecodeInfo_.GetRecordName(index), methodLiteral, methodPcInfo)) {
+                if (FilterMethod(bytecodeInfo_.GetRecordName(index), methodLiteral, methodPcInfo, methodName)) {
                     bytecodeInfo_.AddSkippedMethod(compilingMethod);
                 } else {
                     if (!methodInfo.IsCompiled()) {
@@ -285,7 +286,14 @@ private:
     }
 
     bool FilterMethod(const CString &recordName, const MethodLiteral *methodLiteral,
-                      const MethodPcInfo &methodPCInfo) const;
+                      const MethodPcInfo &methodPCInfo, const std::string &methodName) const;
+
+    std::vector<std::string> SplitString(const std::string &str, const char ch) const;
+
+    void ParseOption(const std::string &option, std::map<std::string, std::vector<std::string>> &optionMap) const;
+
+    bool FilterOption(const std::map<std::string, std::vector<std::string>> &optionMap, const std::string &recordName,
+                      const std::string &methodName) const;
 
     EcmaVM *vm_ {nullptr};
     const JSPandaFile *jsPandaFile_ {nullptr};
@@ -293,6 +301,8 @@ private:
     BCInfo &bytecodeInfo_;
     std::deque<uint32_t> compileQueue_ {};
     std::map<CString, uint32_t> sortedRecords_ {};
+    std::map<std::string, std::vector<std::string>> optionSelectMethods_ {};
+    std::map<std::string, std::vector<std::string>> optionSkipMethods_ {};
 };
 } // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_COMPILATION_DRIVER_H

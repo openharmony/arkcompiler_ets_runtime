@@ -329,7 +329,7 @@ void LLVMAssembler::Run(const CompilerLog &log)
 void LLVMAssembler::Initialize(LOptions option)
 {
     std::string triple(LLVMGetTarget(module_));
-    if (triple.compare("x86_64-unknown-linux-gnu") == 0) {
+    if (triple.compare(TARGET_X64) == 0) {
 #if defined(PANDA_TARGET_MACOS) || !defined(PANDA_TARGET_ARM64)
         LLVMInitializeX86TargetInfo();
         LLVMInitializeX86TargetMC();
@@ -339,14 +339,14 @@ void LLVMAssembler::Initialize(LOptions option)
         LLVMInitializeX86AsmParser();
         LLVMInitializeX86Target();
 #endif
-    } else if (triple.compare("aarch64-unknown-linux-gnu") == 0) {
+    } else if (triple.compare(TARGET_AARCH64) == 0) {
         LLVMInitializeAArch64TargetInfo();
         LLVMInitializeAArch64TargetMC();
         LLVMInitializeAArch64Disassembler();
         LLVMInitializeAArch64AsmPrinter();
         LLVMInitializeAArch64AsmParser();
         LLVMInitializeAArch64Target();
-    } else if (triple.compare("arm-unknown-linux-gnu") == 0) {
+    } else if (triple.compare(TARGET_ARM32) == 0) {
 #if defined(PANDA_TARGET_MACOS) || !defined(PANDA_TARGET_ARM64)
         LLVMInitializeARMTargetInfo();
         LLVMInitializeARMTargetMC();
