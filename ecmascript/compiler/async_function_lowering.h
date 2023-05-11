@@ -66,6 +66,8 @@ private:
 
     GateRef GetFirstRestoreRegister(GateRef gate) const;
 
+    GateRef GetDependPhiFromLoopBegin(GateRef loopbegin) const;
+
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;
     CircuitBuilder builder_;

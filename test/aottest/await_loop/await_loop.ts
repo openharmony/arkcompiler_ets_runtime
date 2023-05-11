@@ -15,20 +15,52 @@
 declare function print(arg:any):string;
 
 function bar() {
-    print(5);
 }
 
 function bar2() {
-    print(6);
 }
+
 async function foo() {
     let a:number[] = [];
-    for (let i = 0; i<2; ++i) {
+    for (let i = 0; i < 1; ++i) {
         await bar();
-        for (let j = 0; j<2; ++j) {
+        for (let j = 0; j < 1; ++j) {
             await bar2();
         }
     }
+    print("foo");
 }
 
-foo()
+function createArray() {
+    return new Array<number>(1);
+}
+
+async function foo2() {
+    let a:Array<number> = createArray();
+    for (let i = 0; i < a.length; ++i) {
+        await bar();
+        for (let j = 0; j < 1; ++j) {
+            await bar2();
+        }
+    }
+    print("foo2");
+}
+
+async function foo3() {
+    for(let i = 0; i<1; ++i) {
+        bar();
+    }
+    for (let i = 0; i < 1; ++i) {
+        await bar();
+        for (let j = 0; j < 1; ++j) {
+            await bar2();
+        }
+    }
+    print("foo3");
+}
+
+foo();
+
+foo2();
+
+foo3();
