@@ -265,7 +265,9 @@ public:
             CropNamespaceIfAbsent(currentModuleName);
             if (bundleName != vm->GetBundleName() || moduleName != currentModuleName) {
                 entryPoint = PREVIEW_OF_ACROSS_HAP_FLAG;
-                LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
+                if (vm->EnableReportModuleResolvingFailure()) {
+                    LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
+                }
             }
 #endif
         } else {
