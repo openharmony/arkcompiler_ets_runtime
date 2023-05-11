@@ -106,7 +106,8 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-    if (entryPoint == PathHelper::PREVIEW_OF_ACROSS_HAP_FLAG) {
+    if (entryPoint == PathHelper::PREVIEW_OF_ACROSS_HAP_FLAG &&
+        thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
         THROW_SYNTAX_ERROR_AND_RETURN(thread, "", thread->GlobalConstants()->GetHandledUndefined());
     }
 #endif
