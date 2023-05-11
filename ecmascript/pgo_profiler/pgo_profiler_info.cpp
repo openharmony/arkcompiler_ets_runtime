@@ -192,6 +192,14 @@ void PGOMethodTypeSet::Merge(const PGOMethodTypeSet *info)
     }
 }
 
+void PGOMethodTypeSet::SkipFromBinary(void **buffer)
+{
+    uint32_t size = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
+    for (uint32_t i = 0; i < size; i++) {
+        base::ReadBufferInSize<PGOMethodTypeInfo>(buffer);
+    }
+}
+
 bool PGOMethodTypeSet::ParseFromBinary(void **buffer)
 {
     uint32_t size = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
@@ -346,6 +354,9 @@ bool PGOMethodInfoMap::ParseFromBinary(Chunk *chunk, uint32_t threshold, void **
     for (uint32_t j = 0; j < secInfo.number_; j++) {
         PGOMethodInfo *info = base::ReadBufferInSize<PGOMethodInfo>(buffer);
         if (info->IsFilter(threshold)) {
+            if (header->SupportType()) {
+                PGOMethodTypeSet::SkipFromBinary(buffer);
+            }
             continue;
         }
         methodInfos_.emplace(info->GetMethodId(), info);
@@ -498,6 +509,9 @@ bool PGOMethodIdSet::ParseFromBinary(NativeAreaAllocator *allocator, uint32_t th
     for (uint32_t j = 0; j < secInfo.number_; j++) {
         PGOMethodInfo *info = base::ReadBufferInSize<PGOMethodInfo>(buffer);
         if (info->IsFilter(threshold)) {
+            if (header->SupportType()) {
+                PGOMethodTypeSet::SkipFromBinary(buffer);
+            }
             continue;
         }
         methodIdSet_.emplace(info->GetMethodId());

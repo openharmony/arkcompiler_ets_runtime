@@ -373,7 +373,7 @@ public:
     }
 
     void Merge(const PGOMethodTypeSet *info);
-
+    static void SkipFromBinary(void **buffer);
     bool ParseFromBinary(void **buffer);
     bool ProcessToBinary(std::stringstream &stream) const;
 
