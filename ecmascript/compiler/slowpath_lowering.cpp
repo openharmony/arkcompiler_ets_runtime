@@ -57,9 +57,6 @@ void SlowPathLowering::CallRuntimeLowering()
             case OpCode::CONST_DATA:
                 LowerConstPoolData(gate);
                 break;
-            case OpCode::DEOPT_CHECK:
-                LowerDeoptCheck(gate);
-                break;
             case OpCode::CONSTRUCT:
                 LowerConstruct(gate);
                 break;
@@ -2949,31 +2946,6 @@ void SlowPathLowering::LowerConstPoolData(GateRef gate)
     acc_.UpdateAllUses(gate, newGate);
     // delete old gate
     acc_.DeleteGate(gate);
-}
-
-void SlowPathLowering::LowerDeoptCheck(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef condition = acc_.GetValueIn(gate, 0);
-    GateRef frameState = acc_.GetValueIn(gate, 1);
-    GateRef deoptType = acc_.GetValueIn(gate, 2);
-
-    if (IsStressDeopt()) {
-        condition = builder_.False();
-    }
-
-    Label success(&builder_);
-    Label fail(&builder_);
-    builder_.Branch(condition, &success, &fail);
-    builder_.Bind(&fail);
-    {
-        GateRef glue = acc_.GetGlueFromArgList();
-        GateRef deoptCall = circuit_->NewGate(circuit_->Deopt(), {builder_.GetDepend(), frameState, glue, deoptType});
-        builder_.SetDepend(deoptCall);
-        builder_.Return(deoptCall);
-    }
-    builder_.Bind(&success);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void SlowPathLowering::LowerConstruct(GateRef gate)

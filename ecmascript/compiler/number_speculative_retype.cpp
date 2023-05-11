@@ -80,6 +80,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitCallBuiltins(gate);
         case OpCode::TYPE_CONVERT:
             return VisitTypeConvert(gate);
+        case OpCode::FRAME_STATE:
+            return VisitFrameState(gate);
         default:
             return VisitOthers(gate);
     }
@@ -386,6 +388,14 @@ GateRef NumberSpeculativeRetype::VisitCallBuiltins(GateRef gate)
             acc_.ReplaceStateIn(gate, builder_.GetState());
             acc_.ReplaceDependIn(gate, builder_.GetDepend());
         }
+    }
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitFrameState(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::AnyType());
     }
     return Circuit::NullGate();
 }

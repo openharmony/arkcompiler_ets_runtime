@@ -50,7 +50,17 @@ public:
         return state_ == VisitState::VISITED;
     }
 
+    bool IsLoopHead() const
+    {
+        return stateKind_ == StateKind::LOOP_HEAD;
+    }
+
 private:
+    enum StateKind {
+        BRANCH,
+        LOOP_HEAD,
+        OTHER,
+    };
     static constexpr int32_t INVALID_DEPTH = -1;
     size_t id_ {0};
     int32_t depth_ {INVALID_DEPTH};
@@ -60,6 +70,7 @@ private:
     ChunkVector<GateRegion*> succs_;
     ChunkVector<GateRegion*> dominatedRegions_;
     VisitState state_ {VisitState::UNVISITED};
+    StateKind stateKind_ {StateKind::OTHER};
     friend class CFGBuilder;
     friend class GateScheduler;
     friend class ImmediateDominatorsGenerator;
@@ -84,7 +95,28 @@ private:
         GateRegion* upperBound {nullptr};
         size_t schedulableUseCount {0};
         ScheduleState state_ {ScheduleState::NONE};
+
+        bool IsSchedulable() const
+        {
+            return state_ == ScheduleState::SCHEDELABLE;
+        }
+
+        bool IsFixed() const
+        {
+            return state_ == ScheduleState::FIXED;
+        }
+
+        bool IsSelector() const
+        {
+            return state_ == ScheduleState::SELECTOR;
+        }
+
+        bool IsNone() const
+        {
+            return state_ == ScheduleState::NONE;
+        }
     };
+
     bool IsLogEnabled() const
     {
         return enableLog_;
@@ -95,7 +127,7 @@ private:
         return methodName_;
     }
 
-    void LinearizeGraph(ControlFlowGraph &result);
+    void LinearizeGraph();
     void LinearizeRegions(ControlFlowGraph &result);
     void CreateGateRegion(GateRef gate);
 
@@ -172,12 +204,18 @@ private:
         return region != nullptr;
     }
 
+    bool HasLoop() const
+    {
+        return loopNumber_ != 0;
+    }
+
     void PrintGraph(const char* title);
 
     bool enableLog_ {false};
     std::string methodName_;
     Chunk* chunk_ {nullptr};
     Circuit* circuit_ {nullptr};
+    size_t loopNumber_ {0};
 
     GateAccessor acc_;
     ChunkVector<GateInfo> gateIdToGateInfo_;

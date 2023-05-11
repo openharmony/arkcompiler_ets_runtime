@@ -76,7 +76,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-type-lowering:         Enable all type optimization pass for aot compiler. Default: 'true'\n"
     "--compiler-opt-early-elimination:     Enable EarlyElimination for aot compiler. Default: 'true'\n"
     "--compiler-opt-later-elimination:     Enable LaterElimination for aot compiler. Default: 'true'\n"
-    "--compiler-opt-value-numbering:       Enable ValueNumbering for aot compiler. Default: 'false'\n"
+    "--compiler-opt-value-numbering:       Enable ValueNumbering for aot compiler. Default: 'true'\n"
     "--compiler-opt-inlining:              Enable inlining function for aot compiler: Default: 'false'\n"
     "--compiler-opt-pgotype:               Enable pgo type for aot compiler: Default: 'true'\n"
     "--entry-point:                        Full name of entrypoint function. Default: '_GLOBAL::func_main_0'\n"

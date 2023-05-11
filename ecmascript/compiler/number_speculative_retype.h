@@ -81,6 +81,7 @@ private:
     GateRef VisitCallBuiltins(GateRef gate);
     GateRef VisitOthers(GateRef gate);
     GateRef VisitTypeConvert(GateRef gate);
+    GateRef VisitFrameState(GateRef gate);
 
     GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);
 
