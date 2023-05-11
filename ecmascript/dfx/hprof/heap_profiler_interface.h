@@ -45,7 +45,7 @@ public:
     virtual bool StopHeapTracking(Stream *stream, Progress *progress = nullptr, bool newThread = true) = 0;
     virtual bool StartHeapSampling(uint64_t samplingInterval, int stackDepth = 128) = 0;
     virtual void StopHeapSampling() = 0;
-    virtual std::unique_ptr<struct SamplingInfo> GetAllocationProfile() = 0;
+    virtual const struct SamplingInfo *GetAllocationProfile() = 0;
 
     NO_MOVE_SEMANTIC(HeapProfilerInterface);
     NO_COPY_SEMANTIC(HeapProfilerInterface);

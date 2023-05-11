@@ -30,38 +30,32 @@ struct CallFrameInfo {
 };
 
 struct Sample {
-    Sample(size_t size, size_t nodeId, size_t ordinal)
+    Sample(size_t size, uint32_t nodeId, uint64_t ordinal)
         : size_(size),
         nodeId_(nodeId),
         ordinal_(ordinal) {}
     const size_t size_;
-    const size_t nodeId_;
-    const size_t ordinal_;
+    const uint32_t nodeId_;
+    const uint64_t ordinal_;
 };
 
 struct SamplingNode {
     std::map<size_t, unsigned int> allocations_;
     std::map<MethodKey, std::unique_ptr<struct SamplingNode>> children_;
     CallFrameInfo callFrameInfo_;
-    size_t id_ = 0;
-};
-
-struct AllocationNode {
+    uint32_t id_ = 0;
     size_t selfSize_ = 0;
-    CVector<struct AllocationNode> children_;
-    CallFrameInfo callFrameInfo_;
-    size_t id_ = 0;
 };
 
 struct SamplingInfo {
-    struct AllocationNode head_;
+    struct SamplingNode head_;
     CVector<struct Sample> samples_;
 };
 
 class HeapSampling {
 public:
     HeapSampling(const EcmaVM *vm, Heap *const heap, uint64_t interval, int stackDepth);
-    std::unique_ptr<SamplingInfo> GetAllocationProfile();
+    const struct SamplingInfo* GetAllocationProfile();
     void ImplementSampling(Address addr, size_t size);
     virtual ~HeapSampling();
 
@@ -77,14 +71,11 @@ private:
     uint64_t CreateSampleId();
     void FillScriptIdAndStore();
     std::string AddRunningState(char *functionName, RunningState state, kungfu::DeoptType type);
-    void TransferSamplingNode(AllocationNode* node,
-                              const SamplingNode *samplingNode);
 private:
     const EcmaVM *vm_;
     [[maybe_unused]] Heap *const heap_;
     [[maybe_unused]] uint64_t rate_;
-    SamplingNode rootNode_;
-    CVector<std::unique_ptr<Sample>> samples_;
+    std::unique_ptr<struct SamplingInfo> samplingInfo_;
     int stackDepth_;
     uint32_t nodeId_ = 0;
     size_t sampleId_ = 0;

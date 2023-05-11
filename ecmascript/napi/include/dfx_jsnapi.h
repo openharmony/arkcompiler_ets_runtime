@@ -83,7 +83,7 @@ public:
     static std::unique_ptr<ProfileInfo> StopCpuProfilerForInfo(const EcmaVM *vm);
     static void SetCpuSamplingInterval(const EcmaVM *vm, int interval);
     static bool StartSampling(const EcmaVM *vm, uint64_t samplingInterval);
-    static std::unique_ptr<SamplingInfo> GetAllocationProfile(const EcmaVM *vm);
+    static const SamplingInfo *GetAllocationProfile(const EcmaVM *vm);
     static void StopSampling(const EcmaVM *vm);
 
     static void ResumeVM(const EcmaVM *vm);
