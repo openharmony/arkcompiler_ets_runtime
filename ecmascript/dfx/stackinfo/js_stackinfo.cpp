@@ -190,11 +190,12 @@ void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((
     FrameIterator frame(reinterpret_cast<JSTaggedType *>(fp));
     bool isBuiltinStub = (frame.GetFrameType() == FrameType::OPTIMIZED_FRAME);
     Method *method = frame.CheckAndGetMethod();
-    while (method == nullptr && !frame.Done()) {
+    while (method == nullptr) {
         frame.Advance();
-        if (!frame.Done()) {
-            method = frame.CheckAndGetMethod();
+        if (frame.Done()) {
+            break;
         }
+        method = frame.CheckAndGetMethod();
     }
     std::string faultInfo;
     if (method != nullptr) {

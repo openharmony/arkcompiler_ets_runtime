@@ -1203,6 +1203,9 @@ HWTEST_F_L0(JSTaggedValueTest, Equal)
     ASSERT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::True()), char1Point0));
     ASSERT_FALSE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::True()), char0));
     ASSERT_FALSE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::False()), char1));
+
+    JSHandle<JSTaggedValue> testSymbol(thread->GetEcmaVM()->GetFactory()->NewPublicSymbolWithChar("test"));
+    ASSERT_FALSE(JSTaggedValue::Equal(thread, testSymbol, test));
 }
 
 HWTEST_F_L0(JSTaggedValueTest, StrictEqual)

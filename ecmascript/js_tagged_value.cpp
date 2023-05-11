@@ -193,8 +193,8 @@ bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, co
         if (y->IsSymbol()) {
             return x.GetTaggedValue() == y.GetTaggedValue();
         }
-        if (y->IsBigInt()) {
-            return Equal(thread, y, x);
+        if (y->IsBigInt() || y->IsString()) {
+            return false;
         }
         if (y->IsHeapObject()) {
             JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
