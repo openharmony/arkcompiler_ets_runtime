@@ -199,6 +199,7 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
 #else
     runtimeOptions.SetEnableAsmInterpreter(false);
 #endif
+    runtimeOptions.SetEnableBuiltinsLazy(option.GetEnableBuiltinsLazy());
     runtimeOptions.SetAsmOpcodeDisableRange(option.GetAsmOpcodeDisableRange());
     // aot
     runtimeOptions.SetEnableAOT(option.GetEnableAOT());

@@ -220,7 +220,8 @@ bool EcmaVM::Initialize()
         globalEnv_ = globalEnv.GetTaggedValue();
         thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(globalEnv.GetTaggedType()));
         Builtins builtins;
-        builtins.Initialize(globalEnv, thread_);
+        bool builtinsLazyEnabled = options_.IsWorker() && options_.GetEnableBuiltinsLazy();
+        builtins.Initialize(globalEnv, thread_, builtinsLazyEnabled);
         if (!WIN_OR_MAC_OR_IOS_PLATFORM && options_.EnableSnapshotSerialize()) {
             const CString fileName = "builtins.snapshot";
             Snapshot snapshot(this);

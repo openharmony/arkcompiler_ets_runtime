@@ -546,6 +546,7 @@ ecma_source = [
   "ecmascript/builtins/builtins_iterator.cpp",
   "ecmascript/builtins/builtins_async_iterator.cpp",
   "ecmascript/builtins/builtins_json.cpp",
+  "ecmascript/builtins/builtins_lazy_callback.cpp",
   "ecmascript/builtins/builtins_map.cpp",
   "ecmascript/builtins/builtins_math.cpp",
   "ecmascript/builtins/builtins_number.cpp",

@@ -46,6 +46,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--asm-opcode-disable-range:           Opcode range when asm interpreter is enabled.\n"
     "--compiler-assert-types:              Enable type assertion for type inference tests. Default: 'false'\n"
     "--builtins-dts:                       Builtins.d.abc file path for AOT.\n"
+    "--builtins-lazy:                     Load some builtins function later.This option is only valid in workervm.\n"
     "--compiler-log:                       Log Option For aot compiler and stub compiler,\n"
     "                                      'none': no log,\n"
     "                                      'allllircirasm' or 'all012': print all log for all methods,\n"
@@ -143,6 +144,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"asm-opcode-disable-range", required_argument, nullptr, OPTION_ASM_OPCODE_DISABLE_RANGE},
         {"compiler-assert-types", required_argument, nullptr, OPTION_COMPILER_ASSERT_TYPES},
         {"builtins-dts", required_argument, nullptr, OPTION_BUILTINS_DTS},
+        {"builtins-lazy", required_argument, nullptr, OPTION_ENABLE_BUILTINS_LAZY},
         {"compiler-log", required_argument, nullptr, OPTION_COMPILER_LOG_OPT},
         {"compiler-log-methods", required_argument, nullptr, OPTION_COMPILER_LOG_METHODS},
         {"compiler-log-snapshot", required_argument, nullptr, OPTION_COMPILER_LOG_SNAPSHOT},
@@ -275,6 +277,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 break;
             case OPTION_BUILTINS_DTS:
                 SetBuiltinsDTS(optarg);
+                break;
+            case OPTION_ENABLE_BUILTINS_LAZY:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableBuiltinsLazy(argBool);
+                } else {
+                    return false;
+                }
                 break;
             case OPTION_COMPILER_LOG_OPT:
                 SetCompilerLogOption(optarg);

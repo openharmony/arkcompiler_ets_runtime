@@ -2638,13 +2638,16 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             RESTORE_ACC();
         } else {
             // 2. find from global object
+            SAVE_ACC();
             auto globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj, propKey);
             if (globalResult.IsHole()) {
                 auto result = SlowRuntimeStub::ThrowReferenceError(thread, propKey, " is not defined");
                 INTERPRETER_RETURN_IF_ABRUPT(result);
             }
+            constpool = GetConstantPool(sp); // Maybe moved by GC
+            propKey = GET_STR_FROM_CACHE(stringId); // Maybe moved by GC
+            RESTORE_ACC();
             JSTaggedValue value = GET_ACC();
-            SAVE_ACC();
             JSTaggedValue res = SlowRuntimeStub::StGlobalVar(thread, propKey, value);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();
@@ -6384,13 +6387,16 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             RESTORE_ACC();
         } else {
             // 2. find from global object
+            SAVE_ACC();
             auto globalResult = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj, propKey);
             if (globalResult.IsHole()) {
                 auto result = SlowRuntimeStub::ThrowReferenceError(thread, propKey, " is not defined");
                 INTERPRETER_RETURN_IF_ABRUPT(result);
             }
+            constpool = GetConstantPool(sp); // Maybe moved by GC
+            propKey = GET_STR_FROM_CACHE(stringId); // Maybe moved by GC
+            RESTORE_ACC();
             JSTaggedValue value = GET_ACC();
-            SAVE_ACC();
             JSTaggedValue res = SlowRuntimeStub::StGlobalVar(thread, propKey, value);
             INTERPRETER_RETURN_IF_ABRUPT(res);
             RESTORE_ACC();

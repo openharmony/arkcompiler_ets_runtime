@@ -25,6 +25,7 @@ host_unittest_action("BuiltinsInternational_001_Test") {
     "builtins_collator_test.cpp",
     "builtins_date_time_format_test.cpp",
     "builtins_displaynames_test.cpp",
+    "builtins_lazy_test.cpp",
   ]
 
   configs = [

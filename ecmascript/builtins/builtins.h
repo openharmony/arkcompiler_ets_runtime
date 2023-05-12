@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_BUILTINS_H
 #define ECMASCRIPT_BUILTINS_H
 
+#include "ecmascript/builtins/builtins_lazy_callback.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
@@ -36,11 +37,13 @@ enum FunctionLength : uint8_t { ZERO = 0, ONE, TWO, THREE, FOUR };
 class Builtins {
 public:
     Builtins() = default;
+    Builtins(JSThread *thread, ObjectFactory *factory, EcmaVM *vm)
+        : thread_(thread), factory_(factory), vm_(vm) {}
     ~Builtins() = default;
     NO_COPY_SEMANTIC(Builtins);
     NO_MOVE_SEMANTIC(Builtins);
 
-    void Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread);
+    void Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit = false);
     void InitializeForSnapshot(JSThread *thread);
 
 private:
@@ -62,6 +65,9 @@ private:
                                      kungfu::BuiltinsStubCSigns::ID builtinId =
                                      kungfu::BuiltinsStubCSigns::INVALID) const;
 
+    void SetLazyAccessor(const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &key,
+        const JSHandle<AccessorData> &accessor) const;
+
     void InitializeCtor(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &prototype,
                         const JSHandle<JSFunction> &ctor, const char *name, int length) const;
 
@@ -80,6 +86,7 @@ private:
     void InitializeBigIntWithRealm(const JSHandle<GlobalEnv> &realm) const;
 
     void InitializeDate(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeDate(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &primRefObjClass) const;
 
@@ -90,28 +97,40 @@ private:
     void InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
 
     void InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeTypedArray(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeInt8Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeInt8Array(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeUint8Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeUint8Array(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeUint8ClampedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeUint8ClampedArray(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeInt16Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeInt16Array(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeUint16Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeUint16Array(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeInt32Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeInt32Array(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeUint32Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeUint32Array(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeFloat32Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeFloat32Array(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeFloat64Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeFloat64Array(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeBigInt64Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeBigInt64Array(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeBigUint64Array(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeBigUint64Array(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeAllTypeError(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
 
@@ -139,21 +158,36 @@ private:
     void InitializeDisplayNames(const JSHandle<GlobalEnv> &env);
     void InitializeListFormat(const JSHandle<GlobalEnv> &env);
 
+    void LazyInitializeLocale(const JSHandle<GlobalEnv> &env) const;
+    void LazyInitializeDateTimeFormat(const JSHandle<GlobalEnv> &env) const;
+    void LazyInitializeNumberFormat(const JSHandle<GlobalEnv> &env) const;
+    void LazyInitializeRelativeTimeFormat(const JSHandle<GlobalEnv> &env) const;
+    void LazyInitializeCollator(const JSHandle<GlobalEnv> &env) const;
+    void LazyInitializePluralRules(const JSHandle<GlobalEnv> &env) const;
+    void LazyInitializeDisplayNames(const JSHandle<GlobalEnv> &env) const;
+    void LazyInitializeListFormat(const JSHandle<GlobalEnv> &env) const;
+
     void GeneralUpdateError(ErrorParameter *error, EcmaEntrypoint constructor, EcmaEntrypoint method, const char *name,
                             JSType type) const;
 
     void InitializeSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeSet(const JSHandle<GlobalEnv> &env);
 
     void InitializeMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeMap(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeWeakMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeWeakMap(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeWeakSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeWeakSet(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeWeakRef(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeWeakRef(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeFinalizationRegistry(const JSHandle<GlobalEnv> &env,
                                         const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeFinalizationRegistry(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeMath(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
 
@@ -181,10 +215,13 @@ private:
     void InitializeArrayIterator(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &iteratorFuncClass) const;
 
     void InitializeArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeArrayBuffer(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeSharedArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeSharedArrayBuffer(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeDataView(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void LazyInitializeDataView(const JSHandle<GlobalEnv> &env) const;
 
     void InitializeForPromiseFuncClass(const JSHandle<GlobalEnv> &env);
 
@@ -269,6 +306,8 @@ private:
     void SetFrozenFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key,
                            EcmaEntrypoint func, int length) const;
     void SetNonConstantObject(const JSHandle<JSObject> &obj, const char *key, JSHandle<JSTaggedValue> &value) const;
+
+    friend class builtins::BuiltinsLazyCallback;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_BUILTINS_H

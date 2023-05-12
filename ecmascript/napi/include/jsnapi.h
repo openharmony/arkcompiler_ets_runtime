@@ -1007,6 +1007,11 @@ public:
         enableAsmInterpreter_ = value;
     }
 
+    void SetEnableBuiltinsLazy(bool value)
+    {
+        enableBuiltinsLazy_ = value;
+    }
+
     void SetAsmOpcodeDisableRange(const std::string &value)
     {
         asmOpcodeDisableRange_ = value;
@@ -1123,6 +1128,11 @@ private:
         return enableAsmInterpreter_;
     }
 
+    bool GetEnableBuiltinsLazy() const
+    {
+        return enableBuiltinsLazy_;
+    }
+
     std::string GetAsmOpcodeDisableRange() const
     {
         return asmOpcodeDisableRange_;
@@ -1165,6 +1175,7 @@ private:
     size_t gcThreadNum_ {DEFAULT_GC_THREAD_NUM};
     size_t longPauseTime_ {DEFAULT_LONG_PAUSE_TIME};
     bool enableAsmInterpreter_ {true};
+    bool enableBuiltinsLazy_ {true};
     bool isWorker_ {false};
     std::string asmOpcodeDisableRange_ {""};
     std::string bundleName_ {};
