@@ -33,8 +33,7 @@ public:
     ElfBuilder(const std::vector<ModuleSectionDes> &des, const std::vector<ElfSecName> &sections);
     ~ElfBuilder();
     void PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, Triple triple);
-    void PackAnELFSections(std::ofstream &elfFile);
-    void PackStubELFSections(std::ofstream &elfFile);
+    void PackELFSections(std::ofstream &elfFile);
     void PackELFSegment(std::ofstream &elfFile);
     void MergeTextSections(std::ofstream &elfFile,
         std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
@@ -70,10 +69,7 @@ private:
     void ModifyStrTabSection();
     void RemoveNotNeedSection();
 
-    static constexpr uint32_t DATA_SEC_ALIGN = 8;
-    static constexpr uint32_t TEXT_SEC_ALIGN = 16;
     static constexpr uint32_t ASMSTUB_MODULE_NUM = 3;
-    static constexpr uint32_t AOT_MODULE_NUM = 1;
     std::vector<ModuleSectionDes> des_ {};
     std::unique_ptr<char []> strTabPtr_ {nullptr};
     std::map<ElfSecName, llvm::ELF::Elf64_Shdr> sectionToShdr_;

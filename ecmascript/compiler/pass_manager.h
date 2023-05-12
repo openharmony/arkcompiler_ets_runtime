@@ -150,10 +150,10 @@ private:                              \
 class PassManager {
 public:
     PassManager(EcmaVM* vm, std::string entry, std::string &triple, size_t optLevel, size_t relocMode,
-                CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, const std::string &profIn,
-                uint32_t hotnessThreshold, PassOptions *passOptions)
+                CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, size_t maxMethodsInModule,
+                const std::string &profIn, uint32_t hotnessThreshold, PassOptions *passOptions)
         : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
-          logList_(logList), maxAotMethodSize_(maxAotMethodSize),
+          logList_(logList), maxAotMethodSize_(maxAotMethodSize), maxMethodsInModule_(maxMethodsInModule),
           profilerLoader_(profIn, hotnessThreshold), passOptions_(passOptions) {};
     PassManager() = default;
     ~PassManager() = default;
@@ -175,6 +175,7 @@ private:
     CompilerLog *log_ {nullptr};
     AotMethodLogList *logList_ {nullptr};
     size_t maxAotMethodSize_ {0};
+    size_t maxMethodsInModule_ {0};
     PGOProfilerLoader profilerLoader_;
     PassOptions *passOptions_ {nullptr};
 };

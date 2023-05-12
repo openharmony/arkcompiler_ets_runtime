@@ -50,24 +50,32 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
     }
 
     ResolveModule(jsPandaFile, fileName);
-    Module *m = gen.AddModule(fileName, triple_, LOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_),
-                              log_->OutputASM());
-
     BytecodeInfoCollector collector(vm_, jsPandaFile, maxAotMethodSize_, ShouldCollect());
-    PassContext ctx(triple_, log_, &collector, m->GetModule());
-    CompilationDriver cmpDriver(profilerLoader_, &collector, vm_->GetJSOptions().GetCompilerSelectMethods(),
-                                vm_->GetJSOptions().GetCompilerSkipMethods());
 
-    cmpDriver.Run([this, &fileName, &ctx](const CString recordName,
-                                          const std::string &methodName,
-                                          MethodLiteral *methodLiteral,
-                                          uint32_t methodOffset,
-                                          const MethodPcInfo &methodPCInfo,
-                                          MethodInfo &methodInfo) {
+    LOptions lOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_);
+    CompilationDriver cmpDriver(profilerLoader_,
+                                &collector,
+                                vm_->GetJSOptions().GetCompilerSelectMethods(),
+                                vm_->GetJSOptions().GetCompilerSkipMethods(),
+                                &gen,
+                                fileName,
+                                triple_,
+                                &lOptions,
+                                log_->OutputASM(),
+                                maxMethodsInModule_);
+
+    cmpDriver.Run([this, &fileName, &collector](const CString recordName,
+                                                const std::string &methodName,
+                                                MethodLiteral *methodLiteral,
+                                                uint32_t methodOffset,
+                                                const MethodPcInfo &methodPCInfo,
+                                                MethodInfo &methodInfo,
+                                                Module *m) {
+        PassContext ctx(triple_, log_, &collector, m->GetModule());
         auto jsPandaFile = ctx.GetJSPandaFile();
         auto cmpCfg = ctx.GetCompilerConfig();
         auto tsManager = ctx.GetTSManager();
-        auto module = ctx.GetAOTModule();
+        auto module = m->GetModule();
         // note: TSManager need to set current constantpool before all pass
         tsManager->SetCurConstantPool(jsPandaFile, methodOffset);
         log_->SetMethodLog(fileName, methodName, logList_);
@@ -136,6 +144,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
         pipeline.RunPass<GraphLinearizerPass>();
         pipeline.RunPass<LLVMIRGenPass>();
     });
+
     ProcessConstantPool(&collector);
     return true;
 }

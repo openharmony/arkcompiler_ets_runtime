@@ -29,7 +29,7 @@ void Module::CollectStackMapDes(ModuleSectionDes& des) const
     }
     uint64_t textAddr = des.GetSecAddr(ElfSecName::TEXT);
     if (memcpy_s(stackmapPtr.get(), stackmapSize, reinterpret_cast<void *>(addr), stackmapSize) != EOK) {
-        LOG_FULL(FATAL) << "memcpy_s failed";
+        LOG_COMPILER(FATAL) << "memcpy_s failed";
         UNREACHABLE();
     }
     std::shared_ptr<uint8_t> ptr = nullptr;
@@ -39,6 +39,26 @@ void Module::CollectStackMapDes(ModuleSectionDes& des) const
     des.EraseSec(ElfSecName::LLVM_STACKMAP);
     des.SetArkStackMapPtr(ptr);
     des.SetArkStackMapSize(size);
+}
+
+void Module::CollectAnStackMapDes(ModuleSectionDes& des, uint64_t textOffset,
+    std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
+    std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec) const
+{
+    uint32_t stackmapSize = des.GetSecSize(ElfSecName::LLVM_STACKMAP);
+    std::unique_ptr<uint8_t[]> stackmapPtr(std::make_unique<uint8_t[]>(stackmapSize));
+    uint64_t addr = des.GetSecAddr(ElfSecName::LLVM_STACKMAP);
+    if (addr == 0) { // assembler stub don't existed llvm stackmap
+        return;
+    }
+    uint64_t textAddr = des.GetSecAddr(ElfSecName::TEXT);
+    if (memcpy_s(stackmapPtr.get(), stackmapSize, reinterpret_cast<void *>(addr), stackmapSize) != EOK) {
+        LOG_COMPILER(FATAL) << "memcpy_s failed";
+        UNREACHABLE();
+    }
+    ArkStackMapBuilder builder;
+    builder.Collect(std::move(stackmapPtr), textAddr, textOffset, pc2CallsiteInfoVec, pc2DeoptVec);
+    des.EraseSec(ElfSecName::LLVM_STACKMAP);
 }
 
 void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, StubFileInfo &stubInfo,
@@ -95,7 +115,12 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
         kungfu::CalleeRegAndOffsetVec info = assembler_->GetCalleeReg2Offset(func, log);
         calleeSaveRegisters.emplace_back(info);
     });
-    auto codeBuff = assembler_->GetSectionAddr(ElfSecName::TEXT);
+    uintptr_t textAddr = GetTextAddr();
+    uint32_t textSize = GetTextSize();
+    uint32_t rodataSize = GetRODataSize();
+    aotInfo.AlignTextSec();
+    aotInfo.UpdateCurTextSecOffset(rodataSize);
+
     const size_t funcCount = funcInfo.size();
     funcCount_ = funcCount;
     startIndex_ = aotInfo.GetEntrySize();
@@ -108,22 +133,24 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
         if (i < funcCount - 1) {
             funcSize = std::get<0>(funcInfo[i + 1]) - funcEntry;
         } else {
-            funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - funcEntry;
+            funcSize = textAddr + textSize - funcEntry;
         }
         auto found = addr2name[funcEntry].find(panda::ecmascript::JSPandaFile::ENTRY_FUNCTION_NAME);
         bool isMainFunc = found != std::string::npos;
+        uint64_t offset = funcEntry - textAddr + aotInfo.GetCurTextSecOffset();
         aotInfo.AddEntry(CallSignature::TargetKind::JSFUNCTION, isMainFunc, idx,
-                         funcEntry - codeBuff, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
+                         offset, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
     }
+    aotInfo.UpdateCurTextSecOffset(textSize);
 }
 
-void Module::CollectModuleSectionDes(ModuleSectionDes &moduleDes, bool stub) const
+void Module::CollectModuleSectionDes(ModuleSectionDes &moduleDes) const
 {
     ASSERT(assembler_ != nullptr);
     assembler_->IterateSecInfos([&](size_t i, std::pair<uint8_t *, size_t> secInfo) {
         auto curSec = ElfSection(i);
         ElfSecName sec = curSec.GetElfEnumValue();
-        if (stub && IsRelaSection(sec)) {
+        if (IsRelaSection(sec)) {
             moduleDes.EraseSec(sec);
         } else { // aot need relocated; stub don't need collect relocated section
             moduleDes.SetSecAddrAndSize(sec, reinterpret_cast<uint64_t>(secInfo.first), secInfo.second);
@@ -132,6 +159,22 @@ void Module::CollectModuleSectionDes(ModuleSectionDes &moduleDes, bool stub) con
         }
     });
     CollectStackMapDes(moduleDes);
+}
+
+void Module::CollectAnModuleSectionDes(ModuleSectionDes &moduleDes, uint64_t textOffset,
+    std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallsiteInfoVec,
+    std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec) const
+{
+    ASSERT(assembler_ != nullptr);
+    assembler_->IterateSecInfos([&](size_t i, std::pair<uint8_t *, size_t> secInfo) {
+        auto curSec = ElfSection(i);
+        ElfSecName sec = curSec.GetElfEnumValue();
+        // aot need relocated; stub don't need collect relocated section
+        moduleDes.SetSecAddrAndSize(sec, reinterpret_cast<uint64_t>(secInfo.first), secInfo.second);
+        moduleDes.SetStartIndex(startIndex_);
+        moduleDes.SetFuncCount(funcCount_);
+    });
+    CollectAnStackMapDes(moduleDes, textOffset, pc2CallsiteInfoVec, pc2DeoptVec);
 }
 
 uint32_t Module::GetSectionSize(ElfSecName sec) const
@@ -149,10 +192,10 @@ void Module::RunAssembler(const CompilerLog &log)
     assembler_->Run(log);
 }
 
-void Module::DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name,
+void Module::DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
                               const CompilerLog &log, const MethodLogList &logList)
 {
-    assembler_->Disassemble(addr2name, log, logList);
+    assembler_->Disassemble(addr2name, textOffset, log, logList);
 }
 
 void Module::DestroyModule()
@@ -191,7 +234,7 @@ void StubFileGenerator::CollectCodeInfo()
     for (size_t i = 0; i < modulePackage_.size(); i++) {
         modulePackage_[i].CollectFuncEntryInfo(stubAddr2Name, stubInfo_, i, GetLog());
         ModuleSectionDes des;
-        modulePackage_[i].CollectModuleSectionDes(des, true);
+        modulePackage_[i].CollectModuleSectionDes(des);
         stubInfo_.AddModuleDes(des);
     }
     std::map<uintptr_t, std::string> asmAddr2Name;
@@ -211,18 +254,27 @@ void StubFileGenerator::DisassembleAsmStubs(std::map<uintptr_t, std::string> &ad
     LLVMAssembler::Disassemble(&addr2name, tri, buf, size);
 }
 
-void AOTFileGenerator::CollectCodeInfo()
+void AOTFileGenerator::CollectCodeInfo(Module *module, uint32_t moduleIdx)
 {
     std::map<uintptr_t, std::string> addr2name;
-    for (size_t i = 0; i < modulePackage_.size(); i++) {
-        modulePackage_[i].CollectFuncEntryInfo(addr2name, aotInfo_, i, GetLog());
-        ModuleSectionDes des;
-        modulePackage_[i].CollectModuleSectionDes(des);
-        aotInfo_.AddModuleDes(des);
-    }
+    module->CollectFuncEntryInfo(addr2name, aotInfo_, moduleIdx, GetLog());
+    ModuleSectionDes des;
+    uint64_t textOffset = aotInfo_.GetCurTextSecOffset() - module->GetSectionSize(ElfSecName::TEXT);
+    module->CollectAnModuleSectionDes(des, textOffset, pc2CallSiteInfoVec_, pc2DeoptVec_);
+    aotInfo_.AddModuleDes(des);
     if (log_->OutputASM()) {
-        DisassembleEachFunc(addr2name);
+        module->DisassemblerFunc(addr2name, textOffset, *(log_), *(logList_));
     }
+}
+
+Module* AOTFileGenerator::GetLatestModule()
+{
+    return &modulePackage_.back();
+}
+
+uint32_t AOTFileGenerator::GetModuleVecSize() const
+{
+    return modulePackage_.size();
 }
 
 Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &triple, LOptions option, bool logDebug)
@@ -283,14 +335,37 @@ void StubFileGenerator::SaveStubFile(const std::string &filename)
     stubInfo_.Save(filename, cfg_.GetTriple());
 }
 
+void AOTFileGenerator::CompileLatestModuleThenDestroy()
+{
+    Module *latestModule = GetLatestModule();
+    uint32_t latestModuleIdx = GetModuleVecSize() - 1;
+    latestModule->RunAssembler(*(log_));
+    CollectCodeInfo(latestModule, latestModuleIdx);
+    // message has been put into aotInfo, so latestModule could be destroyed
+    latestModule->DestroyModule();
+}
+
+void AOTFileGenerator::DestroyCollectedStackMapInfo()
+{
+    pc2CallSiteInfoVec_.clear();
+    pc2DeoptVec_.clear();
+}
+
+void AOTFileGenerator::GenerateMergedStackmapSection()
+{
+    ArkStackMapBuilder builder;
+    std::shared_ptr<uint8_t> ptr = nullptr;
+    uint32_t size = 0;
+    std::tie(ptr, size) = builder.GenerateArkStackMap(pc2CallSiteInfoVec_, pc2DeoptVec_, cfg_.GetTriple());
+    aotInfo_.UpdateStackMap(ptr, size, 0);
+    DestroyCollectedStackMapInfo();
+}
+
 void AOTFileGenerator::SaveAOTFile(const std::string &filename)
 {
-    TimeScope timescope("LLVMCodeGenPass-AN", const_cast<CompilerLog *>(log_));
-    RunLLVMAssembler();
-    CollectCodeInfo();
+    GenerateMergedStackmapSection();
     GenerateMethodToEntryIndexMap();
     aotInfo_.Save(filename, cfg_.GetTriple());
-    DestroyModule();
 }
 
 void AOTFileGenerator::SaveSnapshotFile()

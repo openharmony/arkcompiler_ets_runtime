@@ -34,14 +34,15 @@ class LLVMStackMapParser {
 public:
     bool PUBLIC_API CalculateStackMap(std::unique_ptr<uint8_t []> stackMapAddr);
     bool PUBLIC_API CalculateStackMap(std::unique_ptr<uint8_t []> stackMapAddr,
-    uintptr_t hostCodeSectionAddr);
+                                      uintptr_t hostCodeSectionAddr,
+                                      uintptr_t hostCodeSectionOffset);
     void PUBLIC_API Print() const
     {
         if (IsLogEnabled()) {
             llvmStackMap_.Print();
         }
     }
-    const LLVMStackMapType::CallSiteInfo *GetCallSiteInfoByPc(uintptr_t funcAddr) const;
+
     bool IsLogEnabled() const
     {
         return enableLog_;
@@ -49,43 +50,37 @@ public:
 
     void PUBLIC_API CalculateFuncFpDelta(LLVMStackMapType::Func2FpDelta info, uint32_t moduleIndex);
 
-    explicit LLVMStackMapParser(bool enableLog = false)
+    LLVMStackMapParser(std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallSiteInfoVec,
+                       std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec,
+                       bool enableLog = false)
+        : pc2CallSiteInfoVec_(pc2CallSiteInfoVec),
+          pc2DeoptVec_(pc2DeoptVec),
+          enableLog_(enableLog)
     {
-        pc2CallSiteInfoVec_.clear();
         fun2RecordNum_.clear();
         dataInfo_ = nullptr;
-        enableLog_ = enableLog;
         funAddr_.clear();
         fun2FpDelta_.clear();
-        pc2DeoptVec_.clear();
     }
     ~LLVMStackMapParser()
     {
-        pc2CallSiteInfoVec_.clear();
         fun2RecordNum_.clear();
         dataInfo_ = nullptr;
         funAddr_.clear();
         fun2FpDelta_.clear();
-        pc2DeoptVec_.clear();
     }
-    std::vector<LLVMStackMapType::Pc2CallSiteInfo> PUBLIC_API GetPc2StackMapVec() const
-    {
-        return pc2CallSiteInfoVec_;
-    }
-    std::vector<LLVMStackMapType::Pc2Deopt> GetPc2Deopt() const
-    {
-        return pc2DeoptVec_;
-    }
+
 private:
     void CalcCallSite();
     struct LLVMStackMap llvmStackMap_;
-    std::vector<LLVMStackMapType::Pc2CallSiteInfo> pc2CallSiteInfoVec_;
+    // use reference here to avoid extra copy
+    std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2CallSiteInfoVec_;
+    std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptVec_;
     std::vector<std::pair<uintptr_t, uint64_t>> fun2RecordNum_;
     std::unique_ptr<DataInfo> dataInfo_;
     bool enableLog_ {false};
     std::set<uintptr_t> funAddr_;
     std::vector<LLVMStackMapType::Func2FpDelta> fun2FpDelta_;
-    std::vector<LLVMStackMapType::Pc2Deopt> pc2DeoptVec_;
     std::map<uint32_t, std::vector<LLVMStackMapType::Func2FpDelta>> module2fun2FpDelta_;
     std::map<uint32_t, std::set<uintptr_t>> module2funAddr_;
 };

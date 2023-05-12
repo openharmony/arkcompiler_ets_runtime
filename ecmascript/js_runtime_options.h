@@ -104,6 +104,7 @@ enum CommandValues {
     OPTION_LOG_FATAL,
     OPTION_LOG_COMPONENTS,
     OPTION_COMPILER_OPT_MAX_METHOD,
+    OPTION_COMPILER_MODULE_METHODS,
     OPTION_ENTRY_POINT,
     OPTION_MERGE_ABC,
     OPTION_COMPILER_OPT_TYPE_LOWERING,
@@ -920,6 +921,16 @@ public:
         return enableGlobalTypeInfer_;
     }
 
+    uint32_t GetCompilerModuleMethods() const
+    {
+        return compilerModuleMethods_;
+    }
+
+    void SetCompilerModuleMethods(uint32_t compilerModuleMethods)
+    {
+        compilerModuleMethods_ = compilerModuleMethods;
+    }
+
     void WasSet(int opt)
     {
         wasSet_ |= 1ULL << static_cast<uint64_t>(opt);
@@ -1063,6 +1074,7 @@ private:
     bool enableOptInlining_ {false};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};
+    uint32_t compilerModuleMethods_ {100};
     uint64_t wasSet_ {0};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};

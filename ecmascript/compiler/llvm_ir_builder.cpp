@@ -59,8 +59,8 @@ LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, 
     : compCfg_(cfg), scheduledGates_(schedule), circuit_(circuit), acc_(circuit), module_(module->GetModule()),
       function_(function), llvmModule_(module), callConv_(callConv), enableLog_(enableLog)
 {
-    builder_ = LLVMCreateBuilder();
-    context_ = LLVMGetGlobalContext();
+    context_ = module->GetContext();
+    builder_ = LLVMCreateBuilderInContext(context_);
     bbID2BB_.clear();
     SetFunctionCallConv();
     InitializeHandlers();
@@ -68,10 +68,10 @@ LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, 
     LLVMSetGC(function_, "statepoint-example");
     if (compCfg_->Is32Bit()) {
         slotSize_ = sizeof(uint32_t);
-        slotType_ = LLVMInt32Type();
+        slotType_ = LLVMInt32TypeInContext(context_);
     } else {
         slotSize_ = sizeof(uint64_t);
-        slotType_ = LLVMInt64Type();
+        slotType_ = LLVMInt64TypeInContext(context_);
     }
     if (compCfg_->Is32Bit()) {
         // hard float instruction
@@ -397,14 +397,14 @@ LLVMValueRef LLVMIRBuilder::CallingFp(LLVMModuleRef &module, LLVMBuilderRef &bui
         return LLVMGetParam(function_, static_cast<unsigned>(InterpreterHandlerInputs::SP));
     }
     /* 0:calling 1:its caller */
-    std::vector<LLVMValueRef> args = {LLVMConstInt(LLVMInt32Type(), 0, isCaller)};
+    std::vector<LLVMValueRef> args = {LLVMConstInt(LLVMInt32TypeInContext(context_), 0, isCaller)};
     auto fn = LLVMGetNamedFunction(module, "llvm.frameaddress.p0i8");
     if (!fn) {
         /* init instrinsic function declare */
         LLVMTypeRef paramTys1[] = {
-            LLVMInt32Type(),
+            LLVMInt32TypeInContext(context_),
         };
-        auto fnTy = LLVMFunctionType(LLVMPointerType(LLVMInt8Type(), 0), paramTys1, 1, 0);
+        auto fnTy = LLVMFunctionType(LLVMPointerType(LLVMInt8TypeInContext(context_), 0), paramTys1, 1, 0);
         fn = LLVMAddFunction(module, "llvm.frameaddress.p0i8", fnTy);
     }
     LLVMValueRef fAddrRet = LLVMBuildCall(builder, fn, args.data(), 1, "");
@@ -421,7 +421,7 @@ LLVMValueRef LLVMIRBuilder::ReadRegister(LLVMModuleRef &module, [[maybe_unused]]
         LLVMTypeRef paramTys1[] = {
             GetMachineRepType(MachineRep::K_META),
         };
-        auto fnTy = LLVMFunctionType(LLVMInt64Type(), paramTys1, 1, 0);
+        auto fnTy = LLVMFunctionType(LLVMInt64TypeInContext(context_), paramTys1, 1, 0);
         fn = LLVMAddFunction(module, "llvm.read_register.i64", fnTy);
     }
     LLVMValueRef fAddrRet = LLVMBuildCall(builder_, fn, args.data(), 1, "");
@@ -436,7 +436,7 @@ LLVMBasicBlockRef LLVMIRBuilder::EnsureLBB(BasicBlock *bb) const
     }
 
     std::string buf = "B" + std::to_string(bb->GetId());
-    LLVMBasicBlockRef llvmBB = LLVMAppendBasicBlock(function_, buf.c_str());
+    LLVMBasicBlockRef llvmBB = LLVMAppendBasicBlockInContext(context_, function_, buf.c_str());
     impl->lBB_ = llvmBB;
     impl->continuation = llvmBB;
     bb->SetImpl(impl);
@@ -467,7 +467,8 @@ LLVMTypeRef LLVMIRBuilder::GetMachineRepType(MachineRep rep) const
             break;
         case MachineRep::K_PTR_1:
             if (compCfg_->Is32Bit()) {
-                dstType = LLVMVectorType(LLVMPointerType(LLVMInt8Type(), 1), 2); // 2: packed vector type
+                dstType =
+                    LLVMVectorType(LLVMPointerType(LLVMInt8TypeInContext(context_), 1), 2); // 2: packed vector type
             } else {
                 dstType = LLVMPointerType(LLVMInt64TypeInContext(context_), 1);
             }
@@ -565,14 +566,14 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
     auto kind = GetCallExceptionKind(stubIndex, OpCode::RUNTIME_CALL);
 
     size_t actualNumArgs = 0;
-    LLVMValueRef pcOffset = LLVMConstInt(LLVMInt32Type(), 0, 0);
+    LLVMValueRef pcOffset = LLVMConstInt(LLVMInt32TypeInContext(context_), 0, 0);
     ComputeArgCountAndPCOffset(actualNumArgs, pcOffset, inList, kind);
 
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
     const int index = static_cast<int>(acc_.GetConstantValue(inList[static_cast<int>(CallInputs::TARGET)]));
-    params.push_back(LLVMConstInt(LLVMInt64Type(), index, 0)); // target
-    params.push_back(LLVMConstInt(LLVMInt64Type(),
+    params.push_back(LLVMConstInt(LLVMInt64TypeInContext(context_), index, 0)); // target
+    params.push_back(LLVMConstInt(LLVMInt64TypeInContext(context_),
         actualNumArgs - static_cast<size_t>(CallInputs::FIRST_PARAMETER), 0)); // argc
     for (size_t paraIdx = static_cast<size_t>(CallInputs::FIRST_PARAMETER); paraIdx < actualNumArgs; ++paraIdx) {
         GateRef gateTmp = inList[paraIdx];
@@ -586,7 +587,8 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
     LLVMValueRef runtimeCall = nullptr;
     if (kind == CallExceptionKind::HAS_PC_OFFSET) {
         std::vector<LLVMValueRef> values;
-        auto pcIndex = LLVMConstInt(LLVMInt64Type(), static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX), 1);
+        auto pcIndex =
+            LLVMConstInt(LLVMInt64TypeInContext(context_), static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX), 1);
         values.push_back(pcIndex);
         values.push_back(pcOffset);
         runtimeCall = LLVMBuildCall3(builder_, funcType, callee, params.data(), actualNumArgs,
@@ -639,7 +641,7 @@ void LLVMIRBuilder::VisitRuntimeCallWithArgv(GateRef gate, const std::vector<Gat
     params.push_back(glue); // glue
 
     uint64_t index = acc_.GetConstantValue(inList[static_cast<size_t>(CallInputs::TARGET)]);
-    auto targetId = LLVMConstInt(LLVMInt64Type(), index, 0);
+    auto targetId = LLVMConstInt(LLVMInt64TypeInContext(context_), index, 0);
     params.push_back(targetId); // target
     for (size_t paraIdx = static_cast<size_t>(CallInputs::FIRST_PARAMETER); paraIdx < inList.size(); ++paraIdx) {
         GateRef gateTmp = inList[paraIdx];
@@ -672,7 +674,8 @@ LLVMValueRef LLVMIRBuilder::GetCurrentSP()
 LLVMValueRef LLVMIRBuilder::GetCurrentFrameType(LLVMValueRef currentSpFrameAddr)
 {
     LLVMValueRef tmp = LLVMBuildSub(builder_, currentSpFrameAddr, LLVMConstInt(slotType_, slotSize_, 1), "");
-    LLVMValueRef frameTypeAddr = LLVMBuildIntToPtr(builder_, tmp, LLVMPointerType(LLVMInt64Type(), 0), "");
+    LLVMValueRef frameTypeAddr =
+        LLVMBuildIntToPtr(builder_, tmp, LLVMPointerType(LLVMInt64TypeInContext(context_), 0), "");
     LLVMValueRef frameType = LLVMBuildLoad(builder_, frameTypeAddr, "");
     return frameType;
 }
@@ -781,7 +784,7 @@ void LLVMIRBuilder::UpdateLeaveFrame(LLVMValueRef glue)
     LLVMTypeRef glueType = LLVMTypeOf(glue);
     LLVMValueRef leaveFrameAddr = LLVMBuildIntToPtr(builder_, leaveFrameValue, LLVMPointerType(glueType, 0), "");
     LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, true);
-    LLVMValueRef fp = LLVMBuildPtrToInt(builder_, llvmFpAddr, LLVMInt64Type(), "cast_int64_t");
+    LLVMValueRef fp = LLVMBuildPtrToInt(builder_, llvmFpAddr, LLVMInt64TypeInContext(context_), "cast_int64_t");
     LLVMBuildStore(builder_, fp, leaveFrameAddr);
 }
 
@@ -855,7 +858,7 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
 
     int extraParameterCnt = 0;
     size_t actualNumArgs = 0;
-    LLVMValueRef pcOffset = LLVMConstInt(LLVMInt32Type(), 0, 0);
+    LLVMValueRef pcOffset = LLVMConstInt(LLVMInt32TypeInContext(context_), 0, 0);
     ComputeArgCountAndPCOffset(actualNumArgs, pcOffset, inList, kind);
 
     // then push the actual parameter for js function call
@@ -866,9 +869,9 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
             const auto paramType = paramTypes.at(params.size());
             // match parameter types and function signature types
             if (IsHeapPointerType(paramType) && !IsHeapPointerType(gateTmpType)) {
-                params.push_back(
-                    LLVMBuildIntToPtr(builder_, LLVMBuildBitCast(builder_, gate2LValue_[gateTmp], LLVMInt64Type(), ""),
-                                      paramType, ""));
+                params.push_back(LLVMBuildIntToPtr(builder_,
+                    LLVMBuildBitCast(builder_, gate2LValue_[gateTmp], LLVMInt64TypeInContext(context_), ""),
+                    paramType, ""));
             } else {
                 params.push_back(LLVMBuildBitCast(builder_, gate2LValue_[gateTmp], paramType, ""));
             }
@@ -882,7 +885,8 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     callee = LLVMBuildPointerCast(builder_, callee, LLVMPointerType(funcType, 0), "");
     if (kind == CallExceptionKind::HAS_PC_OFFSET) {
         std::vector<LLVMValueRef> values;
-        auto pcIndex = LLVMConstInt(LLVMInt64Type(), static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX), 1);
+        auto pcIndex =
+            LLVMConstInt(LLVMInt64TypeInContext(context_), static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX), 1);
         values.push_back(pcIndex);
         values.push_back(pcOffset);
         call = LLVMBuildCall3(builder_, funcType, callee, params.data(), actualNumArgs - firstArg + extraParameterCnt,
@@ -1118,22 +1122,23 @@ void LLVMIRBuilder::VisitConstant(GateRef gate, std::bitset<64> value) // 64: bi
         machineType = compCfg_->Is32Bit() ? MachineType::I32 : MachineType::I64;
     }
     if (machineType == MachineType::I32) {
-        llvmValue = LLVMConstInt(LLVMInt32Type(), value.to_ulong(), 0);
+        llvmValue = LLVMConstInt(LLVMInt32TypeInContext(context_), value.to_ulong(), 0);
     } else if (machineType == MachineType::I64) {
-        llvmValue = LLVMConstInt(LLVMInt64Type(), value.to_ullong(), 0);
+        llvmValue = LLVMConstInt(LLVMInt64TypeInContext(context_), value.to_ullong(), 0);
         LLVMTypeRef type = ConvertLLVMTypeFromGate(gate);
         if (LLVMGetTypeKind(type) == LLVMPointerTypeKind) {
             llvmValue = LLVMBuildIntToPtr(builder_, llvmValue, type, "");
         } else if (LLVMGetTypeKind(type) == LLVMVectorTypeKind) {
-            LLVMValueRef tmp1Value =
-                    LLVMBuildLShr(builder_, llvmValue, LLVMConstInt(LLVMInt64Type(), 32, 0), ""); // 32: offset
-            LLVMValueRef tmp2Value = LLVMBuildIntCast(builder_, llvmValue, LLVMInt32Type(), ""); // low
+            LLVMValueRef tmp1Value = LLVMBuildLShr(
+                builder_, llvmValue, LLVMConstInt(LLVMInt64TypeInContext(context_), 32, 0), ""); // 32: offset
+            LLVMValueRef tmp2Value = LLVMBuildIntCast(builder_, llvmValue, LLVMInt32TypeInContext(context_), ""); // low
             LLVMValueRef emptyValue = LLVMGetUndef(type);
-            tmp1Value = LLVMBuildIntToPtr(builder_, tmp1Value, LLVMPointerType(LLVMInt8Type(), 1), "");
-            tmp2Value = LLVMBuildIntToPtr(builder_, tmp2Value, LLVMPointerType(LLVMInt8Type(), 1), "");
+            tmp1Value = LLVMBuildIntToPtr(builder_, tmp1Value, LLVMPointerType(LLVMInt8TypeInContext(context_), 1), "");
+            tmp2Value = LLVMBuildIntToPtr(builder_, tmp2Value, LLVMPointerType(LLVMInt8TypeInContext(context_), 1), "");
             llvmValue = LLVMBuildInsertElement(
-                builder_, emptyValue, tmp2Value, LLVMConstInt(LLVMInt32Type(), 0, 0), "");
-            llvmValue = LLVMBuildInsertElement(builder_, llvmValue, tmp1Value, LLVMConstInt(LLVMInt32Type(), 1, 0), "");
+                builder_, emptyValue, tmp2Value, LLVMConstInt(LLVMInt32TypeInContext(context_), 0, 0), "");
+            llvmValue = LLVMBuildInsertElement(
+                builder_, llvmValue, tmp1Value, LLVMConstInt(LLVMInt32TypeInContext(context_), 1, 0), "");
         } else if (LLVMGetTypeKind(type) == LLVMIntegerTypeKind) {
             // do nothing
         } else {
@@ -1142,13 +1147,13 @@ void LLVMIRBuilder::VisitConstant(GateRef gate, std::bitset<64> value) // 64: bi
         }
     } else if (machineType == MachineType::F64) {
         auto doubleValue = base::bit_cast<double>(value.to_ullong()); // actual double value
-        llvmValue = LLVMConstReal(LLVMDoubleType(), doubleValue);
+        llvmValue = LLVMConstReal(LLVMDoubleTypeInContext(context_), doubleValue);
     } else if (machineType == MachineType::I8) {
-        llvmValue = LLVMConstInt(LLVMInt8Type(), value.to_ulong(), 0);
+        llvmValue = LLVMConstInt(LLVMInt8TypeInContext(context_), value.to_ulong(), 0);
     } else if (machineType == MachineType::I16) {
-        llvmValue = LLVMConstInt(LLVMInt16Type(), value.to_ulong(), 0);
+        llvmValue = LLVMConstInt(LLVMInt16TypeInContext(context_), value.to_ulong(), 0);
     } else if (machineType == MachineType::I1) {
-        llvmValue = LLVMConstInt(LLVMInt1Type(), value.to_ulong(), 0);
+        llvmValue = LLVMConstInt(LLVMInt1TypeInContext(context_), value.to_ulong(), 0);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -1165,7 +1170,7 @@ void LLVMIRBuilder::HandleConstString(GateRef gate)
 void LLVMIRBuilder::VisitConstString(GateRef gate, const ChunkVector<char> &str) // 64: bit width
 {
     ASSERT(acc_.GetMachineType(gate) == MachineType::ARCH);
-    LLVMValueRef llvmValue1 = LLVMConstString(str.data(), str.size(), 0);
+    LLVMValueRef llvmValue1 = LLVMConstStringInContext(context_, str.data(), str.size(), 0);
     LLVMValueRef addr = LLVMBuildAlloca(builder_, LLVMTypeOf(llvmValue1), "");
     LLVMBuildStore(builder_, llvmValue1, addr);
     gate2LValue_[gate] = addr;
@@ -1179,8 +1184,8 @@ void LLVMIRBuilder::HandleRelocatableData(GateRef gate)
 
 void LLVMIRBuilder::VisitRelocatableData(GateRef gate, uint64_t value)
 {
-    LLVMValueRef globalValue = LLVMAddGlobal(module_, LLVMInt64Type(), "G");
-    LLVMSetInitializer(globalValue, LLVMConstInt(LLVMInt64Type(), value, 0));
+    LLVMValueRef globalValue = LLVMAddGlobal(module_, LLVMInt64TypeInContext(context_), "G");
+    LLVMSetInitializer(globalValue, LLVMConstInt(LLVMInt64TypeInContext(context_), value, 0));
     gate2LValue_[gate] = globalValue;
 }
 
@@ -1349,16 +1354,18 @@ void LLVMIRBuilder::VisitStore(GateRef gate, GateRef base, GateRef dataToStore)
 LLVMValueRef LLVMIRBuilder::CanonicalizeToInt(LLVMValueRef value)
 {
     if (LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMVectorTypeKind) {
-        LLVMValueRef e1Value0 = LLVMBuildExtractElement(builder_, value, LLVMConstInt(LLVMInt32Type(), 0, 1), "");
-        LLVMValueRef e1Value1 = LLVMBuildExtractElement(builder_, value, LLVMConstInt(LLVMInt32Type(), 1, 1), "");
-        LLVMValueRef tmp1 = LLVMBuildPtrToInt(builder_, e1Value1, LLVMInt64Type(), "");
-        LLVMValueRef constValue = LLVMConstInt(LLVMInt64Type(), 32, 0); // 32: offset
+        LLVMValueRef e1Value0 = LLVMBuildExtractElement(
+            builder_, value, LLVMConstInt(LLVMInt32TypeInContext(context_), 0, 1), "");
+        LLVMValueRef e1Value1 = LLVMBuildExtractElement(
+            builder_, value, LLVMConstInt(LLVMInt32TypeInContext(context_), 1, 1), "");
+        LLVMValueRef tmp1 = LLVMBuildPtrToInt(builder_, e1Value1, LLVMInt64TypeInContext(context_), "");
+        LLVMValueRef constValue = LLVMConstInt(LLVMInt64TypeInContext(context_), 32, 0); // 32: offset
         LLVMValueRef tmp1Value = LLVMBuildShl(builder_, tmp1, constValue, "");
-        LLVMValueRef tmp2Value = LLVMBuildPtrToInt(builder_, e1Value0, LLVMInt64Type(), "");
+        LLVMValueRef tmp2Value = LLVMBuildPtrToInt(builder_, e1Value0, LLVMInt64TypeInContext(context_), "");
         LLVMValueRef resultValue = LLVMBuildAdd(builder_, tmp1Value, tmp2Value, "");
         return resultValue;
     } else if (LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMPointerTypeKind) {
-        return LLVMBuildPtrToInt(builder_, value, LLVMInt64Type(), "");
+        return LLVMBuildPtrToInt(builder_, value, LLVMInt64TypeInContext(context_), "");
     } else if (LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMIntegerTypeKind) {
         return value;
     } else {
@@ -1370,14 +1377,15 @@ LLVMValueRef LLVMIRBuilder::CanonicalizeToInt(LLVMValueRef value)
 LLVMValueRef LLVMIRBuilder::CanonicalizeToPtr(LLVMValueRef value)
 {
     if (LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMVectorTypeKind) {
-        LLVMValueRef tmp = LLVMBuildExtractElement(builder_, value, LLVMConstInt(LLVMInt32Type(), 0, 1), "");
-        return LLVMBuildPointerCast(builder_, tmp, LLVMPointerType(LLVMInt8Type(), 1), "");
+        LLVMValueRef tmp = LLVMBuildExtractElement(
+            builder_, value, LLVMConstInt(LLVMInt32TypeInContext(context_), 0, 1), "");
+        return LLVMBuildPointerCast(builder_, tmp, LLVMPointerType(LLVMInt8TypeInContext(context_), 1), "");
     } else if (LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMPointerTypeKind) {
         return LLVMBuildPointerCast(builder_, value,
-            LLVMPointerType(LLVMInt8Type(), LLVMGetPointerAddressSpace(LLVMTypeOf(value))), "");
+            LLVMPointerType(LLVMInt8TypeInContext(context_), LLVMGetPointerAddressSpace(LLVMTypeOf(value))), "");
     } else if (LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMIntegerTypeKind) {
-        LLVMValueRef tmp = LLVMBuildIntToPtr(builder_, value, LLVMPointerType(LLVMInt64Type(), 0), "");
-        return LLVMBuildPointerCast(builder_, tmp, LLVMPointerType(LLVMInt8Type(), 0), "");
+        LLVMValueRef tmp = LLVMBuildIntToPtr(builder_, value, LLVMPointerType(LLVMInt64TypeInContext(context_), 0), "");
+        return LLVMBuildPointerCast(builder_, tmp, LLVMPointerType(LLVMInt8TypeInContext(context_), 0), "");
     } else {
         LOG_COMPILER(FATAL) << "can't Canonicalize to Ptr: ";
         UNREACHABLE();
@@ -1418,7 +1426,8 @@ LLVMValueRef LLVMIRBuilder::VectorAdd(LLVMValueRef baseAddr, LLVMValueRef offset
 {
     LLVMValueRef ptr = CanonicalizeToPtr(baseAddr);
     LLVMValueRef dstRef8 = LLVMBuildGEP(builder_, ptr, &offset, 1, "");
-    LLVMValueRef result = LLVMBuildInsertElement(builder_, baseAddr, dstRef8, LLVMConstInt(LLVMInt32Type(), 0, 0), "");
+    LLVMValueRef result = LLVMBuildInsertElement(
+        builder_, baseAddr, dstRef8, LLVMConstInt(LLVMInt32TypeInContext(context_), 0, 0), "");
     return result;
 }
 
@@ -1426,34 +1435,34 @@ LLVMTypeRef LLVMIRBuilder::ConvertLLVMTypeFromGate(GateRef gate) const
 {
     if (acc_.IsGCRelated(gate)) {
         if (compCfg_->Is32Bit()) {
-            return LLVMVectorType(LLVMPointerType(LLVMInt8Type(), 1), 2);
+            return LLVMVectorType(LLVMPointerType(LLVMInt8TypeInContext(context_), 1), 2);
         } else {
-            return LLVMPointerType(LLVMInt64Type(), 1);
+            return LLVMPointerType(LLVMInt64TypeInContext(context_), 1);
         }
     }
     MachineType t = acc_.GetMachineType(gate);
     switch (t) {
         case MachineType::NOVALUE:
-            return LLVMVoidType();
+            return LLVMVoidTypeInContext(context_);
         case MachineType::I1:
-            return LLVMInt1Type();
+            return LLVMInt1TypeInContext(context_);
         case MachineType::I8:
-            return LLVMInt8Type();
+            return LLVMInt8TypeInContext(context_);
         case MachineType::I16:
-            return LLVMInt16Type();
+            return LLVMInt16TypeInContext(context_);
         case MachineType::I32:
-            return LLVMInt32Type();
+            return LLVMInt32TypeInContext(context_);
         case MachineType::I64:
-            return LLVMInt64Type();
+            return LLVMInt64TypeInContext(context_);
         case MachineType::F32:
-            return LLVMFloatType();
+            return LLVMFloatTypeInContext(context_);
         case MachineType::F64:
-            return LLVMDoubleType();
+            return LLVMDoubleTypeInContext(context_);
         case MachineType::ARCH: {
             if (compCfg_->Is32Bit()) {
-                return LLVMInt32Type();
+                return LLVMInt32TypeInContext(context_);
             } else {
-                return LLVMInt64Type();
+                return LLVMInt64TypeInContext(context_);
             }
         }
         default:
@@ -1705,14 +1714,14 @@ void LLVMIRBuilder::VisitAddWithOverflow(GateRef gate, GateRef e1, GateRef e2)
     if (!fn) {
         /* init instrinsic function declare */
         LLVMTypeRef paramTys1[] = {
-            LLVMInt32Type(),
-            LLVMInt32Type(),
+            LLVMInt32TypeInContext(context_),
+            LLVMInt32TypeInContext(context_),
         };
         LLVMTypeRef structTys[] = {
-            LLVMInt32Type(),
-            LLVMInt1Type(),
+            LLVMInt32TypeInContext(context_),
+            LLVMInt1TypeInContext(context_),
         };
-        LLVMTypeRef returnType = LLVMStructType(structTys, 2, 0);
+        LLVMTypeRef returnType = LLVMStructTypeInContext(context_, structTys, 2, 0);
         auto fnTy = LLVMFunctionType(returnType, paramTys1, 2, 0);
         fn = LLVMAddFunction(module_, "llvm.sadd.with.overflow.i32", fnTy);
     }
@@ -1738,14 +1747,14 @@ void LLVMIRBuilder::VisitSubWithOverflow(GateRef gate, GateRef e1, GateRef e2)
     if (!fn) {
         /* init instrinsic function declare */
         LLVMTypeRef paramTys1[] = {
-            LLVMInt32Type(),
-            LLVMInt32Type(),
+            LLVMInt32TypeInContext(context_),
+            LLVMInt32TypeInContext(context_),
         };
         LLVMTypeRef structTys[] = {
-            LLVMInt32Type(),
-            LLVMInt1Type(),
+            LLVMInt32TypeInContext(context_),
+            LLVMInt1TypeInContext(context_),
         };
-        LLVMTypeRef returnType = LLVMStructType(structTys, 2, 0);
+        LLVMTypeRef returnType = LLVMStructTypeInContext(context_, structTys, 2, 0);
         auto fnTy = LLVMFunctionType(returnType, paramTys1, 2, 0);
         fn = LLVMAddFunction(module_, "llvm.ssub.with.overflow.i32", fnTy);
     }
@@ -1771,14 +1780,14 @@ void LLVMIRBuilder::VisitMulWithOverflow(GateRef gate, GateRef e1, GateRef e2)
     if (!fn) {
         /* init instrinsic function declare */
         LLVMTypeRef paramTys1[] = {
-            LLVMInt32Type(),
-            LLVMInt32Type(),
+            LLVMInt32TypeInContext(context_),
+            LLVMInt32TypeInContext(context_),
         };
         LLVMTypeRef structTys[] = {
-            LLVMInt32Type(),
-            LLVMInt1Type(),
+            LLVMInt32TypeInContext(context_),
+            LLVMInt1TypeInContext(context_),
         };
-        LLVMTypeRef returnType = LLVMStructType(structTys, 2, 0);
+        LLVMTypeRef returnType = LLVMStructTypeInContext(context_, structTys, 2, 0);
         auto fnTy = LLVMFunctionType(returnType, paramTys1, 2, 0);
         fn = LLVMAddFunction(module_, "llvm.smul.with.overflow.i32", fnTy);
     }
@@ -1816,9 +1825,9 @@ void LLVMIRBuilder::VisitSqrt(GateRef gate, GateRef e1)
     if (!fn) {
         /* init instrinsic function declare */
         LLVMTypeRef paramTys1[] = {
-            LLVMDoubleType(),
+            LLVMDoubleTypeInContext(context_),
         };
-        auto fnTy = LLVMFunctionType(LLVMDoubleType(), paramTys1, 1, 0);
+        auto fnTy = LLVMFunctionType(LLVMDoubleTypeInContext(context_), paramTys1, 1, 0);
         fn = LLVMAddFunction(module_, "llvm.sqrt.f64", fnTy);
     }
     LLVMValueRef result = LLVMBuildCall(builder_, fn, args.data(), 1, "");
@@ -2098,14 +2107,14 @@ void LLVMIRBuilder::VisitChangeInt32ToDouble(GateRef gate, GateRef e1)
 void LLVMIRBuilder::VisitChangeUInt32ToDouble(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
-    LLVMValueRef result = LLVMBuildUIToFP(builder_, e1Value, LLVMDoubleType(), "");
+    LLVMValueRef result = LLVMBuildUIToFP(builder_, e1Value, LLVMDoubleTypeInContext(context_), "");
     gate2LValue_[gate] = result;
 }
 
 void LLVMIRBuilder::VisitChangeDoubleToInt32(GateRef gate, GateRef e1)
 {
     LLVMValueRef e1Value = gate2LValue_[e1];
-    LLVMValueRef result = LLVMBuildFPToSI(builder_, e1Value, LLVMInt32Type(), "");
+    LLVMValueRef result = LLVMBuildFPToSI(builder_, e1Value, LLVMInt32TypeInContext(context_), "");
     gate2LValue_[gate] = result;
 }
 
@@ -2123,16 +2132,19 @@ void LLVMIRBuilder::VisitChangeInt64ToTagged(GateRef gate, GateRef e1)
     LLVMValueRef result;
     if (compCfg_->Is32Bit()) {
         LLVMValueRef tmp1Value =
-            LLVMBuildLShr(builder_, e1Value, LLVMConstInt(LLVMInt64Type(), 32, 0), ""); // 32: offset
-        LLVMValueRef tmp2Value = LLVMBuildIntCast(builder_, e1Value, LLVMInt32Type(), ""); // low
-        LLVMTypeRef vectorType = LLVMVectorType(LLVMPointerType(LLVMInt8Type(), 1), 2);  // 2: packed vector type
+            LLVMBuildLShr(builder_, e1Value, LLVMConstInt(LLVMInt64TypeInContext(context_), 32, 0), ""); // 32: offset
+        LLVMValueRef tmp2Value = LLVMBuildIntCast(builder_, e1Value, LLVMInt32TypeInContext(context_), ""); // low
+        LLVMTypeRef vectorType = LLVMVectorType(
+            LLVMPointerType(LLVMInt8TypeInContext(context_), 1), 2);  // 2: packed vector type
         LLVMValueRef emptyValue = LLVMGetUndef(vectorType);
-        tmp1Value = LLVMBuildIntToPtr(builder_, tmp1Value, LLVMPointerType(LLVMInt8Type(), 1), "");
-        tmp2Value = LLVMBuildIntToPtr(builder_, tmp2Value, LLVMPointerType(LLVMInt8Type(), 1), "");
-        result = LLVMBuildInsertElement(builder_, emptyValue, tmp2Value, LLVMConstInt(LLVMInt32Type(), 0, 0), "");
-        result = LLVMBuildInsertElement(builder_, result, tmp1Value, LLVMConstInt(LLVMInt32Type(), 1, 0), "");
+        tmp1Value = LLVMBuildIntToPtr(builder_, tmp1Value, LLVMPointerType(LLVMInt8TypeInContext(context_), 1), "");
+        tmp2Value = LLVMBuildIntToPtr(builder_, tmp2Value, LLVMPointerType(LLVMInt8TypeInContext(context_), 1), "");
+        result = LLVMBuildInsertElement(
+            builder_, emptyValue, tmp2Value, LLVMConstInt(LLVMInt32TypeInContext(context_), 0, 0), "");
+        result = LLVMBuildInsertElement(
+            builder_, result, tmp1Value, LLVMConstInt(LLVMInt32TypeInContext(context_), 1, 0), "");
     } else {
-        result = LLVMBuildIntToPtr(builder_, e1Value, LLVMPointerType(LLVMInt64Type(), 1), "");
+        result = LLVMBuildIntToPtr(builder_, e1Value, LLVMPointerType(LLVMInt64TypeInContext(context_), 1), "");
     }
     gate2LValue_[gate] = result;
 }
@@ -2180,7 +2192,7 @@ void LLVMIRBuilder::HandleDeoptCheck(GateRef gate)
 
 LLVMTypeRef LLVMIRBuilder::GetExperimentalDeoptTy()
 {
-    auto fnTy = LLVMFunctionType(LLVMPointerType(LLVMInt64Type(), 1), nullptr, 0, 1);
+    auto fnTy = LLVMFunctionType(LLVMPointerType(LLVMInt64TypeInContext(context_), 1), nullptr, 0, 1);
     return fnTy;
 }
 
@@ -2192,14 +2204,15 @@ LLVMValueRef LLVMModule::GetDeoptFunction()
 
 void LLVMIRBuilder::GenDeoptEntry(LLVMModuleRef &module)
 {
-    std::vector<LLVMTypeRef> paramTys = {LLVMInt64Type(), LLVMInt64Type()}; // glue type
-    auto funcType = LLVMFunctionType(LLVMInt64Type(), paramTys.data(),  paramTys.size(), 0);
+    std::vector<LLVMTypeRef> paramTys =
+        {LLVMInt64TypeInContext(context_), LLVMInt64TypeInContext(context_)}; // glue type
+    auto funcType = LLVMFunctionType(LLVMInt64TypeInContext(context_), paramTys.data(),  paramTys.size(), 0);
     auto function = LLVMAddFunction(module, Deoptimizier::GetLLVMDeoptRelocateSymbol(), funcType);
     LLVMSetFunctionCallConv(function, LLVMCCallConv);
     llvmModule_->SetFunction(LLVMModule::kDeoptEntryOffset, function);
 
-    LLVMBasicBlockRef entry = LLVMAppendBasicBlock(function, "entry");
-    LLVMBuilderRef builder = LLVMCreateBuilder(); // need to use another fresh builder.
+    LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(context_, function, "entry");
+    LLVMBuilderRef builder = LLVMCreateBuilderInContext(context_);
     LLVMPositionBuilderAtEnd(builder, entry);
 
     auto reservedSlotsSize = OptimizedFrame::ComputeReservedSize(slotSize_);
@@ -2212,7 +2225,8 @@ void LLVMIRBuilder::GenDeoptEntry(LLVMModuleRef &module)
     StubIdType stubId = RTSTUB_ID(DeoptHandlerAsm);
     int stubIndex = static_cast<int>(std::get<RuntimeStubCSigns::ID>(stubId));
     LLVMValueRef rtoffset = LLVMBuildAdd(builder, glue, GetRTStubOffset(glue, stubIndex), "");
-    LLVMValueRef patchAddr = LLVMBuildIntToPtr(builder, rtoffset, LLVMPointerType(LLVMInt64Type(), 0), "");
+    LLVMValueRef patchAddr = LLVMBuildIntToPtr(
+        builder, rtoffset, LLVMPointerType(LLVMInt64TypeInContext(context_), 0), "");
     LLVMValueRef llvmAddr = LLVMBuildLoad(builder, patchAddr, "");
     LLVMTypeRef rtfuncTypePtr = LLVMPointerType(funcType, 0);
     LLVMValueRef callee = LLVMBuildIntToPtr(builder, llvmAddr, rtfuncTypePtr, "");
@@ -2220,6 +2234,7 @@ void LLVMIRBuilder::GenDeoptEntry(LLVMModuleRef &module)
     LLVMValueRef runtimeCall = LLVMBuildCall2(builder, funcType, callee, params.data(), params.size(), "");
     LLVMBuildRet(builder, runtimeCall);
     LLVMPositionBuilderAtEnd(builder, entry);
+    LLVMDisposeBuilder(builder);
 }
 
 LLVMValueRef LLVMIRBuilder::GetExperimentalDeopt(LLVMModuleRef &module)
@@ -2290,7 +2305,7 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
     params.push_back(glue); // glue
     GateRef deoptType = acc_.GetValueIn(gate, 2); // 2: deopt type
     uint64_t v = acc_.GetConstantValue(deoptType);
-    params.push_back(LLVMConstInt(LLVMInt64Type(), v, false)); // deoptType
+    params.push_back(LLVMConstInt(LLVMInt64TypeInContext(context_), v, false)); // deoptType
     LLVMValueRef callee = GetExperimentalDeopt(module_);
     LLVMTypeRef funcType = GetExperimentalDeoptTy();
 
@@ -2311,24 +2326,30 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
         if (acc_.IsConstantValue(vregValue, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
             continue;
         }
-        values.emplace_back(LLVMConstInt(LLVMInt32Type(), i, false));
+        values.emplace_back(LLVMConstInt(LLVMInt32TypeInContext(context_), i, false));
         values.emplace_back(ConvertToTagged(vregValue));
     }
     if (!acc_.IsConstantValue(env, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
-        values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::ENV_INDEX), false));
+        values.emplace_back(
+            LLVMConstInt(LLVMInt32TypeInContext(context_), static_cast<int>(SpecVregIndex::ENV_INDEX), false));
         values.emplace_back(ConvertToTagged(env));
     }
     if (!acc_.IsConstantValue(acc, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
-        values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::ACC_INDEX), false));
+        values.emplace_back(
+            LLVMConstInt(LLVMInt32TypeInContext(context_), static_cast<int>(SpecVregIndex::ACC_INDEX), false));
         values.emplace_back(ConvertToTagged(acc));
     }
-    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX), false));
+    values.emplace_back(
+        LLVMConstInt(LLVMInt32TypeInContext(context_), static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX), false));
     values.emplace_back(gate2LValue_.at(pc));
-    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::FUNC_INDEX), false));
+    values.emplace_back(
+        LLVMConstInt(LLVMInt32TypeInContext(context_), static_cast<int>(SpecVregIndex::FUNC_INDEX), false));
     values.emplace_back(ConvertToTagged(jsFunc));
-    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::NEWTARGET_INDEX), false));
+    values.emplace_back(
+        LLVMConstInt(LLVMInt32TypeInContext(context_), static_cast<int>(SpecVregIndex::NEWTARGET_INDEX), false));
     values.emplace_back(ConvertToTagged(newTarget));
-    values.emplace_back(LLVMConstInt(LLVMInt32Type(), static_cast<int>(SpecVregIndex::THIS_OBJECT_INDEX), false));
+    values.emplace_back(
+        LLVMConstInt(LLVMInt32TypeInContext(context_), static_cast<int>(SpecVregIndex::THIS_OBJECT_INDEX), false));
     values.emplace_back(ConvertToTagged(thisObj));
     LLVMValueRef runtimeCall =
         LLVMBuildCall3(builder_, funcType, callee, params.data(), params.size(), "", values.data(), values.size());
@@ -2341,7 +2362,8 @@ LLVMModule::LLVMModule(NativeAreaAllocator* allocator, const std::string &name, 
     CompilationConfig cfg(tripleStr_);
     is64Bit_ = cfg.Is64Bit();
     triple_ = cfg.GetTriple();
-    module_ = LLVMModuleCreateWithName(name.c_str());
+    context_ = LLVMContextCreate();
+    module_ = LLVMModuleCreateWithNameInContext(name.c_str(), context_);
     LLVMSetTarget(module_, triple.c_str());
     dBuilder_ = LLVMCreateDIBuilder(module_);
     dFileMD_ = LLVMDIBuilderCreateFile(dBuilder_, name.c_str(), name.size(), ".", 1);
@@ -2356,6 +2378,10 @@ LLVMModule::~LLVMModule()
     if (module_ != nullptr) {
         LLVMDisposeModule(module_);
         module_ = nullptr;
+    }
+    if (context_ != nullptr) {
+        LLVMContextDispose(context_);
+        context_ = nullptr;
     }
     if (dBuilder_ != nullptr) {
         LLVMDisposeDIBuilder(dBuilder_);
@@ -2434,26 +2460,27 @@ LLVMTypeRef LLVMModule::GenerateFuncType(const std::vector<LLVMValueRef> &params
 
 LLVMTypeRef LLVMModule::ConvertLLVMTypeFromVariableType(VariableType type)
 {
-    static std::map<VariableType, LLVMTypeRef> machineTypeMap = {
-        {VariableType::VOID(), LLVMVoidType()},
-        {VariableType::BOOL(), LLVMInt1Type()},
-        {VariableType::INT8(), LLVMInt8Type()},
-        {VariableType::INT16(), LLVMInt16Type()},
-        {VariableType::INT32(), LLVMInt32Type()},
-        {VariableType::INT64(), LLVMInt64Type()},
-        {VariableType::INT8(), LLVMInt8Type()},
-        {VariableType::INT16(), LLVMInt16Type()},
-        {VariableType::INT32(), LLVMInt32Type()},
-        {VariableType::INT64(), LLVMInt64Type()},
-        {VariableType::FLOAT32(), LLVMFloatType()},
-        {VariableType::FLOAT64(), LLVMDoubleType()},
-        {VariableType::NATIVE_POINTER(), LLVMInt64Type()},
-        {VariableType::JS_POINTER(), LLVMPointerType(LLVMInt64Type(), 1)},
-        {VariableType::JS_ANY(), LLVMPointerType(LLVMInt64Type(), 1)},
+    std::map<VariableType, LLVMTypeRef> machineTypeMap = {
+        {VariableType::VOID(), LLVMVoidTypeInContext(context_)},
+        {VariableType::BOOL(), LLVMInt1TypeInContext(context_)},
+        {VariableType::INT8(), LLVMInt8TypeInContext(context_)},
+        {VariableType::INT16(), LLVMInt16TypeInContext(context_)},
+        {VariableType::INT32(), LLVMInt32TypeInContext(context_)},
+        {VariableType::INT64(), LLVMInt64TypeInContext(context_)},
+        {VariableType::INT8(), LLVMInt8TypeInContext(context_)},
+        {VariableType::INT16(), LLVMInt16TypeInContext(context_)},
+        {VariableType::INT32(), LLVMInt32TypeInContext(context_)},
+        {VariableType::INT64(), LLVMInt64TypeInContext(context_)},
+        {VariableType::FLOAT32(), LLVMFloatTypeInContext(context_)},
+        {VariableType::FLOAT64(), LLVMDoubleTypeInContext(context_)},
+        {VariableType::NATIVE_POINTER(), LLVMInt64TypeInContext(context_)},
+        {VariableType::JS_POINTER(), LLVMPointerType(LLVMInt64TypeInContext(context_), 1)},
+        {VariableType::JS_ANY(), LLVMPointerType(LLVMInt64TypeInContext(context_), 1)},
     };
     if (Is32Bit()) {
-        machineTypeMap[VariableType::NATIVE_POINTER()] = LLVMInt32Type();
-        LLVMTypeRef vectorType = LLVMVectorType(LLVMPointerType(LLVMInt8Type(), 1), 2);  // 2: packed vector type
+        machineTypeMap[VariableType::NATIVE_POINTER()] = LLVMInt32TypeInContext(context_);
+        LLVMTypeRef vectorType = LLVMVectorType(
+            LLVMPointerType(LLVMInt8TypeInContext(context_), 1), 2);  // 2: packed vector type
         machineTypeMap[VariableType::JS_POINTER()] = vectorType;
         machineTypeMap[VariableType::JS_ANY()] = vectorType;
     }

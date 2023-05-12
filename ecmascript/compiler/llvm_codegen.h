@@ -52,6 +52,27 @@ struct CodeInfo {
 
     ~CodeInfo();
 
+    class CodeSpace {
+    public:
+        static CodeSpace *GetInstance();
+
+        uint8_t *Alloca(uintptr_t size, bool isReq, bool alignFlag = true);
+
+    private:
+        CodeSpace();
+        ~CodeSpace();
+
+        static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 29);  // 512M
+        static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 28);  // 256M
+
+        // start point of the buffer reserved for sections required in executing phase
+        uint8_t *reqSecs_ {nullptr};
+        size_t reqBufPos_ {0};
+        // start point of the buffer reserved for sections not required in executing phase
+        uint8_t *unreqSecs_ {nullptr};
+        size_t unreqBufPos_ {0};
+    };
+
     uint8_t *AllocaInReqSecBuffer(uintptr_t size, bool alignFlag = true);
 
     uint8_t *AllocaInNotReqSecBuffer(uintptr_t size);
@@ -80,17 +101,6 @@ struct CodeInfo {
     }
 
 private:
-    uint8_t *Alloca(uintptr_t size, uint8_t *bufBegin, size_t &curPos, bool alignFlag = true);
-
-    static constexpr size_t REQUIRED_SECS_LIMIT = (1 << 29);  // 512M
-    static constexpr size_t UNREQUIRED_SECS_LIMIT = (1 << 28);  // 256M
-
-    // start point of the buffer reserved for sections required in executing phase
-    uint8_t *reqSecs_ {nullptr};
-    size_t reqBufPos_ {0};
-    // start point of the buffer reserved for sections not required in executing phase
-    uint8_t *unreqSecs_ {nullptr};
-    size_t unreqBufPos_ {0};
     std::array<sectionInfo, static_cast<int>(ElfSecName::SIZE)> secInfos_;
     std::vector<std::pair<uint8_t *, uintptr_t>> codeInfo_ {}; // info for disasssembler, planed to be deprecated
 };
@@ -119,7 +129,7 @@ public:
     {
         return engine_;
     }
-    void Disassemble(const std::map<uintptr_t, std::string> &addr2name,
+    void Disassemble(const std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
                      const CompilerLog &log, const MethodLogList &logList) const;
     static void Disassemble(const std::map<uintptr_t, std::string> *addr2name,
                             const std::string& triple, uint8_t *buf, size_t size);
@@ -176,7 +186,7 @@ private:
     void BuildAndRunPasses();
     void Initialize(LOptions option);
     static void PrintInstAndStep(uint64_t &pc, uint8_t **byteSp, uintptr_t &numBytes, size_t instSize,
-                                 char *outString, bool logFlag = true);
+                                 uint64_t textOffset, char *outString, bool logFlag = true);
     uint64_t GetTextSectionIndex() const;
 
     LLVMMCJITCompilerOptions options_ {};

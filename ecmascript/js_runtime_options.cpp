@@ -108,6 +108,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      'interpreter', 'debugger', 'compiler', 'builtins', \n"
     "                                      'all']. Default: 'all'\n"
     "--compiler-opt-max-method:            Enable aot compiler to skip method larger than limit (KB). Default: '32'\n"
+    "--compiler-module-methods:            The number of max compiled methods in a module. Default: '100'\n"
     "--max-unmovable-space:                Set max unmovable space capacity\n"
     "--merge-abc:                          ABC file is merge abc. Default: 'false'\n"
     "--compiler-opt-level:                 Optimization level configuration of aot compiler. Default: '3'\n"
@@ -179,6 +180,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"log-warning", required_argument, nullptr, OPTION_LOG_WARNING},
         {"gc-long-paused-time", required_argument, nullptr, OPTION_GC_LONG_PAUSED_TIME},
         {"compiler-opt-max-method", required_argument, nullptr, OPTION_COMPILER_OPT_MAX_METHOD},
+        {"compiler-module-methods", required_argument, nullptr, OPTION_COMPILER_MODULE_METHODS},
         {"max-unmovable-space", required_argument, nullptr, OPTION_MAX_UNMOVABLE_SPACE},
         {"merge-abc", required_argument, nullptr, OPTION_MERGE_ABC},
         {"compiler-opt-level", required_argument, nullptr, OPTION_ASM_OPT_LEVEL},
@@ -436,6 +438,13 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 } else {
                     return false;
                 }
+                break;
+            case OPTION_COMPILER_MODULE_METHODS:
+                ret = ParseUint32Param("compiler-module-methods", &argUint32);
+                if (!ret) {
+                    return false;
+                }
+                SetCompilerModuleMethods(argUint32);
                 break;
             case OPTION_COMPILER_TYPE_THRESHOLD:
                 ret = ParseDoubleParam("compiler-type-threshold", &argDouble);

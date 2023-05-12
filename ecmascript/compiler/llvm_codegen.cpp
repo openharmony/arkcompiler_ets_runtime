@@ -70,6 +70,22 @@ using namespace llvm;
 
 CodeInfo::CodeInfo()
 {
+    secInfos_.fill(std::make_pair(nullptr, 0));
+}
+
+CodeInfo::~CodeInfo()
+{
+    Reset();
+}
+
+CodeInfo::CodeSpace *CodeInfo::CodeSpace::GetInstance()
+{
+    static CodeSpace *codeSpace = new CodeSpace();
+    return codeSpace;
+}
+
+CodeInfo::CodeSpace::CodeSpace()
+{
     ASSERT(REQUIRED_SECS_LIMIT == AlignUp(REQUIRED_SECS_LIMIT, PageSize()));
 #ifdef PANDA_TARGET_MACOS
     reqSecs_ = static_cast<uint8_t *>(PageMap(REQUIRED_SECS_LIMIT, PAGE_PROT_READWRITE).GetMem());
@@ -88,12 +104,12 @@ CodeInfo::CodeInfo()
     if (unreqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
         unreqSecs_ = nullptr;
     }
-    secInfos_.fill(std::make_pair(nullptr, 0));
 }
 
-CodeInfo::~CodeInfo()
+CodeInfo::CodeSpace::~CodeSpace()
 {
-    Reset();
+    reqBufPos_ = 0;
+    unreqBufPos_ = 0;
     if (reqSecs_ != nullptr) {
         PageUnmap(MemMap(reqSecs_, REQUIRED_SECS_LIMIT));
     }
@@ -104,14 +120,34 @@ CodeInfo::~CodeInfo()
     unreqSecs_ = nullptr;
 }
 
+uint8_t *CodeInfo::CodeSpace::Alloca(uintptr_t size, bool isReq, bool alignFlag)
+{
+    // align up for rodata section
+    if (alignFlag) {
+        size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+    }
+    uint8_t *addr = nullptr;
+    auto bufBegin = isReq ? reqSecs_ : unreqSecs_;
+    auto &curPos = isReq ? reqBufPos_ : unreqBufPos_;
+    size_t limit = isReq ? REQUIRED_SECS_LIMIT : UNREQUIRED_SECS_LIMIT;
+    if (curPos + size > limit) {
+        LOG_COMPILER(FATAL) << std::hex << "Alloca Section failed. Current curPos:" << curPos
+                            << " plus size:" << size << "exceed limit:" << limit;
+        return nullptr;
+    }
+    addr = bufBegin + curPos;
+    curPos += size;
+    return addr;
+}
+
 uint8_t *CodeInfo::AllocaInReqSecBuffer(uintptr_t size, bool alignFlag)
 {
-    return Alloca(size, reqSecs_, reqBufPos_, alignFlag);
+    return CodeSpace::GetInstance()->Alloca(size, true, alignFlag);
 }
 
 uint8_t *CodeInfo::AllocaInNotReqSecBuffer(uintptr_t size)
 {
-    return Alloca(size, unreqSecs_, unreqBufPos_);
+    return CodeSpace::GetInstance()->Alloca(size, false);
 }
 
 uint8_t *CodeInfo::AllocaCodeSection(uintptr_t size, const char *sectionName)
@@ -144,8 +180,6 @@ uint8_t *CodeInfo::AllocaDataSection(uintptr_t size, const char *sectionName)
 void CodeInfo::Reset()
 {
     codeInfo_.clear();
-    reqBufPos_ = 0;
-    unreqBufPos_ = 0;
 }
 
 uint8_t *CodeInfo::GetSectionAddr(ElfSecName sec) const
@@ -165,24 +199,6 @@ size_t CodeInfo::GetSectionSize(ElfSecName sec) const
 std::vector<std::pair<uint8_t *, uintptr_t>> CodeInfo::GetCodeInfo() const
 {
     return codeInfo_;
-}
-
-uint8_t *CodeInfo::Alloca(uintptr_t size, uint8_t *bufBegin, size_t &curPos, bool alignFlag)
-{
-    // align up for rodata section
-    if (alignFlag) {
-        size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-    }
-    uint8_t *addr = nullptr;
-    size_t limit = (bufBegin == reqSecs_) ? REQUIRED_SECS_LIMIT : UNREQUIRED_SECS_LIMIT;
-    if (curPos + size > limit) {
-        LOG_COMPILER(ERROR) << std::hex << "Alloca Section failed. Current curPos:" << curPos
-                            << " plus size:" << size << "exceed limit:" << limit;
-        return nullptr;
-    }
-    addr = bufBegin + curPos;
-    curPos += size;
-    return addr;
 }
 
 void LLVMIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlFlowGraph &graph, size_t index,
@@ -430,14 +446,15 @@ static uint32_t GetInstrValue(size_t instrSize, uint8_t *instrAddr)
 }
 
 void LLVMAssembler::PrintInstAndStep(uint64_t &instrOffset, uint8_t **instrAddr, uintptr_t &numBytes,
-                                     size_t instSize, char *outString, bool logFlag)
+                                     size_t instSize, uint64_t textOffset, char *outString, bool logFlag)
 {
     if (instSize == 0) {
         instSize = 4; // 4: default instruction step size while instruction can't be resolved or be constant
     }
     if (logFlag) {
+        uint64_t unitedInstOffset = instrOffset + textOffset;
         // 8: length of output content
-        LOG_COMPILER(INFO) << std::setw(8) << std::setfill('0') << std::hex << instrOffset << ":" << std::setw(8)
+        LOG_COMPILER(INFO) << std::setw(8) << std::setfill('0') << std::hex << unitedInstOffset << ":" << std::setw(8)
                            << GetInstrValue(instSize, *instrAddr) << " " << outString;
     }
     instrOffset += instSize;
@@ -468,7 +485,7 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> *addr2nam
             LOG_COMPILER(INFO) << "------------------- asm code [" << methodName << "] -------------------";
         }
         size_t instSize = LLVMDisasmInstruction(ctx, instrAddr, numBytes, instrOffset, outString, outStringSize);
-        PrintInstAndStep(instrOffset, &instrAddr, numBytes, instSize, outString);
+        PrintInstAndStep(instrOffset, &instrAddr, numBytes, instSize, 0, outString);
     }
     LLVMDisasmDispose(ctx);
 }
@@ -511,7 +528,7 @@ uint64_t LLVMAssembler::GetTextSectionIndex() const
     return index;
 }
 
-void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2name,
+void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
                                 const CompilerLog &log, const MethodLogList &logList) const
 {
     const uint64_t textSecIndex = GetTextSectionIndex();
@@ -546,7 +563,7 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2nam
             size_t instSize = LLVMDisasmInstruction(disCtx, instrAddr, numBytes, instrOffset, outString, outStringSize);
             DecodeDebugInfo(instrOffset, textSecIndex, outString, outStringSize,
                             dwarfCtx.get(), llvmModule_, methodName);
-            PrintInstAndStep(instrOffset, &instrAddr, numBytes, instSize, outString, logFlag);
+            PrintInstAndStep(instrOffset, &instrAddr, numBytes, instSize, textOffset, outString, logFlag);
         }
     }
     LLVMDisasmDispose(disCtx);

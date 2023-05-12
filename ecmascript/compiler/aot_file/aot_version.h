@@ -25,7 +25,7 @@ public:
     // Release Version           Snapshot Version
     //     3.2                      0.0.0.x
     //     4.0                      4.0.0.x
-    static constexpr base::FileHeader::VersionType AN_VERSION = {4, 0, 0, 1};
+    static constexpr base::FileHeader::VersionType AN_VERSION = {4, 0, 0, 2};
     static constexpr bool AN_STRICT_MATCH = true;
     static constexpr base::FileHeader::VersionType AI_VERSION = {4, 0, 0, 1};
     static constexpr bool AI_STRICT_MATCH = true;

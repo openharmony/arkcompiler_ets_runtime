@@ -41,17 +41,6 @@ std::string LocationTy::TypeToString(Kind loc) const
     }
 }
 
-const LLVMStackMapType::CallSiteInfo* LLVMStackMapParser::GetCallSiteInfoByPc(uintptr_t callSiteAddr) const
-{
-    for (auto &pc2CallSiteInfo: pc2CallSiteInfoVec_) {
-        auto it = pc2CallSiteInfo.find(callSiteAddr);
-        if (it != pc2CallSiteInfo.end()) {
-            return &(it->second);
-        }
-    }
-    return nullptr;
-}
-
 void LLVMStackMapParser::CalcCallSite()
 {
     uint64_t recordNum = 0;
@@ -188,7 +177,7 @@ uint32_t ARKCallsite::CalStackMapSize(Triple triple) const
 }
 
 bool LLVMStackMapParser::CalculateStackMap(std::unique_ptr<uint8_t []> stackMapAddr,
-    uintptr_t hostCodeSectionAddr)
+    uintptr_t hostCodeSectionAddr, uintptr_t hostCodeSectionOffset)
 {
     bool ret = CalculateStackMap(std::move(stackMapAddr));
     if (!ret) {
@@ -199,14 +188,14 @@ bool LLVMStackMapParser::CalculateStackMap(std::unique_ptr<uint8_t []> stackMapA
 
     for (size_t i = 0; i < llvmStackMap_.stkSizeRecords.size(); i++) {
         uintptr_t hostAddr = llvmStackMap_.stkSizeRecords[i].functionAddress;
-        uintptr_t offset = hostAddr - hostCodeSectionAddr;
+        uintptr_t offset = hostAddr - hostCodeSectionAddr + hostCodeSectionOffset;
         llvmStackMap_.stkSizeRecords[i].functionAddress = offset;
         OPTIONAL_LOG_COMPILER(DEBUG) << std::dec << i << "th function " << std::hex << hostAddr << " ---> "
                                      << " offset:" << offset;
     }
-    pc2CallSiteInfoVec_.clear();
+    pc2CallSiteInfoVec_.pop_back();
+    pc2DeoptVec_.pop_back();
     fun2RecordNum_.clear();
-    pc2DeoptVec_.clear();
     CalcCallSite();
     return true;
 }
