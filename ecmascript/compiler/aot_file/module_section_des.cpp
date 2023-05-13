@@ -43,6 +43,8 @@ std::string ModuleSectionDes::GetSecName(const ElfSecName idx)
             return ".strtab";
         case ElfSecName::SYMTAB:
             return ".symtab";
+        case ElfSecName::SHSTRTAB:
+            return ".shstrtab";
         case ElfSecName::LLVM_STACKMAP:
             return ".llvm_stackmaps";
         case ElfSecName::ARK_STACKMAP:

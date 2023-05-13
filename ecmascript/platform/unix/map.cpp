@@ -87,7 +87,10 @@ void PageClearTag(void *mem, size_t size)
 
 void PageProtect(void *mem, size_t size, int prot)
 {
-    mprotect(mem, size, prot);
+    int ret = mprotect(mem, size, prot);
+    if (ret != 0) {
+        LOG_ECMA(ERROR) << "PageProtect change to " << prot << " failed, error code is " << errno;
+    }
 }
 
 size_t PageSize()
