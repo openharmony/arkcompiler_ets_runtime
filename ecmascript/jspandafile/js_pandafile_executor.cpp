@@ -231,11 +231,11 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
 {
     // For Ark application startup
     EcmaVM *vm = thread->GetEcmaVM();
+
+    QuickFixManager *quickFixManager = vm->GetQuickFixManager();
+    quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
+
     Expected<JSTaggedValue, bool> result = vm->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, excuteFromJob);
-    if (result) {
-        QuickFixManager *quickFixManager = vm->GetQuickFixManager();
-        quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
-    }
     return result;
 }
 }  // namespace panda::ecmascript

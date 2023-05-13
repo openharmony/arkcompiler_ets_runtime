@@ -45,26 +45,26 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *bas
     CString baseFileName = baseFile->GetJSPandaFileDesc();
     bool needLoadPatch = callBack_(baseFileName.c_str(), patchFileName, &patchBuffer, patchSize);
     if (!needLoadPatch) {
-        LOG_ECMA(ERROR) << "do not need load patch!";
+        LOG_ECMA(INFO) << "Do not need load patch of: " << baseFileName;
         return;
     }
 
     if (methodInfos_.find(baseFileName) != methodInfos_.end()) {
-        LOG_ECMA(ERROR) << "Cannot repeat load patch!";
+        LOG_ECMA(DEBUG) << "Cannot repeat load patch of: " << baseFileName;
         return;
     }
 
     std::shared_ptr<JSPandaFile> patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
         thread, patchFileName.c_str(), "", patchBuffer, patchSize);
     if (patchFile == nullptr) {
-        LOG_ECMA(ERROR) << "load patch jsPandafile failed";
+        LOG_ECMA(ERROR) << "load patch jsPandafile failed of: " << baseFileName;
         return;
     }
 
     PatchInfo patchInfo;
     auto ret = PatchLoader::LoadPatchInternal(thread, baseFile, patchFile.get(), patchInfo);
     if (ret != PatchErrorCode::SUCCESS) {
-        LOG_ECMA(ERROR) << "Load patch fail!";
+        LOG_ECMA(ERROR) << "Load patch fail of: " << baseFileName;
         return;
     }
 
