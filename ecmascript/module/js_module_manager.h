@@ -82,7 +82,8 @@ public:
     {
         return moduleType == ModuleTypes::OHOS_MODULE ||
                moduleType == ModuleTypes::APP_MODULE ||
-               moduleType == ModuleTypes::NATIVE_MODULE;
+               moduleType == ModuleTypes::NATIVE_MODULE ||
+               moduleType == ModuleTypes::INTERNAL_MODULE;
     }
     static std::pair<bool, ModuleTypes> CheckNativeModule(const CString &moduleRequestName);
     static bool LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule> &requiredModule,
@@ -117,6 +118,10 @@ private:
 
     static Local<JSValueRef> GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType);
     static CString GetStrippedModuleName(const CString &moduleRequestName);
+    static CString GetInternalModuleDir(const CString &moduleRequestName);
+    static void MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments, const CString &moduleName);
+    static void MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
+                                 const CString &moduleRequestName);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
 

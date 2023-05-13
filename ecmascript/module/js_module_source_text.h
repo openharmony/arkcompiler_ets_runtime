@@ -32,6 +32,7 @@ enum class ModuleTypes : uint8_t {
     NATIVE_MODULE,
     OHOS_MODULE,
     APP_MODULE,
+    INTERNAL_MODULE,
     UNKNOWN
 };
 
@@ -109,7 +110,7 @@ public:
 
     // define BitField
     static constexpr size_t STATUS_BITS = 3;
-    static constexpr size_t MODULE_TYPE_BITS = 3;
+    static constexpr size_t MODULE_TYPE_BITS = 4;
     static constexpr size_t IS_NEW_BC_VERSION_BITS = 1;
     FIRST_BIT_FIELD(BitField, Status, ModuleStatus, STATUS_BITS)
     NEXT_BIT_FIELD(BitField, Types, ModuleTypes, MODULE_TYPE_BITS, Status)

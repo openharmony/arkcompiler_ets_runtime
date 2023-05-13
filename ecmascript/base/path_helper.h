@@ -35,6 +35,9 @@ public:
     static constexpr char PREFIX_BUNDLE[] = "@bundle:";
     static constexpr char PREFIX_MODULE[] = "@module:";
     static constexpr char PREFIX_PACKAGE[] = "@package:";
+    static constexpr char REQUIRE_NAITVE_MODULE_PREFIX[] = "@native:";
+    static constexpr char REQUIRE_NAPI_OHOS_PREFIX[] = "@ohos:";
+    static constexpr char REQUIRE_NAPI_APP_PREFIX[] = "@app:";
     static constexpr char NPM_PATH_SEGMENT[] = "node_modules";
     static constexpr char PACKAGE_PATH_SEGMENT[] = "pkg_modules";
     static constexpr char PACKAGE_ENTRY_FILE[] = "/index";
@@ -56,6 +59,9 @@ public:
     static constexpr size_t PREFIX_BUNDLE_LEN = 8;
     static constexpr size_t PREFIX_MODULE_LEN = 8;
     static constexpr size_t PREFIX_PACKAGE_LEN = 9;
+    static constexpr size_t NATIVE_PREFIX_SIZE = 8;
+    static constexpr size_t OHOS_PREFIX_SIZE = 6;
+    static constexpr size_t APP_PREFIX_SIZE = 5;
 
     static void ResolveCurrentPath(JSThread *thread,
                                    JSMutableHandle<JSTaggedValue> &dirPath,
