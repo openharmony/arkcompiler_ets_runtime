@@ -38,10 +38,10 @@ public:
                                                  std::string_view entryPoint, bool excuteFromJob = false);
     static void LoadAOTFilesForFile(EcmaVM *vm, JSPandaFile *jsPandaFile);
     // Execute from secure mem
-    static Expected<JSTaggedValue, bool> ExecuteFromBufferSecure(JSThread *thread, uint8_t* buffer, size_t size,
+    static Expected<JSTaggedValue, bool> ExecuteFromBufferSecure(JSThread *thread, uint8_t *buffer, size_t size,
                                                                  std::string_view entryPoint,
                                                                  const CString &filename = "", bool needUpdate = false);
-    static Expected<JSTaggedValue, bool> ExecuteModuleBufferSecure(JSThread *thread, uint8_t* buffer, size_t size,
+    static Expected<JSTaggedValue, bool> ExecuteModuleBufferSecure(JSThread *thread, uint8_t *buffer, size_t size,
                                                                    const CString &filename = "",
                                                                    bool needUpdate = false);
     static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, const CString &filename,

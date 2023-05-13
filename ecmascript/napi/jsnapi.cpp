@@ -496,7 +496,7 @@ bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, 
     return true;
 }
 
-bool JSNApi::ExecuteSecure(EcmaVM *vm, uint8_t* data, int32_t size, const std::string &entry,
+bool JSNApi::ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &entry,
                            const std::string &filename, bool needUpdate)
 {
     LOG_ECMA(INFO) << "start to execute ark buffer with secure memory: " << filename;

@@ -150,7 +150,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
 }
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread *thread, const CString &filename,
-    std::string_view entryPoint, uint8_t* buffer, size_t size, bool needUpdate)
+    std::string_view entryPoint, uint8_t *buffer, size_t size, bool needUpdate)
 {
     if (buffer == nullptr || size == 0) {
         return nullptr;

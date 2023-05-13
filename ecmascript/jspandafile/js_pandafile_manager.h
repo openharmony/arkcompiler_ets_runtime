@@ -40,7 +40,7 @@ public:
 
     // load pandafile from secure mem
     std::shared_ptr<JSPandaFile> LoadJSPandaFileSecure(JSThread *thread, const CString &filename,
-                                                       std::string_view entryPoint, uint8_t* buffer, size_t size,
+                                                       std::string_view entryPoint, uint8_t *buffer, size_t size,
                                                        bool needUpdate = false);
 
     std::shared_ptr<JSPandaFile> OpenJSPandaFile(const CString &filename);
