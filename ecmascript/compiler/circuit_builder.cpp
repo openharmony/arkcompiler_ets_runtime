@@ -424,9 +424,21 @@ GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptT
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
+    GateRef frameStateChain = frameState;
+    size_t depth = acc_.GetFrameStateDepth(frameState);
+    if (depth > 0) {
+        std::vector<GateRef> vec{frameState};
+        auto it = vec.begin();
+        GateRef preFrameState = acc_.GetPreFrameState(frameState);
+        while (preFrameState != Circuit::NullGate()) {
+            vec.insert(it, preFrameState);
+            preFrameState = acc_.GetPreFrameState(preFrameState);
+        }
+        frameStateChain = circuit_->NewGate(circuit_->FrameStateChain(depth + 1), vec);
+    }
     GateRef ret = GetCircuit()->NewGate(circuit_->DeoptCheck(),
         MachineType::I1, { currentControl, currentDepend, condition,
-            frameState, Int64(static_cast<int64_t>(type))}, GateType::NJSValue());
+            frameStateChain, Int64(static_cast<int64_t>(type))}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -805,6 +817,26 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     GateRef result = GetCircuit()->NewGate(meta, machineType, inputs.size(), inputs.data(), type, comment);
     auto label = GetCurrentLabel();
     label->SetDepend(result);
+    return result;
+}
+
+GateRef CircuitBuilder::NoLabelCallRuntime(GateRef glue, GateRef depend, size_t index, std::vector<GateRef> &args,
+                                           GateRef hirGate)
+{
+    const std::string name = RuntimeStubCSigns::GetRTName(RTSTUB_ID(CallRuntime));
+    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
+    GateRef target = IntPtr(index);
+    std::vector<GateRef> inputs { depend, target, glue };
+    inputs.insert(inputs.end(), args.begin(), args.end());
+    auto numValuesIn = args.size() + 2; // 2: target & glue
+    GateRef pcOffset = Int64(acc_.TryGetPcOffset(hirGate));
+    inputs.emplace_back(pcOffset);
+    numValuesIn += 1;
+
+    const GateMetaData* meta = circuit_->RuntimeCall(numValuesIn);
+    MachineType machineType = cs->GetReturnType().GetMachineType();
+    GateType type = cs->GetReturnType().GetGateType();
+    GateRef result = circuit_->NewGate(meta, machineType, inputs.size(), inputs.data(), type, name.c_str());
     return result;
 }
 

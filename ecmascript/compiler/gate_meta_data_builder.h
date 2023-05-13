@@ -61,7 +61,7 @@ static constexpr size_t FIVE_VALUE = 5;
 #undef DECLARE_CACHED_GATE_META
 
 #define DECLARE_LOAD_PROPERTY_META(NAME, OP, R, S, D, V)      \
-    LoadPropertyMetaDate cached##NAME##_ { OpCode::OP, R, S, D, V };
+    LoadPropertyMetaData cached##NAME##_ { OpCode::OP, R, S, D, V };
 #undef DECLARE_LOAD_PROPERTY_META
 
 #define DECLARE_CACHED_VALUE_META(VALUE)                                                        \
@@ -149,6 +149,11 @@ public:
     const GateMetaData* ConstString(const std::string &str)
     {
         return new (chunk_) StringMetaData(chunk_, str);
+    }
+
+    const GateMetaData* FrameState(uint64_t valueIn)
+    {
+        return new (chunk_) FrameStateMetaData(valueIn);
     }
 private:
     const GateMetaDataChache cache_;

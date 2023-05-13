@@ -46,7 +46,7 @@ struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size()
                                                     base::AlignedPointer,
                                                     base::AlignedPointer> {
     enum class Index : size_t {
-        OUTPUT_COUNT_INDEX = 0,
+        INLINE_DEPTH_INDEX = 0,
         CALLFRAME_TOP_INDEX,
         RETURN_ADDRESS_INDEX,
         CALLERFRAME_POINTER_INDEX,
@@ -55,9 +55,9 @@ struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size()
 
     static_assert(static_cast<size_t>(Index::NUM_OF_MEMBER) == NumOfTypes);
 
-    static size_t GetOutputCountOffset(bool isArch32)
+    static size_t GetInlineDepthOffset(bool isArch32)
     {
-        return GetOffset<static_cast<size_t>(Index::OUTPUT_COUNT_INDEX)>(isArch32);
+        return GetOffset<static_cast<size_t>(Index::INLINE_DEPTH_INDEX)>(isArch32);
     }
 
     static size_t GetCallFrameTopOffset(bool isArch32)
@@ -80,7 +80,7 @@ struct AsmStackContext : public base::AlignedStruct<base::AlignedPointer::Size()
         return isArch32 ? AsmStackContext::SizeArch32 : AsmStackContext::SizeArch64;
     }
 
-    alignas(EAS) size_t outputCount_ {0};
+    alignas(EAS) size_t inlineDepth_ {0};
     alignas(EAS) uintptr_t callFrameTop_{0};
     alignas(EAS) uintptr_t returnAddr_{0};
     alignas(EAS) uintptr_t callerFp_{0};
@@ -103,18 +103,22 @@ public:
     using OffsetType = kungfu::LLVMStackMapType::OffsetType;
     using VRegId = kungfu::LLVMStackMapType::VRegId;
 
-    explicit Deoptimizier(JSThread *thread) : thread_(thread)
+    explicit Deoptimizier(JSThread *thread, size_t depth) : thread_(thread), inlineDepth_(depth)
     {
         CalleeReg callreg;
         numCalleeRegs_ = static_cast<size_t>(callreg.GetCallRegNum());
         JSRuntimeOptions options = thread_->GetEcmaVM()->GetJSOptions();
         traceDeopt_ = options.GetTraceDeopt();
     }
-    void CollectVregs(const std::vector<ARKDeopt>& deoptBundle);
-    void CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle);
-    JSTaggedType ConstructAsmInterpretFrame(DeoptType type);
-    static std::string DisplayItems(DeoptType type);
-
+    void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle, size_t shift);
+    void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
+    JSTaggedType ConstructAsmInterpretFrame();
+    void UpdateAndDumpDeoptInfo(kungfu::DeoptType type);
+    static std::string DisplayItems(kungfu::DeoptType type);
+    static int32_t EncodeDeoptVregIndex(int32_t index, size_t depth, size_t shift);
+    static size_t ComputeShift(size_t depth);
+    static int32_t DecodeVregIndex(OffsetType id, size_t shift);
+    static size_t DecodeDeoptDepth(OffsetType id, size_t shift);
     JSThread *GetThread() const
     {
         return thread_;
@@ -145,33 +149,37 @@ private:
         index += NUM_MANDATORY_JSFUNC_ARGS;
         return GetFrameArgv(static_cast<size_t>(index));
     }
-    bool CollectVirtualRegisters(Method* method, FrameWriter *frameWriter);
-    bool HasDeoptValue(int32_t index) const
+    bool CollectVirtualRegisters(Method* method, FrameWriter *frameWriter, size_t curDepth);
+    bool HasDeoptValue(size_t curDepth, int32_t index) const
     {
-        return deoptVregs_.find(static_cast<VRegId>(index)) != deoptVregs_.end();
+        ASSERT(curDepth <= inlineDepth_);
+        return deoptVregs_.find({curDepth, static_cast<OffsetType>(index)}) != deoptVregs_.end();
     }
-    JSTaggedValue GetDeoptValue(int32_t index) const
+    JSTaggedValue GetDeoptValue(size_t curDepth, int32_t index) const
     {
-        if (!HasDeoptValue(index)) {
+        ASSERT(curDepth <= inlineDepth_);
+        if (!HasDeoptValue(curDepth, index)) {
             return JSTaggedValue::Undefined();
         }
-        return deoptVregs_.at(static_cast<VRegId>(index));
+        return deoptVregs_.at({curDepth, static_cast<OffsetType>(index)});
     }
     Method* GetMethod(JSTaggedValue &target);
     void RelocateCalleeSave();
-    void Dump(Method* method, DeoptType type);
+    void Dump(Method* method, kungfu::DeoptType type, size_t depth);
+    size_t GetCallSize(size_t curDepth, const uint8_t *resumePc);
     JSThread *thread_ {nullptr};
     uintptr_t *calleeRegAddr_ {nullptr};
     size_t numCalleeRegs_ {0};
     AsmStackContext stackContext_;
 
-    std::unordered_map<VRegId, JSTaggedValue> deoptVregs_;
+    std::map<std::pair<size_t, OffsetType>, JSTaggedValue> deoptVregs_;
     struct Context context_ {0, 0, {}};
-    uint32_t pc_ {0};
-    JSTaggedValue env_ {JSTaggedValue::Undefined()};
+    std::unordered_map<size_t, size_t> pc_;
+    std::unordered_map<size_t, size_t> jumpSize_;
     size_t frameArgc_ {0};
     JSTaggedType *frameArgvs_ {nullptr};
     bool traceDeopt_{false};
+    size_t inlineDepth_ {0};
 };
 
 }  // namespace panda::ecmascript

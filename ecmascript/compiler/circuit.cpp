@@ -470,12 +470,13 @@ GateRef Circuit::NewArg(MachineType machineType, size_t index,
 
 GateRef Circuit::GetConstantDataGate(uint64_t value, GateType type, GateRef jsFunc)
 {
-    auto search = constantDataCache_.find(value);
+    std::pair<BitField, GateRef> key{value, jsFunc};
+    auto search = constantDataCache_.find(key);
     if (search != constantDataCache_.end()) {
-        return constantDataCache_.at(value);
+        return constantDataCache_.at(key);
     }
     auto gate = NewGate(metaBuilder_.ConstData(value), MachineType::ARCH, { jsFunc }, type);
-    constantDataCache_[value] = gate;
+    constantDataCache_[key] = gate;
     return gate;
 }
 

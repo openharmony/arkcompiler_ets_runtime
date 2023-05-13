@@ -287,7 +287,7 @@ void NumberSpeculativeLowering::VisitNumberDiv(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateRef rightNotZero = builder_.NotEqual(right, builder_.Double(0.0));
+    GateRef rightNotZero = builder_.DoubleNotEqual(right, builder_.Double(0.0));
     GateRef frameState = acc_.GetFrameState(builder_.GetDepend());
     builder_.DeoptCheck(rightNotZero, frameState, DeoptType::DIVZERO);
     GateRef result = builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, left, right);

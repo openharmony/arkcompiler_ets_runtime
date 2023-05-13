@@ -27,6 +27,7 @@
 #define LOG_COMPILER(level) ARK_LOG(level, Component::COMPILER)
 #define LOG_DEBUGGER(level) ARK_LOG(level, Component::DEBUGGER)
 #define LOG_BUILTINS(level) ARK_LOG(level, Component::BUILTINS)
+#define LOG_TRACE(level) ARK_LOG(level, Component::TRACE)
 #define LOG_ECMA_IF(cond, level) (cond) && ARK_LOG(level, Component::ALL)
 // When the AOT compiler is integrated into the IDE, tag the output error messages for developers
 #define LOG_HOST_TOOL_ERROR ARK_LOG(ERROR, Component::NO_TAG) << "[HostTool] "

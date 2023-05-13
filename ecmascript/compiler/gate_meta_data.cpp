@@ -54,6 +54,7 @@ std::string GateMetaData::Str(OpCode opcode)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_PC_OFFSET(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(GATE_NAME_MAP)
+    FRAME_STATE(GATE_NAME_MAP)
 #undef GATE_NAME_MAP
 #define GATE_NAME_MAP(OP) { OpCode::OP, #OP },
         GATE_OPCODE_LIST(GATE_NAME_MAP)
@@ -248,7 +249,7 @@ IMMUTABLE_META_DATA_CACHE_LIST(DECLARE_GATE_META)
 #define DECLARE_LOAD_PROPERTY_GATE_META(NAME, OP, R, S, D, V)                           \
 const GateMetaData* GateMetaBuilder::NAME(bool isFunction)                              \
 {                                                                                       \
-    auto meta = new (chunk_) LoadPropertyMetaDate(OpCode::OP, R, S, D, V, isFunction);  \
+    auto meta = new (chunk_) LoadPropertyMetaData(OpCode::OP, R, S, D, V, isFunction);  \
     return meta;                                                                        \
 }
 LOAD_PROPERTY_LIST(DECLARE_LOAD_PROPERTY_GATE_META)

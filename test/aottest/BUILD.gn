@@ -181,6 +181,8 @@ group("ark_aot_ts_test") {
     "try_catch_finally",
     "trystglobalbynameprefid32",
     "ts_inline",
+    "ts_inline_deopt",
+    "ts_inline_max_call",
     "typeof",
     "xor",
   ]

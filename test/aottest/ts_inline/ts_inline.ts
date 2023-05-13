@@ -24,5 +24,37 @@ function foo(arg1 : number, arg2 : number) : number {
     }
 }
 
+function bar(arg1 : number, arg2 : number) : number {
+    return arg1 * arg2;
+}
+
+function calculate(arg1 : number, arg2 : number) : number {
+    let a1 = arg1 + arg2;
+    if (a1 > 0) {
+        a1 = a1 * 2;
+    } else {
+        a1++;
+    }
+    let a2 = arg1 * arg2;
+    if (a2 > 0) {
+        a2 = a2 / 2;
+    } else {
+        a2++;
+    }
+    let a3 = a1 + a2;
+    return a3;
+}
+
 print(foo(1, 2));
 print(foo(1, -2));
+
+// inline doesn't support try-catch
+print(bar(7, 8));
+try {
+    print(bar(7, 8));
+} catch (e) {
+    print(e);
+}
+
+// large function no inline
+print(calculate(4, 2));

@@ -1029,15 +1029,31 @@ void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
     Register opRegister = r10;
     Register outputCount = rdx;
     Register frameStateBase = rcx;
-    __ Movq(Operand(context, AsmStackContext::GetOutputCountOffset(false)), outputCount);
-    __ Leaq(Operand(context, AsmStackContext::GetSize(false)), frameStateBase);
-
+    Register depth = r11;
+    Label loopBegin;
     Label stackOverflow;
+    Label pushArgv;
+    __ Movq(Operand(context, AsmStackContext::GetInlineDepthOffset(false)), depth);
+    __ Leaq(Operand(context, AsmStackContext::GetSize(false)), context);
+    __ Movq(Immediate(0), r12);
+    __ Bind(&loopBegin);
+    __ Movq(Operand(context, 0), outputCount);
+    __ Leaq(Operand(context, FRAME_SLOT_SIZE), frameStateBase);
+    __ Cmpq(0, r12);
+    __ Je(&pushArgv);
+    __ Movq(rsp, r8);
+    __ Addq(AsmInterpretedFrame::GetSize(false), r8);
+    __ Leaq(Operand(frameStateBase, AsmInterpretedFrame::GetBaseOffset(false)), r10);
+    __ Movq(r8, Operand(r10, InterpretedFrameBase::GetPrevOffset(false)));
+    __ Bind(&pushArgv);
     // update fp
     __ Movq(rsp, Operand(frameStateBase, AsmInterpretedFrame::GetFpOffset(false)));
     PushArgsWithArgvAndCheckStack(assembler, glueRegister, outputCount,
         frameStateBase, tempRegister, opRegister, &stackOverflow);
-
+    __ Leaq(Operand(context, outputCount, Scale::Times8, FRAME_SLOT_SIZE), context);
+    __ Addq(1, r12);
+    __ Cmpq(r12, depth);
+    __ Jae(&loopBegin);
     Register callTargetRegister = r8;
     Register methodRegister = r9;
     {
@@ -1075,12 +1091,15 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
 
     __ Movq(rdi, rax); // glue
     Register deoptType = rsi;
+    Register depth = rdx;
+    __ Subq(FRAME_SLOT_SIZE, rsp);
+    __ Pushq(depth);
     __ Pushq(deoptType);  // argv[0]
-    __ Pushq(1);  // argc
+    __ Pushq(2);  // 2: argc
     __ Pushq(kungfu::RuntimeStubCSigns::ID_DeoptHandler);
     __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
 
-    __ Addq(3 * FRAME_SLOT_SIZE, rsp); // 3: skip runtimeId argc deoptType
+    __ Addq(5 * FRAME_SLOT_SIZE, rsp); // 5: skip runtimeId argc deoptType depth align
 
     Register context = rsi;
     __ Movq(rax, context);

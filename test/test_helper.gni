@@ -385,10 +385,8 @@ template("host_aot_js_test_action") {
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-    _aot_compile_options_ =
-        " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
-        _test_aot_log_level +
-        " --log-components=compiler --compiler-opt-type-lowering=false"
+    _aot_compile_options_ = " --aot-file=" + rebase_path(_test_aot_arg_) +
+                            " --log-level=" + _test_aot_log_level + " --log-components=compiler --compiler-opt-type-lowering=false --compiler-opt-inlining=false"
 
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
@@ -397,7 +395,12 @@ template("host_aot_js_test_action") {
 
     if (defined(invoker.is_enable_opt_inlining) &&
         invoker.is_enable_opt_inlining) {
-      _aot_compile_options_ += " --compiler-opt-type-lowering=true"
+      _aot_compile_options_ += " --compiler-opt-inlining=true"
+    }
+
+    if (defined(invoker.is_enable_inline_trace) &&
+        invoker.is_enable_inline_trace) {
+      _aot_compile_options_ += " --compiler-trace-inline=true"
     }
 
     if (defined(invoker.userDefinedMethodsInModule) &&
@@ -581,7 +584,8 @@ template("host_aot_test_action") {
 
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
-        _test_aot_log_level + " --log-components=compiler"
+        _test_aot_log_level + " --log-components=compiler" +
+        " --compiler-opt-inlining=false"
 
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
@@ -601,7 +605,12 @@ template("host_aot_test_action") {
     }
     if (defined(invoker.is_enable_opt_inlining) &&
         invoker.is_enable_opt_inlining) {
-      _aot_compile_options_ += " --compiler-opt-type-lowering=true"
+      _aot_compile_options_ += " --compiler-opt-inlining=true"
+    }
+
+    if (defined(invoker.is_enable_inline_trace) &&
+        invoker.is_enable_inline_trace) {
+      _aot_compile_options_ += " --compiler-trace-inline=true"
     }
 
     if (defined(invoker.userDefinedMethodsInModule) &&
@@ -649,7 +658,7 @@ template("host_aot_test_action") {
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_slowpath_) +
         " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
-        "  --compiler-opt-type-lowering=false"
+        " --compiler-opt-type-lowering=false" + " --compiler-opt-inlining=false"
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
       _aot_compile_options_ += " --compiler-trace-deopt=true"
@@ -670,7 +679,12 @@ template("host_aot_test_action") {
 
     if (defined(invoker.is_enable_opt_inlining) &&
         invoker.is_enable_opt_inlining) {
-      _aot_compile_options_ += " --compiler-opt-type-lowering=true"
+      _aot_compile_options_ += " --compiler-opt-inlining=true"
+    }
+
+    if (defined(invoker.is_enable_inline_trace) &&
+        invoker.is_enable_inline_trace) {
+      _aot_compile_options_ += " --compiler-trace-inline=true"
     }
 
     if (defined(invoker.userDefinedMethodsInModule) &&
@@ -889,7 +903,8 @@ template("host_typeinfer_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_compile_options_ =
-        " --compiler-assert-types=true" + " --compiler-opt-type-lowering=false"
+        " --compiler-assert-types=true" +
+        " --compiler-opt-type-lowering=false" + " --compiler-opt-inlining=false"
 
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {
@@ -932,7 +947,8 @@ template("host_typeinfer_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_compile_options_ =
-        " --compiler-assert-types=true" + " --compiler-opt-type-lowering=false"
+        " --compiler-assert-types=true" +
+        " --compiler-opt-type-lowering=false" + " --compiler-opt-inlining=false"
 
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {

@@ -94,6 +94,8 @@ enum CommandValues {
     OPTION_BUILTINS_DTS,
     OPTION_COMPILER_TRACE_BC,
     OPTION_COMPILER_TRACE_DEOPT,
+    OPTION_COMPILER_TRACE_INLINE,
+    OPTION_COMPILER_MAX_INLINE_BYTECODES,
     OPTION_COMPILER_DEOPT_THRESHOLD,
     OPTION_COMPILER_STRESS_DEOPT,
     OPTION_COMPILER_OPT_CODE_PROFILER,
@@ -1017,6 +1019,25 @@ public:
         compilerSkipMethods_ = std::move(value);
     }
 
+    void SetTraceInline(bool value)
+    {
+        traceInline_ = value;
+    }
+
+    bool GetTraceInline() const
+    {
+        return traceInline_;
+    }
+
+    void SetMaxInlineBytecodes(size_t value)
+    {
+        maxInlineBytecodes_ = value;
+    }
+
+    size_t GetMaxInlineBytecodes()
+    {
+        return maxInlineBytecodes_;
+    }
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1083,7 +1104,7 @@ private:
     bool enableEarlyElimination_ {true};
     bool enableLaterElimination_ {true};
     bool enableValueNumbering_ {true};
-    bool enableOptInlining_ {false};
+    bool enableOptInlining_ {true};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};
     uint32_t compilerModuleMethods_ {100};
@@ -1101,6 +1122,8 @@ private:
     bool verifyVTable_ {false};
     std::string compilerSelectMethods_ {""};
     std::string compilerSkipMethods_ {""};
+    bool traceInline_ {false};
+    size_t maxInlineBytecodes_ {25};
 };
 }  // namespace panda::ecmascript
 

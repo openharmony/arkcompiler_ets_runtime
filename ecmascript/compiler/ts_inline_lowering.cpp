@@ -62,6 +62,11 @@ void TSInlineLowering::TryInline(GateRef gate)
 
 void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
 {
+    // inline doesn't support try-catch
+    bool inTryCatch = FilterCallInTryCatch(gate);
+    if (inTryCatch) {
+        return;
+    }
     // first elem is function in old isa
     size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
     auto funcType = acc_.GetGateType(acc_.GetValueIn(gate, funcIndex));
@@ -80,19 +85,21 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
         auto &methodInfo = bytecodeInfo.GetMethodList().at(methodOffset);
         auto &methodPcInfos = bytecodeInfo.GetMethodPcInfos();
         auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
-        if (methodPcInfo.pcOffsets.size() <= MAX_INLINE_BYTECODE_COUNT &&
-            inlinedCall_ <= MAX_INLINE_CALL_ALLOWED) {
-            auto success = FilterInlinedMethod(inlinedMethod, methodPcInfo.pcOffsets);
-            if (success) {
+        if (methodPcInfo.pcOffsets.size() <= maxInlineBytecodesCount_ &&
+            inlinedCall_ < MAX_INLINE_CALL_ALLOWED) {
+            inlineSuccess_ = FilterInlinedMethod(inlinedMethod, methodPcInfo.pcOffsets);
+            if (inlineSuccess_) {
+                GateRef glue = acc_.GetGlueFromArgList();
                 CircuitRootScope scope(circuit_);
-                InlineCall(methodInfo, methodPcInfo, inlinedMethod);
-                ReplaceCallInput(gate, isCallThis);
+                InlineCall(methodInfo, methodPcInfo, inlinedMethod, gate);
+                ReplaceCallInput(gate, isCallThis, glue);
                 inlinedCall_++;
             }
         }
     }
 
-    if ((inlinedMethod != nullptr) && IsLogEnabled()) {
+    if ((inlinedMethod != nullptr) && IsLogEnabled() && inlineSuccess_) {
+        inlineSuccess_ = false;
         auto jsPandaFile = ctx_->GetJSPandaFile();
         const std::string methodName(
             MethodLiteral::GetMethodName(jsPandaFile, inlinedMethod->GetMethodId()));
@@ -104,6 +111,8 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
                            << "===================="
                            << " After inlining "
                            << "[" << fullName << "]"
+                           << " Caller method "
+                           << "[" << methodName_ << "]"
                            << "===================="
                            << "\033[0m";
         circuit_->PrintAllGatesWithBytecode();
@@ -138,7 +147,8 @@ bool TSInlineLowering::FilterInlinedMethod(MethodLiteral* method, std::vector<co
     return true;
 }
 
-void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method)
+void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method,
+                                  GateRef gate)
 {
     const JSPandaFile *jsPandaFile = ctx_->GetJSPandaFile();
     TSManager *tsManager = ctx_->GetTSManager();
@@ -156,10 +166,14 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo,
                                    tsManager, circuit_,
                                    ctx_->GetByteCodes(), true, IsLogEnabled(),
-                                   hasTyps, fullName, recordName, nullptr);
+                                   enableTypeLowering_, fullName, recordName, nullptr);
     {
         TimeScope timeScope("BytecodeToCircuit", methodName, method->GetMethodId().GetOffset(), log);
         builder.BytecodeToCircuit();
+    }
+
+    if (enableTypeLowering_) {
+        BuildFrameStateChain(gate, builder);
     }
 
     PassData data(&builder, circuit_, ctx_, log, fullName,
@@ -167,7 +181,6 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
                   method, method->GetMethodId().GetOffset());
     PassRunner<PassData> pipeline(&data);
     pipeline.RunPass<TypeInferPass>();
-    pipeline.RunPass<AsyncFunctionLoweringPass>();
 }
 
 bool TSInlineLowering::CheckParameter(GateRef gate, bool isCallThis, MethodLiteral* method)
@@ -179,10 +192,9 @@ bool TSInlineLowering::CheckParameter(GateRef gate, bool isCallThis, MethodLiter
     return declaredNumArgs == (numIns - fixedInputsNum);
 }
 
-void TSInlineLowering::ReplaceCallInput(GateRef gate, bool isCallThis)
+void TSInlineLowering::ReplaceCallInput(GateRef gate, bool isCallThis, GateRef glue)
 {
     std::vector<GateRef> vec;
-    GateRef glue = acc_.GetGlueFromArgList();
     size_t numIns = acc_.GetNumValueIn(gate);
     // 1: last one elem is function
     GateRef callTarget = acc_.GetValueIn(gate, numIns - 1);
@@ -233,7 +245,7 @@ GateRef TSInlineLowering::MergeAllReturn(const std::vector<GateRef> &returnVecto
                              vaueList.data(), GateType::AnyType());
 }
 
-void TSInlineLowering::ReplaceEntryGate(GateRef callGate)
+void TSInlineLowering::ReplaceEntryGate(GateRef callGate, GateRef callerFunc, GateRef inlineFunc, GateRef glue)
 {
     auto stateEntry = acc_.GetStateRoot();
     auto dependEntry = acc_.GetDependRoot();
@@ -241,14 +253,32 @@ void TSInlineLowering::ReplaceEntryGate(GateRef callGate)
     GateRef callState = acc_.GetState(callGate);
     GateRef callDepend = acc_.GetDep(callGate);
     auto stateUse = acc_.Uses(stateEntry);
+
+    // support inline trace
+    GateRef newDep = Circuit::NullGate();
+    if (traceInline_) {
+        std::vector<GateRef> args{callerFunc, inlineFunc};
+        newDep = TraceInlineFunction(glue, callDepend, args, callGate);
+    } else {
+        newDep = callDepend;
+    }
+
     for (auto stateUseIt = stateUse.begin(); stateUseIt != stateUse.end();) {
         stateUseIt = acc_.ReplaceIn(stateUseIt, callState);
     }
 
     auto dependUse = acc_.Uses(dependEntry);
     for (auto dependUseIt = dependUse.begin(); dependUseIt != dependUse.end();) {
-        dependUseIt = acc_.ReplaceIn(dependUseIt, callDepend);
+        dependUseIt = acc_.ReplaceIn(dependUseIt, newDep);
     }
+}
+
+GateRef TSInlineLowering::TraceInlineFunction(GateRef glue, GateRef depend, std::vector<GateRef> &args,
+                                              GateRef callGate)
+{
+    size_t index = RTSTUB_ID(AotInlineTrace);
+    GateRef result = builder_.NoLabelCallRuntime(glue, depend, index, args, callGate);
+    return result;
 }
 
 void TSInlineLowering::ReplaceReturnGate(GateRef callGate)
@@ -302,7 +332,10 @@ void TSInlineLowering::LowerToInlineCall(GateRef callGate, const std::vector<Gat
         acc_.DeleteGate(arg);
     }
     // replace in depend and state
-    ReplaceEntryGate(callGate);
+    GateRef glue = args.at(static_cast<size_t>(CommonArgIdx::GLUE));
+    GateRef inlineFunc = args.at(static_cast<size_t>(CommonArgIdx::FUNC));
+    GateRef callerFunc = argAcc.GetFrameArgsIn(callGate, FrameArgIdx::FUNC);
+    ReplaceEntryGate(callGate, callerFunc, inlineFunc, glue);
     // replace use gate
     ReplaceReturnGate(callGate);
     // remove Useless root gates
@@ -318,5 +351,30 @@ void TSInlineLowering::RemoveRoot()
     }
 
     acc_.DeleteGate(circuitRoot);
+}
+
+void TSInlineLowering::BuildFrameStateChain(GateRef gate, BytecodeCircuitBuilder &builder)
+{
+    size_t size = builder.GetNumOfFrameState();
+    GateRef stateSplit = acc_.GetDep(gate);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    GateRef preFrameState = acc_.GetFrameState(stateSplit);
+    ASSERT(acc_.GetOpCode(preFrameState) == OpCode::FRAME_STATE);
+    acc_.SetInlineCallFrameStateFlag(preFrameState, true);
+    for (size_t i = 0; i < size; i++) {
+        GateRef curFrameState = builder.GetFrameStateByIndex(i);
+        acc_.SetPreFrameState(curFrameState, preFrameState);
+    }
+}
+
+bool TSInlineLowering::FilterCallInTryCatch(GateRef gate)
+{
+    auto uses = acc_.Uses(gate);
+    for (auto it = uses.begin(); it != uses.end(); ++it) {
+        if (acc_.GetOpCode(*it) == OpCode::IF_SUCCESS || acc_.GetOpCode(*it) == OpCode::IF_EXCEPTION) {
+            return true;
+        }
+    }
+    return false;
 }
 }  // namespace panda::ecmascript
