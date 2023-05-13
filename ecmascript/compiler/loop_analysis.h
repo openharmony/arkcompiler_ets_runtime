@@ -16,46 +16,40 @@
 #ifndef ECMASCRIPT_COMPILER_LOOP_ANALYSIS_H
 #define ECMASCRIPT_COMPILER_LOOP_ANALYSIS_H
 
+#include "ecmascript/compiler/bytecodes.h"
+#include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/mem/chunk_containers.h"
 
 namespace panda::ecmascript::kungfu {
-class BytecodeCircuitBuilder;
-
+struct LoopInfo {
+    LoopInfo(Chunk* chunk, GateRef head)
+        : loopHead(head), loopBacks(chunk), loopExits(chunk), loopBodys(chunk) {}
+    GateRef loopHead{Circuit::NullGate()};
+    ChunkVector<GateRef> loopBacks;
+    ChunkVector<GateRef> loopExits;
+    ChunkVector<GateRef> loopBodys;
+    size_t size{0};
+    size_t maxDepth{0};
+};
 class LoopAnalysis {
 public:
-    struct LoopInfo {
-        LoopInfo(Chunk* chunk, size_t headId)
-            : loopHead(headId), loopBody(chunk), loopExits(chunk) {}
-        size_t loopHead;
-        ChunkSet<size_t> loopBody;
-        ChunkVector<size_t> loopExits;
-    };
-
-    LoopAnalysis(BytecodeCircuitBuilder *builder, Chunk* chunk)
-        : builder_(builder), chunk_(chunk),
-          visitState_(chunk), workList_(chunk),
-          loopInfoVector_(chunk), dfsList_(chunk) {}
+    LoopAnalysis(Circuit *circuit, Chunk* chunk)
+        : acc_(circuit), chunk_(chunk), loopInfos_(chunk) {}
     ~LoopAnalysis() = default;
     void Run();
-
-    ChunkVector<size_t>& DfsList()
-    {
-        return dfsList_;
-    }
+    void CollectLoopBody(LoopInfo* loopInfo);
+    void LoopExitElimination();
+    void PrintGraph();
+    void PrintLoop(LoopInfo* loopInfo);
 
 private:
-    void CollectLoopBack();
-    void CollectLoopBody(LoopInfo* loopInfo);
-    void CollectLoopExits(LoopInfo* loopInfo);
-    void CountLoopBackEdge(size_t fromId, size_t toId);
+    void UpdateLoopInfo(LoopInfo* loopInfo, GateRef gate, size_t dep);
+    size_t ComputeLoopDepth(GateRef cur, GateRef nex, size_t curDep);
 
-    BytecodeCircuitBuilder *builder_{nullptr};
+    GateAccessor acc_;
     Chunk* chunk_{nullptr};
-    ChunkVector<VisitState> visitState_;
-    ChunkVector<size_t> workList_;
-    ChunkVector<LoopInfo*> loopInfoVector_;
-    ChunkVector<size_t> dfsList_;
-    size_t loopCount_{0};
+    ChunkVector<LoopInfo*> loopInfos_;
 };
 
 }  // panda::ecmascript::kungfu

@@ -1662,7 +1662,7 @@ bool Label::LabelImpl::IsControlCase() const
 
 GateRef Variable::AddPhiOperand(GateRef val)
 {
-    ASSERT(GateAccessor(env_->GetCircuit()).IsSelector(val));
+    ASSERT(GateAccessor(env_->GetCircuit()).IsValueSelector(val));
     Label label = env_->GetLabelFromSelector(val);
     size_t idx = 0;
     for (auto pred : label.GetPredecessors()) {
@@ -1717,7 +1717,7 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
 
     // try to recursiveby remove all phi users, which might have vecome trivial
     for (auto out : outs) {
-        if (acc.IsSelector(out)) {
+        if (acc.IsValueSelector(out)) {
             auto result = TryRemoveTrivialPhi(out);
             if (same == out) {
                 same = result;

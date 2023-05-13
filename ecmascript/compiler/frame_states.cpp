@@ -14,6 +14,7 @@
  */
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/frame_states.h"
+#include <cstddef>
 
 namespace panda::ecmascript::kungfu {
 FrameStateBuilder::FrameStateBuilder(BytecodeCircuitBuilder *builder,
@@ -134,7 +135,7 @@ void FrameStateBuilder::BuildPostOrderList(size_t size)
     }
 }
 
-bool FrameStateBuilder::MergeIntoPredBC(uint32_t predPc)
+bool FrameStateBuilder::MergeIntoPredBC(uint32_t predPc, size_t diff)
 {
     // liveout next
     auto frameInfo = GetOrOCreateBCEndStateInfo(predPc);
@@ -148,6 +149,7 @@ bool FrameStateBuilder::MergeIntoPredBC(uint32_t predPc)
         auto value = frameInfo->ValuesAt(i);
         // if value not null, merge pred
         if (value == Circuit::NullGate() && predValue != Circuit::NullGate()) {
+            predValue = TryGetLoopExitValue(predValue, diff);
             frameInfo->SetValuesAt(i, predValue);
             changed = true;
         }
@@ -214,7 +216,7 @@ GateRef FrameStateBuilder::GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *p
 
 bool FrameStateBuilder::MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb)
 {
-    bool changed = MergeIntoPredBC(predBb->end);
+    bool changed = MergeIntoPredBC(predBb->end, LoopExitCount(predBb, bb));
     if (!changed) {
         return changed;
     }
@@ -226,6 +228,8 @@ bool FrameStateBuilder::MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *pred
         if (value == phi) {
             auto target = GetPreBBInput(bb, predBb, phi);
             if (target != Circuit::NullGate()) {
+                auto diff = LoopExitCount(predBb, bb);
+                target = TryGetLoopExitValue(target, diff);
                 predLiveout->SetValuesAt(accumulatorIndex_, target);
             }
         }
@@ -239,6 +243,8 @@ bool FrameStateBuilder::MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *pred
             if (target == Circuit::NullGate()) {
                 continue;
             }
+            auto diff = LoopExitCount(predBb, bb);
+            target = TryGetLoopExitValue(target, diff);
             predLiveout->SetValuesAt(reg, target);
         }
     }
@@ -264,7 +270,7 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
             break;
         }
         auto prevPc = iterator.Index();
-        changed |= MergeIntoPredBC(prevPc);
+        changed |= MergeIntoPredBC(prevPc, 0);
     }
 
     SaveBBBeginStateInfo(bbId);
@@ -279,7 +285,7 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
         if (defPhi) {
             changed |= MergeIntoPredBB(&bb, bbPred);
         } else {
-            changed |= MergeIntoPredBC(bbPred->end);
+            changed |= MergeIntoPredBC(bbPred->end, LoopExitCount(bbPred, &bb));
         }
     }
     if (!bb.trys.empty()) {
@@ -292,7 +298,7 @@ bool FrameStateBuilder::ComputeLiveOut(size_t bbId)
             if (defPhi) {
                 changed |= MergeIntoPredBB(&bb, bbPred);
             } else {
-                changed |= MergeIntoPredBC(bbPred->end);
+                changed |= MergeIntoPredBC(bbPred->end, LoopExitCount(bbPred, &bb));
             }
         }
     }
@@ -451,5 +457,29 @@ void FrameStateBuilder::UpdateVirtualRegistersOfResume(GateRef gate)
         UpdateVirtualRegister(vreg, Circuit::NullGate());
         restoreGate = gateAcc_.GetDep(restoreGate);
     }
+}
+
+size_t FrameStateBuilder::LoopExitCount(BytecodeRegion* bb, BytecodeRegion* bbNext)
+{
+    size_t headDep = ((bbNext->numOfLoopBacks > 0) && (bbNext->loopbackBlocks.count(bb->id) == 0)) ? 1 : 0;
+    if (bbNext->loopDepth < headDep) {
+        // loop optimization disabled.
+        return 0;
+    }
+    size_t nextDep = bbNext->loopDepth - headDep;
+    ASSERT(bb->loopDepth >= nextDep);
+    return bb->loopDepth > nextDep;
+}
+
+GateRef FrameStateBuilder::TryGetLoopExitValue(GateRef value, size_t diff)
+{
+    if ((gateAcc_.GetOpCode(value) != OpCode::LOOP_EXIT_VALUE) || (diff == 0)) {
+        return value;
+    }
+    for (size_t i = 0; i < diff; ++i) {
+        ASSERT(gateAcc_.GetOpCode(value) == OpCode::LOOP_EXIT_VALUE);
+        value = gateAcc_.GetValueIn(value);
+    }
+    return value;
 }
 }

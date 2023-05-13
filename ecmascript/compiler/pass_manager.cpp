@@ -108,6 +108,9 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
                       methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), loader);
 
         PassRunner<PassData> pipeline(&data);
+        if (builder.EnableLoopOptimization()) {
+            pipeline.RunPass<LoopOptimizationPass>();
+        }
         if (passOptions_->EnableTypeInfer()) {
             pipeline.RunPass<TypeInferPass>();
         }

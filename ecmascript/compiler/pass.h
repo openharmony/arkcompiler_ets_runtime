@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/llvm_codegen.h"
+#include "ecmascript/compiler/loop_analysis.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
@@ -307,6 +308,24 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         NumberSpeculativeRunner(data->GetCircuit(), data->GetTSManager(),
                                 enableLog, data->GetMethodName(), &chunk).Run();
+        return true;
+    }
+};
+
+class LoopOptimizationPass {
+public:
+    bool Run(PassData* data)
+    {
+        TimeScope timescope("LoopOptimizationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        Chunk chunk(data->GetNativeAreaAllocator());
+        const auto& headList = data->GetBuilder()->GetLoopHeads();
+        LoopAnalysis loopAnalysis_(data->GetCircuit(), &chunk);
+        for (auto head : headList) {
+            auto bb = data->GetBuilder()->GetBasicBlockById(head.second);
+            auto loopInfo = new LoopInfo(&chunk, bb.stateCurrent);
+            loopAnalysis_.CollectLoopBody(loopInfo);
+        }
+        loopAnalysis_.LoopExitElimination();
         return true;
     }
 };

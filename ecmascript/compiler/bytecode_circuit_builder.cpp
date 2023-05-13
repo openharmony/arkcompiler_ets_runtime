@@ -40,7 +40,7 @@ void BytecodeCircuitBuilder::BuildRegionInfo()
     BytecodeIterator iterator(this, 0, end);
 
     infoData_.resize(size);
-    byteCodeToJSGate_.resize(size, Circuit::NullGate());
+    byteCodeToJSGates_.resize(size, std::vector<GateRef>(0));
     regionsInfo_.InsertHead(0); // 0: start pc
     for (iterator.GotoStart(); !iterator.Done(); ++iterator) {
         auto index = iterator.Index();
@@ -599,7 +599,17 @@ void BytecodeCircuitBuilder::CollectPredsInfo()
             succ->numOfStatePreds++;
         }
     }
-    loopAnalysis_.Run();
+
+    CollectLoopBack();
+    if (EnableLoopOptimization()) {
+        for (auto &head : loopHeads_) {
+            loopSize_ = 0;
+            ComputeLoopDepth(head.second);
+            head.first = loopSize_;
+        }
+        sort(loopHeads_.begin(), loopHeads_.end());
+    }
+
     for (auto &bb: graph_) {
         if (bb.isDead) {
             continue;
@@ -636,15 +646,22 @@ void BytecodeCircuitBuilder::NewLoopBegin(BytecodeRegion &bb, GateRef &state, Ga
     depend = loopDepend;
 }
 
-void BytecodeCircuitBuilder::NewLoopExit(BytecodeRegion &bb, GateRef &state, GateRef &depend)
+void BytecodeCircuitBuilder::NewLoopExit(GateRef &state, GateRef &depend)
 {
     auto loopExit = circuit_->NewGate(circuit_->LoopExit(),
-        { Circuit::NullGate(), Circuit::NullGate() });
+        { state });
     depend = circuit_->NewGate(circuit_->LoopExitDepend(),
-        { loopExit, Circuit::NullGate() });
+        { loopExit, depend });
     state = loopExit;
-    bb.loopExitState = loopExit;
-    bb.loopExitDepend = depend;
+}
+
+void BytecodeCircuitBuilder::TryInsertLoopExit(BytecodeRegion &bb, BytecodeRegion &bbNext,
+                                               GateRef &state, GateRef &depend)
+{
+    size_t diff = LoopExitCount(bb.id, bbNext.id);
+    for (size_t i = 0; i < diff; ++i) {
+        NewLoopExit(state, depend);
+    }
 }
 
 void BytecodeCircuitBuilder::BuildBlockCircuitHead(BytecodeRegion &bb, GateRef &state, GateRef &depend)
@@ -654,9 +671,7 @@ void BytecodeCircuitBuilder::BuildBlockCircuitHead(BytecodeRegion &bb, GateRef &
         state = circuit_->GetStateRoot();
         depend = circuit_->GetDependRoot();
     }
-    if (bb.isLoopExit) {
-        NewLoopExit(bb, state, depend);
-    }
+
     if (mergeCount > 1) {
         NewMerge(bb.stateMerge, bb.dependMerge, mergeCount);
         state = bb.stateMerge;
@@ -749,53 +764,37 @@ void BytecodeCircuitBuilder::SetLoopBlockPred(BytecodeRegion &bb, BytecodeRegion
     }
 }
 
-void BytecodeCircuitBuilder::SetLoopExitBlockPred(
-    BytecodeRegion &bb, GateRef &state, GateRef &depend)
-{
-    // for two loopexit merge case
-    if (!gateAcc_.IsInGateNull(bb.loopExitState, 0)) {
-        return;
-    }
-    ASSERT(gateAcc_.GetOpCode(bb.loopExitState) == OpCode::LOOP_EXIT);
-    ASSERT(gateAcc_.GetOpCode(bb.loopExitDepend) == OpCode::LOOP_EXIT_DEPEND);
-    auto &loopHead = graph_[bb.loopHead];
-    ASSERT(gateAcc_.GetOpCode(loopHead.stateCurrent) == OpCode::LOOP_BEGIN);
-    ASSERT(gateAcc_.GetOpCode(loopHead.dependCurrent) == OpCode::DEPEND_SELECTOR);
-    gateAcc_.NewIn(bb.loopExitState, 0, state);
-    gateAcc_.NewIn(bb.loopExitState, 1, loopHead.stateCurrent); // 1: loop begin
-    gateAcc_.NewIn(bb.loopExitDepend, 1, depend); // 1: dependMerge
-    state = bb.loopExitState;
-    depend = bb.loopExitDepend;
-}
-
 void BytecodeCircuitBuilder::SetBlockPred(BytecodeRegion &bb, BytecodeRegion &bbNext,
                                           const GateRef &state, const GateRef &depend)
 {
+    auto stateCur = state;
+    auto dependCur = depend;
+
+    if (EnableLoopOptimization()) {
+        TryInsertLoopExit(bb, bbNext, stateCur, dependCur);
+    }
+
     // Init block head if not exists
     if (bbNext.stateCurrent == Circuit::NullGate()) {
         ASSERT(bbNext.dependCurrent == Circuit::NullGate());
         BuildBlockCircuitHead(bbNext, bbNext.stateCurrent, bbNext.dependCurrent);
-        // no loop exit, no loop head, no merge bb
+        // no loop head, no merge bb
         if (bbNext.stateCurrent == Circuit::NullGate()) {
             ASSERT(bbNext.dependCurrent == Circuit::NullGate());
-            bbNext.stateCurrent = state;
-            bbNext.dependCurrent = depend;
+            bbNext.stateCurrent = stateCur;
+            bbNext.dependCurrent = dependCur;
             bbNext.statePredIndex++;
             return;
         }
     }
-    auto stateCur = state;
-    auto dependCur = depend;
-    // Init loop exit
-    if (bbNext.isLoopExit && bb.isLoopBody && bb.loopHead == bbNext.loopHead) {
-        SetLoopExitBlockPred(bbNext, stateCur, dependCur);
-    }
+
     // loop bb
     if (bbNext.numOfLoopBacks > 0) {
         SetLoopBlockPred(bb, bbNext, stateCur, dependCur);
         bbNext.statePredIndex++;
         return;
     }
+    
     // merge bb
     if (bbNext.stateMerge != Circuit::NullGate()) {
         ASSERT(bbNext.dependMerge != Circuit::NullGate());
@@ -896,7 +895,8 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
         gate = circuit_->NewGate(meta, MachineType::NOVALUE, inList.size(),
                                  inList.data(), GateType::Empty());
     }
-    byteCodeToJSGate_[iterator.Index()] = gate;
+    byteCodeToJSGates_[iterator.Index()].emplace_back(gate);
+    jsGatesToByteCode_[gate] = iterator.Index();
     gateAcc_.NewIn(gate, 0, state);
     gateAcc_.NewIn(gate, 1, depend);
     state = gate;
@@ -988,7 +988,8 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb, GateRef &state, GateRef
             }
             ASSERT(bitSet == 3); // 3:Verify the number of successor blocks
         }
-        byteCodeToJSGate_[iterator.Index()] = gate;
+        byteCodeToJSGates_[iterator.Index()].emplace_back(gate);
+        jsGatesToByteCode_[gate] = iterator.Index();
     } else {
         ASSERT(bb.succs.size() == 1);
         auto &bbNext = bb.succs.at(0);
@@ -1006,7 +1007,8 @@ void BytecodeCircuitBuilder::NewReturn(BytecodeRegion &bb, GateRef &state, GateR
         // handle return.dyn bytecode
         auto gate = circuit_->NewGate(circuit_->Return(),
             { state, depend, Circuit::NullGate(), circuit_->GetReturnRoot() });
-        byteCodeToJSGate_[iterator.Index()] = gate;
+        byteCodeToJSGates_[iterator.Index()].emplace_back(gate);
+        jsGatesToByteCode_[gate] = iterator.Index();
     } else if (bytecodeInfo.GetOpcode() == EcmaOpcode::RETURNUNDEFINED) {
         // handle returnundefined bytecode
         auto constant = circuit_->GetConstantGate(MachineType::I64,
@@ -1014,7 +1016,8 @@ void BytecodeCircuitBuilder::NewReturn(BytecodeRegion &bb, GateRef &state, GateR
                                                   GateType::TaggedValue());
         auto gate = circuit_->NewGate(circuit_->Return(),
             { state, depend, constant, circuit_->GetReturnRoot() });
-        byteCodeToJSGate_[iterator.Index()] = gate;
+        byteCodeToJSGates_[iterator.Index()].emplace_back(gate);
+        jsGatesToByteCode_[gate] = iterator.Index();
     }
 }
 
@@ -1025,7 +1028,8 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb, GateRef &state, Gat
     if (bytecodeInfo.IsSetConstant()) {
         // handle bytecode command to get constants
         GateRef gate = NewConst(bytecodeInfo);
-        byteCodeToJSGate_[iterator.Index()] = gate;
+        byteCodeToJSGates_[iterator.Index()].emplace_back(gate);
+        jsGatesToByteCode_[gate] = iterator.Index();
     } else if (bytecodeInfo.IsGeneral()) {
         // handle general ecma.* bytecodes
         NewJSGate(bb, state, depend);
@@ -1043,10 +1047,9 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb, GateRef &state, Gat
 
 void BytecodeCircuitBuilder::BuildSubCircuit()
 {
-    ChunkVector<size_t>& dfsList = loopAnalysis_.DfsList();
     auto &entryBlock = graph_[0];
     BuildBlockCircuitHead(entryBlock, entryBlock.stateCurrent, entryBlock.dependCurrent);
-    for (auto &bbId: dfsList) {
+    for (auto &bbId: dfsList_) {
         auto &bb = graph_[bbId];
         auto stateCur = bb.stateCurrent;
         auto dependCur = bb.dependCurrent;
@@ -1087,7 +1090,7 @@ GateRef BytecodeCircuitBuilder::NewLoopBackPhi(BytecodeRegion &bb, uint16_t reg,
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predBcIdx, isException] = bb.expandedPreds.at(i);
             if (bb.loopbackBlocks.count(predId)) {
-                return ResolveDef(predId, predBcIdx, reg, acc);
+                return NewValueFromPredBB(bb, i, gateAcc_.GetState(bb.stateCurrent, 1), reg, acc);
             }
         }
         UNREACHABLE();
@@ -1101,10 +1104,43 @@ GateRef BytecodeCircuitBuilder::NewLoopBackPhi(BytecodeRegion &bb, uint16_t reg,
     for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
         auto &[predId, predBcIdx, isException] = bb.expandedPreds.at(i);
         if (bb.loopbackBlocks.count(predId)) {
-            gateAcc_.NewIn(loopBackValue, loopBackIndex++, ResolveDef(predId, predBcIdx, reg, acc));
+            GateRef ans = NewValueFromPredBB(bb, i, gateAcc_.GetState(bb.loopBackStateMerge, loopBackIndex - 1),
+                                             reg, acc);
+            gateAcc_.NewIn(loopBackValue, loopBackIndex++, ans);
         }
     }
     return loopBackValue;
+}
+
+size_t BytecodeCircuitBuilder::LoopExitCount(size_t from, size_t to)
+{
+    if (!EnableLoopOptimization()) {
+        return 0;
+    }
+    const auto &bb = GetBasicBlockById(from);
+    const auto &bbNext = GetBasicBlockById(to);
+    size_t headDep = ((bbNext.numOfLoopBacks > 0) && (bbNext.loopbackBlocks.count(bb.id) == 0)) ? 1 : 0;
+    ASSERT(bbNext.loopDepth >= headDep);
+    size_t nextDep = bbNext.loopDepth - headDep;
+    ASSERT(bb.loopDepth >= nextDep);
+    return bb.loopDepth > nextDep;
+}
+
+GateRef BytecodeCircuitBuilder::NewValueFromPredBB(BytecodeRegion &bb, size_t idx,
+                                                   GateRef exit, uint16_t reg, bool acc)
+{
+    auto &[predId, predBcIdx, isException] = bb.expandedPreds.at(idx);
+    if (LoopExitCount(predId, bb.id) == 0) {
+        return ResolveDef(predId, predBcIdx, reg, acc);
+    }
+    while (gateAcc_.GetOpCode(exit) != OpCode::LOOP_EXIT) {
+        exit = gateAcc_.GetState(exit);
+    }
+    if (IsLoopExitValueExists(exit, reg, acc)) {
+        return GetLoopExitValue(exit, reg, acc);
+    }
+    GateRef res = ResolveDef(predId, predBcIdx, reg, acc);
+    return NewLoopExitValue(exit, reg, acc, res);
 }
 
 GateRef BytecodeCircuitBuilder::NewLoopForwardPhi(BytecodeRegion &bb, uint16_t reg, bool acc)
@@ -1114,7 +1150,7 @@ GateRef BytecodeCircuitBuilder::NewLoopForwardPhi(BytecodeRegion &bb, uint16_t r
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
             auto &[predId, predBcIdx, isException] = bb.expandedPreds.at(i);
             if (!bb.loopbackBlocks.count(predId)) {
-                return ResolveDef(predId, predBcIdx, reg, acc);
+                return NewValueFromPredBB(bb, i, gateAcc_.GetState(bb.stateCurrent, 0), reg, acc);
             }
         }
         UNREACHABLE();
@@ -1129,7 +1165,8 @@ GateRef BytecodeCircuitBuilder::NewLoopForwardPhi(BytecodeRegion &bb, uint16_t r
     for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
         auto &[predId, predBcIdx, isException] = bb.expandedPreds.at(i);
         if (!bb.loopbackBlocks.count(predId)) {
-            gateAcc_.NewIn(forwardValue, forwardIndex++, ResolveDef(predId, predBcIdx, reg, acc));
+            GateRef ans = NewValueFromPredBB(bb, i, gateAcc_.GetState(bb.stateMerge, forwardIndex - 1), reg, acc);
+            gateAcc_.NewIn(forwardValue, forwardIndex++, ans);
         }
     }
     return forwardValue;
@@ -1139,8 +1176,8 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
 {
     if (bb.numOfLoopBacks == 0) {
         if (bb.numOfStatePreds == 1) {
-            auto &[predId, predBcIdx, isException] = bb.expandedPreds.at(0);
-            currentPhi = ResolveDef(predId, predBcIdx, reg, acc);
+            currentPhi = NewValueFromPredBB(bb, 0, bb.stateCurrent, reg, acc);
+            ASSERT(currentPhi != 0);
             return;
         }
         ASSERT(bb.stateMerge != Circuit::NullGate());
@@ -1150,8 +1187,8 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
                               inList.size(), inList.data(), GateType::AnyType());
         gateAcc_.NewIn(currentPhi, 0, bb.stateMerge);
         for (size_t i = 0; i < bb.numOfStatePreds; ++i) {
-            auto &[predId, predBcIdx, isException] = bb.expandedPreds.at(i);
-            gateAcc_.NewIn(currentPhi, i + 1, ResolveDef(predId, predBcIdx, reg, acc));
+            GateRef ans = NewValueFromPredBB(bb, i, gateAcc_.GetIn(bb.stateMerge, i), reg, acc);
+            gateAcc_.NewIn(currentPhi, i + 1, ans);
         }
     } else {
         ASSERT(gateAcc_.GetOpCode(bb.stateCurrent) == OpCode::LOOP_BEGIN);
@@ -1164,6 +1201,52 @@ void BytecodeCircuitBuilder::NewPhi(BytecodeRegion &bb, uint16_t reg, bool acc, 
         gateAcc_.NewIn(currentPhi, 2, loopBackValue);  // 2: index of loop-back value input
     }
     bb.phiGate.insert(currentPhi);
+}
+
+bool BytecodeCircuitBuilder::IsLoopExitValueExists(GateRef loopExit, uint16_t reg, bool acc)
+{
+    if (acc) {
+        return loopExitToAccGate_.count(loopExit) > 0;
+    } else {
+        return loopExitToVregGate_.count(std::make_pair(loopExit, reg)) > 0;
+    }
+}
+
+GateRef BytecodeCircuitBuilder::GetLoopExitValue(GateRef loopExit, uint16_t reg, bool acc)
+{
+    if (acc) {
+        return loopExitToAccGate_.at(loopExit);
+    } else {
+        return loopExitToVregGate_.at(std::make_pair(loopExit, reg));
+    }
+}
+
+GateRef BytecodeCircuitBuilder::CreateLoopExitValue(GateRef loopExit, uint16_t reg, bool acc, GateRef value)
+{
+    GateRef newPhi = circuit_->NewGate(circuit_->LoopExitValue(), gateAcc_.GetMachineType(value),
+                                       {loopExit, value}, gateAcc_.GetGateType(value));
+    if (acc) {
+        return loopExitToAccGate_[loopExit] = newPhi;
+    } else {
+        auto key = std::make_pair(loopExit, reg);
+        return loopExitToVregGate_[key] = newPhi;
+    }
+}
+
+GateRef BytecodeCircuitBuilder::NewLoopExitValue(GateRef loopExit, uint16_t reg, bool acc, GateRef value)
+{
+    ASSERT(gateAcc_.GetOpCode(loopExit) == OpCode::LOOP_EXIT);
+    ChunkVector<GateRef> exitList(circuit_->chunk());
+    while (gateAcc_.GetOpCode(loopExit) == OpCode::LOOP_EXIT) {
+        exitList.push_back(loopExit);
+        loopExit = gateAcc_.GetState(loopExit);
+    }
+    while (!exitList.empty()) {
+        GateRef exit = exitList.back();
+        value = CreateLoopExitValue(exit, reg, acc, value);
+        exitList.pop_back();
+    }
+    return value;
 }
 
 // recursive variables renaming algorithm
@@ -1195,7 +1278,7 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
                     type = typeRecorder_.UpdateType(iterator.Index(), type);
                 }
             } else {
-                ans = byteCodeToJSGate_.at(iterator.Index());
+                ans = byteCodeToJSGates_.at(iterator.Index()).at(0);
                 auto oldType = gateAcc_.GetGateType(ans);
                 if (HasTypes() && !type.IsAnyType() && oldType.IsAnyType()) {
                     gateAcc_.SetGateType(ans, type);
@@ -1208,7 +1291,7 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
         }
         // New RESTORE_REGISTER HIR, used to restore the register content when processing resume instruction.
         // New SAVE_REGISTER HIR, used to save register content when processing suspend instruction.
-        auto resumeGate = byteCodeToJSGate_.at(iterator.Index());
+        auto resumeGate = byteCodeToJSGates_.at(iterator.Index()).at(0);
         ans = GetExistingRestore(resumeGate, tmpReg);
         if (ans != Circuit::NullGate()) {
             break;
@@ -1221,7 +1304,7 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
         auto saveRegGate = ResolveDef(bbId, iterator.Index() - 1, tmpReg, tmpAcc);
         [[maybe_unused]] EcmaOpcode opcode = Bytecodes::GetOpcode(iterator.PeekPrevPc(2)); // 2: prev bc
         ASSERT(opcode == EcmaOpcode::SUSPENDGENERATOR_V8 || opcode == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8);
-        GateRef suspendGate = byteCodeToJSGate_.at(iterator.Index() - 2); // 2: prev bc
+        GateRef suspendGate = byteCodeToJSGates_.at(iterator.Index() - 2).at(0); // 2: prev bc
         GateRef saveRegs = gateAcc_.GetDep(suspendGate);
         gateAcc_.ReplaceValueIn(saveRegs, saveRegGate, tmpReg);
         break;
@@ -1271,9 +1354,29 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
         }
         return ans;
     }
+    if (EnableLoopOptimization()) {
+        // find def-site in value selectors of vregs
+        if (ans == Circuit::NullGate() && !tmpAcc) {
+            if (!bb.vregToValueGate.count(tmpReg)) {
+                bb.vregToValueGate[tmpReg] = Circuit::NullGate();
+                NewPhi(bb, tmpReg, tmpAcc, bb.vregToValueGate[tmpReg]);
+            } else if (bb.vregToValueGate.at(tmpReg) == Circuit::NullGate()) {
+                NewPhi(bb, tmpReg, tmpAcc, bb.vregToValueGate[tmpReg]);
+            }
+            ans = bb.vregToValueGate.at(tmpReg);
+        }
+        // find def-site in value selectors of acc
+        if (ans == Circuit::NullGate() && tmpAcc) {
+            if (bb.valueSelectorAccGate == Circuit::NullGate()) {
+                NewPhi(bb, tmpReg, tmpAcc, bb.valueSelectorAccGate);
+            }
+            ans = bb.valueSelectorAccGate;
+        }
+    }
     if (ans == Circuit::NullGate()) {
         // recursively find def-site in dominator block
-        return ResolveDef(bb.iDominator->id, bb.iDominator->end, tmpReg, tmpAcc);
+        GateRef res = ResolveDef(bb.iDominator->id, bb.iDominator->end, tmpReg, tmpAcc);
+        return res;
     } else {
         // def-site already found
         return ans;
@@ -1362,6 +1465,8 @@ void BytecodeCircuitBuilder::BuildCircuit()
         frameStateBuilder_.BuildFrameState(frameArgs);
     }
 
+    gateAcc_.EliminateRedundantPhi();
+
     if (IsLogEnabled()) {
         PrintGraph("Bytecode2Gate");
         LOG_COMPILER(INFO) << "\033[34m" << "============= "
@@ -1386,6 +1491,94 @@ void BytecodeCircuitBuilder::SetExistingRestore(GateRef resumeGate, uint16_t tmp
 {
     auto pr = std::make_pair(resumeGate, tmpReg);
     resumeRegToRestore_[pr] = restoreGate;
+}
+
+void BytecodeCircuitBuilder::CollectLoopBack()
+{
+    auto size = GetBasicBlockCount();
+    ChunkVector<size_t> workList(circuit_->chunk());
+    ChunkVector<VisitState> visitState(circuit_->chunk());
+    visitState.resize(size, VisitState::UNVISITED);
+    size_t entryId = 0; // entry id
+    workList.emplace_back(entryId);
+    while (!workList.empty()) {
+        size_t bbId = workList.back();
+        auto &bb = GetBasicBlockById(bbId);
+        if (visitState[bbId] == VisitState::UNVISITED) {
+            dfsList_.emplace_back(bbId);
+            visitState[bbId] = VisitState::PENDING;
+        }
+        bool allVisited = true;
+
+        for (const auto &succBlock: bb.succs) {
+            size_t succId = succBlock->id;
+            if (visitState[succId] == VisitState::UNVISITED) {
+                // dfs
+                workList.emplace_back(succId);
+                allVisited = false;
+                break;
+            } else if (visitState[succId] == VisitState::PENDING) {
+                // back edge
+                CountLoopBackEdge(bbId, succId);
+            }
+        }
+
+        for (const auto &succBlock: bb.catchs) {
+            size_t succId = succBlock->id;
+            if (visitState[succId] == VisitState::UNVISITED) {
+                // dfs
+                workList.emplace_back(succId);
+                allVisited = false;
+                break;
+            } else if (visitState[succId] == VisitState::PENDING) {
+                // back edge
+                CountLoopBackEdge(bbId, succId);
+            }
+        }
+        if (allVisited) {
+            workList.pop_back();
+            visitState[bbId] = VisitState::VISITED;
+        }
+    }
+}
+
+void BytecodeCircuitBuilder::CountLoopBackEdge(size_t fromId, size_t toId)
+{
+    auto &toBlock = GetBasicBlockById(toId);
+    if (toBlock.numOfLoopBacks == 0) {
+        loopHeads_.emplace_back(std::make_pair(0, toId));
+    }
+    toBlock.loopbackBlocks.insert(fromId);
+    toBlock.numOfLoopBacks = toBlock.loopbackBlocks.size();
+}
+
+void BytecodeCircuitBuilder::ComputeLoopDepth(size_t loopHead)
+{
+    ChunkSet<size_t> visited (circuit_->chunk());
+    ChunkQueue<size_t> workList (circuit_->chunk());
+    visited.insert(loopHead);
+    auto &headBB = GetBasicBlockById(loopHead);
+    headBB.loopDepth++;
+    for (auto loopBack : headBB.loopbackBlocks) {
+        workList.push(loopBack);
+    }
+    while (!workList.empty()) {
+        size_t cur = workList.front();
+        workList.pop();
+        if (visited.count(cur) > 0) {
+            continue;
+        }
+        visited.insert(cur);
+        auto &curBB = GetBasicBlockById(cur);
+        curBB.loopDepth++;
+        for (const auto& pred : curBB.preds) {
+            workList.push(pred->id);
+        }
+        for (const auto& pred : curBB.trys) {
+            workList.push(pred->id);
+        }
+    }
+    loopSize_ = visited.size();
 }
 
 void BytecodeCircuitBuilder::PrintGraph(const char* title)
@@ -1450,6 +1643,10 @@ void BytecodeCircuitBuilder::PrintGraph(const char* title)
         }
         LOG_COMPILER(INFO) << log5;
 
+        std::string log6("\tLoop Depth: ");
+        log6 += std::to_string(bb.loopDepth);
+        LOG_COMPILER(INFO) << log6;
+
         PrintBytecodeInfo(bb);
         LOG_COMPILER(INFO) << "";
     }
@@ -1488,7 +1685,7 @@ void BytecodeCircuitBuilder::PrintBytecodeInfo(BytecodeRegion& bb)
         log += "] >";
         LOG_COMPILER(INFO) << log;
 
-        auto gate = byteCodeToJSGate_[iterator.Index()];
+        auto gate = GetGateByBcIndex(iterator.Index());
         if (gate != Circuit::NullGate()) {
             this->gateAcc_.ShortPrint(gate);
         }

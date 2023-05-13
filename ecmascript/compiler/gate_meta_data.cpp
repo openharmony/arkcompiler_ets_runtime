@@ -85,6 +85,7 @@ bool GateMetaData::IsFixed() const
         case OpCode::DEPEND_SELECTOR:
         case OpCode::DEPEND_RELAY:
         case OpCode::LOOP_EXIT_DEPEND:
+        case OpCode::LOOP_EXIT_VALUE:
             return true;
         default:
             return false;

@@ -263,11 +263,21 @@ bool Circuit::IsControlCase(GateRef gate) const
     return false;
 }
 
-bool Circuit::IsSelector(GateRef gate) const
+bool Circuit::IsValueSelector(GateRef gate) const
 {
     if (gate != NullGate()) {
         const Gate *curGate = LoadGatePtrConst(gate);
         return curGate->GetOpCode() == OpCode::VALUE_SELECTOR;
+    }
+    return false;
+}
+
+bool Circuit::IsSelector(GateRef gate) const
+{
+    if (gate != NullGate()) {
+        const Gate *curGate = LoadGatePtrConst(gate);
+        OpCode op = curGate->GetOpCode();
+        return (op == OpCode::VALUE_SELECTOR) || (op == OpCode::DEPEND_SELECTOR);
     }
     return false;
 }

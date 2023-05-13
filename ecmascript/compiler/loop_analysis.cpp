@@ -12,144 +12,181 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/compiler/bytecode_circuit_builder.h"
+
 #include "ecmascript/compiler/loop_analysis.h"
+#include "ecmascript/compiler/loop_peeling.h"
+#include "ecmascript/compiler/bytecodes.h"
+#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript::kungfu {
-void LoopAnalysis::Run()
+void LoopAnalysis::PrintLoop(LoopInfo* loopInfo)
 {
-    CollectLoopBack();
-    if (loopCount_ == 1 && !builder_->HasTryCatch()) { // 1: sampe loop
-        for (auto &it : loopInfoVector_) {
-            CollectLoopBody(it);
-            CollectLoopExits(it);
-        }
+    LOG_COMPILER(INFO) << "--------------------------------- LoopInfo Start ---------------------------------";
+    LOG_COMPILER(INFO) << "Head: " << acc_.GetId(loopInfo->loopHead);
+    LOG_COMPILER(INFO) << "Size: " << loopInfo->size;
+    LOG_COMPILER(INFO) << "MaxDepth: " << loopInfo->maxDepth;
+    LOG_COMPILER(INFO) << "Body: [";
+    for (auto gate : loopInfo->loopBodys) {
+        LOG_COMPILER(INFO) << acc_.GetId(gate) << ", ";
     }
-}
-
-void LoopAnalysis::CollectLoopExits(LoopInfo* loopInfo)
-{
-    for (const auto &it : loopInfo->loopBody) {
-        auto &bb = builder_->GetBasicBlockById(it);
-        for (const auto &succBlock: bb.succs) {
-            size_t succId = succBlock->id;
-            if (!loopInfo->loopBody.count(succId)) {
-                auto &succBB = builder_->GetBasicBlockById(succId);
-                succBB.isLoopExit = true;
-                succBB.loopHead = loopInfo->loopHead;
-                loopInfo->loopExits.emplace_back(succId);
-            }
-        }
-        bb.isLoopBody = true;
-        bb.loopHead = loopInfo->loopHead;
+    LOG_COMPILER(INFO) << "]";
+    LOG_COMPILER(INFO) << "Exit: [";
+    for (auto gate : loopInfo->loopExits) {
+        LOG_COMPILER(INFO) << acc_.GetId(gate) << ", ";
     }
-    if (builder_->IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "loopHead: " << loopInfo->loopHead;
-        std::string log("LoopBody: ");
-        for (const auto &it : loopInfo->loopBody) {
-            log += std::to_string(it) + " , ";
-        }
-        LOG_COMPILER(INFO) << log;
-        std::string log1("LoopExits: ");
-        for (const auto &it : loopInfo->loopExits) {
-            log1 += std::to_string(it) + " , ";
-        }
-        LOG_COMPILER(INFO) << log1;
-    }
+    LOG_COMPILER(INFO) << "]";
+    LOG_COMPILER(INFO) << "--------------------------------- LoopInfo End ---------------------------------";
 }
 
 void LoopAnalysis::CollectLoopBody(LoopInfo* loopInfo)
 {
-    auto size = builder_->GetBasicBlockCount();
-    // clear state
-    visitState_.insert(visitState_.begin(), size, VisitState::UNVISITED);
-    workList_.emplace_back(loopInfo->loopHead);
-    loopInfo->loopBody.insert(loopInfo->loopHead);
-    while (!workList_.empty()) {
-        size_t bbId = workList_.back();
-        auto &bb = builder_->GetBasicBlockById(bbId);
-        visitState_[bbId] = VisitState::PENDING;
-        bool allVisited = true;
-
-        for (const auto &succBlock: bb.succs) {
-            size_t succId = succBlock->id;
-            if (visitState_[succId] == VisitState::UNVISITED) {
-                // dfs
-                workList_.emplace_back(succId);
-                allVisited = false;
-                break;
-            // new path to loop body
-            } else if (loopInfo->loopBody.count(succId) && !loopInfo->loopBody.count(bbId)) {
-                ASSERT(visitState_[succId] != VisitState::UNVISITED);
-                for (const auto &it : workList_) {
-                    loopInfo->loopBody.insert(it);
+    ASSERT(acc_.IsLoopHead(loopInfo->loopHead));
+    ChunkUnorderedMap<GateRef, size_t> gateToDepth(chunk_);
+    ChunkQueue<GateRef> firstList(chunk_);  // for state and depend edges
+    ChunkQueue<GateRef> secondList(chunk_); // for other edges
+    gateToDepth[loopInfo->loopHead] = 1;
+    firstList.push(loopInfo->loopHead);
+    while ((!firstList.empty()) || (!secondList.empty())) {
+        GateRef cur = Circuit::NullGate();
+        if (!firstList.empty()) {
+            cur = firstList.front();
+            firstList.pop();
+        } else {
+            cur = secondList.front();
+            secondList.pop();
+        }
+        ASSERT(gateToDepth.count(cur) > 0);
+        auto use = acc_.Uses(cur);
+        ASSERT(use.begin() != use.end());
+        for (auto it = use.begin(); it != use.end(); ++it) {
+            if (acc_.IsLoopExit(cur) && (!acc_.IsFixed(*it))) {
+                continue;
+            } else if (acc_.IsLoopExitRelated(cur) && acc_.IsFixed(cur)) {
+                continue;
+            }
+            auto nex = *it;
+            if (gateToDepth.count(nex)) {
+                // loop back
+                if (acc_.IsStateIn(it) || acc_.IsDependIn(it)) {
+                    ASSERT(gateToDepth[nex] == ComputeLoopDepth(cur, nex, gateToDepth[cur]));
                 }
+                continue;
+            }
+            if (acc_.IsStateIn(it) || acc_.IsDependIn(it)) {
+                // only calculate loop depth for state & depend edges,
+                // since there is no phi of each value and each loop head.
+                gateToDepth[nex] = ComputeLoopDepth(cur, nex, gateToDepth[cur]);
+                if (acc_.GetOpCode(nex) == OpCode::STATE_SPLIT) {
+                    gateToDepth[acc_.GetFrameState(nex)] = gateToDepth[nex];
+                }
+                // state and depend edge should be visited first.
+                firstList.push(nex);
+                UpdateLoopInfo(loopInfo, nex, gateToDepth.at(nex));
+            } else {
+                secondList.push(nex);
             }
         }
-        if (allVisited) {
-            workList_.pop_back();
-            visitState_[bbId] = VisitState::VISITED;
-        }
     }
+    return;
 }
 
-void LoopAnalysis::CountLoopBackEdge(size_t fromId, size_t toId)
+void LoopAnalysis::UpdateLoopInfo(LoopInfo* loopInfo, GateRef gate, size_t dep)
 {
-    auto &toBlock = builder_->GetBasicBlockById(toId);
-    if (toBlock.numOfLoopBacks == 0) {
-        loopCount_++;
-        auto loopInfo = chunk_->New<LoopInfo>(chunk_, toId);
-        loopInfoVector_.emplace_back(loopInfo);
+    auto op = acc_.GetOpCode(gate);
+    loopInfo->maxDepth = std::max(loopInfo->maxDepth, dep);
+    loopInfo->size++;
+    switch (op) {
+        case OpCode::LOOP_BACK: {
+            if (dep == 1) { // 1: depth of loop head
+                loopInfo->loopBacks.emplace_back(gate);
+                return;
+            }
+            break;
+        }
+        case OpCode::LOOP_EXIT: {
+            if (dep == 1) { // 1: depth of loop head
+                loopInfo->loopExits.emplace_back(gate);
+                return;
+            }
+            break;
+        }
+        case OpCode::LOOP_EXIT_DEPEND:
+        case OpCode::LOOP_EXIT_VALUE: {
+            if (dep == 1) {
+                return;
+            }
+            break;
+        }
+        case OpCode::STATE_SPLIT: {
+            loopInfo->size++;
+            loopInfo->loopBodys.emplace_back(acc_.GetFrameState(gate));
+            break;
+        }
+        default:
+            break;
     }
-    toBlock.loopbackBlocks.insert(fromId);
-    toBlock.numOfLoopBacks = toBlock.loopbackBlocks.size();
+    loopInfo->loopBodys.emplace_back(gate);
 }
 
-void LoopAnalysis::CollectLoopBack()
+// only receive state or depend edge (cur -> dep)
+size_t LoopAnalysis::ComputeLoopDepth(GateRef cur, GateRef nex, size_t curDep)
 {
-    auto size = builder_->GetBasicBlockCount();
-    visitState_.resize(size, VisitState::UNVISITED);
-
-    size_t entryId = 0; // entry id
-    workList_.emplace_back(entryId);
-    while (!workList_.empty()) {
-        size_t bbId = workList_.back();
-        auto &bb = builder_->GetBasicBlockById(bbId);
-        if (visitState_[bbId] == VisitState::UNVISITED) {
-            dfsList_.emplace_back(bbId);
-            visitState_[bbId] = VisitState::PENDING;
-        }
-        bool allVisited = true;
-
-        for (const auto &succBlock: bb.succs) {
-            size_t succId = succBlock->id;
-            if (visitState_[succId] == VisitState::UNVISITED) {
-                // dfs
-                workList_.emplace_back(succId);
-                allVisited = false;
-                break;
-            } else if (visitState_[succId] == VisitState::PENDING) {
-                // back edge
-                CountLoopBackEdge(bbId, succId);
-            }
-        }
-
-        for (const auto &succBlock: bb.catchs) {
-            size_t succId = succBlock->id;
-            if (visitState_[succId] == VisitState::UNVISITED) {
-                // dfs
-                workList_.emplace_back(succId);
-                allVisited = false;
-                break;
-            } else if (visitState_[succId] == VisitState::PENDING) {
-                // back edge
-                CountLoopBackEdge(bbId, succId);
-            }
-        }
-        if (allVisited) {
-            workList_.pop_back();
-            visitState_[bbId] = VisitState::VISITED;
+    if (acc_.IsLoopExitRelated(cur)) {
+        if ((!acc_.IsLoopExit(cur)) || (!acc_.IsFixed(nex))) {
+            // exit from some loop
+            ASSERT(curDep > 0);
+            curDep--;
         }
     }
+    auto nexOp = acc_.GetOpCode(nex);
+    switch (nexOp) {
+        case OpCode::LOOP_BEGIN: {
+            if (acc_.GetState(nex) == cur) {
+                // enter new loop by state edge
+                curDep++;
+            }
+            break;
+        }
+        case OpCode::DEPEND_SELECTOR: {
+            GateRef state = acc_.GetState(nex);
+            if (acc_.IsLoopHead(state) && (cur == acc_.GetDep(nex))) {
+                // enter new loop by depend edge
+                curDep++;
+            }
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+    return curDep;
+}
+
+void LoopAnalysis::LoopExitElimination()
+{
+    std::vector<GateRef> gateList;
+    acc_.GetAllGates(gateList);
+    ChunkQueue<GateRef> workList(chunk_);
+    ChunkSet<GateRef> inList(chunk_);
+    for (auto gate : gateList) {
+        auto op = acc_.GetOpCode(gate);
+        switch (op) {
+            case OpCode::LOOP_EXIT: {
+                acc_.UpdateAllUses(gate, acc_.GetIn(gate, 0));
+                acc_.DeleteGate(gate);
+                break;
+            }
+            case OpCode::LOOP_EXIT_DEPEND:
+            case OpCode::LOOP_EXIT_VALUE: {
+                acc_.UpdateAllUses(gate, acc_.GetIn(gate, 1));
+                acc_.DeleteGate(gate);
+                break;
+            }
+            default:
+                break;
+        }
+    }
+    acc_.EliminateRedundantPhi();
 }
 }  // namespace panda::ecmascript::kungfu
