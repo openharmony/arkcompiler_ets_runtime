@@ -72,6 +72,9 @@ void SlowPathLowering::CallRuntimeLowering()
             case OpCode::LOOP_EXIT:
                 DeleteLoopExit(gate);
                 break;
+            case OpCode::LOOP_EXIT_VALUE:
+                DeleteLoopExitValue(gate);
+                break;
             default:
                 break;
         }
@@ -101,6 +104,13 @@ void SlowPathLowering::DeleteLoopExit(GateRef gate)
 {
     auto state = acc_.GetState(gate);
     acc_.ReplaceGate(gate, state, Circuit::NullGate(), Circuit::NullGate());
+}
+
+void SlowPathLowering::DeleteLoopExitValue(GateRef gate)
+{
+    auto state = acc_.GetState(gate);
+    auto value = acc_.GetValueIn(gate, 0);
+    acc_.ReplaceGate(gate, state, Circuit::NullGate(), value);
 }
 
 void SlowPathLowering::LowerToJSCall(GateRef hirGate, const std::vector<GateRef> &args)

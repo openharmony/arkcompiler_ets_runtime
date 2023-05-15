@@ -789,8 +789,9 @@ GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, GateType xType, Gate
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto numberBinaryOp = TypedBinaryOperator(MachineType::I64, Op, xType, yType,
-                                              {currentControl, currentDepend, x, y}, gateType, sampleType);
+    uint64_t operandTypes = GatePairTypeAccessor::ToValue(xType, yType);
+    auto numberBinaryOp = GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, Op, sampleType),
+        MachineType::I64, {currentControl, currentDepend, x, y}, gateType);
     currentLabel->SetControl(numberBinaryOp);
     currentLabel->SetDepend(numberBinaryOp);
     return numberBinaryOp;
@@ -802,8 +803,9 @@ GateRef CircuitBuilder::TypedUnaryOp(GateRef x, GateType xType, GateType gateTyp
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto machineType = MachineType::I64;
-    auto numberUnaryOp = TypedUnaryOperator(machineType, Op, xType, {currentControl, currentDepend, x}, gateType);
+    uint64_t value = TypedUnaryAccessor::ToValue(xType, Op);
+    auto numberUnaryOp = GetCircuit()->NewGate(circuit_->TypedUnaryOp(value),
+        MachineType::I64, {currentControl, currentDepend, x}, gateType);
     currentLabel->SetControl(numberUnaryOp);
     currentLabel->SetDepend(numberUnaryOp);
     return numberUnaryOp;
@@ -848,22 +850,6 @@ GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef va
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
-}
-
-// Number operator
-template<TypedBinOp Op>
-GateRef CircuitBuilder::NumberBinaryOp(GateRef x, GateRef y)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto numberBinaryOp = TypedBinaryOperator(MachineType::I64, Op,
-                                              GateType::NumberType(), GateType::NumberType(),
-                                              {currentControl, currentDepend, x, y}, GateType::AnyType(),
-                                              PGOSampleType::NoneType());
-    currentLabel->SetControl(numberBinaryOp);
-    currentLabel->SetDepend(numberBinaryOp);
-    return numberBinaryOp;
 }
 
 GateRef CircuitBuilder::PrimitiveToNumber(GateRef x, VariableType type)
@@ -1154,24 +1140,6 @@ void Environment::SubCfgExit()
 GateRef Environment::GetInput(size_t index) const
 {
     return inputList_.at(index);
-}
-
-// only for int32
-template<TypedUnOp Op>
-GateRef CircuitBuilder::Int32OverflowCheck(GateRef gate)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.HasFrameState(currentDepend));
-    auto frameState = acc_.GetFrameState(currentDepend);
-
-    uint64_t value = TypedUnaryAccessor::ToValue(GateType::Empty(), Op);
-    GateRef ret = GetCircuit()->NewGate(circuit_->Int32OverflowCheck(value),
-        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
 }
 } // namespace panda::ecmascript::kungfu
 

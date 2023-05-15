@@ -116,8 +116,9 @@ HWTEST_F_L0(LoweringRelateGateTests, HeapAllocTest)
     auto length = builder.LoadProperty(array, lengthString, false);
     Label less2(&builder);
     Label notLess2(&builder);
-    auto condtion = builder.TaggedIsTrue(builder.NumberBinaryOp<TypedBinOp::TYPED_LESS>(length,
-        builder.ToTaggedInt(builder.Int64(2))));
+    auto condtion = builder.TaggedIsTrue(builder.TypedBinaryOp<TypedBinOp::TYPED_LESS>(length,
+        builder.ToTaggedInt(builder.Int64(2))), GateType::NumberType(), GateType::NumberType(),
+        GateType::AnyType(), PGOSampleType::NoneType());
     builder.Branch(condtion, &less2, &notLess2);
     builder.Bind(&less2);
     auto ret =
