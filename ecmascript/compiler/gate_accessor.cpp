@@ -106,7 +106,7 @@ size_t GateAccessor::GetOffset(GateRef gate) const
 
 TypedUnaryAccessor GateAccessor::GetTypedUnAccessor(GateRef gate) const
 {
-    ASSERT((GetOpCode(gate) == OpCode::TYPED_UNARY_OP) || GetOpCode(gate) == OpCode::INT32_OVERFLOW_CHECK);
+    ASSERT((GetOpCode(gate) == OpCode::TYPED_UNARY_OP));
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return TypedUnaryAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
@@ -371,6 +371,19 @@ void GateAccessor::GetOuts(GateRef gate, std::vector<GateRef>& outs) const
     }
 }
 
+bool GateAccessor::HasOuts(GateRef gate) const
+{
+    const Gate *curGate = circuit_->LoadGatePtrConst(gate);
+    return !curGate->IsFirstOutNull();
+}
+
+void GateAccessor::DeleteGateIfNoUse(GateRef gate)
+{
+    if (!HasOuts(gate)) {
+        DeleteGate(gate);
+    }
+}
+
 void GateAccessor::GetOutStates(GateRef gate, std::vector<GateRef>& outStates) const
 {
     const Gate *curGate = circuit_->LoadGatePtrConst(gate);
@@ -512,6 +525,11 @@ bool GateAccessor::IsCheckWithOneIn(GateRef gate) const
 bool GateAccessor::IsSchedulable(GateRef gate) const
 {
     return GetMetaData(gate)->IsSchedulable();
+}
+
+bool GateAccessor::IsVirtualState(GateRef gate) const
+{
+    return GetMetaData(gate)->IsVirtualState();
 }
 
 GateRef GateAccessor::GetDep(GateRef gate, size_t idx) const

@@ -84,7 +84,6 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::LOAD_ARRAY_LENGTH:
         case OpCode::TYPED_ARRAY_CHECK:
         case OpCode::OBJECT_TYPE_CHECK:
-        case OpCode::INT32_OVERFLOW_CHECK:
         case OpCode::STABLE_ARRAY_CHECK:
         case OpCode::INDEX_CHECK:
         case OpCode::TYPED_CALL_CHECK:
@@ -295,8 +294,7 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             }
             break;
         }
-        case OpCode::TYPED_UNARY_OP:
-        case OpCode::INT32_OVERFLOW_CHECK: {
+        case OpCode::TYPED_UNARY_OP: {
             auto lhsOp = acc_.GetTypedUnAccessor(lhs).GetTypedUnOp();
             auto rhsOp = acc_.GetTypedUnAccessor(rhs).GetTypedUnOp();
             if (lhsOp != rhsOp) {

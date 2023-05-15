@@ -462,24 +462,12 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-bool TSTypeLowering::NeedInt32OverflowCheck(TypedUnOp op) const
-{
-    if (op == TypedUnOp::TYPED_NEG) {
-        return true;
-    }
-    return false;
-}
-
 template<TypedUnOp Op>
 void TSTypeLowering::SpeculateNumber(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
     GateType gateType = acc_.GetGateType(gate);
-
-    if (valueType.IsIntType() && NeedInt32OverflowCheck(Op)) {
-        builder_.Int32OverflowCheck<Op>(value);
-    }
 
     ASSERT(acc_.GetOpCode(acc_.GetDep(gate)) == OpCode::STATE_SPLIT);
     GateRef result = builder_.TypedUnaryOp<Op>(value, valueType, gateType);

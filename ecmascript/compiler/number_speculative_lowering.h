@@ -58,6 +58,7 @@ private:
     void VisitNumberMonocular(GateRef gate);
     void VisitNumberDiv(GateRef gate);
     void VisitBooleanJump(GateRef gate);
+    void VisitIsTrueOrFalse(GateRef gate, bool flag);
 
     template<TypedBinOp Op>
     GateRef CalculateInts(GateRef left, GateRef right);
@@ -82,10 +83,11 @@ private:
         ASSERT(index < typeInfos_.size());
         return typeInfos_[index];
     }
-    
+
     void UpdateRange(GateRef gate, const RangeInfo& range);
     RangeInfo GetRange(GateRef gate) const;
     GateRef GetConstInt32(int32_t v);
+    GateRef GetFrameState(GateRef gate);
 
     Circuit* circuit_;
     GateAccessor acc_;

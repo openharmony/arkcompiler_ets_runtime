@@ -2188,6 +2188,9 @@ void LLVMIRBuilder::HandleDeoptCheck(GateRef gate)
 
     VisitDeoptCheck(gate);
     LLVMValueRef returnValue = gate2LValue_[gate];
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, returnValue);
+    }
     LLVMBuildRet(builder_, returnValue);
     gate2LValue_[gate] = result;
 }

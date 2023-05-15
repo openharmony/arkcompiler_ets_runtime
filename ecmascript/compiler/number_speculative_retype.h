@@ -71,7 +71,6 @@ private:
     GateRef VisitNumberShiftAndLogical(GateRef gate);
     GateRef VisitNumberDiv(GateRef gate);
     GateRef VisitBooleanJump(GateRef gate);
-    GateRef VisitOverflowCheck(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);
     GateRef VisitLoadArrayLength(GateRef gate);
     GateRef VisitLoadElement(GateRef gate);
@@ -82,18 +81,17 @@ private:
     GateRef VisitOthers(GateRef gate);
     GateRef VisitTypeConvert(GateRef gate);
     GateRef VisitFrameState(GateRef gate);
-
-    GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);
+    GateRef VisitIsTrueOrFalse(GateRef gate);
 
     void ConvertForBinaryOp(GateRef gate);
     void ConvertForCompareOp(GateRef gate);
-
     void ConvertForIntOperator(GateRef gate, GateType leftType, GateType rightType);
     void ConvertForDoubleOperator(GateRef gate, GateType leftType, GateType rightType);
 
     GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType);
     GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType);
     GateRef CheckAndConvertToTagged(GateRef gate, GateType gateType);
+    GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);
     GateRef ConvertToTagged(GateRef gate);
     GateRef TryConvertConstant(GateRef gate, bool needInt32);
 

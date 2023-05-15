@@ -244,8 +244,6 @@ public:
     NO_MOVE_SEMANTIC(CircuitBuilder);
     NO_COPY_SEMANTIC(CircuitBuilder);
     // low level interface
-    template<TypedUnOp Op>
-    inline GateRef Int32OverflowCheck(GateRef gate);
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
     GateRef StableArrayCheck(GateRef gate);
     GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState);
@@ -258,8 +256,6 @@ public:
     GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex);
     GateRef JSCallThisTargetTypeCheck(GateType type, GateRef func);
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
-    GateRef TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
-                                std::vector<GateRef> inList, GateType gateType, PGOSampleType sampleType);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args);
     inline GateRef TypedCallBuiltin(GateRef hirGate, GateRef x, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
@@ -273,6 +269,8 @@ public:
     GateRef Convert(GateRef gate, ValueType src, ValueType dst);
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
     GateRef ConvertTaggedBooleanToBool(GateRef gate);
+    GateRef ConvertInt32ToBool(GateRef gate);
+    GateRef ConvertFloat64ToBool(GateRef gate);
     GateRef ConvertInt32ToTaggedInt(GateRef gate);
     GateRef ConvertFloat64ToTaggedDouble(GateRef gate);
     GateRef ConvertFloat64ToInt32(GateRef gate);
@@ -285,8 +283,8 @@ public:
     GateRef CheckTaggedIntAndConvertToFloat64(GateRef gate);
     GateRef CheckTaggedDoubleAndConvertToFloat64(GateRef gate);
     GateRef CheckTaggedNumberAndConvertToFloat64(GateRef gate);
-    GateRef TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
-                               const std::vector<GateRef>& inList, GateType gateType);
+    GateRef CheckTaggedNumberAndConvertToBool(GateRef gate);
+    GateRef CheckTaggedBooleanAndConvertToBool(GateRef gate);
     GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, GateType typeVal,
                                const std::vector<GateRef>& inList);
     GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);
@@ -481,10 +479,6 @@ public:
     inline GateRef TypedUnaryOp(GateRef x, GateType xType, GateType gateType);
     template<TypedJumpOp Op>
     inline GateRef TypedConditionJump(GateRef x, GateType xType);
-
-    // middle ir: Number operations
-    template<TypedBinOp Op>
-    inline GateRef NumberBinaryOp(GateRef x, GateRef y);
     inline GateRef PrimitiveToNumber(GateRef x, VariableType type);
 
     // middle ir: object operations

@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
@@ -322,6 +323,26 @@ GateRef CircuitBuilder::ConvertInt32ToTaggedInt(GateRef gate)
     return Convert(gate, ValueType::INT32, ValueType::TAGGED_INT);
 }
 
+GateRef CircuitBuilder::ConvertInt32ToBool(GateRef gate)
+{
+    return Convert(gate, ValueType::INT32, ValueType::BOOL);
+}
+
+GateRef CircuitBuilder::ConvertFloat64ToBool(GateRef gate)
+{
+    return Convert(gate, ValueType::FLOAT64, ValueType::BOOL);
+}
+
+GateRef CircuitBuilder::CheckTaggedBooleanAndConvertToBool(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_BOOLEAN, ValueType::BOOL);
+}
+
+GateRef CircuitBuilder::CheckTaggedNumberAndConvertToBool(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_NUMBER, ValueType::BOOL);
+}
+
 GateRef CircuitBuilder::ConvertFloat64ToTaggedDouble(GateRef gate)
 {
     return Convert(gate, ValueType::FLOAT64, ValueType::TAGGED_DOUBLE);
@@ -421,6 +442,7 @@ GateRef CircuitBuilder::JSCallThisTargetTypeCheck(GateType type, GateRef func)
 
 GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptType type)
 {
+    std::string comment = Deoptimizier::DisplayItems(type);
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
@@ -438,7 +460,7 @@ GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptT
     }
     GateRef ret = GetCircuit()->NewGate(circuit_->DeoptCheck(),
         MachineType::I1, { currentControl, currentDepend, condition,
-            frameStateChain, Int64(static_cast<int64_t>(type))}, GateType::NJSValue());
+        frameStateChain, Int64(static_cast<int64_t>(type))}, GateType::NJSValue(), comment.c_str());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -479,14 +501,6 @@ GateRef CircuitBuilder::GetSuperConstructor(GateRef ctor)
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
-}
-
-GateRef CircuitBuilder::TypedBinaryOperator(MachineType type, TypedBinOp binOp, GateType typeLeft, GateType typeRight,
-                                            std::vector<GateRef> inList, GateType gateType, PGOSampleType sampleType)
-{
-    uint64_t operandTypes = GatePairTypeAccessor::ToValue(typeLeft, typeRight);
-    return GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, binOp, sampleType),
-        type, inList.size(), inList.data(), gateType);
 }
 
 GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args)
@@ -532,14 +546,6 @@ GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateTyp
     uint64_t operandTypes = GatePairTypeAccessor::ToValue(typeFrom, typeTo);
     return GetCircuit()->NewGate(circuit_->TypedConvert(operandTypes),
         type, inList.size(), inList.data(), GateType::AnyType());
-}
-
-GateRef CircuitBuilder::TypedUnaryOperator(MachineType type, TypedUnOp unaryOp, GateType typeVal,
-                                           const std::vector<GateRef>& inList, GateType gateType)
-{
-    uint64_t value = TypedUnaryAccessor::ToValue(typeVal, unaryOp);
-    return GetCircuit()->NewGate(circuit_->TypedUnaryOp(value),
-        type, inList.size(), inList.data(), gateType);
 }
 
 GateRef CircuitBuilder::TypedConditionJump(MachineType type, TypedJumpOp jumpOp, GateType typeVal,

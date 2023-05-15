@@ -36,7 +36,6 @@ public:
         return enableLog_;
     }
     void Run();
-
 private:
     const std::string& GetMethodName() const
     {
@@ -51,6 +50,27 @@ private:
     void LowerLoadConstOffset(GateRef gate);
     void LowerStoreConstOffset(GateRef gate);
     void LowerConvertHoleAsUndefined(GateRef gate);
+    void LowerCheckAndConvert(GateRef gate);
+    void LowerConvert(GateRef gate);
+    void LowerCheckFloat64AndConvert(GateRef gate);
+    void LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState);
+    void LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState);
+    void LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState);
+    void LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameState);
+    GateRef ConvertBoolToTaggedBoolean(GateRef gate);
+    GateRef ConvertInt32ToFloat64(GateRef gate);
+    GateRef ConvertInt32ToTaggedInt(GateRef gate);
+    GateRef ConvertFloat64ToBool(GateRef gate);
+    GateRef ConvertFloat64ToInt32(GateRef gate, Label *exit);
+    GateRef ConvertFloat64ToTaggedDouble(GateRef gate);
+    GateRef ConvertTaggedIntToInt32(GateRef gate);
+    GateRef ConvertTaggedIntToFloat64(GateRef gate);
+    GateRef ConvertTaggedDoubleToInt32(GateRef gate, Label *exit);
+    GateRef ConvertTaggedDoubleToFloat64(GateRef gate);
+    GateRef ConvertTaggedNumberToBool(GateRef gate, Label *exit);
+    GateRef ConvertTaggedNumberToInt32(GateRef gate, Label *exit);
+    GateRef ConvertTaggedNumberToFloat64(GateRef gate, Label *exit);
+    GateRef ConvertTaggedBooleanToBool(GateRef gate);
 
     Circuit *circuit_;
     GateAccessor acc_;

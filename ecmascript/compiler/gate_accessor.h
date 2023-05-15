@@ -448,6 +448,7 @@ public:
     bool IsCheckWithOneIn(GateRef gate) const;
     bool IsCheckWithTwoIns(GateRef gate) const;
     bool IsSchedulable(GateRef gate) const;
+    bool IsVirtualState(GateRef gate) const;
     MarkCode GetMark(GateRef gate) const;
     void SetMark(GateRef gate, MarkCode mark);
     bool IsFinished(GateRef gate) const;
@@ -478,6 +479,8 @@ public:
     bool MetaDataEqu(GateRef g1, GateRef g2) const;
     bool IsNop(GateRef g) const;
     bool IsRoot(GateRef g) const;
+    bool HasOuts(GateRef gate) const;
+    void DeleteGateIfNoUse(GateRef gate);
 
     GateRef GetCircuitRoot() const
     {
