@@ -118,16 +118,6 @@ public:
 
     inline bool HandleOpWordBoundary(uint8_t opCode)
     {
-        if (IsEOF()) {
-            if (opCode == RegExpOpCode::OP_WORD_BOUNDARY) {
-                Advance(opCode);
-            } else {
-                if (MatchFailed()) {
-                    return false;
-                }
-            }
-            return true;
-        }
         bool preIsWord = false;
         if (GetCurrentPtr() != input_) {
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)

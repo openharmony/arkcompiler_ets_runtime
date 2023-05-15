@@ -60,4 +60,9 @@ res2[0] = "C";
 var res3 = testStr.match(pattern);
 print(res3[0]);
 
+// Test 7 - Word Boundary test
+var reg7 = /\/(?:\B)/gm;
+var str7 = "/";
+print(reg7.test(str7));
+
 print("builtins regexp end");
