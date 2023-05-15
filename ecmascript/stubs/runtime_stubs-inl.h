@@ -1799,6 +1799,7 @@ JSTaggedValue RuntimeStubs::RuntimeCopyRestArgs(JSThread *thread, JSTaggedType *
 {
     JSHandle<JSTaggedValue> restArray = JSArray::ArrayCreate(thread, JSTaggedNumber(restNumArgs));
 
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < restNumArgs; ++i) {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -2039,6 +2040,7 @@ JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
     }
 
     JSHandle<TaggedArray> coretypesArray(thread, RuntimeGetCallSpreadArgs(thread, array));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t length = coretypesArray->GetLength();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, obj, undefined, length);
