@@ -270,9 +270,13 @@ private:
     }
 
     // It allows user to copy into buffer even if maxLength < length
-    inline size_t WriteUtf16(uint16_t *buf, uint32_t length, uint32_t bufLength) const
+    inline size_t WriteUtf16(uint16_t *buf, uint32_t targetLength, uint32_t bufLength) const
     {
-        return CopyDataToUtf16(buf, length, bufLength);
+        if (bufLength == 0) {
+            return 0;
+        }
+        // Returns a number representing a valid backrest length.
+        return CopyDataToUtf16(buf, targetLength, bufLength);
     }
 
     size_t WriteOneByte(uint8_t *buf, size_t maxLength) const
