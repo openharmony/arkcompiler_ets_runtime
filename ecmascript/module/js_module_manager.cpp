@@ -34,17 +34,7 @@
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
-
-namespace {
-constexpr size_t NATIVE_PREFIX_SIZE = 8;
-constexpr size_t OHOS_PREFIX_SIZE = 6;
-constexpr size_t APP_PREFIX_SIZE = 5;
-
-constexpr char REQUIRE_NAITVE_MODULE_PREFIX[] = "@native:";
-constexpr char REQUIRE_NAPI_OHOS_PREFIX[] = "@ohos:";
-constexpr char REQUIRE_NAPI_APP_PREFIX[] = "@app:";
-}
-
+using StringHelper = base::StringHelper;
 ModuleManager::ModuleManager(EcmaVM *vm) : vm_(vm)
 {
     resolvedModules_ = NameDictionary::Create(vm_->GetJSThread(), DEAULT_DICTIONART_CAPACITY).GetTaggedValue();
@@ -656,31 +646,40 @@ int ModuleManager::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> e
 
 std::pair<bool, ModuleTypes> ModuleManager::CheckNativeModule(const CString &moduleRequestName)
 {
-    if (moduleRequestName.compare(0, OHOS_PREFIX_SIZE, REQUIRE_NAPI_OHOS_PREFIX) == 0) {
+    if (moduleRequestName[0] != '@' ||
+        StringHelper::StringStartWith(moduleRequestName, PathHelper::PREFIX_BUNDLE) ||
+        StringHelper::StringStartWith(moduleRequestName, PathHelper::PREFIX_PACKAGE)||
+        moduleRequestName.find(':') == CString::npos) {
+        return {false, ModuleTypes::UNKNOWN};
+    }
+    if (StringHelper::StringStartWith(moduleRequestName, PathHelper::REQUIRE_NAPI_OHOS_PREFIX)) {
         return {true, ModuleTypes::OHOS_MODULE};
-    } else if (moduleRequestName.compare(0, APP_PREFIX_SIZE, REQUIRE_NAPI_APP_PREFIX) == 0) {
+    } else if (StringHelper::StringStartWith(moduleRequestName, PathHelper::REQUIRE_NAPI_APP_PREFIX)) {
         return {true, ModuleTypes::APP_MODULE};
-    } else if (moduleRequestName.compare(0, NATIVE_PREFIX_SIZE, REQUIRE_NAITVE_MODULE_PREFIX) == 0) {
+    } else if (StringHelper::StringStartWith(moduleRequestName, PathHelper::REQUIRE_NAITVE_MODULE_PREFIX)) {
         return {true, ModuleTypes::NATIVE_MODULE};
     } else {
-        return {false, ModuleTypes::UNKNOWN};
+        return {true, ModuleTypes::INTERNAL_MODULE};
     }
 }
 
 CString ModuleManager::GetStrippedModuleName(const CString &moduleRequestName)
 {
-    size_t pos = 0;
-    if (moduleRequestName.compare(0, OHOS_PREFIX_SIZE, REQUIRE_NAPI_OHOS_PREFIX) == 0) {
-        pos = OHOS_PREFIX_SIZE;
-    } else if (moduleRequestName.compare(0, APP_PREFIX_SIZE, REQUIRE_NAPI_APP_PREFIX) == 0) {
-        pos = APP_PREFIX_SIZE;
-    } else if (moduleRequestName.compare(0, NATIVE_PREFIX_SIZE, REQUIRE_NAITVE_MODULE_PREFIX) == 0) {
-        pos = NATIVE_PREFIX_SIZE;
-    } else {
+    size_t pos = moduleRequestName.find(':');
+    if (pos == CString::npos) {
         LOG_FULL(FATAL) << "Unknown format " << moduleRequestName;
-        UNREACHABLE();
     }
-    return moduleRequestName.substr(pos);
+    return moduleRequestName.substr(pos + 1);
+}
+
+CString ModuleManager::GetInternalModuleDir(const CString &moduleRequestName)
+{
+    // @xxx:* -> xxx
+    size_t pos = moduleRequestName.find(':');
+    if (pos == CString::npos) {
+        LOG_FULL(FATAL) << "Unknown format " << moduleRequestName;
+    }
+    return moduleRequestName.substr(1, pos - 1);
 }
 
 Local<JSValueRef> ModuleManager::GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType)
@@ -691,6 +690,31 @@ Local<JSValueRef> ModuleManager::GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTy
         globalConstants->GetHandledRequireNativeModuleString() :
         globalConstants->GetHandledRequireNapiString();
     return globalObject->Get(vm, JSNApiHelper::ToLocal<StringRef>(funcName));
+}
+
+void ModuleManager::MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
+                                const CString &moduleName)
+{
+    size_t pos = moduleName.find_last_of('/');
+    if (pos == CString::npos) {
+        LOG_FULL(FATAL) << "Invalid native module " << moduleName;
+        UNREACHABLE();
+    }
+    CString soName = moduleName.substr(pos + 1);
+    CString path = moduleName.substr(0, pos);
+    // use module name as so name
+    arguments[0] = StringRef::NewFromUtf8(vm, soName.c_str());
+    arguments.emplace_back(BooleanRef::New(vm, true));
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, path.c_str()));
+}
+
+void ModuleManager::MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
+                                     const CString &moduleRequestName)
+{
+    arguments.emplace_back(BooleanRef::New(vm, false));
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, ""));
+    CString moduleDir = GetInternalModuleDir(moduleRequestName);
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, moduleDir.c_str()));
 }
 
 bool ModuleManager::LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule> &requiredModule,
@@ -706,19 +730,10 @@ bool ModuleManager::LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule
 
     arguments.emplace_back(StringRef::NewFromUtf8(vm, moduleName.c_str()));
     if (moduleType == ModuleTypes::APP_MODULE) {
-        size_t pos = moduleName.find_last_of('/');
-        if (pos == CString::npos) {
-            LOG_FULL(FATAL) << "Invalid native module " << moduleName;
-            UNREACHABLE();
-        }
-        CString soName = moduleName.substr(pos + 1);
-        CString path = moduleName.substr(0, pos);
-        // use module name as so name
-        arguments[0] = StringRef::NewFromUtf8(vm, soName.c_str());
-        arguments.emplace_back(BooleanRef::New(vm, true));
-        arguments.emplace_back(StringRef::NewFromUtf8(vm, path.c_str()));
+        MakeAppArgs(vm, arguments, moduleName);
+    } else if (moduleType == ModuleTypes::INTERNAL_MODULE) {
+        MakeInternalArgs(vm, arguments, moduleRequestName);
     }
-
     auto maybeFuncRef = GetRequireNativeModuleFunc(vm, moduleType);
     // some function(s) may not registered in global object for non-main thread
     if (!maybeFuncRef->IsFunction()) {

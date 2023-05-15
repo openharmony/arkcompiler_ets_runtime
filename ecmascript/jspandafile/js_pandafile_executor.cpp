@@ -36,16 +36,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     CString name;
     CString normalName = PathHelper::NormalizePath(filename);
     EcmaVM *vm = thread->GetEcmaVM();
-    if (!vm->IsBundlePack()) {
+    if (!vm->IsBundlePack() && !excuteFromJob) {
 #if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST)
         name = filename;
         entry = entryPoint.data();
 #else
-        if (excuteFromJob) {
-            entry = entryPoint.data();
-        } else {
-            entry = PathHelper::ParseOhmUrl(vm, normalName, name);
-        }
+        entry = PathHelper::ParseOhmUrl(vm, normalName, name);
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
         if (name.empty()) {
             name = vm->GetAssetPath();

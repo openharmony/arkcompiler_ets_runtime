@@ -495,4 +495,48 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     EXPECT_EQ(entryPoint, res5);
     EXPECT_EQ(outFileName, "/data/storage/el1/bundle/moduleName/ets/modules.abc");
 }
+
+HWTEST_F_L0(EcmaModuleTest, CheckNativeModule)
+{
+    // load file
+    CString requestName1 = "@bundle:bundleName/moduleName/ets/index";
+
+    // load native modules
+    CString requestName2 = "@ohos:router";
+    CString requestName3 = "@app:bundleName/moduleName/lib*.so";
+    CString requestName4 = "@native:system.app";
+    CString requestName5 = "@xxx:internal";
+
+    // load npm Packages
+    CString requestName6 = "@package:pkg_modules/.ohpm/json5@2.2.3/pkg_modules/json5/dist/index";
+    CString requestName7 = "@ohos/common";
+
+    std::pair<bool, ModuleTypes> res1 = ModuleManager::CheckNativeModule(requestName1);
+    EXPECT_EQ(res1.first, false);
+    EXPECT_EQ(res1.second, ModuleTypes::UNKNOWN);
+
+    std::pair<bool, ModuleTypes> res2 = ModuleManager::CheckNativeModule(requestName2);
+    EXPECT_EQ(res2.first, true);
+    EXPECT_EQ(res2.second, ModuleTypes::OHOS_MODULE);
+
+    std::pair<bool, ModuleTypes> res3 = ModuleManager::CheckNativeModule(requestName3);
+    EXPECT_EQ(res3.first, true);
+    EXPECT_EQ(res3.second, ModuleTypes::APP_MODULE);
+
+    std::pair<bool, ModuleTypes> res4 = ModuleManager::CheckNativeModule(requestName4);
+    EXPECT_EQ(res4.first, true);
+    EXPECT_EQ(res4.second, ModuleTypes::NATIVE_MODULE);
+
+    std::pair<bool, ModuleTypes> res5 = ModuleManager::CheckNativeModule(requestName5);
+    EXPECT_EQ(res5.first, true);
+    EXPECT_EQ(res5.second, ModuleTypes::INTERNAL_MODULE);
+
+    std::pair<bool, ModuleTypes> res6 = ModuleManager::CheckNativeModule(requestName6);
+    EXPECT_EQ(res6.first, false);
+    EXPECT_EQ(res6.second, ModuleTypes::UNKNOWN);
+
+    std::pair<bool, ModuleTypes> res7 = ModuleManager::CheckNativeModule(requestName7);
+    EXPECT_EQ(res7.first, false);
+    EXPECT_EQ(res7.second, ModuleTypes::UNKNOWN);
+}
 }  // namespace panda::test
