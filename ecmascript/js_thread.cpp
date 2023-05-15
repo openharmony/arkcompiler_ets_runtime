@@ -14,6 +14,11 @@
  */
 
 #include "ecmascript/js_thread.h"
+
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
+#include <sys/resource.h>
+#endif
+
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/platform/file.h"
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
@@ -543,12 +548,35 @@ size_t JSThread::GetAsmStackLimit()
         return result;
     }
 
-    uintptr_t threadStackLimit = reinterpret_cast<uintptr_t>(stackAddr);
+    bool isMainThread = IsMainThread();
+    struct rlimit rl;
+    if (isMainThread) {
+        ret = getrlimit(RLIMIT_STACK, &rl);
+        if (ret != 0) {
+            LOG_ECMA(ERROR) << "Get current thread stack size failed";
+            if (pthread_attr_destroy(&attr) != 0) {
+                LOG_ECMA(ERROR) << "Destroy current thread attr failed";
+            }
+            return result;
+        }
+    }
+
+    uintptr_t threadStackLimit;
+    if (isMainThread) {
+        threadStackLimit = reinterpret_cast<uintptr_t>(stackAddr) + size - rl.rlim_cur;
+    } else {
+        threadStackLimit = reinterpret_cast<uintptr_t>(stackAddr);
+    }
     if (result < threadStackLimit) {
         result = threadStackLimit;
     }
 
-    uintptr_t threadStackStart = threadStackLimit + size;
+    uintptr_t threadStackStart;
+    if (isMainThread) {
+        threadStackStart = threadStackLimit + rl.rlim_cur;
+    } else {
+        threadStackStart = threadStackLimit + size;
+    }
     LOG_INTERPRETER(DEBUG) << "Current thread stack start: " << reinterpret_cast<void *>(threadStackStart);
     LOG_INTERPRETER(DEBUG) << "Used stack before js stack start: "
                           << reinterpret_cast<void *>(threadStackStart - GetCurrentStackPosition());
@@ -589,5 +617,14 @@ bool JSThread::IsLegalThreadSp(uintptr_t sp) const
 bool JSThread::IsLegalSp(uintptr_t sp) const
 {
     return IsLegalAsmSp(sp) || IsLegalThreadSp(sp);
+}
+
+bool JSThread::IsMainThread()
+{
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
+    return getpid() == syscall(SYS_gettid);
+#else
+    return true;
+#endif
 }
 }  // namespace panda::ecmascript
