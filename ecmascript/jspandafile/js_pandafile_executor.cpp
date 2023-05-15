@@ -67,16 +67,17 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     }
     LoadAOTFilesForFile(vm, jsPandaFile.get());
 
-    CString realEntry = entry;
+    // realEntry is used to record the original record, which is easy to throw when there are exceptions
+    const CString realEntry = entry;
     // If it is an old record, delete the bundleName and moduleName
     if (!jsPandaFile->IsBundlePack() && !excuteFromJob && !vm->GetBundleName().empty()) {
-        jsPandaFile->CheckIsRecordWithBundleName(vm);
+        jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
-            PathHelper::CroppingRecord(realEntry);
+            PathHelper::CroppingRecord(entry);
         }
     }
 
-    bool isModule = jsPandaFile->IsModule(thread, realEntry, entry);
+    bool isModule = jsPandaFile->IsModule(thread, entry, realEntry);
     if (thread->HasPendingException()) {
         vm->HandleUncaughtException(thread->GetException());
         return Unexpected(false);
@@ -88,7 +89,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         if (jsPandaFile->IsBundlePack()) {
             moduleRecord = moduleManager->HostResolveImportedModule(name);
         } else {
-            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(name, realEntry);
+            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(name, entry);
         }
         SourceTextModule::Instantiate(thread, moduleRecord);
         if (thread->HasPendingException()) {
@@ -102,7 +103,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         SourceTextModule::Evaluate(thread, module, nullptr, 0, excuteFromJob);
         return JSTaggedValue::Undefined();
     }
-    return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), realEntry.c_str(), excuteFromJob);
+    return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entry.c_str(), excuteFromJob);
 }
 
 // The security interface needs to be modified accordingly.
@@ -156,21 +157,23 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     LoadAOTFilesForFile(vm, jsPandaFile.get());
 
     bool isBundle = jsPandaFile->IsBundlePack();
-    CString realEntry = entry;
+
+    // realEntry is used to record the original record, which is easy to throw when there are exceptions
+    const CString realEntry = entry;
     if (!isBundle) {
-        jsPandaFile->CheckIsRecordWithBundleName(vm);
+        jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
-            PathHelper::CroppingRecord(realEntry);
+            PathHelper::CroppingRecord(entry);
         }
     }
     // will be refactored, temporarily use the function IsModule to verify realEntry
-    [[maybe_unused]] bool isModule = jsPandaFile->IsModule(thread, realEntry, entry);
+    [[maybe_unused]] bool isModule = jsPandaFile->IsModule(thread, entry, realEntry);
     if (thread->HasPendingException()) {
         vm->HandleUncaughtException(thread->GetException());
         return Unexpected(false);
     }
     ASSERT(isModule);
-    return CommonExecuteBuffer(thread, isBundle, name, realEntry, buffer, size);
+    return CommonExecuteBuffer(thread, isBundle, name, entry, buffer, size);
 }
 
 // The security interface needs to be modified accordingly.
@@ -232,7 +235,7 @@ void JSPandaFileExecutor::LoadAOTFilesForFile(EcmaVM *vm, JSPandaFile *jsPandaFi
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThread *thread, uint8_t *buffer,
     size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
 {
-    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer with secure buffer filename " << filename;
+    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBufferSecure with secure buffer filename " << filename;
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
         LoadJSPandaFileSecure(thread, normalName, entryPoint, buffer, size, needUpdate);
@@ -280,7 +283,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JSThread *thread, uint8_t *buffer,
     size_t size, const CString &filename, bool needUpdate)
 {
-    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBuffer with secure buffer filename " << filename;
+    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBufferSecure with secure buffer filename " << filename;
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
@@ -302,21 +305,22 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     }
     LoadAOTFilesForFile(vm, jsPandaFile.get());
 
-    CString realEntry = entry;
+    // realEntry is used to record the original record, which is easy to throw when there are exceptions
+    const CString realEntry = entry;
     if (!jsPandaFile->IsBundlePack()) {
-        jsPandaFile->CheckIsRecordWithBundleName(vm);
+        jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
-            PathHelper::CroppingRecord(realEntry);
+            PathHelper::CroppingRecord(entry);
         }
     }
 
     // will be refactored, temporarily use the function IsModule to verify realEntry
-    [[maybe_unused]] bool isModule = jsPandaFile->IsModule(thread, realEntry, entry);
+    [[maybe_unused]] bool isModule = jsPandaFile->IsModule(thread, entry, realEntry);
     if (thread->HasPendingException()) {
         vm->HandleUncaughtException(thread->GetException());
         return Unexpected(false);
     }
     ASSERT(isModule);
-    return CommonExecuteBuffer(thread, name, realEntry, jsPandaFile.get());
+    return CommonExecuteBuffer(thread, name, entry, jsPandaFile.get());
 }
 }  // namespace panda::ecmascript

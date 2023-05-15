@@ -294,7 +294,7 @@ public:
     }
 
     void CheckIsBundlePack();
-    void CheckIsRecordWithBundleName(EcmaVM *vm);
+    void CheckIsRecordWithBundleName(const CString &entry);
     bool IsRecordWithBundleName() const
     {
         return isRecordWithBundleName_;

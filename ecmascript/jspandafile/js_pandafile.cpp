@@ -64,16 +64,21 @@ void JSPandaFile::CheckIsBundlePack()
     }
 }
 
-void JSPandaFile::CheckIsRecordWithBundleName(EcmaVM *vm)
+void JSPandaFile::CheckIsRecordWithBundleName(const CString &entry)
 {
+    size_t pos = entry.find('/');
+    if (pos == CString::npos) {
+        LOG_FULL(FATAL) << "CheckIsRecordWithBundleName Invalid parameter entry";
+    }
+
+    CString bundleName = entry.substr(0, pos);
+    size_t bundleNameLen = bundleName.length();
     for (auto info : jsRecordInfo_) {
         if (info.first.find(PACKAGE_PATH_SEGMENT) != CString::npos ||
             info.first.find(NPM_PATH_SEGMENT) != CString::npos) {
             continue;
         }
         CString recordName = info.first;
-        CString bundleName = vm->GetBundleName();
-        size_t bundleNameLen = bundleName.length();
         // Confirm whether the current record is new or old by judging whether the recordName has a bundleName
         if (!(recordName.length() > bundleNameLen && (recordName.compare(0, bundleNameLen, bundleName) == 0))) {
             isRecordWithBundleName_ = false;
