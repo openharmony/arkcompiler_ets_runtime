@@ -21,6 +21,7 @@
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "file.h"
 
 namespace panda::ecmascript {
 static const size_t MALLOC_SIZE_LIMIT = 2147483648; // Max internal memory used by the VM declared in options
@@ -99,6 +100,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     return jsPandaFile;
 }
 
+// The security interface needs to be modified accordingly.
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *thread, const CString &filename,
     std::string_view entryPoint, const void *buffer, size_t size, bool needUpdate)
 {
@@ -130,6 +132,54 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     }
 
     auto pf = panda_file::OpenPandaFileFromMemory(buffer, size);
+    if (pf == nullptr) {
+        LOG_ECMA(ERROR) << "open file " << filename << " error";
+        return nullptr;
+    }
+
+    // JSPandaFile desc cannot be empty, if buffer with empty filename, use pf filename as a descriptor.
+    const CString &desc = filename.empty() ? pf->GetFilename().c_str() : filename;
+
+    std::shared_ptr<JSPandaFile> jsPandaFile = GenerateJSPandaFile(thread, pf.release(), desc, entryPoint);
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (thread->GetIsProfiling()) {
+        GetJSPtExtractor(jsPandaFile.get());
+    }
+#endif
+    return jsPandaFile;
+}
+
+std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread *thread, const CString &filename,
+    std::string_view entryPoint, uint8_t *buffer, size_t size, bool needUpdate)
+{
+    if (buffer == nullptr || size == 0) {
+        return nullptr;
+    }
+    {
+        os::memory::LockHolder lock(jsPandaFileLock_);
+        std::shared_ptr<JSPandaFile> jsPandaFile;
+        if (needUpdate) {
+            auto pf = panda_file::OpenPandaFileFromSecureMemory(buffer, size);
+            if (pf == nullptr) {
+                LOG_ECMA(ERROR) << "open file buffer " << filename << " error";
+                return nullptr;
+            }
+            jsPandaFile = FindJSPandaFileWithChecksum(filename, pf->GetHeader()->checksum);
+        } else {
+            jsPandaFile = FindJSPandaFileUnlocked(filename);
+        }
+        if (jsPandaFile != nullptr) {
+            InsertJSPandaFileVmUnlocked(thread->GetEcmaVM(), jsPandaFile);
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+            if (thread->GetIsProfiling()) {
+                GetJSPtExtractor(jsPandaFile.get());
+            }
+#endif
+            return jsPandaFile;
+        }
+    }
+
+    auto pf = panda_file::OpenPandaFileFromSecureMemory(buffer, size);
     if (pf == nullptr) {
         LOG_ECMA(ERROR) << "open file " << filename << " error";
         return nullptr;

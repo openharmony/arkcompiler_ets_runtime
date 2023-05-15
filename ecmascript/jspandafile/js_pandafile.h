@@ -349,6 +349,10 @@ public:
     static FunctionKind GetFunctionKind(ConstPoolType type);
 
     bool IsFirstMergedAbc() const;
+    const void *GetBase() const
+    {
+        return static_cast<const void *>(pf_->GetBase());
+    }
 
 private:
     void InitializeUnMergedPF();

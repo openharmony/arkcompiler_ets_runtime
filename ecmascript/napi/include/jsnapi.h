@@ -19,6 +19,7 @@
 #include <cassert>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -1240,6 +1241,24 @@ public:
     static bool ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file);
     static Local<ObjectRef> GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file, const std::string &key);
+
+    /*
+     * Execute panda file from secure mem. secure memory lifecycle managed externally.
+     * The data parameter needs to be created externally by an external caller and managed externally
+     * by the external caller. The size parameter is the size of the data memory. The entry parameter
+     * is the name of the entry function. The filename parameter is used to uniquely identify this
+     * memory internally.
+     */
+    static bool ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &entry,
+                                const std::string &filename = "", bool needUpdate = false);
+    /*
+     * Execute panda file(merge abc) from secure mem. secure memory lifecycle managed externally.
+     * The data parameter needs to be created externally by an external caller and managed externally
+     * by the external caller. The size parameter is the size of the data memory. The filename parameter
+     * is used to uniquely identify this memory internally.
+     */
+    static bool ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &filename = "",
+                                          bool needUpdate = false);
 
     // ObjectRef Operation
     static Local<ObjectRef> GetGlobalObject(const EcmaVM *vm);

@@ -59,6 +59,7 @@ public:
     JSHandle<JSTaggedValue> HostResolveImportedModule(const CString &referencingModule);
     JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleWithMerge(const CString &referencingModule,
                                                                           const CString &recordName);
+    JSHandle<JSTaggedValue> HostResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &filename);
 
     JSTaggedValue GetCurrentModule();
 
