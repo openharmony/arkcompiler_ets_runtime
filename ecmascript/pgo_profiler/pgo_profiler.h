@@ -28,7 +28,16 @@ public:
     NO_MOVE_SEMANTIC(PGOProfiler);
 
     void Sample(JSTaggedType value, SampleMode mode = SampleMode::CALL_MODE);
-    void TypeSample(JSTaggedType func, int32_t offset, int32_t type);
+    void TypeSample(JSTaggedType func, int32_t offset, uint32_t type);
+    void LayoutSample(JSTaggedType func, int32_t offset, JSTaggedType constructor);
+
+    void Iterate(const RootVisitor &v) const
+    {
+        if (isEnable_) {
+            recordInfos_->Iterate(v);
+        }
+    }
+
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT = 10;
 
@@ -63,4 +72,4 @@ private:
     friend class PGOProfilerManager;
 };
 } // namespace panda::ecmascript
-#endif  // ECMASCRIPT_PGO_PROFILER_H
+#endif // ECMASCRIPT_PGO_PROFILER_H

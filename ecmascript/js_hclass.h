@@ -18,6 +18,7 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/slots.h"
@@ -1623,6 +1624,7 @@ public:
     DECL_DUMP()
 
     static CString DumpJSType(JSType type);
+    static bool DumpForProfile(JSHClass *rootHClass, CMap<CString, TrackType> &infos);
 
     DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, BIT_FIELD_OFFSET);
 
@@ -1635,6 +1637,8 @@ private:
     static inline void AddProtoTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent,
                                            const JSHandle<JSHClass> &child, const JSHandle<JSTaggedValue> &key,
                                            const JSHandle<JSTaggedValue> &proto);
+    void DumpTransitionTreeForProfile(CMap<CString, TrackType> &infos);
+
     inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);
 
     inline void Copy(const JSThread *thread, const JSHClass *jshclass);

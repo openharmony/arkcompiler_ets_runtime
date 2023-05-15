@@ -63,6 +63,11 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         PGOTypeProfiler(glue, sp, pc, profileTypeInfo, type);                          \
     };
 
+#define REGISTER_PROFILE_LAYOUT_CALL_BACK()                                  \
+    ProfileOperation callback = [this, glue, sp, pc] (GateRef constructor) { \
+        PGOLayoutProfiler(glue, sp, pc, constructor);                        \
+    };
+
 #define REGISTER_PROFILE_FUNC_CALL_BACK()                     \
     ProfileOperation callback = [this, glue] (GateRef func) { \
         PGOFuncProfiler(glue, func);                          \
@@ -81,6 +86,9 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 
 #define DECLARE_ASM_HANDLER_TYPE_PROFILE(name, ...) \
     DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_PROFILE_TYPE_CALL_BACK)
+
+#define DECLARE_ASM_HANDLER_LAYOUT_PROFILE(name, ...) \
+    DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_PROFILE_LAYOUT_CALL_BACK)
 
 #define DECLARE_ASM_HANDLER_FUNC_PROFILE(name, ...) \
     DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_PROFILE_FUNC_CALL_BACK)
@@ -1326,7 +1334,7 @@ DECLARE_ASM_HANDLER(HandleStobjbyvalueImm8V8V8)
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
 
     AccessObjectStubBuilder builder(this);
-    GateRef result = builder.StoreObjByValue(glue, receiver, propKey, value, profileTypeInfo, slotId);
+    GateRef result = builder.StoreObjByValue(glue, receiver, propKey, value, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STOBJBYVALUE_IMM8_V8_V8));
 }
 
@@ -1340,7 +1348,7 @@ DECLARE_ASM_HANDLER(HandleStobjbyvalueImm16V8V8)
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
 
     AccessObjectStubBuilder builder(this);
-    GateRef result = builder.StoreObjByValue(glue, receiver, propKey, value, profileTypeInfo, slotId);
+    GateRef result = builder.StoreObjByValue(glue, receiver, propKey, value, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STOBJBYVALUE_IMM16_V8_V8));
 }
 
@@ -1364,7 +1372,7 @@ DECLARE_ASM_HANDLER(HandleStownbyvalueImm8V8V8)
     Bind(&notClassPrototype);
     {
         // fast path
-        GateRef result = SetPropertyByValue(glue, receiver, propKey, acc, true); // acc is value
+        GateRef result = SetPropertyByValue(glue, receiver, propKey, acc, true, callback); // acc is value
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -1397,7 +1405,7 @@ DECLARE_ASM_HANDLER(HandleStownbyvalueImm16V8V8)
     Bind(&notClassPrototype);
     {
         // fast path
-        GateRef result = SetPropertyByValue(glue, receiver, propKey, acc, true); // acc is value
+        GateRef result = SetPropertyByValue(glue, receiver, propKey, acc, true, callback); // acc is value
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -1718,7 +1726,7 @@ DECLARE_ASM_HANDLER(HandleStobjbynameImm8Id16V8)
 
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16 };
-    GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId);
+    GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STOBJBYNAME_IMM8_ID16_V8));
 }
 
@@ -1729,7 +1737,7 @@ DECLARE_ASM_HANDLER(HandleStobjbynameImm16Id16V8)
 
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16 };
-    GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId);
+    GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STOBJBYNAME_IMM16_ID16_V8));
 }
 
@@ -1755,7 +1763,7 @@ DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm16V8V8)
             Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true);
+                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback);
                 Branch(TaggedIsHole(res), &slowPath, &notHole);
                 Bind(&notHole);
                 {
@@ -1798,7 +1806,7 @@ DECLARE_ASM_HANDLER(HandleStownbyvaluewithnamesetImm8V8V8)
             Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true);
+                GateRef res = SetPropertyByValue(glue, receiver, propKey, acc, true, callback);
                 Branch(TaggedIsHole(res), &slowPath, &notHole);
                 Bind(&notHole);
                 {
@@ -1841,7 +1849,7 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm8Id16V8)
             Branch(IsClassPrototype(receiver), &slowPath, &fastPath);
             Bind(&fastPath);
             {
-                result = SetPropertyByName(glue, receiver, propKey, acc, true);
+                result = SetPropertyByName(glue, receiver, propKey, acc, true, callback);
                 Branch(TaggedIsHole(*result), &slowPath, &checkResult);
             }
         }
@@ -1879,7 +1887,7 @@ DECLARE_ASM_HANDLER(HandleStownbynameImm16Id16V8)
             Branch(IsClassPrototype(receiver), &slowPath, &fastPath);
             Bind(&fastPath);
             {
-                result = SetPropertyByName(glue, receiver, propKey, acc, true);
+                result = SetPropertyByName(glue, receiver, propKey, acc, true, callback);
                 Branch(TaggedIsHole(*result), &slowPath, &checkResult);
             }
         }
@@ -1917,7 +1925,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm8Id16V8)
             Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true);
+                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, callback);
                 Branch(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
                 {
@@ -1959,7 +1967,7 @@ DECLARE_ASM_HANDLER(HandleStownbynamewithnamesetImm16Id16V8)
             Branch(IsClassPrototype(receiver), &notJSObject, &notClassPrototype);
             Bind(&notClassPrototype);
             {
-                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true);
+                GateRef res = SetPropertyByName(glue, receiver, propKey, acc, true, callback);
                 Branch(TaggedIsHole(res), &notJSObject, &notHole);
                 Bind(&notHole);
                 {
@@ -3421,6 +3429,7 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)
     SetLexicalEnvToFunction(glue, res, lexicalEnv);
     SetModuleToFunction(glue, res, module);
     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedInt(length) });
+    HCLASS_CALL_BACK(res)
     varAcc = res;
     DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8);
 }
@@ -3455,6 +3464,7 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)
     SetLexicalEnvToFunction(glue, res, lexicalEnv);
     SetModuleToFunction(glue, res, module);
     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedInt(length) });
+    HCLASS_CALL_BACK(res)
     varAcc = res;
     DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8);
 }
@@ -4296,7 +4306,7 @@ DECLARE_ASM_HANDLER(HandleStthisbyvalueImm16V8)
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
 
     AccessObjectStubBuilder builder(this);
-    GateRef result = builder.StoreObjByValue(glue, receiver, propKey, value, profileTypeInfo, slotId);
+    GateRef result = builder.StoreObjByValue(glue, receiver, propKey, value, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STTHISBYVALUE_IMM16_V8));
 }
 DECLARE_ASM_HANDLER(HandleStthisbyvalueImm8V8)
@@ -4308,7 +4318,7 @@ DECLARE_ASM_HANDLER(HandleStthisbyvalueImm8V8)
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
 
     AccessObjectStubBuilder builder(this);
-    GateRef result = builder.StoreObjByValue(glue, receiver, propKey, value, profileTypeInfo, slotId);
+    GateRef result = builder.StoreObjByValue(glue, receiver, propKey, value, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STTHISBYVALUE_IMM8_V8));
 }
 DECLARE_ASM_HANDLER(HandleLdthisbyvalueImm16)
@@ -4342,7 +4352,7 @@ DECLARE_ASM_HANDLER(HandleStthisbynameImm16Id16)
 
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16 };
-    GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId);
+    GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STTHISBYNAME_IMM16_ID16));
 }
 DECLARE_ASM_HANDLER(HandleStthisbynameImm8Id16)
@@ -4352,7 +4362,7 @@ DECLARE_ASM_HANDLER(HandleStthisbynameImm8Id16)
 
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16 };
-    GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId);
+    GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STTHISBYNAME_IMM8_ID16));
 }
 DECLARE_ASM_HANDLER(HandleLdthisbynameImm16Id16)
@@ -4600,6 +4610,7 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeNotifyConcurrentResultPrefNone)
 }
 
 ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_TYPE_PROFILE)
+ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_LAYOUT_PROFILE)
 ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_FUNC_PROFILE)
 ASM_INTERPRETER_BC_FUNC_COUNT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_FUNC_PROFILE)
 

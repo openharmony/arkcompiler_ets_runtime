@@ -27,19 +27,20 @@ public:
     void GenerateCircuit() override {}
 
     void SetParameters(GateRef glue, GateRef receiver, GateRef profileTypeInfo,
-        GateRef value, GateRef slotId)
+        GateRef value, GateRef slotId, ProfileOperation callback = nullptr)
     {
         glue_ = glue;
         receiver_ = receiver;
         profileTypeInfo_ = profileTypeInfo;
         value_ = value;
         slotId_ = slotId;
+        callback_ = callback;
     }
 
     void SetParameters(GateRef glue, GateRef receiver, GateRef profileTypeInfo,
-        GateRef value, GateRef slotId, GateRef propKey)
+        GateRef value, GateRef slotId, GateRef propKey, ProfileOperation callback = nullptr)
     {
-        SetParameters(glue, receiver, profileTypeInfo, value, slotId);
+        SetParameters(glue, receiver, profileTypeInfo, value, slotId, callback);
         propKey_ = propKey;
     }
 
@@ -65,6 +66,7 @@ private:
     GateRef value_ {0};
     GateRef slotId_ {0};
     GateRef propKey_ {0};
+    ProfileOperation callback_ {nullptr};
 
     Label *tryFastPath_ {nullptr};
     Label *slowPath_ {nullptr};

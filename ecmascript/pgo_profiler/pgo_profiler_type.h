@@ -18,14 +18,40 @@
 
 #include <stdint.h>
 #include <string>
+#include <variant>
+
+#include "ecmascript/property_attributes.h"
 
 namespace panda::ecmascript {
+class PGOType {
+public:
+    enum class TypeKind : uint8_t {
+        SAMPLE_TYPE,
+        LAYOUT_DESC,
+    };
+    PGOType() = default;
+    explicit PGOType(TypeKind kind) : kind_(kind) {}
+
+    bool IsSampleType() const
+    {
+        return kind_ == TypeKind::SAMPLE_TYPE;
+    }
+
+    bool IsLayoutDesc() const
+    {
+        return kind_ == TypeKind::LAYOUT_DESC;
+    }
+
+private:
+    TypeKind kind_ { TypeKind::SAMPLE_TYPE };
+};
+
 /**
  * | INT    \          -> INT_OVERFLOW \
  * |           NUMBER                    NUMBER_HETEROE1
  * | DOUBLE /                          /
  */
-class PGOSampleType {
+class PGOSampleType : public PGOType {
 public:
     enum class Type : uint32_t {
         NONE = 0x0ULL,
@@ -49,6 +75,7 @@ public:
 
     explicit PGOSampleType(Type type) : type_(type) {};
     explicit PGOSampleType(uint32_t type) : type_(Type(type)) {};
+    explicit PGOSampleType(JSTaggedType type) : type_(type) {}
 
     static PGOSampleType NoneType()
     {
@@ -57,7 +84,12 @@ public:
 
     PGOSampleType CombineType(PGOSampleType type)
     {
-        type_ = Type(static_cast<uint32_t>(type_) | static_cast<uint32_t>(type.type_));
+        if (type_.index() == 0) {
+            type_ =
+                Type(static_cast<uint32_t>(std::get<Type>(type_)) | static_cast<uint32_t>(std::get<Type>(type.type_)));
+        } else {
+            SetType(type);
+        }
         return *this;
     }
 
@@ -66,39 +98,57 @@ public:
         type_ = type.type_;
     }
 
-    std::string GetTypeString()
+    std::string GetTypeString() const
     {
-        return std::to_string(static_cast<uint32_t>(type_));
+        if (type_.index() == 0) {
+            return std::to_string(static_cast<uint32_t>(std::get<Type>(type_)));
+        } else {
+            return std::to_string(static_cast<uint32_t>(std::get<JSTaggedType>(type_)));
+        }
     }
 
-    bool IsAny()
+    bool IsHeapObject() const
     {
-        return type_ == Type::ANY;
+        return type_.index() == 1;
     }
 
-    bool IsNone()
+    JSTaggedType GetTaggedType() const
     {
-        return type_ == Type::NONE;
+        ASSERT(IsHeapObject());
+        return std::get<JSTaggedType>(type_);
     }
 
-    bool IsInt()
+    bool IsAny() const
     {
-        return type_ == Type::INT;
+        return type_.index() == 0 && std::get<Type>(type_) == Type::ANY;
     }
 
-    bool IsIntOverFlow()
+    bool IsNone() const
     {
-        return type_ == Type::INT_OVERFLOW;
+        return type_.index() == 0 && std::get<Type>(type_) == Type::NONE;
     }
 
-    bool IsDouble()
+    bool IsInt() const
     {
-        return type_ == Type::DOUBLE;
+        return type_.index() == 0 && std::get<Type>(type_) == Type::INT;
     }
 
-    bool IsNumber()
+    bool IsIntOverFlow() const
     {
-        switch (type_) {
+        return type_.index() == 0 && std::get<Type>(type_) == Type::INT_OVERFLOW;
+    }
+
+    bool IsDouble() const
+    {
+        return type_.index() == 0 && std::get<Type>(type_) == Type::DOUBLE;
+    }
+
+    bool IsNumber() const
+    {
+        if (type_.index() != 0) {
+            return false;
+        }
+        switch (std::get<Type>(type_)) {
             case Type::INT:
             case Type::INT_OVERFLOW:
             case Type::DOUBLE:
@@ -111,7 +161,29 @@ public:
     }
 
 private:
-    Type type_ { Type::NONE };
+    std::variant<Type, JSTaggedType> type_;
+};
+
+class PGOSampleLayoutDesc : public PGOType {
+public:
+    PGOSampleLayoutDesc() : PGOType(TypeKind::LAYOUT_DESC) {}
+
+    void AddKeyAndDesc(const char *key, TrackType rep)
+    {
+        layoutDesc_.emplace(key, rep);
+    }
+
+    bool FindDescWithKey(const CString &key, TrackType &type) const
+    {
+        if (layoutDesc_.find(key) == layoutDesc_.end()) {
+            return false;
+        }
+        type = layoutDesc_.at(key);
+        return true;
+    }
+
+private:
+    std::unordered_map<CString, TrackType> layoutDesc_;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_PGO_PROFILER_TYPE_H

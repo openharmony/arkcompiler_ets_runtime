@@ -386,8 +386,9 @@ namespace panda::ecmascript::kungfu {
 
 #define ASM_INTERPRETER_BC_PROFILER_STUB_LIST(V)          \
     ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(V)         \
+    ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(V)       \
     ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(V)     \
-    ASM_INTERPRETER_BC_FUNC_COUNT_PROFILER_STUB_LIST(V)
+    ASM_INTERPRETER_BC_FUNC_COUNT_PROFILER_STUB_LIST(V)   \
 
 #define ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(V) \
     APPEND_SUFFIX(HandleAdd2Imm8V8, V)                \
@@ -452,6 +453,26 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleNewobjrangeImm8Imm8V8, V)              \
     APPEND_SUFFIX(HandleNewobjrangeImm16Imm8V8, V)             \
     APPEND_SUFFIX(HandleWideNewobjrangePrefImm16V8, V)
+
+#define ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(V)               \
+    APPEND_SUFFIX(HandleDefineclasswithbufferImm8Id16Id16Imm16V8, V)  \
+    APPEND_SUFFIX(HandleDefineclasswithbufferImm16Id16Id16Imm16V8, V) \
+    APPEND_SUFFIX(HandleStthisbynameImm8Id16, V)                      \
+    APPEND_SUFFIX(HandleStthisbynameImm16Id16, V)                     \
+    APPEND_SUFFIX(HandleStthisbyvalueImm8V8, V)                       \
+    APPEND_SUFFIX(HandleStthisbyvalueImm16V8, V)                      \
+    APPEND_SUFFIX(HandleStobjbyvalueImm16V8V8, V)                     \
+    APPEND_SUFFIX(HandleStobjbynameImm8Id16V8, V)                     \
+    APPEND_SUFFIX(HandleStobjbynameImm16Id16V8, V)                    \
+    APPEND_SUFFIX(HandleStobjbyvalueImm8V8V8, V)                      \
+    APPEND_SUFFIX(HandleStownbyvaluewithnamesetImm16V8V8, V)          \
+    APPEND_SUFFIX(HandleStownbyvaluewithnamesetImm8V8V8, V)           \
+    APPEND_SUFFIX(HandleStownbyvalueImm8V8V8, V)                      \
+    APPEND_SUFFIX(HandleStownbyvalueImm16V8V8, V)                     \
+    APPEND_SUFFIX(HandleStownbynamewithnamesetImm16Id16V8, V)         \
+    APPEND_SUFFIX(HandleStownbynamewithnamesetImm8Id16V8, V)          \
+    APPEND_SUFFIX(HandleStownbynameImm16Id16V8, V)                    \
+    APPEND_SUFFIX(HandleStownbynameImm8Id16V8, V)
 
 #define INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(V)             \
     ASM_INTERPRETER_BC_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)           \

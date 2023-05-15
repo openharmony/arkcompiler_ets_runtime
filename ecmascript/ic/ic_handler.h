@@ -38,6 +38,7 @@ public:
     using InternalAccessorBit = AccessorBit::NextFlag;
     using IsJSArrayBit = InternalAccessorBit::NextFlag;
     using OffsetBit = IsJSArrayBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
+    using AttrIndexBit = OffsetBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
 
     HandlerBase() = default;
     virtual ~HandlerBase() = default;
@@ -120,9 +121,13 @@ public:
             JSHandle<JSObject> holder = JSHandle<JSObject>::Cast(op.GetHolder());
             auto index = holder->GetJSHClass()->GetInlinedPropertiesIndex(op.GetIndex());
             OffsetBit::Set<uint32_t>(index, &handler);
+            AttrIndexBit::Set<uint32_t>(op.GetIndex(), &handler);
             return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
         }
         if (op.IsFastMode()) {
+            JSHandle<JSObject> holder = JSHandle<JSObject>::Cast(op.GetHolder());
+            uint32_t inlinePropNum = holder->GetJSHClass()->GetInlinedProperties();
+            AttrIndexBit::Set<uint32_t>(op.GetIndex() + inlinePropNum, &handler);
             OffsetBit::Set<uint32_t>(op.GetIndex(), &handler);
             return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
         }
@@ -165,10 +170,14 @@ public:
                 JSHandle<JSObject> holder = JSHandle<JSObject>::Cast(op.GetHolder());
                 index = holder->GetJSHClass()->GetInlinedPropertiesIndex(op.GetIndex());
             }
+            AttrIndexBit::Set<uint32_t>(op.GetIndex(), &handler);
             OffsetBit::Set<uint32_t>(index, &handler);
             return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
         }
         ASSERT(op.IsFastMode());
+        JSHandle<JSObject> receiver = JSHandle<JSObject>::Cast(op.GetReceiver());
+        uint32_t inlinePropNum = receiver->GetJSHClass()->GetInlinedProperties();
+        AttrIndexBit::Set<uint32_t>(op.GetIndex() + inlinePropNum, &handler);
         OffsetBit::Set<uint32_t>(op.GetIndex(), &handler);
         return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
     }

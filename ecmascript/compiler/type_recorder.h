@@ -19,7 +19,7 @@
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/method.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -33,11 +33,11 @@ enum class TypedArgIdx : uint8_t {
 class TypeRecorder {
 public:
     TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
-                 TSManager *tsManager, const CString &recordName, PGOProfilerLoader *loader);
+                 TSManager *tsManager, const CString &recordName, PGOProfilerDecoder *decoder);
     ~TypeRecorder() = default;
 
     GateType GetType(const int32_t offset) const;
-    PGOSampleType GetPGOType(const int32_t offset) const;
+    PGOSampleType GetOrUpdatePGOType(TSManager *tsManager, int32_t offset, const GateType &type) const;
     GateType GetArgType(const uint32_t argIndex) const;
     GateType UpdateType(const int32_t offset, const GateType &type) const;
 
@@ -66,8 +66,9 @@ private:
 
     std::unordered_map<int32_t, GateType> bcOffsetGtMap_ {};
     std::unordered_map<int32_t, PGOSampleType> bcOffsetPGOTypeMap_ {};
+    std::unordered_map<int32_t, PGOSampleLayoutDesc> bcOffsetPGODescMap_ {};
     std::vector<GateType> argTypes_;
-    PGOProfilerLoader *loader_ {nullptr};
+    PGOProfilerDecoder *decoder_ {nullptr};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_RECORDER_H

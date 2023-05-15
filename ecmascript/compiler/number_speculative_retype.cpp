@@ -689,7 +689,6 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
         case TypeInfo::FLOAT64:
             return gate;
         case TypeInfo::TAGGED: {
-            ASSERT(gateType.IsNumberType());
             if (gateType.IsIntType()) {
                 result = builder_.CheckTaggedIntAndConvertToFloat64(gate);
             } else if (gateType.IsDoubleType()) {

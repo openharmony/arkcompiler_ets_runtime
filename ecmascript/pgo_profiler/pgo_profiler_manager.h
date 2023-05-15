@@ -19,8 +19,8 @@
 #include <memory>
 
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_saver.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 
 namespace panda::ecmascript {
 class PGOProfilerManager {
@@ -39,15 +39,15 @@ public:
 
     void Initialize(const std::string &outDir, uint32_t hotnessThreshold)
     {
-        saver_ = std::make_unique<PGOProfilerSaver>(outDir, hotnessThreshold);
+        encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold);
     }
 
     void Destroy()
     {
-        if (saver_) {
-            saver_->Save();
-            saver_->Destroy();
-            saver_.reset();
+        if (encoder_) {
+            encoder_->Save();
+            encoder_->Destroy();
+            encoder_.reset();
         }
     }
 
@@ -62,7 +62,7 @@ public:
 
     bool IsEnable() const
     {
-        return saver_ && saver_->IsInitialized();
+        return encoder_ && encoder_->IsInitialized();
     }
 
     void Destroy(PGOProfiler *profiler)
@@ -85,62 +85,62 @@ public:
 
     void SamplePandaFileInfo(uint32_t checksum)
     {
-        if (saver_) {
-            saver_->SamplePandaFileInfo(checksum);
+        if (encoder_) {
+            encoder_->SamplePandaFileInfo(checksum);
         }
     }
 
     void Merge(PGOProfiler *profiler)
     {
-        if (saver_ && profiler->isEnable_) {
-            saver_->TerminateSaveTask();
-            saver_->Merge(*profiler->recordInfos_);
+        if (encoder_ && profiler->isEnable_) {
+            encoder_->TerminateSaveTask();
+            encoder_->Merge(*profiler->recordInfos_);
         }
     }
 
     void AsynSave()
     {
-        if (saver_) {
-            saver_->PostSaveTask();
+        if (encoder_) {
+            encoder_->PostSaveTask();
         }
     }
 
     bool PUBLIC_API TextToBinary(const std::string &inPath, const std::string &outPath, uint32_t hotnessThreshold)
     {
-        PGOProfilerSaver saver(outPath, hotnessThreshold);
-        if (!saver.InitializeData()) {
-            LOG_ECMA(ERROR) << "PGO Profiler saver initialized failed";
+        PGOProfilerEncoder encoder(outPath, hotnessThreshold);
+        if (!encoder.InitializeData()) {
+            LOG_ECMA(ERROR) << "PGO Profiler encoder initialized failed";
             return false;
         }
-        bool ret = saver.LoadAPTextFile(inPath);
+        bool ret = encoder.LoadAPTextFile(inPath);
         if (ret) {
-            ret = saver.Save();
+            ret = encoder.Save();
         }
-        saver.Destroy();
+        encoder.Destroy();
         return ret;
     }
 
     bool PUBLIC_API BinaryToText(const std::string &inPath, const std::string &outPath, uint32_t hotnessThreshold)
     {
-        PGOProfilerLoader loader(inPath, hotnessThreshold);
-        if (!loader.LoadFull()) {
+        PGOProfilerDecoder decoder(inPath, hotnessThreshold);
+        if (!decoder.LoadFull()) {
             return false;
         }
-        bool ret = loader.SaveAPTextFile(outPath);
-        loader.Clear();
+        bool ret = decoder.SaveAPTextFile(outPath);
+        decoder.Clear();
         return ret;
     }
 
 private:
     bool InitializeData()
     {
-        if (!saver_) {
+        if (!encoder_) {
             return false;
         }
-        return saver_->InitializeData();
+        return encoder_->InitializeData();
     }
 
-    std::unique_ptr<PGOProfilerSaver> saver_;
+    std::unique_ptr<PGOProfilerEncoder> encoder_;
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PGO_PROFILER_MANAGER_H

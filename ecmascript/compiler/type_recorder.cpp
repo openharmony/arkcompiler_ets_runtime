@@ -16,14 +16,14 @@
 #include "ecmascript/compiler/type_recorder.h"
 
 #include "ecmascript/jspandafile/type_literal_extractor.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
 
 namespace panda::ecmascript::kungfu {
 TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
-                           TSManager *tsManager, const CString &recordName, PGOProfilerLoader *loader)
+                           TSManager *tsManager, const CString &recordName, PGOProfilerDecoder *decoder)
     : argTypes_(methodLiteral->GetNumArgsWithCallField() + static_cast<size_t>(TypedArgIdx::NUM_OF_TYPED_ARGS),
-    GateType::AnyType()), loader_(loader)
+    GateType::AnyType()), decoder_(decoder)
 {
     if (!jsPandaFile->HasTSTypes(recordName)) {
         return;
@@ -64,11 +64,15 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
 
 void TypeRecorder::LoadTypesFromPGO(const MethodLiteral *methodLiteral, const CString &recordName)
 {
-    auto callback = [this] (uint32_t offset, PGOSampleType type) {
-        bcOffsetPGOTypeMap_[offset] = type;
+    auto callback = [this] (uint32_t offset, PGOType *type) {
+        if (type->IsSampleType()) {
+            bcOffsetPGOTypeMap_[offset] = *reinterpret_cast<PGOSampleType *>(type);
+        } else if (type->IsLayoutDesc()) {
+            bcOffsetPGODescMap_[offset] = *reinterpret_cast<PGOSampleLayoutDesc *>(type);
+        }
     };
-    if (loader_ != nullptr) {
-        loader_->GetTypeInfo(recordName, methodLiteral->GetMethodId(), callback);
+    if (decoder_ != nullptr) {
+        decoder_->GetTypeInfo(recordName, methodLiteral->GetMethodId(), callback);
     }
 }
 
@@ -148,10 +152,15 @@ GateType TypeRecorder::UpdateType(const int32_t offset, const GateType &type) co
     return type;
 }
 
-PGOSampleType TypeRecorder::GetPGOType(const int32_t offset) const
+PGOSampleType TypeRecorder::GetOrUpdatePGOType(TSManager *tsManager, int32_t offset, const GateType &type) const
 {
     if (bcOffsetPGOTypeMap_.find(offset) != bcOffsetPGOTypeMap_.end()) {
         return bcOffsetPGOTypeMap_.at(offset);
+    }
+
+    if (bcOffsetPGODescMap_.find(offset) != bcOffsetPGODescMap_.end()) {
+        const auto &iter = bcOffsetPGODescMap_.at(offset);
+        tsManager->UpdateTSHClassFromPGO(type, iter);
     }
     return PGOSampleType::NoneType();
 }

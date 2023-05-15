@@ -417,6 +417,7 @@ private:
     V(Comment)                              \
     V(PGOProfiler)                          \
     V(PGOTypeProfiler)                      \
+    V(PGOLayoutProfiler)                    \
     V(FatalPrint)                           \
     V(GetActualArgvNoGC)                    \
     V(InsertOldToNewRSet)                   \

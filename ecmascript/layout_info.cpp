@@ -121,4 +121,27 @@ bool LayoutInfo::IsUninitializedProperty(const JSHandle<JSObject> object, uint32
     JSTaggedValue val = object->GetPropertyInlinedProps(attr.GetOffset());
     return val.IsHole();
 }
+
+void LayoutInfo::DumpFieldIndexForProfile(int index, CMap<CString, TrackType> &infos)
+{
+    auto key = GetKey(index);
+    if (key.IsString()) {
+        TrackType type = GetAttr(index).GetTrackType();
+        auto keyString = EcmaStringAccessor(key).ToCString();
+        auto iter = infos.find(keyString);
+        if (iter != infos.end()) {
+            TrackType oldType = iter->second;
+            if (oldType == type) {
+                return;
+            }
+            if (oldType == TrackType::NONE) {
+                infos.emplace(keyString, type);
+            } else {
+                infos.emplace(keyString, TrackType::TAGGED);
+            }
+        } else {
+            infos.emplace(keyString, type);
+        }
+    }
+}
 }  // namespace panda::ecmascript

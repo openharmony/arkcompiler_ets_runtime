@@ -31,10 +31,10 @@ public:
                           GateRef profileTypeInfo, GateRef slotId);
     GateRef DeprecatedLoadObjByName(GateRef glue, GateRef receiver, GateRef propKey);
     GateRef StoreObjByName(GateRef glue, GateRef receiver, GateRef prop, const StringIdInfo &info,
-                           GateRef value, GateRef profileTypeInfo, GateRef slotId);
+                           GateRef value, GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback = nullptr);
     GateRef LoadObjByValue(GateRef glue, GateRef receiver, GateRef key, GateRef profileTypeInfo, GateRef slotId);
     GateRef StoreObjByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef profileTypeInfo,
-                            GateRef slotId);
+                            GateRef slotId, ProfileOperation callback = nullptr);
     GateRef DeprecatedLoadObjByValue(GateRef glue, GateRef receiver, GateRef key);
     GateRef TryLoadGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
                                 GateRef profileTypeInfo, GateRef slotId);

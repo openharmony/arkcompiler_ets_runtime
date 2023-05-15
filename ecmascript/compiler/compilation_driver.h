@@ -25,7 +25,7 @@ struct LOptions;
 class Module;
 class CompilationDriver {
 public:
-    CompilationDriver(PGOProfilerLoader &profilerLoader,
+    CompilationDriver(PGOProfilerDecoder &profilerDecoder,
                       BytecodeInfoCollector* collector,
                       const std::string &compilemMethodsOption,
                       const std::string &compileSkipMethodsOption,
@@ -42,14 +42,14 @@ public:
 
     bool IsPGOLoaded() const
     {
-        return pfLoader_.IsLoaded();
+        return pfDecoder_.IsLoaded();
     }
 
     void UpdateCompileQueue(const CString &recordName, EntityId resolvedMethod)
     {
         const auto &methodList = bytecodeInfo_.GetMethodList();
         auto &resolvedMethodInfo = methodList.at(resolvedMethod.GetOffset());
-        if (pfLoader_.Match(recordName, resolvedMethod) && !resolvedMethodInfo.IsTypeInferAbort()) {
+        if (pfDecoder_.Match(recordName, resolvedMethod) && !resolvedMethodInfo.IsTypeInferAbort()) {
             return;
         }
         // update profile and update compile queue
@@ -64,7 +64,7 @@ public:
                 return fullResolvedMethodSet;
             };
 
-        pfLoader_.Update(recordName, dfs);
+        pfDecoder_.Update(recordName, dfs);
 
         if (fullResolvedMethodSet.size() > 0) {
             bytecodeInfo_.AddRecordName(recordName);
@@ -272,7 +272,7 @@ private:
                 }
                 importNames.emplace_back(importRecord);
                 mainMethodInfo.SetIsPGO(true);
-                pfLoader_.Update(importRecord, getMainMethodSet);
+                pfDecoder_.Update(importRecord, getMainMethodSet);
                 AddDependList(importRecord, mainMethodOffset, importList);
             }
         };
@@ -337,7 +337,7 @@ private:
 
     EcmaVM *vm_ {nullptr};
     const JSPandaFile *jsPandaFile_ {nullptr};
-    PGOProfilerLoader &pfLoader_;
+    PGOProfilerDecoder &pfDecoder_;
     BCInfo &bytecodeInfo_;
     std::deque<uint32_t> compileQueue_ {};
     std::map<CString, uint32_t> sortedRecords_ {};

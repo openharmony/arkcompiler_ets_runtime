@@ -84,7 +84,8 @@ GateRef AccessObjectStubBuilder::DeprecatedLoadObjByName(GateRef glue, GateRef r
 }
 
 GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, GateRef prop, const StringIdInfo &info,
-                                                GateRef value, GateRef profileTypeInfo, GateRef slotId)
+                                                GateRef value, GateRef profileTypeInfo, GateRef slotId,
+                                                ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -95,12 +96,12 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     ICStubBuilder builder(this);
-    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
+    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, callback);
     builder.StoreICByName(&result, &tryFastPath, &slowPath, &exit);
     Bind(&tryFastPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        result = SetPropertyByName(glue, receiver, propKey, value, false);
+        result = SetPropertyByName(glue, receiver, propKey, value, false, callback);
         Branch(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
@@ -190,7 +191,7 @@ GateRef AccessObjectStubBuilder::DeprecatedLoadObjByValue(GateRef glue, GateRef 
 }
 
 GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value,
-                                                 GateRef profileTypeInfo, GateRef slotId)
+                                                 GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -201,11 +202,11 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     ICStubBuilder builder(this);
-    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, key);
+    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, key, callback);
     builder.StoreICByValue(&result, &tryFastPath, &slowPath, &exit);
     Bind(&tryFastPath);
     {
-        result = SetPropertyByValue(glue, receiver, key, value, false);
+        result = SetPropertyByValue(glue, receiver, key, value, false, callback);
         Branch(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);

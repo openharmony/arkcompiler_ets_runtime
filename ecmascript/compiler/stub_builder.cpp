@@ -733,7 +733,7 @@ GateRef StubBuilder::SetHasConstructorCondition(GateRef glue, GateRef receiver, 
 
 // Note: set return exit node
 GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value,
-                                GateRef propertyAttributes)
+                                       GateRef propertyAttributes, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label subentry(env);
@@ -769,6 +769,9 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
             SetPropertyInlinedProps(glue, receiver, hclass, value, numberOfProps);
             attr = SetOffsetFieldInPropAttr(*attr, numberOfProps);
             attr = SetIsInlinePropsFieldInPropAttr(*attr, Int32(1)); // 1: set inInlineProps true
+            if (callback != nullptr) {
+                attr = UpdateTrackType(*attr, value);
+            }
             JSHClassAddProperty(glue, receiver, key, *attr);
             result = Undefined();
             Jump(&exit);
@@ -847,6 +850,9 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
             Bind(&afterArrLenCon);
             {
                 attr = SetOffsetFieldInPropAttr(*attr, numberOfProps);
+                if (callback != nullptr) {
+                    attr = UpdateTrackType(*attr, value);
+                }
                 JSHClassAddProperty(glue, receiver, key, *attr);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array, outProps, value);
                 Jump(&exit);
@@ -864,6 +870,87 @@ void StubBuilder::ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val)
     GateRef msgIntId = Int32(messageId);
     CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(msgIntId) });
     Return(val);
+}
+
+GateRef StubBuilder::UpdateTrackType(GateRef attr, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    GateRef oldTrackType = GetTrackTypeInPropAttr(attr);
+    DEFVARIABLE(newTrackType, VariableType::INT32(),
+                Int32(static_cast<int32_t>(TrackType::TAGGED)));
+    DEFVARIABLE(result, VariableType::INT32(), attr);
+
+    Label exit(env);
+    Label judgeValue(env);
+    Branch(Equal(oldTrackType, Int32(static_cast<int32_t>(TrackType::TAGGED))), &exit, &judgeValue);
+    Bind(&judgeValue);
+    {
+        newTrackType = TaggedToTrackType(value);
+        Label update(env);
+        Label nonFirst(env);
+        Branch(Equal(oldTrackType, Int32(static_cast<int32_t>(TrackType::NONE))), &update, &nonFirst);
+        Bind(&nonFirst);
+        {
+            Label isNotEqual(env);
+            Branch(Equal(oldTrackType, *newTrackType), &exit, &isNotEqual);
+            Bind(&isNotEqual);
+            {
+                newTrackType = Int32(static_cast<int32_t>(TrackType::TAGGED));
+                Jump(&update);
+            }
+        }
+        Bind(&update);
+        {
+            result = SetTrackTypeInPropAttr(attr, *newTrackType);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::TaggedToTrackType(GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(newTrackType, VariableType::INT32(),
+                Int32(static_cast<int32_t>(TrackType::TAGGED)));
+    Label exit(env);
+    Label isInt(env);
+    Label notInt(env);
+    Branch(TaggedIsInt(value), &isInt, &notInt);
+    Bind(&isInt);
+    {
+        newTrackType = Int32(static_cast<int32_t>(TrackType::INT));
+        Jump(&exit);
+    }
+    Bind(&notInt);
+    {
+        Label isObject(env);
+        Label isDouble(env);
+        Branch(TaggedIsObject(value), &isObject, &isDouble);
+        Bind(&isObject);
+        {
+            newTrackType = Int32(static_cast<int32_t>(TrackType::TAGGED));
+            Jump(&exit);
+        }
+        Bind(&isDouble);
+        {
+            newTrackType = Int32(static_cast<int32_t>(TrackType::DOUBLE));
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *newTrackType;
+    env->SubCfgExit();
+    return ret;
 }
 
 GateRef StubBuilder::TaggedToRepresentation(GateRef value)
@@ -1595,7 +1682,7 @@ GateRef StubBuilder::GetArrayLength(GateRef object)
 }
 
 GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef argHolder,
-                                        GateRef value, GateRef argHandler)
+                                        GateRef value, GateRef argHandler, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1635,7 +1722,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
             Branch(IsField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
             Bind(&handlerInfoIsField);
             {
-                StoreField(glue, receiver, value, handlerInfo);
+                StoreField(glue, receiver, value, handlerInfo, callback);
                 Jump(&exit);
             }
             Bind(&handlerInfoNotField);
@@ -1650,7 +1737,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
             Branch(TaggedIsTransitionHandler(*handler), &handlerIsTransitionHandler, &handlerNotTransitionHandler);
             Bind(&handlerIsTransitionHandler);
             {
-                StoreWithTransition(glue, receiver, value, *handler);
+                StoreWithTransition(glue, receiver, value, *handler, callback);
                 Jump(&exit);
             }
             Bind(&handlerNotTransitionHandler);
@@ -1663,7 +1750,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                     Branch(GetHasChanged(cellValue), &cellHasChanged, &cellNotChanged);
                     Bind(&cellNotChanged);
                     {
-                        StoreWithTransition(glue, receiver, value, *handler, true);
+                        StoreWithTransition(glue, receiver, value, *handler, callback, true);
                         Jump(&exit);
                     }
                 }
@@ -1706,7 +1793,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                     Branch(IsField(handlerInfo), &aotHandlerInfoIsField, &aotHandlerInfoNotField);
                     Bind(&aotHandlerInfoIsField);
                     {
-                        StoreField(glue, receiver, value, handlerInfo);
+                        StoreField(glue, receiver, value, handlerInfo, callback);
                         Jump(&exit);
                     }
                     Bind(&aotHandlerInfoNotField);
@@ -1732,11 +1819,26 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
     return ret;
 }
 
-void StubBuilder::StoreField(GateRef glue, GateRef receiver, GateRef value, GateRef handler)
+void StubBuilder::UpdateTrackTypeWithIC(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
+    ProfileOperation callback)
+{
+    if (callback != nullptr) {
+        GateRef attrIndex = HandlerBaseGetAttrIndex(handler);
+        GateRef hclass = LoadHClass(receiver);
+        GateRef layout = GetLayoutFromHClass(hclass);
+        GateRef propAttr = GetPropAttrFromLayoutInfo(layout, attrIndex);
+        GateRef attr = GetInt32OfTInt(propAttr);
+        GateRef newAttr = UpdateTrackType(attr, value);
+        UpdatePropAttrToLayoutInfo(glue, layout, attrIndex, newAttr);
+    }
+}
+
+void StubBuilder::StoreField(GateRef glue, GateRef receiver, GateRef value, GateRef handler, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
+    UpdateTrackTypeWithIC(glue, receiver, value, handler, callback);
     Label exit(env);
     Label handlerIsInlinedProperty(env);
     Label handlerNotInlinedProperty(env);
@@ -1762,7 +1864,7 @@ void StubBuilder::StoreField(GateRef glue, GateRef receiver, GateRef value, Gate
 }
 
 void StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
-                                      bool withPrototype)
+                                      ProfileOperation callback, bool withPrototype)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1787,6 +1889,7 @@ void StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef va
     Branch(HandlerBaseIsInlinedProperty(handlerInfo), &handlerInfoIsInlinedProps, &handlerInfoNotInlinedProps);
     Bind(&handlerInfoNotInlinedProps);
     {
+        UpdateTrackTypeWithIC(glue, receiver, value, handlerInfo, callback);
         GateRef array = GetPropertiesArray(receiver);
         GateRef capacity = GetLengthOfTaggedArray(array);
         GateRef index = HandlerBaseGetOffset(handlerInfo);
@@ -1811,7 +1914,7 @@ void StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef va
     }
     Bind(&handlerInfoIsInlinedProps);
     {
-        StoreField(glue, receiver, value, handlerInfo);
+        StoreField(glue, receiver, value, handlerInfo, callback);
         Jump(&exit);
     }
     Bind(&exit);
@@ -2537,7 +2640,8 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
     return ret;
 }
 
-GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn)
+GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
+    ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -2699,6 +2803,10 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             // JSObject::Cast(holder)->SetProperty(thread, hclass, attr, value)
                             // return JSTaggedValue::Undefined()
                             JSObjectSetProperty(glue, *holder, hclass, attr, value);
+                            if (callback != nullptr) {
+                                GateRef newAttr = UpdateTrackType(attr, value);
+                                UpdatePropAttrToLayoutInfo(glue, layOutInfo, entry, newAttr);
+                            }
                             result = Undefined();
                             Jump(&exit);
                         }
@@ -2796,6 +2904,10 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         GateRef holePropAttr = GetPropAttrFromLayoutInfo(receiverLayoutInfo, *receiverHoleEntry);
         GateRef holeAttr = GetInt32OfTInt(holePropAttr);
         JSObjectSetProperty(glue, receiver, receiverHClass, holeAttr, value);
+        if (callback != nullptr) {
+            GateRef newAttr = UpdateTrackType(holeAttr, value);
+            UpdatePropAttrToLayoutInfo(glue, receiverLayoutInfo, *receiverHoleEntry, newAttr);
+        }
         result = Undefined();
         Jump(&exit);
     }
@@ -2814,7 +2926,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     Bind(&extensible);
     {
         result = AddPropertyByName(glue, receiver, key, value,
-            Int32(PropertyAttributes::GetDefaultAttributes()));
+            Int32(PropertyAttributes::GetDefaultAttributes()), callback);
         Jump(&exit);
     }
     Bind(&exit);
@@ -2823,7 +2935,8 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     return ret;
 }
 
-GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn)
+GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
+    ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label subEntry1(env);
@@ -2884,7 +2997,7 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
             }
             Bind(&setByName);
             {
-                result = SetPropertyByName(glue, receiver, *varKey, value, useOwn);
+                result = SetPropertyByName(glue, receiver, *varKey, value, useOwn, callback);
                 Jump(&exit);
             }
         }

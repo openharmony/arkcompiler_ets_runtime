@@ -13,20 +13,20 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_PGO_PROFILER_SAVER_H
-#define ECMASCRIPT_PGO_PROFILER_SAVER_H
+#ifndef ECMASCRIPT_PGO_PROFILER_ENCODER_H
+#define ECMASCRIPT_PGO_PROFILER_ENCODER_H
 
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "macros.h"
 
 namespace panda::ecmascript {
-class PGOProfilerSaver {
+class PGOProfilerEncoder {
 public:
-    PGOProfilerSaver(const std::string &outDir, uint32_t hotnessThreshold)
+    PGOProfilerEncoder(const std::string &outDir, uint32_t hotnessThreshold)
         : outDir_(outDir), hotnessThreshold_(hotnessThreshold) {}
 
-    NO_COPY_SEMANTIC(PGOProfilerSaver);
-    NO_MOVE_SEMANTIC(PGOProfilerSaver);
+    NO_COPY_SEMANTIC(PGOProfilerEncoder);
+    NO_MOVE_SEMANTIC(PGOProfilerEncoder);
 
     bool PUBLIC_API InitializeData();
 
@@ -63,12 +63,12 @@ private:
 
 class SaveTask : public Task {
 public:
-    explicit SaveTask(PGOProfilerSaver *saver, int32_t id) : Task(id), saver_(saver) {};
+    explicit SaveTask(PGOProfilerEncoder *encoder, int32_t id) : Task(id), encoder_(encoder) {};
     virtual ~SaveTask() override = default;
 
     bool Run([[maybe_unused]] uint32_t threadIndex) override
     {
-        saver_->StartSaveTask(this);
+        encoder_->StartSaveTask(this);
         return true;
     }
 
@@ -80,7 +80,7 @@ public:
     NO_COPY_SEMANTIC(SaveTask);
     NO_MOVE_SEMANTIC(SaveTask);
 private:
-    PGOProfilerSaver *saver_;
+    PGOProfilerEncoder *encoder_;
 };
 } // namespace panda::ecmascript
-#endif  // ECMASCRIPT_PGO_PROFILER_SAVER_H
+#endif  // ECMASCRIPT_PGO_PROFILER_ENCODER_H

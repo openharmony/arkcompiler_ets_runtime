@@ -18,7 +18,7 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
-CompilationDriver::CompilationDriver(PGOProfilerLoader &profilerLoader,
+CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
                                      BytecodeInfoCollector *collector,
                                      const std::string &optionSelectMethods,
                                      const std::string &optionSkipMethods,
@@ -30,7 +30,7 @@ CompilationDriver::CompilationDriver(PGOProfilerLoader &profilerLoader,
                                      size_t maxMethodsInModule)
     : vm_(collector->GetVM()),
       jsPandaFile_(collector->GetJSPandaFile()),
-      pfLoader_(profilerLoader),
+      pfDecoder_(profilerDecoder),
       bytecodeInfo_(collector->GetBytecodeInfo()),
       fileGenerator_(fileGenerator),
       fileName_(fileName),
@@ -164,7 +164,7 @@ void CompilationDriver::UpdatePGO()
             SearchForCompilation(recordName, oldIds, newMethodIds, mainMethodOffset, false);
             return newMethodIds;
         };
-    pfLoader_.Update(dfs);
+    pfDecoder_.Update(dfs);
 }
 
 void CompilationDriver::InitializeCompileQueue()
@@ -180,7 +180,7 @@ bool CompilationDriver::FilterMethod(const CString &recordName, const MethodLite
                                      const MethodPcInfo &methodPCInfo, const std::string &methodName) const
 {
     if (methodPCInfo.methodsSize > bytecodeInfo_.GetMaxMethodSize() ||
-        !pfLoader_.Match(recordName, methodLiteral->GetMethodId())) {
+        !pfDecoder_.Match(recordName, methodLiteral->GetMethodId())) {
         return true;
     }
 

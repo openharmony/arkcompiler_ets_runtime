@@ -1378,6 +1378,14 @@ inline GateRef StubBuilder::HandlerBaseGetOffset(GateRef attr)
         Int32((1LLU << HandlerBase::OffsetBit::SIZE) - 1));
 }
 
+
+inline GateRef StubBuilder::HandlerBaseGetAttrIndex(GateRef attr)
+{
+    return Int32And(Int32LSR(attr,
+        Int32(HandlerBase::AttrIndexBit::START_BIT)),
+        Int32((1LLU << HandlerBase::AttrIndexBit::SIZE) - 1));
+}
+
 inline GateRef StubBuilder::IsInternalAccessor(GateRef attr)
 {
     return Int32NotEqual(
@@ -1673,6 +1681,14 @@ inline GateRef StubBuilder::GetPropAttrFromLayoutInfo(GateRef layout, GateRef en
     return GetInt64OfTInt(GetValueFromTaggedArray(layout, index));
 }
 
+inline void StubBuilder::UpdatePropAttrToLayoutInfo(GateRef glue, GateRef layout, GateRef entry, GateRef attr)
+{
+    GateRef index = Int32Add(Int32LSL(entry, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2)),
+        Int32(LayoutInfo::ATTR_INDEX_OFFSET));
+    GateRef taggedAttr = Int64ToTaggedInt(ZExtInt32ToInt64(attr));
+    SetValueToTaggedArray(VariableType::JS_ANY(), glue, layout, index, taggedAttr);
+}
+
 inline GateRef StubBuilder::GetPropertyMetaDataFromAttr(GateRef attr)
 {
     return Int32And(Int32LSR(attr, Int32(PropertyAttributes::PropertyMetaDataField::START_BIT)),
@@ -1938,6 +1954,23 @@ inline GateRef StubBuilder::SetIsInlinePropsFieldInPropAttr(GateRef attr, GateRe
     GateRef newVal = Int32Or(Int32And(attr, Int32Not(mask)),
         Int32LSL(value, Int32(PropertyAttributes::IsInlinedPropsField::START_BIT)));
     return newVal;
+}
+
+inline GateRef StubBuilder::SetTrackTypeInPropAttr(GateRef attr, GateRef type)
+{
+    GateRef mask = Int32LSL(
+        Int32((1LU << PropertyAttributes::TrackTypeField::SIZE) - 1),
+        Int32(PropertyAttributes::TrackTypeField::START_BIT));
+    GateRef newVal = Int32Or(Int32And(attr, Int32Not(mask)),
+        Int32LSL(type, Int32(PropertyAttributes::TrackTypeField::START_BIT)));
+    return newVal;
+}
+
+inline GateRef StubBuilder::GetTrackTypeInPropAttr(GateRef attr)
+{
+    return Int32And(
+        Int32LSR(attr, Int32(PropertyAttributes::TrackTypeField::START_BIT)),
+        Int32((1LLU << PropertyAttributes::TrackTypeField::SIZE) - 1));
 }
 
 inline void StubBuilder::SetHasConstructorToHClass(GateRef glue, GateRef hClass, GateRef value)
