@@ -71,6 +71,25 @@ GateRef FrameStateBuilder::FrameState(size_t pcOffset, FrameStateInfo *stateInfo
     return circuit_->NewGate(circuit_->FrameState(frameStateInputs), inList);
 }
 
+void FrameStateBuilder::BindStateSplit(GateRef state, GateRef depend,
+                                       size_t pcOffset, FrameStateInfo *stateInfo)
+{
+    GateRef frameState = FrameState(pcOffset, stateInfo);
+    frameStateList_.emplace_back(frameState);
+    GateRef stateSplit = circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
+    auto uses = gateAcc_.Uses(depend);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        if (gateAcc_.IsDependIn(useIt) && *useIt != stateSplit) {
+            useIt = gateAcc_.ReplaceIn(useIt, stateSplit);
+        } else {
+            useIt++;
+        }
+    }
+    if (builder_->IsLogEnabled()) {
+        gateAcc_.ShortPrint(frameState);
+    }
+}
+
 void FrameStateBuilder::BindStateSplit(GateRef gate, size_t pcOffset, FrameStateInfo *stateInfo)
 {
     auto state = gateAcc_.GetState(gate);
@@ -401,6 +420,18 @@ bool FrameStateBuilder::IsAsyncResolveOrSusp(const BytecodeInfo &bytecodeInfo)
     return opcode == EcmaOpcode::SUSPENDGENERATOR_V8 || opcode == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8;
 }
 
+bool FrameStateBuilder::NeedBindStateSplit(BytecodeRegion& bb,
+    const BytecodeInfo &bytecodeInfo, size_t index)
+{
+    if (index == bb.start && bb.numOfStatePreds > 1) {
+        return true;
+    }
+    if (bytecodeInfo.Deopt() || !bytecodeInfo.NoSideEffects()) {
+        return true;
+    }
+    return false;
+}
+
 void FrameStateBuilder::BindStateSplit(size_t size)
 {
     for (size_t i = 0; i < size; i++) {
@@ -408,14 +439,23 @@ void FrameStateBuilder::BindStateSplit(size_t size)
         if (bb.isDead) {
             continue;
         }
+        bool needStateSplit = true;
         builder_->EnumerateBlock(bb, [&](const BytecodeInfo &bytecodeInfo) -> bool {
-            if (bytecodeInfo.Deopt()) {
-                auto &iterator = bb.GetBytecodeIterator();
-                auto index = iterator.Index();
-                auto gate = builder_->GetGateByBcIndex(index);
+            auto &iterator = bb.GetBytecodeIterator();
+            auto index = iterator.Index();
+            if (needStateSplit && NeedBindStateSplit(bb, bytecodeInfo, index)) {
                 auto pcOffset = builder_->GetPcOffset(index);
                 auto stateInfo = GetCurrentFrameInfo(bb, index);
-                BindStateSplit(gate, pcOffset, stateInfo);
+                if (index == bb.start) {
+                    BindStateSplit(bb.stateCurrent, bb.dependCurrent, pcOffset, stateInfo);
+                } else {
+                    auto gate = builder_->GetGateByBcIndex(index);
+                    BindStateSplit(gate, pcOffset, stateInfo);
+                }
+                needStateSplit = false;
+            }
+            if (!bytecodeInfo.NoSideEffects()) {
+                needStateSplit = true;
             }
             return true;
         });

@@ -977,18 +977,6 @@ bool GateAccessor::IsFrameStateIn(GateRef gate, size_t index) const
     return (index >= frameStateStartIndex && index < FrameStateEndIndex);
 }
 
-void GateAccessor::DeleteStateSplitAndFrameState(GateRef gate)
-{
-    GateRef stateSplit = GetDep(gate);
-    if (GetOpCode(stateSplit) == OpCode::STATE_SPLIT) {
-        GateRef dep = GetDep(stateSplit);
-        ReplaceDependIn(gate, dep);
-        GateRef frameState = GetFrameState(stateSplit);
-        DeleteGate(frameState);
-        DeleteGate(stateSplit);
-    }
-}
-
 void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value)
 {
     if (value != Circuit::NullGate()) {
@@ -1024,6 +1012,15 @@ GateRef GateAccessor::GetFrameState(GateRef gate) const
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     size_t index = gatePtr->GetInFrameStateStarts();
     return circuit_->GetIn(gate, index);
+}
+
+GateRef GateAccessor::FindNearestFrameState(GateRef gate) const
+{
+    auto statesplit = gate;
+    while (GetOpCode(statesplit) != OpCode::STATE_SPLIT) {
+        statesplit = GetDep(statesplit);
+    }
+    return GetFrameState(statesplit);
 }
 
 bool GateAccessor::HasFrameState(GateRef gate) const

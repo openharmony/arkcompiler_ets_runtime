@@ -87,7 +87,6 @@ private:
     void UpdateRange(GateRef gate, const RangeInfo& range);
     RangeInfo GetRange(GateRef gate) const;
     GateRef GetConstInt32(int32_t v);
-    GateRef GetFrameState(GateRef gate);
 
     Circuit* circuit_;
     GateAccessor acc_;

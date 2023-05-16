@@ -794,7 +794,7 @@ void BytecodeCircuitBuilder::SetBlockPred(BytecodeRegion &bb, BytecodeRegion &bb
         bbNext.statePredIndex++;
         return;
     }
-    
+
     // merge bb
     if (bbNext.stateMerge != Circuit::NullGate()) {
         ASSERT(bbNext.dependMerge != Circuit::NullGate());

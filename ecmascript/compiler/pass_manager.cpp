@@ -133,6 +133,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
             if (passOptions_->EnableValueNumbering()) {
                 pipeline.RunPass<ValueNumberingPass>();
             }
+            pipeline.RunPass<StateSplitLinearizerPass>();
             pipeline.RunPass<TypeLoweringPass>();
             if (passOptions_->EnableEarlyElimination()) {
                 pipeline.RunPass<EarlyEliminationPass>();

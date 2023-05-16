@@ -52,9 +52,6 @@ void GenericTypeLowering::Run()
             case OpCode::CONVERT:
                 LowerConvert(gate);
                 break;
-            case OpCode::CHECK_AND_CONVERT:
-                LowerCheckAndConvert(gate);
-                break;
             default:
                 break;
         }
@@ -139,6 +136,8 @@ void GenericTypeLowering::LowerGetConstPool(GateRef gate)
 void GenericTypeLowering::DeleteStateSplit(GateRef gate)
 {
     auto depend = acc_.GetDep(gate);
+    auto frameState = acc_.GetFrameState(gate);
+    acc_.DeleteGateIfNoUse(frameState);
     acc_.ReplaceGate(gate, Circuit::NullGate(), depend, Circuit::NullGate());
 }
 
@@ -272,10 +271,9 @@ GateRef GenericTypeLowering::ConvertTaggedNumberToFloat64(GateRef gate, Label *e
     return *result;
 }
 
-void GenericTypeLowering::LowerCheckAndConvert(GateRef gate)
+void GenericTypeLowering::LowerCheckAndConvert(GateRef gate, GateRef frameState)
 {
     Environment env(gate, circuit_, &builder_);
-    auto frameState = acc_.GetFrameState(gate);
     ValueType srcType = acc_.GetSrcType(gate);
     switch (srcType) {
         case ValueType::FLOAT64:

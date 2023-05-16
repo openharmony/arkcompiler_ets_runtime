@@ -272,6 +272,9 @@ GateRef AsyncFunctionLowering::GetFirstRestoreRegister(GateRef gate) const
 {
     GateRef firstRestoreGate = gate;
     GateRef curRestoreGate = accessor_.GetDep(gate);
+    if (accessor_.GetOpCode(curRestoreGate) == OpCode::STATE_SPLIT) {
+        curRestoreGate = accessor_.GetDep(curRestoreGate);
+    }
     while (accessor_.GetOpCode(curRestoreGate) == OpCode::RESTORE_REGISTER) {
         firstRestoreGate = curRestoreGate;
         curRestoreGate = accessor_.GetDep(curRestoreGate);

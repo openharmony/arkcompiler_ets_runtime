@@ -108,6 +108,8 @@ private:
     {
         UpdateVirtualRegister(accumulatorIndex_, gate);
     }
+    void BindStateSplit(GateRef state, GateRef depend,
+        size_t pcOffset, FrameStateInfo *stateInfo);
     void BindStateSplit(GateRef gate, size_t pcOffset, FrameStateInfo *stateInfo);
     void BindStateSplit(size_t size);
     void UpdateVirtualRegister(size_t id, size_t index, GateRef gate);
@@ -142,6 +144,7 @@ private:
     FrameStateInfo *GetCurrentFrameInfo(BytecodeRegion &bb, uint32_t bcId);
     GateRef GetPreBBInput(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef gate);
     GateRef GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef phi);
+    bool NeedBindStateSplit(BytecodeRegion& bb, const BytecodeInfo &bytecodeInfo, size_t index);
 
     BytecodeCircuitBuilder *builder_{nullptr};
     FrameStateInfo *liveOutResult_{nullptr};

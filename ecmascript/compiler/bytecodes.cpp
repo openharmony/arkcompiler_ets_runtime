@@ -97,6 +97,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::STA_V8:
         case EcmaOpcode::LDA_V8:
             kind = BytecodeKind::MOV;
+            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
             break;
         case EcmaOpcode::LDNAN:
         case EcmaOpcode::LDINFINITY:
@@ -110,6 +111,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::LDFUNCTION:
         case EcmaOpcode::LDA_STR_ID16:
             kind = BytecodeKind::SET_CONSTANT;
+            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
             break;
         case EcmaOpcode::LDTHISBYVALUE_IMM8:
         case EcmaOpcode::LDTHISBYVALUE_IMM16:
@@ -199,6 +201,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::DEBUGGER:
         case EcmaOpcode::NOP:
             kind = BytecodeKind::DISCARDED;
+            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
             break;
         case EcmaOpcode::THROW_PREF_NONE:
         case EcmaOpcode::THROW_NOTEXISTS_PREF_NONE:
@@ -214,11 +217,13 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::JNEZ_IMM16:
         case EcmaOpcode::JNEZ_IMM32:
             kind = BytecodeKind::CONDITIONAL_JUMP;
+            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
             break;
         case EcmaOpcode::JMP_IMM8:
         case EcmaOpcode::JMP_IMM16:
         case EcmaOpcode::JMP_IMM32:
             kind = BytecodeKind::JUMP_IMM;
+            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
             break;
         case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
             flags |= BytecodeFlags::READ_THIS_OBJECT;

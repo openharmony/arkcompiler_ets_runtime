@@ -138,8 +138,7 @@ GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef ind
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.HasFrameState(currentDepend));
-    auto frameState = acc_.GetFrameState(currentDepend);
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(static_cast<size_t>(type.Value())),
         MachineType::I1, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -164,8 +163,7 @@ GateRef CircuitBuilder::StableArrayCheck(GateRef gate)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.HasFrameState(currentDepend));
-    auto frameState = acc_.GetFrameState(currentDepend);
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->StableArrayCheck(),
         MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -202,8 +200,7 @@ GateRef CircuitBuilder::TypedArrayCheck(GateType type, GateRef gate)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.HasFrameState(currentDepend));
-    auto frameState = acc_.GetFrameState(currentDepend);
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedArrayCheck(static_cast<size_t>(type.Value())),
         MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -216,12 +213,7 @@ GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto statesplit = currentDepend;
-    while (!acc_.HasFrameState(statesplit)) {
-        ASSERT(acc_.GetDependCount(statesplit) == 1);
-        statesplit = acc_.GetDep(statesplit);
-    }
-    auto frameState = acc_.GetFrameState(statesplit);
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->IndexCheck(static_cast<size_t>(type.Value())),
         MachineType::I64, {currentControl, currentDepend, gate, index, frameState}, GateType::IntType());
     currentLabel->SetControl(ret);
@@ -275,15 +267,9 @@ GateRef CircuitBuilder::CheckAndConvert(GateRef gate, ValueType src, ValueType d
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto stateSplit = currentLabel->GetDepend();
-    while (!acc_.HasFrameState(stateSplit)) {
-        ASSERT(acc_.GetDependCount(stateSplit) == 1);
-        stateSplit = acc_.GetDep(stateSplit);
-    }
-    auto frameState = acc_.GetFrameState(stateSplit);
     uint64_t value = ValuePairTypeAccessor::ToValue(src, dst);
     GateRef ret = GetCircuit()->NewGate(circuit_->CheckAndConvert(value),
-        machineType, {currentControl, currentDepend, gate, frameState}, gateType);
+        machineType, {currentControl, currentDepend, gate}, gateType);
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -386,8 +372,7 @@ GateRef CircuitBuilder::TryPrimitiveTypeCheck(GateType type, GateRef gate)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.HasFrameState(currentDepend));
-    auto frameState = acc_.GetFrameState(currentDepend);
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->PrimitiveTypeCheck(static_cast<size_t>(type.Value())),
         MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -400,8 +385,7 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id, GateRef pa
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.HasFrameState(currentDepend));
-    auto frameState = acc_.GetFrameState(currentDepend);
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallCheck(),
                                         MachineType::I1,
                                         { currentControl, currentDepend, function, id, param, frameState},
@@ -417,8 +401,7 @@ GateRef CircuitBuilder::JSCallTargetTypeCheck(GateType type, GateRef func, GateR
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.HasFrameState(currentDepend));
-    auto frameState = acc_.GetFrameState(currentDepend);
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->JSCallTargetTypeCheck(static_cast<size_t>(type.Value())),
         MachineType::I1, {currentControl, currentDepend, func, methodIndex, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -431,8 +414,7 @@ GateRef CircuitBuilder::JSCallThisTargetTypeCheck(GateType type, GateRef func)
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.HasFrameState(currentDepend));
-    auto frameState = acc_.GetFrameState(currentDepend);
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
     GateRef ret = GetCircuit()->NewGate(circuit_->JSCallThisTargetTypeCheck(static_cast<size_t>(type.Value())),
         MachineType::I1, {currentControl, currentDepend, func, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -471,7 +453,6 @@ GateRef CircuitBuilder::TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, 
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ASSERT(acc_.HasFrameState(currentDepend));
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedNewAllocateThis(),
         MachineType::ANYVALUE, {currentControl, currentDepend, ctor, hclassIndex, frameState}, GateType::TaggedValue());
     currentLabel->SetControl(ret);

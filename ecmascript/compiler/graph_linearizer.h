@@ -40,19 +40,24 @@ public:
         to->preds_.emplace_back(this);
     }
 
-    void SetVisited()
+    void SetVisited(GateAccessor& acc)
     {
-        state_ = VisitState::VISITED;
+        acc.SetMark(state_, MarkCode::VISITED);
     }
 
-    bool IsVisited() const
+    bool IsVisited(GateAccessor& acc) const
     {
-        return state_ == VisitState::VISITED;
+        return acc.GetMark(state_) == MarkCode::VISITED;
     }
 
     bool IsLoopHead() const
     {
         return stateKind_ == StateKind::LOOP_HEAD;
+    }
+
+    GateRef GetState() const
+    {
+        return state_;
     }
 
 private:
@@ -69,12 +74,13 @@ private:
     ChunkVector<GateRegion*> preds_;
     ChunkVector<GateRegion*> succs_;
     ChunkVector<GateRegion*> dominatedRegions_;
-    VisitState state_ {VisitState::UNVISITED};
+    GateRef state_ {Circuit::NullGate()};
     StateKind stateKind_ {StateKind::OTHER};
     friend class CFGBuilder;
     friend class GateScheduler;
     friend class ImmediateDominatorsGenerator;
     friend class GraphLinearizer;
+    friend class StateSplitLinearizer;
 };
 
 class GraphLinearizer {
@@ -186,6 +192,7 @@ private:
         info.upperBound = region;
         ASSERT(info.region == nullptr);
         info.region = region;
+        region->state_ = gate;
         region->AddGate(gate);
         info.state_ = ScheduleState::FIXED;
         regionRootList_.emplace_back(gate);
@@ -225,6 +232,7 @@ private:
     friend class CFGBuilder;
     friend class GateScheduler;
     friend class ImmediateDominatorsGenerator;
+    friend class StateSplitLinearizer;
 };
 };  // namespace panda::ecmascript::kungfu
 

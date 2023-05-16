@@ -271,7 +271,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                            \
     V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)                \
     V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                              \
-    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)                     \
+    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                      \
     V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                                  \

@@ -71,8 +71,6 @@ private:
     }
 
     void Lower(GateRef gate);
-    void VerifyGuard() const;
-
     template<TypedBinOp Op>
     void LowerTypedBinOp(GateRef gate);
     void LowerTypedMod(GateRef gate);
