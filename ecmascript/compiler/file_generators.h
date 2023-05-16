@@ -60,8 +60,8 @@ public:
 
     void RunAssembler(const CompilerLog &log);
 
-    void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
-                          const CompilerLog &log, const MethodLogList &logList);
+    void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset, const CompilerLog &log,
+                          const MethodLogList &logList, std::ostringstream &codeStream);
 
     void DestroyModule();
 
@@ -96,28 +96,32 @@ private:
 class FileGenerator {
 public:
     FileGenerator(const CompilerLog *log, const MethodLogList *logList) : log_(log), logList_(logList) {};
-    virtual ~FileGenerator() = default;
+    virtual ~FileGenerator()
+    {
+        codeStream_.clear();
+        codeStream_.str("");
+    }
 
     const CompilerLog GetLog() const
     {
         return *log_;
     }
+
+    void PrintMergedCodeComment()
+    {
+        LOG_ECMA(INFO) << "\n" << codeStream_.str();
+    }
+
 protected:
     std::vector<Module> modulePackage_ {};
     const CompilerLog *log_ {nullptr};
     const MethodLogList *logList_ {nullptr};
+    std::ostringstream codeStream_;
 
     void RunLLVMAssembler()
     {
         for (auto m : modulePackage_) {
             m.RunAssembler(*(log_));
-        }
-    }
-
-    void DisassembleEachFunc(std::map<uintptr_t, std::string> &addr2name)
-    {
-        for (auto m : modulePackage_) {
-            m.DisassemblerFunc(addr2name, 0, *(log_), *(logList_));
         }
     }
 
@@ -176,6 +180,8 @@ private:
 
     // collect aot component info
     void CollectCodeInfo(Module *module, uint32_t moduleIdx);
+
+    uint64_t RollbackTextSize(Module *module);
 };
 
 enum class StubFileKind {
@@ -195,6 +201,14 @@ public:
 
     Module* AddModule(NativeAreaAllocator *allocator, const std::string &name, const std::string &triple,
                       LOptions option, bool logDebug, StubFileKind k);
+
+    void DisassembleEachFunc(std::map<uintptr_t, std::string> &addr2name)
+    {
+        for (auto m : modulePackage_) {
+            m.DisassemblerFunc(addr2name, 0, *(log_), *(logList_), codeStream_);
+        }
+        PrintMergedCodeComment();
+    }
 
     void DisassembleAsmStubs(std::map<uintptr_t, std::string> &addr2name);
     // save function funcs for aot files containing stubs
