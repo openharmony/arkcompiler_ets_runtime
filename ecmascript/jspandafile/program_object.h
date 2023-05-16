@@ -352,8 +352,6 @@ public:
         return val;
     }
 
-    std::string PUBLIC_API GetStdStringByIdx(size_t index) const;
-
     DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength());
     DECL_VISIT_NATIVE_FIELD(GetLastOffset() - JSTaggedValue::TaggedTypeSize() * RESERVED_POOL_LENGTH, GetLastOffset());
 

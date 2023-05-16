@@ -40,6 +40,8 @@ enum class TSObjectTypeKind: uint8_t {
 class TSType : public TaggedObject {
 public:
     static constexpr size_t GT_OFFSET = TaggedObjectSize();
+    static constexpr size_t ONE_BIT = 1;
+    static constexpr size_t TWO_BITS = 2;
 
     inline static TSType *Cast(const TaggedObject *object)
     {
@@ -104,8 +106,11 @@ public:
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     // define BitField
-    static constexpr size_t HAS_LINKED_BITS = 1;
-    FIRST_BIT_FIELD(BitField, HasLinked, bool, HAS_LINKED_BITS);
+    FIRST_BIT_FIELD(BitField, HasLinked, bool, ONE_BIT);
+    NEXT_BIT_FIELD(BitField, HasPassedSubtypingCheck, bool, ONE_BIT, HasLinked);
+    NEXT_BIT_FIELD(BitField, HasAnalysedInitialization, bool, ONE_BIT, HasPassedSubtypingCheck);
+    NEXT_BIT_FIELD(BitField, HasEscapedThisInConstructor, bool, ONE_BIT, HasAnalysedInitialization);
+    NEXT_BIT_FIELD(BitField, HasSuperCallInConstructor, bool, ONE_BIT, HasEscapedThisInConstructor);
 
     DECL_VISIT_OBJECT(INSTANCE_TYPE_OFFSET, EXTENSION_GT_OFFSET)
     DECL_DUMP()
@@ -197,8 +202,6 @@ public:
     enum class Visibility : uint8_t { PUBLIC = 0, PRIVATE, PROTECTED };
 
     // define BitField
-    static constexpr size_t ONE_BIT = 1;
-    static constexpr size_t TWO_BITS = 2;
     FIRST_BIT_FIELD(BitField, Visibility, Visibility, TWO_BITS);
     NEXT_BIT_FIELD(BitField, Static, bool, ONE_BIT, Visibility);
     NEXT_BIT_FIELD(BitField, Async, bool, ONE_BIT, Static);

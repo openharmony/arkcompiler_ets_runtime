@@ -421,7 +421,7 @@ void GateAccessor::GetOutStates(GateRef gate, std::vector<GateRef>& outStates) c
     }
 }
 
-void GateAccessor::GetStateUses(GateRef gate, std::vector<GateRef>& stateUses)
+void GateAccessor::GetStateUses(GateRef gate, std::vector<GateRef> &stateUses)
 {
     stateUses.clear();
     auto uses = Uses(gate);
@@ -432,13 +432,24 @@ void GateAccessor::GetStateUses(GateRef gate, std::vector<GateRef>& stateUses)
     }
 }
 
-void GateAccessor::GetDependUses(GateRef gate, std::vector<GateRef>& dependUses)
+void GateAccessor::GetDependUses(GateRef gate, std::vector<GateRef> &dependUses)
 {
     dependUses.clear();
     auto uses = Uses(gate);
     for (auto it = uses.begin(); it != uses.end(); it++) {
         if (IsDependIn(it)) {
             dependUses.emplace_back(*it);
+        }
+    }
+}
+
+void GateAccessor::GetValueUses(GateRef gate, std::vector<GateRef> &valueUses)
+{
+    valueUses.clear();
+    auto uses = Uses(gate);
+    for (auto it = uses.begin(); it != uses.end(); it++) {
+        if (IsValueIn(it)) {
+            valueUses.emplace_back(*it);
         }
     }
 }

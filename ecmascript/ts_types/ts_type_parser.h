@@ -37,10 +37,14 @@ public:
 
     GlobalTSTypeRef PUBLIC_API CreateGT(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId);
 
-    static constexpr size_t USER_DEFINED_TYPE_OFFSET = 100;
+    inline static bool IsUserDefinedType(const uint32_t typeId)
+    {
+        return typeId > USER_DEFINED_TYPE_OFFSET;
+    }
 
 private:
     static constexpr size_t BUILDIN_TYPE_OFFSET = 20;
+    static constexpr size_t USER_DEFINED_TYPE_OFFSET = 100;
     static constexpr size_t DEFAULT_INDEX = 0;
     static constexpr size_t NUM_INDEX_SIG_INDEX = 1;
     static constexpr size_t NUM_GENERICS_PARA_INDEX = 1;

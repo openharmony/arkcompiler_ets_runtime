@@ -154,7 +154,7 @@ void TSTypeTableGenerator::FillLayoutTypes(const JSHandle<TSObjLayoutInfo> &layo
         key.Update(prop[index]);
         ASSERT(key->IsString());
         value.Update(JSTaggedValue(propType[index].GetType()));
-        layout->AddKeyAndType(thread_, key.GetTaggedValue(), value.GetTaggedValue());
+        layout->AddProperty(thread_, key.GetTaggedValue(), value.GetTaggedValue());
     }
 }
 }  // namespace panda::ecmascript

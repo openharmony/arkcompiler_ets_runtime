@@ -16,7 +16,6 @@
 #include "ecmascript/compiler/type_inference/method_type_infer.h"
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
 
 namespace panda::ecmascript::kungfu {
@@ -723,9 +722,7 @@ bool MethodTypeInfer::InferStObjByName(GateRef gate)
     }
 
     uint16_t index = gateAccessor_.GetConstDataId(gateAccessor_.GetValueIn(gate, 1)).GetId();  // 1: index of key
-    JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
-    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    JSTaggedValue propKey = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), index);
+    JSTaggedValue propKey = tsManager_->GetStringFromConstantPool(index);
     tsManager_->AddNamespacePropType(receiverType, propKey, valueType);
     return true;
 }
@@ -752,10 +749,9 @@ bool MethodTypeInfer::InferLdStr(GateRef gate)
 
 bool MethodTypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_t index)
 {
-    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
-    JSTaggedValue name = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), index);
+    JSTaggedValue name = tsManager_->GetStringFromConstantPool(index);
     if (tsManager_->IsBuiltinArrayType(objType) || tsManager_->IsTypedArrayType(objType)) {
+        auto thread = tsManager_->GetThread();
         JSTaggedValue lengthKey = thread->GlobalConstants()->GetLengthString();
         if (JSTaggedValue::SameValue(name, lengthKey)) {
             return SetIntType(gate);
@@ -905,22 +901,20 @@ bool MethodTypeInfer::GetSuperProp(GateRef gate, uint64_t index, bool isString)
     auto newTarget = argAcc.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
     auto funcType = gateAccessor_.GetGateType(func);
     auto classType = gateAccessor_.GetGateType(newTarget);
-    if (!funcType.IsAnyType() && !classType.IsAnyType()) {
-        auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-        GlobalTSTypeRef type = GlobalTSTypeRef::Default();
-        bool isStatic = tsManager_->IsStaticFunc(funcType.GetGTRef());
-        auto propType = isStatic ? PropertyType::STATIC : PropertyType::NORMAL;
-        JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
-        type = isString ? tsManager_->GetSuperPropType(classType.GetGTRef(),
-            ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), index), propType) :
-            tsManager_->GetSuperPropType(classType.GetGTRef(), index, propType);
-        if (tsManager_->IsGetterSetterFunc(type)) {
-            auto returnGt = tsManager_->GetFuncReturnValueTypeGT(type);
-            return UpdateType(gate, returnGt);
-        }
-        return UpdateType(gate, type);
+    if (funcType.IsAnyType() || classType.IsAnyType()) {
+        return UpdateType(gate, GateType::AnyType());
     }
-    return UpdateType(gate, GateType::AnyType());
+
+    bool isStatic = tsManager_->IsStaticFunc(funcType.GetGTRef());
+    auto propType = isStatic ? PropertyType::STATIC : PropertyType::NORMAL;
+    GlobalTSTypeRef type = isString ?
+        tsManager_->GetSuperPropType(classType.GetGTRef(), tsManager_->GetStringFromConstantPool(index), propType) :
+        tsManager_->GetSuperPropType(classType.GetGTRef(), index, propType);
+    if (tsManager_->IsGetterSetterFunc(type)) {
+        auto returnGt = tsManager_->GetFuncReturnValueTypeGT(type);
+        return UpdateType(gate, returnGt);
+    }
+    return UpdateType(gate, type);
 }
 
 bool MethodTypeInfer::InferGetIterator(GateRef gate)
@@ -1297,16 +1291,12 @@ void MethodTypeInfer::TypeCheck(GateRef gate) const
         return;
     }
     auto funcName = gateAccessor_.GetValueIn(func, 1);
-    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
     uint16_t funcNameStrId = gateAccessor_.GetConstDataId(funcName).GetId();
-    ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), funcNameStrId);
-    auto funcNameString = constantPool->GetStdStringByIdx(funcNameStrId);
+    auto funcNameString = tsManager_->GetStdStringFromConstantPool(funcNameStrId);
     if (funcNameString == "AssertType") {
         GateRef expectedGate = gateAccessor_.GetValueIn(gate, 1);
         uint16_t strId = gateAccessor_.GetConstDataId(expectedGate).GetId();
-        ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), strId);
-        auto expectedTypeStr = constantPool->GetStdStringByIdx(strId);
+        auto expectedTypeStr = tsManager_->GetStdStringFromConstantPool(strId);
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 0);
         auto type = gateAccessor_.GetGateType(valueGate);
         if (expectedTypeStr != tsManager_->GetTypeStr(type)) {

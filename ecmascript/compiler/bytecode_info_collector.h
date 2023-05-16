@@ -259,9 +259,18 @@ public:
         return methodInfoIndex_ = methodInfoIndex;
     }
 
-    inline void AddInnerMethod(uint32_t offset)
+    inline void AddInnerMethod(uint32_t offset, bool isConstructor)
     {
-        innerMethods_.emplace_back(offset);
+        if (isConstructor) {
+            constructorMethods_.emplace_back(offset);
+        } else {
+            innerMethods_.emplace_back(offset);
+        }
+    }
+
+    inline void RearrangeInnerMethods()
+    {
+        innerMethods_.insert(innerMethods_.begin(), constructorMethods_.begin(), constructorMethods_.end());
     }
 
     inline void MarkMethodNamespace()
@@ -358,6 +367,7 @@ private:
     // used to obtain MethodPcInfo from the vector methodPcInfos of struct BCInfo
     uint32_t methodPcInfoIndex_ { 0 };
     std::vector<uint32_t> innerMethods_ {};
+    std::vector<uint32_t> constructorMethods_ {};
     uint32_t outerMethodId_ { LexEnv::DEFAULT_ROOT };
     uint32_t outerMethodOffset_ { MethodInfo::DEFAULT_OUTMETHOD_OFFSET };
     uint32_t numOfLexVars_ { 0 };
@@ -736,12 +746,13 @@ private:
 
     const CString GetEntryFunName(const std::string_view &entryPoint) const;
     void ProcessClasses();
+    void RearrangeInnerMethods();
     void CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
         MethodLiteral *method, std::vector<std::string> &classNameVec, const CString &recordName,
         uint32_t methodOffset, std::vector<panda_file::File::EntityId> &classConstructIndexes);
     void SetMethodPcInfoIndex(uint32_t methodOffset, const std::pair<size_t, uint32_t> &processedMethodInfo);
-    void CollectInnerMethods(const MethodLiteral *method, uint32_t innerMethodOffset);
-    void CollectInnerMethods(uint32_t methodId, uint32_t innerMethodOffset);
+    void CollectInnerMethods(const MethodLiteral *method, uint32_t innerMethodOffset, bool isConstructor = false);
+    void CollectInnerMethods(uint32_t methodId, uint32_t innerMethodOffset, bool isConstructor = false);
     void CollectInnerMethodsFromLiteral(const MethodLiteral *method, uint64_t index);
     void NewLexEnvWithSize(const MethodLiteral *method, uint64_t numOfLexVars);
     void CollectInnerMethodsFromNewLiteral(const MethodLiteral *method, panda_file::File::EntityId literalId);
@@ -758,7 +769,7 @@ private:
     void CollectFunctionTypeId(panda_file::File::EntityId fieldId);
     void CollectImportIndexs(uint32_t methodOffset, uint32_t index);
     void CollectExportIndexs(const CString &recordName, uint32_t index);
-    bool CheckExportName(const CString &recordName, const JSHandle<EcmaString> &exportStr);
+    bool CheckExportNameAndClassType(const CString &recordName, const JSHandle<EcmaString> &exportStr);
     void CollectRecordReferenceREL();
     void CollectRecordImportInfo(const CString &recordName);
     void CollectRecordExportInfo(const CString &recordName);

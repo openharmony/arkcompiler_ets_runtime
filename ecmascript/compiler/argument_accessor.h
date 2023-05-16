@@ -114,6 +114,7 @@ private:
 
     friend class BytecodeCircuitBuilder;
     friend class AsyncFunctionLowering;
+    friend class InitializationAnalysis;
 };
 }
 #endif  // ECMASCRIPT_COMPILER_ARGUMENT_ACCESSOR_H

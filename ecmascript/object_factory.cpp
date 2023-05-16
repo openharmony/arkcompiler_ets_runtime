@@ -3237,7 +3237,7 @@ JSHandle<TSClassType> ObjectFactory::NewTSClassType()
     classType->SetName(thread_, JSTaggedValue::Undefined());
     classType->SetIndexSigns(thread_, JSTaggedValue::Undefined());
     classType->SetExtensionGT(GlobalTSTypeRef::Default());
-    classType->SetHasLinked(false);
+    classType->ClearBitField();
 
     return classType;
 }
