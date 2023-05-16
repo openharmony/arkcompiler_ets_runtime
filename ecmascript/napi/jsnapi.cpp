@@ -1334,6 +1334,16 @@ Local<JSValueRef> ObjectRef::GetPrototype(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<JSValueRef>(prototype);
 }
 
+bool ObjectRef::SetPrototype(const EcmaVM *vm, Local<ObjectRef> prototype)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
+    JSHandle<JSObject> proto(JSNApiHelper::ToJSHandle(prototype));
+    bool result = JSTaggedValue::SetPrototype(thread, JSHandle<JSTaggedValue>(object), JSHandle<JSTaggedValue>(proto));
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+    return result;
+}
+
 bool ObjectRef::DefineProperty(const EcmaVM *vm, Local<JSValueRef> key, PropertyAttribute attribute)
 {
     JSThread *thread = vm->GetJSThread();
