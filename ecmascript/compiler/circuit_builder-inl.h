@@ -514,7 +514,7 @@ GateRef CircuitBuilder::DoubleToTaggedDouble(GateRef x)
 
 GateRef CircuitBuilder::DoubleIsNAN(GateRef x)
 {
-    GateRef diff = Equal(x, x);
+    GateRef diff = DoubleEqual(x, x);
     return Equal(SExtInt1ToInt32(diff), Int32(0));
 }
 

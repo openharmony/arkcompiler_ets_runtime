@@ -60,6 +60,15 @@ void Gate::CheckInputMachineType(size_t idx, MachineType expected, bool isArch64
     }
 }
 
+void Gate::CheckNotInputMachineType(size_t idx, MachineType notExpected) const
+{
+    MachineType actual = GetInGateConst(idx)->GetMachineType();
+    if (actual == notExpected) {
+        CheckFailed("Value input does not match (notExpected:" +
+                    MachineTypeToStr(notExpected) + " actual:" + MachineTypeToStr(actual) + ")", idx);
+    }
+}
+
 void Gate::CheckGeneralState(size_t idx) const
 {
     auto gatePtr = GetInGateConst(idx);
@@ -158,6 +167,12 @@ void Gate::CheckValueInput(bool isArch64) const
                 if (idx == valueStart + 1) { // 1: idx 1
                     CheckInputMachineType(idx, MachineType::I64, isArch64);
                 }
+                break;
+            case OpCode::FCMP:
+                CheckInputMachineType(idx, MachineType::F64, isArch64);
+                break;
+            case OpCode::ICMP:
+                CheckNotInputMachineType(idx, MachineType::F64);
                 break;
             default:
                 break;

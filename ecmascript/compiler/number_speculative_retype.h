@@ -82,6 +82,8 @@ private:
     GateRef VisitTypeConvert(GateRef gate);
     GateRef VisitFrameState(GateRef gate);
     GateRef VisitIsTrueOrFalse(GateRef gate);
+    GateRef VisitWithConstantValue(GateRef gate, size_t ignoreIndex);
+    GateRef VisitLoopExitValue(GateRef gate);
 
     void ConvertForBinaryOp(GateRef gate);
     void ConvertForCompareOp(GateRef gate);
