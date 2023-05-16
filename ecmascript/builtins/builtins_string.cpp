@@ -589,7 +589,7 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> matchTag = thread->GetEcmaVM()->GetGlobalEnv()->GetMatchSymbol();
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     if (regexp->IsJSRegExp()) {
-        JSHandle<RegExpExecResultCache> cacheTable(thread->GetEcmaVM()->GetRegExpCache());
+        JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
         JSHandle<JSRegExp> re(regexp);
         JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource());
         JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags());
@@ -823,7 +823,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = ecmaVm->GetFactory();
 
     if (searchTag->IsJSRegExp() && replaceTag->IsString()) {
-        JSHandle<RegExpExecResultCache> cacheTable(thread->GetEcmaVM()->GetRegExpCache());
+        JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
         JSHandle<JSRegExp> re(searchTag);
         JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource());
         JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags());

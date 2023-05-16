@@ -149,7 +149,7 @@ void EcmaVM::PostFork()
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
-    : stringTable_(new EcmaStringTable(this)),
+    : //stringTable_(new EcmaStringTable(this)),
       nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
       heapRegionAllocator_(std::make_unique<HeapRegionAllocator>()),
       chunk_(nativeAreaAllocator_.get()),
@@ -196,8 +196,6 @@ bool EcmaVM::Initialize()
 #ifndef PANDA_TARGET_WINDOWS
     RuntimeStubs::Initialize(thread_);
 #endif
-    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
-    regExpParserCache_ = new RegExpParserCache();
     heap_ = new Heap(this);
     heap_->Initialize();
     gcStats_ = chunk_.New<GCStats>(heap_, options_.GetLongPauseTime());
@@ -207,46 +205,12 @@ bool EcmaVM::Initialize()
         UNREACHABLE();
     }
     debuggerManager_ = chunk_.New<tooling::JsDebuggerManager>(this);
+    auto context = new EcmaContext(thread_);
+    thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-
-    if (!options_.EnableSnapshotDeserialize()) {
-        LOG_ECMA(DEBUG) << "EcmaVM::Initialize run builtins";
-        JSHandle<JSHClass> hClassHandle = factory_->InitClassClass();
-        JSHandle<JSHClass> globalEnvClass = factory_->NewEcmaHClass(*hClassHandle,
-                                                                   GlobalEnv::SIZE,
-                                                                   JSType::GLOBAL_ENV);
-        globalConst->Init(thread_, *hClassHandle);
-        globalConstInitialized_ = true;
-        JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
-        globalEnv->Init(thread_);
-        globalEnv_ = globalEnv.GetTaggedValue();
-        thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(globalEnv.GetTaggedType()));
-        Builtins builtins;
-        bool builtinsLazyEnabled = options_.IsWorker() && options_.GetEnableBuiltinsLazy();
-        builtins.Initialize(globalEnv, thread_, builtinsLazyEnabled);
-        if (!WIN_OR_MAC_OR_IOS_PLATFORM && options_.EnableSnapshotSerialize()) {
-            const CString fileName = "builtins.snapshot";
-            Snapshot snapshot(this);
-            snapshot.SerializeBuiltins(fileName);
-        }
-    } else {
-        const CString fileName = "builtins.snapshot";
-        Snapshot snapshot(this);
-        if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
-            snapshot.Deserialize(SnapshotType::BUILTINS, fileName, true);
-        }
-        globalConst->InitSpecialForSnapshot();
-        Builtins builtins;
-        builtins.InitializeForSnapshot(thread_);
-        globalConstInitialized_ = true;
-    }
-
-    SetupRegExpResultCache();
-    microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
+    context->Initialize();
     GenerateInternalNativeMethods();
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
-    moduleManager_ = new ModuleManager(this);
-    tsManager_ = new TSManager(this);
     quickFixManager_ = new QuickFixManager();
     snapshotEnv_ = new SnapshotEnv(this);
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
@@ -257,7 +221,7 @@ bool EcmaVM::Initialize()
         LoadStubFile();
     }
 
-    optCodeProfiler_ = new OptCodeProfiler();
+    // optCodeProfiler_ = new OptCodeProfiler();
     callTimer_ = new FunctionCallTimer();
 
     EcmaContext *context = EcmaContext::Create(thread_);
@@ -339,11 +303,6 @@ EcmaVM::~EcmaVM()
     DumpCallTimeInfo();
 #endif
 
-    if (optCodeProfiler_ != nullptr) {
-        delete optCodeProfiler_;
-        optCodeProfiler_ = nullptr;
-    }
-
     // clear c_address: c++ pointer delete
     ClearBufferData();
     if (!isBundlePack_) {
@@ -369,10 +328,10 @@ EcmaVM::~EcmaVM()
         heap_ = nullptr;
     }
 
-    if (regExpParserCache_ != nullptr) {
-        delete regExpParserCache_;
-        regExpParserCache_ = nullptr;
-    }
+    // if (regExpParserCache_ != nullptr) {
+    //     delete regExpParserCache_;
+    //     regExpParserCache_ = nullptr;
+    // }
 
     if (debuggerManager_ != nullptr) {
         chunk_.Delete(debuggerManager_);
@@ -384,26 +343,20 @@ EcmaVM::~EcmaVM()
         factory_ = nullptr;
     }
 
-    if (stringTable_ != nullptr) {
-        delete stringTable_;
-        stringTable_ = nullptr;
-    }
+    // if (stringTable_ != nullptr) {
+    //     delete stringTable_;
+    //     stringTable_ = nullptr;
+    // }
 
     if (runtimeStat_ != nullptr) {
         chunk_.Delete(runtimeStat_);
         runtimeStat_ = nullptr;
     }
 
-    if (moduleManager_ != nullptr) {
-        delete moduleManager_;
-        moduleManager_ = nullptr;
-    }
-
-    if (tsManager_ != nullptr) {
-        delete tsManager_;
-        tsManager_ = nullptr;
-    }
-
+    // if (tsManager_ != nullptr) {
+    //     delete tsManager_;
+    //     tsManager_ = nullptr;
+    // }
     if (quickFixManager_ != nullptr) {
         delete quickFixManager_;
         quickFixManager_ = nullptr;
@@ -432,14 +385,15 @@ EcmaVM::~EcmaVM()
 
 JSHandle<GlobalEnv> EcmaVM::GetGlobalEnv() const
 {
-    return JSHandle<GlobalEnv>(reinterpret_cast<uintptr_t>(&globalEnv_));
+    // return JSHandle<GlobalEnv>(reinterpret_cast<uintptr_t>(&globalEnv_));
+    return thread_->GetCurrentEcmaContext()->GetGlobalEnv();
 }
-
-JSHandle<job::MicroJobQueue> EcmaVM::GetMicroJobQueue() const
+void EcmaVM::SetGlobalEnv(GlobalEnv *global)
 {
-    return JSHandle<job::MicroJobQueue>(reinterpret_cast<uintptr_t>(&microJobQueue_));
+    // ASSERT(global != nullptr);
+    // globalEnv_ = JSTaggedValue(global);
+    thread_->GetCurrentEcmaContext()->SetGlobalEnv(global);
 }
-
 JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                               const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                               CJSInfo* cjsInfo)
@@ -489,67 +443,6 @@ void EcmaVM::CheckStartCpuProfiler()
         }
     }
 #endif
-}
-
-Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
-                                                           std::string_view entryPoint, bool excuteFromJob)
-{
-    [[maybe_unused]] EcmaHandleScope scope(thread_);
-    JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile, entryPoint);
-    if (program.IsEmpty()) {
-        LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";
-        return Unexpected(false);
-    }
-    // for debugger
-    debuggerManager_->GetNotificationManager()->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc(), entryPoint);
-
-    JSHandle<JSFunction> func(thread_, program->GetMainFunction());
-    JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
-    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
-    if (jsPandaFile->IsModule(thread_, entryPoint.data())) {
-        global = undefined;
-        CString moduleName = jsPandaFile->GetJSPandaFileDesc();
-        if (!jsPandaFile->IsBundlePack()) {
-            moduleName = entryPoint.data();
-        }
-        JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
-        func->SetModule(thread_, module);
-    } else {
-        // if it is Cjs at present, the module slot of the function is not used. We borrow it to store the recordName,
-        // which can avoid the problem of larger memory caused by the new slot
-        JSHandle<EcmaString> recordName = factory_->NewFromUtf8(entryPoint.data());
-        func->SetModule(thread_, recordName);
-    }
-    CheckStartCpuProfiler();
-
-    JSTaggedValue result;
-    if (jsPandaFile->IsCjs(thread_, entryPoint.data())) {
-            if (!thread_->HasPendingException()) {
-                CJSExecution(func, global, jsPandaFile, entryPoint);
-            }
-    } else {
-        if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
-            EcmaRuntimeStatScope runtimeStatScope(this);
-            result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
-        } else {
-            if (thread_->IsPGOProfilerEnable()) {
-                pgoProfiler_->Sample(func.GetTaggedType());
-            }
-            EcmaRuntimeCallInfo *info =
-                EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
-            EcmaRuntimeStatScope runtimeStatScope(this);
-            EcmaInterpreter::Execute(info);
-        }
-    }
-    if (!thread_->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
-    }
-
-    // print exception information
-    if (!excuteFromJob && thread_->HasPendingException()) {
-        HandleUncaughtException(thread_->GetException());
-    }
-    return result;
 }
 
 bool EcmaVM::HasCachedConstpool(const JSPandaFile *jsPandaFile) const
@@ -657,7 +550,7 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
         EcmaInterpreter::Execute(info);
     }
     if (!thread_->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread_, thread_->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
 
     if (!thread_->HasPendingException()) {
@@ -696,26 +589,13 @@ JSHandle<JSTaggedValue> EcmaVM::GetEcmaUncaughtException() const
 
 void EcmaVM::EnableUserUncaughtErrorHandler()
 {
-    isUncaughtExceptionRegistered_ = true;
+    thread_->GetCurrentEcmaContext()->EnableUserUncaughtErrorHandler();
 }
 
 void EcmaVM::HandleUncaughtException(JSTaggedValue exception)
 {
-    if (isUncaughtExceptionRegistered_) {
-        return;
+    thread_->GetCurrentEcmaContext()->HandleUncaughtException(exception);
     }
-    [[maybe_unused]] EcmaHandleScope handleScope(thread_);
-    JSHandle<JSTaggedValue> exceptionHandle(thread_, exception);
-    // if caught exceptionHandle type is JSError
-    thread_->ClearException();
-    if (exceptionHandle->IsJSError()) {
-        PrintJSErrorInfo(exceptionHandle);
-        return;
-    }
-    JSHandle<EcmaString> result = JSTaggedValue::ToString(thread_, exceptionHandle);
-    CString string = ConvertToString(*result);
-    LOG_NO_TAG(ERROR) << string;
-}
 
 void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const
 {
@@ -773,8 +653,11 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
 }
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 {
-    if (regExpParserCache_ != nullptr) {
-        regExpParserCache_->Clear();
+    // if (regExpParserCache_ != nullptr) {
+    //     regExpParserCache_->Clear();
+    // }
+    if (thread_->GetCurrentEcmaContext()->GetRegExpParserCache() != nullptr) {
+        thread_->GetCurrentEcmaContext()->GetRegExpParserCache()->Clear();
     }
     heap_->ResetNativeBindingSize();
     // array buffer
@@ -856,21 +739,6 @@ void EcmaVM::ClearBufferData()
     workerList_.clear();
 }
 
-bool EcmaVM::ExecutePromisePendingJob()
-{
-    if (isProcessingPendingJob_) {
-        LOG_ECMA(DEBUG) << "EcmaVM::ExecutePromisePendingJob can not reentrant";
-        return false;
-    }
-    if (!thread_->HasPendingException()) {
-        isProcessingPendingJob_ = true;
-        job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
-        isProcessingPendingJob_ = false;
-        return true;
-    }
-    return false;
-}
-
 void EcmaVM::CollectGarbage(TriggerGCType gcType, GCReason reason) const
 {
     heap_->CollectGarbage(gcType, reason);
@@ -888,14 +756,12 @@ void EcmaVM::StopHeapTracking()
 
 void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
+    // v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
+    // v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
         ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
-    moduleManager_->Iterate(v);
-    tsManager_->Iterate(v);
     aotFileManager_->Iterate(v);
+    // tsManager_->Iterate(v);
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
     }
@@ -908,22 +774,10 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     }
 }
 
-void EcmaVM::SetGlobalEnv(GlobalEnv *global)
-{
-    ASSERT(global != nullptr);
-    globalEnv_ = JSTaggedValue(global);
-}
-
-void EcmaVM::SetMicroJobQueue(job::MicroJobQueue *queue)
-{
-    ASSERT(queue != nullptr);
-    microJobQueue_ = JSTaggedValue(queue);
-}
-
-void EcmaVM::SetupRegExpResultCache()
-{
-    regexpCache_ = builtins::RegExpExecResultCache::CreateCacheTable(thread_);
-}
+// void EcmaVM::SetupRegExpResultCache()
+// {
+//     regexpCache_ = builtins::RegExpExecResultCache::CreateCacheTable(thread_);
+// }
 
 void EcmaVM::LoadStubFile()
 {

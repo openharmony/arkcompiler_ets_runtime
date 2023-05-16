@@ -36,7 +36,7 @@ BytecodeInfoCollector::BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFil
       bytecodeInfo_(maxAotMethodSize),
       enableCollectLiteralInfo_(enableCollectLiteralInfo)
 {
-    vm_->GetTSManager()->SetBytecodeInfoCollector(this);
+    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetBytecodeInfoCollector(this);
     ProcessClasses();
     ProcessEnvs();
 }
@@ -47,7 +47,7 @@ BytecodeInfoCollector::~BytecodeInfoCollector()
         delete envManager_;
         envManager_ = nullptr;
     }
-    vm_->GetTSManager()->SetBytecodeInfoCollector(nullptr);
+    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetBytecodeInfoCollector(nullptr);
 }
 
 void BytecodeInfoCollector::ProcessEnvs()
@@ -152,7 +152,7 @@ void BytecodeInfoCollector::CollectClassLiteralInfo(const MethodLiteral *method,
 
     if (classOffsetVec.size() == classNameVec.size()) {
         for (uint32_t i = 0; i < classOffsetVec.size(); i++) {
-            vm_->GetTSManager()->AddElementToClassNameMap(jsPandaFile_, classOffsetVec[i], classNameVec[i]);
+            vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AddElementToClassNameMap(jsPandaFile_, classOffsetVec[i], classNameVec[i]);
         }
     }
 }
@@ -571,7 +571,7 @@ void BytecodeInfoCollector::CollectExportIndexs(const CString &recordName, uint3
 bool BytecodeInfoCollector::CheckExportNameAndClassType(const CString &recordName,
                                                         const JSHandle<EcmaString> &exportStr)
 {
-    auto tsManager = vm_->GetTSManager();
+    auto tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     JSHandle<TaggedArray> exportTypeTable = tsManager->GetExportTableFromLiteral(jsPandaFile_, recordName);
     uint32_t length = exportTypeTable->GetLength();
     for (uint32_t i = 0; i < length; i = i + 2) { // 2: skip a pair of key and value

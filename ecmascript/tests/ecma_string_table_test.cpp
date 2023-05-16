@@ -54,7 +54,7 @@ public:
  */
 HWTEST_F_L0(EcmaStringTableTest, InternEmptyString)
 {
-    EcmaStringTable *table = thread->GetEcmaVM()->GetEcmaStringTable();
+    EcmaStringTable *table = thread->GetCurrentEcmaContext()->GetEcmaStringTable();
 
     JSHandle<EcmaString> emptyEcmaStrHandle(thread, EcmaStringAccessor::CreateEmptyString(thread->GetEcmaVM()));
     EXPECT_TRUE(!EcmaStringAccessor(emptyEcmaStrHandle).IsInternString());
@@ -73,7 +73,7 @@ HWTEST_F_L0(EcmaStringTableTest, InternEmptyString)
 HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_utf8Data)
 {
     EcmaVM *vm = thread->GetEcmaVM();
-    EcmaStringTable *table = vm->GetEcmaStringTable();
+    EcmaStringTable *table = thread->GetCurrentEcmaContext()->GetEcmaStringTable();
 
     uint8_t utf8Data[] = {0x68, 0x65, 0x6c, 0x6c, 0x6f}; // " hello "
     EcmaString *ecmaStrCreatePtr = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, sizeof(utf8Data), true);
@@ -94,7 +94,7 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_utf8Data)
 HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_utf16Data)
 {
     EcmaVM *vm = thread->GetEcmaVM();
-    EcmaStringTable *table = vm->GetEcmaStringTable();
+    EcmaStringTable *table = thread->GetCurrentEcmaContext()->GetEcmaStringTable();
 
     uint16_t utf16Data[] = {0x7F16, 0x7801, 0x89E3, 0x7801}; // “ 编码解码 ”
     EcmaString *ecmaStrCreatePtr =
@@ -117,7 +117,7 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_EcmaString)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
-    EcmaStringTable *table = vm->GetEcmaStringTable();
+    EcmaStringTable *table = thread->GetCurrentEcmaContext()->GetEcmaStringTable();
 
     JSHandle<EcmaString> ecmaStrCreateHandle = factory->NewFromASCII("hello world");
     EXPECT_TRUE(EcmaStringAccessor(ecmaStrCreateHandle).IsInternString());
@@ -136,7 +136,6 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_EcmaString)
  */
 HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_CheckStringTable)
 {
-    EcmaVM *vm = thread->GetEcmaVM();
-    EXPECT_TRUE(vm->GetEcmaStringTable()->CheckStringTableValidity());
+    EXPECT_TRUE(thread->GetCurrentEcmaContext()->GetEcmaStringTable()->CheckStringTableValidity());
 }
 }  // namespace panda::test

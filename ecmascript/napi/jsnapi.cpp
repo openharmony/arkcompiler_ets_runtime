@@ -39,6 +39,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/jobs/micro_job_queue.h"
@@ -677,7 +678,7 @@ Local<ObjectRef> JSNApi::GetGlobalObject(const EcmaVM *vm)
 void JSNApi::ExecutePendingJob(const EcmaVM *vm)
 {
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
-    EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
+    EcmaVM::ConstCast(vm)->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
 }
 
 uintptr_t JSNApi::GetHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
@@ -790,7 +791,8 @@ void HostPromiseRejectionTracker(const EcmaVM *vm,
                                  void* data)
 {
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
-    ecmascript::PromiseRejectCallback promiseRejectCallback = vm->GetPromiseRejectCallback();
+    ecmascript::PromiseRejectCallback promiseRejectCallback =
+        vm->GetJSThread()->GetCurrentEcmaContext()->GetPromiseRejectCallback();
     if (promiseRejectCallback != nullptr) {
         Local<JSValueRef> promiseVal = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>::Cast(promise));
         PromiseRejectInfo promiseRejectInfo(promiseVal, JSNApiHelper::ToLocal<JSValueRef>(reason),
@@ -801,9 +803,9 @@ void HostPromiseRejectionTracker(const EcmaVM *vm,
 
 void JSNApi::SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data)
 {
-    vm->SetHostPromiseRejectionTracker(HostPromiseRejectionTracker);
-    vm->SetPromiseRejectCallback(reinterpret_cast<ecmascript::PromiseRejectCallback>(cb));
-    vm->SetData(data);
+    vm->GetJSThread()->GetCurrentEcmaContext()->SetHostPromiseRejectionTracker(HostPromiseRejectionTracker);
+    vm->GetJSThread()->GetCurrentEcmaContext()->SetPromiseRejectCallback(reinterpret_cast<ecmascript::PromiseRejectCallback>(cb));
+    vm->GetJSThread()->GetCurrentEcmaContext()->SetData(data);
 }
 
 void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm, std::function<std::vector<uint8_t>(std::string dirPath)> cb)
@@ -821,7 +823,7 @@ void JSNApi::SetHostEnqueueJob(const EcmaVM *vm, Local<JSValueRef> cb)
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
     JSHandle<JSFunction> fun = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(cb));
     JSHandle<TaggedArray> array = vm->GetFactory()->EmptyArray();
-    JSHandle<MicroJobQueue> job = vm->GetMicroJobQueue();
+    JSHandle<MicroJobQueue> job = vm->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue();
     MicroJobQueue::EnqueueJob(vm->GetJSThread(), job, QueueType::QUEUE_PROMISE, fun, array);
 }
 
@@ -1625,7 +1627,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     JSHandle<JSTaggedValue> resultValue(thread, result);
 
     if (!isNapi) {
-        EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
+        vm->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
     }
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     vm->GetHeap()->ClearKeptObjects();
@@ -1829,7 +1831,7 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
     JSFunction::Call(info);
     RETURN_VALUE_IF_ABRUPT(thread, false);
 
-    EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
+    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
     vm->GetHeap()->ClearKeptObjects();
     return true;
@@ -1854,7 +1856,7 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, Local<JSValueRef> reason)
     JSFunction::Call(info);
     RETURN_VALUE_IF_ABRUPT(thread, false);
 
-    EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
+    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
     vm->GetHeap()->ClearKeptObjects();
     return true;

@@ -198,7 +198,7 @@ HWTEST_F_L0(BuiltinsFinalizationRegistryTest, Register2)
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     ASSERT_EQ(testValue, 1);
@@ -251,7 +251,7 @@ HWTEST_F_L0(BuiltinsFinalizationRegistryTest, Register3)
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     ASSERT_EQ(testValue, 2);
@@ -305,7 +305,7 @@ HWTEST_F_L0(BuiltinsFinalizationRegistryTest, Register4)
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     ASSERT_EQ(testValue, 2);
@@ -357,7 +357,7 @@ HWTEST_F_L0(BuiltinsFinalizationRegistryTest, Register5)
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     ASSERT_EQ(testValue, 2);
@@ -436,7 +436,7 @@ HWTEST_F_L0(BuiltinsFinalizationRegistryTest, Unregister2)
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     ASSERT_EQ(testValue, 0);

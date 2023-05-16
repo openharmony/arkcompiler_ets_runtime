@@ -39,7 +39,7 @@ CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
       outputAsm_(outputAsm),
       maxMethodsInModule_(maxMethodsInModule)
 {
-    vm_->GetTSManager()->SetCompilationDriver(this);
+    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetCompilationDriver(this);
 
     if (!optionSelectMethods.empty() && !optionSkipMethods.empty()) {
         LOG_COMPILER(FATAL) <<
@@ -57,7 +57,7 @@ CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
 
 CompilationDriver::~CompilationDriver()
 {
-    vm_->GetTSManager()->SetCompilationDriver(nullptr);
+    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetCompilationDriver(nullptr);
 }
 
 Module *CompilationDriver::GetModule()

@@ -44,7 +44,7 @@ void AOTInitialize(EcmaVM *vm)
     BytecodeStubCSigns::Initialize();
     CommonStubCSigns::Initialize();
     RuntimeStubCSigns::Initialize();
-    vm->GetTSManager()->Initialize();
+    vm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->Initialize();
 }
 
 JSPandaFile *CreateAndVerifyJSPandaFile(const JSRuntimeOptions &runtimeOptions, const std::string &fileName, EcmaVM *vm)
@@ -160,7 +160,7 @@ int Main(const int argc, const char **argv)
         bool isEnableLaterElimination = runtimeOptions.IsEnableLaterElimination();
         bool isEnableValueNumbering = runtimeOptions.IsEnableValueNumbering();
         bool isEnableOptInlining = runtimeOptions.IsEnableOptInlining();
-        bool isEnableTypeInfer = isEnableTypeLowering || vm->GetTSManager()->AssertTypes();
+        bool isEnableTypeInfer = isEnableTypeLowering || vm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AssertTypes();
         bool isEnableOptPGOType = runtimeOptions.IsEnableOptPGOType();
 
         PassOptions passOptions(isEnableTypeLowering, isEnableEarlyElimination, isEnableLaterElimination,

@@ -128,7 +128,7 @@ void FullGC::Sweep()
         }
     }
 
-    auto stringTable = heap_->GetEcmaVM()->GetEcmaStringTable();
+    auto stringTable = heap_->GetEcmaVM()->GetJSThread()->GetCurrentEcmaContext()->GetEcmaStringTable();
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(header);
         if (!HasEvacuated(objectRegion)) {

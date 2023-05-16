@@ -154,7 +154,7 @@ JSTaggedValue JSPromise::RejectPromise(JSThread *thread, const JSHandle<JSPromis
     promise->SetPromiseState(PromiseState::REJECTED);
     // 7. When a promise is rejected without any handlers, it is called with its operation argument set to "reject".
     if (!promise->GetPromiseIsHandled()) {
-        thread->GetEcmaVM()->PromiseRejectionTracker(promise, reason, PromiseRejectionEvent::REJECT);
+        thread->GetCurrentEcmaContext()->PromiseRejectionTracker(promise, reason, PromiseRejectionEvent::REJECT);
     }
     // 8. Return TriggerPromiseReactions(reactions, reason).
     return TriggerPromiseReactions(thread, reactions, reason);
@@ -165,7 +165,7 @@ JSTaggedValue JSPromise::TriggerPromiseReactions(JSThread *thread, const JSHandl
 {
     // 1. Repeat for each reaction in reactions, in original insertion order
     // a. Perform EnqueueJob("PromiseJobs", PromiseReactionJob, «reaction, argument»).
-    JSHandle<job::MicroJobQueue> job = thread->GetEcmaVM()->GetMicroJobQueue();
+    JSHandle<job::MicroJobQueue> job = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
     JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

@@ -150,7 +150,7 @@ JSTaggedValue BuiltinsArkTools::ExcutePendingJob(EcmaRuntimeCallInfo *info)
     JSThread *thread = info->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    thread->GetEcmaVM()->ExecutePromisePendingJob();
+    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
     return JSTaggedValue::True();
 }
 

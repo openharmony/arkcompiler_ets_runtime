@@ -21,7 +21,6 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_method_index.h"
 #include "ecmascript/ecma_context.h"
-#include "ecmascript/js_handle.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
@@ -76,7 +75,7 @@ class JSFunction;
 class Program;
 class TSManager;
 class AOTFileManager;
-class ModuleManager;
+// class ModuleManager;
 class CjsModule;
 class CjsExports;
 class CjsRequire;
@@ -86,7 +85,7 @@ class RequireManager;
 struct CJSInfo;
 class QuickFixManager;
 class ConstantPool;
-class OptCodeProfiler;
+// class OptCodeProfiler;
 class FunctionCallTimer;
 
 enum class IcuFormatterType {
@@ -96,12 +95,12 @@ enum class IcuFormatterType {
     NUMBER_FORMATTER,
     COLLATOR
 };
-using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
-                                             const JSHandle<JSPromise> promise,
-                                             const JSHandle<JSTaggedValue> reason,
-                                             PromiseRejectionEvent operation,
-                                             void* data);
-using PromiseRejectCallback = void (*)(void* info);
+// using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
+//                                              const JSHandle<JSPromise> promise,
+//                                              const JSHandle<JSTaggedValue> reason,
+//                                              PromiseRejectionEvent operation,
+//                                              void* data);
+// using PromiseRejectCallback = void (*)(void* info);
 
 using NativePtrGetter = void* (*)(void* info);
 
@@ -134,11 +133,6 @@ public:
     bool IsInitialized() const
     {
         return initialized_;
-    }
-
-    bool IsGlobalConstInitialized() const
-    {
-        return globalConstInitialized_;
     }
 
     ObjectFactory *GetFactory() const
@@ -175,25 +169,9 @@ public:
 
     JSHandle<GlobalEnv> GetGlobalEnv() const;
 
-    JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
-
-    bool ExecutePromisePendingJob();
-
     static EcmaVM *ConstCast(const EcmaVM *vm)
     {
         return const_cast<EcmaVM *>(vm);
-    }
-
-    RegExpParserCache *GetRegExpParserCache() const
-    {
-        ASSERT(regExpParserCache_ != nullptr);
-        return regExpParserCache_;
-    }
-
-    EcmaStringTable *GetEcmaStringTable() const
-    {
-        ASSERT(stringTable_ != nullptr);
-        return stringTable_;
     }
 
     void CheckThread() const
@@ -248,7 +226,6 @@ public:
     {
         return heap_;
     }
-
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER) const;
 
     void StartHeapTracking(HeapTracker *tracker);
@@ -274,15 +251,10 @@ public:
 
     ModuleManager *GetModuleManager() const
     {
-        return moduleManager_;
+        return thread_->GetCurrentEcmaContext()->GetModuleManager();
     }
 
-    TSManager *GetTSManager() const
-    {
-        return tsManager_;
-    }
-
-    AOTFileManager* PUBLIC_API GetAOTFileManager() const
+    AOTFileManager *GetAOTFileManager() const
     {
         return aotFileManager_;
     }
@@ -290,18 +262,6 @@ public:
     SnapshotEnv *GetSnapshotEnv() const
     {
         return snapshotEnv_;
-    }
-
-    void SetupRegExpResultCache();
-
-    JSHandle<JSTaggedValue> GetRegExpCache() const
-    {
-        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&regexpCache_));
-    }
-
-    void SetRegExpCache(JSTaggedValue newCache)
-    {
-        regexpCache_ = newCache;
     }
 
     tooling::JsDebuggerManager *GetJsDebuggerManager() const
@@ -312,21 +272,6 @@ public:
     void SetEnableForceGC(bool enable)
     {
         options_.SetEnableForceGC(enable);
-    }
-
-    void SetData(void* data)
-    {
-        data_ = data;
-    }
-
-    void SetPromiseRejectCallback(PromiseRejectCallback cb)
-    {
-        promiseRejectCallback_ = cb;
-    }
-
-    PromiseRejectCallback GetPromiseRejectCallback() const
-    {
-        return promiseRejectCallback_;
     }
 
     void SetNativePtrGetter(NativePtrGetter cb)
@@ -344,11 +289,6 @@ public:
         return nativePointerList_.size();
     }
 
-    void SetHostPromiseRejectionTracker(HostPromiseRejectionTracker cb)
-    {
-        hostPromiseRejectionTracker_ = cb;
-    }
-
     void SetAllowAtomicWait(bool wait)
     {
         AllowAtomicWait_ = wait;
@@ -362,14 +302,6 @@ public:
     WaiterListNode *GetWaiterListNode()
     {
         return &waiterListNode_;
-    }
-
-    void PromiseRejectionTracker(const JSHandle<JSPromise> &promise,
-                                 const JSHandle<JSTaggedValue> &reason, PromiseRejectionEvent operation)
-    {
-        if (hostPromiseRejectionTracker_ != nullptr) {
-            hostPromiseRejectionTracker_(this, promise, reason, operation, data_);
-        }
     }
 
     void SetResolveBufferCallback(ResolveBufferCallback cb)
@@ -571,10 +503,11 @@ public:
         }
     }
 
-    OptCodeProfiler *GetOptCodeProfiler() const
-    {
-        return optCodeProfiler_;
-    }
+    // OptCodeProfiler *GetOptCodeProfiler() const
+    // {
+    //     // return optCodeProfiler_;
+    //     return thread_->GetCurrentEcmaContext()->GetOptCodeProfiler();
+    // }
 
     void HandleUncaughtException(JSTaggedValue exception);
     void DumpCallTimeInfo();
@@ -586,18 +519,14 @@ public:
     }
 
 
+    void SetGlobalEnv(GlobalEnv *global);
+    void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
+                      const JSPandaFile *jsPandaFile);
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
 
 private:
-    void SetGlobalEnv(GlobalEnv *global);
-
-    void SetMicroJobQueue(job::MicroJobQueue *queue);
-
-    Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
-                                                       bool excuteFromJob = false);
-
     JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                           const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                           CJSInfo* cjsInfo = nullptr);
@@ -611,7 +540,6 @@ private:
 
     bool LoadAOTFiles(const std::string& aotFileName);
     void LoadStubFile();
-
     void CheckStartCpuProfiler();
 
     // For Internal Native MethodLiteral.
@@ -624,11 +552,8 @@ private:
     JSRuntimeOptions options_;
     bool icEnabled_ {true};
     bool initialized_ {false};
-    bool globalConstInitialized_ {false};
     GCStats *gcStats_ {nullptr};
-    bool isUncaughtExceptionRegistered_ {false};
     // VM memory management.
-    EcmaStringTable *stringTable_ {nullptr};
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     std::unique_ptr<HeapRegionAllocator> heapRegionAllocator_;
     Chunk chunk_;
@@ -637,17 +562,11 @@ private:
     CList<JSNativePointer *> nativePointerList_;
     // VM execution states.
     JSThread *thread_ {nullptr};
-    RegExpParserCache *regExpParserCache_ {nullptr};
-    JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
-    JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
-    JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
     EcmaRuntimeStat *runtimeStat_ {nullptr};
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
 
     // VM resources.
-    ModuleManager *moduleManager_ {nullptr};
-    TSManager *tsManager_ {nullptr};
     SnapshotEnv *snapshotEnv_ {nullptr};
     bool optionalLogEnabled_ {false};
     AOTFileManager *aotFileManager_ {nullptr};
@@ -663,12 +582,8 @@ private:
     CString bundleName_;
     CString moduleName_;
     // Registered Callbacks
-    PromiseRejectCallback promiseRejectCallback_ {nullptr};
-    HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
     NativePtrGetter nativePtrGetter_ {nullptr};
-    void* data_ {nullptr};
 
-    bool isProcessingPendingJob_ = false;
     // atomics
     bool AllowAtomicWait_ {true};
     WaiterListNode waiterListNode_;
@@ -699,7 +614,7 @@ private:
     PGOProfiler *pgoProfiler_ {nullptr};
 
     // opt code Profiler
-    OptCodeProfiler *optCodeProfiler_ {nullptr};
+    // OptCodeProfiler *optCodeProfiler_ {nullptr};
 
     // For icu objects cache
     struct IcuFormatter {

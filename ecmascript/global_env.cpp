@@ -37,7 +37,7 @@ void GlobalEnv::Init(JSThread *thread)
     SetRegisterSymbols(thread, SymbolTable::Create(thread));
     SetGlobalRecord(thread, GlobalDictionary::Create(thread));
     JSTaggedValue emptyStr = thread->GlobalConstants()->GetEmptyString();
-    EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
+    EcmaStringTable *stringTable = thread->GetCurrentEcmaContext()->GetEcmaStringTable();
     stringTable->InternEmptyString(EcmaString::Cast(emptyStr.GetTaggedObject()));
     SetTemplateMap(thread, TemplateMap::Create(thread));
     SetObjectLiteralHClassCache(thread, JSTaggedValue::Hole());

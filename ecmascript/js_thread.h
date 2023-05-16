@@ -25,7 +25,6 @@
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/dfx/vm_thread_control.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/mem/visitor.h"
@@ -33,6 +32,7 @@
 namespace panda::ecmascript {
 class EcmaHandleScope;
 class EcmaVM;
+class EcmaContext;
 class HeapRegionAllocator;
 class PropertiesCache;
 template<typename T>

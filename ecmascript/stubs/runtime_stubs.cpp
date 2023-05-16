@@ -1869,7 +1869,7 @@ DEF_RUNTIME_STUBS(ProfileOptimizedCode)
     RUNTIME_STUBS_HEADER(ProfileOptimizedCode);
     EcmaOpcode ecmaOpcode = static_cast<EcmaOpcode>(GetArg(argv, argc, 0).GetInt());
     OptCodeProfiler::Mode mode = static_cast<OptCodeProfiler::Mode>(GetArg(argv, argc, 1).GetInt());
-    OptCodeProfiler *profiler = thread->GetEcmaVM()->GetOptCodeProfiler();
+    OptCodeProfiler *profiler = thread->GetCurrentEcmaContext()->GetOptCodeProfiler();
     profiler->Update(ecmaOpcode, mode);
     return JSTaggedValue::Undefined().GetRawData();
 }

@@ -19,6 +19,7 @@
 #include "ecmascript/builtins/builtins_global.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/ecma_string_table.h"
+#include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants-inl.h"
@@ -29,7 +30,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
-
+#include "ecmascript/snapshot/mem/snapshot.h"
 namespace panda::ecmascript {
 EcmaContext::EcmaContext(JSThread *thread)
     : thread_(thread),
@@ -69,22 +70,42 @@ bool EcmaContext::Initialize()
     LOG_ECMA(INFO) << "EcmaContext::Initialize";
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaContext::Initialize");
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // JSHandle<JSHClass> hClassHandle = factory_->InitClassClass();
-    JSHClass *hClass = JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject());
-    JSHandle<JSHClass> globalEnvClass = factory_->NewEcmaHClass(hClass, GlobalEnv::SIZE, JSType::GLOBAL_ENV);
+    regExpParserCache_ = new RegExpParserCache();
+    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    if (!vm_->GetJSOptions().EnableSnapshotDeserialize()) {
+        LOG_ECMA(DEBUG) << "EcmaVM::Initialize run builtins";
+        JSHandle<JSHClass> hClassHandle = factory_->InitClassClass();
+        JSHandle<JSHClass> globalEnvClass = factory_->NewEcmaHClass(*hClassHandle,
+                                                                   GlobalEnv::SIZE,
+                                                                   JSType::GLOBAL_ENV);
+        globalConst->Init(thread_, *hClassHandle);
+        JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
+        globalEnv->Init(thread_);
+        globalEnv_ = globalEnv.GetTaggedValue();
+        thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(globalEnv.GetTaggedType()));
+        Builtins builtins;
+        builtins.Initialize(globalEnv, thread_);
+        if (!WIN_OR_MAC_OR_IOS_PLATFORM && vm_->GetJSOptions().EnableSnapshotSerialize()) {
+            const CString fileName = "builtins.snapshot";
+            Snapshot snapshot(vm_);
+            snapshot.SerializeBuiltins(fileName);
+        }
+    } else {
+        const CString fileName = "builtins.snapshot";
+        Snapshot snapshot(vm_);
+        if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
+            snapshot.Deserialize(SnapshotType::BUILTINS, fileName, true);
+        }
+        globalConst->InitSpecialForSnapshot();
+        Builtins builtins;
+        builtins.InitializeForSnapshot(thread_);
+    }
 
-    JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
-    globalEnv->Init(thread_);
-    vm_->SetGlobalEnv(*globalEnv);
-    globalEnv_ = globalEnv.GetTaggedValue();
-    thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(globalEnv.GetTaggedType()));
-
-    Builtins builtins;
-    builtins.Initialize(globalEnv, thread_);
-
+    SetupRegExpResultCache();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
-    // GenerateInternalNativeMethods();
-    thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
+    moduleManager_ = new ModuleManager(vm_);
+    tsManager_ = new TSManager(vm_);
+    optCodeProfiler_ = new OptCodeProfiler();
     return true;
 }
 
@@ -94,57 +115,80 @@ EcmaContext::~EcmaContext()
     ClearBufferData();
     // clear c_address: c++ pointer delete
     if (!vm_->IsBundlePack()) {
-        // const JSPandaFile *jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
-        // if (jsPandaFile != nullptr) {
-        //     const_cast<JSPandaFile *>(jsPandaFile)->DeleteParsedConstpoolVM(this);
-        // }
+        std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
+        if (jsPandaFile != nullptr) {
+            jsPandaFile->DeleteParsedConstpoolVM(vm_);
+        }
     }
-
+    if (optCodeProfiler_ != nullptr) {
+        delete optCodeProfiler_;
+        optCodeProfiler_ = nullptr;
+    }
     if (stringTable_ != nullptr) {
         delete stringTable_;
         stringTable_ = nullptr;
     }
+    if (moduleManager_ != nullptr) {
+        delete moduleManager_;
+        moduleManager_ = nullptr;
+    }
+    if (tsManager_ != nullptr) {
+        delete tsManager_;
+        tsManager_ = nullptr;
+    }
+    if (regExpParserCache_ != nullptr) {
+        delete regExpParserCache_;
+        regExpParserCache_ = nullptr;
+    }    
 }
 
 Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
                                                                 std::string_view entryPoint, bool excuteFromJob)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    // JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(this, jsPandaFile, entryPoint);
     JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
     if (program.IsEmpty()) {
         LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";
         return Unexpected(false);
     }
     // for debugger
-    // debuggerManager_->GetNotificationManager()->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc(), entryPoint);
+    debuggerManager_->GetNotificationManager()->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc(), entryPoint);
 
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
-    // if (jsPandaFile->IsModule(thread_, entryPoint.data())) {
-    //     global = undefined;
-    //     CString moduleName = jsPandaFile->GetJSPandaFileDesc();
-    //     if (!jsPandaFile->IsBundlePack()) {
-    //         moduleName = entryPoint.data();
-    //     }
-        // JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
-        // func->SetModule(thread_, module);
-    // } else {
+    if (jsPandaFile->IsModule(thread_, entryPoint.data())) {
+        global = undefined;
+        CString moduleName = jsPandaFile->GetJSPandaFileDesc();
+        if (!jsPandaFile->IsBundlePack()) {
+            moduleName = entryPoint.data();
+        }
+        JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
+        func->SetModule(thread_, module);
+    } else {
         // if it is Cjs at present, the module slot of the function is not used. We borrow it to store the recordName,
         // which can avoid the problem of larger memory caused by the new slot
         JSHandle<EcmaString> recordName = factory_->NewFromUtf8(entryPoint.data());
         func->SetModule(thread_, recordName);
-    // }
-    // CheckStartCpuProfiler();
+    }
+    vm_->CheckStartCpuProfiler();
 
-    EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
-    // EcmaRuntimeStatScope runtimeStatScope(this);
-    EcmaRuntimeStatScope runtimeStatScope(vm_);
-    EcmaInterpreter::Execute(info);
-        // }
-    // }
+    JSTaggedValue result;
+    if (jsPandaFile->IsCjs(thread_, entryPoint.data())) {
+            if (!thread_->HasPendingException()) {
+                vm_->CJSExecution(func, global, jsPandaFile, entryPoint);
+            }
+    } else {
+        if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
+            EcmaRuntimeStatScope runtimeStatScope(this);
+            result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
+        } else {
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
+            EcmaRuntimeStatScope runtimeStatScope(this);
+            EcmaInterpreter::Execute(info);
+        }
+    }
     if (!thread_->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
     }
@@ -153,8 +197,7 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     if (!excuteFromJob && thread_->HasPendingException()) {
         HandleUncaughtException(thread_->GetException());
     }
-    // return result;
-    return JSTaggedValue::Undefined();
+    return result;
 }
 
 bool EcmaContext::HasCachedConstpool(const JSPandaFile *jsPandaFile) const
@@ -229,7 +272,6 @@ void EcmaContext::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue con
     }
     auto &constpoolMap = cachedConstpools_[jsPandaFile];
     ASSERT(constpoolMap.find(index) == constpoolMap.end());
-
     constpoolMap.insert({index, constpool});
 }
 
@@ -345,10 +387,17 @@ void EcmaContext::UnmountContext(JSThread *thread)
 
 void EcmaContext::Iterate(const RootVisitor &v, [[maybe_unused]] const RootRangeVisitor &rv)
 {
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
+    moduleManager_->Iterate(v);
+    tsManager_->Iterate(v);
 }
 
+void EcmaContext::SetupRegExpResultCache()
+{
+    regexpCache_ = builtins::RegExpExecResultCache::CreateCacheTable(thread_);
+}
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 // void *EcmaContext::InternalMethodTable[] = {
 //     reinterpret_cast<void *>(builtins::BuiltinsGlobal::CallJsBoundFunction),

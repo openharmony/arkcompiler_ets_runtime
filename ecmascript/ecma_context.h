@@ -19,14 +19,17 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
+#include "ecmascript/frames.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_handle.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/visitor.h"
-
+#include "ecmascript/regexp/regexp_parser_cache.h"
 #include "libpandafile/file.h"
-// #include "ecmascript/js_thread.h"
 
 namespace panda {
+class JSNApi;
 namespace panda_file {
 class File;
 }  // namespace panda_file
@@ -34,13 +37,25 @@ class File;
 namespace ecmascript {
 class GlobalEnv;
 class ObjectFactory;
+class RegExpParserCache;
+class JSPandaFileManager;
 class JSPandaFile;
 class EcmaStringTable;
 class ConstantPool;
+class JSPromise;
+class RegExpExecResultCache;
+enum class PromiseRejectionEvent : uint8_t;
+
 template<typename T>
 class JSHandle;
 class JSThread;
+class JSFunction;
 class EcmaVM;
+class ModuleManager;
+class TSManager;
+class AOTFileManager;
+class QuickFixManager;
+class OptCodeProfiler;
 
 namespace job {
 class MicroJobQueue;
@@ -49,6 +64,12 @@ namespace tooling {
 class JsDebuggerManager;
 }  // namespace tooling
 
+using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
+                                             const JSHandle<JSPromise> promise,
+                                             const JSHandle<JSTaggedValue> reason,
+                                             PromiseRejectionEvent operation,
+                                             void* data);
+using PromiseRejectCallback = void (*)(void* info);
 class EcmaContext {
 public:
     static EcmaContext *Create(JSThread *thread);
@@ -78,11 +99,63 @@ public:
         return stringTable_;
     }
 
+    ModuleManager *GetModuleManager() const
+    {
+        return moduleManager_;
+    }
+
+    TSManager *GetTSManager() const
+    {
+        return tsManager_;
+    }
+
     ARK_INLINE JSThread *GetJSThread() const
     {
         return thread_;
     }
+    PromiseRejectCallback GetPromiseRejectCallback() const
+    {
+        return promiseRejectCallback_;
+    }
 
+    void SetPromiseRejectCallback(PromiseRejectCallback cb)
+    {
+        promiseRejectCallback_ = cb;
+    }
+
+    void SetData(void* data)
+    {
+        data_ = data;
+    }
+
+    void PromiseRejectionTracker(const JSHandle<JSPromise> &promise,
+                                 const JSHandle<JSTaggedValue> &reason, PromiseRejectionEvent operation)
+    {
+        if (hostPromiseRejectionTracker_ != nullptr) {
+            hostPromiseRejectionTracker_(vm_, promise, reason, operation, data_);
+        }
+    }
+
+    void SetHostPromiseRejectionTracker(HostPromiseRejectionTracker cb)
+    {
+        hostPromiseRejectionTracker_ = cb;
+    }
+    void SetupRegExpResultCache();
+    JSHandle<JSTaggedValue> GetRegExpCache() const
+    {
+        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&regexpCache_));
+    }
+
+    RegExpParserCache *GetRegExpParserCache() const
+    {
+        ASSERT(regExpParserCache_ != nullptr);
+        return regExpParserCache_;
+    }
+
+    void SetRegExpCache(JSTaggedValue newCache)
+    {
+        regexpCache_ = newCache;
+    }
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
     void EnableUserUncaughtErrorHandler();
@@ -110,10 +183,14 @@ public:
     void Iterate(const RootVisitor &v, const RootRangeVisitor &rv);
     static void MountContext(JSThread *thread);
     static void UnmountContext(JSThread *thread);
-
-private:
-    void SetGlobalEnv(GlobalEnv *global);
     void SetMicroJobQueue(job::MicroJobQueue *queue);
+    void SetGlobalEnv(GlobalEnv *global);
+
+    OptCodeProfiler *GetOptCodeProfiler() const
+    {
+        return optCodeProfiler_;
+    }    
+private:
     void ClearBufferData();
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                                        bool excuteFromJob = false);
@@ -124,6 +201,7 @@ private:
     JSThread *thread_ {nullptr};
     EcmaVM *vm_ {nullptr};
     ObjectFactory *factory_ {nullptr};
+    ModuleManager *moduleManager_ {nullptr};
 
     bool isUncaughtExceptionRegistered_ {false};
     bool isProcessingPendingJob_ {false};
@@ -132,10 +210,27 @@ private:
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
 
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
+
+    // VM execution states.
+    RegExpParserCache *regExpParserCache_ {nullptr};
+    JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
     CString assetPath_;
 
+    // VM resources.
+    TSManager *tsManager_ {nullptr};
+
+    // Registered Callbacks
+    PromiseRejectCallback promiseRejectCallback_ {nullptr};
+    HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
+    void* data_ {nullptr};
+
+    // opt code Profiler
+    OptCodeProfiler *optCodeProfiler_ {nullptr};
+
     friend class JSPandaFileExecutor;
+    friend class ObjectFactory;
+    friend class panda::JSNApi;
 };
 }  // namespace ecmascript
 }  // namespace panda

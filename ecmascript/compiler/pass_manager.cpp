@@ -26,7 +26,8 @@ namespace panda::ecmascript::kungfu {
 bool PassManager::ShouldCollect() const
 {
     return passOptions_->EnableTypeInfer() &&
-        (profilerDecoder_.IsLoaded() || vm_->GetTSManager()->AssertTypes() || log_->OutputType());
+        (profilerDecoder_.IsLoaded() || vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AssertTypes() ||
+            log_->OutputType());
 }
 
 bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &gen)
@@ -165,7 +166,7 @@ void PassManager::ProcessConstantPool(BytecodeInfoCollector *collector)
 {
     LOG_COMPILER(INFO) << collector->GetBytecodeInfo().GetSkippedMethodSize()
                        << " methods have been skipped";
-    vm_->GetTSManager()->ProcessSnapshotConstantPool(collector);
+    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->ProcessSnapshotConstantPool(collector);
 }
 
 bool PassManager::IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const
