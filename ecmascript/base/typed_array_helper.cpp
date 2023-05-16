@@ -96,12 +96,10 @@ JSTaggedValue TypedArrayHelper::FastCopyElementFromArray(EcmaRuntimeCallInfo *ar
 
     uint32_t len = JSHandle<JSArray>::Cast(argArray)->GetArrayLength();
     JSHandle<TaggedArray> elements(thread, JSHandle<JSArray>::Cast(argArray)->GetElements());
-    uint32_t elemLen = elements->GetLength();
     TypedArrayHelper::AllocateTypedArrayBuffer(thread, ecmaVm, obj, len, arrayType);
     JSHandle<JSTypedArray> targetObj = JSHandle<JSTypedArray>::Cast(obj);
-    if (elemLen >= len) {
-        JSStableArray::FastCopyFromArrayToTypedArray(thread, targetObj, arrayType, 0, len, elements);
-    }
+    
+    JSStableArray::FastCopyFromArrayToTypedArray(thread, targetObj, arrayType, 0, len, elements);
     return JSHandle<JSObject>::Cast(targetObj).GetTaggedValue();
 }
 
