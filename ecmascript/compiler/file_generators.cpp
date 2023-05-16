@@ -103,6 +103,7 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
     auto engine = assembler_->GetEngine();
     std::vector<std::tuple<uint64_t, size_t, int>> funcInfo; // entry idx delta
     std::vector<kungfu::CalleeRegAndOffsetVec> calleeSaveRegisters; // entry idx delta
+    // 1.Compile all functions and collect function infos
     llvmModule_->IteratefuncIndexMap([&](size_t idx, LLVMValueRef func) {
         uint64_t funcEntry = reinterpret_cast<uintptr_t>(LLVMGetPointerToGlobal(engine, func));
         uint64_t length = 0;
@@ -115,6 +116,7 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
         kungfu::CalleeRegAndOffsetVec info = assembler_->GetCalleeReg2Offset(func, log);
         calleeSaveRegisters.emplace_back(info);
     });
+    // 2.After all functions compiled, the module sections would be fixed
     uintptr_t textAddr = GetTextAddr();
     uint32_t textSize = GetTextSize();
     uint32_t rodataSize = GetRODataSize();
@@ -124,6 +126,7 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
     const size_t funcCount = funcInfo.size();
     funcCount_ = funcCount;
     startIndex_ = aotInfo.GetEntrySize();
+    // 3.Add function entries based on the module sections
     for (size_t i = 0; i < funcInfo.size(); i++) {
         uint64_t funcEntry;
         size_t idx;
@@ -193,9 +196,9 @@ void Module::RunAssembler(const CompilerLog &log)
 }
 
 void Module::DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
-                              const CompilerLog &log, const MethodLogList &logList)
+                              const CompilerLog &log, const MethodLogList &logList, std::ostringstream &codeStream)
 {
-    assembler_->Disassemble(addr2name, textOffset, log, logList);
+    assembler_->Disassemble(addr2name, textOffset, log, logList, codeStream);
 }
 
 void Module::DestroyModule()
@@ -254,16 +257,21 @@ void StubFileGenerator::DisassembleAsmStubs(std::map<uintptr_t, std::string> &ad
     LLVMAssembler::Disassemble(&addr2name, tri, buf, size);
 }
 
+uint64_t AOTFileGenerator::RollbackTextSize(Module *module)
+{
+    return aotInfo_.GetCurTextSecOffset() - module->GetSectionSize(ElfSecName::TEXT);
+}
+
 void AOTFileGenerator::CollectCodeInfo(Module *module, uint32_t moduleIdx)
 {
     std::map<uintptr_t, std::string> addr2name;
     module->CollectFuncEntryInfo(addr2name, aotInfo_, moduleIdx, GetLog());
     ModuleSectionDes des;
-    uint64_t textOffset = aotInfo_.GetCurTextSecOffset() - module->GetSectionSize(ElfSecName::TEXT);
+    uint64_t textOffset = RollbackTextSize(module);
     module->CollectAnModuleSectionDes(des, textOffset, pc2CallSiteInfoVec_, pc2DeoptVec_);
     aotInfo_.AddModuleDes(des);
     if (log_->OutputASM()) {
-        module->DisassemblerFunc(addr2name, textOffset, *(log_), *(logList_));
+        module->DisassemblerFunc(addr2name, textOffset, *(log_), *(logList_), codeStream_);
     }
 }
 
@@ -363,6 +371,7 @@ void AOTFileGenerator::GenerateMergedStackmapSection()
 
 void AOTFileGenerator::SaveAOTFile(const std::string &filename)
 {
+    PrintMergedCodeComment();
     GenerateMergedStackmapSection();
     GenerateMethodToEntryIndexMap();
     aotInfo_.Save(filename, cfg_.GetTriple());

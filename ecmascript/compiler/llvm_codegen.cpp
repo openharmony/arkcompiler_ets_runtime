@@ -446,7 +446,8 @@ static uint32_t GetInstrValue(size_t instrSize, uint8_t *instrAddr)
 }
 
 void LLVMAssembler::PrintInstAndStep(uint64_t &instrOffset, uint8_t **instrAddr, uintptr_t &numBytes,
-                                     size_t instSize, uint64_t textOffset, char *outString, bool logFlag)
+                                     size_t instSize, uint64_t textOffset, char *outString,
+                                     std::ostringstream &codeStream, bool logFlag)
 {
     if (instSize == 0) {
         instSize = 4; // 4: default instruction step size while instruction can't be resolved or be constant
@@ -454,8 +455,8 @@ void LLVMAssembler::PrintInstAndStep(uint64_t &instrOffset, uint8_t **instrAddr,
     if (logFlag) {
         uint64_t unitedInstOffset = instrOffset + textOffset;
         // 8: length of output content
-        LOG_COMPILER(INFO) << std::setw(8) << std::setfill('0') << std::hex << unitedInstOffset << ":" << std::setw(8)
-                           << GetInstrValue(instSize, *instrAddr) << " " << outString;
+        codeStream << std::setw(8) << std::setfill('0') << std::hex << unitedInstOffset << ":" << std::setw(8)
+                           << GetInstrValue(instSize, *instrAddr) << " " << outString << std::endl;
     }
     instrOffset += instSize;
     *instrAddr += instSize;
@@ -478,15 +479,18 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> *addr2nam
     uint64_t instrOffset = 0;
     const size_t outStringSize = 256;
     char outString[outStringSize];
+    std::ostringstream codeStream;
     while (numBytes > 0) {
         uint64_t addr = reinterpret_cast<uint64_t>(instrAddr) - bufAddr;
         if (addr2name != nullptr && addr2name->find(addr) != addr2name->end()) {
             std::string methodName = addr2name->at(addr);
-            LOG_COMPILER(INFO) << "------------------- asm code [" << methodName << "] -------------------";
+            codeStream << "------------------- asm code [" << methodName << "] -------------------"
+                       << std::endl;
         }
         size_t instSize = LLVMDisasmInstruction(ctx, instrAddr, numBytes, instrOffset, outString, outStringSize);
-        PrintInstAndStep(instrOffset, &instrAddr, numBytes, instSize, 0, outString);
+        PrintInstAndStep(instrOffset, &instrAddr, numBytes, instSize, 0, outString, codeStream);
     }
+    LOG_ECMA(INFO) << "\n" << codeStream.str();
     LLVMDisasmDispose(ctx);
 }
 
@@ -529,7 +533,8 @@ uint64_t LLVMAssembler::GetTextSectionIndex() const
 }
 
 void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
-                                const CompilerLog &log, const MethodLogList &logList) const
+                                const CompilerLog &log, const MethodLogList &logList,
+                                std::ostringstream &codeStream) const
 {
     const uint64_t textSecIndex = GetTextSectionIndex();
     LLVMDisasmContextRef disCtx = LLVMCreateDisasm(LLVMGetTarget(module_), nullptr, 0, nullptr, SymbolLookupCallback);
@@ -556,14 +561,15 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2nam
                     logFlag = false;
                 }
                 if (logFlag) {
-                    LOG_COMPILER(INFO) << "------------------- asm code [" << methodName << "] -------------------";
+                    codeStream << "------------------- asm code [" << methodName << "] -------------------"
+                               << std::endl;
                 }
             }
 
             size_t instSize = LLVMDisasmInstruction(disCtx, instrAddr, numBytes, instrOffset, outString, outStringSize);
             DecodeDebugInfo(instrOffset, textSecIndex, outString, outStringSize,
                             dwarfCtx.get(), llvmModule_, methodName);
-            PrintInstAndStep(instrOffset, &instrAddr, numBytes, instSize, textOffset, outString, logFlag);
+            PrintInstAndStep(instrOffset, &instrAddr, numBytes, instSize, textOffset, outString, codeStream, logFlag);
         }
     }
     LLVMDisasmDispose(disCtx);
