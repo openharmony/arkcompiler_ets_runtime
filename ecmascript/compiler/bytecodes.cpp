@@ -183,6 +183,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
             flags |= BytecodeFlags::READ_ACC;
             [[fallthrough]];
         case EcmaOpcode::RETURNUNDEFINED:
+            flags |= BytecodeFlags::NO_SIDE_EFFECTS;
             kind = BytecodeKind::RETURN_BC;
             break;
         case EcmaOpcode::SUSPENDGENERATOR_V8:
