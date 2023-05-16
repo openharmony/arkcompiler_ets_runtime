@@ -510,6 +510,11 @@ bool JSSerializer::WriteJSFunction(const JSHandle<JSTaggedValue> &value)
         return false;
     }
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(value);
+    // check concurrent function
+    if (func->GetFunctionKind() != ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
+        LOG_ECMA(ERROR) << "only support serialize concurrent function";
+        return false;
+    }
     JSHandle<JSTaggedValue> method(thread_, func->GetMethod());
     if (!SerializeJSTaggedValue(method)) {
         bufferSize_ = oldSize;

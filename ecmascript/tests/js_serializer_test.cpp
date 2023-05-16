@@ -747,13 +747,13 @@ public:
         Destroy();
     }
 
-    void FunctionTest(std::pair<uint8_t *, size_t> data)
+    void ConcurrentFunctionTest(std::pair<uint8_t *, size_t> data)
     {
         Init();
         JSDeserializer deserializer(thread, data.first, data.second);
         JSHandle<JSTaggedValue> res = deserializer.Deserialize();
-        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize JSFunction fail";
-        EXPECT_TRUE(res->IsJSFunction()) << "[NotJSFunction] Deserialize JSFunction fail";
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ConcurrentFunction fail";
+        EXPECT_TRUE(res->IsJSFunction()) << "[NotJSFunction] Deserialize ConcurrentFunction fail";
         Destroy();
     }
 
@@ -813,14 +813,14 @@ public:
         Destroy();
     }
 
-    void ObjectWithFunctionTest(std::pair<uint8_t *, size_t> data)
+    void ObjectWithConcurrentFunctionTest(std::pair<uint8_t *, size_t> data)
     {
         Init();
         ObjectFactory *factory = ecmaVm->GetFactory();
         JSDeserializer deserializer(thread, data.first, data.second);
         JSHandle<JSTaggedValue> res = deserializer.Deserialize();
-        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ObjectWithFunction fail";
-        EXPECT_TRUE(res->IsObject()) << "[NotObjectWithFunction] Deserialize ObjectWithFunction fail";
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ObjectWithConcurrentFunction fail";
+        EXPECT_TRUE(res->IsObject()) << "[NotObjectWithConcurrentFunction] Deserialize ObjectWithConcurrentFunction fail";
 
         JSHandle<JSTaggedValue> key1(factory->NewFromASCII("2"));
         OperationResult result1 = JSObject::GetProperty(thread, res, key1);
@@ -1741,19 +1741,21 @@ HWTEST_F_L0(JSSerializerTest, SerializeMethod2)
     delete serializer;
 };
 
-HWTEST_F_L0(JSSerializerTest, SerializeFunction)
+// support concurrent function
+HWTEST_F_L0(JSSerializerTest, SerializeConcurrentFunction)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> jsFunction = factory->NewJSFunction(env, nullptr, FunctionKind::CONCURRENT_FUNCTION);
-    EXPECT_TRUE(jsFunction->IsJSFunction());
+    JSHandle<JSFunction> concurrentFunction = factory->NewJSFunction(env, nullptr, FunctionKind::CONCURRENT_FUNCTION);
+    EXPECT_TRUE(concurrentFunction->IsJSFunction());
+    EXPECT_TRUE(concurrentFunction->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION);
 
     JSSerializer *serializer = new JSSerializer(thread);
-    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(jsFunction));
+    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(concurrentFunction));
     EXPECT_TRUE(success);
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
-    std::thread t1(&JSDeserializerTest::FunctionTest, jsDeserializerTest, data);
+    std::thread t1(&JSDeserializerTest::ConcurrentFunctionTest, jsDeserializerTest, data);
     t1.join();
     delete serializer;
 };
@@ -1815,15 +1817,16 @@ HWTEST_F_L0(JSSerializerTest, SerializeBigInt)
     delete serializer;
 }
 
-// not support function
-HWTEST_F_L0(JSSerializerTest, SerializeObjectWithFunction)
+HWTEST_F_L0(JSSerializerTest, SerializeObjectWithConcurrentFunction)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSFunction> function1 = factory->NewJSFunction(env, nullptr, FunctionKind::CONCURRENT_FUNCTION);
-    EXPECT_TRUE(function1->IsJSFunction());
-    JSHandle<JSFunction> function2 = factory->NewJSFunction(env, nullptr, FunctionKind::CONCURRENT_FUNCTION);
-    EXPECT_TRUE(function2->IsJSFunction());
+    JSHandle<JSFunction> concurrentFunction1 = factory->NewJSFunction(env, nullptr, FunctionKind::CONCURRENT_FUNCTION);
+    EXPECT_TRUE(concurrentFunction1->IsJSFunction());
+    EXPECT_TRUE(concurrentFunction1->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION);
+    JSHandle<JSFunction> concurrentFunction2 = factory->NewJSFunction(env, nullptr, FunctionKind::CONCURRENT_FUNCTION);
+    EXPECT_TRUE(concurrentFunction2->IsJSFunction());
+    EXPECT_TRUE(concurrentFunction2->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION);
     JSHandle<JSTaggedValue> key1(factory->NewFromASCII("1"));
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("2"));
     JSHandle<JSTaggedValue> key3(factory->NewFromASCII("abc"));
@@ -1834,9 +1837,9 @@ HWTEST_F_L0(JSSerializerTest, SerializeObjectWithFunction)
     JSHandle<JSTaggedValue> value3(factory->NewFromASCII("value"));
     JSHandle<JSObject> obj = factory->NewEmptyJSObject();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key1, value1);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key2, JSHandle<JSTaggedValue>(function1));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key2, JSHandle<JSTaggedValue>(concurrentFunction1));
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key3, value2);
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key4, JSHandle<JSTaggedValue>(function2));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key4, JSHandle<JSTaggedValue>(concurrentFunction2));
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), key5, value3);
 
     JSSerializer *serializer = new JSSerializer(thread);
@@ -1844,10 +1847,27 @@ HWTEST_F_L0(JSSerializerTest, SerializeObjectWithFunction)
     EXPECT_TRUE(success);
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
-    std::thread t1(&JSDeserializerTest::ObjectWithFunctionTest, jsDeserializerTest, data);
+    std::thread t1(&JSDeserializerTest::ObjectWithConcurrentFunctionTest, jsDeserializerTest, data);
     t1.join();
     delete serializer;
 };
+
+// not support function
+HWTEST_F_L0(JSSerializerTest, SerializeFunction)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> function = env->GetFunctionFunction();
+    EXPECT_TRUE(function->IsJSFunction());
+
+    JSSerializer *serializer = new JSSerializer(thread);
+    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>(function));
+    EXPECT_FALSE(success);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializer deserializer(thread, data.first, data.second);
+    JSHandle<JSTaggedValue> ret = deserializer.Deserialize();
+    EXPECT_TRUE(ret.IsEmpty());
+    delete serializer;
+}
 
 // not support symbol
 HWTEST_F_L0(JSSerializerTest, SerializeSymbolWithProperty)
