@@ -80,12 +80,13 @@ public:
     using IsInlinedPropsField = PropertyMetaDataField::NextFlag;                         // 5
     using RepresentationField = IsInlinedPropsField::NextField<Representation, 3>;      // 3: 3 bits, 6-8
     using OffsetField = RepresentationField::NextField<uint32_t, OFFSET_BITFIELD_NUM>;  // 18
-    using TrackTypeField = OffsetField::NextField<TrackType, 3>;  // 3: 3 bits
+    using TrackTypeField = OffsetField::NextField<TrackType, 2>;  // 2: 2 bits
 
-    static constexpr uint32_t NORMAL_ATTR_BITS = 21;
+    static constexpr uint32_t NORMAL_ATTR_BITS = 20;
     using NormalAttrField = BitField<int, 0, NORMAL_ATTR_BITS>;
-    using SortedIndexField = TrackTypeField::NextField<uint32_t, OFFSET_BITFIELD_NUM>;  // 31
-    using IsConstPropsField = SortedIndexField::NextFlag;                            // 32
+    using SortedIndexField = TrackTypeField::NextField<uint32_t, OFFSET_BITFIELD_NUM>;  // 30
+    using IsConstPropsField = SortedIndexField::NextFlag;                            // 31
+    using IsNotHoleField = IsConstPropsField::NextFlag;                              // 32
     // dictionary mode, include global
     using PropertyBoxTypeField = PropertyMetaDataField::NextField<PropertyBoxType, 2>;              // 2: 2 bits, 5-6
     using DictionaryOrderField = PropertyBoxTypeField::NextField<uint32_t, DICTIONARY_ORDER_NUM>;  // 26
@@ -262,6 +263,16 @@ public:
     inline bool IsConstProps() const
     {
         return IsConstPropsField::Get(value_);
+    }
+
+    inline void SetIsNotHole(bool flag)
+    {
+        IsNotHoleField::Set<uint32_t>(flag, &value_);
+    }
+
+    inline bool IsNotHole() const
+    {
+        return IsNotHoleField::Get(value_);
     }
 
     inline void SetRepresentation(Representation representation)

@@ -3156,10 +3156,6 @@ void TSObjectType::Dump(std::ostream &os) const
     } else {
         DumpArrayClass(TaggedArray::Cast(GetIndexSigns().GetTaggedObject()), os);
     }
-    os << "\n";
-
-    os << "  - HClass: ";
-    GetHClass().Dump(os);
 }
 
 void TSClassType::Dump(std::ostream &os) const
@@ -5256,7 +5252,7 @@ void ClassInfoExtractor::DumpForSnapshot(std::vector<std::pair<CString, JSTagged
 void TSObjectType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     vec.emplace_back("ObjLayoutInfo", GetObjLayoutInfo());
-    vec.emplace_back("HClass", GetHClass());
+    vec.emplace_back("IndexSigns", GetIndexSigns());
 }
 
 void TSClassType::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const

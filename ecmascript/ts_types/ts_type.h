@@ -21,11 +21,6 @@
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 
 namespace panda::ecmascript {
-enum class TSObjectTypeKind: uint8_t {
-    INSTANCE = 0,
-    PROTOTYPE,
-};
-
 #define ACCESSORS_ATTACHED_TYPEREF(name, offset, endOffset)               \
     ACCESSORS_PRIMITIVE_FIELD(name##RawData, uint32_t, offset, endOffset) \
     inline void Set##name(GlobalTSTypeRef type)                           \
@@ -56,7 +51,6 @@ public:
 
     static constexpr size_t PROPERTIES_OFFSET = TSType::SIZE;
 
-    static JSHClass *GetOrCreateHClass(JSThread *thread, JSHandle<TSObjectType> objectType, TSObjectTypeKind kind);
 
     static void UpdateHClassFromPGO(JSThread *thread, JSHClass *hclass, const PGOSampleLayoutDesc &desc);
 
@@ -67,16 +61,10 @@ public:
                                             const uint32_t typeId);
 
     ACCESSORS(ObjLayoutInfo, PROPERTIES_OFFSET, INDEX_SIGNS_OFFSET);
-    ACCESSORS(IndexSigns, INDEX_SIGNS_OFFSET, HCLASS_OFFSET);
-    ACCESSORS(HClass, HCLASS_OFFSET, SIZE);
+    ACCESSORS(IndexSigns, INDEX_SIGNS_OFFSET, SIZE);
 
     DECL_VISIT_OBJECT(PROPERTIES_OFFSET, SIZE)
     DECL_DUMP()
-
-private:
-    JSHClass *CreateHClassByProps(JSThread *thread, JSHandle<TSObjLayoutInfo> propType) const;
-
-    JSHClass *CreatePrototypeHClassByProps(JSThread *thread, JSHandle<TSObjLayoutInfo> propType) const;
 };
 
 class TSClassType : public TSType {

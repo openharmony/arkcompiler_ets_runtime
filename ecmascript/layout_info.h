@@ -53,6 +53,7 @@ public:
     uint32_t GetSortedIndex(int index) const;
     void SetSortedIndex(const JSThread *thread, int index, int sortedIndex);
     void AddKey(const JSThread *thread, int index, const JSTaggedValue &key, const PropertyAttributes &attr);
+    void SetIsNotHole(const JSThread *thread, int index);
 
     inline uint32_t GetLength() const
     {

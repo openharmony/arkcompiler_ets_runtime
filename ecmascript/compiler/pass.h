@@ -30,6 +30,7 @@
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/compiler/state_split_linearizer.h"
+#include "ecmascript/compiler/ts_class_analysis.h"
 #include "ecmascript/compiler/ts_inline_lowering.h"
 #include "ecmascript/compiler/ts_hcr_lowering.h"
 #include "ecmascript/compiler/ntype_mcr_lowering.h"
@@ -219,6 +220,17 @@ public:
                                             data->GetPGOProfilerDecoder(), enableLog);
             globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
         }
+        return true;
+    }
+};
+
+class TSClassAnalysisPass {
+public:
+    bool Run(PassData *data)
+    {
+        TimeScope timescope("TSClassAnalysisPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TSClassAnalysis analyzer(data->GetPassContext()->GetTSManager());
+        analyzer.Run();
         return true;
     }
 };

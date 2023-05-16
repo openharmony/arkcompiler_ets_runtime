@@ -3212,7 +3212,6 @@ JSHandle<TSObjectType> ObjectFactory::NewTSObjectType(uint32_t numOfKeys)
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetTSObjectTypeClass().GetTaggedObject()));
     JSHandle<TSObjectType> objectType(thread_, header);
-    objectType->SetHClass(thread_, JSTaggedValue::Undefined());
     objectType->SetObjLayoutInfo(thread_, JSTaggedValue::Undefined());
     objectType->SetIndexSigns(thread_, JSTaggedValue::Undefined());
     objectType->SetGT(GlobalTSTypeRef::Default());

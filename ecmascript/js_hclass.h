@@ -1664,7 +1664,8 @@ class PropertyLookupResult {
 public:
     using IsFoundBit = BitField<bool, 0, 1>;
     using IsLocalBit = IsFoundBit::NextFlag;
-    using IsAccessorBit = IsLocalBit::NextFlag;
+    using IsNotHoleBit = IsLocalBit::NextFlag;
+    using IsAccessorBit = IsNotHoleBit::NextFlag;
     using OffsetBits = IsAccessorBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
 
     explicit PropertyLookupResult(uint32_t data = 0) : data_(data) {}
@@ -1690,6 +1691,16 @@ public:
     inline void SetIsLocal(bool flag)
     {
         IsLocalBit::Set(flag, &data_);
+    }
+
+    inline bool IsNotHole() const
+    {
+        return IsNotHoleBit::Get(data_);
+    }
+
+    inline void SetIsNotHole(bool flag)
+    {
+        IsNotHoleBit::Set(flag, &data_);
     }
 
     inline bool IsVtable() const

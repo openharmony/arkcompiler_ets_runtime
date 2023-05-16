@@ -641,6 +641,10 @@ PropertyLookupResult JSHClass::LookupProperty(const JSThread *thread, JSHClass *
         result.SetIsLocal(true);
         uint32_t offset = hclass->GetInlinedPropertiesOffset(entry);
         result.SetOffset(offset);
+        PropertyAttributes attr = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject())->GetAttr(entry);
+        if (attr.IsNotHole()) {
+            result.SetIsNotHole(true);
+        }
         return result;
     }
 

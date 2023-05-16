@@ -20,7 +20,6 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jspandafile/type_literal_extractor.h"
-#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/ts_types/ts_type_table_generator.h"
 #include "ecmascript/vtable.h"
 
@@ -115,6 +114,18 @@ JSHandle<TSClassType> TSManager::GetExtendedClassType(JSHandle<TSClassType> clas
 
     ASSERT(extendClassType->IsTSClassType());
     return JSHandle<TSClassType>(extendClassType);
+}
+
+TSClassType *TSManager::GetExtendedClassType(const TSClassType *classType) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    ASSERT(JSTaggedValue(classType).IsTSClassType());
+    // Get extended type of classType based on ExtensionGT
+    GlobalTSTypeRef extensionGT = classType->GetExtensionGT();
+    JSHandle<JSTaggedValue> extendClassType = GetTSType(extensionGT);
+
+    ASSERT(extendClassType->IsTSClassType());
+    return TSClassType::Cast(extendClassType->GetTaggedObject());
 }
 
 GlobalTSTypeRef TSManager::GetPropType(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> propertyName) const
@@ -608,20 +619,10 @@ GlobalTSTypeRef TSManager::GetArrayParameterTypeGT(GlobalTSTypeRef gt) const
     return arrayType->GetElementGT();
 }
 
-JSHandle<JSHClass> TSManager::GenerateTSHClass(const JSHandle<TSClassType> &classType)
+void TSManager::AddInstanceTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &ihclass)
 {
-    JSHandle<TSObjectType> instanceType(thread_, classType->GetInstanceType());
-    JSHClass *ihc = TSObjectType::GetOrCreateHClass(thread_, instanceType, TSObjectTypeKind::INSTANCE);
-    JSHandle<JSHClass> ihcHandle(thread_, JSTaggedValue(ihc));
-    JSHandle<TSObjectType> prototypeType(thread_, classType->GetPrototypeType());
-    JSHClass *phc = TSObjectType::GetOrCreateHClass(thread_, prototypeType, TSObjectTypeKind::PROTOTYPE);
-    JSHandle<JSHClass> phcHandle(thread_, JSTaggedValue(phc));
-    JSHandle<JSObject> prototype = factory_->NewJSObject(phcHandle);
-    ihc->SetProto(thread_, prototype);
-
-    GlobalTSTypeRef gt = classType->GetGT();
-    gtIhcMap_.insert({gt, IHClassData(ihcHandle.GetTaggedType())});
-    return ihcHandle;
+    IHClassData ihcData = IHClassData(ihclass.GetTaggedType());
+    gtIhcMap_.insert({gt, ihcData});
 }
 
 void TSManager::UpdateTSHClassFromPGO(const kungfu::GateType &gateType, const PGOSampleLayoutDesc &desc)
@@ -652,51 +653,10 @@ bool TSManager::HasTSHClass(const JSHandle<TSClassType> &classType) const
     return gtIhcMap_.find(gt) != gtIhcMap_.end();
 }
 
-void TSManager::GenerateTSHClasses()
+bool TSManager::HasTSHClass(const TSClassType *classType) const
 {
-    for (const auto &gt : collectedTypeOffsets_) {
-        JSHandle<JSTaggedValue> tsType = GetTSType(gt);
-        if (tsType->IsUndefined()) {
-            continue;
-        }
-        ASSERT(tsType->IsTSClassType());
-        JSHandle<TSClassType> classType(tsType);
-        if (HasTSHClass(classType)) {
-            continue;
-        } else if (IsUserDefinedClassTypeKind(gt)) {
-            RecursiveGenTSHClass(classType);
-        } else if (!classType->GetHasLinked()) {
-            SubtypingOperator::MergeClassField(thread_, classType);
-        }
-    }
-    collectedTypeOffsets_.clear();
-}
-
-void TSManager::RecursiveGenTSHClass(const JSHandle<TSClassType> &classType)
-{
-    if (!classType->IsBaseClassType()) {
-        JSHandle<TSClassType> extendedClassType(GetExtendedClassType(classType));
-        if (!HasTSHClass(extendedClassType)) {
-            RecursiveGenTSHClass(extendedClassType);
-        }
-    }
-
-    bool passed = false;
-    if (classType->IsBaseClassType()) {
-        passed = SubtypingOperator::CheckBaseClass(thread_, classType);
-    } else {
-        passed = SubtypingOperator::CheckSubtyping(thread_, classType);
-    }
-
-    if (passed) {
-        if (!classType->IsBaseClassType()) {
-            SubtypingOperator::MergeClassField(thread_, classType);
-        }
-        JSHandle<JSHClass> ihcHandle = GenerateTSHClass(classType);
-        SubtypingOperator::FillTSInheritInfo(thread_, classType, ihcHandle);
-        return;
-    }
-    GenerateTSHClass(classType);
+    GlobalTSTypeRef gt = classType->GetGT();
+    return gtIhcMap_.find(gt) != gtIhcMap_.end();
 }
 
 JSHandle<JSTaggedValue> TSManager::GetTSType(const GlobalTSTypeRef &gt) const

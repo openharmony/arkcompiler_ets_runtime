@@ -122,6 +122,8 @@ ohos_source_set("libark_jsoptimizer_set") {
     "trampoline/x64/common_call.cpp",
     "trampoline/x64/optimized_call.cpp",
     "trampoline/x64/optimized_fast_call.cpp",
+    "ts_class_analysis.cpp",
+    "ts_hclass_generator.cpp",
     "ts_hcr_lowering.cpp",
     "ts_inline_lowering.cpp",
     "type.cpp",
