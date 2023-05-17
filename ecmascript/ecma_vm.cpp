@@ -149,8 +149,7 @@ void EcmaVM::PostFork()
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
-    : //stringTable_(new EcmaStringTable(this)),
-      nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
+    :  nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
       heapRegionAllocator_(std::make_unique<HeapRegionAllocator>()),
       chunk_(nativeAreaAllocator_.get()),
       ecmaParamConfiguration_(std::move(config))
@@ -302,7 +301,6 @@ EcmaVM::~EcmaVM()
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     DumpCallTimeInfo();
 #endif
-
     // clear c_address: c++ pointer delete
     ClearBufferData();
     if (!isBundlePack_) {
@@ -328,11 +326,6 @@ EcmaVM::~EcmaVM()
         heap_ = nullptr;
     }
 
-    // if (regExpParserCache_ != nullptr) {
-    //     delete regExpParserCache_;
-    //     regExpParserCache_ = nullptr;
-    // }
-
     if (debuggerManager_ != nullptr) {
         chunk_.Delete(debuggerManager_);
         debuggerManager_ = nullptr;
@@ -343,20 +336,11 @@ EcmaVM::~EcmaVM()
         factory_ = nullptr;
     }
 
-    // if (stringTable_ != nullptr) {
-    //     delete stringTable_;
-    //     stringTable_ = nullptr;
-    // }
-
     if (runtimeStat_ != nullptr) {
         chunk_.Delete(runtimeStat_);
         runtimeStat_ = nullptr;
     }
 
-    // if (tsManager_ != nullptr) {
-    //     delete tsManager_;
-    //     tsManager_ = nullptr;
-    // }
     if (quickFixManager_ != nullptr) {
         delete quickFixManager_;
         quickFixManager_ = nullptr;
@@ -385,13 +369,10 @@ EcmaVM::~EcmaVM()
 
 JSHandle<GlobalEnv> EcmaVM::GetGlobalEnv() const
 {
-    // return JSHandle<GlobalEnv>(reinterpret_cast<uintptr_t>(&globalEnv_));
     return thread_->GetCurrentEcmaContext()->GetGlobalEnv();
 }
 void EcmaVM::SetGlobalEnv(GlobalEnv *global)
 {
-    // ASSERT(global != nullptr);
-    // globalEnv_ = JSTaggedValue(global);
     thread_->GetCurrentEcmaContext()->SetGlobalEnv(global);
 }
 JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
@@ -653,9 +634,6 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
 }
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 {
-    // if (regExpParserCache_ != nullptr) {
-    //     regExpParserCache_->Clear();
-    // }
     if (thread_->GetCurrentEcmaContext()->GetRegExpParserCache() != nullptr) {
         thread_->GetCurrentEcmaContext()->GetRegExpParserCache()->Clear();
     }
@@ -756,12 +734,9 @@ void EcmaVM::StopHeapTracking()
 
 void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
-    // v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
-    // v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
         ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
     aotFileManager_->Iterate(v);
-    // tsManager_->Iterate(v);
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
     }
@@ -773,11 +748,6 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
         context->Iterate(v, rv);
     }
 }
-
-// void EcmaVM::SetupRegExpResultCache()
-// {
-//     regexpCache_ = builtins::RegExpExecResultCache::CreateCacheTable(thread_);
-// }
 
 void EcmaVM::LoadStubFile()
 {

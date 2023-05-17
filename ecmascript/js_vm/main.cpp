@@ -101,7 +101,7 @@ int Main(const int argc, const char **argv)
 #endif
         ClockScope execute;
         for (const auto &fileName : fileNames) {
-            auto res = JSNApi::ExecuteInContext(vm, fileName, entry);
+            auto res = JSNApi::Execute(vm, fileName, entry);
             if (!res) {
                 std::cerr << "Cannot execute panda file '" << fileName << "' with entry '" << entry << "'" << std::endl;
                 ret = false;

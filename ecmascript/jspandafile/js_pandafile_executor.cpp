@@ -323,15 +323,4 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     ASSERT(isModule);
     return CommonExecuteBuffer(thread, name, entry, jsPandaFile.get());
 }
-
-Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteInContext(EcmaContext *context,
-    const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool excuteFromJob)
-{
-    Expected<JSTaggedValue, bool> result = context->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, excuteFromJob);
-    // if (result) {
-    //     QuickFixManager *quickFixManager = vm->GetQuickFixManager();
-    //     quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
-    // }
-    return result;
-}
 }  // namespace panda::ecmascript

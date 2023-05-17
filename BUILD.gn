@@ -608,7 +608,6 @@ ecma_source = [
   "ecmascript/ecma_string.cpp",
   "ecmascript/ecma_string_table.cpp",
   "ecmascript/ecma_vm.cpp",
-  "ecmascript/ecma_context.cpp",
   "ecmascript/frames.cpp",
   "ecmascript/free_object.cpp",
   "ecmascript/generator_helper.cpp",

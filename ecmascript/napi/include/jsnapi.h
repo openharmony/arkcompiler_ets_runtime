@@ -1272,10 +1272,6 @@ public:
     static Local<ObjectRef> GetGlobalObject(const EcmaVM *vm);
     static void ExecutePendingJob(const EcmaVM *vm);
 
-    // Execute In Context
-    static bool ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry,
-                                 bool needUpdate = false);
-
     // Memory
     // fixme: Rename SEMI_GC to YOUNG_GC
     static void TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType = TRIGGER_GC_TYPE::SEMI_GC);

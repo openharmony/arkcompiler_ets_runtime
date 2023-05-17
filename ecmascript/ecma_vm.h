@@ -503,12 +503,6 @@ public:
         }
     }
 
-    // OptCodeProfiler *GetOptCodeProfiler() const
-    // {
-    //     // return optCodeProfiler_;
-    //     return thread_->GetCurrentEcmaContext()->GetOptCodeProfiler();
-    // }
-
     void HandleUncaughtException(JSTaggedValue exception);
     void DumpCallTimeInfo();
     void PrintOptStat();
@@ -612,9 +606,6 @@ private:
 
     // PGO Profiler
     PGOProfiler *pgoProfiler_ {nullptr};
-
-    // opt code Profiler
-    // OptCodeProfiler *optCodeProfiler_ {nullptr};
 
     // For icu objects cache
     struct IcuFormatter {

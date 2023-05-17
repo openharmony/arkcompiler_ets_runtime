@@ -98,8 +98,8 @@ bool EcmaContext::Initialize()
         }
         globalConst->InitSpecialForSnapshot();
         Builtins builtins;
-        builtins.InitializeForSnapshot(thread_);
-    }
+       builtins.InitializeForSnapshot(thread_);
+   }
 
     SetupRegExpResultCache();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
@@ -398,53 +398,4 @@ void EcmaContext::SetupRegExpResultCache()
 {
     regexpCache_ = builtins::RegExpExecResultCache::CreateCacheTable(thread_);
 }
-// NOLINTNEXTLINE(modernize-avoid-c-arrays)
-// void *EcmaContext::InternalMethodTable[] = {
-//     reinterpret_cast<void *>(builtins::BuiltinsGlobal::CallJsBoundFunction),
-//     reinterpret_cast<void *>(builtins::BuiltinsGlobal::CallJsProxy),
-//     reinterpret_cast<void *>(builtins::BuiltinsObject::CreateDataPropertyOnObjectFunctions),
-// #ifdef ARK_SUPPORT_INTL
-//     reinterpret_cast<void *>(builtins::BuiltinsCollator::AnonymousCollator),
-//     reinterpret_cast<void *>(builtins::BuiltinsDateTimeFormat::AnonymousDateTimeFormat),
-//     reinterpret_cast<void *>(builtins::BuiltinsNumberFormat::NumberFormatInternalFormatNumber),
-// #endif
-//     reinterpret_cast<void *>(builtins::BuiltinsProxy::InvalidateProxyFunction),
-//     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::AsyncAwaitFulfilled),
-//     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::AsyncAwaitRejected),
-//     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::ResolveElementFunction),
-//     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::Resolve),
-//     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::Reject),
-//     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::Executor),
-//     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::AnyRejectElementFunction),
-//     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::AllSettledResolveElementFunction),
-//     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::AllSettledRejectElementFunction),
-//     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::ThenFinally),
-//     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::CatchFinally),
-//     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::valueThunkFunction),
-//     reinterpret_cast<void *>(builtins::BuiltinsPromiseHandler::throwerFunction),
-//     reinterpret_cast<void *>(JSAsyncGeneratorObject::ProcessorFulfilledFunc),
-//     reinterpret_cast<void *>(JSAsyncGeneratorObject::ProcessorRejectedFunc),
-//     reinterpret_cast<void *>(JSAsyncFromSyncIterator::AsyncFromSyncIterUnwarpFunction)
-// };
-
-// void EcmaContext::GenerateInternalNativeMethods()
-// {
-//     size_t length = static_cast<size_t>(MethodIndex::METHOD_END);
-//     for (size_t i = 0; i < length; i++) {
-//         uint32_t numArgs = 2;  // function object and this
-//         auto method = factory_->NewMethod(nullptr);
-//         method->SetNativePointer(InternalMethodTable[i]);
-//         method->SetNativeBit(true);
-//         method->SetNumArgsWithCallField(numArgs);
-//         method->SetFunctionKind(FunctionKind::NORMAL_FUNCTION);
-//         internalNativeMethods_.emplace_back(method.GetTaggedValue());
-//     }
-// }
-
-// JSTaggedValue EcmaContext::GetMethodByIndex(MethodIndex idx)
-// {
-//     auto index = static_cast<uint8_t>(idx);
-//     ASSERT(index < internalNativeMethods_.size());
-//     return internalNativeMethods_[index];
-// }
 }  // namespace panda::ecmascript
