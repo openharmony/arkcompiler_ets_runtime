@@ -89,7 +89,7 @@ namespace OHOS::ArkCompiler::Toolchain {
 using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
 extern "C" {
     bool StartDebug(const std::string& componentName, void* vm, bool isDebugMode, int32_t instanceId,
-        const DebuggerPostTask& debuggerPostTask);
+        const DebuggerPostTask& debuggerPostTask, int port);
     void StopDebug(const std::string& componentName);
 }
 } // namespace OHOS::ArkCompiler::Toolchain
@@ -279,8 +279,8 @@ void JSNApi::ThrowException(const EcmaVM *vm, Local<JSValueRef> error)
     thread->SetException(JSNApiHelper::ToJSTaggedValue(*error));
 }
 
-bool JSNApi::StartDebugger([[maybe_unused]] const char *libraryPath, [[maybe_unused]] EcmaVM *vm,
-                           [[maybe_unused]] bool isDebugMode, [[maybe_unused]] int32_t instanceId,
+bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const DebugOption &option,
+                           [[maybe_unused]] int32_t instanceId,
                            [[maybe_unused]] const DebuggerPostTask &debuggerPostTask)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
@@ -294,15 +294,16 @@ bool JSNApi::StartDebugger([[maybe_unused]] const char *libraryPath, [[maybe_unu
         return false;
     }
 
-    if (libraryPath == nullptr) {
+    if (option.libraryPath == nullptr) {
         return false;
     }
-    auto handle = panda::os::library_loader::Load(std::string(libraryPath));
+    auto handle = panda::os::library_loader::Load(std::string(option.libraryPath));
     if (!handle) {
         return false;
     }
 
-    using StartDebugger = bool (*)(const std::string &, EcmaVM *, bool, int32_t, const DebuggerPostTask &);
+    using StartDebugger = bool (*)(
+        const std::string &, EcmaVM *, bool, int32_t, const DebuggerPostTask &, int);
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle.Value(), "StartDebug");
     if (!sym) {
@@ -310,17 +311,18 @@ bool JSNApi::StartDebugger([[maybe_unused]] const char *libraryPath, [[maybe_unu
         return false;
     }
 
-    bool ret = reinterpret_cast<StartDebugger>(sym.Value())("PandaDebugger", vm, isDebugMode, instanceId,
-        debuggerPostTask);
+    bool ret = reinterpret_cast<StartDebugger>(sym.Value())(
+        "PandaDebugger", vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
     if (ret) {
-        vm->GetJsDebuggerManager()->SetDebugMode(isDebugMode);
+        vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
         vm->GetJsDebuggerManager()->SetDebugLibraryHandle(std::move(handle.Value()));
     }
     return ret;
 #else
-    bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(DEBUGGER_NAME, vm, isDebugMode, instanceId, debuggerPostTask);
+    bool ret = OHOS::ArkCompiler::Toolchain::StartDebug(
+        DEBUGGER_NAME, vm, option.isDebugMode, instanceId, debuggerPostTask, option.port);
     if (ret) {
-        vm->GetJsDebuggerManager()->SetDebugMode(isDebugMode);
+        vm->GetJsDebuggerManager()->SetDebugMode(option.isDebugMode);
     }
     return ret;
 #endif // PANDA_TARGET_IOS
