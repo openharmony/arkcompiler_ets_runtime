@@ -2995,12 +2995,14 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
     JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(function);
     JSHandle<JSFunction> transFunc = JSHandle<JSFunction>::Cast(funcVal);
     if (transFunc->GetFunctionKind() != ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
+        LOG_ECMA(ERROR) << "function is not concurrent";
         return false;
     }
     ecmascript::JSThread *thread = vm->GetJSThread();
     JSHandle<Method> method(thread, transFunc->GetMethod());
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     if (jsPandaFile == nullptr) {
+        LOG_ECMA(ERROR) << "jsPandaFile is nullptr";
         return false;
     }
     ecmascript::CString moduleName = jsPandaFile->GetJSPandaFileDesc();
@@ -3010,30 +3012,30 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
     auto *notificationMgr = vm->GetJsDebuggerManager()->GetNotificationManager();
     notificationMgr->LoadModuleEvent(moduleName, recordName);
 
-    bool isModule = jsPandaFile->IsModule(thread, recordName);
-    if (isModule) {
-        ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
-        JSHandle<ecmascript::JSTaggedValue> moduleRecord;
-        if (jsPandaFile->IsBundlePack()) {
-            moduleRecord = moduleManager->HostResolveImportedModule(moduleName);
-        } else {
-            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
-            if (ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
-                vm->GetAOTFileManager()->LoadAiFile(jsPandaFile);
-            }
-        }
-        ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
-        if (thread->HasPendingException()) {
-            vm->HandleUncaughtException(thread->GetException());
-            return false;
-        }
-        JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
-        module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
-        ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module);
-        transFunc->SetModule(thread, module);
+    // check ESM or CJS
+    if (!jsPandaFile->IsModule(thread, recordName)) {
+        LOG_ECMA(DEBUG) << "Current function is not from ES Module's file.";
         return true;
     }
-    return false;
+    ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
+    JSHandle<ecmascript::JSTaggedValue> moduleRecord;
+    // check compileMode
+    if (jsPandaFile->IsBundlePack()) {
+        LOG_ECMA(DEBUG) << "compileMode is jsbundle";
+        moduleRecord = moduleManager->HostResolveImportedModule(moduleName);
+    } else {
+        LOG_ECMA(DEBUG) << "compileMode is esmodule";
+        moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
+        if (ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
+            vm->GetAOTFileManager()->LoadAiFile(jsPandaFile);
+        }
+    }
+    ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
+    JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
+    module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
+    ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module);
+    transFunc->SetModule(thread, module);
+    return true;
 }
 
 void JSNApi::SetBundleName(EcmaVM *vm, const std::string &bundleName)
