@@ -903,8 +903,7 @@ template("host_typeinfer_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_compile_options_ =
-        " --compiler-assert-types=true" +
-        " --compiler-opt-type-lowering=false" + " --compiler-opt-inlining=false"
+        " --compiler-assert-types=true" + " --compiler-opt-type-lowering=false"
 
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {
@@ -947,8 +946,7 @@ template("host_typeinfer_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_compile_options_ =
-        " --compiler-assert-types=true" +
-        " --compiler-opt-type-lowering=false" + " --compiler-opt-inlining=false"
+        " --compiler-assert-types=true" + " --compiler-opt-type-lowering=false"
 
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {

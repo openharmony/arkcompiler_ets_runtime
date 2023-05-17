@@ -1272,8 +1272,7 @@ void MethodTypeInfer::Verify() const
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
     for (const auto &gate : gateList) {
-        auto op = gateAccessor_.GetOpCode(gate);
-        if (op == OpCode::JS_BYTECODE) {
+        if (IsByteCodeGate(gate)) {
             TypeCheck(gate);
         }
     }
