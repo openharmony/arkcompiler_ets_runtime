@@ -296,7 +296,7 @@ void NumberSpeculativeLowering::VisitNumberDiv(GateRef gate)
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     GateRef rightNotZero = builder_.DoubleNotEqual(right, builder_.Double(0.0));
-    GateRef frameState = GetFrameState(builder_.GetDepend());
+    GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
     builder_.DeoptCheck(rightNotZero, frameState, DeoptType::DIVZERO);
     GateRef result = builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, left, right);
     acc_.SetMachineType(gate, MachineType::F64);
@@ -315,7 +315,7 @@ void NumberSpeculativeLowering::VisitNumberMonocular(GateRef gate)
     if (type.IsIntType()) {
         if (Op == TypedUnOp::TYPED_NEG) {
             GateRef valueNotZero = builder_.NotEqual(value, builder_.Int32(0));
-            GateRef frameState = GetFrameState(builder_.GetDepend());
+            GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
             builder_.DeoptCheck(valueNotZero, frameState, DeoptType::NOTNEGOV);
         }
         result = MonocularInt<Op>(value);
@@ -441,7 +441,7 @@ void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)
         return;
     }
     Environment env(gate, circuit_, &builder_);
-    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef frameState = acc_.FindNearestFrameState(gate);
     GateRef length = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     RangeInfo indexRange = GetRange(index);
@@ -486,7 +486,7 @@ GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
     }
     // DeoptCheckForOverFlow
     GateRef condition = builder_.BoolNot(builder_.ExtractValue(MachineType::I1, res, GetConstInt32(1)));
-    builder_.DeoptCheck(condition, GetFrameState(builder_.GetDepend()), DeoptType::NOTINT);
+    builder_.DeoptCheck(condition, acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::NOTINT);
     return builder_.ExtractValue(MachineType::I32, res, GetConstInt32(0));
 }
 
@@ -594,7 +594,7 @@ GateRef NumberSpeculativeLowering::ShiftInts(GateRef left, GateRef right)
             if (!leftRange.MaybeShrOverflow(rightRange)) {
                 return value;
             }
-            GateRef frameState = GetFrameState(builder_.GetDepend());
+            GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
             GateRef condition = builder_.Int32UnsignedLessThanOrEqual(value, GetConstInt32(INT32_MAX));
             builder_.DeoptCheck(condition, frameState, DeoptType::NOTINT);
             break;
@@ -674,15 +674,6 @@ GateRef NumberSpeculativeLowering::MonocularDouble(GateRef value)
             break;
     }
     return res;
-}
-
-GateRef NumberSpeculativeLowering::GetFrameState(GateRef gate)
-{
-    while (!acc_.HasFrameState(gate)) {
-        ASSERT(acc_.GetDependCount(gate) == 1);
-        gate = acc_.GetDep(gate);
-    }
-    return acc_.GetFrameState(gate);
 }
 
 void NumberSpeculativeLowering::UpdateRange(GateRef gate, const RangeInfo& range)

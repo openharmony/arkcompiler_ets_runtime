@@ -466,7 +466,6 @@ public:
     void GetStateUses(GateRef gate, std::vector<GateRef>& stateUses);
     void GetDependUses(GateRef gate, std::vector<GateRef>& dependUses);
     bool IsFrameStateIn(GateRef gate, size_t index) const;
-    void DeleteStateSplitAndFrameState(GateRef gate);
     void EliminateRedundantPhi();
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
     GateType GetLeftType(GateRef gate) const;
@@ -509,6 +508,7 @@ public:
     GateRef GetFrameState(GateRef gate) const;
     void ReplaceFrameStateIn(GateRef gate, GateRef in);
     bool HasFrameState(GateRef gate) const;
+    GateRef FindNearestFrameState(GateRef gate) const;
     void SetMetaData(GateRef gate, const GateMetaData* meta);
     void SetPreFrameState(GateRef gate, GateRef preFrameState);
     GateRef GetPreFrameState(GateRef gate) const;

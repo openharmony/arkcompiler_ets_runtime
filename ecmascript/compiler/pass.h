@@ -29,6 +29,7 @@
 #include "ecmascript/compiler/number_speculative_runner.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
+#include "ecmascript/compiler/state_split_linearizer.h"
 #include "ecmascript/compiler/ts_inline_lowering.h"
 #include "ecmascript/compiler/ts_type_lowering.h"
 #include "ecmascript/compiler/type_inference/global_type_infer.h"
@@ -373,6 +374,19 @@ public:
         TimeScope timescope("SchedulingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Scheduler::Run(data->GetCircuit(), data->GetCfg(), data->GetMethodName(), enableLog);
+        return true;
+    }
+};
+
+class StateSplitLinearizerPass {
+public:
+    bool Run(PassData* data)
+    {
+        TimeScope timescope("StateSplitLinearizerPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        Chunk chunk(data->GetNativeAreaAllocator());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        StateSplitLinearizer(data->GetCircuit(), data->GetCompilerConfig(),
+                             enableLog, data->GetMethodName(), &chunk).Run();
         return true;
     }
 };

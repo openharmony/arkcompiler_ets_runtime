@@ -106,7 +106,8 @@ public:
     {
         size_t timestamp = 0;
         auto entry = linearizer_->regionList_.front();
-        entry->SetVisited();
+        linearizer_->circuit_->AdvanceTime();
+        entry->SetVisited(linearizer_->acc_);
         ASSERT(pendingList_.empty());
         pendingList_.emplace_back(entry);
         while (!pendingList_.empty()) {
@@ -115,8 +116,8 @@ public:
             dfsList_.emplace_back(curRegion->id_);
             dfsTimestamp_[curRegion->id_] = timestamp++;
             for (auto succ : curRegion->succs_) {
-                if (!succ->IsVisited()) {
-                    succ->SetVisited();
+                if (!succ->IsVisited(linearizer_->acc_)) {
+                    succ->SetVisited(linearizer_->acc_);
                     pendingList_.emplace_back(succ);
                     dfsFatherIdx_[succ->id_] = dfsTimestamp_[curRegion->id_];
                 }
@@ -256,7 +257,8 @@ public:
             auto uses = acc_.Uses(fixedGate);
             for (auto it = uses.begin(); it != uses.end(); it++) {
                 GateRef succGate = *it;
-                if (acc_.IsStateIn(it) && acc_.IsFixed(succGate)) {
+                if (acc_.IsStateIn(it) &&
+                    (acc_.IsFixed(succGate) || acc_.IsVirtualState(succGate))) {
                     linearizer_->AddFixedGateToRegion(succGate, region);
                     fixedGateList_.emplace_back(succGate);
                 }

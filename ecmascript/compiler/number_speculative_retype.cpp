@@ -843,7 +843,7 @@ GateRef NumberSpeculativeRetype::VisitStoreProperty(GateRef gate)
     }
     GateRef receiver = acc_.GetValueIn(gate, 0); // receiver
     acc_.ReplaceValueIn(gate, ConvertToTagged(receiver), 0);
-    acc_.ReplaceValueIn(gate, ConvertToTagged(value), 2); // value
+    acc_.ReplaceValueIn(gate, ConvertToTagged(value), 2); // 2: value
     return Circuit::NullGate();
 }
 

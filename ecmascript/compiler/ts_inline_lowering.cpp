@@ -356,9 +356,8 @@ void TSInlineLowering::RemoveRoot()
 void TSInlineLowering::BuildFrameStateChain(GateRef gate, BytecodeCircuitBuilder &builder)
 {
     size_t size = builder.GetNumOfFrameState();
-    GateRef stateSplit = acc_.GetDep(gate);
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    GateRef preFrameState = acc_.GetFrameState(stateSplit);
+    GateRef depend = acc_.GetDep(gate);
+    GateRef preFrameState = acc_.FindNearestFrameState(depend);
     ASSERT(acc_.GetOpCode(preFrameState) == OpCode::FRAME_STATE);
     acc_.SetInlineCallFrameStateFlag(preFrameState, true);
     for (size_t i = 0; i < size; i++) {

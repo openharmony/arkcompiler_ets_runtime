@@ -108,6 +108,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "rt_call_signature.cpp",
     "scheduler.cpp",
     "slowpath_lowering.cpp",
+    "state_split_linearizer.cpp",
     "stub.cpp",
     "stub_builder.cpp",
     "test_stubs.cpp",
