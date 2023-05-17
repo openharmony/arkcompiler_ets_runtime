@@ -242,11 +242,13 @@ const std::string &DebugInfoExtractor::GetSourceCode(const panda_file::File::Ent
 bool DebugInfoExtractor::ExtractorMethodDebugInfo(const panda_file::File::EntityId methodId)
 {
     auto &pandaFile = *jsPandaFile_->GetPandaFile();
-    if (!methodId.IsValid() || methodId.GetOffset() > jsPandaFile_->GetFileSize()) {
+    if (!methodId.IsValid() || methodId.GetOffset() >= jsPandaFile_->GetFileSize()) {
         return false;
     }
     MethodDataAccessor mda(pandaFile, methodId);
-    ClassDataAccessor cda(pandaFile, mda.GetClassId());
+    auto classId = mda.GetClassId();
+    ASSERT(classId.IsValid() && !pandaFile.IsExternal(classId));
+    ClassDataAccessor cda(pandaFile, classId);
     auto sourceFileId = cda.GetSourceFileId();
     auto debugInfoId = mda.GetDebugInfoId();
     if (!debugInfoId) {
