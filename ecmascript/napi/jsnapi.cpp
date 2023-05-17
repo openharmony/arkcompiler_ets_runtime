@@ -184,7 +184,7 @@ int JSNApi::vmCount_ = 0;
 bool JSNApi::initialize_ = false;
 static os::memory::Mutex *mutex = new panda::os::memory::Mutex();
 #define XPM_PROC_PREFIX "/proc/"
-#define XPM_PROC_SUFFIX "xpm_validate_region"
+#define XPM_PROC_SUFFIX "/xpm_region"
 #define XPM_PROC_LENGTH 50
 
 static bool CheckSecureMem(uintptr_t mem)
@@ -195,14 +195,14 @@ static bool CheckSecureMem(uintptr_t mem)
     if (!hasOpen) {
         char procPath[XPM_PROC_LENGTH] = {0};
         pid_t pid = getpid();
-        LOG_ECMA(INFO) << "Check secure memory in : " << pid;
+        LOG_ECMA(DEBUG) << "Check secure memory in : " << pid << " with mem: " << std::hex << mem;
         if (sprintf_s(procPath, XPM_PROC_LENGTH, "%s%u%s", XPM_PROC_PREFIX, pid, XPM_PROC_SUFFIX) <= 0) {
             LOG_ECMA(ERROR) << "sprintf proc path failed";
             return false;
         }
-        int fd = open(procPath, O_RDWR);
+        int fd = open(procPath, O_RDONLY);
         if (fd < 0) {
-            LOG_ECMA(ERROR) << "Secure memory check: can not open xpm proc file, do not check secure memory anymore.";
+            LOG_ECMA(ERROR) << "Can not open xpm proc file, do not check secure memory anymore.";
             // No verification is performed when a file fails to be opened.
             hasOpen = true;
             return true;
@@ -231,7 +231,7 @@ static bool CheckSecureMem(uintptr_t mem)
         return true;
     }
 
-    LOG_ECMA(INFO) << "Secure memory check in memory start: " << std::hex << secureMemStart
+    LOG_ECMA(DEBUG) << "Secure memory check in memory start: " << std::hex << secureMemStart
                    << " memory end: " << secureMemEnd;
     if (mem < secureMemStart || mem >= secureMemEnd) {
         LOG_ECMA(ERROR) << "Secure memory check failed, mem out of secure memory, mem: " << std::hex << mem;
