@@ -253,7 +253,7 @@ void HeapProfiler::StopHeapSampling()
     heapSampling_.reset();
 }
 
-std::unique_ptr<struct SamplingInfo> HeapProfiler::GetAllocationProfile()
+const struct SamplingInfo *HeapProfiler::GetAllocationProfile()
 {
     if (!heapSampling_.get()) {
         LOG_ECMA(ERROR) << "Heap sampling was not started, please start firstly.";

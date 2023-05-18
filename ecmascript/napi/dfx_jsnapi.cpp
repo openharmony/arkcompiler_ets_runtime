@@ -416,7 +416,7 @@ bool DFXJSNApi::StartSampling([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]
 #endif
 }
 
-std::unique_ptr<SamplingInfo> DFXJSNApi::GetAllocationProfile([[maybe_unused]] const EcmaVM *vm)
+const SamplingInfo *DFXJSNApi::GetAllocationProfile([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_HEAPSAMPLING)
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(

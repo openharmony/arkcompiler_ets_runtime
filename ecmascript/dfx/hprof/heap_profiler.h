@@ -51,7 +51,7 @@ public:
     bool UpdateHeapTracking(Stream *stream) override;
     bool StartHeapSampling(uint64_t samplingInterval, int stackDepth = 128) override;
     void StopHeapSampling() override;
-    std::unique_ptr<struct SamplingInfo> GetAllocationProfile() override;
+    const struct SamplingInfo *GetAllocationProfile() override;
     Chunk *GetChunk() const
     {
         return const_cast<Chunk *>(&chunk_);

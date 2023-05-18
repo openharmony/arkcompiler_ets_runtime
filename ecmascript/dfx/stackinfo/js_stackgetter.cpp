@@ -114,7 +114,8 @@ bool JsStackGetter::CheckAndCopy(char *dest, size_t length, const char *src)
     return true;
 }
 
-void JsStackGetter::GetNativeStack(const EcmaVM *vm, const FrameIterator &it, char *functionName, size_t size, bool isCpuProfiler)
+void JsStackGetter::GetNativeStack(const EcmaVM *vm, const FrameIterator &it, char *functionName, size_t size,
+                                   bool isCpuProfiler)
 {
     std::stringstream stream;
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());

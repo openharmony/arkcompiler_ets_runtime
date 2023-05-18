@@ -24,23 +24,18 @@ HeapSampling::HeapSampling(const EcmaVM *vm, Heap *const heap, uint64_t interval
       rate_(interval),
       stackDepth_(stackDepth)
 {
-    rootNode_.callFrameInfo_.functionName_ = "(root)";
-    rootNode_.id_ = CreateNodeId();
+    samplingInfo_ = std::make_unique<struct SamplingInfo>();
+    samplingInfo_->head_.callFrameInfo_.functionName_ = "(root)";
+    samplingInfo_->head_.id_ = CreateNodeId();
 }
 
 HeapSampling::~HeapSampling()
 {
 }
 
-std::unique_ptr<SamplingInfo> HeapSampling::GetAllocationProfile()
+const struct SamplingInfo *HeapSampling::GetAllocationProfile()
 {
-    std::unique_ptr<SamplingInfo> samplingInfo = std::make_unique<SamplingInfo>();
-    TransferSamplingNode(&(samplingInfo->head_), &rootNode_);
-    CVector<struct Sample> &samples = samplingInfo->samples_;
-    for (size_t i = 0; i < samples_.size(); ++i) {
-        samples.emplace_back(*(samples_[i]));
-    }
-    return samplingInfo;
+    return samplingInfo_.get();
 }
 
 void HeapSampling::ImplementSampling([[maybe_unused]]Address addr, [[maybe_unused]]size_t size)
@@ -48,7 +43,8 @@ void HeapSampling::ImplementSampling([[maybe_unused]]Address addr, [[maybe_unuse
     GetStack();
     SamplingNode *node = PushAndGetNode();
     node->allocations_[size]++;
-    samples_.emplace_back(std::make_unique<struct Sample>(size, node->id_, CreateSampleId()));
+    node->selfSize_ += size;
+    samplingInfo_->samples_.emplace_back(Sample(size, node->id_, CreateSampleId()));
 }
 
 bool HeapSampling::PushStackInfo(const struct MethodKey &methodKey)
@@ -168,7 +164,7 @@ std::string HeapSampling::AddRunningState(char *functionName, RunningState state
 SamplingNode *HeapSampling::PushAndGetNode()
 {
     FillScriptIdAndStore();
-    SamplingNode *node = &rootNode_;
+    SamplingNode *node = &(samplingInfo_->head_);
     int frameLen = static_cast<int>(frameStack_.size()) - 1;
     for (; frameLen >= 0; frameLen--) {
         node = FindOrAddNode(node, frameStack_[frameLen]);
@@ -200,20 +196,6 @@ struct SamplingNode *HeapSampling::FindOrAddNode(struct SamplingNode *node, cons
         return node->children_[methodKey].get();
     }
     return childNode;
-}
-
-void HeapSampling::TransferSamplingNode(AllocationNode* node, const SamplingNode *samplingNode)
-{
-    node->callFrameInfo_ = samplingNode->callFrameInfo_;
-    node->id_ = samplingNode->id_;
-    for (auto &it : samplingNode->allocations_) {
-        node->selfSize_ += it.first * it.second;
-    }
-    node->children_.resize(samplingNode->children_.size());
-    int count = 0;
-    for (auto &it : samplingNode->children_) {
-        TransferSamplingNode(&node->children_[count++], it.second.get());
-    }
 }
 
 uint32_t HeapSampling::CreateNodeId()
