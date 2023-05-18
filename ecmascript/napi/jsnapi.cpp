@@ -982,6 +982,20 @@ void JSNApi::DestroyAnDataManager()
     ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAllData();
 }
 
+FunctionCallScope::FunctionCallScope(EcmaVM *vm) : vm_(vm)
+{
+    vm_->IncreaseCallDepth();
+}
+
+FunctionCallScope::~FunctionCallScope()
+{
+    vm_->DecreaseCallDepth();
+    if (vm_->IsTopLevelCallDepth()) {
+        JSThread *thread = vm_->GetJSThread();
+        thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
+    }
+}
+
 // ----------------------------------- HandleScope -------------------------------------
 LocalScope::LocalScope(const EcmaVM *vm) : thread_(vm->GetJSThread())
 {
@@ -1688,10 +1702,11 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, FunctionCallback na
 
 Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     const Local<JSValueRef> argv[],  // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-    int32_t length, bool isNapi)
+    int32_t length)
 {
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
     EscapeLocalScope scope(vm);
+    FunctionCallScope callScope(EcmaVM::ConstCast(vm));
     JSThread *thread = vm->GetJSThread();
     if (!IsFunction()) {
         return JSValueRef::Undefined(vm);
@@ -1712,9 +1727,6 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> resultValue(thread, result);
 
-    if (!isNapi) {
-        vm->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
-    }
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     vm->GetHeap()->ClearKeptObjects();
 
@@ -1726,6 +1738,7 @@ Local<JSValueRef> FunctionRef::Constructor(const EcmaVM *vm,
     int32_t length)
 {
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    FunctionCallScope callScope(EcmaVM::ConstCast(vm));
     JSThread *thread = vm->GetJSThread();
     if (!IsFunction()) {
         return JSValueRef::Undefined(vm);

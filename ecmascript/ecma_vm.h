@@ -417,6 +417,23 @@ public:
         ASSERT(stringTable_ != nullptr);
         return stringTable_;
     }
+
+    void IncreaseCallDepth()
+    {
+        callDepth_++;
+    }
+
+    void DecreaseCallDepth()
+    {
+        ASSERT(callDepth_ > 0);
+        callDepth_--;
+    }
+
+    bool IsTopLevelCallDepth()
+    {
+        return callDepth_ == 0;
+    }
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -489,6 +506,8 @@ private:
 
     // PGO Profiler
     PGOProfiler *pgoProfiler_ {nullptr};
+    // c++ call js
+    size_t callDepth_ {0};
 
     friend class Snapshot;
     friend class SnapshotProcessor;

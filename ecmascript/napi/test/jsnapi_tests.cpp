@@ -1508,4 +1508,13 @@ HWTEST_F_L0(JSNApiTests, PromiseRejectInfo_GetData)
     void* dataRes = promisereject.GetData();
     ASSERT_EQ(dataRes, data);
 }
+
+HWTEST_F_L0(JSNApiTests, FunctionCallScope)
+{
+    {
+        FunctionCallScope callScope(vm_);
+        ASSERT_FALSE(vm_->IsTopLevelCallDepth());
+    }
+    ASSERT_TRUE(vm_->IsTopLevelCallDepth());
+}
 }  // namespace panda::test
