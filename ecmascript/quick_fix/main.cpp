@@ -121,7 +121,6 @@ int Main(const int argc, const char **argv)
             return -1;
         }
 
-        // cold patch.
         auto res = JSNApi::Execute(vm, baseFileName, entryList[0]);
         if (!res) {
             std::cout << "Cannot execute panda file '" << baseFileName << "' with entry '" << entry << "'" << std::endl;

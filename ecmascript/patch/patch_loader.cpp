@@ -324,7 +324,6 @@ PatchInfo PatchLoader::GeneratePatchInfo(const JSPandaFile *patchFile)
 {
     const auto &map = patchFile->GetMethodLiteralMap();
     CMap<CString, CMap<CString, MethodLiteral*>> methodLiterals;
-    CMap<CString, MethodLiteral*> methodNameInfo;
     for (const auto &item : map) {
         MethodLiteral *methodLiteral = item.second;
         EntityId methodId = EntityId(item.first);
@@ -335,18 +334,19 @@ PatchInfo PatchLoader::GeneratePatchInfo(const JSPandaFile *patchFile)
             continue;
         }
 
-        methodNameInfo.emplace(methodName, methodLiteral);
         CString recordName = MethodLiteral::GetRecordName(patchFile, methodId);
-        if (methodLiterals.find(recordName) != methodLiterals.end()) {
-            methodLiterals[recordName] = methodNameInfo;
+        auto iter = methodLiterals.find(recordName);
+        if (iter != methodLiterals.end()) {
+            iter->second.emplace(methodName, methodLiteral);
         } else {
-            methodLiterals.emplace(recordName, methodNameInfo);
+            CMap<CString, MethodLiteral*> methodNameInfo = {{methodName, methodLiteral}};
+            methodLiterals.emplace(recordName, std::move(methodNameInfo));
         }
     }
 
     PatchInfo patchInfo;
     patchInfo.patchFileName = patchFile->GetJSPandaFileDesc();
-    patchInfo.patchMethodLiterals = methodLiterals;
+    patchInfo.patchMethodLiterals = std::move(methodLiterals);
     return patchInfo;
 }
 }  // namespace panda::ecmascript
