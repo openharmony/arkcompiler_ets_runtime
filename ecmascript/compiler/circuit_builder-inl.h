@@ -1029,6 +1029,16 @@ inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, GateRef x, Buil
     return numberMathOp;
 }
 
+inline GateRef CircuitBuilder::GetMethodId(GateRef func)
+{
+    GateRef method = GetMethodFromFunction(func);
+    GateRef literalInfoOffset = IntPtr(Method::LITERAL_INFO_OFFSET);
+    GateRef LiteralInfo = Load(VariableType::INT64(), method, literalInfoOffset);
+    GateRef methodId = Int64And(Int64LSR(LiteralInfo, Int64(MethodLiteral::MethodIdBits::START_BIT)),
+        Int64((1LLU << MethodLiteral::MethodIdBits::SIZE) - 1));
+    return methodId;
+}
+
 void Label::Seal()
 {
     return impl_->Seal();

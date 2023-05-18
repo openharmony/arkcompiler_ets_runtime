@@ -91,6 +91,7 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
             if (inlineSuccess_) {
                 GateRef glue = acc_.GetGlueFromArgList();
                 CircuitRootScope scope(circuit_);
+                InlineFuncCheck(gate);
                 InlineCall(methodInfo, methodPcInfo, inlinedMethod, gate);
                 ReplaceCallInput(gate, isCallThis, glue);
                 inlinedCall_++;
@@ -178,8 +179,11 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
 
     PassData data(&builder, circuit_, ctx_, log, fullName,
                   &methodInfo, hasTyps, recordName,
-                  method, method->GetMethodId().GetOffset());
+                  method, method->GetMethodId().GetOffset(), nativeAreaAllocator_);
     PassRunner<PassData> pipeline(&data);
+    if (builder.EnableLoopOptimization()) {
+        pipeline.RunPass<LoopOptimizationPass>();
+    }
     pipeline.RunPass<TypeInferPass>();
 }
 
@@ -342,6 +346,24 @@ void TSInlineLowering::LowerToInlineCall(GateRef callGate, const std::vector<Gat
     RemoveRoot();
 }
 
+void TSInlineLowering::InlineFuncCheck(GateRef gate)
+{
+    GateRef callState = acc_.GetState(gate);
+    GateRef callDepend = acc_.GetDep(gate);
+    ASSERT(acc_.HasFrameState(callDepend));
+    GateRef frameState = acc_.GetFrameState(callDepend);
+    size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
+    GateRef inlineFunc =  acc_.GetValueIn(gate, funcIndex);
+    auto type = acc_.GetGateType(inlineFunc);
+    GlobalTSTypeRef funcGt = type.GetGTRef();
+    auto methodOffset = tsManager_->GetFuncMethodOffset(funcGt);
+    GateRef ret = circuit_->NewGate(circuit_->JSInlineTargetTypeCheck(static_cast<size_t>(type.Value())),
+        MachineType::I1, {callState, callDepend, inlineFunc, builder_.IntPtr(methodOffset), frameState},
+        GateType::NJSValue());
+    acc_.ReplaceStateIn(gate, ret);
+    acc_.ReplaceDependIn(gate, ret);
+}
+
 void TSInlineLowering::RemoveRoot()
 {
     GateRef circuitRoot = acc_.GetCircuitRoot();
@@ -355,15 +377,14 @@ void TSInlineLowering::RemoveRoot()
 
 void TSInlineLowering::BuildFrameStateChain(GateRef gate, BytecodeCircuitBuilder &builder)
 {
-    size_t size = builder.GetNumOfFrameState();
-    GateRef depend = acc_.GetDep(gate);
-    GateRef preFrameState = acc_.FindNearestFrameState(depend);
+    GateRef check = acc_.GetDep(gate);
+    GateRef stateSplit = acc_.GetDep(check);
+    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
+    GateRef preFrameState = acc_.FindNearestFrameState(stateSplit);
     ASSERT(acc_.GetOpCode(preFrameState) == OpCode::FRAME_STATE);
     acc_.SetInlineCallFrameStateFlag(preFrameState, true);
-    for (size_t i = 0; i < size; i++) {
-        GateRef curFrameState = builder.GetFrameStateByIndex(i);
-        acc_.SetPreFrameState(curFrameState, preFrameState);
-    }
+    GateRef frameArgs = builder.GetFrameArgs();
+    acc_.ReplaceFrameStateIn(frameArgs, preFrameState);
 }
 
 bool TSInlineLowering::FilterCallInTryCatch(GateRef gate)

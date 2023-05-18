@@ -75,7 +75,6 @@ void FrameStateBuilder::BindStateSplit(GateRef state, GateRef depend,
                                        size_t pcOffset, FrameStateInfo *stateInfo)
 {
     GateRef frameState = FrameState(pcOffset, stateInfo);
-    frameStateList_.emplace_back(frameState);
     GateRef stateSplit = circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
     auto uses = gateAcc_.Uses(depend);
     for (auto useIt = uses.begin(); useIt != uses.end();) {
@@ -98,7 +97,6 @@ void FrameStateBuilder::BindStateSplit(GateRef gate, size_t pcOffset, FrameState
         state = gateAcc_.GetState(state);
     }
     GateRef frameState = FrameState(pcOffset, stateInfo);
-    frameStateList_.emplace_back(frameState);
     GateRef stateSplit = circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
     gateAcc_.ReplaceDependIn(gate, stateSplit);
     if (builder_->IsLogEnabled()) {
@@ -344,7 +342,6 @@ void FrameStateBuilder::BuildFrameState(GateRef frameArgs)
     bcEndStateInfos_.resize(builder_->GetLastBcIndex() + 1, nullptr); // 1: +1 pcOffsets size
     auto size = builder_->GetBasicBlockCount();
     bbBeginStateInfos_.resize(size, nullptr);
-    frameStateList_.clear();
     liveOutResult_ = CreateEmptyStateInfo();
     BuildPostOrderList(size);
     ComputeLiveState();
@@ -443,6 +440,9 @@ void FrameStateBuilder::BindStateSplit(size_t size)
         builder_->EnumerateBlock(bb, [&](const BytecodeInfo &bytecodeInfo) -> bool {
             auto &iterator = bb.GetBytecodeIterator();
             auto index = iterator.Index();
+            if (bytecodeInfo.IsCall()) {
+                needStateSplit = true;
+            }
             if (needStateSplit && NeedBindStateSplit(bb, bytecodeInfo, index)) {
                 auto pcOffset = builder_->GetPcOffset(index);
                 auto stateInfo = GetCurrentFrameInfo(bb, index);

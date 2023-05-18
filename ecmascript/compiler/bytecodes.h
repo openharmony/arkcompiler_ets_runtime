@@ -63,6 +63,7 @@ enum BytecodeKind : uint32_t {
     RESUME,
     GENERATOR_RESOLVE,
     DISCARDED,
+    CALL_BC,
 };
 
 class BytecodeMetaData {
@@ -207,6 +208,11 @@ public:
     bool IsInvalid() const
     {
         return value_ == 0;
+    }
+
+    bool IsCall() const
+    {
+        return GetKind() == BytecodeKind::CALL_BC;
     }
 
 private:
@@ -628,6 +634,11 @@ public:
     bool HasFrameState() const
     {
         return HasFuncIn() || HasNewTargetIn() || ThisObjectIn() || HasArgcIn();
+    }
+
+    bool IsCall() const
+    {
+        return metaData_.IsCall();
     }
 
     inline EcmaOpcode GetOpcode() const

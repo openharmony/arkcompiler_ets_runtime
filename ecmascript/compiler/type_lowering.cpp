@@ -71,6 +71,9 @@ void TypeLowering::LowerType(GateRef gate)
         case OpCode::TYPED_CALL_CHECK:
             LowerCallTargetCheck(gate);
             break;
+        case OpCode::JSINLINETARGET_TYPE_CHECK:
+            LowerJSInlineTargetTypeCheck(gate);
+            break;
         case OpCode::TYPED_BINARY_OP:
             LowerTypedBinaryOp(gate);
             break;
@@ -1040,6 +1043,20 @@ void TypeLowering::LowerCallTargetCheck(GateRef gate)
     GateRef check = lowering.CheckPara(gate, funcheck);
     builder_.DeoptCheck(check, frameState, DeoptType::NOTCALLTGT);
 
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeLowering::LowerJSInlineTargetTypeCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    auto func = acc_.GetValueIn(gate, 0);
+    GateRef isObj = builder_.TaggedIsHeapObject(func);
+    GateRef isJsFunc = builder_.IsJSFunction(func);
+    GateRef checkFunc = builder_.BoolAnd(isObj, isJsFunc);
+    GateRef GetMethodId = builder_.GetMethodId(func);
+    GateRef check = builder_.BoolAnd(checkFunc, builder_.Equal(GetMethodId, acc_.GetValueIn(gate, 1)));
+    builder_.DeoptCheck(check, frameState, DeoptType::INLINEFAIL);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

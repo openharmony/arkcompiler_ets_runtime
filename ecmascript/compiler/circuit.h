@@ -177,7 +177,7 @@ public:
 
     GateRef DeadGate()
     {
-        if (dead_ == 0) {
+        if (dead_ == NullGate()) {
             dead_ = NewGate(Dead(), MachineType::NOVALUE, GateType::Empty());
         }
         return dead_;
@@ -195,6 +195,14 @@ public:
     }
 
     bool GetDebugInfo(GateRef g, size_t &index) const;
+
+    GateRef ReplaceableGate()
+    {
+        if (replaceable_ == NullGate()) {
+            replaceable_ = NewGate(Replaceable(), MachineType::NOVALUE, GateType::Empty());
+        }
+        return replaceable_;
+    }
 
 private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB
@@ -251,8 +259,9 @@ private:
     bool isArch64_ { false };
 
     Chunk chunk_;
-    GateRef root_ { 0 };
-    GateRef dead_ { 0 };
+    GateRef root_ { NullGate() };
+    GateRef dead_ { NullGate() };
+    GateRef replaceable_ { NullGate() };
     GateMetaBuilder metaBuilder_;
     ChunkMap<GateRef, size_t> gateToDInfo_;
     DebugInfo* debugInfo_ {nullptr};

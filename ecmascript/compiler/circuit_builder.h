@@ -592,6 +592,7 @@ public:
     GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     GateRef GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index);
     GateRef IsBase(GateRef ctor);
+    inline GateRef GetMethodId(GateRef func);
 
 private:
 #define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                            \

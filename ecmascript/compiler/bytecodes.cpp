@@ -169,6 +169,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::WIDE_NEWOBJRANGE_PREF_IMM16_V8:
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
+            flags |= BytecodeFlags::SUPPORT_DEOPT;
+            break;
         case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
         case EcmaOpcode::CALLARG0_IMM8:
         case EcmaOpcode::CALLARG1_IMM8_V8:
@@ -180,6 +182,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
             flags |= BytecodeFlags::SUPPORT_DEOPT;
+            kind = BytecodeKind::CALL_BC;
             break;
         case EcmaOpcode::RETURN:
             flags |= BytecodeFlags::READ_ACC;
@@ -356,7 +359,8 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         kind == BytecodeKind::THROW_BC ||
         kind == BytecodeKind::RESUME ||
         kind == BytecodeKind::SUSPEND ||
-        kind == BytecodeKind::GENERATOR_RESOLVE) {
+        kind == BytecodeKind::GENERATOR_RESOLVE ||
+        kind == BytecodeKind::CALL_BC) {
         flags |= BytecodeFlags::GENERAL_BC;
     }
     auto size = inst.GetSize();

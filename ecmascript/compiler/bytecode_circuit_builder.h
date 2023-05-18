@@ -464,19 +464,14 @@ public:
         return hasTryCatch_;
     }
 
-    GateRef GetFrameStateByIndex(size_t idx) const
-    {
-        return frameStateBuilder_.GetFrameStateByIndex(idx);
-    }
-
-    size_t GetNumOfFrameState() const
-    {
-        return frameStateBuilder_.GetNumOfFrameState();
-    }
-    
     bool EnableLoopOptimization() const
     {
         return (!HasTryCatch()) && (loopHeads_.size() != 0);
+    }
+
+    GateRef GetFrameArgs() const
+    {
+        return argAcc_.GetFrameArgs();
     }
 
 private:

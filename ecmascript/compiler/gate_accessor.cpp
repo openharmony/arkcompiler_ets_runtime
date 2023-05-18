@@ -1132,18 +1132,12 @@ bool ConstGateAccessor::IsSchedulable(GateRef g) const
     return GetMetaData(g)->IsSchedulable();
 }
 
-void GateAccessor::SetPreFrameState(GateRef gate, GateRef preFrameState)
-{
-    ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE && GetOpCode(preFrameState) == OpCode::FRAME_STATE);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    const_cast<FrameStateMetaData *>(gatePtr->GetFrameStateMetaData())->SetPreFrameState(preFrameState);
-}
-
 GateRef GateAccessor::GetPreFrameState(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetFrameStateMetaData()->GetPreFrameState();
+    GateRef frameArgs = GetFrameState(gate);
+    GateRef preFrameState = GetFrameState(frameArgs);
+    return preFrameState;
 }
 
 void GateAccessor::SetInlineCallFrameStateFlag(GateRef gate, bool isInline)
@@ -1163,13 +1157,13 @@ bool GateAccessor::IsInlineCallFrameState(GateRef gate) const
 size_t GateAccessor::GetFrameStateDepth(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    GateRef preFrameState = gatePtr->GetFrameStateMetaData()->GetPreFrameState();
+    GateRef frameArgs = GetFrameState(gate);
+    GateRef preFrameState = GetFrameState(frameArgs);
     size_t depth = 0;
-    while (preFrameState != Circuit::NullGate()) {
+    while (GetOpCode(preFrameState) != OpCode::REPLACEABLE) {
         if (GetOpCode(preFrameState) == OpCode::FRAME_STATE) {
-            Gate *preGatePtr = circuit_->LoadGatePtr(preFrameState);
-            preFrameState = preGatePtr->GetFrameStateMetaData()->GetPreFrameState();
+            frameArgs = GetFrameState(preFrameState);
+            preFrameState = GetFrameState(frameArgs);
             depth++;
         } else {
             break;
