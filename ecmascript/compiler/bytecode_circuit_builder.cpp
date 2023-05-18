@@ -530,14 +530,16 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
 
 void BytecodeCircuitBuilder::BuildFrameArgs()
 {
-    size_t numArgs = static_cast<size_t>(FrameArgIdx::NUM_OF_ARGS);
+    auto metaData = circuit_->FrameArgs();
+    size_t numArgs = static_cast<size_t>(FrameArgIdx::NUM_OF_ARGS) + metaData->GetInFrameStateCount();
     std::vector<GateRef> args(numArgs, Circuit::NullGate());
     size_t idx = 0;
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
-    GateRef frameArgs = circuit_->NewGate(circuit_->FrameArgs(), args);
+    args[idx++] = circuit_->ReplaceableGate();
+    GateRef frameArgs = circuit_->NewGate(metaData, args);
     argAcc_.SetFrameArgs(frameArgs);
 }
 

@@ -424,7 +424,7 @@ std::string Deoptimizier::DisplayItems(DeoptType type)
             return "NOT F32ARRAY";
         case DeoptType::INCONSISTENTHCLASS:
             return "INCONSISTENT HCLASS";
-        case kungfu::DeoptType::NOTNEWOBJ:
+        case DeoptType::NOTNEWOBJ:
             return "NOT NEWOBJ TYPE";
         case DeoptType::NOTARRAYIDX:
             return "NOT ARRAY IDX";
@@ -438,8 +438,10 @@ std::string Deoptimizier::DisplayItems(DeoptType type)
             return "NOT NEG OVERFLOW";
         case DeoptType::NOTCALLTGT:
             return "NOT CALL TARGET";
-        case kungfu::DeoptType::NOTJSCALLTGT:
+        case DeoptType::NOTJSCALLTGT:
             return "NOT JS CALL TARGET";
+        case DeoptType::INLINEFAIL:
+            return "INLINE FAILED";
         default: {
             return "NOT CHECK";
         }

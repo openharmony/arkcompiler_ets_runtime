@@ -45,7 +45,8 @@ private:
 class TSInlineLowering {
 public:
     static constexpr size_t MAX_INLINE_CALL_ALLOWED = 5;
-    TSInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string& name)
+    TSInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string& name,
+                     NativeAreaAllocator* nativeAreaAllocator)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -55,7 +56,8 @@ public:
           methodName_(name),
           enableTypeLowering_(ctx->GetEcmaVM()->GetJSOptions().IsEnableTypeLowering()),
           traceInline_(ctx->GetEcmaVM()->GetJSOptions().GetTraceInline()),
-          maxInlineBytecodesCount_(ctx->GetEcmaVM()->GetJSOptions().GetMaxInlineBytecodes()) {}
+          maxInlineBytecodesCount_(ctx->GetEcmaVM()->GetJSOptions().GetMaxInlineBytecodes()),
+          nativeAreaAllocator_(nativeAreaAllocator) {}
 
     ~TSInlineLowering() = default;
 
@@ -91,6 +93,7 @@ private:
     void RemoveRoot();
     void BuildFrameStateChain(GateRef gate, BytecodeCircuitBuilder &builder);
     GateRef TraceInlineFunction(GateRef glue, GateRef depend, std::vector<GateRef> &args, GateRef callGate);
+    void InlineFuncCheck(GateRef gate);
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
@@ -104,6 +107,7 @@ private:
     bool inlineSuccess_ {false};
     bool traceInline_ {false};
     size_t maxInlineBytecodesCount_ {0};
+    NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_INLINE_LOWERING_H

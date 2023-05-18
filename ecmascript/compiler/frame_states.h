@@ -76,14 +76,6 @@ public:
     ~FrameStateBuilder();
 
     void BuildFrameState(GateRef frameArgs);
-    GateRef GetFrameStateByIndex(size_t idx) const
-    {
-        return frameStateList_.at(idx);
-    }
-    size_t GetNumOfFrameState() const
-    {
-        return frameStateList_.size();
-    }
 
 private:
     GateRef ValuesAt(size_t index) const
@@ -156,7 +148,6 @@ private:
     std::vector<FrameStateInfo *> bcEndStateInfos_;
     std::vector<FrameStateInfo *> bbBeginStateInfos_;
     std::vector<size_t> postOrderList_;
-    std::vector<GateRef> frameStateList_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_FRAME_STATE_H

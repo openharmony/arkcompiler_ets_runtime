@@ -395,7 +395,8 @@ template("host_aot_js_test_action") {
 
     if (defined(invoker.is_enable_opt_inlining) &&
         invoker.is_enable_opt_inlining) {
-      _aot_compile_options_ += " --compiler-opt-inlining=true"
+      _aot_compile_options_ +=
+          " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
     }
 
     if (defined(invoker.is_enable_inline_trace) &&
@@ -605,7 +606,8 @@ template("host_aot_test_action") {
     }
     if (defined(invoker.is_enable_opt_inlining) &&
         invoker.is_enable_opt_inlining) {
-      _aot_compile_options_ += " --compiler-opt-inlining=true"
+      _aot_compile_options_ +=
+          " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
     }
 
     if (defined(invoker.is_enable_inline_trace) &&
@@ -679,7 +681,8 @@ template("host_aot_test_action") {
 
     if (defined(invoker.is_enable_opt_inlining) &&
         invoker.is_enable_opt_inlining) {
-      _aot_compile_options_ += " --compiler-opt-inlining=true"
+      _aot_compile_options_ +=
+          " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
     }
 
     if (defined(invoker.is_enable_inline_trace) &&

@@ -99,6 +99,7 @@ enum class DeoptType : uint8_t {
     DIVZERO,
     NEGTIVEINDEX,
     LARGEINDEX,
+    INLINEFAIL,
 };
 
 enum class ICmpCondition : uint8_t {
@@ -227,9 +228,10 @@ std::string MachineTypeToStr(MachineType machineType);
     V(GetSuperConstructor, GET_SUPER_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)         \
     V(UpdateHotness, UPDATE_HOTNESS, GateFlags::NO_WRITE, 1, 1, 0)                      \
     V(Dead, DEAD, GateFlags::NONE_FLAG, 0, 0, 0)                                        \
-    V(FrameArgs, FRAME_ARGS, GateFlags::NONE_FLAG, 0, 0, 4)                             \
+    V(FrameArgs, FRAME_ARGS, GateFlags::HAS_FRAME_STATE, 0, 0, 4)                       \
     V(GetEnv, GET_ENV, GateFlags::NONE_FLAG, 0, 0, 1)                                   \
     V(ConvertHoleAsUndefined, CONVERT_HOLE_AS_UNDEFINED, GateFlags::NO_WRITE, 1, 1, 1)  \
+    V(Replaceable, REPLACEABLE, GateFlags::NONE_FLAG, 0, 0, 0)                          \
     BINARY_GATE_META_DATA_CACHE_LIST(V)                                                 \
     UNARY_GATE_META_DATA_CACHE_LIST(V)
 
@@ -272,7 +274,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)                \
     V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                              \
     V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                      \
-    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)
+    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                       \
+    V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                                  \
     V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                           \
@@ -697,12 +700,10 @@ private:
 
 class FrameStateMetaData : public GateMetaData {
 public:
-    static constexpr GateRef invalidGate = -1;
     FrameStateMetaData(uint64_t value)
         : GateMetaData(OpCode::FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, value)
     {
         SetKind(GateMetaData::Kind::FRAME_STATE);
-        preFrameState_ = invalidGate;
         isInlineCallFrameState_ = false;
     }
 
@@ -722,18 +723,7 @@ public:
         isInlineCallFrameState_ = isInline;
     }
 
-    GateRef GetPreFrameState() const
-    {
-        return preFrameState_;
-    }
-
-    void SetPreFrameState(GateRef preFrameState)
-    {
-        preFrameState_ = preFrameState;
-    }
-
 private:
-    GateRef preFrameState_ {0};
     bool isInlineCallFrameState_ {false};
 };
 

@@ -47,10 +47,8 @@ void StateSplitLinearizer::Run()
 
 void StateSplitLinearizer::VisitGate(GateRef gate)
 {
-    if (acc_.GetOpCode(gate) == OpCode::STATE_SPLIT) {
-        frameState_ = acc_.GetFrameState(gate);
-    } else if (acc_.GetOpCode(gate) == OpCode::CHECK_AND_CONVERT) {
-        ASSERT(acc_.FindNearestFrameState(gate) == frameState_);
+    if (acc_.GetOpCode(gate) == OpCode::CHECK_AND_CONVERT) {
+        frameState_ = acc_.FindNearestFrameState(gate);
         genericTypeLowering_.LowerCheckAndConvert(gate, frameState_);
     }
 }

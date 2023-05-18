@@ -434,7 +434,7 @@ GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptT
         std::vector<GateRef> vec{frameState};
         auto it = vec.begin();
         GateRef preFrameState = acc_.GetPreFrameState(frameState);
-        while (preFrameState != Circuit::NullGate()) {
+        while (acc_.GetOpCode(preFrameState) != OpCode::REPLACEABLE) {
             vec.insert(it, preFrameState);
             preFrameState = acc_.GetPreFrameState(preFrameState);
         }
