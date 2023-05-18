@@ -216,6 +216,23 @@ inline GateRef StubBuilder::CallNGCRuntime(GateRef glue, int index, const std::i
     return result;
 }
 
+inline GateRef StubBuilder::FastCallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args)
+{
+    GateRef result = env_->GetBuilder()->FastCallOptimized(glue, code, Gate::InvalidGateRef, args, Circuit::NullGate());
+    return result;
+}
+
+inline GateRef StubBuilder::CallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args)
+{
+    GateRef result = env_->GetBuilder()->CallOptimized(glue, code, Gate::InvalidGateRef, args, Circuit::NullGate());
+    return result;
+}
+
+inline GateRef StubBuilder::GetAotCodeAddr(GateRef method)
+{
+    return env_->GetBuilder()->GetCodeAddr(method);
+}
+
 inline GateRef StubBuilder::CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args)
 {
     SavePcIfNeeded(glue);
@@ -2110,6 +2127,11 @@ inline GateRef StubBuilder::HasAotCode(GateRef method)
             Int64LSR(callfield, Int64(MethodLiteral::IsAotCodeBit::START_BIT)),
             Int64((1LU << MethodLiteral::IsAotCodeBit::SIZE) - 1)),
         Int64(0));
+}
+
+inline GateRef StubBuilder::HasAotCodeAndFastCall(GateRef method)
+{
+    return env_->GetBuilder()->HasAotCodeAndFastCall(method);
 }
 
 inline GateRef StubBuilder::GetExpectedNumOfArgs(GateRef method)

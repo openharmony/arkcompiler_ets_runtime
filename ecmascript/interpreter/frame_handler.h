@@ -87,7 +87,8 @@ public:
     bool IsOptimizedJSFunctionFrame() const
     {
         FrameType type = GetFrameType();
-        return type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME;
+        return type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
+            type == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME;
     }
 
     bool IsJSFrame(FrameType type) const
@@ -97,7 +98,8 @@ public:
 
     bool IsOptimizedJSFunctionFrame(FrameType type) const
     {
-        return type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME;
+        return type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
+            type == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME;
     }
 
     bool IsAsmInterpretedFrame() const

@@ -260,6 +260,7 @@ bool GetTypeOffsetAndPrevOffsetFromFrameType(uintptr_t frameType, uintptr_t &typ
             prevOffset = OptimizedJSFunctionUnfoldArgVFrame::GetPrevOffset();
             break;
         case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME:
+        case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME:
             typeOffset = OptimizedJSFunctionFrame::GetTypeOffset();
             prevOffset = OptimizedJSFunctionFrame::GetPrevOffset();

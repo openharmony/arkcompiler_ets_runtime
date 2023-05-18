@@ -72,14 +72,20 @@ RUNTIME_STUB_LIST(DEF_STUB_NAME)
         return "unknown";
     }
 
-    static const CallSignature* GetAotCallSign()
+    static const CallSignature* GetOptimizedCallSign()
     {
-        return &aotCallSign_;
+        return &optimizedCallSign_;
+    }
+
+    static const CallSignature* GetOptimizedFastCallSign()
+    {
+        return &optimizedFastCallSign_;
     }
 
 private:
     static CallSignature callSigns_[NUM_OF_RTSTUBS_WITHOUT_GC];
-    static CallSignature aotCallSign_;
+    static CallSignature optimizedCallSign_;
+    static CallSignature optimizedFastCallSign_;
 };
 static_assert(static_cast<int>(kungfu::RuntimeStubCSigns::ID_CallRuntime) ==
               static_cast<int>(kungfu::RuntimeStubCSigns::ASM_STUB_ID_CallRuntime));

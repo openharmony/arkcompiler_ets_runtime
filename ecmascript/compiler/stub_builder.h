@@ -153,6 +153,9 @@ public:
     GateRef CallRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallRuntime(GateRef glue, int index, GateRef argc, GateRef argv);
     GateRef CallNGCRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args);
+    GateRef FastCallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
+    GateRef CallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
+    GateRef GetAotCodeAddr(GateRef method);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args,
                                bool isNew = false, const char* comment = nullptr);
@@ -585,6 +588,7 @@ public:
     GateRef GetMethodFromJSFunction(GateRef jsfunc);
     GateRef IsNativeMethod(GateRef method);
     GateRef HasAotCode(GateRef method);
+    GateRef HasAotCodeAndFastCall(GateRef method);
     GateRef GetExpectedNumOfArgs(GateRef method);
     GateRef GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef profileTypeInfo, GateRef slotId);
     // proxy operator

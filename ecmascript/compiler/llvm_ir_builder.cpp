@@ -57,9 +57,11 @@
 namespace panda::ecmascript::kungfu {
 LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
                              LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
-                             CallSignature::CallConv callConv, bool enableLog, const std::string &funcName)
+                             CallSignature::CallConv callConv, bool enableLog, bool isFastCallAot,
+                             const std::string &funcName)
     : compCfg_(cfg), scheduledGates_(schedule), circuit_(circuit), acc_(circuit), module_(module->GetModule()),
-      function_(function), llvmModule_(module), callConv_(callConv), enableLog_(enableLog)
+      function_(function), llvmModule_(module), callConv_(callConv), enableLog_(enableLog),
+      isFastCallAot_(isFastCallAot)
 {
     context_ = module->GetContext();
     builder_ = LLVMCreateBuilderInContext(context_);
@@ -162,7 +164,8 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::RUNTIME_CALL, &LLVMIRBuilder::HandleRuntimeCall},
         {OpCode::RUNTIME_CALL_WITH_ARGV, &LLVMIRBuilder::HandleRuntimeCallWithArgv},
         {OpCode::NOGC_RUNTIME_CALL, &LLVMIRBuilder::HandleCall},
-        {OpCode::AOT_CALL, &LLVMIRBuilder::HandleCall},
+        {OpCode::CALL_OPTIMIZED, &LLVMIRBuilder::HandleCall},
+        {OpCode::FAST_CALL_OPTIMIZED, &LLVMIRBuilder::HandleCall},
         {OpCode::CALL, &LLVMIRBuilder::HandleCall},
         {OpCode::BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
         {OpCode::DEBUGGER_BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
@@ -371,7 +374,14 @@ void LLVMIRBuilder::GenPrologue()
         for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
             int argth = static_cast<int>(acc_.TryGetValue(*useIt));
             LLVMValueRef value = LLVMGetParam(function_, argth);
-            if (argth == static_cast<int>(CommonArgIdx::FUNC)) {
+            int funcIndex = 0;
+            if (isFastCallAot_) {
+                frameType = FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME;
+                funcIndex = static_cast<int>(FastCallArgIdx::FUNC);
+            } else {
+                funcIndex = static_cast<int>(CommonArgIdx::FUNC);
+            }
+            if (argth == funcIndex) {
                 SaveJSFuncOnOptJSFuncFrame(value);
                 SaveFrameTypeOnFrame(frameType, builder_);
             }
@@ -492,7 +502,8 @@ void LLVMIRBuilder::HandleCall(GateRef gate)
     acc_.GetIns(gate, ins);
     OpCode callOp = acc_.GetOpCode(gate);
     if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL ||
-        callOp == OpCode::BUILTINS_CALL || callOp == OpCode::BUILTINS_CALL_WITH_ARGV || callOp == OpCode::AOT_CALL) {
+        callOp == OpCode::BUILTINS_CALL || callOp == OpCode::BUILTINS_CALL_WITH_ARGV ||
+        callOp == OpCode::CALL_OPTIMIZED || callOp == OpCode::FAST_CALL_OPTIMIZED) {
         VisitCall(gate, ins, callOp);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -830,10 +841,22 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
         kind = GetCallExceptionKind(index, op);
-    } else if (op == OpCode::AOT_CALL) {
-        calleeDescriptor = RuntimeStubCSigns::GetAotCallSign();
+    } else if (op == OpCode::CALL_OPTIMIZED) {
+        calleeDescriptor = RuntimeStubCSigns::GetOptimizedCallSign();
         callee = GetCallee(inList, calleeDescriptor);
-        kind = CallExceptionKind::HAS_PC_OFFSET;
+        if (IsOptimizedJSFunction()) {
+            kind = CallExceptionKind::HAS_PC_OFFSET;
+        } else {
+            kind = CallExceptionKind::NO_PC_OFFSET;
+        }
+    } else if (op == OpCode::FAST_CALL_OPTIMIZED) {
+        calleeDescriptor = RuntimeStubCSigns::GetOptimizedFastCallSign();
+        callee = GetCallee(inList, calleeDescriptor);
+        if (IsOptimizedJSFunction()) {
+            kind = CallExceptionKind::HAS_PC_OFFSET;
+        } else {
+            kind = CallExceptionKind::NO_PC_OFFSET;
+        }
     } else {
         ASSERT(op == OpCode::BUILTINS_CALL || op == OpCode::BUILTINS_CALL_WITH_ARGV);
         LLVMValueRef opcodeOffset = gate2LValue_[inList[targetIndex]];
@@ -2215,7 +2238,7 @@ void LLVMIRBuilder::GenDeoptEntry(LLVMModuleRef &module)
     auto funcType = LLVMFunctionType(LLVMInt64TypeInContext(context_), paramTys.data(),  paramTys.size(), 0);
     auto function = LLVMAddFunction(module, Deoptimizier::GetLLVMDeoptRelocateSymbol(), funcType);
     LLVMSetFunctionCallConv(function, LLVMCCallConv);
-    llvmModule_->SetFunction(LLVMModule::kDeoptEntryOffset, function);
+    llvmModule_->SetFunction(LLVMModule::kDeoptEntryOffset, function, false);
 
     LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(context_, function, "entry");
     LLVMBuilderRef builder = LLVMCreateBuilderInContext(context_);
@@ -2294,7 +2317,6 @@ LLVMValueRef LLVMIRBuilder::ConvertToTagged(GateRef gate)
         case MachineType::F64:
             return ConvertFloat64ToTaggedDouble(gate);
         case MachineType::I64:
-            ASSERT(!acc_.GetGateType(gate).IsNJSValueType());
             break;
         default:
             LOG_COMPILER(FATAL) << "unexpected machineType!";
@@ -2351,6 +2373,7 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
         GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
         GateRef newTarget = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::NEW_TARGET);
         GateRef thisObj = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::THIS_OBJECT);
+        GateRef actualArgc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGC);
         // vreg
         for (size_t i = 0; i < envIndex; i++) {
             GateRef vregValue = acc_.GetValueIn(frameState, i);
@@ -2383,6 +2406,8 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
         // this object
         int32_t specThisIndex = static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX);
         SaveDeoptVregInfo(values, specThisIndex, curDepth, shift, thisObj);
+        int32_t specArgcIndex = static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX);
+        SaveDeoptVregInfo(values, specArgcIndex, curDepth, shift, actualArgc);
     }
     LLVMValueRef runtimeCall =
         LLVMBuildCall3(builder_, funcType, callee, params.data(), params.size(), "", values.data(), values.size());
@@ -2432,7 +2457,7 @@ void LLVMModule::InitialLLVMFuncTypeAndFuncByModuleCSigns()
         const CallSignature* cs = callSigns_[i];
         ASSERT(!cs->GetName().empty());
         LLVMValueRef value = AddAndGetFunc(cs);
-        SetFunction(i, value);
+        SetFunction(i, value, false);
     }
 }
 
@@ -2534,20 +2559,30 @@ LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodL
 {
     LLVMTypeRef returnType = NewLType(MachineType::I64, GateType::TaggedValue());  // possibly get it for circuit
     LLVMTypeRef glue = NewLType(MachineType::I64, GateType::NJSValue());
-    LLVMTypeRef actualArgc = NewLType(MachineType::I64, GateType::NJSValue());
-    std::vector<LLVMTypeRef> paramTys = { glue, actualArgc };
-    auto funcIndex = static_cast<uint32_t>(CommonArgIdx::FUNC);
-    auto numOfComArgs = static_cast<uint32_t>(CommonArgIdx::NUM_OF_ARGS);
-    auto paramCount = methodLiteral->GetNumArgs() + numOfComArgs;
-    auto numOfRestArgs = paramCount - funcIndex;
-    paramTys.insert(paramTys.end(), numOfRestArgs, NewLType(MachineType::I64, GateType::TaggedValue()));
+    uint32_t paramCount = 0;
+    std::vector<LLVMTypeRef> paramTys = { glue };
+    if (!methodLiteral->IsFastCall()) {
+        LLVMTypeRef actualArgc = NewLType(MachineType::I64, GateType::NJSValue());
+        paramTys.emplace_back(actualArgc);
+        auto funcIndex = static_cast<uint32_t>(CommonArgIdx::FUNC);
+        auto numOfComArgs = static_cast<uint32_t>(CommonArgIdx::NUM_OF_ARGS);
+        paramCount = methodLiteral->GetNumArgs() + numOfComArgs;
+        auto numOfRestArgs = paramCount - funcIndex;
+        paramTys.insert(paramTys.end(), numOfRestArgs, NewLType(MachineType::I64, GateType::TaggedValue()));
+    } else {
+        auto funcIndex = static_cast<uint32_t>(FastCallArgIdx::FUNC);
+        auto numOfComArgs = static_cast<uint32_t>(FastCallArgIdx::NUM_OF_ARGS);
+        paramCount = methodLiteral->GetNumArgs() + numOfComArgs;
+        auto numOfRestArgs = paramCount - funcIndex;
+        paramTys.insert(paramTys.end(), numOfRestArgs, NewLType(MachineType::I64, GateType::TaggedValue()));
+    }
     auto funcType = LLVMFunctionType(returnType, paramTys.data(), paramCount, false); // not variable args
 
     std::string name = GetFuncName(methodLiteral, jsPandaFile);
     auto offsetInPandaFile = methodLiteral->GetMethodId().GetOffset();
     auto function = LLVMAddFunction(module_, name.c_str(), funcType);
     ASSERT(offsetInPandaFile != LLVMModule::kDeoptEntryOffset);
-    SetFunction(offsetInPandaFile, function);
+    SetFunction(offsetInPandaFile, function, methodLiteral->IsFastCall());
 
     return function;
 }

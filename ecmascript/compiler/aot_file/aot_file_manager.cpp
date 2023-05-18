@@ -204,13 +204,16 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
     const std::shared_ptr<AnFileInfo> anFileInfo = anFileDataManager->SafeGetAnFileInfo(anFileInfoIndex);
     // get main func method
     auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex(entryPoint.data());
-    auto mainEntry = anFileInfo->GetMainFuncEntry(mainFuncMethodId);
+    uint64_t mainEntry;
+    bool isFastCall;
+    std::tie(mainEntry, isFastCall) = anFileInfo->GetMainFuncEntry(mainFuncMethodId);
     MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
     Method *method = mainFunc->GetCallTarget();
     method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
-    method->SetCodeEntryAndMarkAOT(reinterpret_cast<uintptr_t>(mainEntry));
+    method->SetCodeEntryAndMarkAOT(static_cast<uintptr_t>(mainEntry));
+    method->SetIsFastCall(isFastCall);
 #ifndef NDEBUG
     PrintAOTEntry(jsPandaFile, method, mainEntry);
 #endif
@@ -231,6 +234,7 @@ void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *met
     }
     method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
     method->SetCodeEntryAndMarkAOT(codeEntry);
+    method->SetIsFastCall(entry.isFastCall_);
 }
 
 void AOTFileManager::SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,

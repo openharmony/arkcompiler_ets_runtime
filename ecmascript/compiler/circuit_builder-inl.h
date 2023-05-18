@@ -583,6 +583,14 @@ inline GateRef CircuitBuilder::HasAotCode(GateRef method)
         Int64(0));
 }
 
+inline GateRef CircuitBuilder::HasAotCodeAndFastCall(GateRef method)
+{
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
+    GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
+    return Int64Equal(Int64And(callfield, Int64(Method::AOT_FASTCALL_BITS << MethodLiteral::IsAotCodeBit::START_BIT)),
+        Int64(Method::AOT_FASTCALL_BITS << MethodLiteral::IsAotCodeBit::START_BIT));
+}
+
 inline GateRef CircuitBuilder::IsJSFunction(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -679,6 +687,18 @@ GateRef CircuitBuilder::IsClassConstructor(GateRef object)
         Int32(0));
 }
 
+GateRef CircuitBuilder::IsConstructor(GateRef object)
+{
+    GateRef hClass = LoadHClass(object);
+    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    // decode
+    return Int32NotEqual(
+        Int32And(Int32LSR(bitfield, Int32(JSHClass::ConstructorBit::START_BIT)),
+                 Int32((1LU << JSHClass::ConstructorBit::SIZE) - 1)),
+        Int32(0));
+}
+
 GateRef CircuitBuilder::IsClassPrototype(GateRef object)
 {
     GateRef hClass = LoadHClass(object);
@@ -700,6 +720,15 @@ GateRef CircuitBuilder::IsExtensible(GateRef object)
         Int32(JSHClass::ExtensibleBit::START_BIT)),
         Int32((1LU << JSHClass::ExtensibleBit::SIZE) - 1)),
         Int32(0));
+}
+
+GateRef CircuitBuilder::GetExpectedNumOfArgs(GateRef method)
+{
+    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
+    GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
+    return Int64And(
+        Int64LSR(callfield, Int64(MethodLiteral::NumArgsBits::START_BIT)),
+        Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
 }
 
 GateRef CircuitBuilder::TaggedObjectIsEcmaObject(GateRef obj)

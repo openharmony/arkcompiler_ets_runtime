@@ -32,6 +32,7 @@ enum class SpecVregIndex: int {
     FUNC_INDEX = -4,
     NEWTARGET_INDEX = -5,
     THIS_OBJECT_INDEX = -6,
+    ACTUAL_ARGC_INDEX = -7,
 };
 
 struct Context {

@@ -286,6 +286,9 @@ public:
     bool IsAbstractMethod(GlobalTSTypeRef gt) const;
 
     bool IsMethodSignature(GlobalTSTypeRef gt) const;
+    bool CanFastCall(GlobalTSTypeRef gt) const;
+    bool MethodOffsetIsVaild(GlobalTSTypeRef gt) const;
+    bool FastCallFlagIsVaild(GlobalTSTypeRef gt) const;
 
     inline GlobalTSTypeRef PUBLIC_API GetFuncReturnValueTypeGT(kungfu::GateType gateType) const
     {

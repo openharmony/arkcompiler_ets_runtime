@@ -70,7 +70,7 @@ public:
 
     static void JSFunctionEntry(ExtendedAssembler *assembler);
 
-    static void OptimizedCallOptimized(ExtendedAssembler *assembler);
+    static void OptimizedCallAndPushUndefined(ExtendedAssembler *assembler);
 
     static void CallBuiltinTrampoline(ExtendedAssembler *assembler);
 
@@ -78,26 +78,26 @@ public:
 
     static void JSCall(ExtendedAssembler *assembler);
 
+    static void CallOptimized(ExtendedAssembler *assembler);
+
     static void CallRuntimeWithArgv(ExtendedAssembler *assembler);
 
     static void JSCallWithArgV(ExtendedAssembler *assembler);
+
+    static void JSCallWithArgVAndPushUndefined(ExtendedAssembler *assembler);
 
     static void DeoptHandlerAsm(ExtendedAssembler *assembler);
 
     static void JSCallNew(ExtendedAssembler *assembler);
 
-    static void JSCallNewWithArgV(ExtendedAssembler *assembler);
-
     static void GenJSCall(ExtendedAssembler *assembler, bool isNew);
 
-    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool isNew);
+    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool needAddExpectedArgs);
 private:
     static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, Register taggedValue,
                             Label *nonCallable, Label *notJSFunction);
     static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register sp);
-    static void CallOptimziedMethodInternal(ExtendedAssembler *assembler, Register jsfunc, Register actualArgC,
-                                            Register callField, Register sp);
     static void JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Register glue,
                                             Register actualArgC, Register jsfunc, int stubId);
     static void JSProxyCallInternal(ExtendedAssembler *assembler, Register sp, Register jsfunc);
@@ -115,6 +115,18 @@ private:
     static void PushAsmBridgeFrame(ExtendedAssembler *assembler);
     static void PopOptimizedFrame(ExtendedAssembler *assembler);
     static void JSCallInternal(ExtendedAssembler *assembler, Register jsfunc, bool isNew = false);
+    friend class OptimizedFastCall;
+};
+
+class OptimizedFastCall : public CommonCall {
+public:
+    static void OptimizedFastCallEntry(ExtendedAssembler *assembler);
+
+    static void OptimizedFastCallAndPushUndefined(ExtendedAssembler *assembler);
+
+    static void JSFastCallWithArgV(ExtendedAssembler *assembler);
+
+    static void JSFastCallWithArgVAndPushUndefined(ExtendedAssembler *assembler);
 };
 
 class AsmInterpreterCall : public CommonCall {

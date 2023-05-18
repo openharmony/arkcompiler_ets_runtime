@@ -32,6 +32,13 @@ enum class CommonArgIdx : uint8_t {
     NUM_OF_ARGS,
 };
 
+enum class FastCallArgIdx : uint8_t {
+    GLUE = 0,
+    FUNC,
+    THIS_OBJECT,
+    NUM_OF_ARGS,
+};
+
 enum class FrameArgIdx : uint8_t {
     FUNC = 0,
     NEW_TARGET,

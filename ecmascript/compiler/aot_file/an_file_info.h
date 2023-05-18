@@ -36,13 +36,13 @@ public:
         accumulateTotalSize(moduleDes.GetArkStackMapSize());
     }
 
-    uintptr_t GetMainFuncEntry(uint32_t methodId) const
+    std::pair<uint64_t, bool> GetMainFuncEntry(uint32_t methodId) const
     {
         auto it = mainEntryMap_.find(methodId);
         if (it == mainEntryMap_.end()) {
-            return 0;
+            return std::make_pair(0, false);
         }
-        return static_cast<uintptr_t>(it->second);
+        return it->second;
     }
 
     void AlignTextSec()
@@ -77,7 +77,7 @@ private:
     void ParseFunctionEntrySection(ModuleSectionDes &moduleDes);
     void UpdateFuncEntries();
     uint64_t curTextSecOffset_ {0};
-    std::unordered_map<uint32_t, uint64_t> mainEntryMap_ {};
+    std::unordered_map<uint32_t, std::pair<uint64_t, bool>> mainEntryMap_ {};
     bool isLoad_ {false};
 
     friend class AnFileDataManager;

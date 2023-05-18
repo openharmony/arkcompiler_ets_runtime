@@ -55,7 +55,7 @@ public:
     using IsNativeBit = NumArgsBits::NextFlag;  // offset 60
     using IsAotCodeBit = IsNativeBit::NextFlag; // offset 61
     using IsFastBuiltinBit = IsAotCodeBit::NextFlag; // offset 62
-    using IsCallNapiBit = IsFastBuiltinBit::NextFlag; // offset 63
+    using IsFastCallBit = IsFastBuiltinBit::NextFlag; // offset 63
 
     uint64_t GetCallField() const
     {
@@ -185,14 +185,24 @@ public:
         return NumArgsBits::Decode(callField);
     }
 
-    static uint64_t SetCallNapi(uint64_t callField, bool isCallNapi)
+    static uint64_t SetIsFastCall(uint64_t callField, bool isFastCall)
     {
-        return IsCallNapiBit::Update(callField, isCallNapi);
+        return IsFastCallBit::Update(callField, isFastCall);
     }
 
-    static bool IsCallNapi(uint64_t callField)
+    void SetIsFastCall(bool isFastCall)
     {
-        return IsCallNapiBit::Decode(callField);
+        callField_ = IsFastCallBit::Update(callField_, isFastCall);
+    }
+
+    static bool IsFastCall(uint64_t callField)
+    {
+        return IsFastCallBit::Decode(callField);
+    }
+
+    bool IsFastCall() const
+    {
+        return IsFastCallBit::Decode(callField_);
     }
 
     static constexpr size_t METHOD_ARGS_NUM_BITS = 16;

@@ -117,6 +117,15 @@ public:
         return methodLiteralMap_;
     }
 
+    MethodLiteral *GetMethodLiteralByIndex(uint32_t index) const
+    {
+        auto info = methodLiteralMap_.find(index);
+        if (info != methodLiteralMap_.end()) {
+            return info->second;
+        }
+        return nullptr;
+    }
+
     uint32_t GetNumMethods() const
     {
         return numMethods_;

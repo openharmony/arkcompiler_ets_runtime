@@ -204,6 +204,9 @@ public:
     NEXT_BIT_FIELD(BitField, IsGetterSetter, bool, ONE_BIT, Generator);
     NEXT_BIT_FIELD(BitField, IsAbstract, bool, ONE_BIT, IsGetterSetter);
     NEXT_BIT_FIELD(BitField, IsSignature, bool, ONE_BIT, IsAbstract);
+    NEXT_BIT_FIELD(BitField, IsFastCall, bool, ONE_BIT, IsSignature);
+    NEXT_BIT_FIELD(BitField, IsFastCallVaild, bool, ONE_BIT, IsFastCall);
+    NEXT_BIT_FIELD(BitField, IsMethodOffsetVaild, bool, ONE_BIT, IsFastCallVaild);
 
     DECL_VISIT_OBJECT(NAME_OFFSET, RETURN_GT_OFFSET)
     DECL_DUMP()

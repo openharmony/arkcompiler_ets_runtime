@@ -84,7 +84,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::CALL_SETTER:
         case OpCode::LOAD_PROPERTY:
         case OpCode::CONSTRUCT:
-        case OpCode::TYPEDAOTCALL:
+        case OpCode::TYPEDCALL:
+        case OpCode::TYPEDFASTCALL:
         case OpCode::OBJECT_TYPE_CHECK:
             return VisitWithConstantValue(gate, 1); // ignoreIndex
         case OpCode::LOOP_EXIT_VALUE:
@@ -94,7 +95,9 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::STABLE_ARRAY_CHECK:
         case OpCode::TYPED_ARRAY_CHECK:
         case OpCode::JSCALLTARGET_TYPE_CHECK:
+        case OpCode::JSFASTCALLTARGET_TYPE_CHECK:
         case OpCode::JSCALLTHISTARGET_TYPE_CHECK:
+        case OpCode::JSFASTCALLTHISTARGET_TYPE_CHECK:
         case OpCode::TYPED_CALL_CHECK:
         case OpCode::HEAP_ALLOC:
         case OpCode::TYPED_NEW_ALLOCATE_THIS:

@@ -313,6 +313,45 @@ JSTaggedValue JSFunction::Invoke(EcmaRuntimeCallInfo *info, const JSHandle<JSTag
     return JSFunction::Call(info);
 }
 
+JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> mainFunc,
+    JSHandle<JSTaggedValue> &thisArg, std::string_view entryPoint)
+{
+    if (mainFunc->IsClassConstructor()) {
+        {
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            JSHandle<JSObject> error =
+                factory->GetJSError(ErrorType::TYPE_ERROR, "class constructor cannot called without 'new'");
+            thread->SetException(error.GetTaggedValue());
+        }
+        return thread->GetException();
+    }
+    Method *method = mainFunc->GetCallTarget();
+    size_t actualNumArgs = method->GetNumArgs();
+    const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
+    JSTaggedValue res;
+    if (method->IsFastCall()) {
+        size_t argsNum = actualNumArgs + NUM_MANDATORY_JSFUNC_ARGS - 1;
+        std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
+        args[0] = mainFunc.GetTaggedValue().GetRawData();
+        args[1] = thisArg.GetTaggedValue().GetRawData();
+        // do not modify this log to INFO, this will call many times
+        LOG_ECMA(DEBUG) << "start to execute aot entry: " << entryPoint;
+        res = thread->GetEcmaVM()->FastCallAot(actualNumArgs, args.data(), prevFp);
+    } else {
+        size_t argsNum = actualNumArgs + NUM_MANDATORY_JSFUNC_ARGS;
+        std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
+        args[0] = mainFunc.GetTaggedValue().GetRawData();
+        args[2] = thisArg.GetTaggedValue().GetRawData(); // 2: this
+        // do not modify this log to INFO, this will call many times
+        LOG_ECMA(DEBUG) << "start to execute aot entry: " << entryPoint;
+        res = thread->GetEcmaVM()->ExecuteAot(actualNumArgs, args.data(), prevFp);
+    }
+    if (thread->HasPendingException()) {
+        return thread->GetException();
+    }
+    return res;
+}
+
 // [[Construct]]
 JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
 {
@@ -338,15 +377,21 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     JSTaggedValue resultValue;
     info->SetThis(obj.GetTaggedValue());
     Method *method = func->GetCallTarget();
-    if (method->IsAotWithCallField()) {
+    if (method->IsAotWithCallField() && func->IsClassConstructor()) {
         const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
-        resultValue = thread->GetEcmaVM()->ExecuteAot(info->GetArgsNumber(), info->GetArgs(), prevFp,
-                                                      OptimizedEntryFrame::CallType::CALL_NEW);
+        if (method->IsFastCall()) {
+            JSTaggedType *stackArgs = info->GetArgs();
+            stackArgs[1] = stackArgs[0];
+            resultValue = thread->GetEcmaVM()->FastCallAot(info->GetArgsNumber(), stackArgs + 1, prevFp);
+        } else {
+            resultValue = thread->GetEcmaVM()->ExecuteAot(info->GetArgsNumber(), info->GetArgs(), prevFp);
+        }
         const JSTaggedType *curSp = thread->GetCurrentSPFrame();
         InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(curSp);
         JSTaggedType *prevSp = entryState->base.prev;
         thread->SetCurrentSPFrame(prevSp);
     } else {
+        method->SetAotCodeBit(false); // if Construct is not ClassConstructor, don't run aot
         resultValue = EcmaInterpreter::Execute(info);
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

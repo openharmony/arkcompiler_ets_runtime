@@ -46,7 +46,7 @@ public:
 
     static void JSFunctionEntry(ExtendedAssembler *assembler);
 
-    static void OptimizedCallOptimized(ExtendedAssembler *assembler);
+    static void OptimizedCallAndPushUndefined(ExtendedAssembler *assembler);
 
     static void CallBuiltinTrampoline(ExtendedAssembler *assembler);
 
@@ -54,27 +54,26 @@ public:
 
     static void JSCall(ExtendedAssembler *assembler);
 
+    static void CallOptimized(ExtendedAssembler *assembler);
+
     static void CallRuntimeWithArgv(ExtendedAssembler *assembler);
 
     static void JSCallWithArgV(ExtendedAssembler *assembler);
+
+    static void JSCallWithArgVAndPushUndefined(ExtendedAssembler *assembler);
 
     static void DeoptHandlerAsm(ExtendedAssembler *assembler);
 
     static void JSCallNew(ExtendedAssembler *assembler);
 
-    static void JSCallNewWithArgV(ExtendedAssembler *assembler);
-
     static void GenJSCall(ExtendedAssembler *assembler, bool isNew);
 
-    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool isNew);
+    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool needAddExpectedArgs);
 private:
     static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg,
                             Label *lNonCallable, Label *lNotJSFunction, Label *lJSFunctionCall);
     static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register glueReg);
-    static void CallOptimziedMethodInternal(ExtendedAssembler *assembler, Register glueReg, Register jsFuncReg,
-                                            Register methodCallField, Register argc, Register codeAddrReg,
-                                            Register expectedNumArgsReg);
     static void JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Register jsFuncReg, Label *jsCall);
     static void JSProxyCallInternal(ExtendedAssembler *assembler, Register jsFuncReg);
     static void OptimizedCallAsmInterpreter(ExtendedAssembler *assembler);
@@ -87,6 +86,19 @@ private:
     static void PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Register glue);
     static void PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp);
     static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);
+    
+    friend class OptimizedFastCall;
+};
+
+class OptimizedFastCall : public CommonCall {
+public:
+    static void OptimizedFastCallEntry(ExtendedAssembler *assembler);
+
+    static void OptimizedFastCallAndPushUndefined(ExtendedAssembler *assembler);
+
+    static void JSFastCallWithArgV(ExtendedAssembler *assembler);
+
+    static void JSFastCallWithArgVAndPushUndefined(ExtendedAssembler *assembler);
 };
 
 class AsmInterpreterCall : public CommonCall {
@@ -176,6 +188,104 @@ private:
     static void JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMode mode,
         Label *fastPathEntry, Label *pushCallThis, Label *stackOverflow);
     friend class OptimizedCall;
+};
+
+class JsFunctionArgsConfigFrameScope {
+public:
+    static constexpr int FRAME_SLOT_SIZE = 8;
+    explicit JsFunctionArgsConfigFrameScope(ExtendedAssembler *assembler) : assembler_(assembler)
+    {
+        assembler_->Pushq(rbp);
+        assembler_->Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME));
+        // 2: skip jsFunc and frameType
+        assembler_->Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
+        // callee save
+        assembler_->Pushq(r12);
+        assembler_->Pushq(r13);
+        assembler_->Pushq(r14);
+        assembler_->Pushq(rbx);
+        assembler_->Pushq(rax);
+    }
+    ~JsFunctionArgsConfigFrameScope()
+    {
+        assembler_->Movq(rbp, rsp);
+        assembler_->Addq(-5 * FRAME_SLOT_SIZE, rsp); // -5: get r12 r13 r14 rbx
+        assembler_->Popq(rbx);
+        assembler_->Popq(r14);
+        assembler_->Popq(r13);
+        assembler_->Popq(r12);
+        assembler_->Addq(FRAME_SLOT_SIZE, rsp); // skip frame type
+        assembler_->Pop(rbp);
+        assembler_->Ret();
+    }
+    NO_COPY_SEMANTIC(JsFunctionArgsConfigFrameScope);
+    NO_MOVE_SEMANTIC(JsFunctionArgsConfigFrameScope);
+private:
+    ExtendedAssembler *assembler_;
+};
+
+class OptimizedUnfoldArgVFrameFrameScope {
+public:
+    static constexpr int FRAME_SLOT_SIZE = 8;
+    explicit OptimizedUnfoldArgVFrameFrameScope(ExtendedAssembler *assembler) : assembler_(assembler)
+    {
+        assembler_->Pushq(rbp);
+        // construct frame
+        assembler_->Pushq(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME));
+        assembler_->Pushq(assembler_->AvailableRegister2());
+        // 2: skip callSiteSp and frameType
+        assembler_->Leaq(Operand(rsp, 2 * FRAME_SLOT_SIZE), rbp);
+        assembler_->Pushq(rbx);
+        assembler_->Pushq(r12); // callee save
+    }
+    ~OptimizedUnfoldArgVFrameFrameScope()
+    {
+        assembler_->Movq(rbp, rsp);
+        assembler_->Addq(-4 * FRAME_SLOT_SIZE, rsp); // -4: get r12 rbx
+        assembler_->Popq(r12);
+        assembler_->Popq(rbx);
+        assembler_->Addq(2 * FRAME_SLOT_SIZE, rsp); // 2: skip frame type and sp
+        assembler_->Popq(rbp);
+        assembler_->Ret();
+    }
+    NO_COPY_SEMANTIC(OptimizedUnfoldArgVFrameFrameScope);
+    NO_MOVE_SEMANTIC(OptimizedUnfoldArgVFrameFrameScope);
+private:
+    ExtendedAssembler *assembler_;
+};
+
+class OptimizedUnfoldArgVFrameFrame1Scope {
+public:
+    static constexpr int FRAME_SLOT_SIZE = 8;
+    explicit OptimizedUnfoldArgVFrameFrame1Scope(ExtendedAssembler *assembler) : assembler_(assembler)
+    {
+        assembler_->Pushq(rbp);
+        // construct frame
+        assembler_->Pushq(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME));
+        assembler_->Pushq(assembler_->AvailableRegister2());
+        // 2: skip callSiteSp and frameType
+        assembler_->Leaq(Operand(rsp, 2 * FRAME_SLOT_SIZE), rbp);
+        assembler_->Pushq(rbx);
+        assembler_->Pushq(r12); // callee save
+        assembler_->Pushq(r13);
+        assembler_->Pushq(r14); // callee save
+    }
+    ~OptimizedUnfoldArgVFrameFrame1Scope()
+    {
+        assembler_->Movq(rbp, rsp);
+        assembler_->Addq(-6 * FRAME_SLOT_SIZE, rsp); // -6: get r12 r13 r14 rbx
+        assembler_->Popq(r14);
+        assembler_->Popq(r13);
+        assembler_->Popq(r12);
+        assembler_->Popq(rbx);
+        assembler_->Addq(2 * FRAME_SLOT_SIZE, rsp); // 2: skip frame type and sp
+        assembler_->Popq(rbp);
+        assembler_->Ret();
+    }
+    NO_COPY_SEMANTIC(OptimizedUnfoldArgVFrameFrame1Scope);
+    NO_MOVE_SEMANTIC(OptimizedUnfoldArgVFrameFrame1Scope);
+private:
+    ExtendedAssembler *assembler_;
 };
 }  // namespace panda::ecmascript::x64
 #endif  // ECMASCRIPT_COMPILER_ASSEMBLER_MODULE_X64_H

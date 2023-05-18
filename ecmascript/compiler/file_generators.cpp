@@ -90,7 +90,7 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, S
             funcSize = codeBuff + assembler_->GetSectionSize(ElfSecName::TEXT) - entrys[j];
         }
         kungfu::CalleeRegAndOffsetVec info = assembler_->GetCalleeReg2Offset(func, log);
-        stubInfo.AddEntry(cs->GetTargetKind(), false, cs->GetID(), entrys[j] - codeBuff, moduleIndex, delta,
+        stubInfo.AddEntry(cs->GetTargetKind(), false, false, cs->GetID(), entrys[j] - codeBuff, moduleIndex, delta,
                           funcSize, info);
         ASSERT(!cs->GetName().empty());
         addr2name[entrys[j]] = cs->GetName();
@@ -101,10 +101,10 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
                                   uint32_t moduleIndex, const CompilerLog &log)
 {
     auto engine = assembler_->GetEngine();
-    std::vector<std::tuple<uint64_t, size_t, int>> funcInfo; // entry idx delta
+    std::vector<std::tuple<uint64_t, size_t, int, bool>> funcInfo; // entry idx delta
     std::vector<kungfu::CalleeRegAndOffsetVec> calleeSaveRegisters; // entry idx delta
     // 1.Compile all functions and collect function infos
-    llvmModule_->IteratefuncIndexMap([&](size_t idx, LLVMValueRef func) {
+    llvmModule_->IteratefuncIndexMap([&](size_t idx, LLVMValueRef func, bool isFastCall) {
         uint64_t funcEntry = reinterpret_cast<uintptr_t>(LLVMGetPointerToGlobal(engine, func));
         uint64_t length = 0;
         std::string funcName(LLVMGetValueName2(func, reinterpret_cast<size_t *>(&length)));
@@ -112,7 +112,7 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
         addr2name[funcEntry] = funcName;
         int delta = assembler_->GetFpDeltaPrevFramSp(func, log);
         ASSERT(delta >= 0 && (delta % sizeof(uintptr_t) == 0));
-        funcInfo.emplace_back(std::tuple(funcEntry, idx, delta));
+        funcInfo.emplace_back(std::tuple(funcEntry, idx, delta, isFastCall));
         kungfu::CalleeRegAndOffsetVec info = assembler_->GetCalleeReg2Offset(func, log);
         calleeSaveRegisters.emplace_back(info);
     });
@@ -131,8 +131,9 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
         uint64_t funcEntry;
         size_t idx;
         int delta;
+        bool isFastCall;
         uint32_t funcSize;
-        std::tie(funcEntry, idx, delta) = funcInfo[i];
+        std::tie(funcEntry, idx, delta, isFastCall) = funcInfo[i];
         if (i < funcCount - 1) {
             funcSize = std::get<0>(funcInfo[i + 1]) - funcEntry;
         } else {
@@ -141,7 +142,7 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
         auto found = addr2name[funcEntry].find(panda::ecmascript::JSPandaFile::ENTRY_FUNCTION_NAME);
         bool isMainFunc = found != std::string::npos;
         uint64_t offset = funcEntry - textAddr + aotInfo.GetCurTextSecOffset();
-        aotInfo.AddEntry(CallSignature::TargetKind::JSFUNCTION, isMainFunc, idx,
+        aotInfo.AddEntry(CallSignature::TargetKind::JSFUNCTION, isMainFunc, isFastCall, idx,
                          offset, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
     }
     aotInfo.UpdateCurTextSecOffset(textSize);
@@ -225,7 +226,7 @@ void StubFileGenerator::CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> 
         } else {
             funSize = asmModule_.GetBufferSize() - entryOffset;
         }
-        stubInfo_.AddEntry(cs->GetTargetKind(), false, cs->GetID(), entryOffset, bridgeModuleIdx, 0, funSize);
+        stubInfo_.AddEntry(cs->GetTargetKind(), false, false, cs->GetID(), entryOffset, bridgeModuleIdx, 0, funSize);
         ASSERT(!cs->GetName().empty());
         addr2name[entryOffset] = cs->GetName();
     }

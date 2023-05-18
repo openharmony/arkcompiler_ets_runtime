@@ -76,6 +76,7 @@ namespace panda::ecmascript::kungfu {
     V(CreateEmptyArray)               \
     V(CreateArrayWithBuffer)          \
     V(NewJSObject)                    \
+    V(JsBoundCallInternal)            \
     V(JsProxyCallInternal)
 
 #define COMMON_STUB_ID_LIST(V)          \

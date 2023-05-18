@@ -137,6 +137,16 @@ void ArgumentAccessor::CollectArgs()
     if (args_.size() == 0) {
         GateAccessor(circuit_).GetArgsOuts(args_);
         std::reverse(args_.begin(), args_.end());
+        if (method_ == nullptr) {
+            return;
+        }
+        if (method_->IsFastCall() && args_.size() > 2) { // 2: mean have func and glue
+            GateRef actualArgcGate = circuit_->GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
+            GateRef newTargetGate = circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED,
+                GateType::UndefinedType());
+            args_.insert(args_.begin() + 1, actualArgcGate);
+            args_.insert(args_.begin() + 3, newTargetGate); // 3: newtarget index
+        }
     }
 }
 

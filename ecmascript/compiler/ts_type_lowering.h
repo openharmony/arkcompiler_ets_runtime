@@ -112,6 +112,10 @@ private:
     void LowerTypedCallthisrange(GateRef gate);
     bool IsLoadVtable(GateRef func);
     bool CanOptimizeAsFastCall(GateRef func, uint32_t len);
+    void CheckCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+        GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
+    void CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+        GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
 
     bool CheckParam(GateRef gate, bool isCallThis, MethodLiteral* method);
 
