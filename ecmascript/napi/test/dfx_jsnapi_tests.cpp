@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -322,5 +322,34 @@ HWTEST_F_L0(DFXJSNApiTests, BuildJsStackInfoList)
     std::vector<ecmascript::JsFrameInfo> jsFrameInfo;
     bool result = DFXJSNApi::BuildJsStackInfoList(vm_, hostTid, jsFrameInfo);
     EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, StartSampling)
+{
+    uint64_t samplingInterval = 32768;
+    bool result = DFXJSNApi::StartSampling(vm_, samplingInterval);
+    EXPECT_TRUE(result);
+    result = DFXJSNApi::StartSampling(vm_, samplingInterval);
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, StopSampling)
+{
+    uint64_t samplingInterval = 32768;
+    bool result = DFXJSNApi::StartSampling(vm_, samplingInterval);
+    EXPECT_TRUE(result);
+    DFXJSNApi::StopSampling(vm_);
+    result = DFXJSNApi::StartSampling(vm_, samplingInterval);
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetAllocationProfile)
+{
+    const SamplingInfo *result = DFXJSNApi::GetAllocationProfile(vm_);
+    EXPECT_TRUE(result == nullptr);
+    uint64_t samplingInterval = 32768;
+    DFXJSNApi::StartSampling(vm_, samplingInterval);
+    result = DFXJSNApi::GetAllocationProfile(vm_);
+    EXPECT_TRUE(result != nullptr);
 }
 } // namespace panda::test
