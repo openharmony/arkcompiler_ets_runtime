@@ -13,6 +13,6 @@
  * limitations under the License.
  */
 
-import {Test} from './module_test_module_test_module.js'
+import {Test} from './module_test_module_test_module.js';
 
-var test = new Test('555');
+let test = new Test('555');

@@ -31,14 +31,14 @@ enum class Triple {
 class GCStackMapRegisters {
 public:
 #if defined(PANDA_TARGET_AMD64)
-    static constexpr int SP = 7;
-    static constexpr int FP = 6;
+    static constexpr int SP = 7;  /* x7 */
+    static constexpr int FP = 6;  /* x6 */
 #elif defined(PANDA_TARGET_ARM64)
     static constexpr int SP = 31;  /* x31 */
     static constexpr int FP = 29;  /* x29 */
 #elif defined(PANDA_TARGET_ARM32)
-    static constexpr int SP = 13;
-    static constexpr int FP = 11;
+    static constexpr int SP = 13;  /* x13 */
+    static constexpr int FP = 11;  /* x11 */
 #else
     static constexpr int SP = -1;
     static constexpr int FP = -1;
@@ -49,13 +49,13 @@ static int GetFpRegByTriple(Triple triple)
     int fp = -1;
     switch (triple) {
         case Triple::TRIPLE_AMD64:
-            fp = 6;
+            fp = 6;  /* x6 */
             break;
         case Triple::TRIPLE_ARM32:
-            fp = 11;
+            fp = 11;  /* x11 */
             break;
         case Triple::TRIPLE_AARCH64:
-            fp = 29;
+            fp = 29;  /* x29 */
             break;
         default:
             UNREACHABLE();
@@ -69,13 +69,13 @@ static int GetSpRegByTriple(Triple triple)
     int sp = -1;
     switch (triple) {
         case Triple::TRIPLE_AMD64:
-            sp = 7;
+            sp = 7;  /* x7 */
             break;
         case Triple::TRIPLE_ARM32:
-            sp = 13;
+            sp = 13;  /* x13 */
             break;
         case Triple::TRIPLE_AARCH64:
-            sp = 31;
+            sp = 31;  /* x31 */
             break;
         default:
             UNREACHABLE();

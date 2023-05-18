@@ -52,7 +52,7 @@ bool DateParse::IsIsoDateTime(DateProxy *proxy, DayValue *dayValue)
             return false;
         }
         if (sign.IsSymbol('-')) {
-           signYear = -signYear;
+            signYear = -signYear;
         }
         dayValue->SetData(signYear);
     } else if (proxy->GetDate().IsFourDecimalDigit()) {
@@ -366,7 +366,8 @@ bool DateParse::TimeValue::SetTimeValue(int *time)
         }
         return false;
     }
-    if (!HourIsValid(time[HOUR]) || !MinuteIsValid(time[MIN]) || !SecondIsValid(time[SEC]) || !MilliSecondIsValid(time[MS])) {
+    if (!HourIsValid(time[HOUR]) || !MinuteIsValid(time[MIN]) || !SecondIsValid(time[SEC]) ||
+        !MilliSecondIsValid(time[MS])) {
         return false;
     }
     return true;
@@ -384,6 +385,7 @@ bool DateParse::DayValue::SetDayValue(int *time)
         data_[i] = 1;
     }
     if (month_ == INT_MAX) {
+        // 2:index of year
         if (is_iso_flag_ || (IsFull() && DayIsValid(data_[2]) && !MonthIsValid(data_[0]))) {
             year = data_[YEAR];
             mon = data_[MONTH];

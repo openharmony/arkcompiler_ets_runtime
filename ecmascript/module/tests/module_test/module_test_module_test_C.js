@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-import {a, b, module} from './module_test_module_test_B.js'
-import * as obj from './module_test_module_test_module.js'
+import {a, b, module} from './module_test_module_test_B.js';
+import * as obj from './module_test_module_test_module.js';
 
-var c = new obj.Test(obj.module);
+let c = new obj.Test(obj.module);
 
 if (module == obj.module) {
-    print(module);
+  print(module);
 }
 
 if (a > b) {
-    print('a > b');
+  print('a > b');
 }
 
-export {b} 
+export {b};

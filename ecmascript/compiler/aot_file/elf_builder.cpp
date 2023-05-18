@@ -479,7 +479,7 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
             curSecOffset = AlignUp(curSecOffset, PageSize());
             file.seekp(curSecOffset);
         }
-        curShdr.sh_link = section.Link();
+        curShdr.sh_link = static_cast<uint32_t>(section.Link());
         curShdr.sh_info = 0;
         curShdr.sh_entsize = section.Entsize();
         sectionToShdr_[secName] = curShdr;

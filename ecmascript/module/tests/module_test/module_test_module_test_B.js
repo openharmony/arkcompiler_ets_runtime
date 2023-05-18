@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-export var a = 123;
-export var b = 321;
+export let a = 123;
+export let b = 321;
 export {module} from './module_test_module_test_module.js';
 
-var c = a * b;
+let c = a * b;

@@ -437,7 +437,7 @@ void FormatToArray(JSThread *thread, const JSHandle<JSArray> &array,
                 // Add Group type element
                 resString = intl::LocaleHelper::UStringToString(thread, formattedText, it->first, it->second);
                 typeString.Update(JSLocale::GetNumberFieldType(thread, taggedValue.GetTaggedValue(),
-                                                               UNUM_GROUPING_SEPARATOR_FIELD).GetTaggedValue());
+                    UNUM_GROUPING_SEPARATOR_FIELD).GetTaggedValue());
                 record =
                     JSLocale::PutElement(thread, index++, array, typeString, JSHandle<JSTaggedValue>::Cast(resString));
                 RETURN_IF_ABRUPT_COMPLETION(thread);

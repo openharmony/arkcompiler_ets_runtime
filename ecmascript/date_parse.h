@@ -35,7 +35,7 @@ private:
         public:
             explicit StringReader(const char *str, int length) : data_(str), length_(length)
             {
-                NextChar(); 
+                NextChar();
             }
 
             void NextChar()
@@ -142,7 +142,7 @@ private:
             char value_;
     };
 
-    enum DateValueType : int8_t{
+    enum DateValueType : int8_t {
         DATE_INVALID,
         DATE_UNKNOWN,
         DATE_NUMBER,
@@ -489,11 +489,13 @@ private:
                 month_ = month;
             }
 
-            static bool MonthIsValid(int n) {
+            static bool MonthIsValid(int n)
+            {
                 return IsBetween(n, 1, MOUTH_PER_YEAR);
             }
 
-            static bool DayIsValid(int n) {
+            static bool DayIsValid(int n)
+            {
                 return IsBetween(n, 1, JSDate::MAX_DAYS_MONTH);
             }
 

@@ -549,8 +549,8 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
     // 16. Let style be numberFormat.[[Style]].
     StyleOption style = numberFormat->GetStyle();
     if (style == StyleOption::PERCENT) {
-        icuNumberFormatter = icuNumberFormatter.unit(icu::MeasureUnit::getPercent())
-                                 .scale(icu::number::Scale::powerOfTen(2));  // means 10^2
+        icuNumberFormatter = icuNumberFormatter.unit(icu::MeasureUnit::getPercent()).
+            scale(icu::number::Scale::powerOfTen(2));  // means 10^2
     }
 
     // 19. Let notation be ? GetOption(
