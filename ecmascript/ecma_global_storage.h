@@ -100,7 +100,7 @@ public:
         SetObject(value);
         SetUsing(isUsing);
 #ifdef HOOK_ENABLE
-        memtrace((void *)next, sizeof(Node), "ArkJs", isUsing);
+        memtrace((void *)next, sizeof(Node), "ArkJsGlobalHandle", isUsing);
 #endif
     }
 
