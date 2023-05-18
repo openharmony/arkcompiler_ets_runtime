@@ -1323,6 +1323,7 @@ public:
     static void SetModuleName(EcmaVM *vm, const std::string &moduleName);
     static std::string GetModuleName(EcmaVM *vm);
     static void AllowCrossThreadExecution(EcmaVM *vm);
+    static void SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
 
 private:
     static int vmCount_;
