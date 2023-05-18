@@ -39,6 +39,7 @@ public:
         uint64_t codeAddr_ {};
         CallSignature::TargetKind kind_;
         bool isMainFunc_ {};
+        bool isFastCall_ {};
         uint32_t indexInKindOrMethodId_ {};
         uint32_t moduleIndex_ {};
         int fpDeltaPrevFrameSp_ {};
@@ -108,7 +109,7 @@ public:
         entryNum_ = n;
     }
 
-    void AddEntry(CallSignature::TargetKind kind, bool isMainFunc, int indexInKind, uint64_t offset,
+    void AddEntry(CallSignature::TargetKind kind, bool isMainFunc, bool isFastCall, int indexInKind, uint64_t offset,
                   uint32_t moduleIndex, int delta, uint32_t size, CalleeRegAndOffsetVec info = {})
     {
         FuncEntryDes des;
@@ -118,6 +119,7 @@ public:
         }
         des.kind_ = kind;
         des.isMainFunc_ = isMainFunc;
+        des.isFastCall_ = isFastCall;
         des.indexInKindOrMethodId_ = static_cast<uint32_t>(indexInKind);
         des.codeAddr_ = offset;
         des.moduleIndex_ = moduleIndex;

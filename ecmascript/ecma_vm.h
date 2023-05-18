@@ -530,8 +530,9 @@ public:
         return quickFixManager_;
     }
 
-    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
-                             OptimizedEntryFrame::CallType callType);
+    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp);
+
+    JSTaggedValue FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp);
 
     // For icu objects cache
     void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,

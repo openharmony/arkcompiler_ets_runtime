@@ -222,9 +222,27 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
     Method *method = callTarget->GetCallTarget();
     if (method->IsAotWithCallField()) {
+        JSHandle<JSFunction> func(thread, info->GetFunctionValue());
+        if (func->IsClassConstructor()) {
+            {
+                EcmaVM *ecmaVm = thread->GetEcmaVM();
+                ObjectFactory *factory = ecmaVm->GetFactory();
+                JSHandle<JSObject> error =
+                    factory->GetJSError(ErrorType::TYPE_ERROR, "class constructor cannot called without 'new'");
+                thread->SetException(error.GetTaggedValue());
+            }
+            return thread->GetException();
+        }
         const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
-        auto res =
-            thread->GetEcmaVM()->ExecuteAot(argc, info->GetArgs(), prevFp, OptimizedEntryFrame::CallType::CALL_FUNC);
+        JSTaggedValue res;
+        if (method->IsFastCall()) {
+            JSTaggedType *stackArgs = info->GetArgs();
+            stackArgs[1] = stackArgs[0];
+            res = thread->GetEcmaVM()->FastCallAot(argc, stackArgs + 1, prevFp);
+        } else {
+            res = thread->GetEcmaVM()->ExecuteAot(argc, info->GetArgs(), prevFp);
+        }
+
         const JSTaggedType *curSp = thread->GetCurrentSPFrame();
         InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(curSp);
         JSTaggedType *prevSp = entryState->base.prev;

@@ -799,6 +799,16 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
 JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<GeneratorContext> context)
 {
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(JSHandle<JSTaggedValue>(thread, context->GetMethod()));
+    if (func->IsClassConstructor()) {
+        {
+            EcmaVM *ecmaVm = thread->GetEcmaVM();
+            ObjectFactory *factory = ecmaVm->GetFactory();
+            JSHandle<JSObject> error =
+                factory->GetJSError(ErrorType::TYPE_ERROR, "class constructor cannot called without 'new'");
+            thread->SetException(error.GetTaggedValue());
+        }
+        return thread->GetException();
+    }
     Method *method = func->GetCallTarget();
     JSTaggedValue genObject = context->GetGeneratorObject();
     std::vector<JSTaggedType> args(method->GetNumArgs() + NUM_MANDATORY_JSFUNC_ARGS,
@@ -807,8 +817,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
     args[1] = genObject.GetRawData();
     args[2] = context->GetThis().GetRawData(); // 2: this
     const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
-    auto res = thread->GetEcmaVM()->ExecuteAot(method->GetNumArgs(), args.data(), prevFp,
-                                               OptimizedEntryFrame::CallType::CALL_FUNC);
+    auto res = thread->GetEcmaVM()->ExecuteAot(method->GetNumArgs(), args.data(), prevFp);
     return res;
 }
 

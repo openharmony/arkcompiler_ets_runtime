@@ -692,6 +692,67 @@ void NewJSObjectStubBuilder::GenerateCircuit()
     Return(newBuilder.NewJSObject(glue, hclass));
 }
 
+void JsBoundCallInternalStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    Label exit(env);
+    Label fastCall(env);
+    Label notFastCall(env);
+    Label methodIsFastCall(env);
+    Label fastCallBridge(env);
+    Label slowCall(env);
+    Label slowCallBridge(env);
+
+    GateRef glue = PtrArgument(0);
+    GateRef argc = Int64Argument(1);
+    GateRef func = TaggedPointerArgument(2); // callTarget
+    GateRef argv = PtrArgument(3);
+    GateRef thisValue = TaggedPointerArgument(4); // this
+    GateRef newTarget = TaggedPointerArgument(5); // new target
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    GateRef method = GetMethodFromFunction(func);
+    GateRef callfield = Load(VariableType::INT64(), method, IntPtr(Method::CALL_FIELD_OFFSET));
+    GateRef expectedNum = Int64And(Int64LSR(callfield, Int64(MethodLiteral::NumArgsBits::START_BIT)),
+        Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
+    GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
+    GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
+    Branch(HasAotCodeAndFastCall(method), &methodIsFastCall, &notFastCall);
+    Bind(&methodIsFastCall);
+    {
+        Branch(Int64LessThanOrEqual(expectedArgc, argc), &fastCall, &fastCallBridge);
+        Bind(&fastCall);
+        {
+            result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgV),
+                { glue, func, thisValue, actualArgc, argv });
+            Jump(&exit);
+        }
+        Bind(&fastCallBridge);
+        {
+            result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgVAndPushUndefined),
+                { glue, func, thisValue, actualArgc, argv, expectedNum });
+            Jump(&exit);
+        }
+    }
+    Bind(&notFastCall);
+    {
+        Branch(Int64LessThanOrEqual(expectedArgc, argc), &slowCall, &slowCallBridge);
+        Bind(&slowCall);
+        {
+            result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
+                { glue, actualArgc, func, newTarget, thisValue, argv });
+            Jump(&exit);
+        }
+        Bind(&slowCallBridge);
+        {
+            result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgVAndPushUndefined),
+                { glue, actualArgc, func, newTarget, thisValue, argv });
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    Return(*result);
+}
+
 void JsProxyCallInternalStubBuilder::GenerateCircuit()
 {
     auto env = GetEnvironment();
@@ -705,6 +766,8 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
     GateRef argc = Int64Argument(1);
     GateRef proxy = TaggedPointerArgument(2); // callTarget
     GateRef argv = PtrArgument(3);
+    GateRef newTarget = Load(VariableType::JS_POINTER(), argv, IntPtr(sizeof(JSTaggedValue)));
+    GateRef thisTarget = Load(VariableType::JS_POINTER(), argv, IntPtr(2 * sizeof(JSTaggedValue)));
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
@@ -728,19 +791,98 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
         Branch(TaggedIsUndefined(method), &isUndefined, &isNotUndefined);
         Bind(&isUndefined);
         {
-            result = CallNGCRuntime(glue, RTSTUB_ID(JSProxyCallInternalWithArgV), {glue, target});
-            Return(*result);
+            Label isHeapObject(env);
+            Label slowPath(env);
+            Label isJsFcuntion(env);
+            Label notCallConstructor(env);
+            Label fastCall(env);
+            Label notFastCall(env);
+            Label slowCall(env);
+            Branch(TaggedIsHeapObject(target), &isHeapObject, &slowPath);
+            Bind(&isHeapObject);
+            {
+                Branch(IsJSFunction(target), &isJsFcuntion, &slowPath);
+                Bind(&isJsFcuntion);
+                {
+                    Branch(IsClassConstructor(target), &slowPath, &notCallConstructor);
+                    Bind(&notCallConstructor);
+                    GateRef meth = GetMethodFromFunction(target);
+                    GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
+                    GateRef actualArgv = PtrAdd(argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * sizeof(JSTaggedValue)));
+                    Branch(HasAotCodeAndFastCall(meth), &fastCall, &notFastCall);
+                    Bind(&fastCall);
+                    {
+                        result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgV),
+                            { glue, target, thisTarget, actualArgc, actualArgv });
+                        Jump(&exit);
+                    }
+                    Bind(&notFastCall);
+                    {
+                        Branch(HasAotCode(meth), &slowCall, &slowPath);
+                        Bind(&slowCall);
+                        {
+                            result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
+                                { glue, actualArgc, target, newTarget, thisTarget, actualArgv });
+                            Jump(&exit);
+                        }
+                    }
+                }
+            }
+            Bind(&slowPath);
+            {
+                result = CallNGCRuntime(glue, RTSTUB_ID(JSProxyCallInternalWithArgV), {glue, target});
+                Jump(&exit);
+            }
         }
         Bind(&isNotUndefined);
         {
+            Label isHeapObject1(env);
+            Label slowPath1(env);
+            Label isJsFcuntion1(env);
+            Label notCallConstructor1(env);
+            Label fastCall1(env);
+            Label notFastCall1(env);
+            Label slowCall1(env);
             const int JSPROXY_NUM_ARGS = 3;
             GateRef arrHandle = CallRuntime(glue, RTSTUB_ID(CreateArrayFromList), argc, argv);
             // 2: this offset
-            GateRef thisArg = Load(VariableType::JS_POINTER(), argv, IntPtr(2 * sizeof(JSTaggedValue)));
             GateRef numArgs = Int64(JSPROXY_NUM_ARGS + NUM_MANDATORY_JSFUNC_ARGS);
-            result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
-                {glue, numArgs, method, Undefined(), handler, target, thisArg, arrHandle});
-            Jump(&exit);
+
+            Branch(TaggedIsHeapObject(method), &isHeapObject1, &slowPath1);
+            Bind(&isHeapObject1);
+            {
+                Branch(IsJSFunction(method), &isJsFcuntion1, &slowPath1);
+                Bind(&isJsFcuntion1);
+                {
+                    Branch(IsClassConstructor(method), &slowPath1, &notCallConstructor1);
+                    Bind(&notCallConstructor1);
+                    GateRef meth = GetMethodFromFunction(method);
+                    GateRef code = GetAotCodeAddr(meth);
+                    Branch(HasAotCodeAndFastCall(meth), &fastCall1, &notFastCall1);
+                    Bind(&fastCall1);
+                    {
+                        result = FastCallOptimized(glue, code,
+                            { glue, method, handler, target, thisTarget, arrHandle });
+                        Jump(&exit);
+                    }
+                    Bind(&notFastCall1);
+                    {
+                        Branch(HasAotCode(meth), &slowCall1, &slowPath1);
+                        Bind(&slowCall1);
+                        {
+                            result = CallOptimized(glue, code,
+                                { glue, numArgs, method, Undefined(), handler, target, thisTarget, arrHandle });
+                            Jump(&exit);
+                        }
+                    }
+                }
+            }
+            Bind(&slowPath1);
+            {
+                result = CallNGCRuntime(glue, RTSTUB_ID(JSCall),
+                    { glue, numArgs, method, Undefined(), handler, target, thisTarget, arrHandle });
+                Jump(&exit);
+            }
         }
     }
     Bind(&exit);

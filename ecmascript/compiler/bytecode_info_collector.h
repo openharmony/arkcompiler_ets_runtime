@@ -589,6 +589,31 @@ public:
         return recordToImportRecordsInfo_;
     }
 
+    bool IterateMethodOffsetToCanFastCall(uint32_t methodOffset, bool *isValid)
+    {
+        auto iter = methodOffsetToCanFastCall_.find(methodOffset);
+        if (iter != methodOffsetToCanFastCall_.end()) {
+            *isValid = true;
+            return iter->second;
+        }
+        *isValid = false;
+        return false;
+    }
+
+    void SetMethodOffsetToCanFastCall(uint32_t methodOffset, bool canFastCall)
+    {
+        if (methodOffsetToCanFastCall_.find(methodOffset) == methodOffsetToCanFastCall_.end()) {
+            methodOffsetToCanFastCall_.emplace(methodOffset, canFastCall);
+        }
+    }
+
+    void ModifyMethodOffsetToCanFastCall(uint32_t methodOffset, bool canFastCall)
+    {
+        methodOffsetToCanFastCall_.erase(methodOffset);
+        if (methodOffsetToCanFastCall_.find(methodOffset) == methodOffsetToCanFastCall_.end()) {
+            methodOffsetToCanFastCall_.emplace(methodOffset, canFastCall);
+        }
+    }
 private:
     std::vector<uint32_t> mainMethodIndexes_ {};
     std::vector<CString> recordNames_ {};
@@ -602,6 +627,7 @@ private:
     std::unordered_map<uint32_t, uint32_t> functionTypeIdToMethodOffset_ {};
     std::unordered_map<CString, ExportRecordInfo> recordNameToExportInfo_ {};
     std::unordered_map<CString, ImportRecordInfo> recordToImportRecordsInfo_ {};
+    std::unordered_map<uint32_t, bool> methodOffsetToCanFastCall_ {};
 };
 
 class LexEnvManager {
@@ -711,7 +737,8 @@ private:
     const CString GetEntryFunName(const std::string_view &entryPoint) const;
     void ProcessClasses();
     void CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
-        const MethodLiteral *method, std::vector<std::string> &classNameVec, const CString &recordName);
+        MethodLiteral *method, std::vector<std::string> &classNameVec, const CString &recordName,
+        uint32_t methodOffset, std::vector<panda_file::File::EntityId> &classConstructIndexes);
     void SetMethodPcInfoIndex(uint32_t methodOffset, const std::pair<size_t, uint32_t> &processedMethodInfo);
     void CollectInnerMethods(const MethodLiteral *method, uint32_t innerMethodOffset);
     void CollectInnerMethods(uint32_t methodId, uint32_t innerMethodOffset);
@@ -719,7 +746,9 @@ private:
     void NewLexEnvWithSize(const MethodLiteral *method, uint64_t numOfLexVars);
     void CollectInnerMethodsFromNewLiteral(const MethodLiteral *method, panda_file::File::EntityId literalId);
     void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
-                                 std::vector<std::string> &classNameVec, int32_t bcIndex);
+                                 std::vector<std::string> &classNameVec, int32_t bcIndex,
+                                 std::vector<panda_file::File::EntityId> &classConstructIndexes,
+                                 bool *canFastCall);
     void CollectModuleInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
                                  const CString &recordName);
     void CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);

@@ -510,6 +510,14 @@ void TSTypeParser::StoreMethodOffset(const JSHandle<TSFunctionType> &functionTyp
         uint32_t methodOffset = bcInfo_->IterateFunctionTypeIDAndMethodOffset(typeOffset);
         if (methodOffset != 0) {
             functionType->SetMethodOffset(methodOffset);
+            functionType->SetIsMethodOffsetVaild(true);
+            bool isVaild;
+            bool canFastCall = bcInfo_->IterateMethodOffsetToCanFastCall(methodOffset, &isVaild);
+            functionType->SetIsFastCallVaild(isVaild);
+            functionType->SetIsFastCall(canFastCall);
+        } else {
+            functionType->SetIsMethodOffsetVaild(false);
+            functionType->SetIsFastCallVaild(false);
         }
     }
 }

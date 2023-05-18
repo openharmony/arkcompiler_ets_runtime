@@ -41,7 +41,8 @@ public:
         RUNTIME_STUB,
         RUNTIME_STUB_VARARGS,
         RUNTIME_STUB_NO_GC,
-        AOT_STUB,
+        OPTIMIZED_STUB,
+        OPTIMIZED_FAST_CALL_STUB,
         DEOPT_STUB,
         BYTECODE_HANDLER,
         BYTECODE_DEBUGGER_HANDLER,
@@ -139,9 +140,14 @@ public:
         return (GetTargetKind() == TargetKind::RUNTIME_STUB_NO_GC);
     }
 
-    bool IsAotStub() const
+    bool IsOptimizedStub() const
     {
-        return (GetTargetKind() == TargetKind::AOT_STUB);
+        return (GetTargetKind() == TargetKind::OPTIMIZED_STUB);
+    }
+
+    bool IsOptimizedFastCallStub() const
+    {
+        return (GetTargetKind() == TargetKind::OPTIMIZED_FAST_CALL_STUB);
     }
 
     bool IsBCDebuggerStub() const
@@ -377,7 +383,8 @@ private:
     V(AsmInterpreterEntry)                  \
     V(GeneratorReEnterAsmInterp)            \
     V(CallRuntimeWithArgv)                  \
-    V(OptimizedCallOptimized)               \
+    V(OptimizedCallAndPushUndefined)        \
+    V(OptimizedFastCallAndPushUndefined)    \
     V(PushCallArg0AndDispatch)              \
     V(PushCallArgsAndDispatchNative)        \
     V(PushCallArg1AndDispatch)              \
@@ -396,6 +403,9 @@ private:
     V(CallSetter)                           \
     V(CallContainersArgs3)                  \
     V(JSCallWithArgV)                       \
+    V(JSFastCallWithArgV)                   \
+    V(JSFastCallWithArgVAndPushUndefined)   \
+    V(JSCallWithArgVAndPushUndefined)       \
     V(ResumeRspAndDispatch)                 \
     V(ResumeRspAndReturn)                   \
     V(ResumeCaughtFrameAndDispatch)         \
@@ -428,15 +438,18 @@ private:
     V(CallThisRange)                        \
     V(CallRange)                            \
     V(JSCall)                               \
-    V(JSAotCall)                            \
+    V(JSOptimizedCall)                      \
+    V(JSOptimizedFastCall)                  \
     V(JSFunctionEntry)                      \
+    V(OptimizedFastCallEntry)               \
     V(JSProxyCallInternalWithArgV)          \
     V(CreateArrayFromList)                  \
     V(JSObjectGetMethod)                    \
     V(JsProxyCallInternal)                  \
+    V(JsBoundCallInternal)                  \
     V(DeoptHandlerAsm)                      \
     V(JSCallNew)                            \
-    V(JSCallNewWithArgV)                    \
+    V(CallOptimized)                        \
     V(TimeClip)                             \
     V(SetDateValues)                        \
     V(CallReturnWithArgv)                   \

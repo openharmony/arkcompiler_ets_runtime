@@ -93,7 +93,7 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
                 CircuitRootScope scope(circuit_);
                 InlineFuncCheck(gate);
                 InlineCall(methodInfo, methodPcInfo, inlinedMethod, gate);
-                ReplaceCallInput(gate, isCallThis, glue);
+                ReplaceCallInput(gate, isCallThis, glue, inlinedMethod);
                 inlinedCall_++;
             }
         }
@@ -196,7 +196,7 @@ bool TSInlineLowering::CheckParameter(GateRef gate, bool isCallThis, MethodLiter
     return declaredNumArgs == (numIns - fixedInputsNum);
 }
 
-void TSInlineLowering::ReplaceCallInput(GateRef gate, bool isCallThis, GateRef glue)
+void TSInlineLowering::ReplaceCallInput(GateRef gate, bool isCallThis, GateRef glue, MethodLiteral *method)
 {
     std::vector<GateRef> vec;
     size_t numIns = acc_.GetNumValueIn(gate);
@@ -214,15 +214,19 @@ void TSInlineLowering::ReplaceCallInput(GateRef gate, bool isCallThis, GateRef g
     // -1: callTarget
     size_t actualArgc = numIns + NUM_MANDATORY_JSFUNC_ARGS - fixedInputsNum;
     vec.emplace_back(glue); // glue
-    vec.emplace_back(builder_.Int64(actualArgc)); // argc
+    if (!method->IsFastCall()) {
+        vec.emplace_back(builder_.Int64(actualArgc)); // argc
+    }
     vec.emplace_back(callTarget);
-    vec.emplace_back(builder_.Undefined()); // newTarget
+    if (!method->IsFastCall()) {
+        vec.emplace_back(builder_.Undefined()); // newTarget
+    }
     vec.emplace_back(thisObj);
     // -1: call Target
     for (size_t i = fixedInputsNum - 1; i < numIns - 1; i++) {
         vec.emplace_back(acc_.GetValueIn(gate, i));
     }
-    LowerToInlineCall(gate, vec);
+    LowerToInlineCall(gate, vec, method);
 }
 
 GateRef TSInlineLowering::MergeAllReturn(const std::vector<GateRef> &returnVector, GateRef &state, GateRef &depend)
@@ -325,7 +329,7 @@ void TSInlineLowering::ReplaceHirAndDeleteState(GateRef gate, GateRef state, Gat
     acc_.DeleteGate(gate);
 }
 
-void TSInlineLowering::LowerToInlineCall(GateRef callGate, const std::vector<GateRef> &args)
+void TSInlineLowering::LowerToInlineCall(GateRef callGate, const std::vector<GateRef> &args, MethodLiteral* method)
 {
     // replace in value/args
     ArgumentAccessor argAcc(circuit_);
@@ -337,7 +341,12 @@ void TSInlineLowering::LowerToInlineCall(GateRef callGate, const std::vector<Gat
     }
     // replace in depend and state
     GateRef glue = args.at(static_cast<size_t>(CommonArgIdx::GLUE));
-    GateRef inlineFunc = args.at(static_cast<size_t>(CommonArgIdx::FUNC));
+    GateRef inlineFunc;
+    if (method->IsFastCall()) {
+        inlineFunc = args.at(static_cast<size_t>(FastCallArgIdx::FUNC));
+    } else {
+        inlineFunc = args.at(static_cast<size_t>(CommonArgIdx::FUNC));
+    }
     GateRef callerFunc = argAcc.GetFrameArgsIn(callGate, FrameArgIdx::FUNC);
     ReplaceEntryGate(callGate, callerFunc, inlineFunc, glue);
     // replace use gate

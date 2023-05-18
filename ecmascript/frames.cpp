@@ -56,6 +56,7 @@ JSTaggedValue FrameIterator::GetFunction() const
 {
     FrameType type = GetFrameType();
     switch (type) {
+        case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             auto frame = GetFrame<OptimizedJSFunctionFrame>();
             return frame->GetFunction();
@@ -169,6 +170,7 @@ void FrameIterator::Advance()
             current_ = frame->GetPrevFrameFp();
             break;
         }
+        case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             auto frame = GetFrame<OptimizedJSFunctionFrame>();
             if constexpr (GCVisit == GCVisitedFlag::VISITED) {
@@ -351,6 +353,7 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp() const
             return frame->GetCallSiteSp();
         }
         case FrameType::OPTIMIZED_FRAME:
+        case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             ASSERT(thread_ != nullptr);
             auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + fpDeltaPrevFrameSp_;
@@ -404,6 +407,7 @@ uint32_t FrameIterator::GetBytecodeOffset() const
             auto offset = frame->GetPc() - method->GetBytecodeArray();
             return static_cast<uint32_t>(offset);
         }
+        case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             auto frame = this->GetFrame<OptimizedJSFunctionFrame>();
             ConstInfo constInfo;
@@ -505,22 +509,22 @@ void OptimizedJSFunctionFrame::CollectPcOffsetInfo(const FrameIterator &it, Cons
 
 ARK_INLINE void OptimizedJSFunctionFrame::GCIterate(const FrameIterator &it,
     const RootVisitor &visitor,
-    const RootRangeVisitor &rangeVisitor,
-    const RootBaseAndDerivedVisitor &derivedVisitor) const
+    [[maybe_unused]] const RootRangeVisitor &rangeVisitor,
+    const RootBaseAndDerivedVisitor &derivedVisitor, FrameType frameType) const
 {
     OptimizedJSFunctionFrame *frame = OptimizedJSFunctionFrame::GetFrameFromSp(it.GetSp());
     uintptr_t *jsFuncPtr = reinterpret_cast<uintptr_t *>(frame);
     uintptr_t jsFuncSlot = ToUintPtr(jsFuncPtr);
     visitor(Root::ROOT_FRAME, ObjectSlot(jsFuncSlot));
-
-    uintptr_t *preFrameSp = frame->ComputePrevFrameSp(it);
-
-    auto argc = frame->GetArgc(preFrameSp);
-    JSTaggedType *argv = frame->GetArgv(reinterpret_cast<uintptr_t *>(preFrameSp));
-    if (argc > 0) {
-        uintptr_t start = ToUintPtr(argv); // argv
-        uintptr_t end = ToUintPtr(argv + argc);
-        rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+    if (frameType == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+        uintptr_t *preFrameSp = frame->ComputePrevFrameSp(it);
+        auto argc = frame->GetArgc(preFrameSp);
+        JSTaggedType *argv = frame->GetArgv(reinterpret_cast<uintptr_t *>(preFrameSp));
+        if (argc > 0) {
+            uintptr_t start = ToUintPtr(argv); // argv
+            uintptr_t end = ToUintPtr(argv + argc);
+            rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+        }
     }
 
     bool ret = it.IteratorStackMap(visitor, derivedVisitor);

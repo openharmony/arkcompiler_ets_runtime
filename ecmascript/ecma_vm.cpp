@@ -428,24 +428,22 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
                                               const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
     aotFileManager_->SetAOTMainFuncEntry(mainFunc, jsPandaFile, entryPoint);
-    Method *method = mainFunc->GetCallTarget();
-    size_t actualNumArgs = method->GetNumArgs();
-    size_t argsNum = actualNumArgs + NUM_MANDATORY_JSFUNC_ARGS;
-    std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
-    args[0] = mainFunc.GetTaggedValue().GetRawData();
-    args[2] = thisArg.GetTaggedValue().GetRawData(); // 2: this
-    const JSTaggedType *prevFp = thread_->GetLastLeaveFrame();
+    return JSFunction::InvokeOptimizedEntrypoint(thread_, mainFunc, thisArg, entryPoint);
+}
+
+JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp)
+{
+    auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_OptimizedFastCallEntry);
     // do not modify this log to INFO, this will call many times
-    LOG_ECMA(DEBUG) << "start to execute aot entry: " << entryPoint;
-    JSTaggedValue res = ExecuteAot(actualNumArgs, args.data(), prevFp, OptimizedEntryFrame::CallType::CALL_FUNC);
-    if (thread_->HasPendingException()) {
-        return thread_->GetException();
-    }
+    LOG_ECMA(DEBUG) << "start to execute aot entry: " << (void*)entry;
+    auto res = reinterpret_cast<FastCallAotEntryType>(entry)(thread_->GetGlueAddr(),
+                                                             actualNumArgs,
+                                                             args,
+                                                             reinterpret_cast<uintptr_t>(prevFp));
     return res;
 }
 
-JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
-                                 OptimizedEntryFrame::CallType callType)
+JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp)
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
@@ -454,8 +452,7 @@ JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const
     auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
                                                             actualNumArgs,
                                                             args,
-                                                            reinterpret_cast<uintptr_t>(prevFp),
-                                                            static_cast<size_t>(callType));
+                                                            reinterpret_cast<uintptr_t>(prevFp));
     return res;
 }
 

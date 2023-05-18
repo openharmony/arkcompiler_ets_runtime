@@ -206,7 +206,7 @@ void LLVMIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlFlo
 {
     LLVMValueRef function = module_->GetFunction(index);
     const CallSignature* cs = module_->GetCSign(index);
-    LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, cs->GetCallConv(), enableLog_, cs->GetName());
+    LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, cs->GetCallConv(), enableLog_, false, cs->GetName());
     builder.Build();
 }
 
@@ -216,8 +216,14 @@ void LLVMIRGeneratorImpl::GenerateCode(Circuit *circuit, const ControlFlowGraph 
 {
     auto function = module_->AddFunc(methodLiteral, jsPandaFile);
     circuit->SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
-    LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, CallSignature::CallConv::WebKitJSCallConv,
-                          enableLog_, methodName);
+    CallSignature::CallConv conv;
+    if (methodLiteral->IsFastCall()) {
+        conv = CallSignature::CallConv::CCallConv;
+    } else {
+        conv = CallSignature::CallConv::WebKitJSCallConv;
+    }
+    LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, conv,
+                          enableLog_, methodLiteral->IsFastCall(), methodName);
     builder.Build();
 }
 

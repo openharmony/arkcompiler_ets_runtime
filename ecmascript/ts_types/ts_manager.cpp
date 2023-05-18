@@ -501,6 +501,39 @@ bool TSManager::IsMethodSignature(GlobalTSTypeRef gt) const
     return functionType->GetIsSignature();
 }
 
+bool TSManager::CanFastCall(GlobalTSTypeRef gt) const
+{
+    if (!IsFunctionTypeKind(gt)) {
+        return false;
+    }
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType(tsType);
+    return functionType->GetIsFastCall();
+}
+
+bool TSManager::MethodOffsetIsVaild(GlobalTSTypeRef gt) const
+{
+    if (!IsFunctionTypeKind(gt)) {
+        return false;
+    }
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType(tsType);
+    return functionType->GetIsMethodOffsetVaild();
+}
+
+bool TSManager::FastCallFlagIsVaild(GlobalTSTypeRef gt) const
+{
+    if (!IsFunctionTypeKind(gt)) {
+        return false;
+    }
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType(tsType);
+    return functionType->GetIsFastCallVaild();
+}
+
 GlobalTSTypeRef TSManager::GetFuncReturnValueTypeGT(GlobalTSTypeRef gt) const
 {
     ASSERT(IsFunctionTypeKind(gt));

@@ -157,7 +157,9 @@ private:
     void LowerTypedCallBuitin(GateRef gate);
     void LowerCallTargetCheck(GateRef gate);
     void LowerJSCallTargetTypeCheck(GateRef gate);
+    void LowerJSFastCallTargetTypeCheck(GateRef gate);
     void LowerJSCallThisTargetTypeCheck(GateRef gate);
+    void LowerJSFastCallThisTargetTypeCheck(GateRef gate);
     void LowerTypedNewAllocateThis(GateRef gate, GateRef glue);
     void LowerTypedSuperAllocateThis(GateRef gate, GateRef glue);
     void LowerGetSuperConstructor(GateRef gate);

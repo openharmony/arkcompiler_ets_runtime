@@ -254,7 +254,9 @@ public:
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef function, GateRef id, GateRef param, const char* comment = nullptr);
     GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex);
+    GateRef JSFastCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex);
     GateRef JSCallThisTargetTypeCheck(GateType type, GateRef func);
+    GateRef JSFastCallThisTargetTypeCheck(GateType type, GateRef func);
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args);
     inline GateRef TypedCallBuiltin(GateRef hirGate, GateRef x, BuiltinsStubCSigns::ID id);
@@ -351,6 +353,11 @@ public:
                         const char* comment = nullptr);
     GateRef CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args,
                            GateRef hirGate, const char* comment = nullptr);
+    GateRef FastCallOptimized(GateRef glue, GateRef code, GateRef depend, const std::vector<GateRef> &args,
+                              GateRef hirGate);
+    GateRef CallOptimized(GateRef glue, GateRef code, GateRef depend, const std::vector<GateRef> &args,
+                          GateRef hirGate);
+
     GateRef CallStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                      const char* comment = nullptr);
     GateRef CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args,
@@ -492,7 +499,8 @@ public:
     GateRef LoadArrayLength(GateRef array);
     GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
-    GateRef TypedAotCall(GateRef hirGate, std::vector<GateRef> args);
+    GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args);
+    GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args);
     GateRef CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult, const char* comment = nullptr);
     GateRef CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult,
                        GateRef value, const char* comment = nullptr);
@@ -502,6 +510,7 @@ public:
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
     inline GateRef HasAotCode(GateRef method);
+    inline GateRef HasAotCodeAndFastCall(GateRef method);
     inline GateRef IsJSFunction(GateRef obj);
     inline GateRef IsDictionaryMode(GateRef object);
     inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
@@ -515,8 +524,10 @@ public:
     inline GateRef DoubleIsINF(GateRef x);
     inline GateRef IsDictionaryElement(GateRef hClass);
     inline GateRef IsClassConstructor(GateRef object);
+    inline GateRef IsConstructor(GateRef object);
     inline GateRef IsClassPrototype(GateRef object);
     inline GateRef IsExtensible(GateRef object);
+    inline GateRef GetExpectedNumOfArgs(GateRef method);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);
     inline GateRef IsJSObject(GateRef obj);
     inline GateRef TaggedObjectIsString(GateRef obj);

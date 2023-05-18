@@ -258,6 +258,7 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
     for (; !it.Done() && deoptBundle.empty(); it.Advance<GCVisitedFlag::VISITED>()) {
         FrameType type = it.GetFrameType();
         switch (type) {
+            case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
                 auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
                 frame->GetDeoptBundleInfo(it, deoptBundle);
@@ -318,7 +319,8 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
     int32_t actualNumArgs = 0;
     int32_t declaredNumArgs = 0;
     if (curDepth == 0) {
-        actualNumArgs = static_cast<int32_t>(frameArgc_) - NUM_MANDATORY_JSFUNC_ARGS;
+        actualNumArgs = static_cast<int32_t>(GetDeoptValue(curDepth,
+            static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX)).GetRawData());
         declaredNumArgs = static_cast<int32_t>(method->GetNumArgsWithCallField());
     } else {
         // inline method actualNumArgs equal to declaredNumArgs
@@ -326,39 +328,26 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
         declaredNumArgs = method->GetNumArgsWithCallField();
     }
 
-    bool haveExtra = method->HaveExtraWithCallField();
     int32_t callFieldNumVregs = static_cast<int32_t>(method->GetNumVregsWithCallField());
 
     // layout of frame:
     // [maybe argc] [actual args] [reserved args] [call field virtual regs]
 
     // [maybe argc]
-    if (declaredNumArgs != actualNumArgs && haveExtra) {
+    if (!method->IsFastCall() && declaredNumArgs != actualNumArgs) {
         auto value = JSTaggedValue(actualNumArgs);
         frameWriter->PushValue(value.GetRawData());
     }
-    int32_t reservedCount = std::max(actualNumArgs, declaredNumArgs);
-    int32_t virtualIndex = reservedCount + callFieldNumVregs +
+    int32_t virtualIndex = declaredNumArgs + callFieldNumVregs +
         static_cast<int32_t>(method->GetNumRevervedArgs()) - 1;
     if (!frameWriter->Reserve(static_cast<size_t>(virtualIndex))) {
         return false;
     }
-    // [actual args]
-    if (declaredNumArgs > actualNumArgs) {
-        for (int32_t i = 0; i < declaredNumArgs - actualNumArgs; i++) {
-            frameWriter->PushValue(JSTaggedValue::Undefined().GetRawData());
-            virtualIndex--;
-        }
-    }
-    for (int32_t i = actualNumArgs - 1; i >= 0; i--) {
+    for (int32_t i = declaredNumArgs - 1; i >= 0; i--) {
         JSTaggedValue value = JSTaggedValue::Undefined();
         // deopt value
         if (HasDeoptValue(curDepth, virtualIndex)) {
             value = GetDeoptValue(curDepth, virtualIndex);
-        } else {
-            if (curDepth == 0) {
-                value = GetActualFrameArgs(i);
-            }
         }
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;

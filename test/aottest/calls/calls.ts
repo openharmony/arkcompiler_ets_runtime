@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 declare function print(str: any): string;
-
+declare var ArkTools:any;
 function foo() {
     return "pass";
 }
@@ -41,3 +41,124 @@ print(foo1(1));
 print(foo2(1, 2));
 print(foo3(1, 2, 3));
 print(foo4(1, 2, 3, 4));
+
+class A {
+    public mode: number = 1;
+
+    constructor(dt: number) {
+        print(dt);
+        print(new.target.name);
+        const size = 50;
+        this.mode = 4;
+    }
+
+    update (dt: number, dt1: number): number {
+        print(dt);
+        print(dt1);
+        return dt + dt1 + this.mode;
+    }
+}
+
+class B {
+    public mode: number = 1;
+
+    constructor(dt: number, dt1: number, dt2: number) {
+        print(dt);
+        print(dt1);
+        print(dt2);
+        print(new.target.name);
+        const size = 50;
+        this.mode = 4;
+    }
+}
+
+class C {
+    public mode: number = 1;
+
+    constructor(dt: number, dt1: number, dt2: number, dt3: number, dt4: number, dt5: number, dt6: number, dt7: number) {
+        print(new.target.name);
+        print(dt);
+        print(dt1);
+        print(dt4);
+        print(dt6);
+        print(dt7);
+        const size = 50;
+        this.mode = 4;
+    }
+}
+
+function funcv(value: number, value1: number, value2: number, value3: number, value4: number, value5: number, value6: number, value7: number): number {
+    print(value);
+    print(value1);
+    print(value2);
+    print(value3);
+    print(value4);
+    print(value5);
+    print(value6);
+    print(value7);
+    return 100;
+}
+
+function func0(): number {
+    return 110;
+}
+
+function func1(value: number): number {
+    print(value);
+    return value;
+}
+
+function func2(value: number, value1: number): number {
+    print(value);
+    print(value1);
+    return value;
+}
+
+function func3(value: number, value1: number, value2: number): number {
+    print(value);
+    print(value1);
+    print(value2);
+    func1(value);
+    return value;
+}
+
+function func4(value: number, value1: number, value2: number, value3: number): number {
+    print(value);
+    print(value1);
+    print(value2);
+    print(value3);
+    return value;
+}
+
+function testNewTarget(value: number): number {
+    print(new.target.name);
+    return value;
+}
+var systems: A = new A(1);
+var systems1: B = new B(2, 3);
+var systems2: C = new C(3, 4, 5, 6, 7, 8);
+print(func0());
+func1();
+func2(1);
+func3("mytest", 2);
+func4(3, 4, 5);
+funcv(6, 7 , 8, 9);
+systems.update(4);
+var k = new testNewTarget(1);
+
+function funcAsm(value: number, value1: number, value2: number): number {
+    print(value);
+    print(value1);
+    print(value2);
+    func2(value1, value2);
+    func3(value1, value2);
+    func4(value1);
+    funcv(value, value1, value2, value);
+    var s: A = new A(1, 4);
+    var s1: B = new B(2, 3);
+    var s2: C = new C(3, 4, 5, 6, 7, 8);
+    var s3: C = new C(3, 4, 5, 6, 7, 8, 9, 10);
+    return value;
+}
+ArkTools.removeAOTFlag(funcAsm);
+funcAsm(1, 2);

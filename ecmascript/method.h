@@ -97,14 +97,24 @@ public:
         return NumArgsBits::Decode(callField);
     }
 
-    static uint64_t SetCallNapi(uint64_t callField, bool isCallNapi)
+    static uint64_t SetCallNapi(uint64_t extraLiteralInfo, bool isCallNapi)
     {
-        return IsCallNapiBit::Update(callField, isCallNapi);
+        return IsCallNapiBit::Update(extraLiteralInfo, isCallNapi);
     }
 
-    static bool IsCallNapi(uint64_t callField)
+    static bool IsCallNapi(uint64_t extraLiteralInfo)
     {
-        return IsCallNapiBit::Decode(callField);
+        return IsCallNapiBit::Decode(extraLiteralInfo);
+    }
+
+    static uint64_t SetIsFastCall(uint64_t callField, bool isFastCall)
+    {
+        return IsFastCallBit::Update(callField, isFastCall);
+    }
+
+    static bool IsFastCall(uint64_t callField)
+    {
+        return IsFastCallBit::Decode(callField);
     }
 
     void SetNumArgsWithCallField(uint32_t numargs)
@@ -313,17 +323,30 @@ public:
         return GetBuiltinId(extraLiteralInfo);
     }
 
+    void SetIsFastCall(bool isFastCall)
+    {
+        uint64_t callFiled = GetCallField();
+        uint64_t newValue = SetIsFastCall(callFiled, isFastCall);
+        SetCallField(newValue);
+    }
+
+    bool IsFastCall() const
+    {
+        uint64_t callFiled = GetCallField();
+        return IsFastCall(callFiled);
+    }
+
     void SetCallNapi(bool isCallNapi)
     {
-        uint64_t callField = GetCallField();
-        uint64_t newValue = MethodLiteral::SetCallNapi(callField, isCallNapi);
-        SetCallField(newValue);
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        uint64_t newValue = SetCallNapi(extraLiteralInfo, isCallNapi);
+        SetExtraLiteralInfo(newValue);
     }
 
     bool IsCallNapi() const
     {
-        uint64_t callField = GetCallField();
-        return MethodLiteral::IsCallNapi(callField);
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        return IsCallNapi(extraLiteralInfo);
     }
 
     void SetBuiltinId(uint8_t id)
@@ -394,6 +417,7 @@ public:
 
     /* callfield */
     static constexpr size_t VREGS_ARGS_NUM_BITS = 28; // 28: maximum 268,435,455
+    static constexpr uint64_t AOT_FASTCALL_BITS = 0x5; // 0x5LU: aot and fastcall bit field
     using HaveThisBit = BitField<bool, 0, 1>;  // offset 0
     using HaveNewTargetBit = HaveThisBit::NextFlag;  // offset 1
     using HaveExtraBit = HaveNewTargetBit::NextFlag;  // offset 2
@@ -403,7 +427,7 @@ public:
     using IsNativeBit = NumArgsBits::NextFlag;  // offset 60
     using IsAotCodeBit = IsNativeBit::NextFlag; // offset 61
     using IsFastBuiltinBit = IsAotCodeBit::NextFlag; // offset 62
-    using IsCallNapiBit = IsFastBuiltinBit::NextFlag; // offset 63
+    using IsFastCallBit = IsFastBuiltinBit::NextFlag; // offset 63
 
     /*  ExtraLiteralInfo */
     static constexpr size_t BUILTINID_NUM_BITS = 8;
@@ -414,6 +438,7 @@ public:
     using FunctionKindBits = BuiltinIdBits::NextField<FunctionKind, FUNCTION_KIND_NUM_BITS>; // offset 8-11
     using DeoptCountBits = FunctionKindBits::NextField<uint8_t, DEOPT_THRESHOLD_BITS>; // offset 12-19
     using DeoptTypeBits = DeoptCountBits::NextField<kungfu::DeoptType, DEOPTTYPE_NUM_BITS>; // offset 20-27
+    using IsCallNapiBit = DeoptTypeBits::NextFlag; // offset 28
 
     static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();
     ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, PROFILE_TYPE_INFO_OFFSET)

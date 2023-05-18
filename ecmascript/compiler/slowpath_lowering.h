@@ -169,7 +169,9 @@ private:
     void LowerTryLdGlobalByName(GateRef gate);
     void LowerGetIterator(GateRef gate);
     void LowerGetAsyncIterator(GateRef gate);
-    void LowerToJSCall(GateRef gate, const std::vector<GateRef> &args);
+    void LowerToJSCall(GateRef hirGate, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
+    void LowerFastCall(GateRef gate, GateRef glue, GateRef func, GateRef argc, const std::vector<GateRef> &args,
+        const std::vector<GateRef> &fastCallArgs, Variable *result, Label *exit, bool isNew);
     void LowerCallArg0(GateRef gate);
     void LowerCallArg1Imm8V8(GateRef gate);
     void LowerCallThisArg1(GateRef gate);
@@ -297,7 +299,8 @@ private:
     void LowerLdThisByName(GateRef gate);
     void LowerConstPoolData(GateRef gate);
     void LowerConstruct(GateRef gate);
-    void LowerTypedAotCall(GateRef gate);
+    void LowerTypedCall(GateRef gate);
+    void LowerTypedFastCall(GateRef gate);
     void LowerUpdateHotness(GateRef gate);
     void LowerNotifyConcurrentResult(GateRef gate);
     void LowerGetEnv(GateRef gate);

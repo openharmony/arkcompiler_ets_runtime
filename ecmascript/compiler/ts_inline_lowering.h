@@ -79,7 +79,7 @@ private:
     bool FilterInlinedMethod(MethodLiteral* method, std::vector<const uint8_t*> pcOffsets);
     bool FilterCallInTryCatch(GateRef gate);
     void InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method, GateRef gate);
-    void ReplaceCallInput(GateRef gate, bool isCallThis, GateRef glue);
+    void ReplaceCallInput(GateRef gate, bool isCallThis, GateRef glue, MethodLiteral *method);
 
     void ReplaceEntryGate(GateRef callGate, GateRef callerFunc, GateRef inlineFunc, GateRef glue);
     void ReplaceReturnGate(GateRef callGate);
@@ -89,7 +89,7 @@ private:
     GateRef MergeAllReturn(const std::vector<GateRef> &returnVector, GateRef &state, GateRef &depend);
     bool CheckParameter(GateRef gate, bool isCallThis, MethodLiteral* method);
 
-    void LowerToInlineCall(GateRef gate, const std::vector<GateRef> &args);
+    void LowerToInlineCall(GateRef gate, const std::vector<GateRef> &args, MethodLiteral* method);
     void RemoveRoot();
     void BuildFrameStateChain(GateRef gate, BytecodeCircuitBuilder &builder);
     GateRef TraceInlineFunction(GateRef glue, GateRef depend, std::vector<GateRef> &args, GateRef callGate);

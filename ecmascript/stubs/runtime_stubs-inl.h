@@ -2467,11 +2467,17 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
     CVector<JSTaggedType> values;
     Method *method = ctor->GetCallTarget();
     bool isAotMethod = method->IsAotWithCallField();
-    if (isAotMethod) {
-        values.reserve(size + NUM_MANDATORY_JSFUNC_ARGS);
-        values.emplace_back(ctor.GetTaggedValue().GetRawData());
-        values.emplace_back(newTgt.GetTaggedValue().GetRawData());
-        values.emplace_back(obj.GetTaggedValue().GetRawData());
+    if (isAotMethod && ctor->IsClassConstructor()) {
+        if (method->IsFastCall()) {
+            values.reserve(size + NUM_MANDATORY_JSFUNC_ARGS - 1);
+            values.emplace_back(ctor.GetTaggedValue().GetRawData());
+            values.emplace_back(obj.GetTaggedValue().GetRawData());
+        } else {
+            values.reserve(size + NUM_MANDATORY_JSFUNC_ARGS);
+            values.emplace_back(ctor.GetTaggedValue().GetRawData());
+            values.emplace_back(newTgt.GetTaggedValue().GetRawData());
+            values.emplace_back(obj.GetTaggedValue().GetRawData());
+        }
     } else {
         values.reserve(size);
     }
@@ -2491,11 +2497,15 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
         }
     }
     JSTaggedValue resultValue;
-    if (isAotMethod) {
+    if (isAotMethod && ctor->IsClassConstructor()) {
         const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
-        resultValue =
-            thread->GetEcmaVM()->ExecuteAot(size, values.data(), prevFp, OptimizedEntryFrame::CallType::CALL_NEW);
+        if (ctor->GetCallTarget()->IsFastCall()) {
+            resultValue = thread->GetEcmaVM()->FastCallAot(size, values.data(), prevFp);
+        } else {
+            resultValue = thread->GetEcmaVM()->ExecuteAot(size, values.data(), prevFp);
+        }
     } else {
+        ctor->GetCallTarget()->SetAotCodeBit(false); // if Construct is not ClassConstructor, don't run aot
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(ctor), obj, newTgt, size);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

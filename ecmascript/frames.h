@@ -114,6 +114,7 @@ enum class FrameType: uintptr_t {
     OPTIMIZED_FRAME = 0,
     OPTIMIZED_ENTRY_FRAME,
     OPTIMIZED_JS_FUNCTION_FRAME,
+    OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME,
     ASM_BRIDGE_FRAME,
     LEAVE_FRAME,
     LEAVE_FRAME_WITH_ARGV,
@@ -479,7 +480,7 @@ public:
     }
 
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor) const;
+        const RootBaseAndDerivedVisitor &derivedVisitor, FrameType frameType) const;
     void CollectPcOffsetInfo(const FrameIterator &it, ConstInfo &info) const;
 
     inline JSTaggedValue GetFunction() const
@@ -1617,7 +1618,8 @@ public:
 
     bool IsOptimizedJSFunctionFrame(FrameType type) const
     {
-        return type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME;
+        return type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
+            type == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME;
     }
 
     bool IsOptimizedJSFunctionFrame() const

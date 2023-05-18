@@ -100,6 +100,7 @@ enum class DeoptType : uint8_t {
     NEGTIVEINDEX,
     LARGEINDEX,
     INLINEFAIL,
+    NOTJSFASTCALLTGT,
 };
 
 enum class ICmpCondition : uint8_t {
@@ -241,7 +242,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(RuntimeCall, RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)                      \
     V(RuntimeCallWithArgv, RUNTIME_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)    \
     V(NoGcRuntimeCall, NOGC_RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)             \
-    V(AotCall, AOT_CALL, GateFlags::NONE_FLAG, 0, 1, value)                              \
+    V(CallOptimized, CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)                  \
+    V(FastCallOptimized, FAST_CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)         \
     V(Call, CALL, GateFlags::NONE_FLAG, 0, 1, value)                                     \
     V(BytecodeCall, BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)                    \
     V(DebuggerBytecodeCall, DEBUGGER_BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)   \
@@ -252,7 +254,8 @@ std::string MachineTypeToStr(MachineType machineType);
 #define GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                  \
     V(TypedCallBuiltin, TYPED_CALL_BUILTIN, GateFlags::NO_WRITE, 1, 1, value)  \
     V(Construct, CONSTRUCT, GateFlags::NONE_FLAG, 1, 1, value)                 \
-    V(TypedAotCall, TYPEDAOTCALL, GateFlags::NONE_FLAG, 1, 1, value)
+    V(TypedCall, TYPEDCALL, GateFlags::NONE_FLAG, 1, 1, value)                 \
+    V(TypedFastCall, TYPEDFASTCALL, GateFlags::NONE_FLAG, 1, 1, value)
 
 #define GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(V)                      \
     V(CallGetter, CALL_GETTER, GateFlags::NONE_FLAG, 1, 1, 2)                  \
@@ -263,18 +266,20 @@ std::string MachineTypeToStr(MachineType machineType);
     V(DependSelector, DEPEND_SELECTOR, GateFlags::FIXED, 1, value, 0)               \
     GATE_META_DATA_LIST_WITH_VALUE_IN(V)
 
-#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                                \
-    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)               \
-    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                     \
-    V(JSCallTargetTypeCheck, JSCALLTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)         \
-    V(JSCallThisTargetTypeCheck, JSCALLTHISTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1) \
-    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                     \
-    V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                \
-    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                            \
-    V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)                \
-    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                              \
-    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                      \
-    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                       \
+#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                                       \
+    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                      \
+    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                            \
+    V(JSCallTargetTypeCheck, JSCALLTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                \
+    V(JSFastCallTargetTypeCheck, JSFASTCALLTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)        \
+    V(JSCallThisTargetTypeCheck, JSCALLTHISTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)        \
+    V(JSFastCallThisTargetTypeCheck, JSFASTCALLTHISTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)\
+    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                            \
+    V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                       \
+    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                                   \
+    V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)                       \
+    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                                     \
+    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                             \
+    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                              \
     V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                                  \

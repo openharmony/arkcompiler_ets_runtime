@@ -513,12 +513,20 @@ void BytecodeCircuitBuilder::UpdateCFG()
 void BytecodeCircuitBuilder::BuildCircuitArgs()
 {
     argAcc_.NewCommonArg(CommonArgIdx::GLUE, MachineType::I64, GateType::NJSValue());
-    argAcc_.NewCommonArg(CommonArgIdx::ACTUAL_ARGC, MachineType::I64, GateType::NJSValue());
-    auto funcIdx = static_cast<size_t>(CommonArgIdx::FUNC);
-    const size_t actualNumArgs = argAcc_.GetActualNumArgs();
-    // new actual argument gates
-    for (size_t argIdx = funcIdx; argIdx < actualNumArgs; argIdx++) {
-        argAcc_.NewArg(argIdx);
+    if (!method_->IsFastCall()) {
+        argAcc_.NewCommonArg(CommonArgIdx::ACTUAL_ARGC, MachineType::I64, GateType::NJSValue());
+        auto funcIdx = static_cast<size_t>(CommonArgIdx::FUNC);
+        const size_t actualNumArgs = argAcc_.GetActualNumArgs();
+        // new actual argument gates
+        for (size_t argIdx = funcIdx; argIdx < actualNumArgs; argIdx++) {
+            argAcc_.NewArg(argIdx);
+        }
+    } else {
+        auto funcIdx = static_cast<size_t>(FastCallArgIdx::FUNC);
+        size_t actualNumArgs = static_cast<size_t>(FastCallArgIdx::NUM_OF_ARGS) + method_->GetNumArgsWithCallField();
+        for (size_t argIdx = funcIdx; argIdx < actualNumArgs; argIdx++) {
+            argAcc_.NewArg(argIdx);
+        }
     }
     argAcc_.CollectArgs();
     if (HasTypes()) {

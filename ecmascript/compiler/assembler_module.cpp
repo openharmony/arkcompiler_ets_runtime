@@ -262,19 +262,19 @@ bool AssemblerModule::IsJumpToCallCommonEntry(JSCallMode mode)
     return false;
 }
 
-#define DECLARE_ASM_STUB_X64_GENERATE(name)                                                       \
-void name##Stub::GenerateX64(Assembler *assembler)                                                \
-{                                                                                                 \
-    x64::ExtendedAssembler *assemblerX64 = static_cast<x64::ExtendedAssembler*>(assembler);       \
-    x64::AssemblerStubsX64::name(assemblerX64);                                                   \
-    assemblerX64->Align16();                                                                      \
-}
-
 #define DECLARE_JSCALL_TRAMPOLINE_X64_GENERATE(name)                                              \
 void name##Stub::GenerateX64(Assembler *assembler)                                                \
 {                                                                                                 \
     x64::ExtendedAssembler *assemblerX64 = static_cast<x64::ExtendedAssembler*>(assembler);       \
     x64::OptimizedCall::name(assemblerX64);                                                       \
+    assemblerX64->Align16();                                                                      \
+}
+
+#define DECLARE_FAST_CALL_TRAMPOLINE_X64_GENERATE(name)                                           \
+void name##Stub::GenerateX64(Assembler *assembler)                                                \
+{                                                                                                 \
+    x64::ExtendedAssembler *assemblerX64 = static_cast<x64::ExtendedAssembler*>(assembler);       \
+    x64::OptimizedFastCall::name(assemblerX64);                                                   \
     assemblerX64->Align16();                                                                      \
 }
 
@@ -294,6 +294,13 @@ void name##Stub::GenerateAarch64(Assembler *assembler)                          
     aarch64::OptimizedCall::name(assemblerAarch64);                                                     \
 }
 
+#define DECLARE_FAST_CALL_TRAMPOLINE_AARCH64_GENERATE(name)                                                \
+void name##Stub::GenerateAarch64(Assembler *assembler)                                                  \
+{                                                                                                       \
+    aarch64::ExtendedAssembler *assemblerAarch64 = static_cast<aarch64::ExtendedAssembler*>(assembler); \
+    aarch64::OptimizedFastCall::name(assemblerAarch64);                                                     \
+}
+
 #define DECLARE_ASM_INTERPRETER_TRAMPOLINE_AARCH64_GENERATE(name)                                       \
 void name##Stub::GenerateAarch64(Assembler *assembler)                                                  \
 {                                                                                                       \
@@ -302,9 +309,15 @@ void name##Stub::GenerateAarch64(Assembler *assembler)                          
 }
 
 JS_CALL_TRAMPOLINE_LIST(DECLARE_JSCALL_TRAMPOLINE_X64_GENERATE)
+FAST_CALL_TRAMPOLINE_LIST(DECLARE_FAST_CALL_TRAMPOLINE_X64_GENERATE)
 ASM_INTERPRETER_TRAMPOLINE_LIST(DECLARE_ASM_INTERPRETER_TRAMPOLINE_X64_GENERATE)
 JS_CALL_TRAMPOLINE_LIST(DECLARE_JSCALL_TRAMPOLINE_AARCH64_GENERATE)
+FAST_CALL_TRAMPOLINE_LIST(DECLARE_FAST_CALL_TRAMPOLINE_AARCH64_GENERATE)
 ASM_INTERPRETER_TRAMPOLINE_LIST(DECLARE_ASM_INTERPRETER_TRAMPOLINE_AARCH64_GENERATE)
+#undef DECLARE_JSCALL_TRAMPOLINE_X64_GENERATE
+#undef DECLARE_FAST_CALL_TRAMPOLINE_X64_GENERATE
+#undef DECLARE_ASM_INTERPRETER_TRAMPOLINE_X64_GENERATE
 #undef DECLARE_JSCALL_TRAMPOLINE_AARCH64_GENERATE
+#undef DECLARE_FAST_CALL_TRAMPOLINE_AARCH64_GENERATE
 #undef DECLARE_ASM_INTERPRETER_TRAMPOLINE_AARCH64_GENERATE
 }  // namespace panda::ecmascript::kunfu

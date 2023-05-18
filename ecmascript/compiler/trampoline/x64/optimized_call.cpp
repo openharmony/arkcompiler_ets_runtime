@@ -31,14 +31,12 @@
 namespace panda::ecmascript::x64 {
 #define __ assembler->
 
-// * uint64_t JSFunctionEntry(uintptr_t glue, uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t prevFp,
-//                            size_t callType)
+// * uint64_t JSFunctionEntry(uintptr_t glue, uint32_t actualNumArgs, const JSTaggedType argV[], uintptr_t prevFp)
 // * Arguments:
 //        %rdi - glue
 //        %rsi - actualNumArgs
 //        %rdx - argV
 //        %rcx - prevFp
-//        %r8  - callType
 //
 // * The JSFunctionEntry Frame's structure is illustrated as the following:
 //          +--------------------------+
@@ -57,36 +55,16 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     Register glueReg = rdi;
     Register argv = rdx;
     Register prevFpReg = rcx;
-    Register flag = r8;
-    Label lJSCallNewWithArgV;
-    Label lPopFrame;
 
-    __ PushCppCalleeSaveRegisters();
-    __ Pushq(glueReg); // caller save
-    // construct the frame
-    __ Pushq(rbp);
-    __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_ENTRY_FRAME));
-    __ Pushq(prevFpReg);
-    // 2: skip prevFp and frameType
-    __ Leaq(Operand(rsp, 2 * FRAME_SLOT_SIZE), rbp);
-    __ Movq(flag, r12);
+    PushJSFunctionEntryFrame(assembler, prevFpReg);
     __ Movq(argv, rbx);
     __ Movq(Operand(rbx, 0), rdx);
     __ Movq(Operand(rbx, FRAME_SLOT_SIZE), rcx);
     __ Movq(Operand(rbx, DOUBLE_SLOT_SIZE), r8);
     __ Addq(TRIPLE_SLOT_SIZE, rbx);
     __ Movq(rbx, r9);
-    __ Cmpl(1, r12);
-    __ Je(&lJSCallNewWithArgV);
     __ CallAssemblerStub(RTSTUB_ID(JSCallWithArgV), false);
-    __ Jmp(&lPopFrame);
 
-    __ Bind(&lJSCallNewWithArgV);
-    {
-        __ CallAssemblerStub(RTSTUB_ID(JSCallNewWithArgV), false);
-    }
-
-    __ Bind(&lPopFrame);
     __ Popq(prevFpReg);
     __ Addq(FRAME_SLOT_SIZE, rsp); // 8: frame type
     __ Popq(rbp);
@@ -96,40 +74,60 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     __ Ret();
 }
 
-// * uint64_t OptimizedCallOptimized(uintptr_t glue, uint32_t expectedNumArgs, uint32_t actualNumArgs,
-//                                   uintptr_t codeAddr, uintptr_t argv)
-// * Arguments wil CC calling convention:
-//         %rdi - glue
-//         %rsi - codeAddr
-//         %rdx - actualNumArgs
-//         %rcx - expectedNumArgs
-//         %r8  - argv
+// * uint64_t OptimizedCallAndPushUndefined(uintptr_t glue, uint32_t argc, JSTaggedType calltarget, JSTaggedType new,
+//                   JSTaggedType this, arg[0], arg[1], arg[2], ..., arg[N-1])
+// * webkit_jscc calling convention call js function()
 //
-// * The OptimizedJSFunctionArgsConfig Frame's structure is illustrated as the following:
-//          +--------------------------+
-//          |         arg[N-1]         |
-//          +--------------------------+
-//          |         . . . .          |
-//          +--------------------------+
-//          |         arg[0]           |
-//          +--------------------------+
-//          |         argC             |
-//  sp ---> +--------------------------+ -----------------
-//          |                          |                 ^
-//          |        prevFP            |                 |
-//          |--------------------------|    OptimizedJSFunctionArgsConfigFrame
-//          |       frameType          |                 |
-//          |                          |                 V
-//          +--------------------------+ -----------------
-
-void OptimizedCall::OptimizedCallOptimized(ExtendedAssembler *assembler)
+// * OptimizedJSFunctionFrame layout description as the following:
+//               +--------------------------+
+//               |        arg[N-1]          |
+//               +--------------------------+
+//               |       ...                |
+//               +--------------------------+
+//               |       arg[1]             |
+//               +--------------------------+
+//               |       arg[0]             |
+//               +--------------------------+
+//               |       this               |
+//               +--------------------------+
+//               |       new-target         |
+//               +--------------------------+
+//               |       call-target        |
+//               |--------------------------|
+//               |       argc               |
+//               |--------------------------| ---------------
+//               |       returnAddr         |               ^
+//      sp ----> |--------------------------|               |
+//               |       callsiteFp         |               |
+//               |--------------------------|   OptimizedJSFunctionFrame
+//               |       frameType          |               |
+//               |--------------------------|               |
+//               |       call-target        |               v
+//               +--------------------------+ ---------------
+void OptimizedCall::OptimizedCallAndPushUndefined(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(OptimizedCallOptimized));
-    Register glueReg = rdi;
+    __ BindAssemblerStub(RTSTUB_ID(OptimizedCallAndPushUndefined));
+    Register jsFuncReg = rdi;
+    Register method = r9;
+    Register codeAddrReg = rsi;
+    __ Movq(Operand(rsp, DOUBLE_SLOT_SIZE), jsFuncReg); // sp + 16 get jsFunc
+    __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
+    __ Mov(Operand(method, Method::CODE_ENTRY_OFFSET), codeAddrReg);
+
+    Register methodCallField = rcx;
+    __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
+    __ Shr(MethodLiteral::NumArgsBits::START_BIT, methodCallField);
+    __ Andl(((1LU <<  MethodLiteral::NumArgsBits::SIZE) - 1), methodCallField);
+    __ Addl(NUM_MANDATORY_JSFUNC_ARGS, methodCallField); // add mandatory argumentr
+
+    __ Movl(Operand(rsp, FRAME_SLOT_SIZE), rdx); // argc rdx
+    __ Movq(rsp, r8);
+    Register argvReg = r8;
+    auto funcSlotOffset = kungfu::ArgumentAccessor::GetExtraArgsNum() + 1;  // 1: return addr
+    __ Addq(funcSlotOffset * FRAME_SLOT_SIZE, argvReg); // skip return addr and argc
+
     Register expectedNumArgsReg = rcx;
     Register actualNumArgsReg = rdx;
-    Register codeAddrReg = rsi;
-    Register argvReg = r8;
 
     Label lCopyExtraAument1;
     Label lCopyLoop1;
@@ -161,7 +159,6 @@ void OptimizedCall::OptimizedCallOptimized(ExtendedAssembler *assembler)
     __ Jne(&lCopyLoop1);
     __ Pushq(actualNumArgsReg); // actual argc
 
-    __ Movq(glueReg, rax); // mov glue to rax
     __ Callq(codeAddrReg); // then call jsFunction
     __ Leaq(Operand(r14, Scale::Times8, 0), codeAddrReg);
     __ Addq(codeAddrReg, rsp);
@@ -305,7 +302,6 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
     Label lJSFunctionCall;
     Label lJSBoundFunction;
     Label lJSProxy;
-    Label lCallOptimziedMethod;
     Label lCallNativeMethod;
     Label lCallNativeCpp;
     Label lCallNativeBuiltinStub;
@@ -352,8 +348,6 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
             __ Btq(JSHClass::ClassConstructorBit::START_BIT, rax); // is CallConstructor
             __ Jb(&lCallConstructor);
         }
-        __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
-        __ Jb(&lCallOptimziedMethod);
         __ Movq(rsp, argV);
         auto argvSlotOffset = kungfu::ArgumentAccessor::GetExtraArgsNum() + 1;  // 1: return addr
         __ Addq(argvSlotOffset * FRAME_SLOT_SIZE, argV); // skip return addr and argc
@@ -377,14 +371,6 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
             __ Pop(rbp);
             __ Ret();
         }
-    }
-
-    __ Bind(&lCallOptimziedMethod);
-    Register codeAddrReg = rsi;
-    Register expectedNumArgsReg = rcx;
-    {
-        CallOptimziedMethodInternal(assembler, glueReg, jsFuncReg,
-                                    methodCallField, argc, codeAddrReg, expectedNumArgsReg);
     }
 
     __ Bind(&lCallNativeMethod);
@@ -566,32 +552,6 @@ void OptimizedCall::ThrowNonCallableInternal(ExtendedAssembler *assembler, Regis
     __ Ret();
 }
 
-void OptimizedCall::CallOptimziedMethodInternal(ExtendedAssembler *assembler, Register glueReg, Register jsFuncReg,
-                                                Register methodCallField,  Register argc,
-                                                Register codeAddrReg, Register expectedNumArgsReg)
-{
-    Label lDirectCallCodeEntry;
-    Register method = rdx;
-    __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
-    __ Mov(Operand(method, Method::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
-    __ Movq(argc, rdx);  // argc -> rdx
-    __ Shr(MethodLiteral::NumArgsBits::START_BIT, methodCallField);
-    __ Andl(((1LU <<  MethodLiteral::NumArgsBits::SIZE) - 1), methodCallField);
-    __ Addl(NUM_MANDATORY_JSFUNC_ARGS, methodCallField); // add mandatory argumentr
-    __ Movq(rsp, r8);
-    Register argvReg = r8;
-    auto funcSlotOffset = kungfu::ArgumentAccessor::GetExtraArgsNum() + 1;  // 1: return addr
-    __ Addq(funcSlotOffset * FRAME_SLOT_SIZE, argvReg); // skip return addr and argc
-    __ Cmpl(expectedNumArgsReg, rdx); // expectedNumArgs <= actualNumArgs
-    __ Jge(&lDirectCallCodeEntry);
-    __ CallAssemblerStub(RTSTUB_ID(OptimizedCallOptimized), true);
-    __ Bind(&lDirectCallCodeEntry);
-    {
-        __ Movq(glueReg, rax); // rax = glue
-        __ Jmp(codeAddrReg);
-    }
-}
-
 void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Register jsFuncReg, Label *jsCall)
 {
     Label lAlign16Bytes2;
@@ -600,6 +560,10 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     Label lPushCallTarget;
     Label lCopyBoundArgumentLoop;
     Label lPopFrame2;
+    Label slowCall;
+    Label aotCall;
+    Label popArgs;
+    Label isJsFunc;
     __ Pushq(rbp);
     __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME));
     __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
@@ -653,14 +617,46 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     }
     __ Bind(&lPushCallTarget);
     {
-        __ Mov(Operand(jsFuncReg, JSBoundFunction::BOUND_THIS_OFFSET), rax); // thisObj
-        __ Pushq(rax);
+        __ Mov(Operand(jsFuncReg, JSBoundFunction::BOUND_THIS_OFFSET), r8); // thisObj
+        __ Pushq(r8);
         __ Pushq(JSTaggedValue::VALUE_UNDEFINED); // newTarget
         __ Mov(Operand(jsFuncReg, JSBoundFunction::BOUND_TARGET_OFFSET), rax); // callTarget
         __ Pushq(rax);
         __ Pushq(r10); // push actual arguments
+    }
+    JSCallCheck(assembler, rax, &slowCall, &slowCall, &isJsFunc); // jsfunc -> rsi hclassfiled -> rax
+    Register jsfunc = rsi;
+    Register methodCallField = rcx;
+    Register method = rdx;
+    __ Bind(&isJsFunc);
+    {
+        __ Btq(JSHClass::ClassConstructorBit::START_BIT, rax); // is CallConstructor
+        __ Jb(&slowCall);
+        __ Mov(Operand(rsi, JSFunctionBase::METHOD_OFFSET), method); // get method
+        __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
+        __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
+        __ Jb(&aotCall);
+        __ Bind(&aotCall);
+        {
+            // output: glue:rdi argc:rsi calltarget:rdx argv:rcx this:r8 newtarget:r9
+            __ Movq(jsfunc, rdx);
+            __ Movq(r10, rsi);
+            __ Leaq(Operand(rsp, 4 * FRAME_SLOT_SIZE), rcx); // 4: skip argc and func new this
+            __ Movq(JSTaggedValue::VALUE_UNDEFINED, r9);
+            __ Movq(kungfu::CommonStubCSigns::JsBoundCallInternal, r10);
+            __ Movq(Operand(rdi, r10, Scale::Times8, JSThread::GlueData::GetCOStubEntriesOffset(false)), rax);
+            __ Callq(rax); // call JSCall
+            __ Jmp(&popArgs);
+        }
+    }
+    __ Bind(&slowCall);
+    {
         __ Movq(rdi, rax);
         __ Callq(jsCall); // call JSCall
+        __ Jmp(&popArgs);
+    }
+    __ Bind(&popArgs);
+    {
         __ Pop(r10);
         __ Leaq(Operand(r10, Scale::Times8, 0), rcx); // 8: disp
         __ Addq(rcx, rsp);
@@ -668,7 +664,6 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         __ Jne(&lPopFrame2);
         __ Addq(8, rsp); // 8: align byte
     }
-
     __ Bind(&lPopFrame2);
     {
         __ Pop(r10);
@@ -942,19 +937,15 @@ void OptimizedCall::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
 //
 // * OptimizedJSFunctionFrame layout description as the following:
 //               +--------------------------+
-//               |        arg[N-1]          |
-//               +--------------------------+
-//               |        . . . . .         |
-//               +--------------------------+
-//               |        arg[0]            |
-//               +--------------------------+
-//               |       this               |
-//               +--------------------------+
-//               |       new-target         |
-//               +--------------------------+
-//               |       call-target        |
+//               |       argn               |
 //               |--------------------------|
-//               |       argc               |
+//               |       argn - 1           |
+//               |--------------------------|
+//               |       .....              |
+//               |--------------------------|
+//               |       arg2               |
+//               |--------------------------|
+//               |       arg1               |
 //      sp ----> |--------------------------| ---------------
 //               |       returnAddr         |               ^
 //               |--------------------------|               |
@@ -965,7 +956,7 @@ void OptimizedCall::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
 //               |       call-target        |               v
 //               +--------------------------+ ---------------
 
-void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, bool isNew)
+void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, bool needAddExpectedArgs)
 {
     Register sp(rsp);
     Register glue(rdi);
@@ -994,15 +985,32 @@ void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, bool isNew)
     __ Addq(Immediate(NUM_MANDATORY_JSFUNC_ARGS), actualNumArgs);
     __ Pushq(actualNumArgs);
     __ Movq(glue, rax);
-    if (isNew) {
-        __ CallAssemblerStub(RTSTUB_ID(JSCallNew), false);
+    if (needAddExpectedArgs) {
+        __ CallAssemblerStub(RTSTUB_ID(OptimizedCallAndPushUndefined), false);
     } else {
-        __ CallAssemblerStub(RTSTUB_ID(JSCall), false);
+        __ CallAssemblerStub(RTSTUB_ID(CallOptimized), false);
     }
+
     __ Mov(Operand(sp, 0), actualNumArgs);
     PopJSFunctionArgs(assembler, actualNumArgs);
     PopOptimizedUnfoldArgVFrame(assembler);
     __ Ret();
+}
+
+// * uint64_t JSCallWithArgVAndPushUndefined(uintptr_t glue, uint32_t argc, JSTaggedType calltarget,
+//                          JSTaggedType new, JSTaggedType this, argV)
+// * cc calling convention call js function()
+// * arguments:
+//              %rdi - glue
+//              %rsi - argc
+//              %rdx - call-target
+//              %rcx - new-target
+//              %r8  - this
+//              %r9  - argv
+void OptimizedCall::JSCallWithArgVAndPushUndefined(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(JSCallWithArgVAndPushUndefined));
+    GenJSCallWithArgV(assembler, true);
 }
 
 void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler)
@@ -1011,10 +1019,16 @@ void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler)
     GenJSCallWithArgV(assembler, false);
 }
 
-void OptimizedCall::JSCallNewWithArgV(ExtendedAssembler *assembler)
+void OptimizedCall::CallOptimized(ExtendedAssembler *assembler)
 {
-    __ BindAssemblerStub(RTSTUB_ID(JSCallNewWithArgV));
-    GenJSCallWithArgV(assembler, true);
+    __ BindAssemblerStub(RTSTUB_ID(CallOptimized));
+    Register jsFuncReg = rdi;
+    Register method = r9;
+    Register codeAddrReg = rsi;
+    __ Movq(Operand(rsp, DOUBLE_SLOT_SIZE), jsFuncReg); // sp + 16 get jsFunc
+    __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
+    __ Mov(Operand(method, Method::CODE_ENTRY_OFFSET), codeAddrReg);
+    __ Jmp(codeAddrReg);
 }
 
 // Input: %rdi - glue

@@ -191,7 +191,8 @@ public:
 
     bool IsOptimizedJSFunctionFrame() const
     {
-        return frameType_ == panda::ecmascript::FrameType::OPTIMIZED_JS_FUNCTION_FRAME;
+        return frameType_ == panda::ecmascript::FrameType::OPTIMIZED_JS_FUNCTION_FRAME
+            || frameType_ == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME;
     }
 
     bool GetDebugInfo(GateRef g, size_t &index) const;
