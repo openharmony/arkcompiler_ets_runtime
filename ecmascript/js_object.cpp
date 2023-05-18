@@ -1832,7 +1832,7 @@ JSHandle<JSTaggedValue> JSObject::SpeciesConstructor(JSThread *thread, const JSH
     // Let C be Get(O, "constructor").
     JSHandle<JSTaggedValue> contructorKey = globalConst->GetHandledConstructorString();
     JSHandle<JSTaggedValue> objConstructor(JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(obj),
-                                                                      contructorKey).GetValue());
+        contructorKey).GetValue());
     // ReturnIfAbrupt(C).
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // If C is undefined, return defaultConstructor.

@@ -177,8 +177,9 @@ void AsyncFunctionLowering::UpdateValueSelector(GateRef prevLoopBeginGate,
                                         {controlStateGate, loopBeginFirstState});
 
     if (genNewValuePhiGate) {
-        GateRef emptyOffsetGate = circuit_->NewGate(circuit_->GetMetaBuilder()->Constant(-1), // -1: distinguish bcoffset
-                                                    MachineType::I32, GateType::NJSValue());
+        GateRef emptyOffsetGate =
+            circuit_->NewGate(circuit_->GetMetaBuilder()->Constant(-1), // -1: distinguish bcoffset
+            MachineType::I32, GateType::NJSValue());
         GateRef restoreOffset = accessor_.GetValueIn(prevBcOffsetPhiGate);
         // this value selector is compatible with await in the loop body
         GateRef valueSelector = circuit_->NewGate(circuit_->ValueSelector(2), MachineType::I32, // 2: num of valueIn

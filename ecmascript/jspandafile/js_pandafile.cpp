@@ -35,7 +35,7 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
     if (!loadedFirstPandaFile && !isBundlePack_) {
         // Tag the first merged abc to use constant string. The lifetime of this first panda file is the same
-        // as the vm. And make sure the first pandafile is the same at the compile time and runtime. 
+        // as the vm. And make sure the first pandafile is the same at the compile time and runtime.
         isFirstPandafile_ = true;
         loadedFirstPandaFile = true;
     }

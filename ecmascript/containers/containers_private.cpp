@@ -358,7 +358,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightMap(JSThread *th
         thread, funcPrototype, ContainersLightWeightMap::LightWeightMapConstructor, "LightWeightMap",
         FuncLength::ZERO));
     JSHandle<JSFunction>::Cast(lightWeightMapFunction)->
-                               SetFunctionPrototype(thread, lightWeightMapInstanceClass.GetTaggedValue());
+        SetFunctionPrototype(thread, lightWeightMapInstanceClass.GetTaggedValue());
 
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
@@ -432,7 +432,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeLightWeightSet(JSThread *th
         NewContainerConstructor(thread, funcPrototype, ContainersLightWeightSet::LightWeightSetConstructor,
                                 "LightWeightSet", FuncLength::ZERO));
     JSHandle<JSFunction>::Cast(lightweightSetFunction)->SetFunctionPrototype(thread, lightweightSetInstanceClass.
-                                                                             GetTaggedValue());
+        GetTaggedValue());
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(funcPrototype), constructorKey, lightweightSetFunction);

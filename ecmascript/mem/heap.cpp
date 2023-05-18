@@ -623,9 +623,8 @@ void Heap::RecomputeLimits()
     OPTIONAL_LOG(ecmaVm_, INFO) << "RecomputeLimits oldSpaceAllocLimit_: " << newOldSpaceLimit
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_
         << " globalSpaceNativeLimit_:" << globalSpaceNativeLimit_;
-    // 2 means half
     if ((oldSpace_->GetHeapObjectSize() * 1.0 / SHRINK_OBJECT_SURVIVAL_RATE) < oldSpace_->GetCommittedSize() &&
-        (oldSpace_->GetCommittedSize() / 2) > newOldSpaceLimit) {
+        (oldSpace_->GetCommittedSize() / 2) > newOldSpaceLimit) { // 2: means half
         OPTIONAL_LOG(ecmaVm_, INFO) << " Old space heap object size is too much lower than committed size"
                                     << " heapObjectSize: "<< oldSpace_->GetHeapObjectSize()
                                     << " Committed Size: " << oldSpace_->GetCommittedSize();
@@ -808,7 +807,6 @@ void Heap::TryTriggerConcurrentMarking()
 
     double newSpaceAllocSpeed = memController_->GetNewSpaceAllocationThroughputPerMS();
     double newSpaceConcurrentMarkSpeed = memController_->GetNewSpaceConcurrentMarkSpeedPerMS();
-
     if (newSpaceConcurrentMarkSpeed == 0 || newSpaceAllocSpeed == 0) {
         auto &config = ecmaVm_->GetEcmaParamConfiguration();
         if (activeSemiSpace_->GetCommittedSize() >= config.GetSemiSpaceTriggerConcurrentMark()) {

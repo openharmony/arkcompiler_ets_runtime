@@ -14,5 +14,5 @@
  */
 
 function foo() {
-    print("base foo")
+  print('base foo');
 }

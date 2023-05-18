@@ -71,7 +71,7 @@ protected:
         JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
         JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
         JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread,
-                                                              JSHandle<JSTaggedValue>(globalObject), key).GetValue();
+            JSHandle<JSTaggedValue>(globalObject), key).GetValue();
 
         auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
         objCallInfo->SetFunction(JSTaggedValue::Undefined());

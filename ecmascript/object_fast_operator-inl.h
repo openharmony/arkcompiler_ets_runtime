@@ -417,9 +417,7 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByName(JSThread *thread, JSTagg
     JSTaggedValue result = ObjectFastOperator::GetPropertyByName(thread, receiver, key);
     if (result.IsHole()) {
         return JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver),
-                                          JSHandle<JSTaggedValue>(thread, key))
-            .GetValue()
-            .GetTaggedValue();
+            JSHandle<JSTaggedValue>(thread, key)).GetValue().GetTaggedValue();
     }
     return result;
 }
@@ -430,9 +428,7 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByValue(JSThread *thread, JSTag
     JSTaggedValue result = ObjectFastOperator::GetPropertyByValue(thread, receiver, key);
     if (result.IsHole()) {
         return JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver),
-                                          JSHandle<JSTaggedValue>(thread, key))
-            .GetValue()
-            .GetTaggedValue();
+            JSHandle<JSTaggedValue>(thread, key)).GetValue().GetTaggedValue();
     }
     return result;
 }
@@ -443,9 +439,8 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByIndex(JSThread *thread, JSTag
     INTERPRETER_TRACE(thread, FastGetPropertyByIndex);
     JSTaggedValue result = ObjectFastOperator::GetPropertyByIndex(thread, receiver, index);
     if (result.IsHole() && !UseHole) {
-        return JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(thread, receiver), index)
-            .GetValue()
-            .GetTaggedValue();
+        return JSTaggedValue::GetProperty(thread,
+            JSHandle<JSTaggedValue>(thread, receiver), index).GetValue().GetTaggedValue();
     }
     return result;
 }

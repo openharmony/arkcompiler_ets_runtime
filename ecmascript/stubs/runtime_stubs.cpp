@@ -905,9 +905,9 @@ DEF_RUNTIME_STUBS(CreateClassWithIHClass)
     JSHandle<JSHClass> ihclass = GetHArg<JSHClass>(argv, argc, 5);  // 5: means the fifth parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 6);  // 6: means the sixth parameter
     return RuntimeCreateClassWithIHClass(thread, base, lexenv, constpool,
-                                         static_cast<uint16_t>(methodId.GetInt()),
-                                         static_cast<uint16_t>(literalId.GetInt()),
-                                         ihclass, module).GetRawData();
+        static_cast<uint16_t>(methodId.GetInt()),
+        static_cast<uint16_t>(literalId.GetInt()),
+        ihclass, module).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(SetClassConstructorLength)
@@ -1578,7 +1578,7 @@ DEF_RUNTIME_STUBS(NewObjRange)
     JSTaggedValue firstArgIdx = GetArg(argv, argc, 2);  // 2: means the second parameter
     JSTaggedValue length = GetArg(argv, argc, 3);  // 3: means the third parameter
     return RuntimeNewObjRange(thread, func, newTarget, static_cast<uint16_t>(firstArgIdx.GetInt()),
-                                 static_cast<uint16_t>(length.GetInt())).GetRawData();
+        static_cast<uint16_t>(length.GetInt())).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(DefineFunc)

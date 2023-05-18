@@ -85,7 +85,7 @@ JSTaggedValue JSRegExpIterator::Next(EcmaRuntimeCallInfo *argv)
             if (EcmaStringAccessor(matchStr).GetLength() == 0) {
                 JSHandle<JSTaggedValue> lastIndexString(globalConstants->GetHandledLastIndexString());
                 JSHandle<JSTaggedValue> getLastIndex(JSObject::GetProperty(thread, regexHandle,
-                                                                           lastIndexString).GetValue());
+                    lastIndexString).GetValue());
                 JSTaggedNumber thisIndex = JSTaggedValue::ToLength(thread, getLastIndex);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 uint32_t nextIndex = BuiltinsRegExp::AdvanceStringIndex(inputStr, thisIndex.ToUint32(),

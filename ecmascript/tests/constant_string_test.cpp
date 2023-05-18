@@ -468,11 +468,14 @@ HWTEST_F_L0(ConstantStringTest, StringsAreEqualUtf16_001)
     JSHandle<EcmaString> handleEcmaStrU8No3(thread,
         EcmaStringAccessor::CreateConstantString(ecmaVMPtr, &arrayU8No3[0], lengthEcmaStrU8No3, true));
     EXPECT_TRUE(
-        EcmaStringAccessor::StringsAreEqualUtf16(*handleEcmaStrU8No1, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
+        EcmaStringAccessor::StringsAreEqualUtf16(*handleEcmaStrU8No1,
+            &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
     EXPECT_FALSE(
-        EcmaStringAccessor::StringsAreEqualUtf16(*handleEcmaStrU8No2, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
+        EcmaStringAccessor::StringsAreEqualUtf16(*handleEcmaStrU8No2,
+            &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
     EXPECT_FALSE(
-        EcmaStringAccessor::StringsAreEqualUtf16(*handleEcmaStrU8No3, &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
+        EcmaStringAccessor::StringsAreEqualUtf16(*handleEcmaStrU8No3,
+            &arrayU16NotCompNo1[0], lengthEcmaStrU16NotCompNo1));
 }
 
 /*
