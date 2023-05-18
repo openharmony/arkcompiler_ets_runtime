@@ -80,7 +80,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
     JSThread *thread, const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    auto moduleManager = thread->GetEcmaVM()->GetModuleManager();
+    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     if (moduleManager->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
         return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequest.GetTaggedValue()));
     }
@@ -121,7 +121,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModule(JSThread *th
                                                                     const JSHandle<SourceTextModule> &module,
                                                                     const JSHandle<JSTaggedValue> &moduleRequest)
 {
-    auto moduleManager = thread->GetEcmaVM()->GetModuleManager();
+    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     if (moduleManager->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
         return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequest.GetTaggedValue()));
     }
@@ -131,7 +131,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModule(JSThread *th
     JSHandle<EcmaString> moduleFilename = ResolveFilenameFromNative(thread, dirname.GetTaggedValue(),
         moduleRequest.GetTaggedValue());
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    return thread->GetEcmaVM()->GetModuleManager()->
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->
         HostResolveImportedModule(ConvertToString(moduleFilename.GetTaggedValue()));
 }
 

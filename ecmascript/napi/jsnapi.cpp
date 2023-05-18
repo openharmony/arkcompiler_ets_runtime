@@ -880,7 +880,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
             PathHelper::CroppingRecord(entry);
         }
     }
-    ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(entry);
     if (ecmaModule->GetIsNewBcVersion()) {
         int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key);
@@ -900,8 +900,8 @@ Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string
                                                    const std::string &key)
 {
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
     JSThread *thread = vm->GetJSThread();
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(file.c_str());
 
     if (ecmaModule->GetIsNewBcVersion()) {
@@ -3186,7 +3186,7 @@ void JSNApi::SetAssetPath(EcmaVM *vm, const std::string &assetPath)
 
 void JSNApi::SetLoop(EcmaVM *vm, void *loop)
 {
-    vm->SetLoop(loop);
+    vm->GetJSThread()->GetCurrentEcmaContext()->SetLoop(loop);
 }
 
 std::string JSNApi::GetAssetPath(EcmaVM *vm)

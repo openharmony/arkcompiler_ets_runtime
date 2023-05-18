@@ -1,4 +1,5 @@
-/* * Copyright (c) 2023 Huawei Device Co., Ltd.
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -11,7 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef ECMASCRIPT_ECMA_CONTEXT_H
 #define ECMASCRIPT_ECMA_CONTEXT_H
 
@@ -27,6 +27,7 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "libpandafile/file.h"
+#include "ecmascript/waiter_list.h"
 
 namespace panda {
 class JSNApi;
@@ -64,12 +65,21 @@ namespace tooling {
 class JsDebuggerManager;
 }  // namespace tooling
 
+enum class IcuFormatterType {
+    SIMPLE_DATE_FORMAT_DEFAULT,
+    SIMPLE_DATE_FORMAT_DATE,
+    SIMPLE_DATE_FORMAT_TIME,
+    NUMBER_FORMATTER,
+    COLLATOR
+};
+
 using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              const JSHandle<JSPromise> promise,
                                              const JSHandle<JSTaggedValue> reason,
                                              PromiseRejectionEvent operation,
                                              void* data);
 using PromiseRejectCallback = void (*)(void* info);
+using IcuDeleteEntry = void(*)(void *pointer, void *data);
 class EcmaContext {
 public:
     static EcmaContext *Create(JSThread *thread);
@@ -79,6 +89,15 @@ public:
     EcmaContext(JSThread *thread);
     ~EcmaContext();
 
+    void SetLoop(void *loop)
+    {
+        loop_ = loop;
+    }
+
+    void *GetLoop() const
+    {
+        return loop_;
+    }
     EcmaVM *GetEcmaVM() const
     {
         return vm_;
@@ -156,6 +175,21 @@ public:
     {
         regexpCache_ = newCache;
     }
+
+    WaiterListNode *GetWaiterListNode()
+    {
+        return &waiterListNode_;
+    }
+
+    void SetAllowAtomicWait(bool wait)
+    {
+        AllowAtomicWait_ = wait;
+    }
+
+    bool GetAllowAtomicWait() const
+    {
+        return AllowAtomicWait_;
+    }
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
     void EnableUserUncaughtErrorHandler();
@@ -189,7 +223,41 @@ public:
     OptCodeProfiler *GetOptCodeProfiler() const
     {
         return optCodeProfiler_;
-    }    
+    }
+
+    // For icu objects cache
+    void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
+                                IcuDeleteEntry deleteEntry = nullptr)
+    {
+        EcmaContext::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
+        icuObjCache_.insert_or_assign(type, std::move(icuFormatter));
+    }
+
+    void *GetIcuFormatterFromCache(IcuFormatterType type, std::string locale)
+    {
+        auto iter = icuObjCache_.find(type);
+        if (iter != icuObjCache_.end()) {
+            EcmaContext::IcuFormatter icuFormatter = iter->second;
+            if (icuFormatter.locale == locale) {
+                return icuFormatter.icuObj;
+            }
+        }
+        return nullptr;
+    }
+
+    void ClearIcuCache()
+    {
+        auto iter = icuObjCache_.begin();
+        while (iter != icuObjCache_.end()) {
+            EcmaContext::IcuFormatter icuFormatter = iter->second;
+            IcuDeleteEntry deleteEntry = icuFormatter.deleteEntry;
+            if (deleteEntry != nullptr) {
+                deleteEntry(icuFormatter.icuObj, vm_);
+            }
+            iter->second = EcmaContext::IcuFormatter{};
+            iter++;
+        }
+    }  
 private:
     void ClearBufferData();
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
@@ -220,6 +288,10 @@ private:
     // VM resources.
     TSManager *tsManager_ {nullptr};
 
+    // atomics
+    bool AllowAtomicWait_ {true};
+    WaiterListNode waiterListNode_;
+
     // Registered Callbacks
     PromiseRejectCallback promiseRejectCallback_ {nullptr};
     HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
@@ -227,6 +299,19 @@ private:
 
     // opt code Profiler
     OptCodeProfiler *optCodeProfiler_ {nullptr};
+
+    // For icu objects cache
+    struct IcuFormatter {
+        std::string locale;
+        void *icuObj {nullptr};
+        IcuDeleteEntry deleteEntry {nullptr};
+
+        IcuFormatter() = default;
+        IcuFormatter(const std::string &locale, void *icuObj, IcuDeleteEntry deleteEntry = nullptr)
+            : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
+    };
+    std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
+    void *loop_ {nullptr};
 
     friend class JSPandaFileExecutor;
     friend class ObjectFactory;

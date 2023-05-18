@@ -1084,87 +1084,87 @@ void RuntimeStubs::RuntimeSetGeneratorState(JSThread *thread, const JSHandle<JST
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, int32_t index)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(index);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleNamespace(index);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, int32_t index,
                                                       JSTaggedValue jsFunc)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(index, jsFunc);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleNamespace(index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, JSTaggedValue localName)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(localName);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleNamespace(localName);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, JSTaggedValue localName,
                                                       JSTaggedValue jsFunc)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(localName, jsFunc);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleNamespace(localName, jsFunc);
 }
 
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, int32_t index, JSTaggedValue value)
 {
-    thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(index, value);
+    thread->GetCurrentEcmaContext()->GetModuleManager()->StoreModuleValue(index, value);
 }
 
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, int32_t index, JSTaggedValue value,
                                       JSTaggedValue jsFunc)
 {
-    thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(index, value, jsFunc);
+    thread->GetCurrentEcmaContext()->GetModuleManager()->StoreModuleValue(index, value, jsFunc);
 }
 
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value)
 {
-    thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(key, value);
+    thread->GetCurrentEcmaContext()->GetModuleManager()->StoreModuleValue(key, value);
 }
 
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value,
                                       JSTaggedValue jsFunc)
 {
-    thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(key, value, jsFunc);
+    thread->GetCurrentEcmaContext()->GetModuleManager()->StoreModuleValue(key, value, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVar(JSThread *thread, int32_t index)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueInner(index);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueInner(index);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueInner(index, jsFunc);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueInner(index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVar(JSThread *thread, int32_t index)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(index);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueOutter(index);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(index, jsFunc);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueOutter(index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner)
 {
     if (inner) {
-        JSTaggedValue moduleValue = thread->GetEcmaVM()->GetModuleManager()->GetModuleValueInner(key);
+        JSTaggedValue moduleValue = thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueInner(key);
         return moduleValue;
     }
 
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(key);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueOutter(key);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner,
                                                JSTaggedValue jsFunc)
 {
     if (inner) {
-        JSTaggedValue moduleValue = thread->GetEcmaVM()->GetModuleManager()->GetModuleValueInner(key, jsFunc);
+        JSTaggedValue moduleValue = thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueInner(key, jsFunc);
         return moduleValue;
     }
 
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(key, jsFunc);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueOutter(key, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetPropIterator(JSThread *thread, const JSHandle<JSTaggedValue> &value)

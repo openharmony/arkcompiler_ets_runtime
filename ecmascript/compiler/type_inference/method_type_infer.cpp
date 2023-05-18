@@ -1018,7 +1018,7 @@ bool MethodTypeInfer::InferLdExternalModuleVar(GateRef gate)
     // However, this compilation order is not guaranteed, so the export type may not have been infered.
     if (UNLIKELY(loadType.IsAnyType())) {
         auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-        ModuleManager *moduleManager = tsManager_->GetEcmaVM()->GetModuleManager();
+        ModuleManager *moduleManager =thread->GetCurrentEcmaContext()->GetModuleManager();
         [[maybe_unused]] EcmaHandleScope scope(thread);
         JSHandle<SourceTextModule> currentModule = moduleManager->HostGetImportedModule(recordName_);
         JSTaggedValue moduleEnvironment = currentModule->GetEnvironment();

@@ -207,7 +207,7 @@ JSTaggedValue BuiltinsAtomics::Wait(EcmaRuntimeCallInfo *argv)
 
     // 8. Let B be AgentCanSuspend().
     // 9. If B is false, throw a TypeError exception.
-    if (!thread->GetEcmaVM()->GetAllowAtomicWait()) {
+    if (!thread->GetCurrentEcmaContext()->GetAllowAtomicWait()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "vm does not allow wait to block.",
                                     JSTaggedValue::Exception());
     }
@@ -515,7 +515,7 @@ WaitResult BuiltinsAtomics::DoWait(JSThread *thread, JSHandle<JSTaggedValue> &ar
     MutexGuard lockGuard(g_mutex);
     void *buffer = BuiltinsArrayBuffer::GetDataPointFromBuffer(arrayBuffer.GetTaggedValue());
     ASSERT(buffer != nullptr);
-    WaiterListNode *node = thread->GetEcmaVM()->GetWaiterListNode();
+    WaiterListNode *node = thread->GetCurrentEcmaContext()->GetWaiterListNode();
     node->date_ = buffer;
     node->index_ = index;
     node->waitPointer_ = reinterpret_cast<int8_t*>(buffer) + index;

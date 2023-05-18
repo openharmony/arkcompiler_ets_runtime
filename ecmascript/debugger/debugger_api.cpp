@@ -581,7 +581,7 @@ void DebuggerApi::GetIndirectExportVariables(const EcmaVM *ecmaVm, Local<ObjectR
             Local<JSValueRef> variableName = JSNApiHelper::ToLocal<JSValueRef>(name);
             JSTaggedValue moduleRequest = ee->GetModuleRequest();
             int32_t index = GetRequestModuleIndex(ecmaVm, moduleRequest, currentModule);
-            JSTaggedValue importNamespace = ecmaVm->GetModuleManager()->GetModuleNamespace(index);
+            JSTaggedValue importNamespace = thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleNamespace(index);
             JSHandle<JSTaggedValue> importModule(thread,
                 ModuleNamespace::Cast(importNamespace.GetTaggedObject())->GetModule());
             std::string importName = EcmaStringAccessor(ee->GetImportName()).ToStdString();
@@ -623,7 +623,7 @@ void DebuggerApi::GetImportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &mod
         if (JSTaggedValue::SameValue(key, starString.GetTaggedValue())) {
             JSTaggedValue moduleRequest = ee->GetModuleRequest();
             int32_t index = GetRequestModuleIndex(ecmaVm, moduleRequest, currentModule);
-            JSTaggedValue importNamespace = ecmaVm->GetModuleManager()->GetModuleNamespace(index);
+            JSTaggedValue importNamespace = thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleNamespace(index);
             JSHandle<JSTaggedValue> importModule(thread,
                 ModuleNamespace::Cast(importNamespace.GetTaggedObject())->GetModule());
             Local<ObjectRef> importModuleObj = ObjectRef::New(ecmaVm);

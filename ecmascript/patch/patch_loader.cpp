@@ -111,7 +111,7 @@ bool PatchLoader::ExecutePatchMain(JSThread *thread, const JSPandaFile *patchFil
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         JSHandle<JSFunction> func(thread, program->GetMainFunction());
         JSHandle<JSTaggedValue> module =
-            vm->GetModuleManager()->HostResolveImportedModuleWithMerge(patchFile->GetJSPandaFileDesc(), recordName);
+            thread->GetCurrentEcmaContext()->GetModuleManager()->HostResolveImportedModuleWithMerge(patchFile->GetJSPandaFileDesc(), recordName);
         func->SetModule(thread, module);
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(func), undefined, undefined, 0);

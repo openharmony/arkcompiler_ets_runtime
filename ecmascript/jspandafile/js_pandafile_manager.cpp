@@ -68,7 +68,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     }
 
     EcmaVM *vm = thread->GetEcmaVM();
-    bool mode = vm->GetModuleManager()->GetCurrentMode();
+    bool mode = thread->GetCurrentEcmaContext()->GetModuleManager()->GetCurrentMode();
     std::unique_ptr<const panda_file::File> pf;
     if (!vm->IsBundlePack() && mode) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();

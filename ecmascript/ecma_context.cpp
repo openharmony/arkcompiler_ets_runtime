@@ -120,6 +120,9 @@ EcmaContext::~EcmaContext()
             jsPandaFile->DeleteParsedConstpoolVM(vm_);
         }
     }
+    // clear icu cache
+    ClearIcuCache();
+
     if (optCodeProfiler_ != nullptr) {
         delete optCodeProfiler_;
         optCodeProfiler_ = nullptr;

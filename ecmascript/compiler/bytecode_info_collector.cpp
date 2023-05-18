@@ -529,8 +529,8 @@ void BytecodeInfoCollector::CollectImportIndexs(uint32_t methodOffset, uint32_t 
 
 void BytecodeInfoCollector::CollectExportIndexs(const CString &recordName, uint32_t index)
 {
-    ModuleManager *moduleManager = vm_->GetModuleManager();
     JSThread *thread = vm_->GetJSThread();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     CString exportLocalName = "*default*";
     ObjectFactory *objFactory = vm_->GetFactory();
     [[maybe_unused]] EcmaHandleScope scope(thread);
@@ -613,7 +613,7 @@ void BytecodeInfoCollector::CollectRecordReferenceREL()
 void BytecodeInfoCollector::CollectRecordImportInfo(const CString &recordName)
 {
     auto thread = vm_->GetJSThread();
-    ModuleManager *moduleManager = vm_->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     [[maybe_unused]] EcmaHandleScope scope(thread);
     JSHandle<SourceTextModule> currentModule = moduleManager->HostGetImportedModule(recordName);
     // Collect Import Info
@@ -643,7 +643,7 @@ void BytecodeInfoCollector::CollectRecordImportInfo(const CString &recordName)
 void BytecodeInfoCollector::CollectRecordExportInfo(const CString &recordName)
 {
     auto thread = vm_->GetJSThread();
-    ModuleManager *moduleManager = vm_->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     [[maybe_unused]] EcmaHandleScope scope(thread);
     JSHandle<SourceTextModule> currentModule = moduleManager->HostGetImportedModule(recordName);
     // Collect Star Export Info

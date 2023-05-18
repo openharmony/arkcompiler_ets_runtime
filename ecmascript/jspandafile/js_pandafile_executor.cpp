@@ -84,7 +84,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     }
     if (isModule) {
         [[maybe_unused]] EcmaHandleScope scope(thread);
-        ModuleManager *moduleManager = vm->GetModuleManager();
+        ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
         JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
         if (jsPandaFile->IsBundlePack()) {
             moduleRecord = moduleManager->HostResolveImportedModule(name);
@@ -182,7 +182,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 {
     [[maybe_unused]] EcmaHandleScope scope(thread);
     EcmaVM *vm = thread->GetEcmaVM();
-    ModuleManager *moduleManager = vm->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     moduleManager->SetExecuteMode(true);
     JSMutableHandle<JSTaggedValue> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
     if (isBundle) {
@@ -259,7 +259,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 {
     [[maybe_unused]] EcmaHandleScope scope(thread);
     EcmaVM *vm = thread->GetEcmaVM();
-    ModuleManager *moduleManager = vm->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     moduleManager->SetExecuteMode(true);
     JSMutableHandle<JSTaggedValue> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
     if (jsPandaFile->IsBundlePack()) {
