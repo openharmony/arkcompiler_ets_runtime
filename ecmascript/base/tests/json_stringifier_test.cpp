@@ -331,8 +331,9 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_008)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JsonStringifier stringifier(thread);
 
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<JSTaggedValue> handleStr(factory->NewFromASCII("\"\\\b\f\n\r\t"));
-    JSHandle<JSPrimitiveRef> handlePrimitiveRef = factory->NewJSString(handleStr);
+    JSHandle<JSPrimitiveRef> handlePrimitiveRef = factory->NewJSString(handleStr, undefined);
     JSHandle<JSObject> handleObj(thread, handlePrimitiveRef.GetTaggedValue());
 
     JSHandle<JSTaggedValue> handleValue(thread, handleObj.GetTaggedValue());

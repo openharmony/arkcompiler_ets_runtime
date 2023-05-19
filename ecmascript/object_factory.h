@@ -309,7 +309,7 @@ public:
 
     JSHandle<JSArguments> NewJSArguments();
 
-    JSHandle<JSPrimitiveRef> NewJSString(const JSHandle<JSTaggedValue> &str);
+    JSHandle<JSPrimitiveRef> NewJSString(const JSHandle<JSTaggedValue> &str, const JSHandle<JSTaggedValue> &newTarget);
 
     template <typename Derived>
     JSHandle<TaggedArray> ConvertListToArray(const JSThread *thread, const JSHandle<Derived> &list,

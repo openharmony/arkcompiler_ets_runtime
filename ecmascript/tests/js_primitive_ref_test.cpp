@@ -56,8 +56,9 @@ public:
 
 HWTEST_F_L0(JSPrimitiveRefTest, StringCreate)
 {
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<JSTaggedValue> hello(thread->GetEcmaVM()->GetFactory()->NewFromASCII("hello"));
-    JSHandle<JSObject> str(JSPrimitiveRef::StringCreate(thread, hello));
+    JSHandle<JSObject> str(JSPrimitiveRef::StringCreate(thread, hello, undefined));
 
     JSHandle<JSTaggedValue> idx(thread->GetEcmaVM()->GetFactory()->NewFromASCII("0"));
     bool status = JSPrimitiveRef::HasProperty(thread, str, idx);
