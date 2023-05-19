@@ -19,9 +19,10 @@
 #include "securec.h"
 
 namespace panda::ecmascript {
-void ElfBuilder::ModifyStrTabSection()
+void ElfBuilder::AddShStrTabSection()
 {
-    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = des_[0].GetSectionsInfo();
+    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections =
+        des_[ShStrTableModuleDesIndex].GetSectionsInfo();
     
     uint32_t size = 1;
     for (auto &s : sections_) {
@@ -29,8 +30,8 @@ void ElfBuilder::ModifyStrTabSection()
         size = size + str.size() + 1;
     }
 
-    strTabPtr_ = std::make_unique<char []>(size);
-    char *dst = strTabPtr_.get();
+    shStrTabPtr_ = std::make_unique<char []>(size);
+    char *dst = shStrTabPtr_.get();
     dst[0] = 0x0;
     uint32_t i = 1;
     for (auto &s: sections_) {
@@ -45,10 +46,10 @@ void ElfBuilder::ModifyStrTabSection()
         dst[i + copySize] = 0x0;
         i = i + copySize + 1;
     }
-    if (sections.find(ElfSecName::STRTAB) != sections.end()) {
-        sections.erase(ElfSecName::STRTAB);
+    if (sections.find(ElfSecName::SHSTRTAB) != sections.end()) {
+        sections.erase(ElfSecName::SHSTRTAB);
     }
-    sections[ElfSecName::STRTAB] = std::make_pair(reinterpret_cast<uint64_t>(strTabPtr_.get()), size);
+    sections[ElfSecName::SHSTRTAB] = std::make_pair(reinterpret_cast<uint64_t>(shStrTabPtr_.get()), size);
     if (enableSecDump_) {
         DumpSection();
     }
@@ -56,7 +57,7 @@ void ElfBuilder::ModifyStrTabSection()
 
 void ElfBuilder::DumpSection() const
 {
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetCurrentSecInfo();
+    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetFullSecInfo();
     // dump
     for (auto &s : sections) {
         ElfSection section = ElfSection(s.first);
@@ -68,24 +69,19 @@ void ElfBuilder::DumpSection() const
     }
 }
 
-void ElfBuilder::AddArkStackMapSection()
-{
-    for (auto &des : des_) {
-        std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = des.GetSectionsInfo();
-        std::shared_ptr<uint8_t> ptr = des.GetArkStackMapSharePtr();
-        uint64_t arkStackMapAddr = reinterpret_cast<uint64_t>(ptr.get());
-        uint32_t arkStackMapSize = des.GetArkStackMapSize();
-        if (arkStackMapSize > 0) {
-            sections[ElfSecName::ARK_STACKMAP] = std::pair(arkStackMapAddr, arkStackMapSize);
-        }
-    }
-}
-
 ElfBuilder::ElfBuilder(const std::vector<ModuleSectionDes> &des,
                        const std::vector<ElfSecName> &sections): des_(des), sections_(sections)
 {
-    AddArkStackMapSection();
-    ModifyStrTabSection();
+    Initialize();
+    AddShStrTabSection();
+    RemoveNotNeedSection();
+}
+
+void ElfBuilder::Initialize()
+{
+    for (size_t i = 0; i < des_.size(); i++) {
+        des_[i].AddArkStackMapSection();
+    }
     sectionToAlign_ = {
         {ElfSecName::RODATA, AOTFileInfo::TEXT_SEC_ALIGN},
         {ElfSecName::RODATA_CST4, AOTFileInfo::TEXT_SEC_ALIGN},
@@ -94,6 +90,8 @@ ElfBuilder::ElfBuilder(const std::vector<ModuleSectionDes> &des,
         {ElfSecName::RODATA_CST32, AOTFileInfo::TEXT_SEC_ALIGN},
         {ElfSecName::TEXT, AOTFileInfo::TEXT_SEC_ALIGN},
         {ElfSecName::STRTAB, 1},
+        {ElfSecName::SYMTAB, AOTFileInfo::DATA_SEC_ALIGN},
+        {ElfSecName::SHSTRTAB, AOTFileInfo::DATA_SEC_ALIGN},
         {ElfSecName::ARK_STACKMAP, AOTFileInfo::DATA_SEC_ALIGN},
         {ElfSecName::ARK_FUNCENTRY, AOTFileInfo::DATA_SEC_ALIGN},
         {ElfSecName::ARK_ASMSTUB, AOTFileInfo::DATA_SEC_ALIGN},
@@ -108,6 +106,8 @@ ElfBuilder::ElfBuilder(const std::vector<ModuleSectionDes> &des,
         {ElfSecName::RODATA_CST32, ElfSecName::TEXT},
         {ElfSecName::TEXT, ElfSecName::TEXT},
         {ElfSecName::STRTAB, ElfSecName::DATA},
+        {ElfSecName::SYMTAB, ElfSecName::DATA},
+        {ElfSecName::SHSTRTAB, ElfSecName::DATA},
         {ElfSecName::ARK_STACKMAP, ElfSecName::DATA},
         {ElfSecName::ARK_FUNCENTRY, ElfSecName::DATA},
         {ElfSecName::ARK_ASMSTUB, ElfSecName::TEXT},
@@ -119,12 +119,12 @@ ElfBuilder::ElfBuilder(const std::vector<ModuleSectionDes> &des,
         {ElfSecName::DATA, llvm::ELF::PF_R},
     };
 
-    RemoveNotNeedSection();
+    SetLastSection();
 }
 
 void ElfBuilder::RemoveNotNeedSection()
 {
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetCurrentSecInfo();
+    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetFullSecInfo();
     for (size_t i = 0; i < sections_.size();) {
         if (sections.find(sections_[i]) == sections.end()) {
             auto it = sections_.begin() + i;
@@ -137,7 +137,7 @@ void ElfBuilder::RemoveNotNeedSection()
 
 ElfBuilder::~ElfBuilder()
 {
-    strTabPtr_ = nullptr;
+    shStrTabPtr_ = nullptr;
 }
 
 uint32_t ElfBuilder::GetShIndex(ElfSecName section) const
@@ -220,7 +220,7 @@ void ElfBuilder::PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, 
     // number of section headers
     header.e_shnum = GetSecNum() + 1; // 1: skip null section and ark stackmap
     // section header string table index
-    header.e_shstrndx = static_cast<llvm::ELF::Elf64_Half>(GetShIndex(ElfSecName::STRTAB));
+    header.e_shstrndx = static_cast<llvm::ELF::Elf64_Half>(GetShIndex(ElfSecName::SHSTRTAB));
     // section header stub sec info index
     header.e_flags = static_cast<llvm::ELF::Elf64_Word>(GetShIndex(ElfSecName::ARK_MODULEINFO));
     // phr
@@ -230,7 +230,7 @@ void ElfBuilder::PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, 
 
 int ElfBuilder::GetSegmentNum() const
 {
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetCurrentSecInfo();
+    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetFullSecInfo();
     std::set<ElfSecName> segments;
     for (auto &s: sections) {
         ElfSection section = ElfSection(s.first);
@@ -245,10 +245,9 @@ int ElfBuilder::GetSegmentNum() const
     return segments.size();
 }
 
-ElfSecName ElfBuilder::FindLastSection(ElfSecName segment) const
+void ElfBuilder::SetLastSection()
 {
-    ElfSecName ans = ElfSecName::NONE;
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetCurrentSecInfo();
+    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetFullSecInfo();
     for (auto &s: sections) {
         ElfSection section = ElfSection(s.first);
         if (!section.ShouldDumpToAOTFile()) {
@@ -257,12 +256,12 @@ ElfSecName ElfBuilder::FindLastSection(ElfSecName segment) const
         auto it = sectionToSegment_.find(s.first);
         ASSERT(it != sectionToSegment_.end());
         ElfSecName name = it->second;
-        if (name != segment) {
-            continue;
+        if (name == ElfSecName::TEXT) {
+            lastCodeSection = std::max(lastCodeSection, s.first);
+        } else {
+            lastDataSection = std::max(lastDataSection, s.first);
         }
-        ans = std::max(ans, s.first);
     }
-    return ans;
 }
 
 llvm::ELF::Elf64_Word ElfBuilder::FindShName(std::string name, uintptr_t strTabPtr, int strTabSize)
@@ -282,21 +281,21 @@ llvm::ELF::Elf64_Word ElfBuilder::FindShName(std::string name, uintptr_t strTabP
     return ans;
 }
 
-std::pair<uint64_t, uint32_t> ElfBuilder::FindStrTab() const
+std::pair<uint64_t, uint32_t> ElfBuilder::FindShStrTab() const
 {
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetCurrentSecInfo();
-    uint64_t strTabAddr = 0;
-    uint32_t strTabSize = 0;
+    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetFullSecInfo();
+    uint64_t shStrTabAddr = 0;
+    uint32_t shStrTabSize = 0;
     for (auto &s: sections) {
-        uint32_t curSecSize = des_[0].GetSecSize(s.first);
-        uint64_t curSecAddr = des_[0].GetSecAddr(s.first);
-        if (s.first == ElfSecName::STRTAB) {
-            strTabSize = curSecSize;
-            strTabAddr = curSecAddr;
+        uint32_t curSecSize = des_[ShStrTableModuleDesIndex].GetSecSize(s.first);
+        uint64_t curSecAddr = des_[ShStrTableModuleDesIndex].GetSecAddr(s.first);
+        if (s.first == ElfSecName::SHSTRTAB) {
+            shStrTabSize = curSecSize;
+            shStrTabAddr = curSecAddr;
             break;
         }
     }
-    return std::make_pair(strTabAddr, strTabSize);
+    return std::make_pair(shStrTabAddr, shStrTabSize);
 }
 
 void ElfBuilder::AllocateShdr(std::unique_ptr<llvm::ELF::Elf64_Shdr []> &shdr, const uint32_t &secNum)
@@ -370,28 +369,30 @@ void ElfBuilder::MergeArkStackMapSections(std::ofstream &file,
 /*
 
 section of aot.an layout as follows:
-There are 5 section headers, starting at offset 0x40:
-
-Section Headers:
-  [Nr] Name              Type             Address           Offset    Size              EntSize          Flags  Link  Info  Align
-  [ 0]                   NULL             0000000000000000  00000000  0000000000000000  0000000000000000           0     0     0
-  [ 1] .text             PROGBITS         0000000000001000  00001000  00000000000013a0  0000000000000000  AX       0     0     16
-  [ 2] .strtab           STRTAB           0000000000003000  00003000  000000000000003d  0000000000000000   A       0     0     1
-  [ 3] .ark_funcentry    PROGBITS         0000000000003040  00003040  00000000000007e0  0000000000000000   A       0     0     8
-  [ 4] .ark_stackmaps    PROGBITS         0000000000003820  00003820  0000000000000892  0000000000000000   A       0     0     8
-
-section of stub.an layout as follows:
 There are 7 section headers, starting at offset 0x40:
 
 Section Headers:
   [Nr] Name              Type             Address           Offset    Size              EntSize          Flags  Link  Info  Align
   [ 0]                   NULL             0000000000000000  00000000  0000000000000000  0000000000000000           0     0     0
-  [ 1] .text             PROGBITS         0000000000001000  00001000  000000000008148e  0000000000000000  AX       0     0     16
-  [ 2] .ark_asmstub      PROGBITS         0000000000082490  00082490  0000000000002dc0  0000000000000000  AX       0     0     8
-  [ 3] .strtab           STRTAB           0000000000086000  00086000  0000000000000048  0000000000000000   A       0     0     1
-  [ 4] .ark_funcentry    PROGBITS         0000000000086048  00086048  0000000000023ca0  0000000000000000   A       0     0     8
-  [ 5] .ark_stackmaps    PROGBITS         00000000000a9ce8  000a9ce8  00000000000119cc  0000000000000000   A       0     0     8
-  [ 6] .ark_moduleinfo   PROGBITS         00000000000bb6b8  000bb6b8  000000000000003c  0000000000000000   A       0     0     8
+  [ 1] .text             PROGBITS         0000000000001000  00001000  0000000000000f61  0000000000000000  AX       0     0     16
+  [ 2] .strtab           STRTAB           0000000000002000  00002000  0000000000000187  0000000000000000   A       0     0     1
+  [ 3] .symtab           SYMTAB           0000000000002188  00002188  00000000000001c8  0000000000000018   A       1     0     8
+  [ 4] .shstrtab         STRTAB           0000000000002350  00002350  000000000000003f  0000000000000000   A       0     0     8
+  [ 5] .ark_funcentry    PROGBITS         0000000000002390  00002390  00000000000006c0  0000000000000000   A       0     0     8
+  [ 6] .ark_stackmaps    PROGBITS         0000000000002a50  00002a50  000000000000070e  0000000000000000   A       0     0     8
+
+section of stub.an layout as follows:
+There are 7 section headers, starting at offset 0x40:
+
+  [Nr] Name              Type             Address           Offset    Size              EntSize          Flags  Link  Info  Align
+  [ 0]                   NULL             0000000000000000  00000000  0000000000000000  0000000000000000           0     0     0
+  [ 1] .text             PROGBITS         0000000000001000  00001000  000000000008225e  0000000000000000  AX       0     0     16
+  [ 2] .ark_asmstub      PROGBITS         0000000000083260  00083260  0000000000002dc0  0000000000000000  AX       0     0     8
+  [ 3] .shstrtab         STRTAB           0000000000087000  00087000  000000000000004c  0000000000000000   A       0     0     8
+  [ 4] .ark_funcentry    PROGBITS         0000000000087050  00087050  0000000000023ca0  0000000000000000   A       0     0     8
+  [ 5] .ark_stackmaps    PROGBITS         00000000000aacf0  000aacf0  0000000000011e90  0000000000000000   A       0     0     8
+  [ 6] .ark_moduleinfo   PROGBITS         00000000000bcb80  000bcb80  000000000000003c  0000000000000000   A       0     0     8
+
 Key to Flags:
   W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
   L (link order), O (extra OS processing required), G (group), T (TLS),
@@ -401,7 +402,7 @@ Key to Flags:
 void ElfBuilder::PackELFSections(std::ofstream &file)
 {
     uint32_t moduleNum = des_.size();
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetCurrentSecInfo();
+    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetFullSecInfo();
     uint32_t secNum = sections.size() + 1; // 1 : section id = 0 is null section
     std::unique_ptr<llvm::ELF::Elf64_Shdr []> shdr;
     AllocateShdr(shdr, secNum);
@@ -410,12 +411,12 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
     file.seekp(curSecOffset);
 
     int i = 1; // 1: skip null section
-    auto strTab = FindStrTab();
+    auto shStrTab = FindShStrTab();
 
     for (auto const &[secName, secInfo] : sections) {
         auto &curShdr = shdr[i];
         ElfSection section = ElfSection(secName);
-        if (!section.ShouldDumpToStubFile()) {
+        if (!section.ShouldDumpToAOTFile()) {
             continue;
         }
         curShdr.sh_addralign = sectionToAlign_[secName];
@@ -429,7 +430,7 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
             curSecOffset = AlignUp(curSecOffset, AOTFileInfo::TEXT_SEC_ALIGN);
             file.seekp(curSecOffset);
         }
-        llvm::ELF::Elf64_Word shName = FindShName(secNameStr, strTab.first, strTab.second);
+        llvm::ELF::Elf64_Word shName = FindShName(secNameStr, shStrTab.first, shStrTab.second);
         ASSERT(shName != static_cast<llvm::ELF::Elf64_Word>(-1));
         curShdr.sh_name = shName;
         curShdr.sh_type = section.Type();
@@ -458,24 +459,23 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
                 break;
             }
             case ElfSecName::STRTAB:
+            case ElfSecName::SYMTAB:
+            case ElfSecName::SHSTRTAB:
             case ElfSecName::ARK_FUNCENTRY:
             case ElfSecName::ARK_ASMSTUB: {
-                uint32_t curSecSize = GetCurrentDes().GetSecSize(secName);
-                uint64_t curSecAddr = GetCurrentDes().GetSecAddr(secName);
+                uint32_t curSecSize = des_[FullSecIndex].GetSecSize(secName);
+                uint64_t curSecAddr = des_[FullSecIndex].GetSecAddr(secName);
                 file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
                 curSecOffset += curSecSize;
                 curShdr.sh_size = curSecSize;
                 break;
             }
-            case ElfSecName::RODATA_CST8:  // dealt at the same time of ElfSecName::TEXT
-                break;
             default: {
-                LOG_ECMA(FATAL) << "this section should not dump to stub file";
+                LOG_ECMA(FATAL) << "this section should not dump to an file";
                 break;
             }
         }
-        ElfSecName lastSecName = FindLastSection(segName);
-        if (secName == lastSecName) {
+        if (secName == lastDataSection || secName == lastCodeSection) {
             curSecOffset = AlignUp(curSecOffset, PageSize());
             file.seekp(curSecOffset);
         }
@@ -505,13 +505,13 @@ There are 2 program headers, starting at offset 16384
 
 Program Headers:
   Type           Offset             VirtAddr           PhysAddr           FileSiz            MemSiz              Flags  Align
-  LOAD           0x0000000000001000 0x0000000000001000 0x0000000000001000 0x000000000000114a 0x0000000000002000  R E    0x1000
-  LOAD           0x0000000000003000 0x0000000000003000 0x0000000000003000 0x0000000000000e54 0x0000000000001000  R      0x1000
+  LOAD           0x0000000000001000 0x0000000000001000 0x0000000000001000 0x0000000000000f61 0x0000000000001000  R E    0x1000
+  LOAD           0x0000000000002000 0x0000000000002000 0x0000000000002000 0x000000000000115e 0x0000000000002000  R      0x1000
 
  Section to Segment mapping:
   Segment Sections...
-   00     .rodata.cst8 .text
-   01     .strtab .ark_funcentry .ark_stackmaps
+   00     .text
+   01     .strtab .symtab .shstrtab .ark_funcentry .ark_stackmaps
 ------------------------------------------------------------------------------------------------------------------------------
 Stub Elf file
 Entry point 0x0
@@ -519,13 +519,13 @@ There are 2 program headers, starting at offset 770048
 
 Program Headers:
   Type           Offset             VirtAddr           PhysAddr           FileSiz            MemSiz              Flags  Align
-  LOAD           0x0000000000000000 0x0000000000000000 0x0000000000000000 0x0000000000085250 0x0000000000086000  R E    0x1000
-  LOAD           0x0000000000086000 0x0000000000086000 0x0000000000086000 0x00000000000356f4 0x0000000000036000  R      0x1000
+  LOAD           0x0000000000001000 0x0000000000001000 0x0000000000001000 0x0000000000085020 0x0000000000086000  R E    0x1000
+  LOAD           0x0000000000087000 0x0000000000087000 0x0000000000087000 0x0000000000035bbc 0x0000000000036000  R      0x1000
 
  Section to Segment mapping:
   Segment Sections...
    00     .text .ark_asmstub
-   01     .strtab .ark_funcentry .ark_stackmaps .ark_moduleinfo
+   01     .shstrtab .ark_funcentry .ark_stackmaps .ark_moduleinfo
 */
 void ElfBuilder::PackELFSegment(std::ofstream &file)
 {
@@ -542,7 +542,7 @@ void ElfBuilder::PackELFSegment(std::ofstream &file)
     std::map<ElfSecName, llvm::ELF::Elf64_Off> segmentToMaxAddress;
     std::set<ElfSecName> segments;
     // SecName -> addr & size
-    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetCurrentSecInfo();
+    const std::map<ElfSecName, std::pair<uint64_t, uint32_t>> &sections = GetFullSecInfo();
     llvm::ELF::Elf64_Off offset = e_phoff;
     for (auto &s: sections) {
         ElfSection section = ElfSection(s.first);

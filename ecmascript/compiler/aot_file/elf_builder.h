@@ -32,6 +32,7 @@ class ElfBuilder {
 public:
     ElfBuilder(const std::vector<ModuleSectionDes> &des, const std::vector<ElfSecName> &sections);
     ~ElfBuilder();
+    static constexpr uint32_t FuncEntryModuleDesIndex = 0;
     void PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, Triple triple);
     void PackELFSections(std::ofstream &elfFile);
     void PackELFSegment(std::ofstream &elfFile);
@@ -40,13 +41,9 @@ public:
     void MergeArkStackMapSections(std::ofstream &elfFile,
         std::vector<ModuleSectionDes::ModuleRegionInfo> &moduleInfo, llvm::ELF::Elf64_Off &curSecOffset);
     static llvm::ELF::Elf64_Word FindShName(std::string name, uintptr_t strTabPtr, int strTabSize);
-    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> GetCurrentSecInfo() const
+    std::map<ElfSecName, std::pair<uint64_t, uint32_t>> GetFullSecInfo() const
     {
-        return des_[0].GetSectionsInfo();
-    }
-    ModuleSectionDes GetCurrentDes() const
-    {
-        return des_[0];
+        return des_[FullSecIndex].GetSectionsInfo();
     }
     void SetEnableSecDump(bool flag)
     {
@@ -55,23 +52,25 @@ public:
 
 private:
     uint32_t GetShIndex(ElfSecName section) const;
-    ElfSecName FindLastSection(ElfSecName segment) const;
     int GetSegmentNum() const;
     int GetSecNum() const;
     unsigned GetPFlag(ElfSecName segment) const;
     ElfSecName GetSegmentName(const ElfSecName &secName) const;
-    std::pair<uint64_t, uint32_t> FindStrTab() const;
+    std::pair<uint64_t, uint32_t> FindShStrTab() const;
     void AllocateShdr(std::unique_ptr<llvm::ELF::Elf64_Shdr []> &shdr, const uint32_t &secNum);
     llvm::ELF::Elf64_Off ComputeEndAddrOfShdr(const uint32_t &secNum) const;
     bool SupportELF();
-    void AddArkStackMapSection();
     void DumpSection() const;
-    void ModifyStrTabSection();
+    void AddShStrTabSection();
+    void Initialize();
+    void SetLastSection();
     void RemoveNotNeedSection();
 
     static constexpr uint32_t ASMSTUB_MODULE_NUM = 3;
+    static constexpr uint32_t ShStrTableModuleDesIndex = 0;
+    static constexpr uint32_t FullSecIndex = 0;
     std::vector<ModuleSectionDes> des_ {};
-    std::unique_ptr<char []> strTabPtr_ {nullptr};
+    std::unique_ptr<char []> shStrTabPtr_ {nullptr};
     std::map<ElfSecName, llvm::ELF::Elf64_Shdr> sectionToShdr_;
     std::map<ElfSecName, llvm::ELF::Elf64_Xword> sectionToAlign_;
     std::map<ElfSecName, ElfSecName> sectionToSegment_;
@@ -80,6 +79,8 @@ private:
     std::vector<ElfSecName> sections_ {};
     std::set<ElfSecName> segments_;
     bool enableSecDump_ {false};
+    ElfSecName lastDataSection {ElfSecName::NONE};
+    ElfSecName lastCodeSection {ElfSecName::NONE};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_AOT_FILE_ELF_BUILDER_H

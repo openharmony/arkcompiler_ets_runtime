@@ -76,6 +76,7 @@ private:
     bool Load(const std::string &filename);
     void ParseFunctionEntrySection(ModuleSectionDes &moduleDes);
     void UpdateFuncEntries();
+    void AddFuncEntrySec();
     uint64_t curTextSecOffset_ {0};
     std::unordered_map<uint32_t, std::pair<uint64_t, bool>> mainEntryMap_ {};
     bool isLoad_ {false};

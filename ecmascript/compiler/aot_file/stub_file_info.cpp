@@ -154,7 +154,7 @@ const std::vector<ElfSecName> &StubFileInfo::GetDumpSectionNames()
 {
     static const std::vector<ElfSecName> secNames = {
         ElfSecName::TEXT,
-        ElfSecName::STRTAB,
+        ElfSecName::SHSTRTAB,
         ElfSecName::ARK_STACKMAP,
         ElfSecName::ARK_FUNCENTRY,
         ElfSecName::ARK_ASMSTUB,

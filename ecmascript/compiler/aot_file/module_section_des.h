@@ -130,6 +130,16 @@ public:
         return (pc >= stubStartAddr && pc <= stubEndAddr);
     }
 
+    void AddArkStackMapSection()
+    {
+        std::shared_ptr<uint8_t> ptr = GetArkStackMapSharePtr();
+        uint64_t arkStackMapAddr = reinterpret_cast<uint64_t>(ptr.get());
+        uint32_t arkStackMapSize = GetArkStackMapSize();
+        if (arkStackMapSize > 0) {
+            sectionsInfo_[ElfSecName::ARK_STACKMAP] = std::pair(arkStackMapAddr, arkStackMapSize);
+        }
+    }
+
 private:
     static constexpr int DECIMAL_LENS = 2;
     static constexpr int HUNDRED_TIME = 100;

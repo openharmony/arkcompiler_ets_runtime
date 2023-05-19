@@ -36,6 +36,7 @@ enum class ElfSecName : uint8_t {
     RELATEXT,
     STRTAB,
     SYMTAB,
+    SHSTRTAB,
     LLVM_STACKMAP,
     ARK_FUNCENTRY,
     ARK_STACKMAP,
@@ -90,7 +91,9 @@ public:
             value_ = ElfSecName::STRTAB;
         } else if (str.compare(".symtab") == 0) {
             value_ = ElfSecName::SYMTAB;
-        } else if (str.compare(".llvm_stackmaps") == 0) {
+        } else if (str.compare(".shstrtab") == 0) {
+            value_ = ElfSecName::SHSTRTAB;
+        }  else if (str.compare(".llvm_stackmaps") == 0) {
             value_ = ElfSecName::LLVM_STACKMAP;
         } else if (str.compare(".ark_stackmaps") == 0) {
             value_ = ElfSecName::ARK_STACKMAP;
@@ -108,13 +111,10 @@ public:
     {
         bool saveForAot = false;
         switch (value_) {
-            case ElfSecName::RODATA:
-            case ElfSecName::RODATA_CST4:
-            case ElfSecName::RODATA_CST8:
-            case ElfSecName::RODATA_CST16:
-            case ElfSecName::RODATA_CST32:
             case ElfSecName::TEXT:
             case ElfSecName::STRTAB:
+            case ElfSecName::SYMTAB:
+            case ElfSecName::SHSTRTAB:
             case ElfSecName::ARK_FUNCENTRY:
             case ElfSecName::ARK_ASMSTUB:
             case ElfSecName::ARK_STACKMAP:
@@ -127,26 +127,6 @@ public:
             }
         }
         return saveForAot;
-    }
-
-    bool ShouldDumpToStubFile() const
-    {
-        bool saveForStub = false;
-        switch (value_) {
-            case ElfSecName::TEXT:
-            case ElfSecName::STRTAB:
-            case ElfSecName::ARK_FUNCENTRY:
-            case ElfSecName::ARK_ASMSTUB:
-            case ElfSecName::ARK_STACKMAP:
-            case ElfSecName::ARK_MODULEINFO: {
-                saveForStub = true;
-                break;
-            }
-            default: {
-                break;
-            }
-        }
-        return saveForStub;
     }
 
     ElfSecName Value() const
@@ -182,6 +162,7 @@ public:
             {ElfSecName::RELATEXT, {llvm::ELF::SHT_RELA, llvm::ELF::SHF_ALLOC | llvm::ELF::SHF_WRITE}},
             {ElfSecName::STRTAB, {llvm::ELF::SHT_STRTAB, llvm::ELF::SHF_ALLOC}},
             {ElfSecName::SYMTAB, {llvm::ELF::SHT_SYMTAB, llvm::ELF::SHF_ALLOC}},
+            {ElfSecName::SHSTRTAB, {llvm::ELF::SHT_STRTAB, llvm::ELF::SHF_ALLOC}},
             {ElfSecName::LLVM_STACKMAP, {llvm::ELF::SHT_RELA, llvm::ELF::SHF_ALLOC}},
             {ElfSecName::ARK_FUNCENTRY, {llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC}},
             {ElfSecName::ARK_STACKMAP, {llvm::ELF::SHF_WRITE, llvm::ELF::SHF_ALLOC}},
@@ -241,6 +222,7 @@ private:
 
     static constexpr size_t AOTSecFeatureTable_[static_cast<size_t>(ElfSecName::SIZE)] = {
         ElfSecFeature::NOT_VALID,
+        ElfSecFeature::VALID_AND_SEQUENTIAL,
         ElfSecFeature::VALID_AND_SEQUENTIAL,
         ElfSecFeature::VALID_AND_SEQUENTIAL,
         ElfSecFeature::VALID_AND_SEQUENTIAL,

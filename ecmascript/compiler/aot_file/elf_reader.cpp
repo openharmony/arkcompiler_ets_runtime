@@ -129,7 +129,7 @@ void ElfReader::ParseELFSections(std::vector<ModuleSectionDes> &des, std::vector
                 ASSERT(static_cast<uint32_t>(secOffset) == secSize);
                 break;
             }
-            case ElfSecName::STRTAB:
+            case ElfSecName::SHSTRTAB:
             case ElfSecName::ARK_FUNCENTRY:
             case ElfSecName::ARK_ASMSTUB:
             case ElfSecName::ARK_MODULEINFO: {
@@ -200,7 +200,7 @@ void ElfReader::ParseELFSections(BinaryBufferParser &parser,
                 ASSERT(static_cast<uint32_t>(secOffset) == secSize);
                 break;
             }
-            case ElfSecName::STRTAB:
+            case ElfSecName::SHSTRTAB:
             case ElfSecName::ARK_FUNCENTRY:
             case ElfSecName::ARK_ASMSTUB:
             case ElfSecName::ARK_MODULEINFO: {

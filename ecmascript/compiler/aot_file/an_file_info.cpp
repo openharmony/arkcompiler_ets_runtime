@@ -32,11 +32,7 @@ void AnFileInfo::Save(const std::string &filename, Triple triple)
 
     std::ofstream file(realPath.c_str(), std::ofstream::binary);
     SetStubNum(entries_.size());
-    ModuleSectionDes &des = des_[0];
-    // add section
-    uint64_t funcEntryAddr = reinterpret_cast<uint64_t>(entries_.data());
-    uint32_t funcEntrySize = sizeof(FuncEntryDes) * entryNum_;
-    des.SetSecAddrAndSize(ElfSecName::ARK_FUNCENTRY, funcEntryAddr, funcEntrySize);
+    AddFuncEntrySec();
 
     ElfBuilder builder(des_, GetDumpSectionNames());
     llvm::ELF::Elf64_Ehdr header;
@@ -120,6 +116,8 @@ const std::vector<ElfSecName> &AnFileInfo::GetDumpSectionNames()
     static const std::vector<ElfSecName> secNames = {
         ElfSecName::TEXT,
         ElfSecName::STRTAB,
+        ElfSecName::SYMTAB,
+        ElfSecName::SHSTRTAB,
         ElfSecName::ARK_STACKMAP,
         ElfSecName::ARK_FUNCENTRY
     };
@@ -158,5 +156,14 @@ bool AnFileInfo::IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry
 #endif
     auto it = mainEntryMap_.find(methodId);
     return it != mainEntryMap_.end();
+}
+
+void AnFileInfo::AddFuncEntrySec()
+{
+    ModuleSectionDes &des = des_[ElfBuilder::FuncEntryModuleDesIndex];
+    // add section
+    uint64_t funcEntryAddr = reinterpret_cast<uint64_t>(entries_.data());
+    uint32_t funcEntrySize = sizeof(FuncEntryDes) * entryNum_;
+    des.SetSecAddrAndSize(ElfSecName::ARK_FUNCENTRY, funcEntryAddr, funcEntrySize);
 }
 }  // namespace panda::ecmascript
