@@ -175,8 +175,9 @@ HWTEST_F_L0(DFXJSNApiTests, Start_Stop_HeapTracking_001)
     sleep(1);
     int count = 300;
     while (count-- > 0) {
+        JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
         JSHandle<EcmaString> string = factory->NewFromASCII("Start_Stop_HeapTracking_001_TestString");
-        factory->NewJSString(JSHandle<JSTaggedValue>(string));
+        factory->NewJSString(JSHandle<JSTaggedValue>(string), undefined);
     }
     const std::string filePath = "Start_Stop_HeapTracking_001.heaptimeline";
     std::fstream outputString(filePath, std::ios::out);

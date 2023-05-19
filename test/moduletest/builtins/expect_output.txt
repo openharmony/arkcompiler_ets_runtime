@@ -15,6 +15,7 @@ builtins test start
 builtins string start
 A
 ABBA
+true
 builtins string end
 builtins ir start
 112

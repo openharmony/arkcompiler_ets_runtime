@@ -117,8 +117,7 @@ group("ark_asm_test") {
     "async",
     "bindfunction",
     "bitwiseop",
-
-    #"builtins",
+    "builtins",
     "callframe",
     "calltype",
     "class",

@@ -79,14 +79,14 @@ JSTaggedValue BuiltinsString::StringConstructor(EcmaRuntimeCallInfo *argv)
             return str.GetTaggedValue();
         }
         JSHandle<JSTaggedValue> strTag(str);
-        return JSPrimitiveRef::StringCreate(thread, strTag).GetTaggedValue();
+        return JSPrimitiveRef::StringCreate(thread, strTag, newTarget).GetTaggedValue();
     }
     JSHandle<EcmaString> val = factory->GetEmptyString();
     JSHandle<JSTaggedValue> valTag(val);
     if (newTarget->IsUndefined()) {
         return factory->GetEmptyString().GetTaggedValue();
     }
-    return JSPrimitiveRef::StringCreate(thread, valTag).GetTaggedValue();
+    return JSPrimitiveRef::StringCreate(thread, valTag, newTarget).GetTaggedValue();
 }
 
 // 21.1.2.1
