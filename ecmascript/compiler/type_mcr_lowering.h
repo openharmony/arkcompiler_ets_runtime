@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_TYPE_LOWERING_H
-#define ECMASCRIPT_COMPILER_TYPE_LOWERING_H
+#ifndef ECMASCRIPT_COMPILER_TYPE_MCR_LOWERING_H
+#define ECMASCRIPT_COMPILER_TYPE_MCR_LOWERING_H
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
-// TypeLowering Process
+// TypeMCRLowering Process
 // SW: state wire, DW: depend wire, VW: value wire
 // Before Type Lowering:
 //                                    SW   DW   VW
@@ -95,17 +95,17 @@ namespace panda::ecmascript::kungfu {
 //                                  |      JS_BYTECODE       |
 //                                  +------------------------+
 
-class TypeLowering {
+class TypeMCRLowering {
 public:
-    TypeLowering(Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
+    TypeMCRLowering(Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
                  bool enableLog, const std::string& name)
         : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
           dependEntry_(circuit->GetDependRoot()), tsManager_(tsManager),
           enableLog_(enableLog), methodName_(name) {}
 
-    ~TypeLowering() = default;
+    ~TypeMCRLowering() = default;
 
-    void RunTypeLowering();
+    void RunTypeMCRLowering();
 
 private:
     bool IsLogEnabled() const
@@ -132,9 +132,9 @@ private:
     void LowerIndexCheck(GateRef gate);
     void LowerObjectTypeCheck(GateRef gate);
     void LowerTSSubtypingCheck(GateRef gate);
-    void LowerFloat32ArrayCheck(GateRef gate, GateRef glue);
+    void LowerFloat32ArrayCheck(GateRef gate);
     void LowerStableArrayCheck(GateRef gate);
-    void LowerTypedArrayCheck(GateRef gate, GateRef glue);
+    void LowerTypedArrayCheck(GateRef gate);
     void LowerFloat32ArrayIndexCheck(GateRef gate);
     void LowerArrayIndexCheck(GateRef gate);
     void LowerLoadProperty(GateRef gate);
@@ -210,4 +210,4 @@ private:
     std::string methodName_;
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_TYPE_LOWERING_H
+#endif  // ECMASCRIPT_COMPILER_TYPE_MCR_LOWERING_H

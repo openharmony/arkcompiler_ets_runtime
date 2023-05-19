@@ -386,7 +386,7 @@ void NewObjectStubBuilder::AllocLineStringObject(Variable *result, Label *exit, 
     }
     Label afterAllocate(env);
     AllocateInYoung(result, &afterAllocate);
-    
+
     Bind(&afterAllocate);
     GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
                                                  ConstantIndex::LINE_STRING_CLASS_INDEX);
@@ -501,10 +501,6 @@ GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue)
 
 GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc)
 {
-    (void)glue;
-    (void)index;
-    (void)jsFunc;
-
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);

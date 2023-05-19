@@ -21,7 +21,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/early_elimination.h"
-#include "ecmascript/compiler/generic_type_lowering.h"
+#include "ecmascript/compiler/lcr_lowering.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/llvm_codegen.h"
@@ -31,9 +31,10 @@
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/compiler/state_split_linearizer.h"
 #include "ecmascript/compiler/ts_inline_lowering.h"
-#include "ecmascript/compiler/ts_type_lowering.h"
+#include "ecmascript/compiler/ts_hcr_lowering.h"
+#include "ecmascript/compiler/ntype_mcr_lowering.h"
 #include "ecmascript/compiler/type_inference/global_type_infer.h"
-#include "ecmascript/compiler/type_lowering.h"
+#include "ecmascript/compiler/type_mcr_lowering.h"
 #include "ecmascript/compiler/value_numbering.h"
 #include "ecmascript/compiler/verifier.h"
 
@@ -222,39 +223,50 @@ public:
     }
 };
 
-class TSTypeLoweringPass {
+class TSHCRLoweringPass {
 public:
     bool Run(PassData *data)
     {
-        TimeScope timescope("TSTypeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("TSHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        TSTypeLowering lowering(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName());
-        lowering.RunTSTypeLowering();
+        TSHCRLowering lowering(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName());
+        lowering.RunTSHCRLowering();
         return true;
     }
 };
 
-class TypeLoweringPass {
+class TypeMCRLoweringPass {
 public:
     bool Run(PassData *data)
     {
-        TimeScope timescope("TypeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("TypeMCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        TypeLowering lowering(data->GetCircuit(), data->GetCompilerConfig(), data->GetTSManager(),
-                              enableLog, data->GetMethodName());
-        lowering.RunTypeLowering();
+        TypeMCRLowering lowering(data->GetCircuit(), data->GetCompilerConfig(), data->GetTSManager(),
+                                 enableLog, data->GetMethodName());
+        lowering.RunTypeMCRLowering();
         return true;
     }
 };
 
-class GenericTypeLoweringPass {
+class NTypeMCRLoweringPass {
 public:
     bool Run(PassData *data)
     {
-        TimeScope timescope("GenericTypeLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("NTypeMCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        GenericTypeLowering lowering(data->GetCircuit(), data->GetCompilerConfig(),
-                                     enableLog, data->GetMethodName());
+        NTypeMCRLowering lowering(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName());
+        lowering.RunNTypeMCRLowering();
+        return true;
+    }
+};
+
+class LCRLoweringPass {
+public:
+    bool Run(PassData *data)
+    {
+        TimeScope timescope("LCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        LCRLowering lowering(data->GetCircuit(), data->GetCompilerConfig(), enableLog, data->GetMethodName());
         lowering.Run();
         return true;
     }

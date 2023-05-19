@@ -210,6 +210,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(IfException, IF_EXCEPTION, GateFlags::CONTROL, 1, 1, 0)                           \
     V(GetException, GET_EXCEPTION, GateFlags::NONE_FLAG, 1, 1, 0)                       \
     V(GetConstPool, GET_CONSTPOOL, GateFlags::NO_WRITE, 0, 1, 1)                        \
+    V(GetGlobalEnv, GET_GLOBAL_ENV, GateFlags::NO_WRITE, 0, 1, 0)                       \
     V(StateSplit, STATE_SPLIT, GateFlags::CHECKABLE, 1, 1, 0)                           \
     V(Load, LOAD, GateFlags::NO_WRITE, 0, 1, 1)                                         \
     V(Store, STORE, GateFlags::NONE_FLAG, 0, 1, 2)                                      \
@@ -282,21 +283,23 @@ std::string MachineTypeToStr(MachineType machineType);
     V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                              \
     V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)
 
-#define GATE_META_DATA_LIST_WITH_VALUE(V)                                  \
-    V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                           \
-    V(Fcmp, FCMP, GateFlags::NONE_FLAG, 0, 0, 2)                           \
-    V(Alloca, ALLOCA, GateFlags::NONE_FLAG, 0, 0, 0)                       \
-    V(SwitchBranch, SWITCH_BRANCH, GateFlags::CONTROL, 1, 0, 1)            \
-    V(SwitchCase, SWITCH_CASE, GateFlags::CONTROL, 1, 0, 0)                \
-    V(HeapAlloc, HEAP_ALLOC, GateFlags::NONE_FLAG, 1, 1, 1)                \
-    V(LoadConstOffset, LOAD_CONST_OFFSET, GateFlags::NO_WRITE, 0, 1, 1)    \
-    V(StoreConstOffset, STORE_CONST_OFFSET, GateFlags::NONE_FLAG, 1, 1, 2) \
-    V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 2)             \
-    V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 3)          \
-    V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 1, 0)    \
-    V(ConstData, CONST_DATA, GateFlags::NONE_FLAG, 0, 0, 1)                \
-    V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                   \
-    V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)
+#define GATE_META_DATA_LIST_WITH_VALUE(V)                                               \
+    V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                                        \
+    V(Fcmp, FCMP, GateFlags::NONE_FLAG, 0, 0, 2)                                        \
+    V(Alloca, ALLOCA, GateFlags::NONE_FLAG, 0, 0, 0)                                    \
+    V(SwitchBranch, SWITCH_BRANCH, GateFlags::CONTROL, 1, 0, 1)                         \
+    V(SwitchCase, SWITCH_CASE, GateFlags::CONTROL, 1, 0, 0)                             \
+    V(HeapAlloc, HEAP_ALLOC, GateFlags::NONE_FLAG, 1, 1, 1)                             \
+    V(LoadConstOffset, LOAD_CONST_OFFSET, GateFlags::NO_WRITE, 0, 1, 1)                 \
+    V(StoreConstOffset, STORE_CONST_OFFSET, GateFlags::NONE_FLAG, 1, 1, 2)              \
+    V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 2)                          \
+    V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 3)                       \
+    V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 1, 0)                 \
+    V(ConstData, CONST_DATA, GateFlags::NONE_FLAG, 0, 0, 1)                             \
+    V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                                \
+    V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)                 \
+    V(GetGlobalEnvObjHClass, GET_GLOBAL_ENV_OBJ_HCLASS, GateFlags::NO_WRITE, 0, 1, 1)   \
+    V(GetGlobalConstantValue, GET_GLOBAL_CONSTANT_VALUE, GateFlags::NO_WRITE, 0, 1, 0)
 
 #define GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     V(Arg, ARG, GateFlags::HAS_ROOT, 0, 0, 0)             \

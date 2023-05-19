@@ -14,8 +14,8 @@
  */
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/verifier.h"
-#include "ecmascript/compiler/ts_type_lowering.h"
-#include "ecmascript/compiler/type_lowering.h"
+#include "ecmascript/compiler/ts_hcr_lowering.h"
+#include "ecmascript/compiler/type_mcr_lowering.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_type.h"
 #include "ecmascript/tests/test_helper.h"
@@ -38,8 +38,8 @@ using ecmascript::kungfu::Label;
 using ecmascript::kungfu::Variable;
 using ecmascript::kungfu::VariableType;
 using ecmascript::kungfu::Environment;
-using ecmascript::kungfu::TypeLowering;
-using ecmascript::kungfu::TSTypeLowering;
+using ecmascript::kungfu::TypeMCRLowering;
+using ecmascript::kungfu::TSHCRLowering;
 using ecmascript::kungfu::CompilationConfig;
 
 HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
@@ -64,8 +64,8 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
     builder.ReturnVoid(check, depend);
 
     CompilationConfig config(TARGET_X64);
-    TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypeCheckFramework");
-    typeLowering.RunTypeLowering();
+    TypeMCRLowering typeMCRLowering(&circuit, &config, nullptr, false, "TypeCheckFramework");
+    typeMCRLowering.RunTypeMCRLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
 
@@ -84,8 +84,8 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeConvertFramework)
     builder.Return(convert, convert, convert);
     EXPECT_TRUE(Verifier::Run(&circuit));
     CompilationConfig config(TARGET_X64);
-    TypeLowering typeLowering(&circuit, &config, nullptr, false, "TypeConvertFramework");
-    typeLowering.RunTypeLowering();
+    TypeMCRLowering typeMCRLowering(&circuit, &config, nullptr, false, "TypeConvertFramework");
+    typeMCRLowering.RunTypeMCRLowering();
     EXPECT_TRUE(Verifier::Run(&circuit));
 }
 

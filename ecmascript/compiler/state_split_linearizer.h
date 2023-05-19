@@ -20,7 +20,7 @@
 
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/compiler/generic_type_lowering.h"
+#include "ecmascript/compiler/lcr_lowering.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/mem/chunk_containers.h"
 
@@ -31,7 +31,7 @@ public:
                          bool enableLog, const std::string& name, Chunk* chunk)
         : enableLog_(enableLog), methodName_(name), circuit_(circuit),
         acc_(circuit), graphLinearizer_(circuit, enableLog, name, chunk),
-        genericTypeLowering_(circuit, cmpCfg, enableLog, name), pendingList_(chunk) {}
+        lcrLowering_(circuit, cmpCfg, enableLog, name), pendingList_(chunk) {}
 
     void Run();
 private:
@@ -56,7 +56,7 @@ private:
     GateRef frameState_ {Circuit::NullGate()};
     GateAccessor acc_;
     GraphLinearizer graphLinearizer_;
-    GenericTypeLowering genericTypeLowering_;
+    LCRLowering lcrLowering_;
     ChunkDeque<GateRegion*> pendingList_;
 };
 };  // namespace panda::ecmascript::kungfu

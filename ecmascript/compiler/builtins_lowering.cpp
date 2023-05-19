@@ -181,9 +181,7 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
     builder_.SetEnvironment(env);
     GateRef idGate = acc_.GetValueIn(gate, 1);
     BuiltinsStubCSigns::ID id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(idGate));
-    GateRef glue = acc_.GetGlueFromArgList();
-    GateRef constantFunction =
-        builder_.GetGlobalConstantValue(VariableType::JS_POINTER(), glue, GET_TYPED_CONSTANT_INDEX(id));
+    GateRef constantFunction = builder_.GetGlobalConstantValue(GET_TYPED_CONSTANT_INDEX(id));
 
     GateRef function = acc_.GetValueIn(gate, 0); // 0: function
     return builder_.Equal(function, constantFunction);
