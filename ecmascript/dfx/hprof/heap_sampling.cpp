@@ -22,29 +22,34 @@ HeapSampling::HeapSampling(const EcmaVM *vm, Heap *const heap, uint64_t interval
     : vm_(vm),
       heap_(heap),
       rate_(interval),
-      stackDepth_(stackDepth)
+      stackDepth_(stackDepth),
+      allocationInspector_(heap_, rate_, this)
 {
     samplingInfo_ = std::make_unique<struct SamplingInfo>();
     samplingInfo_->head_.callFrameInfo_.functionName_ = "(root)";
     samplingInfo_->head_.id_ = CreateNodeId();
+    heap_->AddAllocationInspectorToAllSpaces(&allocationInspector_);
+    vm_->GetJSThread()->SetIsStartHeapSampling(true);
 }
 
 HeapSampling::~HeapSampling()
 {
+    heap_->ClearAllocationInspectorFromAllSpaces();
+    vm_->GetJSThread()->SetIsStartHeapSampling(false);
 }
 
 const struct SamplingInfo *HeapSampling::GetAllocationProfile()
 {
+    CalNodeSelfSize(&samplingInfo_->head_);
     return samplingInfo_.get();
 }
 
-void HeapSampling::ImplementSampling([[maybe_unused]]Address addr, [[maybe_unused]]size_t size)
+void HeapSampling::ImplementSampling([[maybe_unused]] Address addr, size_t size)
 {
     GetStack();
     SamplingNode *node = PushAndGetNode();
     node->allocations_[size]++;
-    node->selfSize_ += size;
-    samplingInfo_->samples_.emplace_back(Sample(size, node->id_, CreateSampleId()));
+    samplingInfo_->samples_.emplace_back(Sample(size, node->id_, CreateSampleId(), AdjustSampleCount(size, 1)));
 }
 
 bool HeapSampling::PushStackInfo(const struct MethodKey &methodKey)
@@ -206,5 +211,28 @@ uint32_t HeapSampling::CreateNodeId()
 uint64_t HeapSampling::CreateSampleId()
 {
     return ++sampleId_;
+}
+
+// We collect samples according to a Poisson Process. Because sampling can not record
+// all allocations, we need estimate real allocations of all spaces based on the collected
+// samples. Given that sampling rate is R, the probability sampling an allocation of size S
+// is 1-exp(-S/R). So when collect *count* samples with size *size*, we can use the above
+// probability to approximate the real count of allocations with size *size*.
+unsigned int HeapSampling::AdjustSampleCount(size_t size, unsigned int count) const
+{
+    double scale = 1.0 / (1.0 - std::exp(-static_cast<double>(size) / rate_));
+    return static_cast<unsigned int>(count * scale + base::HALF);
+}
+
+void HeapSampling::CalNodeSelfSize(SamplingNode *node)
+{
+    node->selfSize_ = 0;
+    for (const auto &alloc : node->allocations_) {
+        unsigned int realCount = AdjustSampleCount(alloc.first, alloc.second);
+        node->selfSize_ += alloc.first * realCount;
+    }
+    for (auto &child : node->children_) {
+        CalNodeSelfSize(child.second.get());
+    }
 }
 }  // namespace panda::ecmascript

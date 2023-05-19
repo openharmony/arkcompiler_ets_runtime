@@ -58,6 +58,8 @@ public:
     {
         return newSpaceNativeBindingSize_ > newSpaceNativeLimit_;
     }
+
+    void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 protected:
     Heap *heap_ {nullptr};
 

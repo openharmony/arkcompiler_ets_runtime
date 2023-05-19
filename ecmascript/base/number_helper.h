@@ -66,13 +66,13 @@ static constexpr size_t INT8_BITS = 8;
 static constexpr size_t JS_DTOA_BUF_SIZE = 128;
 
 // help defines for random
-static constexpr int LEFT52 = 52;
 static constexpr int RIGHT12 = 12;
-static constexpr uint32_t USE_LEFT = 0x3ff;
 static constexpr int SECONDS_TO_SUBTLE = 1000000;
 static constexpr int RIGHT27 = 27;
 static constexpr int LEFT25 = 25;
-static constexpr uint64_t  GET_MULTIPLY = 0x2545F4914F6CDD1D;
+static constexpr uint64_t GET_MULTIPLY = 0x2545F4914F6CDD1D;
+// Exponent bits for double value between [1.0, 2.0)
+static constexpr uint64_t EXPONENTBITS_RANGE_IN_ONE_AND_TWO = 0x3FF0000000000000;
 
 class NumberHelper {
 public:
@@ -118,13 +118,21 @@ private:
     static void GetBase(double d, int digits, int *decpt, char *buf, char *bufTmp, int size);
     static int GetMinmumDigits(double d, int *decpt, char *buf);
 };
+
+// This class is used to generate 0~1 uniform distribution pseudo-random numbers.
+// It uses a 64-bit seed which is current timestamp to generate state value.
+// The value is used in xorshift64* random generator to generate result.
 class RandomGenerator {
 public:
-    static uint64_t& GetRandomState();
-    static uint64_t XorShift64(uint64_t *pVal);
     static void InitRandom();
+    static double NextDouble();
+
 private:
-    static thread_local uint64_t randomState;
+    static uint64_t XorShift64(uint64_t *pVal);
+    static double ToDouble(uint64_t state);
+
+private:
+    static thread_local uint64_t randomState_;
 };
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_NUMBER_HELPER_H

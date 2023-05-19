@@ -33,6 +33,21 @@ Space::Space(HeapRegionAllocator *heapRegionAllocator,
 {
 }
 
+void Space::AddAllocationInspector(AllocationInspector* inspector)
+{
+    allocationCounter_.AddAllocationInspector(inspector);
+}
+
+void Space::ClearAllocationInspector()
+{
+    allocationCounter_.ClearAllocationInspector();
+}
+
+void Space::SwapAllocationCounter(Space *space)
+{
+    std::swap(allocationCounter_, space->allocationCounter_);
+}
+
 void Space::Destroy()
 {
     ReclaimRegions();
@@ -81,6 +96,9 @@ uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread)
     AddRegion(region);
     // It need to mark unpoison when huge object being allocated.
     ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->GetBegin()), objectSize);
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+    InvokeAllocationInspector(region->GetBegin(), objectSize);
+#endif
     return region->GetBegin();
 }
 
@@ -121,5 +139,16 @@ void HugeObjectSpace::ReclaimHugeRegion()
         Region *last = hugeNeedFreeList_.PopBack();
         ClearAndFreeRegion(last);
     } while (!hugeNeedFreeList_.IsEmpty());
+}
+
+void HugeObjectSpace::InvokeAllocationInspector(Address object, size_t objectSize)
+{
+    if (LIKELY(!allocationCounter_.IsActive())) {
+        return;
+    }
+    if (objectSize >= allocationCounter_.NextBytes()) {
+        allocationCounter_.InvokeAllocationInspector(object, objectSize, objectSize);
+    }
+    allocationCounter_.AdvanceAllocationInspector(objectSize);
 }
 }  // namespace panda::ecmascript

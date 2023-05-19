@@ -30,13 +30,15 @@ struct CallFrameInfo {
 };
 
 struct Sample {
-    Sample(size_t size, uint32_t nodeId, uint64_t ordinal)
+    Sample(size_t size, uint32_t nodeId, uint64_t ordinal, unsigned int count)
         : size_(size),
         nodeId_(nodeId),
-        ordinal_(ordinal) {}
+        ordinal_(ordinal),
+        count_(count) {}
     const size_t size_;
     const uint32_t nodeId_;
     const uint64_t ordinal_;
+    const unsigned int count_;
 };
 
 struct SamplingNode {
@@ -56,7 +58,7 @@ class HeapSampling {
 public:
     HeapSampling(const EcmaVM *vm, Heap *const heap, uint64_t interval, int stackDepth);
     const struct SamplingInfo* GetAllocationProfile();
-    void ImplementSampling(Address addr, size_t size);
+    void ImplementSampling([[maybe_unused]] Address addr, size_t size);
     virtual ~HeapSampling();
 
 private:
@@ -71,12 +73,16 @@ private:
     uint64_t CreateSampleId();
     void FillScriptIdAndStore();
     std::string AddRunningState(char *functionName, RunningState state, kungfu::DeoptType type);
+    unsigned int AdjustSampleCount(size_t size, unsigned int count) const;
+    void CalNodeSelfSize(SamplingNode *node);
+
 private:
     const EcmaVM *vm_;
     [[maybe_unused]] Heap *const heap_;
     [[maybe_unused]] uint64_t rate_;
     std::unique_ptr<struct SamplingInfo> samplingInfo_;
     int stackDepth_;
+    AllocationInspector allocationInspector_;
     uint32_t nodeId_ = 0;
     size_t sampleId_ = 0;
     CMap<struct MethodKey, struct CallFrameInfo> stackInfoMap_;

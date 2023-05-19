@@ -19,6 +19,17 @@
 #include "ecmascript/mem/space-inl.h"
 #include "ecmascript/mem/mem_common.h"
 
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+#define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                   \
+    if (object != 0) {                                                        \
+        IncreaseLiveObjectSize(size);                                         \
+        if (!heap_->IsFullMark() || heap_->GetJSThread()->IsReadyToMark()) {  \
+            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);  \
+        }                                                                     \
+        InvokeAllocationInspector(object, size, size);                        \
+        return object;                                                        \
+    }
+#else
 #define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                   \
     if (object != 0) {                                                        \
         IncreaseLiveObjectSize(size);                                         \
@@ -26,7 +37,8 @@
             Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);  \
         }                                                                     \
         return object;                                                        \
-    }                                                                         \
+    }
+#endif
 
 enum class SweepState : uint8_t {
     NO_SWEEP,
@@ -94,6 +106,8 @@ public:
     }
 
     size_t GetTotalAllocatedSize() const;
+
+    void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 
 protected:
     FreeListAllocator *allocator_;

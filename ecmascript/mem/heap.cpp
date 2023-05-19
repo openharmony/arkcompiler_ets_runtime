@@ -597,6 +597,31 @@ void Heap::AdjustSpaceSizeForAppSpawn()
     oldSpace_->SetMaximumCapacity(oldSpace_->GetMaximumCapacity() - committedSize);
 }
 
+void Heap::AddAllocationInspectorToAllSpaces(AllocationInspector *inspector)
+{
+    ASSERT(inspector != nullptr);
+    // activeSemiSpace_/inactiveSemiSpace_:
+    // only add an inspector to activeSemiSpace_, and while sweeping for gc, inspector need be swept.
+    activeSemiSpace_->AddAllocationInspector(inspector);
+    // oldSpace_/compressSpace_:
+    // only add an inspector to oldSpace_, and while sweeping for gc, inspector need be swept.
+    oldSpace_->AddAllocationInspector(inspector);
+    // readOnlySpace_ need not allocationInspector.
+    // appSpawnSpace_ need not allocationInspector.
+    nonMovableSpace_->AddAllocationInspector(inspector);
+    machineCodeSpace_->AddAllocationInspector(inspector);
+    hugeObjectSpace_->AddAllocationInspector(inspector);
+}
+
+void Heap::ClearAllocationInspectorFromAllSpaces()
+{
+    activeSemiSpace_->ClearAllocationInspector();
+    oldSpace_->ClearAllocationInspector();
+    nonMovableSpace_->ClearAllocationInspector();
+    machineCodeSpace_->ClearAllocationInspector();
+    hugeObjectSpace_->ClearAllocationInspector();
+}
+
 void Heap::ClearKeptObjects() const
 {
     ecmaVm_->GetGlobalEnv()->SetWeakRefKeepObjects(thread_, JSTaggedValue::Undefined());

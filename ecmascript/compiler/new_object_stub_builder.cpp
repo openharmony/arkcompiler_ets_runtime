@@ -305,11 +305,18 @@ void NewObjectStubBuilder::AllocateInYoung(Variable *result, Label *exit)
     auto env = GetEnvironment();
     Label success(env);
     Label callRuntime(env);
+    Label next(env);
 
 #ifdef ARK_ASAN_ON
     DEFVARIABLE(ret, VariableType::JS_ANY(), Undefined());
     Jump(&callRuntime);
 #else
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+    auto isStartHeapSamplingOffset = JSThread::GlueData::GetIsStartHeapSamplingOffset(env->Is32Bit());
+    auto isStartHeapSampling = Load(VariableType::JS_ANY(), glue_, IntPtr(isStartHeapSamplingOffset));
+    Branch(TaggedIsTrue(isStartHeapSampling), &callRuntime, &next);
+    Bind(&next);
+#endif
     auto topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(env->Is32Bit());
     auto endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(env->Is32Bit());
     auto topAddress = Load(VariableType::NATIVE_POINTER(), glue_, IntPtr(topOffset));

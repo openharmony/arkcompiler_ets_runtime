@@ -331,6 +331,9 @@ void Heap::SwapNewSpace()
     SemiSpace *newSpace = inactiveSemiSpace_;
     inactiveSemiSpace_ = activeSemiSpace_;
     activeSemiSpace_ = newSpace;
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+    activeSemiSpace_->SwapAllocationCounter(inactiveSemiSpace_);
+#endif
     auto topAddress = activeSemiSpace_->GetAllocationTopAddress();
     auto endAddress = activeSemiSpace_->GetAllocationEndAddress();
     thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
@@ -342,6 +345,9 @@ void Heap::SwapOldSpace()
     auto *oldSpace = compressSpace_;
     compressSpace_ = oldSpace_;
     oldSpace_ = oldSpace;
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+    oldSpace_->SwapAllocationCounter(compressSpace_);
+#endif
 }
 
 void Heap::ReclaimRegions(TriggerGCType gcType)
