@@ -728,9 +728,9 @@ private:
 
     GlobalTSTypeRef FindIteratorInstanceInInferTable(GlobalTSTypeRef kindGt, GlobalTSTypeRef elementGt) const;
 
-    GlobalTSTypeRef GetPropType(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> propertyName) const;
+    GlobalTSTypeRef PUBLIC_API GetPropType(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> propertyName) const;
 
-    TSTypeKind GetTypeKind(const GlobalTSTypeRef &gt) const;
+    TSTypeKind PUBLIC_API GetTypeKind(const GlobalTSTypeRef &gt) const;
 
     std::string GetClassTypeStr(GlobalTSTypeRef gt) const;
 
