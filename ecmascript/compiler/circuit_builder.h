@@ -720,7 +720,7 @@ private:
         }
         void MergeControl(GateRef control)
         {
-            if (predeControl_ == -1) {
+            if (predeControl_ == Circuit::NullGate()) {
                 predeControl_ = control;
                 control_ = predeControl_;
             } else {
@@ -751,9 +751,9 @@ private:
         GateRef ReadVariableRecursive(Variable *var);
         Environment *env_;
         GateRef control_;
-        GateRef predeControl_ {-1};
-        GateRef depend_ {-1};
-        GateRef loopDepend_ {-1};
+        GateRef predeControl_ {Circuit::NullGate()};
+        GateRef depend_ {Circuit::NullGate()};
+        GateRef loopDepend_ {Circuit::NullGate()};
         std::vector<GateRef> otherPredeControls_;
         bool isSealed_ {false};
         std::map<Variable *, GateRef> valueMap_;

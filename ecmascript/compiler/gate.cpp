@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/compiler/gate.h"
+#include <iostream>
+#include <sstream>
 
 namespace panda::ecmascript::kungfu {
 void Gate::CheckNullInput() const
@@ -718,7 +720,10 @@ void Gate::Print(std::string bytecode, bool inListPreview, size_t highlightIdx) 
         log += ((bytecode.compare("") == 0) ? "" : "\"bytecode\":\"") + bytecode;
         log += ((bytecode.compare("") == 0) ? "" : "\", ");
         log += "\"MType\":\"" + MachineTypeStr(GetMachineType()) + ", ";
-        log += "bitfield=" + std::to_string(TryGetValue()) + ", ";
+
+        std::ostringstream oss;
+        oss << std::hex << TryGetValue();
+        log += "bitfield=0x" + oss.str() + ", ";
         log += "type=" + GateTypeStr(type_) + ", ";
         log += "stamp=" + std::to_string(static_cast<uint32_t>(stamp_)) + ", ";
         log += "mark=" + std::to_string(static_cast<uint32_t>(mark_)) + ", ";
@@ -774,7 +779,9 @@ void Gate::ShortPrint(std::string bytecode, bool inListPreview, size_t highlight
         log += ((bytecode.compare("") == 0) ? "" : "bytecode=") + bytecode;
         log += ((bytecode.compare("") == 0) ? "" : ", ");
         log += "\"MType\"=\"" + MachineTypeStr(GetMachineType()) + ", ";
-        log += "bitfield=" + std::to_string(TryGetValue()) + ", ";
+        std::ostringstream oss;
+        oss << std::hex << TryGetValue();
+        log += "bitfield=0x" + oss.str() + ", ";
         log += "type=" + GateTypeStr(type_) + ", ";
         log += "\", in=[";
 

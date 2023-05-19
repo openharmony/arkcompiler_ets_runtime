@@ -98,7 +98,7 @@ private:
 };
 
 struct NotMergedPhiDesc {
-    BasicBlock *pred;
+    int predBBId;
     GateRef operand;
     LLVMValueRef phi;
 };
@@ -414,6 +414,7 @@ private:
                            GateRef gate);
     void SaveDeoptVregInfoWithI64(std::vector<LLVMValueRef> &values, int32_t index, size_t curDepth, size_t shift,
                            GateRef gate);
+    int LookupPredBB(GateRef start, int bbID);
 
     const CompilationConfig *compCfg_ {nullptr};
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};

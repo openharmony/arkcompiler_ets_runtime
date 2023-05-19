@@ -305,8 +305,9 @@ void LLVMIRBuilder::ProcessPhiWorkList()
     for (BasicBlock *bb : phiRebuildWorklist_) {
         auto impl = bb->GetImpl<BasicBlockImpl>();
         for (auto &e : impl->unmergedPhis_) {
-            BasicBlock *pred = e.pred;
-            if (impl->started == 0) {
+            ASSERT(bbID2BB_.count(e.predBBId) > 0);
+            BasicBlock *pred = bbID2BB_[e.predBBId].get();
+            if (!impl->started) {
                 OPTIONAL_LOG_COMPILER(ERROR) << " ProcessPhiWorkList error hav't start ";
                 return;
             }
@@ -998,16 +999,36 @@ void LLVMIRBuilder::HandlePhi(GateRef gate)
     VisitPhi(gate, ins);
 }
 
-void LLVMIRBuilder::VisitPhi(GateRef gate, const std::vector<GateRef> &srcGates)
+int LLVMIRBuilder::LookupPredBB(GateRef start, int bbID)
+{
+    GateId gateId = acc_.GetId(start);
+    int owner = instID2bbID_[gateId];
+    if (owner != bbID) {
+        return owner;
+    }
+    GateRef pred = start;
+    while (owner == bbID) {
+        pred = acc_.GetState(pred);
+        auto id = acc_.GetId(pred);
+        owner = instID2bbID_[id];
+    }
+    return owner;
+}
+
+void LLVMIRBuilder::VisitPhi(GateRef gate, const std::vector<GateRef> &phiIns)
 {
     LLVMTypeRef type = ConvertLLVMTypeFromGate(gate);
     LLVMValueRef phi = LLVMBuildPhi(builder_, type, "");
-    std::vector<GateRef> relMergeIns;
-    acc_.GetIns(srcGates[0], relMergeIns);
-    bool addToPhiRebuildList = false;
-    for (int i = 1; i < static_cast<int>(srcGates.size()); i++) {
-        GateId gateId = acc_.GetId(relMergeIns[i - 1]);
-        int bbIdx = instID2bbID_[gateId];
+    if (phiIns.size() > 1) {
+        gate2LValue_[gate] = phi;
+    }
+    // Collect the states merges of this phi and note the 1-in is the merged states.
+    std::vector<GateRef> phiStates;
+    acc_.GetIns(phiIns[0], phiStates);
+    ASSERT(phiStates.size() + 1 == phiIns.size());
+    for (int i = 1; i < static_cast<int>(phiIns.size()); i++) {
+        int bbIdx = LookupPredBB(phiStates[i - 1], currentBb_->GetId());
+
         int cnt = static_cast<int>(bbID2BB_.count(bbIdx));
         // if cnt = 0 means bb with current bbIdx hasn't been created
         if (cnt > 0) {
@@ -1022,26 +1043,22 @@ void LLVMIRBuilder::VisitPhi(GateRef gate, const std::vector<GateRef> &srcGates)
                 return;
             }
             LLVMBasicBlockRef llvmBB = EnsureLBB(bb);  // The llvm bb
-            LLVMValueRef value = gate2LValue_[srcGates[i]];
+            LLVMValueRef value = gate2LValue_[phiIns[i]];
 
             if (impl->started) {
                 LLVMAddIncoming(phi, &value, &llvmBB, 1);
             } else {
-                addToPhiRebuildList = true;
                 impl = currentBb_->GetImpl<BasicBlockImpl>();
-                impl->unmergedPhis_.emplace_back();
-                auto &not_merged_phi = impl->unmergedPhis_.back();
-                not_merged_phi.phi = phi;
-                not_merged_phi.pred = bb;
-                not_merged_phi.operand = srcGates[i];
+                NotMergedPhiDesc d = { bbIdx, phiIns[i], phi };
+                impl->unmergedPhis_.emplace_back(d);
+                phiRebuildWorklist_.push_back(currentBb_);
             }
         } else {
-            addToPhiRebuildList = true;
-        }
-        if (addToPhiRebuildList) {
+            BasicBlockImpl* impl = currentBb_->GetImpl<BasicBlockImpl>();
+            NotMergedPhiDesc d = { bbIdx, phiIns[i], phi };
+            impl->unmergedPhis_.emplace_back(d);
             phiRebuildWorklist_.push_back(currentBb_);
         }
-        gate2LValue_[gate] = phi;
     }
 }
 
