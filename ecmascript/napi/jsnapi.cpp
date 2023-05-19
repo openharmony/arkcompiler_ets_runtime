@@ -2783,4 +2783,14 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
     }
     return false;
 }
+
+void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
+{
+    vm->SetBundleName(hostVM->GetBundleName());
+    vm->SetModuleName(hostVM->GetModuleName());
+    vm->SetAssetPath(hostVM->GetAssetPath());
+    vm->SetIsBundlePack(hostVM->IsBundlePack());
+    vm->GetModuleManager()->SetExecuteMode(hostVM->GetModuleManager()->GetCurrentMode());
+    vm->SetResolveBufferCallback(hostVM->GetResolveBufferCallback());
+}
 }  // namespace panda
