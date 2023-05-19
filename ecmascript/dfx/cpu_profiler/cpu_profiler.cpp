@@ -73,7 +73,14 @@ void CpuProfiler::StartCpuProfilerForInfo()
         os::memory::LockHolder lock(synchronizationMutex_);
         profilerMap_[tid_] = vm_;
     }
+
     vm_->GetJSThread()->SetIsProfiling(true);
+    JSPandaFileManager *pandaFileManager = JSPandaFileManager::GetInstance();
+    pandaFileManager->EnumerateJSPandaFiles([&](const JSPandaFile *file) -> bool {
+        pandaFileManager->GetJSPtExtractorAndExtract(file);
+        return true;
+    });
+
     generator_->SetIsStart(true);
     Taskpool::GetCurrentTaskpool()->PostTask(
         std::make_unique<SamplingProcessor>(vm_->GetJSThread()->GetThreadId(), generator_, interval_));
@@ -125,7 +132,14 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
         profilerMap_[tid_] = vm_;
     }
     outToFile_ = true;
+
     vm_->GetJSThread()->SetIsProfiling(true);
+    JSPandaFileManager *pandaFileManager = JSPandaFileManager::GetInstance();
+    pandaFileManager->EnumerateJSPandaFiles([&](const JSPandaFile *file) -> bool {
+        pandaFileManager->GetJSPtExtractorAndExtract(file);
+        return true;
+    });
+
     generator_->SetIsStart(true);
     Taskpool::GetCurrentTaskpool()->PostTask(
         std::make_unique<SamplingProcessor>(vm_->GetJSThread()->GetThreadId(), generator_, interval_));

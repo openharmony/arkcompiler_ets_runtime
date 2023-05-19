@@ -49,6 +49,8 @@ public:
 
     DebugInfoExtractor *GetJSPtExtractor(const JSPandaFile *jsPandaFile);
 
+    DebugInfoExtractor *GetJSPtExtractorAndExtract(const JSPandaFile *jsPandaFile);
+
     DebugInfoExtractor *CpuProfilerGetJSPtExtractor(const JSPandaFile *jsPandaFile);
 
     // for debugger
