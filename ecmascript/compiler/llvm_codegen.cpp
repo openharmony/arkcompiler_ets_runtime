@@ -39,7 +39,11 @@
 #include "llvm-c/DisassemblerTypes.h"
 #include "llvm-c/Target.h"
 #include "llvm-c/Transforms/PassManagerBuilder.h"
+#if defined(PANDA_TARGET_MACOS)
 #include "llvm/CodeGen/BuiltinGCs.h"
+#else
+#include "llvm/IR/BuiltinGCs.h"
+#endif
 #include "llvm/DebugInfo/DWARF/DWARFContext.h"
 #include "llvm/DebugInfo/DIContext.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
@@ -170,7 +174,8 @@ uint8_t *CodeInfo::AllocaDataSection(uintptr_t size, const char *sectionName)
                                                : AllocaInNotReqSecBuffer(size, AOTFileInfo::TEXT_SEC_ALIGN);
             alreadyPageAlign_ = true;
         } else {
-            addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size) : AllocaInNotReqSecBuffer(size);
+            addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size, AOTFileInfo::DATA_SEC_ALIGN)
+                                               : AllocaInNotReqSecBuffer(size, AOTFileInfo::DATA_SEC_ALIGN);
         }
     } else {
         addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size) : AllocaInNotReqSecBuffer(size);
@@ -442,7 +447,11 @@ kungfu::CalleeRegAndOffsetVec LLVMAssembler::GetCalleeReg2Offset(LLVMValueRef fn
 {
     kungfu::CalleeRegAndOffsetVec info;
     llvm::Function* func = llvm::unwrap<llvm::Function>(fn);
+#if defined(PANDA_TARGET_MACOS)
     for (const auto &Attr : func->getAttributes().getFnAttributes()) {
+#else
+    for (const auto &Attr : func->getAttributes().getFnAttrs()) {
+#endif
         if (Attr.isStringAttribute()) {
             std::string str = std::string(Attr.getKindAsString().data());
             std::string expectedKey = "DwarfReg";
