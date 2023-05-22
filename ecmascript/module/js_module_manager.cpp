@@ -321,9 +321,12 @@ bool ModuleManager::IsImportedModuleLoaded(JSTaggedValue referencing)
 
 bool ModuleManager::SkipDefaultBundleFile(const CString &moduleFileName) const
 {
+    // relative file path like "../../xxxx" can't be loaded rightly in aot compilation phase
+    const char relativeFilePath[] = "..";
     // just to skip misunderstanding error log in LoadJSPandaFile when we ignore Module Resolving Failure.
     return !vm_->EnableReportModuleResolvingFailure() &&
-        base::StringHelper::StringStartWith(moduleFileName, PathHelper::BUNDLE_INSTALL_PATH);
+        (base::StringHelper::StringStartWith(moduleFileName, PathHelper::BUNDLE_INSTALL_PATH) ||
+        base::StringHelper::StringStartWith(moduleFileName, relativeFilePath));
 }
 
 JSHandle<JSTaggedValue> ModuleManager::ResolveModuleInMergedABC(JSThread *thread, const JSPandaFile *jsPandaFile,

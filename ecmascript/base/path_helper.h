@@ -541,7 +541,7 @@ public:
         } else {
             entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, requestName);
         }
-        if (entryPoint.empty()) {
+        if (entryPoint.empty() && thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
             LOG_ECMA(ERROR) << "Failed to resolve the requested entryPoint. baseFileName : '" << baseFileName <<
                 "'. RecordName : '" <<  recordName << "'. RequestName : '" <<  requestName << "'.";
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
