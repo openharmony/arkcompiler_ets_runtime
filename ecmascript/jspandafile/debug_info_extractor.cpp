@@ -23,6 +23,7 @@
 namespace panda::ecmascript {
 using panda::panda_file::ClassDataAccessor;
 using panda::panda_file::DebugInfoDataAccessor;
+using panda::panda_file::File;
 using panda::panda_file::LineNumberProgramItem;
 using panda::panda_file::LineProgramState;
 using panda::panda_file::LineNumberProgramProcessor;
@@ -161,7 +162,7 @@ private:
 
 const LineNumberTable &DebugInfoExtractor::GetLineNumberTable(const panda_file::File::EntityId methodId)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     static const LineNumberTable EMPTY_LINE_TABLE {};
 
     auto iter = methods_.find(methodId.GetOffset());
@@ -177,7 +178,7 @@ const LineNumberTable &DebugInfoExtractor::GetLineNumberTable(const panda_file::
 
 const ColumnNumberTable &DebugInfoExtractor::GetColumnNumberTable(const panda_file::File::EntityId methodId)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     static const ColumnNumberTable EMPTY_COLUMN_TABLE {};
 
     auto iter = methods_.find(methodId.GetOffset());
@@ -193,7 +194,7 @@ const ColumnNumberTable &DebugInfoExtractor::GetColumnNumberTable(const panda_fi
 
 const LocalVariableTable &DebugInfoExtractor::GetLocalVariableTable(const panda_file::File::EntityId methodId)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     static const LocalVariableTable EMPTY_VARIABLE_TABLE {};
 
     auto iter = methods_.find(methodId.GetOffset());
@@ -209,7 +210,7 @@ const LocalVariableTable &DebugInfoExtractor::GetLocalVariableTable(const panda_
 
 const std::string &DebugInfoExtractor::GetSourceFile(const panda_file::File::EntityId methodId)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     static const std::string sourceFile = "";
 
     auto iter = methods_.find(methodId.GetOffset());
@@ -225,7 +226,7 @@ const std::string &DebugInfoExtractor::GetSourceFile(const panda_file::File::Ent
 
 const std::string &DebugInfoExtractor::GetSourceCode(const panda_file::File::EntityId methodId)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     static const std::string sourceCode = "";
 
     auto iter = methods_.find(methodId.GetOffset());
@@ -241,10 +242,16 @@ const std::string &DebugInfoExtractor::GetSourceCode(const panda_file::File::Ent
 
 bool DebugInfoExtractor::ExtractorMethodDebugInfo(const panda_file::File::EntityId methodId)
 {
-    auto &pandaFile = *jsPandaFile_->GetPandaFile();
-    if (!methodId.IsValid() || methodId.GetOffset() >= jsPandaFile_->GetFileSize()) {
+    if (!methodId.IsValid()) {
         return false;
     }
+
+    uint32_t offset = methodId.GetOffset();
+    if (offset >= jsPandaFile_->GetFileSize()) {
+        return false;
+    }
+
+    auto &pandaFile = *jsPandaFile_->GetPandaFile();
     MethodDataAccessor mda(pandaFile, methodId);
     auto classId = mda.GetClassId();
     ASSERT(classId.IsValid() && !pandaFile.IsExternal(classId));
@@ -255,6 +262,15 @@ bool DebugInfoExtractor::ExtractorMethodDebugInfo(const panda_file::File::Entity
         return false;
     }
 
+    ExtractorMethodDebugInfo(pandaFile, sourceFileId, debugInfoId, offset);
+    return true;
+}
+
+void DebugInfoExtractor::ExtractorMethodDebugInfo(const panda_file::File &pandaFile,
+                                                  const std::optional<panda_file::File::EntityId> sourceFileId,
+                                                  const std::optional<panda_file::File::EntityId> debugInfoId,
+                                                  uint32_t offset)
+{
     DebugInfoDataAccessor dda(pandaFile, debugInfoId.value());
     const uint8_t *program = dda.GetLineNumberProgram();
     LineProgramState state(pandaFile, sourceFileId.value_or(panda_file::File::EntityId(0)), dda.GetLineStart(),
@@ -276,7 +292,47 @@ bool DebugInfoExtractor::ExtractorMethodDebugInfo(const panda_file::File::Entity
 
     MethodDebugInfo methodDebugInfo = {sourceFile, sourceCode, handler.GetLineNumberTable(),
         handler.GetColumnNumberTable(), handler.GetLocalVariableTable()};
-    methods_.emplace(methodId.GetOffset(), std::move(methodDebugInfo));
-    return true;
+    methods_.emplace(offset, std::move(methodDebugInfo));
+}
+
+void DebugInfoExtractor::Extract()
+{
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    auto &pandaFile = *jsPandaFile_->GetPandaFile();
+    auto classes = jsPandaFile_->GetClasses();
+
+    for (size_t i = 0; i < classes.Size(); i++) {
+        panda_file::File::EntityId classId(classes[i]);
+        if (!classId.IsValid() || jsPandaFile_->IsExternal(classId)) {
+            continue;
+        }
+
+        ClassDataAccessor cda(pandaFile, classId);
+        auto sourceFileId = cda.GetSourceFileId();
+
+        cda.EnumerateMethods([&](MethodDataAccessor &mda) {
+            panda_file::File::EntityId methodId = mda.GetMethodId();
+            if (!methodId.IsValid()) {
+                return;
+            }
+
+            uint32_t offset = methodId.GetOffset();
+            if (offset >= jsPandaFile_->GetFileSize()) {
+                return;
+            }
+
+            auto iter = methods_.find(offset);
+            if (iter != methods_.end()) {
+                return;
+            }
+
+            auto debugInfoId = mda.GetDebugInfoId();
+            if (!debugInfoId) {
+                return;
+            }
+
+            ExtractorMethodDebugInfo(pandaFile, sourceFileId, debugInfoId, offset);
+        });
+    }
 }
 }  // namespace panda::ecmascript

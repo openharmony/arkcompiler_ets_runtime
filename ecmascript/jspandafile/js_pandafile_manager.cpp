@@ -60,7 +60,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             InsertJSPandaFileVmUnlocked(thread->GetEcmaVM(), jsPandaFile);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
             if (thread->GetIsProfiling()) {
-                GetJSPtExtractor(jsPandaFile.get());
+                GetJSPtExtractorAndExtract(jsPandaFile.get());
             }
 #endif
             return jsPandaFile;
@@ -94,7 +94,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     std::shared_ptr<JSPandaFile> jsPandaFile = GenerateJSPandaFile(thread, pf.release(), filename, entryPoint);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (thread->GetIsProfiling()) {
-        GetJSPtExtractor(jsPandaFile.get());
+        GetJSPtExtractorAndExtract(jsPandaFile.get());
     }
 #endif
     return jsPandaFile;
@@ -124,7 +124,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             InsertJSPandaFileVmUnlocked(thread->GetEcmaVM(), jsPandaFile);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
             if (thread->GetIsProfiling()) {
-                GetJSPtExtractor(jsPandaFile.get());
+                GetJSPtExtractorAndExtract(jsPandaFile.get());
             }
 #endif
             return jsPandaFile;
@@ -143,7 +143,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     std::shared_ptr<JSPandaFile> jsPandaFile = GenerateJSPandaFile(thread, pf.release(), desc, entryPoint);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (thread->GetIsProfiling()) {
-        GetJSPtExtractor(jsPandaFile.get());
+        GetJSPtExtractorAndExtract(jsPandaFile.get());
     }
 #endif
     return jsPandaFile;
@@ -172,7 +172,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread 
             InsertJSPandaFileVmUnlocked(thread->GetEcmaVM(), jsPandaFile);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
             if (thread->GetIsProfiling()) {
-                GetJSPtExtractor(jsPandaFile.get());
+                GetJSPtExtractorAndExtract(jsPandaFile.get());
             }
 #endif
             return jsPandaFile;
@@ -191,7 +191,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread 
     std::shared_ptr<JSPandaFile> jsPandaFile = GenerateJSPandaFile(thread, pf.release(), desc, entryPoint);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     if (thread->GetIsProfiling()) {
-        GetJSPtExtractor(jsPandaFile.get());
+        GetJSPtExtractorAndExtract(jsPandaFile.get());
     }
 #endif
     return jsPandaFile;
@@ -384,6 +384,31 @@ DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractor(const JSPandaFile *jsPa
     }
 
     return iter->second.get();
+}
+
+DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractorAndExtract(const JSPandaFile *jsPandaFile)
+{
+    LOG_ECMA_IF(jsPandaFile == nullptr, FATAL) << "GetJSPtExtractor error, js pandafile is nullptr";
+
+    os::memory::LockHolder lock(jsPandaFileLock_);
+    const auto &filename = jsPandaFile->GetJSPandaFileDesc();
+    if (loadedJSPandaFiles_.find(filename) == loadedJSPandaFiles_.end()) {
+        LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename;
+        UNREACHABLE();
+    }
+
+    auto iter = extractors_.find(jsPandaFile);
+    if (iter == extractors_.end()) {
+        auto extractorPtr = std::make_unique<DebugInfoExtractor>(jsPandaFile);
+        DebugInfoExtractor *extractor = extractorPtr.get();
+        extractor->Extract();
+        extractors_[jsPandaFile] = std::move(extractorPtr);
+        return extractor;
+    }
+
+    DebugInfoExtractor *extractor = iter->second.get();
+    extractor->Extract();
+    return extractor;
 }
 
 DebugInfoExtractor *JSPandaFileManager::CpuProfilerGetJSPtExtractor(const JSPandaFile *jsPandaFile)
