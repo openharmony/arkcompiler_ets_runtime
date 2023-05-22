@@ -123,7 +123,7 @@ void FrameIterator::Advance()
     switch (t) {
         case FrameType::OPTIMIZED_FRAME : {
             auto frame = GetFrame<OptimizedFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
@@ -133,7 +133,7 @@ void FrameIterator::Advance()
         }
         case FrameType::OPTIMIZED_ENTRY_FRAME : {
             auto frame = GetFrame<OptimizedEntryFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedReturnAddr_ = 0;
                 optimizedCallSiteSp_ = 0;
             }
@@ -142,7 +142,7 @@ void FrameIterator::Advance()
         }
         case FrameType::ASM_BRIDGE_FRAME : {
             auto frame = GetFrame<AsmBridgeFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
@@ -152,7 +152,7 @@ void FrameIterator::Advance()
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME: {
             auto frame = GetFrame<OptimizedJSFunctionUnfoldArgVFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedCallSiteSp_ = frame->GetPrevFrameSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
@@ -162,7 +162,7 @@ void FrameIterator::Advance()
         }
         case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME: {
             auto frame = GetFrame<OptimizedJSFunctionFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
@@ -173,7 +173,7 @@ void FrameIterator::Advance()
         case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             auto frame = GetFrame<OptimizedJSFunctionFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
@@ -183,7 +183,7 @@ void FrameIterator::Advance()
         }
         case FrameType::LEAVE_FRAME : {
             auto frame = GetFrame<OptimizedLeaveFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
@@ -193,7 +193,7 @@ void FrameIterator::Advance()
         }
         case FrameType::LEAVE_FRAME_WITH_ARGV : {
             auto frame = GetFrame<OptimizedWithArgvLeaveFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
@@ -203,7 +203,7 @@ void FrameIterator::Advance()
         }
         case FrameType::BUILTIN_CALL_LEAVE_FRAME : {
             auto frame = GetFrame<OptimizedBuiltinLeaveFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
@@ -214,7 +214,7 @@ void FrameIterator::Advance()
         case FrameType::INTERPRETER_FRAME:
         case FrameType::INTERPRETER_FAST_NEW_FRAME : {
             auto frame = GetFrame<InterpretedFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedReturnAddr_ = 0;
                 optimizedCallSiteSp_ = 0;
             }
@@ -223,7 +223,7 @@ void FrameIterator::Advance()
         }
         case FrameType::INTERPRETER_BUILTIN_FRAME: {
             auto frame = GetFrame<InterpretedBuiltinFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedReturnAddr_ = 0;
                 optimizedCallSiteSp_ = 0;
             }
@@ -233,7 +233,7 @@ void FrameIterator::Advance()
         case FrameType::INTERPRETER_CONSTRUCTOR_FRAME:
         case FrameType::ASM_INTERPRETER_FRAME : {
             auto frame = GetFrame<AsmInterpretedFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedReturnAddr_ = 0;
                 optimizedCallSiteSp_ = 0;
             }
@@ -243,7 +243,7 @@ void FrameIterator::Advance()
         case FrameType::BUILTIN_FRAME:
         case FrameType::BUILTIN_ENTRY_FRAME : {
             auto frame = GetFrame<BuiltinFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 needCalCallSiteInfo = true;
@@ -253,7 +253,7 @@ void FrameIterator::Advance()
         }
         case FrameType::BUILTIN_FRAME_WITH_ARGV : {
             auto frame = GetFrame<BuiltinWithArgvFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 needCalCallSiteInfo = true;
@@ -263,7 +263,7 @@ void FrameIterator::Advance()
         }
         case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME : {
             auto frame = GetFrame<BuiltinWithArgvFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 needCalCallSiteInfo = true;
@@ -273,7 +273,7 @@ void FrameIterator::Advance()
         }
         case FrameType::INTERPRETER_ENTRY_FRAME : {
             auto frame = GetFrame<InterpretedEntryFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedReturnAddr_ = 0;
                 optimizedCallSiteSp_ = 0;
             }
@@ -282,7 +282,7 @@ void FrameIterator::Advance()
         }
         case FrameType::ASM_INTERPRETER_ENTRY_FRAME : {
             auto frame = GetFrame<AsmInterpretedEntryFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedReturnAddr_ = 0;
                 optimizedCallSiteSp_ = 0;
             }
@@ -291,7 +291,7 @@ void FrameIterator::Advance()
         }
         case FrameType::ASM_INTERPRETER_BRIDGE_FRAME : {
             auto frame = GetFrame<AsmInterpretedBridgeFrame>();
-            if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+            if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
                 optimizedReturnAddr_ = frame->GetReturnAddr();
                 needCalCallSiteInfo = true;
@@ -300,11 +300,15 @@ void FrameIterator::Advance()
             break;
         }
         default: {
+            if (GCVisit == GCVisitedFlag::HYBRID_STACK) {
+                current_ = nullptr;
+                break;
+            }
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
         }
     }
-    if constexpr (GCVisit == GCVisitedFlag::VISITED) {
+    if constexpr (GCVisit == GCVisitedFlag::VISITED || GCVisit == GCVisitedFlag::HYBRID_STACK) {
         if (!needCalCallSiteInfo) {
             return;
         }

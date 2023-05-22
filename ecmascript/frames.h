@@ -1524,6 +1524,7 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
 enum class GCVisitedFlag : bool {
     VISITED = true,
     IGNORED = false,
+    HYBRID_STACK = true,
 };
 
 class FrameIterator {
