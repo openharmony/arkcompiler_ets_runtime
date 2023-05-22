@@ -457,7 +457,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             break;
         }
         case EcmaOpcode::CALLTHIS1_IMM8_V8_V8: {
-            uint32_t startReg = READ_INST_8_1();// this
+            uint32_t startReg = READ_INST_8_1(); // this
             uint32_t a0 = READ_INST_8_2();
             info.inputs.emplace_back(VirtualRegister(startReg));
             info.inputs.emplace_back(VirtualRegister(a0));

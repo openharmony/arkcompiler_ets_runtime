@@ -196,7 +196,7 @@ static bool CheckSecureMem(uintptr_t mem)
         char procPath[XPM_PROC_LENGTH] = {0};
         pid_t pid = getpid();
         LOG_ECMA(DEBUG) << "Check secure memory in : " << pid << " with mem: " << std::hex << mem;
-        if (sprintf_s(procPath, XPM_PROC_LENGTH, "%s%u%s", XPM_PROC_PREFIX, pid, XPM_PROC_SUFFIX) <= 0) {
+        if (sprintf_s(procPath, XPM_PROC_LENGTH, "%s%d%s", XPM_PROC_PREFIX, pid, XPM_PROC_SUFFIX) <= 0) {
             LOG_ECMA(ERROR) << "sprintf proc path failed";
             return false;
         }

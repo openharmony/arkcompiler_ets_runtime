@@ -203,7 +203,7 @@ private:
         return (float)size / 1_KB;
     }
 
-    const Heap *heap_;
+    const Heap *heap_ {nullptr};
     size_t longPauseTime_ = 0;
 
     static constexpr size_t DEFAULT_UPDATE_REFERENCE_SPEED = 10_MB;

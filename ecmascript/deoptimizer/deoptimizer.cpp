@@ -77,9 +77,9 @@ public:
 
 private:
     JSThread *thread_ {nullptr};
-    JSTaggedType *start_;
-    JSTaggedType *top_;
-    JSTaggedType *firstFrame_;
+    JSTaggedType *start_ {nullptr};
+    JSTaggedType *top_ {nullptr};
+    JSTaggedType *firstFrame_ {nullptr};
 };
 
 void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle, size_t shift)
@@ -324,8 +324,8 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
         declaredNumArgs = static_cast<int32_t>(method->GetNumArgsWithCallField());
     } else {
         // inline method actualNumArgs equal to declaredNumArgs
-        actualNumArgs = method->GetNumArgsWithCallField();
-        declaredNumArgs = method->GetNumArgsWithCallField();
+        actualNumArgs = static_cast<int32_t>(method->GetNumArgsWithCallField());
+        declaredNumArgs = static_cast<int32_t>(method->GetNumArgsWithCallField());
     }
 
     int32_t callFieldNumVregs = static_cast<int32_t>(method->GetNumVregsWithCallField());
@@ -343,7 +343,7 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
     if (!frameWriter->Reserve(static_cast<size_t>(virtualIndex))) {
         return false;
     }
-    for (int32_t i = declaredNumArgs - 1; i >= 0; i--) {
+    for (int32_t i = static_cast<int32_t>(declaredNumArgs - 1); i >= 0; i--) {
         JSTaggedValue value = JSTaggedValue::Undefined();
         // deopt value
         if (HasDeoptValue(curDepth, virtualIndex)) {

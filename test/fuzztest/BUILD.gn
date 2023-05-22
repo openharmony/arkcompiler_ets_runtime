@@ -23,6 +23,7 @@ group("fuzztest") {
     "biginttoint64_fuzzer:fuzztest",
     "biginttouint64_fuzzer:fuzztest",
     "biguint64arrayrefnew_fuzzer:fuzztest",
+    "binarytotext_fuzzer:fuzztest",
     "booleanrefnewbool_fuzzer:fuzztest",
     "buildjsstacktrace_fuzzer:fuzztest",
     "buildnativeandJsstacktrace_fuzzer:fuzztest",

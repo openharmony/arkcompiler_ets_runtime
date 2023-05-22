@@ -33,7 +33,8 @@ public:
     bool VerifyELFHeader(uint32_t version, bool strictMatch);
     void ParseELFSections(ModuleSectionDes &des, std::vector<ElfSecName> &secs);
     void ParseELFSections(std::vector<ModuleSectionDes> &des, std::vector<ElfSecName> &secs);
-    void ParseELFSections(BinaryBufferParser &parser, std::vector<ModuleSectionDes> &des, std::vector<ElfSecName> &secs);
+    void ParseELFSections(BinaryBufferParser &parser, std::vector<ModuleSectionDes> &des,
+        std::vector<ElfSecName> &secs);
     bool ParseELFSegment();
     ModuleSectionDes::ModuleRegionInfo *GetCurModuleInfo(uint32_t i, llvm::ELF::Elf64_Off offset);
     void SeparateTextSections(std::vector<ModuleSectionDes> &des, const uintptr_t &secAddr,

@@ -88,11 +88,11 @@ namespace OHOS {
             return;
         }
         double input = 0;
-        const double MAX_BYTE_LEN = 8;
-        if (size > MAX_BYTE_LEN) {
-            size = MAX_BYTE_LEN;
+        const double maxByteLen = 8;
+        if (size > maxByteLen) {
+            size = maxByteLen;
         }
-        if (memcpy_s(&input, MAX_BYTE_LEN, data, size) != 0) {
+        if (memcpy_s(&input, maxByteLen, data, size) != 0) {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }

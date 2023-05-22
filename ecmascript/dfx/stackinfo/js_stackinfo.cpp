@@ -209,7 +209,7 @@ void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((
         uintptr_t func = uctx->uc_mcontext.regs[2];  // 2: func
         JSTaggedValue builtinMethod = JSFunction::Cast(reinterpret_cast<TaggedObject *>(func))->GetMethod();
         uint8_t builtinId = Method::Cast(builtinMethod.GetTaggedObject())->GetBuiltinId();
-        size_t builtinStart = GET_MESSAGE_STRING_ID(CharCodeAt) - 1;  // 1: offset NONE
+        size_t builtinStart = static_cast<size_t>(GET_MESSAGE_STRING_ID(CharCodeAt) - 1);  // 1: offset NONE
         std::string builtinStr = MessageString::GetMessageString(builtinStart + builtinId);
         faultInfo += " " + builtinStr;
     }
@@ -477,9 +477,9 @@ __attribute__((visibility("default"))) int step_ark_managed_native_frame(
 }
 
 __attribute__((visibility("default"))) int get_ark_js_heap_crash_info(
-    int pid, uintptr_t *x20, uintptr_t *fp, int out_js_info, char *buf, size_t buf_sz)
+    int pid, uintptr_t *x20, uintptr_t *fp, int outJsInfo, char *buf, size_t buf_sz)
 {
-    if (panda::ecmascript::GetArkJSHeapCrashInfo(pid, x20, fp, out_js_info != 0, buf, buf_sz)) {
+    if (panda::ecmascript::GetArkJSHeapCrashInfo(pid, x20, fp, outJsInfo != 0, buf, buf_sz)) {
         return 1;
     }
     return -1;

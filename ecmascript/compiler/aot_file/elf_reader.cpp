@@ -104,7 +104,7 @@ void ElfReader::ParseELFSections(std::vector<ModuleSectionDes> &des, std::vector
             llvm::ELF::Elf64_Word shName = shdrs[i].sh_name;
             char *curShName = reinterpret_cast<char *>(addr) + shName + strdr.sh_offset;
             if (sectionName.compare(curShName) == 0) {
-                secId = i;
+                secId = static_cast<int>(i);
                 break;
             }
         }
@@ -175,7 +175,7 @@ void ElfReader::ParseELFSections(BinaryBufferParser &parser,
             llvm::ELF::Elf64_Word shName = shdrs[i].sh_name;
             char *curShName = reinterpret_cast<char *>(parser.GetAddr()) + shName + strdr.sh_offset;
             if (sectionName.compare(curShName) == 0) {
-                secId = i;
+                secId = static_cast<int>(i);
                 break;
             }
         }
