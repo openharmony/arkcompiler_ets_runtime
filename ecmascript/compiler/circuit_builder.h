@@ -505,6 +505,9 @@ public:
     GateRef CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult,
                        GateRef value, const char* comment = nullptr);
     GateRef GetConstPool(GateRef jsFunc);
+    GateRef GetGlobalEnv();
+    GateRef GetGlobalEnvObjHClass(GateRef env, size_t index);
+    GateRef GetGlobalConstantValue(ConstantIndex index);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset);
     GateRef StoreConstOffset(VariableType type, GateRef receiver, size_t offset, GateRef value);
     // Object Operations
@@ -601,7 +604,6 @@ public:
     inline void SetState(GateRef state);
 
     GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
-    GateRef GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index);
     GateRef IsBase(GateRef ctor);
     inline GateRef GetMethodId(GateRef func);
 

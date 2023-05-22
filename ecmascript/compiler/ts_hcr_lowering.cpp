@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/ts_type_lowering.h"
+#include "ecmascript/compiler/ts_hcr_lowering.h"
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/builtins_lowering.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
@@ -21,7 +21,7 @@
 #include "ecmascript/ts_types/ts_type.h"
 
 namespace panda::ecmascript::kungfu {
-void TSTypeLowering::RunTSTypeLowering()
+void TSHCRLowering::RunTSHCRLowering()
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
@@ -36,7 +36,7 @@ void TSTypeLowering::RunTSTypeLowering()
         LOG_COMPILER(INFO) << "";
         LOG_COMPILER(INFO) << "\033[34m"
                            << "===================="
-                           << " After ts type lowering "
+                           << " After TSHCRlowering "
                            << "[" << GetMethodName() << "]"
                            << "===================="
                            << "\033[0m";
@@ -45,7 +45,7 @@ void TSTypeLowering::RunTSTypeLowering()
     }
 }
 
-bool TSTypeLowering::IsTrustedType(GateRef gate) const
+bool TSHCRLowering::IsTrustedType(GateRef gate) const
 {
     if (acc_.IsConstant(gate)) {
         return true;
@@ -85,7 +85,7 @@ bool TSTypeLowering::IsTrustedType(GateRef gate) const
     return false;
 }
 
-void TSTypeLowering::Lower(GateRef gate)
+void TSHCRLowering::Lower(GateRef gate)
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     // initialize label manager
@@ -259,7 +259,7 @@ void TSTypeLowering::Lower(GateRef gate)
 }
 
 template<TypedBinOp Op>
-void TSTypeLowering::LowerTypedBinOp(GateRef gate)
+void TSHCRLowering::LowerTypedBinOp(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -268,7 +268,7 @@ void TSTypeLowering::LowerTypedBinOp(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedMod(GateRef gate)
+void TSHCRLowering::LowerTypedMod(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -279,7 +279,7 @@ void TSTypeLowering::LowerTypedMod(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedDiv(GateRef gate)
+void TSHCRLowering::LowerTypedDiv(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -290,7 +290,7 @@ void TSTypeLowering::LowerTypedDiv(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedStrictEq(GateRef gate)
+void TSHCRLowering::LowerTypedStrictEq(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -305,7 +305,7 @@ void TSTypeLowering::LowerTypedStrictEq(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedShl(GateRef gate)
+void TSHCRLowering::LowerTypedShl(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -316,7 +316,7 @@ void TSTypeLowering::LowerTypedShl(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedShr(GateRef gate)
+void TSHCRLowering::LowerTypedShr(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -327,7 +327,7 @@ void TSTypeLowering::LowerTypedShr(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedAshr(GateRef gate)
+void TSHCRLowering::LowerTypedAshr(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -338,7 +338,7 @@ void TSTypeLowering::LowerTypedAshr(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedAnd(GateRef gate)
+void TSHCRLowering::LowerTypedAnd(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -349,7 +349,7 @@ void TSTypeLowering::LowerTypedAnd(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedOr(GateRef gate)
+void TSHCRLowering::LowerTypedOr(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -360,7 +360,7 @@ void TSTypeLowering::LowerTypedOr(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedXor(GateRef gate)
+void TSHCRLowering::LowerTypedXor(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
@@ -371,7 +371,7 @@ void TSTypeLowering::LowerTypedXor(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedInc(GateRef gate)
+void TSHCRLowering::LowerTypedInc(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
@@ -380,7 +380,7 @@ void TSTypeLowering::LowerTypedInc(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedDec(GateRef gate)
+void TSHCRLowering::LowerTypedDec(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
@@ -389,7 +389,7 @@ void TSTypeLowering::LowerTypedDec(GateRef gate)
     }
 }
 
-bool TSTypeLowering::HasNumberType(GateRef gate, GateRef left, GateRef right) const
+bool TSHCRLowering::HasNumberType(GateRef gate, GateRef left, GateRef right) const
 {
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
@@ -403,7 +403,7 @@ bool TSTypeLowering::HasNumberType(GateRef gate, GateRef left, GateRef right) co
 }
 
 template<TypedBinOp Op>
-void TSTypeLowering::SpeculateNumbers(GateRef gate)
+void TSHCRLowering::SpeculateNumbers(GateRef gate)
 {
     AddProfiling(gate);
     GateRef left = acc_.GetValueIn(gate, 0);
@@ -418,7 +418,7 @@ void TSTypeLowering::SpeculateNumbers(GateRef gate)
 }
 
 template<TypedUnOp Op>
-void TSTypeLowering::SpeculateNumber(GateRef gate)
+void TSHCRLowering::SpeculateNumber(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
@@ -429,7 +429,7 @@ void TSTypeLowering::SpeculateNumber(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSTypeLowering::LowerTypeToNumeric(GateRef gate)
+void TSHCRLowering::LowerTypeToNumeric(GateRef gate)
 {
     GateRef src = acc_.GetValueIn(gate, 0);
     GateType srcType = acc_.GetGateType(src);
@@ -439,7 +439,7 @@ void TSTypeLowering::LowerTypeToNumeric(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
+void TSHCRLowering::LowerPrimitiveTypeToNumber(GateRef gate)
 {
     GateRef src = acc_.GetValueIn(gate, 0);
     GateType srcType = acc_.GetGateType(src);
@@ -449,7 +449,7 @@ void TSTypeLowering::LowerPrimitiveTypeToNumber(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSTypeLowering::LowerConditionJump(GateRef gate, bool flag)
+void TSHCRLowering::LowerConditionJump(GateRef gate, bool flag)
 {
     GateRef condition = acc_.GetValueIn(gate, 0);
     GateType conditionType = acc_.GetGateType(condition);
@@ -459,7 +459,7 @@ void TSTypeLowering::LowerConditionJump(GateRef gate, bool flag)
     }
 }
 
-void TSTypeLowering::SpeculateConditionJump(GateRef gate, bool flag)
+void TSHCRLowering::SpeculateConditionJump(GateRef gate, bool flag)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
@@ -472,7 +472,7 @@ void TSTypeLowering::SpeculateConditionJump(GateRef gate, bool flag)
     acc_.ReplaceGate(gate, jump, jump, Circuit::NullGate());
 }
 
-void TSTypeLowering::LowerTypedNeg(GateRef gate)
+void TSHCRLowering::LowerTypedNeg(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
@@ -481,7 +481,7 @@ void TSTypeLowering::LowerTypedNeg(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedNot(GateRef gate)
+void TSHCRLowering::LowerTypedNot(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
@@ -490,7 +490,7 @@ void TSTypeLowering::LowerTypedNot(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedLdArrayLength(GateRef gate)
+void TSHCRLowering::LowerTypedLdArrayLength(GateRef gate)
 {
     AddProfiling(gate);
     GateRef array = acc_.GetValueIn(gate, 2);
@@ -500,7 +500,7 @@ void TSTypeLowering::LowerTypedLdArrayLength(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSTypeLowering::DeleteConstDataIfNoUser(GateRef gate)
+void TSHCRLowering::DeleteConstDataIfNoUser(GateRef gate)
 {
     auto uses = acc_.Uses(gate);
     if (uses.begin() == uses.end()) {
@@ -508,7 +508,7 @@ void TSTypeLowering::DeleteConstDataIfNoUser(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
+void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
@@ -565,7 +565,7 @@ void TSTypeLowering::LowerTypedLdObjByName(GateRef gate)
     DeleteConstDataIfNoUser(constData);
 }
 
-void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
+void TSHCRLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
@@ -622,7 +622,7 @@ void TSTypeLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     DeleteConstDataIfNoUser(constData);
 }
 
-void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
+void TSHCRLowering::LowerTypedLdObjByIndex(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -657,7 +657,7 @@ void TSTypeLowering::LowerTypedLdObjByIndex(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
+void TSHCRLowering::LowerTypedStObjByIndex(GateRef gate)
 {
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
@@ -693,7 +693,7 @@ void TSTypeLowering::LowerTypedStObjByIndex(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
-void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
+void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
 {
     GateRef receiver = Circuit::NullGate();
     GateRef propKey = Circuit::NullGate();
@@ -725,7 +725,7 @@ void TSTypeLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSTypeLowering::LowerTypedStObjByValue(GateRef gate)
+void TSHCRLowering::LowerTypedStObjByValue(GateRef gate)
 {
     ASSERT(acc_.GetNumValueIn(gate) == 4);  // 4: num of value ins
     GateRef receiver = acc_.GetValueIn(gate, 1);    // 1: receiver
@@ -747,7 +747,7 @@ void TSTypeLowering::LowerTypedStObjByValue(GateRef gate)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
-void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
+void TSHCRLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
 {
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     auto value = acc_.GetValueIn(gate, 0);
@@ -767,7 +767,7 @@ void TSTypeLowering::LowerTypedIsTrueOrFalse(GateRef gate, bool flag)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
+void TSHCRLowering::LowerTypedNewObjRange(GateRef gate)
 {
     GateRef ctor = acc_.GetValueIn(gate, 0);
     GateType ctorType = acc_.GetGateType(ctor);
@@ -794,7 +794,7 @@ void TSTypeLowering::LowerTypedNewObjRange(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
-void TSTypeLowering::LowerTypedSuperCall(GateRef gate)
+void TSHCRLowering::LowerTypedSuperCall(GateRef gate)
 {
     GateRef ctor = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateType ctorType = acc_.GetGateType(ctor);  // ldfunction in derived constructor get function type
@@ -824,7 +824,7 @@ void TSTypeLowering::LowerTypedSuperCall(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
-void TSTypeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, GateRef a0, BuiltinsStubCSigns::ID id)
+void TSHCRLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, GateRef a0, BuiltinsStubCSigns::ID id)
 {
     builder_.CallTargetCheck(func, builder_.IntPtr(static_cast<int64_t>(id)), a0);
     GateRef result = builder_.TypedCallBuiltin(gate, a0, id);
@@ -832,7 +832,7 @@ void TSTypeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, GateRef a0
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-BuiltinsStubCSigns::ID TSTypeLowering::GetBuiltinId(GateRef func)
+BuiltinsStubCSigns::ID TSHCRLowering::GetBuiltinId(GateRef func)
 {
     GateType funcType = acc_.GetGateType(func);
     if (!tsManager_->IsBuiltinMath(funcType)) {
@@ -843,7 +843,7 @@ BuiltinsStubCSigns::ID TSTypeLowering::GetBuiltinId(GateRef func)
     return id;
 }
 
-void TSTypeLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
     GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall)
 {
     if (IsLoadVtable(func)) {
@@ -875,7 +875,7 @@ void TSTypeLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, Glo
     }
 }
 
-void TSTypeLowering::LowerTypedCallArg0(GateRef gate)
+void TSHCRLowering::LowerTypedCallArg0(GateRef gate)
 {
     GateRef func = acc_.GetValueIn(gate, 0);
     GateType funcType = acc_.GetGateType(func);
@@ -896,7 +896,7 @@ void TSTypeLowering::LowerTypedCallArg0(GateRef gate)
     CheckCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
 }
 
-void TSTypeLowering::LowerTypedCallArg1(GateRef gate)
+void TSHCRLowering::LowerTypedCallArg1(GateRef gate)
 {
     GateRef func = acc_.GetValueIn(gate, 1);
     GateType funcType = acc_.GetGateType(func);
@@ -925,7 +925,7 @@ void TSTypeLowering::LowerTypedCallArg1(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedCallArg2(GateRef gate)
+void TSHCRLowering::LowerTypedCallArg2(GateRef gate)
 {
     GateRef func = acc_.GetValueIn(gate, 2); // 2:function
     GateType funcType = acc_.GetGateType(func);
@@ -948,7 +948,7 @@ void TSTypeLowering::LowerTypedCallArg2(GateRef gate)
     CheckCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
 }
 
-void TSTypeLowering::LowerTypedCallArg3(GateRef gate)
+void TSHCRLowering::LowerTypedCallArg3(GateRef gate)
 {
     GateRef func = acc_.GetValueIn(gate, 3); // 3:function
     GateType funcType = acc_.GetGateType(func);
@@ -972,7 +972,7 @@ void TSTypeLowering::LowerTypedCallArg3(GateRef gate)
     CheckCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
 }
 
-void TSTypeLowering::LowerTypedCallrange(GateRef gate)
+void TSHCRLowering::LowerTypedCallrange(GateRef gate)
 {
     std::vector<GateRef> vec;
     std::vector<GateRef> vec1;
@@ -1010,7 +1010,7 @@ void TSTypeLowering::LowerTypedCallrange(GateRef gate)
     CheckCallTargetAndLowerCall(gate, func, funcGt, funcType, vec, vec1);
 }
 
-bool TSTypeLowering::IsLoadVtable(GateRef func)
+bool TSHCRLowering::IsLoadVtable(GateRef func)
 {
     auto op = acc_.GetOpCode(func);
     if (op != OpCode::LOAD_PROPERTY || !acc_.IsVtable(func)) {
@@ -1019,7 +1019,7 @@ bool TSTypeLowering::IsLoadVtable(GateRef func)
     return true;
 }
 
-bool TSTypeLowering::CanOptimizeAsFastCall(GateRef func, uint32_t len)
+bool TSHCRLowering::CanOptimizeAsFastCall(GateRef func, uint32_t len)
 {
     GateType funcType = acc_.GetGateType(func);
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
@@ -1037,7 +1037,7 @@ bool TSTypeLowering::CanOptimizeAsFastCall(GateRef func, uint32_t len)
     return true;
 }
 
-void TSTypeLowering::CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+void TSHCRLowering::CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
     GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall)
 {
     if (!tsManager_->FastCallFlagIsVaild(funcGt)) {
@@ -1054,7 +1054,7 @@ void TSTypeLowering::CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func,
     }
 }
 
-void TSTypeLowering::LowerTypedCallthis0(GateRef gate)
+void TSHCRLowering::LowerTypedCallthis0(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
@@ -1074,7 +1074,7 @@ void TSTypeLowering::LowerTypedCallthis0(GateRef gate)
     CheckThisCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
 }
 
-void TSTypeLowering::LowerTypedCallthis1(GateRef gate)
+void TSHCRLowering::LowerTypedCallthis1(GateRef gate)
 {
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
@@ -1102,7 +1102,7 @@ void TSTypeLowering::LowerTypedCallthis1(GateRef gate)
     }
 }
 
-void TSTypeLowering::LowerTypedCallthis2(GateRef gate)
+void TSHCRLowering::LowerTypedCallthis2(GateRef gate)
 {
     // 4: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 4);
@@ -1125,7 +1125,7 @@ void TSTypeLowering::LowerTypedCallthis2(GateRef gate)
     CheckThisCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
 }
 
-void TSTypeLowering::LowerTypedCallthis3(GateRef gate)
+void TSHCRLowering::LowerTypedCallthis3(GateRef gate)
 {
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
@@ -1149,7 +1149,7 @@ void TSTypeLowering::LowerTypedCallthis3(GateRef gate)
     CheckThisCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
 }
 
-void TSTypeLowering::LowerTypedCallthisrange(GateRef gate)
+void TSHCRLowering::LowerTypedCallthisrange(GateRef gate)
 {
     std::vector<GateRef> vec;
     // this
@@ -1198,7 +1198,7 @@ void TSTypeLowering::LowerTypedCallthisrange(GateRef gate)
     }
 }
 
-void TSTypeLowering::AddProfiling(GateRef gate)
+void TSHCRLowering::AddProfiling(GateRef gate)
 {
     if (IsTraceBC()) {
         // see stateSplit as a part of JSByteCode if exists
@@ -1242,7 +1242,7 @@ void TSTypeLowering::AddProfiling(GateRef gate)
     }
 }
 
-void TSTypeLowering::AddVTableLoadVerifer(GateRef gate, GateRef value)
+void TSHCRLowering::AddVTableLoadVerifer(GateRef gate, GateRef value)
 {
     GateRef receiver = acc_.GetValueIn(gate, 2);  // 2: receiver
     GateRef key = acc_.GetValueIn(gate, 1);       // 1: key
@@ -1252,7 +1252,7 @@ void TSTypeLowering::AddVTableLoadVerifer(GateRef gate, GateRef value)
     acc_.SetDep(gate, verifier);
 }
 
-void TSTypeLowering::AddVTableStoreVerifer(GateRef gate, GateRef store, bool isThis)
+void TSHCRLowering::AddVTableStoreVerifer(GateRef gate, GateRef store, bool isThis)
 {
     GateRef key = acc_.GetValueIn(gate, 1);
     GateRef receiver = Circuit::NullGate();

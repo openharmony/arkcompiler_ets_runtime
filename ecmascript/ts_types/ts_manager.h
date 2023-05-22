@@ -788,7 +788,7 @@ private:
     double typeThreshold_ {-1};
 
     // when the passmanager iterates each method, the curCP_ and curCPID_ should be updated
-    // so that subsequent passes (type_infer, ts_type_lowering) can obtain the correct constpool.
+    // so that subsequent passes (type_infer, ts_hcr_lowering) can obtain the correct constpool.
     JSTaggedValue curCP_ {JSTaggedValue::Hole()};
     int32_t curCPID_ {0};
 

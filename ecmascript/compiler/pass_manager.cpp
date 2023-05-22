@@ -124,7 +124,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
         }
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         if (passOptions_->EnableTypeLowering()) {
-            pipeline.RunPass<TSTypeLoweringPass>();
+            pipeline.RunPass<TSHCRLoweringPass>();
             if (passOptions_->EnableEarlyElimination()) {
                 pipeline.RunPass<EarlyEliminationPass>();
             }
@@ -136,14 +136,15 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
                 pipeline.RunPass<ValueNumberingPass>();
             }
             pipeline.RunPass<StateSplitLinearizerPass>();
-            pipeline.RunPass<TypeLoweringPass>();
+            pipeline.RunPass<TypeMCRLoweringPass>();
+            pipeline.RunPass<NTypeMCRLoweringPass>();
             if (passOptions_->EnableEarlyElimination()) {
                 pipeline.RunPass<EarlyEliminationPass>();
             }
             if (passOptions_->EnableLaterElimination()) {
                 pipeline.RunPass<LaterEliminationPass>();
             }
-            pipeline.RunPass<GenericTypeLoweringPass>();
+            pipeline.RunPass<LCRLoweringPass>();
         }
         pipeline.RunPass<SlowPathLoweringPass>();
         pipeline.RunPass<VerifierPass>();

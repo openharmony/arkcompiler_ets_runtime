@@ -13,23 +13,23 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_GENERIC_TYPE_LOWERING_H
-#define ECMASCRIPT_COMPILER_GENERIC_TYPE_LOWERING_H
+#ifndef ECMASCRIPT_COMPILER_LCR_LOWERING_H
+#define ECMASCRIPT_COMPILER_LCR_LOWERING_H
 
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/gate_accessor.h"
 
 namespace panda::ecmascript::kungfu {
-class GenericTypeLowering {
+class LCRLowering {
 public:
-    GenericTypeLowering(Circuit *circuit, CompilationConfig *cmpCfg,
+    LCRLowering(Circuit *circuit, CompilationConfig *cmpCfg,
                         bool enableLog, const std::string& name)
         : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
           enableLog_(enableLog), methodName_(name), glue_(acc_.GetGlueFromArgList())
     {
     }
-    ~GenericTypeLowering() = default;
+    ~LCRLowering() = default;
 
     bool IsLogEnabled() const
     {
@@ -71,6 +71,9 @@ private:
     GateRef ConvertTaggedNumberToInt32(GateRef gate, Label *exit);
     GateRef ConvertTaggedNumberToFloat64(GateRef gate, Label *exit);
     GateRef ConvertTaggedBooleanToBool(GateRef gate);
+    void LowerGetGlobalEnv(GateRef gate);
+    void LowerGetGlobalEnvObjHClass(GateRef gate);
+    void LowerGetGlobalConstantValue(GateRef gate);
 
     Circuit *circuit_;
     GateAccessor acc_;
@@ -80,4 +83,4 @@ private:
     GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_GENERIC_TYPE_LOWERING_H
+#endif  // ECMASCRIPT_COMPILER_LCR_LOWERING_H

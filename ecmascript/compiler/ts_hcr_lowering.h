@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_TS_TYPE_LOWERING_H
-#define ECMASCRIPT_COMPILER_TS_TYPE_LOWERING_H
+#ifndef ECMASCRIPT_COMPILER_TS_HCR_LOWERING_H
+#define ECMASCRIPT_COMPILER_TS_HCR_LOWERING_H
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
@@ -23,9 +23,9 @@
 #include "ecmascript/compiler/pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
-class TSTypeLowering {
+class TSHCRLowering {
 public:
-    TSTypeLowering(Circuit *circuit, PassContext *ctx,
+    TSHCRLowering(Circuit *circuit, PassContext *ctx,
                    bool enableLog, const std::string& name)
         : circuit_(circuit),
           acc_(circuit),
@@ -40,9 +40,9 @@ public:
           glue_(acc_.GetGlueFromArgList()),
           argAcc_(circuit) {}
 
-    ~TSTypeLowering() = default;
+    ~TSHCRLowering() = default;
 
-    void RunTSTypeLowering();
+    void RunTSHCRLowering();
 
 private:
     bool IsLogEnabled() const
@@ -150,4 +150,4 @@ private:
     ArgumentAccessor argAcc_;
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_TS_TYPE_LOWERING_H
+#endif  // ECMASCRIPT_COMPILER_TS_HCR_LOWERING_H

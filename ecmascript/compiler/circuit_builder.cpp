@@ -1131,6 +1131,38 @@ GateRef CircuitBuilder::GetConstPool(GateRef jsFunc)
     return newGate;
 }
 
+GateRef CircuitBuilder::GetGlobalEnv()
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    auto newGate = GetCircuit()->NewGate(circuit_->GetGlobalEnv(), MachineType::I64,
+                                         { currentDepend },
+                                         GateType::AnyType());
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
+GateRef CircuitBuilder::GetGlobalEnvObjHClass(GateRef env, size_t index)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    auto newGate = GetCircuit()->NewGate(circuit_->GetGlobalEnvObjHClass(index), MachineType::I64,
+                                         { currentDepend, env },
+                                         GateType::AnyType());
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
+GateRef CircuitBuilder::GetGlobalConstantValue(ConstantIndex index)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    auto newGate = GetCircuit()->NewGate(circuit_->GetGlobalConstantValue(static_cast<size_t>(index)),
+                                         MachineType::I64, { currentDepend }, GateType::AnyType());
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
 GateRef CircuitBuilder::HasPendingException(GateRef glue)
 {
     GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env_->IsArch32Bit()));
@@ -1418,14 +1450,6 @@ GateRef CircuitBuilder::GetCodeAddr(GateRef method)
 {
     auto codeAddOffset = IntPtr(Method::CODE_ENTRY_OFFSET);
     return Load(VariableType::NATIVE_POINTER(), method, codeAddOffset);
-}
-
-GateRef CircuitBuilder::GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index)
-{
-    GateRef gConstAddr = PtrAdd(glue,
-        IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
-    auto constantIndex = IntPtr(JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(index));
-    return Load(type, gConstAddr, constantIndex);
 }
 
 GateRef CircuitBuilder::GetCallBuiltinId(GateRef method)
