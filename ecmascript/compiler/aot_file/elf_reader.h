@@ -54,6 +54,7 @@ private:
     }
 
     static constexpr uint32_t TEXT_SEC_ALIGN = 4096;
+    static constexpr uint32_t DATA_SEC_ALIGN = 8;
     static constexpr uint32_t ASMSTUB_MODULE_NUM = 3;
     ExecutedMemoryAllocator::ExeMem stubsMem_ {};
     MemMap fileMapMem_ {};

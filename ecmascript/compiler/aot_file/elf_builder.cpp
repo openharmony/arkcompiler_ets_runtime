@@ -350,6 +350,8 @@ void ElfBuilder::MergeTextSections(std::ofstream &file,
         curInfo.textSize = curSecSize;
         curSecOffset += curSecSize;
         if (rodataSize != 0 && rodataAddr > curSecAddr) {
+            curSecOffset = AlignUp(curSecOffset, AOTFileInfo::DATA_SEC_ALIGN);
+            file.seekp(curSecOffset);
             file.write(reinterpret_cast<char *>(rodataAddr), rodataSize);
             curInfo.rodataSize = rodataSize;
             curSecOffset += rodataSize;
