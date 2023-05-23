@@ -236,4 +236,28 @@ void SubtypingOperator::TryMaintainTSSubtyping(const JSThread *thread, const JSH
 
     JSHClass::CopyTSInheritInfo(thread, oldHClass, newHClass);
 }
+
+// when add property on prototype, try maintain.
+bool SubtypingOperator::TryMaintainTSSubtypingOnPrototype(const JSThread *thread, const JSHandle<JSHClass> &hclass,
+                                                          const JSHandle<JSTaggedValue> &key)
+{
+    ASSERT(key->IsString());
+    JSHandle<VTable> vtable(thread, hclass->GetVTable());
+    ASSERT(vtable->GetNumberOfTuples() > 0);   // there have default key 'constructor' at least
+
+    if (vtable->Find(key.GetTaggedValue())) {  // new key shadows vtable property
+        LOG_ECMA(DEBUG) << "TryMaintainTSSubtypingOnPrototype failed, key: "
+                        << ConvertToString(EcmaString::Cast(key->GetTaggedObject()));
+        return false;
+    }
+
+    int entry = JSHClass::FindPropertyEntry(thread, *hclass, key.GetTaggedValue());
+    if (entry != -1) {  // new key shadows loacl property
+        LOG_ECMA(DEBUG) << "TryMaintainTSSubtypingOnPrototype failed, key: "
+                        << ConvertToString(EcmaString::Cast(key->GetTaggedObject()));
+        return false;
+    }
+
+    return true;
+}
 }  // namespace panda::ecmascript

@@ -241,7 +241,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
     if (newClass != nullptr) {
         obj->SetClass(newClass);
 #if ECMASCRIPT_ENABLE_IC
-        JSHClass::NotifyHclassChanged(thread, jshclass, JSHandle<JSHClass>(thread, newClass));
+        JSHClass::NotifyHclassChanged(thread, jshclass, JSHandle<JSHClass>(thread, newClass), key.GetTaggedValue());
 #endif
         return;
     }
@@ -271,7 +271,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
 
     // 5. update hclass in object.
 #if ECMASCRIPT_ENABLE_IC
-    JSHClass::NotifyHclassChanged(thread, jshclass, newJsHClass);
+    JSHClass::NotifyHclassChanged(thread, jshclass, newJsHClass, key.GetTaggedValue());
 #endif
     obj->SetClass(*newJsHClass);
 
@@ -459,7 +459,8 @@ JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread
     return JSHandle<JSTaggedValue>(markerHandle);
 }
 
-void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass)
+void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass,
+                                   JSTaggedValue addedKey)
 {
     if (!oldHclass->IsPrototype()) {
         return;
@@ -469,7 +470,7 @@ void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> ol
         return;
     }
     newHclass->SetIsPrototype(true);
-    JSHClass::NoticeThroughChain(thread, oldHclass);
+    JSHClass::NoticeThroughChain(thread, oldHclass, addedKey);
     JSHClass::RefreshUsers(thread, oldHclass, newHclass);
 }
 
@@ -556,8 +557,10 @@ JSHandle<ProtoChangeDetails> JSHClass::GetProtoChangeDetails(const JSThread *thr
     return GetProtoChangeDetails(thread, jshclass);
 }
 
-void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
+void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                JSTaggedValue addedKey)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     ASSERT(jshclass->IsPrototype() || jshclass->HasTSSubtyping());
     JSTaggedValue markerValue = jshclass->GetProtoChangeMarker();
     if (markerValue.IsProtoChangeMarker()) {
@@ -565,14 +568,19 @@ void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass>
         protoChangeMarker->SetHasChanged(true);
     }
 
-    if (jshclass->HasTSSubtyping()) {
-        jshclass->InitTSInheritInfo(thread);
+    if (jshclass->HasTSSubtyping() && addedKey.IsString()) {
+        JSHandle<JSTaggedValue> key(thread, addedKey);
+        if (!SubtypingOperator::TryMaintainTSSubtypingOnPrototype(thread, jshclass, key)) {
+            jshclass->InitTSInheritInfo(thread);
+        }
     }
 }
 
-void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
+void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                  JSTaggedValue addedKey)
 {
-    MarkProtoChanged(thread, jshclass);
+    DISALLOW_GARBAGE_COLLECTION;
+    MarkProtoChanged(thread, jshclass, addedKey);
     JSTaggedValue protoDetailsValue = jshclass->GetProtoChangeDetails();
     if (!protoDetailsValue.IsProtoChangeDetails()) {
         return;
@@ -585,7 +593,7 @@ void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClas
     for (uint32_t i = 0; i < listeners->GetEnd(); i++) {
         JSTaggedValue temp = listeners->Get(i);
         if (temp.IsJSHClass()) {
-            NoticeThroughChain(thread, JSHandle<JSHClass>(thread, listeners->Get(i).GetTaggedObject()));
+            NoticeThroughChain(thread, JSHandle<JSHClass>(thread, listeners->Get(i).GetTaggedObject()), addedKey);
         }
     }
 }
