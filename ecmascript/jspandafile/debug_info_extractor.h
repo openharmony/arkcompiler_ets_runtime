@@ -181,10 +181,16 @@ public:
     }
 #endif
 
+    void Extract();
+
     constexpr static int32_t SPECIAL_LINE_MARK = -1;
 
 private:
     bool ExtractorMethodDebugInfo(const panda_file::File::EntityId methodId);
+    void ExtractorMethodDebugInfo(const panda_file::File &pandaFile,
+                                  const std::optional<panda_file::File::EntityId> sourceFileId,
+                                  const std::optional<panda_file::File::EntityId> debugInfoId,
+                                  uint32_t offset);
     struct MethodDebugInfo {
         std::string sourceFile;
         std::string sourceCode;
@@ -193,7 +199,7 @@ private:
         LocalVariableTable localVariableTable;
     };
 
-    std::mutex mutex_;
+    std::recursive_mutex mutex_;
     CUnorderedMap<uint32_t, MethodDebugInfo> methods_;
     const JSPandaFile *jsPandaFile_ {nullptr};
 };

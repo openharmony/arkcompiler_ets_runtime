@@ -533,7 +533,7 @@ inline bool JSTaggedValue::IsJSNativePointer() const
 
 inline bool JSTaggedValue::CheckIsJSNativePointer() const
 {
-    return IsHeapObject() && GetTaggedObject() != nullptr && GetTaggedObject()->GetClass()->IsJSNativePointer();
+    return IsHeapObject() && !IsInvalidValue() && GetTaggedObject()->GetClass()->IsJSNativePointer();
 }
 
 inline bool JSTaggedValue::IsSymbol() const
@@ -544,6 +544,11 @@ inline bool JSTaggedValue::IsSymbol() const
 inline bool JSTaggedValue::IsJSProxy() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSProxy();
+}
+
+inline bool JSTaggedValue::CheckIsJSProxy() const
+{
+    return IsHeapObject() && !IsInvalidValue() && GetTaggedObject()->GetClass()->IsJSProxy();
 }
 
 inline bool JSTaggedValue::IsBoolean() const
@@ -987,7 +992,7 @@ inline bool JSTaggedValue::IsJSFunctionBase() const
 
 inline bool JSTaggedValue::CheckIsJSFunctionBase() const
 {
-    return IsHeapObject() && GetTaggedObject() != nullptr && GetTaggedObject()->GetClass()->IsJSFunctionBase();
+    return IsHeapObject() && !IsInvalidValue() && GetTaggedObject()->GetClass()->IsJSFunctionBase();
 }
 
 inline bool JSTaggedValue::IsBoundFunction() const
