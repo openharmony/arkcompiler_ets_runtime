@@ -559,6 +559,9 @@ size_t JSThread::GetAsmStackLimit()
             }
             return result;
         }
+        if (rl.rlim_cur == RLIM_INFINITY) {
+            return result;
+        }
     }
 
     uintptr_t threadStackLimit;
