@@ -443,7 +443,8 @@ JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, cons
     return res;
 }
 
-JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp)
+JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
+    const JSTaggedType *prevFp, bool needPushUndefined)
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
@@ -452,7 +453,8 @@ JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const
     auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
                                                             actualNumArgs,
                                                             args,
-                                                            reinterpret_cast<uintptr_t>(prevFp));
+                                                            reinterpret_cast<uintptr_t>(prevFp),
+                                                            needPushUndefined);
     return res;
 }
 

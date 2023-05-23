@@ -817,7 +817,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
     args[1] = genObject.GetRawData();
     args[2] = context->GetThis().GetRawData(); // 2: this
     const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
-    auto res = thread->GetEcmaVM()->ExecuteAot(method->GetNumArgs(), args.data(), prevFp);
+    auto res = thread->GetEcmaVM()->ExecuteAot(method->GetNumArgs(), args.data(), prevFp, false);
     return res;
 }
 

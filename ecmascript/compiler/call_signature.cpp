@@ -961,11 +961,11 @@ DEF_CALL_SIGNATURE(JSOptimizedCall)
 
 DEF_CALL_SIGNATURE(JSOptimizedFastCall)
 {
-    // 6 : 6 input parameters
+    // 3 : 3 input parameters
     CallSignature jSCall("JSOptimizedFastCall", 0, 3,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = jSCall;
-    std::array<VariableType, 5> params = { // 5 : 5 input parameters
+    std::array<VariableType, 3> params = { // 3 : 3 input parameters
         VariableType::NATIVE_POINTER(),     // glue
         VariableType::JS_ANY(),      // call target
         VariableType::JS_ANY(),      // thisobj

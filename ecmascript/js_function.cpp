@@ -344,12 +344,34 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
         args[2] = thisArg.GetTaggedValue().GetRawData(); // 2: this
         // do not modify this log to INFO, this will call many times
         LOG_ECMA(DEBUG) << "start to execute aot entry: " << entryPoint;
-        res = thread->GetEcmaVM()->ExecuteAot(actualNumArgs, args.data(), prevFp);
+        res = thread->GetEcmaVM()->ExecuteAot(actualNumArgs, args.data(), prevFp, false);
     }
     if (thread->HasPendingException()) {
         return thread->GetException();
     }
     return res;
+}
+
+JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> func,
+    EcmaRuntimeCallInfo *info)
+{
+    Method *method = func->GetCallTarget();
+    JSTaggedValue resultValue;
+    uint32_t numArgs = method->GetNumArgsWithCallField();
+    bool needPushUndefined = numArgs > info->GetArgsNumber();
+    const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
+    if (method->IsFastCall()) {
+        if (needPushUndefined) {
+            info = EcmaInterpreter::ReBuildRuntimeCallInfo(thread, info, numArgs);
+        }
+        JSTaggedType *stackArgs = info->GetArgs();
+        stackArgs[1] = stackArgs[0];
+        resultValue = thread->GetEcmaVM()->FastCallAot(info->GetArgsNumber(), stackArgs + 1, prevFp);
+    } else {
+        resultValue = thread->GetEcmaVM()->ExecuteAot(info->GetArgsNumber(),
+                                                      info->GetArgs(), prevFp, needPushUndefined);
+    }
+    return resultValue;
 }
 
 // [[Construct]]
@@ -378,14 +400,7 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     info->SetThis(obj.GetTaggedValue());
     Method *method = func->GetCallTarget();
     if (method->IsAotWithCallField() && func->IsClassConstructor()) {
-        const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
-        if (method->IsFastCall()) {
-            JSTaggedType *stackArgs = info->GetArgs();
-            stackArgs[1] = stackArgs[0];
-            resultValue = thread->GetEcmaVM()->FastCallAot(info->GetArgsNumber(), stackArgs + 1, prevFp);
-        } else {
-            resultValue = thread->GetEcmaVM()->ExecuteAot(info->GetArgsNumber(), info->GetArgs(), prevFp);
-        }
+        resultValue = InvokeOptimizedEntrypoint(thread, func, info);
         const JSTaggedType *curSp = thread->GetCurrentSPFrame();
         InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(curSp);
         JSTaggedType *prevSp = entryState->base.prev;

@@ -530,7 +530,8 @@ public:
         return quickFixManager_;
     }
 
-    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp);
+    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
+        const JSTaggedType *prevFp, bool needPushUndefined);
 
     JSTaggedValue FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp);
 

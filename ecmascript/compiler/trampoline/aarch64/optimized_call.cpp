@@ -120,6 +120,7 @@ void OptimizedCall::IncreaseStackForArguments(ExtendedAssembler *assembler, Regi
 //        %x1 - actualNumArgs
 //        %x2 - argV
 //        %x3 - prevFp
+//        %x4 - needPushUndefined
 //
 // * The JSFunctionEntry Frame's structure is illustrated as the following:
 //          +--------------------------+
@@ -138,10 +139,14 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     Register glueReg(X0);
     Register argV(X2);
     Register prevFpReg(X3);
+    Register needPushUndefined(X4);
     Register sp(SP);
     Register tmpArgV(X7);
+    Label lJSCallWithArgVAndPushUndefined;
+    Label lPopFrame;
 
     PushJSFunctionEntryFrame (assembler, prevFpReg);
+    __ Mov(Register(X6), needPushUndefined);
     __ Mov(tmpArgV, argV);
     __ Mov(Register(X20), glueReg);
     __ Ldr(Register(X2), MemoryOperand(tmpArgV, 0));
@@ -149,8 +154,14 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     __ Ldr(Register(X4), MemoryOperand(tmpArgV, DOUBLE_SLOT_SIZE));
     __ Add(tmpArgV, tmpArgV, Immediate(TRIPLE_SLOT_SIZE));
     __ Mov(Register(X5), tmpArgV);
+    __ Cmp(Register(X6), Immediate(1));
+    __ B(Condition::EQ, &lJSCallWithArgVAndPushUndefined);
     __ CallAssemblerStub(RTSTUB_ID(JSCallWithArgV), false);
+    __ B(&lPopFrame);
 
+    __ Bind(&lJSCallWithArgVAndPushUndefined);
+    __ CallAssemblerStub(RTSTUB_ID(JSCallWithArgVAndPushUndefined), false);
+    __ Bind(&lPopFrame);
     __ Mov(Register(X2), Register(X20));
     PopJSFunctionEntryFrame(assembler, Register(X2));
     __ Ret();
@@ -643,7 +654,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     Register callField(X9);
     __ Ldr(Register(X8), MemoryOperand(boundTarget, JSFunction::METHOD_OFFSET));
     __ Ldr(callField, MemoryOperand(Register(X8), Method::CALL_FIELD_OFFSET));
-    __ Tbnz(callField, MethodLiteral::IsAotCodeBit::START_BIT, &aotCall);
+    __ Tbz(callField, MethodLiteral::IsAotCodeBit::START_BIT, &slowCall);
     __ Bind(&aotCall);
     {
         // output: glue:x0 argc:x1 calltarget:x2 argv:x3 this:x4 newtarget:x5
@@ -1114,7 +1125,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ Mov(runtimeId, Immediate(RTSTUB_ID(DeoptHandler)));
     __ Stp(runtimeId, argC, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
     __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
-    __ Add(sp, sp, Immediate(2 * DOUBLE_SLOT_SIZE)); // 4: skip runtimeId, argc, depth, shiftLen
+    __ Add(sp, sp, Immediate(2 * DOUBLE_SLOT_SIZE)); // 2: skip runtimeId, argc, depth, shiftLen
 
     __ CalleeRestore();
     Register context(X2);
