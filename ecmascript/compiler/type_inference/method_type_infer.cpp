@@ -1042,7 +1042,7 @@ bool MethodTypeInfer::InferLdExternalModuleVar(GateRef gate)
         }
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
         resolvedRecord = ModuleManager::GetRecordName(binding->GetModule());
-        resolvedIndex = binding->GetIndex();
+        resolvedIndex = static_cast<uint32_t>(binding->GetIndex());
         if (tsManager_->HasExportGT(jsPandaFile, resolvedRecord, resolvedIndex)) {
             return UpdateType(gate, tsManager_->GetGTFromModuleMap(jsPandaFile, resolvedRecord, resolvedIndex));
         }

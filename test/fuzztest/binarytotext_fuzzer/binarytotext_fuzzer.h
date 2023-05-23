@@ -13,17 +13,9 @@
  * limitations under the License.
  */
 
-import {a, b, module} from './module_test_module_test_B.js';
-import * as obj from './module_test_module_test_module.js';
+#ifndef BINARYTOTEXT_FUZZER_H
+#define BINARYTOTEXT_FUZZER_H
 
-let c = new obj.Test(obj.module);
+#define FUZZ_PROJECT_NAME "binarytotext_fuzzer"
 
-if (module === obj.module) {
-  print(module);
-}
-
-if (a > b) {
-  print('a > b');
-}
-
-export {b};
+#endif

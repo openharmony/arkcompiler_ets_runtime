@@ -61,7 +61,7 @@ static constexpr size_t FIVE_VALUE = 5;
 #undef DECLARE_CACHED_GATE_META
 
 #define DECLARE_LOAD_PROPERTY_META(NAME, OP, R, S, D, V)      \
-    LoadPropertyMetaData cached##NAME##_ { OpCode::OP, R, S, D, V };
+    LoadPropertyMetaData cached##NAME##_ { OpCode::(OP), R, S, D, V };
 #undef DECLARE_LOAD_PROPERTY_META
 
 #define DECLARE_CACHED_VALUE_META(VALUE)                                                        \

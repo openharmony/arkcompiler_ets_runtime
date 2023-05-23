@@ -525,7 +525,7 @@ HWTEST_F_L0(ConstantStringTest, SetIsInternString)
  * @tc.require:
  */
 HWTEST_F_L0(ConstantStringTest, EqualToSplicedString)
-{ 
+{
     uint8_t arrayU8[] = {"Startnow"};
     uint32_t srcLengthEcmaStrU8 = sizeof(arrayU8) - 1;
     JSHandle<EcmaString> sourceString(thread,

@@ -1114,7 +1114,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ Mov(runtimeId, Immediate(RTSTUB_ID(DeoptHandler)));
     __ Stp(runtimeId, argC, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
     __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
-    __ Add(sp, sp, Immediate(2 * DOUBLE_SLOT_SIZE)); // 4: skip runtimeId, argc, depth, shiftLen
+    __ Add(sp, sp, Immediate(2 * DOUBLE_SLOT_SIZE)); // 2: skip runtimeId, argc, depth, shiftLen
 
     __ CalleeRestore();
     Register context(X2);

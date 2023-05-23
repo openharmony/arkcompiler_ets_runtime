@@ -102,7 +102,7 @@ void IncrementalMarker::ProcessIncrementalMark(int64_t idleMicroSec)
         return;
     }
     LOG_GC(DEBUG) << "IncrementalMarker: Process Incremental Marking";
-    uint32_t markStepSize = idleMicroSec * markingSpeed_;
+    uint32_t markStepSize = static_cast<uint32_t>(idleMicroSec * markingSpeed_);
     heap_->GetNonMovableMarker()->ProcessIncrementalMarkStack(MAIN_THREAD_INDEX, markStepSize);
     if (markingFinished_) {
         states_ = IncrementalGCStates::REMARK;

@@ -219,7 +219,7 @@ RangeInfo RangeAnalysis::TryGetRangeOfBranch(GateRef state, GateRef value)
     // flag = !(jnez ^ if_false) = jnez ^ if_true
     bool flag = acc_.GetOpCode(state) == OpCode::IF_TRUE;
     if (acc_.GetOpCode(jmp) == OpCode::TYPED_CONDITION_JUMP) {
-        flag ^= acc_.GetTypedJumpAccessor(jmp).GetTypedJumpOp() == TypedJumpOp::TYPED_JNEZ;
+        flag = flag != (acc_.GetTypedJumpAccessor(jmp).GetTypedJumpOp() == TypedJumpOp::TYPED_JNEZ);
     }
     return range.intersection(GetRangeOfCompare(condition, value, flag));
 }

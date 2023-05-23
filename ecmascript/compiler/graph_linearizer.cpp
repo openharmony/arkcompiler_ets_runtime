@@ -200,7 +200,7 @@ public:
             auto dominatedRegion = regionList[index];
             auto domIndex = dfsList_[immDom_[i]];
             auto immDomRegion = regionList[domIndex];
-            immDomRegion->depth_ = immDom_[i];
+            immDomRegion->depth_ = static_cast<int32_t>(immDom_[i]);
             dominatedRegion->iDominator_ = immDomRegion;
             immDomRegion->dominatedRegions_.emplace_back(dominatedRegion);
         }

@@ -92,7 +92,7 @@ void SubtypingOperator::MergeClassField(const JSThread *thread, const JSHandle<T
 
     uint32_t numSelfTypes = layout->GetNumOfProperties();
     uint32_t numExtendTypes = eLayout->GetNumOfProperties();
-    uint32_t numTypes = numTypes = numSelfTypes + numExtendTypes;
+    uint32_t numTypes = numSelfTypes + numExtendTypes;
     JSHandle<TSObjLayoutInfo> newLayout = factory->CreateTSObjLayoutInfo(numTypes);
 
     for (uint32_t index = 0; index < numExtendTypes; index++) {

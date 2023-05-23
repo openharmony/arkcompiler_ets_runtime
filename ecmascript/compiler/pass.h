@@ -399,7 +399,7 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         StateSplitLinearizer(data->GetCircuit(), data->GetCompilerConfig(),
-                             enableLog, data->GetMethodName(), &chunk).Run();
+            enableLog, data->GetMethodName(), &chunk).Run();
         return true;
     }
 };

@@ -183,7 +183,7 @@ public:
         if (rhs.max_ != rhs.min_) {
             return true;
         }
-        return ((rhs.max_ & 0x1f) == 0) && (min_< 0);   // 0x1f : shift bits
+        return ((static_cast<uint32_t>(rhs.max_) & 0x1f) == 0) && (min_< 0);   // 0x1f : shift bits
     }
 
     RangeInfo SHR(const RangeInfo &rhs) const

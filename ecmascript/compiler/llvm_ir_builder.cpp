@@ -1460,7 +1460,7 @@ LLVMTypeRef LLVMIRBuilder::ConvertLLVMTypeFromGate(GateRef gate) const
 {
     if (acc_.IsGCRelated(gate)) {
         if (compCfg_->Is32Bit()) {
-            return LLVMVectorType(LLVMPointerType(LLVMInt8TypeInContext(context_), 1), 2);
+            return LLVMVectorType(LLVMPointerType(LLVMInt8TypeInContext(context_), 1), 2); // 2: packed vector type
         } else {
             return LLVMPointerType(LLVMInt64TypeInContext(context_), 1);
         }
@@ -2233,8 +2233,8 @@ LLVMValueRef LLVMModule::GetDeoptFunction()
 void LLVMIRBuilder::GenDeoptEntry(LLVMModuleRef &module)
 {
     // glue type depth
-    std::vector<LLVMTypeRef> paramTys =
-        {LLVMInt64TypeInContext(context_), LLVMInt64TypeInContext(context_), LLVMInt64TypeInContext(context_)};
+    std::vector<LLVMTypeRef> paramTys = {
+        LLVMInt64TypeInContext(context_), LLVMInt64TypeInContext(context_), LLVMInt64TypeInContext(context_)};
     auto funcType = LLVMFunctionType(LLVMInt64TypeInContext(context_), paramTys.data(),  paramTys.size(), 0);
     auto function = LLVMAddFunction(module, Deoptimizier::GetLLVMDeoptRelocateSymbol(), funcType);
     LLVMSetFunctionCallConv(function, LLVMCCallConv);
