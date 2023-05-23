@@ -364,31 +364,33 @@ void TypeMCRLowering::LowerTypeConvert(GateRef gate)
 
 void TypeMCRLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType)
 {
-    Label exit(&builder_);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     if (srcType.IsBooleanType()) {
+        Label exit(&builder_);
         Label isTrue(&builder_);
         Label isFalse(&builder_);
         builder_.Branch(builder_.TaggedIsTrue(src), &isTrue, &isFalse);
         builder_.Bind(&isTrue);
-        result = IntToTaggedIntPtr(builder_.Int32(1));
-        builder_.Jump(&exit);
+        {
+            result = IntToTaggedIntPtr(builder_.Int32(1));
+            builder_.Jump(&exit);
+        }
         builder_.Bind(&isFalse);
-        result = IntToTaggedIntPtr(builder_.Int32(0));
-        builder_.Jump(&exit);
+        {
+            result = IntToTaggedIntPtr(builder_.Int32(0));
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&exit);
     } else if (srcType.IsUndefinedType()) {
         result = DoubleToTaggedDoublePtr(builder_.Double(base::NAN_VALUE));
     } else if (srcType.IsBigIntType() || srcType.IsNumberType()) {
         result = src;
-        builder_.Jump(&exit);
     } else if (srcType.IsNullType()) {
         result = IntToTaggedIntPtr(builder_.Int32(0));
-        builder_.Jump(&exit);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
-    builder_.Bind(&exit);
     acc_.ReplaceGate(dst, builder_.GetState(), builder_.GetDepend(), *result);
 }
 

@@ -589,10 +589,11 @@ private:
                                                        bool excuteFromJob = false);
 
     JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
-                                          const JSPandaFile *jsPandaFile, std::string_view entryPoint);
+                                          const JSPandaFile *jsPandaFile, std::string_view entryPoint,
+                                          CJSInfo* cjsInfo = nullptr);
 
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
-                      const JSPandaFile *jsPandaFile);
+                      const JSPandaFile *jsPandaFile, std::string_view entryPoint);
 
     void InitializeEcmaScriptRunStat();
 

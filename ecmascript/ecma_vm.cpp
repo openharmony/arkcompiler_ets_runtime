@@ -425,10 +425,11 @@ JSHandle<job::MicroJobQueue> EcmaVM::GetMicroJobQueue() const
 }
 
 JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
-                                              const JSPandaFile *jsPandaFile, std::string_view entryPoint)
+                                              const JSPandaFile *jsPandaFile, std::string_view entryPoint,
+                                              CJSInfo* cjsInfo)
 {
     aotFileManager_->SetAOTMainFuncEntry(mainFunc, jsPandaFile, entryPoint);
-    return JSFunction::InvokeOptimizedEntrypoint(thread_, mainFunc, thisArg, entryPoint);
+    return JSFunction::InvokeOptimizedEntrypoint(thread_, mainFunc, thisArg, entryPoint, cjsInfo);
 }
 
 JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp)
@@ -505,14 +506,14 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
     CheckStartCpuProfiler();
 
     JSTaggedValue result;
-    if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
-        EcmaRuntimeStatScope runtimeStatScope(this);
-        result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
-    } else {
-        if (jsPandaFile->IsCjs(thread_, entryPoint.data())) {
+    if (jsPandaFile->IsCjs(thread_, entryPoint.data())) {
             if (!thread_->HasPendingException()) {
-                CJSExecution(func, global, jsPandaFile);
+                CJSExecution(func, global, jsPandaFile, entryPoint);
             }
+    } else {
+        if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
+            EcmaRuntimeStatScope runtimeStatScope(this);
+            result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
         } else {
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
@@ -595,7 +596,7 @@ void EcmaVM::CreateAllConstpool(const JSPandaFile *jsPandaFile)
 }
 
 void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
-                          const JSPandaFile *jsPandaFile)
+                          const JSPandaFile *jsPandaFile, std::string_view entryPoint)
 {
     // create "module", "exports", "require", "filename", "dirname"
     JSHandle<CjsModule> module = factory_->NewCjsModule();
@@ -612,25 +613,29 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
     }
     CJSInfo cjsInfo(module, require, exports, filename, dirname);
     RequireManager::InitializeCommonJS(thread_, cjsInfo);
-
-    // Execute main function
-    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread_,
-                                            JSHandle<JSTaggedValue>(func),
-                                            thisArg, undefined, 5); // 5 : argument numbers
-    RETURN_IF_ABRUPT_COMPLETION(thread_);
-    if (info == nullptr) {
-        LOG_ECMA(ERROR) << "CJSExecution Stack overflow!";
-        return;
-    }
-    info->SetCallArg(cjsInfo.exportsHdl.GetTaggedValue(),
+    if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
+        EcmaRuntimeStatScope runtimeStateScope(this);
+        InvokeEcmaAotEntrypoint(func, thisArg, jsPandaFile, entryPoint, &cjsInfo);
+    } else {
+        // Execute main function
+        JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread_,
+                                                JSHandle<JSTaggedValue>(func),
+                                                thisArg, undefined, 5); // 5 : argument numbers
+        RETURN_IF_ABRUPT_COMPLETION(thread_);
+        if (info == nullptr) {
+            LOG_ECMA(ERROR) << "CJSExecution Stack overflow!";
+            return;
+        }
+        info->SetCallArg(cjsInfo.exportsHdl.GetTaggedValue(),
                      cjsInfo.requireHdl.GetTaggedValue(),
                      cjsInfo.moduleHdl.GetTaggedValue(),
                      cjsInfo.filenameHdl.GetTaggedValue(),
                      cjsInfo.dirnameHdl.GetTaggedValue());
-    EcmaRuntimeStatScope runtimeStatScope(this);
-    EcmaInterpreter::Execute(info);
+        EcmaRuntimeStatScope runtimeStatScope(this);
+        EcmaInterpreter::Execute(info);
+    }
     if (!thread_->HasPendingException()) {
         job::MicroJobQueue::ExecutePendingJob(thread_, GetMicroJobQueue());
     }

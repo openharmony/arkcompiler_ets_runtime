@@ -326,7 +326,12 @@ template("host_aot_js_test_action") {
   _test_expect_path_ = "./expect_output.txt"
 
   is_enable_ts2abc = false
-
+  if (defined(invoker.is_common_js) && invoker.is_common_js) {
+    extra_args = [ "--commonjs" ]
+  } else {
+    extra_args = [ "--module" ]
+  }
+  extra_args += [ "--merge-abc" ]
   if (is_enable_ts2abc) {
     ts2abc_gen_abc("gen_${_target_name_}_abc") {
       extra_visibility =
@@ -334,10 +339,6 @@ template("host_aot_js_test_action") {
       extra_dependencies = _deps_
       src_js = rebase_path(_test_ts_path_)
       dst_file = rebase_path(_test_abc_path_)
-      extra_args = [
-        "--merge-abc",
-        "--module",
-      ]
 
       in_puts = [
         _test_ts_path_,
@@ -357,10 +358,6 @@ template("host_aot_js_test_action") {
         src_js = rebase_path(_test_ts_path_)
       }
       dst_file = rebase_path(_test_abc_path_)
-      extra_args = [
-        "--merge-abc",
-        "--module",
-      ]
 
       in_puts = [
         _test_ts_path_,
