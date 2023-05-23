@@ -86,19 +86,10 @@ class QuickFixManager;
 class ConstantPool;
 class FunctionCallTimer;
 
-// enum class IcuFormatterType {
-//     SIMPLE_DATE_FORMAT_DEFAULT,
-//     SIMPLE_DATE_FORMAT_DATE,
-//     SIMPLE_DATE_FORMAT_TIME,
-//     NUMBER_FORMATTER,
-//     COLLATOR
-// };
-
 using NativePtrGetter = void* (*)(void* info);
 
 using ResolvePathCallback = std::function<std::string(std::string dirPath, std::string requestPath)>;
 using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath)>;
-// using IcuDeleteEntry = void(*)(void *pointer, void *data);
 
 class EcmaVM {
 public:
@@ -187,16 +178,8 @@ public:
     void RemoveFromNativePointerList(JSNativePointer *array);
 
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
-    JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
+    JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;   
     void EnableUserUncaughtErrorHandler();
-
-    EcmaRuntimeStat *GetRuntimeStat() const
-    {
-        return runtimeStat_;
-    }
-
-    void SetRuntimeStatEnable(bool flag);
-
     bool IsOptionalLogEnabled() const
     {
         return optionalLogEnabled_;
@@ -230,11 +213,6 @@ public:
     }
     void ProcessNativeDelete(const WeakRootVisitor &visitor);
     void ProcessReferences(const WeakRootVisitor &visitor);
-
-    AOTFileManager *GetAOTFileManager() const
-    {
-        return aotFileManager_;
-    }
 
     SnapshotEnv *GetSnapshotEnv() const
     {
@@ -426,9 +404,6 @@ public:
         return quickFixManager_;
     }
 
-    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
-        const JSTaggedType *prevFp, bool needPushUndefined);
-
     JSTaggedValue FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp);
 
     void HandleUncaughtException(JSTaggedValue exception);
@@ -442,32 +417,21 @@ public:
 
 
     void SetGlobalEnv(GlobalEnv *global);
-    void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
-                      const JSPandaFile *jsPandaFile);
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
 
 private:
-    JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
-                                          const JSPandaFile *jsPandaFile, std::string_view entryPoint,
-                                          CJSInfo* cjsInfo = nullptr);
-
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
 
-    void InitializeEcmaScriptRunStat();
-
     void ClearBufferData();
-
-    bool LoadAOTFiles(const std::string& aotFileName);
-    void LoadStubFile();
     void CheckStartCpuProfiler();
 
     // For Internal Native MethodLiteral.
     void GenerateInternalNativeMethods();
 
-    NO_MOVE_SEMANTIC(EcmaVM);
+    NO_MOVE_SEMANTIC(EcmaVM);       
     NO_COPY_SEMANTIC(EcmaVM);
 
     // VM startup states.
@@ -484,14 +448,12 @@ private:
     CList<JSNativePointer *> nativePointerList_;
     // VM execution states.
     JSThread *thread_ {nullptr};
-    EcmaRuntimeStat *runtimeStat_ {nullptr};
 
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
 
     // VM resources.
     SnapshotEnv *snapshotEnv_ {nullptr};
     bool optionalLogEnabled_ {false};
-    AOTFileManager *aotFileManager_ {nullptr};
 
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};

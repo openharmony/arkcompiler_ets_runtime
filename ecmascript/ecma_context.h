@@ -20,8 +20,9 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
 #include "ecmascript/frames.h"
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_handle.h"
+// #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/visitor.h"
@@ -38,6 +39,7 @@ class File;
 namespace ecmascript {
 class GlobalEnv;
 class ObjectFactory;
+class EcmaRuntimeStat;
 class RegExpParserCache;
 class JSPandaFileManager;
 class JSPandaFile;
@@ -45,6 +47,7 @@ class EcmaStringTable;
 class ConstantPool;
 class JSPromise;
 class RegExpExecResultCache;
+class EcmaHandleScope;
 enum class PromiseRejectionEvent : uint8_t;
 
 template<typename T>
@@ -209,7 +212,8 @@ public:
     void CreateAllConstpool(const JSPandaFile *jsPandaFile);
 
     void HandleUncaughtException(JSTaggedValue exception);
-
+    void ProcessNativeDelete(const WeakRootVisitor &visitor);
+    void ProcessReferences(const WeakRootVisitor &visitor);
     JSHandle<GlobalEnv> GetGlobalEnv() const;
     JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
 
@@ -257,12 +261,104 @@ public:
             iter->second = EcmaContext::IcuFormatter{};
             iter++;
         }
-    }  
-private:
+    }
+    AOTFileManager *GetAOTFileManager() const
+    {
+        return aotFileManager_;
+    }
+    EcmaRuntimeStat *GetRuntimeStat() const
+    {
+        return runtimeStat_;
+    }
+    void SetRuntimeStatEnable(bool flag);
+    void InitializeEcmaScriptRunStat();
+    void DumpAOTInfo() const DUMP_API_ATTR;
+
+    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
+                             OptimizedEntryFrame::CallType callType);
+    void LoadStubFile();
+
+    JSTaggedType *GetHandleScopeStorageNext() const
+    {
+        return handleScopeStorageNext_;
+    }
+
+    void SetHandleScopeStorageNext(JSTaggedType *value)
+    {
+        handleScopeStorageNext_ = value;
+    }
+
+    JSTaggedType *GetHandleScopeStorageEnd() const
+    {
+        return handleScopeStorageEnd_;
+    }
+
+    void SetHandleScopeStorageEnd(JSTaggedType *value)
+    {
+        handleScopeStorageEnd_ = value;
+    }
+
+    int GetCurrentHandleStorageIndex() const
+    {
+        return currentHandleStorageIndex_;
+    }
+
+    void HandleScopeCountAdd()
+    {
+        handleScopeCount_++;
+    }
+
+    void HandleScopeCountDec()
+    {
+        handleScopeCount_--;
+    }
+
+    void SetLastHandleScope(EcmaHandleScope *scope)
+    {
+        lastHandleScope_ = scope;
+    }
+
+    EcmaHandleScope *GetLastHandleScope() const
+    {
+        return lastHandleScope_;
+    }
+    size_t IterateHandle(const RootRangeVisitor &rangeVisitor);
+    uintptr_t *ExpandHandleStorage();
+    void ShrinkHandleStorage(int prevIndex);
+    JSTaggedType *GetCurrentFrame() const
+    {
+        return currentFrame_;
+    }
+
+    JSTaggedType *GetLeaveFrame() const
+    {
+        return leaveFrame_;
+    }
+
+    JSTaggedType *GetLastFp() const
+    {
+        return lastFp_;
+    }
+
+    void SetFramePointers(JSTaggedType *currentFrame, JSTaggedType *leaveFrame, JSTaggedType *lastFp)
+    {
+        currentFrame_ = currentFrame;
+        leaveFrame_ = leaveFrame;
+        lastFp_ = lastFp;
+    }
+
+    PropertiesCache *GetPropertiesCache() const
+    {
+        return propertiesCache_;
+    }
+
     void ClearBufferData();
+private:
+    JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
+                                          const JSPandaFile *jsPandaFile, std::string_view entryPoint);    
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                                        bool excuteFromJob = false);
-
+    bool LoadAOTFiles(const std::string& aotFileName);
     NO_MOVE_SEMANTIC(EcmaContext);
     NO_COPY_SEMANTIC(EcmaContext);
 
@@ -279,12 +375,13 @@ private:
 
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
 
+    EcmaRuntimeStat *runtimeStat_ {nullptr};
     // VM execution states.
     RegExpParserCache *regExpParserCache_ {nullptr};
     JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
-    CString assetPath_;
 
+    AOTFileManager *aotFileManager_ {nullptr};
     // VM resources.
     TSManager *tsManager_ {nullptr};
 
@@ -313,9 +410,25 @@ private:
     std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
     void *loop_ {nullptr};
 
+    static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
+    static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;
+    static constexpr int32_t MIN_HANDLE_STORAGE_SIZE = 2;
+    JSTaggedType *handleScopeStorageNext_ {nullptr};
+    JSTaggedType *handleScopeStorageEnd_ {nullptr};
+    std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> handleStorageNodes_ {};
+    int32_t currentHandleStorageIndex_ {-1};
+    int32_t handleScopeCount_ {0};
+    EcmaHandleScope *lastHandleScope_ {nullptr};
+    JSTaggedType *currentFrame_ {nullptr};
+    JSTaggedType *leaveFrame_ {nullptr};
+    JSTaggedType *lastFp_ {nullptr};
+    PropertiesCache *propertiesCache_ {nullptr};
+
+    friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;
     friend class ObjectFactory;
     friend class panda::JSNApi;
+    friend class AOTFileManager;
 };
 }  // namespace ecmascript
 }  // namespace panda

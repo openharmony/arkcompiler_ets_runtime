@@ -203,12 +203,12 @@ void DFXJSNApi::PrintStatisticResult(const EcmaVM *vm)
 
 void DFXJSNApi::StartRuntimeStat(EcmaVM *vm)
 {
-    vm->SetRuntimeStatEnable(true);
+    vm->GetJSThread()->GetCurrentEcmaContext()->SetRuntimeStatEnable(true);
 }
 
 void DFXJSNApi::StopRuntimeStat(EcmaVM *vm)
 {
-    vm->SetRuntimeStatEnable(false);
+    vm->GetJSThread()->GetCurrentEcmaContext()->SetRuntimeStatEnable(false);
 }
 
 size_t DFXJSNApi::GetArrayBufferSize(const EcmaVM *vm)

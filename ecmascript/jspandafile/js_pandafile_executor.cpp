@@ -219,11 +219,11 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
 void JSPandaFileExecutor::LoadAOTFilesForFile(EcmaVM *vm, JSPandaFile *jsPandaFile)
 {
     if (vm->GetJSOptions().GetEnableAsmInterpreter()) {
-        auto aotFM = vm->GetAOTFileManager();
+        auto aotFM = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
         if (vm->GetJSOptions().WasAOTOutputFileSet()) {
             AnFileDataManager::GetInstance()->SetEnable(true);
             std::string aotFilename = vm->GetJSOptions().GetAOTOutputFile();
-            vm->LoadAOTFiles(aotFilename);
+            vm->GetJSThread()->GetCurrentEcmaContext()->LoadAOTFiles(aotFilename);
         }
         if (aotFM->IsLoad(jsPandaFile)) {
             uint32_t index = aotFM->GetAnFileIndex(jsPandaFile);

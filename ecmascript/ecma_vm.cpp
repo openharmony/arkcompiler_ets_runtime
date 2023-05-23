@@ -112,7 +112,7 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &
     auto jsThread = JSThread::Create(vm);
     vm->thread_ = jsThread;
     vm->Initialize();
-    JsStackInfo::loader = vm->GetAOTFileManager();
+    JsStackInfo::loader = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
 #if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     if (SetThreadInfoCallback != nullptr) {
         SetThreadInfoCallback(CrashCallback);
@@ -215,9 +215,8 @@ bool EcmaVM::Initialize()
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Initialize();
     }
-    aotFileManager_ = new AOTFileManager(this);
     if (options_.GetEnableAsmInterpreter()) {
-        LoadStubFile();
+        thread_->GetCurrentEcmaContext()->LoadStubFile();
     }
 
     // optCodeProfiler_ = new OptCodeProfiler();
@@ -227,57 +226,6 @@ bool EcmaVM::Initialize()
     thread_->PushContext(context);
     initialized_ = true;
     return true;
-}
-
-void EcmaVM::InitializeEcmaScriptRunStat()
-{
-    // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-    static const char *runtimeCallerNames[] = {
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define INTERPRETER_CALLER_NAME(name) "Interpreter::" #name,
-    INTERPRETER_CALLER_LIST(INTERPRETER_CALLER_NAME)  // NOLINTNEXTLINE(bugprone-suspicious-missing-comma)
-#undef INTERPRETER_CALLER_NAME
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define BUILTINS_API_NAME(class, name) "BuiltinsApi::" #class "_" #name,
-    BUILTINS_API_LIST(BUILTINS_API_NAME)
-#undef BUILTINS_API_NAME
-#define ABSTRACT_OPERATION_NAME(class, name) "AbstractOperation::" #class "_" #name,
-    ABSTRACT_OPERATION_LIST(ABSTRACT_OPERATION_NAME)
-#undef ABSTRACT_OPERATION_NAME
-#define MEM_ALLOCATE_AND_GC_NAME(name) "Memory::" #name,
-    MEM_ALLOCATE_AND_GC_LIST(MEM_ALLOCATE_AND_GC_NAME)
-#undef MEM_ALLOCATE_AND_GC_NAME
-#define DEF_RUNTIME_ID(name) "Runtime::" #name,
-    RUNTIME_STUB_WITH_GC_LIST(DEF_RUNTIME_ID)
-#undef DEF_RUNTIME_ID
-    };
-    static_assert(sizeof(runtimeCallerNames) == sizeof(const char *) * ecmascript::RUNTIME_CALLER_NUMBER,
-                  "Invalid runtime caller number");
-    runtimeStat_ = chunk_.New<EcmaRuntimeStat>(runtimeCallerNames, ecmascript::RUNTIME_CALLER_NUMBER);
-    if (UNLIKELY(runtimeStat_ == nullptr)) {
-        LOG_FULL(FATAL) << "alloc runtimeStat_ failed";
-        UNREACHABLE();
-    }
-}
-
-void EcmaVM::SetRuntimeStatEnable(bool flag)
-{
-    static uint64_t start = 0;
-    if (flag) {
-        start = PandaRuntimeTimer::Now();
-        if (runtimeStat_ == nullptr) {
-            InitializeEcmaScriptRunStat();
-        }
-    } else {
-        LOG_ECMA(INFO) << "Runtime State duration:" << PandaRuntimeTimer::Now() - start << "(ns)";
-        if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
-            runtimeStat_->Print();
-            runtimeStat_->ResetAllCount();
-        }
-    }
-    if (runtimeStat_ != nullptr) {
-        runtimeStat_->SetRuntimeStatEnabled(flag);
-    }
 }
 
 EcmaVM::~EcmaVM()
@@ -334,11 +282,6 @@ EcmaVM::~EcmaVM()
         factory_ = nullptr;
     }
 
-    if (runtimeStat_ != nullptr) {
-        chunk_.Delete(runtimeStat_);
-        runtimeStat_ = nullptr;
-    }
-
     if (quickFixManager_ != nullptr) {
         delete quickFixManager_;
         quickFixManager_ = nullptr;
@@ -347,11 +290,6 @@ EcmaVM::~EcmaVM()
     if (snapshotEnv_ != nullptr) {
         delete snapshotEnv_;
         snapshotEnv_ = nullptr;
-    }
-
-    if (aotFileManager_ != nullptr) {
-        delete aotFileManager_;
-        aotFileManager_ = nullptr;
     }
 
     if (callTimer_ != nullptr) {
@@ -373,13 +311,6 @@ void EcmaVM::SetGlobalEnv(GlobalEnv *global)
 {
     thread_->GetCurrentEcmaContext()->SetGlobalEnv(global);
 }
-JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
-                                              const JSPandaFile *jsPandaFile, std::string_view entryPoint,
-                                              CJSInfo* cjsInfo)
-{
-    aotFileManager_->SetAOTMainFuncEntry(mainFunc, jsPandaFile, entryPoint);
-    return JSFunction::InvokeOptimizedEntrypoint(thread_, mainFunc, thisArg, entryPoint, cjsInfo);
-}
 
 JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp)
 {
@@ -391,21 +322,6 @@ JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, cons
                                                              actualNumArgs,
                                                              args,
                                                              reinterpret_cast<uintptr_t>(prevFp));
-    return res;
-}
-
-JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
-    const JSTaggedType *prevFp, bool needPushUndefined)
-{
-    INTERPRETER_TRACE(thread_, ExecuteAot);
-    auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
-    // do not modify this log to INFO, this will call many times
-    LOG_ECMA(DEBUG) << "start to execute aot entry: " << (void*)entry;
-    auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
-                                                            actualNumArgs,
-                                                            args,
-                                                            reinterpret_cast<uintptr_t>(prevFp),
-                                                            needPushUndefined);
     return res;
 }
 
@@ -734,7 +650,6 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
     rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&internalNativeMethods_.front())),
         ObjectSlot(ToUintPtr(&internalNativeMethods_.back()) + JSTaggedValue::TaggedTypeSize()));
-    aotFileManager_->Iterate(v);
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
     }
@@ -745,35 +660,6 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     for (EcmaContext *context : contexts_) {
         context->Iterate(v, rv);
     }
-}
-
-void EcmaVM::LoadStubFile()
-{
-    std::string stubFile = options_.GetStubFile();
-    aotFileManager_->LoadStubFile(stubFile);
-}
-
-bool EcmaVM::LoadAOTFiles(const std::string& aotFileName)
-{
-    std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
-    if (!aotFileManager_->LoadAnFile(anFile)) {
-        LOG_ECMA(ERROR) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";
-        ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
-        return false;
-    }
-
-    std::string aiFile = aotFileName + AOTFileManager::FILE_EXTENSION_AI;
-    if (!aotFileManager_->LoadAiFile(aiFile)) {
-        LOG_ECMA(ERROR) << "Load " << aiFile << " failed. Destroy aot data and rollback to interpreter";
-        ecmascript::AnFileDataManager::GetInstance()->SafeDestroyAnData(anFile);
-        return false;
-    }
-    return true;
-}
-
-void EcmaVM::DumpAOTInfo() const
-{
-    aotFileManager_->DumpAOTInfo();
 }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)

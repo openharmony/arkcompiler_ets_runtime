@@ -514,7 +514,7 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
     std::string aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir();
     aotFileName += moduleName;
     LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
-    vm->LoadAOTFiles(aotFileName);
+    vm->GetJSThread()->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
 }
 
 bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)
