@@ -887,7 +887,7 @@ void TSHCRLowering::LowerTypedCallArg0(GateRef gate)
     if (len != 0) {
         return;
     }
-    GateRef actualArgc = builder_.Int32(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARG0_IMM8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
@@ -915,7 +915,7 @@ void TSHCRLowering::LowerTypedCallArg1(GateRef gate)
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, func, a0Value, id);
     } else {
-        GateRef actualArgc = builder_.Int32(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+        GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
             EcmaOpcode::CALLARG1_IMM8_V8));
         GateRef newTarget = builder_.Undefined();
         GateRef thisObj = builder_.Undefined();
@@ -937,7 +937,7 @@ void TSHCRLowering::LowerTypedCallArg2(GateRef gate)
     if (len != 2) { // 2: 2 params
         return;
     }
-    GateRef actualArgc = builder_.Int32(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARGS2_IMM8_V8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
@@ -960,7 +960,7 @@ void TSHCRLowering::LowerTypedCallArg3(GateRef gate)
     if (len != 3) { // 3: 3 params
         return;
     }
-    GateRef actualArgc = builder_.Int32(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
@@ -977,7 +977,7 @@ void TSHCRLowering::LowerTypedCallrange(GateRef gate)
     std::vector<GateRef> vec;
     std::vector<GateRef> vec1;
     size_t numArgs = acc_.GetNumValueIn(gate);
-    GateRef actualArgc = builder_.Int32(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLRANGE_IMM8_IMM8_V8));
     const size_t callTargetIndex = 1; // acc
     size_t argc = numArgs - callTargetIndex;
@@ -1062,7 +1062,7 @@ void TSHCRLowering::LowerTypedCallthis0(GateRef gate)
     if (!CanOptimizeAsFastCall(func, 0)) {
         return;
     }
-    GateRef actualArgc = builder_.Int32(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHIS0_IMM8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
@@ -1092,7 +1092,7 @@ void TSHCRLowering::LowerTypedCallthis1(GateRef gate)
             return;
         }
         GateType funcType = acc_.GetGateType(func);
-        GateRef actualArgc = builder_.Int32(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+        GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
             EcmaOpcode::CALLTHIS1_IMM8_V8_V8));
         GateRef newTarget = builder_.Undefined();
         GlobalTSTypeRef funcGt = funcType.GetGTRef();
@@ -1112,7 +1112,7 @@ void TSHCRLowering::LowerTypedCallthis2(GateRef gate)
     }
     GateType funcType = acc_.GetGateType(func);
 
-    GateRef actualArgc = builder_.Int32(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
@@ -1135,7 +1135,7 @@ void TSHCRLowering::LowerTypedCallthis3(GateRef gate)
     }
     GateType funcType = acc_.GetGateType(func);
 
-    GateRef actualArgc = builder_.Int32(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8));
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
@@ -1156,7 +1156,7 @@ void TSHCRLowering::LowerTypedCallthisrange(GateRef gate)
     size_t fixedInputsNum = 1;
     ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
     size_t numIns = acc_.GetNumValueIn(gate);
-    GateRef actualArgc = builder_.Int32(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+    GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8));
     const size_t callTargetIndex = 1;  // 1: acc
     GateRef func = acc_.GetValueIn(gate, numIns - callTargetIndex); // acc
