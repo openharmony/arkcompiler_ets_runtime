@@ -37,6 +37,7 @@ namespace panda::ecmascript::x64 {
 //        %rsi - actualNumArgs
 //        %rdx - argV
 //        %rcx - prevFp
+//        %r8 - needPushUndefined
 //
 // * The JSFunctionEntry Frame's structure is illustrated as the following:
 //          +--------------------------+
@@ -55,16 +56,26 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     Register glueReg = rdi;
     Register argv = rdx;
     Register prevFpReg = rcx;
-
+    Register needPushUndefined = r8;
+    Label lJSCallWithArgVAndPushUndefined;
+    Label lPopFrame;
     PushJSFunctionEntryFrame(assembler, prevFpReg);
     __ Movq(argv, rbx);
+    __ Movq(needPushUndefined, r12);
     __ Movq(Operand(rbx, 0), rdx);
     __ Movq(Operand(rbx, FRAME_SLOT_SIZE), rcx);
     __ Movq(Operand(rbx, DOUBLE_SLOT_SIZE), r8);
     __ Addq(TRIPLE_SLOT_SIZE, rbx);
     __ Movq(rbx, r9);
+    __ Cmp(1, r12);
+    __ Je(&lJSCallWithArgVAndPushUndefined);
     __ CallAssemblerStub(RTSTUB_ID(JSCallWithArgV), false);
+    __ Jmp(&lPopFrame);
 
+    __ Bind(&lJSCallWithArgVAndPushUndefined);
+    __ CallAssemblerStub(RTSTUB_ID(JSCallWithArgVAndPushUndefined), false);
+
+    __ Bind(&lPopFrame);
     __ Popq(prevFpReg);
     __ Addq(FRAME_SLOT_SIZE, rsp); // 8: frame type
     __ Popq(rbp);
@@ -625,6 +636,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         __ Pushq(r10); // push actual arguments
     }
     JSCallCheck(assembler, rax, &slowCall, &slowCall, &isJsFunc); // jsfunc -> rsi hclassfiled -> rax
+    __ Jmp(&slowCall);
     Register jsfunc = rsi;
     Register methodCallField = rcx;
     Register method = rdx;
@@ -635,7 +647,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         __ Mov(Operand(rsi, JSFunctionBase::METHOD_OFFSET), method); // get method
         __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
         __ Btq(MethodLiteral::IsAotCodeBit::START_BIT, methodCallField); // is aot
-        __ Jb(&aotCall);
+        __ Jnb(&slowCall);
         __ Bind(&aotCall);
         {
             // output: glue:rdi argc:rsi calltarget:rdx argv:rcx this:r8 newtarget:r9

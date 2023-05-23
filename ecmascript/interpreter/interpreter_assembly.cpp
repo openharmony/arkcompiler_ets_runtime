@@ -233,16 +233,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
             }
             return thread->GetException();
         }
-        const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
-        JSTaggedValue res;
-        if (method->IsFastCall()) {
-            JSTaggedType *stackArgs = info->GetArgs();
-            stackArgs[1] = stackArgs[0];
-            res = thread->GetEcmaVM()->FastCallAot(argc, stackArgs + 1, prevFp);
-        } else {
-            res = thread->GetEcmaVM()->ExecuteAot(argc, info->GetArgs(), prevFp);
-        }
-
+        JSTaggedValue res = JSFunction::InvokeOptimizedEntrypoint(thread, func, info);
         const JSTaggedType *curSp = thread->GetCurrentSPFrame();
         InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(curSp);
         JSTaggedType *prevSp = entryState->base.prev;

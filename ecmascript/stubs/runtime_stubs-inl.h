@@ -2463,7 +2463,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
 
     uint32_t preArgsSize = preArgs->IsUndefined() ? 0 : JSHandle<TaggedArray>::Cast(preArgs)->GetLength();
     const uint32_t argsCount = args->GetLength();
-    const uint32_t size = preArgsSize + argsCount;
+    uint32_t size = preArgsSize + argsCount;
     CVector<JSTaggedType> values;
     Method *method = ctor->GetCallTarget();
     bool isAotMethod = method->IsAotWithCallField();
@@ -2498,11 +2498,20 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
     }
     JSTaggedValue resultValue;
     if (isAotMethod && ctor->IsClassConstructor()) {
+        uint32_t numArgs = ctor->GetCallTarget()->GetNumArgsWithCallField();
+        bool needPushUndefined = numArgs > size;
         const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
         if (ctor->GetCallTarget()->IsFastCall()) {
+            if (needPushUndefined) {
+                values.reserve(numArgs + NUM_MANDATORY_JSFUNC_ARGS - 1);
+                for (uint32_t i = size; i < numArgs; i++) {
+                    values.emplace_back(JSTaggedValue::VALUE_UNDEFINED);
+                }
+                size = numArgs;
+            }
             resultValue = thread->GetEcmaVM()->FastCallAot(size, values.data(), prevFp);
         } else {
-            resultValue = thread->GetEcmaVM()->ExecuteAot(size, values.data(), prevFp);
+            resultValue = thread->GetEcmaVM()->ExecuteAot(size, values.data(), prevFp, needPushUndefined);
         }
     } else {
         ctor->GetCallTarget()->SetAotCodeBit(false); // if Construct is not ClassConstructor, don't run aot

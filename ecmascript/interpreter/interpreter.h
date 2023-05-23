@@ -44,6 +44,8 @@ public:
     static EcmaRuntimeCallInfo* NewRuntimeCallInfo(
         JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj,
         JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, bool needCheckStack = true);
+    static EcmaRuntimeCallInfo* ReBuildRuntimeCallInfo(
+        JSThread *thread, EcmaRuntimeCallInfo* info, uint32_t numArgs, bool needCheckStack = true);
     static inline JSTaggedValue GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context);
     static inline JSTaggedValue GeneratorReEnterAot(JSThread *thread, JSHandle<GeneratorContext> context);
 #ifndef EXCLUDE_C_INTERPRETER

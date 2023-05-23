@@ -38,7 +38,7 @@ class GeneratorContext;
 struct EcmaRuntimeCallInfo;
 
 using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
-                                              uintptr_t prevFp);
+                                              uintptr_t prevFp, bool needPushUndefined);
 using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
                                               uintptr_t prevFp);
 
