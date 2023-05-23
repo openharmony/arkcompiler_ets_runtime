@@ -468,7 +468,7 @@ void EcmaVM::CheckStartCpuProfiler()
         if (!builtins::BuiltinsArkTools::CreateFile(fileName)) {
             LOG_ECMA(ERROR) << "createFile failed " << fileName;
         } else {
-            DFXJSNApi::StartCpuProfilerForFile(this, fileName);
+            DFXJSNApi::StartCpuProfilerForFile(this, fileName, 100); // 100:Sampling interval 100 microseconds
         }
     }
 #endif
