@@ -170,7 +170,7 @@ EcmaContext::~EcmaContext()
     ClearBufferData();
     // clear c_address: c++ pointer delete
     if (!vm_->IsBundlePack()) {
-        std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(assetPath_);
+        std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(vm_->GetAssetPath());
         if (jsPandaFile != nullptr) {
             jsPandaFile->DeleteParsedConstpoolVM(vm_);
         }
@@ -368,6 +368,64 @@ JSHandle<JSTaggedValue> EcmaContext::GetAndClearEcmaUncaughtException() const
     return exceptionHandle;
 }
 
+void EcmaContext::ProcessNativeDelete(const WeakRootVisitor &visitor)
+{
+    auto iterator = cachedConstpools_.begin();
+    while (iterator != cachedConstpools_.end()) {
+        auto &constpools = iterator->second;
+        auto constpoolIter = constpools.begin();
+        while (constpoolIter != constpools.end()) {
+            JSTaggedValue constpoolVal = constpoolIter->second;
+            if (constpoolVal.IsHeapObject()) {
+                TaggedObject *obj = constpoolVal.GetTaggedObject();
+                auto fwd = visitor(obj);
+                if (fwd == nullptr) {
+                    constpoolIter = constpools.erase(constpoolIter);
+                    continue;
+                }
+            }
+            ++constpoolIter;
+        }
+        if (constpools.size() == 0) {
+            LOG_ECMA(INFO) << "remove js pandafile by gc, file:" << iterator->first->GetJSPandaFileDesc();
+            JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(vm_, iterator->first);
+            iterator = cachedConstpools_.erase(iterator);
+        } else {
+            ++iterator;
+        }
+    }
+}
+
+void EcmaContext::ProcessReferences(const WeakRootVisitor &visitor)
+{
+    auto iterator = cachedConstpools_.begin();
+    while (iterator != cachedConstpools_.end()) {
+        auto &constpools = iterator->second;
+        auto constpoolIter = constpools.begin();
+        while (constpoolIter != constpools.end()) {
+            JSTaggedValue constpoolVal = constpoolIter->second;
+            if (constpoolVal.IsHeapObject()) {
+                TaggedObject *obj = constpoolVal.GetTaggedObject();
+                auto fwd = visitor(obj);
+                if (fwd == nullptr) {
+                    constpoolIter = constpools.erase(constpoolIter);
+                    continue;
+                } else if (fwd != obj) {
+                    constpoolIter->second = JSTaggedValue(fwd);
+                }
+            }
+            ++constpoolIter;
+        }
+        if (constpools.size() == 0) {
+            LOG_ECMA(INFO) << "remove js pandafile by gc, file:" << iterator->first->GetJSPandaFileDesc();
+            JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(vm_, iterator->first);
+            iterator = cachedConstpools_.erase(iterator);
+        } else {
+            ++iterator;
+        }
+    }    
+}
+
 JSHandle<JSTaggedValue> EcmaContext::GetEcmaUncaughtException() const
 {
     if (!thread_->HasPendingException()) {
@@ -432,6 +490,12 @@ bool EcmaContext::ExecutePromisePendingJob()
 
 void EcmaContext::ClearBufferData()
 {
+    auto iter = cachedConstpools_.begin();
+    while (iter != cachedConstpools_.end()) {
+        LOG_ECMA(INFO) << "remove js pandafile by vm destruct, file:" << iter->first->GetJSPandaFileDesc();
+        JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(vm_, iter->first);
+        iter++;
+    }
     cachedConstpools_.clear();
 }
 

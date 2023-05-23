@@ -193,7 +193,7 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
 
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<Method> method = vm->GetFactory()->NewMethod(patchMethodLiteral);
-    JSHandle<ConstantPool> newConstpool = vm->FindOrCreateConstPool(patchFile.get(), patchMethodLiteral->GetMethodId());
+    JSHandle<ConstantPool> newConstpool = thread->GetCurrentEcmaContext()->FindOrCreateConstPool(patchFile.get(), patchMethodLiteral->GetMethodId());
     method->SetConstantPool(thread, newConstpool);
     return method.GetTaggedValue();
 }

@@ -665,7 +665,7 @@ bool JSNApi::HasPendingException(const EcmaVM *vm)
 
 void JSNApi::EnableUserUncaughtErrorHandler(EcmaVM *vm)
 {
-    return vm->EnableUserUncaughtErrorHandler();
+    return vm->GetJSThread()->GetCurrentEcmaContext()->EnableUserUncaughtErrorHandler();
 }
 
 Local<ObjectRef> JSNApi::GetGlobalObject(const EcmaVM *vm)
@@ -3226,9 +3226,33 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
     auto *notificationMgr = vm->GetJsDebuggerManager()->GetNotificationManager();
     notificationMgr->LoadModuleEvent(moduleName, recordName);
 
+<<<<<<< HEAD
     // check ESM or CJS
     if (!jsPandaFile->IsModule(thread, recordName)) {
         LOG_ECMA(DEBUG) << "Current function is not from ES Module's file.";
+=======
+    bool isModule = jsPandaFile->IsModule(thread, recordName);
+    if (isModule) {
+        ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+        JSHandle<ecmascript::JSTaggedValue> moduleRecord;
+        if (jsPandaFile->IsBundlePack()) {
+            moduleRecord = moduleManager->HostResolveImportedModule(moduleName);
+        } else {
+            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
+            if (ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
+                vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager()->LoadAiFile(jsPandaFile);
+            }
+        }
+        ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
+        if (thread->HasPendingException()) {
+            vm->GetJSThread()->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
+            return false;
+        }
+        JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
+        module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
+        ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module);
+        transFunc->SetModule(thread, module);
+>>>>>>> add cachedconstpools from vm to context
         return true;
     }
     ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();

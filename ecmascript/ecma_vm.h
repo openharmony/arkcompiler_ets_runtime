@@ -179,7 +179,6 @@ public:
 
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;   
-    void EnableUserUncaughtErrorHandler();
     bool IsOptionalLogEnabled() const
     {
         return optionalLogEnabled_;
@@ -261,20 +260,6 @@ public:
     }
 
     void TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint);
-
-    void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
-
-    bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
-
-    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
-    // For new version instruction.
-    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
-    std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
-        const JSPandaFile *jsPandaFile);
-
-    JSHandle<ConstantPool> PUBLIC_API FindOrCreateConstPool(const JSPandaFile *jsPandaFile,
-                                                            panda_file::File::EntityId id);
-    void CreateAllConstpool(const JSPandaFile *jsPandaFile);
 
     void WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm)
     {
@@ -448,8 +433,6 @@ private:
     CList<JSNativePointer *> nativePointerList_;
     // VM execution states.
     JSThread *thread_ {nullptr};
-
-    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
 
     // VM resources.
     SnapshotEnv *snapshotEnv_ {nullptr};

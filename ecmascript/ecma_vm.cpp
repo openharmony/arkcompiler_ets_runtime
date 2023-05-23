@@ -307,10 +307,6 @@ JSHandle<GlobalEnv> EcmaVM::GetGlobalEnv() const
 {
     return thread_->GetCurrentEcmaContext()->GetGlobalEnv();
 }
-void EcmaVM::SetGlobalEnv(GlobalEnv *global)
-{
-    thread_->GetCurrentEcmaContext()->SetGlobalEnv(global);
-}
 
 JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp)
 {
@@ -338,69 +334,6 @@ void EcmaVM::CheckStartCpuProfiler()
         }
     }
 #endif
-}
-
-bool EcmaVM::HasCachedConstpool(const JSPandaFile *jsPandaFile) const
-{
-    return cachedConstpools_.find(jsPandaFile) != cachedConstpools_.end();
-}
-
-JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, int32_t index)
-{
-    auto iter = cachedConstpools_.find(jsPandaFile);
-    if (iter == cachedConstpools_.end()) {
-        return JSTaggedValue::Hole();
-    }
-    auto constpoolIter = iter->second.find(index);
-    if (constpoolIter == iter->second.end()) {
-        return JSTaggedValue::Hole();
-    }
-    return constpoolIter->second;
-}
-
-std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> EcmaVM::FindConstpools(
-    const JSPandaFile *jsPandaFile)
-{
-    auto iter = cachedConstpools_.find(jsPandaFile);
-    if (iter == cachedConstpools_.end()) {
-        return std::nullopt;
-    }
-    return iter->second;
-}
-
-// For new version instruction.
-JSTaggedValue EcmaVM::FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id)
-{
-    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
-    int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
-    return FindConstpool(jsPandaFile, index);
-}
-
-JSHandle<ConstantPool> EcmaVM::FindOrCreateConstPool(const JSPandaFile *jsPandaFile, EntityId id)
-{
-    panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
-    int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
-    JSTaggedValue constpool = FindConstpool(jsPandaFile, index);
-    if (constpool.IsHole()) {
-        JSHandle<ConstantPool> newConstpool = ConstantPool::CreateConstPool(this, jsPandaFile, id);
-        AddConstpool(jsPandaFile, newConstpool.GetTaggedValue(), index);
-        return newConstpool;
-    }
-
-    return JSHandle<ConstantPool>(thread_, constpool);
-}
-
-void EcmaVM::CreateAllConstpool(const JSPandaFile *jsPandaFile)
-{
-    auto headers = jsPandaFile->GetPandaFile()->GetIndexHeaders();
-    uint32_t index = 0;
-    for (const auto &header : headers) {
-        auto constpoolSize = header.method_idx_size;
-        JSHandle<ConstantPool> constpool = factory_->NewConstantPool(constpoolSize);
-        constpool->SetJSPandaFile(jsPandaFile);
-        constpool->SetIndexHeader(&header);
-        AddConstpool(jsPandaFile, constpool.GetTaggedValue(), index++);
-    }
 }
 
 void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
@@ -454,18 +387,6 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
     }
 }
 
-void EcmaVM::AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index)
-{
-    ASSERT(constpool.IsConstantPool());
-    if (cachedConstpools_.find(jsPandaFile) == cachedConstpools_.end()) {
-        cachedConstpools_[jsPandaFile] = CMap<int32_t, JSTaggedValue>();
-    }
-    auto &constpoolMap = cachedConstpools_[jsPandaFile];
-    ASSERT(constpoolMap.find(index) == constpoolMap.end());
-
-    constpoolMap.insert({index, constpool});
-}
-
 JSHandle<JSTaggedValue> EcmaVM::GetAndClearEcmaUncaughtException() const
 {
     JSHandle<JSTaggedValue> exceptionHandle = GetEcmaUncaughtException();
@@ -481,16 +402,6 @@ JSHandle<JSTaggedValue> EcmaVM::GetEcmaUncaughtException() const
     JSHandle<JSTaggedValue> exceptionHandle(thread_, thread_->GetException());
     return exceptionHandle;
 }
-
-void EcmaVM::EnableUserUncaughtErrorHandler()
-{
-    thread_->GetCurrentEcmaContext()->EnableUserUncaughtErrorHandler();
-}
-
-void EcmaVM::HandleUncaughtException(JSTaggedValue exception)
-{
-    thread_->GetCurrentEcmaContext()->HandleUncaughtException(exception);
-    }
 
 void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const
 {
@@ -520,31 +431,7 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             ++iter;
         }
     }
-
-    auto iterator = cachedConstpools_.begin();
-    while (iterator != cachedConstpools_.end()) {
-        auto &constpools = iterator->second;
-        auto constpoolIter = constpools.begin();
-        while (constpoolIter != constpools.end()) {
-            JSTaggedValue constpoolVal = constpoolIter->second;
-            if (constpoolVal.IsHeapObject()) {
-                TaggedObject *obj = constpoolVal.GetTaggedObject();
-                auto fwd = visitor(obj);
-                if (fwd == nullptr) {
-                    constpoolIter = constpools.erase(constpoolIter);
-                    continue;
-                }
-            }
-            ++constpoolIter;
-        }
-        if (constpools.size() == 0) {
-            LOG_ECMA(INFO) << "remove js pandafile by gc, file:" << iterator->first->GetJSPandaFileDesc();
-            JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(this, iterator->first);
-            iterator = cachedConstpools_.erase(iterator);
-        } else {
-            ++iterator;
-        }
-    }
+    thread_->GetCurrentEcmaContext()->ProcessNativeDelete(visitor);
 }
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 {
@@ -568,34 +455,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
         }
         ++iter;
     }
-
-    // program maps
-    auto iterator = cachedConstpools_.begin();
-    while (iterator != cachedConstpools_.end()) {
-        auto &constpools = iterator->second;
-        auto constpoolIter = constpools.begin();
-        while (constpoolIter != constpools.end()) {
-            JSTaggedValue constpoolVal = constpoolIter->second;
-            if (constpoolVal.IsHeapObject()) {
-                TaggedObject *obj = constpoolVal.GetTaggedObject();
-                auto fwd = visitor(obj);
-                if (fwd == nullptr) {
-                    constpoolIter = constpools.erase(constpoolIter);
-                    continue;
-                } else if (fwd != obj) {
-                    constpoolIter->second = JSTaggedValue(fwd);
-                }
-            }
-            ++constpoolIter;
-        }
-        if (constpools.size() == 0) {
-            LOG_ECMA(INFO) << "remove js pandafile by gc, file:" << iterator->first->GetJSPandaFileDesc();
-            JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(this, iterator->first);
-            iterator = cachedConstpools_.erase(iterator);
-        } else {
-            ++iterator;
-        }
-    }
+    thread_->GetCurrentEcmaContext()->ProcessReferences(visitor);
 }
 
 void EcmaVM::PushToNativePointerList(JSNativePointer *array)
@@ -619,14 +479,7 @@ void EcmaVM::ClearBufferData()
         iter->Destroy();
     }
     nativePointerList_.clear();
-
-    auto iter = cachedConstpools_.begin();
-    while (iter != cachedConstpools_.end()) {
-        LOG_ECMA(INFO) << "remove js pandafile by vm destruct, file:" << iter->first->GetJSPandaFileDesc();
-        JSPandaFileManager::GetInstance()->RemoveJSPandaFileVm(this, iter->first);
-        iter++;
-    }
-    cachedConstpools_.clear();
+    thread_->GetCurrentEcmaContext()->ClearBufferData();
     internalNativeMethods_.clear();
     workerList_.clear();
 }

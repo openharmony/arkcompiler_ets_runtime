@@ -86,7 +86,7 @@ void BytecodeInfoCollector::ProcessClasses()
             CollectFunctionTypeId(methodId);
 
             // Generate all constpool
-            vm_->FindOrCreateConstPool(jsPandaFile_, methodId);
+            vm_->GetJSThread()->GetCurrentEcmaContext()->FindOrCreateConstPool(jsPandaFile_, methodId);
 
             auto methodOffset = methodId.GetOffset();
             CString name = reinterpret_cast<const char *>(jsPandaFile_->GetStringData(mda.GetNameId()).data);

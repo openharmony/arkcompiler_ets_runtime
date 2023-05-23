@@ -36,7 +36,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
     // Generate patchInfo for hot reload, hot patch and cold patch.
     patchInfo = PatchLoader::GeneratePatchInfo(patchFile);
 
-    if (!vm->HasCachedConstpool(baseFile)) {
+    if (!thread->GetCurrentEcmaContext()->HasCachedConstpool(baseFile)) {
         LOG_ECMA(INFO) << "cold patch!";
         return PatchErrorCode::SUCCESS;
     }
@@ -47,7 +47,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
     uint32_t num = baseFile->GetConstpoolNum();
     GlobalHandleCollection gloalHandleCollection(thread);
     for (uint32_t idx = 0; idx < num; idx++) {
-        JSTaggedValue constpool = vm->FindConstpool(baseFile, idx);
+        JSTaggedValue constpool = thread->GetCurrentEcmaContext()->FindConstpool(baseFile, idx);
         if (!constpool.IsHole()) {
             JSHandle<JSTaggedValue> constpoolHandle =
                 gloalHandleCollection.NewHandle<JSTaggedValue>(constpool.GetRawData());
@@ -56,7 +56,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
     }
 
     // create empty patch constpool for replace method constpool.
-    vm->CreateAllConstpool(patchFile);
+    thread->GetCurrentEcmaContext()->CreateAllConstpool(patchFile);
     FindAndReplaceSameMethod(thread, baseFile, patchFile, patchInfo);
 
     if (!ExecutePatchMain(thread, patchFile, baseFile, patchInfo)) {
@@ -94,9 +94,9 @@ bool PatchLoader::ExecutePatchMain(JSThread *thread, const JSPandaFile *patchFil
 
         JSTaggedValue constpoolVal = JSTaggedValue::Hole();
         if (isNewVersion) {
-            constpoolVal = vm->FindConstpool(patchFile, mainMethodId);
+            constpoolVal = thread->GetCurrentEcmaContext()->FindConstpool(patchFile, mainMethodId);
         } else {
-            constpoolVal = vm->FindConstpool(patchFile, 0);
+            constpoolVal = thread->GetCurrentEcmaContext()->FindConstpool(patchFile, 0);
         }
         ASSERT(!constpoolVal.IsHole());
         JSHandle<ConstantPool> constpool(thread, constpoolVal);
@@ -150,7 +150,7 @@ PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString 
     }
 
     EcmaVM *vm = thread->GetEcmaVM();
-    auto baseConstpoolValues = vm->FindConstpools(baseFile.get());
+    auto baseConstpoolValues = thread->GetCurrentEcmaContext()->FindConstpools(baseFile.get());
     if (!baseConstpoolValues.has_value()) {
         LOG_ECMA(ERROR) << "base constpool is empty";
         return PatchErrorCode::INTERNAL_ERROR;
@@ -178,7 +178,7 @@ PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString 
         }
 
         MethodLiteral *baseMethodLiteral = item.second;
-        JSTaggedValue baseConstpoolValue = vm->FindConstpool(baseFile.get(), baseMethodLiteral->GetMethodId());
+        JSTaggedValue baseConstpoolValue = thread->GetCurrentEcmaContext()->FindConstpool(baseFile.get(), baseMethodLiteral->GetMethodId());
         ReplaceMethod(thread, patchMethod, baseMethodLiteral, baseConstpoolValue);
         LOG_ECMA(INFO) << "Replace base method: "
                        << patchMethod->GetRecordName()
@@ -231,8 +231,7 @@ void PatchLoader::ReplaceMethod(JSThread *thread,
 void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *baseFile,
                                            const JSPandaFile *patchFile, PatchInfo &patchInfo)
 {
-    EcmaVM *vm = thread->GetEcmaVM();
-    const CMap<int32_t, JSTaggedValue> &baseConstpoolValues = vm->FindConstpools(baseFile).value();
+    const CMap<int32_t, JSTaggedValue> &baseConstpoolValues = thread->GetCurrentEcmaContext()->FindConstpools(baseFile).value();
     for (const auto &item : baseConstpoolValues) {
         if (item.second.IsHole()) {
             continue;
@@ -256,7 +255,7 @@ void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *
                     continue;
                 }
 
-                JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile, patchMethodLiteral->GetMethodId());
+                JSTaggedValue patchConstpoolValue = thread->GetCurrentEcmaContext()->FindConstpool(patchFile, patchMethodLiteral->GetMethodId());
                 ReplaceMethod(thread, baseMethod, patchMethodLiteral, patchConstpoolValue);
 
                 BaseMethodIndex indexs = {constpoolNum, constpoolIndex};
@@ -281,7 +280,7 @@ void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *
                         continue;
                     }
 
-                    JSTaggedValue patchConstpoolValue = vm->FindConstpool(patchFile, patchMethodLiteral->GetMethodId());
+                    JSTaggedValue patchConstpoolValue = thread->GetCurrentEcmaContext()->FindConstpool(patchFile, patchMethodLiteral->GetMethodId());
                     ReplaceMethod(thread, baseMethod, patchMethodLiteral, patchConstpoolValue);
 
                     BaseMethodIndex indexs = {constpoolNum, constpoolIndex, literalIndex};
