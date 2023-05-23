@@ -368,11 +368,12 @@ HWTEST_F_L0(ObjectOperatorTest, FastGetValue)
 HWTEST_F_L0(ObjectOperatorTest, ReLookupPropertyInReceiver_001)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
     JSHandle<JSTaggedValue> handleKey(thread, JSTaggedValue(2));
     JSHandle<JSTaggedValue> handleName(factory->NewFromASCII("123"));
     JSHandle<JSTaggedValue> handleHolder(factory->NewFromASCII("12"));
-    JSHandle<JSTaggedValue> handleReceiver(factory->NewJSString(handleName));
+    JSHandle<JSTaggedValue> handleReceiver(factory->NewJSString(handleName, undefined));
     // Receiver is string
     ObjectOperator objectOperator1(thread, handleHolder, handleReceiver, handleKey);
     objectOperator1.ReLookupPropertyInReceiver();

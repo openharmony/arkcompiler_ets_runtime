@@ -126,8 +126,9 @@ HWTEST_F_L0(HeapTrackerTest, HeapTracker)
     sleep(1);
     count = 100;
     while (count-- > 0) {
+        JSHandle<JSTaggedValue> undefined = instance->GetJSThread()->GlobalConstants()->GetHandledUndefined();
         JSHandle<EcmaString> string = instance->GetFactory()->NewFromASCII("Hello World");
-        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
+        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string), undefined);
     }
 
     // Create file test.heaptimeline
@@ -179,8 +180,9 @@ HWTEST_F_L0(HeapTrackerTest, HeapTrackerTraceAllocation)
     sleep(1);
     count = 100;
     while (count-- > 0) {
+        JSHandle<JSTaggedValue> undefined = instance->GetJSThread()->GlobalConstants()->GetHandledUndefined();
         JSHandle<EcmaString> string = instance->GetFactory()->NewFromASCII("Hello World");
-        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
+        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string), undefined);
     }
 
     // Create file test.heaptimeline
@@ -233,8 +235,9 @@ HWTEST_F_L0(HeapTrackerTest, DumpHeapSnapshot)
     sleep(1);
     count = 100;
     while (count-- > 0) {
+        JSHandle<JSTaggedValue> undefined = instance->GetJSThread()->GlobalConstants()->GetHandledUndefined();
         JSHandle<EcmaString> string = instance->GetFactory()->NewFromASCII("Hello World");
-        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
+        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string), undefined);
     }
 
     // Create file test.heaptimeline
@@ -313,8 +316,9 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_001)
     sleep(1);
     count = 100;
     while (count-- > 0) {
+        JSHandle<JSTaggedValue> undefined = instance->GetJSThread()->GlobalConstants()->GetHandledUndefined();
         JSHandle<EcmaString> string = instance->GetFactory()->NewFromASCII("Hello World");
-        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
+        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string), undefined);
     }
 
     TestStream stream;
@@ -343,8 +347,9 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_002)
     sleep(1);
     count = 100;
     while (count-- > 0) {
+        JSHandle<JSTaggedValue> undefined = instance->GetJSThread()->GlobalConstants()->GetHandledUndefined();
         JSHandle<EcmaString> string = instance->GetFactory()->NewFromASCII("Hello World");
-        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
+        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string), undefined);
     }
 
     TestStream stream;
@@ -373,8 +378,9 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_003)
     sleep(1);
     count = 100;
     while (count-- > 0) {
+        JSHandle<JSTaggedValue> undefined = instance->GetJSThread()->GlobalConstants()->GetHandledUndefined();
         JSHandle<EcmaString> string = instance->GetFactory()->NewFromASCII("Hello World");
-        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
+        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string), undefined);
     }
 
     TestStream stream;
@@ -403,8 +409,9 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_004)
     sleep(1);
     count = 100;
     while (count-- > 0) {
+        JSHandle<JSTaggedValue> undefined = instance->GetJSThread()->GlobalConstants()->GetHandledUndefined();
         JSHandle<EcmaString> string = instance->GetFactory()->NewFromASCII("Hello World");
-        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
+        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string), undefined);
     }
 
     TestStream stream;
@@ -442,8 +449,9 @@ HWTEST_F_L0(HeapTrackerTest, StreamWriterEnd)
     sleep(1);
     count = 100;
     while (count-- > 0) {
+        JSHandle<JSTaggedValue> undefined = instance->GetJSThread()->GlobalConstants()->GetHandledUndefined();
         JSHandle<EcmaString> string = instance->GetFactory()->NewFromASCII("Hello World");
-        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string));
+        instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string), undefined);
     }
 
     // Create file test.heaptimeline

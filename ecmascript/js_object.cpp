@@ -1904,7 +1904,8 @@ JSHandle<JSForInIterator> JSObject::EnumerateObjectProperties(JSThread *thread, 
     // below.
     JSHandle<JSTaggedValue> object;
     if (obj->IsString()) {
-        object = JSHandle<JSTaggedValue>::Cast(JSPrimitiveRef::StringCreate(thread, obj));
+        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+        object = JSHandle<JSTaggedValue>::Cast(JSPrimitiveRef::StringCreate(thread, obj, undefined));
     } else {
         object = JSTaggedValue::ToPrototypeOrObj(thread, obj);
     }
