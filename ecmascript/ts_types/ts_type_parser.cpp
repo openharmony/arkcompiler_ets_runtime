@@ -150,9 +150,10 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
     CString baseFileName = jsPandaFile->GetJSPandaFileDesc();
     CString entryPoint =
         base::PathHelper::ConcatFileNameWithMerge(thread_, jsPandaFile, baseFileName, recordName, cstringRelativePath);
-    ASSERT_PRINT(!entryPoint.empty(),
-        "EntryPoint is empty. Please check whether concating file name is correct or "
-        "whether the module request recorded in the import-type literal is correct.");
+    if (entryPoint.empty()) {
+        LOG_COMPILER(DEBUG) << "EntryPoint is empty. Please check whether concating file name is correct or "
+                               "whether the module request recorded in the import-type literal is correct.";
+    }
     // skip files without type information
     if (UNLIKELY(!jsPandaFile->HasTypeSummaryOffset(entryPoint))) {
         return GetAndStoreGT(jsPandaFile, typeId, recordName);
