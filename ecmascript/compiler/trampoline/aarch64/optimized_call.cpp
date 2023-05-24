@@ -1055,19 +1055,20 @@ void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
     __ Ldr(depth, MemoryOperand(context, AsmStackContext::GetInlineDepthOffset(false)));
     __ Add(context, context, Immediate(AsmStackContext::GetSize(false)));
     __ Mov(Register(X23), Immediate(0));
+    // update fp
+    __ Mov(currentSlotRegister, sp);
     __ Bind(&loopBegin);
     __ Ldr(outputCount, MemoryOperand(context, 0));
     __ Add(frameStateBase, context, Immediate(FRAME_SLOT_SIZE));
     __ Cmp(Register(X23), Immediate(0));
     __ B(Condition::EQ, &pushArgv);
-    __ Mov(tmpReg, sp);
+    __ Mov(tmpReg, currentSlotRegister);
     __ Add(tmpReg, tmpReg, Immediate(AsmInterpretedFrame::GetSize(false)));
     __ Add(Register(X9), frameStateBase, Immediate(AsmInterpretedFrame::GetBaseOffset(false)));
     __ Str(tmpReg, MemoryOperand(Register(X9), InterpretedFrameBase::GetPrevOffset(false)));
+    __ Align16(currentSlotRegister);
 
     __ Bind(&pushArgv);
-    // update fp
-    __ Mov(currentSlotRegister, sp);
     __ Mov(tmpReg, outputCount);
     __ Str(currentSlotRegister, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetFpOffset(false)));
     PushArgsWithArgv(assembler, glueRegister, outputCount, frameStateBase, opRegister,

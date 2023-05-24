@@ -13,3 +13,6 @@
 
 [trace] aot inline function name: foo@ts_inline_deopt caller function name: func_main_0@ts_inline_deopt
 2
+2
+1
+hello wrold
