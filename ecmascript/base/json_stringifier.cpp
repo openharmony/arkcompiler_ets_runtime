@@ -25,6 +25,7 @@
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
@@ -772,6 +773,38 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                 hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
+        }
+        return hasContent;
+    }
+    if (obj->IsJSGlobalObject()) {
+        JSHandle<GlobalDictionary> globalDic(propertiesArr);
+        int size = globalDic->Size();
+        CVector<std::pair<JSHandle<JSTaggedValue>, PropertyAttributes>> sortArr;
+        for (int hashIndex = 0; hashIndex < size; hashIndex++) {
+            JSTaggedValue key = globalDic->GetKey(hashIndex);
+            if (!key.IsString()) {
+                continue;
+            }
+            PropertyAttributes attr = globalDic->GetAttributes(hashIndex);
+            if (!attr.IsEnumerable()) {
+                continue;
+            }
+            std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> pair(JSHandle<JSTaggedValue>(thread_, key), attr);
+            sortArr.emplace_back(pair);
+        }
+        std::sort(sortArr.begin(), sortArr.end(), CompareKey);
+        for (const auto &entry : sortArr) {
+            JSTaggedValue entryKey = entry.first.GetTaggedValue();
+            handleKey_.Update(entryKey);
+            int index = globalDic->FindEntry(entryKey);
+            JSTaggedValue value = globalDic->GetValue(index);
+            if (UNLIKELY(value.IsAccessor())) {
+                value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
+                                             JSHandle<JSTaggedValue>(obj));
+            }
+            handleValue_.Update(value);
+            hasContent = JsonStringifier::AppendJsonString(obj, replacer, hasContent);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
         }
         return hasContent;
     }
