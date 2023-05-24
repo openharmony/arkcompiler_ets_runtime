@@ -150,10 +150,6 @@ private:
     void LowerFloat32ArrayLoadElement(GateRef gate);
     void LowerArrayStoreElement(GateRef gate, GateRef glue);
     void LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue);
-    void LowerHeapAllocate(GateRef gate, GateRef glue);
-    void LowerHeapAllocateInYoung(GateRef gate, GateRef glue);
-    void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue, GateRef value,
-                                    GateRef start, GateRef end);
     void LowerTypedCallBuitin(GateRef gate);
     void LowerCallTargetCheck(GateRef gate);
     void LowerJSCallTargetTypeCheck(GateRef gate);
@@ -164,6 +160,8 @@ private:
     void LowerTypedSuperAllocateThis(GateRef gate, GateRef glue);
     void LowerGetSuperConstructor(GateRef gate);
     void LowerJSInlineTargetTypeCheck(GateRef gate);
+    void LowerCreateArray(GateRef gate);
+    void LowerCreateEmptyArray(GateRef gate);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);

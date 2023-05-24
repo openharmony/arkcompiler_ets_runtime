@@ -497,7 +497,6 @@ public:
     GateRef LoadProperty(GateRef receiver, GateRef propertyLookupResult, bool isFunction);
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
     GateRef LoadArrayLength(GateRef array);
-    GateRef HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
     GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args);
     GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args);
@@ -562,6 +561,12 @@ public:
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index, ConstPoolType type);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);
+
+    // middle ir: create new obj
+    GateRef StartAllocate();
+    GateRef FinishAllocate();
+    GateRef HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag);
+    GateRef CreateArray(GateRef obj, bool isEmptyArray);
 
     void SetEnvironment(Environment *env)
     {

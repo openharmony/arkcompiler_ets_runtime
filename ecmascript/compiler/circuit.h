@@ -124,13 +124,13 @@ public:
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
 
-#define DECLARE_LOAD_PROPERTY_GATE_META(NAME, OP, R, S, D, V) \
-    const GateMetaData* NAME(bool isFunction)                 \
-    {                                                         \
-        return metaBuilder_.NAME(isFunction);                 \
+#define DECLARE_GATE_META(NAME, OP, R, S, D, V) \
+    const GateMetaData* NAME(bool value)        \
+    {                                           \
+        return metaBuilder_.NAME(value);        \
     }
-    LOAD_PROPERTY_LIST(DECLARE_LOAD_PROPERTY_GATE_META)
-#undef DECLARE_LOAD_PROPERTY_GATE_META
+    GATE_META_DATA_LIST_WITH_BOOL(DECLARE_GATE_META)
+#undef DECLARE_GATE_META
 
 #define DECLARE_GATE_META(NAME, OP, R, S, D, V)                    \
     const GateMetaData* NAME(uint64_t value, uint64_t pcOffset)    \

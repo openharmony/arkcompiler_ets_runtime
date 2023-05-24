@@ -62,6 +62,9 @@ void LCRLowering::Run()
             case OpCode::GET_GLOBAL_CONSTANT_VALUE:
                 LowerGetGlobalConstantValue(gate);
                 break;
+            case OpCode::HEAP_ALLOC:
+                LowerHeapAllocate(gate);
+                break;
             default:
                 break;
         }
@@ -464,5 +467,75 @@ void LCRLowering::LowerGetGlobalConstantValue(GateRef gate)
     GateRef constantIndex = builder_.IntPtr(JSTaggedValue::TaggedTypeSize() * index);
     GateRef result = builder_.Load(VariableType::JS_POINTER(), gConstAddr, constantIndex);
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
+}
+
+void LCRLowering::LowerHeapAllocate(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    auto flag = acc_.TryGetValue(gate);
+    switch (flag) {
+        case RegionSpaceFlag::IN_YOUNG_SPACE:
+            HeapAllocateInYoung(gate);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+}
+
+void LCRLowering::HeapAllocateInYoung(GateRef gate)
+{
+    Label success(&builder_);
+    Label callRuntime(&builder_);
+    Label exit(&builder_);
+    GateRef size = acc_.GetValueIn(gate, 0);
+    size_t topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(false);
+    size_t endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(false);
+    GateRef topAddress = builder_.Load(VariableType::NATIVE_POINTER(), glue_, builder_.IntPtr(topOffset));
+    GateRef endAddress = builder_.Load(VariableType::NATIVE_POINTER(), glue_, builder_.IntPtr(endOffset));
+    GateRef top = builder_.Load(VariableType::JS_POINTER(), topAddress, builder_.IntPtr(0));
+    GateRef end = builder_.Load(VariableType::JS_POINTER(), endAddress, builder_.IntPtr(0));
+
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    GateRef newTop = builder_.PtrAdd(top, size);
+    builder_.Branch(builder_.IntPtrGreaterThan(newTop, end), &callRuntime, &success);
+    builder_.Bind(&success);
+    {
+        builder_.Store(VariableType::NATIVE_POINTER(), glue_, topAddress, builder_.IntPtr(0), newTop);
+        result = top;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&callRuntime);
+    {
+        result = builder_.CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), Gate::InvalidGateRef,
+                                      {builder_.ToTaggedInt(size)}, gate);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void LCRLowering::InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue,
+                                             GateRef value, GateRef start, GateRef end)
+{
+    Label begin(&builder_);
+    Label storeValue(&builder_);
+    Label endLoop(&builder_);
+
+    DEFVAlUE(startOffset, (&builder_), VariableType::INT32(), start);
+    builder_.Jump(&begin);
+    builder_.LoopBegin(&begin);
+    {
+        builder_.Branch(builder_.Int32UnsignedLessThan(*startOffset, end), &storeValue, exit);
+        builder_.Bind(&storeValue);
+        {
+            builder_.Store(VariableType::INT64(), glue, object, builder_.ZExtInt32ToPtr(*startOffset), value);
+            startOffset = builder_.Int32Add(*startOffset, builder_.Int32(JSTaggedValue::TaggedTypeSize()));
+            builder_.Jump(&endLoop);
+        }
+        builder_.Bind(&endLoop);
+        builder_.LoopEnd(&begin);
+    }
 }
 }  // namespace panda::ecmascript

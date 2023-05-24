@@ -223,6 +223,10 @@ void TSHCRLowering::Lower(GateRef gate)
         case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
             LowerTypedSuperCall(gate);
             break;
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
+            LowerTypedCreateEmptyArray(gate);
+            break;
         case EcmaOpcode::CALLARG0_IMM8:
             LowerTypedCallArg0(gate);
             break;
@@ -1196,6 +1200,15 @@ void TSHCRLowering::LowerTypedCallthisrange(GateRef gate)
         GateRef result = builder_.TypedCall(gate, vec);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     }
+}
+
+void TSHCRLowering::LowerTypedCreateEmptyArray(GateRef gate)
+{
+    // in the future, the type of the elements in the array will be obtained through pgo,
+    // and the type will be used to determine whether to create a typed-array.
+    GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    GateRef array = builder_.CreateArray(emptyArray, true);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
 void TSHCRLowering::AddProfiling(GateRef gate)

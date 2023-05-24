@@ -99,6 +99,7 @@ private:
     void LowerTypedIsTrueOrFalse(GateRef gate, bool flag);
     void LowerTypedNewObjRange(GateRef gate);
     void LowerTypedSuperCall(GateRef gate);
+    void LowerTypedCreateEmptyArray(GateRef gate);
 
     void LowerTypedCallArg0(GateRef gate);
     void LowerTypedCallArg1(GateRef gate);
