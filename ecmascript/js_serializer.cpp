@@ -51,6 +51,16 @@ bool JSSerializer::WriteType(SerializationUID id)
     return WriteRawData(&rawId, sizeof(rawId));
 }
 
+void JSSerializer::InitTransferSet(CUnorderedSet<uintptr_t> transferDataSet)
+{
+    transferDataSet_ = std::move(transferDataSet);
+}
+
+void JSSerializer::ClearTransferSet()
+{
+    transferDataSet_.clear();
+}
+
 // Write JSTaggedValue could be either a pointer to a HeapObject or a value
 bool JSSerializer::SerializeJSTaggedValue(const JSHandle<JSTaggedValue> &value)
 {
@@ -329,8 +339,6 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
             return WriteEcmaString(value);
         case JSType::JS_OBJECT:
             return WritePlainObject(value);
-        case JSType::JS_NATIVE_POINTER:
-            return WriteNativePointer(value);
         case JSType::JS_ASYNC_FUNCTION:  // means CONCURRENT_FUNCTION
             return WriteJSFunction(value);
         case JSType::METHOD:
@@ -823,32 +831,47 @@ bool JSSerializer::WriteJSTypedArray(const JSHandle<JSTaggedValue> &value, Seria
     return true;
 }
 
-bool JSSerializer::WriteNativePointer(const JSHandle<JSTaggedValue> &value)
+bool JSSerializer::TransferJSNativePointer(const JSHandle<JSNativePointer> &nativePtr)
 {
-    size_t oldSize = bufferSize_;
-    if (!WriteType(SerializationUID::NATIVE_POINTER)) {
+    uintptr_t externalPtr = reinterpret_cast<uintptr_t>(nativePtr->GetExternalPointer());
+    if (!WriteRawData(&externalPtr, sizeof(uintptr_t))) {
         return false;
     }
-    JSTaggedValue pointer = value.GetTaggedValue();
-    if (!WriteRawData(&pointer, sizeof(JSTaggedValue))) {
-        bufferSize_ = oldSize;
+    uintptr_t deleter = reinterpret_cast<uintptr_t>(nativePtr->GetDeleter());
+    if (!WriteRawData(&deleter, sizeof(uintptr_t))) {
         return false;
     }
+    uintptr_t allocatorPtr = reinterpret_cast<uintptr_t>(nativePtr->GetData());
+    if (!WriteRawData(&allocatorPtr, sizeof(uintptr_t))) {
+        return false;
+    }
+    int32_t bindingSize = static_cast<int32_t>(nativePtr->GetBindingSize());
+    if (!WriteInt(bindingSize)) {
+        return false;
+    }
+    // detach c buffer
+    nativePtr->Detach();
     return true;
 }
 
 bool JSSerializer::WriteJSArrayBuffer(const JSHandle<JSTaggedValue> &value)
 {
-    size_t oldSize = bufferSize_;
     JSHandle<JSArrayBuffer> arrayBuffer = JSHandle<JSArrayBuffer>::Cast(value);
-
     if (arrayBuffer->IsDetach()) {
         return false;
     }
-
     bool shared = arrayBuffer->GetShared();
+    bool transfer = transferDataSet_.find(static_cast<uintptr_t>(value.GetTaggedType())) != transferDataSet_.end();
+    if (shared && transfer) {
+        LOG_ECMA(ERROR) << "Can't transfer a shared JSArrayBuffer";
+        return false;
+    }
     if (shared) {
         if (!WriteType(SerializationUID::JS_SHARED_ARRAY_BUFFER)) {
+            return false;
+        }
+    } else if (transfer) {
+        if (!WriteType(SerializationUID::JS_TRANSFER_ARRAY_BUFFER)) {
             return false;
         }
     } else {
@@ -860,41 +883,35 @@ bool JSSerializer::WriteJSArrayBuffer(const JSHandle<JSTaggedValue> &value)
     // Write Accessors(ArrayBufferByteLength)
     uint32_t arrayLength = arrayBuffer->GetArrayBufferByteLength();
     if (!WriteInt(arrayLength)) {
-        bufferSize_ = oldSize;
         return false;
     }
 
-    // write Accessor shared which indicate the C memory is shared
-    if (!WriteBoolean(shared)) {
-        bufferSize_ = oldSize;
-        return false;
-    }
-
+    JSHandle<JSNativePointer> np(thread_, arrayBuffer->GetArrayBufferData());
     if (shared) {
-        JSHandle<JSNativePointer> np(thread_, arrayBuffer->GetArrayBufferData());
         void *buffer = np->GetExternalPointer();
         JSSharedMemoryManager::GetInstance()->CreateOrLoad(&buffer, arrayLength);
         uint64_t bufferAddr = (uint64_t)buffer;
         if (!WriteRawData(&bufferAddr, sizeof(uint64_t))) {
-            bufferSize_ = oldSize;
             return false;
         }
+    } else if (transfer) {
+        // Write Accessors(ArrayBufferData) which is a pointer to a Buffer
+        if (!TransferJSNativePointer(np)) {
+            return false;
+        }
+        arrayBuffer->Detach(thread_);
     } else {
         // Write Accessors(ArrayBufferData) which is a pointer to a Buffer
-        JSHandle<JSNativePointer> np(thread_, arrayBuffer->GetArrayBufferData());
         void *buffer = np->GetExternalPointer();
         if (!WriteRawData(buffer, arrayLength)) {
-            bufferSize_ = oldSize;
             return false;
         }
     }
 
     // write obj properties
     if (!WritePlainObject(value)) {
-        bufferSize_ = oldSize;
         return false;
     }
-
     return true;
 }
 
@@ -1097,7 +1114,7 @@ SerializationUID JSDeserializer::ReadType()
         return SerializationUID::UNKNOWN;
     }
     uid = static_cast<SerializationUID>(*position_);
-    if (uid < SerializationUID::JS_NULL || uid > SerializationUID::NATIVE_POINTER) {
+    if (uid < SerializationUID::UID_BEGIN || uid > SerializationUID::UID_END) {
         return SerializationUID::UNKNOWN;
     }
     position_++;  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -1244,11 +1261,12 @@ JSHandle<JSTaggedValue> JSDeserializer::DeserializeJSTaggedValue()
             return ReadJSTypedArray(SerializationUID::JS_BIGINT64_ARRAY);
         case SerializationUID::JS_BIGUINT64_ARRAY:
             return ReadJSTypedArray(SerializationUID::JS_BIGUINT64_ARRAY);
-        case SerializationUID::NATIVE_POINTER:
-            return ReadNativePointer();
-        case SerializationUID::JS_SHARED_ARRAY_BUFFER:
         case SerializationUID::JS_ARRAY_BUFFER:
-            return ReadJSArrayBuffer();
+            return ReadJSArrayBuffer(SerializationUID::JS_ARRAY_BUFFER);
+        case SerializationUID::JS_SHARED_ARRAY_BUFFER:
+            return ReadJSArrayBuffer(SerializationUID::JS_SHARED_ARRAY_BUFFER);
+        case SerializationUID::JS_TRANSFER_ARRAY_BUFFER:
+            return ReadJSArrayBuffer(SerializationUID::JS_TRANSFER_ARRAY_BUFFER);
         case SerializationUID::TAGGED_OBJECT_REFERNCE:
             return ReadReference();
         case SerializationUID::CONCURRENT_FUNCTION:
@@ -1792,16 +1810,32 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSTypedArray(SerializationUID uid)
     return objTag;
 }
 
-JSHandle<JSTaggedValue> JSDeserializer::ReadNativePointer()
+JSHandle<JSTaggedValue> JSDeserializer::ReadTransferJSNativePointer()
 {
-    JSTaggedValue pointer;
-    if (!ReadJSTaggedValue(&pointer)) {
+    uintptr_t externalPtr;
+    if (!ReadNativePointer(&externalPtr)) {
         return JSHandle<JSTaggedValue>();
     }
-    return JSHandle<JSTaggedValue>(thread_, pointer);
+    uintptr_t deleter;
+    if (!ReadNativePointer(&deleter)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    uintptr_t allocatorPtr;
+    if (!ReadNativePointer(&allocatorPtr)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    int32_t bindingSize;
+    if (!JudgeType(SerializationUID::INT32) || !ReadInt(&bindingSize)) {
+        return JSHandle<JSTaggedValue>();
+    }
+    JSHandle<JSNativePointer> np = factory_->NewJSNativePointer(ToVoidPtr(externalPtr),
+                                                                reinterpret_cast<DeleteEntryPoint>(deleter),
+                                                                ToVoidPtr(allocatorPtr),
+                                                                bindingSize);
+    return JSHandle<JSTaggedValue>::Cast(np);
 }
 
-JSHandle<JSTaggedValue> JSDeserializer::ReadJSArrayBuffer()
+JSHandle<JSTaggedValue> JSDeserializer::ReadJSArrayBuffer(SerializationUID uid)
 {
     // read access length
     int32_t arrayLength;
@@ -1809,10 +1843,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArrayBuffer()
         return JSHandle<JSTaggedValue>();
     }
     // read access shared
-    bool shared = false;
-    if (!ReadBoolean(&shared)) {
-        return JSHandle<JSTaggedValue>();
-    }
+    bool shared = (uid == SerializationUID::JS_SHARED_ARRAY_BUFFER);
     // create jsarraybuffer
     JSHandle<JSTaggedValue> arrayBufferTag;
     if (shared) {
@@ -1820,7 +1851,15 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArrayBuffer()
         void *bufferData = ToVoidPtr(*bufferAddr);
         JSHandle<JSArrayBuffer> arrayBuffer = factory_->NewJSSharedArrayBuffer(bufferData, arrayLength);
         arrayBufferTag = JSHandle<JSTaggedValue>::Cast(arrayBuffer);
-        referenceMap_.emplace(objectId_++, arrayBufferTag);
+    } else if (uid == SerializationUID::JS_TRANSFER_ARRAY_BUFFER) {
+        JSHandle<JSTaggedValue> np = ReadTransferJSNativePointer();
+        if (np.IsEmpty()) {
+            return JSHandle<JSTaggedValue>();
+        }
+        JSHandle<JSArrayBuffer> arrayBuffer = factory_->NewJSArrayBuffer(arrayLength);
+        arrayBuffer->SetArrayBufferData(thread_, np.GetTaggedValue());
+        arrayBuffer->SetShared(false);
+        arrayBufferTag = JSHandle<JSTaggedValue>::Cast(arrayBuffer);
     } else {
         void *fromBuffer = GetBuffer(arrayLength);
         if (fromBuffer == nullptr) {
@@ -1828,7 +1867,6 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArrayBuffer()
         }
         JSHandle<JSArrayBuffer> arrayBuffer = factory_->NewJSArrayBuffer(arrayLength);
         arrayBufferTag = JSHandle<JSTaggedValue>::Cast(arrayBuffer);
-        referenceMap_.emplace(objectId_++, arrayBufferTag);
         JSHandle<JSNativePointer> np(thread_, arrayBuffer->GetArrayBufferData());
         void *toBuffer = np->GetExternalPointer();
         if (memcpy_s(toBuffer, arrayLength, fromBuffer, arrayLength) != EOK) {
@@ -1836,6 +1874,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArrayBuffer()
             UNREACHABLE();
         }
     }
+    referenceMap_.emplace(objectId_++, arrayBufferTag);
     // read jsarraybuffer properties
     if (!JudgeType(SerializationUID::JS_PLAIN_OBJECT) || !DefinePropertiesAndElements(arrayBufferTag)) {
         return JSHandle<JSTaggedValue>();
@@ -2015,9 +2054,8 @@ bool Serializer::WriteValue(
     if (!valueSerializer_.SerializeJSTaggedValue(value)) {
         return false;
     }
-    if (!FinalizeTransfer(thread, transfer)) {
-        return false;
-    }
+    // clear transfer obj set after serialization
+    valueSerializer_.ClearTransferSet();
     std::pair<uint8_t*, size_t> pair = valueSerializer_.ReleaseBuffer();
     data_->value_.reset(pair.first);
     data_->dataSize_ = pair.second;
@@ -2039,6 +2077,7 @@ bool Serializer::PrepareTransfer(JSThread *thread, const JSHandle<JSTaggedValue>
     }
     int len = base::ArrayHelper::GetArrayLength(thread, transfer);
     int k = 0;
+    CUnorderedSet<uintptr_t> transferDataSet;
     while (k < len) {
         bool exists = JSTaggedValue::HasProperty(thread, transfer, k);
         if (exists) {
@@ -2046,19 +2085,11 @@ bool Serializer::PrepareTransfer(JSThread *thread, const JSHandle<JSTaggedValue>
             if (!element->IsArrayBuffer()) {
                 return false;
             }
-            arrayBufferIdxs_.emplace_back(k);
+            transferDataSet.insert(static_cast<uintptr_t>(element.GetTaggedType()));
         }
         k++;
     }
-    return true;
-}
-
-bool Serializer::FinalizeTransfer(JSThread *thread, const JSHandle<JSTaggedValue> &transfer)
-{
-    for (int idx : arrayBufferIdxs_) {
-        JSHandle<JSTaggedValue> element = JSArray::FastGetPropertyByValue(thread, transfer, idx);
-        JSArrayBuffer::Cast(element->GetTaggedObject())->Detach(thread);
-    }
+    valueSerializer_.InitTransferSet(std::move(transferDataSet));
     return true;
 }
 

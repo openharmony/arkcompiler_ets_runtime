@@ -40,8 +40,9 @@ typedef void* (*DetachFunc)(void *enginePointer, void *objPointer, void *hint, v
 typedef Local<JSValueRef> (*AttachFunc)(void *enginePointer, void *buffer, void *hint, void *attachData);
 
 enum class SerializationUID : uint8_t {
+    UID_BEGIN = 0x01,
     // JS special values
-    JS_NULL = 0x01,
+    JS_NULL,
     JS_UNDEFINED,
     JS_TRUE,
     JS_FALSE,
@@ -67,6 +68,7 @@ enum class SerializationUID : uint8_t {
     JS_ARRAY,
     JS_ARRAY_BUFFER,
     JS_SHARED_ARRAY_BUFFER,
+    JS_TRANSFER_ARRAY_BUFFER,
     // TypedArray begin
     JS_UINT8_ARRAY,
     JS_UINT8_CLAMPED_ARRAY,
@@ -100,7 +102,7 @@ enum class SerializationUID : uint8_t {
     TAGGED_ARRAY,
     // Function end
     BYTE_ARRAY,
-    NATIVE_POINTER,
+    UID_END,
     UNKNOWN
 };
 
@@ -109,6 +111,8 @@ public:
     explicit JSSerializer(JSThread *thread) : thread_(thread) {}
     ~JSSerializer() = default;
     bool SerializeJSTaggedValue(const JSHandle<JSTaggedValue> &value);
+    void InitTransferSet(CUnorderedSet<uintptr_t> transferDataSet);
+    void ClearTransferSet();
 
     // Return pointer to the buffer and its length, should not use this Serializer anymore after Release
     std::pair<uint8_t *, size_t> ReleaseBuffer();
@@ -139,7 +143,7 @@ private:
     bool WriteJSTypedArray(const JSHandle<JSTaggedValue> &value, SerializationUID uId);
     bool WritePlainObject(const JSHandle<JSTaggedValue> &value);
     bool WriteNativeBindingObject(const JSHandle<JSTaggedValue> &value);
-    bool WriteNativePointer(const JSHandle<JSTaggedValue> &value);
+    bool TransferJSNativePointer(const JSHandle<JSNativePointer> &value);
     bool WriteJSArrayBuffer(const JSHandle<JSTaggedValue> &value);
     bool WriteBigInt(const JSHandle<JSTaggedValue> &value);
     bool WriteDesc(const PropertyDescriptor &desc);
@@ -160,7 +164,8 @@ private:
     size_t bufferCapacity_ = 0;
     // The Reference map is used for check whether a tagged object has been serialized
     // Reference map works only if no gc happens during serialization
-    std::map<uintptr_t, uint64_t> referenceMap_;
+    CUnorderedMap<uintptr_t, uint64_t> referenceMap_;
+    CUnorderedSet<uintptr_t> transferDataSet_;
     uint64_t objectId_ = 0;
 };
 
@@ -195,8 +200,8 @@ private:
     JSHandle<JSTaggedValue> ReadJSSet();
     JSHandle<JSTaggedValue> ReadJSRegExp();
     JSHandle<JSTaggedValue> ReadJSTypedArray(SerializationUID uid);
-    JSHandle<JSTaggedValue> ReadNativePointer();
-    JSHandle<JSTaggedValue> ReadJSArrayBuffer();
+    JSHandle<JSTaggedValue> ReadTransferJSNativePointer();
+    JSHandle<JSTaggedValue> ReadJSArrayBuffer(SerializationUID uid);
     JSHandle<JSTaggedValue> ReadReference();
     JSHandle<JSTaggedValue> ReadNativeBindingObject();
     JSHandle<JSTaggedValue> ReadBigInt();
@@ -220,7 +225,7 @@ private:
     const uint8_t *position_ = nullptr;
     const uint8_t *end_ = nullptr;
     uint64_t objectId_ = 0;
-    std::map<uint64_t, JSHandle<JSTaggedValue>> referenceMap_;
+    CUnorderedMap<uint64_t, JSHandle<JSTaggedValue>> referenceMap_;
     void *engine_ = nullptr;
 };
 
@@ -265,12 +270,10 @@ public:
 
 private:
     bool PrepareTransfer(JSThread *thread, const JSHandle<JSTaggedValue> &transfer);
-    bool FinalizeTransfer(JSThread *thread, const JSHandle<JSTaggedValue> &transfer);
 
 private:
     ecmascript::JSSerializer valueSerializer_;
     std::unique_ptr<SerializationData> data_;
-    CVector<int> arrayBufferIdxs_;
 
     NO_COPY_SEMANTIC(Serializer);
 };

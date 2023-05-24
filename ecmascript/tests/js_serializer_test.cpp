@@ -841,6 +841,85 @@ public:
         Destroy();
     }
 
+    void TransferJSArrayBufferTest1(std::pair<uint8_t *, size_t> data, uintptr_t bufferAddrCheck)
+    {
+        Init();
+        JSDeserializer deserializer(thread, data.first, data.second);
+        JSHandle<JSTaggedValue> res = deserializer.Deserialize();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize TransferJSArrayBuffer1 fail";
+        EXPECT_TRUE(res->IsArrayBuffer()) << "[NotJSArrayBuffer] Deserialize TransferJSArrayBuffer1 fail";
+
+        JSHandle<JSArrayBuffer> arrBuf = JSHandle<JSArrayBuffer>::Cast(res);
+        EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 5); // 5: bufferLength
+        JSHandle<JSTaggedValue> nativePtr(thread, arrBuf->GetArrayBufferData());
+        EXPECT_TRUE(nativePtr->IsJSNativePointer()) << "[NotJSNativePointer] Deserialize TransferJSArrayBuffer1 fail";
+        JSHandle<JSNativePointer> np = JSHandle<JSNativePointer>::Cast(nativePtr);
+        uintptr_t bufferAddr = reinterpret_cast<uintptr_t>(np->GetExternalPointer());
+        // The deserialized C buffer pointer shall be same to the original one
+        EXPECT_EQ(static_cast<uint64_t>(bufferAddr), static_cast<uint64_t>(bufferAddrCheck));
+        Destroy();
+    }
+
+    void TransferJSArrayBufferTest2(std::pair<uint8_t *, size_t> data, uintptr_t bufferAddrCheck)
+    {
+        Init();
+        JSDeserializer deserializer(thread, data.first, data.second);
+        JSHandle<JSTaggedValue> res = deserializer.Deserialize();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize TransferJSArrayBuffer2 fail";
+        EXPECT_TRUE(res->IsArrayBuffer()) << "[NotJSArrayBuffer] Deserialize TransferJSArrayBuffer2 fail";
+
+        JSHandle<JSArrayBuffer> arrBuf = JSHandle<JSArrayBuffer>::Cast(res);
+        EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 5); // 5: bufferLength
+        JSHandle<JSTaggedValue> nativePtr(thread, arrBuf->GetArrayBufferData());
+        EXPECT_TRUE(nativePtr->IsJSNativePointer()) << "[NotJSNativePointer] Deserialize TransferJSArrayBuffer2 fail";
+        JSHandle<JSNativePointer> np = JSHandle<JSNativePointer>::Cast(nativePtr);
+        uintptr_t bufferAddr = reinterpret_cast<uintptr_t>(np->GetExternalPointer());
+        // The deserialized C buffer pointer shall be different to the original one
+        EXPECT_NE(static_cast<uint64_t>(bufferAddr), static_cast<uint64_t>(bufferAddrCheck));
+        Destroy();
+    }
+
+    void TransferJSArrayBufferTest3(std::pair<uint8_t *, size_t> data, uintptr_t bufferAddrCheck)
+    {
+        Init();
+        JSDeserializer deserializer(thread, data.first, data.second);
+        JSHandle<JSTaggedValue> res = deserializer.Deserialize();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize TransferJSArrayBuffer3 fail";
+        EXPECT_TRUE(res->IsJSInt8Array()) << "[NotJSArrayBuffer] Deserialize TransferJSArrayBuffer3 fail";
+
+        JSHandle<JSTypedArray> resJSInt8Array = JSHandle<JSTypedArray>::Cast(res);
+
+        JSHandle<JSTaggedValue> typedArrayName(thread, resJSInt8Array->GetTypedArrayName());
+        uint32_t byteLength = resJSInt8Array->GetByteLength();
+        uint32_t byteOffset = resJSInt8Array->GetByteOffset();
+        uint32_t arrayLength = resJSInt8Array->GetArrayLength();
+        ContentType contentType = resJSInt8Array->GetContentType();
+        JSHandle<JSTaggedValue> viewedArrayBuffer(thread, resJSInt8Array->GetViewedArrayBufferOrByteArray());
+        EXPECT_EQ(byteLength, 10) << "Not Same ByteLength"; // 10: bufferLength
+        EXPECT_EQ(byteOffset, 0) << "Not Same ByteOffset";
+        EXPECT_EQ(arrayLength, 10) << "Not Same ArrayLength"; // 10: arrayLength
+        EXPECT_TRUE(contentType == ContentType::Number) << "Not Same ContentType";
+
+        // check arrayBuffer
+        EXPECT_TRUE(viewedArrayBuffer->IsArrayBuffer());
+        JSHandle<JSArrayBuffer> resJSArrayBuffer(viewedArrayBuffer);
+        uint32_t resTaggedLength = resJSArrayBuffer->GetArrayBufferByteLength();
+        EXPECT_EQ(resTaggedLength, 10) << "Not same viewedBuffer length"; // 10: bufferLength
+        JSHandle<JSTaggedValue> resBufferData(thread, resJSArrayBuffer->GetArrayBufferData());
+        JSHandle<JSNativePointer> resNp = JSHandle<JSNativePointer>::Cast(resBufferData);
+        void *resBuffer = resNp->GetExternalPointer();
+        for (uint32_t i = 0; i < resTaggedLength; i++) {
+            EXPECT_EQ(static_cast<uint8_t *>(resBuffer)[i], i) << "Not same viewedBuffer";
+        }
+        JSHandle<JSTaggedValue> nativePtr(thread, resJSArrayBuffer->GetArrayBufferData());
+        EXPECT_TRUE(nativePtr->IsJSNativePointer()) << "[NotJSNativePointer] Deserialize TransferJSArrayBuffer fail";
+        JSHandle<JSNativePointer> np = JSHandle<JSNativePointer>::Cast(nativePtr);
+        uintptr_t bufferAddr = reinterpret_cast<uintptr_t>(np->GetExternalPointer());
+        // The deserialized C buffer pointer shall be same to the original one
+        EXPECT_EQ(static_cast<uint64_t>(bufferAddr), static_cast<uint64_t>(bufferAddrCheck));
+        Destroy();
+    }
+
 private:
     EcmaVM *ecmaVm = nullptr;
     EcmaHandleScope *scope = nullptr;
@@ -1577,14 +1656,12 @@ JSArrayBuffer *CreateTestJSArrayBuffer(JSThread *thread)
     thread->GetEcmaVM()->GetFactory()->NewJSArrayBufferData(jsArrayBuffer, byteLength);
     jsArrayBuffer->SetArrayBufferByteLength(byteLength);
     JSHandle<JSTaggedValue> obj = JSHandle<JSTaggedValue>(jsArrayBuffer);
-    // 7 : test case
-    JSHandle<JSTaggedValue> number(thread, JSTaggedValue(7));
-    BuiltinsArrayBuffer::SetValueInBuffer(thread, obj.GetTaggedValue(), 1, DataViewType::UINT8,
-                                          number, true);
-    // 3, 17 : test case
-    number = JSHandle<JSTaggedValue>(thread, JSTaggedValue(17));
-    BuiltinsArrayBuffer::SetValueInBuffer(thread, obj.GetTaggedValue(), 3, DataViewType::UINT8,  // 3:index
-                                          number, true);
+    JSMutableHandle<JSTaggedValue> number(thread, JSTaggedValue::Undefined());
+    for (int i = 0; i < 10; i++) { // 10: arrayLength
+        number.Update(JSTaggedValue(i));
+        BuiltinsArrayBuffer::SetValueInBuffer(thread, obj.GetTaggedValue(), i, DataViewType::UINT8,
+            number, true);
+    }
     return *jsArrayBuffer;
 }
 
@@ -1889,5 +1966,109 @@ HWTEST_F_L0(JSSerializerTest, SerializeSymbolWithProperty)
     JSHandle<JSTaggedValue> ret = deserializer.Deserialize();
     EXPECT_TRUE(ret.IsEmpty());
     delete serializer;
+};
+
+// Test transfer JSArrayBuffer
+HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer1)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+
+    // create a JSArrayBuffer
+    size_t length = 5;
+    uint8_t value = 100;
+    void *buffer = ecmaVm->GetNativeAreaAllocator()->AllocateBuffer(length);
+    if (memset_s(buffer, length, value, length) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+    JSHandle<JSArrayBuffer> arrBuf = factory->NewJSArrayBuffer(buffer,
+        length, NativeAreaAllocator::FreeBufferFunc, ecmaVm->GetNativeAreaAllocator());
+    JSHandle<JSTaggedValue> arrBufTag = JSHandle<JSTaggedValue>::Cast(arrBuf);
+
+    CUnorderedSet<uintptr_t> transferDataSet;
+    uintptr_t addr = static_cast<uintptr_t>(arrBufTag.GetTaggedType());
+    transferDataSet.insert(addr);
+    JSSerializer *serializer = new JSSerializer(thread);
+    serializer->InitTransferSet(transferDataSet);
+    bool success = serializer->SerializeJSTaggedValue(arrBufTag);
+    EXPECT_TRUE(success);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::TransferJSArrayBufferTest1,
+                   jsDeserializerTest,
+                   data,
+                   reinterpret_cast<uintptr_t>(buffer));
+    t1.join();
+    delete serializer;
+    // test if detached
+    EXPECT_TRUE(arrBuf->IsDetach());
+};
+
+// Test serialize JSArrayBuffer that not transfer
+HWTEST_F_L0(JSSerializerTest, TransferJSArrayBuffer2)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+
+    // create a JSArrayBuffer
+    size_t length = 5;
+    uint8_t value = 100;
+    void *buffer = ecmaVm->GetNativeAreaAllocator()->AllocateBuffer(length);
+    if (memset_s(buffer, length, value, length) != EOK) {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+    JSHandle<JSArrayBuffer> arrBuf = factory->NewJSArrayBuffer(buffer,
+        length, NativeAreaAllocator::FreeBufferFunc, ecmaVm->GetNativeAreaAllocator());
+    JSHandle<JSTaggedValue> arrBufTag = JSHandle<JSTaggedValue>::Cast(arrBuf);
+
+    JSSerializer *serializer = new JSSerializer(thread);
+    bool success = serializer->SerializeJSTaggedValue(arrBufTag);
+    EXPECT_TRUE(success);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::TransferJSArrayBufferTest2, jsDeserializerTest, data,
+        reinterpret_cast<uintptr_t>(buffer));
+    t1.join();
+    delete serializer;
+    // test if detached
+    EXPECT_FALSE(arrBuf->IsDetach());
+};
+
+// Test JSArrayBuffer transfer mixed with other properties in a typedArray
+HWTEST_F_L0(JSSerializerTest, TransferJSArrayBufferInTypedArray)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> target = env->GetInt8ArrayFunction();
+    JSHandle<JSTypedArray> int8Array =
+        JSHandle<JSTypedArray>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(target), target));
+    JSHandle<JSArrayBuffer> arrBuffer(thread, CreateTestJSArrayBuffer(thread));
+    JSHandle<JSNativePointer> np =
+        JSHandle<JSNativePointer>::Cast(JSHandle<JSTaggedValue>(thread, arrBuffer->GetArrayBufferData()));
+    // c buffer ptr
+    uintptr_t buffer = reinterpret_cast<uintptr_t>(np->GetExternalPointer());
+    int8Array->SetViewedArrayBufferOrByteArray(thread, JSHandle<JSTaggedValue>(arrBuffer));
+    int byteLength = 10;
+    int byteOffset = 0;
+    int arrayLength = (byteLength - byteOffset) / (sizeof(int8_t));
+    int8Array->SetByteLength(byteLength);
+    int8Array->SetByteOffset(byteOffset);
+    int8Array->SetTypedArrayName(thread, thread->GlobalConstants()->GetInt8ArrayString());
+    int8Array->SetArrayLength(arrayLength);
+    int8Array->SetContentType(ContentType::Number);
+    CUnorderedSet<uintptr_t> transferDataSet;
+    uintptr_t addr = static_cast<uintptr_t>(arrBuffer.GetTaggedType());
+    transferDataSet.insert(addr);
+    JSSerializer *serializer = new JSSerializer(thread);
+    serializer->InitTransferSet(transferDataSet);
+    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(int8Array));
+    EXPECT_TRUE(success);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::TransferJSArrayBufferTest3, jsDeserializerTest, data, buffer);
+    t1.join();
+    delete serializer;
+    // test if detached
+    EXPECT_TRUE(arrBuffer->IsDetach());
 };
 }  // namespace panda::test

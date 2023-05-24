@@ -40,6 +40,11 @@ public:
     inline void Destroy()
     {
         DeleteExternalPointer();
+        Detach();
+    }
+
+    inline void Detach()
+    {
         SetExternalPointer(nullptr);
         SetDeleter(nullptr);
         SetData(nullptr);
