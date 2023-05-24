@@ -16,8 +16,6 @@
 #ifndef ECMASCRIPT_JS_SERIALIZER_H
 #define ECMASCRIPT_JS_SERIALIZER_H
 
-#include <map>
-
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_map.h"
