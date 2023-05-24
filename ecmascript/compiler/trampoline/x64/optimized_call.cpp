@@ -1071,6 +1071,9 @@ void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
     __ Addq(AsmInterpretedFrame::GetSize(false), r8);
     __ Leaq(Operand(frameStateBase, AsmInterpretedFrame::GetBaseOffset(false)), r10);
     __ Movq(r8, Operand(r10, InterpretedFrameBase::GetPrevOffset(false)));
+    __ Testq(15, rsp);  // 15: low 4 bits must be 0b0000
+    __ Jnz(&pushArgv);
+    __ PushAlignBytes();
     __ Bind(&pushArgv);
     // update fp
     __ Movq(rsp, Operand(frameStateBase, AsmInterpretedFrame::GetFpOffset(false)));

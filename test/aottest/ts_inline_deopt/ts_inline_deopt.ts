@@ -38,4 +38,11 @@ function foo() {
     print(b)   // 2
 }
 
+let arr = new Array(2)
+arr[0] = 1
 foo()
+let str = new String("hello wrold")
+arr[1] = str
+print(arr.length)
+print(arr[0])
+print(arr[1])
