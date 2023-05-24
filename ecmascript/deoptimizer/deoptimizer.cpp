@@ -471,7 +471,7 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
 {
     FrameWriter frameWriter(this);
     // Push asm interpreter frame
-    for (int32_t curDepth = inlineDepth_; curDepth >= 0; curDepth--) {
+    for (int32_t curDepth = static_cast<int32_t>(inlineDepth_); curDepth >= 0; curDepth--) {
         auto start = frameWriter.GetTop();
         JSTaggedValue callTarget = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
         auto method = GetMethod(callTarget);
