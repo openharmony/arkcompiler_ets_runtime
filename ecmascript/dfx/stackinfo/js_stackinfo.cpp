@@ -341,7 +341,9 @@ bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t 
             LOG_ECMA(ERROR) << "FrameType ERROR, addr: " << currentPtr << ", frameType: " << frameType;
             return false;
         }
-        if (static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_ENTRY_FRAME) {
+        if (static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_ENTRY_FRAME ||
+            static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_ENTRY_FRAME ||
+            static_cast<FrameType>(frameType) == FrameType::BUILTIN_ENTRY_FRAME) {
             break;
         }
         currentPtr -= typeOffset;
