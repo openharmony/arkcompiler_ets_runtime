@@ -178,18 +178,37 @@ public:
 
     inline static int Canonicalize(int c, bool isUnicode)
     {
-        if (c < TMP_BUF_SIZE) {  // NOLINTNEXTLINE(readability-magic-numbers)
+        if (c < TMP_BUF_SIZE) {  // NOLINTNEXTLINE(readability-magic-numbers)   
             if (c >= 'a' && c <= 'z') {
                 c = c - 'a' + 'A';
             }
         } else {
+            int cur = c;
             if (isUnicode) {
+                c = u_tolower(static_cast<UChar32>(c));
+                if(c >= 'a' && c <= 'z'){
+                    c = cur;
+                }
+            } else {
                 c = u_toupper(static_cast<UChar32>(c));
+                if (c >= 'A' && c <= 'Z'){
+                    c = cur;
+                }
             }
         }
         return c;
     }
-
+    inline static void ProcessIntersection(RangeSet *result)
+    {
+        RangeSet cr;
+        RangeSet cr1;
+        uint32_t pt[2];
+        pt[0] = 'a';
+        pt[1] = 'z' + 1;
+        cr.Insert(pt[0], pt[1]);
+        result->Inter(cr1, cr);
+        result->Insert(cr1);
+    }
 private:
     friend class RegExpExecutor;
     static constexpr int TMP_BUF_SIZE = 128;

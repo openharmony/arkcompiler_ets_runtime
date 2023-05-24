@@ -592,7 +592,36 @@ void RangeSet::Insert(uint32_t start, uint32_t end)
         rangeSet_.emplace_back(pairElement);
     }
 }
-
+// if RangeResult cross-intersects with [a, z],
+// we capitalize the intersection part and insert into RangeResult.
+void RangeSet::Inter(RangeSet &cr, const RangeSet &s1)
+{
+    if (s1.rangeSet_.empty()) {
+        rangeSet_.clear();
+        return;
+    }
+    if (rangeSet_.empty()) {
+        return;
+    }
+    uint32_t firstMax = 0;
+    uint32_t secondMin = 0;
+    for (const auto &range : rangeSet_) {
+        if (range.first >= s1.rangeSet_.front().first) {
+            firstMax = range.first;
+        } else {
+            firstMax = s1.rangeSet_.front().first;
+        }
+        if (range.second >= s1.rangeSet_.front().second) {
+            secondMin = s1.rangeSet_.front().second;
+        } else {
+            secondMin = range.second;
+        }
+        if (secondMin >= firstMax) {
+            cr.Insert(firstMax, secondMin);
+            cr.Insert(firstMax + 'A' - 'a', secondMin + 'A' - 'a');
+        }
+    }
+}
 void RangeSet::Insert(const RangeSet &s1)
 {
     if (s1.rangeSet_.empty()) {
