@@ -13,23 +13,23 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_PGO_PROFILE_LOADER_H
-#define ECMASCRIPT_PGO_PROFILE_LOADER_H
+#ifndef ECMASCRIPT_PGO_PROFILE_DECODER_H
+#define ECMASCRIPT_PGO_PROFILE_DECODER_H
 
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript {
-class PGOProfilerLoader {
+class PGOProfilerDecoder {
 public:
-    PGOProfilerLoader() = default;
-    PGOProfilerLoader(const std::string &inPath, uint32_t hotnessThreshold)
+    PGOProfilerDecoder() = default;
+    PGOProfilerDecoder(const std::string &inPath, uint32_t hotnessThreshold)
         : inPath_(inPath), hotnessThreshold_(hotnessThreshold) {}
 
-    virtual ~PGOProfilerLoader() = default;
+    virtual ~PGOProfilerDecoder() = default;
 
-    NO_COPY_SEMANTIC(PGOProfilerLoader);
-    NO_MOVE_SEMANTIC(PGOProfilerLoader);
+    NO_COPY_SEMANTIC(PGOProfilerDecoder);
+    NO_MOVE_SEMANTIC(PGOProfilerDecoder);
 
     bool PUBLIC_API Match(const CString &recordName, EntityId methodId);
 
@@ -89,4 +89,4 @@ private:
     MemMap fileMapAddr_;
 };
 } // namespace panda::ecmascript
-#endif  // ECMASCRIPT_PGO_PROFILE_LOADER_H
+#endif  // ECMASCRIPT_PGO_PROFILE_DECODER_H

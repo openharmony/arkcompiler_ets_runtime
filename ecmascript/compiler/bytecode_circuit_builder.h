@@ -36,7 +36,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/compiler/compiler_log.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 
 namespace panda::ecmascript::kungfu {
 struct ExceptionItem {
@@ -264,10 +264,10 @@ public:
                            bool enableTypeLowering,
                            std::string name,
                            const CString &recordName,
-                           PGOProfilerLoader *loader)
+                           PGOProfilerDecoder *decoder)
         : tsManager_(tsManager), circuit_(circuit), file_(jsPandaFile),
           method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
-          typeRecorder_(jsPandaFile, method_, tsManager, recordName, loader), hasTypes_(hasTypes),
+          typeRecorder_(jsPandaFile, method_, tsManager, recordName, decoder), hasTypes_(hasTypes),
           enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
           pcOffsets_(methodPCInfo.pcOffsets),
           frameStateBuilder_(this, circuit, methodLiteral),
@@ -353,7 +353,7 @@ public:
     {
         return suspendAndResumeGates_;
     }
-    
+
     void UpdateAsyncRelatedGate(GateRef gate)
     {
         suspendAndResumeGates_.emplace_back(gate);
@@ -513,7 +513,7 @@ private:
     GateRef CreateLoopExitValue(GateRef loopExit, uint16_t reg, bool acc, GateRef value);
     GateRef NewLoopExitValue(GateRef loopExit, uint16_t reg, bool acc, GateRef value);
     GateRef NewValueFromPredBB(BytecodeRegion &bb, size_t idx, GateRef exit, uint16_t reg, bool acc);
-    
+
 
     void BuildCircuit();
     GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;

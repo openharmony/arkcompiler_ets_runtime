@@ -32,6 +32,13 @@ enum class Representation {
     MIXED,
 };
 
+enum class TrackType {
+    NONE,
+    INT,
+    DOUBLE,
+    TAGGED
+};
+
 enum class PropertyBoxType {
     // Meaningful when a property cell does not contain the hole.
     UNDEFINED,     // The PREMONOMORPHIC of property cells.
@@ -73,11 +80,12 @@ public:
     using IsInlinedPropsField = PropertyMetaDataField::NextFlag;                         // 5
     using RepresentationField = IsInlinedPropsField::NextField<Representation, 3>;      // 3: 3 bits, 6-8
     using OffsetField = RepresentationField::NextField<uint32_t, OFFSET_BITFIELD_NUM>;  // 18
+    using TrackTypeField = OffsetField::NextField<TrackType, 3>;  // 3: 3 bits
 
-    static constexpr uint32_t NORMAL_ATTR_BITS = 18;
+    static constexpr uint32_t NORMAL_ATTR_BITS = 21;
     using NormalAttrField = BitField<int, 0, NORMAL_ATTR_BITS>;
-    using SortedIndexField = OffsetField::NextField<uint32_t, OFFSET_BITFIELD_NUM>;  // 28
-    using IsConstPropsField = SortedIndexField::NextFlag;                            // 29
+    using SortedIndexField = TrackTypeField::NextField<uint32_t, OFFSET_BITFIELD_NUM>;  // 31
+    using IsConstPropsField = SortedIndexField::NextFlag;                            // 32
     // dictionary mode, include global
     using PropertyBoxTypeField = PropertyMetaDataField::NextField<PropertyBoxType, 2>;              // 2: 2 bits, 5-6
     using DictionaryOrderField = PropertyBoxTypeField::NextField<uint32_t, DICTIONARY_ORDER_NUM>;  // 26
@@ -161,6 +169,31 @@ public:
         }
     }
 
+    bool UpdateTrackType(JSTaggedValue value)
+    {
+        TrackType oldType = GetTrackType();
+        if (oldType == TrackType::TAGGED) {
+            return false;
+        }
+        TrackType newType = TrackType::DOUBLE;
+        if (value.IsInt()) {
+            newType = TrackType::INT;
+        } else if (value.IsObject()) {
+            newType = TrackType::TAGGED;
+        }
+
+        if (oldType == TrackType::NONE) {
+            SetTrackType(newType);
+            return true;
+        } else {
+            if (oldType != newType) {
+                SetTrackType(TrackType::TAGGED);
+                return true;
+            }
+        }
+        return false;
+    }
+
     inline bool IsDefaultAttributes() const
     {
         return AttributesField::Get(value_) == static_cast<int>(DefaultAttributesField::Mask());
@@ -235,9 +268,20 @@ public:
     {
         RepresentationField::Set<uint32_t>(representation, &value_);
     }
+
     inline Representation GetRepresentation() const
     {
         return RepresentationField::Get(value_);
+    }
+
+    inline TrackType GetTrackType() const
+    {
+        return TrackTypeField::Get(value_);
+    }
+
+    inline void SetTrackType(TrackType type)
+    {
+        TrackTypeField::Set(type, &value_);
     }
 
     inline void SetDictionaryOrder(uint32_t order)

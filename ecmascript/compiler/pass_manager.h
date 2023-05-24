@@ -20,7 +20,7 @@
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/file_generators.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -159,7 +159,7 @@ public:
                 const std::string &profIn, uint32_t hotnessThreshold, PassOptions *passOptions)
         : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), maxMethodsInModule_(maxMethodsInModule),
-          profilerLoader_(profIn, hotnessThreshold), passOptions_(passOptions) {};
+          profilerDecoder_(profIn, hotnessThreshold), passOptions_(passOptions) {};
     PassManager() = default;
     ~PassManager() = default;
 
@@ -181,7 +181,7 @@ private:
     AotMethodLogList *logList_ {nullptr};
     size_t maxAotMethodSize_ {0};
     size_t maxMethodsInModule_ {0};
-    PGOProfilerLoader profilerLoader_;
+    PGOProfilerDecoder profilerDecoder_;
     PassOptions *passOptions_ {nullptr};
 };
 }

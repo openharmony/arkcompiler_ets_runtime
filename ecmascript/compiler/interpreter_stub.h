@@ -146,6 +146,7 @@ public:
     inline void DispatchDebuggerLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
     inline void PGOTypeProfiler(GateRef glue, GateRef sp, GateRef pc, GateRef profileTypeInfo, GateRef type);
+    inline void PGOLayoutProfiler(GateRef glue, GateRef sp, GateRef pc, GateRef hclass);
     inline void PGOFuncProfiler(GateRef glue, GateRef func);
 
     template <bool needPrint>

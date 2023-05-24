@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-#include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript {
-bool PGOProfilerLoader::Load()
+bool PGOProfilerDecoder::Load()
 {
     if (isLoaded_) {
         Clear();
@@ -46,7 +46,7 @@ bool PGOProfilerLoader::Load()
     return true;
 }
 
-bool PGOProfilerLoader::Verify(uint32_t checksum)
+bool PGOProfilerDecoder::Verify(uint32_t checksum)
 {
     if (!isLoaded_) {
         return false;
@@ -55,7 +55,7 @@ bool PGOProfilerLoader::Verify(uint32_t checksum)
     return isVerifySuccess_;
 }
 
-bool PGOProfilerLoader::LoadAndVerify(uint32_t checksum)
+bool PGOProfilerDecoder::LoadAndVerify(uint32_t checksum)
 {
     // The file does not exist. Enter full compiler mode.
     if (inPath_.empty()) {
@@ -69,7 +69,7 @@ bool PGOProfilerLoader::LoadAndVerify(uint32_t checksum)
     return false;
 }
 
-bool PGOProfilerLoader::LoadFull()
+bool PGOProfilerDecoder::LoadFull()
 {
     if (isLoaded_) {
         Clear();
@@ -94,7 +94,7 @@ bool PGOProfilerLoader::LoadFull()
     return true;
 }
 
-bool PGOProfilerLoader::SaveAPTextFile(const std::string &outPath)
+bool PGOProfilerDecoder::SaveAPTextFile(const std::string &outPath)
 {
     if (!isLoaded_) {
         return false;
@@ -117,7 +117,7 @@ bool PGOProfilerLoader::SaveAPTextFile(const std::string &outPath)
     return true;
 }
 
-bool PGOProfilerLoader::LoadAPBinaryFile()
+bool PGOProfilerDecoder::LoadAPBinaryFile()
 {
     std::string realPath;
     if (!RealPath(inPath_, realPath)) {
@@ -138,7 +138,7 @@ bool PGOProfilerLoader::LoadAPBinaryFile()
     return true;
 }
 
-void PGOProfilerLoader::UnLoadAPBinaryFile()
+void PGOProfilerDecoder::UnLoadAPBinaryFile()
 {
     if (fileMapAddr_.GetOriginAddr() != nullptr && fileMapAddr_.GetSize() > 0) {
         FileUnMap(fileMapAddr_);
@@ -146,7 +146,7 @@ void PGOProfilerLoader::UnLoadAPBinaryFile()
     }
 }
 
-void PGOProfilerLoader::Clear()
+void PGOProfilerDecoder::Clear()
 {
     if (isLoaded_) {
         UnLoadAPBinaryFile();
@@ -164,7 +164,7 @@ void PGOProfilerLoader::Clear()
     }
 }
 
-bool PGOProfilerLoader::Match(const CString &recordName, EntityId methodId)
+bool PGOProfilerDecoder::Match(const CString &recordName, EntityId methodId)
 {
     if (!isLoaded_) {
         return true;

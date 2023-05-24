@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/compilation_driver.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 
@@ -335,6 +336,8 @@ public:
         std::string fileName = vm_->GetJSOptions().GetBuiltinsDTS();
         return CString(fileName);
     }
+
+    void UpdateTSHClassFromPGO(const kungfu::GateType &type, const PGOSampleLayoutDesc &desc);
 
     JSHandle<JSHClass> GenerateTSHClass(const JSHandle<TSClassType> &classType);
 

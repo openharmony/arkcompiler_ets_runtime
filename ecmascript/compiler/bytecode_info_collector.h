@@ -17,7 +17,7 @@
 #define ECMASCRIPT_COMPILER_BYTECODE_INFO_COLLECTOR_H
 
 #include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_loader.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {

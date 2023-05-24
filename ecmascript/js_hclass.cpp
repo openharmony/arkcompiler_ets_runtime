@@ -676,4 +676,58 @@ void JSHClass::CopyTSInheritInfo(const JSThread *thread, const JSHandle<JSHClass
     JSHandle<VTable> copyVtable = VTable::Copy(thread, vtable);
     newHClass->SetVTable(thread, copyVtable);
 }
+
+bool JSHClass::DumpForProfile(JSHClass *rootHClass, CMap<CString, TrackType> &infos)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (rootHClass->IsDictionaryMode()) {
+        return false;
+    }
+
+    LayoutInfo *layout = LayoutInfo::Cast(rootHClass->GetLayout().GetTaggedObject());
+    int element = rootHClass->NumberOfProps();
+    for (int i = 0; i < element; i++) {
+        layout->DumpFieldIndexForProfile(i, infos);
+    }
+    rootHClass->DumpTransitionTreeForProfile(infos);
+
+    return infos.size() != 0;
+}
+
+void JSHClass::DumpTransitionTreeForProfile(CMap<CString, TrackType> &infos)
+{
+    if (IsDictionaryMode()) {
+        return;
+    }
+
+    JSTaggedValue value = GetTransitions();
+    if (value.IsUndefined()) {
+        return;
+    }
+    if (value.IsWeak()) {
+        auto cachedHClass = JSHClass::Cast(value.GetTaggedWeakRef());
+        int last = static_cast<int>(cachedHClass->NumberOfProps()) - 1;
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
+        layoutInfo->DumpFieldIndexForProfile(last, infos);
+        cachedHClass->DumpTransitionTreeForProfile(infos);
+        return;
+    }
+
+    auto dict = TransitionsDictionary::Cast(value.GetTaggedObject());
+    int size = dict->Size();
+    for (int hashIndex = 0; hashIndex < size; hashIndex++) {
+        JSTaggedValue key = dict->GetKey(hashIndex);
+        if (key.IsString()) {
+            JSTaggedValue ret = dict->GetValue(hashIndex);
+            if (ret.IsUndefined()) {
+                continue;
+            }
+            auto cachedHClass = JSHClass::Cast(ret.GetTaggedWeakRef());
+            int last = static_cast<int>(cachedHClass->NumberOfProps()) - 1;
+            LayoutInfo *layoutInfo = LayoutInfo::Cast(cachedHClass->GetLayout().GetTaggedObject());
+            layoutInfo->DumpFieldIndexForProfile(last, infos);
+            cachedHClass->DumpTransitionTreeForProfile(infos);
+        }
+    }
+}
 }  // namespace panda::ecmascript

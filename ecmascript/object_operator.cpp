@@ -474,6 +474,16 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
 
     TaggedArray *properties = TaggedArray::Cast(receiver->GetProperties().GetTaggedObject());
     if (!properties->IsDictionaryMode()) {
+        if (thread_->IsPGOProfilerEnable() && attributes_.UpdateTrackType(value.GetTaggedValue())) {
+            LayoutInfo *layoutInfo = LayoutInfo::Cast(receiver->GetJSHClass()->GetLayout().GetTaggedObject());
+            uint32_t offset = index_;
+            if (!attributes_.IsInlinedProps()) {
+                auto *hclass = receiver_->GetTaggedObject()->GetClass();
+                offset += hclass->GetInlinedProperties();
+            }
+            layoutInfo->SetNormalAttr(thread_, offset, attributes_);
+        }
+
         PropertyAttributes attr = GetAttr();
         if (attr.IsInlinedProps()) {
             receiver->SetPropertyInlinedProps(thread_, GetIndex(), value.GetTaggedValue());
@@ -742,6 +752,9 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
         auto *hclass = receiver_->GetTaggedObject()->GetClass();
         LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
         attr = layoutInfo->GetAttr(receiverHoleEntry_);
+        if (thread_->IsPGOProfilerEnable() && attr.UpdateTrackType(value.GetTaggedValue())) {
+            layoutInfo->SetNormalAttr(thread_, receiverHoleEntry_, attr);
+        }
         JSObject::Cast(receiver_.GetTaggedValue())->SetProperty(thread_, hclass, attr, value.GetTaggedValue());
         uint32_t index = attr.IsInlinedProps() ? attr.GetOffset() :
                 attr.GetOffset() - obj->GetJSHClass()->GetInlinedProperties();

@@ -391,6 +391,12 @@ void RuntimeStubs::PGOTypeProfiler(uintptr_t argGlue, uintptr_t func, int32_t of
     thread->GetEcmaVM()->GetPGOProfiler()->TypeSample(func, offset, type);
 }
 
+void RuntimeStubs::PGOLayoutProfiler(uintptr_t argGlue, uintptr_t func, int32_t offset, JSTaggedType constructor)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    thread->GetEcmaVM()->GetPGOProfiler()->LayoutSample(func, offset, constructor);
+}
+
 void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
 {
     std::string format = MessageString::GetMessageString(fmtMessageId);

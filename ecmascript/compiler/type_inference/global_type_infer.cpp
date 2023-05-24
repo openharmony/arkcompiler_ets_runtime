@@ -17,9 +17,9 @@
 
 namespace panda::ecmascript::kungfu {
 GlobalTypeInfer::GlobalTypeInfer(PassContext *ctx, const uint32_t methodOffset, const CString &recordName,
-                                 PGOProfilerLoader *loader, bool enableLog)
+                                 PGOProfilerDecoder *decoder, bool enableLog)
     : ctx_(ctx), jsPandaFile_(ctx_->GetJSPandaFile()), bcInfo_(ctx->GetBytecodeInfo()), methodOffset_(methodOffset),
-      recordName_(recordName), loader_(loader), enableLog_(enableLog),
+      recordName_(recordName), decoder_(decoder), enableLog_(enableLog),
       enableGlobalTypeInfer_(ctx_->GetTSManager()->GetEcmaVM()->GetJSOptions().IsEnableGlobalTypeInfer())
 {
     CollectNamespaceMethods(methodOffset);
@@ -71,7 +71,7 @@ void GlobalTypeInfer::NewTypeInfer(const uint32_t methodOffset)
     BytecodeCircuitBuilder *builder =
         new BytecodeCircuitBuilder(jsPandaFile_, methodLiteral, methodPcInfo, ctx_->GetTSManager(), circuit,
                                    ctx_->GetByteCodes(), jsPandaFile_->HasTSTypes(recordName_), enableLog_, true,
-                                   fullName, recordName_, loader_);
+                                   fullName, recordName_, decoder_);
     builder->BytecodeToCircuit();
     builders_.emplace_back(builder);
 

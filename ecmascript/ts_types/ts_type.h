@@ -58,6 +58,8 @@ public:
 
     static JSHClass *GetOrCreateHClass(JSThread *thread, JSHandle<TSObjectType> objectType, TSObjectTypeKind kind);
 
+    static void UpdateHClassFromPGO(JSThread *thread, JSHClass *hclass, const PGOSampleLayoutDesc &desc);
+
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSObjectType> objectType,
                                          JSHandle<JSTaggedValue> propName);
 

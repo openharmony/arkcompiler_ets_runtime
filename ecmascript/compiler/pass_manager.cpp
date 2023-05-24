@@ -26,7 +26,7 @@ namespace panda::ecmascript::kungfu {
 bool PassManager::ShouldCollect() const
 {
     return passOptions_->EnableTypeInfer() &&
-        (profilerLoader_.IsLoaded() || vm_->GetTSManager()->AssertTypes() || log_->OutputType());
+        (profilerDecoder_.IsLoaded() || vm_->GetTSManager()->AssertTypes() || log_->OutputType());
 }
 
 bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
@@ -39,7 +39,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
         return false;
     }
 
-    if (!profilerLoader_.LoadAndVerify(jsPandaFile->GetChecksum())) {
+    if (!profilerDecoder_.LoadAndVerify(jsPandaFile->GetChecksum())) {
         LOG_COMPILER(ERROR) << "Load and verify profiler failure";
         return false;
     }
@@ -55,7 +55,7 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
     }
 
     LOptions lOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_);
-    CompilationDriver cmpDriver(profilerLoader_,
+    CompilationDriver cmpDriver(profilerDecoder_,
                                 &collector,
                                 vm_->GetJSOptions().GetCompilerSelectMethods(),
                                 vm_->GetJSOptions().GetCompilerSkipMethods(),
@@ -96,18 +96,18 @@ bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
                         fullName.c_str(), cmpCfg->Is64Bit());
         circuit.SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
 
-        PGOProfilerLoader *loader = passOptions_->EnableOptPGOType() ? &profilerLoader_ : nullptr;
+        PGOProfilerDecoder *decoder = passOptions_->EnableOptPGOType() ? &profilerDecoder_ : nullptr;
 
         BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, tsManager, &circuit,
                                        ctx.GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
-                                       passOptions_->EnableTypeLowering(), fullName, recordName, loader);
+                                       passOptions_->EnableTypeLowering(), fullName, recordName, decoder);
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
             builder.BytecodeToCircuit();
         }
 
         PassData data(&builder, &circuit, &ctx, log_, fullName, &methodInfo, hasTypes, recordName,
-                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), loader);
+                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder);
 
         PassRunner<PassData> pipeline(&data);
         if (builder.EnableLoopOptimization()) {

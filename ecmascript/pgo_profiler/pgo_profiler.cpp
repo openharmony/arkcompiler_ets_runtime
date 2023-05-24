@@ -46,7 +46,7 @@ void PGOProfiler::Sample(JSTaggedType value, SampleMode mode)
     }
 }
 
-void PGOProfiler::TypeSample(JSTaggedType func, int32_t offset, int32_t type)
+void PGOProfiler::TypeSample(JSTaggedType func, int32_t offset, uint32_t type)
 {
     if (!isEnable_) {
         return;
@@ -62,6 +62,28 @@ void PGOProfiler::TypeSample(JSTaggedType func, int32_t offset, int32_t type)
         }
         CString recordName = ConvertToString(recordNameValue);
         recordInfos_->AddType(recordName, jsMethod->GetMethodId(), offset, PGOSampleType(type));
+    }
+}
+
+void PGOProfiler::LayoutSample(JSTaggedType func, int32_t offset, JSTaggedType constructor)
+{
+    if (!isEnable_) {
+        return;
+    }
+
+    DISALLOW_GARBAGE_COLLECTION;
+    if (!JSTaggedValue(constructor).IsJSFunction()) {
+        return;
+    }
+    JSTaggedValue funcValue(func);
+    if (funcValue.IsJSFunction() && JSFunction::Cast(funcValue)->GetMethod().IsMethod()) {
+        auto jsMethod = Method::Cast(JSFunction::Cast(funcValue)->GetMethod());
+        JSTaggedValue recordNameValue = JSFunction::Cast(funcValue)->GetRecordName();
+        if (recordNameValue.IsHole()) {
+            return;
+        }
+        CString recordName = ConvertToString(recordNameValue);
+        recordInfos_->AddType(recordName, jsMethod->GetMethodId(), offset, PGOSampleType(constructor));
     }
 }
 } // namespace panda::ecmascript

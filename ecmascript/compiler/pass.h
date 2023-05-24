@@ -47,10 +47,10 @@ public:
              std::string methodName, MethodInfo *methodInfo = nullptr, bool hasTypes = false,
              const CString &recordName = "", MethodLiteral *methodLiteral = nullptr,
              uint32_t methodOffset = 0, NativeAreaAllocator *allocator = nullptr,
-             PGOProfilerLoader *loader = nullptr)
+             PGOProfilerDecoder *decoder = nullptr)
         : builder_(builder), circuit_(circuit), ctx_(ctx), log_(log), methodName_(methodName),
           methodInfo_(methodInfo), hasTypes_(hasTypes), recordName_(recordName), methodLiteral_(methodLiteral),
-          methodOffset_(methodOffset), allocator_(allocator), loader_(loader)
+          methodOffset_(methodOffset), allocator_(allocator), decoder_(decoder)
     {
     }
 
@@ -146,9 +146,9 @@ public:
         return allocator_;
     }
 
-    PGOProfilerLoader *GetPGOProfilerLoader() const
+    PGOProfilerDecoder *GetPGOProfilerDecoder() const
     {
-        return loader_;
+        return decoder_;
     }
 
     bool IsTypeAbort() const
@@ -189,7 +189,7 @@ private:
     MethodLiteral *methodLiteral_ {nullptr};
     uint32_t methodOffset_;
     NativeAreaAllocator *allocator_ {nullptr};
-    PGOProfilerLoader *loader_ {nullptr};
+    PGOProfilerDecoder *decoder_ {nullptr};
 };
 
 template<typename T1>
@@ -216,7 +216,7 @@ public:
         if (data->HasTypes()) {
             bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
             GlobalTypeInfer globalTypeInfer(data->GetPassContext(), data->GetMethodOffset(), data->GetRecordName(),
-                                            data->GetPGOProfilerLoader(), enableLog);
+                                            data->GetPGOProfilerDecoder(), enableLog);
             globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
         }
         return true;

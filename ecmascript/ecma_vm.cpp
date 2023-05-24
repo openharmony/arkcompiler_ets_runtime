@@ -319,6 +319,11 @@ EcmaVM::~EcmaVM()
     heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
 
+    if (pgoProfiler_ != nullptr) {
+        PGOProfilerManager::GetInstance()->Destroy(pgoProfiler_);
+        pgoProfiler_ = nullptr;
+    }
+
     if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
         runtimeStat_->Print();
     }
@@ -406,11 +411,6 @@ EcmaVM::~EcmaVM()
     if (thread_ != nullptr) {
         delete thread_;
         thread_ = nullptr;
-    }
-
-    if (pgoProfiler_ != nullptr) {
-        PGOProfilerManager::GetInstance()->Destroy(pgoProfiler_);
-        pgoProfiler_ = nullptr;
     }
 }
 
@@ -873,6 +873,9 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     aotFileManager_->Iterate(v);
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
+    }
+    if (pgoProfiler_ != nullptr) {
+        pgoProfiler_->Iterate(v);
     }
 }
 

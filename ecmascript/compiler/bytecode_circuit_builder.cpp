@@ -1428,7 +1428,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
                 if (!type.IsAnyType()) {
                     gateAcc_.SetGateType(gate, type);
                 }
-                auto pgoType = typeRecorder_.GetPGOType(gateAcc_.TryGetPcOffset(gate));
+                auto pgoType = typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(gate), type);
                 gateAcc_.TrySetPGOType(gate, pgoType);
             }
             auto valueCount = gateAcc_.GetInValueCount(gate);

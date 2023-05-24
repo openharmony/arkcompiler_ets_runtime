@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-#include "ecmascript/pgo_profiler/pgo_profiler_saver.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 
 #include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript {
 static const std::string PROFILE_FILE_NAME = "/modules.ap";
-void PGOProfilerSaver::Destroy()
+void PGOProfilerEncoder::Destroy()
 {
     if (!isInitialized_) {
         return;
@@ -31,7 +31,7 @@ void PGOProfilerSaver::Destroy()
     isInitialized_ = false;
 }
 
-bool PGOProfilerSaver::InitializeData()
+bool PGOProfilerEncoder::InitializeData()
 {
     if (!isInitialized_) {
         if (!RealPath(outDir_, realOutPath_, false)) {
@@ -51,7 +51,7 @@ bool PGOProfilerSaver::InitializeData()
     return true;
 }
 
-void PGOProfilerSaver::SamplePandaFileInfo(uint32_t checksum)
+void PGOProfilerEncoder::SamplePandaFileInfo(uint32_t checksum)
 {
     if (!isInitialized_) {
         return;
@@ -59,7 +59,7 @@ void PGOProfilerSaver::SamplePandaFileInfo(uint32_t checksum)
     pandaFileInfos_->Sample(checksum);
 }
 
-void PGOProfilerSaver::Merge(const PGORecordDetailInfos &recordInfos)
+void PGOProfilerEncoder::Merge(const PGORecordDetailInfos &recordInfos)
 {
     if (!isInitialized_) {
         return;
@@ -68,7 +68,7 @@ void PGOProfilerSaver::Merge(const PGORecordDetailInfos &recordInfos)
     globalRecordInfos_->Merge(recordInfos);
 }
 
-bool PGOProfilerSaver::Save()
+bool PGOProfilerEncoder::Save()
 {
     if (!isInitialized_) {
         return false;
@@ -77,7 +77,7 @@ bool PGOProfilerSaver::Save()
     return SaveProfiler();
 }
 
-bool PGOProfilerSaver::SaveProfiler(const SaveTask *task)
+bool PGOProfilerEncoder::SaveProfiler(const SaveTask *task)
 {
     std::ofstream fileStream(realOutPath_.c_str());
     if (!fileStream.is_open()) {
@@ -91,7 +91,7 @@ bool PGOProfilerSaver::SaveProfiler(const SaveTask *task)
     return true;
 }
 
-void PGOProfilerSaver::TerminateSaveTask()
+void PGOProfilerEncoder::TerminateSaveTask()
 {
     if (!isInitialized_) {
         return;
@@ -99,7 +99,7 @@ void PGOProfilerSaver::TerminateSaveTask()
     Taskpool::GetCurrentTaskpool()->TerminateTask(GLOBAL_TASK_ID, TaskType::PGO_SAVE_TASK);
 }
 
-void PGOProfilerSaver::PostSaveTask()
+void PGOProfilerEncoder::PostSaveTask()
 {
     if (!isInitialized_) {
         return;
@@ -107,7 +107,7 @@ void PGOProfilerSaver::PostSaveTask()
     Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SaveTask>(this, GLOBAL_TASK_ID));
 }
 
-void PGOProfilerSaver::StartSaveTask(const SaveTask *task)
+void PGOProfilerEncoder::StartSaveTask(const SaveTask *task)
 {
     if (task == nullptr) {
         return;
@@ -120,7 +120,7 @@ void PGOProfilerSaver::StartSaveTask(const SaveTask *task)
     SaveProfiler(task);
 }
 
-bool PGOProfilerSaver::LoadAPTextFile(const std::string &inPath)
+bool PGOProfilerEncoder::LoadAPTextFile(const std::string &inPath)
 {
     if (!isInitialized_) {
         return false;

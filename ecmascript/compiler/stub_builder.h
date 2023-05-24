@@ -88,6 +88,11 @@ using ProfileOperation = std::function<void(GateRef)>;
         callback(func);      \
     }
 
+#define HCLASS_CALL_BACK(constructor)  \
+    if (callback) {                    \
+        callback(constructor);         \
+    }
+
 class StubBuilder {
 public:
     explicit StubBuilder(StubBuilder *parent)
@@ -358,6 +363,7 @@ public:
     GateRef HandlerBaseIsJSArray(GateRef attr);
     GateRef HandlerBaseIsInlinedProperty(GateRef attr);
     GateRef HandlerBaseGetOffset(GateRef attr);
+    GateRef HandlerBaseGetAttrIndex(GateRef attr);
     GateRef IsInvalidPropertyBox(GateRef obj);
     GateRef GetValueFromPropertyBox(GateRef obj);
     void SetValueToPropertyBox(GateRef glue, GateRef obj, GateRef value);
@@ -435,6 +441,7 @@ public:
     template<typename DictionaryT>
     GateRef GetKeyFromDictionary(GateRef elements, GateRef entry);
     GateRef GetPropAttrFromLayoutInfo(GateRef layout, GateRef entry);
+    void UpdatePropAttrToLayoutInfo(GateRef glue, GateRef layout, GateRef entry, GateRef attr);
     GateRef GetPropertiesAddrFromLayoutInfo(GateRef layout);
     GateRef GetPropertyMetaDataFromAttr(GateRef attr);
     GateRef GetKeyFromLayoutInfo(GateRef layout, GateRef entry);
@@ -449,7 +456,8 @@ public:
     GateRef ShouldCallSetter(GateRef receiver, GateRef holder, GateRef accessor, GateRef attr);
     GateRef CallSetterHelper(GateRef glue, GateRef holder, GateRef accessor,  GateRef value);
     GateRef SetHasConstructorCondition(GateRef glue, GateRef receiver, GateRef key);
-    GateRef AddPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef propertyAttributes);
+    GateRef AddPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef propertyAttributes,
+        ProfileOperation callback);
     GateRef IsUtf16String(GateRef string);
     GateRef IsUtf8String(GateRef string);
     GateRef IsInternalString(GateRef string);
@@ -457,6 +465,8 @@ public:
     GateRef StringToElementIndex(GateRef glue, GateRef string);
     GateRef ComputePropertyCapacityInJSObj(GateRef oldLength);
     GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hClass, GateRef key, GateRef attr);
+    GateRef UpdateTrackType(GateRef attr, GateRef value);
+    GateRef TaggedToTrackType(GateRef value);
     GateRef TaggedToRepresentation(GateRef value);
     GateRef LdGlobalRecord(GateRef glue, GateRef key);
     GateRef LoadFromField(GateRef receiver, GateRef handlerInfo);
@@ -466,15 +476,17 @@ public:
     GateRef CheckPolyHClass(GateRef cachedValue, GateRef hClass);
     GateRef LoadICWithHandler(GateRef glue, GateRef receiver, GateRef holder, GateRef handler);
     GateRef StoreICWithHandler(GateRef glue, GateRef receiver, GateRef holder,
-                                 GateRef value, GateRef handler);
+                               GateRef value, GateRef handler, ProfileOperation callback = nullptr);
     GateRef ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
                              GateRef value, GateRef handlerInfo);
     GateRef GetArrayLength(GateRef object);
     GateRef DoubleToInt(GateRef glue, GateRef x);
-    void StoreField(GateRef glue, GateRef receiver, GateRef value, GateRef handler);
+    void StoreField(GateRef glue, GateRef receiver, GateRef value, GateRef handler, ProfileOperation callback);
     void StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
-                             bool withPrototype = false);
+                             ProfileOperation callback, bool withPrototype = false);
     GateRef StoreGlobal(GateRef glue, GateRef value, GateRef cell);
+    void UpdateTrackTypeWithIC(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
+        ProfileOperation callback);
     void JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef key, GateRef attr);
     void NotifyHClassChanged(GateRef glue, GateRef oldHClass, GateRef newHClass);
     GateRef GetInt64OfTInt(GateRef x);
@@ -520,6 +532,8 @@ public:
     GateRef GetOffsetFieldInPropAttr(GateRef attr);
     GateRef SetOffsetFieldInPropAttr(GateRef attr, GateRef value);
     GateRef SetIsInlinePropsFieldInPropAttr(GateRef attr, GateRef value);
+    GateRef SetTrackTypeInPropAttr(GateRef attr, GateRef type);
+    GateRef GetTrackTypeInPropAttr(GateRef attr);
     void SetHasConstructorToHClass(GateRef glue, GateRef hClass, GateRef value);
     void UpdateValueInDict(GateRef glue, GateRef elements, GateRef index, GateRef value);
     GateRef GetBitMask(GateRef bitoffset);
@@ -532,8 +546,9 @@ public:
     GateRef GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue);
     GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn);
     GateRef SetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
-        GateRef value, bool useOwn); // Crawl prototype chain
-    GateRef SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn);
+        GateRef value, bool useOwn, ProfileOperation callback = nullptr); // Crawl prototype chain
+    GateRef SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
+        ProfileOperation callback = nullptr);
     GateRef GetParentEnv(GateRef object);
     GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
     void SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value);

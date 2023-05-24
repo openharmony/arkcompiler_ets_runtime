@@ -627,6 +627,22 @@ void InterpreterStubBuilder::PGOTypeProfiler(GateRef glue, GateRef sp, GateRef p
     env->SubCfgExit();
 }
 
+void InterpreterStubBuilder::PGOLayoutProfiler(GateRef glue, GateRef sp, GateRef pc, GateRef constructor)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+
+    GateRef func = GetFunctionFromFrame(GetFrame(sp));
+    GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
+    GateRef firstPC = Load(VariableType::NATIVE_POINTER(), method,
+        IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+    GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
+    CallNGCRuntime(glue, RTSTUB_ID(PGOLayoutProfiler), { glue, func, offset, constructor });
+
+    env->SubCfgExit();
+}
+
 void InterpreterStubBuilder::PGOFuncProfiler(GateRef glue, GateRef func)
 {
     auto env = GetEnvironment();
