@@ -163,7 +163,7 @@ public:
     PassManager() = default;
     ~PassManager() = default;
 
-    bool Compile(const std::string &fileName, AOTFileGenerator &generator);
+    bool Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &generator);
 
 private:
     JSPandaFile *CreateAndVerifyJSPandaFile(const CString &fileName);

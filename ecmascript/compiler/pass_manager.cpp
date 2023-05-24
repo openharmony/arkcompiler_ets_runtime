@@ -29,11 +29,10 @@ bool PassManager::ShouldCollect() const
         (profilerLoader_.IsLoaded() || vm_->GetTSManager()->AssertTypes() || log_->OutputType());
 }
 
-bool PassManager::Compile(const std::string &fileName, AOTFileGenerator &gen)
+bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &gen)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(vm_->GetJSThread());
 
-    JSPandaFile *jsPandaFile = CreateAndVerifyJSPandaFile(fileName.c_str());
     if (jsPandaFile == nullptr) {
         LOG_COMPILER(ERROR) << "Cannot execute panda file '" << fileName << "'";
         return false;
@@ -161,25 +160,6 @@ void PassManager::ProcessConstantPool(BytecodeInfoCollector *collector)
     LOG_COMPILER(INFO) << collector->GetBytecodeInfo().GetSkippedMethodSize()
                        << " methods have been skipped";
     vm_->GetTSManager()->ProcessSnapshotConstantPool(collector);
-}
-
-JSPandaFile *PassManager::CreateAndVerifyJSPandaFile(const CString &fileName)
-{
-    JSPandaFileManager *jsPandaFileManager = JSPandaFileManager::GetInstance();
-    std::shared_ptr<JSPandaFile> jsPandaFile = jsPandaFileManager->OpenJSPandaFile(fileName);
-    if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "open file " << fileName << " error";
-        return nullptr;
-    }
-
-    if (!jsPandaFile->IsNewVersion()) {
-        LOG_COMPILER(ERROR) << "AOT only support panda file with new ISA, while the '" <<
-            fileName << "' file is the old version";
-        return nullptr;
-    }
-
-    JSPandaFileManager::GetInstance()->AddJSPandaFileVm(vm_, jsPandaFile);
-    return jsPandaFile.get();
 }
 
 bool PassManager::IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const

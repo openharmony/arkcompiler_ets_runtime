@@ -25,6 +25,7 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/platform/file.h"
@@ -46,6 +47,50 @@ void AOTInitialize(EcmaVM *vm)
     vm->GetTSManager()->Initialize();
 }
 
+JSPandaFile *CreateAndVerifyJSPandaFile(const JSRuntimeOptions &runtimeOptions, const std::string &fileName, EcmaVM *vm)
+{
+    JSPandaFileManager *jsPandaFileManager = JSPandaFileManager::GetInstance();
+    std::shared_ptr<JSPandaFile> jsPandaFile = nullptr;
+    if (runtimeOptions.IsTargetCompilerMode()) {
+        std::string hapPath = runtimeOptions.GetHapPath();
+        uint32_t offset = runtimeOptions.GetHapAbcOffset();
+        uint32_t size = runtimeOptions.GetHapAbcSize();
+        if (size == 0) {
+            LOG_ECMA(ERROR) << "buffer is empty in target compiler mode!";
+            return nullptr;
+        }
+        std::string realPath;
+        if (!RealPath(hapPath, realPath, false)) {
+            LOG_ECMA(ERROR) << "realpath for hap path failed!";
+            return nullptr;
+        }
+        MemMap fileMapMem = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
+        if (fileMapMem.GetOriginAddr() == nullptr) {
+            LOG_ECMA(ERROR) << "File mmap failed";
+            return nullptr;
+        }
+        uint8_t *buffer = reinterpret_cast<uint8_t *>(fileMapMem.GetOriginAddr()) + offset;
+        jsPandaFile = jsPandaFileManager->OpenJSPandaFileFromBuffer(buffer, size, fileName.c_str());
+        FileUnMap(fileMapMem);
+        fileMapMem.Reset();
+    } else {
+        jsPandaFile = jsPandaFileManager->OpenJSPandaFile(fileName.c_str());
+    }
+    if (jsPandaFile == nullptr) {
+        LOG_ECMA(ERROR) << "open file " << fileName << " error";
+        return nullptr;
+    }
+
+    if (!jsPandaFile->IsNewVersion()) {
+        LOG_COMPILER(ERROR) << "AOT only support panda file with new ISA, while the '" <<
+            fileName << "' file is the old version";
+        return nullptr;
+    }
+
+    jsPandaFileManager->AddJSPandaFileVm(vm, jsPandaFile);
+    return jsPandaFile.get();
+}
+
 int Main(const int argc, const char **argv)
 {
     auto startTime =
@@ -55,14 +100,14 @@ int Main(const int argc, const char **argv)
 
     int newArgc = argc;
     if (argc < 2) { // 2: at least have two arguments
-        std::cerr << GetHelper();
+        LOG_COMPILER(ERROR) << GetHelper();
         return -1;
     }
 
     std::string files = argv[argc - 1];
     if (!base::StringHelper::EndsWith(files, ".abc")) {
-        std::cerr << "The last argument must be abc file" << std::endl;
-        std::cerr << GetHelper();
+        LOG_COMPILER(ERROR) << "The last argument must be abc file" << std::endl;
+        LOG_COMPILER(ERROR) << GetHelper();
         return 1;
     }
 
@@ -70,7 +115,7 @@ int Main(const int argc, const char **argv)
     JSRuntimeOptions runtimeOptions;
     bool retOpt = runtimeOptions.ParseCommand(newArgc, argv);
     if (!retOpt) {
-        std::cerr << GetHelper();
+        LOG_COMPILER(ERROR) << GetHelper();
         return 1;
     }
 
@@ -92,6 +137,20 @@ int Main(const int argc, const char **argv)
         LocalScope scope(vm);
         std::string delimiter = GetFileDelimiter();
         arg_list_t pandaFileNames = base::StringHelper::SplitString(files, delimiter);
+
+        if (runtimeOptions.IsTargetCompilerMode()) {
+            runtimeOptions.SetTargetTriple("aarch64-unknown-linux-gnu");
+            if (runtimeOptions.IsPartialCompilerMode()) {
+                runtimeOptions.SetEnableOptPGOType(true);
+                if (runtimeOptions.IsPGOProfilerPathEmpty()) {
+                    LOG_ECMA(ERROR) << "no pgo profile file in partial mode!";
+                }
+            } else {
+                runtimeOptions.SetEnableOptPGOType(false);
+                runtimeOptions.SetPGOProfilerPath("");
+            }
+        }
+
         std::string triple = runtimeOptions.GetTargetTriple();
         if (runtimeOptions.GetAOTOutputFile().empty()) {
             runtimeOptions.SetAOTOutputFile("aot_file");
@@ -131,7 +190,8 @@ int Main(const int argc, const char **argv)
         for (const auto &fileName : pandaFileNames) {
             auto extendedFilePath = panda::os::file::File::GetExtendedFilePath(fileName);
             LOG_COMPILER(INFO) << "AOT compile: " << extendedFilePath;
-            if (passManager.Compile(extendedFilePath, generator) == false) {
+            JSPandaFile *jsPandaFile = CreateAndVerifyJSPandaFile(runtimeOptions, extendedFilePath, vm);
+            if (passManager.Compile(jsPandaFile, extendedFilePath, generator) == false) {
                 ret = false;
                 continue;
             }
