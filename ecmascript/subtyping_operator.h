@@ -37,6 +37,10 @@ public:
 
     static void TryMaintainTSSubtyping(const JSThread *thread, const JSHandle<JSHClass> &oldHClass,
                                        JSHandle<JSHClass> &newHClass, const JSHandle<JSTaggedValue> &key);
+
+    static bool TryMaintainTSSubtypingOnPrototype(const JSThread *thread, const JSHandle<JSHClass> &hclass,
+                                                  const JSHandle<JSTaggedValue> &key);
+
 private:
     static constexpr uint8_t MAX_LEVEL = 1 << JSHClass::LEVEL_BTTFIELD_NUM;
 

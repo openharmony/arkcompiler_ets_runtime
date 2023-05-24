@@ -348,7 +348,8 @@ public:
 
     static JSHandle<JSTaggedValue> EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
-    static void NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass);
+    static void NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass,
+                                    JSTaggedValue addedKey = JSTaggedValue::Undefined());
 
     static void RegisterOnProtoChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
@@ -362,9 +363,11 @@ public:
     inline void UpdatePropertyMetaData(const JSThread *thread, const JSTaggedValue &key,
                                       const PropertyAttributes &metaData);
 
-    static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
+    static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                 JSTaggedValue addedKey = JSTaggedValue::Undefined());
 
-    static void NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
+    static void NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                   JSTaggedValue addedKey = JSTaggedValue::Undefined());
 
     static void RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &oldHclass,
                              const JSHandle<JSHClass> &newHclass);
