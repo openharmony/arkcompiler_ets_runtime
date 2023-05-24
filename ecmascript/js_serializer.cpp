@@ -23,8 +23,6 @@
 #include <malloc.h>
 #endif
 
-#include <vector>
-
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
@@ -65,6 +63,7 @@ void JSSerializer::ClearTransferSet()
 bool JSSerializer::SerializeJSTaggedValue(const JSHandle<JSTaggedValue> &value)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
+    DISALLOW_GARBAGE_COLLECTION;
     if (!value->IsHeapObject()) {
         if (!WritePrimitiveValue(value)) {
             return false;
@@ -106,12 +105,10 @@ bool JSSerializer::WritePrimitiveValue(const JSHandle<JSTaggedValue> &value)
 
 bool JSSerializer::WriteInt(int32_t value)
 {
-    size_t oldSize = bufferSize_;
     if (!WriteType(SerializationUID::INT32)) {
         return false;
     }
     if (!WriteRawData(&value, sizeof(value))) {
-        bufferSize_ = oldSize;
         return false;
     }
     return true;
@@ -119,12 +116,10 @@ bool JSSerializer::WriteInt(int32_t value)
 
 bool JSSerializer::WriteDouble(double value)
 {
-    size_t oldSize = bufferSize_;
     if (!WriteType(SerializationUID::DOUBLE)) {
         return false;
     }
     if (!WriteRawData(&value, sizeof(value))) {
-        bufferSize_ = oldSize;
         return false;
     }
     return true;
@@ -258,7 +253,6 @@ bool JSSerializer::IsSerialized(uintptr_t addr) const
 
 bool JSSerializer::WriteIfSerialized(uintptr_t addr)
 {
-    size_t oldSize = bufferSize_;
     auto iter = referenceMap_.find(addr);
     if (iter == referenceMap_.end()) {
         return false;
@@ -268,7 +262,6 @@ bool JSSerializer::WriteIfSerialized(uintptr_t addr)
         return false;
     }
     if (!WriteRawData(&id, sizeof(uint64_t))) {
-        bufferSize_ = oldSize;
         return false;
     }
     return true;
@@ -356,24 +349,20 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
 bool JSSerializer::WriteBigInt(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<BigInt> bigInt = JSHandle<BigInt>::Cast(value);
-    size_t oldSize = bufferSize_;
     if (!WriteType(SerializationUID::BIGINT)) {
         return false;
     }
     uint32_t len = bigInt->GetLength();
     if (!WriteInt(len)) {
-        bufferSize_ = oldSize;
         return false;
     }
     bool sign = bigInt->GetSign();
     if (!WriteBoolean(sign)) {
-        bufferSize_ = oldSize;
         return false;
     }
     for (uint32_t i = 0; i < len; i++) {
         uint32_t val = bigInt->GetDigit(i);
         if (!WriteInt(val)) {
-            bufferSize_ = oldSize;
             return false;
         }
     }
@@ -383,20 +372,17 @@ bool JSSerializer::WriteBigInt(const JSHandle<JSTaggedValue> &value)
 bool JSSerializer::WriteTaggedArray(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<TaggedArray> taggedArray = JSHandle<TaggedArray>::Cast(value);
-    size_t oldSize = bufferSize_;
     if (!WriteType(SerializationUID::TAGGED_ARRAY)) {
         return false;
     }
     uint32_t len = taggedArray->GetLength();
     if (!WriteInt(len)) {
-        bufferSize_ = oldSize;
         return false;
     }
     JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < len; i++) {
         val.Update(taggedArray->Get(i));
         if (!SerializeJSTaggedValue(val)) {
-            bufferSize_ = oldSize;
             return false;
         }
     }
@@ -406,25 +392,21 @@ bool JSSerializer::WriteTaggedArray(const JSHandle<JSTaggedValue> &value)
 bool JSSerializer::WriteByteArray(const JSHandle<JSTaggedValue> &value, DataViewType viewType)
 {
     JSHandle<ByteArray> byteArray = JSHandle<ByteArray>::Cast(value);
-    size_t oldSize = bufferSize_;
     if (!WriteType(SerializationUID::BYTE_ARRAY)) {
         return false;
     }
     uint32_t arrayLength = byteArray->GetArrayLength();
     if (!WriteInt(arrayLength)) {
-        bufferSize_ = oldSize;
         return false;
     }
     uint32_t viewTypeIndex = GetDataViewTypeIndex(viewType);
     if (!WriteInt(viewTypeIndex)) {
-        bufferSize_ = oldSize;
         return false;
     }
     JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < arrayLength; i++) {
         val.Update(byteArray->Get(thread_, i, viewType));
         if (!SerializeJSTaggedValue(val)) {
-            bufferSize_ = oldSize;
             return false;
         }
     }
@@ -478,14 +460,12 @@ uint32_t JSSerializer::GetDataViewTypeIndex(const DataViewType viewType)
 bool JSSerializer::WriteMethod(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<Method> method = JSHandle<Method>::Cast(value);
-    size_t oldSize = bufferSize_;
     if (method->IsNativeWithCallField()) {
         if (!WriteType(SerializationUID::NATIVE_METHOD)) {
             return false;
         }
         const void *nativeFunc = method->GetNativePointer();
         if (!WriteRawData(&nativeFunc, sizeof(uintptr_t))) {
-            bufferSize_ = oldSize;
             return false;
         }
     } else {
@@ -494,7 +474,6 @@ bool JSSerializer::WriteMethod(const JSHandle<JSTaggedValue> &value)
         }
         const MethodLiteral *methodLiteral = method->GetMethodLiteral();
         if (!WriteRawData(&methodLiteral, sizeof(uintptr_t))) {
-            bufferSize_ = oldSize;
             return false;
         }
         JSHandle<ConstantPool> constPool(thread_, method->GetConstantPool());
@@ -504,7 +483,6 @@ bool JSSerializer::WriteMethod(const JSHandle<JSTaggedValue> &value)
         }
         const CString &desc = jsPandaFile->GetJSPandaFileDesc();
         if (!WriteString(desc)) {
-            bufferSize_ = oldSize;
             return false;
         }
     }
@@ -513,7 +491,6 @@ bool JSSerializer::WriteMethod(const JSHandle<JSTaggedValue> &value)
 
 bool JSSerializer::WriteJSFunction(const JSHandle<JSTaggedValue> &value)
 {
-    size_t oldSize = bufferSize_;
     if (!WriteType(SerializationUID::CONCURRENT_FUNCTION)) {
         return false;
     }
@@ -525,7 +502,6 @@ bool JSSerializer::WriteJSFunction(const JSHandle<JSTaggedValue> &value)
     }
     JSHandle<JSTaggedValue> method(thread_, func->GetMethod());
     if (!SerializeJSTaggedValue(method)) {
-        bufferSize_ = oldSize;
         return false;
     }
     return true;
@@ -533,7 +509,6 @@ bool JSSerializer::WriteJSFunction(const JSHandle<JSTaggedValue> &value)
 
 bool JSSerializer::WriteJSError(const JSHandle<JSTaggedValue> &value)
 {
-    size_t oldSize = bufferSize_;
     TaggedObject *taggedObject = value->GetTaggedObject();
     JSType errorType = taggedObject->GetClass()->GetObjectType();
     if (!WriteJSErrorHeader(errorType)) {
@@ -544,7 +519,6 @@ bool JSSerializer::WriteJSError(const JSHandle<JSTaggedValue> &value)
     JSHandle<JSTaggedValue> msg = JSObject::GetProperty(thread_, value, handleMsg).GetValue();
     // Write error message
     if (!SerializeJSTaggedValue(msg)) {
-        bufferSize_ = oldSize;
         return false;
     }
     return true;
@@ -581,22 +555,18 @@ bool JSSerializer::WriteJSErrorHeader(JSType type)
 bool JSSerializer::WriteJSDate(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSDate> date = JSHandle<JSDate>::Cast(value);
-    size_t oldSize = bufferSize_;
     if (!WriteType(SerializationUID::JS_DATE)) {
         return false;
     }
     if (!WritePlainObject(value)) {
-        bufferSize_ = oldSize;
         return false;
     }
     double timeValue = date->GetTimeValue().GetDouble();
     if (!WriteDouble(timeValue)) {
-        bufferSize_ = oldSize;
         return false;
     }
     double localOffset = date->GetLocalOffset().GetDouble();
     if (!WriteDouble(localOffset)) {
-        bufferSize_ = oldSize;
         return false;
     }
     return true;
@@ -605,17 +575,14 @@ bool JSSerializer::WriteJSDate(const JSHandle<JSTaggedValue> &value)
 bool JSSerializer::WriteJSArray(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(value);
-    size_t oldSize = bufferSize_;
     if (!WriteType(SerializationUID::JS_ARRAY)) {
         return false;
     }
     if (!WritePlainObject(value)) {
-        bufferSize_ = oldSize;
         return false;
     }
     uint32_t arrayLength = static_cast<uint32_t>(array->GetLength().GetInt());
     if (!WriteInt(arrayLength)) {
-        bufferSize_ = oldSize;
         return false;
     }
     return true;
@@ -625,14 +592,12 @@ bool JSSerializer::WriteEcmaString(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<EcmaString> strHandle = JSHandle<EcmaString>::Cast(value);
     auto string = JSHandle<EcmaString>(thread_, EcmaStringAccessor::Flatten(thread_->GetEcmaVM(), strHandle));
-    size_t oldSize = bufferSize_;
     if (!WriteType(SerializationUID::ECMASTRING)) {
         return false;
     }
 
     size_t length = EcmaStringAccessor(string).GetLength();
     if (!WriteInt(static_cast<int32_t>(length))) {
-        bufferSize_ = oldSize;
         return false;
     }
     // skip writeRawData for empty EcmaString
@@ -643,20 +608,17 @@ bool JSSerializer::WriteEcmaString(const JSHandle<JSTaggedValue> &value)
     bool isUtf8 = EcmaStringAccessor(string).IsUtf8();
     // write utf encode flag
     if (!WriteBoolean(isUtf8)) {
-        bufferSize_ = oldSize;
         return false;
     }
     if (isUtf8) {
         const uint8_t *data = EcmaStringAccessor(string).GetDataUtf8();
         const uint8_t strEnd = '\0';
         if (!WriteRawData(data, length) || !WriteRawData(&strEnd, sizeof(uint8_t))) {
-            bufferSize_ = oldSize;
             return false;
         }
     } else {
         const uint16_t *data = EcmaStringAccessor(string).GetDataUtf16();
         if (!WriteRawData(data, length * sizeof(uint16_t))) {
-            bufferSize_ = oldSize;
             return false;
         }
     }
@@ -666,17 +628,14 @@ bool JSSerializer::WriteEcmaString(const JSHandle<JSTaggedValue> &value)
 bool JSSerializer::WriteJSMap(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSMap> map = JSHandle<JSMap>::Cast(value);
-    size_t oldSize = bufferSize_;
     if (!WriteType(SerializationUID::JS_MAP)) {
         return false;
     }
     if (!WritePlainObject(value)) {
-        bufferSize_ = oldSize;
         return false;
     }
     int size = map->GetSize();
     if (!WriteInt(size)) {
-        bufferSize_ = oldSize;
         return false;
     }
     JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
@@ -684,12 +643,10 @@ bool JSSerializer::WriteJSMap(const JSHandle<JSTaggedValue> &value)
     for (int i = 0; i < size; i++) {
         key.Update(map->GetKey(i));
         if (!SerializeJSTaggedValue(key)) {
-            bufferSize_ = oldSize;
             return false;
         }
         val.Update(map->GetValue(i));
         if (!SerializeJSTaggedValue(val)) {
-            bufferSize_ = oldSize;
             return false;
         }
     }
@@ -699,24 +656,20 @@ bool JSSerializer::WriteJSMap(const JSHandle<JSTaggedValue> &value)
 bool JSSerializer::WriteJSSet(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSSet> set = JSHandle<JSSet>::Cast(value);
-    size_t oldSize = bufferSize_;
     if (!WriteType(SerializationUID::JS_SET)) {
         return false;
     }
     if (!WritePlainObject(value)) {
-        bufferSize_ = oldSize;
         return false;
     }
     int size = set->GetSize();
     if (!WriteInt(size)) {
-        bufferSize_ = oldSize;
         return false;
     }
     JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
     for (int i = 0; i < size; i++) {
         val.Update(set->GetValue(i));
         if (!SerializeJSTaggedValue(val)) {
-            bufferSize_ = oldSize;
             return false;
         }
     }
@@ -726,17 +679,14 @@ bool JSSerializer::WriteJSSet(const JSHandle<JSTaggedValue> &value)
 bool JSSerializer::WriteJSRegExp(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSRegExp> regExp = JSHandle<JSRegExp>::Cast(value);
-    size_t oldSize = bufferSize_;
     if (!WriteType(SerializationUID::JS_REG_EXP)) {
         return false;
     }
     if (!WritePlainObject(value)) {
-        bufferSize_ = oldSize;
         return false;
     }
     uint32_t bufferSize = regExp->GetLength();
     if (!WriteInt(static_cast<int32_t>(bufferSize))) {
-        bufferSize_ = oldSize;
         return false;
     }
     // Write Accessor(ByteCodeBuffer) which is a pointer to a dynamic buffer
@@ -744,19 +694,16 @@ bool JSSerializer::WriteJSRegExp(const JSHandle<JSTaggedValue> &value)
     JSHandle<JSNativePointer> np = JSHandle<JSNativePointer>::Cast(bufferValue);
     void *dynBuffer = np->GetExternalPointer();
     if (!WriteRawData(dynBuffer, bufferSize)) {
-        bufferSize_ = oldSize;
         return false;
     }
     // Write Accessor(OriginalSource)
     JSHandle<JSTaggedValue> originalSource(thread_, regExp->GetOriginalSource());
     if (!SerializeJSTaggedValue(originalSource)) {
-        bufferSize_ = oldSize;
         return false;
     }
     // Write Accessor(OriginalFlags)
     JSHandle<JSTaggedValue> originalFlags(thread_, regExp->GetOriginalFlags());
     if (!SerializeJSTaggedValue(originalFlags)) {
-        bufferSize_ = oldSize;
         return false;
     }
     return true;
@@ -765,12 +712,10 @@ bool JSSerializer::WriteJSRegExp(const JSHandle<JSTaggedValue> &value)
 bool JSSerializer::WriteJSTypedArray(const JSHandle<JSTaggedValue> &value, SerializationUID uId)
 {
     JSHandle<JSTypedArray> typedArray = JSHandle<JSTypedArray>::Cast(value);
-    size_t oldSize = bufferSize_;
     if (!WriteType(uId)) {
         return false;
     }
     if (!WritePlainObject(value)) {
-        bufferSize_ = oldSize;
         return false;
     }
     [[maybe_unused]] DataViewType viewType = TypedArrayHelper::GetType(typedArray);
@@ -780,20 +725,16 @@ bool JSSerializer::WriteJSTypedArray(const JSHandle<JSTaggedValue> &value, Seria
     if (viewedArrayBufferOrByteArray->IsArrayBuffer() || viewedArrayBufferOrByteArray->IsSharedArrayBuffer()) {
         isViewedArrayBuffer = true;
         if (!WriteBoolean(isViewedArrayBuffer)) {
-            bufferSize_ = oldSize;
             return false;
         }
         if (!SerializeJSTaggedValue(viewedArrayBufferOrByteArray)) {
-            bufferSize_ = oldSize;
             return false;
         }
     } else {
         if (!WriteBoolean(isViewedArrayBuffer)) {
-            bufferSize_ = oldSize;
             return false;
         }
         if (!WriteByteArray(viewedArrayBufferOrByteArray, viewType)) {
-            bufferSize_ = oldSize;
             return false;
         }
     }
@@ -801,31 +742,26 @@ bool JSSerializer::WriteJSTypedArray(const JSHandle<JSTaggedValue> &value, Seria
     // Write ACCESSORS(TypedArrayName)
     JSHandle<JSTaggedValue> typedArrayName(thread_, typedArray->GetTypedArrayName());
     if (!SerializeJSTaggedValue(typedArrayName)) {
-        bufferSize_ = oldSize;
         return false;
     }
     // Write ACCESSORS(ByteLength)
     JSTaggedValue byteLength(typedArray->GetByteLength());
     if (!WriteRawData(&byteLength, sizeof(JSTaggedValue))) {
-        bufferSize_ = oldSize;
         return false;
     }
     // Write ACCESSORS(ByteOffset)
     JSTaggedValue byteOffset(typedArray->GetByteOffset());
     if (!WriteRawData(&byteOffset, sizeof(JSTaggedValue))) {
-        bufferSize_ = oldSize;
         return false;
     }
     // Write ACCESSORS(ArrayLength)
     JSTaggedValue arrayLength(typedArray->GetArrayLength());
     if (!WriteRawData(&arrayLength, sizeof(JSTaggedValue))) {
-        bufferSize_ = oldSize;
         return false;
     }
     // Write ACCESSORS(ContentType)
     ContentType contentType = typedArray->GetContentType();
     if (!WriteRawData(&contentType, sizeof(ContentType))) {
-        bufferSize_ = oldSize;
         return false;
     }
     return true;
@@ -948,6 +884,7 @@ bool JSSerializer::WritePlainObject(const JSHandle<JSTaggedValue> &objValue)
         return false;
     }
 
+    // Write custom JS obj that only used for carrying native binding functions
     if (IsNativeBindingObject(keyVector)) {
         return WriteNativeBindingObject(objValue);
     }
@@ -960,53 +897,44 @@ bool JSSerializer::WritePlainObject(const JSHandle<JSTaggedValue> &objValue)
     if (!WriteType(SerializationUID::JS_PLAIN_OBJECT)) {
         return false;
     }
-    size_t oldSize = bufferSize_;
     if (!WriteInt(static_cast<int32_t>(propertiesLength))) {
-        bufferSize_ = oldSize;
         return false;
     }
     JSMutableHandle<JSTaggedValue> propertyKey(thread_, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < propertiesLength; i++) {
         if (keyVector.empty()) {
-            bufferSize_ = oldSize;
             return false;
         }
         propertyKey.Update(keyVector[i]);
         if (!SerializeJSTaggedValue(propertyKey)) {
-            bufferSize_ = oldSize;
             return false;
         }
         PropertyDescriptor desc(thread_);
         JSObject::OrdinaryGetOwnProperty(thread_, obj, propertyKey, desc);
         if (!WriteDesc(desc)) {
-            bufferSize_ = oldSize;
             return false;
         }
     }
 
     uint32_t elementsLength = obj->GetNumberOfElements();
     if (!WriteInt(static_cast<int32_t>(elementsLength))) {
-        bufferSize_ = oldSize;
         return false;
     }
     keyVector.clear();
     JSObject::GetALLElementKeysIntoVector(thread_, obj, keyVector);
     // Write elements' description attributes and value
     if (keyVector.size() != elementsLength) {
-        bufferSize_ = oldSize;
         return false;
     }
     JSMutableHandle<JSTaggedValue> elementKey(thread_, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < elementsLength; i++) {
         elementKey.Update(keyVector[i]);
         if (!SerializeJSTaggedValue(elementKey)) {
-            bufferSize_ = oldSize;
             return false;
         }
         PropertyDescriptor desc(thread_);
         JSObject::OrdinaryGetOwnProperty(thread_, obj, elementKey, desc);
         if (!WriteDesc(desc)) {
-            bufferSize_ = oldSize;
             return false;
         }
     }
@@ -1016,7 +944,6 @@ bool JSSerializer::WritePlainObject(const JSHandle<JSTaggedValue> &objValue)
 bool JSSerializer::WriteNativeBindingObject(const JSHandle<JSTaggedValue> &objValue)
 {
     JSHandle<JSObject> obj = JSHandle<JSObject>::Cast(objValue);
-    size_t oldSize = bufferSize_;
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> detach = env->GetDetachSymbol();
     JSHandle<JSTaggedValue> attach = env->GetAttachSymbol();
@@ -1048,19 +975,15 @@ bool JSSerializer::WriteNativeBindingObject(const JSHandle<JSTaggedValue> &objVa
     AttachFunc attachNative = reinterpret_cast<AttachFunc>(JSNativePointer::Cast(
         attackVal.GetTaggedValue().GetTaggedObject())->GetExternalPointer());
     if (!WriteRawData(&attachNative, sizeof(uintptr_t))) {
-        bufferSize_ = oldSize;
         return false;
     }
     if (!WriteRawData(&buffer, sizeof(uintptr_t))) {
-        bufferSize_ = oldSize;
         return false;
     }
     if (!WriteRawData(&hint, sizeof(uintptr_t))) {
-        bufferSize_ = oldSize;
         return false;
     }
     if (!WriteRawData(&attachData, sizeof(uintptr_t))) {
-        bufferSize_ = oldSize;
         return false;
     }
     return true;
@@ -1068,40 +991,32 @@ bool JSSerializer::WriteNativeBindingObject(const JSHandle<JSTaggedValue> &objVa
 
 bool JSSerializer::WriteDesc(const PropertyDescriptor &desc)
 {
-    size_t oldSize = bufferSize_;
     bool isWritable = desc.IsWritable();
     if (!WriteBoolean(isWritable)) {
-        bufferSize_ = oldSize;
         return false;
     }
     bool isEnumerable = desc.IsEnumerable();
     if (!WriteBoolean(isEnumerable)) {
-        bufferSize_ = oldSize;
         return false;
     }
     bool isConfigurable = desc.IsConfigurable();
     if (!WriteBoolean(isConfigurable)) {
-        bufferSize_ = oldSize;
         return false;
     }
     bool hasWritable = desc.HasWritable();
     if (!WriteBoolean(hasWritable)) {
-        bufferSize_ = oldSize;
         return false;
     }
     bool hasEnumerable = desc.HasEnumerable();
     if (!WriteBoolean(hasEnumerable)) {
-        bufferSize_ = oldSize;
         return false;
     }
     bool hasConfigurable = desc.HasConfigurable();
     if (!WriteBoolean(hasConfigurable)) {
-        bufferSize_ = oldSize;
         return false;
     }
     JSHandle<JSTaggedValue> value = desc.GetValue();
     if (!SerializeJSTaggedValue(value)) {
-        bufferSize_ = oldSize;
         return false;
     }
     return true;
