@@ -119,9 +119,9 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModule(JSThread *th
                                                                     const JSHandle<SourceTextModule> &module,
                                                                     const JSHandle<JSTaggedValue> &moduleRequest)
 {
-    auto moduleManage = thread->GetEcmaVM()->GetModuleManager();
-    if (moduleManage->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
-        return JSHandle<JSTaggedValue>(moduleManage->HostGetImportedModule(moduleRequest.GetTaggedValue()));
+    auto moduleManager = thread->GetEcmaVM()->GetModuleManager();
+    if (moduleManager->IsImportedModuleLoaded(moduleRequest.GetTaggedValue())) {
+        return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequest.GetTaggedValue()));
     }
 
     JSHandle<EcmaString> dirname = base::PathHelper::ResolveDirPath(thread,
