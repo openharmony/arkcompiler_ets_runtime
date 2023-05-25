@@ -453,17 +453,8 @@ Local<JSValueRef> DebuggerApi::GetModuleValue(const EcmaVM *ecmaVm, const JSHand
         JSTaggedValue moduleValue = array->Get(index);
         result = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, moduleValue));
         return result;
-    } else {
-        NameDictionary *dict = NameDictionary::Cast(dictionary.GetTaggedObject());
-        ObjectFactory *factory = ecmaVm->GetFactory();
-        JSHandle<TaggedArray> moduleArray = factory->NewTaggedArray(dict->GetLength());
-        TaggedArray *keyArray = TaggedArray::Cast(moduleArray.GetTaggedValue().GetTaggedObject());
-        dict->GetAllKeys(thread, 0, keyArray);
-        JSTaggedValue key = keyArray->Get(index);
-        JSTaggedValue moduleValue = ecmaVm->GetModuleManager()->GetModuleValueInner(key);
-        result = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, moduleValue));
-        return result;
     }
+    return result;
 }
 
 bool DebuggerApi::SetModuleValue(const EcmaVM *ecmaVm, const JSHandle<JSTaggedValue> &currentModule,
@@ -485,9 +476,6 @@ bool DebuggerApi::SetModuleValue(const EcmaVM *ecmaVm, const JSHandle<JSTaggedVa
     if (dictionary.IsTaggedArray()) {
         TaggedArray *array = TaggedArray::Cast(dictionary.GetTaggedObject());
         array->Set(thread, index, curValue);
-    } else {
-        NameDictionary *dict = NameDictionary::Cast(dictionary.GetTaggedObject());
-        dict->UpdateValue(thread, index, curValue);
     }
     return true;
 }

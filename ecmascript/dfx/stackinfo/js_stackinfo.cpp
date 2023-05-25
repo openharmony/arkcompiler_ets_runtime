@@ -101,7 +101,7 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
 
 std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
 {
-    std::vector<struct JsFrameInfo> jsframe;
+    std::vector<struct JsFrameInfo> jsFrame;
     uintptr_t *native = nullptr;
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
     FrameIterator it(current, thread);
@@ -151,7 +151,7 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
                 !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
                 frameInfo.pos = "?";
             }
-            jsframe.push_back(frameInfo);
+            jsFrame.push_back(frameInfo);
         } else {
             JSTaggedValue function = it.GetFunction();
             JSHandle<JSTaggedValue> extraInfoValue(
@@ -162,7 +162,7 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread)
             }
         }
     }
-    return jsframe;
+    return jsFrame;
 }
 
 void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((unused)),
