@@ -3175,7 +3175,7 @@ void SlowPathLowering::LowerNotifyConcurrentResult(GateRef gate)
     const int id = RTSTUB_ID(NotifyConcurrentResult);
 
     GateRef newGate = LowerCallRuntime(gate, id, {acc_.GetValueIn(gate, 0),
-                                                  argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT)});
+                                                  argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC)});
     ReplaceHirWithValue(gate, newGate);
 }
 }  // namespace panda::ecmascript

@@ -999,7 +999,7 @@ JSTaggedValue EcmaVM::GetMethodByIndex(MethodIndex idx)
 void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
 {
     if (concurrentCallback_ == nullptr) {
-        LOG_ECMA(INFO) << "Only trigger concurrent callback in taskpool thread";
+        LOG_ECMA(DEBUG) << "Only trigger concurrent callback in taskpool thread";
         return;
     }
 
@@ -1020,7 +1020,21 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
         }
     }
 
+    JSHandle<JSTaggedValue> functionValue(thread_, hint);
+    if (!functionValue->IsJSFunction()) {
+        LOG_ECMA(ERROR) << "TriggerConcurrentCallback hint is not function";
+        return;
+    }
+    JSHandle<JSFunction> functionInfo(functionValue);
+    JSTaggedValue extraInfoValue = functionInfo->GetFunctionExtraInfo();
+    if (!extraInfoValue.IsJSNativePointer()) {
+        LOG_ECMA(ERROR) << "FunctionExtraInfo is not JSNativePointer";
+        return;
+    }
+    JSHandle<JSNativePointer> extraInfo(thread_, extraInfoValue);
+    void *taskInfo = extraInfo->GetData();
+
     concurrentCallback_(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, result)), success,
-                        JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, hint)), concurrentData_);
+                        taskInfo, concurrentData_);
 }
 }  // namespace panda::ecmascript
