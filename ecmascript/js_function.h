@@ -94,7 +94,7 @@ public:
     static JSTaggedValue Construct(EcmaRuntimeCallInfo *info);
     static JSTaggedValue Invoke(EcmaRuntimeCallInfo *info, const JSHandle<JSTaggedValue> &key);
     static JSTaggedValue InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> mainFunc,
-        JSHandle<JSTaggedValue> &thisArg, std::string_view entryPoint);
+        JSHandle<JSTaggedValue> &thisArg, std::string_view entryPoint, CJSInfo* cjsInfo);
     static JSTaggedValue InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> func,
         EcmaRuntimeCallInfo *info);
     // 9.2.2[[Construct]](argumentsList, newTarget)
@@ -115,7 +115,6 @@ public:
     static bool NameSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,
                            bool mayThrow);
     static void SetFunctionNameNoPrefix(JSThread *thread, JSFunction *func, JSTaggedValue name);
-
     inline JSTaggedValue GetFunctionPrototype() const
     {
         ASSERT(HasFunctionPrototype());
@@ -236,6 +235,8 @@ public:
 private:
     static JSHandle<JSHClass> GetOrCreateDerivedJSHClass(JSThread *thread, JSHandle<JSFunction> derived,
                                                          JSHandle<JSHClass> ctorInitialClass);
+    static std::vector<JSTaggedType> GetArgsData(bool isFastCall, JSHandle<JSTaggedValue> &thisArg, 
+                                                 JSHandle<JSFunction> mainFunc,  CJSInfo* cjsInfo);
 };
 
 class JSGeneratorFunction : public JSFunction {

@@ -30,6 +30,7 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
+#include "ecmascript/require/js_require_manager.h"
 
 namespace panda::ecmascript {
 void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func, FunctionKind kind)
@@ -314,7 +315,7 @@ JSTaggedValue JSFunction::Invoke(EcmaRuntimeCallInfo *info, const JSHandle<JSTag
 }
 
 JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> mainFunc,
-    JSHandle<JSTaggedValue> &thisArg, std::string_view entryPoint)
+    JSHandle<JSTaggedValue> &thisArg, std::string_view entryPoint, CJSInfo* cjsInfo)
 {
     if (mainFunc->IsClassConstructor()) {
         {
@@ -329,19 +330,14 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     size_t actualNumArgs = method->GetNumArgs();
     const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
     JSTaggedValue res;
+    std::vector<JSTaggedType> args;
     if (method->IsFastCall()) {
-        size_t argsNum = actualNumArgs + NUM_MANDATORY_JSFUNC_ARGS - 1;
-        std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
-        args[0] = mainFunc.GetTaggedValue().GetRawData();
-        args[1] = thisArg.GetTaggedValue().GetRawData();
         // do not modify this log to INFO, this will call many times
         LOG_ECMA(DEBUG) << "start to execute aot entry: " << entryPoint;
+        args = JSFunction::GetArgsData(true, thisArg, mainFunc, cjsInfo);
         res = thread->GetEcmaVM()->FastCallAot(actualNumArgs, args.data(), prevFp);
     } else {
-        size_t argsNum = actualNumArgs + NUM_MANDATORY_JSFUNC_ARGS;
-        std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
-        args[0] = mainFunc.GetTaggedValue().GetRawData();
-        args[2] = thisArg.GetTaggedValue().GetRawData(); // 2: this
+        args = JSFunction::GetArgsData(false, thisArg, mainFunc, cjsInfo);
         // do not modify this log to INFO, this will call many times
         LOG_ECMA(DEBUG) << "start to execute aot entry: " << entryPoint;
         res = thread->GetEcmaVM()->ExecuteAot(actualNumArgs, args.data(), prevFp, false);
@@ -351,6 +347,37 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     }
     return res;
 }
+
+ std::vector<JSTaggedType> JSFunction::GetArgsData(bool isFastCall, JSHandle<JSTaggedValue> &thisArg, 
+    JSHandle<JSFunction> mainFunc, CJSInfo* cjsInfo) 
+ {
+    size_t argsNum;
+    uint32_t mandatoryNum;
+    Method *method = mainFunc->GetCallTarget();
+    size_t actualNumArgs = method->GetNumArgs();
+    if (isFastCall) {
+        argsNum = actualNumArgs + NUM_MANDATORY_JSFUNC_ARGS - 1;
+        mandatoryNum = NUM_MANDATORY_JSFUNC_ARGS - 1;
+    } else {
+        argsNum = actualNumArgs + NUM_MANDATORY_JSFUNC_ARGS;
+        mandatoryNum = NUM_MANDATORY_JSFUNC_ARGS;
+    }
+    std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
+    args[0] = mainFunc.GetTaggedValue().GetRawData();
+    if (isFastCall) {
+        args[1] = thisArg.GetTaggedValue().GetRawData();
+    } else {
+        args[2] = thisArg.GetTaggedValue().GetRawData();
+    }
+    if (cjsInfo != nullptr) {
+        args[mandatoryNum++] = cjsInfo->exportsHdl.GetTaggedValue().GetRawData();
+        args[mandatoryNum++] = cjsInfo->requireHdl.GetTaggedValue().GetRawData();
+        args[mandatoryNum++] = cjsInfo->moduleHdl.GetTaggedValue().GetRawData();
+        args[mandatoryNum++] = cjsInfo->filenameHdl.GetTaggedValue().GetRawData();
+        args[mandatoryNum] = cjsInfo->dirnameHdl.GetTaggedValue().GetRawData();
+    }
+    return args;
+ }
 
 JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> func,
     EcmaRuntimeCallInfo *info)

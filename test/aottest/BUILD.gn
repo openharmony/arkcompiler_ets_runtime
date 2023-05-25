@@ -25,6 +25,7 @@ group("ark_aot_js_test") {
 
     "module",
     "undefined",
+    "cjs",
   ]
 
   deps = []
