@@ -85,20 +85,12 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
         clearWeak_ = std::bind(&EcmaGlobalStorage<DebugNode>::ClearWeak, globalDebugStorage_, std::placeholders::_1);
         isWeak_ = std::bind(&EcmaGlobalStorage<DebugNode>::IsWeak, globalDebugStorage_, std::placeholders::_1);
     }
-    propertiesCache_ = new PropertiesCache();
     vmThreadControl_ = new VmThreadControl(this);
     SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
 }
 
 JSThread::~JSThread()
 {
-    for (auto n : handleStorageNodes_) {
-        delete n;
-    }
-    handleStorageNodes_.clear();
-    currentHandleStorageIndex_ = -1;
-    handleScopeCount_ = 0;
-    handleScopeStorageNext_ = handleScopeStorageEnd_ = nullptr;
     if (globalStorage_ != nullptr) {
         GetEcmaVM()->GetChunk()->Delete(globalStorage_);
         globalStorage_ = nullptr;
@@ -113,10 +105,6 @@ JSThread::~JSThread()
     glueData_.frameBase_ = nullptr;
     nativeAreaAllocator_ = nullptr;
     heapRegionAllocator_ = nullptr;
-    if (propertiesCache_ != nullptr) {
-        delete propertiesCache_;
-        propertiesCache_ = nullptr;
-    }
     if (vmThreadControl_ != nullptr) {
         delete vmThreadControl_;
         vmThreadControl_ = nullptr;
@@ -219,10 +207,6 @@ void JSThread::CloseStackTraceFd()
 void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
     const RootBaseAndDerivedVisitor &derivedVisitor)
 {
-    if (propertiesCache_ != nullptr) {
-        propertiesCache_->Clear();
-    }
-
     if (!glueData_.exception_.IsHole()) {
         visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
@@ -235,16 +219,6 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
         IterateHandleWithCheck(visitor, rangeVisitor);
     } else {
-        if (currentHandleStorageIndex_ != -1) {
-            int32_t nid = currentHandleStorageIndex_;
-            for (int32_t i = 0; i <= nid; ++i) {
-                auto node = handleStorageNodes_.at(i);
-                auto start = node->data();
-                auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-                rangeVisitor(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
-            }
-        }
-
         globalStorage_->IterateUsageGlobal([visitor](Node *node) {
             JSTaggedValue value(node->GetObject());
             if (value.IsHeapObject()) {
@@ -261,15 +235,8 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
 void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor)
 {
     size_t handleCount = 0;
-    if (currentHandleStorageIndex_ != -1) {
-        int32_t nid = currentHandleStorageIndex_;
-        for (int32_t i = 0; i <= nid; ++i) {
-            auto node = handleStorageNodes_.at(i);
-            auto start = node->data();
-            auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-            rangeVisitor(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
-            handleCount += (ToUintPtr(end) - ToUintPtr(start)) / sizeof(JSTaggedType);
-        }
+    for (EcmaContext *context : contexts_) {
+        handleCount += context->IterateHandle(rangeVisitor);
     }
 
     size_t globalCount = 0;
@@ -380,52 +347,12 @@ bool JSThread::DoStackOverflowCheck(const JSTaggedType *sp)
 
 uintptr_t *JSThread::ExpandHandleStorage()
 {
-    uintptr_t *result = nullptr;
-    int32_t lastIndex = static_cast<int32_t>(handleStorageNodes_.size() - 1);
-    if (currentHandleStorageIndex_ == lastIndex) {
-        auto n = new std::array<JSTaggedType, NODE_BLOCK_SIZE>();
-        handleStorageNodes_.push_back(n);
-        currentHandleStorageIndex_++;
-        result = reinterpret_cast<uintptr_t *>(&n->data()[0]);
-        handleScopeStorageEnd_ = &n->data()[NODE_BLOCK_SIZE];
-    } else {
-        currentHandleStorageIndex_++;
-        auto lastNode = handleStorageNodes_[currentHandleStorageIndex_];
-        result = reinterpret_cast<uintptr_t *>(&lastNode->data()[0]);
-        handleScopeStorageEnd_ = &lastNode->data()[NODE_BLOCK_SIZE];
-    }
-
-    return result;
+    return GetCurrentEcmaContext()->ExpandHandleStorage();
 }
 
 void JSThread::ShrinkHandleStorage(int prevIndex)
 {
-    currentHandleStorageIndex_ = prevIndex;
-    int32_t lastIndex = static_cast<int32_t>(handleStorageNodes_.size() - 1);
-#if ECMASCRIPT_ENABLE_ZAP_MEM
-    uintptr_t size = ToUintPtr(handleScopeStorageEnd_) - ToUintPtr(handleScopeStorageNext_);
-    if (memset_s(handleScopeStorageNext_, size, 0, size) != EOK) {
-        LOG_FULL(FATAL) << "memset_s failed";
-        UNREACHABLE();
-    }
-    for (int32_t i = currentHandleStorageIndex_ + 1; i < lastIndex; i++) {
-        if (memset_s(handleStorageNodes_[i],
-                     NODE_BLOCK_SIZE * sizeof(JSTaggedType), 0,
-                     NODE_BLOCK_SIZE * sizeof(JSTaggedType)) !=
-                     EOK) {
-            LOG_FULL(FATAL) << "memset_s failed";
-            UNREACHABLE();
-        }
-    }
-#endif
-
-    if (lastIndex > MIN_HANDLE_STORAGE_SIZE && currentHandleStorageIndex_ < MIN_HANDLE_STORAGE_SIZE) {
-        for (int i = MIN_HANDLE_STORAGE_SIZE; i < lastIndex; i++) {
-            auto node = handleStorageNodes_.back();
-            delete node;
-            handleStorageNodes_.pop_back();
-        }
-    }
+    GetCurrentEcmaContext()->ShrinkHandleStorage(prevIndex);
 }
 
 void JSThread::NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver)
@@ -629,10 +556,34 @@ bool JSThread::IsMainThread()
 void JSThread::PushContext(EcmaContext *context)
 {
     contexts_.emplace_back(context);
+    currentContext_ = context;
 }
 
 void JSThread::PopContext()
 {
     contexts_.pop_back();
+}
+
+void JSThread::SwitchCurrentContext(EcmaContext *currentContext)
+{
+    ASSERT(std::count(contexts_.begin(), contexts_.end(), currentContext));
+
+    currentContext_->SetFramePointers(const_cast<JSTaggedType *>(GetCurrentSPFrame()),
+        const_cast<JSTaggedType *>(GetLastLeaveFrame()),
+        const_cast<JSTaggedType *>(GetLastFp()));
+    currentContext_->SetGlobalEnv(GetGlueGlobalEnv());
+
+    SetCurrentSPFrame(currentContext->GetCurrentFrame());
+    SetLastLeaveFrame(currentContext->GetLeaveFrame());
+    SetLastFp(currentContext->GetLastFp());
+    SetGlueGlobalEnv(*currentContext->GetGlobalEnv());
+    SetGlobalObject(currentContext->GetGlobalEnv()->GetGlobalObject());
+
+    currentContext_ = currentContext;
+}
+
+PropertiesCache *JSThread::GetPropertiesCache() const
+{
+    return currentContext_->GetPropertiesCache();
 }
 }  // namespace panda::ecmascript

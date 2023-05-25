@@ -15,6 +15,7 @@
 
 #include "ecmascript/ecma_context.h"
 
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_global.h"
 #include "ecmascript/compiler/common_stubs.h"
@@ -29,10 +30,16 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/require/js_cjs_module_cache.h"
+#include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
+
 namespace panda::ecmascript {
+using PathHelper = base::PathHelper;
+
 EcmaContext::EcmaContext(JSThread *thread)
     : thread_(thread),
       vm_(thread->GetEcmaVM()),
@@ -71,6 +78,7 @@ bool EcmaContext::Initialize()
     LOG_ECMA(INFO) << "EcmaContext::Initialize";
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaContext::Initialize");
     [[maybe_unused]] EcmaHandleScope scope(thread_);
+    propertiesCache_ = new PropertiesCache();
     regExpParserCache_ = new RegExpParserCache();
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     if (!vm_->GetJSOptions().EnableSnapshotDeserialize()) {
@@ -167,6 +175,13 @@ EcmaContext::~EcmaContext()
     if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
         runtimeStat_->Print();
     }
+    for (auto n : handleStorageNodes_) {
+        delete n;
+    }
+    handleStorageNodes_.clear();
+    currentHandleStorageIndex_ = -1;
+    handleScopeCount_ = 0;
+    handleScopeStorageNext_ = handleScopeStorageEnd_ = nullptr;
     ClearBufferData();
     // clear c_address: c++ pointer delete
     if (!vm_->IsBundlePack()) {
@@ -206,16 +221,21 @@ EcmaContext::~EcmaContext()
         delete aotFileManager_;
         aotFileManager_ = nullptr;
     }    
+    if (propertiesCache_ != nullptr) {
+        delete propertiesCache_;
+        propertiesCache_ = nullptr;
+    }
 }
 JSTaggedValue EcmaContext::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
-                                                   const JSPandaFile *jsPandaFile, std::string_view entryPoint)
+                                                   const JSPandaFile *jsPandaFile, std::string_view entryPoint,
+                                                   CJSInfo* cjsInfo)
 {
     aotFileManager_->SetAOTMainFuncEntry(mainFunc, jsPandaFile, entryPoint);
-    return JSFunction::InvokeOptimizedEntrypoint(thread_, mainFunc, thisArg, entryPoint);
+    return JSFunction::InvokeOptimizedEntrypoint(thread_, mainFunc, thisArg, entryPoint, cjsInfo);
 }
 
-JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
-                                      OptimizedEntryFrame::CallType callType)
+JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
+        const JSTaggedType *prevFp, bool needPushUndefined)
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
@@ -238,7 +258,8 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
         return Unexpected(false);
     }
     // for debugger
-    debuggerManager_->GetNotificationManager()->LoadModuleEvent(jsPandaFile->GetJSPandaFileDesc(), entryPoint);
+    vm_->GetJsDebuggerManager()->GetNotificationManager()->LoadModuleEvent(
+        jsPandaFile->GetJSPandaFileDesc(), entryPoint);
 
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
@@ -262,16 +283,16 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     JSTaggedValue result;
     if (jsPandaFile->IsCjs(thread_, entryPoint.data())) {
             if (!thread_->HasPendingException()) {
-                vm_->CJSExecution(func, global, jsPandaFile, entryPoint);
+                CJSExecution(func, global, jsPandaFile, entryPoint);
             }
     } else {
         if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
-            EcmaRuntimeStatScope runtimeStatScope(this);
+            EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
         } else {
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
-            EcmaRuntimeStatScope runtimeStatScope(this);
+            EcmaRuntimeStatScope runtimeStatScope(vm_);
             EcmaInterpreter::Execute(info);
         }
     }
@@ -284,6 +305,57 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
         HandleUncaughtException(thread_->GetException());
     }
     return result;
+}
+
+void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
+                               const JSPandaFile *jsPandaFile, std::string_view entryPoint)
+{
+    // create "module", "exports", "require", "filename", "dirname"
+    JSHandle<CjsModule> module = factory_->NewCjsModule();
+    JSHandle<JSTaggedValue> require = GetGlobalEnv()->GetCjsRequireFunction();
+    JSHandle<CjsExports> exports = factory_->NewCjsExports();
+    JSMutableHandle<JSTaggedValue> filename(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> dirname(thread_, JSTaggedValue::Undefined());
+    if (jsPandaFile->IsBundlePack()) {
+        PathHelper::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
+    } else {
+        filename.Update(func->GetModule());
+        ASSERT(filename->IsString());
+        dirname.Update(PathHelper::ResolveDirPath(thread_, filename));
+    }
+    CJSInfo cjsInfo(module, require, exports, filename, dirname);
+    RequireManager::InitializeCommonJS(thread_, cjsInfo);
+    if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
+        EcmaRuntimeStatScope runtimeStateScope(vm_);
+        InvokeEcmaAotEntrypoint(func, thisArg, jsPandaFile, entryPoint, &cjsInfo);
+    } else {
+        // Execute main function
+        JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread_,
+                                                JSHandle<JSTaggedValue>(func),
+                                                thisArg, undefined, 5); // 5 : argument numbers
+        RETURN_IF_ABRUPT_COMPLETION(thread_);
+        if (info == nullptr) {
+            LOG_ECMA(ERROR) << "CJSExecution Stack overflow!";
+            return;
+        }
+        info->SetCallArg(cjsInfo.exportsHdl.GetTaggedValue(),
+            cjsInfo.requireHdl.GetTaggedValue(),
+            cjsInfo.moduleHdl.GetTaggedValue(),
+            cjsInfo.filenameHdl.GetTaggedValue(),
+            cjsInfo.dirnameHdl.GetTaggedValue());
+        EcmaRuntimeStatScope runtimeStatScope(this);
+        EcmaInterpreter::Execute(info);
+    }
+    if (!thread_->HasPendingException()) {
+        job::MicroJobQueue::ExecutePendingJob(thread_, thread_->GetCurrentEcmaContext()->GetMicroJobQueue());
+    }
+
+    if (!thread_->HasPendingException()) {
+        // Collecting module.exports : exports ---> module.exports --->Module._cache
+        RequireManager::CollectExecutedExp(thread_, cjsInfo);
+    }
 }
 
 bool EcmaContext::HasCachedConstpool(const JSPandaFile *jsPandaFile) const
@@ -534,20 +606,101 @@ void EcmaContext::UnmountContext(JSThread *thread)
     Destroy(context);
 }
 
-
-void EcmaContext::Iterate(const RootVisitor &v, [[maybe_unused]] const RootRangeVisitor &rv)
+void EcmaContext::SetupRegExpResultCache()
 {
+    regexpCache_ = builtins::RegExpExecResultCache::CreateCacheTable(thread_);
+}
+
+void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
+{
+    if (propertiesCache_ != nullptr) {
+        propertiesCache_->Clear();
+    }
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     moduleManager_->Iterate(v);
     tsManager_->Iterate(v);
     aotFileManager_->Iterate(v);
+    if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
+        IterateHandle(rv);
+    } else {
+        if (currentHandleStorageIndex_ != -1) {
+            int32_t nid = currentHandleStorageIndex_;
+            for (int32_t i = 0; i <= nid; ++i) {
+                auto node = handleStorageNodes_.at(i);
+                auto start = node->data();
+                auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
+                rv(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+            }
+        }
+    }
 }
 
-void EcmaContext::SetupRegExpResultCache()
+size_t EcmaContext::IterateHandle(const RootRangeVisitor &rangeVisitor)
 {
-    regexpCache_ = builtins::RegExpExecResultCache::CreateCacheTable(thread_);
+    size_t handleCount = 0;
+    if (currentHandleStorageIndex_ != -1) {
+        int32_t nid = currentHandleStorageIndex_;
+        for (int32_t i = 0; i <= nid; ++i) {
+            auto node = handleStorageNodes_.at(i);
+            auto start = node->data();
+            auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
+            rangeVisitor(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+            handleCount += (ToUintPtr(end) - ToUintPtr(start)) / sizeof(JSTaggedType);
+        }
+    }
+    return handleCount;
+}
+
+uintptr_t *EcmaContext::ExpandHandleStorage()
+{
+    uintptr_t *result = nullptr;
+    int32_t lastIndex = static_cast<int32_t>(handleStorageNodes_.size() - 1);
+    if (currentHandleStorageIndex_ == lastIndex) {
+        auto n = new std::array<JSTaggedType, NODE_BLOCK_SIZE>();
+        handleStorageNodes_.push_back(n);
+        currentHandleStorageIndex_++;
+        result = reinterpret_cast<uintptr_t *>(&n->data()[0]);
+        handleScopeStorageEnd_ = &n->data()[NODE_BLOCK_SIZE];
+    } else {
+        currentHandleStorageIndex_++;
+        auto lastNode = handleStorageNodes_[currentHandleStorageIndex_];
+        result = reinterpret_cast<uintptr_t *>(&lastNode->data()[0]);
+        handleScopeStorageEnd_ = &lastNode->data()[NODE_BLOCK_SIZE];
+    }
+
+    return result;
+}
+
+void EcmaContext::ShrinkHandleStorage(int prevIndex)
+{
+    currentHandleStorageIndex_ = prevIndex;
+    int32_t lastIndex = static_cast<int32_t>(handleStorageNodes_.size() - 1);
+#if ECMASCRIPT_ENABLE_ZAP_MEM
+    uintptr_t size = ToUintPtr(handleScopeStorageEnd_) - ToUintPtr(handleScopeStorageNext_);
+    if (memset_s(handleScopeStorageNext_, size, 0, size) != EOK) {
+        LOG_FULL(FATAL) << "memset_s failed";
+        UNREACHABLE();
+    }
+    for (int32_t i = currentHandleStorageIndex_ + 1; i < lastIndex; i++) {
+        if (memset_s(handleStorageNodes_[i],
+                     NODE_BLOCK_SIZE * sizeof(JSTaggedType), 0,
+                     NODE_BLOCK_SIZE * sizeof(JSTaggedType)) !=
+                     EOK) {
+            LOG_FULL(FATAL) << "memset_s failed";
+            UNREACHABLE();
+        }
+    }
+#endif
+
+    if (lastIndex > MIN_HANDLE_STORAGE_SIZE && currentHandleStorageIndex_ < MIN_HANDLE_STORAGE_SIZE) {
+        for (int i = MIN_HANDLE_STORAGE_SIZE; i < lastIndex; i++) {
+            auto node = handleStorageNodes_.back();
+            delete node;
+            handleStorageNodes_.pop_back();
+        }
+    }
 }
 void EcmaContext::LoadStubFile()
 {
@@ -577,4 +730,5 @@ void EcmaContext::DumpAOTInfo() const
 {
     aotFileManager_->DumpAOTInfo();
 }
+
 }  // namespace panda::ecmascript

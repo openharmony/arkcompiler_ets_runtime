@@ -30,9 +30,9 @@
 #include "ecmascript/mem/visitor.h"
 
 namespace panda::ecmascript {
-class EcmaHandleScope;
 class EcmaVM;
 class EcmaContext;
+class EcmaHandleScope;
 class HeapRegionAllocator;
 class PropertiesCache;
 template<typename T>
@@ -223,6 +223,11 @@ public:
         glueData_.lastFp_ = fp;
     }
 
+    const JSTaggedType *GetLastFp()const
+    {
+        return glueData_.lastFp_;
+    }
+
     const JSTaggedType *GetCurrentSPFrame() const
     {
         return glueData_.currentFrame_;
@@ -282,54 +287,9 @@ public:
     void PUBLIC_API CheckJSTaggedType(JSTaggedType value) const;
     bool PUBLIC_API CpuProfilerCheckJSTaggedType(JSTaggedType value) const;
 
-    JSTaggedType *GetHandleScopeStorageNext() const
-    {
-        return handleScopeStorageNext_;
-    }
-
-    void SetHandleScopeStorageNext(JSTaggedType *value)
-    {
-        handleScopeStorageNext_ = value;
-    }
-
-    JSTaggedType *GetHandleScopeStorageEnd() const
-    {
-        return handleScopeStorageEnd_;
-    }
-
     std::vector<std::pair<WeakClearCallback, void *>> *GetWeakNodeNativeFinalizeCallbacks()
     {
         return &weakNodeNativeFinalizeCallbacks_;
-    }
-
-    void SetHandleScopeStorageEnd(JSTaggedType *value)
-    {
-        handleScopeStorageEnd_ = value;
-    }
-
-    int GetCurrentHandleStorageIndex() const
-    {
-        return currentHandleStorageIndex_;
-    }
-
-    void HandleScopeCountAdd()
-    {
-        handleScopeCount_++;
-    }
-
-    void HandleScopeCountDec()
-    {
-        handleScopeCount_--;
-    }
-
-    void SetLastHandleScope(EcmaHandleScope *scope)
-    {
-        lastHandleScope_ = scope;
-    }
-
-    EcmaHandleScope *GetLastHandleScope() const
-    {
-        return lastHandleScope_;
     }
 
     void SetException(JSTaggedValue exception);
@@ -439,10 +399,7 @@ public:
 
     void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor);
 
-    PropertiesCache *GetPropertiesCache() const
-    {
-        return propertiesCache_;
-    }
+    PropertiesCache *GetPropertiesCache() const;
 
     void SetMarkStatus(MarkStatus status)
     {
@@ -867,10 +824,11 @@ public:
     void PushContext(EcmaContext *context);
     void PopContext();
 
-    EcmaContext *GetCurrentEcmaContext() {
+    EcmaContext *GetCurrentEcmaContext() const
+    {
         return contexts_.back();
     }
-
+    void SwitchCurrentContext(EcmaContext *currentContext);
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
@@ -885,10 +843,13 @@ private:
         return contexts_;
     }
 
+<<<<<<< HEAD
     static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
     static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;
     static constexpr int32_t MIN_HANDLE_STORAGE_SIZE = 2;
     static constexpr size_t DEFAULT_MAX_SYSTEM_STACK_SIZE = 8_MB;
+=======
+>>>>>>> fix conflict and move fields in JSThread into context
     GlueData glueData_;
     std::atomic<ThreadId> id_;
     EcmaVM *vm_ {nullptr};
@@ -897,15 +858,8 @@ private:
     int nestedLevel_ = 0;
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
     HeapRegionAllocator *heapRegionAllocator_ {nullptr};
-    JSTaggedType *handleScopeStorageNext_ {nullptr};
-    JSTaggedType *handleScopeStorageEnd_ {nullptr};
-    std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> handleStorageNodes_ {};
-    int32_t currentHandleStorageIndex_ {-1};
-    int32_t handleScopeCount_ {0};
-    EcmaHandleScope *lastHandleScope_ {nullptr};
     std::vector<std::pair<WeakClearCallback, void *>> weakNodeNativeFinalizeCallbacks_ {};
 
-    PropertiesCache *propertiesCache_ {nullptr};
     EcmaGlobalStorage<Node> *globalStorage_ {nullptr};
     EcmaGlobalStorage<DebugNode> *globalDebugStorage_ {nullptr};
     int32_t stackTraceFd_ {-1};
@@ -929,8 +883,7 @@ private:
     bool finalizationCheckState_ {false};
 
     CVector<EcmaContext *> contexts_;
-
-    friend class EcmaHandleScope;
+    EcmaContext *currentContext_ {nullptr};
     friend class GlobalHandleCollection;
     friend class EcmaVM;
 };

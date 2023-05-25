@@ -1304,7 +1304,7 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SetAssetPath_GetAssetPath)
     ASSERT_EQ(str, res);
     void *data = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
     JSNApi::SetLoop(vm_, data);
-    void* res1 = vm_->GetJSThread()->GetCurrentEcmaContext()->GetLoop();
+    void* res1 = vm_->GetLoop();
     ASSERT_EQ(res1, data);
 }
 

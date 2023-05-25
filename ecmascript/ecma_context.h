@@ -60,6 +60,7 @@ class TSManager;
 class AOTFileManager;
 class QuickFixManager;
 class OptCodeProfiler;
+struct CJSInfo;
 
 namespace job {
 class MicroJobQueue;
@@ -92,15 +93,6 @@ public:
     EcmaContext(JSThread *thread);
     ~EcmaContext();
 
-    void SetLoop(void *loop)
-    {
-        loop_ = loop;
-    }
-
-    void *GetLoop() const
-    {
-        return loop_;
-    }
     EcmaVM *GetEcmaVM() const
     {
         return vm_;
@@ -274,13 +266,91 @@ public:
     void InitializeEcmaScriptRunStat();
     void DumpAOTInfo() const DUMP_API_ATTR;
 
-    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
-                             OptimizedEntryFrame::CallType callType);
+    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
+        const JSTaggedType *prevFp, bool needPushUndefined);
     void LoadStubFile();
+
+    JSTaggedType *GetHandleScopeStorageNext() const
+    {
+        return handleScopeStorageNext_;
+    }
+
+    void SetHandleScopeStorageNext(JSTaggedType *value)
+    {
+        handleScopeStorageNext_ = value;
+    }
+
+    JSTaggedType *GetHandleScopeStorageEnd() const
+    {
+        return handleScopeStorageEnd_;
+    }
+
+    void SetHandleScopeStorageEnd(JSTaggedType *value)
+    {
+        handleScopeStorageEnd_ = value;
+    }
+
+    int GetCurrentHandleStorageIndex() const
+    {
+        return currentHandleStorageIndex_;
+    }
+
+    void HandleScopeCountAdd()
+    {
+        handleScopeCount_++;
+    }
+
+    void HandleScopeCountDec()
+    {
+        handleScopeCount_--;
+    }
+
+    void SetLastHandleScope(EcmaHandleScope *scope)
+    {
+        lastHandleScope_ = scope;
+    }
+
+    EcmaHandleScope *GetLastHandleScope() const
+    {
+        return lastHandleScope_;
+    }
+    size_t IterateHandle(const RootRangeVisitor &rangeVisitor);
+    uintptr_t *ExpandHandleStorage();
+    void ShrinkHandleStorage(int prevIndex);
+    JSTaggedType *GetCurrentFrame() const
+    {
+        return currentFrame_;
+    }
+
+    JSTaggedType *GetLeaveFrame() const
+    {
+        return leaveFrame_;
+    }
+
+    JSTaggedType *GetLastFp() const
+    {
+        return lastFp_;
+    }
+
+    void SetFramePointers(JSTaggedType *currentFrame, JSTaggedType *leaveFrame, JSTaggedType *lastFp)
+    {
+        currentFrame_ = currentFrame;
+        leaveFrame_ = leaveFrame;
+        lastFp_ = lastFp;
+    }
+
+    PropertiesCache *GetPropertiesCache() const
+    {
+        return propertiesCache_;
+    }
     void ClearBufferData();
+
 private:
+    void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
+                      const JSPandaFile *jsPandaFile, std::string_view entryPoint);
     JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
-                                          const JSPandaFile *jsPandaFile, std::string_view entryPoint);    
+                                          const JSPandaFile *jsPandaFile, std::string_view entryPoint,
+                                          CJSInfo* cjsInfo = nullptr);
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                                        bool excuteFromJob = false);
     bool LoadAOTFiles(const std::string& aotFileName);
@@ -333,7 +403,6 @@ private:
             : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
     };
     std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
-    void *loop_ {nullptr};
 
     static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
     static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;

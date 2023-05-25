@@ -15,7 +15,6 @@
 
 #include "ecmascript/ecma_vm.h"
 
-#include "ecmascript/base/path_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
@@ -78,8 +77,6 @@
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
-#include "ecmascript/require/js_cjs_module_cache.h"
-#include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
@@ -93,7 +90,6 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript {
-using PathHelper = base::PathHelper;
 using RandomGenerator = base::RandomGenerator;
 AOTFileManager *JsStackInfo::loader = nullptr;
 /* static */
@@ -242,13 +238,10 @@ EcmaVM::~EcmaVM()
         pgoProfiler_ = nullptr;
     }
 
-    if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
-        runtimeStat_->Print();
-    }
-
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     DumpCallTimeInfo();
 #endif
+
     // clear c_address: c++ pointer delete
     ClearBufferData();
     if (!isBundlePack_) {
@@ -334,57 +327,6 @@ void EcmaVM::CheckStartCpuProfiler()
         }
     }
 #endif
-}
-
-void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
-                          const JSPandaFile *jsPandaFile, std::string_view entryPoint)
-{
-    // create "module", "exports", "require", "filename", "dirname"
-    JSHandle<CjsModule> module = factory_->NewCjsModule();
-    JSHandle<JSTaggedValue> require = GetGlobalEnv()->GetCjsRequireFunction();
-    JSHandle<CjsExports> exports = factory_->NewCjsExports();
-    JSMutableHandle<JSTaggedValue> filename(thread_, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> dirname(thread_, JSTaggedValue::Undefined());
-    if (jsPandaFile->IsBundlePack()) {
-        PathHelper::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
-    } else {
-        filename.Update(func->GetModule());
-        ASSERT(filename->IsString());
-        dirname.Update(PathHelper::ResolveDirPath(thread_, filename));
-    }
-    CJSInfo cjsInfo(module, require, exports, filename, dirname);
-    RequireManager::InitializeCommonJS(thread_, cjsInfo);
-    if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
-        EcmaRuntimeStatScope runtimeStateScope(this);
-        InvokeEcmaAotEntrypoint(func, thisArg, jsPandaFile, entryPoint, &cjsInfo);
-    } else {
-        // Execute main function
-        JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
-        EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread_,
-                                                JSHandle<JSTaggedValue>(func),
-                                                thisArg, undefined, 5); // 5 : argument numbers
-        RETURN_IF_ABRUPT_COMPLETION(thread_);
-        if (info == nullptr) {
-            LOG_ECMA(ERROR) << "CJSExecution Stack overflow!";
-            return;
-        }
-        info->SetCallArg(cjsInfo.exportsHdl.GetTaggedValue(),
-            cjsInfo.requireHdl.GetTaggedValue(),
-            cjsInfo.moduleHdl.GetTaggedValue(),
-            cjsInfo.filenameHdl.GetTaggedValue(),
-            cjsInfo.dirnameHdl.GetTaggedValue());
-        EcmaRuntimeStatScope runtimeStatScope(this);
-        EcmaInterpreter::Execute(info);
-    }
-    if (!thread_->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread_, thread_->GetCurrentEcmaContext()->GetMicroJobQueue());
-    }
-
-    if (!thread_->HasPendingException()) {
-        // Collecting module.exports : exports ---> module.exports --->Module._cache
-        RequireManager::CollectExecutedExp(thread_, cjsInfo);
-    }
 }
 
 JSHandle<JSTaggedValue> EcmaVM::GetAndClearEcmaUncaughtException() const
@@ -509,9 +451,6 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 
     if (pgoProfiler_ != nullptr) {
         pgoProfiler_->Iterate(v);
-    }
-    for (EcmaContext *context : contexts_) {
-        context->Iterate(v, rv);
     }
 }
 

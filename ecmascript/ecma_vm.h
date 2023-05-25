@@ -75,13 +75,8 @@ class JSFunction;
 class Program;
 class TSManager;
 class AOTFileManager;
-class CjsModule;
-class CjsExports;
-class CjsRequire;
-class CjsModuleCache;
 class SlowRuntimeStub;
 class RequireManager;
-struct CJSInfo;
 class QuickFixManager;
 class ConstantPool;
 class FunctionCallTimer;
@@ -102,6 +97,16 @@ public:
     EcmaVM();
 
     ~EcmaVM();
+
+    void SetLoop(void *loop)
+    {
+        loop_ = loop;
+    }
+
+    void *GetLoop() const
+    {
+        return loop_;
+    }
 
     bool IsInitialized() const
     {
@@ -402,14 +407,12 @@ public:
 
 
     void SetGlobalEnv(GlobalEnv *global);
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
 
 private:
-    void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
-                      const JSPandaFile *jsPandaFile, std::string_view entryPoint);
-
     void ClearBufferData();
     void CheckStartCpuProfiler();
 
@@ -450,6 +453,7 @@ private:
     CString moduleName_;
     // Registered Callbacks
     NativePtrGetter nativePtrGetter_ {nullptr};
+    void *loop_ {nullptr};
 
     // CJS resolve path Callbacks
     ResolvePathCallback resolvePathCallback_ {nullptr};
