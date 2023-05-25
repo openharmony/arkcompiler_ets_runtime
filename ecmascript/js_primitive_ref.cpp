@@ -23,26 +23,27 @@
 
 namespace panda::ecmascript {
 // ES6 9.4.3.4 StringCreate( value, prototype)
-JSHandle<JSPrimitiveRef> JSPrimitiveRef::StringCreate(JSThread *thread, const JSHandle<JSTaggedValue> &value)
+JSHandle<JSPrimitiveRef> JSPrimitiveRef::StringCreate(JSThread *thread, const JSHandle<JSTaggedValue> &value,
+                                                      const JSHandle<JSTaggedValue> &newTarget)
 {
-    // 1. ReturnIfAbrupt(prototype).
-    // 2. Assert: Type(value) is String.
     ASSERT(value->IsString());
-    // 3. Let S be a newly created String exotic object.
-    // 4. Set the [[StringData]] internal slot of S to value.
+    // 1. Let S be MakeBasicObject(<<[[Prototype]], [[Extensible]], [[StringData]]>>).
+    // 2. Set S.[[Prototype]] to prototype.
+    // 3. Set S.[[StringData]] to value.
+    // 4. Set S.[[GetOwnProperty]] as specified.
+    // 5. Set S.[[DefineOwnProperty]] as specified.
+    // 6. Set S.[[OwnPropertyKeys]] as specified.
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> str(factory->NewJSString(value));
-    // 11. Let length be the number of code unit elements in value.
-    // 12. Let status be DefinePropertyOrThrow(S, "length", PropertyDescriptor{[[Value]]: length, [[Writable]]:
-    // false, [[Enumerable]]: false, [[Configurable]]: false }).
+    JSHandle<JSTaggedValue> str(factory->NewJSString(value, newTarget));
+    // 7. Let length be the number of code unit elements in value.
     JSHandle<JSTaggedValue> lengthStr = thread->GlobalConstants()->GetHandledLengthString();
-
     uint32_t length = EcmaStringAccessor(value->GetTaggedObject()).GetLength();
+    // 8. Perform ! DefinePropertyOrThrow(S, "length", PropertyDescriptor { [[Value]]: F(length),
+    //    [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }).
     PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(length)), false, false, false);
     [[maybe_unused]] bool status = JSTaggedValue::DefinePropertyOrThrow(thread, str, lengthStr, desc);
-    // 13. Assert: status is not an abrupt completion.
-    // 14. Return S.
     ASSERT(status);
+    // 9. Return S.
     return JSHandle<JSPrimitiveRef>(str);
 }
 

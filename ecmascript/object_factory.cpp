@@ -1818,11 +1818,17 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(PrimitiveType type, co
     return factory->NewJSPrimitiveRef(funcHandle, object);
 }
 
-JSHandle<JSPrimitiveRef> ObjectFactory::NewJSString(const JSHandle<JSTaggedValue> &str)
+JSHandle<JSPrimitiveRef> ObjectFactory::NewJSString(const JSHandle<JSTaggedValue> &str,
+                                                    const JSHandle<JSTaggedValue> &newTarget)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     JSHandle<JSFunction> stringFunc(env->GetStringFunction());
-    JSHandle<JSPrimitiveRef> obj = JSHandle<JSPrimitiveRef>::Cast(NewJSObjectByConstructor(stringFunc));
+    JSHandle<JSPrimitiveRef> obj;
+    if (newTarget->IsUndefined()) {
+        obj = JSHandle<JSPrimitiveRef>::Cast(NewJSObjectByConstructor(stringFunc));
+    } else {
+        obj = JSHandle<JSPrimitiveRef>::Cast(NewJSObjectByConstructor(stringFunc, newTarget));
+    }
     obj->SetValue(thread_, str);
     return obj;
 }

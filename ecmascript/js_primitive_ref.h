@@ -73,8 +73,9 @@ public:
     }
 
     // ES6 9.4.3 String Exotic Objects
-    // ES6 9.4.3.4 StringCreate( value, prototype)// proto always be %StringPrototype%
-    static JSHandle<JSPrimitiveRef> StringCreate(JSThread *thread, const JSHandle<JSTaggedValue> &value);
+    // ES6 9.4.3.4 StringCreate( value, prototype)
+    static JSHandle<JSPrimitiveRef> StringCreate(JSThread *thread, const JSHandle<JSTaggedValue> &value,
+                                                 const JSHandle<JSTaggedValue> &newTarget);
     static bool StringGetIndexProperty(const JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                        PropertyDescriptor *desc);
 
