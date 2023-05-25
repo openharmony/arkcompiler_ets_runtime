@@ -234,6 +234,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(GetEnv, GET_ENV, GateFlags::NONE_FLAG, 0, 0, 1)                                   \
     V(ConvertHoleAsUndefined, CONVERT_HOLE_AS_UNDEFINED, GateFlags::NO_WRITE, 1, 1, 1)  \
     V(Replaceable, REPLACEABLE, GateFlags::NONE_FLAG, 0, 0, 0)                          \
+    V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                     \
+    V(FinishAllocate, FINISH_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                   \
     BINARY_GATE_META_DATA_CACHE_LIST(V)                                                 \
     UNARY_GATE_META_DATA_CACHE_LIST(V)
 
@@ -306,13 +308,14 @@ std::string MachineTypeToStr(MachineType machineType);
     GATE_META_DATA_LIST_WITH_VALUE(V)                     \
     GATE_META_DATA_LIST_WITH_GATE_TYPE(V)
 
+#define GATE_META_DATA_LIST_WITH_BOOL(V)                                           \
+    V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)                   \
+    V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 1)
+
 #define GATE_OPCODE_LIST(V)     \
     V(JS_BYTECODE)              \
     V(TYPED_BINARY_OP)          \
     V(CONSTSTRING)
-
-#define LOAD_PROPERTY_LIST(V)                                           \
-    V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)
 
 #define FRAME_STATE(V)                                              \
     V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, value)  \
@@ -325,7 +328,7 @@ enum class OpCode : uint8_t {
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(DECLARE_GATE_OPCODE)
-    LOAD_PROPERTY_LIST(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_LIST_WITH_BOOL(DECLARE_GATE_OPCODE)
     FRAME_STATE(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 #define DECLARE_GATE_OPCODE(NAME) NAME,
@@ -352,6 +355,7 @@ public:
         MUTABLE_WITH_SIZE,
         IMMUTABLE_ONE_PARAMETER,
         MUTABLE_ONE_PARAMETER,
+        IMMUTABLE_BOOL,
         MUTABLE_STRING,
         JSBYTECODE,
         TYPED_BINARY_OP,
@@ -567,25 +571,28 @@ inline std::ostream& operator<<(std::ostream& os, OpCode opcode)
     return os << GateMetaData::Str(opcode);
 }
 
-class LoadPropertyMetaData : public GateMetaData {
+class BoolMetaData : public GateMetaData {
 public:
-    LoadPropertyMetaData(OpCode opcode, GateFlags flags, uint32_t statesIn,
-        uint16_t dependsIn, uint32_t valuesIn, bool isVtable)
-        : GateMetaData(opcode, flags, statesIn, dependsIn, valuesIn), isVtable_(isVtable) {}
-
-    static LoadPropertyMetaData* Cast(const GateMetaData* meta)
+    BoolMetaData(OpCode opcode, GateFlags flags, uint32_t statesIn,
+        uint16_t dependsIn, uint32_t valuesIn, bool value)
+        : GateMetaData(opcode, flags, statesIn, dependsIn, valuesIn), value_(value)
     {
-        ASSERT(meta->GetOpCode() == OpCode::LOAD_PROPERTY);
-        return static_cast<LoadPropertyMetaData*>(const_cast<GateMetaData*>(meta));
+        SetKind(GateMetaData::Kind::IMMUTABLE_BOOL);
     }
 
-    bool IsVtable() const
+    static const BoolMetaData* Cast(const GateMetaData* meta)
     {
-        return isVtable_;
+        meta->AssertKind(GateMetaData::Kind::IMMUTABLE_BOOL);
+        return static_cast<const BoolMetaData*>(meta);
+    }
+
+    bool getBool() const
+    {
+        return value_;
     }
 
 private:
-    bool isVtable_ { false };
+    bool value_ { false };
 };
 
 class JSBytecodeMetaData : public GateMetaData {

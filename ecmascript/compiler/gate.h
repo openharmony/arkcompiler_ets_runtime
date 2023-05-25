@@ -238,9 +238,9 @@ public:
         return JSBytecodeMetaData::Cast(meta_);
     }
 
-    LoadPropertyMetaData* GetLoadPropertyMetaData()
+    const BoolMetaData* GetBoolMetaData() const
     {
-        return LoadPropertyMetaData::Cast(meta_);
+        return BoolMetaData::Cast(meta_);
     }
 
     const FrameStateMetaData* GetFrameStateMetaData() const

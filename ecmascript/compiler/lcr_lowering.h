@@ -57,6 +57,11 @@ private:
     void LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState);
     void LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState);
     void LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameState);
+    void LowerGetGlobalEnv(GateRef gate);
+    void LowerGetGlobalEnvObjHClass(GateRef gate);
+    void LowerGetGlobalConstantValue(GateRef gate);
+    void LowerHeapAllocate(GateRef gate);
+
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
     GateRef ConvertInt32ToFloat64(GateRef gate);
     GateRef ConvertInt32ToTaggedInt(GateRef gate);
@@ -71,9 +76,9 @@ private:
     GateRef ConvertTaggedNumberToInt32(GateRef gate, Label *exit);
     GateRef ConvertTaggedNumberToFloat64(GateRef gate, Label *exit);
     GateRef ConvertTaggedBooleanToBool(GateRef gate);
-    void LowerGetGlobalEnv(GateRef gate);
-    void LowerGetGlobalEnvObjHClass(GateRef gate);
-    void LowerGetGlobalConstantValue(GateRef gate);
+    void HeapAllocateInYoung(GateRef gate);
+    void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue, GateRef value,
+                                    GateRef start, GateRef end);
 
     Circuit *circuit_;
     GateAccessor acc_;

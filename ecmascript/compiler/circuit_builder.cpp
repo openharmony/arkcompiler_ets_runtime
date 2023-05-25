@@ -938,18 +938,6 @@ GateRef CircuitBuilder::ToLength(GateRef receiver)
     return ret;
 }
 
-GateRef CircuitBuilder::HeapAlloc(GateRef initialHClass, GateType type, RegionSpaceFlag flag)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(circuit_->HeapAlloc(flag), MachineType::ANYVALUE,
-                                     { currentControl, currentDepend, initialHClass }, type);
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
 GateRef CircuitBuilder::LoadProperty(GateRef receiver, GateRef propertyLookupResult, bool isFunction)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -1334,6 +1322,50 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     Bind(&exit);
     auto ret = *result;
     SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::CreateArray(GateRef obj, bool isEmptyArray)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArray(isEmptyArray), MachineType::I64,
+                                            { currentControl, currentDepend, obj }, GateType::TaggedValue());
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
+GateRef CircuitBuilder::StartAllocate()
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef newGate = GetCircuit()->NewGate(circuit_->StartAllocate(),  MachineType::I64,
+                                            { currentDepend }, GateType::NJSValue());
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
+GateRef CircuitBuilder::FinishAllocate()
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef newGate = GetCircuit()->NewGate(circuit_->FinishAllocate(),  MachineType::I64,
+                                            { currentDepend }, GateType::NJSValue());
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
+GateRef CircuitBuilder::HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->HeapAlloc(flag), MachineType::ANYVALUE,
+                                     { currentControl, currentDepend, size }, type);
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
     return ret;
 }
 

@@ -248,7 +248,14 @@ bool GateAccessor::IsVtable(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::LOAD_PROPERTY);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetLoadPropertyMetaData()->IsVtable();
+    return gatePtr->GetBoolMetaData()->getBool();
+}
+
+bool GateAccessor::IsEmptyArray(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetBoolMetaData()->getBool();
 }
 
 uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const

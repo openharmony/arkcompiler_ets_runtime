@@ -108,9 +108,6 @@ void TypeMCRLowering::LowerType(GateRef gate)
         case OpCode::STORE_ELEMENT:
             LowerStoreElement(gate, glue);
             break;
-        case OpCode::HEAP_ALLOC:
-            LowerHeapAllocate(gate, glue);
-            break;
         case OpCode::TYPED_CALL_BUILTIN:
             LowerTypedCallBuitin(gate);
             break;
@@ -122,6 +119,9 @@ void TypeMCRLowering::LowerType(GateRef gate)
             break;
         case OpCode::GET_SUPER_CONSTRUCTOR:
             LowerGetSuperConstructor(gate);
+            break;
+        case OpCode::CREATE_ARRAY:
+            LowerCreateArray(gate);
             break;
         default:
             break;
@@ -666,90 +666,6 @@ void TypeMCRLowering::LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerHeapAllocate(GateRef gate, GateRef glue)
-{
-    Environment env(gate, circuit_, &builder_);
-    auto bit = acc_.TryGetValue(gate);
-    switch (bit) {
-        case RegionSpaceFlag::IN_YOUNG_SPACE:
-            LowerHeapAllocateInYoung(gate, glue);
-            break;
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-    }
-}
-
-void TypeMCRLowering::LowerHeapAllocateInYoung(GateRef gate, GateRef glue)
-{
-    Label success(&builder_);
-    Label callRuntime(&builder_);
-    Label exit(&builder_);
-    auto initialHClass = acc_.GetValueIn(gate, 0);
-    auto size = builder_.GetObjectSizeFromHClass(initialHClass);
-    auto topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(false);
-    auto endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(false);
-    auto topAddress = builder_.Load(VariableType::NATIVE_POINTER(), glue, builder_.IntPtr(topOffset));
-    auto endAddress = builder_.Load(VariableType::NATIVE_POINTER(), glue, builder_.IntPtr(endOffset));
-    auto top = builder_.Load(VariableType::JS_POINTER(), topAddress, builder_.IntPtr(0));
-    auto end = builder_.Load(VariableType::JS_POINTER(), endAddress, builder_.IntPtr(0));
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    auto newTop = builder_.PtrAdd(top, size);
-    builder_.Branch(builder_.IntPtrGreaterThan(newTop, end), &callRuntime, &success);
-    builder_.Bind(&success);
-    {
-        builder_.Store(VariableType::NATIVE_POINTER(), glue, topAddress, builder_.IntPtr(0), newTop);
-        result = top;
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&callRuntime);
-    {
-        result = LowerCallRuntime(glue, gate, RTSTUB_ID(AllocateInYoung),  {builder_.ToTaggedInt(size)}, true);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-
-    // initialization
-    Label afterInitialize(&builder_);
-    InitializeWithSpeicalValue(&afterInitialize, *result, glue, builder_.HoleConstant(),
-                               builder_.Int32(JSObject::SIZE), builder_.TruncInt64ToInt32(size));
-    builder_.Bind(&afterInitialize);
-    builder_.Store(VariableType::JS_POINTER(), glue, *result, builder_.IntPtr(0), initialHClass);
-    GateRef hashOffset = builder_.IntPtr(ECMAObject::HASH_OFFSET);
-    builder_.Store(VariableType::INT64(), glue, *result, hashOffset, builder_.Int64(JSTaggedValue(0).GetRawData()));
-
-    GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-    GateRef propertiesOffset = builder_.IntPtr(JSObject::PROPERTIES_OFFSET);
-    builder_.Store(VariableType::JS_POINTER(), glue, *result, propertiesOffset, emptyArray);
-    GateRef elementsOffset = builder_.IntPtr(JSObject::ELEMENTS_OFFSET);
-    builder_.Store(VariableType::JS_POINTER(), glue, *result, elementsOffset, emptyArray);
-
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
-}
-
-void TypeMCRLowering::InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue,
-                                                 GateRef value, GateRef start, GateRef end)
-{
-    Label begin(&builder_);
-    Label storeValue(&builder_);
-    Label endLoop(&builder_);
-
-    DEFVAlUE(startOffset, (&builder_), VariableType::INT32(), start);
-    builder_.Jump(&begin);
-    builder_.LoopBegin(&begin);
-    {
-        builder_.Branch(builder_.Int32UnsignedLessThan(*startOffset, end), &storeValue, exit);
-        builder_.Bind(&storeValue);
-        {
-            builder_.Store(VariableType::INT64(), glue, object, builder_.ZExtInt32ToPtr(*startOffset), value);
-            startOffset = builder_.Int32Add(*startOffset, builder_.Int32(JSTaggedValue::TaggedTypeSize()));
-            builder_.Jump(&endLoop);
-        }
-        builder_.Bind(&endLoop);
-        builder_.LoopEnd(&begin);
-    }
-}
-
 void TypeMCRLowering::LowerTypedBinaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -1175,6 +1091,49 @@ void TypeMCRLowering::LowerGetSuperConstructor(GateRef gate)
     GateRef protoOffset = builder_.IntPtr(JSHClass::PROTOTYPE_OFFSET);
     GateRef superCtor = builder_.Load(VariableType::JS_ANY(), hclass, protoOffset);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), superCtor);
+}
+
+void TypeMCRLowering::LowerCreateArray(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    if (acc_.IsEmptyArray(gate)) {
+        LowerCreateEmptyArray(gate);
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+}
+
+void TypeMCRLowering::LowerCreateEmptyArray(GateRef gate)
+{
+    JSHandle<JSFunction> arrayFunc(tsManager_->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
+    JSTaggedValue protoOrHClass = arrayFunc->GetProtoOrHClass();
+    JSHClass *arrayHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
+    size_t arraySize = arrayHC->GetObjectSize();
+    size_t lengthAccessorOffset = arrayHC->GetInlinedPropertiesOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX);
+
+    GateRef obj = acc_.GetValueIn(gate);
+    GateRef globalEnv = builder_.GetGlobalEnv();
+    GateRef accessor = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+    GateRef hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef size = builder_.IntPtr(arrayHC->GetObjectSize());
+
+    builder_.StartAllocate();
+    GateRef array = builder_.HeapAlloc(size, GateType::TaggedValue(),RegionSpaceFlag::IN_YOUNG_SPACE);
+    // initialization
+    for (size_t offset = JSArray::SIZE; offset < arraySize; offset += JSTaggedValue::TaggedTypeSize()) {
+        builder_.StoreConstOffset(VariableType::INT64(), array, offset, builder_.Undefined());
+    }
+    builder_.StoreConstOffset(VariableType::INT64(), array, ECMAObject::HASH_OFFSET,
+                              builder_.Int64(JSTaggedValue(0).GetRawData()));
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, 0, hclass);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::PROPERTIES_OFFSET, obj);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::ELEMENTS_OFFSET, obj);
+    builder_.StoreConstOffset(VariableType::JS_ANY(), array, JSArray::LENGTH_OFFSET,
+                              builder_.Int32ToTaggedInt(builder_.Int32(0)));
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, lengthAccessorOffset, accessor);
+    builder_.FinishAllocate();
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
 GateRef TypeMCRLowering::LoadFromTaggedArray(GateRef array, size_t index)
