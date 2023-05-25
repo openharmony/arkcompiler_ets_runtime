@@ -1208,6 +1208,11 @@ private:
 
 class PUBLIC_API JSNApi {
 public:
+    struct DebugOption {
+        const char *libraryPath;
+        bool isDebugMode;
+        int port = -1;
+    };
     using DebuggerPostTask = std::function<void(std::function<void()>&&)>;
 
     // JSVM
@@ -1274,7 +1279,7 @@ public:
     static Local<ObjectRef> GetUncaughtException(const EcmaVM *vm);
     static bool HasPendingException(const EcmaVM *vm);
     static void EnableUserUncaughtErrorHandler(EcmaVM *vm);
-    static bool StartDebugger(const char *libraryPath, EcmaVM *vm, bool isDebugMode, int32_t instanceId = 0,
+    static bool StartDebugger(EcmaVM *vm, const DebugOption &option, int32_t instanceId = 0,
         const DebuggerPostTask &debuggerPostTask = {});
     static bool StopDebugger(EcmaVM *vm);
     static bool IsMixedDebugEnabled(const EcmaVM *vm);

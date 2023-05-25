@@ -41,7 +41,8 @@ namespace OHOS {
         }
 #ifndef ECMASCRIPT_SUPPORT_DEBUGGER
 #define ECMASCRIPT_SUPPORT_DEBUGGER
-        JSNApi::StartDebugger(vm, (char *)data, true, instanceId);
+        JSNApi::DebugOption debugOption = {(char *)data, true};
+        JSNApi::StartDebugger(vm, debugOption, instanceId);
         JSNApi::StopDebugger(vm);
 #endif
         JSNApi::DestroyJSVM(vm);
