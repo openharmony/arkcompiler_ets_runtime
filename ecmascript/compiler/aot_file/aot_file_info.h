@@ -159,6 +159,11 @@ public:
         totalCodeSize_ += size;
     }
 
+    uint32_t GetTotalCodeSize() const
+    {
+        return totalCodeSize_;
+    }
+
     using CallSiteInfo = std::tuple<uint64_t, uint8_t *, int, CalleeRegAndOffsetVec>;
 
     bool CalCallSiteInfo(uintptr_t retAddr, CallSiteInfo &ret) const;
