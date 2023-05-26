@@ -364,12 +364,11 @@ JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTagg
             sFast = sFast * 10 + digitFast;  // 10: base 10
             resultFast += (digitFast + '0');
             if (sFast / static_cast<double>(power) == d) {  // s * (10 ** -k)
-                break;
+                result += resultFast;
+                return factory->NewFromASCII(result.c_str());
             }
             kFast++;
         }
-        result += resultFast;
-        return factory->NewFromASCII(result.c_str());
     }
     char buffer[JS_DTOA_BUF_SIZE] = {0};
     int n = 0;
