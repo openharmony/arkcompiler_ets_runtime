@@ -67,8 +67,7 @@ using WeakRefClearCallBack = void (*)(void *);
 using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
-using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success,
-    Local<JSValueRef> hint, void *data);
+using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
 
 static constexpr size_t DEFAULT_GC_THREAD_NUM = 7;
 static constexpr size_t DEFAULT_LONG_PAUSE_TIME = 40;
@@ -1323,7 +1322,7 @@ public:
     static void SetLoop(EcmaVM *vm, void *loop);
     static std::string GetAssetPath(EcmaVM *vm);
     static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
-    static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func);
+    static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func, void *taskInfo);
     static void SetBundleName(EcmaVM *vm, const std::string &bundleName);
     static std::string GetBundleName(EcmaVM *vm);
     static void SetModuleName(EcmaVM *vm, const std::string &moduleName);

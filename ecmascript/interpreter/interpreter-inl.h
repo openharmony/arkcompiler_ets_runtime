@@ -7153,8 +7153,8 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE) {
         LOG_INST() << "intrinsics::callruntime.notifyconcurrentresult";
-        JSTaggedValue thisObject = GetThis(sp);
-        SlowRuntimeStub::NotifyConcurrentResult(thread, acc, thisObject);
+        JSTaggedValue funcObj = GetFunction(sp);
+        SlowRuntimeStub::NotifyConcurrentResult(thread, acc, funcObj);
         DISPATCH(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
     }
 #include "templates/debugger_instruction_handler.inl"

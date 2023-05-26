@@ -4604,8 +4604,8 @@ DECLARE_ASM_HANDLER(HandleWideStpatchvarPrefImm16)
 
 DECLARE_ASM_HANDLER(HandleCallRuntimeNotifyConcurrentResultPrefNone)
 {
-    GateRef thisObj = GetThisFromFrame(GetFrame(sp));
-    CallRuntime(glue, RTSTUB_ID(NotifyConcurrentResult), {acc, thisObj});
+    GateRef funcObj = GetFunctionFromFrame(GetFrame(sp));
+    CallRuntime(glue, RTSTUB_ID(NotifyConcurrentResult), {acc, funcObj});
     DISPATCH(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
 }
 

@@ -229,7 +229,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
             flags |= BytecodeFlags::NO_SIDE_EFFECTS;
             break;
         case EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE:
-            flags |= BytecodeFlags::READ_THIS_OBJECT;
+            flags |= BytecodeFlags::READ_FUNC;
             break;
         case EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8:
             flags |= BytecodeFlags::READ_THIS_OBJECT;

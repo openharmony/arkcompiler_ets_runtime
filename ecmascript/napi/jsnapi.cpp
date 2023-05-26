@@ -2991,7 +2991,7 @@ bool JSNApi::InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *da
     return true;
 }
 
-bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
+bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, void *taskInfo)
 {
     [[maybe_unused]] LocalScope scope(vm);
     JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(function);
@@ -3001,6 +3001,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function)
         return false;
     }
     ecmascript::JSThread *thread = vm->GetJSThread();
+    transFunc->SetFunctionExtraInfo(thread, nullptr, nullptr, taskInfo);
     JSHandle<Method> method(thread, transFunc->GetMethod());
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     if (jsPandaFile == nullptr) {
