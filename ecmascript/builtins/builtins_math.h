@@ -19,10 +19,6 @@
 #include "ecmascript/base/builtins_base.h"
 
 namespace panda::ecmascript::builtins {
-union Float64Union {
-    double d;
-    uint64_t u64;
-};
 class BuiltinsMath : public base::BuiltinsBase {
 public:
     // 20.2.1.1

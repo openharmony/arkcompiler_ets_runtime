@@ -29,7 +29,7 @@
 
 namespace panda::ecmascript::base {
 enum class Sign { NONE, NEG, POS };
-thread_local uint64_t RandomGenerator::randomState {0};
+thread_local uint64_t RandomGenerator::randomState_ {0};
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define RETURN_IF_CONVERSION_END(p, end, result) \
     if ((p) == (end)) {                          \
@@ -818,10 +818,7 @@ int NumberHelper::GetMinmumDigits(double d, int *decpt, char *buf)
 
     return digits;
 }
-uint64_t& RandomGenerator::GetRandomState()
-{
-    return randomState;
-}
+
 uint64_t RandomGenerator::XorShift64(uint64_t *pVal)
 {
     uint64_t x = *pVal;
@@ -831,14 +828,27 @@ uint64_t RandomGenerator::XorShift64(uint64_t *pVal)
     *pVal = x;
     return x * GET_MULTIPLY;
 }
+
 void RandomGenerator::InitRandom()
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    randomState = static_cast<uint64_t>((tv.tv_sec * SECONDS_TO_SUBTLE) + tv.tv_usec);
+    randomState_ = static_cast<uint64_t>((tv.tv_sec * SECONDS_TO_SUBTLE) + tv.tv_usec);
     // the state must be non zero
-    if (randomState == 0) {
-        randomState = 1;
+    if (randomState_ == 0) {
+        randomState_ = 1;
     }
+}
+
+double RandomGenerator::NextDouble()
+{
+    uint64_t val = XorShift64(&randomState_);
+    return ToDouble(val);
+}
+
+double RandomGenerator::ToDouble(uint64_t state)
+{
+    uint64_t random = (state >> base::RIGHT12) | EXPONENTBITS_RANGE_IN_ONE_AND_TWO;
+    return base::bit_cast<double>(random) - 1;
 }
 }  // namespace panda::ecmascript::base

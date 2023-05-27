@@ -34,6 +34,12 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
 {
     auto object = allocator_.Allocate(size);
     if (object != 0) {
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+        // can not heap sampling in gc.
+        if (!isPromoted) {
+            InvokeAllocationInspector(object, size, size);
+        }
+#endif
         return object;
     }
     if (!isPromoted && heap_->GetConcurrentMarker()->IsConfigDisabled() && NativeBindingSizeLargerThanLimit()) {
@@ -54,6 +60,11 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
             object = allocator_.Allocate(size);
         }
     }
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+    if (object != 0 && !isPromoted) {
+        InvokeAllocationInspector(object, size, size);
+    }
+#endif
     return object;
 }
 
@@ -133,6 +144,18 @@ void LinearSpace::IterateOverObjects(const std::function<void(TaggedObject *obje
         }
         CHECK_REGION_END(curPtr, endPtr);
     });
+}
+
+void LinearSpace::InvokeAllocationInspector(Address object, size_t size, size_t alignedSize)
+{
+    ASSERT(size <= alignedSize);
+    if (LIKELY(!allocationCounter_.IsActive())) {
+        return;
+    }
+    if (alignedSize >= allocationCounter_.NextBytes()) {
+        allocationCounter_.InvokeAllocationInspector(object, size, alignedSize);
+    }
+    allocationCounter_.AdvanceAllocationInspector(alignedSize);
 }
 
 SemiSpace::SemiSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)

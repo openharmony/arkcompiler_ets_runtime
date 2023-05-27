@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_MEM_SPACE_H
 #define ECMASCRIPT_MEM_SPACE_H
 
+#include "ecmascript/mem/allocation_inspector.h"
 #include "ecmascript/mem/allocator.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/ecma_list.h"
@@ -189,6 +190,11 @@ public:
         recordRegion_ = GetCurrentRegion();
     }
 
+    // methods for allocation inspector
+    void AddAllocationInspector(AllocationInspector* inspector);
+    void ClearAllocationInspector();
+    void SwapAllocationCounter(Space *space);
+
     template <class Callback>
     inline void EnumerateRegions(const Callback &cb, Region *region = nullptr) const;
     template <class Callback>
@@ -214,6 +220,7 @@ protected:
     size_t objectSize_ {0};
     size_t outOfMemoryOvershootSize_ {0};
     Region *recordRegion_ {nullptr};
+    AllocationCounter allocationCounter_;
 };
 
 class HugeObjectSpace : public Space {
@@ -229,6 +236,8 @@ public:
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;
 
     void ReclaimHugeRegion();
+
+    void InvokeAllocationInspector(Address object, size_t objectSize);
 
 private:
     static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;

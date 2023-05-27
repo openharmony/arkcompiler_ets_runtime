@@ -333,6 +333,18 @@ void SparseSpace::DetachFreeObjectSet(Region *region)
     allocator_->DetachFreeObjectSet(region);
 }
 
+void SparseSpace::InvokeAllocationInspector(Address object, size_t size, size_t alignedSize)
+{
+    ASSERT(size <= alignedSize);
+    if (LIKELY(!allocationCounter_.IsActive())) {
+        return;
+    }
+    if (alignedSize >= allocationCounter_.NextBytes()) {
+        allocationCounter_.InvokeAllocationInspector(object, size, alignedSize);
+    }
+    allocationCounter_.AdvanceAllocationInspector(alignedSize);
+}
+
 OldSpace::OldSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SparseSpace(heap, OLD_SPACE, initialCapacity, maximumCapacity) {}
 

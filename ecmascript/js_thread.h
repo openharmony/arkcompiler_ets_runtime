@@ -266,6 +266,11 @@ public:
         glueData_.newSpaceAllocationEndAddress_ = end;
     }
 
+    void SetIsStartHeapSampling(bool isStart)
+    {
+        glueData_.isStartHeapSampling_ = isStart ? JSTaggedValue::True() : JSTaggedValue::False();
+    }
+
     void Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor);
 
@@ -699,7 +704,8 @@ public:
                                                  base::AlignedPointer,
                                                  GlobalEnvConstants,
                                                  base::AlignedUint64,
-                                                 base::AlignedUint64> {
+                                                 base::AlignedUint64,
+                                                 JSTaggedValue> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
             ExceptionIndex,
@@ -722,6 +728,7 @@ public:
             GlobalConstIndex,
             AllowCrossThreadExecutionIndex,
             InterruptVectorIndex,
+            IsStartHeapSamplingIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -826,6 +833,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::InterruptVectorIndex)>(isArch32);
         }
 
+        static size_t GetIsStartHeapSamplingOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::IsStartHeapSamplingIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -847,6 +859,7 @@ public:
         alignas(EAS) GlobalEnvConstants globalConst_;
         alignas(EAS) bool allowCrossThreadExecution_ {false};
         alignas(EAS) volatile uint64_t interruptVector_ {0};
+        alignas(EAS) JSTaggedValue isStartHeapSampling_ {JSTaggedValue::False()};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 

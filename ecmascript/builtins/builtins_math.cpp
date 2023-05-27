@@ -588,11 +588,7 @@ JSTaggedValue BuiltinsMath::Random(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(thread, Math, Random);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    Float64Union dataU;
-    uint64_t &randomState = RandomGenerator::GetRandomState();
-    uint64_t val = RandomGenerator::XorShift64(&randomState);
-    dataU.u64 = ((uint64_t)base::USE_LEFT << base::LEFT52) | (val >> base::RIGHT12);
-    return GetTaggedDouble(dataU.d - 1.0);
+    return GetTaggedDouble(RandomGenerator::NextDouble());
 }
 
 // 20.2.2.28
