@@ -41,6 +41,8 @@ public:
 
     static JSTaggedValue HasTSSubtyping(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue IsNotHoleProperty(EcmaRuntimeCallInfo *info);
+
     static JSTaggedValue ForceFullGC(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue RemoveAOTFlag(EcmaRuntimeCallInfo *info);

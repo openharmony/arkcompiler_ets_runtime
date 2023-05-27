@@ -107,7 +107,7 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
 
     SetTSType(table, type, gt);
     if (typeLiteralExtractor.GetTypeKind() != TSTypeKind::GENERIC_INSTANCE) {
-        tsManager_->CollectTypeOffsets(gt);  // collect types that need to generate hclasses
+        tsManager_->CollectGT(gt);  // collect types that need to generate hclasses
     }
     return gt;
 }

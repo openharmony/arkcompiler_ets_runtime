@@ -171,6 +171,9 @@ class MachineCode;
 class ClassInfoExtractor;
 class AOTLiteralInfo;
 class VTable;
+namespace kungfu {
+class TSHClassGenerator;
+}  // namespace kungfu
 
 enum class CompletionRecordType : uint8_t;
 enum class PrimitiveType : uint8_t;
@@ -697,10 +700,10 @@ private:
     friend class LiteralDataExtractor;
     friend class RuntimeStubs;
     friend class ClassInfoExtractor;
-    friend class TSObjectType;
     friend class ModuleDataExtractor;
     friend class ModuleDataAccessor;
     friend class ConstantPool;
+    friend class kungfu::TSHClassGenerator;
 };
 
 class ClassLinkerFactory {

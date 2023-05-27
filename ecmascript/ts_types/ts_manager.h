@@ -244,6 +244,8 @@ public:
 
     JSHandle<TSClassType> GetExtendedClassType(JSHandle<TSClassType> classType) const;
 
+    TSClassType* GetExtendedClassType(const TSClassType *classType) const;
+
     uint32_t PUBLIC_API GetUnionTypeLength(GlobalTSTypeRef gt) const;
 
     GlobalTSTypeRef PUBLIC_API GetUnionTypeByIndex(GlobalTSTypeRef gt, int index) const;
@@ -345,15 +347,13 @@ public:
 
     void UpdateTSHClassFromPGO(const kungfu::GateType &type, const PGOSampleLayoutDesc &desc);
 
-    JSHandle<JSHClass> GenerateTSHClass(const JSHandle<TSClassType> &classType);
+    void AddInstanceTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &ihclass);
 
     JSTaggedValue GetInstanceTSHClass(const JSHandle<TSClassType> &classType) const;
 
     bool HasTSHClass(const JSHandle<TSClassType> &classType) const;
 
-    void GenerateTSHClasses();
-
-    void RecursiveGenTSHClass(const JSHandle<TSClassType> &classType);
+    bool HasTSHClass(const TSClassType *classType) const;
 
     JSHandle<JSTaggedValue> GetTSType(const GlobalTSTypeRef &gt) const;
 
@@ -695,11 +695,16 @@ public:
         return name;
     }
 
-    inline void CollectTypeOffsets(GlobalTSTypeRef classGT)
+    inline void CollectGT(GlobalTSTypeRef gt)
     {
-        if (IsClassTypeKind(classGT)) {
-            collectedTypeOffsets_.insert(classGT);
+        if (IsClassTypeKind(gt)) {
+            collectedGT_.insert(gt);
         }
+    }
+
+    inline std::set<GlobalTSTypeRef>& GetCollectedGT()
+    {
+        return collectedGT_;
     }
 
     void PrintNumOfTypes() const;
@@ -707,6 +712,8 @@ public:
     kungfu::GateType TryNarrowUnionType(kungfu::GateType gateType);
 
     JSHandle<TaggedArray> GetExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName);
+
+    int GetHClassIndex(GlobalTSTypeRef classGT);
 
 #define TSTYPETABLE_ACCESSOR_LIST(V)       \
     V(Builtin, ModuleTableIdx::BUILTIN)    \
@@ -758,8 +765,6 @@ private:
     std::string GetArrayTypeStr(GlobalTSTypeRef gt) const;
 
     std::string GetPrimitiveStr(const GlobalTSTypeRef &gt) const;
-
-    int GetHClassIndex(GlobalTSTypeRef classGT);
 
     uint32_t RecordIhcToVecAndIndexMap(IHClassData &ihcData);
 
@@ -819,7 +824,7 @@ private:
     CString builtinsRecordName_ {""};
     std::map<ModuleInfo, GlobalTSTypeRef> moduleVarGtMap_{};
     kungfu::CompilationDriver *cmpDriver_ {nullptr};
-    std::set<GlobalTSTypeRef> collectedTypeOffsets_ {};  // use for storing types that need to generate hclasses
+    std::set<GlobalTSTypeRef> collectedGT_ {};  // use for storing types that need to generate hclasses
 
     friend class EcmaVM;
     friend class TSTypeAccessor;

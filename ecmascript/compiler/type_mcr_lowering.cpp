@@ -416,7 +416,10 @@ void TypeMCRLowering::LowerLoadProperty(GateRef gate)
     ASSERT(plr.IsLocal() || plr.IsFunction());
 
     GateRef result = Circuit::NullGate();
-    if (plr.IsLocal()) {
+    if (plr.IsNotHole()) {
+        ASSERT(plr.IsLocal());
+        result = builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, plr.GetOffset());
+    } else if (plr.IsLocal()) {
         result = builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, plr.GetOffset());
         result = builder_.ConvertHoleAsUndefined(result);
     } else {

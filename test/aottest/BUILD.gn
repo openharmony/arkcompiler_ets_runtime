@@ -213,6 +213,7 @@ group("ark_aot_test") {
   deps = [
     ":ark_aot_js_test",
     ":ark_aot_ts_test",
+    "analyze_property:analyze_property_test",
     "aot_compatibility_test:aot_compatibility_test",
     "aot_multi_constantpool_test:aot_multi_constantpool_test",
     "aot_type_test:aot_type_test",

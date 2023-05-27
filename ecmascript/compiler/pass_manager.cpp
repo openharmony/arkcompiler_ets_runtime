@@ -118,6 +118,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         if (data.IsTypeAbort()) {
             return;
         }
+        pipeline.RunPass<TSClassAnalysisPass>();
         if (passOptions_->EnableOptInlining() && passOptions_->EnableTypeLowering()) {
             pipeline.RunPass<TSInlineLoweringPass>();
         }

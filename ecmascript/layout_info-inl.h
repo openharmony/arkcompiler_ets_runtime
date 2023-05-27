@@ -171,5 +171,13 @@ inline int LayoutInfo::BinarySearch(JSTaggedValue key, int propertiesNumber)
     }
     return -1;
 }
+
+inline void LayoutInfo::SetIsNotHole(const JSThread *thread, int index)
+{
+    uint32_t fixed_idx = GetAttrIndex(index);
+    PropertyAttributes attr(TaggedArray::Get(fixed_idx));
+    attr.SetIsNotHole(true);
+    TaggedArray::Set(thread, fixed_idx, attr.GetTaggedValue());
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_LAYOUT_INFO_INL_H

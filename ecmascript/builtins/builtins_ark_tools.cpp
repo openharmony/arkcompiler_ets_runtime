@@ -125,6 +125,25 @@ JSTaggedValue BuiltinsArkTools::HasTSSubtyping(EcmaRuntimeCallInfo *info)
     return GetTaggedBoolean(hclass->HasTSSubtyping());
 }
 
+JSTaggedValue BuiltinsArkTools::IsNotHoleProperty(EcmaRuntimeCallInfo *info)
+{
+    [[maybe_unused]] DisallowGarbageCollection noGc;
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ASSERT(info->GetArgsNumber() == 2);
+    JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
+    JSTaggedValue key = GetCallArg(info, 1).GetTaggedValue();
+    JSHClass *hclass = object->GetTaggedObject()->GetClass();
+    int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
+    if (entry == -1) {
+        return GetTaggedBoolean(false);
+    }
+    PropertyAttributes attr = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject())->GetAttr(entry);
+    return GetTaggedBoolean(attr.IsNotHole());
+}
+
 JSTaggedValue BuiltinsArkTools::ExcutePendingJob(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

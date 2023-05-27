@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/type_recorder.h"
 
+#include "ecmascript/compiler/ts_hclass_generator.h"
 #include "ecmascript/jspandafile/type_literal_extractor.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
@@ -30,7 +31,9 @@ TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *
     }
     LoadTypes(jsPandaFile, methodLiteral, tsManager, recordName);
     LoadTypesFromPGO(methodLiteral, recordName);
-    tsManager->GenerateTSHClasses();
+
+    TSHClassGenerator generator(tsManager);
+    generator.GenerateTSHClasses();
 }
 
 void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
