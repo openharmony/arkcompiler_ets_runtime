@@ -822,25 +822,28 @@ bool JSSerializer::WriteJSArrayBuffer(const JSHandle<JSTaggedValue> &value)
         return false;
     }
 
-    JSHandle<JSNativePointer> np(thread_, arrayBuffer->GetArrayBufferData());
-    if (shared) {
-        void *buffer = np->GetExternalPointer();
-        JSSharedMemoryManager::GetInstance()->CreateOrLoad(&buffer, arrayLength);
-        uint64_t bufferAddr = (uint64_t)buffer;
-        if (!WriteRawData(&bufferAddr, sizeof(uint64_t))) {
-            return false;
-        }
-    } else if (transfer) {
-        // Write Accessors(ArrayBufferData) which is a pointer to a Buffer
-        if (!TransferJSNativePointer(np)) {
-            return false;
-        }
-        arrayBuffer->Detach(thread_);
-    } else {
-        // Write Accessors(ArrayBufferData) which is a pointer to a Buffer
-        void *buffer = np->GetExternalPointer();
-        if (!WriteRawData(buffer, arrayLength)) {
-            return false;
+    bool empty = arrayLength == 0;
+    if (!empty) {
+        JSHandle<JSNativePointer> np(thread_, arrayBuffer->GetArrayBufferData());
+        if (shared) {
+            void *buffer = np->GetExternalPointer();
+            JSSharedMemoryManager::GetInstance()->CreateOrLoad(&buffer, arrayLength);
+            uint64_t bufferAddr = reinterpret_cast<uint64_t>(buffer);
+            if (!WriteRawData(&bufferAddr, sizeof(uint64_t))) {
+                return false;
+            }
+        } else if (transfer) {
+            // Write Accessors(ArrayBufferData) which is a pointer to a Buffer
+            if (!TransferJSNativePointer(np)) {
+                return false;
+            }
+            arrayBuffer->Detach(thread_);
+        } else {
+            // Write Accessors(ArrayBufferData) which is a pointer to a Buffer
+            void *buffer = np->GetExternalPointer();
+            if (!WriteRawData(buffer, arrayLength)) {
+                return false;
+            }
         }
     }
 
@@ -1759,34 +1762,40 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArrayBuffer(SerializationUID uid)
     }
     // read access shared
     bool shared = (uid == SerializationUID::JS_SHARED_ARRAY_BUFFER);
-    // create jsarraybuffer
+
     JSHandle<JSTaggedValue> arrayBufferTag;
-    if (shared) {
-        uint64_t *bufferAddr = reinterpret_cast<uint64_t*>(GetBuffer(sizeof(uint64_t)));
-        void *bufferData = ToVoidPtr(*bufferAddr);
-        JSHandle<JSArrayBuffer> arrayBuffer = factory_->NewJSSharedArrayBuffer(bufferData, arrayLength);
-        arrayBufferTag = JSHandle<JSTaggedValue>::Cast(arrayBuffer);
-    } else if (uid == SerializationUID::JS_TRANSFER_ARRAY_BUFFER) {
-        JSHandle<JSTaggedValue> np = ReadTransferJSNativePointer();
-        if (np.IsEmpty()) {
-            return JSHandle<JSTaggedValue>();
-        }
-        JSHandle<JSArrayBuffer> arrayBuffer = factory_->NewJSArrayBuffer(arrayLength);
-        arrayBuffer->SetArrayBufferData(thread_, np.GetTaggedValue());
-        arrayBuffer->SetShared(false);
+    if (arrayLength == 0) {
+        // create an empty arrayBuffer
+        JSHandle<JSArrayBuffer> arrayBuffer = factory_->NewJSArrayBuffer(0);
+        arrayBuffer->SetShared(shared);
         arrayBufferTag = JSHandle<JSTaggedValue>::Cast(arrayBuffer);
     } else {
-        void *fromBuffer = GetBuffer(arrayLength);
-        if (fromBuffer == nullptr) {
-            return arrayBufferTag;
-        }
-        JSHandle<JSArrayBuffer> arrayBuffer = factory_->NewJSArrayBuffer(arrayLength);
-        arrayBufferTag = JSHandle<JSTaggedValue>::Cast(arrayBuffer);
-        JSHandle<JSNativePointer> np(thread_, arrayBuffer->GetArrayBufferData());
-        void *toBuffer = np->GetExternalPointer();
-        if (memcpy_s(toBuffer, arrayLength, fromBuffer, arrayLength) != EOK) {
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
+        if (shared) {
+            uint64_t *bufferAddr = reinterpret_cast<uint64_t*>(GetBuffer(sizeof(uint64_t)));
+            void *bufferData = ToVoidPtr(*bufferAddr);
+            JSHandle<JSArrayBuffer> arrayBuffer = factory_->NewJSSharedArrayBuffer(bufferData, arrayLength);
+            arrayBufferTag = JSHandle<JSTaggedValue>::Cast(arrayBuffer);
+        } else if (uid == SerializationUID::JS_TRANSFER_ARRAY_BUFFER) {
+            JSHandle<JSTaggedValue> np = ReadTransferJSNativePointer();
+            if (np.IsEmpty()) {
+                return JSHandle<JSTaggedValue>();
+            }
+            JSHandle<JSArrayBuffer> arrayBuffer =
+                factory_->NewJSArrayBuffer(arrayLength, JSHandle<JSNativePointer>::Cast(np));
+            arrayBufferTag = JSHandle<JSTaggedValue>::Cast(arrayBuffer);
+        } else {
+            void *fromBuffer = GetBuffer(arrayLength);
+            if (fromBuffer == nullptr) {
+                return arrayBufferTag;
+            }
+            JSHandle<JSArrayBuffer> arrayBuffer = factory_->NewJSArrayBuffer(arrayLength);
+            arrayBufferTag = JSHandle<JSTaggedValue>::Cast(arrayBuffer);
+            JSNativePointer* np = JSNativePointer::Cast(arrayBuffer->GetArrayBufferData().GetTaggedObject());
+            void *toBuffer = np->GetExternalPointer();
+            if (memcpy_s(toBuffer, arrayLength, fromBuffer, arrayLength) != EOK) {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+            }
         }
     }
     referenceMap_.emplace(objectId_++, arrayBufferTag);
