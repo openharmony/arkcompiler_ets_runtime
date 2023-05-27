@@ -137,6 +137,7 @@ void BytecodeInfoCollector::ProcessClasses()
     }
     // Collect import(infer-needed) and export relationship among all records.
     CollectRecordReferenceREL();
+    RearrangeInnerMethods();
     LOG_COMPILER(INFO) << "Total number of methods in file: "
                        << jsPandaFile_->GetJSPandaFileDesc()
                        << " is: "
@@ -183,7 +184,7 @@ void BytecodeInfoCollector::IterateLiteral(const MethodLiteral *method,
                 bytecodeInfo_.SetClassTypeOffsetAndDefMethod(typeOffset, defineMethodOffset);
             }
             if (bcOffset != TypeRecorder::METHOD_ANNOTATION_THIS_TYPE_OFFSET &&
-                typeOffset > TSTypeParser::USER_DEFINED_TYPE_OFFSET) {
+                TSTypeParser::IsUserDefinedType(typeOffset)) {
                 offsetTypeMap.insert(std::make_pair(bcOffset, typeOffset));
             }
         });
@@ -275,13 +276,15 @@ void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,
     methodList.emplace(methodOffset, info);
 }
 
-void BytecodeInfoCollector::CollectInnerMethods(const MethodLiteral *method, uint32_t innerMethodOffset)
+void BytecodeInfoCollector::CollectInnerMethods(const MethodLiteral *method,
+                                                uint32_t innerMethodOffset,
+                                                bool isConstructor)
 {
     auto methodId = method->GetMethodId().GetOffset();
-    CollectInnerMethods(methodId, innerMethodOffset);
+    CollectInnerMethods(methodId, innerMethodOffset, isConstructor);
 }
 
-void BytecodeInfoCollector::CollectInnerMethods(uint32_t methodId, uint32_t innerMethodOffset)
+void BytecodeInfoCollector::CollectInnerMethods(uint32_t methodId, uint32_t innerMethodOffset, bool isConstructor)
 {
     auto &methodList = bytecodeInfo_.GetMethodList();
     uint32_t methodInfoId = 0;
@@ -289,12 +292,12 @@ void BytecodeInfoCollector::CollectInnerMethods(uint32_t methodId, uint32_t inne
     if (methodIter != methodList.end()) {
         MethodInfo &methodInfo = methodIter->second;
         methodInfoId = methodInfo.GetMethodInfoIndex();
-        methodInfo.AddInnerMethod(innerMethodOffset);
+        methodInfo.AddInnerMethod(innerMethodOffset, isConstructor);
     } else {
         methodInfoId = GetMethodInfoID();
         MethodInfo info(methodInfoId, 0, LexEnv::DEFAULT_ROOT);
         methodList.emplace(methodId, info);
-        methodList.at(methodId).AddInnerMethod(innerMethodOffset);
+        methodList.at(methodId).AddInnerMethod(innerMethodOffset, isConstructor);
     }
 
     auto innerMethodIter = methodList.find(innerMethodOffset);
@@ -386,7 +389,7 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
                 classNameVec.emplace_back(GetClassName(entityId));
                 classDefBCIndexes_.insert(bcIndex);
                 methodId = entityId.GetOffset();
-                CollectInnerMethods(method, methodId);
+                CollectInnerMethods(method, methodId, true);
                 auto literalId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 1>()).AsRawValue());
                 CollectInnerMethodsFromNewLiteral(method, literalId);
@@ -399,7 +402,7 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
                 classNameVec.emplace_back(GetClassName(entityId));
                 classDefBCIndexes_.insert(bcIndex);
                 methodId = entityId.GetOffset();
-                CollectInnerMethods(method, methodId);
+                CollectInnerMethods(method, methodId, true);
                 auto literalId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 1>()).AsRawValue());
                 CollectInnerMethodsFromNewLiteral(method, literalId);
@@ -556,23 +559,34 @@ void BytecodeInfoCollector::CollectExportIndexs(const CString &recordName, uint3
     }
 
     JSHandle<EcmaString> exportNameStr(thread, EcmaString::Cast(exportName->GetTaggedObject()));
-    // When a export element whose name is not recorded in exportTypeTable or recorded as Any, we will think it
-    // as an infer needed type and add it to the ExportRecordInfo of this record.
-    // What we do is to reduce redundant compilation.
-    if (!CheckExportName(recordName, exportNameStr)) {
+    // In order to reduce redundant compilation, when a export element satisfies one of the following conditions,
+    // it will be added to the ExportRecordInfo of this record.
+    // 1) its name is not recorded in exportTypeTable, or
+    // 2) its type is classType or any.
+    if (!CheckExportNameAndClassType(recordName, exportNameStr)) {
         bytecodeInfo_.AddExportIndexToRecord(recordName, index);
     }
 }
 
-bool BytecodeInfoCollector::CheckExportName(const CString &recordName, const JSHandle<EcmaString> &exportStr)
+bool BytecodeInfoCollector::CheckExportNameAndClassType(const CString &recordName,
+                                                        const JSHandle<EcmaString> &exportStr)
 {
     auto tsManager = vm_->GetTSManager();
     JSHandle<TaggedArray> exportTypeTable = tsManager->GetExportTableFromLiteral(jsPandaFile_, recordName);
     uint32_t length = exportTypeTable->GetLength();
     for (uint32_t i = 0; i < length; i = i + 2) { // 2: skip a pair of key and value
         EcmaString *valueString = EcmaString::Cast(exportTypeTable->Get(i).GetTaggedObject());
+        if (!EcmaStringAccessor::StringsAreEqual(*exportStr, valueString)) {
+            continue;
+        }
         uint32_t typeId = static_cast<uint32_t>(exportTypeTable->Get(i + 1).GetInt());
-        if (EcmaStringAccessor::StringsAreEqual(*exportStr, valueString) && typeId != 0) {
+        if (TSTypeParser::IsUserDefinedType(typeId)) {
+            TypeLiteralExtractor typeExtractor(jsPandaFile_, typeId);
+            if (typeExtractor.GetTypeKind() == TSTypeKind::CLASS) {
+                return false;
+            }
+        }
+        if (typeId != 0) {
             return true;
         }
     }
@@ -655,6 +669,15 @@ void BytecodeInfoCollector::CollectRecordExportInfo(const CString &recordName)
         if (jsPandaFile_->HasTypeSummaryOffset(entryPoint)) {
             bytecodeInfo_.AddStarExportToRecord(recordName, entryPoint);
         }
+    }
+}
+
+void BytecodeInfoCollector::RearrangeInnerMethods()
+{
+    auto &methodList = bytecodeInfo_.GetMethodList();
+    for (auto &it : methodList) {
+        MethodInfo &methodInfo = it.second;
+        methodInfo.RearrangeInnerMethods();
     }
 }
 

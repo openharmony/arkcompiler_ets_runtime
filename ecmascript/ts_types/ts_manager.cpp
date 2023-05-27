@@ -1303,6 +1303,12 @@ kungfu::GateType TSManager::TryNarrowUnionType(kungfu::GateType gateType)
     return gateType;
 }
 
+JSTaggedValue TSManager::GetStringFromConstantPool(const uint16_t stringId) const
+{
+    JSHandle<ConstantPool> constantPool(GetConstantPool());
+    return ConstantPool::GetStringFromCache(thread_, constantPool.GetTaggedValue(), stringId);
+}
+
 JSHandle<TaggedArray> TSManager::GetExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName)
 {
     // To compare with the exportTable, we need to parse the literalbuffer in abc TypeAnnotation.

@@ -518,8 +518,7 @@ void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
     auto constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
     uint16_t propIndex = acc_.GetConstDataId(constData).GetId();
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
-    auto prop = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), propIndex);
+    auto prop = tsManager_->GetStringFromConstantPool(propIndex);
 
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
@@ -575,8 +574,7 @@ void TSHCRLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     auto constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
     uint16_t propIndex = acc_.GetConstDataId(constData).GetId();
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
-    JSHandle<ConstantPool> constantPool(tsManager_->GetConstantPool());
-    auto prop = ConstantPool::GetStringFromCache(thread, constantPool.GetTaggedValue(), propIndex);
+    auto prop = tsManager_->GetStringFromConstantPool(propIndex);
 
     GateRef receiver = Circuit::NullGate();
     GateRef value = Circuit::NullGate();

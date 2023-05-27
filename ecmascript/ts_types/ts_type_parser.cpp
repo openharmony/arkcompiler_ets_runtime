@@ -43,7 +43,7 @@ GlobalTSTypeRef TSTypeParser::CreateGT(const JSPandaFile *jsPandaFile, const CSt
         return GlobalTSTypeRef(static_cast<uint32_t>(ModuleTableIdx::PRIMITIVE), typeId);
     }
 
-    if (typeId <= USER_DEFINED_TYPE_OFFSET) {
+    if (!IsUserDefinedType(typeId)) {
         return ParseBuiltinObjType(typeId);
     }
 
@@ -185,7 +185,7 @@ GlobalTSTypeRef TSTypeParser::ParseIndexSigType(const JSPandaFile *jsPandaFile, 
         [this, &jsPandaFile, &recordName, &indexSignInfo](const uint32_t literalTag, const uint32_t literalValue) {
             auto keyGT = CreateGT(jsPandaFile, recordName, literalTag);
             auto valueGT = CreateGT(jsPandaFile, recordName, literalValue);
-            indexSignInfo->AddKeyAndType(thread_, JSTaggedValue(keyGT.GetType()), JSTaggedValue(valueGT.GetType()));
+            indexSignInfo->AddProperty(thread_, JSTaggedValue(keyGT.GetType()), JSTaggedValue(valueGT.GetType()));
         });
 
     uint32_t oriTypeId = typeLiteralExtractor->GetIntValue(DEFAULT_INDEX);
@@ -438,7 +438,7 @@ void TSTypeParser::FillPropTypes(const JSPandaFile *jsPandaFile,
             if (tsManager_->IsClassTypeKind(gt)) {
                 gt = tsManager_->CreateClassInstanceType(gt);
             }
-            layout->AddKeyAndType(thread_, key.GetTaggedValue(), JSTaggedValue(gt.GetType()));
+            layout->AddProperty(thread_, key.GetTaggedValue(), JSTaggedValue(gt.GetType()));
         });
 }
 
@@ -459,7 +459,7 @@ void TSTypeParser::FillInterfaceMethodTypes(const JSPandaFile *jsPandaFile,
                 JSHandle<TSFunctionType> functionType(tsType);
                 key.Update(functionType->GetName());
             };
-            layout->AddKeyAndType(thread_, key.GetTaggedValue(), JSTaggedValue(gt.GetType()));
+            layout->AddProperty(thread_, key.GetTaggedValue(), JSTaggedValue(gt.GetType()));
         });
 }
 
@@ -739,7 +739,7 @@ JSHandle<TSObjectType> TSTypeParser::InstantiateObjGenericsType(const JSHandle<T
     for (uint32_t i = 0; i < numOfProps; ++i) {
         GlobalTSTypeRef parameterGT(oldLayout->GetTypeId(i).GetInt());
         JSTaggedValue parameter(TryReplaceTypePara(parameterGT, paras).GetType());
-        newLayout->AddKeyAndType(thread_, oldLayout->GetKey(i), parameter);
+        newLayout->AddProperty(thread_, oldLayout->GetKey(i), parameter);
     }
     return newObjType;
 }

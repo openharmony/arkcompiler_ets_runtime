@@ -764,6 +764,7 @@ ecma_source = [
   "ecmascript/weak_vector.cpp",
   "ecmascript/stubs/runtime_stubs.cpp",
   "ecmascript/ts_types/ts_type.cpp",
+  "ecmascript/ts_types/ts_type_accessor.cpp",
   "ecmascript/ts_types/ts_type_table.cpp",
   "ecmascript/ts_types/ts_manager.cpp",
   "ecmascript/ts_types/ts_obj_layout_info.cpp",

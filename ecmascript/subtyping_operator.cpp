@@ -98,16 +98,18 @@ void SubtypingOperator::MergeClassField(const JSThread *thread, const JSHandle<T
     for (uint32_t index = 0; index < numExtendTypes; index++) {
         JSTaggedValue key = eLayout->GetKey(index);
         JSTaggedValue type = eLayout->GetTypeId(index);
-        newLayout->AddKeyAndType(thread, key, type);
+        JSTaggedValue attribute = eLayout->GetAttribute(index);
+        newLayout->AddProperty(thread, key, type, attribute);
     }
 
     for (uint32_t index = 0; index < numSelfTypes; index++) {
         JSTaggedValue key = layout->GetKey(index);
-        JSTaggedValue type = layout->GetTypeId(index);
         if (eLayout->Find(key)) {
             continue;
         }
-        newLayout->AddKeyAndType(thread, key, type);
+        JSTaggedValue type = layout->GetTypeId(index);
+        JSTaggedValue attribute = layout->GetAttribute(index);
+        newLayout->AddProperty(thread, key, type, attribute);
     }
 
     field->SetObjLayoutInfo(thread, newLayout);

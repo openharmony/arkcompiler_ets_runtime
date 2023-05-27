@@ -234,6 +234,12 @@ public:
 
     GlobalTSTypeRef PUBLIC_API CreateClassInstanceType(GlobalTSTypeRef gt);
 
+    inline GlobalTSTypeRef PUBLIC_API GetClassType(kungfu::GateType gateType)
+    {
+        GlobalTSTypeRef gt = gateType.GetGTRef();
+        return GetClassType(gt);
+    }
+
     GlobalTSTypeRef PUBLIC_API GetClassType(GlobalTSTypeRef classInstanceGT) const;
 
     JSHandle<TSClassType> GetExtendedClassType(JSHandle<TSClassType> classType) const;
@@ -539,6 +545,14 @@ public:
         return JSHandle<JSTaggedValue>(uintptr_t(&curCP_));
     }
 
+    JSTaggedValue PUBLIC_API GetStringFromConstantPool(const uint16_t stringId) const;
+
+    inline std::string PUBLIC_API GetStdStringFromConstantPool(const uint16_t stringId) const
+    {
+        JSTaggedValue str = GetStringFromConstantPool(stringId);
+        return EcmaStringAccessor(str).ToStdString(StringConvertedUsage::LOGICOPERATION);
+    }
+
     bool PUBLIC_API IsBuiltin(kungfu::GateType funcType) const;
 
     bool PUBLIC_API IsBuiltinMath(kungfu::GateType funcType) const;
@@ -808,6 +822,7 @@ private:
     std::set<GlobalTSTypeRef> collectedTypeOffsets_ {};  // use for storing types that need to generate hclasses
 
     friend class EcmaVM;
+    friend class TSTypeAccessor;
 
     std::map<std::pair<const JSPandaFile *, uint32_t>, std::string> literalOffsetClassNameMap_ {};
     kungfu::BytecodeInfoCollector *bcInfoCollector_ {nullptr};

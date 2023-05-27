@@ -465,8 +465,9 @@ public:
     bool IsStateIn(GateRef gate, size_t index) const;
     bool IsDependIn(GateRef gate, size_t index) const;
     bool IsValueIn(GateRef gate, size_t index) const;
-    void GetStateUses(GateRef gate, std::vector<GateRef>& stateUses);
-    void GetDependUses(GateRef gate, std::vector<GateRef>& dependUses);
+    void GetStateUses(GateRef gate, std::vector<GateRef> &stateUses);
+    void GetDependUses(GateRef gate, std::vector<GateRef> &dependUses);
+    void GetValueUses(GateRef gate, std::vector<GateRef> &valueUses);
     bool IsFrameStateIn(GateRef gate, size_t index) const;
     void EliminateRedundantPhi();
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
@@ -487,6 +488,7 @@ public:
     {
         return GetRoot(OpCode::CIRCUIT_ROOT);
     }
+
     GateRef GetStateRoot() const
     {
         return GetRoot(OpCode::STATE_ENTRY);
@@ -505,6 +507,11 @@ public:
     GateRef GetReturnRoot() const
     {
         return GetRoot(OpCode::RETURN_LIST);
+    }
+
+    inline bool IsStateRoot(GateRef gate) const
+    {
+        return gate == GetStateRoot();
     }
 
     GateRef GetFrameState(GateRef gate) const;

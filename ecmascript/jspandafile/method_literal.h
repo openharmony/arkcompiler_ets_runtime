@@ -258,6 +258,11 @@ public:
         return static_cast<FunctionKind>(FunctionKindBits::Decode(extraLiteralInfo_));
     }
 
+    inline bool IsClassConstructor() const
+    {
+        return GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR;
+    }
+
     static inline int16_t GetHotnessCounter(uint64_t literalInfo)
     {
         return HotnessCounterBits::Decode(literalInfo);

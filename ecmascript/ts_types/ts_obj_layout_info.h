@@ -22,10 +22,10 @@ namespace panda::ecmascript {
 /*
  * The TSObjLayoutInfo is organized as follows:
  * The first position is used to store the number of properties.
- * Store the key and gt of properties alternately starting from the second position.
- * +---+-------+------+-------+------+-----+-------+------+
- * | N | key_1 | gt_1 | key_2 | gt_2 | ... | key_N | gt_N |
- * +---+-------+------+-------+------+-----+-------+------+
+ * Store the key, gt and attribute of properties alternately starting from the second position.
+ * +---+-------+------+--------+-------+------+--------+-----+-------+------+--------+
+ * | N | key_1 | gt_1 | attr_1 | key_2 | gt_2 | attr_2 | ... | key_N | gt_N | attr_N |
+ * +---+-------+------+--------+-----=-+------+--------+-----+-------+------+--------+
  */
 class TSObjLayoutInfo : private TaggedArray {
 public:
@@ -33,11 +33,13 @@ public:
     static constexpr int MAX_PROPERTIES_LENGTH = PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES;
     static constexpr int ELEMENTS_COUNT_INDEX = 0;
     static constexpr int ELEMENTS_START_INDEX = 1;
-    static constexpr int ENTRY_SIZE = 2;
+    static constexpr int ENTRY_SIZE = 3;
     static constexpr int ENTRY_KEY_OFFSET = 0;
     static constexpr int ENTRY_TYPE_OFFSET = 1;
+    static constexpr int ENTRY_ATTRIBUTE_OFFSET = 2;
     static constexpr int DEFAULT_CAPACITY = 1;
     static constexpr int INCREASE_CAPACITY_RATE = 1;
+    static constexpr int INVAILD_INDEX = -1;
 
     inline static TSObjLayoutInfo *Cast(TaggedObject *obj)
     {
@@ -48,7 +50,7 @@ public:
     inline uint32_t GetPropertiesCapacity() const
     {
         ASSERT(GetLength() >= ELEMENTS_START_INDEX);
-        ASSERT((GetLength() - ELEMENTS_START_INDEX) % 2 == 0);  // 2: even number
+        ASSERT((GetLength() - ELEMENTS_START_INDEX) % ENTRY_SIZE == 0);
         return static_cast<uint32_t>((GetLength() - ELEMENTS_START_INDEX) / ENTRY_SIZE);
     }
 
@@ -62,24 +64,21 @@ public:
         return TaggedArray::Get(ELEMENTS_COUNT_INDEX).GetInt();
     }
 
-    inline JSTaggedValue GetKey(int index) const
-    {
-        uint32_t idxInArray = GetKeyIndex(index);
-        return TaggedArray::Get(idxInArray);
-    }
+    void AddProperty(const JSThread *thread, const JSTaggedValue key,
+                     const JSTaggedValue typeIdVal, const uint32_t attr = 0);
 
-    inline JSTaggedValue GetTypeId(int index) const
-    {
-        uint32_t idxInArray = GetTypeIdIndex(index);
-        return TaggedArray::Get(idxInArray);
-    }
-
-    void AddKeyAndType(const JSThread *thread, const JSTaggedValue &key, const JSTaggedValue &typeIdVal);
+    void AddProperty(const JSThread *thread, const JSTaggedValue key,
+                     const JSTaggedValue typeIdVal, const JSTaggedValue attr);
 
     static JSHandle<TSObjLayoutInfo> PushBack(const JSThread *thread,
                                               const JSHandle<TSObjLayoutInfo> &oldLayout,
                                               const JSHandle<JSTaggedValue> &key,
                                               const JSHandle<JSTaggedValue> &value);
+
+    static inline bool IsValidIndex(int index)
+    {
+        return index != INVAILD_INDEX;
+    }
 
     inline uint32_t GetLength() const
     {
@@ -107,33 +106,36 @@ public:
 
     JSTaggedValue TryGetTypeByIndexSign(const uint32_t typeId);
 
+#define TSOBJLAYOUT_ACCESSOR_LIST(V)      \
+    V(Key, ENTRY_KEY_OFFSET)              \
+    V(TypeId, ENTRY_TYPE_OFFSET)          \
+    V(Attribute, ENTRY_ATTRIBUTE_OFFSET)
+
+#define TSOBJLAYOUT_ACCESSOR(NAME, OFFSET)                                                     \
+    inline void Set##NAME(const JSThread *thread, const int index, const JSTaggedValue key)    \
+    {                                                                                          \
+        uint32_t idxInArray = Get##NAME##Index(index);                                         \
+        TaggedArray::Set(thread, idxInArray, key);                                             \
+    }                                                                                          \
+                                                                                               \
+    inline JSTaggedValue Get##NAME(const int index) const                                      \
+    {                                                                                          \
+        uint32_t idxInArray = Get##NAME##Index(index);                                         \
+        return TaggedArray::Get(idxInArray);                                                   \
+    }                                                                                          \
+                                                                                               \
+    inline uint32_t Get##NAME##Index(const int index) const                                    \
+    {                                                                                          \
+        return ELEMENTS_START_INDEX + (static_cast<uint32_t>(index) * ENTRY_SIZE) + (OFFSET);  \
+    }
+
+    TSOBJLAYOUT_ACCESSOR_LIST(TSOBJLAYOUT_ACCESSOR)
+#undef TSOBJLAYOUT_ACCESSOR
+
 private:
-    inline void SetKey(const JSThread *thread, int index, const JSTaggedValue &key)
-    {
-        uint32_t idxInArray = GetKeyIndex(index);
-        TaggedArray::Set(thread, idxInArray, key);
-    }
-
-    inline void SetTypeId(const JSThread *thread, int index, const JSTaggedValue &tsTypeId)
-    {
-        uint32_t idxInArray = GetTypeIdIndex(index);
-        TaggedArray::Set(thread, idxInArray, tsTypeId);
-    }
-
-    inline uint32_t GetKeyIndex(int index) const
-    {
-        return ELEMENTS_START_INDEX + (static_cast<uint32_t>(index) * ENTRY_SIZE) + ENTRY_KEY_OFFSET;
-    }
-
-    inline uint32_t GetTypeIdIndex(int index) const
-    {
-        return ELEMENTS_START_INDEX + (static_cast<uint32_t>(index) * ENTRY_SIZE) + ENTRY_TYPE_OFFSET;
-    }
-
     static JSHandle<TSObjLayoutInfo> ExtendTSObjLayoutInfo(const JSThread *thread,
                                                            const JSHandle<TSObjLayoutInfo> &old,
                                                            JSTaggedValue initVal = JSTaggedValue::Hole());
 };
 }  // namespace panda::ecmascript
-
 #endif  // ECMASCRIPT_TS_TYPES_TS_OBJ_LAYOUT_INFO_H

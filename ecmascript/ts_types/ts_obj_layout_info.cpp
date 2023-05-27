@@ -15,19 +15,28 @@
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 
 namespace panda::ecmascript {
-void TSObjLayoutInfo::AddKeyAndType(const JSThread *thread, const JSTaggedValue &key, const JSTaggedValue &typeIdVal)
+void TSObjLayoutInfo::AddProperty(const JSThread *thread, const JSTaggedValue key,
+                                  const JSTaggedValue typeIdVal, const uint32_t attr)
+{
+    AddProperty(thread, key, typeIdVal, JSTaggedValue(attr));
+}
+
+void TSObjLayoutInfo::AddProperty(const JSThread *thread, const JSTaggedValue key,
+                                  const JSTaggedValue typeIdVal, const JSTaggedValue attr)
 {
     DISALLOW_GARBAGE_COLLECTION;
     uint32_t number = GetNumOfProperties();
     ASSERT(number + 1 <= GetPropertiesCapacity());
+    ASSERT(attr.IsInt());
     SetNumOfProperties(thread, number + 1);
     SetKey(thread, number, key);
     SetTypeId(thread, number, typeIdVal);
+    SetAttribute(thread, number, attr);
 }
 
 bool TSObjLayoutInfo::Find(JSTaggedValue key) const
 {
-    return GetElementIndexByKey(key) != -1;
+    return GetElementIndexByKey(key) != INVAILD_INDEX;
 }
 
 int TSObjLayoutInfo::GetElementIndexByKey(JSTaggedValue key) const
@@ -43,7 +52,7 @@ int TSObjLayoutInfo::GetElementIndexByKey(JSTaggedValue key) const
             return i;
         }
     }
-    return -1;
+    return INVAILD_INDEX;
 }
 
 JSTaggedValue TSObjLayoutInfo::TryGetTypeByIndexSign(const uint32_t keyType)
@@ -65,12 +74,12 @@ JSHandle<TSObjLayoutInfo> TSObjLayoutInfo::PushBack(const JSThread *thread,
                                                     const JSHandle<JSTaggedValue> &value)
 {
     if (oldLayout->GetNumOfProperties() < oldLayout->GetPropertiesCapacity()) {
-        oldLayout->AddKeyAndType(thread, key.GetTaggedValue(), value.GetTaggedValue());
+        oldLayout->AddProperty(thread, key.GetTaggedValue(), value.GetTaggedValue());
         return oldLayout;
     }
 
     JSHandle<TSObjLayoutInfo> newLayout = ExtendTSObjLayoutInfo(thread, oldLayout);
-    newLayout->AddKeyAndType(thread, key.GetTaggedValue(), value.GetTaggedValue());
+    newLayout->AddProperty(thread, key.GetTaggedValue(), value.GetTaggedValue());
     return newLayout;
 }
 

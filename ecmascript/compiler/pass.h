@@ -21,19 +21,20 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/early_elimination.h"
-#include "ecmascript/compiler/lcr_lowering.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
+#include "ecmascript/compiler/lcr_lowering.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/loop_analysis.h"
+#include "ecmascript/compiler/ntype_mcr_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/compiler/state_split_linearizer.h"
 #include "ecmascript/compiler/ts_inline_lowering.h"
 #include "ecmascript/compiler/ts_hcr_lowering.h"
-#include "ecmascript/compiler/ntype_mcr_lowering.h"
 #include "ecmascript/compiler/type_inference/global_type_infer.h"
+#include "ecmascript/compiler/type_inference/initialization_analysis.h"
 #include "ecmascript/compiler/type_mcr_lowering.h"
 #include "ecmascript/compiler/value_numbering.h"
 #include "ecmascript/compiler/verifier.h"
@@ -218,6 +219,11 @@ public:
             GlobalTypeInfer globalTypeInfer(data->GetPassContext(), data->GetMethodOffset(), data->GetRecordName(),
                                             data->GetPGOProfilerDecoder(), enableLog);
             globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
+            if (data->GetMethodLiteral()->IsClassConstructor()) {
+                InitializationAnalysis initAnalysis(data->GetCircuit(), data->GetTSManager(), data->GetRecordName(),
+                                                    data->GetMethodName(), enableLog);
+                initAnalysis.Run();
+            }
         }
         return true;
     }
