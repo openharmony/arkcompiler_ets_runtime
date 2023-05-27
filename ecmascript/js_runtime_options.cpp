@@ -134,7 +134,12 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-select-methods             Compiler selected methods for aot. Only work in full compiling mode\n"
     "                                      Format:--compile-methods=record1:m1,m2,record2:m3\n"
     "--compiler-skip-methods               Compiler skpped methods for aot. Only work in full compiling mode\n"
-    "                                      Format:--compile-skip-methods=record1:m1,m2,record2:m3\n\n";
+    "                                      Format:--compile-skip-methods=record1:m1,m2,record2:m3\n"
+    "--target-compiler-mode                The compilation mode at the device side, including partial, full and none."
+    "                                      Default: ''\n"
+    "--hap-path                            The path of the app hap. Default: ''\n"
+    "--hap-abc-offset                      The offset of the abc file in app hap. Default: '0'\n"
+    "--hap-abc-size                        The size of the abc file in app hap. Default: '0'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -204,6 +209,10 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-verify-vtable", required_argument, nullptr, OPTION_COMPILER_VERIFY_VTABLE},
         {"compiler-select-methods", required_argument, nullptr, OPTION_COMPILER_SELECT_METHODS},
         {"compiler-skip-methods", required_argument, nullptr, OPTION_COMPILER_SKIP_METHODS},
+        {"target-compiler-mode", required_argument, nullptr, OPTION_TARGET_COMPILER_MODE},
+        {"hap-path", required_argument, nullptr, OPTION_HAP_PATH},
+        {"hap-abc-offset", required_argument, nullptr, OPTION_HAP_ABC_OFFSET},
+        {"hap-abc-size", required_argument, nullptr, OPTION_HAP_ABC_SIZE},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -213,6 +222,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
     int option = 0;
     arg_list_t argListStr;
     uint32_t argUint32 = 0;
+    uint64_t argUInt64 = 0;
     int argInt = 0;
     bool argBool = false;
     double argDouble = 0.0;
@@ -558,7 +568,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 break;
             case OPTION_SERIALIZER_BUFFER_SIZE_LIMIT:
-                uint64_t argUInt64;
                 ret = ParseUint64Param("serializer-buffer-size-limit", &argUInt64);
                 if (ret) {
                     SetSerializerBufferSizeLimit(argUInt64);
@@ -661,8 +670,28 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             case OPTION_COMPILER_SKIP_METHODS:
                 SetCompilerSkipMethods(optarg);
                 break;
+            case OPTION_TARGET_COMPILER_MODE:
+                SetTargetCompilerMode(optarg);
+                break;
+            case OPTION_HAP_PATH:
+                SetHapPath(optarg);
+                break;
+            case OPTION_HAP_ABC_OFFSET:
+                ret = ParseUint32Param("hap-abc-offset", &argUint32);
+                if (!ret) {
+                    return false;
+                }
+                SetHapAbcOffset(argUint32);
+                break;
+            case OPTION_HAP_ABC_SIZE:
+                ret = ParseUint32Param("hap-abc-size", &argUint32);
+                if (!ret) {
+                    return false;
+                }
+                SetHapAbcSize(argUint32);
+                break;
             default:
-                std::cerr << "Invalid option\n"<< std::endl;
+                LOG_ECMA(ERROR) << "Invalid option\n";
                 return false;
         }
     }
@@ -673,12 +702,12 @@ bool JSRuntimeOptions::SetDefaultValue(char* argv)
     WasSet(optopt);
 
     if (optopt == OPTION_DEFAULT) { // unknown option
-        std::cerr << " Invalid option \"" << argv << "\"" << std::endl;
+        LOG_ECMA(ERROR) << " Invalid option \"" << argv << "\"";
         return false;
     }
 
     if (optopt > OPTION_OPTIONS) { // unknown argument
-        std::cerr << "getopt: \"" << argv <<"\" argument has invalid parameter value \n" << std::endl;
+        LOG_ECMA(ERROR) << "getopt: \"" << argv <<"\" argument has invalid parameter value \n";
         return false;
     }
     return true;
@@ -698,8 +727,7 @@ bool JSRuntimeOptions::ParseDoubleParam(const std::string &option, double *argDo
 {
     *argDouble = std::stod(optarg, nullptr);
     if (errno == ERANGE) {
-        std::cerr << "getopt: \"" << option << "\" argument has invalid parameter value \""
-            << optarg <<"\"\n" << std::endl;
+        LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
         return false;
     }
     return true;
@@ -715,8 +743,7 @@ bool JSRuntimeOptions::ParseIntParam(const std::string &option, int *argInt)
     }
 
     if (errno == ERANGE) {
-        std::cerr << "getopt: \"" << option << "\" argument has invalid parameter value \""
-            << optarg <<"\"\n" << std::endl;
+        LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
         return false;
     }
     return true;
@@ -733,8 +760,7 @@ bool JSRuntimeOptions::ParseUint32Param(const std::string &option, uint32_t *arg
     }
 
     if (errno == ERANGE) {
-        std::cerr << "getopt: \"" << option << "\" argument has invalid parameter value \""
-            << optarg <<"\"\n" << std::endl;
+        LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
         return false;
     }
     return true;
@@ -751,8 +777,7 @@ bool JSRuntimeOptions::ParseUint64Param(const std::string &option, uint64_t *arg
     }
 
     if (errno == ERANGE) {
-        std::cerr << "getopt: \"" << option << "\" argument has invalid parameter value \""
-            << optarg <<"\"\n" << std::endl;
+        LOG_ECMA(ERROR) << "getopt: \"" << option << "\" argument has invalid parameter value \"" << optarg <<"\"\n";
         return false;
     }
     return true;

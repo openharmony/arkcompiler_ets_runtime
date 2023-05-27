@@ -357,6 +357,19 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::OpenJSPandaFile(const CString &
     return NewJSPandaFile(pf.release(), filename);
 }
 
+std::shared_ptr<JSPandaFile> JSPandaFileManager::OpenJSPandaFileFromBuffer(uint8_t *buffer,
+                                                                           size_t size,
+                                                                           const CString &filename)
+{
+    auto pf = panda_file::OpenPandaFileFromMemory(buffer, size);
+    if (pf == nullptr) {
+        LOG_ECMA(ERROR) << "open file " << filename << " error";
+        return nullptr;
+    }
+
+    return NewJSPandaFile(pf.release(), filename);
+}
+
 std::shared_ptr<JSPandaFile> JSPandaFileManager::NewJSPandaFile(const panda_file::File *pf, const CString &desc)
 {
     std::shared_ptr<JSPandaFile> jsPandaFile = std::make_shared<JSPandaFile>(pf, desc);

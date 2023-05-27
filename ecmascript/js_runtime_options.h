@@ -125,7 +125,11 @@ enum CommandValues {
     OPTION_PRINT_EXECUTE_TIME,
     OPTION_COMPILER_VERIFY_VTABLE,
     OPTION_COMPILER_SELECT_METHODS,
-    OPTION_COMPILER_SKIP_METHODS
+    OPTION_COMPILER_SKIP_METHODS,
+    OPTION_TARGET_COMPILER_MODE,
+    OPTION_HAP_PATH,
+    OPTION_HAP_ABC_OFFSET,
+    OPTION_HAP_ABC_SIZE
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -864,6 +868,11 @@ public:
         pgoProfilerPath_ = panda::os::file::File::GetExtendedFilePath(value);
     }
 
+    bool IsPGOProfilerPathEmpty() const
+    {
+        return pgoProfilerPath_.empty();
+    }
+
     void SetEnableTypeLowering(bool value)
     {
         enableTypeLowering_ = value;
@@ -1038,6 +1047,62 @@ public:
     {
         return maxInlineBytecodes_;
     }
+
+    void SetTargetCompilerMode(std::string mode)
+    {
+        targetCompilerMode_ = std::move(mode);
+    }
+
+    std::string GetTargetCompilerMode() const
+    {
+        return targetCompilerMode_;
+    }
+
+    bool IsTargetCompilerMode() const
+    {
+        return IsPartialCompilerMode() || IsFullCompilerMode();
+    }
+
+    bool IsPartialCompilerMode() const
+    {
+        return targetCompilerMode_ == "partial";
+    }
+
+    bool IsFullCompilerMode() const
+    {
+        return targetCompilerMode_ == "full";
+    }
+
+    void SetHapPath(std::string path)
+    {
+        hapPath_ = std::move(path);
+    }
+
+    std::string GetHapPath() const
+    {
+        return hapPath_;
+    }
+
+    void SetHapAbcOffset(uint32_t offset)
+    {
+        hapAbcOffset_ = offset;
+    }
+
+    uint32_t GetHapAbcOffset() const
+    {
+        return hapAbcOffset_;
+    }
+
+    void SetHapAbcSize(uint32_t size)
+    {
+        hapAbcSize_ = size;
+    }
+
+    uint32_t GetHapAbcSize() const
+    {
+        return hapAbcSize_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1124,6 +1189,10 @@ private:
     std::string compilerSkipMethods_ {""};
     bool traceInline_ {false};
     size_t maxInlineBytecodes_ {25};
+    std::string targetCompilerMode_ {""};
+    std::string hapPath_ {""};
+    uint32_t hapAbcOffset_ {0};
+    uint32_t hapAbcSize_ {0};
 };
 }  // namespace panda::ecmascript
 
