@@ -233,6 +233,12 @@ if (is_standard_system) {
       sources +=
           [ zlib_path + "/thirdparty/zlib/libshared_libz${dylib_suffix}" ]
 
+      # Add dynamic library "hilog"
+      hilog_path = get_label_info("$hilog_root:libhilog_mac", "root_out_dir")
+      deps += [ "$hilog_root:libhilog_mac" ]
+      sources +=
+          [ "${hilog_path}/hiviewdfx/hilog_native/libhilog_mac${dylib_suffix}" ]
+
       # Set the output directory for all dynamic libraries.
       outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-mac/bin/{{source_file_part}}" ]
       module_source_dir =
