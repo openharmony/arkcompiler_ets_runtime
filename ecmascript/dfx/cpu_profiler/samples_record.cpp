@@ -78,8 +78,7 @@ void SamplesRecord::AddSample(FrameStackAndInfo *frame)
 {
     int frameStackLength = frame->frameStackLength;
     if (frameStackLength == 0) {
-        int nodeId = 2;  // 2：program node id
-        AddSpecialSample(nodeId);
+        AddEmptyStackSample(frame->timeStamp);
         return;
     }
 
@@ -107,6 +106,13 @@ void SamplesRecord::AddSample(FrameStackAndInfo *frame)
     int sampleNodeId = previousId_ == 0 ? 1 : methodNode.id;
     int timeDelta = static_cast<int>(frame->timeStamp -
         (previousTimeStamp_ == 0 ? profileInfo_->startTime : previousTimeStamp_));
+
+    // delete abnormal sample
+    if (timeDelta > timeDeltaThreshold_ && previousState_ != RunningState::NAPI) {
+        profileInfo_->samples.pop_back();
+        profileInfo_->samples.push_back(PROGRAM_NODE_ID);
+        previousState_ = RunningState::OTHER;
+    }
     StatisticStateTime(timeDelta, previousState_);
     previousState_ = nodeKey.methodKey.state;
     profileInfo_->nodes[sampleNodeId - 1].hitCount++;
@@ -115,15 +121,22 @@ void SamplesRecord::AddSample(FrameStackAndInfo *frame)
     previousTimeStamp_ = frame->timeStamp;
 }
 
-void SamplesRecord::AddSpecialSample(int sampleNodeId)
+void SamplesRecord::AddEmptyStackSample(uint64_t sampleTimeStamp)
 {
-    uint64_t sampleTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
     int timeDelta = static_cast<int>(sampleTimeStamp -
         (previousTimeStamp_ == 0 ? profileInfo_->startTime : previousTimeStamp_));
+
+    // delete abnormal sample
+    if (timeDelta > timeDeltaThreshold_ && previousState_ != RunningState::NAPI) {
+        profileInfo_->samples.pop_back();
+        profileInfo_->samples.push_back(PROGRAM_NODE_ID);
+        previousState_ = RunningState::OTHER;
+    }
+
     StatisticStateTime(timeDelta, previousState_);
     previousState_ = RunningState::OTHER;
-    profileInfo_->nodes[sampleNodeId - 1].hitCount++;
-    profileInfo_->samples.push_back(sampleNodeId);
+    profileInfo_->nodes[1].hitCount++;
+    profileInfo_->samples.push_back(PROGRAM_NODE_ID);
     profileInfo_->timeDeltas.push_back(timeDelta);
     previousTimeStamp_ = sampleTimeStamp;
 }

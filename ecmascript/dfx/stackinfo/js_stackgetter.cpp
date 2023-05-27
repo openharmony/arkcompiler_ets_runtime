@@ -57,9 +57,7 @@ bool JsStackGetter::ParseMethodInfo(struct MethodKey &methodKey,
 {
     const JSPandaFile *jsPandaFile = it.CheckAndGetMethod()->GetJSPandaFile();
     codeEntry.methodKey = methodKey;
-    JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
-    JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
-    if (extraInfoValue.CheckIsJSNativePointer() || jsPandaFile == nullptr) {
+    if (jsPandaFile == nullptr) {
         FrameIterator itNext(it.GetSp(), it.GetThread());
         itNext.Advance<GCVisitedFlag::IGNORED>();
         GetNativeMethodCallPos(itNext, codeEntry);
@@ -161,39 +159,53 @@ RunningState JsStackGetter::GetRunningState(const FrameIterator &it, const EcmaV
 {
     JSThread *thread = vm->GetAssociatedJSThread();
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
-
-    if (topFrame && function->IsCallNapi()) {
-        return RunningState::NAPI;
-    }
-    if (topFrame && thread->GetGcState()) {
-        return RunningState::GC;
-    }
-    // napi method
-    if (function->IsCallNapi()) {
-        return RunningState::NAPI;
-    }
-    JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
-    if (extraInfoValue.IsJSNativePointer() || jsPandaFile == nullptr) {
-        if (extraInfoValue.IsJSNativePointer()) {
-            return RunningState::ARKUI_ENGINE;
-        }
-        return RunningState::BUILTIN;
-    }
+    bool isNative = jsPandaFile == nullptr;
 
     if (enableVMTag) {
-        if (it.IsLeaveFrame()) {
-            return RunningState::RUNTIME;
+        if (topFrame) {
+            if (thread->GetGcState()) {
+                return RunningState::GC;
+            }
+            if (isNative && (it.IsLeaveFrame() || thread->GetRuntimeState())) {
+                return RunningState::RUNTIME;
+            }
+        }
+
+        if (function->IsCallNapi()) {
+            return RunningState::NAPI;
+        }
+        if (isNative) {
+            if (function->GetNativeFunctionExtraInfo().CheckIsJSNativePointer()) {
+                return RunningState::ARKUI_ENGINE;
+            }
+            return RunningState::BUILTIN;
         }
         if (it.IsOptimizedJSFunctionFrame()) {
             return RunningState::AOT;
-        }
-        if (topFrame && thread->GetRuntimeState()) {
-            return RunningState::RUNTIME;
         }
         if (thread->IsAsmInterpreter()) {
             return RunningState::AINT;
         }
         return RunningState::CINT;
+    }
+
+    if (topFrame) {
+        if (function->IsCallNapi()) {
+            return RunningState::NAPI;
+        }
+        if (thread->GetGcState()) {
+            return RunningState::GC;
+        }
+    }
+
+    if (function->IsCallNapi()) {
+        return RunningState::NAPI;
+    }
+    if (isNative) {
+        if (function->GetNativeFunctionExtraInfo().CheckIsJSNativePointer()) {
+            return RunningState::ARKUI_ENGINE;
+        }
+        return RunningState::BUILTIN;
     }
 
     return RunningState::OTHER;
@@ -207,7 +219,7 @@ void JsStackGetter::GetNativeMethodCallPos(FrameIterator &it, FrameInfoTemp &cod
     }
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
     JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
-    if (!extraInfoValue.IsJSNativePointer() && nextMethod->GetJSPandaFile() != nullptr) {
+    if (!extraInfoValue.CheckIsJSNativePointer() && nextMethod->GetJSPandaFile() != nullptr) {
         DebugInfoExtractor *debugExtractor =
             JSPandaFileManager::GetInstance()->GetJSPtExtractor(nextMethod->GetJSPandaFile());
         if (debugExtractor == nullptr) {
