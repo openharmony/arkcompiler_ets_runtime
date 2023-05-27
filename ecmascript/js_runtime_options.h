@@ -1181,7 +1181,7 @@ private:
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};
     bool reportModuleResolvingFailure_ {true};
-    uint32_t pgoHotnessThreshold_ {2};
+    uint32_t pgoHotnessThreshold_ {1};
     std::string pgoProfilerPath_ {""};
     bool traceDeopt_ {false};
     uint8_t deoptThreshold_ {10};

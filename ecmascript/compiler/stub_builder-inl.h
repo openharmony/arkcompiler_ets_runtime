@@ -1681,7 +1681,7 @@ inline GateRef StubBuilder::GetPropAttrFromLayoutInfo(GateRef layout, GateRef en
     return GetInt64OfTInt(GetValueFromTaggedArray(layout, index));
 }
 
-inline void StubBuilder::UpdatePropAttrToLayoutInfo(GateRef glue, GateRef layout, GateRef entry, GateRef attr)
+inline void StubBuilder::SetPropAttrToLayoutInfo(GateRef glue, GateRef layout, GateRef entry, GateRef attr)
 {
     GateRef index = Int32Add(Int32LSL(entry, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2)),
         Int32(LayoutInfo::ATTR_INDEX_OFFSET));

@@ -1291,6 +1291,7 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
                 ans = byteCodeToJSGates_.at(iterator.Index()).at(0);
                 auto oldType = gateAcc_.GetGateType(ans);
                 if (HasTypes() && !type.IsAnyType() && oldType.IsAnyType()) {
+                    typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(ans), type);
                     gateAcc_.SetGateType(ans, type);
                 }
                 break;

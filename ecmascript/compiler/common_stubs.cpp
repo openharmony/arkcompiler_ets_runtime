@@ -338,7 +338,7 @@ void GetPropertyByNameStubBuilder::GenerateCircuit()
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
-    Return(builder.LoadObjByName(glue, receiver, prop, info, profileTypeInfo, slotId));
+    Return(builder.LoadObjByName(glue, receiver, prop, info, profileTypeInfo, slotId, ProfileOperation()));
 }
 
 void DeprecatedGetPropertyByNameStubBuilder::GenerateCircuit()

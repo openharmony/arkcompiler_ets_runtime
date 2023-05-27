@@ -515,6 +515,9 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
             EcmaRuntimeStatScope runtimeStatScope(this);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
         } else {
+            if (thread_->IsPGOProfilerEnable()) {
+                pgoProfiler_->Sample(func.GetTaggedType());
+            }
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
             EcmaRuntimeStatScope runtimeStatScope(this);
@@ -878,9 +881,6 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     aotFileManager_->Iterate(v);
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
-    }
-    if (pgoProfiler_ != nullptr) {
-        pgoProfiler_->Iterate(v);
     }
 }
 

@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/operations_stub_builder.h"
+#include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env_constants.h"
@@ -58,23 +59,13 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
                                      GateRef acc, GateRef hotnessCounter,            \
                                      [[maybe_unused]] ProfileOperation callback)
 
-#define REGISTER_PROFILE_TYPE_CALL_BACK()                                              \
-    ProfileOperation callback = [this, glue, sp, pc, profileTypeInfo] (GateRef type) { \
-        PGOTypeProfiler(glue, sp, pc, profileTypeInfo, type);                          \
-    };
+#define REGISTER_PROFILE_CALL_BACK()                                                                      \
+    ProfileOperation callback([this, glue, sp, pc, profileTypeInfo](GateRef value, OperationType type) {  \
+        ProfilerStubBuilder profiler(this);                                                               \
+        profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(GetFrame(sp)), profileTypeInfo, value, type); \
+    });
 
-#define REGISTER_PROFILE_LAYOUT_CALL_BACK()                                  \
-    ProfileOperation callback = [this, glue, sp, pc] (GateRef constructor) { \
-        PGOLayoutProfiler(glue, sp, pc, constructor);                        \
-    };
-
-#define REGISTER_PROFILE_FUNC_CALL_BACK()                     \
-    ProfileOperation callback = [this, glue] (GateRef func) { \
-        PGOFuncProfiler(glue, func);                          \
-    };
-
-#define REGISTER_NULL_CALL_BACK() \
-    ProfileOperation callback = nullptr;
+#define REGISTER_NULL_CALL_BACK() ProfileOperation callback;
 
 #define DECLARE_ASM_HANDLER(name)                                 \
     DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_NULL_CALL_BACK) \
@@ -84,14 +75,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     DECLARE_ASM_HANDLER_BASE(name, false, REGISTER_NULL_CALL_BACK) \
     DECLARE_ASM_HANDLE_IMPLEMENT(name)
 
-#define DECLARE_ASM_HANDLER_TYPE_PROFILE(name, ...) \
-    DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_PROFILE_TYPE_CALL_BACK)
-
-#define DECLARE_ASM_HANDLER_LAYOUT_PROFILE(name, ...) \
-    DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_PROFILE_LAYOUT_CALL_BACK)
-
-#define DECLARE_ASM_HANDLER_FUNC_PROFILE(name, ...) \
-    DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_PROFILE_FUNC_CALL_BACK)
+#define DECLARE_ASM_HANDLER_PROFILE(name, ...) DECLARE_ASM_HANDLER_BASE(name, true, REGISTER_PROFILE_CALL_BACK)
 
 // TYPE:{OFFSET, ACC_VARACC, JUMP, SSD}
 #define DISPATCH_BAK(TYPE, ...) DISPATCH_##TYPE(__VA_ARGS__)
@@ -142,7 +126,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
             Int8(VmThreadControl::VM_NEED_SUSPENSION))), &callRuntime, &dispatch);                             \
         Bind(&callRuntime);                                                                                    \
         {                                                                                                      \
-            if (callback) {                                                                                    \
+            if (callback.IsEmpty()) {                                                                          \
                 varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { func });     \
             } else {                                                                                           \
                 varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { func });             \
@@ -3437,7 +3421,7 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)
     SetLexicalEnvToFunction(glue, res, lexicalEnv);
     SetModuleToFunction(glue, res, module);
     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedInt(length) });
-    HCLASS_CALL_BACK(res)
+    callback.ProfileDefineClass(res);
     varAcc = res;
     DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8);
 }
@@ -3472,7 +3456,7 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)
     SetLexicalEnvToFunction(glue, res, lexicalEnv);
     SetModuleToFunction(glue, res, module);
     CallRuntime(glue, RTSTUB_ID(SetClassConstructorLength), { res, Int16ToTaggedInt(length) });
-    HCLASS_CALL_BACK(res)
+    callback.ProfileDefineClass(res);
     varAcc = res;
     DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8);
 }
@@ -3521,7 +3505,7 @@ DECLARE_ASM_HANDLER(HandleLdobjbynameImm8Id16)
     GateRef receiver = acc;
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16 };
-    GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId);
+    GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDOBJBYNAME_IMM8_ID16));
 }
 
@@ -3533,7 +3517,7 @@ DECLARE_ASM_HANDLER(HandleLdobjbynameImm16Id16)
     GateRef receiver = acc;
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16 };
-    GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId);
+    GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDOBJBYNAME_IMM16_ID16));
 }
 
@@ -4381,7 +4365,7 @@ DECLARE_ASM_HANDLER(HandleLdthisbynameImm16Id16)
 
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16 };
-    GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId);
+    GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDTHISBYNAME_IMM16_ID16));
 }
 DECLARE_ASM_HANDLER(HandleLdthisbynameImm8Id16)
@@ -4392,7 +4376,7 @@ DECLARE_ASM_HANDLER(HandleLdthisbynameImm8Id16)
 
     AccessObjectStubBuilder builder(this);
     StringIdInfo info = { constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16 };
-    GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId);
+    GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDTHISBYNAME_IMM8_ID16));
 }
 DECLARE_ASM_HANDLER(HandleLdthis)
@@ -4617,10 +4601,10 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeNotifyConcurrentResultPrefNone)
     DISPATCH(CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE);
 }
 
-ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_TYPE_PROFILE)
-ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_LAYOUT_PROFILE)
-ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_FUNC_PROFILE)
-ASM_INTERPRETER_BC_FUNC_COUNT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_FUNC_PROFILE)
+ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
+ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
+ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
+ASM_INTERPRETER_BC_FUNC_COUNT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 
 #undef DECLARE_ASM_HANDLER
 #undef DISPATCH

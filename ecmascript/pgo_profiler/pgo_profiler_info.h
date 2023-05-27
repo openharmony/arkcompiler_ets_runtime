@@ -21,7 +21,6 @@
 #include <string.h>
 
 #include "ecmascript/base/file_header.h"
-#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/slots.h"
@@ -75,6 +74,17 @@ static constexpr size_t ALIGN_SIZE = 4;
  * |--------------------size
  * |--------------------offset
  * |--------------------type
+ * |----------------...
+ * |----------------PGOMethodLayoutDescInfos
+ * |--------------------size
+ * |--------------------offset
+ * |--------------------type
+ * |--------------------count
+ * |--------------------PGOLayoutDescInfo
+ * |------------------------size
+ * |------------------------type
+ * |------------------------key
+ * |--------------------...
  * |----------------...
  * |----PGORecordSimpleInfos
  * |--------PGOMethodIdSet
@@ -366,20 +376,26 @@ public:
         layoutDescInfos_.clear();
     }
 
-    void Iterate(const RootVisitor &v) const
-    {
-        for (const auto &iter : typeInfoSet_) {
-            iter.Iterate(v);
-        }
-    }
-
     void AddType(uint32_t offset, PGOSampleType type)
     {
         auto result = typeInfoSet_.find(PGOMethodTypeInfo(offset));
         if (result != typeInfoSet_.end()) {
-            typeInfoSet_.erase(result);
+            if (result->GetType() != type) {
+                typeInfoSet_.erase(result);
+                typeInfoSet_.emplace(offset, type);
+            }
+        } else {
+            typeInfoSet_.emplace(offset, type);
         }
-        typeInfoSet_.emplace(offset, type);
+    }
+
+    void AddDefine(uint32_t offset, PGOSampleType type)
+    {
+        auto result = defineTypeSet_.find(PGOMethodTypeInfo(offset));
+        if (result != defineTypeSet_.end()) {
+            defineTypeSet_.erase(result);
+        }
+        defineTypeSet_.emplace(offset, type);
     }
 
     template <typename Callback>
@@ -394,7 +410,8 @@ public:
         }
     }
 
-    void Merge(NativeAreaAllocator *allocator, const PGOMethodTypeSet *info);
+    void Merge(NativeAreaAllocator *allocator, const PGOMethodTypeSet *info,
+        const CMap<PGOSampleType, CMap<CString, TrackType>> &layoutDescs);
     static void SkipFromBinary(void **buffer);
 
     template <typename Callback>
@@ -459,13 +476,6 @@ private:
         PGOMethodTypeInfo(uint32_t offset, PGOSampleType type)
             : PGOMethodInfoHeader(sizeof(PGOMethodTypeInfo), InfoType::METHOD_TYPE_INFO_TYPE, offset), type_(type) {}
 
-        void Iterate(const RootVisitor &v) const
-        {
-            if (type_.IsHeapObject()) {
-                v(Root::ROOT_VM, ObjectSlot(type_.GetTaggedType()));
-            }
-        }
-
         bool operator<(const PGOMethodTypeInfo &right) const
         {
             return offset_ < right.offset_;
@@ -476,11 +486,15 @@ private:
             return type_;
         }
 
+    protected:
+        PGOMethodTypeInfo(uint32_t size, InfoType infoType, uint32_t offset, PGOSampleType type)
+            : PGOMethodInfoHeader(size, infoType, offset), type_(type) {}
+
     private:
         PGOSampleType type_;
     };
 
-    class PGOMethodLayoutDescInfos : public PGOMethodInfoHeader {
+    class PGOMethodLayoutDescInfos : public PGOMethodTypeInfo {
     public:
         class PGOLayoutDescInfo {
         public:
@@ -523,8 +537,8 @@ private:
             char key_ {'\0'};
         };
 
-        explicit PGOMethodLayoutDescInfos(size_t size, uint32_t offset)
-            : PGOMethodInfoHeader(size, InfoType::HCLSS_DESC_INFO_TYPE, offset) {}
+        explicit PGOMethodLayoutDescInfos(size_t size, uint32_t offset, PGOSampleType type)
+            : PGOMethodTypeInfo(size, InfoType::HCLSS_DESC_INFO_TYPE, offset, type) {}
 
         static size_t CaculateSize(const CMap<CString, TrackType> &desc);
         void Merge(const CMap<CString, TrackType> &desc);
@@ -532,7 +546,7 @@ private:
         template <typename Callback>
         void GetTypeInfo(Callback callback)
         {
-            PGOSampleLayoutDesc desc;
+            PGOSampleLayoutDesc desc(GetType().GetClassType());
             if (count_ <= 0) {
                 return;
             }
@@ -562,6 +576,7 @@ private:
     };
 
     std::set<PGOMethodTypeInfo> typeInfoSet_;
+    std::set<PGOMethodTypeInfo> defineTypeSet_;
     std::set<PGOMethodLayoutDescInfos *> layoutDescInfos_;
 };
 
@@ -576,15 +591,10 @@ public:
         methodTypeInfos_.clear();
     }
 
-    void Iterate(const RootVisitor &v) const
-    {
-        for (const auto iter : methodTypeInfos_) {
-            iter.second->Iterate(v);
-        }
-    }
-
     bool AddMethod(Chunk *chunk, EntityId methodId, const CString &methodName, SampleMode mode);
     bool AddType(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type);
+    bool AddDefine(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type);
+    bool AddLayout(PGOSampleType type, JSTaggedType hclass);
     void Merge(Chunk *chunk, NativeAreaAllocator *allocator, PGOMethodInfoMap *methodInfos);
 
     bool ParseFromBinary(Chunk *chunk, uint32_t threshold, void **buffer, PGOProfilerHeader *const header);
@@ -598,8 +608,11 @@ public:
     NO_MOVE_SEMANTIC(PGOMethodInfoMap);
 
 private:
+    PGOMethodTypeSet *GetOrInsertMethodTypeSet(Chunk *chunk, EntityId methodId);
+
     CMap<EntityId, PGOMethodInfo *> methodInfos_;
     CMap<EntityId, PGOMethodTypeSet *> methodTypeInfos_;
+    CMap<PGOSampleType, CMap<CString, TrackType>> globalLayoutDescInfos_;
 };
 
 class PGOMethodIdSet {
@@ -673,16 +686,11 @@ public:
         chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
     }
 
-    void Iterate(const RootVisitor &v) const
-    {
-        for (const auto &iter : recordInfos_) {
-            iter.second->Iterate(v);
-        }
-    }
-
     // If it is a new method, return true.
     bool AddMethod(const CString &recordName, EntityId methodId, const CString &methodName, SampleMode mode);
     bool AddType(const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type);
+    bool AddDefine(const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type);
+    bool AddLayout(const CString &recordName, PGOSampleType type, JSTaggedType hclass);
     void Merge(const PGORecordDetailInfos &recordInfos);
 
     void ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
@@ -695,6 +703,8 @@ public:
     NO_MOVE_SEMANTIC(PGORecordDetailInfos);
 
 private:
+    PGOMethodInfoMap *GetMethodInfoMap(const CString &recordName);
+
     uint32_t hotnessThreshold_ {2};
     NativeAreaAllocator nativeAreaAllocator_;
     std::unique_ptr<Chunk> chunk_;

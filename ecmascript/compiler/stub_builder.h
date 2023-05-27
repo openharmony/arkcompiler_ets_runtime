@@ -19,12 +19,11 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/variable_type.h"
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
-using ProfileOperation = std::function<void(GateRef)>;
-
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DEFVARIABLE(varname, type, val) Variable varname(GetEnvironment(), type, NextVariableId(), val)
 
@@ -68,30 +67,6 @@ using ProfileOperation = std::function<void(GateRef)>;
 #else
 #define EXITENTRY() ((void)0)
 #endif
-
-#define TYPE_CALL_BACK(type)                                  \
-    if (callback) {                                           \
-        GateRef typeGate = Int32(static_cast<int32_t>(type)); \
-        callback(typeGate);                                   \
-    }
-
-#define COMBINE_TYPE_CALL_BACK(curType, type)                       \
-    if (callback) {                                                 \
-        GateRef curTypeGate = Int32(static_cast<int32_t>(curType)); \
-        GateRef typeGate = Int32(static_cast<int32_t>(type));       \
-        GateRef combineTypeGate = Int32Or(curTypeGate, typeGate);   \
-        callback(combineTypeGate);                                  \
-    }
-
-#define FUNC_CALL_BACK(func) \
-    if (callback)  {         \
-        callback(func);      \
-    }
-
-#define HCLASS_CALL_BACK(constructor)  \
-    if (callback) {                    \
-        callback(constructor);         \
-    }
 
 class StubBuilder {
 public:
@@ -411,6 +386,7 @@ public:
     void SetProtoChangeDetailsToHClass(VariableType type, GateRef glue, GateRef hClass,
                                        GateRef protoChange);
     void SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr);
+    void SetHClassTypeIDToHClass(GateRef glue, GateRef hClass, GateRef id);
     void SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key);
     void SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition);
     void SetIsProtoTypeToHClass(GateRef glue, GateRef hClass, GateRef value);
@@ -441,7 +417,7 @@ public:
     template<typename DictionaryT>
     GateRef GetKeyFromDictionary(GateRef elements, GateRef entry);
     GateRef GetPropAttrFromLayoutInfo(GateRef layout, GateRef entry);
-    void UpdatePropAttrToLayoutInfo(GateRef glue, GateRef layout, GateRef entry, GateRef attr);
+    void SetPropAttrToLayoutInfo(GateRef glue, GateRef layout, GateRef entry, GateRef attr);
     GateRef GetPropertiesAddrFromLayoutInfo(GateRef layout);
     GateRef GetPropertyMetaDataFromAttr(GateRef attr);
     GateRef GetKeyFromLayoutInfo(GateRef layout, GateRef entry);
@@ -465,8 +441,6 @@ public:
     GateRef StringToElementIndex(GateRef glue, GateRef string);
     GateRef ComputePropertyCapacityInJSObj(GateRef oldLength);
     GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hClass, GateRef key, GateRef attr);
-    GateRef UpdateTrackType(GateRef attr, GateRef value);
-    GateRef TaggedToTrackType(GateRef value);
     GateRef TaggedToRepresentation(GateRef value);
     GateRef LdGlobalRecord(GateRef glue, GateRef key);
     GateRef LoadFromField(GateRef receiver, GateRef handlerInfo);
@@ -476,7 +450,7 @@ public:
     GateRef CheckPolyHClass(GateRef cachedValue, GateRef hClass);
     GateRef LoadICWithHandler(GateRef glue, GateRef receiver, GateRef holder, GateRef handler);
     GateRef StoreICWithHandler(GateRef glue, GateRef receiver, GateRef holder,
-                               GateRef value, GateRef handler, ProfileOperation callback = nullptr);
+                               GateRef value, GateRef handler, ProfileOperation callback = ProfileOperation());
     GateRef ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
                              GateRef value, GateRef handlerInfo);
     GateRef GetArrayLength(GateRef object);
@@ -485,8 +459,6 @@ public:
     void StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
                              ProfileOperation callback, bool withPrototype = false);
     GateRef StoreGlobal(GateRef glue, GateRef value, GateRef cell);
-    void UpdateTrackTypeWithIC(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
-        ProfileOperation callback);
     void JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef key, GateRef attr);
     void NotifyHClassChanged(GateRef glue, GateRef oldHClass, GateRef newHClass);
     GateRef GetInt64OfTInt(GateRef x);
@@ -546,9 +518,9 @@ public:
     GateRef GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue);
     GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn);
     GateRef SetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
-        GateRef value, bool useOwn, ProfileOperation callback = nullptr); // Crawl prototype chain
+        GateRef value, bool useOwn, ProfileOperation callback = ProfileOperation()); // Crawl prototype chain
     GateRef SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
-        ProfileOperation callback = nullptr);
+        ProfileOperation callback = ProfileOperation());
     GateRef GetParentEnv(GateRef object);
     GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
     void SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value);
@@ -621,7 +593,8 @@ public:
     GateRef CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder, GateRef accessor);
     GateRef ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj);
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize, GateRef hotnessCounter,
-                           JSCallMode mode, std::initializer_list<GateRef> args, ProfileOperation callback = nullptr);
+                           JSCallMode mode, std::initializer_list<GateRef> args,
+                           ProfileOperation callback = ProfileOperation());
     GateRef IsFastTypeArray(GateRef jsType);
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,

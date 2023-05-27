@@ -28,31 +28,31 @@ public:
     NO_COPY_SEMANTIC(OperationsStubBuilder);
     void GenerateCircuit() override {}
     // unary op
-    GateRef Inc(GateRef glue, GateRef value, ProfileOperation callback = nullptr);
-    GateRef Dec(GateRef glue, GateRef value, ProfileOperation callback = nullptr);
-    GateRef Neg(GateRef glue, GateRef value, ProfileOperation callback = nullptr);
-    GateRef Not(GateRef glue, GateRef value, ProfileOperation callback = nullptr);
+    GateRef Inc(GateRef glue, GateRef value, ProfileOperation callback = ProfileOperation());
+    GateRef Dec(GateRef glue, GateRef value, ProfileOperation callback = ProfileOperation());
+    GateRef Neg(GateRef glue, GateRef value, ProfileOperation callback = ProfileOperation());
+    GateRef Not(GateRef glue, GateRef value, ProfileOperation callback = ProfileOperation());
 
     // binary op
-    GateRef Equal(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef NotEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef StrictEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef StrictNotEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef Less(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef LessEq(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef Greater(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef GreaterEq(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef Add(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef Sub(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef Mul(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef Div(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef Mod(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef Shl(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef Shr(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef Ashr(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef And(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef Or(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
-    GateRef Xor(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = nullptr);
+    GateRef Equal(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef NotEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef StrictEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef StrictNotEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef Less(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef LessEq(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef Greater(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef GreaterEq(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef Add(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef Sub(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef Mul(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef Div(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef Mod(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef Shl(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef Shr(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef Ashr(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef And(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef Or(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
+    GateRef Xor(GateRef glue, GateRef left, GateRef right, ProfileOperation callback = ProfileOperation());
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_OPERATIONS_STUB_BUILDER_H

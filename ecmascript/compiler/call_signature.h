@@ -416,6 +416,7 @@ private:
     V(DebugPrintInstruction)                \
     V(Comment)                              \
     V(PGOProfiler)                          \
+    V(PGODefineProfiler)                    \
     V(PGOTypeProfiler)                      \
     V(PGOLayoutProfiler)                    \
     V(FatalPrint)                           \
