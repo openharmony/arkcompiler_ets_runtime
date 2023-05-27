@@ -25,6 +25,8 @@
 #include "os/mutex.h"
 
 namespace panda::ecmascript {
+const int THRESHOLD_GROWTH_FACTORY = 2; // 2:TimeDelta Threshold Growth Factory
+const int THRESHOLD_FIXED_INCREMENT = 2000; // 2000:TimeDelta Threshold Fixed Increment
 using JSTaggedType = uint64_t;
 class SamplesRecord;
 
