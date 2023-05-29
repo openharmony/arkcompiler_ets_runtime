@@ -213,12 +213,12 @@ private:
 
     GCType gcType_ {GCType::START};
     GCReason reason_ {GCReason::OTHER};
-    float scopeDuration_[Scope::ScopeId::SCOPE_NUM];
+    float scopeDuration_[Scope::ScopeId::SCOPE_NUM] {0.0f};
     size_t recordData_[(uint8_t)RecordData::NUM_OF_DATA];
     size_t gcSpeed_ [(uint8_t)SpeedData::NUM_OF_SPEED] = {
         DEFAULT_UPDATE_REFERENCE_SPEED, DEFAULT_OLD_CLEAR_NATIVE_OBJ_SPEED,
         DEFAULT_OLD_EVACUATE_SPACE_SPEED, DEFAULT_YOUNG_CLEAR_NATIVE_OBJ_SPEED};
-    float recordDuration_[(uint8_t)RecordDuration::NUM_OF_DURATION];
+    float recordDuration_[(uint8_t)RecordDuration::NUM_OF_DURATION] {0.0f};
     bool concurrentMark_ {false};
 
     static constexpr uint32_t THOUSAND = 1000;

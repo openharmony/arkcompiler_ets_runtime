@@ -812,7 +812,8 @@ public:
         JSDeserializer deserializer(thread, data.first, data.second);
         JSHandle<JSTaggedValue> res = deserializer.Deserialize();
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ObjectWithConcurrentFunction fail";
-        EXPECT_TRUE(res->IsObject()) << "[NotObjectWithConcurrentFunction] Deserialize ObjectWithConcurrentFunction fail";
+        EXPECT_TRUE(res->IsObject()) <<
+            "[NotObjectWithConcurrentFunction] Deserialize ObjectWithConcurrentFunction fail";
 
         JSHandle<JSTaggedValue> key1(factory->NewFromASCII("2"));
         OperationResult result1 = JSObject::GetProperty(thread, res, key1);

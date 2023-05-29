@@ -348,9 +348,9 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     return res;
 }
 
- std::vector<JSTaggedType> JSFunction::GetArgsData(bool isFastCall, JSHandle<JSTaggedValue> &thisArg, 
-    JSHandle<JSFunction> mainFunc, CJSInfo* cjsInfo) 
- {
+std::vector<JSTaggedType> JSFunction::GetArgsData(bool isFastCall, JSHandle<JSTaggedValue> &thisArg,
+    JSHandle<JSFunction> mainFunc, CJSInfo* cjsInfo)
+{
     size_t argsNum;
     uint32_t mandatoryNum;
     Method *method = mainFunc->GetCallTarget();
@@ -365,9 +365,9 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     std::vector<JSTaggedType> args(argsNum, JSTaggedValue::Undefined().GetRawData());
     args[0] = mainFunc.GetTaggedValue().GetRawData();
     if (isFastCall) {
-        args[1] = thisArg.GetTaggedValue().GetRawData();
+        args[1] = thisArg.GetTaggedValue().GetRawData(); // 1: args number
     } else {
-        args[2] = thisArg.GetTaggedValue().GetRawData();
+        args[2] = thisArg.GetTaggedValue().GetRawData(); // 2: args number
     }
     if (cjsInfo != nullptr) {
         args[mandatoryNum++] = cjsInfo->exportsHdl.GetTaggedValue().GetRawData();
@@ -377,7 +377,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
         args[mandatoryNum] = cjsInfo->dirnameHdl.GetTaggedValue().GetRawData();
     }
     return args;
- }
+}
 
 JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> func,
     EcmaRuntimeCallInfo *info)

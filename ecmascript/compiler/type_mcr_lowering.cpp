@@ -1124,7 +1124,7 @@ void TypeMCRLowering::LowerCreateEmptyArray(GateRef gate)
     GateRef size = builder_.IntPtr(arrayHC->GetObjectSize());
 
     builder_.StartAllocate();
-    GateRef array = builder_.HeapAlloc(size, GateType::TaggedValue(),RegionSpaceFlag::IN_YOUNG_SPACE);
+    GateRef array = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
     // initialization
     for (size_t offset = JSArray::SIZE; offset < arraySize; offset += JSTaggedValue::TaggedTypeSize()) {
         builder_.StoreConstOffset(VariableType::INT64(), array, offset, builder_.Undefined());

@@ -235,7 +235,7 @@ public:
 private:
     static JSHandle<JSHClass> GetOrCreateDerivedJSHClass(JSThread *thread, JSHandle<JSFunction> derived,
                                                          JSHandle<JSHClass> ctorInitialClass);
-    static std::vector<JSTaggedType> GetArgsData(bool isFastCall, JSHandle<JSTaggedValue> &thisArg, 
+    static std::vector<JSTaggedType> GetArgsData(bool isFastCall, JSHandle<JSTaggedValue> &thisArg,
                                                  JSHandle<JSFunction> mainFunc,  CJSInfo* cjsInfo);
 };
 
