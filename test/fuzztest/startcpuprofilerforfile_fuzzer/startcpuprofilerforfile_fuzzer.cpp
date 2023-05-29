@@ -31,10 +31,7 @@ namespace OHOS {
             return;
         }
         std::string fileName(data, data + size);
-#ifndef ECMASCRIPT_SUPPORT_CPUPROFILER
-#define ECMASCRIPT_SUPPORT_CPUPROFILER
         DFXJSNApi::StartCpuProfilerForFile(vm, fileName);
-#endif
         JSNApi::DestroyJSVM(vm);
     }
 }

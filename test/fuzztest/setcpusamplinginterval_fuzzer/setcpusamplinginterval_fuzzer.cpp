@@ -43,10 +43,7 @@ namespace OHOS {
         if (key <= 0 || key > 1024) { // 1024 : 1M in size
             key = 1024; // 1024 : 1M in size
         }
-#ifndef ECMASCRIPT_SUPPORT_CPUPROFILER
-#define ECMASCRIPT_SUPPORT_CPUPROFILER
         DFXJSNApi::SetCpuSamplingInterval(vm, key);
-#endif
         JSNApi::DestroyJSVM(vm);
     }
 }

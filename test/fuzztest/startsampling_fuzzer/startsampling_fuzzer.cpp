@@ -40,10 +40,7 @@ namespace OHOS {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }
-#ifndef ECMASCRIPT_SUPPORT_HEAPSAMPLING
-#define ECMASCRIPT_SUPPORT_HEAPSAMPLING
         DFXJSNApi::StartSampling(vm, key);
-#endif
         JSNApi::DestroyJSVM(vm);
     }
 }
