@@ -32,6 +32,7 @@ namespace panda::ecmascript {
 const int MAX_STACK_SIZE = 128; // 128:the maximum size of the js stack
 const int MAX_NODE_COUNT = 20000; // 20000:the maximum size of the array
 const int MIN_TIME_DELTA = 10; // 10: the minimum value of the time delta
+const int PROGRAM_NODE_ID = 2; // 2: the (program) node id
 const int QUEUE_CAPACITY = 51; // the capacity of the circular queue is QUEUE_CAPACITY - 1
 const size_t NAPI_CALL_SETP = 2; // 2: step size of the variable napiCallIdx in while loop
 const size_t PRE_IDX_RANGE = 5; // 5: length of variable preIdx looping backward
@@ -115,7 +116,7 @@ public:
 
     void NodeInit();
     void AddSample(FrameStackAndInfo *frame);
-    void AddSpecialSample(int sampleNodeId);
+    void AddEmptyStackSample(uint64_t sampleTimeStamp);
     void StringifySampleData();
     int GetMethodNodeCount() const;
     int GetframeStackLength() const;
@@ -171,6 +172,11 @@ public:
         enableVMTag_ = flag;
     }
 
+    void SetTimeDeltaThreshold(uint32_t timeDeltaThreshold)
+    {
+        timeDeltaThreshold_ = timeDeltaThreshold;
+    }
+
 private:
     void StringifyStateTimeStatistic();
     void StringifyNodes();
@@ -208,6 +214,7 @@ private:
     CVector<std::string> napiCallAddrVec_;
     bool enableVMTag_ {false};
     uint64_t callTimeStamp_ = 0;
+    uint32_t timeDeltaThreshold_ = 0;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_SAMPLES_RECORD_H
