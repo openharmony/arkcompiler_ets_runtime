@@ -927,11 +927,14 @@ ohos_source_set("libark_jsruntime_set") {
     cflags_cc += [ "-fvisibility=hidden" ]
   }
 
-  deps = [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  external_deps = [ "runtime_core:arkfile_header_deps" ]
 
   # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
+  external_deps += hiviewdfx_ext_deps
+  deps = hiviewdfx_deps
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 ohos_source_set("libark_js_intl_set") {
@@ -947,11 +950,14 @@ ohos_source_set("libark_js_intl_set") {
     cflags_cc += [ "-fvisibility=hidden" ]
   }
 
-  deps = [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  external_deps = [ "runtime_core:arkfile_header_deps" ]
 
   # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
+  external_deps += hiviewdfx_ext_deps
+  deps = hiviewdfx_deps
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 config("ark_jsruntime_test_nolto") {
@@ -976,10 +982,10 @@ ohos_source_set("libark_jsruntime_test_set") {
   }
   defines += [ "STUB_AN_FILE=\"${stub_an_file_path}\"" ]
   deps = [
-    "$ark_root/libpandafile:arkfile_header_deps",
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
   ]
+  external_deps = [ "runtime_core:arkfile_header_deps" ]
 
   if (enable_coverage) {
     ldflags = [ "--coverage" ]
@@ -989,7 +995,7 @@ ohos_source_set("libark_jsruntime_test_set") {
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
       !is_mac && target_os != "ios") {
-    deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
+    deps += [ "ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
   }
@@ -1009,7 +1015,7 @@ ohos_source_set("libark_jsruntime_test_set") {
   ]
 
   # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
+  external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
 }
 
@@ -1018,27 +1024,30 @@ ohos_source_set("libark_jsruntime_static") {
   deps = [
     ":libark_js_intl_set",
     ":libark_jsruntime_set",
-    "$ark_root/libpandafile:arkfile_header_deps",
   ]
+  external_deps = [ "runtime_core:arkfile_header_deps" ]
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
 
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
       !is_mac && target_os != "ios") {
-    deps += [ "$js_root/ecmascript/compiler:libark_stub_set" ]
+    deps += [ "ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
   }
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 ohos_shared_library("libark_jsruntime") {
   stack_protector_ret = false
   deps = [
     ":libark_jsruntime_static",
-    "$ark_root/libpandafile:libarkfile_static",
     sdk_libc_secshared_dep,
   ]
+  external_deps = [ "runtime_core:libarkfile_static" ]
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
 
@@ -1047,7 +1056,7 @@ ohos_shared_library("libark_jsruntime") {
   }
 
   # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
+  external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
 
   if (!enable_ark_intl) {

@@ -17,12 +17,14 @@ ohos_executable("profdump") {
   sources = [ "main.cpp" ]
 
   deps = [
-    "$ark_root/libpandabase:libarkbase_static",
-    "$ark_root/libpandafile:arkfile_header_deps",
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_js_intl_set",
     "$js_root:libark_jsruntime_set",
     "$js_root/ecmascript/compiler:libark_mock_stub_set",
+  ]
+  external_deps = [
+    "runtime_core:arkfile_header_deps",
+    "runtime_core:libarkbase_static",
+    "runtime_core:libarkfile_static",
   ]
 
   configs = [
@@ -43,7 +45,7 @@ ohos_executable("profdump") {
   }
 
   # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
+  external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
 
   install_enable = true

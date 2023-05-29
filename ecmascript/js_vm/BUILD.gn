@@ -21,14 +21,14 @@ ohos_executable("ark_js_vm") {
     "$js_root:ark_jsruntime_public_config",
   ]
 
-  deps = [
-    "$ark_root/libpandabase:libarkbase_static",
-    "$ark_root/libpandafile:arkfile_header_deps",
-    "$js_root:libark_jsruntime",
+  deps = [ "$js_root:libark_jsruntime" ]
+  external_deps = [
+    "runtime_core:arkfile_header_deps",
+    "runtime_core:libarkbase_static",
   ]
 
   # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
+  external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
 
   install_enable = false

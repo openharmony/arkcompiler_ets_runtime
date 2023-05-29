@@ -21,8 +21,16 @@
         "rom": "20MB",
         "ram": "~8000KB",
         "deps": {
-            "components": [],
-            "third_party": []
+            "components": [
+              "faultloggerd",
+              "hitrace_native",
+              "hiviewdfx_hilog_native",
+              "runtime_core"
+            ],
+            "third_party": [
+              "bounds_checking_function",
+              "icu"
+            ]
         },
         "build": {
             "sub_component": [

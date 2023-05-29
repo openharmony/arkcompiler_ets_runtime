@@ -249,11 +249,14 @@ ohos_source_set("libark_jsoptimizer_set") {
     ]
   }
 
-  deps = [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  external_deps = [ "runtime_core:arkfile_header_deps" ]
 
   # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
+  external_deps += hiviewdfx_ext_deps
+  deps = hiviewdfx_deps
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 ohos_source_set("libark_stub_set") {
@@ -269,6 +272,9 @@ ohos_source_set("libark_stub_set") {
     "$js_root:ark_jsruntime_common_config",
     "$js_root:ark_jsruntime_public_config",
   ]
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 ohos_source_set("libark_mock_stub_set") {
@@ -337,10 +343,10 @@ ohos_executable("ark_stub_compiler") {
   deps = [
     ":libark_jsoptimizer_set",
     ":libark_mock_stub_set",
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_js_intl_set",
     "$js_root:libark_jsruntime_set",
   ]
+  external_deps = [ "runtime_core:libarkfile_static" ]
 
   if (!ark_standalone_build && host_os != "mac") {
     ldflags = [ "-Wl,--lto-O0" ]
@@ -378,12 +384,14 @@ ohos_executable("ark_aot_compiler") {
 
   deps = [
     ":libark_mock_stub_set",
-    "$ark_root/libpandabase:libarkbase_static",
-    "$ark_root/libpandafile:arkfile_header_deps",
-    "$ark_root/libpandafile:libarkfile_static",
     "$js_root:libark_js_intl_set",
     "$js_root:libark_jsruntime_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+  ]
+  external_deps = [
+    "runtime_core:arkfile_header_deps",
+    "runtime_core:libarkbase_static",
+    "runtime_core:libarkfile_static",
   ]
 
   if (target_os == "ios") {
@@ -399,7 +407,7 @@ ohos_executable("ark_aot_compiler") {
   }
 
   # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
+  external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
 
   install_enable = true
