@@ -39,12 +39,9 @@ namespace OHOS {
             std::cout << "memcpy_s failed !" << std::endl;
             UNREACHABLE();
         }
-#ifndef ECMASCRIPT_SUPPORT_DEBUGGER
-#define ECMASCRIPT_SUPPORT_DEBUGGER
         JSNApi::DebugOption debugOption = {(char *)data, true};
         JSNApi::StartDebugger(vm, debugOption, instanceId);
         JSNApi::StopDebugger(vm);
-#endif
         JSNApi::DestroyJSVM(vm);
     }
 }
