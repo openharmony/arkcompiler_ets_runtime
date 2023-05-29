@@ -44,6 +44,9 @@ enable_coverage = false
 enable_asm_assert = false
 ark_compile_mode = "debug"
 asan_lib_path = "/usr/lib/llvm-10/lib/clang/10.0.0/lib/linux"
+
+# under /system/lib64 dir
+arkcompiler_relative_lib_path = "module/arkcompiler"
 if (is_standard_system || ark_standalone_build) {
   icu_part_name = "icu"
   icu_subsystem_name = "thirdparty"
