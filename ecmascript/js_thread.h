@@ -876,6 +876,7 @@ private:
     static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
     static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;
     static constexpr int32_t MIN_HANDLE_STORAGE_SIZE = 2;
+    static constexpr size_t DEFAULT_MAX_SYSTEM_STACK_SIZE = 8_MB;
     GlueData glueData_;
     std::atomic<ThreadId> id_;
     EcmaVM *vm_ {nullptr};
