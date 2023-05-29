@@ -140,6 +140,9 @@ int Main(const int argc, const char **argv)
 
         if (runtimeOptions.IsTargetCompilerMode()) {
             runtimeOptions.SetTargetTriple("aarch64-unknown-linux-gnu");
+            runtimeOptions.WasSet(CommandValues::OPTION_BUILTINS_DTS);
+            std::string builtinsDtsPath = TARGET_BUILTINS_DTS_PATH;
+            runtimeOptions.SetBuiltinsDTS(builtinsDtsPath);
             if (runtimeOptions.IsPartialCompilerMode()) {
                 runtimeOptions.SetEnableOptPGOType(true);
                 if (runtimeOptions.IsPGOProfilerPathEmpty()) {

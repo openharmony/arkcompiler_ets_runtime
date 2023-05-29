@@ -377,6 +377,7 @@ ohos_executable("ark_aot_compiler") {
   ]
 
   deps = [
+    ":lib_ark_builtins.d.abc",
     ":libark_mock_stub_set",
     "$ark_root/libpandabase:libarkbase_static",
     "$ark_root/libpandafile:arkfile_header_deps",
@@ -397,6 +398,10 @@ ohos_executable("ark_aot_compiler") {
       "$ark_third_party_root/icu/icu4c:shared_icuuc",
     ]
   }
+
+  target_builtins_dts_path =
+      "/system/lib64/${arkcompiler_relative_lib_path}/lib_ark_builtins.d.abc"
+  defines = [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
@@ -451,7 +456,7 @@ ohos_prebuilt_shared_library("stub.an") {
   deps = [ ":gen_stub_file" ]
   source = "$root_gen_dir/arkcompiler/ets_runtime/stub.an"
 
-  relative_install_dir = "module"
+  relative_install_dir = arkcompiler_relative_lib_path
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -471,4 +476,21 @@ action("build_stub_to_cpp") {
   ]
 
   outputs = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_an.cpp" ]
+}
+
+ohos_copy("lib_ark_builtins.d.abc") {
+  deps = [ "$js_root:es2abc_gen_builtins_d_abc" ]
+  sources = [ rebase_path(root_out_dir) + "/obj/arkcompiler/ets_runtime/lib_ark_builtins/es2abc/lib_ark_builtins.d.abc" ]
+
+  # Set the output directory
+  outputs = [ "$target_out_dir/lib_ark_builtins.d.abc" ]
+
+  # Set the install directory
+  install_enable = true
+  module_type = "lib"
+  relative_install_dir = arkcompiler_relative_lib_path
+
+  # Set the subsystem name
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }

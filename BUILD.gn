@@ -901,7 +901,7 @@ if (is_mingw) {
 ohos_source_set("libark_jsruntime_set") {
   stack_protector_ret = false
   if (is_ohos && is_standard_system) {
-    stub_an_file_path = "/system/lib64/module/stub.an"
+    stub_an_file_path = "/system/lib64/${arkcompiler_relative_lib_path}/stub.an"
   } else {
     stub_an_file_path =
         rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.an")
@@ -969,7 +969,7 @@ ohos_source_set("libark_jsruntime_test_set") {
 
   defines = [ "OHOS_UNIT_TEST" ]
   if (is_ohos && is_standard_system) {
-    stub_an_file_path = "/system/lib64/module/stub.an"
+    stub_an_file_path = "/system/lib64/${arkcompiler_relative_lib_path}/stub.an"
   } else {
     stub_an_file_path =
         rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.an")
