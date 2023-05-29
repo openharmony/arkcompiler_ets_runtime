@@ -42,7 +42,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         entry = entryPoint.data();
 #else
         entry = PathHelper::ParseOhmUrl(vm, normalName, name);
-#if !WIN_OR_MAC_OR_IOS_PLATFORM
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
         if (name.empty()) {
             name = vm->GetAssetPath();
         }
@@ -137,7 +137,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBuffer filename " << filename;
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
-#if !WIN_OR_MAC_OR_IOS_PLATFORM
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
     name = vm->GetAssetPath();
 #elif defined(PANDA_TARGET_WINDOWS)
     CString assetPath = vm->GetAssetPath();
@@ -286,7 +286,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBufferSecure with secure buffer filename " << filename;
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
-#if !WIN_OR_MAC_OR_IOS_PLATFORM
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
     name = vm->GetAssetPath();
 #elif defined(PANDA_TARGET_WINDOWS)
     CString assetPath = vm->GetAssetPath();
