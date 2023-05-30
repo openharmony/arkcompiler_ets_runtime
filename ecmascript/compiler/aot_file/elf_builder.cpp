@@ -437,7 +437,7 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
         curShdr.sh_flags = section.Flag();
         curShdr.sh_addr = curSecOffset;
         curShdr.sh_offset = static_cast<uint64_t>(curSecOffset);
-        sectionToFileOffset_[secName] = file.tellp();
+        sectionToFileOffset_[secName] = static_cast<uintptr_t>(file.tellp());
         switch (secName) {
             case ElfSecName::ARK_MODULEINFO: {
                 uint32_t curSecSize = sizeof(ModuleSectionDes::ModuleRegionInfo) * moduleInfo.size();

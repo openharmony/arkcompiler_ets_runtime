@@ -629,10 +629,10 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
             return;
         }
         info->SetCallArg(cjsInfo.exportsHdl.GetTaggedValue(),
-                     cjsInfo.requireHdl.GetTaggedValue(),
-                     cjsInfo.moduleHdl.GetTaggedValue(),
-                     cjsInfo.filenameHdl.GetTaggedValue(),
-                     cjsInfo.dirnameHdl.GetTaggedValue());
+            cjsInfo.requireHdl.GetTaggedValue(),
+            cjsInfo.moduleHdl.GetTaggedValue(),
+            cjsInfo.filenameHdl.GetTaggedValue(),
+            cjsInfo.dirnameHdl.GetTaggedValue());
         EcmaRuntimeStatScope runtimeStatScope(this);
         EcmaInterpreter::Execute(info);
     }
