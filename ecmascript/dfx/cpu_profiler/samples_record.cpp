@@ -108,7 +108,7 @@ void SamplesRecord::AddSample(FrameStackAndInfo *frame)
         (previousTimeStamp_ == 0 ? profileInfo_->startTime : previousTimeStamp_));
 
     // delete abnormal sample
-    if (timeDelta > timeDeltaThreshold_ && previousState_ != RunningState::NAPI) {
+    if (timeDelta > static_cast<int>(timeDeltaThreshold_) && previousState_ != RunningState::NAPI) {
         profileInfo_->samples.pop_back();
         profileInfo_->samples.push_back(PROGRAM_NODE_ID);
         previousState_ = RunningState::OTHER;
@@ -127,7 +127,7 @@ void SamplesRecord::AddEmptyStackSample(uint64_t sampleTimeStamp)
         (previousTimeStamp_ == 0 ? profileInfo_->startTime : previousTimeStamp_));
 
     // delete abnormal sample
-    if (timeDelta > timeDeltaThreshold_ && previousState_ != RunningState::NAPI) {
+    if (timeDelta > static_cast<int>(timeDeltaThreshold_) && previousState_ != RunningState::NAPI) {
         profileInfo_->samples.pop_back();
         profileInfo_->samples.push_back(PROGRAM_NODE_ID);
         previousState_ = RunningState::OTHER;

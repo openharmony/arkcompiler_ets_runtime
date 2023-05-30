@@ -242,7 +242,7 @@ static bool CheckSecureMem(uintptr_t mem)
 
 #define CHECK_HAS_PENDING_EXCEPTION(vm, returnVal)                                    \
     do {                                                                              \
-         if (vm->GetJSThread()->HasPendingException()) {                              \
+        if (vm->GetJSThread()->HasPendingException()) {                               \
             LOG_ECMA(ERROR) << "pending exception before jsnapi interface called" <<  \
                 ", which is " << __FUNCTION__ << " in line: " << __LINE__;            \
             return returnVal;                                                         \
@@ -254,7 +254,7 @@ static bool CheckSecureMem(uintptr_t mem)
 
 #define CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm)                                \
     do {                                                                              \
-         if (vm->GetJSThread()->HasPendingException()) {                              \
+        if (vm->GetJSThread()->HasPendingException()) {                               \
             LOG_ECMA(ERROR) << "pending exception before jsnapi interface called" <<  \
                 ", which is " << __FUNCTION__ << " in line: " << __LINE__;            \
             return;                                                                   \
@@ -2019,26 +2019,26 @@ Local<ArrayBufferRef> TypedArrayRef::GetArrayBuffer(const EcmaVM *vm)
 }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define TYPED_ARRAY_NEW(Type)                                                                            \
-    Local<Type##Ref> Type##Ref::New(                                                                     \
-        const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length)              \
-    {                                                                                                    \
+#define TYPED_ARRAY_NEW(Type)                                                                             \
+    Local<Type##Ref> Type##Ref::New(                                                                      \
+        const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset, int32_t length)               \
+    {                                                                                                     \
         CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);                                                 \
-        JSThread *thread = vm->GetJSThread();                                                            \
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();                                                    \
-                                                                                                         \
-        JSHandle<JSTaggedValue> func = env->Get##Type##Function();                                       \
-        JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(buffer));                           \
-        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();            \
-        const int32_t argsLength = 3;                                                                    \
-        EcmaRuntimeCallInfo *info =                                                                      \
-            ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, func, argsLength);  \
-        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                       \
-        info->SetCallArg(arrayBuffer.GetTaggedValue(), JSTaggedValue(byteOffset), JSTaggedValue(length));\
-        JSTaggedValue result = JSFunction::Construct(info);                                              \
-        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                       \
-        JSHandle<JSTaggedValue> resultHandle(thread, result);                                            \
-        return JSNApiHelper::ToLocal<Type##Ref>(resultHandle);                                           \
+        JSThread *thread = vm->GetJSThread();                                                             \
+        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();                                                     \
+                                                                                                          \
+        JSHandle<JSTaggedValue> func = env->Get##Type##Function();                                        \
+        JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(buffer));                            \
+        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();             \
+        const int32_t argsLength = 3;                                                                     \
+        EcmaRuntimeCallInfo *info =                                                                       \
+            ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, func, argsLength);   \
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                        \
+        info->SetCallArg(arrayBuffer.GetTaggedValue(), JSTaggedValue(byteOffset), JSTaggedValue(length)); \
+        JSTaggedValue result = JSFunction::Construct(info);                                               \
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                        \
+        JSHandle<JSTaggedValue> resultHandle(thread, result);                                             \
+        return JSNApiHelper::ToLocal<Type##Ref>(resultHandle);                                            \
     }
 
 TYPED_ARRAY_ALL(TYPED_ARRAY_NEW)
