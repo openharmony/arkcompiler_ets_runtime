@@ -241,8 +241,11 @@ if (is_standard_system) {
           [ zlib_path + "/thirdparty/zlib/libshared_libz${dylib_suffix}" ]
 
       # Add dynamic library "hilog"
-      hilog_path = get_label_info("$hilog_root:libhilog_mac", "root_out_dir")
-      deps += [ "$hilog_root:libhilog_mac" ]
+      hilog_path = get_label_info(
+              "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_mac",
+              "root_out_dir")
+      deps +=
+          [ "//base/hiviewdfx/hilog/interfaces/native/innerkits:libhilog_mac" ]
       sources +=
           [ "${hilog_path}/hiviewdfx/hilog_native/libhilog_mac${dylib_suffix}" ]
 
