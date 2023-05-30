@@ -701,6 +701,9 @@ public:
     bool Delete(const EcmaVM *vm, Local<JSValueRef> key);
     bool Delete(const EcmaVM *vm, uint32_t key);
 
+    Local<JSValueRef> Freeze(const EcmaVM *vm);
+    Local<JSValueRef> Seal(const EcmaVM *vm);
+
     void SetNativePointerFieldCount(int32_t count);
     int32_t GetNativePointerFieldCount();
     void *GetNativePointerField(int32_t index);
