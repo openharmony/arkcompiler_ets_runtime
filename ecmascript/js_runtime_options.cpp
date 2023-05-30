@@ -799,4 +799,28 @@ void JSRuntimeOptions::ParseListArgParam(const std::string &option, arg_list_t *
     }
     return;
 }
+
+void JSRuntimeOptions::SetTargetBuiltinsDtsPath()
+{
+    WasSet(CommandValues::OPTION_BUILTINS_DTS);
+    std::string builtinsDtsPath = TARGET_BUILTINS_DTS_PATH;
+    SetBuiltinsDTS(builtinsDtsPath);
+}
+
+void JSRuntimeOptions::SetOptionsForTargetCompilation()
+{
+    if (IsTargetCompilerMode()) {
+        SetTargetBuiltinsDtsPath();
+        SetTargetTriple("aarch64-unknown-linux-gnu");
+        if (IsPartialCompilerMode()) {
+            SetEnableOptPGOType(true);
+            if (IsPGOProfilerPathEmpty()) {
+                LOG_ECMA(ERROR) << "no pgo profile file in partial mode!";
+            }
+        } else {
+            SetEnableOptPGOType(false);
+            SetPGOProfilerPath("");
+        }
+    }
+}
 }

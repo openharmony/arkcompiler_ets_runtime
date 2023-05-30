@@ -1103,6 +1103,10 @@ public:
         return hapAbcSize_;
     }
 
+    void SetTargetBuiltinsDtsPath();
+
+    void SetOptionsForTargetCompilation();
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
