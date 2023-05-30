@@ -43,8 +43,8 @@ using PathHelper = base::PathHelper;
 EcmaContext::EcmaContext(JSThread *thread)
     : thread_(thread),
       vm_(thread->GetEcmaVM()),
-      factory_(vm_->GetFactory()),
-      stringTable_(new EcmaStringTable(vm_))
+      stringTable_(new EcmaStringTable(vm_)),
+      factory_(vm_->GetFactory())
 {
 }
 
@@ -613,15 +613,15 @@ void EcmaContext::SetupRegExpResultCache()
 
 void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
-    if (propertiesCache_ != nullptr) {
-        propertiesCache_->Clear();
-    }
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
+    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
     moduleManager_->Iterate(v);
     tsManager_->Iterate(v);
     aotFileManager_->Iterate(v);
+    if (propertiesCache_ != nullptr) {
+        propertiesCache_->Clear();
+    }
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
         IterateHandle(rv);
     } else {

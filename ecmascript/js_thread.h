@@ -826,7 +826,7 @@ public:
 
     EcmaContext *GetCurrentEcmaContext() const
     {
-        return contexts_.back();
+        return currentContext_;
     }
     void SwitchCurrentContext(EcmaContext *currentContext);
 private:

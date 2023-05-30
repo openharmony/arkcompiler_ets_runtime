@@ -359,26 +359,26 @@ private:
 
     JSThread *thread_ {nullptr};
     EcmaVM *vm_ {nullptr};
-    ObjectFactory *factory_ {nullptr};
-    ModuleManager *moduleManager_ {nullptr};
 
     bool isUncaughtExceptionRegistered_ {false};
     bool isProcessingPendingJob_ {false};
 
     EcmaStringTable *stringTable_ {nullptr};
-    JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
+    ObjectFactory *factory_ {nullptr};
 
-    JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
-
-    EcmaRuntimeStat *runtimeStat_ {nullptr};
     // VM execution states.
     RegExpParserCache *regExpParserCache_ {nullptr};
+    JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
+    JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
+    EcmaRuntimeStat *runtimeStat_ {nullptr};
+
     CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
 
-    AOTFileManager *aotFileManager_ {nullptr};
     // VM resources.
+    ModuleManager *moduleManager_ {nullptr};
     TSManager *tsManager_ {nullptr};
+    AOTFileManager *aotFileManager_ {nullptr};
 
     // atomics
     bool AllowAtomicWait_ {true};
@@ -404,6 +404,7 @@ private:
     };
     std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
 
+    // Handlescope
     static const uint32_t NODE_BLOCK_SIZE_LOG2 = 10;
     static const uint32_t NODE_BLOCK_SIZE = 1U << NODE_BLOCK_SIZE_LOG2;
     static constexpr int32_t MIN_HANDLE_STORAGE_SIZE = 2;
@@ -413,6 +414,7 @@ private:
     int32_t currentHandleStorageIndex_ {-1};
     int32_t handleScopeCount_ {0};
     EcmaHandleScope *lastHandleScope_ {nullptr};
+    // Frame pointer
     JSTaggedType *currentFrame_ {nullptr};
     JSTaggedType *leaveFrame_ {nullptr};
     JSTaggedType *lastFp_ {nullptr};

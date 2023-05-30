@@ -215,6 +215,9 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
     // visit stack roots
     FrameHandler frameHandler(this);
     frameHandler.Iterate(visitor, rangeVisitor, derivedVisitor);
+    for (EcmaContext *context : contexts_) {
+        context->Iterate(visitor, rangeVisitor);
+    }
     // visit tagged handle storage roots
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
         IterateHandleWithCheck(visitor, rangeVisitor);
@@ -225,10 +228,6 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
                 visitor(ecmascript::Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             }
         });
-    }
-
-    for (EcmaContext *context : contexts_) {
-        context->Iterate(visitor, rangeVisitor);
     }
 }
 
@@ -556,7 +555,11 @@ bool JSThread::IsMainThread()
 void JSThread::PushContext(EcmaContext *context)
 {
     contexts_.emplace_back(context);
-    currentContext_ = context;
+    if (!currentContext_) {
+        currentContext_ = context;
+    } else {
+        SwitchCurrentContext(context);
+    }
 }
 
 void JSThread::PopContext()
