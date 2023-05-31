@@ -345,7 +345,7 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
             cjsInfo.moduleHdl.GetTaggedValue(),
             cjsInfo.filenameHdl.GetTaggedValue(),
             cjsInfo.dirnameHdl.GetTaggedValue());
-        EcmaRuntimeStatScope runtimeStatScope(this);
+        EcmaRuntimeStatScope runtimeStatScope(vm_);
         EcmaInterpreter::Execute(info);
     }
     if (!thread_->HasPendingException()) {

@@ -158,7 +158,7 @@ JSHandle<JSHClass> TSHClassGenerator::CreatePHClass(const JSThread *thread,
     uint32_t numOfProps = tsLayout->GetNumOfProperties();
     JSHandle<JSHClass> hclass;
     if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
-        TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+        TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
         JSHandle<JSTaggedValue> ctor = globalConst->GetHandledConstructorString();
         CVector<std::pair<JSHandle<JSTaggedValue>, GlobalTSTypeRef>> sortedPrototype {{ctor, GlobalTSTypeRef()}};
         CVector<std::pair<JSHandle<JSTaggedValue>, GlobalTSTypeRef>> signatureVec {};
