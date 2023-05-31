@@ -213,6 +213,7 @@ void TSHCRLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
         case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
+            LowerTypedStObjByValue(gate);
             break;
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
@@ -650,7 +651,7 @@ void TSHCRLowering::LowerTypedLdObjByIndex(GateRef gate)
 
     GateRef result = Circuit::NullGate();
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
-        result = builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, index);
+        result = builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, index, builder_.Undefined());
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -686,7 +687,7 @@ void TSHCRLowering::LowerTypedStObjByIndex(GateRef gate)
     builder_.IndexCheck(receiverType, receiver, index);
 
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
-        builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value);
+        builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value, builder_.Undefined());
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -713,7 +714,7 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     GateType receiverType = acc_.GetGateType(receiver);
     GateType propKeyType = acc_.GetGateType(propKey);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    if (!tsManager_->IsArrayTypeKind(receiverType) || !propKeyType.IsNumberType()) { // slowpath
+    if (!tsManager_->IsArrayTypeKind(receiverType) || !propKeyType.IsNumberType()) {  // slowpath
         return;
     }
 
@@ -722,21 +723,21 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     builder_.StableArrayCheck(receiver);
     GateRef length = builder_.LoadArrayLength(receiver);
     propKey = builder_.IndexCheck(receiverType, length, propKey);
-    GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, propKey);
+    GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, propKey, length);
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TSHCRLowering::LowerTypedStObjByValue(GateRef gate)
 {
-    ASSERT(acc_.GetNumValueIn(gate) == 4);  // 4: num of value ins
-    GateRef receiver = acc_.GetValueIn(gate, 1);    // 1: receiver
-    GateRef propKey = acc_.GetValueIn(gate, 2);  // 2: key
-    GateRef value = acc_.GetValueIn(gate, 3);   // 3: value
+    ASSERT(acc_.GetNumValueIn(gate) == 4);        // 4: num of value ins
+    GateRef receiver = acc_.GetValueIn(gate, 1);  // 1: receiver
+    GateRef propKey = acc_.GetValueIn(gate, 2);   // 2: key
+    GateRef value = acc_.GetValueIn(gate, 3);     // 3: value
     GateType receiverType = acc_.GetGateType(receiver);
     GateType propKeyType = acc_.GetGateType(propKey);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    if (!tsManager_->IsArrayTypeKind(receiverType) || !propKeyType.IsNumberType()) { // slowpath
+    if (!tsManager_->IsArrayTypeKind(receiverType) || !propKeyType.IsNumberType()) {  // slowpath
         return;
     }
 
@@ -744,7 +745,7 @@ void TSHCRLowering::LowerTypedStObjByValue(GateRef gate)
     builder_.StableArrayCheck(receiver);
     GateRef length = builder_.LoadArrayLength(receiver);
     builder_.IndexCheck(receiverType, length, propKey);
-    builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+    builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, propKey, value, length);
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }

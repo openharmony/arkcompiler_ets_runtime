@@ -28,6 +28,11 @@ array[second] = 200;
 print(array[first]);
 print(array[second]);
 
+let arr: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+arr[0] = 999;
+print(arr[0])
+
+
 // test object
 let phrase: { 0: string, "100": string | number, fullPhrase: any } = {
     0 : "100",
@@ -48,7 +53,33 @@ phrase[hundred] = 1;
 print(phrase[first]);
 print(phrase[hundred]);
 
+// test class
+class ParticleSystemCPU {
+    private _arrayTest: number[];
+
+    constructor() {
+        this._arrayTest = new Array(10);
+        this._arrayTest[9] = 19;
+        print(this._arrayTest[9]); // 19
+    }
+}
+
+var system: ParticleSystemCPU[] = [new ParticleSystemCPU()];
+
+
 // test getter and setter
 print(phrase.fullPhrase);
 phrase.fullPhrase = "world hello";
 print(phrase.fullPhrase);
+
+// test COW array
+function generateCOWArray() : number[] {
+    return [0, 1, 2, 3, 4]
+}
+
+let arrayA : number [] = generateCOWArray();
+let arrayB : number [] = generateCOWArray();
+
+arrayB[3] = 11;
+print(arrayB[3]) // expect 11
+print(arrayA[3]) // expect 3

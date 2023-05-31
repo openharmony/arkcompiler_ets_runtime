@@ -221,6 +221,25 @@ GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
     return ret;
 }
 
+GateRef CircuitBuilder::IsJsCOWArray(GateRef obj)
+{
+    // Elements of JSArray are shared and properties are not yet.
+    GateRef elements = GetElementsArray(obj);
+    GateRef objectType = GetObjectType(LoadHClass(elements));
+    return IsCOWArray(objectType);
+}
+
+GateRef CircuitBuilder::IsCOWArray(GateRef objectType)
+{
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_TAGGED_ARRAY)));
+}
+
+GateRef CircuitBuilder::GetElementsArray(GateRef object)
+{
+    GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
+    return Load(VariableType::JS_POINTER(), object, elementsOffset);
+}
+
 MachineType CircuitBuilder::GetMachineTypeOfValueType(ValueType type)
 {
     switch (type) {
