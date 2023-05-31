@@ -407,10 +407,6 @@ ohos_executable("ark_aot_compiler") {
     ]
   }
 
-  target_builtins_dts_path =
-      "/system/lib64/${arkcompiler_relative_lib_path}/lib_ark_builtins.d.abc"
-  defines = [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
-
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps

@@ -127,6 +127,7 @@ int Main(const int argc, const char **argv)
     // ark_aot_compiler running need disable asm interpreter to disable the loading of AOT files.
     runtimeOptions.SetEnableAsmInterpreter(false);
     runtimeOptions.DisableReportModuleResolvingFailure();
+    runtimeOptions.SetOptionsForTargetCompilation();
     EcmaVM *vm = JSNApi::CreateEcmaVM(runtimeOptions);
     if (vm == nullptr) {
         LOG_COMPILER(ERROR) << "Cannot Create vm";
@@ -137,22 +138,6 @@ int Main(const int argc, const char **argv)
         LocalScope scope(vm);
         std::string delimiter = GetFileDelimiter();
         arg_list_t pandaFileNames = base::StringHelper::SplitString(files, delimiter);
-
-        if (runtimeOptions.IsTargetCompilerMode()) {
-            runtimeOptions.SetTargetTriple("aarch64-unknown-linux-gnu");
-            runtimeOptions.WasSet(CommandValues::OPTION_BUILTINS_DTS);
-            std::string builtinsDtsPath = TARGET_BUILTINS_DTS_PATH;
-            runtimeOptions.SetBuiltinsDTS(builtinsDtsPath);
-            if (runtimeOptions.IsPartialCompilerMode()) {
-                runtimeOptions.SetEnableOptPGOType(true);
-                if (runtimeOptions.IsPGOProfilerPathEmpty()) {
-                    LOG_ECMA(ERROR) << "no pgo profile file in partial mode!";
-                }
-            } else {
-                runtimeOptions.SetEnableOptPGOType(false);
-                runtimeOptions.SetPGOProfilerPath("");
-            }
-        }
 
         std::string triple = runtimeOptions.GetTargetTriple();
         if (runtimeOptions.GetAOTOutputFile().empty()) {
