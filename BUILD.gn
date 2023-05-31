@@ -898,6 +898,14 @@ if (is_mingw) {
   }
 }
 
+if (enable_target_compilation) {
+  ecma_platform_source += [ "ecmascript/platform/unix/ohos/directory.cpp" ]
+} else if (is_mingw) {
+  ecma_platform_source += [ "ecmascript/platform/windows/directory.cpp" ]
+} else {
+  ecma_platform_source += [ "ecmascript/platform/unix/directory.cpp" ]
+}
+
 ohos_source_set("libark_jsruntime_set") {
   stack_protector_ret = false
   if (is_ohos && is_standard_system) {
@@ -931,6 +939,10 @@ ohos_source_set("libark_jsruntime_set") {
   }
 
   external_deps = [ "runtime_core:arkfile_header_deps" ]
+
+  if (enable_target_compilation) {
+    external_deps += [ "c_utils:utils" ]
+  }
 
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
@@ -1020,6 +1032,10 @@ ohos_source_set("libark_jsruntime_test_set") {
     "$js_root:icu_path_test_config",
     "$js_root:ark_jsruntime_test_nolto",
   ]
+
+  if (enable_target_compilation) {
+    external_deps += [ "c_utils:utils" ]
+  }
 
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps

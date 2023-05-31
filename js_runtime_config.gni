@@ -95,3 +95,6 @@ if (enable_hilog) {
     hiviewdfx_ext_deps += [ "hiviewdfx_hilog_native:libhilog" ]
   }
 }
+
+enable_target_compilation =
+    !ark_standalone_build && !is_mac && current_cpu == "arm64"

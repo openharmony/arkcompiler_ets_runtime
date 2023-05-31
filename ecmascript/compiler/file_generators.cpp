@@ -17,6 +17,7 @@
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stackmap/ark_stackmap_builder.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
+#include "ecmascript/platform/directory.h"
 
 namespace panda::ecmascript::kungfu {
 void Module::CollectStackMapDes(ModuleSectionDes& des) const
@@ -370,6 +371,20 @@ void AOTFileGenerator::GenerateMergedStackmapSection()
     DestroyCollectedStackMapInfo();
 }
 
+bool AOTFileGenerator::CreateDirIfNotExist(const std::string &filename)
+{
+    auto index = filename.find_last_of('/');
+    if (index == std::string::npos) {
+        return true;
+    }
+    std::string path = filename.substr(0, index);
+    if (!panda::ecmascript::ForceCreateDirectory(path)) {
+        LOG_COMPILER(ERROR) << "Fail to make dir:" << path;
+        return false;
+    }
+    return panda::ecmascript::SetDirModeAsDefault(path);
+}
+
 void AOTFileGenerator::SaveAOTFile(const std::string &filename)
 {
     if (aotInfo_.GetTotalCodeSize() == 0) {
@@ -377,10 +392,17 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
                             << "Maybe file in apPath is empty or all methods in ap file are mismatched";
         LOG_COMPILER(FATAL) << "error: code size of generated an file is empty!";
     }
+    if (!CreateDirIfNotExist(filename)) {
+        LOG_COMPILER(ERROR) << "Fail to access dir:" << filename;
+        return;
+    }
     PrintMergedCodeComment();
     GenerateMergedStackmapSection();
     GenerateMethodToEntryIndexMap();
     aotInfo_.Save(filename, cfg_.GetTriple());
+    if (!panda::ecmascript::SetFileModeAsDefault(filename)) {
+        LOG_COMPILER(ERROR) << "Fail to set an file mode:" << filename;
+    }
 }
 
 void AOTFileGenerator::SaveSnapshotFile()
@@ -389,6 +411,10 @@ void AOTFileGenerator::SaveSnapshotFile()
     Snapshot snapshot(vm_);
     const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
     vm_->GetTSManager()->ResolveSnapshotConstantPool(methodToEntryIndexMap_);
-    snapshot.Serialize(snapshotPath + AOTFileManager::FILE_EXTENSION_AI);
+    CString aiPath = snapshotPath + AOTFileManager::FILE_EXTENSION_AI;
+    snapshot.Serialize(aiPath);
+    if (!panda::ecmascript::SetFileModeAsDefault(aiPath.c_str())) {
+        LOG_COMPILER(ERROR) << "Fail to set ai file mode:" << aiPath;
+    }
 }
 }  // namespace panda::ecmascript::kungfu
