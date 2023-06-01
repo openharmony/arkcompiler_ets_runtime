@@ -4314,9 +4314,28 @@ GateRef StubBuilder::FastAddSubAndMul(GateRef left, GateRef right, ProfileOperat
         }
         Bind(&notOverflow);
         {
-            result = IntToTaggedPtr(TruncInt64ToInt32(res));
-            TYPE_CALL_BACK(PGOSampleType::Type::INT)
-            Jump(&exit);
+            if (Op == OpCode::MUL) {
+                Label resultIsZero(env);
+                Label returnNegativeZero(env);
+                Label returnResult(env);
+                Branch(Int64Equal(res, Int64(0)), &resultIsZero, &returnResult);
+                Bind(&resultIsZero);
+                GateRef leftNegative = Int32LessThan(GetInt32OfTInt(left), Int32(0));
+                GateRef rightNegative = Int32LessThan(GetInt32OfTInt(right), Int32(0));
+                Branch(BoolOr(leftNegative, rightNegative), &returnNegativeZero, &returnResult);
+                Bind(&returnNegativeZero);
+                result = DoubleToTaggedDoublePtr(Double(-0.0));
+                TYPE_CALL_BACK(PGOSampleType::Type::DOUBLE)
+                Jump(&exit);
+                Bind(&returnResult);
+                result = IntToTaggedPtr(TruncInt64ToInt32(res));
+                TYPE_CALL_BACK(PGOSampleType::Type::INT)
+                Jump(&exit);
+            } else {
+                result = IntToTaggedPtr(TruncInt64ToInt32(res));
+                TYPE_CALL_BACK(PGOSampleType::Type::INT)
+                Jump(&exit);
+            }
         }
         Bind(&exit);
         auto ret = *result;

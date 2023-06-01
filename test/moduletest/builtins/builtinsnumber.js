@@ -23,4 +23,5 @@ let result = Number.parseInt("16947500000");
 print("builtins number start");
 print("parseInt result = " + result);
 print(1 / 0.75 * 0.6);
+print(1 / (-1 * 0));
 print("builtins number end");
