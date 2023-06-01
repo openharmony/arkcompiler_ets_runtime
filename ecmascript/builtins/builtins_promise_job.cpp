@@ -25,6 +25,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/module/js_dynamic_import.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/require/js_cjs_module.h"
@@ -147,6 +148,13 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     CString entryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
     CString baseFilename = ConvertToString(dirPath.GetTaggedValue());
     CString fileNameStr = "";
+    CString requestPath = ConvertToString(specifierString.GetTaggedValue());
+
+    // resolve native module
+    auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
+    if (isNative) {
+        return DynamicImport::ExecuteNativeModule(thread, specifierString, moduleType, resolve, reject);
+    }
     if (recordName->IsUndefined()) {
         moduleName = ResolveFilenameFromNative(thread, dirPath.GetTaggedValue(),
                                                specifierString.GetTaggedValue());
@@ -154,7 +162,6 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         fileNameStr = ConvertToString(moduleName.GetTaggedValue());
     } else {
         CString recordNameStr = ConvertToString(recordName.GetTaggedValue());
-        CString requestModule = ConvertToString(specifierString.GetTaggedValue());
         std::shared_ptr<JSPandaFile> jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordNameStr.c_str());
         if (jsPandaFile == nullptr) {
@@ -164,7 +171,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         }
 
         entryPoint =
-            PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(), baseFilename, recordNameStr, requestModule);
+            PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(), baseFilename, recordNameStr, requestPath);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         fileNameStr = baseFilename;
         moduleName = vm->GetFactory()->NewFromUtf8(entryPoint);
@@ -177,8 +184,10 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
     }
     bool isModule = jsPandaFile->IsModule(thread, entryPoint);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+    ModuleManager *moduleManager = vm->GetModuleManager();
     JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
-    if (!vm->GetModuleManager()->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
+    if (!moduleManager->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
         if (!JSPandaFileExecutor::ExecuteFromFile(thread, fileNameStr.c_str(), entryPoint.c_str(), false, true)) {
             CString msg = "Cannot execute request dynamic-imported module : " + entryPoint;
             JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
@@ -192,11 +201,11 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     } else {
         // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).
         JSHandle<SourceTextModule> moduleRecord =
-            vm->GetModuleManager()->HostGetImportedModule(moduleName.GetTaggedValue());
+            moduleManager->HostGetImportedModule(moduleName.GetTaggedValue());
         // d. Let namespace be ? GetModuleNamespace(moduleRecord).
         moduleNamespace.Update(SourceTextModule::GetModuleNamespace(thread, moduleRecord));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
     }
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread,

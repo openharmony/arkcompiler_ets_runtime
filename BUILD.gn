@@ -726,6 +726,7 @@ ecma_source = [
   "ecmascript/mem/verification.cpp",
   "ecmascript/mem/work_manager.cpp",
   "ecmascript/module/js_module_manager.cpp",
+  "ecmascript/module/js_dynamic_import.cpp",
   "ecmascript/module/js_module_namespace.cpp",
   "ecmascript/module/js_module_record.cpp",
   "ecmascript/module/js_module_source_text.cpp",
