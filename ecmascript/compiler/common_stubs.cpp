@@ -716,7 +716,9 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
         Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
     GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
     GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
-    Branch(HasAotCodeAndFastCall(method), &methodIsFastCall, &notFastCall);
+    GateRef hClass = LoadHClass(func);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, Int32(JSHClass::BIT_FIELD_OFFSET));
+    Branch(CanFastCallWithBitField(bitfield), &methodIsFastCall, &notFastCall);
     Bind(&methodIsFastCall);
     {
         Branch(Int64LessThanOrEqual(expectedArgc, argc), &fastCall, &fastCallBridge);
@@ -801,30 +803,27 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
             Branch(TaggedIsHeapObject(target), &isHeapObject, &slowPath);
             Bind(&isHeapObject);
             {
-                Branch(IsJSFunction(target), &isJsFcuntion, &slowPath);
-                Bind(&isJsFcuntion);
+                GateRef hClass = LoadHClass(target);
+                GateRef bitfield = Load(VariableType::INT32(), hClass, Int32(JSHClass::BIT_FIELD_OFFSET));
+                Branch(IsClassConstructorFromBitField(bitfield), &slowPath, &notCallConstructor);
+                Bind(&notCallConstructor);
+                GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
+                GateRef actualArgv = PtrAdd(argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * sizeof(JSTaggedValue)));
+                Branch(CanFastCallWithBitField(bitfield), &fastCall, &notFastCall);
+                Bind(&fastCall);
                 {
-                    Branch(IsClassConstructor(target), &slowPath, &notCallConstructor);
-                    Bind(&notCallConstructor);
-                    GateRef meth = GetMethodFromFunction(target);
-                    GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
-                    GateRef actualArgv = PtrAdd(argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * sizeof(JSTaggedValue)));
-                    Branch(HasAotCodeAndFastCall(meth), &fastCall, &notFastCall);
-                    Bind(&fastCall);
+                    result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgV),
+                        { glue, target, thisTarget, actualArgc, actualArgv });
+                    Jump(&exit);
+                }
+                Bind(&notFastCall);
+                {
+                    Branch(IsOptimizedWithBitField(bitfield), &slowCall, &slowPath);
+                    Bind(&slowCall);
                     {
-                        result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgV),
-                            { glue, target, thisTarget, actualArgc, actualArgv });
+                        result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
+                            { glue, actualArgc, target, newTarget, thisTarget, actualArgv });
                         Jump(&exit);
-                    }
-                    Bind(&notFastCall);
-                    {
-                        Branch(HasAotCode(meth), &slowCall, &slowPath);
-                        Bind(&slowCall);
-                        {
-                            result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
-                                { glue, actualArgc, target, newTarget, thisTarget, actualArgv });
-                            Jump(&exit);
-                        }
                     }
                 }
             }
@@ -851,29 +850,27 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
             Branch(TaggedIsHeapObject(method), &isHeapObject1, &slowPath1);
             Bind(&isHeapObject1);
             {
-                Branch(IsJSFunction(method), &isJsFcuntion1, &slowPath1);
-                Bind(&isJsFcuntion1);
+                GateRef hClass = LoadHClass(method);
+                GateRef bitfield = Load(VariableType::INT32(), hClass, Int32(JSHClass::BIT_FIELD_OFFSET));
+                Branch(IsClassConstructor(method), &slowPath1, &notCallConstructor1);
+                Bind(&notCallConstructor1);
+                GateRef meth = GetMethodFromFunction(method);
+                GateRef code = GetAotCodeAddr(meth);
+                Branch(CanFastCallWithBitField(bitfield), &fastCall1, &notFastCall1);
+                Bind(&fastCall1);
                 {
-                    Branch(IsClassConstructor(method), &slowPath1, &notCallConstructor1);
-                    Bind(&notCallConstructor1);
-                    GateRef meth = GetMethodFromFunction(method);
-                    GateRef code = GetAotCodeAddr(meth);
-                    Branch(HasAotCodeAndFastCall(meth), &fastCall1, &notFastCall1);
-                    Bind(&fastCall1);
+                    result = FastCallOptimized(glue, code,
+                        { glue, method, handler, target, thisTarget, arrHandle });
+                    Jump(&exit);
+                }
+                Bind(&notFastCall1);
+                {
+                    Branch(IsOptimizedWithBitField(bitfield), &slowCall1, &slowPath1);
+                    Bind(&slowCall1);
                     {
-                        result = FastCallOptimized(glue, code,
-                            { glue, method, handler, target, thisTarget, arrHandle });
+                        result = CallOptimized(glue, code,
+                            { glue, numArgs, method, Undefined(), handler, target, thisTarget, arrHandle });
                         Jump(&exit);
-                    }
-                    Bind(&notFastCall1);
-                    {
-                        Branch(HasAotCode(meth), &slowCall1, &slowPath1);
-                        Bind(&slowCall1);
-                        {
-                            result = CallOptimized(glue, code,
-                                { glue, numArgs, method, Undefined(), handler, target, thisTarget, arrHandle });
-                            Jump(&exit);
-                        }
                     }
                 }
             }

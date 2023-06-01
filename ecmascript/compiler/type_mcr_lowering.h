@@ -152,6 +152,7 @@ private:
     void LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue);
     void LowerTypedCallBuitin(GateRef gate);
     void LowerCallTargetCheck(GateRef gate);
+    void LowerJSCallTargetFromDefineFuncCheck(GateRef gate);
     void LowerJSCallTargetTypeCheck(GateRef gate);
     void LowerJSFastCallTargetTypeCheck(GateRef gate);
     void LowerJSCallThisTargetTypeCheck(GateRef gate);

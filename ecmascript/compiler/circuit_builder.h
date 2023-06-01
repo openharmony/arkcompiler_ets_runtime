@@ -253,6 +253,7 @@ public:
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef function, GateRef id, GateRef param, const char* comment = nullptr);
+    GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func);
     GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex);
     GateRef JSFastCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex);
     GateRef JSCallThisTargetTypeCheck(GateType type, GateRef func);
@@ -511,9 +512,12 @@ public:
     GateRef StoreConstOffset(VariableType type, GateRef receiver, size_t offset, GateRef value);
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
-    inline GateRef HasAotCode(GateRef method);
-    inline GateRef HasAotCodeAndFastCall(GateRef method);
     inline GateRef IsJSFunction(GateRef obj);
+    inline GateRef IsJSFunctionWithBit(GateRef obj);
+    inline GateRef IsOptimized(GateRef obj);
+    inline GateRef IsOptimizedWithBitField(GateRef bitfield);
+    inline GateRef CanFastCall(GateRef obj);
+    inline GateRef CanFastCallWithBitField(GateRef bitfield);
     inline GateRef IsDictionaryMode(GateRef object);
     inline void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
     inline GateRef IsJsType(GateRef object, JSType type);
@@ -526,6 +530,7 @@ public:
     inline GateRef DoubleIsINF(GateRef x);
     inline GateRef IsDictionaryElement(GateRef hClass);
     inline GateRef IsClassConstructor(GateRef object);
+    inline GateRef IsClassConstructorWithBitField(GateRef bitfield);
     inline GateRef IsConstructor(GateRef object);
     inline GateRef IsClassPrototype(GateRef object);
     inline GateRef IsExtensible(GateRef object);

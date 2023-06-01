@@ -360,9 +360,9 @@ void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
     va_start(args, fmtMessageId);
     std::string result = base::StringHelper::Vformat(format.c_str(), args);
     if (MessageString::IsBuiltinsStubMessageString(fmtMessageId)) {
-        LOG_BUILTINS(DEBUG) << result;
+        LOG_BUILTINS(ERROR) << result;
     } else {
-        LOG_ECMA(DEBUG) << result;
+        LOG_ECMA(ERROR) << result;
     }
     va_end(args);
 }
@@ -2242,12 +2242,17 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
         regsArray->Set(thread, i, value);
     }
     context->SetRegsArray(thread, regsArray.GetTaggedValue());
-    JSTaggedValue function = frameHandler.GetFunction();
-    Method *method = JSFunction::Cast(function.GetTaggedObject())->GetCallTarget();
+    JSHandle<JSTaggedValue> function(thread, frameHandler.GetFunction());
+    Method *method = JSFunction::Cast(function->GetTaggedObject())->GetCallTarget();
     if (method->IsAotWithCallField()) {
-        method->ClearAOTFlags();
+        FunctionKind kind = method->GetFunctionKind();
+        JSHandle<JSFunction> jsFunc(function);
+        JSHandle<JSHClass> oldHclass(thread, jsFunc->GetClass());
+        // instead of hclass by non_optimized hclass when method ClearAOTFlags
+        JSHandle<JSHClass> newHClass = factory->GetNonOptimizedHclass(oldHclass, kind);
+        jsFunc->SetClass(newHClass);
     }
-    context->SetMethod(thread, function);
+    context->SetMethod(thread, function.GetTaggedValue());
     context->SetThis(thread, frameHandler.GetThis());
 
     BytecodeInstruction ins(frameHandler.GetPc());
@@ -2288,15 +2293,14 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
 DEF_RUNTIME_STUBS(DeoptHandler)
 {
     RUNTIME_STUBS_HEADER(DeoptHandler);
-    uintptr_t *args = reinterpret_cast<uintptr_t *>(argv);
-    size_t depth = GetTArg(argv, argc, 1);
+    size_t depth = static_cast<size_t>(GetArg(argv, argc, 1).GetInt());
     Deoptimizier deopt(thread, depth);
     std::vector<kungfu::ARKDeopt> deoptBundle;
     deopt.CollectDeoptBundleVec(deoptBundle);
     ASSERT(!deoptBundle.empty());
     size_t shift = Deoptimizier::ComputeShift(depth);
     deopt.CollectVregs(deoptBundle, shift);
-    kungfu::DeoptType type = static_cast<kungfu::DeoptType>(args[0]);
+    kungfu::DeoptType type = static_cast<kungfu::DeoptType>(GetArg(argv, argc, 0).GetInt());
     deopt.UpdateAndDumpDeoptInfo(type);
     return deopt.ConstructAsmInterpretFrame();
 }

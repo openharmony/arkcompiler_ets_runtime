@@ -651,10 +651,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     __ Ldr(hclass, MemoryOperand(boundTarget, 0));
     __ Ldr(hclass, MemoryOperand(hclass, JSHClass::BIT_FIELD_OFFSET));
     __ Tbnz(hclass, JSHClass::ClassConstructorBit::START_BIT, &slowCall);
-    Register callField(X9);
-    __ Ldr(Register(X8), MemoryOperand(boundTarget, JSFunction::METHOD_OFFSET));
-    __ Ldr(callField, MemoryOperand(Register(X8), Method::CALL_FIELD_OFFSET));
-    __ Tbz(callField, MethodLiteral::IsAotCodeBit::START_BIT, &slowCall);
+    __ Tbz(hclass, JSHClass::IsOptimizedBit::START_BIT, &slowCall);
     __ Bind(&aotCall);
     {
         // output: glue:x0 argc:x1 calltarget:x2 argv:x3 this:x4 newtarget:x5

@@ -380,11 +380,17 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
     regexp->SetLength(static_cast<uint32_t>(size));
 }
 
-JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype)
+JSHandle<JSHClass> ObjectFactory::NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype,
+                                                bool isOptimized, bool canFastCall)
 {
-    JSHandle<JSHClass> newClass = NewEcmaHClass(size, type);
-    newClass->SetPrototype(thread_, prototype.GetTaggedValue());
-    return newClass;
+    NewObjectHook();
+    uint32_t classSize = JSHClass::SIZE;
+    auto *newClass = static_cast<JSHClass *>(heap_->AllocateNonMovableOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject()), classSize));
+    newClass->Initialize(thread_, size, type, JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS, isOptimized, canFastCall);
+    JSHandle<JSHClass> hclass(thread_, newClass);
+    hclass->SetPrototype(thread_, prototype.GetTaggedValue());
+    return hclass;
 }
 
 JSHandle<JSObject> ObjectFactory::NewJSObject(const JSHandle<JSHClass> &jshclass)
@@ -1427,10 +1433,11 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env
 }
 
 JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
-                                                      const JSHandle<JSTaggedValue> &prototype)
+                                                      const JSHandle<JSTaggedValue> &prototype,
+                                                      bool isOptimized, bool canFastCall)
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    JSHandle<JSHClass> functionClass = NewEcmaHClass(size, type, prototype);
+    JSHandle<JSHClass> functionClass = NewEcmaHClass(size, type, prototype, isOptimized, canFastCall);
     {
         functionClass->SetCallable(true);
         // FunctionKind = BASE_CONSTRUCTOR
@@ -1603,6 +1610,22 @@ JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral, Me
     method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
     method->SetConstantPool(thread_, JSTaggedValue::Undefined());
     method->SetProfileTypeInfo(thread_, JSTaggedValue::Undefined());
+    return method;
+}
+
+JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
+    JSHandle<ConstantPool> constpool, uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall)
+{
+    JSHandle<Method> method;
+    if (jsPandaFile->IsNewVersion()) {
+        method = Method::Create(thread_, jsPandaFile, methodLiteral);
+    } else {
+        method = NewMethod(methodLiteral);
+        method->SetConstantPool(thread_, constpool);
+    }
+    if (needSetAotFlag) {
+        vm_->GetAOTFileManager()->SetAOTFuncEntry(jsPandaFile, *method, entryIndex, canFastCall);
+    }
     return method;
 }
 
@@ -4076,5 +4099,205 @@ JSHandle<ClassLiteral> ObjectFactory::NewClassLiteral()
     classLiteral->SetIsAOTUsed(false);
 
     return classLiteral;
+}
+
+JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &methodHandle)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    FunctionKind kind = methodHandle->GetFunctionKind();
+    JSHandle<JSHClass> hclass;
+    switch (kind) {
+        case FunctionKind::NORMAL_FUNCTION:
+        case FunctionKind::BASE_CONSTRUCTOR: {
+            if (methodHandle->IsAotWithCallField()) {
+                if (methodHandle->IsFastCall()) {
+                    hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProtoOptimizedWithFastCall());
+                } else {
+                    hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProtoOptimized());
+                }
+            } else {
+                hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
+            }
+            break;
+        }
+        case FunctionKind::ARROW_FUNCTION: {
+            if (methodHandle->IsAotWithCallField()) {
+                if (methodHandle->IsFastCall()) {
+                    hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProtoOptimizedWithFastCall());
+                } else {
+                    hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProtoOptimized());
+                }
+            } else {
+                hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+            }
+            break;
+        }
+        case FunctionKind::GENERATOR_FUNCTION: {
+            if (methodHandle->IsAotWithCallField()) {
+                if (methodHandle->IsFastCall()) {
+                    hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClassOptimizedWithFastCall());
+                } else {
+                    hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClassOptimized());
+                }
+            } else {
+                hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+            }
+            break;
+        }
+        case FunctionKind::CONCURRENT_FUNCTION:
+        case FunctionKind::ASYNC_FUNCTION: {
+            if (methodHandle->IsAotWithCallField()) {
+                if (methodHandle->IsFastCall()) {
+                    hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClassOptimizedWithFastCall());
+                } else {
+                    hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClassOptimized());
+                }
+            } else {
+                hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+            }
+            break;
+        }
+        case FunctionKind::ASYNC_GENERATOR_FUNCTION: {
+            if (methodHandle->IsAotWithCallField()) {
+                if (methodHandle->IsFastCall()) {
+                    hclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClassOptimizedWithFastCall());
+                } else {
+                    hclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClassOptimized());
+                }
+            } else {
+                hclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
+            }
+            break;
+        }
+        case FunctionKind::ASYNC_ARROW_FUNCTION: {
+            if (methodHandle->IsAotWithCallField()) {
+                if (methodHandle->IsFastCall()) {
+                    hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClassOptimizedWithFastCall());
+                } else {
+                    hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClassOptimized());
+                }
+            } else {
+                hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+            }
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    JSHandle<JSFunction> jsfunc = NewJSFunctionByHClass(methodHandle, hclass);
+    ASSERT_NO_ABRUPT_COMPLETION(thread_);
+    return jsfunc;
+}
+
+JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &methodHandle,
+                                                  const JSHandle<JSTaggedValue> &homeObject)
+{
+    ASSERT(homeObject->IsECMAObject());
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSHClass> hclass;
+    if (methodHandle->IsAotWithCallField()) {
+        if (methodHandle->IsFastCall()) {
+            hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProtoOptimizedWithFastCall());
+        } else {
+            hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProtoOptimized());
+        }
+    } else {
+        hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+    }
+    JSHandle<JSFunction> jsFunc = NewJSFunctionByHClass(methodHandle, hclass);
+    jsFunc->SetHomeObject(thread_, homeObject);
+    ASSERT_NO_ABRUPT_COMPLETION(thread_);
+    return jsFunc;
+}
+
+JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &methodHandle, FunctionKind kind,
+                                                  bool isOptimized, bool canFastCall)
+{
+    JSHandle<JSHClass> functionClass;
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    if (isOptimized) {
+        if (kind == FunctionKind::NORMAL_FUNCTION) {
+            if (canFastCall) {
+                functionClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProtoOptimizedWithFastCall());
+            } else {
+                functionClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProtoOptimized());
+            }
+        } else {
+            if (canFastCall) {
+                functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClassOptimizedWithFastCall());
+            } else {
+                functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClassOptimized());
+            }
+        }
+    } else {
+        if (kind == FunctionKind::NORMAL_FUNCTION) {
+            functionClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+        } else {
+            functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+        }
+    }
+    return NewJSFunctionByHClass(methodHandle, functionClass, MemSpaceType::OLD_SPACE);
+}
+
+JSHandle<JSHClass> ObjectFactory::GetNonOptimizedHclass(JSHandle<JSHClass> oldHClassHandle, FunctionKind kind)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> oldHclass(oldHClassHandle);
+    switch (kind) {
+        case FunctionKind::NORMAL_FUNCTION:
+        case FunctionKind::BASE_CONSTRUCTOR: {
+            if (oldHclass == env->GetFunctionClassWithProtoOptimizedWithFastCall() ||
+                oldHclass == env->GetFunctionClassWithProtoOptimized()) {
+                return JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
+            } else if (oldHclass == env->GetFunctionClassWithoutProtoOptimizedWithFastCall() ||
+                       oldHclass == env->GetFunctionClassWithoutProtoOptimized()) {
+                return JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+            }
+            break;
+        }
+        case FunctionKind::ARROW_FUNCTION: {
+            if (oldHclass == env->GetFunctionClassWithoutProtoOptimizedWithFastCall() ||
+                oldHclass == env->GetFunctionClassWithoutProtoOptimized()) {
+                return JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+            }
+            break;
+        }
+        case FunctionKind::GENERATOR_FUNCTION: {
+            if (oldHclass == env->GetGeneratorFunctionClassOptimizedWithFastCall() ||
+                oldHclass == env->GetGeneratorFunctionClassOptimized()) {
+                return JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+            }
+            break;
+        }
+        case FunctionKind::CONCURRENT_FUNCTION:
+        case FunctionKind::ASYNC_FUNCTION: {
+            if (oldHclass == env->GetAsyncFunctionClassOptimizedWithFastCall() ||
+                oldHclass == env->GetAsyncFunctionClassOptimized()) {
+                return JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+            }
+            break;
+        }
+        case FunctionKind::ASYNC_GENERATOR_FUNCTION: {
+            if (oldHclass == env->GetAsyncGeneratorFunctionClassOptimizedWithFastCall() ||
+                oldHclass == env->GetAsyncGeneratorFunctionClassOptimized()) {
+                return JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
+            }
+            break;
+        }
+        case FunctionKind::ASYNC_ARROW_FUNCTION: {
+            if (oldHclass == env->GetAsyncFunctionClassOptimizedWithFastCall() ||
+                oldHclass == env->GetAsyncFunctionClassOptimized()) {
+                return JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+            }
+            break;
+        }
+        default:
+            break;
+    }
+    // hclass isn't initialized hclass, so can't clear optimizedFlags directly
+    JSHandle<JSHClass> newHClass = JSHClass::Clone(thread_, oldHClassHandle);
+    newHClass->ClearOptimizedFlags();
+    return newHClass;
 }
 }  // namespace panda::ecmascript

@@ -76,6 +76,7 @@ group("ark_aot_ts_test") {
     "definencfunc",
     "delobjprop",
     "deopt",
+    "deopt_clear_aotflags",
     "destructuring",
     "div",
     "duplicatefunctions",

@@ -396,6 +396,19 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id, GateRef pa
     return ret;
 }
 
+GateRef CircuitBuilder::JSCallTargetFromDefineFuncCheck(GateType type, GateRef func)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->JSCallTargetFromDefineFuncCheck(static_cast<size_t>(type.Value())),
+        MachineType::I1, {currentControl, currentDepend, func, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex)
 {
     auto currentLabel = env_->GetCurrentLabel();

@@ -205,11 +205,9 @@ public:
         EntityId id = constpoolHandle->GetEntityId(index);
         MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
         ASSERT(methodLiteral != nullptr);
-        JSHandle<Method> method = Method::Create(thread, jsPandaFile, methodLiteral);
-
-        if (isLoadedAOT && hasEntryIndex) {
-            vm->GetAOTFileManager()->SetAOTFuncEntry(jsPandaFile, *method, entryIndex);
-        }
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<Method> method = factory->NewMethod(jsPandaFile, methodLiteral, constpoolHandle,
+                                                     entryIndex, isLoadedAOT && hasEntryIndex);
         constpoolHandle->SetObjectToCache(thread, index, method.GetTaggedValue());
         return method.GetTaggedValue();
     }
@@ -234,14 +232,11 @@ public:
             ObjectFactory *factory = vm->GetFactory();
             ASSERT(jsPandaFile->IsNewVersion());
             panda_file::File::EntityId literalId = constpool->GetEntityId(literal);
+            bool needSetAotFlag = isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined();
             JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(
-                thread, jsPandaFile, literalId, constpool, entry);
+                thread, jsPandaFile, literalId, constpool, entry, needSetAotFlag, entryIndexes);
             JSHandle<ClassLiteral> classLiteral = factory->NewClassLiteral();
             classLiteral->SetArray(thread, literalArray);
-            if (isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined()) {
-                vm->GetAOTFileManager()->SetAOTFuncEntryForLiteral(jsPandaFile, *literalArray, *entryIndexes);
-            }
-
             val = classLiteral.GetTaggedValue();
             constpool->SetObjectToCache(thread, literal, val);
         }
@@ -267,19 +262,18 @@ public:
         }
 
         if (val.IsHole()) {
-            EcmaVM *vm = thread->GetEcmaVM();
             JSHandle<ConstantPool> constpoolHandle(thread, constpool);
 
             ASSERT(jsPandaFile->IsNewVersion());
             panda_file::File::EntityId id = taggedPool->GetEntityId(index);
-
+            bool needSetAotFlag = isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined();
             // New inst
             switch (type) {
                 case ConstPoolType::OBJECT_LITERAL: {
                     JSMutableHandle<TaggedArray> elements(thread, JSTaggedValue::Undefined());
                     JSMutableHandle<TaggedArray> properties(thread, JSTaggedValue::Undefined());
-                    LiteralDataExtractor::ExtractObjectDatas(
-                        thread, jsPandaFile, id, elements, properties, constpoolHandle, entry);
+                    LiteralDataExtractor::ExtractObjectDatas(thread, jsPandaFile, id, elements,
+                        properties, constpoolHandle, entry, needSetAotFlag, entryIndexes);
                     JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties);
                     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
                     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
@@ -292,21 +286,15 @@ public:
                         valueHandle.Update(elements->Get(i + 1));
                         JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
                     }
-                    if (isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined()) {
-                        vm->GetAOTFileManager()->SetAOTFuncEntryForLiteral(jsPandaFile, *properties, *entryIndexes);
-                    }
                     val = obj.GetTaggedValue();
                     break;
                 }
                 case ConstPoolType::ARRAY_LITERAL: {
-                    JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
-                        thread, jsPandaFile, id, constpoolHandle, entry);
+                    JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id,
+                        constpoolHandle, entry, needSetAotFlag, entryIndexes);
                     uint32_t length = literal->GetLength();
                     JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length)));
                     arr->SetElements(thread, literal);
-                    if (isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined()) {
-                        vm->GetAOTFileManager()->SetAOTFuncEntryForLiteral(jsPandaFile, *literal, *entryIndexes);
-                    }
                     val = arr.GetTaggedValue();
                     break;
                 }

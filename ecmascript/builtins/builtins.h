@@ -73,6 +73,8 @@ private:
 
     void InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject);
 
+    void InitializeFunctionHclassForOptimized(const JSHandle<GlobalEnv> &env) const;
+
     void InitializeFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &emptyFuncClass) const;
 
     void InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &objFuncPrototype,

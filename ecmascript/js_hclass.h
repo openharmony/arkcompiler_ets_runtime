@@ -306,6 +306,9 @@ public:
     using GlobalConstOrBuiltinsObjectBit = ClassPrototypeBit::NextFlag;                    // 23
     using IsTSBit = GlobalConstOrBuiltinsObjectBit::NextFlag;                              // 24
     using LevelBit = IsTSBit::NextField<uint32_t, LEVEL_BTTFIELD_NUM>;                     // 29
+    using IsJSFunctionBit = LevelBit::NextFlag;                                            // 30
+    using IsOptimizedBit = IsJSFunctionBit::NextFlag;                                      // 31
+    using CanFastCallBit = IsOptimizedBit::NextFlag;                                       // 32
 
     static constexpr int DEFAULT_CAPACITY_OF_IN_OBJECTS = 4;
     static constexpr int MAX_CAPACITY_OF_OUT_OBJECTS =
@@ -327,7 +330,8 @@ public:
     inline bool HasReferenceField();
 
     // size need to add inlined property numbers
-    void Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps);
+    void Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps,
+                    bool isOptimized = false, bool canFastCall = false);
 
     static JSHandle<JSHClass> Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                     bool withoutInlinedProperties = false);
@@ -449,6 +453,27 @@ public:
     inline void SetTS(bool flag) const
     {
         IsTSBit::Set<uint32_t>(flag, GetBitFieldAddr());
+    }
+
+    inline void SetIsJSFunction(bool flag) const
+    {
+        IsJSFunctionBit::Set<uint32_t>(flag, GetBitFieldAddr());
+    }
+
+    inline void ClearOptimizedFlags() const
+    {
+        SetIsOptimized(false);
+        SetCanFastCall(false);
+    }
+
+    inline void SetIsOptimized(bool flag) const
+    {
+        IsOptimizedBit::Set<uint32_t>(flag, GetBitFieldAddr());
+    }
+
+    inline void SetCanFastCall(bool flag) const
+    {
+        CanFastCallBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
     inline bool IsJSObject() const
@@ -1168,6 +1193,24 @@ public:
     {
         uint32_t bits = GetBitField();
         return IsTSBit::Decode(bits);
+    }
+
+    inline bool IsJSFunctionFromBitField() const
+    {
+        uint32_t bits = GetBitField();
+        return IsJSFunctionBit::Decode(bits);
+    }
+
+    inline bool IsOptimized() const
+    {
+        uint32_t bits = GetBitField();
+        return IsOptimizedBit::Decode(bits);
+    }
+
+    inline bool CanFastCall() const
+    {
+        uint32_t bits = GetBitField();
+        return CanFastCallBit::Decode(bits);
     }
 
     inline bool IsGeneratorFunction() const

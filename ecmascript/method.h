@@ -395,6 +395,7 @@ public:
     void ClearAOTFlags()
     {
         SetAotCodeBit(false);
+        SetIsFastCall(false);
         SetDeoptType(kungfu::DeoptType::NOTCHECK);
         SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(nullptr));
     }
@@ -460,8 +461,7 @@ public:
 private:
     static JSHandle<Method> Create(JSThread *thread, const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral);
 
-    friend class ConstantPool;
-    friend class LiteralDataExtractor;
+    friend class ObjectFactory;
 };
 }  // namespace panda::ecmascript
 

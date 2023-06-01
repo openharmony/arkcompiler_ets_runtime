@@ -179,7 +179,8 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
            GetOpCode(gate) == OpCode::JSCALLTARGET_TYPE_CHECK ||
            GetOpCode(gate) == OpCode::JSCALLTHISTARGET_TYPE_CHECK ||
            GetOpCode(gate) == OpCode::JSFASTCALLTARGET_TYPE_CHECK ||
-           GetOpCode(gate) == OpCode::JSFASTCALLTHISTARGET_TYPE_CHECK);
+           GetOpCode(gate) == OpCode::JSFASTCALLTHISTARGET_TYPE_CHECK ||
+           GetOpCode(gate) == OpCode::JSCALLTARGET_FROM_DEFINEFUNC_CHECK);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();

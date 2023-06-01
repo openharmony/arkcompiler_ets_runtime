@@ -602,8 +602,8 @@ public:
     GateRef IsBoundFunction(GateRef obj);
     GateRef GetMethodFromJSFunction(GateRef jsfunc);
     GateRef IsNativeMethod(GateRef method);
-    GateRef HasAotCode(GateRef method);
-    GateRef HasAotCodeAndFastCall(GateRef method);
+    GateRef IsOptimizedWithBitField(GateRef bitfield);
+    GateRef CanFastCallWithBitField(GateRef bitfield);
     GateRef GetExpectedNumOfArgs(GateRef method);
     GateRef GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef profileTypeInfo, GateRef slotId);
     // proxy operator

@@ -355,6 +355,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeCjsExports(env);
     InitializeCjsRequire(env);
     InitializeDefaultExportOfScript(env);
+    InitializeFunctionHclassForOptimized(env);
     JSHandle<JSHClass> generatorFuncClass =
         factory_->CreateFunctionClass(FunctionKind::GENERATOR_FUNCTION, JSFunction::SIZE, JSType::JS_GENERATOR_FUNCTION,
                                       env->GetGeneratorFunctionPrototype());
@@ -370,6 +371,29 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         env->GetAsyncFunctionPrototype());
     env->SetAsyncFunctionClass(thread_, asyncFuncClass);
     thread_->ResetGuardians();
+}
+
+void Builtins::InitializeFunctionHclassForOptimized(const JSHandle<GlobalEnv> &env) const
+{
+#define JSFUNCTION_JCLASS_LIST(V)                                                                             \
+    V(FunctionClassWithProto, FunctionKind::BASE_CONSTRUCTOR, JSFunction::SIZE, FUNCTION, Function)           \
+    V(FunctionClassWithoutProto, FunctionKind::NORMAL_FUNCTION, JSFunction::SIZE, FUNCTION, Function)         \
+    V(GeneratorFunctionClass, FunctionKind::GENERATOR_FUNCTION,                                               \
+        JSFunction::SIZE, GENERATOR_FUNCTION, GeneratorFunction)                                              \
+    V(AsyncFunctionClass, FunctionKind::ASYNC_FUNCTION, JSAsyncFunction::SIZE, ASYNC_FUNCTION, AsyncFunction) \
+    V(AsyncGeneratorFunctionClass, FunctionKind::ASYNC_GENERATOR_FUNCTION,                                    \
+        JSFunction::SIZE, ASYNC_GENERATOR_FUNCTION, AsyncGeneratorFunction)                                   \
+
+#define INITIALIZE_FUNCTION_HCLASS_FOR_OPTIMIZED(name, kind, size, type, prototype)         \
+    JSHandle<JSHClass> name##Optimized = factory_->CreateFunctionClass(kind, size,          \
+        JSType::JS_##type, env->Get##prototype##Prototype(), true, false);                  \
+    env->Set##name##Optimized(thread_, name##Optimized);                                    \
+    JSHandle<JSHClass> name##FastCall = factory_->CreateFunctionClass(kind, size,           \
+        JSType::JS_##type, env->Get##prototype##Prototype(), true, true);                   \
+    env->Set##name##OptimizedWithFastCall(thread_, name##FastCall);
+    JSFUNCTION_JCLASS_LIST(INITIALIZE_FUNCTION_HCLASS_FOR_OPTIMIZED)
+#undef INITIALIZE_FUNCTION_HCLASS_FOR_OPTIMIZED
+#undef JSFUNCTION_JCLASS_LIST
 }
 
 void Builtins::SetLazyAccessor(const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &key,

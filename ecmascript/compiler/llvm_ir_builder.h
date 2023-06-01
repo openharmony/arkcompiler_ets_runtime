@@ -408,8 +408,11 @@ private:
     LLVMValueRef ConvertToTagged(GateRef gate);
     LLVMValueRef ConvertBoolToTaggedBoolean(GateRef gate);
     LLVMValueRef ConvertInt32ToTaggedInt(GateRef gate);
+    LLVMValueRef ConvertInt32ToTaggedInt(LLVMValueRef value);
     LLVMValueRef ConvertFloat64ToTaggedDouble(GateRef gate);
     void SaveDeoptVregInfo(std::vector<LLVMValueRef> &values, int32_t index, size_t curDepth, size_t shift,
+                           GateRef gate);
+    void SaveDeoptVregInfoWithI64(std::vector<LLVMValueRef> &values, int32_t index, size_t curDepth, size_t shift,
                            GateRef gate);
 
     const CompilationConfig *compCfg_ {nullptr};
