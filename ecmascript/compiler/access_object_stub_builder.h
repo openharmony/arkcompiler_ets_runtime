@@ -14,7 +14,9 @@
  */
 #ifndef ECMASCRIPT_COMPILER_ACCESS_OBJECT_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_ACCESS_OBJECT_STUB_BUILDER_H
+
 #include "ecmascript/compiler/interpreter_stub.h"
+#include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
@@ -28,13 +30,13 @@ public:
     void GenerateCircuit() override {}
 
     GateRef LoadObjByName(GateRef glue, GateRef receiver, GateRef prop, const StringIdInfo &info,
-                          GateRef profileTypeInfo, GateRef slotId);
+                          GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback = ProfileOperation());
     GateRef DeprecatedLoadObjByName(GateRef glue, GateRef receiver, GateRef propKey);
-    GateRef StoreObjByName(GateRef glue, GateRef receiver, GateRef prop, const StringIdInfo &info,
-                           GateRef value, GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback = nullptr);
+    GateRef StoreObjByName(GateRef glue, GateRef receiver, GateRef prop, const StringIdInfo &info, GateRef value,
+        GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback = ProfileOperation());
     GateRef LoadObjByValue(GateRef glue, GateRef receiver, GateRef key, GateRef profileTypeInfo, GateRef slotId);
     GateRef StoreObjByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef profileTypeInfo,
-                            GateRef slotId, ProfileOperation callback = nullptr);
+                            GateRef slotId, ProfileOperation callback = ProfileOperation());
     GateRef DeprecatedLoadObjByValue(GateRef glue, GateRef receiver, GateRef key);
     GateRef TryLoadGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
                                 GateRef profileTypeInfo, GateRef slotId);

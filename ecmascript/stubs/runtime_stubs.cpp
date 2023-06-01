@@ -391,10 +391,16 @@ void RuntimeStubs::PGOTypeProfiler(uintptr_t argGlue, uintptr_t func, int32_t of
     thread->GetEcmaVM()->GetPGOProfiler()->TypeSample(func, offset, type);
 }
 
-void RuntimeStubs::PGOLayoutProfiler(uintptr_t argGlue, uintptr_t func, int32_t offset, JSTaggedType constructor)
+void RuntimeStubs::PGODefineProfiler(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t methodId)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->LayoutSample(func, offset, constructor);
+    thread->GetEcmaVM()->GetPGOProfiler()->DefineSample(func, offset, methodId);
+}
+
+void RuntimeStubs::PGOLayoutProfiler(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t hclass, int32_t store)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    thread->GetEcmaVM()->GetPGOProfiler()->LayoutSample(thread, func, offset, hclass, store != 0);
 }
 
 void RuntimeStubs::FatalPrint(int fmtMessageId, ...)

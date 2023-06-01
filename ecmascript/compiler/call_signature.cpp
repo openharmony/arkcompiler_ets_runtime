@@ -1425,13 +1425,31 @@ DEF_CALL_SIGNATURE(PGOProfiler)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(PGODefineProfiler)
+{
+    // 4: 4 input parameters
+    CallSignature defineProfInstruction("PGODefineProfiler", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = defineProfInstruction;
+    // 4: 4 input parameters
+    std::array<VariableType, 4> params = { // 4 : 4 input parameters
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::INT32(),
+        VariableType::INT32(),
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(PGOTypeProfiler)
 {
     // 4: 4 input parameters
     CallSignature typeProfInstruction("PGOTypeProfiler", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = typeProfInstruction;
     // 4: 4 input parameters
-    std::array<VariableType, 4> params = {
+    std::array<VariableType, 4> params = { // 4 : 4 input parameters
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
         VariableType::INT32(),
@@ -1446,14 +1464,15 @@ DEF_CALL_SIGNATURE(PGOTypeProfiler)
 DEF_CALL_SIGNATURE(PGOLayoutProfiler)
 {
     // 4: 4 input parameters
-    CallSignature typeProfInstruction("PGOLayoutProfiler", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = typeProfInstruction;
+    CallSignature layoutProfInstruction("PGOLayoutProfiler", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = layoutProfInstruction;
     // 4: 4 input parameters
-    std::array<VariableType, 4> params = {
+    std::array<VariableType, 5> params = { // 5 : 5 input parameters
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
         VariableType::INT32(),
         VariableType::JS_ANY(),
+        VariableType::INT32(),
     };
     callSign->SetVariadicArgs(true);
     callSign->SetParameters(params.data());

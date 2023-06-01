@@ -124,7 +124,7 @@ public:
 
 private:
     Mode mode_ { Mode::TO_TEXT };
-    uint32_t hotnessThreshold_ { 2 };
+    uint32_t hotnessThreshold_ { 1 };
     std::string profInPath_;
     std::string profOutPath_;
 };

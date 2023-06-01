@@ -29,17 +29,11 @@ public:
 
     void Sample(JSTaggedType value, SampleMode mode = SampleMode::CALL_MODE);
     void TypeSample(JSTaggedType func, int32_t offset, uint32_t type);
-    void LayoutSample(JSTaggedType func, int32_t offset, JSTaggedType constructor);
-
-    void Iterate(const RootVisitor &v) const
-    {
-        if (isEnable_) {
-            recordInfos_->Iterate(v);
-        }
-    }
+    void DefineSample(JSTaggedType func, int32_t offset, int32_t methodId);
+    void LayoutSample(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType hclass, bool store);
 
 private:
-    static constexpr uint32_t MERGED_EVERY_COUNT = 10;
+    static constexpr uint32_t MERGED_EVERY_COUNT = 20;
 
     PGOProfiler([[maybe_unused]] EcmaVM *vm, bool isEnable) : isEnable_(isEnable)
     {

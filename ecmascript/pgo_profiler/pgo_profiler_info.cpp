@@ -179,7 +179,8 @@ std::vector<std::string> PGOMethodInfo::ParseFromText(const std::string &infoStr
     return infoStrings;
 }
 
-void PGOMethodTypeSet::Merge(NativeAreaAllocator *allocator, const PGOMethodTypeSet *info)
+void PGOMethodTypeSet::Merge(NativeAreaAllocator *allocator, const PGOMethodTypeSet *info,
+    const CMap<PGOSampleType, CMap<CString, TrackType>> &layoutDescs)
 {
     for (const auto &fromType : info->typeInfoSet_) {
         auto iter = typeInfoSet_.find(fromType);
@@ -191,28 +192,24 @@ void PGOMethodTypeSet::Merge(NativeAreaAllocator *allocator, const PGOMethodType
             typeInfoSet_.emplace(fromType);
         }
     }
+    for (const auto &fromType : info->defineTypeSet_) {
+        AddDefine(fromType.GetOffset(), fromType.GetType());
+    }
     // rebuild layout desc info
     for (auto iter : layoutDescInfos_) {
         allocator->Delete(iter);
     }
     layoutDescInfos_.clear();
-    for (const auto typeInfo : typeInfoSet_) {
-        if (typeInfo.GetType().IsHeapObject()) {
-            auto taggedType = typeInfo.GetType().GetTaggedType();
-            auto constructor = JSFunction::Cast(JSTaggedValue(taggedType).GetTaggedObject());
-            auto protoOrDynclass = constructor->GetProtoOrHClass();
-            if (protoOrDynclass.IsJSHClass()) {
-                auto hclass = JSHClass::Cast(protoOrDynclass.GetTaggedObject());
-                CMap<CString, TrackType> infos;
-                if (!JSHClass::DumpForProfile(hclass, infos)) {
-                    continue;
-                }
-                size_t size = PGOMethodLayoutDescInfos::CaculateSize(infos);
-                void *addr = allocator->Allocate(size);
-                auto descInfos = new (addr) PGOMethodLayoutDescInfos(size, typeInfo.GetOffset());
-                descInfos->Merge(infos);
-                layoutDescInfos_.emplace(descInfos);
-            }
+    for (const auto typeInfo : defineTypeSet_) {
+        ASSERT(typeInfo.GetType().IsClassType());
+        auto classType = typeInfo.GetType();
+        auto iter = layoutDescs.find(classType);
+        if (iter != layoutDescs.end()) {
+            size_t size = PGOMethodLayoutDescInfos::CaculateSize(iter->second);
+            void *addr = allocator->Allocate(size);
+            auto descInfos = new (addr) PGOMethodLayoutDescInfos(size, typeInfo.GetOffset(), typeInfo.GetType());
+            descInfos->Merge(iter->second);
+            layoutDescInfos_.emplace(descInfos);
         }
     }
 }
@@ -230,7 +227,7 @@ bool PGOMethodTypeSet::ProcessToBinary(std::stringstream &stream) const
     uint32_t number = 0;
     std::stringstream methodStream;
     for (auto typeInfo : typeInfoSet_) {
-        if (!typeInfo.GetType().IsHeapObject() && !typeInfo.GetType().IsNone()) {
+        if (!typeInfo.GetType().IsNone()) {
             methodStream.write(reinterpret_cast<char *>(&typeInfo), sizeof(PGOMethodTypeInfo));
             number++;
         }
@@ -277,7 +274,7 @@ void PGOMethodTypeSet::ProcessToText(std::string &text) const
 {
     bool isFirst = true;
     for (auto typeInfoIter : typeInfoSet_) {
-        if (typeInfoIter.GetType().IsHeapObject() || typeInfoIter.GetType().IsNone()) {
+        if (typeInfoIter.GetType().IsNone()) {
             continue;
         }
         if (isFirst) {
@@ -314,6 +311,9 @@ void PGOMethodTypeSet::PGOMethodLayoutDescInfos::ProcessToText(std::string &text
     for (int i = 0; i < count_; i++) {
         if (!isFirst) {
             text += TYPE_SEPARATOR + SPACE;
+        } else {
+            text += GetType().GetTypeString();
+            text += TYPE_SEPARATOR + SPACE;
         }
         isFirst = false;
         text += current->GetKey();
@@ -329,7 +329,7 @@ size_t PGOMethodTypeSet::PGOMethodLayoutDescInfos::CaculateSize(const CMap<CStri
     if (desc.empty()) {
         return 0;
     }
-    size_t size = sizeof(PGOMethodInfoHeader) + sizeof(int32_t);
+    size_t size = sizeof(PGOMethodLayoutDescInfos) - sizeof(PGOLayoutDescInfo);
     for (const auto &iter : desc) {
         auto key = iter.first;
         size += PGOLayoutDescInfo::Size(key.size());
@@ -374,17 +374,57 @@ bool PGOMethodInfoMap::AddMethod(Chunk *chunk, EntityId methodId, const CString 
     }
 }
 
-bool PGOMethodInfoMap::AddType(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type)
+PGOMethodTypeSet *PGOMethodInfoMap::GetOrInsertMethodTypeSet(Chunk *chunk, EntityId methodId)
 {
-    PGOMethodTypeSet *typeInfoSet = nullptr;
     auto typeInfoSetIter = methodTypeInfos_.find(methodId);
     if (typeInfoSetIter != methodTypeInfos_.end()) {
-        typeInfoSet = typeInfoSetIter->second;
+        return typeInfoSetIter->second;
     } else {
-        typeInfoSet = chunk->New<PGOMethodTypeSet>();
+        auto typeInfoSet = chunk->New<PGOMethodTypeSet>();
         methodTypeInfos_.emplace(methodId, typeInfoSet);
+        return typeInfoSet;
     }
+}
+
+bool PGOMethodInfoMap::AddType(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type)
+{
+    auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
+    ASSERT(typeInfoSet != nullptr);
     typeInfoSet->AddType(offset, type);
+    return true;
+}
+
+bool PGOMethodInfoMap::AddDefine(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type)
+{
+    auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
+    ASSERT(typeInfoSet != nullptr);
+    typeInfoSet->AddDefine(offset, type);
+    return true;
+}
+
+bool PGOMethodInfoMap::AddLayout(PGOSampleType type, JSTaggedType hclass)
+{
+    CMap<CString, TrackType> descInfos;
+    auto rootHClass = JSHClass::Cast(JSTaggedValue(hclass).GetTaggedObject());
+    if (!JSHClass::DumpForProfile(rootHClass, descInfos)) {
+        return false;
+    }
+
+    auto iter = globalLayoutDescInfos_.find(type);
+    CMap<CString, TrackType> descInfo;
+    if (iter != globalLayoutDescInfos_.end()) {
+        descInfo = iter->second;
+    }
+    for (const auto &info : descInfos) {
+        if (descInfo.find(info.first) == descInfo.end()) {
+            descInfo.emplace(info.first, info.second);
+        }
+    }
+    if (iter == globalLayoutDescInfos_.end()) {
+        globalLayoutDescInfos_.emplace(type, descInfo);
+    } else {
+        globalLayoutDescInfos_.at(type) = descInfo;
+    }
     return true;
 }
 
@@ -409,6 +449,19 @@ void PGOMethodInfoMap::Merge(Chunk *chunk, NativeAreaAllocator *allocator, PGOMe
         fromMethodInfo->ClearCount();
     }
 
+    // Merge global layout desc infos to global method info map
+    for (auto iter = methodInfos->globalLayoutDescInfos_.begin(); iter != methodInfos->globalLayoutDescInfos_.end();
+         iter++) {
+        auto classType = iter->first;
+        auto result = globalLayoutDescInfos_.find(classType);
+        if (result == globalLayoutDescInfos_.end()) {
+            globalLayoutDescInfos_.emplace(classType, iter->second);
+        } else {
+            auto &toDescInfo = result->second;
+            toDescInfo.insert(iter->second.begin(), iter->second.begin());
+        }
+    }
+
     for (auto iter = methodInfos->methodTypeInfos_.begin(); iter != methodInfos->methodTypeInfos_.end(); iter++) {
         auto methodId = iter->first;
         auto fromTypeInfo = iter->second;
@@ -416,10 +469,10 @@ void PGOMethodInfoMap::Merge(Chunk *chunk, NativeAreaAllocator *allocator, PGOMe
         auto result = methodTypeInfos_.find(methodId);
         if (result != methodTypeInfos_.end()) {
             auto toTypeInfo = result->second;
-            toTypeInfo->Merge(allocator, fromTypeInfo);
+            toTypeInfo->Merge(allocator, fromTypeInfo, globalLayoutDescInfos_);
         } else {
             auto typeInfoSet = chunk->New<PGOMethodTypeSet>();
-            typeInfoSet->Merge(allocator, fromTypeInfo);
+            typeInfoSet->Merge(allocator, fromTypeInfo, globalLayoutDescInfos_);
             methodTypeInfos_.emplace(methodId, typeInfoSet);
         }
     }
@@ -460,7 +513,7 @@ bool PGOMethodInfoMap::ProcessToBinary(uint32_t threshold, const CString &record
                         << ELEMENT_SEPARATOR << std::to_string(static_cast<int>(iter->second->GetSampleMode()))
                         << ELEMENT_SEPARATOR << iter->second->GetMethodName();
         if (task && task->IsTerminate()) {
-            LOG_ECMA(INFO) << "ProcessProfile: task is already terminate";
+            LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
             return false;
         }
         auto curMethodInfo = iter->second;
@@ -606,31 +659,45 @@ bool PGOMethodIdSet::ParseFromBinary(
     return methodIdSet_.size() != 0;
 }
 
+PGOMethodInfoMap *PGORecordDetailInfos::GetMethodInfoMap(const CString &recordName)
+{
+    auto iter = recordInfos_.find(recordName.c_str());
+    if (iter != recordInfos_.end()) {
+        return iter->second;
+    } else {
+        auto curMethodInfos = nativeAreaAllocator_.New<PGOMethodInfoMap>();
+        recordInfos_.emplace(recordName.c_str(), curMethodInfos);
+        return curMethodInfos;
+    }
+}
+
 bool PGORecordDetailInfos::AddMethod(
     const CString &recordName, EntityId methodId, const CString &methodName, SampleMode mode)
 {
-    auto iter = recordInfos_.find(recordName.c_str());
-    PGOMethodInfoMap *curMethodInfos = nullptr;
-    if (iter != recordInfos_.end()) {
-        curMethodInfos = iter->second;
-    } else {
-        curMethodInfos = nativeAreaAllocator_.New<PGOMethodInfoMap>();
-        recordInfos_.emplace(recordName.c_str(), curMethodInfos);
-    }
+    auto curMethodInfos = GetMethodInfoMap(recordName);
+    ASSERT(curMethodInfos != nullptr);
     return curMethodInfos->AddMethod(chunk_.get(), methodId, methodName, mode);
 }
 
 bool PGORecordDetailInfos::AddType(const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type)
 {
-    auto iter = recordInfos_.find(recordName.c_str());
-    PGOMethodInfoMap *curMethodInfos = nullptr;
-    if (iter != recordInfos_.end()) {
-        curMethodInfos = iter->second;
-    } else {
-        curMethodInfos = nativeAreaAllocator_.New<PGOMethodInfoMap>();
-        recordInfos_.emplace(recordName.c_str(), curMethodInfos);
-    }
+    auto curMethodInfos = GetMethodInfoMap(recordName);
+    ASSERT(curMethodInfos != nullptr);
     return curMethodInfos->AddType(chunk_.get(), methodId, offset, type);
+}
+
+bool PGORecordDetailInfos::AddDefine(const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type)
+{
+    auto curMethodInfos = GetMethodInfoMap(recordName);
+    ASSERT(curMethodInfos != nullptr);
+    return curMethodInfos->AddDefine(chunk_.get(), methodId, offset, type);
+}
+
+bool PGORecordDetailInfos::AddLayout(const CString &recordName, PGOSampleType type, JSTaggedType hclass)
+{
+    auto curMethodInfos = GetMethodInfoMap(recordName);
+    ASSERT(curMethodInfos != nullptr);
+    return curMethodInfos->AddLayout(type, hclass);
 }
 
 void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
@@ -672,6 +739,10 @@ void PGORecordDetailInfos::ProcessToBinary(
     info->number_ = 0;
     info->offset_ = static_cast<uint32_t>(fileStream.tellp());
     for (auto iter = recordInfos_.begin(); iter != recordInfos_.end(); iter++) {
+        if (task && task->IsTerminate()) {
+            LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
+            break;
+        }
         auto recordName = iter->first;
         auto curMethodInfos = iter->second;
         if (curMethodInfos->ProcessToBinary(hotnessThreshold_, recordName, task, fileStream, header)) {

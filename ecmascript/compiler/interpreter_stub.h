@@ -18,6 +18,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/bc_call_signature.h"
+#include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/stub_builder.h"
 
@@ -145,9 +146,6 @@ public:
                                  GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
     inline void DispatchDebuggerLast(GateRef glue, GateRef sp, GateRef pc, GateRef constpool,
                                      GateRef profileTypeInfo, GateRef acc, GateRef hotnessCounter);
-    inline void PGOTypeProfiler(GateRef glue, GateRef sp, GateRef pc, GateRef profileTypeInfo, GateRef type);
-    inline void PGOLayoutProfiler(GateRef glue, GateRef sp, GateRef pc, GateRef hclass);
-    inline void PGOFuncProfiler(GateRef glue, GateRef func);
 
     template <bool needPrint>
     void DebugPrintInstruction();

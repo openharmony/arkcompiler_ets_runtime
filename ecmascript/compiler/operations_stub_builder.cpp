@@ -141,7 +141,7 @@ GateRef OperationsStubBuilder::Less(GateRef glue, GateRef left, GateRef right, P
         Branch(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
         Bind(&rightIsInt);
         {
-            TYPE_CALL_BACK(PGOSampleType::Type::INT)
+            callback.ProfileOpType(Int32(PGOSampleType::IntType()));
             GateRef intLeft = TaggedGetInt(left);
             GateRef intRight = TaggedGetInt(right);
             Branch(Int32LessThan(intLeft, intRight), &leftLessRight, &leftNotLessRight);
@@ -166,7 +166,7 @@ GateRef OperationsStubBuilder::Less(GateRef glue, GateRef left, GateRef right, P
                 Label exit2(env);
                 Label rightIsInt1(env);
                 Label rightNotInt1(env);
-                PGOSampleType::Type curType = PGOSampleType::Type::INT;
+                int32_t curType = PGOSampleType::IntType();
                 Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
                 Bind(&leftIsInt1);
                 {
@@ -175,7 +175,7 @@ GateRef OperationsStubBuilder::Less(GateRef glue, GateRef left, GateRef right, P
                 }
                 Bind(&leftNotInt1);
                 {
-                    curType = PGOSampleType::Type::DOUBLE;
+                    curType = PGOSampleType::DoubleType();
                     doubleLeft = GetDoubleOfTDouble(left);
                     Jump(&exit1);
                 }
@@ -185,13 +185,15 @@ GateRef OperationsStubBuilder::Less(GateRef glue, GateRef left, GateRef right, P
                 }
                 Bind(&rightIsInt1);
                 {
-                    COMBINE_TYPE_CALL_BACK(curType, PGOSampleType::Type::INT)
+                    int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::IntType());
+                    callback.ProfileOpType(Int32(type));
                     doubleRight = ChangeInt32ToFloat64(TaggedGetInt(right));
                     Jump(&exit2);
                 }
                 Bind(&rightNotInt1);
                 {
-                    COMBINE_TYPE_CALL_BACK(curType, PGOSampleType::Type::DOUBLE)
+                    int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::DoubleType());
+                    callback.ProfileOpType(Int32(type));
                     doubleRight = GetDoubleOfTDouble(right);
                     Jump(&exit2);
                 }
@@ -214,7 +216,7 @@ GateRef OperationsStubBuilder::Less(GateRef glue, GateRef left, GateRef right, P
     }
     Bind(&slowPath);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY)
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Less), { left, right });
         Jump(&exit);
     }
@@ -244,7 +246,7 @@ GateRef OperationsStubBuilder::LessEq(GateRef glue, GateRef left, GateRef right,
         Branch(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
         Bind(&rightIsInt);
         {
-            TYPE_CALL_BACK(PGOSampleType::Type::INT)
+            callback.ProfileOpType(Int32(PGOSampleType::IntType()));
             GateRef intLeft = TaggedGetInt(left);
             GateRef intRight = TaggedGetInt(right);
             Branch(Int32LessThanOrEqual(intLeft, intRight), &leftLessEqRight, &leftNotLessEqRight);
@@ -269,7 +271,7 @@ GateRef OperationsStubBuilder::LessEq(GateRef glue, GateRef left, GateRef right,
                 Label exit2(env);
                 Label rightIsInt1(env);
                 Label rightNotInt1(env);
-                PGOSampleType::Type curType = PGOSampleType::Type::INT;
+                int32_t curType = PGOSampleType::IntType();
                 Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
                 Bind(&leftIsInt1);
                 {
@@ -278,7 +280,7 @@ GateRef OperationsStubBuilder::LessEq(GateRef glue, GateRef left, GateRef right,
                 }
                 Bind(&leftNotInt1);
                 {
-                    curType = PGOSampleType::Type::DOUBLE;
+                    curType = PGOSampleType::DoubleType();
                     doubleLeft = GetDoubleOfTDouble(left);
                     Jump(&exit1);
                 }
@@ -288,13 +290,15 @@ GateRef OperationsStubBuilder::LessEq(GateRef glue, GateRef left, GateRef right,
                 }
                 Bind(&rightIsInt1);
                 {
-                    COMBINE_TYPE_CALL_BACK(curType, PGOSampleType::Type::INT)
+                    int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::IntType());
+                    callback.ProfileOpType(Int32(type));
                     doubleRight = ChangeInt32ToFloat64(TaggedGetInt(right));
                     Jump(&exit2);
                 }
                 Bind(&rightNotInt1);
                 {
-                    COMBINE_TYPE_CALL_BACK(curType, PGOSampleType::Type::DOUBLE)
+                    int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::DoubleType());
+                    callback.ProfileOpType(Int32(type));
                     doubleRight = GetDoubleOfTDouble(right);
                     Jump(&exit2);
                 }
@@ -317,7 +321,7 @@ GateRef OperationsStubBuilder::LessEq(GateRef glue, GateRef left, GateRef right,
     }
     Bind(&slowPath);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY)
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(LessEq), { left, right });
         Jump(&exit);
     }
@@ -346,7 +350,7 @@ GateRef OperationsStubBuilder::Greater(GateRef glue, GateRef left, GateRef right
         Branch(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
         Bind(&rightIsInt);
         {
-            TYPE_CALL_BACK(PGOSampleType::Type::INT)
+            callback.ProfileOpType(Int32(PGOSampleType::IntType()));
             GateRef intLeft = TaggedGetInt(left);
             GateRef intRight = TaggedGetInt(right);
             Branch(Int32GreaterThan(intLeft, intRight), &leftGreaterRight, &leftNotGreaterRight);
@@ -371,7 +375,7 @@ GateRef OperationsStubBuilder::Greater(GateRef glue, GateRef left, GateRef right
                 Label exit2(env);
                 Label rightIsInt1(env);
                 Label rightNotInt1(env);
-                PGOSampleType::Type curType = PGOSampleType::Type::INT;
+                int32_t curType = PGOSampleType::IntType();
                 Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
                 Bind(&leftIsInt1);
                 {
@@ -380,7 +384,7 @@ GateRef OperationsStubBuilder::Greater(GateRef glue, GateRef left, GateRef right
                 }
                 Bind(&leftNotInt1);
                 {
-                    curType = PGOSampleType::Type::DOUBLE;
+                    curType = PGOSampleType::DoubleType();
                     doubleLeft = GetDoubleOfTDouble(left);
                     Jump(&exit1);
                 }
@@ -390,13 +394,15 @@ GateRef OperationsStubBuilder::Greater(GateRef glue, GateRef left, GateRef right
                 }
                 Bind(&rightIsInt1);
                 {
-                    COMBINE_TYPE_CALL_BACK(curType, PGOSampleType::Type::INT)
+                    int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::IntType());
+                    callback.ProfileOpType(Int32(type));
                     doubleRight = ChangeInt32ToFloat64(TaggedGetInt(right));
                     Jump(&exit2);
                 }
                 Bind(&rightNotInt1);
                 {
-                    COMBINE_TYPE_CALL_BACK(curType, PGOSampleType::Type::DOUBLE)
+                    int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::DoubleType());
+                    callback.ProfileOpType(Int32(type));
                     doubleRight = GetDoubleOfTDouble(right);
                     Jump(&exit2);
                 }
@@ -419,7 +425,7 @@ GateRef OperationsStubBuilder::Greater(GateRef glue, GateRef left, GateRef right
     }
     Bind(&slowPath);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY)
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Greater), { left, right });
         Jump(&exit);
     }
@@ -448,7 +454,7 @@ GateRef OperationsStubBuilder::GreaterEq(GateRef glue, GateRef left, GateRef rig
         Branch(TaggedIsInt(right), &rightIsInt, &leftOrRightNotInt);
         Bind(&rightIsInt);
         {
-            TYPE_CALL_BACK(PGOSampleType::Type::INT)
+            callback.ProfileOpType(Int32(PGOSampleType::IntType()));
             GateRef intLeft = TaggedGetInt(left);
             GateRef intRight = TaggedGetInt(right);
             Branch(Int32GreaterThanOrEqual(intLeft, intRight), &leftGreaterEqRight, &leftNotGreaterEQRight);
@@ -473,7 +479,7 @@ GateRef OperationsStubBuilder::GreaterEq(GateRef glue, GateRef left, GateRef rig
                 Label exit2(env);
                 Label rightIsInt1(env);
                 Label rightNotInt1(env);
-                PGOSampleType::Type curType = PGOSampleType::Type::INT;
+                int32_t curType = PGOSampleType::IntType();
                 Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
                 Bind(&leftIsInt1);
                 {
@@ -482,7 +488,7 @@ GateRef OperationsStubBuilder::GreaterEq(GateRef glue, GateRef left, GateRef rig
                 }
                 Bind(&leftNotInt1);
                 {
-                    curType = PGOSampleType::Type::DOUBLE;
+                    curType = PGOSampleType::DoubleType();
                     doubleLeft = GetDoubleOfTDouble(left);
                     Jump(&exit1);
                 }
@@ -492,13 +498,15 @@ GateRef OperationsStubBuilder::GreaterEq(GateRef glue, GateRef left, GateRef rig
                 }
                 Bind(&rightIsInt1);
                 {
-                    COMBINE_TYPE_CALL_BACK(curType, PGOSampleType::Type::INT);
+                    int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::IntType());
+                    callback.ProfileOpType(Int32(type));
                     doubleRight = ChangeInt32ToFloat64(TaggedGetInt(right));
                     Jump(&exit2);
                 }
                 Bind(&rightNotInt1);
                 {
-                    COMBINE_TYPE_CALL_BACK(curType, PGOSampleType::Type::DOUBLE);
+                    int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::DoubleType());
+                    callback.ProfileOpType(Int32(type));
                     doubleRight = GetDoubleOfTDouble(right);
                     Jump(&exit2);
                 }
@@ -522,7 +530,7 @@ GateRef OperationsStubBuilder::GreaterEq(GateRef glue, GateRef left, GateRef rig
     }
     Bind(&slowPath);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY)
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(GreaterEq), { left, right });
         Jump(&exit);
     }
@@ -543,7 +551,7 @@ GateRef OperationsStubBuilder::Add(GateRef glue, GateRef left, GateRef right, Pr
     Branch(TaggedIsHole(*result), &slowPath, &exit);
     Bind(&slowPath);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY)
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Add2), { left, right });
         Jump(&exit);
     }
@@ -564,7 +572,7 @@ GateRef OperationsStubBuilder::Sub(GateRef glue, GateRef left, GateRef right, Pr
     Branch(TaggedIsHole(*result), &slowPath, &exit);
     Bind(&slowPath);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY)
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Sub2), { left, right });
         Jump(&exit);
     }
@@ -585,7 +593,7 @@ GateRef OperationsStubBuilder::Mul(GateRef glue, GateRef left, GateRef right, Pr
     Branch(TaggedIsHole(*result), &slowPath, &exit);
     Bind(&slowPath);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY)
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Mul2), { left, right });
         Jump(&exit);
     }
@@ -606,7 +614,7 @@ GateRef OperationsStubBuilder::Div(GateRef glue, GateRef left, GateRef right, Pr
     Branch(TaggedIsHole(*result), &slowPath, &exit);
     Bind(&slowPath);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY)
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Div2), { left, right });
         Jump(&exit);
     }
@@ -627,7 +635,7 @@ GateRef OperationsStubBuilder::Mod(GateRef glue, GateRef left, GateRef right, Pr
     Branch(TaggedIsHole(*result), &slowPath, &exit);
     Bind(&slowPath);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY)
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Mod2), { left, right });
         Jump(&exit);
     }
@@ -668,14 +676,14 @@ GateRef OperationsStubBuilder::Shl(GateRef glue, GateRef left, GateRef right, Pr
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::INT);
+                    callback.ProfileOpType(Int32(PGOSampleType::IntType()));
                     opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = GetInt32OfTInt(right);
                     Jump(&calculate);
                 }
                 Bind(&rightIsDouble);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::NUMBER);
+                    callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
                     GateRef rightDouble = GetDoubleOfTDouble(right);
                     opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = DoubleToInt(glue, rightDouble);
@@ -689,7 +697,7 @@ GateRef OperationsStubBuilder::Shl(GateRef glue, GateRef left, GateRef right, Pr
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::NUMBER);
+                    callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
                     GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
                     opNumber1 = GetInt32OfTInt(right);
@@ -697,7 +705,7 @@ GateRef OperationsStubBuilder::Shl(GateRef glue, GateRef left, GateRef right, Pr
                 }
                 Bind(&rightIsDouble);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::DOUBLE);
+                    callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
                     GateRef rightDouble = GetDoubleOfTDouble(right);
                     GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
@@ -710,7 +718,7 @@ GateRef OperationsStubBuilder::Shl(GateRef glue, GateRef left, GateRef right, Pr
     // slow path
     Bind(&leftNotNumberOrRightNotNumber);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY);
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Shl2), { left, right });
         Jump(&exit);
     }
@@ -743,7 +751,7 @@ GateRef OperationsStubBuilder::Shr(GateRef glue, GateRef left, GateRef right, Pr
     Label notOverflow(env);
     Label leftIsNumber(env);
     Label leftNotNumberOrRightNotNumber(env);
-    PGOSampleType::Type curType;
+    int32_t curType;
     Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
     Bind(&leftIsNumber);
     {
@@ -761,14 +769,14 @@ GateRef OperationsStubBuilder::Shr(GateRef glue, GateRef left, GateRef right, Pr
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    curType = PGOSampleType::Type::INT;
+                    curType = PGOSampleType::IntType();
                     opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = GetInt32OfTInt(right);
                     Jump(&doShr);
                 }
                 Bind(&rightIsDouble);
                 {
-                    curType = PGOSampleType::Type::NUMBER;
+                    curType = PGOSampleType::NumberType();
                     GateRef rightDouble = GetDoubleOfTDouble(right);
                     opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = DoubleToInt(glue, rightDouble);
@@ -782,7 +790,7 @@ GateRef OperationsStubBuilder::Shr(GateRef glue, GateRef left, GateRef right, Pr
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    curType = PGOSampleType::Type::NUMBER;
+                    curType = PGOSampleType::NumberType();
                     GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
                     opNumber1 = GetInt32OfTInt(right);
@@ -790,7 +798,7 @@ GateRef OperationsStubBuilder::Shr(GateRef glue, GateRef left, GateRef right, Pr
                 }
                 Bind(&rightIsDouble);
                 {
-                    curType = PGOSampleType::Type::DOUBLE;
+                    curType = PGOSampleType::DoubleType();
                     GateRef rightDouble = GetDoubleOfTDouble(right);
                     GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
@@ -803,7 +811,7 @@ GateRef OperationsStubBuilder::Shr(GateRef glue, GateRef left, GateRef right, Pr
     // slow path
     Bind(&leftNotNumberOrRightNotNumber);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY);
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Shr2), { left, right });
         Jump(&exit);
     }
@@ -815,13 +823,13 @@ GateRef OperationsStubBuilder::Shr(GateRef glue, GateRef left, GateRef right, Pr
         Branch(condition, &overflow, &notOverflow);
         Bind(&overflow);
         {
-            TYPE_CALL_BACK(PGOSampleType::Type::INT_OVERFLOW);
+            callback.ProfileOpType(Int32(PGOSampleType::IntOverFlowType()));
             result = DoubleToTaggedDoublePtr(ChangeUInt32ToFloat64(val));
             Jump(&exit);
         }
         Bind(&notOverflow);
         {
-            TYPE_CALL_BACK(curType);
+            callback.ProfileOpType(Int32(curType));
             result = IntToTaggedPtr(val);
             Jump(&exit);
         }
@@ -863,14 +871,14 @@ GateRef OperationsStubBuilder::Ashr(GateRef glue, GateRef left, GateRef right, P
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::INT);
+                    callback.ProfileOpType(Int32(PGOSampleType::IntType()));
                     opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = GetInt32OfTInt(right);
                     Jump(&calculate);
                 }
                 Bind(&rightIsDouble);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::NUMBER);
+                    callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
                     GateRef rightDouble = GetDoubleOfTDouble(right);
                     opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = DoubleToInt(glue, rightDouble);
@@ -884,7 +892,7 @@ GateRef OperationsStubBuilder::Ashr(GateRef glue, GateRef left, GateRef right, P
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::NUMBER);
+                    callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
                     GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
                     opNumber1 = GetInt32OfTInt(right);
@@ -892,7 +900,7 @@ GateRef OperationsStubBuilder::Ashr(GateRef glue, GateRef left, GateRef right, P
                 }
                 Bind(&rightIsDouble);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::DOUBLE);
+                    callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
                     GateRef rightDouble = GetDoubleOfTDouble(right);
                     GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
@@ -905,7 +913,7 @@ GateRef OperationsStubBuilder::Ashr(GateRef glue, GateRef left, GateRef right, P
     // slow path
     Bind(&leftNotNumberOrRightNotNumber);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY);
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Ashr2), { left, right });
         Jump(&exit);
     }
@@ -953,14 +961,14 @@ GateRef OperationsStubBuilder::And(GateRef glue, GateRef left, GateRef right, Pr
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::INT);
+                    callback.ProfileOpType(Int32(PGOSampleType::IntType()));
                     opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = GetInt32OfTInt(right);
                     Jump(&calculate);
                 }
                 Bind(&rightIsDouble);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::NUMBER);
+                    callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
                     opNumber0 = GetInt32OfTInt(left);
                     GateRef rightDouble = GetDoubleOfTDouble(right);
                     opNumber1 = DoubleToInt(glue, rightDouble);
@@ -974,7 +982,7 @@ GateRef OperationsStubBuilder::And(GateRef glue, GateRef left, GateRef right, Pr
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::NUMBER);
+                    callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
                     GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
                     opNumber1 = GetInt32OfTInt(right);
@@ -982,7 +990,7 @@ GateRef OperationsStubBuilder::And(GateRef glue, GateRef left, GateRef right, Pr
                 }
                 Bind(&rightIsDouble);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::DOUBLE);
+                    callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
                     GateRef rightDouble = GetDoubleOfTDouble(right);
                     GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
@@ -995,7 +1003,7 @@ GateRef OperationsStubBuilder::And(GateRef glue, GateRef left, GateRef right, Pr
     // slow path
     Bind(&leftNotNumberOrRightNotNumber);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY);
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(And2), { left, right });
         Jump(&exit);
     }
@@ -1042,14 +1050,14 @@ GateRef OperationsStubBuilder::Or(GateRef glue, GateRef left, GateRef right, Pro
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::INT);
+                    callback.ProfileOpType(Int32(PGOSampleType::IntType()));
                     opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = GetInt32OfTInt(right);
                     Jump(&calculate);
                 }
                 Bind(&rightIsDouble);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::NUMBER);
+                    callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
                     GateRef rightDouble = GetDoubleOfTDouble(right);
                     opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = DoubleToInt(glue, rightDouble);
@@ -1063,7 +1071,7 @@ GateRef OperationsStubBuilder::Or(GateRef glue, GateRef left, GateRef right, Pro
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::NUMBER);
+                    callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
                     GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
                     opNumber1 = GetInt32OfTInt(right);
@@ -1071,7 +1079,7 @@ GateRef OperationsStubBuilder::Or(GateRef glue, GateRef left, GateRef right, Pro
                 }
                 Bind(&rightIsDouble);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::DOUBLE);
+                    callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
                     GateRef rightDouble = GetDoubleOfTDouble(right);
                     GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
@@ -1084,7 +1092,7 @@ GateRef OperationsStubBuilder::Or(GateRef glue, GateRef left, GateRef right, Pro
     // slow path
     Bind(&leftNotNumberOrRightNotNumber);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY);
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Or2), { left, right });
         Jump(&exit);
     }
@@ -1131,14 +1139,14 @@ GateRef OperationsStubBuilder::Xor(GateRef glue, GateRef left, GateRef right, Pr
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::INT);
+                    callback.ProfileOpType(Int32(PGOSampleType::IntType()));
                     opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = GetInt32OfTInt(right);
                     Jump(&calculate);
                 }
                 Bind(&rightIsDouble);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::NUMBER);
+                    callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
                     GateRef rightDouble = GetDoubleOfTDouble(right);
                     opNumber0 = GetInt32OfTInt(left);
                     opNumber1 = DoubleToInt(glue, rightDouble);
@@ -1152,7 +1160,7 @@ GateRef OperationsStubBuilder::Xor(GateRef glue, GateRef left, GateRef right, Pr
                 Branch(TaggedIsInt(right), &rightIsInt, &rightIsDouble);
                 Bind(&rightIsInt);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::NUMBER);
+                    callback.ProfileOpType(Int32(PGOSampleType::NumberType()));
                     GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
                     opNumber1 = GetInt32OfTInt(right);
@@ -1160,7 +1168,7 @@ GateRef OperationsStubBuilder::Xor(GateRef glue, GateRef left, GateRef right, Pr
                 }
                 Bind(&rightIsDouble);
                 {
-                    TYPE_CALL_BACK(PGOSampleType::Type::DOUBLE);
+                    callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
                     GateRef rightDouble = GetDoubleOfTDouble(right);
                     GateRef leftDouble = GetDoubleOfTDouble(left);
                     opNumber0 = DoubleToInt(glue, leftDouble);
@@ -1173,7 +1181,7 @@ GateRef OperationsStubBuilder::Xor(GateRef glue, GateRef left, GateRef right, Pr
     // slow path
     Bind(&leftNotNumberOrRightNotNumber);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY);
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Xor2), { left, right });
         Jump(&exit);
     }
@@ -1208,7 +1216,7 @@ GateRef OperationsStubBuilder::Inc(GateRef glue, GateRef value, ProfileOperation
         Branch(Int32Equal(valueInt, Int32(INT32_MAX)), &valueNotInt, &valueNoOverflow);
         Bind(&valueNoOverflow);
         {
-            TYPE_CALL_BACK(PGOSampleType::Type::INT);
+            callback.ProfileOpType(Int32(PGOSampleType::IntType()));
             result = IntToTaggedPtr(Int32Add(valueInt, Int32(1)));
             Jump(&exit);
         }
@@ -1219,7 +1227,7 @@ GateRef OperationsStubBuilder::Inc(GateRef glue, GateRef value, ProfileOperation
         Branch(TaggedIsDouble(value), &valueIsDouble, &slowPath);
         Bind(&valueIsDouble);
         {
-            TYPE_CALL_BACK(PGOSampleType::Type::DOUBLE);
+            callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
             GateRef valueDouble = GetDoubleOfTDouble(value);
             result = DoubleToTaggedDoublePtr(DoubleAdd(valueDouble, Double(1.0)));
             Jump(&exit);
@@ -1227,7 +1235,7 @@ GateRef OperationsStubBuilder::Inc(GateRef glue, GateRef value, ProfileOperation
     }
     Bind(&slowPath);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY);
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Inc), { value });
         Jump(&exit);
     }
@@ -1256,7 +1264,7 @@ GateRef OperationsStubBuilder::Dec(GateRef glue, GateRef value, ProfileOperation
         Branch(Int32Equal(valueInt, Int32(INT32_MIN)), &valueNotInt, &valueNoOverflow);
         Bind(&valueNoOverflow);
         {
-            TYPE_CALL_BACK(PGOSampleType::Type::INT);
+            callback.ProfileOpType(Int32(PGOSampleType::IntType()));
             result = IntToTaggedPtr(Int32Sub(valueInt, Int32(1)));
             Jump(&exit);
         }
@@ -1267,7 +1275,7 @@ GateRef OperationsStubBuilder::Dec(GateRef glue, GateRef value, ProfileOperation
         Branch(TaggedIsDouble(value), &valueIsDouble, &slowPath);
         Bind(&valueIsDouble);
         {
-            TYPE_CALL_BACK(PGOSampleType::Type::DOUBLE);
+            callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
             GateRef valueDouble = GetDoubleOfTDouble(value);
             result = DoubleToTaggedDoublePtr(DoubleSub(valueDouble, Double(1.0)));
             Jump(&exit);
@@ -1275,7 +1283,7 @@ GateRef OperationsStubBuilder::Dec(GateRef glue, GateRef value, ProfileOperation
     }
     Bind(&slowPath);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::ANY);
+        callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
         result = CallRuntime(glue, RTSTUB_ID(Dec), { value });
         Jump(&exit);
     }
@@ -1305,7 +1313,7 @@ GateRef OperationsStubBuilder::Neg(GateRef glue, GateRef value, ProfileOperation
         Branch(Int32Equal(valueInt, Int32(0)), &valueIsZero, &valueNotZero);
         Bind(&valueIsZero);
         {
-            TYPE_CALL_BACK(PGOSampleType::Type::INT_OVERFLOW);
+            callback.ProfileOpType(Int32(PGOSampleType::IntOverFlowType()));
             result = DoubleToTaggedDoublePtr(Double(-0.0));
             Jump(&exit);
         }
@@ -1316,13 +1324,13 @@ GateRef OperationsStubBuilder::Neg(GateRef glue, GateRef value, ProfileOperation
             Branch(Int32Equal(valueInt, Int32(INT32_MIN)), &valueIsInt32Min, &valueNotInt32Min);
             Bind(&valueIsInt32Min);
             {
-                TYPE_CALL_BACK(PGOSampleType::Type::INT_OVERFLOW);
+                callback.ProfileOpType(Int32(PGOSampleType::IntOverFlowType()));
                 result = DoubleToTaggedDoublePtr(Double(-static_cast<double>(INT32_MIN)));
                 Jump(&exit);
             }
             Bind(&valueNotInt32Min);
             {
-                TYPE_CALL_BACK(PGOSampleType::Type::INT);
+                callback.ProfileOpType(Int32(PGOSampleType::IntType()));
                 result = IntToTaggedPtr(Int32Sub(Int32(0), valueInt));
                 Jump(&exit);
             }
@@ -1335,7 +1343,7 @@ GateRef OperationsStubBuilder::Neg(GateRef glue, GateRef value, ProfileOperation
         Branch(TaggedIsDouble(value), &valueIsDouble, &valueNotDouble);
         Bind(&valueIsDouble);
         {
-            TYPE_CALL_BACK(PGOSampleType::Type::DOUBLE);
+            callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
             GateRef valueDouble = GetDoubleOfTDouble(value);
             result = DoubleToTaggedDoublePtr(DoubleSub(Double(0), valueDouble));
             Jump(&exit);
@@ -1343,7 +1351,7 @@ GateRef OperationsStubBuilder::Neg(GateRef glue, GateRef value, ProfileOperation
         Bind(&valueNotDouble);
         {
             // slow path
-            TYPE_CALL_BACK(PGOSampleType::Type::ANY);
+            callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
             result = CallRuntime(glue, RTSTUB_ID(Neg), { value });
             Jump(&exit);
         }
@@ -1367,7 +1375,7 @@ GateRef OperationsStubBuilder::Not(GateRef glue, GateRef value, ProfileOperation
     Branch(TaggedIsInt(value), &numberIsInt, &numberNotInt);
     Bind(&numberIsInt);
     {
-        TYPE_CALL_BACK(PGOSampleType::Type::INT);
+        callback.ProfileOpType(Int32(PGOSampleType::IntType()));
         GateRef valueInt = GetInt32OfTInt(value);
         result = IntToTaggedPtr(Int32Not(valueInt));
         Jump(&exit);
@@ -1379,7 +1387,7 @@ GateRef OperationsStubBuilder::Not(GateRef glue, GateRef value, ProfileOperation
         Branch(TaggedIsDouble(value), &numberIsDouble, &numberNotDouble);
         Bind(&numberIsDouble);
         {
-            TYPE_CALL_BACK(PGOSampleType::Type::DOUBLE);
+            callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
             GateRef valueDouble = GetDoubleOfTDouble(value);
             result = IntToTaggedPtr(Int32Not(DoubleToInt(glue, valueDouble)));
             Jump(&exit);
@@ -1387,7 +1395,7 @@ GateRef OperationsStubBuilder::Not(GateRef glue, GateRef value, ProfileOperation
         Bind(&numberNotDouble);
         {
             // slow path
-            TYPE_CALL_BACK(PGOSampleType::Type::ANY);
+            callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
             result = CallRuntime(glue, RTSTUB_ID(Not), { value });
             Jump(&exit);
         }

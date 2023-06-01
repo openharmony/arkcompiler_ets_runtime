@@ -27,7 +27,7 @@ public:
     void GenerateCircuit() override {}
 
     void SetParameters(GateRef glue, GateRef receiver, GateRef profileTypeInfo,
-        GateRef value, GateRef slotId, ProfileOperation callback = nullptr)
+        GateRef value, GateRef slotId, ProfileOperation callback = ProfileOperation())
     {
         glue_ = glue;
         receiver_ = receiver;
@@ -38,7 +38,7 @@ public:
     }
 
     void SetParameters(GateRef glue, GateRef receiver, GateRef profileTypeInfo,
-        GateRef value, GateRef slotId, GateRef propKey, ProfileOperation callback = nullptr)
+        GateRef value, GateRef slotId, GateRef propKey, ProfileOperation callback = ProfileOperation())
     {
         SetParameters(glue, receiver, profileTypeInfo, value, slotId, callback);
         propKey_ = propKey;
@@ -66,7 +66,7 @@ private:
     GateRef value_ {0};
     GateRef slotId_ {0};
     GateRef propKey_ {0};
-    ProfileOperation callback_ {nullptr};
+    ProfileOperation callback_;
 
     Label *tryFastPath_ {nullptr};
     Label *slowPath_ {nullptr};

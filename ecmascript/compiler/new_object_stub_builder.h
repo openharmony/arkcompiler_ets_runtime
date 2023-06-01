@@ -15,6 +15,7 @@
 
 #ifndef ECMASCRIPT_COMPILER_NEW_OBJECT_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_NEW_OBJECT_STUB_BUILDER_H
+
 #include "ecmascript/compiler/stub_builder.h"
 
 namespace panda::ecmascript::kungfu {

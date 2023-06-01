@@ -23,6 +23,30 @@
 #include "ecmascript/property_attributes.h"
 
 namespace panda::ecmascript {
+class ClassType {
+public:
+    ClassType() = default;
+    explicit ClassType(int32_t type) : type_(type) {}
+
+    int32_t GetClassType() const
+    {
+        return type_;
+    }
+
+    bool operator<(const ClassType &right) const
+    {
+        return type_ < right.type_;
+    }
+
+    bool operator!=(const ClassType &right) const
+    {
+        return type_ != right.type_;
+    }
+
+private:
+    int32_t type_ { 0 };
+};
+
 class PGOType {
 public:
     enum class TypeKind : uint8_t {
@@ -75,11 +99,76 @@ public:
 
     explicit PGOSampleType(Type type) : type_(type) {};
     explicit PGOSampleType(uint32_t type) : type_(Type(type)) {};
-    explicit PGOSampleType(JSTaggedType type) : type_(type) {}
+    explicit PGOSampleType(ClassType type) : type_(type) {}
+
+    static PGOSampleType CreateClassType(int32_t classType)
+    {
+        return PGOSampleType(ClassType(classType));
+    }
 
     static PGOSampleType NoneType()
     {
         return PGOSampleType(Type::NONE);
+    }
+
+    static int32_t AnyType()
+    {
+        return static_cast<int32_t>(Type::ANY);
+    }
+
+    static int32_t IntType()
+    {
+        return static_cast<int32_t>(Type::INT);
+    }
+
+    static int32_t IntOverFlowType()
+    {
+        return static_cast<int32_t>(Type::INT_OVERFLOW);
+    }
+
+    static int32_t DoubleType()
+    {
+        return static_cast<int32_t>(Type::DOUBLE);
+    }
+
+    static int32_t NumberType()
+    {
+        return static_cast<int32_t>(Type::NUMBER);
+    }
+
+    static int32_t HeapObjectType()
+    {
+        return static_cast<int32_t>(Type::HEAP_OBJECT);
+    }
+
+    static int32_t UndefineOrNullType()
+    {
+        return static_cast<int32_t>(Type::UNDEFINED_OR_NULL);
+    }
+
+    static int32_t BooleanType()
+    {
+        return static_cast<int32_t>(Type::BOOLEAN);
+    }
+
+    static int32_t StringType()
+    {
+        return static_cast<int32_t>(Type::STRING);
+    }
+
+    static int32_t BigIntType()
+    {
+        return static_cast<int32_t>(Type::BIG_INT);
+    }
+
+    static int32_t SpecialType()
+    {
+        return static_cast<int32_t>(Type::SPECIAL);
+    }
+
+    static int32_t CombineType(int32_t curType, int32_t newType)
+    {
+        return static_cast<int32_t>(curType) | static_cast<int32_t>(newType);
     }
 
     PGOSampleType CombineType(PGOSampleType type)
@@ -103,19 +192,19 @@ public:
         if (type_.index() == 0) {
             return std::to_string(static_cast<uint32_t>(std::get<Type>(type_)));
         } else {
-            return std::to_string(static_cast<uint32_t>(std::get<JSTaggedType>(type_)));
+            return std::to_string(std::get<ClassType>(type_).GetClassType());
         }
     }
 
-    bool IsHeapObject() const
+    bool IsClassType() const
     {
         return type_.index() == 1;
     }
 
-    JSTaggedType GetTaggedType() const
+    ClassType GetClassType() const
     {
-        ASSERT(IsHeapObject());
-        return std::get<JSTaggedType>(type_);
+        ASSERT(IsClassType());
+        return std::get<ClassType>(type_);
     }
 
     bool IsAny() const
@@ -160,13 +249,24 @@ public:
         }
     }
 
+    bool operator<(const PGOSampleType &right) const
+    {
+        return type_ < right.type_;
+    }
+
+    bool operator!=(const PGOSampleType &right) const
+    {
+        return type_ != right.type_;
+    }
+
 private:
-    std::variant<Type, JSTaggedType> type_;
+    std::variant<Type, ClassType> type_;
 };
 
 class PGOSampleLayoutDesc : public PGOType {
 public:
-    PGOSampleLayoutDesc() : PGOType(TypeKind::LAYOUT_DESC) {}
+    PGOSampleLayoutDesc() = default;
+    explicit PGOSampleLayoutDesc(ClassType type) : PGOType(TypeKind::LAYOUT_DESC), type_(type) {}
 
     void AddKeyAndDesc(const char *key, TrackType rep)
     {
@@ -183,6 +283,7 @@ public:
     }
 
 private:
+    ClassType type_;
     std::unordered_map<CString, TrackType> layoutDesc_;
 };
 } // namespace panda::ecmascript

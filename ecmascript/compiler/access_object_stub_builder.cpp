@@ -21,7 +21,7 @@
 
 namespace panda::ecmascript::kungfu {
 GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, GateRef prop, const StringIdInfo &info,
-                                               GateRef profileTypeInfo, GateRef slotId)
+                                               GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -39,13 +39,20 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = GetPropertyByName(glue, receiver, propKey);
-        Branch(TaggedIsHole(*result), &slowPath, &exit);
+        Label notHole(env);
+        Branch(TaggedIsHole(*result), &slowPath, &notHole);
+        Bind(&notHole);
+        {
+            callback.ProfileObjLayoutByLoad(receiver);
+            Jump(&exit);
+        }
     }
     Bind(&slowPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
                              { profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId) });
+        callback.ProfileObjLayoutByLoad(receiver);
         Jump(&exit);
     }
     Bind(&exit);
@@ -109,6 +116,7 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = CallRuntime(glue, RTSTUB_ID(StoreICByName),
             { profileTypeInfo, receiver, propKey, value, IntToTaggedInt(slotId) });
+        callback.ProfileObjLayoutByStore(receiver);
         Jump(&exit);
     }
 
