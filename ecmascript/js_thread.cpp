@@ -540,54 +540,40 @@ size_t JSThread::GetAsmStackLimit()
     void *stackAddr = nullptr;
     size_t size = 0;
     ret = pthread_attr_getstack(&attr, &stackAddr, &size);
+    if (pthread_attr_destroy(&attr) != 0) {
+        LOG_ECMA(ERROR) << "Destroy current thread attr failed";
+    }
     if (ret != 0) {
         LOG_ECMA(ERROR) << "Get current thread stack size failed";
-        if (pthread_attr_destroy(&attr) != 0) {
-            LOG_ECMA(ERROR) << "Destroy current thread attr failed";
-        }
         return result;
     }
 
     bool isMainThread = IsMainThread();
-    struct rlimit rl;
+    uintptr_t threadStackLimit = reinterpret_cast<uintptr_t>(stackAddr);
+    uintptr_t threadStackStart = threadStackLimit + size;
     if (isMainThread) {
+        struct rlimit rl;
         ret = getrlimit(RLIMIT_STACK, &rl);
         if (ret != 0) {
             LOG_ECMA(ERROR) << "Get current thread stack size failed";
-            if (pthread_attr_destroy(&attr) != 0) {
-                LOG_ECMA(ERROR) << "Destroy current thread attr failed";
-            }
             return result;
         }
-        if (rl.rlim_cur == RLIM_INFINITY) {
+        if (rl.rlim_cur > DEFAULT_MAX_SYSTEM_STACK_SIZE) {
+            LOG_ECMA(ERROR) << "Get current thread stack size exceed " << DEFAULT_MAX_SYSTEM_STACK_SIZE
+                            << " : " << rl.rlim_cur;
             return result;
         }
+        threadStackLimit = threadStackStart - rl.rlim_cur;
     }
 
-    uintptr_t threadStackLimit;
-    if (isMainThread) {
-        threadStackLimit = reinterpret_cast<uintptr_t>(stackAddr) + size - rl.rlim_cur;
-    } else {
-        threadStackLimit = reinterpret_cast<uintptr_t>(stackAddr);
-    }
     if (result < threadStackLimit) {
         result = threadStackLimit;
     }
 
-    uintptr_t threadStackStart;
-    if (isMainThread) {
-        threadStackStart = threadStackLimit + rl.rlim_cur;
-    } else {
-        threadStackStart = threadStackLimit + size;
-    }
     LOG_INTERPRETER(DEBUG) << "Current thread stack start: " << reinterpret_cast<void *>(threadStackStart);
     LOG_INTERPRETER(DEBUG) << "Used stack before js stack start: "
-                          << reinterpret_cast<void *>(threadStackStart - GetCurrentStackPosition());
+                           << reinterpret_cast<void *>(threadStackStart - GetCurrentStackPosition());
     LOG_INTERPRETER(DEBUG) << "Current thread asm stack limit: " << reinterpret_cast<void *>(result);
-    ret = pthread_attr_destroy(&attr);
-    if (ret != 0) {
-        LOG_ECMA(ERROR) << "Destroy current thread attr failed";
-    }
 
     // To avoid too much times of stack overflow checking, we only check stack overflow before push vregs or
     // parameters of variable length. So we need a reserved size of stack to make sure stack won't be overflowed
