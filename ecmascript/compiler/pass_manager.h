@@ -30,7 +30,8 @@ class CompilationConfig;
 
 class PassContext {
 public:
-    PassContext(const std::string &triple, CompilerLog *log, BytecodeInfoCollector* collector, LLVMModule *aotModule)
+    PassContext(const std::string &triple, CompilerLog *log, BytecodeInfoCollector* collector, LLVMModule *aotModule,
+        PGOProfilerDecoder *decoder)
         : vm_(collector->GetVM()),
           bcInfoCollector_(collector),
           tsManager_(vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()),
@@ -38,7 +39,8 @@ public:
           cmpCfg_(triple, &vm_->GetJSOptions()),
           log_(log),
           jsPandaFile_(collector->GetJSPandaFile()),
-          aotModule_(aotModule)
+          aotModule_(aotModule),
+          decoder_(decoder)
     {
     }
 
@@ -102,6 +104,11 @@ public:
         return vm_;
     }
 
+    PGOProfilerDecoder *GetPfDecoder() const
+    {
+        return decoder_;
+    }
+
 private:
     EcmaVM *vm_ {nullptr};
     BytecodeInfoCollector *bcInfoCollector_ {nullptr};
@@ -112,6 +119,7 @@ private:
     CompilerLog *log_ {nullptr};
     const JSPandaFile *jsPandaFile_ {nullptr};
     LLVMModule *aotModule_ {nullptr};
+    PGOProfilerDecoder *decoder_ {nullptr};
 };
 
 class PassOptions {

@@ -51,7 +51,17 @@ void ProfilerStubBuilder::ProfileOpType(GateRef glue, GateRef pc, GateRef func, 
 
     Label exit(env);
     Label profiler(env);
-    Branch(TaggedIsUndefined(profileTypeInfo), &exit, &profiler);
+    Label slowpath(env);
+    Branch(TaggedIsUndefined(profileTypeInfo), &slowpath, &profiler);
+    Bind(&slowpath);
+    {
+        GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        GateRef firstPC = Load(VariableType::NATIVE_POINTER(), method,
+            IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
+        CallNGCRuntime(glue, RTSTUB_ID(ProfileOpType), { glue, func, offset, type });
+        Jump(&exit);
+    }
     Bind(&profiler);
     {
         Label pushLabel(env);
@@ -74,7 +84,7 @@ void ProfilerStubBuilder::ProfileOpType(GateRef glue, GateRef pc, GateRef func, 
             GateRef firstPC =
                 Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
             GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
-            CallNGCRuntime(glue, RTSTUB_ID(PGOTypeProfiler), { glue, func, offset, *curType });
+            CallNGCRuntime(glue, RTSTUB_ID(ProfileOpType), { glue, func, offset, *curType });
             Jump(&exit);
         }
     }
@@ -88,32 +98,30 @@ void ProfilerStubBuilder::ProfileDefineClass(GateRef glue, GateRef pc, GateRef f
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
 
-    GateRef methodId = TruncInt64ToInt32(env->GetBuilder()->GetMethodId(constructor));
     GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
     GateRef firstPC =
         Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
     GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
-    CallNGCRuntime(glue, RTSTUB_ID(PGODefineProfiler), { glue, func, offset, methodId });
+    CallNGCRuntime(glue, RTSTUB_ID(ProfileDefineClass), { glue, func, offset, constructor });
 
     env->SubCfgExit();
 }
 
-void ProfilerStubBuilder::ProfileObjLayout(GateRef glue, GateRef pc, GateRef func, GateRef receiver, GateRef store)
+void ProfilerStubBuilder::ProfileObjLayout(GateRef glue, GateRef pc, GateRef func, GateRef object, GateRef store)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
     Label isHeap(env);
     Label exit(env);
-    Branch(TaggedIsHeapObject(receiver), &isHeap, &exit);
+    Branch(TaggedIsHeapObject(object), &isHeap, &exit);
     Bind(&isHeap);
     {
-        GateRef hclass = LoadHClass(receiver);
         GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
         GateRef firstPC =
             Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
-        CallNGCRuntime(glue, RTSTUB_ID(PGOLayoutProfiler), { glue, func, offset, hclass, store });
+        CallNGCRuntime(glue, RTSTUB_ID(ProfileObjLayout), { glue, func, offset, object, store });
         Jump(&exit);
     }
     Bind(&exit);
@@ -125,7 +133,7 @@ void ProfilerStubBuilder::ProfileCall(GateRef glue, GateRef func)
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
-    CallNGCRuntime(glue, RTSTUB_ID(PGOProfiler), { glue, func });
+    CallNGCRuntime(glue, RTSTUB_ID(ProfileCall), { glue, func });
     env->SubCfgExit();
 }
 

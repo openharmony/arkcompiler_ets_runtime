@@ -18,6 +18,7 @@
 #include "ecmascript/compiler/ts_hclass_generator.h"
 #include "ecmascript/jspandafile/type_literal_extractor.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
 
 namespace panda::ecmascript::kungfu {
@@ -26,14 +27,12 @@ TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *
     : argTypes_(methodLiteral->GetNumArgsWithCallField() + static_cast<size_t>(TypedArgIdx::NUM_OF_TYPED_ARGS),
     GateType::AnyType()), decoder_(decoder)
 {
-    if (!jsPandaFile->HasTSTypes(recordName)) {
-        return;
-    }
-    LoadTypes(jsPandaFile, methodLiteral, tsManager, recordName);
-    LoadTypesFromPGO(methodLiteral, recordName);
-
     TSHClassGenerator generator(tsManager);
-    generator.GenerateTSHClasses();
+    if (jsPandaFile->HasTSTypes(recordName)) {
+        LoadTypes(jsPandaFile, methodLiteral, tsManager, recordName);
+        generator.GenerateTSHClasses();
+    }
+    LoadTypesFromPGO(methodLiteral, recordName);
 }
 
 void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
@@ -68,10 +67,12 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
 void TypeRecorder::LoadTypesFromPGO(const MethodLiteral *methodLiteral, const CString &recordName)
 {
     auto callback = [this] (uint32_t offset, PGOType *type) {
-        if (type->IsSampleType()) {
-            bcOffsetPGOTypeMap_[offset] = *reinterpret_cast<PGOSampleType *>(type);
-        } else if (type->IsLayoutDesc()) {
-            bcOffsetPGODescMap_[offset] = *reinterpret_cast<PGOSampleLayoutDesc *>(type);
+        if (type->IsScalarOpType()) {
+           bcOffsetPGOOpTypeMap_[offset] = *reinterpret_cast<PGOSampleType *>(type);
+        } else if (type->IsRwOpType()) {
+           bcOffsetPGORwTypeMap_[offset] = *reinterpret_cast<PGORWOpType *>(type);
+        } else {
+            UNREACHABLE();
         }
     };
     if (decoder_ != nullptr) {
@@ -157,13 +158,29 @@ GateType TypeRecorder::UpdateType(const int32_t offset, const GateType &type) co
 
 PGOSampleType TypeRecorder::GetOrUpdatePGOType(TSManager *tsManager, int32_t offset, const GateType &type) const
 {
-    if (bcOffsetPGOTypeMap_.find(offset) != bcOffsetPGOTypeMap_.end()) {
-        return bcOffsetPGOTypeMap_.at(offset);
+    if (bcOffsetPGOOpTypeMap_.find(offset) != bcOffsetPGOOpTypeMap_.end()) {
+        const auto iter = bcOffsetPGOOpTypeMap_.at(offset);
+        if (iter.IsClassType()) {
+            PGOHClassLayoutDesc *desc;
+            if (!decoder_->GetHClassLayoutDesc(iter, &desc)) {
+                return PGOSampleType::NoneClassType();
+            }
+            auto hclassValue = tsManager->GetTSHClass(type);
+            if (hclassValue.IsJSHClass()) {
+                auto hclass = JSHClass::Cast(hclassValue.GetTaggedObject());
+                TSHClassGenerator generator(tsManager);
+                generator.UpdateTSHClassFromPGO(hclass, *desc);
+            }
+        }
+        return iter;
     }
 
-    if (bcOffsetPGODescMap_.find(offset) != bcOffsetPGODescMap_.end()) {
-        const auto &iter = bcOffsetPGODescMap_.at(offset);
-        tsManager->UpdateTSHClassFromPGO(type, iter);
+    if (bcOffsetPGORwTypeMap_.find(offset) != bcOffsetPGORwTypeMap_.end()) {
+        auto defineType = bcOffsetPGORwTypeMap_.at(offset);
+        // pass mono first
+        if (defineType.GetCount() == 1) {
+            return PGOSampleType(defineType.GetType(0));
+        }
     }
     return PGOSampleType::NoneType();
 }

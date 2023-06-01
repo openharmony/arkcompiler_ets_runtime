@@ -73,7 +73,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
                                                 const MethodPcInfo &methodPCInfo,
                                                 MethodInfo &methodInfo,
                                                 Module *m) {
-        PassContext ctx(triple_, log_, &collector, m->GetModule());
+        PassContext ctx(triple_, log_, &collector, m->GetModule(), &profilerDecoder_);
         auto jsPandaFile = ctx.GetJSPandaFile();
         auto cmpCfg = ctx.GetCompilerConfig();
         auto tsManager = ctx.GetTSManager();

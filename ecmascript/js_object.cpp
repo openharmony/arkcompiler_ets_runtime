@@ -1192,6 +1192,21 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
     return true;
 }
 
+JSTaggedValue JSObject::GetCtorFromPrototype(JSThread *thread, JSTaggedValue prototype)
+{
+    if (!prototype.IsJSObject()) {
+        return JSTaggedValue::Undefined();
+    }
+    JSHandle<JSTaggedValue> object(thread, prototype);
+    JSHandle<JSTaggedValue> ctorKey = thread->GlobalConstants()->GetHandledConstructorString();
+    JSHandle<JSTaggedValue> ctorObj(JSObject::GetProperty(thread, object, ctorKey).GetValue());
+    if (thread->HasPendingException()) {
+        thread->ClearException();
+        return JSTaggedValue::Undefined();
+    }
+    return ctorObj.GetTaggedValue();
+}
+
 bool JSObject::HasProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key)
 {
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");

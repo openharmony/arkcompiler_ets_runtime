@@ -24,7 +24,7 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/slots.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/property_attributes.h"
 
 namespace panda::ecmascript {
@@ -70,12 +70,12 @@ static constexpr size_t ALIGN_SIZE = 4;
  * |----------------methodName
  * |----------------...
  * |------------PGOMethodTypeSet
- * |----------------PGOMethodTypeInfo
+ * |----------------ScalarOpTypeInfo
  * |--------------------size
  * |--------------------offset
  * |--------------------type
  * |----------------...
- * |----------------PGOMethodLayoutDescInfos
+ * |----------------PGOHClassLayoutDescInner
  * |--------------------size
  * |--------------------offset
  * |--------------------type
@@ -95,9 +95,10 @@ class PGOProfilerHeader : public base::FileHeader {
 public:
     static constexpr VersionType TYPE_MINI_VERSION = {0, 0, 0, 2};
     static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 3};
-    static constexpr size_t SECTION_SIZE = 2;
+    static constexpr size_t SECTION_SIZE = 3;
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
+    static constexpr size_t LAYOUT_DESC_SECTION_INDEX = 2;
 
     PGOProfilerHeader() : base::FileHeader(LAST_VERSION), sectionNumber_(SECTION_SIZE)
     {
@@ -150,6 +151,11 @@ public:
         return GetSectionInfo(RECORD_INFO_SECTION_INDEX);
     }
 
+    SectionInfo *GetLayoutDescSection() const
+    {
+        return GetSectionInfo(LAYOUT_DESC_SECTION_INDEX);
+    }
+
     bool SupportType() const
     {
         return InternalVerifyVersion(TYPE_MINI_VERSION);
@@ -161,7 +167,7 @@ public:
 private:
     SectionInfo *GetSectionInfo(size_t index) const
     {
-        if (index >= SECTION_SIZE) {
+        if (index >= sectionNumber_) {
             return nullptr;
         }
         return const_cast<SectionInfo *>(&sectionInfos_) + index;
@@ -368,70 +374,61 @@ public:
 
     PGOMethodTypeSet() = default;
 
-    void Clear(NativeAreaAllocator *allocator)
-    {
-        for (auto iter : layoutDescInfos_) {
-            allocator->Delete(iter);
-        }
-        layoutDescInfos_.clear();
-    }
-
     void AddType(uint32_t offset, PGOSampleType type)
     {
-        auto result = typeInfoSet_.find(PGOMethodTypeInfo(offset));
-        if (result != typeInfoSet_.end()) {
-            if (result->GetType() != type) {
-                typeInfoSet_.erase(result);
-                typeInfoSet_.emplace(offset, type);
-            }
+        if (type.IsClassType()) {
+            AddClassType(offset, type);
         } else {
-            typeInfoSet_.emplace(offset, type);
+            auto result = scalarOpTypeInfos_.find(ScalarOpTypeInfo(offset, type));
+            if (result != scalarOpTypeInfos_.end()) {
+                auto combineType = result->GetType().CombineType(type);
+                const_cast<ScalarOpTypeInfo &>(*result).SetType(combineType);
+            } else {
+                scalarOpTypeInfos_.emplace(offset, type);
+            }
         }
     }
 
-    void AddDefine(uint32_t offset, PGOSampleType type)
+    void AddClassType(uint32_t offset, PGOSampleType type)
     {
-        auto result = defineTypeSet_.find(PGOMethodTypeInfo(offset));
-        if (result != defineTypeSet_.end()) {
-            defineTypeSet_.erase(result);
+        auto result = rwScalarOpTypeInfos_.find(RWScalarOpTypeInfo(offset));
+        if (result != rwScalarOpTypeInfos_.end()) {
+            const_cast<RWScalarOpTypeInfo &>(*result).AddClassType(type);
+        } else {
+            rwScalarOpTypeInfos_.emplace(offset, type);
         }
-        defineTypeSet_.emplace(offset, type);
+    }
+
+    void AddDefine(uint32_t offset, PGOSampleType type, PGOSampleType superType)
+    {
+        auto result = objDefOpTypeInfos_.find(ObjDefOpTypeInfo(offset, type, superType));
+        if (result != objDefOpTypeInfos_.end()) {
+            return;
+        }
+        objDefOpTypeInfos_.emplace(offset, type, superType);
     }
 
     template <typename Callback>
     void GetTypeInfo(Callback callback)
     {
-        for (auto typeInfo : typeInfoSet_) {
+        for (const auto &typeInfo : scalarOpTypeInfos_) {
             auto type = typeInfo.GetType();
             callback(typeInfo.GetOffset(), &type);
         }
-        for (auto &descInfo : layoutDescInfos_) {
-            descInfo->GetTypeInfo(callback);
+        for (const auto &typeInfo : rwScalarOpTypeInfos_) {
+            auto type = typeInfo.GetType();
+            callback(typeInfo.GetOffset(), &type);
+        }
+        for (const auto &typeInfo : objDefOpTypeInfos_) {
+            auto classType = typeInfo.GetType();
+            callback(typeInfo.GetOffset(), &classType);
         }
     }
 
-    void Merge(NativeAreaAllocator *allocator, const PGOMethodTypeSet *info,
-        const CMap<PGOSampleType, CMap<CString, TrackType>> &layoutDescs);
+    void Merge(const PGOMethodTypeSet *info);
     static void SkipFromBinary(void **buffer);
 
-    template <typename Callback>
-    bool ParseFromBinary(void **buffer, Callback callback)
-    {
-        uint32_t size = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
-        for (uint32_t i = 0; i < size; i++) {
-            auto typeInfo = base::ReadBufferInSize<PGOMethodInfoHeader>(buffer);
-            if (typeInfo->GetInfoType() == InfoType::METHOD_TYPE_INFO_TYPE) {
-                typeInfoSet_.emplace(*reinterpret_cast<PGOMethodTypeInfo *>(typeInfo));
-            } else if (typeInfo->GetInfoType() == InfoType::HCLSS_DESC_INFO_TYPE) {
-                void *addr = callback(typeInfo->Size());
-                if (memcpy_s(addr, typeInfo->Size(), typeInfo, typeInfo->Size()) != EOK) {
-                    UNREACHABLE();
-                }
-                layoutDescInfos_.emplace(reinterpret_cast<PGOMethodLayoutDescInfos *>(addr));
-            }
-        }
-        return true;
-    }
+    bool ParseFromBinary(void **buffer);
     bool ProcessToBinary(std::stringstream &stream) const;
 
     bool ParseFromText(const std::string &typeString);
@@ -441,17 +438,17 @@ public:
     NO_MOVE_SEMANTIC(PGOMethodTypeSet);
 
 private:
-    enum class InfoType : uint8_t { NONE, METHOD_TYPE_INFO_TYPE, HCLSS_DESC_INFO_TYPE };
+    enum class InfoType : uint8_t { NONE, OP_TYPE, DEFINE_CLASS_TYPE = 3, USE_HCLASS_TYPE };
 
-    class PGOMethodInfoHeader {
+    class TypeInfoHeader {
     public:
-        PGOMethodInfoHeader(InfoType type, uint32_t offset) : type_(type), offset_(offset) {}
-        PGOMethodInfoHeader(uint32_t size, InfoType type, uint32_t offset)
-            : size_(size), type_(type), offset_(offset) {}
+        TypeInfoHeader(InfoType type, uint32_t offset) : infoType_(type), offset_(offset) {}
+        TypeInfoHeader(uint32_t size, InfoType type, uint32_t offset)
+            : size_(size), infoType_(type), offset_(offset) {}
 
         InfoType GetInfoType()
         {
-            return type_;
+            return infoType_;
         }
 
         int32_t Size() const
@@ -466,19 +463,73 @@ private:
 
     protected:
         uint32_t size_ {0};
-        InfoType type_ {InfoType::NONE};
+        InfoType infoType_ {InfoType::NONE};
         uint32_t offset_ {0};
     };
 
-    class PGOMethodTypeInfo : public PGOMethodInfoHeader {
+    class RWScalarOpTypeInfo : public TypeInfoHeader {
     public:
-        explicit PGOMethodTypeInfo(uint32_t offset) : PGOMethodInfoHeader(InfoType::METHOD_TYPE_INFO_TYPE, offset) {}
-        PGOMethodTypeInfo(uint32_t offset, PGOSampleType type)
-            : PGOMethodInfoHeader(sizeof(PGOMethodTypeInfo), InfoType::METHOD_TYPE_INFO_TYPE, offset), type_(type) {}
+        explicit RWScalarOpTypeInfo(uint32_t offset)
+            : TypeInfoHeader(InfoType::USE_HCLASS_TYPE, offset) {};
+        RWScalarOpTypeInfo(uint32_t offset, PGOSampleType type)
+            : TypeInfoHeader(sizeof(RWScalarOpTypeInfo), InfoType::USE_HCLASS_TYPE, offset)
+        {
+            type_.AddClassType(type.GetClassType());
+        }
 
-        bool operator<(const PGOMethodTypeInfo &right) const
+        bool operator<(const RWScalarOpTypeInfo &right) const
         {
             return offset_ < right.offset_;
+        }
+
+        int32_t GetCount()
+        {
+            return type_.GetCount();
+        }
+
+        void Merge(const RWScalarOpTypeInfo &type)
+        {
+            type_.Merge(type.type_);
+        }
+
+        void AddClassType(const PGOSampleType &type)
+        {
+            ASSERT(type.IsClassType());
+            type_.AddClassType(type.GetClassType());
+        }
+
+        PGORWOpType GetType() const
+        {
+            return type_;
+        }
+
+        void ProcessToText(std::string &text) const;
+
+    private:
+        PGORWOpType type_;
+    };
+
+    class ScalarOpTypeInfo : public TypeInfoHeader {
+    public:
+        ScalarOpTypeInfo(uint32_t offset, PGOSampleType type)
+            : TypeInfoHeader(sizeof(ScalarOpTypeInfo), InfoType::OP_TYPE, offset), type_(type) {}
+
+        bool operator<(const ScalarOpTypeInfo &right) const
+        {
+            return offset_ < right.offset_;
+        }
+
+        void SetType(PGOSampleType type)
+        {
+            if (type_ != type) {
+                type_ = type;
+            }
+        }
+
+        void Merge(const ScalarOpTypeInfo &typeInfo)
+        {
+            PGOSampleType combineType = GetType().CombineType(typeInfo.GetType());
+            SetType(combineType);
         }
 
         PGOSampleType GetType() const
@@ -487,97 +538,143 @@ private:
         }
 
     protected:
-        PGOMethodTypeInfo(uint32_t size, InfoType infoType, uint32_t offset, PGOSampleType type)
-            : PGOMethodInfoHeader(size, infoType, offset), type_(type) {}
+        ScalarOpTypeInfo(uint32_t size, InfoType infoType, uint32_t offset, PGOSampleType type)
+            : TypeInfoHeader(size, infoType, offset), type_(type) {}
 
     private:
         PGOSampleType type_;
     };
 
-    class PGOMethodLayoutDescInfos : public PGOMethodTypeInfo {
+    class ObjDefOpTypeInfo : public ScalarOpTypeInfo {
     public:
-        class PGOLayoutDescInfo {
-        public:
-            PGOLayoutDescInfo() = default;
-            PGOLayoutDescInfo(const CString &key, TrackType type) : type_(type)
-            {
-                size_t len = key.size();
-                size_ = Size(len);
-                if (len > 0 && memcpy_s(&key_, len, key.c_str(), len) != EOK) {
-                    LOG_ECMA(ERROR) << "SetMethodName memcpy_s failed" << key << ", len = " << len;
-                    UNREACHABLE();
-                }
-                *(&key_ + len) = '\0';
-                type_ = type;
-            }
+        ObjDefOpTypeInfo(uint32_t offset, PGOSampleType type, PGOSampleType superType)
+            : ScalarOpTypeInfo(sizeof(ObjDefOpTypeInfo), InfoType::DEFINE_CLASS_TYPE, offset, type),
+            superType_(superType) {}
 
-            static int32_t Size(size_t len)
-            {
-                return sizeof(PGOLayoutDescInfo) + AlignUp(len, ALIGN_SIZE);
-            }
-
-            int32_t Size() const
-            {
-                return size_;
-            }
-
-            const char *GetKey() const
-            {
-                return &key_;
-            }
-
-            TrackType GetType() const
-            {
-                return type_;
-            }
-
-        private:
-            int32_t size_ {0};
-            TrackType type_ {TrackType::NONE};
-            char key_ {'\0'};
-        };
-
-        explicit PGOMethodLayoutDescInfos(size_t size, uint32_t offset, PGOSampleType type)
-            : PGOMethodTypeInfo(size, InfoType::HCLSS_DESC_INFO_TYPE, offset, type) {}
-
-        static size_t CaculateSize(const CMap<CString, TrackType> &desc);
-        void Merge(const CMap<CString, TrackType> &desc);
-
-        template <typename Callback>
-        void GetTypeInfo(Callback callback)
+        PGOSampleType GetSuperType() const
         {
-            PGOSampleLayoutDesc desc(GetType().GetClassType());
-            if (count_ <= 0) {
-                return;
-            }
-            auto descInfo = GetFirst();
-            for (int32_t i = 0; i < count_; i++) {
-                desc.AddKeyAndDesc(descInfo->GetKey(), descInfo->GetType());
-                descInfo = GetNext(descInfo);
-            }
-            callback(GetOffset(), &desc);
+            return superType_;
+        }
+
+        bool operator<(const ObjDefOpTypeInfo &right) const
+        {
+            return offset_ < right.GetOffset() || GetType() < right.GetType() || superType_ < right.superType_;
         }
 
         void ProcessToText(std::string &text) const;
 
+    protected:
+        ObjDefOpTypeInfo(
+            uint32_t size, InfoType infoType, uint32_t offset, PGOSampleType type, PGOSampleType superType)
+            : ScalarOpTypeInfo(size, infoType, offset, type), superType_(superType) {}
+
     private:
-        const PGOLayoutDescInfo *GetFirst() const
-        {
-            return &descInfos_;
-        }
-
-        const PGOLayoutDescInfo *GetNext(const PGOLayoutDescInfo *current) const
-        {
-            return reinterpret_cast<PGOLayoutDescInfo *>(reinterpret_cast<uintptr_t>(current) + current->Size());
-        }
-
-        int32_t count_ {0};
-        PGOLayoutDescInfo descInfos_;
+        PGOSampleType superType_;
     };
 
-    std::set<PGOMethodTypeInfo> typeInfoSet_;
-    std::set<PGOMethodTypeInfo> defineTypeSet_;
-    std::set<PGOMethodLayoutDescInfos *> layoutDescInfos_;
+    std::set<ScalarOpTypeInfo> scalarOpTypeInfos_;
+    std::set<RWScalarOpTypeInfo> rwScalarOpTypeInfos_;
+    std::set<ObjDefOpTypeInfo> objDefOpTypeInfos_;
+};
+
+class PGOHClassLayoutDescInner {
+public:
+    PGOHClassLayoutDescInner(size_t size, PGOSampleType type, PGOSampleType superType)
+        : size_(size), type_(type), superType_(superType) {}
+
+    static size_t CaculateSize(const PGOHClassLayoutDesc &desc);
+    static std::string GetTypeString(const PGOHClassLayoutDesc &desc);
+
+    void Merge(const PGOHClassLayoutDesc &desc);
+
+    int32_t Size() const
+    {
+        return size_;
+    }
+
+    PGOSampleType GetType() const
+    {
+        return type_;
+    }
+
+    PGOHClassLayoutDesc Convert()
+    {
+        PGOHClassLayoutDesc desc(GetType().GetClassType());
+        desc.SetSuperClassType(superType_.GetClassType());
+        auto descInfo = GetFirst();
+        for (int32_t i = 0; i < count_; i++) {
+            desc.AddKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
+            descInfo = GetNext(descInfo);
+        }
+        for (int32_t i = 0; i < ptCount_; i++) {
+            desc.AddPtKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
+            descInfo = GetNext(descInfo);
+        }
+        for (int32_t i = 0; i < ctorCount_; i++) {
+            desc.AddCtorKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
+            descInfo = GetNext(descInfo);
+        }
+        return desc;
+    }
+
+    class PGOLayoutDescInfo {
+    public:
+        PGOLayoutDescInfo() = default;
+        PGOLayoutDescInfo(const CString &key, PGOHandler handler) : handler_(handler)
+        {
+            size_t len = key.size();
+            size_ = Size(len);
+            if (len > 0 && memcpy_s(&key_, len, key.c_str(), len) != EOK) {
+                LOG_ECMA(ERROR) << "SetMethodName memcpy_s failed" << key << ", len = " << len;
+                UNREACHABLE();
+            }
+            *(&key_ + len) = '\0';
+        }
+
+        static int32_t Size(size_t len)
+        {
+            return sizeof(PGOLayoutDescInfo) + AlignUp(len, ALIGN_SIZE);
+        }
+
+        int32_t Size() const
+        {
+            return size_;
+        }
+
+        const char *GetKey() const
+        {
+            return &key_;
+        }
+
+        PGOHandler GetHandler() const
+        {
+            return handler_;
+        }
+
+    private:
+        int32_t size_ {0};
+        PGOHandler handler_;
+        char key_ {'\0'};
+    };
+
+private:
+    const PGOLayoutDescInfo *GetFirst() const
+    {
+        return &descInfos_;
+    }
+
+    const PGOLayoutDescInfo *GetNext(const PGOLayoutDescInfo *current) const
+    {
+        return reinterpret_cast<PGOLayoutDescInfo *>(reinterpret_cast<uintptr_t>(current) + current->Size());
+    }
+
+    int32_t size_;
+    PGOSampleType type_;
+    PGOSampleType superType_;
+    int32_t count_ {0};
+    int32_t ptCount_ {0};
+    int32_t ctorCount_ {0};
+    PGOLayoutDescInfo descInfos_;
 };
 
 class PGOMethodInfoMap {
@@ -593,9 +690,8 @@ public:
 
     bool AddMethod(Chunk *chunk, EntityId methodId, const CString &methodName, SampleMode mode);
     bool AddType(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type);
-    bool AddDefine(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type);
-    bool AddLayout(PGOSampleType type, JSTaggedType hclass);
-    void Merge(Chunk *chunk, NativeAreaAllocator *allocator, PGOMethodInfoMap *methodInfos);
+    bool AddDefine(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
+    void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
 
     bool ParseFromBinary(Chunk *chunk, uint32_t threshold, void **buffer, PGOProfilerHeader *const header);
     bool ProcessToBinary(uint32_t threshold, const CString &recordName, const SaveTask *task, std::ofstream &fileStream,
@@ -612,7 +708,6 @@ private:
 
     CMap<EntityId, PGOMethodInfo *> methodInfos_;
     CMap<EntityId, PGOMethodTypeSet *> methodTypeInfos_;
-    CMap<PGOSampleType, CMap<CString, TrackType>> globalLayoutDescInfos_;
 };
 
 class PGOMethodIdSet {
@@ -653,6 +748,11 @@ public:
         }
     }
 
+    const std::map<EntityId, PGOMethodTypeSet *> &GetMethodTypeSet() const
+    {
+        return methodTypeSet_;
+    }
+
     bool ParseFromBinary(
         NativeAreaAllocator *allocator, uint32_t threshold, void **buffer, PGOProfilerHeader *const header);
 
@@ -689,8 +789,9 @@ public:
     // If it is a new method, return true.
     bool AddMethod(const CString &recordName, EntityId methodId, const CString &methodName, SampleMode mode);
     bool AddType(const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type);
-    bool AddDefine(const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type);
-    bool AddLayout(const CString &recordName, PGOSampleType type, JSTaggedType hclass);
+    bool AddDefine(
+        const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
+    bool AddLayout(PGOSampleType type, JSTaggedType hclass, PGOObjLayoutKind kind);
     void Merge(const PGORecordDetailInfos &recordInfos);
 
     void ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
@@ -704,11 +805,14 @@ public:
 
 private:
     PGOMethodInfoMap *GetMethodInfoMap(const CString &recordName);
+    bool ParseFromBinaryForLayout(void **buffer);
+    bool ProcessToBinaryForLayout(NativeAreaAllocator *allocator, const SaveTask *task, std::ofstream &stream) const;
 
     uint32_t hotnessThreshold_ {2};
     NativeAreaAllocator nativeAreaAllocator_;
     std::unique_ptr<Chunk> chunk_;
     CMap<CString, PGOMethodInfoMap *> recordInfos_;
+    std::set<PGOHClassLayoutDesc> moduleLayoutDescInfos_;
 };
 
 class PGORecordSimpleInfos {
@@ -765,15 +869,28 @@ public:
         }
     }
 
+    bool GetHClassLayoutDesc(PGOSampleType classType, PGOHClassLayoutDesc **desc) const
+    {
+        auto iter = moduleLayoutDescInfos_.find(PGOHClassLayoutDesc(classType.GetClassType()));
+        if (iter != moduleLayoutDescInfos_.end()) {
+            *desc = &(const_cast<PGOHClassLayoutDesc &>(*iter));
+            return true;
+        }
+        return false;
+    }
+
     void ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
 
     NO_COPY_SEMANTIC(PGORecordSimpleInfos);
     NO_MOVE_SEMANTIC(PGORecordSimpleInfos);
 
 private:
+    bool ParseFromBinaryForLayout(void **buffer);
+
     uint32_t hotnessThreshold_ {2};
     NativeAreaAllocator nativeAreaAllocator_;
     CUnorderedMap<CString, PGOMethodIdSet *> methodIds_;
+    std::set<PGOHClassLayoutDesc> moduleLayoutDescInfos_;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_PGO_PROFILER_INFO_H

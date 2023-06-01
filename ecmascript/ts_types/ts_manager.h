@@ -20,7 +20,6 @@
 #include "ecmascript/compiler/compilation_driver.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
 
@@ -340,8 +339,6 @@ public:
         return CString(fileName);
     }
 
-    void UpdateTSHClassFromPGO(const kungfu::GateType &type, const PGOSampleLayoutDesc &desc);
-
     void AddInstanceTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &ihclass);
 
     void AddConstructorTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &constructorHClass);
@@ -361,6 +358,8 @@ public:
     int PUBLIC_API GetConstructorHClassIndexByClassGateType(const kungfu::GateType &gateType);
 
     int PUBLIC_API GetHClassIndexByClassGateType(const kungfu::GateType &gateType);
+
+    JSTaggedValue GetTSHClass(const kungfu::GateType &gateType) const;
 
     JSTaggedValue PUBLIC_API GetHClassFromCache(uint32_t index);
 

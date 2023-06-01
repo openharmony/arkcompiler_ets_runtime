@@ -167,7 +167,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo,
                                    tsManager, circuit_,
                                    ctx_->GetByteCodes(), true, IsLogEnabled(),
-                                   enableTypeLowering_, fullName, recordName, nullptr);
+                                   enableTypeLowering_, fullName, recordName, ctx_->GetPfDecoder());
     {
         if (enableTypeLowering_) {
             BuildFrameStateChain(gate, builder);

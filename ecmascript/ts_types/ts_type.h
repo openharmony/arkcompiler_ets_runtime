@@ -53,9 +53,6 @@ public:
 
     static constexpr size_t PROPERTIES_OFFSET = TSType::SIZE;
 
-
-    static void UpdateHClassFromPGO(JSThread *thread, JSHClass *hclass, const PGOSampleLayoutDesc &desc);
-
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSObjectType> objectType,
                                          JSHandle<JSTaggedValue> propName);
 

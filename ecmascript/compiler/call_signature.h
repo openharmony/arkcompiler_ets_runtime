@@ -415,10 +415,10 @@ private:
     V(DebugPrint)                           \
     V(DebugPrintInstruction)                \
     V(Comment)                              \
-    V(PGOProfiler)                          \
-    V(PGODefineProfiler)                    \
-    V(PGOTypeProfiler)                      \
-    V(PGOLayoutProfiler)                    \
+    V(ProfileCall)                          \
+    V(ProfileDefineClass)                   \
+    V(ProfileOpType)                        \
+    V(ProfileObjLayout)                     \
     V(FatalPrint)                           \
     V(GetActualArgvNoGC)                    \
     V(InsertOldToNewRSet)                   \

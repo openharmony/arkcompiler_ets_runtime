@@ -396,6 +396,7 @@ DECLARE_ASM_HANDLER(HandleDefinegettersetterbyvalueV8V8V8V8)
     GateRef setter = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef res = CallRuntime(glue, RTSTUB_ID(DefineGetterSetterByValue),
                               { obj, prop, getter, setter, acc }); // acc is flag
+    callback.ProfileObjLayoutByStore(obj);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8));
 }
 

@@ -19,30 +19,6 @@
 #include "ecmascript/property_attributes.h"
 
 namespace panda::ecmascript {
-void TSObjectType::UpdateHClassFromPGO(JSThread *thread, JSHClass *hclass, const PGOSampleLayoutDesc &desc)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    int element = layoutInfo->NumberOfElements();
-    for (int i = 0; i < element; i++) {
-        auto key = layoutInfo->GetKey(i);
-        if (!key.IsString()) {
-            continue;
-        }
-        auto keyString = EcmaStringAccessor(key).ToCString();
-        TrackType newTrackType;
-        if (desc.FindDescWithKey(keyString, newTrackType)) {
-            auto attr = layoutInfo->GetAttr(i);
-            if (newTrackType == TrackType::DOUBLE) {
-                attr.SetRepresentation(Representation::DOUBLE);
-            } else {
-                attr.SetRepresentation(Representation::OBJECT);
-            }
-            layoutInfo->SetNormalAttr(thread, i, attr);
-        }
-    }
-}
-
 bool TSUnionType::IsEqual(JSHandle<TSUnionType> unionB)
 {
     DISALLOW_GARBAGE_COLLECTION;

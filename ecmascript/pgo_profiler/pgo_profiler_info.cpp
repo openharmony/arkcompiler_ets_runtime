@@ -179,38 +179,26 @@ std::vector<std::string> PGOMethodInfo::ParseFromText(const std::string &infoStr
     return infoStrings;
 }
 
-void PGOMethodTypeSet::Merge(NativeAreaAllocator *allocator, const PGOMethodTypeSet *info,
-    const CMap<PGOSampleType, CMap<CString, TrackType>> &layoutDescs)
+void PGOMethodTypeSet::Merge(const PGOMethodTypeSet *info)
 {
-    for (const auto &fromType : info->typeInfoSet_) {
-        auto iter = typeInfoSet_.find(fromType);
-        if (iter != typeInfoSet_.end()) {
-            PGOSampleType combineType = iter->GetType().CombineType(fromType.GetType());
-            typeInfoSet_.erase(iter);
-            typeInfoSet_.emplace(iter->GetOffset(), combineType);
+    for (const auto &fromType : info->scalarOpTypeInfos_) {
+        auto iter = scalarOpTypeInfos_.find(fromType);
+        if (iter != scalarOpTypeInfos_.end()) {
+            const_cast<ScalarOpTypeInfo &>(*iter).Merge(fromType);
         } else {
-            typeInfoSet_.emplace(fromType);
+            scalarOpTypeInfos_.emplace(fromType);
         }
     }
-    for (const auto &fromType : info->defineTypeSet_) {
-        AddDefine(fromType.GetOffset(), fromType.GetType());
-    }
-    // rebuild layout desc info
-    for (auto iter : layoutDescInfos_) {
-        allocator->Delete(iter);
-    }
-    layoutDescInfos_.clear();
-    for (const auto typeInfo : defineTypeSet_) {
-        ASSERT(typeInfo.GetType().IsClassType());
-        auto classType = typeInfo.GetType();
-        auto iter = layoutDescs.find(classType);
-        if (iter != layoutDescs.end()) {
-            size_t size = PGOMethodLayoutDescInfos::CaculateSize(iter->second);
-            void *addr = allocator->Allocate(size);
-            auto descInfos = new (addr) PGOMethodLayoutDescInfos(size, typeInfo.GetOffset(), typeInfo.GetType());
-            descInfos->Merge(iter->second);
-            layoutDescInfos_.emplace(descInfos);
+    for (const auto &fromType : info->rwScalarOpTypeInfos_) {
+        auto iter = rwScalarOpTypeInfos_.find(fromType);
+        if (iter != rwScalarOpTypeInfos_.end()) {
+            const_cast<RWScalarOpTypeInfo &>(*iter).Merge(fromType);
+        } else {
+            rwScalarOpTypeInfos_.emplace(fromType);
         }
+    }
+    for (const auto &fromType : info->objDefOpTypeInfos_) {
+        AddDefine(fromType.GetOffset(), fromType.GetType(), fromType.GetSuperType());
     }
 }
 
@@ -218,23 +206,45 @@ void PGOMethodTypeSet::SkipFromBinary(void **buffer)
 {
     uint32_t size = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
     for (uint32_t i = 0; i < size; i++) {
-        base::ReadBufferInSize<PGOMethodTypeInfo>(buffer);
+        base::ReadBufferInSize<ScalarOpTypeInfo>(buffer);
     }
+}
+
+bool PGOMethodTypeSet::ParseFromBinary(void **buffer)
+{
+    uint32_t size = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
+    for (uint32_t i = 0; i < size; i++) {
+        auto typeInfo = base::ReadBufferInSize<TypeInfoHeader>(buffer);
+        if (typeInfo->GetInfoType() == InfoType::OP_TYPE) {
+            scalarOpTypeInfos_.emplace(*reinterpret_cast<ScalarOpTypeInfo *>(typeInfo));
+        } else if (typeInfo->GetInfoType() == InfoType::DEFINE_CLASS_TYPE) {
+            objDefOpTypeInfos_.emplace(*reinterpret_cast<ObjDefOpTypeInfo *>(typeInfo));
+        } else if (typeInfo->GetInfoType() == InfoType::USE_HCLASS_TYPE) {
+            rwScalarOpTypeInfos_.emplace(*reinterpret_cast<RWScalarOpTypeInfo *>(typeInfo));
+        }
+    }
+    return true;
 }
 
 bool PGOMethodTypeSet::ProcessToBinary(std::stringstream &stream) const
 {
     uint32_t number = 0;
     std::stringstream methodStream;
-    for (auto typeInfo : typeInfoSet_) {
+    for (auto typeInfo : scalarOpTypeInfos_) {
         if (!typeInfo.GetType().IsNone()) {
-            methodStream.write(reinterpret_cast<char *>(&typeInfo), sizeof(PGOMethodTypeInfo));
+            methodStream.write(reinterpret_cast<char *>(&typeInfo), typeInfo.Size());
+            number++;
+        }
+    }
+    for (auto typeInfo : rwScalarOpTypeInfos_) {
+        if (typeInfo.GetCount() != 0) {
+            methodStream.write(reinterpret_cast<char *>(&typeInfo), typeInfo.Size());
             number++;
         }
     }
 
-    for (auto layoutDescInfo : layoutDescInfos_) {
-        methodStream.write(reinterpret_cast<char *>(layoutDescInfo), layoutDescInfo->Size());
+    for (auto typeInfo : objDefOpTypeInfos_) {
+        methodStream.write(reinterpret_cast<char *>(&typeInfo), typeInfo.Size());
         number++;
     }
 
@@ -264,7 +274,7 @@ bool PGOMethodTypeSet::ParseFromText(const std::string &typeString)
             if (!base::StringHelper::StrToUInt32(typeStrings[METHOD_TYPE_INDEX].c_str(), &type)) {
                 return false;
             }
-            typeInfoSet_.emplace(offset, PGOSampleType(type));
+            scalarOpTypeInfos_.emplace(offset, PGOSampleType(type));
         }
     }
     return true;
@@ -273,7 +283,7 @@ bool PGOMethodTypeSet::ParseFromText(const std::string &typeString)
 void PGOMethodTypeSet::ProcessToText(std::string &text) const
 {
     bool isFirst = true;
-    for (auto typeInfoIter : typeInfoSet_) {
+    for (auto typeInfoIter : scalarOpTypeInfos_) {
         if (typeInfoIter.GetType().IsNone()) {
             continue;
         }
@@ -287,73 +297,178 @@ void PGOMethodTypeSet::ProcessToText(std::string &text) const
         text += BLOCK_START;
         text += typeInfoIter.GetType().GetTypeString();
     }
-    for (const auto &descInfoIter : layoutDescInfos_) {
+    for (auto rwScalarOpTypeInfoIter : rwScalarOpTypeInfos_) {
+        if (rwScalarOpTypeInfoIter.GetCount() == 0) {
+            continue;
+        }
         if (isFirst) {
             text += ARRAY_START + SPACE;
             isFirst = false;
         } else {
             text += TYPE_SEPARATOR + SPACE;
         }
-        descInfoIter->ProcessToText(text);
+        rwScalarOpTypeInfoIter.ProcessToText(text);
+    }
+    for (const auto &defTypeInfoIter : objDefOpTypeInfos_) {
+        if (isFirst) {
+            text += ARRAY_START + SPACE;
+            isFirst = false;
+        } else {
+            text += TYPE_SEPARATOR + SPACE;
+        }
+        defTypeInfoIter.ProcessToText(text);
     }
     if (!isFirst) {
         text += (SPACE + ARRAY_END);
     }
 }
 
-void PGOMethodTypeSet::PGOMethodLayoutDescInfos::ProcessToText(std::string &text) const
+size_t PGOHClassLayoutDescInner::CaculateSize(const PGOHClassLayoutDesc &desc)
 {
-    text += std::to_string(GetOffset());
-    text += BLOCK_START;
-    text += ARRAY_START + SPACE;
-    auto current = GetFirst();
-    bool isFirst = true;
-    for (int i = 0; i < count_; i++) {
-        if (!isFirst) {
-            text += TYPE_SEPARATOR + SPACE;
-        } else {
-            text += GetType().GetTypeString();
-            text += TYPE_SEPARATOR + SPACE;
-        }
-        isFirst = false;
-        text += current->GetKey();
-        text += BLOCK_START;
-        text += std::to_string(static_cast<int32_t>(current->GetType()));
-        current = GetNext(current);
+    if (desc.GetLayoutDesc().empty() && desc.GetPtLayoutDesc().empty() && desc.GetCtorLayoutDesc().empty()) {
+        return sizeof(PGOHClassLayoutDescInner);
     }
-    text += (SPACE + ARRAY_END);
-}
-
-size_t PGOMethodTypeSet::PGOMethodLayoutDescInfos::CaculateSize(const CMap<CString, TrackType> &desc)
-{
-    if (desc.empty()) {
-        return 0;
-    }
-    size_t size = sizeof(PGOMethodLayoutDescInfos) - sizeof(PGOLayoutDescInfo);
-    for (const auto &iter : desc) {
+    size_t size = sizeof(PGOHClassLayoutDescInner) - sizeof(PGOLayoutDescInfo);
+    for (const auto &iter : desc.GetLayoutDesc()) {
         auto key = iter.first;
-        size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
+        if (key.size() > 0) {
+            size += PGOLayoutDescInfo::Size(key.size());
+        }
+    }
+    for (const auto &iter : desc.GetPtLayoutDesc()) {
+        auto key = iter.first;
+        if (key.size() > 0) {
+            size += PGOLayoutDescInfo::Size(key.size());
+        }
+    }
+    for (const auto &iter : desc.GetCtorLayoutDesc()) {
+        auto key = iter.first;
+        if (key.size() > 0) {
+            size += PGOLayoutDescInfo::Size(key.size());
+        }
     }
     return size;
 }
 
-void PGOMethodTypeSet::PGOMethodLayoutDescInfos::Merge(const CMap<CString, TrackType> &desc)
+std::string PGOHClassLayoutDescInner::GetTypeString(const PGOHClassLayoutDesc &desc)
 {
-    if (desc.empty()) {
-        return;
+    std::string text;
+    text += desc.GetClassType().GetTypeString();
+    text += TYPE_SEPARATOR + SPACE;
+    text += desc.GetSuperClassType().GetTypeString();
+    text += BLOCK_AND_ARRAY_START;
+    bool isLayoutFirst = true;
+    for (const auto &layoutDesc : desc.GetLayoutDesc()) {
+        if (!isLayoutFirst) {
+            text += TYPE_SEPARATOR + SPACE;
+        } else {
+            text += ARRAY_START;
+        }
+        isLayoutFirst = false;
+        text += layoutDesc.first;
+        text += BLOCK_START;
+        text += std::to_string(layoutDesc.second.GetValue());
     }
+    if (!isLayoutFirst) {
+        text += ARRAY_END;
+    }
+    bool isPtLayoutFirst = true;
+    for (const auto &layoutDesc : desc.GetPtLayoutDesc()) {
+        if (!isPtLayoutFirst) {
+            text += TYPE_SEPARATOR + SPACE;
+        } else {
+            if (!isLayoutFirst) {
+                text += TYPE_SEPARATOR + SPACE;
+            }
+            text += ARRAY_START;
+        }
+        isPtLayoutFirst = false;
+        text += layoutDesc.first;
+        text += BLOCK_START;
+        text += std::to_string(layoutDesc.second.GetValue());
+    }
+    if (!isPtLayoutFirst) {
+        text += ARRAY_END;
+    }
+    bool isCtorLayoutFirst = true;
+    for (const auto &layoutDesc : desc.GetCtorLayoutDesc()) {
+        if (!isCtorLayoutFirst) {
+            text += TYPE_SEPARATOR + SPACE;
+        } else {
+            if (!isLayoutFirst || !isPtLayoutFirst) {
+                text += TYPE_SEPARATOR + SPACE;
+            }
+            text += ARRAY_START;
+        }
+        isCtorLayoutFirst = false;
+        text += layoutDesc.first;
+        text += BLOCK_START;
+        text += std::to_string(layoutDesc.second.GetValue());
+    }
+    if (!isCtorLayoutFirst) {
+        text += ARRAY_END;
+    }
+    text += (SPACE + ARRAY_END);
+    return text;
+}
+
+void PGOHClassLayoutDescInner::Merge(const PGOHClassLayoutDesc &desc)
+{
     auto current = const_cast<PGOLayoutDescInfo *>(GetFirst());
-    for (const auto &iter : desc) {
+    for (const auto &iter : desc.GetLayoutDesc()) {
         auto key = iter.first;
         auto type = iter.second;
-        size_t len = key.size();
-        if (len <= 0) {
-            continue;
+        if (key.size() > 0) {
+            new (current) PGOLayoutDescInfo(key, type);
+            current = const_cast<PGOLayoutDescInfo *>(GetNext(current));
+            count_++;
         }
-        new (current) PGOLayoutDescInfo(key, type);
-        current = const_cast<PGOLayoutDescInfo *>(GetNext(current));
-        count_++;
     }
+    for (const auto &iter : desc.GetPtLayoutDesc()) {
+        auto key = iter.first;
+        auto type = iter.second;
+        if (key.size() > 0) {
+            new (current) PGOLayoutDescInfo(key, type);
+            current = const_cast<PGOLayoutDescInfo *>(GetNext(current));
+            ptCount_++;
+        }
+    }
+    for (const auto &iter : desc.GetCtorLayoutDesc()) {
+        auto key = iter.first;
+        auto type = iter.second;
+        if (key.size() > 0) {
+            new (current) PGOLayoutDescInfo(key, type);
+            current = const_cast<PGOLayoutDescInfo *>(GetNext(current));
+            ctorCount_++;
+        }
+    }
+}
+
+void PGOMethodTypeSet::RWScalarOpTypeInfo::ProcessToText(std::string &text) const
+{
+    text += std::to_string(GetOffset());
+    text += BLOCK_START;
+    text += ARRAY_START + SPACE;
+    bool isFirst = true;
+    for (int i = 0; i < type_.GetCount(); i++) {
+        if (!isFirst) {
+            text += TYPE_SEPARATOR + SPACE;
+        }
+        isFirst = false;
+        text += type_.GetType(i).GetTypeString();
+    }
+    text += (SPACE + ARRAY_END);
+}
+
+void PGOMethodTypeSet::ObjDefOpTypeInfo::ProcessToText(std::string &text) const
+{
+    text += std::to_string(GetOffset());
+    text += BLOCK_START;
+    text += ARRAY_START + SPACE;
+    text += GetType().GetTypeString();
+    text += TYPE_SEPARATOR;
+    text += GetSuperType().GetTypeString();
+    text += (SPACE + ARRAY_END);
 }
 
 bool PGOMethodInfoMap::AddMethod(Chunk *chunk, EntityId methodId, const CString &methodName, SampleMode mode)
@@ -394,41 +509,16 @@ bool PGOMethodInfoMap::AddType(Chunk *chunk, EntityId methodId, int32_t offset, 
     return true;
 }
 
-bool PGOMethodInfoMap::AddDefine(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type)
+bool PGOMethodInfoMap::AddDefine(
+    Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType)
 {
     auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
     ASSERT(typeInfoSet != nullptr);
-    typeInfoSet->AddDefine(offset, type);
+    typeInfoSet->AddDefine(offset, type, superType);
     return true;
 }
 
-bool PGOMethodInfoMap::AddLayout(PGOSampleType type, JSTaggedType hclass)
-{
-    CMap<CString, TrackType> descInfos;
-    auto rootHClass = JSHClass::Cast(JSTaggedValue(hclass).GetTaggedObject());
-    if (!JSHClass::DumpForProfile(rootHClass, descInfos)) {
-        return false;
-    }
-
-    auto iter = globalLayoutDescInfos_.find(type);
-    CMap<CString, TrackType> descInfo;
-    if (iter != globalLayoutDescInfos_.end()) {
-        descInfo = iter->second;
-    }
-    for (const auto &info : descInfos) {
-        if (descInfo.find(info.first) == descInfo.end()) {
-            descInfo.emplace(info.first, info.second);
-        }
-    }
-    if (iter == globalLayoutDescInfos_.end()) {
-        globalLayoutDescInfos_.emplace(type, descInfo);
-    } else {
-        globalLayoutDescInfos_.at(type) = descInfo;
-    }
-    return true;
-}
-
-void PGOMethodInfoMap::Merge(Chunk *chunk, NativeAreaAllocator *allocator, PGOMethodInfoMap *methodInfos)
+void PGOMethodInfoMap::Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos)
 {
     for (auto iter = methodInfos->methodInfos_.begin(); iter != methodInfos->methodInfos_.end(); iter++) {
         auto methodId = iter->first;
@@ -449,19 +539,6 @@ void PGOMethodInfoMap::Merge(Chunk *chunk, NativeAreaAllocator *allocator, PGOMe
         fromMethodInfo->ClearCount();
     }
 
-    // Merge global layout desc infos to global method info map
-    for (auto iter = methodInfos->globalLayoutDescInfos_.begin(); iter != methodInfos->globalLayoutDescInfos_.end();
-         iter++) {
-        auto classType = iter->first;
-        auto result = globalLayoutDescInfos_.find(classType);
-        if (result == globalLayoutDescInfos_.end()) {
-            globalLayoutDescInfos_.emplace(classType, iter->second);
-        } else {
-            auto &toDescInfo = result->second;
-            toDescInfo.insert(iter->second.begin(), iter->second.begin());
-        }
-    }
-
     for (auto iter = methodInfos->methodTypeInfos_.begin(); iter != methodInfos->methodTypeInfos_.end(); iter++) {
         auto methodId = iter->first;
         auto fromTypeInfo = iter->second;
@@ -469,10 +546,10 @@ void PGOMethodInfoMap::Merge(Chunk *chunk, NativeAreaAllocator *allocator, PGOMe
         auto result = methodTypeInfos_.find(methodId);
         if (result != methodTypeInfos_.end()) {
             auto toTypeInfo = result->second;
-            toTypeInfo->Merge(allocator, fromTypeInfo, globalLayoutDescInfos_);
+            toTypeInfo->Merge(fromTypeInfo);
         } else {
             auto typeInfoSet = chunk->New<PGOMethodTypeSet>();
-            typeInfoSet->Merge(allocator, fromTypeInfo, globalLayoutDescInfos_);
+            typeInfoSet->Merge(fromTypeInfo);
             methodTypeInfos_.emplace(methodId, typeInfoSet);
         }
     }
@@ -496,7 +573,7 @@ bool PGOMethodInfoMap::ParseFromBinary(Chunk *chunk, uint32_t threshold, void **
 
         if (header->SupportType()) {
             auto typeInfoSet = chunk->New<PGOMethodTypeSet>();
-            typeInfoSet->ParseFromBinary(buffer, [chunk](size_t size) { return chunk->Allocate(size); });
+            typeInfoSet->ParseFromBinary(buffer);
             methodTypeInfos_.emplace(info->GetMethodId(), typeInfoSet);
         }
     }
@@ -651,7 +728,7 @@ bool PGOMethodIdSet::ParseFromBinary(
 
         if (header->SupportType()) {
             auto typeInfoSet = allocator->New<PGOMethodTypeSet>();
-            typeInfoSet->ParseFromBinary(buffer, [allocator](size_t size) { return allocator->Allocate(size); });
+            typeInfoSet->ParseFromBinary(buffer);
             methodTypeSet_.emplace(info->GetMethodId(), typeInfoSet);
         }
     }
@@ -686,18 +763,38 @@ bool PGORecordDetailInfos::AddType(const CString &recordName, EntityId methodId,
     return curMethodInfos->AddType(chunk_.get(), methodId, offset, type);
 }
 
-bool PGORecordDetailInfos::AddDefine(const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type)
+bool PGORecordDetailInfos::AddDefine(
+    const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType)
 {
     auto curMethodInfos = GetMethodInfoMap(recordName);
     ASSERT(curMethodInfos != nullptr);
-    return curMethodInfos->AddDefine(chunk_.get(), methodId, offset, type);
+    curMethodInfos->AddDefine(chunk_.get(), methodId, offset, type, superType);
+
+    PGOHClassLayoutDesc descInfo(type.GetClassType());
+    descInfo.SetSuperClassType(superType.GetClassType());
+    auto iter = moduleLayoutDescInfos_.find(descInfo);
+    if (iter != moduleLayoutDescInfos_.end()) {
+        moduleLayoutDescInfos_.erase(iter);
+    }
+    moduleLayoutDescInfos_.emplace(descInfo);
+    return true;
 }
 
-bool PGORecordDetailInfos::AddLayout(const CString &recordName, PGOSampleType type, JSTaggedType hclass)
+bool PGORecordDetailInfos::AddLayout(PGOSampleType type, JSTaggedType hclass, PGOObjLayoutKind kind)
 {
-    auto curMethodInfos = GetMethodInfoMap(recordName);
-    ASSERT(curMethodInfos != nullptr);
-    return curMethodInfos->AddLayout(type, hclass);
+    auto hclassObject = JSHClass::Cast(JSTaggedValue(hclass).GetTaggedObject());
+    PGOHClassLayoutDesc descInfo(type.GetClassType());
+    auto iter = moduleLayoutDescInfos_.find(descInfo);
+    if (iter != moduleLayoutDescInfos_.end()) {
+        auto &oldDescInfo = const_cast<PGOHClassLayoutDesc &>(*iter);
+        if (!JSHClass::DumpForProfile(hclassObject, oldDescInfo, kind)) {
+            return false;
+        }
+    } else {
+        LOG_ECMA(INFO) << "The current class did not find a definition";
+        return false;
+    }
+    return true;
 }
 
 void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
@@ -715,7 +812,18 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
             toMethodInfos = recordInfosIter->second;
         }
 
-        toMethodInfos->Merge(chunk_.get(), &nativeAreaAllocator_, fromMethodInfos);
+        toMethodInfos->Merge(chunk_.get(), fromMethodInfos);
+
+        // Merge global layout desc infos to global method info map
+        for (auto info = recordInfos.moduleLayoutDescInfos_.begin(); info != recordInfos.moduleLayoutDescInfos_.end();
+             info++) {
+            auto result = moduleLayoutDescInfos_.find(*info);
+            if (result == moduleLayoutDescInfos_.end()) {
+                moduleLayoutDescInfos_.emplace(*info);
+            } else {
+                const_cast<PGOHClassLayoutDesc &>(*result).Merge(*info);
+            }
+        }
     }
 }
 
@@ -730,6 +838,28 @@ void PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
             recordInfos_.emplace(recordName, methodInfos);
         }
     }
+
+    info = header->GetLayoutDescSection();
+    if (info == nullptr) {
+        return;
+    }
+    if (header->SupportType()) {
+        ParseFromBinaryForLayout(&addr);
+    }
+}
+
+bool PGORecordDetailInfos::ParseFromBinaryForLayout(void **buffer)
+{
+    SectionInfo secInfo = base::ReadBuffer<SectionInfo>(buffer);
+    for (uint32_t i = 0; i < secInfo.number_; i++) {
+        PGOHClassLayoutDescInner *info = base::ReadBufferInSize<PGOHClassLayoutDescInner>(buffer);
+        if (info == nullptr) {
+            LOG_ECMA(INFO) << "Binary format error!";
+            continue;
+        }
+        moduleLayoutDescInfos_.emplace(info->Convert());
+    }
+    return true;
 }
 
 void PGORecordDetailInfos::ProcessToBinary(
@@ -750,6 +880,54 @@ void PGORecordDetailInfos::ProcessToBinary(
         }
     }
     info->size_ = static_cast<uint32_t>(fileStream.tellp()) - info->offset_;
+
+    info = header->GetLayoutDescSection();
+    if (info == nullptr) {
+        return;
+    }
+    info->number_ = 0;
+    info->offset_ = static_cast<uint32_t>(fileStream.tellp());
+    if (header->SupportType()) {
+        if (!ProcessToBinaryForLayout(const_cast<NativeAreaAllocator *>(&nativeAreaAllocator_), task, fileStream)) {
+            return;
+        }
+        info->number_++;
+    }
+    info->size_ = static_cast<uint32_t>(fileStream.tellp()) - info->offset_;
+}
+
+bool PGORecordDetailInfos::ProcessToBinaryForLayout(
+    NativeAreaAllocator *allocator, const SaveTask *task, std::ofstream &stream) const
+{
+    SectionInfo secInfo;
+    std::stringstream layoutDescStream;
+
+    for (const auto &typeInfo : moduleLayoutDescInfos_) {
+        if (task && task->IsTerminate()) {
+            LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
+            return false;
+        }
+        auto classType = PGOSampleType(typeInfo.GetClassType());
+        size_t size = PGOHClassLayoutDescInner::CaculateSize(typeInfo);
+        if (size == 0) {
+            continue;
+        }
+        auto superType = PGOSampleType(typeInfo.GetSuperClassType());
+        void *addr = allocator->Allocate(size);
+        auto descInfos = new (addr) PGOHClassLayoutDescInner(size, classType, superType);
+        descInfos->Merge(typeInfo);
+        layoutDescStream.write(reinterpret_cast<char *>(descInfos), size);
+        allocator->Delete(addr);
+        secInfo.number_++;
+    }
+
+    secInfo.offset_ = sizeof(SectionInfo);
+    secInfo.size_ = static_cast<uint32_t>(layoutDescStream.tellg());
+    stream.write(reinterpret_cast<char *>(&secInfo), sizeof(SectionInfo));
+    if (secInfo.number_ > 0) {
+        stream << layoutDescStream.rdbuf();
+    }
+    return true;
 }
 
 bool PGORecordDetailInfos::ParseFromText(std::ifstream &stream)
@@ -793,6 +971,23 @@ bool PGORecordDetailInfos::ParseFromText(std::ifstream &stream)
 
 void PGORecordDetailInfos::ProcessToText(std::ofstream &stream) const
 {
+    std::string profilerString;
+    bool isFirst = true;
+    for (auto layoutInfoIter : moduleLayoutDescInfos_) {
+        if (isFirst) {
+            profilerString += NEW_LINE;
+            profilerString += ARRAY_START + SPACE;
+            isFirst = false;
+        } else {
+            profilerString += BLOCK_SEPARATOR + SPACE;
+        }
+        isFirst = false;
+        profilerString += PGOHClassLayoutDescInner::GetTypeString(layoutInfoIter);
+    }
+    if (!isFirst) {
+        profilerString += (SPACE + ARRAY_END + NEW_LINE);
+        stream << profilerString;
+    }
     for (auto iter = recordInfos_.begin(); iter != recordInfos_.end(); iter++) {
         auto recordName = iter->first;
         auto methodInfos = iter->second;
@@ -820,5 +1015,27 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
             methodIds_.emplace(recordName, methodIds);
         }
     }
+
+    info = header->GetLayoutDescSection();
+    if (info == nullptr) {
+        return;
+    }
+    if (header->SupportType()) {
+        ParseFromBinaryForLayout(&addr);
+    }
+}
+
+bool PGORecordSimpleInfos::ParseFromBinaryForLayout(void **buffer)
+{
+    SectionInfo secInfo = base::ReadBuffer<SectionInfo>(buffer);
+    for (uint32_t i = 0; i < secInfo.number_; i++) {
+        PGOHClassLayoutDescInner *info = base::ReadBufferInSize<PGOHClassLayoutDescInner>(buffer);
+        if (info == nullptr) {
+            LOG_ECMA(INFO) << "Binary format error!";
+            continue;
+        }
+        moduleLayoutDescInfos_.emplace(info->Convert());
+    }
+    return true;
 }
 } // namespace panda::ecmascript

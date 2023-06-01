@@ -174,4 +174,12 @@ bool PGOProfilerDecoder::Match(const CString &recordName, EntityId methodId)
     }
     return recordSimpleInfos_->Match(recordName, methodId);
 }
+
+bool PGOProfilerDecoder::GetHClassLayoutDesc(PGOSampleType classType, PGOHClassLayoutDesc **desc) const
+{
+    if (!isLoaded_ || !isVerifySuccess_) {
+        return false;
+    }
+    return recordSimpleInfos_->GetHClassLayoutDesc(classType, desc);
+}
 } // namespace panda::ecmascript
