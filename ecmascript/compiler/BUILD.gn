@@ -137,6 +137,14 @@ ohos_source_set("libark_jsoptimizer_set") {
     "verifier.cpp",
   ]
 
+  if (enable_local_code_sign) {
+    sources += [ "$js_root/ecmascript/platform/unix/ohos/code_sign.cpp" ]
+  } else if (is_mingw) {
+    sources += [ "$js_root/ecmascript/platform/windows/code_sign.cpp" ]
+  } else {
+    sources += [ "$js_root/ecmascript/platform/unix/code_sign.cpp" ]
+  }
+
   public_configs = [
     ":include_llvm",
     "$js_root:ark_jsruntime_compiler_config",
@@ -253,6 +261,12 @@ ohos_source_set("libark_jsoptimizer_set") {
 
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
+  if (enable_local_code_sign) {
+    external_deps += [
+      "code_signature:libcode_sign_utils",
+      "code_signature:liblocal_code_sign_sdk",
+    ]
+  }
   deps = hiviewdfx_deps
 
   part_name = "ets_runtime"

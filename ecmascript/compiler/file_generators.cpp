@@ -14,10 +14,12 @@
  */
 
 #include "ecmascript/compiler/file_generators.h"
+
+#include "ecmascript/platform/code_sign.h"
+#include "ecmascript/platform/directory.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stackmap/ark_stackmap_builder.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
-#include "ecmascript/platform/directory.h"
 
 namespace panda::ecmascript::kungfu {
 void Module::CollectStackMapDes(ModuleSectionDes& des) const
@@ -373,11 +375,15 @@ void AOTFileGenerator::GenerateMergedStackmapSection()
 
 bool AOTFileGenerator::CreateDirIfNotExist(const std::string &filename)
 {
-    auto index = filename.find_last_of('/');
+    std::string realPath;
+    if (!panda::ecmascript::RealPath(filename, realPath, false)) {
+        return false;
+    }
+    auto index = realPath.find_last_of('/');
     if (index == std::string::npos) {
         return true;
     }
-    std::string path = filename.substr(0, index);
+    std::string path = realPath.substr(0, index);
     if (!panda::ecmascript::ForceCreateDirectory(path)) {
         LOG_COMPILER(ERROR) << "Fail to make dir:" << path;
         return false;
@@ -403,6 +409,7 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename)
     if (!panda::ecmascript::SetFileModeAsDefault(filename)) {
         LOG_COMPILER(ERROR) << "Fail to set an file mode:" << filename;
     }
+    panda::ecmascript::CodeSignForAOTFile(filename);
 }
 
 void AOTFileGenerator::SaveSnapshotFile()

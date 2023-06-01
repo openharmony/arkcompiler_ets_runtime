@@ -98,3 +98,14 @@ if (enable_hilog) {
 
 enable_target_compilation =
     !ark_standalone_build && !is_mac && current_cpu == "arm64"
+
+have_local_code_sign = false
+if (defined(global_parts_info) &&
+    defined(global_parts_info.security_code_signature) &&
+    global_parts_info.security_code_signature) {
+  have_local_code_sign = true
+}
+enable_local_code_sign = false
+if (have_local_code_sign && enable_target_compilation) {
+  enable_local_code_sign = true
+}
