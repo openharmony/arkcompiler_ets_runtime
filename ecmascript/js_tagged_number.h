@@ -112,6 +112,9 @@ public:
             if (res > INT32_MAX || res < INT32_MIN) {
                 return JSTaggedNumber(static_cast<double>(res));
             }
+            if (res == 0 && (intA < 0 || intB < 0)) {
+                return JSTaggedNumber(-0.0);
+            }
             return JSTaggedNumber(static_cast<int>(res));
         }
         return JSTaggedNumber(GetNumber() * number.GetNumber());
