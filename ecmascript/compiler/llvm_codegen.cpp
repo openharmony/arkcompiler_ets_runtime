@@ -87,20 +87,12 @@ CodeInfo::CodeSpace *CodeInfo::CodeSpace::GetInstance()
 CodeInfo::CodeSpace::CodeSpace()
 {
     ASSERT(REQUIRED_SECS_LIMIT == AlignUp(REQUIRED_SECS_LIMIT, PageSize()));
-#ifdef PANDA_TARGET_MACOS
     reqSecs_ = static_cast<uint8_t *>(PageMap(REQUIRED_SECS_LIMIT, PAGE_PROT_READWRITE).GetMem());
-#else
-    reqSecs_ = static_cast<uint8_t *>(PageMap(REQUIRED_SECS_LIMIT, PAGE_PROT_EXEC_READWRITE).GetMem());
-#endif
     if (reqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
         reqSecs_ = nullptr;
     }
     ASSERT(UNREQUIRED_SECS_LIMIT == AlignUp(UNREQUIRED_SECS_LIMIT, PageSize()));
-#ifdef PANDA_TARGET_MACOS
     unreqSecs_ = static_cast<uint8_t *>(PageMap(UNREQUIRED_SECS_LIMIT, PAGE_PROT_READWRITE).GetMem());
-#else
-    unreqSecs_ = static_cast<uint8_t *>(PageMap(UNREQUIRED_SECS_LIMIT, PAGE_PROT_EXEC_READWRITE).GetMem());
-#endif
     if (unreqSecs_ == reinterpret_cast<uint8_t *>(-1)) {
         unreqSecs_ = nullptr;
     }
