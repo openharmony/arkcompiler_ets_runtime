@@ -132,4 +132,14 @@ JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue d
     CString msg = "resolve absolute path fail";
     THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, EcmaString, msg.c_str());
 }
+
+bool FileExist(const char *filename)
+{
+    return (access(filename, 0) != -1);
+}
+
+int Unlink(const char *filename)
+{
+    return unlink(filename);
+}
 }  // namespace panda::ecmascript

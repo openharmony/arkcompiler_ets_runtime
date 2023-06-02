@@ -97,6 +97,10 @@ int Main(const int argc, const char **argv)
             std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch())
                     .count();
     std::string entrypoint = "init::func_main_0";
+    LOG_ECMA(DEBUG) << "Print ark_aot_compiler received args:";
+    for (int i = 0; i < argc; i++) {
+        LOG_ECMA(DEBUG) << argv[i];
+    }
 
     int newArgc = argc;
     if (argc < 2) { // 2: at least have two arguments

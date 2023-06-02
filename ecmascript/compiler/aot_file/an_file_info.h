@@ -45,6 +45,8 @@ public:
         return it->second;
     }
 
+    void TryRemoveAnFile(const char *filename);
+
     void AlignTextSec()
     {
         curTextSecOffset_ = AlignUp(curTextSecOffset_, TEXT_SEC_ALIGN);
