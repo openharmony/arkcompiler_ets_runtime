@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/mem/gc_stats.h"
+#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
 #include "ecmascript/mem/visitor.h"
 

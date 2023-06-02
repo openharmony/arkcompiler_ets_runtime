@@ -48,8 +48,8 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
     }
     if (Expand(isPromoted)) {
         if (!isPromoted) {
-            heap_->TryTriggerIdleCollection();
             heap_->TryTriggerIncrementalMarking();
+            heap_->TryTriggerIdleCollection();
             heap_->TryTriggerConcurrentMarking();
         }
         object = allocator_.Allocate(size);

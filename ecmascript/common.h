@@ -45,6 +45,8 @@ enum class GCReason : uint8_t {
     ALLOCATION_LIMIT,
     ALLOCATION_FAILED,
     IDLE,
+    SWITCH_BACKGROUND,
+    EXTERNAL_TRIGGER,
     OTHER,
 };
 
@@ -125,9 +127,10 @@ enum class GCReason : uint8_t {
     V(OLD_CLEAR_NATIVE_OBJ_SPEED)        \
     V(OLD_EVACUATE_SPACE_SPEED)          \
     V(YOUNG_CLEAR_NATIVE_OBJ_SPEED)      \
+    V(YOUNG_UPDATE_REFERENCE_SPEED)      \
+    V(YOUNG_EVACUATE_SPACE_SPEED)        \
     V(MARK_SPEED)                        \
-    V(SWEEP_SPEED)                       \
-    V(EVACUATE_SPEED)
+    V(SWEEP_SPEED)
 
 constexpr uint32_t NUM_MANDATORY_JSFUNC_ARGS = 3;
 constexpr uint32_t INVALID_INDEX = std::numeric_limits<uint32_t>::max();

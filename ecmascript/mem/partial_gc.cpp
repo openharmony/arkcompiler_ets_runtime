@@ -20,6 +20,7 @@
 #include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/parallel_evacuator.h"
@@ -122,6 +123,9 @@ void PartialGC::Sweep()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Sweep");
     ProcessNativeDelete();
     if (heap_->IsFullMark()) {
+        heap_->GetOldSpace()->EnumerateRegions([](Region *current) {
+            current->SetRegionAliveSize();
+        });
         TRACE_GC(GCStats::Scope::ScopeId::Sweep, heap_->GetEcmaVM()->GetEcmaGCStats());
         heap_->GetSweeper()->Sweep();
     }

@@ -297,9 +297,7 @@ HWTEST_F_L0(DFXJSNApiTests, NotifyApplicationState)
 #endif
     EXPECT_TRUE(!sweeper->IsDisabled());
 
-    bool fullGC = false;
-    sweeper->Sweep(fullGC);
-    sweeper->PostTask();
+    const_cast<ecmascript::Heap *>(heap)->CollectGarbage(TriggerGCType::OLD_GC, GCReason::OTHER);
     DFXJSNApi::NotifyApplicationState(vm_, true);
     EXPECT_TRUE(concurrentMarker->IsDisabled());
     EXPECT_TRUE(sweeper->IsRequestDisabled());

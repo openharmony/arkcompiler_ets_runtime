@@ -434,6 +434,11 @@ public:
         aliveObject_.fetch_add(size, std::memory_order_relaxed);
     }
 
+    void SetRegionAliveSize()
+    {
+        gcAliveSize_ = aliveObject_;
+    }
+
     void ResetAliveObject()
     {
         aliveObject_ = 0;
@@ -444,6 +449,11 @@ public:
         return aliveObject_.load(std::memory_order_relaxed);
     }
 
+    size_t GetGCAliveSize() const
+    {
+        return gcAliveSize_;
+    }
+
     bool MostObjectAlive() const
     {
         return aliveObject_ > MOST_OBJECT_ALIVE_THRESHOLD_PERCENT * GetSize();
@@ -451,7 +461,7 @@ public:
 
     bool BelowCompressThreasholdAlive() const
     {
-        return aliveObject_ < COMPRESS_THREASHOLD_PERCENT * GetSize();
+        return gcAliveSize_ < COMPRESS_THREASHOLD_PERCENT * GetSize();
     }
 
     void ResetWasted()
@@ -552,10 +562,10 @@ public:
     STATIC_ASSERT_EQ_ARCH(sizeof(PackedData), PackedData::SizeArch32, PackedData::SizeArch64);
 
     static constexpr double MOST_OBJECT_ALIVE_THRESHOLD_PERCENT = 0.8;
-    static constexpr double AVERAGE_REGION_EVACUATE_SIZE = (1 - MOST_OBJECT_ALIVE_THRESHOLD_PERCENT) *
-                                                           DEFAULT_REGION_SIZE;
+    static constexpr double AVERAGE_REGION_EVACUATE_SIZE = MOST_OBJECT_ALIVE_THRESHOLD_PERCENT *
+                                                           DEFAULT_REGION_SIZE / 2;  // 2 means half
 private:
-    static constexpr double COMPRESS_THREASHOLD_PERCENT = 0.5;
+    static constexpr double COMPRESS_THREASHOLD_PERCENT = 0.1;
 
     RememberedSet *CreateRememberedSet();
     RememberedSet *GetOrCreateCrossRegionRememberedSet();
@@ -576,6 +586,7 @@ private:
     uintptr_t end_;
     uintptr_t highWaterMark_;
     std::atomic_size_t aliveObject_ {0};
+    size_t gcAliveSize_ {0};
     Region *next_ {nullptr};
     Region *prev_ {nullptr};
 

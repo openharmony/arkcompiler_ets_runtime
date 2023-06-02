@@ -174,9 +174,8 @@ public:
 private:
     static constexpr int64_t PARTIAL_GC_MAX_EVACUATION_SIZE = 6_MB;
     static constexpr unsigned long long PARTIAL_GC_MAX_COLLECT_REGION_RATE = 2_MB;
-    static constexpr unsigned long long PARTIAL_GC_INITIAL_COLLECT_REGION_SIZE = 16;
+    static constexpr unsigned long long PARTIAL_GC_INITIAL_COLLECT_REGION_SIZE = 24;
     static constexpr size_t PARTIAL_GC_MIN_COLLECT_REGION_SIZE = 5;
-    static constexpr double MAX_GC_FREE_SPACE_RATE = 0.5;
 
     CVector<Region *> collectRegionSet_;
     os::memory::Mutex lock_;

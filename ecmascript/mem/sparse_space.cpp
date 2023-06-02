@@ -421,24 +421,16 @@ void OldSpace::Merge(LocalSpace *localSpace)
 
 void OldSpace::SelectCSet()
 {
-    if (sweepState_ != SweepState::SWEPT) {
-        return;
+    if (heap_->GetJSThread()->IsMarking()) {
+        heap_->GetEcmaVM()->GetEcmaGCStats()->RecordStatisticBeforeGC(TriggerGCType::OLD_GC, GCReason::OTHER);
     }
     CheckRegionSize();
     // 1、Select region which alive object larger than limit
-    if (heap_->GetCommittedSize() > (MAX_GC_FREE_SPACE_RATE + 1) * heap_->GetHeapAliveSizeAfterGC()) {
-        EnumerateRegions([this](Region *region) {
-            if (region->BelowCompressThreasholdAlive()) {
-                collectRegionSet_.emplace_back(region);
-            }
-        });
-    } else {
-        EnumerateRegions([this](Region *region) {
-            if (!region->MostObjectAlive()) {
-                collectRegionSet_.emplace_back(region);
-            }
-        });
-    }
+    EnumerateRegions([this](Region *region) {
+        if (region->BelowCompressThreasholdAlive() || !region->MostObjectAlive()) {
+            collectRegionSet_.emplace_back(region);
+        }
+    });
     if (collectRegionSet_.size() < PARTIAL_GC_MIN_COLLECT_REGION_SIZE) {
         LOG_ECMA_MEM(DEBUG) << "Select CSet failure: number is too few";
         collectRegionSet_.clear();
@@ -446,10 +438,13 @@ void OldSpace::SelectCSet()
     }
     // sort
     std::sort(collectRegionSet_.begin(), collectRegionSet_.end(), [](Region *first, Region *second) {
-        return first->AliveObject() < second->AliveObject();
+        return first->GetGCAliveSize() < second->GetGCAliveSize();
     });
+
+    // Limit cset size
     unsigned long selectedRegionNumber = 0;
-    int64_t evacuateSize = PARTIAL_GC_MAX_EVACUATION_SIZE;
+    int64_t expectFreeSize = heap_->GetCommittedSize() - heap_->GetHeapAliveSizeAfterGC();
+    int64_t evacuateSize = std::min(PARTIAL_GC_MAX_EVACUATION_SIZE, expectFreeSize);
     EnumerateCollectRegionSet([&](Region *current) {
         if (evacuateSize > 0) {
             selectedRegionNumber++;
@@ -458,7 +453,7 @@ void OldSpace::SelectCSet()
             return;
         }
     });
-    OPTIONAL_LOG(heap_->GetEcmaVM(), INFO) << "Max evacuation size is 4_MB. The CSet region number: "
+    OPTIONAL_LOG(heap_->GetEcmaVM(), INFO) << "Max evacuation size is 6_MB. The CSet region number: "
         << selectedRegionNumber;
     selectedRegionNumber = std::max(selectedRegionNumber, GetSelectedRegionNumber());
     if (collectRegionSet_.size() > selectedRegionNumber) {

@@ -19,7 +19,6 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
-#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/sparse_space.h"
@@ -400,11 +399,7 @@ public:
         idleTask_ = task;
     }
 
-    void ClearIdleTask()
-    {
-        SetIdleTask(IdleTaskType::NO_TASK);
-        DisableNotifyIdle();
-    }
+    void ClearIdleTask();
 
     /*
      * Heap tracking will be used by tools like heap profiler etc.
@@ -526,20 +521,18 @@ public:
 
     void NotifyHeapAliveSizeAfterGC(size_t size)
     {
-        if (heapAliveSizeAfterGC_ == 0) {
-            heapAliveSizeAfterGC_ = size;
-        } else {
-            heapAliveSizeAfterGC_ = (heapAliveSizeAfterGC_ + size) >> 1;
-        }
+        heapAliveSizeAfterGC_ = size;
     }
 
-    size_t GetHeapAliveSizeAfterGC()
+    size_t GetHeapAliveSizeAfterGC() const
     {
         return heapAliveSizeAfterGC_;
     }
 private:
     static constexpr int IDLE_TIME_LIMIT = 15;  // if idle time over 15ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
+    static constexpr int IDLE_MAINTAIN_TIME = 500;
+    static constexpr int BACKGROUND_GROW_LIMIT = 2_MB;
     void FatalOutOfMemoryError(size_t size, std::string functionName);
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
@@ -696,6 +689,7 @@ private:
     IdleTaskType idleTask_ {IdleTaskType::NO_TASK};
     float idlePredictDuration_ {0.0f};
     size_t heapAliveSizeAfterGC_ {0};
+    double idleTaskFinishTime_ {0.0};
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
     bool isVerifying_ {false};
 #endif

@@ -44,6 +44,7 @@ void FullGC::RunPhases()
     Mark();
     Sweep();
     Finish();
+    heap_->NotifyHeapAliveSizeAfterGC(heap_->GetHeapObjectSize());
 }
 
 void FullGC::RunPhasesForAppSpawn()

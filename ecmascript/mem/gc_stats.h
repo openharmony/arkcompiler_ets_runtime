@@ -93,6 +93,16 @@ public:
         return recordData_[GetRecordDataIndex(dataIdx)];
     }
 
+    void SetGCReason(GCReason reason)
+    {
+        reason_ = reason;
+    }
+
+    GCReason GetGCReason() const
+    {
+        return reason_;
+    }
+
     double GetAvgSurvivalRate()
     {
         double copiedRate = double(GetRecordData(RecordData::YOUNG_TOTAL_ALIVE)) /
