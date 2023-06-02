@@ -139,6 +139,9 @@ public:
 
     inline bool HandleOpLineStart(uint8_t opCode)
     {
+        if (IsEOF()) {
+            return !MatchFailed();
+        }
         if ((GetCurrentPtr() == input_) ||
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             ((flags_ & RegExpParser::FLAG_MULTILINE) != 0 && PeekPrevChar(currentPtr_, input_) == '\n')) {
