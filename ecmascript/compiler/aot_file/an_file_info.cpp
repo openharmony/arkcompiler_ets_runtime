@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/compiler/aot_file/an_file_info.h"
+
+#include <cerrno>
 #include "ecmascript/compiler/aot_file/aot_version.h"
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/aot_file/elf_reader.h"
@@ -29,8 +31,10 @@ void AnFileInfo::Save(const std::string &filename, Triple triple)
     if (!RealPath(filename, realPath, false)) {
         return;
     }
+    const char *rawPath = realPath.c_str();
+    TryRemoveAnFile(rawPath);
 
-    std::ofstream file(realPath.c_str(), std::ofstream::binary);
+    std::ofstream file(rawPath, std::ofstream::binary);
     SetStubNum(entries_.size());
     AddFuncEntrySec();
 
@@ -81,6 +85,16 @@ bool AnFileInfo::Load(const std::string &filename)
     LOG_COMPILER(INFO) << "loaded an file: " << filename.c_str();
     isLoad_ = true;
     return true;
+}
+
+void AnFileInfo::TryRemoveAnFile(const char *filename)
+{
+    if (!FileExist(filename)) {
+        return;
+    }
+    if (Unlink(filename) == -1) {
+        LOG_COMPILER(ERROR) << "remove " << filename << " failed and errno is " << errno;
+    }
 }
 
 void AnFileInfo::ParseFunctionEntrySection(ModuleSectionDes &des)

@@ -70,5 +70,7 @@ MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset = 0);
 int FileUnMap(MemMap addr);
 JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue dirname,
                                                JSTaggedValue request);
+bool FileExist(const char *filename);
+int Unlink(const char *filename);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_FILE_H
