@@ -1208,12 +1208,6 @@ int RegExpParser::ParseCharacterEscape()
             result = c0_;
             if (result < CHAR_MAXS) {
                 Advance();
-            } else {
-                Prev();
-                const uint8_t *p = pc_;
-                result = static_cast<uint32_t>(base::StringHelper::UnicodeFromUtf8(p, UTF8_CHAR_LEN_MAX, &p));
-                int offset = static_cast<int>(p - pc_);
-                Advance(offset + 1);
             }
             break;
         }
@@ -1264,10 +1258,12 @@ bool RegExpParser::ParseClassRanges(RangeSet *result)
                     return false;
                 }
             }
-            result->Insert(c1, c2);
             if (IsIgnoreCase()) {
-                ProcessIntersection(result);
+                c1 = static_cast<uint32_t>(Canonicalize(c1, IsUtf16()));
+                c2 = static_cast<uint32_t>(Canonicalize(c2, IsUtf16()));
             }
+
+            result->Insert(c1, c2);
         } else {
             result->Insert(s1);
         }
