@@ -730,4 +730,36 @@ const JSPandaFile *DebuggerApi::GetBaseJSPandaFile(const EcmaVM *ecmaVm, const J
     return hotReloadManager->GetBaseJSPandaFile(jsPandaFile);
 }
 
+std::vector<void *> DebuggerApi::GetNativePointer(const EcmaVM *ecmaVm)
+{
+    void *native = nullptr;
+    std::vector<void *> nativePointer;
+    JSThread *thread = ecmaVm->GetJSThread();
+    JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
+    FrameIterator it(current, thread);
+    for (; !it.Done(); it.Advance<GCVisitedFlag::HYBRID_STACK>()) {
+        if (!it.IsJSFrame()) {
+            continue;
+        }
+        auto method = it.CheckAndGetMethod();
+        if (method == nullptr) {
+            continue;
+        }
+
+        if (method->IsNativeWithCallField()) {
+            JSTaggedValue function = it.GetFunction();
+            JSHandle<JSTaggedValue> extraInfoValue(
+                thread, JSFunction::Cast(function.GetTaggedObject())->GetFunctionExtraInfo());
+            auto cb = ecmaVm->GetNativePtrGetter();
+            if (extraInfoValue->IsJSNativePointer() && cb != nullptr) {
+                JSHandle<JSNativePointer> extraInfo(extraInfoValue);
+                native = cb(reinterpret_cast<void *>(extraInfo->GetData()));
+                nativePointer.push_back(native);
+            }
+        } else {
+            nativePointer.push_back(nullptr); // to tell IDE this frame don't hava nativePointer
+        }
+    }
+    return nativePointer;
+}
 }  // namespace panda::ecmascript::tooling
