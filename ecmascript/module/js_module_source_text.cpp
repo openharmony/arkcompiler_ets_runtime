@@ -29,6 +29,8 @@
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
+using StringHelper = base::StringHelper;
+
 CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                                         const JSHandle<TaggedArray> &exportStarSet)
 {
@@ -84,7 +86,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
     }
 
     CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest->GetTaggedObject()));
-    auto [isNative, moduleType] = ModuleManager::CheckNativeModule(moduleRequestName);
+    auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestName);
     if (isNative) {
         return moduleManager->ResolveNativeModule(moduleRequestName, moduleType);
     }
@@ -265,12 +267,103 @@ void SourceTextModule::InstantiateCJS(JSThread *thread, const JSHandle<SourceTex
     InitializeEnvironment(thread, currentModule, cjsModuleName, cjsExports, isBundle);
 }
 
+std::pair<bool, ModuleTypes> SourceTextModule::CheckNativeModule(const CString &moduleRequestName)
+{
+    if (moduleRequestName[0] != '@' ||
+        StringHelper::StringStartWith(moduleRequestName, PathHelper::PREFIX_BUNDLE) ||
+        StringHelper::StringStartWith(moduleRequestName, PathHelper::PREFIX_PACKAGE)||
+        moduleRequestName.find(':') == CString::npos) {
+        return {false, ModuleTypes::UNKNOWN};
+    }
+
+    if (StringHelper::StringStartWith(moduleRequestName, PathHelper::REQUIRE_NAPI_OHOS_PREFIX)) {
+        return {true, ModuleTypes::OHOS_MODULE};
+    }
+    if (StringHelper::StringStartWith(moduleRequestName, PathHelper::REQUIRE_NAPI_APP_PREFIX)) {
+        return {true, ModuleTypes::APP_MODULE};
+    }
+    if (StringHelper::StringStartWith(moduleRequestName, PathHelper::REQUIRE_NAITVE_MODULE_PREFIX)) {
+        return {true, ModuleTypes::NATIVE_MODULE};
+    }
+    return {true, ModuleTypes::INTERNAL_MODULE};
+}
+
+Local<JSValueRef> SourceTextModule::GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType)
+{
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    auto globalConstants = vm->GetJSThread()->GlobalConstants();
+    auto funcName = (moduleType == ModuleTypes::NATIVE_MODULE) ?
+        globalConstants->GetHandledRequireNativeModuleString() :
+        globalConstants->GetHandledRequireNapiString();
+    return globalObject->Get(vm, JSNApiHelper::ToLocal<StringRef>(funcName));
+}
+
+void SourceTextModule::MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
+    const CString &moduleName)
+{
+    size_t pos = moduleName.find_last_of('/');
+    if (pos == CString::npos) {
+        LOG_FULL(FATAL) << "Invalid native module " << moduleName;
+        UNREACHABLE();
+    }
+    CString soName = moduleName.substr(pos + 1);
+    CString path = moduleName.substr(0, pos);
+    // use module name as so name
+    arguments[0] = StringRef::NewFromUtf8(vm, soName.c_str());
+    arguments.emplace_back(BooleanRef::New(vm, true));
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, path.c_str()));
+}
+
+void SourceTextModule::MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
+    const CString &moduleRequestName)
+{
+    arguments.emplace_back(BooleanRef::New(vm, false));
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, ""));
+    CString moduleDir = PathHelper::GetInternalModulePrefix(moduleRequestName);
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, moduleDir.c_str()));
+}
+
+bool SourceTextModule::LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule> &requiredModule,
+    const JSHandle<JSTaggedValue> &moduleRequest, ModuleTypes moduleType)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    [[maybe_unused]] LocalScope scope(vm);
+
+    CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest->GetTaggedObject()));
+    CString moduleName = PathHelper::GetStrippedModuleName(moduleRequestName);
+    std::vector<Local<JSValueRef>> arguments;
+    LOG_FULL(DEBUG) << "Request module is " << moduleRequestName;
+
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, moduleName.c_str()));
+    if (moduleType == ModuleTypes::APP_MODULE) {
+        MakeAppArgs(vm, arguments, moduleName);
+    } else if (moduleType == ModuleTypes::INTERNAL_MODULE) {
+        MakeInternalArgs(vm, arguments, moduleRequestName);
+    }
+    auto maybeFuncRef = GetRequireNativeModuleFunc(vm, moduleType);
+    // some function(s) may not registered in global object for non-main thread
+    if (!maybeFuncRef->IsFunction()) {
+        LOG_FULL(WARN) << "Not found require func";
+        return false;
+    }
+
+    Local<FunctionRef> funcRef = maybeFuncRef;
+    auto exportObject = funcRef->Call(vm, JSValueRef::Undefined(vm), arguments.data(), arguments.size());
+    if (UNLIKELY(thread->HasPendingException())) {
+        thread->ClearException();
+        LOG_FULL(ERROR) << "LoadNativeModule has exception";
+        return false;
+    }
+    requiredModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
+    return true;
+}
+
 void SourceTextModule::InstantiateNativeModule(JSThread *thread, JSHandle<SourceTextModule> &currentModule,
     JSHandle<SourceTextModule> &requiredModule, const JSHandle<JSTaggedValue> &moduleRequest,
     ModuleTypes moduleType)
 {
     if (requiredModule->GetStatus() != ModuleStatus::EVALUATED) {
-        if (!ModuleManager::LoadNativeModule(thread, requiredModule, moduleRequest, moduleType)) {
+        if (!SourceTextModule::LoadNativeModule(thread, requiredModule, moduleRequest, moduleType)) {
             LOG_FULL(WARN) << "LoadNativeModule " << ConvertToString(
                 EcmaString::Cast(moduleRequest->GetTaggedObject())) << " failed";
             return;
@@ -845,7 +938,7 @@ int SourceTextModule::InnerModuleEvaluation(JSThread *thread, const JSHandle<Mod
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
             }
             ModuleTypes moduleType = requiredModule->GetTypes();
-            if (ModuleManager::IsNativeModule(moduleType)) {
+            if (SourceTextModule::IsNativeModule(moduleType)) {
                 InstantiateNativeModule(thread, module, requiredModule, required, moduleType);
                 requiredModule->SetStatus(ModuleStatus::EVALUATED);
                 continue;
@@ -930,7 +1023,7 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
                 requiredModule.Update(SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
             }
             ModuleTypes moduleType = requiredModule->GetTypes();
-            if (ModuleManager::IsNativeModule(moduleType)) {
+            if (SourceTextModule::IsNativeModule(moduleType)) {
                 InstantiateNativeModule(thread, module, requiredModule, required, moduleType);
                 requiredModule->SetStatus(ModuleStatus::EVALUATED);
                 continue;
@@ -1309,7 +1402,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveLocalExport(JSThread *thread,
         }
 
         if ((JSTaggedValue::SameValue(ee->GetExportName(), exportName.GetTaggedValue())) ||
-                 ModuleManager::IsNativeModule(moduleType)) {
+                IsNativeModule(moduleType)) {
             // Adapter new module
             if (module->GetIsNewBcVersion()) {
                 return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module,

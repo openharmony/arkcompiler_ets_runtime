@@ -528,6 +528,19 @@ public:
         return res;
     }
 
+    inline static bool IsNativeModuleRequest(const CString &requestName)
+    {
+        if (requestName[0] != '@') {
+            return false;
+        }
+        if (StringHelper::StringStartWith(requestName, PathHelper::REQUIRE_NAPI_OHOS_PREFIX) ||
+            StringHelper::StringStartWith(requestName, PathHelper::REQUIRE_NAPI_APP_PREFIX) ||
+            StringHelper::StringStartWith(requestName, PathHelper::REQUIRE_NAITVE_MODULE_PREFIX)) {
+            return true;
+        }
+        return false;
+    }
+
     static CString ConcatFileNameWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile, CString &baseFileName,
                                            CString recordName, CString requestName)
     {
@@ -551,6 +564,26 @@ public:
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, entryPoint);
         }
         return entryPoint;
+    }
+
+    static CString GetStrippedModuleName(const CString &moduleRequestName)
+    {
+        // @xxx:**** -> ****
+        size_t pos = moduleRequestName.find(':');
+        if (pos == CString::npos) {
+            LOG_FULL(FATAL) << "Unknown format " << moduleRequestName;
+        }
+        return moduleRequestName.substr(pos + 1);
+    }
+
+    static CString GetInternalModulePrefix(const CString &moduleRequestName)
+    {
+        // @xxx:* -> xxx
+        size_t pos = moduleRequestName.find(':');
+        if (pos == CString::npos) {
+            LOG_FULL(FATAL) << "Unknown format " << moduleRequestName;
+        }
+        return moduleRequestName.substr(1, pos - 1);
     }
 };
 }  // namespace panda::ecmascript::base

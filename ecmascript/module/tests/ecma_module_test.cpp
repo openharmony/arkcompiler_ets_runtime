@@ -511,31 +511,31 @@ HWTEST_F_L0(EcmaModuleTest, CheckNativeModule)
     CString requestName6 = "@package:pkg_modules/.ohpm/json5@2.2.3/pkg_modules/json5/dist/index";
     CString requestName7 = "@ohos/common";
 
-    std::pair<bool, ModuleTypes> res1 = ModuleManager::CheckNativeModule(requestName1);
+    std::pair<bool, ModuleTypes> res1 = SourceTextModule::CheckNativeModule(requestName1);
     EXPECT_EQ(res1.first, false);
     EXPECT_EQ(res1.second, ModuleTypes::UNKNOWN);
 
-    std::pair<bool, ModuleTypes> res2 = ModuleManager::CheckNativeModule(requestName2);
+    std::pair<bool, ModuleTypes> res2 = SourceTextModule::CheckNativeModule(requestName2);
     EXPECT_EQ(res2.first, true);
     EXPECT_EQ(res2.second, ModuleTypes::OHOS_MODULE);
 
-    std::pair<bool, ModuleTypes> res3 = ModuleManager::CheckNativeModule(requestName3);
+    std::pair<bool, ModuleTypes> res3 = SourceTextModule::CheckNativeModule(requestName3);
     EXPECT_EQ(res3.first, true);
     EXPECT_EQ(res3.second, ModuleTypes::APP_MODULE);
 
-    std::pair<bool, ModuleTypes> res4 = ModuleManager::CheckNativeModule(requestName4);
+    std::pair<bool, ModuleTypes> res4 = SourceTextModule::CheckNativeModule(requestName4);
     EXPECT_EQ(res4.first, true);
     EXPECT_EQ(res4.second, ModuleTypes::NATIVE_MODULE);
 
-    std::pair<bool, ModuleTypes> res5 = ModuleManager::CheckNativeModule(requestName5);
+    std::pair<bool, ModuleTypes> res5 = SourceTextModule::CheckNativeModule(requestName5);
     EXPECT_EQ(res5.first, true);
     EXPECT_EQ(res5.second, ModuleTypes::INTERNAL_MODULE);
 
-    std::pair<bool, ModuleTypes> res6 = ModuleManager::CheckNativeModule(requestName6);
+    std::pair<bool, ModuleTypes> res6 = SourceTextModule::CheckNativeModule(requestName6);
     EXPECT_EQ(res6.first, false);
     EXPECT_EQ(res6.second, ModuleTypes::UNKNOWN);
 
-    std::pair<bool, ModuleTypes> res7 = ModuleManager::CheckNativeModule(requestName7);
+    std::pair<bool, ModuleTypes> res7 = SourceTextModule::CheckNativeModule(requestName7);
     EXPECT_EQ(res7.first, false);
     EXPECT_EQ(res7.second, ModuleTypes::UNKNOWN);
 }

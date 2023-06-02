@@ -79,16 +79,6 @@ public:
     static CString GetRecordName(JSTaggedValue module);
     static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
 
-    inline static bool IsNativeModule(ModuleTypes moduleType)
-    {
-        return moduleType == ModuleTypes::OHOS_MODULE ||
-               moduleType == ModuleTypes::APP_MODULE ||
-               moduleType == ModuleTypes::NATIVE_MODULE ||
-               moduleType == ModuleTypes::INTERNAL_MODULE;
-    }
-    static std::pair<bool, ModuleTypes> CheckNativeModule(const CString &moduleRequestName);
-    static bool LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule> &requiredModule,
-        const JSHandle<JSTaggedValue> &moduleRequest, ModuleTypes moduleType);
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
@@ -116,13 +106,6 @@ private:
     JSHandle<JSTaggedValue> ResolveModule(JSThread *thread, const JSPandaFile *jsPandaFile);
     JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                    const CString &recordName);
-
-    static Local<JSValueRef> GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType);
-    static CString GetStrippedModuleName(const CString &moduleRequestName);
-    static CString GetInternalModuleDir(const CString &moduleRequestName);
-    static void MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments, const CString &moduleName);
-    static void MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
-                                 const CString &moduleRequestName);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
 

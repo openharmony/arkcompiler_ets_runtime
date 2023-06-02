@@ -90,6 +90,21 @@ public:
                                        const JSHandle<IndirectExportEntry> &exportEntry, size_t idx, uint32_t len);
     static void AddStarExportEntry(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                    const JSHandle<StarExportEntry> &exportEntry, size_t idx, uint32_t len);
+    static std::pair<bool, ModuleTypes> CheckNativeModule(const CString &moduleRequestName);
+    static Local<JSValueRef> GetRequireNativeModuleFunc(EcmaVM *vm, ModuleTypes moduleType);
+    static void MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments, const CString &moduleName);
+    static void MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
+                                 const CString &moduleRequestName);
+    static bool LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule> &requiredModule,
+        const JSHandle<JSTaggedValue> &moduleRequest, ModuleTypes moduleType);
+    inline static bool IsNativeModule(ModuleTypes moduleType)
+    {
+        return moduleType == ModuleTypes::OHOS_MODULE ||
+               moduleType == ModuleTypes::APP_MODULE ||
+               moduleType == ModuleTypes::NATIVE_MODULE ||
+               moduleType == ModuleTypes::INTERNAL_MODULE;
+    }
+
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;
     ACCESSORS(Environment, SOURCE_TEXT_MODULE_OFFSET, NAMESPACE_OFFSET);
     ACCESSORS(Namespace, NAMESPACE_OFFSET, ECMA_MODULE_FILENAME);

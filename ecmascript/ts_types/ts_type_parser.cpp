@@ -142,8 +142,7 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
     JSHandle<EcmaString> relativePath = GenerateImportRelativePath(importVarNamePath);
     CString cstringRelativePath = ConvertToString(*relativePath);
     // skip @ohos:|@app:|@native: prefixed imports
-    auto [isNative, _] = ModuleManager::CheckNativeModule(cstringRelativePath);
-    if (isNative) {
+    if (base::PathHelper::IsNativeModuleRequest(cstringRelativePath)) {
         return GetAndStoreGT(jsPandaFile, typeId, recordName);
     }
 

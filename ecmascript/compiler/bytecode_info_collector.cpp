@@ -659,8 +659,7 @@ void BytecodeInfoCollector::CollectRecordExportInfo(const CString &recordName)
         starExportEntry.Update(starEntriesArray->Get(index));
         JSTaggedValue moduleRequest = starExportEntry->GetModuleRequest();
         CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest.GetTaggedObject()));
-        auto [isNative, _] = ModuleManager::CheckNativeModule(moduleRequestName);
-        if (isNative) {
+        if (base::PathHelper::IsNativeModuleRequest(moduleRequestName)) {
             return;
         }
         CString baseFileName = jsPandaFile_->GetJSPandaFileDesc();
