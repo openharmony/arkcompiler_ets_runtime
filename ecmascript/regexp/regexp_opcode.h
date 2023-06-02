@@ -359,7 +359,6 @@ public:
     void Insert(uint32_t start, uint32_t end);
     void Insert(const RangeSet &s1);
     void Invert(bool isUtf16);
-    void Inter(RangeSet &cr, const RangeSet &s1);
     void Compress();
 
 private:
