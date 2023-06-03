@@ -113,7 +113,7 @@ void Deoptimizier::CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle
         size_t curDepth = DecodeDeoptDepth(id, shift);
         OffsetType vregId = static_cast<OffsetType>(DecodeVregIndex(id, shift));
         if (vregId != static_cast<OffsetType>(SpecVregIndex::PC_OFFSET_INDEX)) {
-            deoptVregs_.insert({{curDepth, vregId}, JSTaggedValue(v)});
+            deoptVregs_.insert({{curDepth, vregId}, JSHandle<JSTaggedValue>(thread_, JSTaggedValue(v))});
         } else {
             pc_.insert({curDepth, static_cast<size_t>(v)});
         }
@@ -320,7 +320,7 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
     int32_t declaredNumArgs = 0;
     if (curDepth == 0) {
         actualNumArgs = static_cast<int32_t>(GetDeoptValue(curDepth,
-            static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX)).GetRawData());
+            static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX)).GetInt());
         declaredNumArgs = static_cast<int32_t>(method->GetNumArgsWithCallField());
     } else {
         // inline method actualNumArgs equal to declaredNumArgs
@@ -355,17 +355,20 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
 
     // [reserved args]
     if (method->HaveThisWithCallField()) {
-        JSTaggedValue value = deoptVregs_.at({curDepth, static_cast<OffsetType>(SpecVregIndex::THIS_OBJECT_INDEX)});
+        JSTaggedValue value = deoptVregs_.at(
+            {curDepth, static_cast<OffsetType>(SpecVregIndex::THIS_OBJECT_INDEX)}).GetTaggedValue();
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
     if (method->HaveNewTargetWithCallField()) {
-        JSTaggedValue value = deoptVregs_.at({curDepth, static_cast<OffsetType>(SpecVregIndex::NEWTARGET_INDEX)});
+        JSTaggedValue value = deoptVregs_.at(
+            {curDepth, static_cast<OffsetType>(SpecVregIndex::NEWTARGET_INDEX)}).GetTaggedValue();
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
     if (method->HaveFuncWithCallField()) {
-        JSTaggedValue value = deoptVregs_.at({curDepth, static_cast<OffsetType>(SpecVregIndex::FUNC_INDEX)});
+        JSTaggedValue value = deoptVregs_.at(
+            {curDepth, static_cast<OffsetType>(SpecVregIndex::FUNC_INDEX)}).GetTaggedValue();
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
     }
@@ -525,7 +528,13 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
         method->SetDeoptType(type);
         method->SetDeoptThreshold(--deoptThreshold);
     } else {
-        method->ClearAOTFlags();
+        FunctionKind kind = method->GetFunctionKind();
+        ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+        JSHandle<ECMAObject> jsFunc(thread_, CallTarget);
+        JSHandle<JSHClass> oldHclass(thread_, jsFunc->GetClass());
+        // instead of hclass by non_optimized hclass when method ClearAOTFlags
+        JSHandle<JSHClass> newHClass = factory->GetNonOptimizedHclass(oldHclass, kind);
+        jsFunc->SetClass(newHClass);
     }
 }
 

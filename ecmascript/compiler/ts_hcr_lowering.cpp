@@ -859,14 +859,29 @@ void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, Glob
             acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
         }
     } else {
+        auto op = acc_.GetOpCode(func);
+        if (!tsManager_->FastCallFlagIsVaild(funcGt)) {
+            return;
+        }
+        if (op == OpCode::JS_BYTECODE && (acc_.GetByteCodeOpcode(func) == EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8 ||
+                                          acc_.GetByteCodeOpcode(func) == EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8)) {
+            if (tsManager_->CanFastCall(funcGt)) {
+                builder_.JSCallTargetFromDefineFuncCheck(funcType, func);
+                GateRef result = builder_.TypedFastCall(gate, argsFastCall);
+                acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+            } else {
+                builder_.JSCallTargetFromDefineFuncCheck(funcType, func);
+                GateRef result = builder_.TypedCall(gate, args);
+                acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+            }
+            return;
+        }
         int methodIndex = tsManager_->GetMethodIndex(funcGt);
-        if (!tsManager_->MethodOffsetIsVaild(funcGt) || !tsManager_->FastCallFlagIsVaild(funcGt)
-            || methodIndex == -1) {
+        if (!tsManager_->MethodOffsetIsVaild(funcGt) || methodIndex == -1) {
             return;
         }
         if (tsManager_->CanFastCall(funcGt)) {
             builder_.JSFastCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
-
             GateRef result = builder_.TypedFastCall(gate, argsFastCall);
             acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
         } else {
@@ -884,18 +899,9 @@ void TSHCRLowering::LowerTypedCallArg0(GateRef gate)
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
         return;
     }
-    GlobalTSTypeRef funcGt = funcType.GetGTRef();
-    uint32_t len = tsManager_->GetFunctionTypeLength(funcGt);
-    if (len != 0) {
-        return;
-    }
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARG0_IMM8));
-    GateRef newTarget = builder_.Undefined();
-    GateRef thisObj = builder_.Undefined();
-    std::vector<GateRef> argsFastCall { glue_, func, thisObj };
-    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj };
-    CheckCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
+    LowerTypedCall(gate, func, actualArgc, funcType, 0);
 }
 
 void TSHCRLowering::LowerTypedCallArg1(GateRef gate)
@@ -903,11 +909,6 @@ void TSHCRLowering::LowerTypedCallArg1(GateRef gate)
     GateRef func = acc_.GetValueIn(gate, 1);
     GateType funcType = acc_.GetGateType(func);
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
-        return;
-    }
-    GlobalTSTypeRef funcGt = funcType.GetGTRef();
-    uint32_t len = tsManager_->GetFunctionTypeLength(funcGt);
-    if (len != 1) { // 1: 1 params
         return;
     }
     GateRef a0Value = acc_.GetValueIn(gate, 0);
@@ -919,11 +920,7 @@ void TSHCRLowering::LowerTypedCallArg1(GateRef gate)
     } else {
         GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
             EcmaOpcode::CALLARG1_IMM8_V8));
-        GateRef newTarget = builder_.Undefined();
-        GateRef thisObj = builder_.Undefined();
-        std::vector<GateRef> argsFastCall { glue_, func, thisObj, a0Value };
-        std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0Value };
-        CheckCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
+        LowerTypedCall(gate, func, actualArgc, funcType, 1);
     }
 }
 
@@ -934,20 +931,9 @@ void TSHCRLowering::LowerTypedCallArg2(GateRef gate)
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
         return;
     }
-    GlobalTSTypeRef funcGt = funcType.GetGTRef();
-    uint32_t len = tsManager_->GetFunctionTypeLength(funcGt);
-    if (len != 2) { // 2: 2 params
-        return;
-    }
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARGS2_IMM8_V8_V8));
-    GateRef newTarget = builder_.Undefined();
-    GateRef thisObj = builder_.Undefined();
-    GateRef a0 = acc_.GetValueIn(gate, 0);
-    GateRef a1 = acc_.GetValueIn(gate, 1); // 1:first parameter
-    std::vector<GateRef> argsFastCall { glue_, func, thisObj, a0, a1 };
-    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0, a1 };
-    CheckCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
+    LowerTypedCall(gate, func, actualArgc, funcType, 2); // 2: 2 params
 }
 
 void TSHCRLowering::LowerTypedCallArg3(GateRef gate)
@@ -957,21 +943,9 @@ void TSHCRLowering::LowerTypedCallArg3(GateRef gate)
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
         return;
     }
-    GlobalTSTypeRef funcGt = funcType.GetGTRef();
-    uint32_t len = tsManager_->GetFunctionTypeLength(funcGt);
-    if (len != 3) { // 3: 3 params
-        return;
-    }
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8));
-    GateRef newTarget = builder_.Undefined();
-    GateRef thisObj = builder_.Undefined();
-    GateRef a0 = acc_.GetValueIn(gate, 0);
-    GateRef a1 = acc_.GetValueIn(gate, 1);
-    GateRef a2 = acc_.GetValueIn(gate, 2);
-    std::vector<GateRef> argsFastCall { glue_, func, thisObj, a0, a1, a2 };
-    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0, a1, a2 };
-    CheckCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
+    LowerTypedCall(gate, func, actualArgc, funcType, 3); // 3: 3 params
 }
 
 void TSHCRLowering::LowerTypedCallrange(GateRef gate)
@@ -988,28 +962,27 @@ void TSHCRLowering::LowerTypedCallrange(GateRef gate)
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
         return;
     }
+    LowerTypedCall(gate, func, actualArgc, funcType, argc);
+}
+
+void TSHCRLowering::LowerTypedCall(GateRef gate, GateRef func, GateRef actualArgc, GateType funcType, uint32_t argc)
+{
     GlobalTSTypeRef funcGt = funcType.GetGTRef();
     uint32_t len = tsManager_->GetFunctionTypeLength(funcGt);
-    if (len != static_cast<uint32_t>(argc)) {
-        return;
-    }
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = builder_.Undefined();
-    vec.emplace_back(glue_);
-    vec.emplace_back(actualArgc);
-    vec.emplace_back(func);
-    vec.emplace_back(newTarget);
-    vec.emplace_back(thisObj);
-    for (size_t i = 0; i < argc; i++) {
-        vec.emplace_back(acc_.GetValueIn(gate, i));
+    std::vector<GateRef> argsFastCall { glue_, func, thisObj};
+    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj };
+    for (uint32_t i = 0; i < argc; i++) {
+        GateRef value = acc_.GetValueIn(gate, i);
+        argsFastCall.emplace_back(value);
+        args.emplace_back(value);
     }
-    vec1.emplace_back(glue_);
-    vec1.emplace_back(func);
-    vec1.emplace_back(thisObj);
-    for (size_t i = 0; i < argc; i++) {
-        vec1.emplace_back(acc_.GetValueIn(gate, i));
+    for (uint32_t i = argc; i < len; i++) {
+        argsFastCall.emplace_back(builder_.Undefined());
+        args.emplace_back(builder_.Undefined());
     }
-    CheckCallTargetAndLowerCall(gate, func, funcGt, funcType, vec, vec1);
+    CheckCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
 }
 
 bool TSHCRLowering::IsLoadVtable(GateRef func)
@@ -1021,15 +994,10 @@ bool TSHCRLowering::IsLoadVtable(GateRef func)
     return true;
 }
 
-bool TSHCRLowering::CanOptimizeAsFastCall(GateRef func, uint32_t len)
+bool TSHCRLowering::CanOptimizeAsFastCall(GateRef func)
 {
     GateType funcType = acc_.GetGateType(func);
     if (!tsManager_->IsFunctionTypeKind(funcType)) {
-        return false;
-    }
-    GlobalTSTypeRef funcGt = funcType.GetGTRef();
-    uint32_t length = tsManager_->GetFunctionTypeLength(funcGt);
-    if (len != length) {
         return false;
     }
     auto op = acc_.GetOpCode(func);
@@ -1061,27 +1029,18 @@ void TSHCRLowering::LowerTypedCallthis0(GateRef gate)
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef func = acc_.GetValueIn(gate, 1);
-    if (!CanOptimizeAsFastCall(func, 0)) {
+    if (!CanOptimizeAsFastCall(func)) {
         return;
     }
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHIS0_IMM8_V8));
-    GateRef newTarget = builder_.Undefined();
-    GateRef thisObj = acc_.GetValueIn(gate, 0);
-
-    GateType funcType = acc_.GetGateType(func);
-    GlobalTSTypeRef funcGt = funcType.GetGTRef();
-    std::vector<GateRef> argsFastCall { glue_, func, thisObj };
-    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj };
-    CheckThisCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
+    LowerTypedThisCall(gate, func, actualArgc, 1);
 }
 
 void TSHCRLowering::LowerTypedCallthis1(GateRef gate)
 {
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
-
-    GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef a0 = acc_.GetValueIn(gate, 1); // 1:parameter index
     GateType a0Type = acc_.GetGateType(a0);
     GateRef func = acc_.GetValueIn(gate, 2); // 2:function
@@ -1090,17 +1049,12 @@ void TSHCRLowering::LowerTypedCallthis1(GateRef gate)
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, func, a0, id);
     } else {
-        if (!CanOptimizeAsFastCall(func, 1)) {
+        if (!CanOptimizeAsFastCall(func)) {
             return;
         }
-        GateType funcType = acc_.GetGateType(func);
         GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
             EcmaOpcode::CALLTHIS1_IMM8_V8_V8));
-        GateRef newTarget = builder_.Undefined();
-        GlobalTSTypeRef funcGt = funcType.GetGTRef();
-        std::vector<GateRef> argsFastCall { glue_, func, thisObj, a0 };
-        std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0 };
-        CheckThisCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
+        LowerTypedThisCall(gate, func, actualArgc, 1);
     }
 }
 
@@ -1109,22 +1063,12 @@ void TSHCRLowering::LowerTypedCallthis2(GateRef gate)
     // 4: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 4);
     GateRef func = acc_.GetValueIn(gate, 3);  // 3: func
-    if (!CanOptimizeAsFastCall(func, 2)) { // 2: 2 params
+    if (!CanOptimizeAsFastCall(func)) {
         return;
     }
-    GateType funcType = acc_.GetGateType(func);
-
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8));
-    GateRef newTarget = builder_.Undefined();
-    GateRef thisObj = acc_.GetValueIn(gate, 0);
-    GateRef a0Value = acc_.GetValueIn(gate, 1);
-    GateRef a1Value = acc_.GetValueIn(gate, 2);
-
-    GlobalTSTypeRef funcGt = funcType.GetGTRef();
-    std::vector<GateRef> argsFastCall { glue_, func, thisObj, a0Value, a1Value };
-    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0Value, a1Value };
-    CheckThisCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
+    LowerTypedThisCall(gate, func, actualArgc, 2); // 2: 2 params
 }
 
 void TSHCRLowering::LowerTypedCallthis3(GateRef gate)
@@ -1132,28 +1076,38 @@ void TSHCRLowering::LowerTypedCallthis3(GateRef gate)
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
     GateRef func = acc_.GetValueIn(gate, 4); // 4: func
-    if (!CanOptimizeAsFastCall(func, 3)) { // 3: 3 params
+    if (!CanOptimizeAsFastCall(func)) {
         return;
     }
-    GateType funcType = acc_.GetGateType(func);
-
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8));
+    LowerTypedThisCall(gate, func, actualArgc, 3); // 3: 3 params
+}
+
+void TSHCRLowering::LowerTypedThisCall(GateRef gate, GateRef func, GateRef actualArgc, uint32_t argc)
+{
+    GateType funcType = acc_.GetGateType(func);
+    GlobalTSTypeRef funcGt = funcType.GetGTRef();
+    uint32_t len = tsManager_->GetFunctionTypeLength(funcGt);
     GateRef newTarget = builder_.Undefined();
     GateRef thisObj = acc_.GetValueIn(gate, 0);
-    GateRef a0Value = acc_.GetValueIn(gate, 1);
-    GateRef a1Value = acc_.GetValueIn(gate, 2);
-    GateRef a2Value = acc_.GetValueIn(gate, 3);
-
-    GlobalTSTypeRef funcGt = funcType.GetGTRef();
-    std::vector<GateRef> argsFastCall { glue_, func, thisObj, a0Value, a1Value, a2Value };
-    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj, a0Value, a1Value, a2Value };
+    std::vector<GateRef> argsFastCall { glue_, func, thisObj};
+    std::vector<GateRef> args { glue_, actualArgc, func, newTarget, thisObj };
+    for (uint32_t i = 0; i < argc; i++) {
+        GateRef value = acc_.GetValueIn(gate, i + 1);
+        argsFastCall.emplace_back(value);
+        args.emplace_back(value);
+    }
+    for (uint32_t i = argc; i < len; i++) {
+        argsFastCall.emplace_back(builder_.Undefined());
+        args.emplace_back(builder_.Undefined());
+    }
     CheckThisCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall);
 }
 
+
 void TSHCRLowering::LowerTypedCallthisrange(GateRef gate)
 {
-    std::vector<GateRef> vec;
     // this
     size_t fixedInputsNum = 1;
     ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
@@ -1162,42 +1116,10 @@ void TSHCRLowering::LowerTypedCallthisrange(GateRef gate)
         EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8));
     const size_t callTargetIndex = 1;  // 1: acc
     GateRef func = acc_.GetValueIn(gate, numIns - callTargetIndex); // acc
-    if (!CanOptimizeAsFastCall(func, numIns - 2)) { // 2 :func and thisobj
+    if (!CanOptimizeAsFastCall(func)) {
         return;
     }
-    GateType funcType = acc_.GetGateType(func);
-
-    GateRef thisObj = acc_.GetValueIn(gate, 0);
-    GateRef newTarget = builder_.Undefined();
-    GlobalTSTypeRef funcGt = funcType.GetGTRef();
-    if (!tsManager_->FastCallFlagIsVaild(funcGt)) {
-        return;
-    }
-    if (tsManager_->CanFastCall(funcGt)) {
-        vec.emplace_back(glue_);
-        vec.emplace_back(func);
-        vec.emplace_back(thisObj);
-        // add common args
-        for (size_t i = fixedInputsNum; i < numIns - callTargetIndex; i++) {
-            vec.emplace_back(acc_.GetValueIn(gate, i));
-        }
-        builder_.JSFastCallThisTargetTypeCheck(funcType, func);
-        GateRef result = builder_.TypedFastCall(gate, vec);
-        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-    } else {
-        vec.emplace_back(glue_);
-        vec.emplace_back(actualArgc);
-        vec.emplace_back(func);
-        vec.emplace_back(newTarget);
-        vec.emplace_back(thisObj);
-        // add common args
-        for (size_t i = fixedInputsNum; i < numIns - callTargetIndex; i++) {
-            vec.emplace_back(acc_.GetValueIn(gate, i));
-        }
-        builder_.JSCallThisTargetTypeCheck(funcType, func);
-        GateRef result = builder_.TypedCall(gate, vec);
-        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-    }
+    LowerTypedThisCall(gate, func, actualArgc, numIns - callTargetIndex - fixedInputsNum);
 }
 
 void TSHCRLowering::LowerTypedCreateEmptyArray(GateRef gate)

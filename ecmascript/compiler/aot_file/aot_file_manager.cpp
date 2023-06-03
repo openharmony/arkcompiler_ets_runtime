@@ -219,7 +219,8 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
 #endif
 }
 
-void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method, uint32_t entryIndex)
+void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method,
+                                     uint32_t entryIndex, bool *canFastCall)
 {
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
     uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
@@ -235,25 +236,8 @@ void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *met
     method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
     method->SetCodeEntryAndMarkAOT(codeEntry);
     method->SetIsFastCall(entry.isFastCall_);
-}
-
-void AOTFileManager::SetAOTFuncEntryForLiteral(const JSPandaFile *jsPandaFile, const TaggedArray *literal,
-                                               const AOTLiteralInfo *entryIndexes)
-{
-    size_t elementsLen = literal->GetLength();
-    JSTaggedValue value = JSTaggedValue::Undefined();
-    int pos = 0;
-    for (size_t i = 0; i < elementsLen; i++) {
-        value = literal->Get(i);
-        if (value.IsJSFunction()) {
-            JSTaggedValue index = entryIndexes->Get(pos++);
-            int entryIndex = index.GetInt();
-            // -1 : this jsfunction is a large function
-            if (entryIndex == -1) {
-                continue;
-            }
-            SetAOTFuncEntry(jsPandaFile, JSFunction::Cast(value)->GetCallTarget(), static_cast<uint32_t>(entryIndex));
-        }
+    if (canFastCall != nullptr) {
+        *canFastCall = entry.isFastCall_;
     }
 }
 

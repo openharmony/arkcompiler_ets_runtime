@@ -162,7 +162,7 @@ private:
         if (!HasDeoptValue(curDepth, index)) {
             return JSTaggedValue::Undefined();
         }
-        return deoptVregs_.at({curDepth, static_cast<OffsetType>(index)});
+        return deoptVregs_.at({curDepth, static_cast<OffsetType>(index)}).GetTaggedValue();
     }
     Method* GetMethod(JSTaggedValue &target);
     void RelocateCalleeSave();
@@ -173,7 +173,7 @@ private:
     size_t numCalleeRegs_ {0};
     AsmStackContext stackContext_;
 
-    std::map<std::pair<size_t, OffsetType>, JSTaggedValue> deoptVregs_;
+    std::map<std::pair<size_t, OffsetType>, JSHandle<JSTaggedValue>> deoptVregs_;
     struct Context context_ {0, 0, {}};
     std::unordered_map<size_t, size_t> pc_;
     std::unordered_map<size_t, size_t> jumpSize_;

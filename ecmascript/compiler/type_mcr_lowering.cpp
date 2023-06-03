@@ -62,6 +62,9 @@ void TypeMCRLowering::LowerType(GateRef gate)
         case OpCode::INDEX_CHECK:
             LowerIndexCheck(gate);
             break;
+        case OpCode::JSCALLTARGET_FROM_DEFINEFUNC_CHECK:
+            LowerJSCallTargetFromDefineFuncCheck(gate);
+            break;
         case OpCode::JSCALLTARGET_TYPE_CHECK:
             LowerJSCallTargetTypeCheck(gate);
             break;
@@ -907,6 +910,22 @@ void TypeMCRLowering::LowerTypedCallBuitin(GateRef gate)
     lowering.LowerTypedCallBuitin(gate);
 }
 
+void TypeMCRLowering::LowerJSCallTargetFromDefineFuncCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    auto type = acc_.GetParamGateType(gate);
+    if (tsManager_->IsFunctionTypeKind(type)) {
+        GateRef frameState = GetFrameState(gate);
+        auto func = acc_.GetValueIn(gate, 0);
+        GateRef check = builder_.IsOptimized(func);
+        builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+    } else {
+        LOG_COMPILER(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+}
+
 void TypeMCRLowering::LowerJSCallTargetTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -918,17 +937,15 @@ void TypeMCRLowering::LowerJSCallTargetTypeCheck(GateRef gate)
         auto func = acc_.GetValueIn(gate, 0);
         auto methodIndex = acc_.GetValueIn(gate, 1);
         GateRef isObj = builder_.TaggedIsHeapObject(func);
-        GateRef isJsFunc = builder_.IsJSFunction(func);
+        GateRef isOptimized = builder_.IsOptimized(func);
         GateRef funcMethodTarget = builder_.GetMethodFromFunction(func);
-        GateRef isAot = builder_.HasAotCode(funcMethodTarget);
-        GateRef checkFunc = builder_.BoolAnd(isObj, isJsFunc);
-        GateRef checkAot = builder_.BoolAnd(checkFunc, isAot);
+        GateRef checkFunc = builder_.BoolAnd(isObj, isOptimized);
         GateRef methodTarget = GetObjectFromConstPool(jsFunc, methodIndex);
-        GateRef check = builder_.BoolAnd(checkAot, builder_.Equal(funcMethodTarget, methodTarget));
+        GateRef check = builder_.BoolAnd(checkFunc, builder_.Equal(funcMethodTarget, methodTarget));
         builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
     } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
+        LOG_COMPILER(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
@@ -944,17 +961,15 @@ void TypeMCRLowering::LowerJSFastCallTargetTypeCheck(GateRef gate)
         auto func = acc_.GetValueIn(gate, 0);
         auto methodIndex = acc_.GetValueIn(gate, 1);
         GateRef isObj = builder_.TaggedIsHeapObject(func);
-        GateRef isJsFunc = builder_.IsJSFunction(func);
+        GateRef canFastCall = builder_.CanFastCall(func);
         GateRef funcMethodTarget = builder_.GetMethodFromFunction(func);
-        GateRef canFastCall = builder_.HasAotCodeAndFastCall(funcMethodTarget);
-        GateRef checkFunc = builder_.BoolAnd(isObj, isJsFunc);
-        GateRef checkAot = builder_.BoolAnd(checkFunc, canFastCall);
+        GateRef checkFunc = builder_.BoolAnd(isObj, canFastCall);
         GateRef methodTarget = GetObjectFromConstPool(jsFunc, methodIndex);
-        GateRef check = builder_.BoolAnd(checkAot, builder_.Equal(funcMethodTarget, methodTarget));
+        GateRef check = builder_.BoolAnd(checkFunc, builder_.Equal(funcMethodTarget, methodTarget));
         builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
     } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
+        LOG_COMPILER(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
@@ -967,15 +982,12 @@ void TypeMCRLowering::LowerJSCallThisTargetTypeCheck(GateRef gate)
         GateRef frameState = GetFrameState(gate);
         auto func = acc_.GetValueIn(gate, 0);
         GateRef isObj = builder_.TaggedIsHeapObject(func);
-        GateRef isJsFunc = builder_.IsJSFunction(func);
-        GateRef checkFunc = builder_.BoolAnd(isObj, isJsFunc);
-        GateRef funcMethodTarget = builder_.GetMethodFromFunction(func);
-        GateRef isAot = builder_.HasAotCode(funcMethodTarget);
-        GateRef check = builder_.BoolAnd(checkFunc, isAot);
+        GateRef isOptimized = builder_.IsOptimized(func);
+        GateRef check = builder_.BoolAnd(isObj, isOptimized);
         builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
     } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
+        LOG_COMPILER(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
@@ -988,15 +1000,12 @@ void TypeMCRLowering::LowerJSFastCallThisTargetTypeCheck(GateRef gate)
         GateRef frameState = GetFrameState(gate);
         auto func = acc_.GetValueIn(gate, 0);
         GateRef isObj = builder_.TaggedIsHeapObject(func);
-        GateRef isJsFunc = builder_.IsJSFunction(func);
-        GateRef checkFunc = builder_.BoolAnd(isObj, isJsFunc);
-        GateRef funcMethodTarget = builder_.GetMethodFromFunction(func);
-        GateRef canFastCall = builder_.HasAotCodeAndFastCall(funcMethodTarget);
-        GateRef check = builder_.BoolAnd(checkFunc, canFastCall);
+        GateRef canFastCall = builder_.CanFastCall(func);
+        GateRef check = builder_.BoolAnd(isObj, canFastCall);
         builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
     } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
+        LOG_COMPILER(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }

@@ -1858,51 +1858,8 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjRange(JSThread *thread, const JSHandle<
 
 JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<Method> &methodHandle)
 {
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-
-    JSHandle<JSFunction> jsFunc;
-    FunctionKind kind = methodHandle->GetFunctionKind();
-    switch (kind) {
-        case FunctionKind::NORMAL_FUNCTION:
-        case FunctionKind::BASE_CONSTRUCTOR: {
-            auto hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass);
-            break;
-        }
-        case FunctionKind::ARROW_FUNCTION: {
-            auto normalClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, normalClass);
-            break;
-        }
-        case FunctionKind::GENERATOR_FUNCTION: {
-            auto generatorClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, generatorClass);
-            break;
-        }
-        case FunctionKind::CONCURRENT_FUNCTION:
-        case FunctionKind::ASYNC_FUNCTION: {
-            auto asyncClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass);
-            break;
-        }
-        case FunctionKind::ASYNC_GENERATOR_FUNCTION: {
-            auto asyncGeneratorClass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncGeneratorClass);
-            break;
-        }
-        case FunctionKind::ASYNC_ARROW_FUNCTION: {
-            // Add hclass for async arrow function
-            auto asyncClass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
-            jsFunc = factory->NewJSFunctionByHClass(methodHandle, asyncClass);
-            break;
-        }
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-    }
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-    return jsFunc.GetTaggedValue();
+    return factory->NewJSFunction(methodHandle).GetTaggedValue();
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCreateRegExpWithLiteral(JSThread *thread,
@@ -2019,15 +1976,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreateObjectWithExcludedKeys(JSThread *thread
 JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle<Method> &methodHandle,
                                                 const JSHandle<JSTaggedValue> &homeObject)
 {
-    ASSERT(homeObject->IsECMAObject());
-
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(methodHandle, hclass);
-    jsFunc->SetHomeObject(thread, homeObject);
-    ASSERT_NO_ABRUPT_COMPLETION(thread);
-    return jsFunc.GetTaggedValue();
+    return factory->NewJSFunction(methodHandle, homeObject).GetTaggedValue();
 }
 
 JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,

@@ -2292,6 +2292,11 @@ LLVMValueRef LLVMIRBuilder::ConvertBoolToTaggedBoolean(GateRef gate)
 LLVMValueRef LLVMIRBuilder::ConvertInt32ToTaggedInt(GateRef gate)
 {
     LLVMValueRef value = gate2LValue_[gate];
+    return ConvertInt32ToTaggedInt(value);
+}
+
+LLVMValueRef LLVMIRBuilder::ConvertInt32ToTaggedInt(LLVMValueRef value)
+{
     LLVMValueRef e1Value = LLVMBuildSExt(builder_, value, LLVMInt64TypeInContext(context_), "");
     auto tagMask = LLVMConstInt(LLVMInt64TypeInContext(context_), JSTaggedValue::TAG_INT, 0);
     LLVMValueRef result = LLVMBuildOr(builder_, e1Value, tagMask, "");
@@ -2335,6 +2340,16 @@ void LLVMIRBuilder::SaveDeoptVregInfo(std::vector<LLVMValueRef> &values, int32_t
     values.emplace_back(ConvertToTagged(gate));
 }
 
+void LLVMIRBuilder::SaveDeoptVregInfoWithI64(std::vector<LLVMValueRef> &values, int32_t index, size_t curDepth,
+                                             size_t shift, GateRef gate)
+{
+    LLVMValueRef value = LLVMBuildIntCast2(builder_, gate2LValue_.at(gate),
+                                           LLVMInt32TypeInContext(context_), 1, "");
+    int32_t encodeIndex = Deoptimizier::EncodeDeoptVregIndex(index, curDepth, shift);
+    values.emplace_back(LLVMConstInt(LLVMInt32TypeInContext(context_), encodeIndex, false));
+    values.emplace_back(ConvertInt32ToTaggedInt(value));
+}
+
 void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
 {
     LLVMValueRef glue = gate2LValue_.at(acc_.GetGlueFromArgList());
@@ -2345,7 +2360,8 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
     params.push_back(glue); // glue
     GateRef deoptType = acc_.GetValueIn(gate, 2); // 2: deopt type
     uint64_t v = acc_.GetConstantValue(deoptType);
-    params.push_back(LLVMConstInt(LLVMInt64TypeInContext(context_), v, false)); // deoptType
+    params.push_back(ConvertInt32ToTaggedInt(LLVMConstInt(LLVMInt32TypeInContext(context_),
+        static_cast<uint32_t>(v), false))); // deoptType
     LLVMValueRef callee = GetExperimentalDeopt(module_);
     LLVMTypeRef funcType = GetExperimentalDeoptTy();
 
@@ -2354,7 +2370,8 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
     if (acc_.GetOpCode(deoptFrameState) == OpCode::FRAME_STATE_CHAIN) {
         depth = acc_.GetNumValueIn(deoptFrameState) - 1;
     }
-    params.push_back(LLVMConstInt(LLVMInt64Type(), depth, false));
+    params.push_back(ConvertInt32ToTaggedInt(LLVMConstInt(LLVMInt32TypeInContext(context_),
+        static_cast<uint32_t>(depth), false)));
     size_t shift = Deoptimizier::ComputeShift(depth);
     ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));
     for (size_t curDepth = 0; curDepth <= depth; curDepth++) {
@@ -2408,7 +2425,7 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
         int32_t specThisIndex = static_cast<int32_t>(SpecVregIndex::THIS_OBJECT_INDEX);
         SaveDeoptVregInfo(values, specThisIndex, curDepth, shift, thisObj);
         int32_t specArgcIndex = static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX);
-        SaveDeoptVregInfo(values, specArgcIndex, curDepth, shift, actualArgc);
+        SaveDeoptVregInfoWithI64(values, specArgcIndex, curDepth, shift, actualArgc);
     }
     LLVMValueRef runtimeCall =
         LLVMBuildCall3(builder_, funcType, callee, params.data(), params.size(), "", values.data(), values.size());

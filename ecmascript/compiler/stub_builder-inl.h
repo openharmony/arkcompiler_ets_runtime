@@ -2151,20 +2151,14 @@ inline GateRef StubBuilder::IsNativeMethod(GateRef method)
         Int64(0));
 }
 
-inline GateRef StubBuilder::HasAotCode(GateRef method)
+inline GateRef StubBuilder::IsOptimizedWithBitField(GateRef bitfield)
 {
-    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
-    GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
-    return Int64NotEqual(
-        Int64And(
-            Int64LSR(callfield, Int64(MethodLiteral::IsAotCodeBit::START_BIT)),
-            Int64((1LU << MethodLiteral::IsAotCodeBit::SIZE) - 1)),
-        Int64(0));
+    return env_->GetBuilder()->IsOptimizedWithBitField(bitfield);
 }
 
-inline GateRef StubBuilder::HasAotCodeAndFastCall(GateRef method)
+inline GateRef StubBuilder::CanFastCallWithBitField(GateRef bitfield)
 {
-    return env_->GetBuilder()->HasAotCodeAndFastCall(method);
+    return env_->GetBuilder()->CanFastCallWithBitField(bitfield);
 }
 
 inline GateRef StubBuilder::GetExpectedNumOfArgs(GateRef method)

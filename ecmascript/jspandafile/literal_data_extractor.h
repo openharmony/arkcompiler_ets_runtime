@@ -37,12 +37,15 @@ public:
                                    JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
     static void ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, EntityId id,
                                    JSMutableHandle<TaggedArray> elements, JSMutableHandle<TaggedArray> properties,
-                                   JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
+                                   JSHandle<ConstantPool> constpool, const CString &entryPoint = "",
+                                   bool isLoadedAOT = false,
+                                   JSHandle<AOTLiteralInfo> entryIndexes = JSHandle<AOTLiteralInfo>());
 
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, size_t index,
                                                     JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
     static JSHandle<TaggedArray> GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile, EntityId id,
-                                                    JSHandle<ConstantPool> constpool, const CString &entryPoint = "");
+        JSHandle<ConstantPool> constpool, const CString &entryPoint = "",
+        bool isLoadedAOT = false, JSHandle<AOTLiteralInfo> entryIndexes = JSHandle<AOTLiteralInfo>());
     static JSHandle<TaggedArray> GetDatasIgnoreTypeForClass(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                             size_t index, JSHandle<ConstantPool> constpool,
                                                             const CString &entryPoint = "");
@@ -50,7 +53,8 @@ public:
     static JSHandle<JSFunction> DefineMethodInLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                       uint32_t offset, JSHandle<ConstantPool> constpool,
                                                       FunctionKind kind, uint16_t length,
-                                                      const CString &entryPoint = "");
+                                                      const CString &entryPoint = "",
+                                                      bool isLoadedAOT = false, uint32_t entryIndex = 0);
 
     static void PUBLIC_API GetMethodOffsets(const JSPandaFile *jsPandaFile, size_t index,
                                             std::vector<uint32_t> &methodOffsets);

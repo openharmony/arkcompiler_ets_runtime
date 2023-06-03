@@ -16,6 +16,7 @@
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 
 #include "ecmascript/base/string_helper.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_thread.h"
@@ -211,30 +212,19 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
 JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                                  uint32_t offset, JSHandle<ConstantPool> constpool,
                                                                  FunctionKind kind, uint16_t length,
-                                                                 const CString &entryPoint)
+                                                                 const CString &entryPoint,
+                                                                 bool isLoadedAOT, uint32_t entryIndex)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
 
     auto methodLiteral = jsPandaFile->FindMethodLiteral(offset);
     ASSERT(methodLiteral != nullptr);
     methodLiteral->SetFunctionKind(kind);
-    JSHandle<Method> method;
-    if (jsPandaFile->IsNewVersion()) {
-        method = Method::Create(thread, jsPandaFile, methodLiteral);
-    } else {
-        method = factory->NewMethod(methodLiteral);
-        method->SetConstantPool(thread, constpool);
-    }
-
-    JSHandle<JSHClass> functionClass;
-    if (kind == FunctionKind::NORMAL_FUNCTION) {
-        functionClass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    } else {
-        functionClass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
-    }
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunctionByHClass(method, functionClass, MemSpaceType::OLD_SPACE);
+    bool canFastCall = false;
+    JSHandle<Method> method = factory->NewMethod(
+        jsPandaFile, methodLiteral, constpool, entryIndex, isLoadedAOT, &canFastCall);
+    JSHandle<JSFunction> jsFunc = factory->NewJSFunction(method, kind, isLoadedAOT, canFastCall);
     jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
 
     CString moduleName = jsPandaFile->GetJSPandaFileDesc();
@@ -289,7 +279,8 @@ void LiteralDataExtractor::GetMethodOffsets(const JSPandaFile *jsPandaFile, Enti
 void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFile *jsPandaFile, EntityId id,
                                               JSMutableHandle<TaggedArray> elements,
                                               JSMutableHandle<TaggedArray> properties,
-                                              JSHandle<ConstantPool> constpool, const CString &entry)
+                                              JSHandle<ConstantPool> constpool, const CString &entry,
+                                              bool isLoadedAOT, JSHandle<AOTLiteralInfo> entryIndexes)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     LiteralDataAccessor lda = jsPandaFile->GetLiteralDataAccessor();
@@ -300,10 +291,11 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
     uint32_t ppos = 0;
     const uint8_t pairSize = 2;
     uint32_t methodId = 0;
+    int pos = 0;
     FunctionKind kind;
     lda.EnumerateLiteralVals(
-        id, [elements, properties, &epos, &ppos, factory, thread, jsPandaFile,
-                &methodId, &kind, &constpool, &entry](const LiteralValue &value, const LiteralTag &tag) {
+        id, [elements, properties, &entryIndexes, &pos, &epos, &ppos, factory, thread, jsPandaFile,
+                &methodId, &kind, &constpool, &entry, &isLoadedAOT](const LiteralValue &value, const LiteralTag &tag) {
         JSTaggedValue jt = JSTaggedValue::Null();
         bool flag = false;
         switch (tag) {
@@ -341,8 +333,18 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
             }
             case LiteralTag::METHODAFFILIATE: {
                 uint16_t length = std::get<uint16_t>(value);
+                int entryIndex = 0;
+                bool needSetAotFlag = (isLoadedAOT && (epos % pairSize == 0) && !flag);
+                if (needSetAotFlag) {
+                    entryIndex = entryIndexes->Get(pos++).GetInt();
+                    // -1 : this jsfunction is a large function
+                    if (entryIndex == -1) {
+                        needSetAotFlag = false;
+                    }
+                }
                 JSHandle<JSFunction> jsFunc =
-                    DefineMethodInLiteral(thread, jsPandaFile, methodId, constpool, kind, length, entry);
+                    DefineMethodInLiteral(thread, jsPandaFile, methodId, constpool, kind,
+                                          length, entry, needSetAotFlag, entryIndex);
                 jt = jsFunc.GetTaggedValue();
                 break;
             }
@@ -361,7 +363,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
             }
         }
         if (tag != LiteralTag::METHOD && tag != LiteralTag::GENERATORMETHOD) {
-            if (epos % pairSize == 0 && !flag) {
+            if ((epos % pairSize == 0) && !flag) {
                 properties->Set(thread, ppos++, jt);
             } else {
                 elements->Set(thread, epos++, jt);
@@ -372,7 +374,8 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
 
 JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                                EntityId id, JSHandle<ConstantPool> constpool,
-                                                               const CString &entryPoint)
+                                                               const CString &entryPoint,
+                                                               bool isLoadedAOT, JSHandle<AOTLiteralInfo> entryIndexes)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     LiteralDataAccessor lda = jsPandaFile->GetLiteralDataAccessor();
@@ -381,8 +384,10 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
     uint32_t pos = 0;
     uint32_t methodId = 0;
     FunctionKind kind;
+    int index = 0;
     lda.EnumerateLiteralVals(
-        id, [literals, &pos, factory, thread, jsPandaFile, &methodId, &kind, &constpool, &entryPoint]
+        id, [literals, &pos, factory, thread, jsPandaFile,
+             &methodId, &kind, &constpool, &entryPoint, &entryIndexes, &index, isLoadedAOT]
         (const LiteralValue &value, const LiteralTag &tag) {
             JSTaggedValue jt = JSTaggedValue::Null();
             switch (tag) {
@@ -416,8 +421,17 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                 }
                 case LiteralTag::METHODAFFILIATE: {
                     uint16_t length = std::get<uint16_t>(value);
+                    int entryIndex = 0;
+                    bool needSetAotFlag = isLoadedAOT;
+                    if (isLoadedAOT) {
+                        entryIndex = entryIndexes->Get(index++).GetInt();
+                        if (entryIndex == -1) {
+                            needSetAotFlag = false;
+                        }
+                    }
                     JSHandle<JSFunction> jsFunc =
-                        DefineMethodInLiteral(thread, jsPandaFile, methodId, constpool, kind, length, entryPoint);
+                        DefineMethodInLiteral(thread, jsPandaFile, methodId, constpool,
+                            kind, length, entryPoint, needSetAotFlag, entryIndex);
                     jt = jsFunc.GetTaggedValue();
                     break;
                 }

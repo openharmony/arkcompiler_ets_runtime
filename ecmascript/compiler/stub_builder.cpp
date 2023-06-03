@@ -4760,19 +4760,17 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     // save pc
     SavePcIfNeeded(glue);
     GateRef bitfield = 0;
-    if (!AssemblerModule::IsCallNew(mode)) {
-        Branch(TaggedIsHeapObject(func), &funcIsHeapObject, &funcNotCallable);
-        Bind(&funcIsHeapObject);
-        GateRef hclass = LoadHClass(func);
-        bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
-        Branch(IsCallableFromBitField(bitfield), &funcIsCallable, &funcNotCallable);
-        Bind(&funcNotCallable);
-        {
-            CallRuntime(glue, RTSTUB_ID(ThrowNotCallableException), {});
-            Jump(&exit);
-        }
-        Bind(&funcIsCallable);
+    Branch(TaggedIsHeapObject(func), &funcIsHeapObject, &funcNotCallable);
+    Bind(&funcIsHeapObject);
+    GateRef hclass = LoadHClass(func);
+    bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    Branch(IsCallableFromBitField(bitfield), &funcIsCallable, &funcNotCallable);
+    Bind(&funcNotCallable);
+    {
+        CallRuntime(glue, RTSTUB_ID(ThrowNotCallableException), {});
+        Jump(&exit);
     }
+    Bind(&funcIsCallable);
     GateRef method = GetMethodFromJSFunction(func);
     GateRef callField = GetCallFieldFromMethod(method);
     GateRef isNativeMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsNativeBit::START_BIT);
@@ -4908,9 +4906,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         }
         Bind(&funcNotClassConstructor);
     } else {
-        GateRef hclass = LoadHClass(func);
-        GateRef bitfield1 = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
-        Branch(IsClassConstructorFromBitField(bitfield1), &funcIsClassConstructor, &methodNotAot);
+        Branch(IsClassConstructorFromBitField(bitfield), &funcIsClassConstructor, &methodNotAot);
         Bind(&funcIsClassConstructor);
     }
     GateRef sp = 0;
@@ -4928,8 +4924,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         GateRef newTarget = Undefined();
         GateRef thisValue = Undefined();
         GateRef realNumArgs = Int64Add(ZExtInt32ToInt64(actualNumArgs), Int64(NUM_MANDATORY_JSFUNC_ARGS));
-        GateRef isFastMask = Int64(0x5LL << MethodLiteral::IsAotCodeBit::START_BIT);
-        Branch(Int64Equal(Int64And(callField, isFastMask), isFastMask),  &methodIsFastCall, &methodNotFastCall);
+        Branch(CanFastCallWithBitField(bitfield), &methodIsFastCall, &methodNotFastCall);
         Bind(&methodIsFastCall);
         {
             GateRef expectedNum = Int64And(Int64LSR(callField, Int64(MethodLiteral::NumArgsBits::START_BIT)),
@@ -5088,8 +5083,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         }
 
         Bind(&methodNotFastCall);
-        GateRef isAotMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsAotCodeBit::START_BIT);
-        Branch(Int64Equal(Int64And(callField, isAotMask), Int64(0)), &methodNotAot, &methodisAot);
+        Branch(IsOptimizedWithBitField(bitfield), &methodisAot, &methodNotAot);
         Bind(&methodisAot);
         {
             GateRef expectedNum = Int64And(Int64LSR(callField, Int64(MethodLiteral::NumArgsBits::START_BIT)),

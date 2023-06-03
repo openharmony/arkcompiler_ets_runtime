@@ -302,8 +302,9 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
                                                                                    nonStaticProperties);
 
     JSHandle<JSObject> prototype = factory->NewOldSpaceJSObject(prototypeHClass);
-
     JSHandle<Method> method(thread, Method::Cast(extractor->GetConstructorMethod().GetTaggedObject()));
+    constructorHClass->SetIsOptimized(method->IsAotWithCallField());
+    constructorHClass->SetCanFastCall(method->IsFastCall());
     // Allocate to non-movable space for PGO
     JSHandle<JSFunction> constructor = factory->NewJSFunctionByHClass(method, constructorHClass,
         MemSpaceType::NON_MOVABLE);
@@ -390,6 +391,8 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread, const
     JSHandle<JSObject> prototype(thread, ihclass->GetProto());
 
     JSHandle<Method> method(thread, Method::Cast(extractor->GetConstructorMethod().GetTaggedObject()));
+    constructorHClass->SetIsOptimized(method->IsAotWithCallField());
+    constructorHClass->SetCanFastCall(method->IsFastCall());
     JSHandle<JSFunction> constructor = factory->NewJSFunctionByHClass(method, constructorHClass,
         MemSpaceType::NON_MOVABLE);
 

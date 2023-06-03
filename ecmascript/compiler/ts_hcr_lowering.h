@@ -111,8 +111,10 @@ private:
     void LowerTypedCallthis2(GateRef gate);
     void LowerTypedCallthis3(GateRef gate);
     void LowerTypedCallthisrange(GateRef gate);
+    void LowerTypedCall(GateRef gate, GateRef func, GateRef actualArgc, GateType funcType, uint32_t argc);
+    void LowerTypedThisCall(GateRef gate, GateRef func, GateRef actualArgc, uint32_t argc);
     bool IsLoadVtable(GateRef func);
-    bool CanOptimizeAsFastCall(GateRef func, uint32_t len);
+    bool CanOptimizeAsFastCall(GateRef func);
     void CheckCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
         GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
     void CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,

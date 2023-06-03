@@ -226,6 +226,14 @@ public:
     // use for method
     JSHandle<JSFunction> NewJSFunction(const JSHandle<GlobalEnv> &env, const JSHandle<Method> &method);
 
+    JSHandle<JSFunction> NewJSFunction(const JSHandle<Method> &methodHandle);
+
+    JSHandle<JSFunction> NewJSFunction(const JSHandle<Method> &methodHandle,
+                                       const JSHandle<JSTaggedValue> &homeObject);
+
+    JSHandle<JSFunction> NewJSFunction(const JSHandle<Method> &methodHandle, FunctionKind kind,
+                                       bool isOptimized, bool canFastCall);
+
     JSHandle<JSFunction> NewJSNativeErrorFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr);
 
     JSHandle<JSFunction> NewSpecificTypedArrayFunction(const JSHandle<GlobalEnv> &env,
@@ -476,6 +484,9 @@ public:
                                                FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
     JSHandle<Method> NewMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType = OLD_SPACE);
 
+    JSHandle<Method> NewMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
+        JSHandle<ConstantPool> constpool, uint32_t entryIndex, bool needSetAotFlag, bool *canFastCall = nullptr);
+
     // used for creating jsobject by constructor
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                 const JSHandle<JSTaggedValue> &newTarget);
@@ -535,7 +546,8 @@ public:
     JSHandle<JSObject> NewJSObject(const JSHandle<JSHClass> &jshclass);
 
     // used for creating jshclass in Builtins, Function, Class_Linker
-    JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype);
+    JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype,
+                                     bool isOptimized = false, bool canFastCall = false);
 
     // It is used to provide iterators for non ECMA standard jsapi containers.
     JSHandle<JSAPIPlainArray> NewJSAPIPlainArray(uint32_t capacity);
@@ -615,6 +627,7 @@ public:
     // ---------------------------------------Used by AOT------------------------------------------------
     JSHandle<AOTLiteralInfo> NewAOTLiteralInfo(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<VTable> NewVTable(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+    JSHandle<JSHClass> GetNonOptimizedHclass(JSHandle<JSHClass> oldHClassHandle, FunctionKind kind);
 
 private:
     friend class GlobalEnv;
@@ -660,7 +673,8 @@ private:
     JSHandle<JSHClass> CreateObjectClass(const JSHandle<TaggedArray> &keys, const JSHandle<TaggedArray> &values);
     JSHandle<JSHClass> CreateObjectClass(const JSHandle<TaggedArray> &properties, size_t length);
     JSHandle<JSHClass> CreateFunctionClass(FunctionKind kind, uint32_t size, JSType type,
-                                           const JSHandle<JSTaggedValue> &prototype);
+                                           const JSHandle<JSTaggedValue> &prototype,
+                                           bool isOptimized = false, bool canFastCall = false);
     JSHandle<JSHClass> CreateDefaultClassPrototypeHClass(JSHClass *hclass);
     JSHandle<JSHClass> CreateDefaultClassConstructorHClass(JSHClass *hclass);
 

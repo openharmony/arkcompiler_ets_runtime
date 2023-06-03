@@ -3037,65 +3037,64 @@ void SlowPathLowering::LowerFastCall(GateRef gate, GateRef glue, GateRef func, G
     builder_.Branch(builder_.TaggedIsHeapObject(func), &isHeapObject, &slowPath);
     builder_.Bind(&isHeapObject);
     {
-        builder_.Branch(builder_.IsJSFunction(func), &isJsFcuntion, &slowPath);
-        builder_.Bind(&isJsFcuntion);
-        {
-            if (!isNew) {
-                builder_.Branch(builder_.IsClassConstructor(func), &slowPath, &notCallConstructor);
-                builder_.Bind(&notCallConstructor);
-            } else {
-                builder_.Branch(builder_.IsClassConstructor(func), &isCallConstructor, &slowPath);
-                builder_.Bind(&isCallConstructor);
-            }
+        GateRef hClass = builder_.LoadHClass(func);
+        GateRef bitfield = builder_.Load(VariableType::INT32(), hClass, builder_.Int32(JSHClass::BIT_FIELD_OFFSET));
+        if (!isNew) {
+            builder_.Branch(builder_.IsClassConstructorWithBitField(bitfield), &slowPath, &notCallConstructor);
+            builder_.Bind(&notCallConstructor);
+        } else {
+            builder_.Branch(builder_.IsClassConstructorWithBitField(bitfield), &isCallConstructor, &slowPath);
+            builder_.Bind(&isCallConstructor);
+        }
+        if (!isNew) {
             GateRef method = builder_.GetMethodFromFunction(func);
-            if (!isNew) {
-                builder_.Branch(builder_.HasAotCodeAndFastCall(method), &fastCall, &notFastCall);
-                builder_.Bind(&fastCall);
-                {
-                    GateRef expectedArgc = builder_.Int64Add(builder_.GetExpectedNumOfArgs(method),
-                        builder_.Int64(NUM_MANDATORY_JSFUNC_ARGS));
-                    builder_.Branch(builder_.Int64LessThanOrEqual(expectedArgc, argc), &call, &callBridge);
-                    builder_.Bind(&call);
-                    {
-                        GateRef code = builder_.GetCodeAddr(method);
-                        auto depend = builder_.GetDepend();
-                        const CallSignature *cs = RuntimeStubCSigns::GetOptimizedFastCallSign();
-                        result->WriteVariable(builder_.Call(cs, glue, code, depend, argsFastCall, gate));
-                        builder_.Jump(exit);
-                    }
-                    builder_.Bind(&callBridge);
-                    {
-                        const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedFastCallAndPushUndefined));
-                        GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedFastCallAndPushUndefined));
-                        auto depend = builder_.GetDepend();
-                        result->WriteVariable(builder_.Call(cs, glue, target, depend, args, gate));
-                        builder_.Jump(exit);
-                    }
-                }
-                builder_.Bind(&notFastCall);
-            }
-            builder_.Branch(builder_.HasAotCode(method), &slowCall, &slowPath);
-            builder_.Bind(&slowCall);
+            builder_.Branch(builder_.CanFastCallWithBitField(bitfield), &fastCall, &notFastCall);
+            builder_.Bind(&fastCall);
             {
                 GateRef expectedArgc = builder_.Int64Add(builder_.GetExpectedNumOfArgs(method),
                     builder_.Int64(NUM_MANDATORY_JSFUNC_ARGS));
-                builder_.Branch(builder_.Int64LessThanOrEqual(expectedArgc, argc), &call1, &callBridge1);
-                builder_.Bind(&call1);
+                builder_.Branch(builder_.Int64LessThanOrEqual(expectedArgc, argc), &call, &callBridge);
+                builder_.Bind(&call);
                 {
                     GateRef code = builder_.GetCodeAddr(method);
                     auto depend = builder_.GetDepend();
-                    const CallSignature *cs = RuntimeStubCSigns::GetOptimizedCallSign();
-                    result->WriteVariable(builder_.Call(cs, glue, code, depend, args, gate));
+                    const CallSignature *cs = RuntimeStubCSigns::GetOptimizedFastCallSign();
+                    result->WriteVariable(builder_.Call(cs, glue, code, depend, argsFastCall, gate));
                     builder_.Jump(exit);
                 }
-                builder_.Bind(&callBridge1);
+                builder_.Bind(&callBridge);
                 {
-                    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedCallAndPushUndefined));
-                    GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedCallAndPushUndefined));
+                    const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedFastCallAndPushUndefined));
+                    GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedFastCallAndPushUndefined));
                     auto depend = builder_.GetDepend();
                     result->WriteVariable(builder_.Call(cs, glue, target, depend, args, gate));
                     builder_.Jump(exit);
                 }
+            }
+            builder_.Bind(&notFastCall);
+        }
+        builder_.Branch(builder_.IsOptimizedWithBitField(bitfield), &slowCall, &slowPath);
+        builder_.Bind(&slowCall);
+        {
+            GateRef method = builder_.GetMethodFromFunction(func);
+            GateRef expectedArgc = builder_.Int64Add(builder_.GetExpectedNumOfArgs(method),
+                builder_.Int64(NUM_MANDATORY_JSFUNC_ARGS));
+            builder_.Branch(builder_.Int64LessThanOrEqual(expectedArgc, argc), &call1, &callBridge1);
+            builder_.Bind(&call1);
+            {
+                GateRef code = builder_.GetCodeAddr(method);
+                auto depend = builder_.GetDepend();
+                const CallSignature *cs = RuntimeStubCSigns::GetOptimizedCallSign();
+                result->WriteVariable(builder_.Call(cs, glue, code, depend, args, gate));
+                builder_.Jump(exit);
+            }
+            builder_.Bind(&callBridge1);
+            {
+                const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(OptimizedCallAndPushUndefined));
+                GateRef target = builder_.IntPtr(RTSTUB_ID(OptimizedCallAndPushUndefined));
+                auto depend = builder_.GetDepend();
+                result->WriteVariable(builder_.Call(cs, glue, target, depend, args, gate));
+                builder_.Jump(exit);
             }
         }
     }
@@ -3116,6 +3115,7 @@ void SlowPathLowering::LowerFastCall(GateRef gate, GateRef glue, GateRef func, G
         }
     }
 }
+
 void SlowPathLowering::LowerTypedCall(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);

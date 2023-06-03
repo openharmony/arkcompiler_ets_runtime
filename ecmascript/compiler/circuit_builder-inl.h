@@ -572,25 +572,6 @@ void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass)
     Store(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass);
 }
 
-inline GateRef CircuitBuilder::HasAotCode(GateRef method)
-{
-    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
-    GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
-    return Int64NotEqual(
-        Int64And(
-            Int64LSR(callfield, Int64(MethodLiteral::IsAotCodeBit::START_BIT)),
-            Int64((1LU << MethodLiteral::IsAotCodeBit::SIZE) - 1)),
-        Int64(0));
-}
-
-inline GateRef CircuitBuilder::HasAotCodeAndFastCall(GateRef method)
-{
-    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
-    GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
-    return Int64Equal(Int64And(callfield, Int64(Method::AOT_FASTCALL_BITS << MethodLiteral::IsAotCodeBit::START_BIT)),
-        Int64(Method::AOT_FASTCALL_BITS << MethodLiteral::IsAotCodeBit::START_BIT));
-}
-
 inline GateRef CircuitBuilder::IsJSFunction(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -599,6 +580,40 @@ inline GateRef CircuitBuilder::IsJSFunction(GateRef obj)
     GateRef less = Int32LessThanOrEqual(objectType,
         Int32(static_cast<int32_t>(JSType::JS_FUNCTION_LAST)));
     return BoolAnd(greater, less);
+}
+
+inline GateRef CircuitBuilder::IsJSFunctionWithBit(GateRef obj)
+{
+    GateRef hClass = LoadHClass(obj);
+    GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    return NotEqual(Int32And(bitfield, Int32(1LU << JSHClass::IsJSFunctionBit::START_BIT)), Int32(0));
+}
+
+inline GateRef CircuitBuilder::IsOptimized(GateRef obj)
+{
+    GateRef hClass = LoadHClass(obj);
+    GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    return NotEqual(Int32And(bitfield, Int32(1LU << JSHClass::IsOptimizedBit::START_BIT)), Int32(0));
+}
+
+inline GateRef CircuitBuilder::IsOptimizedWithBitField(GateRef bitfield)
+{
+    return NotEqual(Int32And(bitfield, Int32(1LU << JSHClass::IsOptimizedBit::START_BIT)), Int32(0));
+}
+
+inline GateRef CircuitBuilder::CanFastCall(GateRef obj)
+{
+    GateRef hClass = LoadHClass(obj);
+    GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    return NotEqual(Int32And(bitfield, Int32(1LU << JSHClass::CanFastCallBit::START_BIT)), Int32(0));
+}
+
+inline GateRef CircuitBuilder::CanFastCallWithBitField(GateRef bitfield)
+{
+    return NotEqual(Int32And(bitfield, Int32(1LU << JSHClass::CanFastCallBit::START_BIT)), Int32(0));
 }
 
 GateRef CircuitBuilder::IsJsType(GateRef obj, JSType type)
@@ -685,6 +700,11 @@ GateRef CircuitBuilder::IsClassConstructor(GateRef object)
         Int32(JSHClass::ClassConstructorBit::START_BIT)),
         Int32((1LU << JSHClass::ClassConstructorBit::SIZE) - 1)),
         Int32(0));
+}
+
+GateRef CircuitBuilder::IsClassConstructorWithBitField(GateRef bitfield)
+{
+    return NotEqual(Int32And(bitfield, Int32(1LU << JSHClass::ClassConstructorBit::START_BIT)), Int32(0));
 }
 
 GateRef CircuitBuilder::IsConstructor(GateRef object)
