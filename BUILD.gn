@@ -1111,7 +1111,7 @@ ohos_shared_library("libark_jsruntime") {
       "$ark_third_party_root/icu/icu4c:shared_icuuc",
     ]
   }
-
+  innerapi_tags = [ "platformsdk_indirect" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
