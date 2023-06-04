@@ -86,6 +86,7 @@ struct CJSInfo;
 class QuickFixManager;
 class ConstantPool;
 class OptCodeProfiler;
+class FunctionCallTimer;
 
 enum class IcuFormatterType {
     SIMPLE_DATE_FORMAT_DEFAULT,
@@ -575,6 +576,13 @@ public:
     }
 
     void HandleUncaughtException(JSTaggedValue exception);
+    void DumpCallTimeInfo();
+
+    FunctionCallTimer *GetCallTimer() const
+    {
+        return callTimer_;
+    }
+
 
 protected:
 
@@ -676,6 +684,7 @@ private:
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *profiler_ {nullptr};
 #endif
+    FunctionCallTimer *callTimer_ {nullptr};
 
     // For Native MethodLiteral
     static void *InternalMethodTable[static_cast<uint8_t>(MethodIndex::METHOD_END)];

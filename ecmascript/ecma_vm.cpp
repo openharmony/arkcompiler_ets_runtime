@@ -46,6 +46,7 @@
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
+#include "ecmascript/dfx/vmstat/function_call_timer.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
 #include "ecmascript/ecma_string_table.h"
@@ -256,6 +257,7 @@ bool EcmaVM::Initialize()
     }
 
     optCodeProfiler_ = new OptCodeProfiler();
+    callTimer_ = new FunctionCallTimer();
 
     initialized_ = true;
     return true;
@@ -408,6 +410,11 @@ EcmaVM::~EcmaVM()
         aotFileManager_ = nullptr;
     }
 
+    if (callTimer_ != nullptr) {
+        delete callTimer_;
+        callTimer_ = nullptr;
+    }
+
     if (thread_ != nullptr) {
         delete thread_;
         thread_ = nullptr;
@@ -532,6 +539,9 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
     if (!excuteFromJob && thread_->HasPendingException()) {
         HandleUncaughtException(thread_->GetException());
     }
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    DumpCallTimeInfo();
+#endif
     return result;
 }
 
@@ -1041,5 +1051,10 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
 
     concurrentCallback_(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, result)), success,
                         taskInfo, concurrentData_);
+}
+
+void EcmaVM::DumpCallTimeInfo()
+{
+    callTimer_->PrintAllStats();
 }
 }  // namespace panda::ecmascript

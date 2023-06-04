@@ -352,6 +352,8 @@ public:
     GateRef CallRuntimeVarargs(GateRef glue, int index, GateRef argc, GateRef argv, const char* comment = nullptr);
     GateRef CallRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args, GateRef hirGate,
                         const char* comment = nullptr);
+    GateRef CallNGCRuntime(GateRef glue, GateRef gate, int index, const std::vector<GateRef> &args, bool useLabel);
+
     GateRef CallNGCRuntime(GateRef glue, int index, GateRef depend, const std::vector<GateRef> &args,
                            GateRef hirGate, const char* comment = nullptr);
     GateRef FastCallOptimized(GateRef glue, GateRef code, GateRef depend, const std::vector<GateRef> &args,
@@ -366,6 +368,9 @@ public:
     GateRef Call(const CallSignature* cs, GateRef glue, GateRef target, GateRef depend,
                  const std::vector<GateRef> &args, GateRef hirGate, const char* comment = nullptr);
     GateRef NoLabelCallRuntime(GateRef glue, GateRef depend, size_t index, std::vector<GateRef> &args, GateRef hirGate);
+
+    void StartCallTimer(GateRef glue, GateRef gate, const std::vector<GateRef> &args, bool useLabel);
+    void EndCallTimer(GateRef glue, GateRef gate, const std::vector<GateRef> &args, bool useLabel);
 
     // memory
     inline GateRef Load(VariableType type, GateRef base, GateRef offset);

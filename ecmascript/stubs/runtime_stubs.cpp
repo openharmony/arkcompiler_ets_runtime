@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/dfx/vmstat/function_call_timer.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
@@ -2329,6 +2330,32 @@ DEF_RUNTIME_STUBS(AotInlineTrace)
 
     LOG_TRACE(INFO) << "aot inline function name: " << inlineFullName << " caller function name: " << callerFullName;
     return JSTaggedValue::Undefined().GetRawData();
+}
+
+void RuntimeStubs::StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot)
+{
+    auto thread =  JSThread::GlueToJSThread(argGlue);
+    JSTaggedValue callTarget(func);
+    Method *method = Method::Cast(JSFunction::Cast(callTarget)->GetMethod());
+    if (method->IsNativeWithCallField()) {
+        return;
+    }
+    size_t methodId = method->GetMethodId().GetOffset();
+    auto callTimer = thread->GetEcmaVM()->GetCallTimer();
+    callTimer->InitialStatAndTimer(method, methodId, isAot);
+    callTimer->StartCount(methodId, isAot);
+}
+
+void RuntimeStubs::EndCallTimer(uintptr_t argGlue, JSTaggedType func)
+{
+    auto thread =  JSThread::GlueToJSThread(argGlue);
+    JSTaggedValue callTarget(func);
+    Method *method = Method::Cast(JSFunction::Cast(callTarget)->GetMethod());
+    if (method->IsNativeWithCallField()) {
+        return;
+    }
+    auto callTimer = thread->GetEcmaVM()->GetCallTimer();
+    callTimer->StopCount(method);
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

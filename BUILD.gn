@@ -597,6 +597,7 @@ ecma_source = [
   "ecmascript/deoptimizer/deoptimizer.cpp",
   "ecmascript/dfx/stackinfo/js_stackinfo.cpp",
   "ecmascript/dfx/vmstat/caller_stat.cpp",
+  "ecmascript/dfx/vmstat/function_call_timer.cpp",
   "ecmascript/dfx/vmstat/opt_code_profiler.cpp",
   "ecmascript/dfx/vmstat/runtime_stat.cpp",
   "ecmascript/dfx/vm_thread_control.cpp",

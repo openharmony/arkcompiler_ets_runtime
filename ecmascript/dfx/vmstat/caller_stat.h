@@ -125,6 +125,7 @@ private:
     uint64_t elapsed_ {0};
 
     friend class EcmaRuntimeStat;
+    friend class FunctionCallTimer;
 };
 }  // namespace panda::ecmascript
 #endif

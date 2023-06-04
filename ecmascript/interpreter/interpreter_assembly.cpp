@@ -243,6 +243,9 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
         }
         return JSTaggedValue(res);
     }
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), info->GetFunctionValue().GetRawData(), false);
+#endif
     auto acc = reinterpret_cast<InterpreterEntry>(entry)(thread->GetGlueAddr(),
         callTarget, method, method->GetCallField(), argc, argv);
     auto sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
