@@ -313,7 +313,6 @@ public:
     GateRef IsJsArray(GateRef obj);
     GateRef IsByteArray(GateRef obj);
     GateRef IsJsCOWArray(GateRef obj);
-    GateRef IsCOWArray(GateRef obj);
     GateRef IsJSObject(GateRef obj);
     GateRef IsWritable(GateRef attr);
     GateRef IsAccessor(GateRef attr);

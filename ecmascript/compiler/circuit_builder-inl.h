@@ -535,6 +535,12 @@ GateRef CircuitBuilder::TaggedFalse()
     return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_FALSE, GateType::TaggedValue());
 }
 
+GateRef CircuitBuilder::GetLengthFromTaggedArray(GateRef array)
+{
+    GateRef offset = IntPtr(TaggedArray::LENGTH_OFFSET);
+    return Load(VariableType::INT32(), array, offset);
+}
+
 GateRef CircuitBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
 {
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
@@ -873,29 +879,30 @@ GateRef CircuitBuilder::TypedConditionJump(GateRef x, GateType xType)
     return jumpOp;
 }
 
-template<TypedLoadOp Op>
-GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index)
+template <TypedLoadOp Op>
+GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index, GateRef length)
 {
     auto opIdx = static_cast<uint64_t>(Op);
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(GetCircuit()->LoadElement(opIdx), MachineType::I64,
-                                     { currentControl, currentDepend, receiver, index }, GateType::AnyType());
+                                     {currentControl, currentDepend, receiver, index, length}, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
-template<TypedStoreOp Op>
-GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef value)
+template <TypedStoreOp Op>
+GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef value, GateRef length)
 {
     auto opIdx = static_cast<uint64_t>(Op);
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(GetCircuit()->StoreElement(opIdx), MachineType::NOVALUE,
-                                     { currentControl, currentDepend, receiver, index, value }, GateType::AnyType());
+    auto ret =
+        GetCircuit()->NewGate(GetCircuit()->StoreElement(opIdx), MachineType::NOVALUE,
+                              {currentControl, currentDepend, receiver, index, value, length}, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

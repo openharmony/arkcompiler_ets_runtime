@@ -269,6 +269,9 @@ public:
     GateRef Sqrt(GateRef param);
     MachineType GetMachineTypeOfValueType(ValueType type);
     GateType GetGateTypeOfValueType(ValueType type);
+    GateRef IsJsCOWArray(GateRef obj);
+    GateRef IsCOWArray(GateRef objectType);
+    GateRef GetElementsArray(GateRef object);
     GateRef Convert(GateRef gate, ValueType src, ValueType dst);
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
     GateRef ConvertTaggedBooleanToBool(GateRef gate);
@@ -475,6 +478,7 @@ public:
     inline GateRef IntPtrGreaterThan(GateRef x, GateRef y);
     template<OpCode Op, MachineType Type>
     inline GateRef BinaryOp(GateRef x, GateRef y);
+    inline GateRef GetLengthFromTaggedArray(GateRef array);
     inline GateRef GetValueFromTaggedArray(GateRef array, GateRef index);
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
     GateRef TaggedIsString(GateRef obj);
@@ -497,9 +501,9 @@ public:
     // middle ir: object operations
     GateRef ToLength(GateRef receiver);
     template<TypedLoadOp Op>
-    GateRef LoadElement(GateRef receiver, GateRef index);
+    GateRef LoadElement(GateRef receiver, GateRef index, GateRef length);
     template<TypedStoreOp Op>
-    GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
+    GateRef StoreElement(GateRef receiver, GateRef index, GateRef value, GateRef length);
     GateRef LoadProperty(GateRef receiver, GateRef propertyLookupResult, bool isFunction);
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
     GateRef LoadArrayLength(GateRef array);

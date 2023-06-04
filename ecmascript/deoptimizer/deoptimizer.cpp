@@ -397,47 +397,15 @@ void Deoptimizier::Dump(Method* method, kungfu::DeoptType type, size_t depth)
 
 std::string Deoptimizier::DisplayItems(DeoptType type)
 {
-    switch (type) {
-        case DeoptType::NOTINT:
-            return "NOT INT";
-        case DeoptType::DIVZERO:
-            return "DIV ZERO";
-        case DeoptType::NOTDOUBLE:
-            return "NOT DOUBLE";
-        case DeoptType::NOTNUMBER:
-            return "NOT NUMBER";
-        case DeoptType::NOTBOOL:
-            return "NOT BOOL";
-        case DeoptType::NOTHEAPOBJECT:
-            return "NOT HEAP OBJECT";
-        case DeoptType::NOTSARRAY:
-            return "NOT SARRAY";
-        case DeoptType::NOTF32ARRAY:
-            return "NOT F32ARRAY";
-        case DeoptType::INCONSISTENTHCLASS:
-            return "INCONSISTENT HCLASS";
-        case DeoptType::NOTNEWOBJ:
-            return "NOT NEWOBJ TYPE";
-        case DeoptType::NOTARRAYIDX:
-            return "NOT ARRAY IDX";
-        case DeoptType::NOTF32ARRAYIDX:
-            return "NOT F32 ARRAY IDX";
-        case DeoptType::NOTINCOV:
-            return "NOT INC OVERFLOW";
-        case DeoptType::NOTDECOV:
-            return "NOT DEC OVERFLOW";
-        case DeoptType::NOTNEGOV:
-            return "NOT NEG OVERFLOW";
-        case DeoptType::NOTCALLTGT:
-            return "NOT CALL TARGET";
-        case DeoptType::NOTJSCALLTGT:
-            return "NOT JS CALL TARGET";
-        case DeoptType::INLINEFAIL:
-            return "INLINE FAILED";
-        default: {
-            return "NOT CHECK";
-        }
+    const std::map<DeoptType, const char *> strMap = {
+#define DEOPT_NAME_MAP(NAME, TYPE) {DeoptType::TYPE, #NAME},
+        GATE_META_DATA_DEOPT_REASON(DEOPT_NAME_MAP)
+#undef DEOPT_NAME_MAP
+    };
+    if (strMap.count(type) > 0) {
+        return strMap.at(type);
     }
+    return "DeoptType-" + std::to_string(static_cast<uint8_t>(type));
 }
 
 // layout of frameWriter

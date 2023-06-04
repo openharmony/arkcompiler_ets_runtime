@@ -78,29 +78,34 @@ enum class TypedJumpOp : uint8_t {
     TYPED_JNEZ,
 };
 
+#define GATE_META_DATA_DEOPT_REASON(V)          \
+    V(NotInt, NOTINT)                         \
+    V(NotDouble, NOTDOUBLE)                   \
+    V(NotNumber, NOTNUMBER)                   \
+    V(NotBool, NOTBOOL)                       \
+    V(NotHeapObject, NOTHEAPOBJECT)           \
+    V(NotStableArray, NOTSARRAY)              \
+    V(NotF32Array, NOTF32ARRAY)               \
+    V(InconsistentHClass, INCONSISTENTHCLASS) \
+    V(NotNewObj, NOTNEWOBJ)                   \
+    V(NotArrayIndex, NOTARRAYIDX)             \
+    V(NotF32ArrayIndex, NOTF32ARRAYIDX)       \
+    V(NotIncOverflow, NOTINCOV)               \
+    V(NotDecOverflow, NOTDECOV)               \
+    V(NotNegativeOverflow, NOTNEGOV)          \
+    V(NotCallTarget, NOTCALLTGT)              \
+    V(NotJSCallTarget, NOTJSCALLTGT)          \
+    V(DivideZero, DIVZERO)                    \
+    V(NegativeIndex, NEGTIVEINDEX)            \
+    V(LargeIndex, LARGEINDEX)                 \
+    V(InlineFail, INLINEFAIL)                 \
+    V(NotJSFastCallTarget, NOTJSFASTCALLTGT)
+
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,
-    NOTINT,
-    NOTDOUBLE,
-    NOTNUMBER,
-    NOTBOOL,
-    NOTHEAPOBJECT,
-    NOTSARRAY,
-    NOTF32ARRAY,
-    INCONSISTENTHCLASS,
-    NOTNEWOBJ,
-    NOTARRAYIDX,
-    NOTF32ARRAYIDX,
-    NOTINCOV,
-    NOTDECOV,
-    NOTNEGOV,
-    NOTCALLTGT,
-    NOTJSCALLTGT,
-    DIVZERO,
-    NEGTIVEINDEX,
-    LARGEINDEX,
-    INLINEFAIL,
-    NOTJSFASTCALLTGT,
+#define DECLARE_DEOPT_TYPE(NAME, TYPE) TYPE,
+    GATE_META_DATA_DEOPT_REASON(DECLARE_DEOPT_TYPE)
+#undef DECLARE_DEOPT_TYPE
 };
 
 enum class ICmpCondition : uint8_t {
@@ -295,8 +300,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(HeapAlloc, HEAP_ALLOC, GateFlags::NONE_FLAG, 1, 1, 1)                             \
     V(LoadConstOffset, LOAD_CONST_OFFSET, GateFlags::NO_WRITE, 0, 1, 1)                 \
     V(StoreConstOffset, STORE_CONST_OFFSET, GateFlags::NONE_FLAG, 1, 1, 2)              \
-    V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 2)                          \
-    V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 3)                       \
+    V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 3)                          \
+    V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 4)                       \
     V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 1, 0)                 \
     V(ConstData, CONST_DATA, GateFlags::NONE_FLAG, 0, 0, 1)                             \
     V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                                \

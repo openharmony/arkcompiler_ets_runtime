@@ -922,8 +922,7 @@ inline GateRef StubBuilder::GetSetterFromAccessor(GateRef accessor)
 
 inline GateRef StubBuilder::GetElementsArray(GateRef object)
 {
-    GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-    return Load(VariableType::JS_POINTER(), object, elementsOffset);
+    return env_->GetBuilder()->GetElementsArray(object);
 }
 
 inline void StubBuilder::SetElementsArray(VariableType type, GateRef glue, GateRef object, GateRef elementsArray)
@@ -1234,13 +1233,8 @@ inline GateRef StubBuilder::IsJsCOWArray(GateRef obj)
 {
     // Elements of JSArray are shared and properties are not yet.
     GateRef elements = GetElementsArray(obj);
-    return IsCOWArray(elements);
-}
-
-inline GateRef StubBuilder::IsCOWArray(GateRef obj)
-{
-    GateRef objectType = GetObjectType(LoadHClass(obj));
-    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_TAGGED_ARRAY)));
+    GateRef objectType = GetObjectType(LoadHClass(elements));
+    return env_->GetBuilder()->IsCOWArray(objectType);
 }
 
 inline GateRef StubBuilder::IsWritable(GateRef attr)
