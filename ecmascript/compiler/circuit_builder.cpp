@@ -764,6 +764,43 @@ GateRef CircuitBuilder::CallNGCRuntime(GateRef glue, int index, GateRef depend, 
     return result;
 }
 
+GateRef CircuitBuilder::CallNGCRuntime(GateRef glue, GateRef gate, int index, const std::vector<GateRef> &args,
+                                       bool useLabel)
+{
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
+    if (useLabel) {
+        GateRef result = CallNGCRuntime(glue, index, Gate::InvalidGateRef, args, gate, name.c_str());
+        return result;
+    } else {
+        const CallSignature *cs = RuntimeStubCSigns::Get(index);
+        GateRef target = IntPtr(index);
+        GateRef result = Call(cs, glue, target, GetDepend(), args, gate, name.c_str());
+        return result;
+    }
+}
+
+void CircuitBuilder::StartCallTimer(GateRef glue, GateRef gate, const std::vector<GateRef> &args, bool useLabel)
+{
+    (void)glue;
+    (void)gate;
+    (void)args;
+    (void)useLabel;
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    CallNGCRuntime(glue, gate, RTSTUB_ID(StartCallTimer), args, useLabel);
+#endif
+}
+
+void CircuitBuilder::EndCallTimer(GateRef glue, GateRef gate, const std::vector<GateRef> &args, bool useLabel)
+{
+    (void)glue;
+    (void)gate;
+    (void)args;
+    (void)useLabel;
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    CallNGCRuntime(glue, gate, RTSTUB_ID(EndCallTimer), args, useLabel);
+#endif
+}
+
 GateRef CircuitBuilder::FastCallOptimized(GateRef glue, GateRef code, GateRef depend, const std::vector<GateRef> &args,
                                           GateRef hirGate)
 {

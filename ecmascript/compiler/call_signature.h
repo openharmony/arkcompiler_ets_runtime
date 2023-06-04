@@ -455,6 +455,8 @@ private:
     V(TimeClip)                             \
     V(SetDateValues)                        \
     V(CallReturnWithArgv)                   \
+    V(StartCallTimer)                       \
+    V(EndCallTimer)                         \
     TEST_STUB_SIGNATRUE_LIST(V)
 
 #define DECL_CALL_SIGNATURE(name)                                  \

@@ -851,11 +851,15 @@ void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, Glob
     if (IsLoadVtable(func)) {
         if (tsManager_->CanFastCall(funcGt)) {
             builder_.JSFastCallThisTargetTypeCheck(funcType, func);
+            builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
             GateRef result = builder_.TypedFastCall(gate, argsFastCall);
+            builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
             acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
         } else {
             builder_.JSCallThisTargetTypeCheck(funcType, func);
+            builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
             GateRef result = builder_.TypedCall(gate, args);
+            builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
             acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
         }
     } else {
@@ -867,11 +871,15 @@ void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, Glob
                                           acc_.GetByteCodeOpcode(func) == EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8)) {
             if (tsManager_->CanFastCall(funcGt)) {
                 builder_.JSCallTargetFromDefineFuncCheck(funcType, func);
+                builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
                 GateRef result = builder_.TypedFastCall(gate, argsFastCall);
+                builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
                 acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
             } else {
                 builder_.JSCallTargetFromDefineFuncCheck(funcType, func);
+                builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
                 GateRef result = builder_.TypedCall(gate, args);
+                builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
                 acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
             }
             return;
@@ -882,11 +890,15 @@ void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, Glob
         }
         if (tsManager_->CanFastCall(funcGt)) {
             builder_.JSFastCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
+            builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
             GateRef result = builder_.TypedFastCall(gate, argsFastCall);
+            builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
             acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
         } else {
             builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
+            builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
             GateRef result = builder_.TypedCall(gate, args);
+            builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
             acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
         }
     }
@@ -1015,11 +1027,15 @@ void TSHCRLowering::CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, 
     }
     if (tsManager_->CanFastCall(funcGt)) {
         builder_.JSFastCallThisTargetTypeCheck(funcType, func);
+        builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
         GateRef result = builder_.TypedFastCall(gate, argsFastCall);
+        builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     } else {
         builder_.JSCallThisTargetTypeCheck(funcType, func);
+        builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
         GateRef result = builder_.TypedCall(gate, args);
+        builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     }
 }

@@ -952,6 +952,11 @@ DECLARE_ASM_HANDLER(HandleResumegenerator)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef obj = *varAcc;
 
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    GateRef frame = GetFrame(sp);
+    GateRef curFunc = GetFunctionFromFrame(frame);
+    CallNGCRuntime(glue, RTSTUB_ID(StartCallTimer), { glue, curFunc, False() });
+#endif
     Label isAsyncGeneratorObj(env);
     Label notAsyncGeneratorObj(env);
     Label dispatch(env);
@@ -977,6 +982,11 @@ DECLARE_ASM_HANDLER(HandleDeprecatedResumegeneratorPrefV8)
     auto env = GetEnvironment();
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    GateRef frame = GetFrame(sp);
+    GateRef curFunc = GetFunctionFromFrame(frame);
+    CallNGCRuntime(glue, RTSTUB_ID(StartCallTimer), { glue, curFunc, False() });
+#endif
 
     Label isAsyncGeneratorObj(env);
     Label notAsyncGeneratorObj(env);
@@ -2313,6 +2323,10 @@ DECLARE_ASM_HANDLER(HandleReturn)
     }
 
     Bind(&tryContinue);
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    GateRef curFunc = GetFunctionFromFrame(frame);
+    CallNGCRuntime(glue, RTSTUB_ID(EndCallTimer), { glue, curFunc });
+#endif
     GateRef currentSp = *varSp;
     varSp = Load(VariableType::NATIVE_POINTER(), frame,
                  IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
@@ -2372,6 +2386,10 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     }
 
     Bind(&tryContinue);
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    GateRef curFunc = GetFunctionFromFrame(frame);
+    CallNGCRuntime(glue, RTSTUB_ID(EndCallTimer), { glue, curFunc });
+#endif
     GateRef currentSp = *varSp;
     varSp = Load(VariableType::NATIVE_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
@@ -2444,6 +2462,10 @@ DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
     }
 
     Bind(&tryContinue);
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    GateRef curFunc = GetFunctionFromFrame(frame);
+    CallNGCRuntime(glue, RTSTUB_ID(EndCallTimer), { glue, curFunc });
+#endif
     GateRef currentSp = *varSp;
     varSp = Load(VariableType::NATIVE_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
@@ -2515,6 +2537,10 @@ DECLARE_ASM_HANDLER(HandleDeprecatedSuspendgeneratorPrefV8V8)
     }
 
     Bind(&tryContinue);
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    GateRef curFunc = GetFunctionFromFrame(frame);
+    CallNGCRuntime(glue, RTSTUB_ID(EndCallTimer), { glue, curFunc });
+#endif
     GateRef currentSp = *varSp;
     varSp = Load(VariableType::NATIVE_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
@@ -2844,6 +2870,10 @@ DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
     }
 
     Bind(&tryContinue);
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    GateRef curFunc = GetFunctionFromFrame(frame);
+    CallNGCRuntime(glue, RTSTUB_ID(EndCallTimer), { glue, curFunc });
+#endif
     GateRef currentSp = *varSp;
     varSp = Load(VariableType::NATIVE_POINTER(), frame,
         IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));

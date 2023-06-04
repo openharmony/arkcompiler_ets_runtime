@@ -267,6 +267,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
 
     switch (inst.GetOpcode()) {
         case EcmaOpcode::SUSPENDGENERATOR_V8:
+        case EcmaOpcode::RESUMEGENERATOR:
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM8_ID16:
         case EcmaOpcode::TRYLDGLOBALBYNAME_IMM16_ID16:
         case EcmaOpcode::STGLOBALVAR_IMM16_ID16:

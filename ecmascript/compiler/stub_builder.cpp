@@ -4760,6 +4760,9 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     // save pc
     SavePcIfNeeded(glue);
     GateRef bitfield = 0;
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    CallNGCRuntime(glue, RTSTUB_ID(StartCallTimer), { glue, func, False()});
+#endif
     Branch(TaggedIsHeapObject(func), &funcIsHeapObject, &funcNotCallable);
     Bind(&funcIsHeapObject);
     GateRef hclass = LoadHClass(func);

@@ -119,7 +119,9 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(StringsAreEquals)                        \
     V(BigIntEquals)                            \
     V(TimeClip)                                \
-    V(SetDateValues)
+    V(SetDateValues)                           \
+    V(StartCallTimer)                          \
+    V(EndCallTimer)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)      \
     V(AddElementInternal)                 \
@@ -374,6 +376,8 @@ public:
     static bool BigIntEquals(JSTaggedType left, JSTaggedType right);
     static double TimeClip(double time);
     static double SetDateValues(double year, double month, double day);
+    static void StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot);
+    static void EndCallTimer(uintptr_t argGlue, JSTaggedType func);
 
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
 private:
