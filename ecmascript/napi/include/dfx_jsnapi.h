@@ -44,6 +44,7 @@ using Progress = ecmascript::Progress;
 using ProfileInfo = ecmascript::ProfileInfo;
 using JsFrameInfo = ecmascript::JsFrameInfo;
 using SamplingInfo = ecmascript::SamplingInfo;
+using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
 
 class PUBLIC_API DFXJSNApi {
 public:
@@ -81,6 +82,16 @@ public:
     static void StartCpuProfilerForInfo(const EcmaVM *vm,
                                         int interval = 500); // 500:Default Sampling interval 500 microseconds
     static std::unique_ptr<ProfileInfo> StopCpuProfilerForInfo(const EcmaVM *vm);
+
+    enum class PUBLIC_API ProfilerType : uint8_t { CPU_PROFILER, HEAP_PROFILER };
+
+    struct ProfilerOption {
+        const char *libraryPath;
+        int interval = 500; // 500:Default Sampling interval 500 microseconds
+        ProfilerType profilerType = ProfilerType::CPU_PROFILER;
+    };
+    static bool StartProfiler(EcmaVM *vm, const ProfilerOption &option, int32_t instanceId,
+        const DebuggerPostTask &debuggerPostTask);
     static void SetCpuSamplingInterval(const EcmaVM *vm, int interval);
     static bool StartSampling(const EcmaVM *vm, uint64_t samplingInterval);
     static const SamplingInfo *GetAllocationProfile(const EcmaVM *vm);

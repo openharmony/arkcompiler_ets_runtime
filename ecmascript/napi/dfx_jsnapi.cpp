@@ -22,6 +22,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/gc_stats.h"
+#include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -437,5 +438,25 @@ void DFXJSNApi::StopSampling([[maybe_unused]] const EcmaVM *vm)
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap sampling";
 #endif
+}
+
+bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, int32_t instanceId,
+                              const DebuggerPostTask &debuggerPostTask)
+{
+    JSNApi::DebugOption debugOption;
+    debugOption.libraryPath = option.libraryPath;
+    if (option.profilerType == ProfilerType::CPU_PROFILER) {
+        debugOption.isDebugMode = false;
+        if (JSNApi::StartDebugger(vm, debugOption, instanceId, debuggerPostTask)) {
+            StartCpuProfilerForInfo(vm, option.interval);
+            return true;
+        } else {
+            LOG_ECMA(ERROR) << "DFXJSNApi:Failed to StartDebugger";
+            return false;
+        }
+    } else {
+        debugOption.isDebugMode = true;
+        return JSNApi::StartDebugger(vm, debugOption, instanceId, debuggerPostTask);
+    }
 }
 } // namespace panda
