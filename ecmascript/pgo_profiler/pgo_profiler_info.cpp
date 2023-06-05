@@ -196,7 +196,7 @@ void PGOMethodTypeSet::Merge(NativeAreaAllocator *allocator, const PGOMethodType
         allocator->Delete(iter);
     }
     layoutDescInfos_.clear();
-    for (const auto typeInfo : typeInfoSet_) {
+    for (const auto& typeInfo : typeInfoSet_) {
         if (typeInfo.GetType().IsHeapObject()) {
             auto taggedType = typeInfo.GetType().GetTaggedType();
             auto constructor = JSFunction::Cast(JSTaggedValue(taggedType).GetTaggedObject());
