@@ -286,8 +286,17 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(int32_t length)
         JSHandle<JSNativePointer> pointer = NewJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
                                                                vm_->GetNativeAreaAllocator(), false, length);
         arrayBuffer->SetArrayBufferData(thread_, pointer.GetTaggedValue());
-        arrayBuffer->ClearBitField();
     }
+    return arrayBuffer;
+}
+
+JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(int32_t length, const JSHandle<JSNativePointer> &nativePtr)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSFunction> constructor(env->GetArrayBufferFunction());
+    JSHandle<JSArrayBuffer> arrayBuffer(NewJSObjectByConstructor(constructor));
+    arrayBuffer->SetArrayBufferByteLength(length);
+    arrayBuffer->SetArrayBufferData(thread_, nativePtr.GetTaggedValue());
     return arrayBuffer;
 }
 
