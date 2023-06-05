@@ -42,7 +42,7 @@ public:
 
     ~TSHCRLowering() = default;
 
-    void RunTSHCRLowering();
+    bool RunTSHCRLowering();
 
 private:
     bool IsLogEnabled() const
@@ -148,6 +148,9 @@ private:
     bool profiling_ {false};
     bool verifyVTable_ {false};
     bool traceBc_ {false};
+    size_t allJSBcCount_ {0};
+    size_t allNonTypedOpCount_ {0};
+    size_t hitTypedOpCount_ {0};
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
     ArgumentAccessor argAcc_;

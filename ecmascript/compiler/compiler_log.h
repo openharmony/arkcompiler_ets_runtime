@@ -101,6 +101,7 @@ public:
     void SetMethodLog(const std::string &fileName, const std::string &methodName, AotMethodLogList *logList);
     void SetStubLog(const std::string &stubName, MethodLogList *logList);
     void AddCompiledMethod(const std::string& name, const CString& recordName);
+    void RemoveCompiledMethod(const std::string& name, const CString& recordName);
     void Print() const;
     void AddMethodTime(const std::string& name, uint32_t id, double time);
     void AddPassTime(const std::string& name, double time);

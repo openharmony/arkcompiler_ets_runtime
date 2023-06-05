@@ -217,6 +217,12 @@ void CompilerLog::AddCompiledMethod(const std::string& name, const CString& reco
     compiledMethodSet_.insert(info);
 }
 
+void CompilerLog::RemoveCompiledMethod(const std::string& name, const CString& recordName)
+{
+    auto info = std::make_pair(name, recordName);
+    compiledMethodSet_.erase(info);
+}
+
 int CompilerLog::GetIndex()
 {
     return (idx_++);
