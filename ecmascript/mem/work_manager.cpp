@@ -20,6 +20,7 @@
 #include "ecmascript/mem/full_gc.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/heap_region_allocator.h"
+#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
 #include "ecmascript/mem/partial_gc.h"

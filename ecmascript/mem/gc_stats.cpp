@@ -83,6 +83,10 @@ const char *GCStats::GCReasonToString()
             return "Allocate object failed";
         case GCReason::IDLE:
             return "Idle time task";
+        case GCReason::SWITCH_BACKGROUND:
+            return "Switch to background";
+        case GCReason::EXTERNAL_TRIGGER:
+            return "Externally triggered";
         default:
             return "Other";
     }
@@ -505,11 +509,15 @@ void GCStats::RecordGCSpeed()
         gcSpeed_[(uint8_t)SpeedData::MARK_SPEED] =
             GetRecordData(RecordData::START_YOUNG_OBJ_SIZE) / scopeDuration_[Scope::ScopeId::Mark];
         size_t evacuateSpeed = survivalRate * GetRecordData(RecordData::START_YOUNG_OBJ_SIZE) /
-                               scopeDuration_[Scope::ScopeId::Evacuate];
-        gcSpeed_[(uint8_t)SpeedData::EVACUATE_SPEED] =
-            (evacuateSpeed + gcSpeed_[(uint8_t)SpeedData::EVACUATE_SPEED]) / 2;  // 2 means half
+                               scopeDuration_[Scope::ScopeId::EvacuateSpace];
+        gcSpeed_[(uint8_t)SpeedData::YOUNG_EVACUATE_SPACE_SPEED] =
+            (evacuateSpeed + gcSpeed_[(uint8_t)SpeedData::YOUNG_EVACUATE_SPACE_SPEED]) / 2;  // 2 means half
         gcSpeed_[(uint8_t)SpeedData::YOUNG_CLEAR_NATIVE_OBJ_SPEED] =
             (clearNativeSpeed + gcSpeed_[(uint8_t)SpeedData::YOUNG_CLEAR_NATIVE_OBJ_SPEED]) / 2;  // 2 means half
+        size_t updateReferenceSpeed = GetRecordData(RecordData::START_OBJ_SIZE) /
+                                      scopeDuration_[Scope::ScopeId::UpdateReference];
+        gcSpeed_[(uint8_t)SpeedData::YOUNG_UPDATE_REFERENCE_SPEED] =
+            (updateReferenceSpeed + gcSpeed_[(uint8_t)SpeedData::YOUNG_UPDATE_REFERENCE_SPEED]) / 2;  // 2 means half
     } else if (gcType_ == GCType::PARTIAL_OLD_GC) {
         gcSpeed_[(uint8_t)SpeedData::MARK_SPEED] =
             GetRecordData(RecordData::START_OBJ_SIZE) / scopeDuration_[Scope::ScopeId::Mark];
@@ -523,12 +531,12 @@ void GCStats::RecordGCSpeed()
             GetRecordData(RecordData::COLLECT_REGION_SET_SIZE)) / scopeDuration_[Scope::ScopeId::EvacuateSpace];
         gcSpeed_[(uint8_t)SpeedData::OLD_EVACUATE_SPACE_SPEED] =
             (evacuateSpaceSpeed + gcSpeed_[(uint8_t)SpeedData::OLD_EVACUATE_SPACE_SPEED]) / 2;  // 2 means half
-    }
 
-    size_t updateReferenceSpeed = GetRecordData(RecordData::START_OBJ_SIZE) /
-                                  scopeDuration_[Scope::ScopeId::UpdateReference];
-    gcSpeed_[(uint8_t)SpeedData::UPDATE_REFERENCE_SPEED] =
-        (updateReferenceSpeed + gcSpeed_[(uint8_t)SpeedData::UPDATE_REFERENCE_SPEED]) / 2;  // 2 means half
+        size_t updateReferenceSpeed = GetRecordData(RecordData::START_OBJ_SIZE) /
+                                    scopeDuration_[Scope::ScopeId::UpdateReference];
+        gcSpeed_[(uint8_t)SpeedData::UPDATE_REFERENCE_SPEED] =
+            (updateReferenceSpeed + gcSpeed_[(uint8_t)SpeedData::UPDATE_REFERENCE_SPEED]) / 2;  // 2 means half
+    }
 }
 
 GCType GCStats::GetGCType(TriggerGCType gcType)
