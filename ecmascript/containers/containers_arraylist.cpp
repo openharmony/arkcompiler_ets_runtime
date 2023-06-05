@@ -565,7 +565,7 @@ JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
-    if (!callbackFnHandle->IsUndefined() && !callbackFnHandle->IsCallable()) {
+    if (!callbackFnHandle->IsUndefined() && !callbackFnHandle->IsCallable() && !callbackFnHandle->IsNull()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle);
         CString errorMsg =
             "The type of \"comparator\" must be callable. Received value is: " + ConvertToString(*result);

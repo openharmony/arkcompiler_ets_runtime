@@ -79,7 +79,7 @@ double ArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> 
     // b. ReturnIfAbrupt(v).
     // c. If v is NaN, return +0.
     // d. Return v.
-    if (!callbackfnHandle->IsUndefined()) {
+    if (!callbackfnHandle->IsUndefined() && !callbackfnHandle->IsNull()) {
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackfnHandle, undefined, undefined, 2); // 2: «x, y»
