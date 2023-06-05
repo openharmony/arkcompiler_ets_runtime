@@ -1629,7 +1629,8 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
         method->SetConstantPool(thread_, constpool);
     }
     if (needSetAotFlag) {
-        vm_->GetAOTFileManager()->SetAOTFuncEntry(jsPandaFile, *method, entryIndex, canFastCall);
+        thread_->GetCurrentEcmaContext()->GetAOTFileManager()->
+            SetAOTFuncEntry(jsPandaFile, *method, entryIndex, canFastCall);
     }
     return method;
 }

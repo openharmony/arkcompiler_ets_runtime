@@ -830,8 +830,8 @@ public:
     }
     void SwitchCurrentContext(EcmaContext *currentContext);
 
-    
-    CVector<EcmaContext *> GetEcmaContexts() {
+    CVector<EcmaContext *> GetEcmaContexts()
+    {
         return contexts_;
     }
 private:

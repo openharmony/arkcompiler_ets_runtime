@@ -254,20 +254,23 @@ public:
             iter++;
         }
     }
+
     AOTFileManager *GetAOTFileManager() const
     {
         return aotFileManager_;
     }
+
     EcmaRuntimeStat *GetRuntimeStat() const
     {
         return runtimeStat_;
     }
+
     void SetRuntimeStatEnable(bool flag);
     void InitializeEcmaScriptRunStat();
     void DumpAOTInfo() const DUMP_API_ATTR;
 
-    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
-        const JSTaggedType *prevFp, bool needPushUndefined);
+    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
+                             bool needPushUndefined);
     void LoadStubFile();
 
     JSTaggedType *GetHandleScopeStorageNext() const
@@ -314,9 +317,11 @@ public:
     {
         return lastHandleScope_;
     }
+
     size_t IterateHandle(const RootRangeVisitor &rangeVisitor);
     uintptr_t *ExpandHandleStorage();
     void ShrinkHandleStorage(int prevIndex);
+
     JSTaggedType *GetCurrentFrame() const
     {
         return currentFrame_;

@@ -446,10 +446,6 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
     }
-
-    if (pgoProfiler_ != nullptr) {
-        pgoProfiler_->Iterate(v);
-    }
 }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)

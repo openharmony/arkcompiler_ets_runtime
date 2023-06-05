@@ -200,6 +200,7 @@ public:
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         ASSERT(jsPandaFile->IsNewVersion());
         JSHandle<ConstantPool> constpoolHandle(thread, constpool);
+        EcmaVM *vm = thread->GetEcmaVM();
 
         EntityId id = constpoolHandle->GetEntityId(index);
         MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
@@ -236,13 +237,6 @@ public:
                 thread, jsPandaFile, literalId, constpool, entry, needSetAotFlag, entryIndexes);
             JSHandle<ClassLiteral> classLiteral = factory->NewClassLiteral();
             classLiteral->SetArray(thread, literalArray);
-<<<<<<< HEAD
-=======
-            if (isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined()) {
-                thread->GetCurrentEcmaContext()->GetAOTFileManager()->SetAOTFuncEntryForLiteral(jsPandaFile, *literalArray, *entryIndexes);
-            }
-
->>>>>>> 2f570c226 (add aotfilemanger from vm to context)
             val = classLiteral.GetTaggedValue();
             constpool->SetObjectToCache(thread, literal, val);
         }
@@ -292,12 +286,6 @@ public:
                         valueHandle.Update(elements->Get(i + 1));
                         JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
                     }
-<<<<<<< HEAD
-=======
-                    if (isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined()) {
-                        thread->GetCurrentEcmaContext()->GetAOTFileManager()->SetAOTFuncEntryForLiteral(jsPandaFile, *properties, *entryIndexes);
-                    }
->>>>>>> 2f570c226 (add aotfilemanger from vm to context)
                     val = obj.GetTaggedValue();
                     break;
                 }
@@ -307,12 +295,6 @@ public:
                     uint32_t length = literal->GetLength();
                     JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length)));
                     arr->SetElements(thread, literal);
-<<<<<<< HEAD
-=======
-                    if (isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined()) {
-                        thread->GetCurrentEcmaContext()->GetAOTFileManager()->SetAOTFuncEntryForLiteral(jsPandaFile, *literal, *entryIndexes);
-                    }
->>>>>>> 2f570c226 (add aotfilemanger from vm to context)
                     val = arr.GetTaggedValue();
                     break;
                 }
