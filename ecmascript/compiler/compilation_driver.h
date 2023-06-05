@@ -84,9 +84,12 @@ public:
                        MethodInfo &methodInfo)
     {
         Module *module = GetModule();
-        IncCompiledMethod();
         cb(bytecodeInfo_.GetRecordName(index), methodName, methodLiteral, methodOffset,
             methodPcInfo, methodInfo, module);
+        if (methodInfo.IsTypeInferAbort()) {
+            return;
+        }
+        IncCompiledMethod();
         CompileModuleThenDestroyIfNeeded();
     }
 

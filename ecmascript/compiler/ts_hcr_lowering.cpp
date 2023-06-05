@@ -21,7 +21,7 @@
 #include "ecmascript/ts_types/ts_type.h"
 
 namespace panda::ecmascript::kungfu {
-void TSHCRLowering::RunTSHCRLowering()
+bool TSHCRLowering::RunTSHCRLowering()
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
@@ -29,6 +29,18 @@ void TSHCRLowering::RunTSHCRLowering()
         auto op = acc_.GetOpCode(gate);
         if (op == OpCode::JS_BYTECODE) {
             Lower(gate);
+            allJSBcCount_++;
+        }
+    }
+
+    bool success = true;
+    double typeHitRate = 0.0;
+    auto allTypedOpCount = allJSBcCount_ - allNonTypedOpCount_;
+    if (allTypedOpCount != 0) {
+        typeHitRate = static_cast<double>(hitTypedOpCount_) / static_cast<double>(allTypedOpCount);
+        auto typeThreshold = tsManager_->GetTypeThreshold();
+        if (typeHitRate <= typeThreshold) {
+            success = false;
         }
     }
 
@@ -41,8 +53,12 @@ void TSHCRLowering::RunTSHCRLowering()
                            << "===================="
                            << "\033[0m";
         circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+        LOG_COMPILER(INFO) << "\033[34m" << " =========================== End typeHitRate: "
+                           << std::to_string(typeHitRate)
+                           << " ===========================" << "\033[0m";
     }
+
+    return success;
 }
 
 bool TSHCRLowering::IsTrustedType(GateRef gate) const
@@ -259,6 +275,7 @@ void TSHCRLowering::Lower(GateRef gate)
             LowerTypedCallthisrange(gate);
             break;
         default:
+            allNonTypedOpCount_++;
             break;
     }
 }
@@ -1150,6 +1167,7 @@ void TSHCRLowering::LowerTypedCreateEmptyArray(GateRef gate)
 
 void TSHCRLowering::AddProfiling(GateRef gate)
 {
+    hitTypedOpCount_++;
     if (IsTraceBC()) {
         // see stateSplit as a part of JSByteCode if exists
         GateRef maybeStateSplit = acc_.GetDep(gate);

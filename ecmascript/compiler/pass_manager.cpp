@@ -116,6 +116,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
             pipeline.RunPass<TypeInferPass>();
         }
         if (data.IsTypeAbort()) {
+            data.AbortCompilation();
             return;
         }
         pipeline.RunPass<TSClassAnalysisPass>();
@@ -125,6 +126,10 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         if (passOptions_->EnableTypeLowering()) {
             pipeline.RunPass<TSHCRLoweringPass>();
+            if (data.IsTypeAbort()) {
+                data.AbortCompilation();
+                return;
+            }
             if (passOptions_->EnableEarlyElimination()) {
                 pipeline.RunPass<EarlyEliminationPass>();
             }

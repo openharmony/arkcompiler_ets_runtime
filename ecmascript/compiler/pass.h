@@ -159,7 +159,6 @@ public:
             // A ts method which has low type percent and not marked as a resolved method
             // should be skipped from full compilation.
             if (methodInfo_->IsTypeInferAbort() && !methodInfo_->IsResolvedMethod()) {
-                ctx_->GetBytecodeInfo().AddSkippedMethod(methodOffset_);
                 return true;
             }
         } else {
@@ -167,7 +166,6 @@ public:
             // If we set an non zero type threshold, js method will be skipped from full compilation.
             // The default Type threshold is -1.
             if (ctx_->GetTSManager()->GetTypeThreshold() >= 0) {
-                ctx_->GetBytecodeInfo().AddSkippedMethod(methodOffset_);
                 return true;
             }
         }
@@ -176,6 +174,18 @@ public:
         methodInfo_->SetTypeInferAbort(false);
         log_->AddCompiledMethod(methodName_, recordName_);
         return false;
+    }
+
+    void AbortCompilation()
+    {
+        ctx_->GetBytecodeInfo().AddSkippedMethod(methodOffset_);
+        methodInfo_->SetIsCompiled(false);
+        log_->RemoveCompiledMethod(methodName_, recordName_);
+    }
+
+    void MarkAsTypeAbort()
+    {
+        methodInfo_->SetTypeInferAbort(true);
     }
 
 private:
@@ -248,7 +258,10 @@ public:
         TimeScope timescope("TSHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         TSHCRLowering lowering(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName());
-        lowering.RunTSHCRLowering();
+        bool success = lowering.RunTSHCRLowering();
+        if (!success) {
+            data->MarkAsTypeAbort();
+        }
         return true;
     }
 };
