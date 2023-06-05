@@ -78,7 +78,7 @@ enum class TypedJumpOp : uint8_t {
     TYPED_JNEZ,
 };
 
-#define GATE_META_DATA_DEOPT_REASON(V)          \
+#define GATE_META_DATA_DEOPT_REASON(V)        \
     V(NotInt, NOTINT)                         \
     V(NotDouble, NOTDOUBLE)                   \
     V(NotNumber, NOTNUMBER)                   \

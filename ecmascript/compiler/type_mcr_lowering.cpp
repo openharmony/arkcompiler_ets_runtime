@@ -625,12 +625,27 @@ void TypeMCRLowering::LowerArrayStoreElement(GateRef gate, GateRef glue)
     GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
     GateRef arrayLength = builder_.GetLengthFromTaggedArray(element);
     GateRef hasEntityValue = builder_.Int32LessThanOrEqual(length, arrayLength);
-    GateRef notCOWArray = builder_.BoolNot(builder_.IsJsCOWArray(receiver));
 
     GateRef frameState = acc_.FindNearestFrameState(currentDepend);
-    builder_.DeoptCheck(builder_.BoolAnd(hasEntityValue, notCOWArray), frameState, DeoptType::NOTSARRAY);
+    builder_.DeoptCheck(hasEntityValue, frameState, DeoptType::NOTSARRAY);
 
-    builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, element, index, value);
+    Label storeWithCOWArray(&builder_);
+    Label storeDirectly(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.IsJsCOWArray(receiver), &storeWithCOWArray, &storeDirectly);
+    builder_.Bind(&storeWithCOWArray);
+    {
+        LowerCallRuntime(glue, gate, RTSTUB_ID(CheckAndCopyArray), {receiver}, true);
+        GateRef newElement = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
+        builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, newElement, index, value);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&storeDirectly);
+    {
+        builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, element, index, value);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -1234,4 +1249,4 @@ void TypeMCRLowering::ReplaceHirWithPendingException(GateRef hirGate, GateRef gl
     StateDepend exception(ifTrue, eDepend);
     acc_.ReplaceHirWithIfBranch(hirGate, success, exception, value);
 }
-}  // namespace panda::ecmascript
+}  // namespace panda::ecmascript::kungfu
