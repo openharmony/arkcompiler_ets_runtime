@@ -282,14 +282,17 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
 
     JSTaggedValue result;
     if (jsPandaFile->IsCjs(thread_, entryPoint.data())) {
-            if (!thread_->HasPendingException()) {
-                CJSExecution(func, global, jsPandaFile, entryPoint);
-            }
+        if (!thread_->HasPendingException()) {
+            CJSExecution(func, global, jsPandaFile, entryPoint);
+        }
     } else {
         if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
         } else {
+            if (thread_->IsPGOProfilerEnable()) {
+                vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+            }
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
             EcmaRuntimeStatScope runtimeStatScope(vm_);
@@ -304,6 +307,9 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     if (!excuteFromJob && thread_->HasPendingException()) {
         HandleUncaughtException(thread_->GetException());
     }
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    vm_->DumpCallTimeInfo();
+#endif
     return result;
 }
 

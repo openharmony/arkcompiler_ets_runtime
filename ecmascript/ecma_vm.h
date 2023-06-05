@@ -414,7 +414,7 @@ private:
     // For Internal Native MethodLiteral.
     void GenerateInternalNativeMethods();
 
-    NO_MOVE_SEMANTIC(EcmaVM);       
+    NO_MOVE_SEMANTIC(EcmaVM);
     NO_COPY_SEMANTIC(EcmaVM);
 
     // VM startup states.

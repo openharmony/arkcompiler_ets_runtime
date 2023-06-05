@@ -215,11 +215,8 @@ bool EcmaVM::Initialize()
         thread_->GetCurrentEcmaContext()->LoadStubFile();
     }
 
-    // optCodeProfiler_ = new OptCodeProfiler();
     callTimer_ = new FunctionCallTimer();
 
-    EcmaContext *context = EcmaContext::Create(thread_);
-    thread_->PushContext(context);
     initialized_ = true;
     return true;
 }
@@ -375,6 +372,7 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
     }
     thread_->GetCurrentEcmaContext()->ProcessNativeDelete(visitor);
 }
+
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 {
     if (thread_->GetCurrentEcmaContext()->GetRegExpParserCache() != nullptr) {
