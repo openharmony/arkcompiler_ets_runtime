@@ -764,6 +764,9 @@ public:
 
     int32_t ByteLength(const EcmaVM *vm);
     void *GetBuffer();
+
+    void Detach(const EcmaVM *vm);
+    bool IsDetach();
 };
 
 class PUBLIC_API DataViewRef : public ObjectRef {
