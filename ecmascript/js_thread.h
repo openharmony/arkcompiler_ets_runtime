@@ -829,6 +829,11 @@ public:
         return contexts_.back();
     }
     void SwitchCurrentContext(EcmaContext *currentContext);
+
+    
+    CVector<EcmaContext *> GetEcmaContexts() {
+        return contexts_;
+    }
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
@@ -838,10 +843,6 @@ private:
     static size_t GetAsmStackLimit();
 
     static bool IsMainThread();
-
-    CVector<EcmaContext *> GetEcmaContexts() {
-        return contexts_;
-    }
 
     static constexpr size_t DEFAULT_MAX_SYSTEM_STACK_SIZE = 8_MB;
 
