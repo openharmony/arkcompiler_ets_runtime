@@ -303,7 +303,6 @@ std::string MachineTypeToStr(MachineType machineType);
     V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 3)                          \
     V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 4)                       \
     V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 1, 0)                 \
-    V(ConstData, CONST_DATA, GateFlags::NONE_FLAG, 0, 0, 1)                             \
     V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                                \
     V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)                 \
     V(GetGlobalEnvObjHClass, GET_GLOBAL_ENV_OBJ_HCLASS, GateFlags::NO_WRITE, 0, 1, 1)   \

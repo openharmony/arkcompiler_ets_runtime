@@ -2315,5 +2315,10 @@ inline GateRef StubBuilder::GetProfileTypeInfo(GateRef jsFunc)
     GateRef method = GetMethodFromFunction(jsFunc);
     return Load(VariableType::JS_POINTER(), method, IntPtr(Method::PROFILE_TYPE_INFO_OFFSET));
 }
+
+inline GateRef StubBuilder::LoadObjectFromConstPool(GateRef jsFunc, GateRef index)
+{
+    return env_->GetBuilder()->LoadObjectFromConstPool(jsFunc, index);
+}
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

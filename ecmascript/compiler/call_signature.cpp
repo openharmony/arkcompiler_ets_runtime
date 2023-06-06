@@ -224,7 +224,7 @@ DEF_CALL_SIGNATURE(SetPropertyByName)
     std::array<VariableType, 6> params = {
         VariableType::NATIVE_POINTER(),   // glue
         VariableType::JS_ANY(),           // receiver
-        VariableType::JS_POINTER(),       // key
+        VariableType::INT64(),            // key
         VariableType::JS_ANY(),           // value
         VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
@@ -329,7 +329,7 @@ DEF_CALL_SIGNATURE(GetPropertyByName)
     std::array<VariableType, 5> params = {
         VariableType::NATIVE_POINTER(),   // glue
         VariableType::JS_ANY(),           // receiver
-        VariableType::JS_POINTER(),       // key
+        VariableType::INT64(),            // key
         VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
     };
@@ -378,7 +378,7 @@ DEF_CALL_SIGNATURE(TryLdGlobalByName)
     // 4 : 4 input parameters
     std::array<VariableType, 4> params = {
         VariableType::NATIVE_POINTER(),   // glue
-        VariableType::JS_POINTER(),       // key
+        VariableType::INT64(),            // key
         VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
     };
@@ -394,7 +394,7 @@ DEF_CALL_SIGNATURE(TryStGlobalByName)
     // 5 : 5 input parameters
     std::array<VariableType, 5> params = {
         VariableType::NATIVE_POINTER(),   // glue
-        VariableType::JS_POINTER(),       // key
+        VariableType::INT64(),            // key
         VariableType::JS_ANY(),           // value
         VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
@@ -411,7 +411,7 @@ DEF_CALL_SIGNATURE(LdGlobalVar)
     // 4 : 4 input parameters
     std::array<VariableType, 4> params = {
         VariableType::NATIVE_POINTER(),   // glue
-        VariableType::JS_POINTER(),       // key
+        VariableType::INT64(),            // key
         VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id
     };
@@ -427,7 +427,7 @@ DEF_CALL_SIGNATURE(StGlobalVar)
     // 5 : 5 input parameters
     std::array<VariableType, 5> params = {
         VariableType::NATIVE_POINTER(),   // glue
-        VariableType::JS_POINTER(),       // key
+        VariableType::INT64(),            // string id
         VariableType::JS_ANY(),           // value
         VariableType::JS_ANY(),           // jsFunc
         VariableType::INT32(),            // slot id

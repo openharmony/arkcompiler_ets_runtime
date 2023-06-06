@@ -618,6 +618,7 @@ public:
 
     void Comment(GateRef glue, const std::string &str);
     GateRef ToNumber(GateRef glue, GateRef tagged);
+    inline GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     GateRef ChangeTaggedPointerToInt64(GateRef x);

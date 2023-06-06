@@ -206,7 +206,7 @@ bool GateMetaData::IsNop() const
 
 bool GateMetaData::IsConstant() const
 {
-    return (opcode_ == OpCode::CONSTANT || opcode_ == OpCode::CONST_DATA);
+    return (opcode_ == OpCode::CONSTANT);
 }
 
 bool GateMetaData::IsDependSelector() const

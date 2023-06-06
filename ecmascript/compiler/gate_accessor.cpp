@@ -89,13 +89,6 @@ FCmpCondition GateAccessor::GetFCmpCondition(GateRef gate) const
     return static_cast<FCmpCondition>(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
-ConstDataId GateAccessor::GetConstDataId(GateRef gate) const
-{
-    ASSERT(GetOpCode(gate) == OpCode::CONST_DATA);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return ConstDataId(gatePtr->GetOneParameterMetaData()->GetValue());
-}
-
 size_t GateAccessor::GetOffset(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::LOAD_CONST_OFFSET ||

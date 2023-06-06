@@ -183,7 +183,7 @@ bool MethodTypeInfer::ShouldInfer(const GateRef gate) const
      * panda::ecmascript::kungfu::LexEnv which are created during the building of IR. So in the type inference,
      * newlexenv is ignored.
      */
-    if (opcode != OpCode::CONSTANT && opcode != OpCode::CONST_DATA &&
+    if (opcode != OpCode::CONSTANT &&
         opcode != OpCode::RETURN && opcode != OpCode::JS_BYTECODE) {
         return false;
     }
@@ -701,7 +701,7 @@ bool MethodTypeInfer::InferLdObjByName(GateRef gate)
     }
     // If this object has no gt type, we cannot get its internal property type
     if (ShouldInferWithLdObjByName(objType)) {
-        uint16_t index = gateAccessor_.GetConstDataId(gateAccessor_.GetValueIn(gate, 1)).GetId();
+        uint16_t index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 1));
         return GetObjPropWithName(gate, objType, index);
     }
     return UpdateType(gate, GateType::AnyType());
@@ -721,7 +721,7 @@ bool MethodTypeInfer::InferStObjByName(GateRef gate)
         return false;
     }
 
-    uint16_t index = gateAccessor_.GetConstDataId(gateAccessor_.GetValueIn(gate, 1)).GetId();  // 1: index of key
+    uint16_t index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 1));  // 1: index of key
     JSTaggedValue propKey = tsManager_->GetStringFromConstantPool(index);
     tsManager_->AddNamespacePropType(receiverType, propKey, valueType);
     return true;
@@ -839,8 +839,7 @@ bool MethodTypeInfer::InferLdObjByValue(GateRef gate)
             return UpdateType(gate, type);
         }
         if (IsByteCodeGate(valueGate) && GetByteCodeInfo(valueGate).IsBc(EcmaOpcode::LDA_STR_ID16)) {
-            ConstDataId dataId = gateAccessor_.GetConstDataId(valueGate);
-            auto index = dataId.GetId();
+            auto index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(valueGate, 0));
             return GetObjPropWithName(gate, objType, index);
         }
     }
@@ -874,7 +873,7 @@ bool MethodTypeInfer::InferSuperCall(GateRef gate)
 
 bool MethodTypeInfer::InferSuperPropertyByName(GateRef gate)
 {
-    uint16_t index = gateAccessor_.GetConstDataId(gateAccessor_.GetValueIn(gate, 0)).GetId();
+    uint16_t index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 0));
     return GetSuperProp(gate, index);
 }
 
@@ -882,8 +881,7 @@ bool MethodTypeInfer::InferSuperPropertyByValue(GateRef gate)
 {
     auto valueGate = gateAccessor_.GetValueIn(gate, 1);
     if (IsByteCodeGate(valueGate) && GetByteCodeInfo(valueGate).IsBc(EcmaOpcode::LDA_STR_ID16)) {
-        ConstDataId dataId = gateAccessor_.GetConstDataId(valueGate);
-        auto index = dataId.GetId();
+        auto index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(valueGate, 0));
         return GetSuperProp(gate, index);
     }
     if (gateAccessor_.GetOpCode(valueGate) == OpCode::CONSTANT) {
@@ -1291,11 +1289,12 @@ void MethodTypeInfer::TypeCheck(GateRef gate) const
         return;
     }
     auto funcName = gateAccessor_.GetValueIn(func, 1);
-    uint16_t funcNameStrId = gateAccessor_.GetConstDataId(funcName).GetId();
+    uint16_t funcNameStrId = gateAccessor_.GetConstantValue(funcName);
     auto funcNameString = tsManager_->GetStdStringFromConstantPool(funcNameStrId);
     if (funcNameString == "AssertType") {
         GateRef expectedGate = gateAccessor_.GetValueIn(gate, 1);
-        uint16_t strId = gateAccessor_.GetConstDataId(expectedGate).GetId();
+        GateRef constId = gateAccessor_.GetValueIn(expectedGate, 0);
+        uint16_t strId = gateAccessor_.GetConstantValue(constId);
         auto expectedTypeStr = tsManager_->GetStdStringFromConstantPool(strId);
         GateRef valueGate = gateAccessor_.GetValueIn(gate, 0);
         auto type = gateAccessor_.GetGateType(valueGate);
