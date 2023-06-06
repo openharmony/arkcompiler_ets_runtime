@@ -245,6 +245,8 @@ static bool CheckSecureMem(uintptr_t mem)
         if (vm->GetJSThread()->HasPendingException()) {                               \
             LOG_ECMA(ERROR) << "pending exception before jsnapi interface called" <<  \
                 ", which is " << __FUNCTION__ << " in line: " << __LINE__;            \
+            LOG_ECMA(ERROR) << "print exception info:";                               \
+            JSNApi::PrintExceptionInfo(vm);                                           \
             return returnVal;                                                         \
         }                                                                             \
     } while (false)
@@ -257,6 +259,8 @@ static bool CheckSecureMem(uintptr_t mem)
         if (vm->GetJSThread()->HasPendingException()) {                               \
             LOG_ECMA(ERROR) << "pending exception before jsnapi interface called" <<  \
                 ", which is " << __FUNCTION__ << " in line: " << __LINE__;            \
+            LOG_ECMA(ERROR) << "print exception info:";                               \
+            JSNApi::PrintExceptionInfo(vm);                                           \
             return;                                                                   \
         }                                                                             \
     } while (false)
@@ -358,6 +362,27 @@ void JSNApi::ThrowException(const EcmaVM *vm, Local<JSValueRef> error)
         return;
     }
     thread->SetException(JSNApiHelper::ToJSTaggedValue(*error));
+}
+
+void JSNApi::PrintExceptionInfo(const EcmaVM *vm)
+{
+    JSThread* thread = vm->GetJSThread();
+    [[maybe_unused]] ecmascript::EcmaHandleScope handleScope(thread);
+
+    if (!HasPendingException(vm)) {
+        return;
+    }
+    Local<ObjectRef> exception = GetAndClearUncaughtException(vm);
+    JSHandle<JSTaggedValue> exceptionHandle = JSNApiHelper::ToJSHandle(exception);
+    if (exceptionHandle->IsJSError()) {
+        vm->PrintJSErrorInfo(exceptionHandle);
+        ThrowException(vm, exception);
+        return;
+    }
+    JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, exceptionHandle);
+    ecmascript::CString string = ConvertToString(*result);
+    LOG_ECMA(ERROR) << string;
+    ThrowException(vm, exception);
 }
 
 bool JSNApi::StartDebugger([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] const DebugOption &option,

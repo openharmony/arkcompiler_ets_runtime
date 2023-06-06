@@ -710,7 +710,7 @@ void EcmaVM::HandleUncaughtException(JSTaggedValue exception)
     LOG_NO_TAG(ERROR) << string;
 }
 
-void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo)
+void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const
 {
     JSHandle<JSTaggedValue> nameKey = thread_->GlobalConstants()->GetHandledNameString();
     JSHandle<EcmaString> name(JSObject::GetProperty(thread_, exceptionInfo, nameKey).GetValue());

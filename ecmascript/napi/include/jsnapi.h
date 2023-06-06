@@ -1273,6 +1273,7 @@ public:
     static void TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType = TRIGGER_GC_TYPE::SEMI_GC);
     // Exception
     static void ThrowException(const EcmaVM *vm, Local<JSValueRef> error);
+    static void PrintExceptionInfo(const EcmaVM *vm);
     static Local<ObjectRef> GetAndClearUncaughtException(const EcmaVM *vm);
     static Local<ObjectRef> GetUncaughtException(const EcmaVM *vm);
     static bool HasPendingException(const EcmaVM *vm);
