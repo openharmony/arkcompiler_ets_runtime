@@ -1309,7 +1309,7 @@ void SnapshotProcessor::DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObje
 
 void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t stringEnd)
 {
-    EcmaStringTable *stringTable = vm_->GetJSThread()->GetCurrentEcmaContext()->GetEcmaStringTable();
+    EcmaStringTable *stringTable = vm_->GetEcmaStringTable();
     ASSERT(stringVector_.empty());
     auto oldSpace = const_cast<Heap *>(vm_->GetHeap())->GetOldSpace();
     auto hugeSpace = const_cast<Heap *>(vm_->GetHeap())->GetHugeObjectSpace();
@@ -1480,7 +1480,7 @@ void SnapshotProcessor::RelocateSpaceObject(const JSPandaFile *jsPandaFile, Spac
     size_t others = 0;
     size_t objIndex = 0;
     size_t constSpecialIndex = 0;
-    EcmaStringTable *stringTable = vm_->GetJSThread()->GetCurrentEcmaContext()->GetEcmaStringTable();
+    EcmaStringTable *stringTable = vm_->GetEcmaStringTable();
     space->EnumerateRegions([jsPandaFile, stringTable, &others, &objIndex, &rootObjSize, &constSpecialIndex,
                             &type, this, methods, &methodNums](Region *current) {
         if (!current->NeedRelocate()) {

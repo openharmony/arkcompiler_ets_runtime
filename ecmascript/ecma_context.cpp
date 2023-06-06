@@ -44,7 +44,6 @@ using PathHelper = base::PathHelper;
 EcmaContext::EcmaContext(JSThread *thread)
     : thread_(thread),
       vm_(thread->GetEcmaVM()),
-      stringTable_(new EcmaStringTable(vm_)),
       factory_(vm_->GetFactory())
 {
 }
@@ -58,7 +57,6 @@ EcmaContext *EcmaContext::Create(JSThread *thread)
         LOG_ECMA(ERROR) << "Failed to create ecma context";
         return nullptr;
     }
-    context->Initialize();
     return context;
 }
 
@@ -79,44 +77,26 @@ bool EcmaContext::Initialize()
     LOG_ECMA(INFO) << "EcmaContext::Initialize";
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaContext::Initialize");
     [[maybe_unused]] EcmaHandleScope scope(thread_);
+    aotFileManager_ = new AOTFileManager(vm_);
     propertiesCache_ = new PropertiesCache();
     regExpParserCache_ = new RegExpParserCache();
-    auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
-    if (!vm_->GetJSOptions().EnableSnapshotDeserialize()) {
-        LOG_ECMA(DEBUG) << "EcmaVM::Initialize run builtins";
-        JSHandle<JSHClass> hClassHandle = factory_->InitClassClass();
-        JSHandle<JSHClass> globalEnvClass = factory_->NewEcmaHClass(*hClassHandle,
-                                                                   GlobalEnv::SIZE,
-                                                                   JSType::GLOBAL_ENV);
-        globalConst->Init(thread_, *hClassHandle);
-        JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
-        globalEnv->Init(thread_);
-        globalEnv_ = globalEnv.GetTaggedValue();
-        thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(globalEnv.GetTaggedType()));
-        Builtins builtins;
-        builtins.Initialize(globalEnv, thread_);
-        if (!WIN_OR_MAC_OR_IOS_PLATFORM && vm_->GetJSOptions().EnableSnapshotSerialize()) {
-            const CString fileName = "builtins.snapshot";
-            Snapshot snapshot(vm_);
-            snapshot.SerializeBuiltins(fileName);
-        }
-    } else {
-        const CString fileName = "builtins.snapshot";
-        Snapshot snapshot(vm_);
-        if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
-            snapshot.Deserialize(SnapshotType::BUILTINS, fileName, true);
-        }
-        globalConst->InitSpecialForSnapshot();
-        Builtins builtins;
-       builtins.InitializeForSnapshot(thread_);
-   }
+
+    JSHandle<JSHClass> globalEnvClass = factory_->NewEcmaHClass(
+        JSHClass::Cast(vm_->GetHClassClass().GetTaggedObject()),
+        GlobalEnv::SIZE,
+        JSType::GLOBAL_ENV);
+
+    JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
+    globalEnv->Init(thread_);
+    globalEnv_ = globalEnv.GetTaggedValue();
+    Builtins builtins;
+    builtins.Initialize(globalEnv, thread_);
 
     SetupRegExpResultCache();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     moduleManager_ = new ModuleManager(vm_);
     tsManager_ = new TSManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
-    aotFileManager_ = new AOTFileManager(vm_);
     return true;
 }
 
@@ -201,10 +181,6 @@ EcmaContext::~EcmaContext()
     if (optCodeProfiler_ != nullptr) {
         delete optCodeProfiler_;
         optCodeProfiler_ = nullptr;
-    }
-    if (stringTable_ != nullptr) {
-        delete stringTable_;
-        stringTable_ = nullptr;
     }
     if (moduleManager_ != nullptr) {
         delete moduleManager_;
@@ -604,6 +580,8 @@ void EcmaContext::MountContext(JSThread *thread)
 {
     EcmaContext *context = EcmaContext::Create(thread);
     thread->PushContext(context);
+    context->Initialize();
+    thread->SwitchCurrentContext(context);
 }
 
 void EcmaContext::UnmountContext(JSThread *thread)
@@ -623,9 +601,15 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));
-    moduleManager_->Iterate(v);
-    tsManager_->Iterate(v);
-    aotFileManager_->Iterate(v);
+    if (moduleManager_) {
+        moduleManager_->Iterate(v);
+    }
+    if (tsManager_) {
+        tsManager_->Iterate(v);
+    }
+    if (aotFileManager_) {
+        aotFileManager_->Iterate(v);
+    }
     if (propertiesCache_ != nullptr) {
         propertiesCache_->Clear();
     }

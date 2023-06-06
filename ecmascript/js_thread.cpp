@@ -100,8 +100,14 @@ JSThread::~JSThread()
         globalDebugStorage_ = nullptr;
     }
 
-    GetNativeAreaAllocator()->Free(glueData_.frameBase_, sizeof(JSTaggedType) *
-        vm_->GetEcmaParamConfiguration().GetMaxStackSize());
+    for (auto item : contexts_) {
+        GetNativeAreaAllocator()->Free(item->GetFrameBase(), sizeof(JSTaggedType) *
+            vm_->GetEcmaParamConfiguration().GetMaxStackSize());
+        item->SetFrameBase(nullptr);
+        delete item;
+    }
+    contexts_.clear();
+
     glueData_.frameBase_ = nullptr;
     nativeAreaAllocator_ = nullptr;
     heapRegionAllocator_ = nullptr;
@@ -109,11 +115,6 @@ JSThread::~JSThread()
         delete vmThreadControl_;
         vmThreadControl_ = nullptr;
     }
-
-    for (auto item : contexts_) {
-        delete item;
-    }
-    contexts_.clear();
 }
 
 void JSThread::SetException(JSTaggedValue exception)
@@ -212,12 +213,15 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
     }
     // visit global Constant
     glueData_.globalConst_.VisitRangeSlot(rangeVisitor);
-    // visit stack roots
-    FrameHandler frameHandler(this);
-    frameHandler.Iterate(visitor, rangeVisitor, derivedVisitor);
+    EcmaContext *tempContext = currentContext_;
     for (EcmaContext *context : contexts_) {
+        // visit stack roots
+        SwitchCurrentContext(context);
+        FrameHandler frameHandler(this);
+        frameHandler.Iterate(visitor, rangeVisitor, derivedVisitor);
         context->Iterate(visitor, rangeVisitor);
     }
+    SwitchCurrentContext(tempContext);
     // visit tagged handle storage roots
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
         IterateHandleWithCheck(visitor, rangeVisitor);
@@ -555,10 +559,27 @@ bool JSThread::IsMainThread()
 void JSThread::PushContext(EcmaContext *context)
 {
     contexts_.emplace_back(context);
+
     if (!currentContext_) {
+        // The first context in ecma vm.
         currentContext_ = context;
+        context->SetFramePointers(const_cast<JSTaggedType *>(GetCurrentSPFrame()),
+            const_cast<JSTaggedType *>(GetLastLeaveFrame()),
+            const_cast<JSTaggedType *>(GetLastFp()));
+        context->SetFrameBase(glueData_.frameBase_);
+        context->SetStackLimit(glueData_.stackLimit_);
+        context->SetStackStart(glueData_.stackStart_);
     } else {
-        SwitchCurrentContext(context);
+        // algin with 16
+        size_t maxStackSize = vm_->GetEcmaParamConfiguration().GetMaxStackSize();
+        context->SetFrameBase(static_cast<JSTaggedType *>(
+            vm_->GetNativeAreaAllocator()->Allocate(sizeof(JSTaggedType) * maxStackSize)));
+        context->SetFramePointers(context->GetFrameBase() + maxStackSize, nullptr, nullptr);
+        if (IsAsmInterpreter()) {
+            context->SetStackLimit(GetAsmStackLimit());
+            context->SetStackStart(GetCurrentStackPosition());
+        }
+        EcmaInterpreter::InitStackFrame(context);
     }
 }
 
@@ -574,13 +595,22 @@ void JSThread::SwitchCurrentContext(EcmaContext *currentContext)
     currentContext_->SetFramePointers(const_cast<JSTaggedType *>(GetCurrentSPFrame()),
         const_cast<JSTaggedType *>(GetLastLeaveFrame()),
         const_cast<JSTaggedType *>(GetLastFp()));
+    currentContext_->SetFrameBase(glueData_.frameBase_);
+    currentContext_->SetStackLimit(GetStackLimit());
+    currentContext_->SetStackStart(GetStackStart());
     currentContext_->SetGlobalEnv(GetGlueGlobalEnv());
+    currentContext_->GetGlobalEnv()->SetJSGlobalObject(this, glueData_.globalObject_);
 
     SetCurrentSPFrame(currentContext->GetCurrentFrame());
     SetLastLeaveFrame(currentContext->GetLeaveFrame());
     SetLastFp(currentContext->GetLastFp());
-    SetGlueGlobalEnv(*currentContext->GetGlobalEnv());
-    SetGlobalObject(currentContext->GetGlobalEnv()->GetGlobalObject());
+    glueData_.frameBase_ = currentContext->GetFrameBase();
+    glueData_.stackLimit_ = currentContext->GetStackLimit();
+    glueData_.stackStart_ = currentContext->GetStackStart();
+    if (!currentContext->GlobalEnvIsHole()) {
+        SetGlueGlobalEnv(*(currentContext->GetGlobalEnv()));
+        SetGlobalObject(currentContext->GetGlobalEnv()->GetGlobalObject());
+    }
 
     currentContext_ = currentContext;
 }
@@ -588,5 +618,10 @@ void JSThread::SwitchCurrentContext(EcmaContext *currentContext)
 PropertiesCache *JSThread::GetPropertiesCache() const
 {
     return currentContext_->GetPropertiesCache();
+}
+
+void JSThread::InitGlobalConst(JSHClass *hClass)
+{
+    glueData_.globalConst_.Init(this, hClass);
 }
 }  // namespace panda::ecmascript

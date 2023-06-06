@@ -17,6 +17,7 @@
 #define ECMASCRIPT_INTERPRETER_INTERPRETER_INL_H
 
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -7191,7 +7192,18 @@ void EcmaInterpreter::InitStackFrame(JSThread *thread)
     if (thread->IsAsmInterpreter()) {
         return InterpreterAssembly::InitStackFrame(thread);
     }
-    JSTaggedType *prevSp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
+    InitStackFrameForSP(const_cast<JSTaggedType *>(thread->GetCurrentSPFrame()));
+}
+
+void EcmaInterpreter::InitStackFrame(EcmaContext *context)
+{
+    if (context->GetJSThread()->IsAsmInterpreter()) {
+        return InterpreterAssembly::InitStackFrame(context);
+    }
+    InitStackFrameForSP(const_cast<JSTaggedType *>(context->GetCurrentFrame()));
+}
+void EcmaInterpreter::InitStackFrameForSP(JSTaggedType *prevSp)
+{
     InterpretedFrame *state = GET_FRAME(prevSp);
     state->pc = nullptr;
     state->function = JSTaggedValue::Hole();

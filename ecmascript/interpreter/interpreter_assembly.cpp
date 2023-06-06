@@ -16,6 +16,7 @@
 #include "ecmascript/interpreter/interpreter_assembly.h"
 
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -200,13 +201,19 @@ using GeneratorReEnterInterpEntry = JSTaggedType (*)(uintptr_t glue, JSTaggedTyp
 
 void InterpreterAssembly::InitStackFrame(JSThread *thread)
 {
-    JSTaggedType *prevSp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
+    InitStackFrameForSP(const_cast<JSTaggedType *>(thread->GetCurrentSPFrame()));
+}
+void InterpreterAssembly::InitStackFrame(EcmaContext *context)
+{
+    InitStackFrameForSP(const_cast<JSTaggedType *>(context->GetCurrentFrame()));
+}
+void InterpreterAssembly::InitStackFrameForSP(JSTaggedType *prevSp)
+{
     InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(prevSp);
     entryState->base.type = FrameType::INTERPRETER_ENTRY_FRAME;
     entryState->base.prev = nullptr;
     entryState->pc = nullptr;
 }
-
 JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

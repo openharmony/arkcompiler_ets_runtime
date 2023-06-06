@@ -30,8 +30,8 @@
 #include "ecmascript/mem/visitor.h"
 
 namespace panda::ecmascript {
-class EcmaVM;
 class EcmaContext;
+class EcmaVM;
 class EcmaHandleScope;
 class HeapRegionAllocator;
 class PropertiesCache;
@@ -826,7 +826,7 @@ public:
 
     EcmaContext *GetCurrentEcmaContext() const
     {
-        return contexts_.back();
+        return currentContext_;
     }
     void SwitchCurrentContext(EcmaContext *currentContext);
 
@@ -837,6 +837,11 @@ public:
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
+    void SetCurrentEcmaContext(EcmaContext *context)
+    {
+        currentContext_ = context;
+    }
+    void InitGlobalConst(JSHClass *hClass);
 
     void DumpStack() DUMP_API_ATTR;
 

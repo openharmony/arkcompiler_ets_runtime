@@ -29,12 +29,12 @@ namespace panda::ecmascript {
  * Handles are only valid within a HandleScope. When a handle is created for an object a cell is allocated in the
  * current HandleScope.
  */
-class JSThread;
+
 class EcmaHandleScope {
 public:
-    explicit EcmaHandleScope(JSThread *thread);
+    explicit PUBLIC_API EcmaHandleScope(JSThread *thread);
 
-    ~EcmaHandleScope();
+    PUBLIC_API ~EcmaHandleScope();
     static uintptr_t PUBLIC_API NewHandle(JSThread *thread, JSTaggedType value);
 
     JSThread *GetThread() const

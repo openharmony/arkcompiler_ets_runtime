@@ -145,7 +145,8 @@ void EcmaVM::PostFork()
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
-    :  nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
+    : stringTable_(new EcmaStringTable(this)),
+      nativeAreaAllocator_(std::make_unique<NativeAreaAllocator>()),
       heapRegionAllocator_(std::make_unique<HeapRegionAllocator>()),
       chunk_(nativeAreaAllocator_.get()),
       ecmaParamConfiguration_(std::move(config))
@@ -203,9 +204,15 @@ bool EcmaVM::Initialize()
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
+    JSHandle<JSHClass> hClassHandle = factory_->InitClassClass();
+    hClassClass_ = hClassHandle.GetTaggedValue();
+    thread_->InitGlobalConst(*hClassHandle);
     context->Initialize();
-    GenerateInternalNativeMethods();
+    thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(context->GetGlobalEnv().GetTaggedType()));
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());
+    thread_->SetCurrentEcmaContext(context);
+
+    GenerateInternalNativeMethods();
     quickFixManager_ = new QuickFixManager();
     snapshotEnv_ = new SnapshotEnv(this);
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
@@ -270,6 +277,11 @@ EcmaVM::~EcmaVM()
     if (factory_ != nullptr) {
         chunk_.Delete(factory_);
         factory_ = nullptr;
+    }
+
+    if (stringTable_ != nullptr) {
+        delete stringTable_;
+        stringTable_ = nullptr;
     }
 
     if (quickFixManager_ != nullptr) {

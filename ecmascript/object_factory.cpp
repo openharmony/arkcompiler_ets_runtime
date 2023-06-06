@@ -2535,7 +2535,7 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint8_t *utf8
     if (utf8Len == 0) {
         return GetEmptyString();
     }
-    auto stringTable = vm_->GetJSThread()->GetCurrentEcmaContext()->GetEcmaStringTable();
+    auto stringTable = vm_->GetEcmaStringTable();
     return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(utf8Data, utf8Len, canBeCompress));
 }
 
@@ -2545,7 +2545,7 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTableNonMovable(const uin
     if (utf8Len == 0) {
         return GetEmptyString();
     }
-    auto stringTable = vm_->GetJSThread()->GetCurrentEcmaContext()->GetEcmaStringTable();
+    auto stringTable = vm_->GetEcmaStringTable();
     return JSHandle<EcmaString>(thread_, stringTable->CreateAndInternStringNonMovable(utf8Data, utf8Len));
 }
 
@@ -2556,7 +2556,7 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const uint16_t *utf
     if (utf16Len == 0) {
         return GetEmptyString();
     }
-    auto stringTable = vm_->GetJSThread()->GetCurrentEcmaContext()->GetEcmaStringTable();
+    auto stringTable = vm_->GetEcmaStringTable();
     return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(utf16Data, utf16Len, canBeCompress));
 }
 
@@ -2566,7 +2566,7 @@ JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(EcmaString *string)
     if (EcmaStringAccessor(string).GetLength() == 0) {
         return GetEmptyString();
     }
-    auto stringTable = vm_->GetJSThread()->GetCurrentEcmaContext()->GetEcmaStringTable();
+    auto stringTable = vm_->GetEcmaStringTable();
     return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(string));
 }
 
@@ -2584,13 +2584,13 @@ EcmaString *ObjectFactory::GetRawStringFromStringTable(StringData sd, MemSpaceTy
     const uint8_t *mutf8Data = sd.data;
     if (canBeCompressed) {
         // This branch will use constant string, which has a pointer at the string in the pandafile.
-        return vm_->GetJSThread()->GetCurrentEcmaContext()->GetEcmaStringTable()->GetOrInternStringWithSpaceType(mutf8Data, utf16Len, true, type,
+        return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(mutf8Data, utf16Len, true, type,
                                                                          isConstantString, idOffset);
     }
 
     CVector<uint16_t> utf16Data(utf16Len);
     auto len = utf::ConvertRegionMUtf8ToUtf16(mutf8Data, utf16Data.data(), utf::Mutf8Size(mutf8Data), utf16Len, 0);
-    return vm_->GetJSThread()->GetCurrentEcmaContext()->GetEcmaStringTable()->GetOrInternStringWithSpaceType(utf16Data.data(), len, false, type);
+    return vm_->GetEcmaStringTable()->GetOrInternStringWithSpaceType(utf16Data.data(), len, false, type);
 }
 
 JSHandle<PropertyBox> ObjectFactory::NewPropertyBox(const JSHandle<JSTaggedValue> &value)
@@ -2998,7 +2998,7 @@ EcmaString *ObjectFactory::InternString(const JSHandle<JSTaggedValue> &key)
         return str;
     }
 
-    EcmaStringTable *stringTable = vm_->GetJSThread()->GetCurrentEcmaContext()->GetEcmaStringTable();
+    EcmaStringTable *stringTable = vm_->GetEcmaStringTable();
     return stringTable->GetOrInternString(str);
 }
 
@@ -3522,7 +3522,7 @@ JSHandle<EcmaString> ObjectFactory::ConcatFromString(const JSHandle<EcmaString> 
 JSHandle<EcmaString> ObjectFactory::GetStringFromStringTable(const JSHandle<EcmaString> &firstString,
                                                              const JSHandle<EcmaString> &secondString)
 {
-    auto stringTable = vm_->GetJSThread()->GetCurrentEcmaContext()->GetEcmaStringTable();
+    auto stringTable = vm_->GetEcmaStringTable();
     return JSHandle<EcmaString>(thread_, stringTable->GetOrInternString(firstString, secondString));
 }
 

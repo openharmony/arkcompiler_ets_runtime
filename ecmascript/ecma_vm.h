@@ -80,6 +80,7 @@ class RequireManager;
 class QuickFixManager;
 class ConstantPool;
 class FunctionCallTimer;
+class EcmaStringTable;
 
 using NativePtrGetter = void* (*)(void* info);
 
@@ -403,6 +404,15 @@ public:
         return callTimer_;
     }
 
+    EcmaStringTable *GetEcmaStringTable() const
+    {
+        ASSERT(stringTable_ != nullptr);
+        return stringTable_;
+    }
+    JSTaggedValue GetHClassClass() const
+    {
+        return hClassClass_;
+    }
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -422,6 +432,8 @@ private:
     bool icEnabled_ {true};
     bool initialized_ {false};
     GCStats *gcStats_ {nullptr};
+    EcmaStringTable *stringTable_;
+
     // VM memory management.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     std::unique_ptr<HeapRegionAllocator> heapRegionAllocator_;
@@ -431,11 +443,11 @@ private:
     CList<JSNativePointer *> nativePointerList_;
     // VM execution states.
     JSThread *thread_ {nullptr};
+    JSTaggedValue hClassClass_ {JSTaggedValue::Hole()};
 
     // VM resources.
     SnapshotEnv *snapshotEnv_ {nullptr};
     bool optionalLogEnabled_ {false};
-
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
     // merge abc

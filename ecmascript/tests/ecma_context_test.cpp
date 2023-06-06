@@ -63,17 +63,6 @@ HWTEST_F_L0(EcmaContextTest, Create)
     EXPECT_EQ(Cv1.size(), 2);
 }
 
-HWTEST_F_L0(EcmaContextTest, GetEcmaStringTable)
-{
-    EcmaVM *vm = thread->GetEcmaVM();
-    ObjectFactory *factory = vm->GetFactory();
-    auto context = EcmaContext::Create(thread);
-    EcmaStringTable *table = context->GetEcmaStringTable();
-    JSHandle<EcmaString> ecmaStrCreateHandle = factory->NewFromASCII("hello world");
-    EcmaString *ecmaStrGetPtr = table->GetOrInternString(*ecmaStrCreateHandle);
-    EXPECT_STREQ(EcmaStringAccessor(ecmaStrGetPtr).ToCString().c_str(), "hello world");
-}
-
 HWTEST_F_L0(EcmaContextTest, CreatePushContext)
 {
     auto context = EcmaContext::Create(thread);
@@ -110,5 +99,4 @@ HWTEST_F_L0(EcmaContextTest, AllowAtomicWait)
     bool value2 = context->GetAllowAtomicWait();
     EXPECT_FALSE(value2);
 }
-
 }  // namespace panda::test

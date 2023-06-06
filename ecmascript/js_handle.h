@@ -75,17 +75,17 @@ class NameDictionary;
 template <typename T>
 class JSHandle {
 public:
-    PUBLIC_API inline JSHandle() : address_(reinterpret_cast<uintptr_t>(nullptr)) {}
+    inline JSHandle() : address_(reinterpret_cast<uintptr_t>(nullptr)) {}
     ~JSHandle() = default;
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(JSHandle);
     DEFAULT_COPY_SEMANTIC(JSHandle);
 
-    PUBLIC_API JSHandle(const JSThread *thread, JSTaggedValue value)
+    JSHandle(const JSThread *thread, JSTaggedValue value)
     {
         address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), value.GetRawData());
     }
 
-    PUBLIC_API JSHandle(const JSThread *thread, const TaggedObject *value)
+    JSHandle(const JSThread *thread, const TaggedObject *value)
     {
         address_ = EcmaHandleScope::NewHandle(const_cast<JSThread *>(thread), JSTaggedValue(value).GetRawData());
     }

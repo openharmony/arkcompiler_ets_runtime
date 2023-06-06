@@ -43,7 +43,6 @@ class EcmaRuntimeStat;
 class RegExpParserCache;
 class JSPandaFileManager;
 class JSPandaFile;
-class EcmaStringTable;
 class ConstantPool;
 class JSPromise;
 class RegExpExecResultCache;
@@ -54,6 +53,8 @@ template<typename T>
 class JSHandle;
 class JSThread;
 class JSFunction;
+class JSPromise;
+class JSTaggedValue;
 class EcmaVM;
 class ModuleManager;
 class TSManager;
@@ -105,12 +106,6 @@ public:
     static EcmaContext *ConstCast(const EcmaContext *context)
     {
         return const_cast<EcmaContext *>(context);
-    }
-
-    EcmaStringTable *GetEcmaStringTable() const
-    {
-        ASSERT(stringTable_ != nullptr);
-        return stringTable_;
     }
 
     ModuleManager *GetModuleManager() const
@@ -170,6 +165,10 @@ public:
     {
         regexpCache_ = newCache;
     }
+    uintptr_t GetExpCacheAddress()
+    {
+        return reinterpret_cast<uintptr_t>(&regexpCache_);
+    }
 
     WaiterListNode *GetWaiterListNode()
     {
@@ -207,6 +206,11 @@ public:
     void ProcessNativeDelete(const WeakRootVisitor &visitor);
     void ProcessReferences(const WeakRootVisitor &visitor);
     JSHandle<GlobalEnv> GetGlobalEnv() const;
+    bool GlobalEnvIsHole()
+    {
+        return globalEnv_.IsHole();
+    }
+
     JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo);
@@ -343,6 +347,31 @@ public:
         leaveFrame_ = leaveFrame;
         lastFp_ = lastFp;
     }
+    void SetFrameBase(JSTaggedType *frameBase)
+    {
+        frameBase_ = frameBase;
+    }
+    JSTaggedType *GetFrameBase() const
+    {
+        return frameBase_;
+    }
+
+    void SetStackStart(uint64_t stackStart)
+    {
+        stackStart_ = stackStart;
+    }
+    uint64_t GetStackStart() const
+    {
+        return stackStart_;
+    }
+    void SetStackLimit(uint64_t stackLimit)
+    {
+        stackLimit_ = stackLimit;
+    }
+    uint64_t GetStackLimit() const
+    {
+        return stackLimit_;
+    }
 
     PropertiesCache *GetPropertiesCache() const
     {
@@ -368,7 +397,6 @@ private:
     bool isUncaughtExceptionRegistered_ {false};
     bool isProcessingPendingJob_ {false};
 
-    EcmaStringTable *stringTable_ {nullptr};
     ObjectFactory *factory_ {nullptr};
 
     // VM execution states.
@@ -423,6 +451,10 @@ private:
     JSTaggedType *currentFrame_ {nullptr};
     JSTaggedType *leaveFrame_ {nullptr};
     JSTaggedType *lastFp_ {nullptr};
+    JSTaggedType *frameBase_ {nullptr};
+    uint64_t stackStart_ {0};
+    uint64_t stackLimit_ {0};
+
     PropertiesCache *propertiesCache_ {nullptr};
 
     friend class EcmaHandleScope;

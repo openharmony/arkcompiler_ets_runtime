@@ -262,7 +262,7 @@ void ParallelEvacuator::UpdateWeakReference()
 {
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), UpdateWeakReference);
     UpdateRecordWeakReference();
-    auto stringTable = heap_->GetEcmaVM()->GetJSThread()->GetCurrentEcmaContext()->GetEcmaStringTable();
+    auto stringTable = heap_->GetEcmaVM()->GetEcmaStringTable();
     bool isFullMark = heap_->IsFullMark();
     WeakRootVisitor gcUpdateWeak = [isFullMark](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));

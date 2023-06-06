@@ -165,7 +165,7 @@ HWTEST_F_L0(TaggedDictionaryTest, NameDictionary_ShrinkCapacity)
     // create key and values
     uint8_t keyArray[7] = "hello";
 
-    auto stringTable = thread->GetCurrentEcmaContext()->GetEcmaStringTable();
+    auto stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
     for (int i = 0; i < 10; i++) {
         keyArray[5] = '0' + static_cast<uint32_t>(i);
         keyArray[6] = 0;

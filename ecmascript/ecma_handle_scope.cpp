@@ -13,9 +13,6 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_HANDLE_SCOPE_INL_H
-#define ECMASCRIPT_HANDLE_SCOPE_INL_H
-
 #include "ecmascript/ecma_handle_scope.h"
 
 #include "ecmascript/ecma_context.h"
@@ -50,7 +47,6 @@ EcmaHandleScope::~EcmaHandleScope()
     }
 }
 
-/* static */
 uintptr_t EcmaHandleScope::NewHandle(JSThread *thread, JSTaggedType value)
 {
     auto context = thread->GetCurrentEcmaContext();
@@ -84,4 +80,3 @@ uintptr_t EcmaHandleScope::NewHandle(JSThread *thread, JSTaggedType value)
     return reinterpret_cast<uintptr_t>(result);
 }
 }  // namespace panda::ecmascript
-#endif

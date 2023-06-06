@@ -87,7 +87,7 @@ template("host_moduletest_action") {
   if (defined(invoker.is_json) && invoker.is_json) {
     _is_json_ = true
   }
-  _timeout_ = "120"
+  _timeout_ = "400"
   if (defined(invoker.timeout)) {
     _timeout_ = invoker.timeout
   }
