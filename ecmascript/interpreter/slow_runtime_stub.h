@@ -182,6 +182,8 @@ public:
 
     static JSTaggedValue NotifyConcurrentResult(JSThread *thread, JSTaggedValue result, JSTaggedValue hint);
 
+    static void DebuggerStmt(JSThread *thread);
+
 private:
     static JSTaggedValue ThrowSyntaxError(JSThread *thread, const char *message);
     static JSTaggedValue GetCallSpreadArgs(JSThread *thread, JSTaggedValue array);

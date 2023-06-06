@@ -31,6 +31,7 @@ enum PauseReason {
     AMBIGUOUS,
     ASSERT,
     DEBUGCOMMAND,
+    DEBUGGERSTMT,
     DOM,
     EVENTLISTENER,
     EXCEPTION,
@@ -45,6 +46,15 @@ enum PauseReason {
 class PtHooks {
 public:
     PtHooks() = default;
+
+    /**
+     * \brief called by the ecmavm when the next statement being executed is debugger statement. Thread where debugger statement 
+     * hits is paused until continue or step event being received
+     * @param thread Identifier of the thread where debugger statement hits. Now the callback is called in the same
+     * thread
+     * @param location debugger statement location
+     */
+    virtual void DebuggerStmt(const JSPtLocation &location) = 0;
 
     /**
      * \brief called by the ecmavm when breakpoint hits. Thread where breakpoint hits is stopped until
@@ -91,6 +101,12 @@ public:
 class JSDebugInterface {
 public:
     JSDebugInterface() = default;
+
+    /**
+     * \brief handle debugger statement event
+     * @param location debugger statement location
+     */
+    virtual bool HandleDebuggerStmt(JSHandle<Method> method, uint32_t bc_offset) = 0;
 
     /**
      * \brief Register debug hooks in the ecmavm

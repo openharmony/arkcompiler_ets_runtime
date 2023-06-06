@@ -1185,4 +1185,22 @@ JSTaggedValue SlowRuntimeStub::NotifyConcurrentResult(JSThread *thread, JSTagged
     INTERPRETER_TRACE(thread, NotifyConcurrentResult);
     return RuntimeStubs::RuntimeNotifyConcurrentResult(thread, result, hint);
 }
+
+void SlowRuntimeStub::DebuggerStmt(JSThread *thread)
+{
+    FrameHandler frameHandler(thread);
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+        if (frameHandler.IsEntryFrame()) {
+            continue;
+        }
+        Method *method = frameHandler.GetMethod();
+        if (method->IsNativeWithCallField()) {
+            continue;
+        }
+        auto bcOffset = frameHandler.GetBytecodeOffset();
+        tooling::JsDebuggerManager *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
+        debuggerMgr->GetNotificationManager()->DebuggerStmtEvent(thread, method, bcOffset);
+        return;
+    }
+}
 }  // namespace panda::ecmascript
