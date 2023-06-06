@@ -81,7 +81,6 @@ bool TSClassAnalysis::HasEscapedThisOnSuper(const TSClassType *classType) const
         if (classType->IsBaseClassType()) {
             break;
         }
-
     }
     return false;
 }
