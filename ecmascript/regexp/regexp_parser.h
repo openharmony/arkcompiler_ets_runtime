@@ -54,7 +54,8 @@ public:
     static constexpr uint32_t UNICODE_HEX_ADVANCE = 2;
     static constexpr uint32_t CAPTURE_CONUT_ADVANCE = 3;
     static constexpr uint32_t UTF8_CHAR_LEN_MAX = 6;
-
+    static int Canonicalize(int c, bool isUnicode);
+    
     explicit RegExpParser(Chunk *chunk)
         : base_(nullptr),
           pc_(nullptr),
@@ -176,25 +177,15 @@ public:
         return (flags_ & FLAG_STICKY) != 0;
     }
 
-    inline static int Canonicalize(int c, bool isUnicode)
+    inline static int GetcurrentCharNext(int c)
     {
-        if (c < TMP_BUF_SIZE) {  // NOLINTNEXTLINE(readability-magic-numbers)
-            if (c >= 'a' && c <= 'z') {
-                c = c - 'a' + 'A';
-            }
-        } else {
-            int cur = c;
-            if (isUnicode) {
-                c = u_tolower(static_cast<UChar32>(c));
-                if (c >= 'a' && c <= 'z') {
-                    c = cur;
-                }
-            } else {
-                c = u_toupper(static_cast<UChar32>(c));
-                if (c >= 'A' && c <= 'Z') {
-                    c = cur;
-                }
-            }
+        int cur = c;
+        c = u_tolower(static_cast<UChar32>(c));
+        if (c == cur) {
+            c = u_toupper(static_cast<UChar32>(c));
+        }
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+            c = cur;
         }
         return c;
     }

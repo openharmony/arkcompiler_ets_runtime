@@ -1265,11 +1265,11 @@ bool RegExpParser::ParseClassRanges(RangeSet *result)
                 }
             }
             result->Insert(c1, c2);
-            if (IsIgnoreCase()) {
-                ProcessIntersection(result);
-            }
         } else {
             result->Insert(s1);
+        }
+        if (IsIgnoreCase()) {
+            ProcessIntersection(result);
         }
     }
     Advance();
@@ -1304,9 +1304,6 @@ uint32_t RegExpParser::ParseClassAtom(RangeSet *atom)
                 Advance(u16_size + 1);
             } else {
                 Advance();
-            }
-            if (IsIgnoreCase()) {
-                value = static_cast<uint32_t>(Canonicalize(value, IsUtf16()));
             }
             atom->Insert(RangeSet(value));
             ret = value;
@@ -1463,5 +1460,28 @@ int RegExpParser::IsIdentFirst(uint32_t c)
     } else {
         return static_cast<int>(u_isIDStart(c));
     }
+}
+
+int RegExpParser::Canonicalize(int c, bool isUnicode)
+{
+    if (c < TMP_BUF_SIZE) {  // NOLINTNEXTLINE(readability-magic-numbers)
+        if (c >= 'a' && c <= 'z') {
+            c = c - 'a' + 'A';
+        }
+    } else {
+        int cur = c;
+        if (isUnicode) {
+            c = u_tolower(static_cast<UChar32>(c));
+            if (c >= 'a' && c <= 'z') {
+                c = cur;
+            }
+        } else {
+            c = u_toupper(static_cast<UChar32>(c));
+            if (c >= 'A' && c <= 'Z') {
+                c = cur;
+            }
+        }
+    }
+    return c;
 }
 }  // namespace panda::ecmascript
