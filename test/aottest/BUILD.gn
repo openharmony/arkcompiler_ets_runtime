@@ -97,6 +97,7 @@ group("ark_aot_ts_test") {
     "forloop",
     "framestatesasync",
     "framestatesphi",
+    "generatormerge",
     "generatorcontinuefinally",
     "getiterator",
     "getiteratornext",
