@@ -49,7 +49,7 @@ public:
     /**
      * \brief called by the ecmavm when the next statement being executed is debugger statement.
      * Thread where debugger statement hits is paused until continue or step event being received
-     * @param thread Identifier of the thread where debugger statement hits. Now the callback is called 
+     * @param thread Identifier of the thread where debugger statement hits. Now the callback is called
      * in the same thread
      * @param location debugger statement location
      */
