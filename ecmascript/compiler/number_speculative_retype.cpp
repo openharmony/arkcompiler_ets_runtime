@@ -108,6 +108,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::RETURN:
         case OpCode::FRAME_ARGS:
         case OpCode::SAVE_REGISTER:
+        case OpCode::RESTORE_REGISTER:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
