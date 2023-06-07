@@ -2896,7 +2896,6 @@ void InterpreterAssembly::HandleDebugger(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::debugger";
-    SlowRuntimeStub::DebuggerStmt(thread);
     DISPATCH(DEBUGGER);
 }
 

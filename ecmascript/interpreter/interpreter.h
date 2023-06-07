@@ -59,6 +59,7 @@ public:
     static inline JSTaggedValue GetEcmaModule(JSTaggedType *sp);
     static inline bool UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp, JSTaggedValue acc, int32_t offset);
     static inline void NotifyBytecodePcChanged(JSThread *thread);
+    static inline void NotifyDebuggerStmt(JSThread *thread);
     static inline const JSPandaFile *GetNativeCallPandafile(JSThread *thread);
     static inline JSTaggedValue GetCurrentEntryPoint(JSThread *thread);
     static inline JSTaggedValue GetFunction(JSTaggedType *sp);
