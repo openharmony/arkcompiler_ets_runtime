@@ -479,7 +479,7 @@ DECLARE_ASM_HANDLER(HandleThrowDeletesuperpropertyPrefNone)
 
 DECLARE_ASM_HANDLER(HandleDebugger)
 {
-    CallRuntime(glue, RTSTUB_ID(OnDebuggerStatement), {});
+    CallRuntime(glue, RTSTUB_ID(NotifyDebuggerStatement), {});
     DISPATCH(DEBUGGER);
 }
 
