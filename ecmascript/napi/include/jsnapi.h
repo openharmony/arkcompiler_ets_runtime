@@ -1233,7 +1233,7 @@ public:
     static void DestroyJSVM(EcmaVM *ecmaVm);
 
     // aot load
-    static void LoadAotFile(EcmaVM *vm, const std::string &hapPath);
+    static void LoadAotFile(EcmaVM *vm, const std::string &moduleName);
 
     // JS code
     static bool Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate = false);

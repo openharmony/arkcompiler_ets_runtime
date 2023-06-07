@@ -502,14 +502,14 @@ void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif
 }
 
-void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &hapPath)
+void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
     if (!ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
         return;
     }
     std::string aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir();
-    aotFileName += ecmascript::JSFilePath::GetFileName(hapPath);
+    aotFileName += moduleName;
     LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
     vm->LoadAOTFiles(aotFileName);
 }
