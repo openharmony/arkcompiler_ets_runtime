@@ -443,7 +443,7 @@ void OldSpace::SelectCSet()
 
     // Limit cset size
     unsigned long selectedRegionNumber = 0;
-    int64_t expectFreeSize = heap_->GetCommittedSize() - heap_->GetHeapAliveSizeAfterGC();
+    int64_t expectFreeSize = static_cast<int64_t>(heap_->GetCommittedSize() - heap_->GetHeapAliveSizeAfterGC());
     int64_t evacuateSize = std::min(PARTIAL_GC_MAX_EVACUATION_SIZE, expectFreeSize);
     EnumerateCollectRegionSet([&](Region *current) {
         if (evacuateSize > 0) {

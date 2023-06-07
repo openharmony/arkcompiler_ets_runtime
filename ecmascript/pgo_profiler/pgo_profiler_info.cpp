@@ -332,7 +332,7 @@ size_t PGOMethodTypeSet::PGOMethodLayoutDescInfos::CaculateSize(const CMap<CStri
     size_t size = sizeof(PGOMethodLayoutDescInfos) - sizeof(PGOLayoutDescInfo);
     for (const auto &iter : desc) {
         auto key = iter.first;
-        size += PGOLayoutDescInfo::Size(key.size());
+        size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
     }
     return size;
 }
