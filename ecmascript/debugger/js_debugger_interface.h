@@ -31,7 +31,6 @@ enum PauseReason {
     AMBIGUOUS,
     ASSERT,
     DEBUGCOMMAND,
-    DEBUGGERSTMT,
     DOM,
     EVENTLISTENER,
     EXCEPTION,
@@ -48,10 +47,10 @@ public:
     PtHooks() = default;
 
     /**
-     * \brief called by the ecmavm when the next statement being executed is debugger statement. Thread where debugger statement 
-     * hits is paused until continue or step event being received
-     * @param thread Identifier of the thread where debugger statement hits. Now the callback is called in the same
-     * thread
+     * \brief called by the ecmavm when the next statement being executed is debugger statement.
+     * Thread where debugger statement hits is paused until continue or step event being received
+     * @param thread Identifier of the thread where debugger statement hits. Now the callback is called 
+     * in the same thread
      * @param location debugger statement location
      */
     virtual void DebuggerStmt(const JSPtLocation &location) = 0;
