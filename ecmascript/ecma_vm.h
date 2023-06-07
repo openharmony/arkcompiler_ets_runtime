@@ -586,7 +586,7 @@ public:
 
 protected:
 
-    void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo);
+    void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
 
 private:
     void SetGlobalEnv(GlobalEnv *global);
