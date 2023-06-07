@@ -695,7 +695,7 @@ bool JSHClass::DumpForProfile(JSHClass *rootHClass, CMap<CString, TrackType> &in
     }
 
     LayoutInfo *layout = LayoutInfo::Cast(rootHClass->GetLayout().GetTaggedObject());
-    int element = rootHClass->NumberOfProps();
+    int element = static_cast<int>(rootHClass->NumberOfProps());
     for (int i = 0; i < element; i++) {
         layout->DumpFieldIndexForProfile(i, infos);
     }
