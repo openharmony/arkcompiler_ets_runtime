@@ -35,7 +35,7 @@ template("host_unittest_action") {
   _module_out_path_ = invoker.module_out_path
 
   # unittest for host running
-  action("${_target_name_}Action") {
+  action("${_target_name_}ActionWithoutQemu") {
     testonly = true
 
     _host_test_target_ = ":${_target_name_}(${host_toolchain})"
@@ -65,6 +65,61 @@ template("host_unittest_action") {
       "$_root_out_dir_/tests/unittest/${_module_out_path_}/${_target_name_}",
     ]
     outputs = [ "$target_out_dir/${_target_name_}/" ]
+  }
+  if (ark_standalone_build && host_os == "linux" && target_os == "ohos") {
+    import("$ark_third_party_root/musl/musl_template.gni")
+    import("$build_root/config/qemu/config.gni")
+
+    action("${_target_name_}ActionWithQemu") {
+      testonly = true
+
+      _host_test_target_ = ":${_target_name_}"
+
+      # path of root_out_dir based on root_src_dir
+      _root_out_dir_ = get_label_info(_host_test_target_, "root_out_dir")
+
+      deps = [
+        "$ark_third_party_root/musl:soft_create_linker_for_qemu",
+        _host_test_target_,
+      ]
+
+      script = "${js_root}/script/run_ark_executable.py"
+
+      args = [
+        "--script-file",
+        rebase_path(
+            "$_root_out_dir_/tests/unittest/${_module_out_path_}/${_target_name_}",
+            root_build_dir),
+        "--expect-output",
+        "0",
+        "--clang-lib-path",
+        rebase_path("${clang_base_path}/lib/${musl_arch}-linux-ohos",
+                    root_build_dir),
+        "--qemu-binary-path",
+        rebase_path("${QEMU_INSTALLATION_PATH}/bin/qemu-${musl_arch}",
+                    root_build_dir),
+        "--qemu-ld-prefix",
+        rebase_path(musl_linker_so_out_dir, root_build_dir),
+        "--timeout-limit",
+        "1200",
+      ]
+
+      inputs = [
+        "$_root_out_dir_/tests/unittest/${_module_out_path_}/${_target_name_}",
+      ]
+      outputs = [ "$target_out_dir/${_target_name_}WithQemu/" ]
+    }
+  }
+  group("${_target_name_}Action") {
+    testonly = true
+
+    deps = []
+    if (ark_standalone_build && host_os == "linux" && target_os == "ohos" &&
+        run_with_qemu) {
+      deps += [ ":${_target_name_}ActionWithQemu" ]
+    } else {
+      deps += [ ":${_target_name_}ActionWithoutQemu" ]
+    }
   }
 }
 

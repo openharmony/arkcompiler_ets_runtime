@@ -22,11 +22,62 @@ Description: run script
 """
 
 import argparse
+import os
 import subprocess
+import sys
 import time
 
 
-def parse_args():
+def get_env_path_from_rsp(script_file: str) -> list:
+    """get env path from response file recursively."""
+    rsp_file = "{0}{1}".format(script_file, ".rsp")
+    if not os.path.exists(rsp_file):
+        print(
+            "File \"{}\" does not exist!\n" \
+            "This indicates that its related shared_library is not compiled by this project, but there is an " \
+            "executable or shared_library depend on its related shared_library!".format(rsp_file))
+        sys.exit(1)
+
+    rsp_info_list = []
+    with open(rsp_file, "r") as fi:
+        rsp_info_str = fi.read()
+        rsp_info_list = rsp_info_str.split(" ")
+
+    env_path_list = []
+    for element in rsp_info_list:
+        if element.endswith(".so") or element.endswith(".dll"):
+            env_path_list.extend(get_env_path_from_rsp(element))
+            env_path_list.append(os.path.dirname(element))
+    return env_path_list
+
+
+def get_command_and_env_path(args: object) -> [str, str]:
+    """get command and environment path from args for running excutable."""
+    env_path_list = list(set(get_env_path_from_rsp(args.script_file)))
+    env_path_list.append(args.clang_lib_path)
+    env_path = ":".join(env_path_list)
+    if args.qemu_binary_path:
+        if not os.path.exists(args.qemu_binary_path):
+            print("Have you set up environment for running executables with qemu?\n" \
+                "If not, get set-up steps from https://gitee.com/ark_standalone_build/docs ," \
+                " append your build command of ark.py with option \"--clean-continue\"," \
+                " and execute the appended command after setting up the environment.\n" \
+                "If yes, the environment settings for qemu on your host machine may be different from what the link" \
+                " above shows, it is suggested to match your local environment settings with what the link shows.")
+            sys.exit(1)
+        cmd = \
+            "{}".format(args.qemu_binary_path) + \
+            " -L {}".format(args.qemu_ld_prefix) + \
+            " -E LD_LIBRARY_PATH={}".format(env_path) + \
+            " {}".format(args.script_file)
+    else:
+        cmd = "{}".format(args.script_file)
+    cmd += " {}".format(args.script_options) if args.script_options else ""
+    cmd += " {}".format(args.script_args) if args.script_args else ""
+    return [cmd, env_path]
+
+
+def parse_args() -> object:
     """parse arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--script-file', help='execute script file')
@@ -37,23 +88,42 @@ def parse_args():
     parser.add_argument('--expect-file', help='expect file')
     parser.add_argument('--env-path', help='LD_LIBRARY_PATH env')
     parser.add_argument('--timeout-limit', help='timeout limit')
+    parser.add_argument('--clang-lib-path', help='part for LD_LIBRARY_PATH, it is not in .rsp file')
+    parser.add_argument('--qemu-binary-path', help='path to qemu binary, run executable with qemu if assigned')
+    parser.add_argument('--qemu-ld-prefix', help='elf interpreter prefix')
     args = parser.parse_args()
     return args
 
-def judge_output(args):
-    """run testcase and judge is success or not."""
-    start_time = time.time()
-    cmd = input_args.script_file
-    if input_args.script_options:
-        cmd += input_args.script_options
-    if input_args.script_args:
-        cmd += " " + input_args.script_args
-    if input_args.timeout_limit:
-        timeout_limit = int(input_args.timeout_limit)
+
+def process_open(args: object) -> [str, object]:
+    """get command and open subprocess."""
+    if args.env_path:
+        # use the given env-path
+        cmd = args.script_file
+        cmd += " {}".format(args.script_options) if args.script_options else ""
+        cmd += " {}".format(args.script_args) if args.script_args else ""
+        # process for running executable directly
+        subp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env={'LD_LIBRARY_PATH': str(args.env_path)})
     else:
-        timeout_limit = 120  # units: s
-    subp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        env={'LD_LIBRARY_PATH': str(input_args.env_path)})
+        # get env-path from response file recursively
+        [cmd, env_path] = get_command_and_env_path(args)
+        if args.qemu_binary_path:
+            # process for running executable with qemu
+            subp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        else:
+            # process for running executable directly
+            subp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                env={'LD_LIBRARY_PATH': str(env_path)})
+    return [cmd, subp]
+
+
+def judge_output(args: object):
+    """run executable and judge is success or not."""
+    start_time = time.time()
+    [cmd, subp] = process_open(args)
+    timeout_limit = int(args.timeout_limit) if args.timeout_limit else 120  # units: s
+
     try:
         out, err = subp.communicate(timeout=timeout_limit)
     except subprocess.TimeoutExpired:
