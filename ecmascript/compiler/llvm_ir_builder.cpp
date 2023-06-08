@@ -222,7 +222,7 @@ void LLVMIRBuilder::InitializeHandlers()
         OpCode::DEPEND_SELECTOR, OpCode::DEPEND_RELAY,
         OpCode::FRAME_STATE, OpCode::STATE_SPLIT, OpCode::FRAME_ARGS,
         OpCode::LOOP_EXIT_DEPEND, OpCode::LOOP_EXIT, OpCode::FRAME_STATE_CHAIN, OpCode::REPLACEABLE,
-        OpCode::START_ALLOCATE, OpCode::FINISH_ALLOCATE,
+        OpCode::START_ALLOCATE, OpCode::FINISH_ALLOCATE
     };
 }
 

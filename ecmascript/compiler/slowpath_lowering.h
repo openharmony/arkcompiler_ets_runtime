@@ -155,8 +155,6 @@ private:
     void ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow = false);
     void ReplaceHirToThrowCall(GateRef hirGate, GateRef callGate);
     void LowerExceptionHandler(GateRef hirGate);
-    // environment must be initialized
-    GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
     void Lower(GateRef gate);
     void LowerAdd2(GateRef gate);
     void LowerCreateIterResultObj(GateRef gate);
@@ -297,7 +295,6 @@ private:
     void LowerWideLdPatchVar(GateRef gate);
     void LowerWideStPatchVar(GateRef gate);
     void LowerLdThisByName(GateRef gate);
-    void LowerConstPoolData(GateRef gate);
     void LowerConstruct(GateRef gate);
     void LowerTypedCall(GateRef gate);
     void LowerTypedFastCall(GateRef gate);
@@ -306,6 +303,7 @@ private:
     void LowerGetEnv(GateRef gate);
     void DeleteLoopExit(GateRef gate);
     void DeleteLoopExitValue(GateRef gate);
+    void LowerLdStr(GateRef gate);
 
     TSManager *tsManager_ {nullptr};
     const MethodLiteral *methodLiteral_ {nullptr};

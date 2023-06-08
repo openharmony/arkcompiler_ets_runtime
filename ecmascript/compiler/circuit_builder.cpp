@@ -1070,6 +1070,12 @@ GateRef CircuitBuilder::StoreConstOffset(VariableType type,
     return ret;
 }
 
+GateRef CircuitBuilder::LoadObjectFromConstPool(GateRef jsFunc, GateRef index)
+{
+    GateRef constPool = GetConstPoolFromFunction(jsFunc);
+    return GetValueFromTaggedArray(constPool, TruncInt64ToInt32(index));
+}
+
 GateRef CircuitBuilder::ConvertHoleAsUndefined(GateRef receiver)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -1919,5 +1925,14 @@ GateRef Variable::TryRemoveTrivialPhi(GateRef phi)
         }
     }
     return same;
+}
+
+void CircuitBuilder::ClearConstantCache(GateRef gate)
+{
+    ASSERT(acc_.GetOpCode(gate) == OpCode::CONSTANT);
+    auto machineType = acc_.GetMachineType(gate);
+    auto value = acc_.GetConstantValue(gate);
+    auto gateType = acc_.GetGateType(gate);
+    GetCircuit()->ClearConstantCache(machineType, value, gateType);
 }
 }  // namespace panda::ecmascript::kungfu

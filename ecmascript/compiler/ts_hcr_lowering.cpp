@@ -526,6 +526,7 @@ void TSHCRLowering::DeleteConstDataIfNoUser(GateRef gate)
 {
     auto uses = acc_.Uses(gate);
     if (uses.begin() == uses.end()) {
+        builder_.ClearConstantCache(gate);
         acc_.DeleteGate(gate);
     }
 }
@@ -534,7 +535,7 @@ void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
-    uint16_t propIndex = acc_.GetConstDataId(constData).GetId();
+    uint16_t propIndex = acc_.GetConstantValue(constData);
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     auto prop = tsManager_->GetStringFromConstantPool(propIndex);
 
@@ -590,7 +591,7 @@ void TSHCRLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
-    uint16_t propIndex = acc_.GetConstDataId(constData).GetId();
+    uint16_t propIndex = acc_.GetConstantValue(constData);
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     auto prop = tsManager_->GetStringFromConstantPool(propIndex);
 

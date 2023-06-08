@@ -22,8 +22,12 @@
 namespace panda::ecmascript::kungfu {
 class AccessObjectStubBuilder : public StubBuilder {
 public:
-    explicit AccessObjectStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
+    explicit AccessObjectStubBuilder(StubBuilder *parent) : StubBuilder(parent)
+    {
+        jsFunc_ = Circuit::NullGate();
+    }
+    explicit AccessObjectStubBuilder(StubBuilder *parent, GateRef jsFunc)
+        : StubBuilder(parent), jsFunc_(jsFunc) {}
     ~AccessObjectStubBuilder() override = default;
     NO_MOVE_SEMANTIC(AccessObjectStubBuilder);
     NO_COPY_SEMANTIC(AccessObjectStubBuilder);
@@ -48,6 +52,7 @@ public:
                            GateRef value, GateRef profileTypeInfo, GateRef slotId);
 private:
     GateRef ResolvePropKey(GateRef glue, GateRef prop, const StringIdInfo &info);
+    GateRef jsFunc_ { Circuit::NullGate() };
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_ACCESS_OBJECT_STUB_BUILDER_H

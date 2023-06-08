@@ -103,7 +103,6 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::TYPED_NEW_ALLOCATE_THIS:
         case OpCode::TYPED_SUPER_ALLOCATE_THIS:
         case OpCode::GET_SUPER_CONSTRUCTOR:
-        case OpCode::CONST_DATA:
         case OpCode::ARG:
         case OpCode::RETURN:
         case OpCode::FRAME_ARGS:

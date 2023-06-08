@@ -52,6 +52,7 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
         case EcmaOpcode::LDLOCALMODULEVAR_IMM8:
         case EcmaOpcode::WIDE_LDLOCALMODULEVAR_PREF_IMM16:
+        case EcmaOpcode::LDA_STR_ID16:
             flags |= BytecodeFlags::NO_SIDE_EFFECTS;
             break;
         default:
@@ -109,7 +110,6 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::LDAI_IMM32:
         case EcmaOpcode::FLDAI_IMM64:
         case EcmaOpcode::LDFUNCTION:
-        case EcmaOpcode::LDA_STR_ID16:
             kind = BytecodeKind::SET_CONSTANT;
             flags |= BytecodeFlags::NO_SIDE_EFFECTS;
             break;
@@ -335,6 +335,16 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::LDA_STR_ID16:
+        case EcmaOpcode::STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8:
+        case EcmaOpcode::STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8:
+        case EcmaOpcode::STTOGLOBALRECORD_IMM16_ID16:
+        case EcmaOpcode::STCONSTTOGLOBALRECORD_IMM16_ID16:
+        case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
+        case EcmaOpcode::CREATEREGEXPWITHLITERAL_IMM8_ID16_IMM8:
+        case EcmaOpcode::CREATEREGEXPWITHLITERAL_IMM16_ID16_IMM8:
+        case EcmaOpcode::LDBIGINT_ID16:
             flags |= BytecodeFlags::READ_FUNC;
             break;
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:

@@ -78,7 +78,7 @@ void InitializationAnalysis::CollectInitializationInfo(GateRef gate, bool isThis
         }
     }
 
-    uint16_t index = acc_.GetConstDataId(acc_.GetValueIn(gate, 1)).GetId();  // 1: stringId
+    uint16_t index = acc_.GetConstantValue(acc_.GetValueIn(gate, 1));  // 1: stringId
     if (!CheckSimpleCFG(gate, index)) {
         return;
     }
@@ -192,7 +192,7 @@ bool InitializationAnalysis::CheckLdObjByName(GateRef gate, const uint16_t index
     }
 
     auto constData = acc_.GetValueIn(gate, 1); // 1: stringId
-    uint16_t stringId = acc_.GetConstDataId(constData).GetId();
+    uint16_t stringId = acc_.GetConstantValue(constData);
     return stringId == index;
 }
 

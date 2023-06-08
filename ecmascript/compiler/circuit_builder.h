@@ -519,6 +519,7 @@ public:
     GateRef GetGlobalConstantValue(ConstantIndex index);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset);
     GateRef StoreConstOffset(VariableType type, GateRef receiver, size_t offset, GateRef value);
+    GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
     inline GateRef IsJSFunction(GateRef obj);
@@ -575,6 +576,7 @@ public:
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef jsFunc, GateRef index, ConstPoolType type);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module, GateRef index,
                                    ConstPoolType type);
+    void ClearConstantCache(GateRef gate);
 
     // middle ir: create new obj
     GateRef StartAllocate();

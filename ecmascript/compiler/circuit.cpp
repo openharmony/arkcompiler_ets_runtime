@@ -454,6 +454,14 @@ GateRef Circuit::GetConstantGate(MachineType machineType, uint64_t value,
     return gate;
 }
 
+void Circuit::ClearConstantCache(MachineType machineType, uint64_t value, GateType type)
+{
+    auto search = constantCache_.find({machineType, value, type});
+    if (search != constantCache_.end()) {
+        constantCache_.erase(search);
+    }
+}
+
 GateRef Circuit::GetConstantStringGate(MachineType machineType, const std::string &str,
                                        GateType type)
 {
@@ -476,18 +484,6 @@ GateRef Circuit::NewArg(MachineType machineType, size_t index,
                         GateType type, GateRef argRoot)
 {
     return NewGate(metaBuilder_.Arg(index), machineType, { argRoot }, type);
-}
-
-GateRef Circuit::GetConstantDataGate(uint64_t value, GateType type, GateRef jsFunc)
-{
-    std::pair<BitField, GateRef> key{value, jsFunc};
-    auto search = constantDataCache_.find(key);
-    if (search != constantDataCache_.end()) {
-        return constantDataCache_.at(key);
-    }
-    auto gate = NewGate(metaBuilder_.ConstData(value), MachineType::ARCH, { jsFunc }, type);
-    constantDataCache_[key] = gate;
-    return gate;
 }
 
 size_t Circuit::GetGateCount() const
