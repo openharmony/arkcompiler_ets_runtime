@@ -846,6 +846,24 @@ void EcmaInterpreter::NotifyBytecodePcChanged(JSThread *thread)
     }
 }
 
+void EcmaInterpreter::NotifyDebuggerStmt(JSThread *thread)
+{
+    FrameHandler frameHandler(thread);
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+        if (frameHandler.IsEntryFrame()) {
+            continue;
+        }
+        Method *method = frameHandler.GetMethod();
+        if (method->IsNativeWithCallField()) {
+            continue;
+        }
+        auto bcOffset = frameHandler.GetBytecodeOffset();
+        auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
+        debuggerMgr->GetNotificationManager()->DebuggerStmtEvent(thread, method, bcOffset);
+        return;
+    }
+}
+
 const JSPandaFile *EcmaInterpreter::GetNativeCallPandafile(JSThread *thread)
 {
     FrameHandler frameHandler(thread);
@@ -3673,6 +3691,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     }
     HANDLE_OPCODE(DEBUGGER) {
         LOG_INST() << "intrinsics::debugger";
+        NotifyDebuggerStmt(thread);
         DISPATCH(DEBUGGER);
     }
     HANDLE_OPCODE(ISTRUE) {

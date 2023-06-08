@@ -2607,5 +2607,24 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyConcurrentResult(JSThread *thread, JSTa
     thread->GetEcmaVM()->TriggerConcurrentCallback(result, hint);
     return JSTaggedValue::Undefined();
 }
+
+JSTaggedValue RuntimeStubs::RuntimeNotifyDebuggerStatement(JSThread *thread)
+{
+    FrameHandler frameHandler(thread);
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+        if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
+            continue;
+        }
+        Method *method = frameHandler.GetMethod();
+        if (method->IsNativeWithCallField()) {
+            continue;
+        }
+        auto bcOffset = frameHandler.GetBytecodeOffset();
+        auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
+        debuggerMgr->GetNotificationManager()->DebuggerStmtEvent(thread, method, bcOffset);
+        return JSTaggedValue::Hole();
+    }
+    return JSTaggedValue::Hole();
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H

@@ -1508,6 +1508,12 @@ DEF_RUNTIME_STUBS(NotifyBytecodePcChanged)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(NotifyDebuggerStatement)
+{
+    RUNTIME_STUBS_HEADER(NotifyDebuggerStatement);
+    return RuntimeNotifyDebuggerStatement(thread).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CreateEmptyObject)
 {
     RUNTIME_STUBS_HEADER(CreateEmptyObject);

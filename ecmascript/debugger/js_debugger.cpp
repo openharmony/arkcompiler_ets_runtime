@@ -115,6 +115,18 @@ bool JSDebugger::HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset)
     return true;
 }
 
+bool JSDebugger::HandleDebuggerStmt(JSHandle<Method> method, uint32_t bcOffset)
+{
+    if (hooks_ == nullptr || !ecmaVm_->GetJsDebuggerManager()->IsDebugMode()) {
+        return false;
+    }
+
+    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
+    hooks_->DebuggerStmt(location);
+
+    return true;
+}
+
 void JSDebugger::HandleExceptionThrowEvent(const JSThread *thread, JSHandle<Method> method, uint32_t bcOffset)
 {
     if (hooks_ == nullptr || !thread->HasPendingException()) {

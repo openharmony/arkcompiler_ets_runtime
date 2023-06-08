@@ -33,6 +33,8 @@ public:
 
     virtual void BytecodePcChanged(JSThread *thread, JSHandle<Method> method,
                                    uint32_t bc_offset) = 0;
+    
+    virtual bool HandleDebuggerStmt(JSHandle<Method> method, uint32_t bc_offset) = 0;
     virtual void VmStart() = 0;
     virtual void VmDeath() = 0;
     virtual void PendingJobEntry() = 0;
@@ -68,6 +70,14 @@ public:
             [[maybe_unused]] EcmaHandleScope handleScope(thread);
             JSHandle<Method> methodHandle(thread, method);
             listener_->BytecodePcChanged(thread, methodHandle, bcOffset);
+        }
+    }
+
+    void DebuggerStmtEvent(JSThread *thread, Method *method, uint32_t bcOffset) const
+    {
+        if (UNLIKELY(listener_ != nullptr)) {
+            JSHandle<Method> methodHandle(thread, method);
+            listener_->HandleDebuggerStmt(methodHandle, bcOffset);
         }
     }
 

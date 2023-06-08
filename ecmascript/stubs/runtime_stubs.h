@@ -275,6 +275,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(OptGetUnmapedArgs)                  \
     V(OptCopyRestArgs)                    \
     V(NotifyBytecodePcChanged)            \
+    V(NotifyDebuggerStatement)            \
     V(OptNewLexicalEnvWithName)           \
     V(OptSuspendGenerator)                \
     V(OptAsyncGeneratorResolve)           \
@@ -678,6 +679,7 @@ private:
                                                   const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeNotifyConcurrentResult(JSThread *thread, JSTaggedValue result,
         JSTaggedValue hint);
+    static inline JSTaggedValue RuntimeNotifyDebuggerStatement(JSThread *thread);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript
