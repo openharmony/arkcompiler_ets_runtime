@@ -324,7 +324,9 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     // 36.a. Let hcDefault be dataLocaleData.[[hourCycle]].
     std::unique_ptr<icu::DateTimePatternGenerator> generator(
         icu::DateTimePatternGenerator::createInstance(icuLocale, status));
-    ASSERT_PRINT(U_SUCCESS(status), "constructGenerator failed");
+    if (!U_SUCCESS(status)) {
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, "create icu::DateTimePatternGenerator failed", dateTimeFormat);
+    }
     HourCycleOption hcDefault = OptionToHourCycle(generator->getDefaultHourCycle(status));
     // b. Let hc be dateTimeFormat.[[HourCycle]].
     HourCycleOption hc = hourCycle;
