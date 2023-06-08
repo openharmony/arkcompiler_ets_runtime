@@ -73,6 +73,7 @@ public:
     void PrintAllStats();
     CString GetFullName(Method *method);
     void InitialStatAndTimer(Method *method, size_t methodId, bool isAot);
+    void ResetStat();
 
 private:
     PandaRuntimeTimer *currentTimer_ = nullptr;

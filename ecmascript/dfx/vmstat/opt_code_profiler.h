@@ -46,6 +46,12 @@ public:
             return typedPathValue + slowPathValue;
         }
 
+        void ResetStat()
+        {
+            typedPathValue = 0;
+            slowPathValue = 0;
+        }
+
         uint64_t typedPathValue;
         uint64_t slowPathValue;
     };
@@ -70,6 +76,8 @@ public:
             (mode == Mode::TYPED_PATH) ? (it->second.typedPathValue++) : (it->second.slowPathValue++);
         }
     }
+
+    void PrintAndReset();
 
 private:
     std::map<EcmaOpcode, Value> profMap_;

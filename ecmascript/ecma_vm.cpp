@@ -304,12 +304,14 @@ void EcmaVM::SetRuntimeStatEnable(bool flag)
         }
     } else {
         LOG_ECMA(INFO) << "Runtime State duration:" << PandaRuntimeTimer::Now() - start << "(ns)";
-        if (runtimeStat_->IsRuntimeStatEnabled()) {
+        if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
             runtimeStat_->Print();
             runtimeStat_->ResetAllCount();
         }
     }
-    runtimeStat_->SetRuntimeStatEnabled(flag);
+    if (runtimeStat_ != nullptr) {
+        runtimeStat_->SetRuntimeStatEnabled(flag);
+    }
 }
 
 EcmaVM::~EcmaVM()
@@ -329,6 +331,10 @@ EcmaVM::~EcmaVM()
     if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
         runtimeStat_->Print();
     }
+
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    DumpCallTimeInfo();
+#endif
 
     if (optCodeProfiler_ != nullptr) {
         delete optCodeProfiler_;
@@ -441,6 +447,7 @@ JSTaggedValue EcmaVM::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSH
 
 JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp)
 {
+    INTERPRETER_TRACE(thread_, ExecuteAot);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_OptimizedFastCallEntry);
     // do not modify this log to INFO, this will call many times
     LOG_ECMA(DEBUG) << "start to execute aot entry: " << (void*)entry;
@@ -539,9 +546,6 @@ Expected<JSTaggedValue, bool> EcmaVM::InvokeEcmaEntrypoint(const JSPandaFile *js
     if (!excuteFromJob && thread_->HasPendingException()) {
         HandleUncaughtException(thread_->GetException());
     }
-#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
-    DumpCallTimeInfo();
-#endif
     return result;
 }
 
@@ -1053,8 +1057,17 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
                         taskInfo, concurrentData_);
 }
 
+void EcmaVM::PrintOptStat()
+{
+    if (optCodeProfiler_ != nullptr) {
+        optCodeProfiler_->PrintAndReset();
+    }
+}
+
 void EcmaVM::DumpCallTimeInfo()
 {
-    callTimer_->PrintAllStats();
+    if (callTimer_ != nullptr) {
+        callTimer_->PrintAllStats();
+    }
 }
 }  // namespace panda::ecmascript

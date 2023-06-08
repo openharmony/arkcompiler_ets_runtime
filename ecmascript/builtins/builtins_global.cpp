@@ -554,4 +554,28 @@ JSTaggedValue BuiltinsGlobal::StopRuntimeStat(EcmaRuntimeCallInfo *msg)
     return JSTaggedValue::Undefined();
 }
 #endif
+
+#if ECMASCRIPT_ENABLE_OPT_CODE_PROFILER
+JSTaggedValue BuiltinsGlobal::PrintOptStat(EcmaRuntimeCallInfo *msg)
+{
+    JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, Global, PrintOptStat);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // start vm runtime stat statistic
+    thread->GetEcmaVM()->PrintOptStat();
+    return JSTaggedValue::Undefined();
+}
+#endif
+
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+JSTaggedValue BuiltinsGlobal::PrintFunctionCallStat(EcmaRuntimeCallInfo *msg)
+{
+    JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, Global, PrintFunctionCallStat);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // start vm runtime stat statistic
+    thread->GetEcmaVM()->DumpCallTimeInfo();
+    return JSTaggedValue::Undefined();
+}
+#endif
 }  // namespace panda::ecmascript::builtins
