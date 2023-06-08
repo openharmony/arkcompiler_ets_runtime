@@ -402,6 +402,8 @@ namespace panda::ecmascript {
     V(Global, PrintString)                    \
     V(Global, StartRuntimeStat)               \
     V(Global, StopRuntimeStat)                \
+    V(Global, PrintOptStat)                   \
+    V(Global, PrintFunctionCallStat)          \
     V(Global, CallJsBoundFunction)            \
     V(Global, CallJsProxy)                    \
     V(Global, DecodeURI)                      \

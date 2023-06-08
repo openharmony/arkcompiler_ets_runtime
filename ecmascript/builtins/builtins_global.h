@@ -49,6 +49,14 @@ public:
     static JSTaggedValue StopRuntimeStat(EcmaRuntimeCallInfo *msg);
 #endif
 
+#if ECMASCRIPT_ENABLE_OPT_CODE_PROFILER
+    static JSTaggedValue PrintOptStat(EcmaRuntimeCallInfo *msg)
+#endif
+
+#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
+    static JSTaggedValue PrintFunctionCallStat(EcmaRuntimeCallInfo *msg)
+#endif
+
 private:
     static void PrintString(JSThread *thread, EcmaString *string);
     static void PrintValue(int64_t value, int64_t tag);

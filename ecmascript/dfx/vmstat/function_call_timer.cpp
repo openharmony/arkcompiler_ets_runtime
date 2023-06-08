@@ -117,4 +117,15 @@ void FunctionCallTimer::PrintAllStats()
         }
     }
 }
+
+void FunctionCallTimer::ResetStat()
+{
+    for (auto &stat : aotCallStat_) {
+        stat.second.Reset();
+    }
+
+    for (auto &stat : intCallStat_) {
+        stat.second.Reset();
+    }
+}
 }

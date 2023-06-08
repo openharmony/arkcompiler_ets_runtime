@@ -20,12 +20,13 @@
 namespace panda::ecmascript {
 using EcmaOpcode = kungfu::EcmaOpcode;
 
-OptCodeProfiler::~OptCodeProfiler()
+void OptCodeProfiler::PrintAndReset()
 {
 #if ECMASCRIPT_ENABLE_OPT_CODE_PROFILER
     std::vector<std::pair<EcmaOpcode, Value>> profVec;
     for (auto it = profMap_.begin(); it != profMap_.end(); it++) {
         profVec.emplace_back(std::make_pair(it->first, it->second));
+        it->second.ResetStat();
     }
     std::sort(profVec.begin(), profVec.end(),
               [](std::pair<EcmaOpcode, Value> &x, std::pair<EcmaOpcode, Value> &y) -> bool {
@@ -75,5 +76,10 @@ OptCodeProfiler::~OptCodeProfiler()
                        << std::setw(numberRightAdjustment) << totalTypedPathCount * hundred / totalCount << "%";
     }
 #endif
+}
+
+OptCodeProfiler::~OptCodeProfiler()
+{
+    PrintAndReset();
 }
 } // namespace panda::ecmascript
