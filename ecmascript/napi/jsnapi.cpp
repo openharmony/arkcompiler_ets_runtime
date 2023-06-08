@@ -1967,6 +1967,19 @@ void *ArrayBufferRef::GetBuffer()
     }
     return JSNativePointer::Cast(bufferData.GetTaggedObject())->GetExternalPointer();
 }
+
+void ArrayBufferRef::Detach(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
+    arrayBuffer->Detach(thread);
+}
+
+bool ArrayBufferRef::IsDetach()
+{
+    JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
+    return arrayBuffer->IsDetach();
+}
 // ---------------------------------- Buffer -----------------------------------
 
 // ---------------------------------- DataView -----------------------------------
