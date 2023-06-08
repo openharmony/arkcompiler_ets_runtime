@@ -300,8 +300,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(HeapAlloc, HEAP_ALLOC, GateFlags::NONE_FLAG, 1, 1, 1)                             \
     V(LoadConstOffset, LOAD_CONST_OFFSET, GateFlags::NO_WRITE, 0, 1, 1)                 \
     V(StoreConstOffset, STORE_CONST_OFFSET, GateFlags::NONE_FLAG, 1, 1, 2)              \
-    V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 3)                          \
-    V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 4)                       \
+    V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 2)                          \
+    V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 3)                       \
     V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 1, 0)                 \
     V(ConstData, CONST_DATA, GateFlags::NONE_FLAG, 0, 0, 1)                             \
     V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                                \

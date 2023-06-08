@@ -81,7 +81,7 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
 
     // 10. Perform OrdinaryDefineOwnProperty(A, "length", PropertyDescriptor{[[Value]]: length, [[Writable]]:
     // true, [[Enumerable]]: false, [[Configurable]]: false}).
-    JSArray::Cast(*obj)->SetArrayLength(thread, normalArrayLength);
+    JSArray::SetCapacity(thread, obj, 0, normalArrayLength);
 
     return JSHandle<JSTaggedValue>(obj);
 }

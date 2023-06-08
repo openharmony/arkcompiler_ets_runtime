@@ -668,7 +668,7 @@ void TSHCRLowering::LowerTypedLdObjByIndex(GateRef gate)
 
     GateRef result = Circuit::NullGate();
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
-        result = builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, index, builder_.Undefined());
+        result = builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, index);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -704,7 +704,7 @@ void TSHCRLowering::LowerTypedStObjByIndex(GateRef gate)
     builder_.IndexCheck(receiverType, receiver, index);
 
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
-        builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value, builder_.Undefined());
+        builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -740,7 +740,7 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     builder_.StableArrayCheck(receiver);
     GateRef length = builder_.LoadArrayLength(receiver);
     propKey = builder_.IndexCheck(receiverType, length, propKey);
-    GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, propKey, length);
+    GateRef result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, propKey);
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
@@ -762,7 +762,7 @@ void TSHCRLowering::LowerTypedStObjByValue(GateRef gate)
     builder_.StableArrayCheck(receiver);
     GateRef length = builder_.LoadArrayLength(receiver);
     builder_.IndexCheck(receiverType, length, propKey);
-    builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, propKey, value, length);
+    builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, propKey, value);
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }

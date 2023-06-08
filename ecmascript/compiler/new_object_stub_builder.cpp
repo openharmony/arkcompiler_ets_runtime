@@ -59,6 +59,23 @@ void NewObjectStubBuilder::NewLexicalEnv(Variable *result, Label *exit, GateRef 
     }
 }
 
+GateRef NewObjectStubBuilder::NewJSArrayWithSize(GateRef hclass, GateRef size)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    Label exit(env);
+    env->SubCfgEntry(&entry);
+
+    GateRef result = NewJSObject(glue_, hclass);
+    DEFVARIABLE(array, VariableType::JS_ANY(), Undefined());
+    NewTaggedArrayChecked(&array, TruncInt64ToInt32(size), &exit);
+    Bind(&exit);
+    auto arrayRet = *array;
+    env->SubCfgExit();
+    SetElementsArray(VariableType::JS_POINTER(), glue_, result, arrayRet);
+    return result;
+}
+
 void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hclass)
 {
     auto env = GetEnvironment();
@@ -122,6 +139,29 @@ GateRef NewObjectStubBuilder::NewJSObject(GateRef glue, GateRef hclass)
     return ret;
 }
 
+void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit)
+{
+    auto env = GetEnvironment();
+    size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(len));
+    Label afterAllocate(env);
+    // Be careful. NO GC is allowed when initization is not complete.
+    AllocateInYoung(result, &afterAllocate);
+    Bind(&afterAllocate);
+    Label noException(env);
+    Branch(TaggedIsException(result->ReadVariable()), exit, &noException);
+    Bind(&noException);
+    {
+        auto hclass = GetGlobalConstantValue(
+            VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_CLASS_INDEX);
+        StoreHClass(glue_, result->ReadVariable(), hclass);
+        Label afterInitialize(env);
+        InitializeTaggedArrayWithSpeicalValue(&afterInitialize,
+            result->ReadVariable(), Hole(), Int32(0), len);
+        Bind(&afterInitialize);
+        Jump(exit);
+    }
+}
+
 GateRef NewObjectStubBuilder::NewTaggedArray(GateRef glue, GateRef len)
 {
     auto env = GetEnvironment();
@@ -147,29 +187,7 @@ GateRef NewObjectStubBuilder::NewTaggedArray(GateRef glue, GateRef len)
         Branch(Int32LessThan(len, Int32(MAX_TAGGED_ARRAY_LENGTH)), &next, &slowPath);
         Bind(&next);
         {
-            size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(len));
-            Label afterAllocate(env);
-            // Be careful. NO GC is allowed when initization is not complete.
-            AllocateInYoung(&result, &afterAllocate);
-            Bind(&afterAllocate);
-            Label hasPendingException(env);
-            Label noException(env);
-            Branch(TaggedIsException(*result), &hasPendingException, &noException);
-            Bind(&noException);
-            {
-                auto hclass = GetGlobalConstantValue(
-                    VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_CLASS_INDEX);
-                StoreHClass(glue_, *result, hclass);
-                Label afterInitialize(env);
-                InitializeTaggedArrayWithSpeicalValue(&afterInitialize,
-                    *result, Hole(), Int32(0), len);
-                Bind(&afterInitialize);
-                Jump(&exit);
-            }
-            Bind(&hasPendingException);
-            {
-                Jump(&exit);
-            }
+            NewTaggedArrayChecked(&result, len, &exit);
         }
         Bind(&slowPath);
         {

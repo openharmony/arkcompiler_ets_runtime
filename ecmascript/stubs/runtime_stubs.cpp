@@ -305,7 +305,7 @@ DEF_RUNTIME_STUBS(CheckAndCopyArray)
     JSTaggedType argReceiver = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSArray> receiverHandle(thread, reinterpret_cast<JSArray *>(argReceiver));
     JSArray::CheckAndCopyArray(thread, receiverHandle);
-    return JSTaggedValue::Hole().GetRawData();
+    return receiverHandle->GetElements().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(NewEcmaHClass)

@@ -501,9 +501,9 @@ public:
     // middle ir: object operations
     GateRef ToLength(GateRef receiver);
     template<TypedLoadOp Op>
-    GateRef LoadElement(GateRef receiver, GateRef index, GateRef length);
+    GateRef LoadElement(GateRef receiver, GateRef index);
     template<TypedStoreOp Op>
-    GateRef StoreElement(GateRef receiver, GateRef index, GateRef value, GateRef length);
+    GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
     GateRef LoadProperty(GateRef receiver, GateRef propertyLookupResult, bool isFunction);
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
     GateRef LoadArrayLength(GateRef array);

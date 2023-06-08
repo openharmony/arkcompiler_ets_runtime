@@ -2471,8 +2471,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                         Branch(IsJsCOWArray(*holder), &isJsCOWArray, &isNotJsCOWArray);
                         Bind(&isJsCOWArray);
                         {
-                            CallRuntime(glue, RTSTUB_ID(CheckAndCopyArray), {*holder});
-                            GateRef newElements = GetElementsArray(*holder);
+                            GateRef newElements = CallRuntime(glue, RTSTUB_ID(CheckAndCopyArray), {*holder});
                             SetValueToTaggedArray(VariableType::JS_ANY(), glue, newElements, index, value);
                             returnValue = Undefined();
                             Jump(&exit);
