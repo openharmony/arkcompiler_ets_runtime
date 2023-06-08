@@ -537,23 +537,10 @@ void TypeMCRLowering::LowerArrayLoadElement(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef length = acc_.GetValueIn(gate, 2);  // length
-    ASSERT(!acc_.IsConstantUndefined(length));
     GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
-    GateRef arrayLength = builder_.GetLengthFromTaggedArray(element);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
-    Label accessValue(&builder_);
-    Label exit(&builder_);
-    GateRef hasEntityValue = builder_.Int32LessThanOrEqual(length, arrayLength);
-    builder_.Branch(hasEntityValue, &accessValue, &exit);
-    builder_.Bind(&accessValue);
-    {
-        result = builder_.GetValueFromTaggedArray(element, index);
-        result = builder_.ConvertHoleAsUndefined(*result);
-        builder_.Jump(&exit);
-    };
-    builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    GateRef result = builder_.GetValueFromTaggedArray(element, index);
+    result = builder_.ConvertHoleAsUndefined(result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 // for Float32Array
@@ -619,15 +606,6 @@ void TypeMCRLowering::LowerArrayStoreElement(GateRef gate, GateRef glue)
     GateRef receiver = acc_.GetValueIn(gate, 0);  // 0: receiver
     GateRef index = acc_.GetValueIn(gate, 1);     // 1: index
     GateRef value = acc_.GetValueIn(gate, 2);     // 2: value
-    GateRef length = acc_.GetValueIn(gate, 3);    // 3: length
-    ASSERT(!acc_.IsConstantUndefined(length));
-    GateRef currentDepend = builder_.GetDepend();
-    GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
-    GateRef arrayLength = builder_.GetLengthFromTaggedArray(element);
-    GateRef hasEntityValue = builder_.Int32LessThanOrEqual(length, arrayLength);
-
-    GateRef frameState = acc_.FindNearestFrameState(currentDepend);
-    builder_.DeoptCheck(hasEntityValue, frameState, DeoptType::NOTSARRAY);
 
     Label storeWithCOWArray(&builder_);
     Label storeDirectly(&builder_);
@@ -635,13 +613,13 @@ void TypeMCRLowering::LowerArrayStoreElement(GateRef gate, GateRef glue)
     builder_.Branch(builder_.IsJsCOWArray(receiver), &storeWithCOWArray, &storeDirectly);
     builder_.Bind(&storeWithCOWArray);
     {
-        LowerCallRuntime(glue, gate, RTSTUB_ID(CheckAndCopyArray), {receiver}, true);
-        GateRef newElement = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
+        GateRef newElement = LowerCallRuntime(glue, gate, RTSTUB_ID(CheckAndCopyArray), {receiver}, true);
         builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, newElement, index, value);
         builder_.Jump(&exit);
     }
     builder_.Bind(&storeDirectly);
     {
+        GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
         builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, element, index, value);
         builder_.Jump(&exit);
     }

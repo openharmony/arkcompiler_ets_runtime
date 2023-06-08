@@ -880,21 +880,21 @@ GateRef CircuitBuilder::TypedConditionJump(GateRef x, GateType xType)
 }
 
 template <TypedLoadOp Op>
-GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index, GateRef length)
+GateRef CircuitBuilder::LoadElement(GateRef receiver, GateRef index)
 {
     auto opIdx = static_cast<uint64_t>(Op);
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(GetCircuit()->LoadElement(opIdx), MachineType::I64,
-                                     {currentControl, currentDepend, receiver, index, length}, GateType::AnyType());
+                                     {currentControl, currentDepend, receiver, index}, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
 template <TypedStoreOp Op>
-GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef value, GateRef length)
+GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef value)
 {
     auto opIdx = static_cast<uint64_t>(Op);
     auto currentLabel = env_->GetCurrentLabel();
@@ -902,7 +902,7 @@ GateRef CircuitBuilder::StoreElement(GateRef receiver, GateRef index, GateRef va
     auto currentDepend = currentLabel->GetDepend();
     auto ret =
         GetCircuit()->NewGate(GetCircuit()->StoreElement(opIdx), MachineType::NOVALUE,
-                              {currentControl, currentDepend, receiver, index, value, length}, GateType::AnyType());
+                              {currentControl, currentDepend, receiver, index, value}, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

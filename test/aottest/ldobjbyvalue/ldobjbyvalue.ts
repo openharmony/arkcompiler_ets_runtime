@@ -16,18 +16,25 @@
 declare function print(arg:any):string;
 
 class A{}
-let array:A[] = [undefined];
-for (let i = 0; i < array.length; i++) {
-    print(array[i]===undefined);
-}
 
-class ParticleSystemCPU {
-    private _arrayTest: number[];
-
-    constructor() {
-        this._arrayTest = new Array(10);
-        print(this._arrayTest[9] === undefined);
+function testLiteralArray() {
+    let array:A[] = [undefined];
+    for (let i = 0; i < array.length; i++) {
+        print(array[i]===undefined);
     }
 }
 
-var system: ParticleSystemCPU[] = [new ParticleSystemCPU()];
+testLiteralArray();
+
+function testLargeHolyArray() {
+    let arrayTest = new Array(10000);
+    print(arrayTest[9] === undefined);
+}
+
+testLargeHolyArray();
+
+function testHolyArray() {
+    let arrayTest = new Array(10);
+    print(arrayTest[9] === undefined);
+}
+testHolyArray();

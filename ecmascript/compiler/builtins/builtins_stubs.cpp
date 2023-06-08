@@ -219,7 +219,7 @@ DECLARE_BUILTINS(IndexOf)
     auto env = GetEnvironment();
     DEFVARIABLE(res, VariableType::JS_ANY(), IntToTaggedPtr(Int32(-1)));
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
-    
+
     Label objNotUndefinedAndNull(env);
     Label isString(env);
     Label isSearchString(env);
@@ -569,7 +569,7 @@ DECLARE_BUILTINS(VectorForEach)
 
     Label exit(env);
     Label slowPath(env);
-    
+
     ContainersStubBuilder containersBuilder(this);
     containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
                                                &slowPath, ContainersType::VECTOR_FOREACH);
@@ -590,7 +590,7 @@ DECLARE_BUILTINS(VectorReplaceAllElements)
 
     Label exit(env);
     Label slowPath(env);
-    
+
     ContainersStubBuilder containersBuilder(this);
     containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
         &slowPath, ContainersType::VECTOR_REPLACEALLELEMENTS);
@@ -611,7 +611,7 @@ DECLARE_BUILTINS(StackForEach)
 
     Label exit(env);
     Label slowPath(env);
-    
+
     ContainersStubBuilder containersBuilder(this);
     containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
         &slowPath, ContainersType::STACK_FOREACH);
@@ -632,7 +632,7 @@ DECLARE_BUILTINS(PlainArrayForEach)
 
     Label exit(env);
     Label slowPath(env);
-    
+
     ContainersStubBuilder containersBuilder(this);
     containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
         &slowPath, ContainersType::PLAINARRAY_FOREACH);
@@ -653,7 +653,7 @@ DECLARE_BUILTINS(QueueForEach)
 
     Label exit(env);
     Label slowPath(env);
-    
+
     ContainersStubBuilder containersBuilder(this);
     containersBuilder.QueueCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
         &slowPath, ContainersType::QUEUE_FOREACH);
@@ -674,7 +674,7 @@ DECLARE_BUILTINS(DequeForEach)
 
     Label exit(env);
     Label slowPath(env);
-    
+
     ContainersStubBuilder containersBuilder(this);
     containersBuilder.DequeCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
         &slowPath, ContainersType::DEQUE_FOREACH);
@@ -821,7 +821,7 @@ DECLARE_BUILTINS(ArrayListForEach)
 
     Label exit(env);
     Label slowPath(env);
-    
+
     ContainersStubBuilder containersBuilder(this);
     containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
         &slowPath, ContainersType::ARRAYLIST_FOREACH);
@@ -842,7 +842,7 @@ DECLARE_BUILTINS(ArrayListReplaceAllElements)
 
     Label exit(env);
     Label slowPath(env);
-    
+
     ContainersStubBuilder containersBuilder(this);
     containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
         &slowPath, ContainersType::ARRAYLIST_REPLACEALLELEMENTS);
@@ -942,7 +942,7 @@ DECLARE_BUILTINS(FunctionPrototypeApply)
             }
         }
     }
-    
+
     Bind(&slowPath);
     {
         res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget);
@@ -1157,12 +1157,13 @@ DECLARE_BUILTINS(ArrayConstructor)
             }
             Bind(&arrayCreate);
             {
-                NewObjectStubBuilder newBuilder(this);
-                newBuilder.SetParameters(glue, 0);
-                Label afterNew(env);
-                newBuilder.NewJSObject(&res, &afterNew, intialHClass);
-                Bind(&afterNew);
+                Label lengthValid(env);
+                Branch(Int64GreaterThan(*arrayLength, Int64(JSObject::MAX_GAP)), &slowPath, &lengthValid);
+                Bind(&lengthValid);
                 {
+                    NewObjectStubBuilder newBuilder(this);
+                    newBuilder.SetParameters(glue, 0);
+                    res = newBuilder.NewJSArrayWithSize(intialHClass, *arrayLength);
                     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
                     Store(VariableType::JS_ANY(), glue, *res, lengthOffset, Int64ToTaggedInt(*arrayLength));
                     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue,

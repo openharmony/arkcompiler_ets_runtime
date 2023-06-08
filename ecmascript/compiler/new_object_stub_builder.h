@@ -44,7 +44,9 @@ public:
     void NewLexicalEnv(Variable *result, Label *exit, GateRef numSlots, GateRef parent);
     void NewJSObject(Variable *result, Label *exit, GateRef hclass);
     GateRef NewJSObject(GateRef glue, GateRef hclass);
+    GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
+    GateRef NewJSArrayWithSize(GateRef hclass, GateRef size);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
     void NewArgumentsObj(Variable *result, Label *exit, GateRef argumentsList, GateRef numArgs);
     void AllocLineStringObject(Variable *result, Label *exit, GateRef length, bool compressed);
@@ -56,6 +58,7 @@ public:
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);
     GateRef CreateEmptyArray(GateRef glue);
     GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc);
+    void NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
 
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
