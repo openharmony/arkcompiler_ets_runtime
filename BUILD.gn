@@ -361,8 +361,10 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_ANDROID",
       "PANDA_TARGET_UNIX",
       "PANDA_USE_FUTEX",
-      "EXCLUDE_C_INTERPRETER",
     ]
+    if (current_cpu == "arm64") {
+      defines += [ "EXCLUDE_C_INTERPRETER" ]
+    }
     if (!ark_standalone_build) {
       defines += [ "ENABLE_ANLOG" ]
     }
