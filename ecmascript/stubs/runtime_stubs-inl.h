@@ -819,6 +819,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithIHClass(JSThread *thread,
                                                           const JSHandle<JSTaggedValue> &constpool,
                                                           const uint16_t methodId, uint16_t literalId,
                                                           const JSHandle<JSHClass> &ihclass,
+                                                          const JSHandle<JSHClass> &constructorHClass,
                                                           const JSHandle<JSTaggedValue> &module)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -841,7 +842,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithIHClass(JSThread *thread,
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
 
     ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
-    JSHandle<JSFunction> cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor, lexenv, ihclass);
+    JSHandle<JSFunction> cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor,
+        lexenv, ihclass, constructorHClass);
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

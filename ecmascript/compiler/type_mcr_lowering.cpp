@@ -21,7 +21,7 @@
 #include "ecmascript/js_native_pointer.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/vtable.h"
-
+#include "ecmascript/message_string.h"
 namespace panda::ecmascript::kungfu {
 void TypeMCRLowering::RunTypeMCRLowering()
 {
@@ -241,6 +241,32 @@ void TypeMCRLowering::LowerObjectTypeCheck(GateRef gate)
     auto type = acc_.GetParamGateType(gate);
     if (tsManager_->IsClassInstanceTypeKind(type)) {
         LowerTSSubtypingCheck(gate);
+    } else if (tsManager_->IsClassTypeKind(type)) {
+        LowerConstruntorTypeCheck(gate);
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+}
+
+void TypeMCRLowering::LowerConstruntorTypeCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    auto type = acc_.GetParamGateType(gate);
+    if (tsManager_->IsClassTypeKind(type)) {
+        GateRef frameState = GetFrameState(gate);
+        GateRef receiver = acc_.GetValueIn(gate, 0);
+        builder_.HeapObjectCheck(receiver, frameState);
+        GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
+        auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
+        ArgumentAccessor argAcc(circuit_);
+        GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
+        GateRef aotHCGate = LoadFromConstPool(jsFunc, hclassIndex);
+        GateRef receiverHClass = builder_.LoadConstOffset(
+            VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+        GateRef check = builder_.Equal(aotHCGate, receiverHClass);
+        builder_.DeoptCheck(check, frameState, DeoptType::INCONSISTENTHCLASS);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();

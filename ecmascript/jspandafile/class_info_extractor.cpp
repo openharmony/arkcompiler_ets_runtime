@@ -286,6 +286,38 @@ JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread,
     return hclass;
 }
 
+void ClassInfoExtractor::CorrectConstructorHClass(JSThread *thread,
+                                                  JSHandle<TaggedArray> &properties,
+                                                  JSHClass *constructorHClass)
+{
+    if (LIKELY(!constructorHClass->IsDictionaryMode())) {
+        JSHandle<LayoutInfo> layout(thread, constructorHClass->GetLayout());
+        for (uint32_t index = 0; index < ClassInfoExtractor::STATIC_RESERVED_LENGTH; ++index) {
+            switch (index) {
+                case NAME_INDEX:
+                    if (UNLIKELY(properties->Get(NAME_INDEX).IsJSFunction())) {
+                        PropertyAttributes attr = layout->GetAttr(index);
+                        attr.SetWritable(true);
+                        layout->SetNormalAttr(thread, index, attr);
+                    }
+                    if (UNLIKELY(properties->Get(index).IsAccessor())) {
+                        PropertyAttributes attr = layout->GetAttr(index);
+                        attr.SetIsAccessor(true);
+                        layout->SetNormalAttr(thread, index, attr);
+                    }
+                    break;
+                default:
+                    if (UNLIKELY(properties->Get(index).IsAccessor())) {
+                        PropertyAttributes attr = layout->GetAttr(index);
+                        attr.SetIsAccessor(true);
+                        layout->SetNormalAttr(thread, index, attr);
+                    }
+                    break;
+            }
+        }
+    }
+}
+
 JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, const JSHandle<JSTaggedValue> &base,
                                                            JSHandle<ClassInfoExtractor> &extractor,
                                                            const JSHandle<JSTaggedValue> &lexenv)
@@ -375,17 +407,18 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
     return constructor;
 }
 
-JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread,
+                                                         [[maybe_unused]] const JSHandle<JSTaggedValue> &base,
                                                          JSHandle<ClassInfoExtractor> &extractor,
                                                          const JSHandle<JSTaggedValue> &lexenv,
-                                                         const JSHandle<JSHClass> &ihclass)
+                                                         const JSHandle<JSHClass> &ihclass,
+                                                         const JSHandle<JSHClass> &constructorHClass)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> staticKeys(thread, extractor->GetStaticKeys());
     JSHandle<TaggedArray> staticProperties(thread, extractor->GetStaticProperties());
-    JSHandle<JSHClass> constructorHClass = ClassInfoExtractor::CreateConstructorHClass(thread, base, staticKeys,
-                                                                                       staticProperties);
-
+    ClassInfoExtractor::CorrectConstructorHClass(thread,
+                                                 staticProperties, *constructorHClass);
     JSHandle<TaggedArray> nonStaticKeys(thread, extractor->GetNonStaticKeys());
     JSHandle<TaggedArray> nonStaticProperties(thread, extractor->GetNonStaticProperties());
     JSHandle<JSObject> prototype(thread, ihclass->GetProto());

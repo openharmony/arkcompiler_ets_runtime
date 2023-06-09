@@ -34,6 +34,7 @@ private:
     enum class Kind: uint8_t {
         INSTANCE = 0,
         PROTOTYPE,
+        CONSTRUCTOR,
     };
 
     JSHandle<JSHClass> CreateHClass(const JSThread *thread, const JSHandle<TSClassType> &classType, Kind kind) const;
@@ -41,6 +42,8 @@ private:
     JSHandle<JSHClass> CreateIHClass(const JSThread *thread, const JSHandle<TSClassType> &classType) const;
 
     JSHandle<JSHClass> CreatePHClass(const JSThread *thread, const JSHandle<TSClassType> &classType) const;
+
+    JSHandle<JSHClass> CreateCHClass(const JSThread *thread, const JSHandle<TSClassType> &classType) const;
 
     inline const std::set<GlobalTSTypeRef>& GetCollectedGT() const
     {

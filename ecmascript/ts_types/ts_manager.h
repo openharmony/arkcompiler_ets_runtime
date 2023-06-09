@@ -349,6 +349,8 @@ public:
 
     void AddInstanceTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &ihclass);
 
+    void AddConstructorTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &constructorHClass);
+
     JSTaggedValue GetInstanceTSHClass(const JSHandle<TSClassType> &classType) const;
 
     bool HasTSHClass(const JSHandle<TSClassType> &classType) const;
@@ -360,6 +362,8 @@ public:
     std::string PUBLIC_API GetTypeStr(kungfu::GateType gateType) const;
 
     int PUBLIC_API GetHClassIndexByInstanceGateType(const kungfu::GateType &gateType);
+
+    int PUBLIC_API GetConstructorHClassIndexByClassGateType(const kungfu::GateType &gateType);
 
     int PUBLIC_API GetHClassIndexByClassGateType(const kungfu::GateType &gateType);
 
@@ -713,7 +717,7 @@ public:
 
     JSHandle<TaggedArray> GetExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName);
 
-    int GetHClassIndex(GlobalTSTypeRef classGT);
+    int GetHClassIndex(GlobalTSTypeRef classGT, bool isConstructor = false);
 
 #define TSTYPETABLE_ACCESSOR_LIST(V)       \
     V(Builtin, ModuleTableIdx::BUILTIN)    \
@@ -805,6 +809,7 @@ private:
     ObjectFactory *factory_ {nullptr};
     JSTaggedValue globalModuleTable_ {JSTaggedValue::Hole()};
     std::map<GlobalTSTypeRef, IHClassData> gtIhcMap_ {};
+    std::map<GlobalTSTypeRef, IHClassData> gtConstructorhcMap_ {};
     bool assertTypes_ {false};
     bool printAnyTypes_ {false};
     double typeThreshold_ {-1};

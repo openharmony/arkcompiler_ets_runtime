@@ -55,6 +55,10 @@ public:
                                                       JSHandle<TaggedArray> &keys,
                                                       JSHandle<TaggedArray> &properties);
 
+    static void CorrectConstructorHClass(JSThread *thread,
+                                         JSHandle<TaggedArray> &properties,
+                                         JSHClass *constructorHClass);
+
     static constexpr size_t PROTOTYPE_HCLASS_OFFSET = TaggedObjectSize();
     ACCESSORS(NonStaticKeys, PROTOTYPE_HCLASS_OFFSET, NON_STATIC_PROPERTIES_OFFSET)
     ACCESSORS(NonStaticProperties, NON_STATIC_PROPERTIES_OFFSET, NON_STATIC_ELEMENTS_OFFSET)
@@ -92,10 +96,12 @@ public:
                                                          JSHandle<ClassInfoExtractor> &extractor,
                                                          const JSHandle<JSTaggedValue> &lexenv);
 
-    static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
+    static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread,
+                                                       const JSHandle<JSTaggedValue> &base,
                                                        JSHandle<ClassInfoExtractor> &extractor,
                                                        const JSHandle<JSTaggedValue> &lexenv,
-                                                       const JSHandle<JSHClass> &ihclass);
+                                                       const JSHandle<JSHClass> &ihclass,
+                                                       const JSHandle<JSHClass> &constructorHClass);
 
 private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,

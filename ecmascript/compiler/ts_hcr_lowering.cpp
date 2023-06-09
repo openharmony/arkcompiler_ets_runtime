@@ -552,36 +552,58 @@ void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
             return;
         }
     }
+    if (tsManager_->IsClassInstanceTypeKind(receiverType)) {
+        int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
+        if (hclassIndex == -1) { // slowpath
+            return;
+        }
+        JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
+        if (!hclass->HasTSSubtyping()) {  // slowpath
+            return;
+        }
 
-    int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
+        PropertyLookupResult plr = JSHClass::LookupProperty(thread, hclass, prop);
+        if (!plr.IsFound()) {  // slowpath
+            return;
+        }
+
+        AddProfiling(gate);
+
+        GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
+        builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
+
+        GateRef pfrGate = builder_.Int32(plr.GetData());
+        GateRef result = Circuit::NullGate();
+        if (LIKELY(!plr.IsAccessor())) {
+            result = builder_.LoadProperty(receiver, pfrGate, plr.IsVtable());
+            if (UNLIKELY(IsVerifyVTbale())) {
+                AddVTableLoadVerifer(gate, result);
+            }
+        } else {
+            result = builder_.CallGetter(gate, receiver, pfrGate);
+        }
+
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        DeleteConstDataIfNoUser(constData);
+        return;
+    }
+
+    int hclassIndex = tsManager_->GetConstructorHClassIndexByClassGateType(receiverType);
     if (hclassIndex == -1) { // slowpath
         return;
     }
     JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
-    if (!hclass->HasTSSubtyping()) {  // slowpath
-        return;
-    }
 
     PropertyLookupResult plr = JSHClass::LookupProperty(thread, hclass, prop);
-    if (!plr.IsFound()) {  // slowpath
+    if (!plr.IsFound() || !plr.IsLocal() || plr.IsAccessor()) {  // slowpath
         return;
     }
-
     AddProfiling(gate);
-
     GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
     builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
 
     GateRef pfrGate = builder_.Int32(plr.GetData());
-    GateRef result = Circuit::NullGate();
-    if (LIKELY(!plr.IsAccessor())) {
-        result = builder_.LoadProperty(receiver, pfrGate, plr.IsVtable());
-        if (UNLIKELY(IsVerifyVTbale())) {
-            AddVTableLoadVerifer(gate, result);
-        }
-    } else {
-        result = builder_.CallGetter(gate, receiver, pfrGate);
-    }
+    GateRef result = builder_.LoadProperty(receiver, pfrGate, false);
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
     DeleteConstDataIfNoUser(constData);
@@ -610,35 +632,56 @@ void TSHCRLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     }
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
+    if (tsManager_->IsClassInstanceTypeKind(receiverType)) {
+        int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
+        if (hclassIndex == -1) { // slowpath
+            return;
+        }
+        JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
+        if (!hclass->HasTSSubtyping()) {  // slowpath
+            return;
+        }
+
+        PropertyLookupResult plr = JSHClass::LookupProperty(thread, hclass, prop);
+        if (!plr.IsFound() || plr.IsFunction()) {  // slowpath
+            return;
+        }
+
+        AddProfiling(gate);
+
+        GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
+        builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
+
+        GateRef pfrGate = builder_.Int32(plr.GetData());
+        if (LIKELY(plr.IsLocal())) {
+            GateRef store = builder_.StoreProperty(receiver, pfrGate, value);
+            if (UNLIKELY(IsVerifyVTbale())) {
+                AddVTableStoreVerifer(gate, store, isThis);
+            }
+        } else {
+            builder_.CallSetter(gate, receiver, pfrGate, value);
+        }
+
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+        DeleteConstDataIfNoUser(constData);
+        return;
+    }
+    int hclassIndex = tsManager_->GetConstructorHClassIndexByClassGateType(receiverType);
     if (hclassIndex == -1) { // slowpath
         return;
     }
     JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
-    if (!hclass->HasTSSubtyping()) {  // slowpath
-        return;
-    }
 
     PropertyLookupResult plr = JSHClass::LookupProperty(thread, hclass, prop);
-    if (!plr.IsFound() || plr.IsFunction()) {  // slowpath
+    if (!plr.IsFound() || !plr.IsLocal() || plr.IsAccessor()) {  // slowpath
         return;
     }
-
     AddProfiling(gate);
-
     GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
     builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
 
     GateRef pfrGate = builder_.Int32(plr.GetData());
-    if (LIKELY(plr.IsLocal())) {
-        GateRef store = builder_.StoreProperty(receiver, pfrGate, value);
-        if (UNLIKELY(IsVerifyVTbale())) {
-            AddVTableStoreVerifer(gate, store, isThis);
-        }
-    } else {
-        builder_.CallSetter(gate, receiver, pfrGate, value);
-    }
-
+    builder_.StoreProperty(receiver, pfrGate, value);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
     DeleteConstDataIfNoUser(constData);
 }

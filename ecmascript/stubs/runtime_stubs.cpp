@@ -916,11 +916,12 @@ DEF_RUNTIME_STUBS(CreateClassWithIHClass)
     JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
     JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
     JSHandle<JSHClass> ihclass = GetHArg<JSHClass>(argv, argc, 5);  // 5: means the fifth parameter
-    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 6);  // 6: means the sixth parameter
+    JSHandle<JSHClass> constructorHClass = GetHArg<JSHClass>(argv, argc, 6);  // 6: means the fifth parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 7);  // 7: means the sixth parameter
     return RuntimeCreateClassWithIHClass(thread, base, lexenv, constpool,
         static_cast<uint16_t>(methodId.GetInt()),
         static_cast<uint16_t>(literalId.GetInt()),
-        ihclass, module).GetRawData();
+        ihclass, constructorHClass, module).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(SetClassConstructorLength)

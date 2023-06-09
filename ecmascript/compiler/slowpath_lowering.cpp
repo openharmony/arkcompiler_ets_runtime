@@ -2438,8 +2438,15 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
         GateRef ihcIndex = builder_.Int32(index);
         GateRef ihclass = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, ihcIndex, ConstPoolType::CLASS_LITERAL);
 
+        int constructorIndex = tsManager_->GetConstructorHClassIndexByClassGateType(type);
+        ASSERT(index != -1);
+        GateRef constructorHcIndex = builder_.Int32(constructorIndex);
+        GateRef constructorHclass = builder_.GetObjectFromConstPool(glue_, gate, jsFunc,
+            constructorHcIndex, ConstPoolType::CLASS_LITERAL);
+
         auto args = { proto, lexicalEnv, constpool,
-                      builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId), ihclass, module };
+                      builder_.ToTaggedInt(methodId),
+                      builder_.ToTaggedInt(literalId), ihclass, constructorHclass, module };
         result = LowerCallRuntime(gate, RTSTUB_ID(CreateClassWithIHClass), args, true);
         builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
     }
