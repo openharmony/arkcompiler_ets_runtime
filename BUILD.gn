@@ -311,13 +311,13 @@ config("ark_jsruntime_common_config") {
     defines += [ "IS_PUBLIC_VERSION" ]
   }
 
-  ark_profiler_features = [
-    "ECMASCRIPT_SUPPORT_CPUPROFILER",
-    "ECMASCRIPT_SUPPORT_HEAPPROFILER",
-    "ECMASCRIPT_SUPPORT_HEAPSAMPLING",
-    "ECMASCRIPT_SUPPORT_SNAPSHOT",
-  ]
   if (ark_compile_mode != "release") {
+    ark_profiler_features = [
+      "ECMASCRIPT_SUPPORT_CPUPROFILER",
+      "ECMASCRIPT_SUPPORT_HEAPPROFILER",
+      "ECMASCRIPT_SUPPORT_HEAPSAMPLING",
+      "ECMASCRIPT_SUPPORT_SNAPSHOT",
+    ]
     defines += [ "ECMASCRIPT_SUPPORT_DEBUGGER" ]
     defines += ark_profiler_features
   }
@@ -512,7 +512,7 @@ config("icu_path_test_config") {
 config("asm_interp_enable_config") {
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac && !is_emulator) {
+      !is_mac && target_os != "ios" && !is_emulator) {
     defines = [ "SUPPORT_ENABLE_ASM_INTERP" ]
   }
 }
