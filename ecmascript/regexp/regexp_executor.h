@@ -308,35 +308,13 @@ public:
             return !MatchFailed();
         }
         uint32_t currentChar = GetCurrentChar();
+        uint32_t currentCharNext = currentChar;
         if (IsIgnoreCase()) {
-            currentChar = static_cast<uint32_t>(RegExpParser::Canonicalize(currentChar, IsUtf16()));
+            currentCharNext = static_cast<uint32_t>(RegExpParser::GetcurrentCharNext(currentChar));
         }
         uint16_t rangeCount = byteCode.GetU16(GetCurrentPC() + 1);
-        bool isFound = false;
-        int32_t idxMin = 0;
-        int32_t idxMax = static_cast<int32_t>(rangeCount - 1);
-        int32_t idx = 0;
-        uint32_t low = 0;
-        uint32_t high =
-            byteCode.GetU16(GetCurrentPC() + RANGE32_HEAD_OFFSET + idxMax * RANGE32_MAX_HALF_OFFSET + RANGE32_OFFSET);
-        if (currentChar <= high) {
-            while (idxMin <= idxMax) {
-                idx = (idxMin + idxMax) / RANGE32_OFFSET;
-                low = byteCode.GetU16(GetCurrentPC() + RANGE32_HEAD_OFFSET + static_cast<uint32_t>(idx) *
-                    RANGE32_MAX_HALF_OFFSET);
-                high = byteCode.GetU16(GetCurrentPC() + RANGE32_HEAD_OFFSET + static_cast<uint32_t>(idx) *
-                    RANGE32_MAX_HALF_OFFSET + RANGE32_OFFSET);
-                if (currentChar < low) {
-                    idxMax = idx - 1;
-                } else if (currentChar > high) {
-                    idxMin = idx + 1;
-                } else {
-                    isFound = true;
-                    break;
-                }
-            }
-        }
-        if (isFound) {
+        if (IsFoundOpRange(GetCurrentPC(), currentChar, byteCode, rangeCount) ||
+            IsFoundOpRange(GetCurrentPC(), currentCharNext, byteCode, rangeCount)) {
             AdvanceOffset(rangeCount * RANGE32_MAX_HALF_OFFSET + RANGE32_HEAD_OFFSET);
         } else {
             if (MatchFailed()) {
@@ -345,7 +323,6 @@ public:
         }
         return true;
     }
-
     inline bool HandleOpBackReference(const DynChunk &byteCode, uint8_t opCode)
     {
         uint32_t captureIndex = byteCode.GetU8(GetCurrentPC() + 1);
@@ -591,6 +568,36 @@ public:
         return currentPtr_ >= inputEnd_;
     }
 
+    bool IsFoundOpRange(const uint32_t currentPc, const uint32_t nowChar,
+                        const DynChunk &byteCode, const uint16_t rangeCount)
+    {
+        bool isFound = false;
+        int32_t idxMin = 0;
+        int32_t idxMax = static_cast<int32_t>(rangeCount - 1);
+        int32_t idx = 0;
+        uint32_t low = 0;
+        uint32_t high =
+            byteCode.GetU16(currentPc + RANGE32_HEAD_OFFSET + idxMax * RANGE32_MAX_HALF_OFFSET + RANGE32_OFFSET);
+        if (nowChar <= high) {
+            while (idxMin <= idxMax) {
+                idx = (idxMin + idxMax) / RANGE32_OFFSET;
+                low = byteCode.GetU16(currentPc + RANGE32_HEAD_OFFSET + static_cast<uint32_t>(idx) *
+                    RANGE32_MAX_HALF_OFFSET);
+                high = byteCode.GetU16(currentPc + RANGE32_HEAD_OFFSET + static_cast<uint32_t>(idx) *
+                    RANGE32_MAX_HALF_OFFSET + RANGE32_OFFSET);
+                if (nowChar < low) {
+                    idxMax = idx - 1;
+                } else if (nowChar > high) {
+                    idxMin = idx + 1;
+                } else {
+                    isFound = true;
+                    break;
+                }
+            }
+        }
+        return isFound;
+    }
+    
     uint32_t GetCurrentPC() const
     {
         return currentPc_;
@@ -693,6 +700,7 @@ private:
     static constexpr size_t RANGE32_OFFSET = 2;
     static constexpr uint32_t STACK_MULTIPLIER = 2;
     static constexpr uint32_t MIN_STACK_SIZE = 8;
+    static constexpr int TMP_BUF_SIZE = 128;
     uint8_t *input_ = nullptr;
     uint8_t *inputEnd_ = nullptr;
     bool isWideChar_ = false;
