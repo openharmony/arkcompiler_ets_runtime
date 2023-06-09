@@ -631,7 +631,7 @@ public:
         return metaData_.HasArgcIn();
     }
 
-    bool HasFrameState() const
+    bool HasFrameArgs() const
     {
         return HasFuncIn() || HasNewTargetIn() || ThisObjectIn() || HasArgcIn();
     }

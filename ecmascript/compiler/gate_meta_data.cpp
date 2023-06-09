@@ -54,7 +54,6 @@ std::string GateMetaData::Str(OpCode opcode)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_PC_OFFSET(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(GATE_NAME_MAP)
-    FRAME_STATE(GATE_NAME_MAP)
 #undef GATE_NAME_MAP
 #define GATE_NAME_MAP(OP) { OpCode::OP, #OP },
         GATE_OPCODE_LIST(GATE_NAME_MAP)
@@ -68,9 +67,16 @@ std::string GateMetaData::Str(OpCode opcode)
 
 bool GateMetaData::IsRoot() const
 {
-    return (opcode_ == OpCode::CIRCUIT_ROOT) || (opcode_ == OpCode::STATE_ENTRY) ||
-        (opcode_ == OpCode::DEPEND_ENTRY) || (opcode_ == OpCode::RETURN_LIST) ||
-        (opcode_ == OpCode::ARG_LIST);
+    switch (opcode_) {
+        case OpCode::CIRCUIT_ROOT:
+        case OpCode::DEPEND_ENTRY:
+        case OpCode::ARG_LIST:
+        case OpCode::STATE_ENTRY:
+        case OpCode::RETURN_LIST:
+            return true;
+        default:
+            return false;
+    }
 }
 
 bool GateMetaData::IsProlog() const
@@ -118,29 +124,23 @@ bool GateMetaData::IsState() const
 bool GateMetaData::IsGeneralState() const
 {
     switch (opcode_) {
+        case OpCode::IF_BRANCH:
+        case OpCode::SWITCH_BRANCH:
         case OpCode::IF_TRUE:
         case OpCode::IF_FALSE:
-        case OpCode::JS_BYTECODE:
         case OpCode::IF_SUCCESS:
         case OpCode::IF_EXCEPTION:
         case OpCode::SWITCH_CASE:
         case OpCode::DEFAULT_CASE:
         case OpCode::MERGE:
         case OpCode::LOOP_BEGIN:
+        case OpCode::LOOP_BACK:
         case OpCode::LOOP_EXIT:
         case OpCode::ORDINARY_BLOCK:
         case OpCode::STATE_ENTRY:
-        case OpCode::TYPED_BINARY_OP:
-        case OpCode::TYPE_CONVERT:
-        case OpCode::TYPED_UNARY_OP:
-        case OpCode::TO_LENGTH:
-        case OpCode::HEAP_ALLOC:
-        case OpCode::LOAD_ELEMENT:
-        case OpCode::LOAD_PROPERTY:
-        case OpCode::STORE_ELEMENT:
-        case OpCode::STORE_PROPERTY:
-        case OpCode::TYPED_CALL_BUILTIN:
         case OpCode::DEOPT_CHECK:
+        case OpCode::RETURN:
+        case OpCode::RETURN_VOID:
             return true;
         default:
             return false;

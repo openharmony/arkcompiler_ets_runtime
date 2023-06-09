@@ -60,12 +60,14 @@ void LoopAnalysis::CollectLoopBody(LoopInfo* loopInfo)
         auto use = acc_.Uses(cur);
         ASSERT(use.begin() != use.end());
         for (auto it = use.begin(); it != use.end(); ++it) {
+            auto nex = *it;
             if (acc_.IsLoopExit(cur) && (!acc_.IsFixed(*it))) {
                 continue;
             } else if (acc_.IsLoopExitRelated(cur) && acc_.IsFixed(cur)) {
                 continue;
+            } else if (acc_.GetDependCount(nex) == 0 && acc_.GetStateCount(nex) == 0) {
+                continue;
             }
-            auto nex = *it;
             if (gateToDepth.count(nex)) {
                 // loop back
                 if (acc_.IsStateIn(it) || acc_.IsDependIn(it)) {

@@ -52,10 +52,9 @@ class A {
         this.mode = 4;
     }
 
-    update (dt: number, dt1: number): number {
+    update (dt: number, dt1: number): void {
         print(dt);
         print(dt1);
-        return dt + dt1 + this.mode;
     }
 }
 

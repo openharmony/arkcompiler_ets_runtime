@@ -539,14 +539,13 @@ void BytecodeCircuitBuilder::BuildCircuitArgs()
 void BytecodeCircuitBuilder::BuildFrameArgs()
 {
     auto metaData = circuit_->FrameArgs();
-    size_t numArgs = static_cast<size_t>(FrameArgIdx::NUM_OF_ARGS) + metaData->GetInFrameStateCount();
+    size_t numArgs = static_cast<size_t>(FrameArgIdx::NUM_OF_ARGS);
     std::vector<GateRef> args(numArgs, Circuit::NullGate());
     size_t idx = 0;
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::FUNC);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::NEW_TARGET);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::THIS_OBJECT);
     args[idx++] = argAcc_.GetCommonArgGate(CommonArgIdx::ACTUAL_ARGC);
-    args[idx++] = circuit_->ReplaceableGate();
     GateRef frameArgs = circuit_->NewGate(metaData, args);
     argAcc_.SetFrameArgs(frameArgs);
 }
@@ -722,9 +721,8 @@ std::vector<GateRef> BytecodeCircuitBuilder::CreateGateInList(
     if (info.AccIn()) {
         inputSize++;
     }
-    if (info.HasFrameState()) {
-        GateRef frameArgs = argAcc_.GetFrameArgs();
-        inList[inputSize + length] = frameArgs;
+    if (meta->HasFrameState()) {
+        inList[inputSize + length] = GetFrameArgs();
     }
     return inList;
 }
@@ -882,7 +880,7 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb, GateRef &state, GateR
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
     GateRef gate = 0;
     bool writable = !bytecodeInfo.NoSideEffects();
-    bool hasFrameState = bytecodeInfo.HasFrameState();
+    bool hasFrameState = bytecodeInfo.HasFrameArgs();
     size_t pcOffset = GetPcOffset(iterator.Index());
     auto meta = circuit_->JSBytecode(numValueInputs, bytecodeInfo.GetOpcode(), pcOffset, writable, hasFrameState);
     std::vector<GateRef> inList = CreateGateInList(bytecodeInfo, meta);
@@ -1064,6 +1062,7 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
         if (!bb.trys.empty()) {
             dependCur = circuit_->NewGate(circuit_->GetException(),
                 MachineType::I64, {stateCur, dependCur}, GateType::AnyType());
+            bb.dependCurrent = dependCur;
         }
         EnumerateBlock(bb, [this, &stateCur, &dependCur, &bb]
             (const BytecodeInfo &bytecodeInfo) -> bool {
@@ -1295,11 +1294,9 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
         if (ans != Circuit::NullGate()) {
             break;
         }
-        GateRef resumeDependGate = gateAcc_.GetDep(resumeGate);
         ans = circuit_->NewGate(circuit_->RestoreRegister(tmpReg), MachineType::I64,
-                                { resumeDependGate }, GateType::AnyType());
+                                { resumeGate }, GateType::AnyType());
         SetExistingRestore(resumeGate, tmpReg, ans);
-        gateAcc_.SetDep(resumeGate, ans);
         auto saveRegGate = ResolveDef(bbId, iterator.Index() - 1, tmpReg, tmpAcc);
         [[maybe_unused]] EcmaOpcode opcode = Bytecodes::GetOpcode(iterator.PeekPrevPc(2)); // 2: prev bc
         ASSERT(opcode == EcmaOpcode::SUSPENDGENERATOR_V8 || opcode == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8);
@@ -1311,15 +1308,8 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
     // find GET_EXCEPTION gate if this is a catch block
     if (ans == Circuit::NullGate() && tmpAcc) {
         if (!bb.trys.empty()) {
-            GateRef getExceptionGate = Circuit::NullGate();
-            auto uses = gateAcc_.Uses(bb.dependCurrent);
-            for (auto it = uses.begin(); it != uses.end(); it++) {
-                if (gateAcc_.IsDependIn(it)) {
-                    getExceptionGate = *it;
-                    ASSERT(gateAcc_.GetOpCode(getExceptionGate) == OpCode::GET_EXCEPTION);
-                    break;
-                }
-            }
+            GateRef getExceptionGate = bb.dependCurrent;
+            ASSERT(gateAcc_.GetOpCode(getExceptionGate) == OpCode::GET_EXCEPTION);
             ASSERT(getExceptionGate != Circuit::NullGate());
             ans = getExceptionGate;
         }
@@ -1460,8 +1450,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
     }
 
     if (IsTypeLoweringEnabled()) {
-        GateRef frameArgs = argAcc_.GetFrameArgs();
-        frameStateBuilder_.BuildFrameState(frameArgs);
+        frameStateBuilder_.BuildFrameState();
     }
 
     gateAcc_.EliminateRedundantPhi();

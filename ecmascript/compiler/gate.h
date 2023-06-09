@@ -243,11 +243,6 @@ public:
         return BoolMetaData::Cast(meta_);
     }
 
-    const FrameStateMetaData* GetFrameStateMetaData() const
-    {
-        return FrameStateMetaData::Cast(meta_);
-    }
-
     std::string MachineTypeStr(MachineType machineType) const;
     std::string GateTypeStr(GateType gateType) const;
     ~Gate() = default;

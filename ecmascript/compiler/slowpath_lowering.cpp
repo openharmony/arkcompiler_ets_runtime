@@ -2647,38 +2647,34 @@ GateRef SlowPathLowering::GetValueFromTaggedArray(GateRef arrayGate, GateRef ind
     return value;
 }
 
+void SlowPathLowering::LowerStoreRegister(GateRef gate, GateRef arrayGate)
+{
+    ASSERT((acc_.GetOpCode(gate) == OpCode::RESTORE_REGISTER));
+    auto index = acc_.GetVirtualRegisterIndex(gate);
+    auto indexOffset = builder_.Int32(index);
+    GateRef value = GetValueFromTaggedArray(arrayGate, indexOffset);
+    acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), value);
+}
+
 void SlowPathLowering::LowerResumeGenerator(GateRef gate)
 {
     GateRef obj = acc_.GetValueIn(gate, 0);
-    GateRef restoreGate = acc_.GetDep(gate);
     std::vector<GateRef> registerGates {};
-    while (acc_.GetOpCode(restoreGate) == OpCode::RESTORE_REGISTER) {
-        registerGates.emplace_back(restoreGate);
-        restoreGate = acc_.GetDep(restoreGate);
-    }
-    acc_.SetDep(gate, restoreGate);
-    builder_.SetDepend(restoreGate);
+
     AddProfiling(gate, false);
     GateRef contextOffset = builder_.IntPtr(JSGeneratorObject::GENERATOR_CONTEXT_OFFSET);
     GateRef contextGate = builder_.Load(VariableType::JS_POINTER(), obj, contextOffset);
     GateRef arrayOffset = builder_.IntPtr(GeneratorContext::GENERATOR_REGS_ARRAY_OFFSET);
     GateRef arrayGate = builder_.Load(VariableType::JS_POINTER(), contextGate, arrayOffset);
 
-    for (auto item : registerGates) {
-        auto index = acc_.GetVirtualRegisterIndex(item);
-        auto indexOffset = builder_.Int32(index);
-        GateRef value = GetValueFromTaggedArray(arrayGate, indexOffset);
-        auto uses = acc_.Uses(item);
-        for (auto use = uses.begin(); use != uses.end();) {
-            size_t valueStartIndex = acc_.GetStateCount(*use) + acc_.GetDependCount(*use);
-            size_t valueEndIndex = valueStartIndex + acc_.GetInValueCount(*use);
-            if (use.GetIndex() >= valueStartIndex && use.GetIndex() < valueEndIndex) {
-                use = acc_.ReplaceIn(use, value);
-            } else {
-                use++;
-            }
+    auto uses = acc_.Uses(gate);
+    for (auto it = uses.begin(); it != uses.end(); it++) {
+        if (acc_.IsValueIn(it) && acc_.GetOpCode(*it) == OpCode::RESTORE_REGISTER) {
+            registerGates.emplace_back(*it);
         }
-        acc_.DeleteGate(item);
+    }
+    for (auto item : registerGates) {
+        LowerStoreRegister(item, arrayGate);
     }
 
     // 1: number of value inputs

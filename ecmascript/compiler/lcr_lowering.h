@@ -36,7 +36,8 @@ public:
         return enableLog_;
     }
     void Run();
-    void LowerCheckAndConvert(GateRef gate, GateRef frameState);
+    StateDepend LowerCheckAndConvert(StateDepend stateDepend, GateRef gate, GateRef frameState);
+    StateDepend LowerConvert(StateDepend stateDepend, GateRef gate);
 private:
     const std::string& GetMethodName() const
     {
@@ -51,11 +52,9 @@ private:
     void LowerLoadConstOffset(GateRef gate);
     void LowerStoreConstOffset(GateRef gate);
     void LowerConvertHoleAsUndefined(GateRef gate);
-    void LowerConvert(GateRef gate);
-    void LowerCheckFloat64AndConvert(GateRef gate);
     void LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState);
-    void LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState);
-    void LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState);
+    void LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState, Label *exit);
+    void LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState, Label *exit);
     void LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameState);
     void LowerGetGlobalEnv(GateRef gate);
     void LowerGetGlobalEnvObjHClass(GateRef gate);

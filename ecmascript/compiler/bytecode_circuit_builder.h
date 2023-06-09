@@ -275,7 +275,8 @@ public:
           bytecodes_(bytecodes),
           dfsList_(circuit->chunk()),
           loopExitToVregGate_(circuit->chunk()),
-          loopExitToAccGate_(circuit->chunk())
+          loopExitToAccGate_(circuit->chunk()),
+          preFrameState_(circuit_->GetRoot())
     {
     }
     ~BytecodeCircuitBuilder() = default;
@@ -474,6 +475,31 @@ public:
         return argAcc_.GetFrameArgs();
     }
 
+    GateRef GetPreFrameState() const
+    {
+        return preFrameState_;
+    }
+
+    void SetPreFrameState(GateRef gate)
+    {
+        preFrameState_ = gate;
+    }
+
+    const ChunkVector<size_t>& GetDfsList() const
+    {
+        return dfsList_;
+    }
+
+    inline bool IsEntryBlock(const size_t bbId) const
+    {
+        return bbId == 0;
+    }
+
+    inline bool IsFirstBasicBlock(const size_t bbId) const
+    {
+        return bbId == 1;
+    }
+
 private:
     void CollectTryCatchBlockInfo(ExceptionInfo &Exception);
     void BuildCatchBlocks(const ExceptionInfo &Exception);
@@ -514,7 +540,6 @@ private:
     GateRef NewLoopExitValue(GateRef loopExit, uint16_t reg, bool acc, GateRef value);
     GateRef NewValueFromPredBB(BytecodeRegion &bb, size_t idx, GateRef exit, uint16_t reg, bool acc);
 
-
     void BuildCircuit();
     GateRef GetExistingRestore(GateRef resumeGate, uint16_t tmpReg) const;
     void SetExistingRestore(GateRef resumeGate, uint16_t tmpReg, GateRef restoreGate);
@@ -529,16 +554,6 @@ private:
     void CollectLoopBack();
     void ComputeLoopDepth(size_t loopHead);
     void CountLoopBackEdge(size_t fromId, size_t toId);
-
-    inline bool IsEntryBlock(const size_t bbId) const
-    {
-        return bbId == 0;
-    }
-
-    inline bool IsFirstBasicBlock(const size_t bbId) const
-    {
-        return bbId == 1;
-    }
 
     inline bool IsFirstBCEnvIn(const size_t bbId, const size_t bcIndex, const uint16_t reg) const
     {
@@ -573,6 +588,7 @@ private:
     ChunkVector<size_t> dfsList_;
     ChunkMap<std::pair<GateRef, uint16_t>, GateRef> loopExitToVregGate_;
     ChunkMap<GateRef, GateRef> loopExitToAccGate_;
+    GateRef preFrameState_ {Circuit::NullGate()};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

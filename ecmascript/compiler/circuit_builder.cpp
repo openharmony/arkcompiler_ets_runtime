@@ -281,16 +281,14 @@ GateType CircuitBuilder::GetGateTypeOfValueType(ValueType type)
 
 GateRef CircuitBuilder::CheckAndConvert(GateRef gate, ValueType src, ValueType dst)
 {
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
     MachineType machineType = GetMachineTypeOfValueType(dst);
     GateType gateType = GetGateTypeOfValueType(dst);
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
     uint64_t value = ValuePairTypeAccessor::ToValue(src, dst);
     GateRef ret = GetCircuit()->NewGate(circuit_->CheckAndConvert(value),
-        machineType, {currentControl, currentDepend, gate}, gateType);
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
+        machineType, {gate, frameState}, gateType);
     return ret;
 }
 
@@ -310,7 +308,7 @@ GateRef CircuitBuilder::ConvertInt32ToFloat64(GateRef gate)
 
 GateRef CircuitBuilder::ConvertFloat64ToInt32(GateRef gate)
 {
-    return CheckAndConvert(gate, ValueType::FLOAT64, ValueType::INT32);
+    return Convert(gate, ValueType::FLOAT64, ValueType::INT32);
 }
 
 GateRef CircuitBuilder::ConvertBoolToTaggedBoolean(GateRef gate)
@@ -486,21 +484,10 @@ GateRef CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptT
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    GateRef frameStateChain = frameState;
-    size_t depth = acc_.GetFrameStateDepth(frameState);
-    if (depth > 0) {
-        std::vector<GateRef> vec{frameState};
-        auto it = vec.begin();
-        GateRef preFrameState = acc_.GetPreFrameState(frameState);
-        while (acc_.GetOpCode(preFrameState) != OpCode::REPLACEABLE) {
-            vec.insert(it, preFrameState);
-            preFrameState = acc_.GetPreFrameState(preFrameState);
-        }
-        frameStateChain = circuit_->NewGate(circuit_->FrameStateChain(depth + 1), vec);
-    }
+    ASSERT(acc_.GetOpCode(frameState) == OpCode::FRAME_STATE);
     GateRef ret = GetCircuit()->NewGate(circuit_->DeoptCheck(),
         MachineType::I1, { currentControl, currentDepend, condition,
-        frameStateChain, Int64(static_cast<int64_t>(type))}, GateType::NJSValue(), comment.c_str());
+        frameState, Int64(static_cast<int64_t>(type))}, GateType::NJSValue(), comment.c_str());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

@@ -109,7 +109,7 @@ public:
 
     void PrintMergedCodeComment()
     {
-        LOG_ECMA(INFO) << "\n" << codeStream_.str();
+        LOG_COMPILER(INFO) << "\n" << codeStream_.str();
     }
 
 protected:

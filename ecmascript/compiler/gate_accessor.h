@@ -50,6 +50,12 @@ public:
         depend_ = depend;
     }
 
+    void Reset()
+    {
+        state_ = Circuit::NullGate();
+        depend_ = Circuit::NullGate();
+    }
+
 private:
     GateRef state_;
     GateRef depend_;
@@ -450,6 +456,7 @@ public:
     bool IsCheckWithTwoIns(GateRef gate) const;
     bool IsSchedulable(GateRef gate) const;
     bool IsVirtualState(GateRef gate) const;
+    bool IsGeneralState(GateRef gate) const;
     MarkCode GetMark(GateRef gate) const;
     void SetMark(GateRef gate, MarkCode mark);
     bool IsFinished(GateRef gate) const;
@@ -477,11 +484,14 @@ public:
     void GetReturnOuts(std::vector<GateRef>& outs) const;
     bool IsFixed(GateRef g) const;
     bool IsProlog(GateRef g) const;
+    bool IsCFGMerge(GateRef g) const;
     bool MetaDataEqu(GateRef g1, GateRef g2) const;
     bool IsNop(GateRef g) const;
     bool IsRoot(GateRef g) const;
     bool HasOuts(GateRef gate) const;
     void DeleteGateIfNoUse(GateRef gate);
+    GateRef GetDependSelectorFromMerge(GateRef gate);
+    bool HasIfExceptionUse(GateRef gate) const;
 
     GateRef GetCircuitRoot() const
     {
@@ -518,11 +528,6 @@ public:
     bool HasFrameState(GateRef gate) const;
     GateRef FindNearestFrameState(GateRef gate) const;
     void SetMetaData(GateRef gate, const GateMetaData* meta);
-    void SetPreFrameState(GateRef gate, GateRef preFrameState);
-    GateRef GetPreFrameState(GateRef gate) const;
-    void SetInlineCallFrameStateFlag(GateRef gate, bool isInline);
-    bool IsInlineCallFrameState(GateRef gate) const;
-    size_t GetFrameStateDepth(GateRef gate) const;
 
     void ReplaceHirWithIfBranch(GateRef hirGate, StateDepend success, StateDepend exception, GateRef value);
     void ReplaceHirDirectly(GateRef hirGate, StateDepend replacement, GateRef value);
