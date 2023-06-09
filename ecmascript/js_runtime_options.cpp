@@ -116,7 +116,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--merge-abc:                          ABC file is merge abc. Default: 'false'\n"
     "--compiler-opt-level:                 Optimization level configuration of aot compiler. Default: '3'\n"
     "--options:                            Print compiler and runtime options\n"
-    "--compiler-print-any-types:           Enable print any types after type inference. Default: 'false'\n"
+    "--compiler-print-type-info:           Enable print type info. Default: 'false'\n"
     "--serializer-buffer-size-limit:       Max serializer buffer size used by the VM in Byte. Default size is 2GB\n"
     "--snapshot-file:                      Snapshot file. Default: '/system/etc/snapshot'\n"
     "--startup-time:                       Print the start time of command execution. Default: 'false'\n"
@@ -196,7 +196,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"merge-abc", required_argument, nullptr, OPTION_MERGE_ABC},
         {"compiler-opt-level", required_argument, nullptr, OPTION_ASM_OPT_LEVEL},
         {"options", no_argument, nullptr, OPTION_OPTIONS},
-        {"compiler-print-any-types", required_argument, nullptr, OPTION_COMPILER_PRINT_ANY_TYPES},
+        {"compiler-print-type-info", required_argument, nullptr, OPTION_COMPILER_PRINT_TYPE_INFO},
         {"reloc-mode", required_argument, nullptr, OPTION_RELOCATION_MODE},
         {"serializer-buffer-size-limit", required_argument, nullptr, OPTION_SERIALIZER_BUFFER_SIZE_LIMIT},
         {"startup-time", required_argument, nullptr, OPTION_STARTUP_TIME},
@@ -521,10 +521,10 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_COMPILER_PRINT_ANY_TYPES:
+            case OPTION_COMPILER_PRINT_TYPE_INFO:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
-                    SetPrintAnyTypes(argBool);
+                    SetPrintTypeInfo(argBool);
                 } else {
                     return false;
                 }

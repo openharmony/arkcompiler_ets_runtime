@@ -26,7 +26,6 @@
 namespace panda::ecmascript {
 TSManager::TSManager(EcmaVM *vm) : vm_(vm), thread_(vm_->GetJSThread()), factory_(vm_->GetFactory()),
                                    assertTypes_(vm_->GetJSOptions().AssertTypes()),
-                                   printAnyTypes_(vm_->GetJSOptions().PrintAnyTypes()),
                                    typeThreshold_(vm_->GetJSOptions().GetTypeThreshold())
 {
     JSHandle<TSModuleTable> mTable = factory_->NewTSModuleTable(TSModuleTable::INITIAL_CAPACITY);
@@ -913,6 +912,9 @@ std::string TSManager::GetClassTypeStr(GlobalTSTypeRef gt) const
     }
 
     JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    if (tsType->IsUndefined()) {
+        return "any";
+    }
     ASSERT(tsType->IsTSClassType());
     JSHandle<TSClassType> classType = JSHandle<TSClassType>(tsType);
     JSTaggedValue taggedValue = classType->GetName();
@@ -1414,6 +1416,29 @@ void TSManager::PrintNumOfTypes() const
                             << "number of types: " << numOfTypes;
     }
     LOG_COMPILER(DEBUG) << "total number of types: " << totalNumOfTypes;
+}
+
+void TSManager::PrintTypeInfo(const JSPandaFile *jsPandaFile) const
+{
+    if (!(vm_->GetJSOptions().PrintTypeInfo())) {
+        return;
+    }
+
+    LOG_COMPILER(INFO) << "====================================================================";
+    LOG_COMPILER(INFO) << "start printing type info in file " << jsPandaFile->GetFileName();
+    const auto &records = jsPandaFile->GetJSRecordInfo();
+    for (const auto &it : records) {
+        const auto &recordName = it.first;
+        LOG_COMPILER(INFO) << "====================================================================";
+        LOG_COMPILER(INFO) << "In record " << recordName;
+        if (jsPandaFile->HasTypeSummaryOffset(recordName)) {
+            LOG_COMPILER(INFO) << "[TypeLiterals]";
+            TypeSummaryExtractor(jsPandaFile, recordName).Print();
+        }
+        ExportTypeTableExtractor(jsPandaFile, recordName, false).Print();
+    }
+    LOG_COMPILER(INFO) << "====================================================================";
+    LOG_COMPILER(INFO) << "end of printing type info";
 }
 
 JSHandle<EcmaString> TSModuleTable::GetModuleRequestByModuleId(JSThread *thread, int entry) const
