@@ -388,7 +388,7 @@ namespace panda::ecmascript::kungfu {
     ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(V)         \
     ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(V)       \
     ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(V)     \
-    ASM_INTERPRETER_BC_FUNC_COUNT_PROFILER_STUB_LIST(V)   \
+    ASM_INTERPRETER_BC_FUNC_COUNT_PROFILER_STUB_LIST(V)
 
 #define ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(V) \
     APPEND_SUFFIX(HandleAdd2Imm8V8, V)                \
@@ -408,6 +408,7 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleIncImm8, V)                   \
     APPEND_SUFFIX(HandleDecImm8, V)                   \
     APPEND_SUFFIX(HandleNoteqImm8V8, V)               \
+    APPEND_SUFFIX(HandleEqImm8V8, V)                  \
     APPEND_SUFFIX(HandleLessImm8V8, V)                \
     APPEND_SUFFIX(HandleLesseqImm8V8, V)              \
     APPEND_SUFFIX(HandleGreaterImm8V8, V)             \

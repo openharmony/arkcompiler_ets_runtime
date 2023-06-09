@@ -265,7 +265,8 @@ GateRef NumberSpeculativeRetype::VisitNumberBinaryOp(GateRef gate)
     switch (op) {
         case TypedBinOp::TYPED_ADD:
         case TypedBinOp::TYPED_SUB:
-        case TypedBinOp::TYPED_MUL: {
+        case TypedBinOp::TYPED_MUL:
+        case TypedBinOp::TYPED_DIV: {
             return VisitNumberCalculate(gate);
         }
         case TypedBinOp::TYPED_LESS:
@@ -284,9 +285,6 @@ GateRef NumberSpeculativeRetype::VisitNumberBinaryOp(GateRef gate)
         case TypedBinOp::TYPED_OR:
         case TypedBinOp::TYPED_XOR: {
             return VisitNumberShiftAndLogical(gate);
-        }
-        case TypedBinOp::TYPED_DIV: {
-            return VisitNumberDiv(gate);
         }
         case TypedBinOp::TYPED_MOD: {
             return VisitNumberMod(gate);
@@ -911,20 +909,6 @@ GateRef NumberSpeculativeRetype::VisitTypeConvert(GateRef gate)
     return Circuit::NullGate();
 }
 
-GateRef NumberSpeculativeRetype::VisitNumberDiv(GateRef gate)
-{
-    if (IsRetype()) {
-        return SetOutputType(gate, GateType::DoubleType());
-    }
-
-    if (IsConvert()) {
-        Environment env(gate, circuit_, &builder_);
-        ConvertForDoubleOperator(gate, acc_.GetLeftType(gate), acc_.GetRightType(gate));
-    }
-
-    return Circuit::NullGate();
-}
-
 GateRef NumberSpeculativeRetype::VisitNumberMod(GateRef gate)
 {
     if (IsRetype()) {
@@ -943,7 +927,6 @@ GateRef NumberSpeculativeRetype::VisitNumberMod(GateRef gate)
 
     return Circuit::NullGate();
 }
-
 
 void NumberSpeculativeRetype::Run()
 {
