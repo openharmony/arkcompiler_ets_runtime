@@ -487,22 +487,26 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
 void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
 {
     // depth records the number of layers of nested calls when deopt occurs
-    JSTaggedValue CallTarget = GetDeoptValue(inlineDepth_, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
-    auto method = GetMethod(CallTarget);
-    Dump(method, type, inlineDepth_);
-    ASSERT(thread_ != nullptr);
-    uint8_t deoptThreshold = method->GetDeoptThreshold();
-    if (deoptThreshold > 0) {
-        method->SetDeoptType(type);
-        method->SetDeoptThreshold(--deoptThreshold);
-    } else {
-        FunctionKind kind = method->GetFunctionKind();
-        ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-        JSHandle<ECMAObject> jsFunc(thread_, CallTarget);
-        JSHandle<JSHClass> oldHclass(thread_, jsFunc->GetClass());
-        // instead of hclass by non_optimized hclass when method ClearAOTFlags
-        JSHandle<JSHClass> newHClass = factory->GetNonOptimizedHclass(oldHclass, kind);
-        jsFunc->SetClass(newHClass);
+    for (size_t i = 0; i <= inlineDepth_; i++) {
+        JSTaggedValue CallTarget = GetDeoptValue(i, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
+        auto method = GetMethod(CallTarget);
+        if (i == inlineDepth_) {
+            Dump(method, type, i);
+        }
+        ASSERT(thread_ != nullptr);
+        uint8_t deoptThreshold = method->GetDeoptThreshold();
+        if (deoptThreshold > 0) {
+            method->SetDeoptType(type);
+            method->SetDeoptThreshold(--deoptThreshold);
+        } else {
+            FunctionKind kind = method->GetFunctionKind();
+            ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+            JSHandle<ECMAObject> jsFunc(thread_, CallTarget);
+            JSHandle<JSHClass> oldHclass(thread_, jsFunc->GetClass());
+            // instead of hclass by non_optimized hclass when method ClearAOTFlags
+            JSHandle<JSHClass> newHClass = factory->GetNonOptimizedHclass(oldHclass, kind);
+            jsFunc->SetClass(newHClass);
+        }
     }
 }
 
