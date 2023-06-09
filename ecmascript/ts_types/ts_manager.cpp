@@ -60,7 +60,17 @@ int TSManager::GetHClassIndexByClassGateType(const kungfu::GateType &gateType)
     return GetHClassIndex(classGT);
 }
 
-int TSManager::GetHClassIndex(GlobalTSTypeRef classGT)
+int TSManager::GetConstructorHClassIndexByClassGateType(const kungfu::GateType &gateType)
+{
+    // make sure already setting correct curCP_ and curCPID_ before calling this method
+    if (!IsClassTypeKind(gateType)) {
+        return -1;
+    }
+    GlobalTSTypeRef classGT = gateType.GetGTRef();
+    return GetHClassIndex(classGT, true);
+}
+
+int TSManager::GetHClassIndex(GlobalTSTypeRef classGT, bool isConstructor)
 {
     if (HasOffsetFromGT(classGT)) {
         uint32_t literalOffset = 0;
@@ -69,8 +79,16 @@ int TSManager::GetHClassIndex(GlobalTSTypeRef classGT)
         GetCompilationDriver()->AddResolvedMethod(recordName, literalOffset);
     }
     // make sure already setting correct curCP_ and curCPID_ before calling this method
-    auto iter = gtIhcMap_.find(classGT);
-    if (iter == gtIhcMap_.end()) {
+    std::map<GlobalTSTypeRef, IHClassData>::iterator iter;
+    std::map<GlobalTSTypeRef, IHClassData>::iterator endIter;
+    if (isConstructor) {
+        iter = gtConstructorhcMap_.find(classGT);
+        endIter = gtConstructorhcMap_.end();
+    } else {
+        iter = gtIhcMap_.find(classGT);
+        endIter = gtIhcMap_.end();
+    }
+    if (iter == endIter) {
         return -1;
     } else {
         std::unordered_map<int32_t, uint32_t> &cpIndexMap = iter->second.GetCPIndexMap();
@@ -623,6 +641,12 @@ void TSManager::AddInstanceTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &ihcl
 {
     IHClassData ihcData = IHClassData(ihclass.GetTaggedType());
     gtIhcMap_.insert({gt, ihcData});
+}
+
+void TSManager::AddConstructorTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &constructorHClass)
+{
+    IHClassData ihcData = IHClassData(constructorHClass.GetTaggedType());
+    gtConstructorhcMap_.insert({gt, ihcData});
 }
 
 void TSManager::UpdateTSHClassFromPGO(const kungfu::GateType &gateType, const PGOSampleLayoutDesc &desc)

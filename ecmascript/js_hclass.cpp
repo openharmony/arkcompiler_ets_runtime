@@ -651,10 +651,17 @@ PropertyLookupResult JSHClass::LookupProperty(const JSThread *thread, JSHClass *
         if (attr.IsNotHole()) {
             result.SetIsNotHole(true);
         }
+        if (attr.IsAccessor()) {
+            result.SetIsAccessor(true);
+        }
         return result;
     }
 
     // found in vtable
+    if (hclass->GetVTable().IsUndefined()) {
+        result.SetIsFound(false);
+        return result;
+    }
     JSHandle<VTable> vtable(thread, hclass->GetVTable());
     entry = vtable->GetTupleIndexByName(key);
     if (entry != -1) {

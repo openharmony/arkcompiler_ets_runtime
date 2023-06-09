@@ -474,6 +474,7 @@ private:
                                                               const JSHandle<JSTaggedValue> &constpool,
                                                               const uint16_t methodId, uint16_t literalId,
                                                               const JSHandle<JSHClass> &ihclass,
+                                                              const JSHandle<JSHClass> &constructorHClass,
                                                               const JSHandle<JSTaggedValue> &module);
     static inline JSTaggedValue RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                        const JSHandle<JSTaggedValue> &ctor,

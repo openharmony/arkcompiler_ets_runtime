@@ -15,8 +15,10 @@
 
 #include "ecmascript/compiler/ts_hclass_generator.h"
 #include "ecmascript/subtyping_operator.h"
+#include "ecmascript/jspandafile/class_info_extractor.h"
 
 namespace panda::ecmascript::kungfu {
+using ClassInfoExtractor = panda::ecmascript::ClassInfoExtractor;
 void TSHClassGenerator::GenerateTSHClasses() const
 {
     const JSThread *thread = tsManager_->GetThread();
@@ -73,11 +75,13 @@ JSHandle<JSHClass> TSHClassGenerator::Generate(const JSHandle<TSClassType> &clas
     const JSThread *thread = tsManager_->GetThread();
     JSHandle<JSHClass> ihclass = CreateHClass(thread, classType, Kind::INSTANCE);
     JSHandle<JSHClass> phclass = CreateHClass(thread, classType, Kind::PROTOTYPE);
+    JSHandle<JSHClass> chclass = CreateHClass(thread, classType, Kind::CONSTRUCTOR);
     JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObject(phclass);
     ihclass->SetProto(thread, prototype);
 
     GlobalTSTypeRef gt = classType->GetGT();
     tsManager_->AddInstanceTSHClass(gt, ihclass);
+    tsManager_->AddConstructorTSHClass(gt, chclass);
     return ihclass;
 }
 
@@ -92,6 +96,10 @@ JSHandle<JSHClass> TSHClassGenerator::CreateHClass(const JSThread *thread, const
         }
         case Kind::PROTOTYPE: {
             hclass = CreatePHClass(thread, classType);
+            break;
+        }
+        case Kind::CONSTRUCTOR: {
+            hclass = CreateCHClass(thread, classType);
             break;
         }
         default:
@@ -205,6 +213,89 @@ JSHandle<JSHClass> TSHClassGenerator::CreatePHClass(const JSThread *thread,
     hclass->SetTS(true);
     hclass->SetClassPrototype(true);
     hclass->SetIsPrototype(true);
+
+    return hclass;
+}
+
+JSHandle<JSHClass> TSHClassGenerator::CreateCHClass(const JSThread *thread,
+                                                    const JSHandle<TSClassType> &classType) const
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+
+    JSHandle<TSObjectType> constructorType(thread, classType->GetConstructorType());
+    JSHandle<TSObjLayoutInfo> tsLayout(thread, constructorType->GetObjLayoutInfo());
+    uint32_t numOfProps = tsLayout->GetNumOfProperties() + ClassInfoExtractor::STATIC_RESERVED_LENGTH;
+    JSHandle<JSHClass> hclass;
+    uint32_t functionFirstIndex = numOfProps;
+    uint32_t numNonStaticFunc = 0;
+    bool hasFunction = false;
+    if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
+        TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+        JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(numOfProps);
+        for (uint32_t index = 0; index < numOfProps; ++index) {
+            JSTaggedValue tsPropKey;
+            PropertyAttributes attributes;
+            switch (index) {
+                case ClassInfoExtractor::LENGTH_INDEX:
+                    attributes = PropertyAttributes::Default(false, false, true);
+                    tsPropKey = globalConst->GetLengthString();
+                    break;
+                case ClassInfoExtractor::NAME_INDEX:
+                    attributes = PropertyAttributes::Default(false, false, true);
+                    tsPropKey = globalConst->GetNameString();
+                    break;
+                case ClassInfoExtractor::PROTOTYPE_INDEX:
+                    attributes = PropertyAttributes::DefaultAccessor(false, false, false);
+                    tsPropKey = globalConst->GetPrototypeString();
+                    break;
+                default:
+                    attributes = PropertyAttributes::Default(true, false, true);
+                    tsPropKey = tsLayout->GetKey(index - ClassInfoExtractor::STATIC_RESERVED_LENGTH);
+                    JSTaggedValue typeId = tsLayout->GetTypeId(index - ClassInfoExtractor::STATIC_RESERVED_LENGTH);
+                    GlobalTSTypeRef gt(static_cast<uint32_t>(typeId.GetNumber()));
+                    if (!tsManager->IsFunctionTypeKind(gt)) {
+                        continue;
+                    }
+                    if (!hasFunction) {
+                        hasFunction = true;
+                        functionFirstIndex = index;
+                        numNonStaticFunc = functionFirstIndex - ClassInfoExtractor::STATIC_RESERVED_LENGTH;
+                    }
+                    if (tsManager->IsGetterSetterFunc(gt)) {
+                        attributes.SetIsAccessor(true);
+                    }
+                    break;
+            }
+            ASSERT_PRINT(JSTaggedValue::IsPropertyKey(JSHandle<JSTaggedValue>(thread, tsPropKey)),
+                         "Key is not a property key");
+            attributes.SetIsInlinedProps(true);
+            attributes.SetRepresentation(Representation::MIXED);
+            attributes.SetOffset(index - numNonStaticFunc);
+            layout->AddKey(thread, index - numNonStaticFunc, tsPropKey, attributes);
+        }
+        uint32_t numStaticFunc = numOfProps - functionFirstIndex;
+        for (uint32_t index = ClassInfoExtractor::STATIC_RESERVED_LENGTH; index < functionFirstIndex; index++) {
+            JSTaggedValue tsPropKey = tsLayout->GetKey(index - ClassInfoExtractor::STATIC_RESERVED_LENGTH);
+            PropertyAttributes attributes = PropertyAttributes::Default();
+            attributes.SetIsInlinedProps(true);
+            attributes.SetRepresentation(Representation::MIXED);
+            attributes.SetOffset(index + numStaticFunc);
+            layout->AddKey(thread, index + numStaticFunc, tsPropKey, attributes);
+        }
+        hclass = factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, numOfProps);
+        hclass->SetLayout(thread, layout);
+        hclass->SetNumberOfProps(numOfProps);
+    } else {
+        // dictionary mode
+        hclass = factory->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, 0);  // without in-obj
+        hclass->SetIsDictionaryMode(true);
+        hclass->SetNumberOfProps(0);
+    }
+
+    hclass->SetTS(true);
+    hclass->SetClassConstructor(true);
+    hclass->SetConstructor(true);
 
     return hclass;
 }
