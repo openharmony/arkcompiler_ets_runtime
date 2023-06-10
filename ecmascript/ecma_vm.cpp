@@ -573,13 +573,6 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
                         taskInfo, concurrentData_);
 }
 
-void EcmaVM::PrintOptStat()
-{
-    if (optCodeProfiler_ != nullptr) {
-        optCodeProfiler_->PrintAndReset();
-    }
-}
-
 void EcmaVM::DumpCallTimeInfo()
 {
     if (callTimer_ != nullptr) {

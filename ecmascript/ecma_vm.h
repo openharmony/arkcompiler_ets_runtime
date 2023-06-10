@@ -397,7 +397,6 @@ public:
 
     void HandleUncaughtException(JSTaggedValue exception);
     void DumpCallTimeInfo();
-    void PrintOptStat();
 
     FunctionCallTimer *GetCallTimer() const
     {

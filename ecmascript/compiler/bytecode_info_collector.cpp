@@ -152,7 +152,8 @@ void BytecodeInfoCollector::CollectClassLiteralInfo(const MethodLiteral *method,
 
     if (classOffsetVec.size() == classNameVec.size()) {
         for (uint32_t i = 0; i < classOffsetVec.size(); i++) {
-            vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AddElementToClassNameMap(jsPandaFile_, classOffsetVec[i], classNameVec[i]);
+            vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AddElementToClassNameMap(
+                jsPandaFile_, classOffsetVec[i], classNameVec[i]);
         }
     }
 }

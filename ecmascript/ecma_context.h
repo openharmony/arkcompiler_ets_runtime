@@ -219,6 +219,7 @@ public:
     static void UnmountContext(JSThread *thread);
     void SetMicroJobQueue(job::MicroJobQueue *queue);
     void SetGlobalEnv(GlobalEnv *global);
+    void PrintOptStat();
 
     OptCodeProfiler *GetOptCodeProfiler() const
     {

@@ -231,7 +231,7 @@ JSHandle<JSHClass> TSHClassGenerator::CreateCHClass(const JSThread *thread,
     uint32_t numNonStaticFunc = 0;
     bool hasFunction = false;
     if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
-        TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+        TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
         JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(numOfProps);
         for (uint32_t index = 0; index < numOfProps; ++index) {
             JSTaggedValue tsPropKey;

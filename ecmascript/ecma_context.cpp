@@ -124,7 +124,7 @@ void EcmaContext::InitializeEcmaScriptRunStat()
     };
     static_assert(sizeof(runtimeCallerNames) == sizeof(const char *) * ecmascript::RUNTIME_CALLER_NUMBER,
                   "Invalid runtime caller number");
-    runtimeStat_ = chunk_.New<EcmaRuntimeStat>(runtimeCallerNames, ecmascript::RUNTIME_CALLER_NUMBER);
+    runtimeStat_ = vm_->GetChunk()->New<EcmaRuntimeStat>(runtimeCallerNames, ecmascript::RUNTIME_CALLER_NUMBER);
     if (UNLIKELY(runtimeStat_ == nullptr)) {
         LOG_FULL(FATAL) << "alloc runtimeStat_ failed";
         UNREACHABLE();
@@ -284,9 +284,6 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     if (!excuteFromJob && thread_->HasPendingException()) {
         HandleUncaughtException(thread_->GetException());
     }
-#if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
-    vm_->DumpCallTimeInfo();
-#endif
     return result;
 }
 
@@ -715,6 +712,13 @@ bool EcmaContext::LoadAOTFiles(const std::string& aotFileName)
         return false;
     }
     return true;
+}
+
+void EcmaContext::PrintOptStat()
+{
+    if (optCodeProfiler_ != nullptr) {
+        optCodeProfiler_->PrintAndReset();
+    }
 }
 
 void EcmaContext::DumpAOTInfo() const
