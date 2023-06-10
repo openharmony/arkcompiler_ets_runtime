@@ -302,13 +302,13 @@ void JSPandaFileManager::RemoveJSPandaFileVm(const EcmaVM *vm, const JSPandaFile
     }
 
     os::memory::LockHolder lock(jsPandaFileLock_);
-    extractors_.erase(jsPandaFile);
     auto iterOld = oldJSPandaFiles_.begin();
     while (iterOld != oldJSPandaFiles_.end()) {
         if (iterOld->first.get() == jsPandaFile) {
             auto &vmSet = iterOld->second;
             vmSet.erase(vm);
             if (vmSet.empty()) {
+                extractors_.erase(jsPandaFile);
                 oldJSPandaFiles_.erase(iterOld);
             }
             return;
@@ -320,6 +320,7 @@ void JSPandaFileManager::RemoveJSPandaFileVm(const EcmaVM *vm, const JSPandaFile
         auto &vmSet = iter->second.second;
         vmSet.erase(vm);
         if (vmSet.empty()) {
+            extractors_.erase(jsPandaFile);
             // erase shared_ptr from map, the ref count -1.
             loadedJSPandaFiles_.erase(iter);
         }
