@@ -27,7 +27,8 @@ namespace panda::ecmascript {
 FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current_(sp), thread_(thread)
 {
     if (thread != nullptr) {
-        arkStackMapParser_ = const_cast<JSThread*>(thread)->GetCurrentEcmaContext()->GetAOTFileManager()->GetStackMapParser();
+        arkStackMapParser_ =
+            const_cast<JSThread*>(thread)->GetCurrentEcmaContext()->GetAOTFileManager()->GetStackMapParser();
     }
 }
 

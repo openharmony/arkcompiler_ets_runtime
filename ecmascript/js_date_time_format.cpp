@@ -458,16 +458,16 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
             locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
         switch (type) {
             case IcuCacheType::DEFAULT:
-                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DEFAULT, cacheEntry,
-                                               simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
+                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DEFAULT,
+                    cacheEntry, simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             case IcuCacheType::DATE:
-                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DATE, cacheEntry,
-                                               simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
+                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DATE,
+                    cacheEntry, simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             case IcuCacheType::TIME:
-                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_TIME, cacheEntry,
-                                               simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
+                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_TIME,
+                    cacheEntry, simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             default:
                 UNREACHABLE();

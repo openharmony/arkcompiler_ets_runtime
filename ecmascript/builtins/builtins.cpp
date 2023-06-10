@@ -272,9 +272,6 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         InitializeBigInt(env, primRefObjHClass);
     } else {
         // error and symbol need to be shared when initialize realm
-        // InitializeAllTypeErrorWithRealm(env);
-        // InitializeSymbolWithRealm(env, primRefObjHClass);
-        // InitializeBigIntWithRealm(env);
         InitializeAllTypeError(env, objFuncClass);
         InitializeSymbol(env, primRefObjHClass);
         InitializeBigInt(env, primRefObjHClass);

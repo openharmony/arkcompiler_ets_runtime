@@ -669,7 +669,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
             locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
         auto formatterPointer = new icu::number::LocalizedNumberFormatter(icuNumberFormatter);
         thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::NUMBER_FORMATTER, cacheEntry, formatterPointer,
-                                       JSNumberFormat::FreeIcuNumberformat);
+            JSNumberFormat::FreeIcuNumberformat);
     } else {
         // Set numberFormat.[[IcuNumberForma]] to handleNumberFormatter
         factory->NewJSIntlIcuData(numberFormat, icuNumberFormatter, JSNumberFormat::FreeIcuNumberformat);

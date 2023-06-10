@@ -1160,7 +1160,8 @@ JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue k
                                                JSTaggedValue jsFunc)
 {
     if (inner) {
-        JSTaggedValue moduleValue = thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueInner(key, jsFunc);
+        JSTaggedValue moduleValue =
+            thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueInner(key, jsFunc);
         return moduleValue;
     }
 

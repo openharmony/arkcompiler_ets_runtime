@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/ecma_context.h"
-
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_global.h"
@@ -166,7 +165,8 @@ EcmaContext::~EcmaContext()
     ClearBufferData();
     // clear c_address: c++ pointer delete
     if (!vm_->IsBundlePack()) {
-        std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(vm_->GetAssetPath());
+        std::shared_ptr<JSPandaFile> jsPandaFile =
+            JSPandaFileManager::GetInstance()->FindJSPandaFile(vm_->GetAssetPath());
         if (jsPandaFile != nullptr) {
             jsPandaFile->DeleteParsedConstpoolVM(vm_);
         }
@@ -197,7 +197,7 @@ EcmaContext::~EcmaContext()
     if (aotFileManager_ != nullptr) {
         delete aotFileManager_;
         aotFileManager_ = nullptr;
-    }    
+    }
     if (propertiesCache_ != nullptr) {
         delete propertiesCache_;
         propertiesCache_ = nullptr;
@@ -212,7 +212,7 @@ JSTaggedValue EcmaContext::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc
 }
 
 JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
-        const JSTaggedType *prevFp, bool needPushUndefined)
+                                      const JSTaggedType *prevFp, bool needPushUndefined)
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
@@ -380,7 +380,6 @@ JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsP
     int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
     JSTaggedValue constpool = FindConstpool(jsPandaFile, index);
     if (constpool.IsHole()) {
-        // JSHandle<ConstantPool> newConstpool = ConstantPool::CreateConstPool(this, jsPandaFile, id);
         JSHandle<ConstantPool> newConstpool = ConstantPool::CreateConstPool(vm_, jsPandaFile, id);
         AddConstpool(jsPandaFile, newConstpool.GetTaggedValue(), index);
         return newConstpool;
@@ -475,7 +474,7 @@ void EcmaContext::ProcessReferences(const WeakRootVisitor &visitor)
         } else {
             ++iterator;
         }
-    }    
+    }
 }
 
 JSHandle<JSTaggedValue> EcmaContext::GetEcmaUncaughtException() const

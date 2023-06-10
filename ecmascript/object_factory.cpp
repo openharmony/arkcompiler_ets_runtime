@@ -718,7 +718,6 @@ JSHandle<JSHClass> ObjectFactory::CreateJSArrayInstanceClass(JSHandle<JSTaggedVa
 
 JSHandle<JSHClass> ObjectFactory::CreateJSArguments(const JSHandle<GlobalEnv> &env)
 {
-    // JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSTaggedValue> proto = env->GetObjectFunctionPrototype();
 

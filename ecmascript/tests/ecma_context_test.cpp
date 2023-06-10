@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-// #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/object_factory.h"
@@ -75,7 +74,7 @@ HWTEST_F_L0(EcmaContextTest, CreatePushContext)
     EXPECT_EQ(context3.size(), 3);
     thread->PopContext();
     context3 = thread->GetEcmaContexts();
-    EXPECT_EQ(context3.size(), 2);   
+    EXPECT_EQ(context3.size(), 2);
 }
 
 HWTEST_F_L0(EcmaContextTest, GetRegExpCache)

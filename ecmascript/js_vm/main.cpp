@@ -107,12 +107,6 @@ int Main(const int argc, const char **argv)
                 ret = false;
                 break;
             }
-            // auto res2 = JSNApi::ExecuteInContext(vm, fileName, entry);
-            // if (!res2) {
-            //     std::cerr << "Cannot execute panda2 file '" << fileName << "' with entry '" << entry << "'" << std::endl;
-            //     ret = false;
-            //     break;
-            // }
         }
         auto totalTime = execute.TotalSpentTime();
         if (runtimeOptions.IsEnablePrintExecuteTime()) {

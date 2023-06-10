@@ -28,7 +28,6 @@
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/taskpool/taskpool.h"
-// #include "ecmascript/waiter_list.h"
 
 namespace panda {
 class JSNApi;
@@ -184,7 +183,7 @@ public:
     void RemoveFromNativePointerList(JSNativePointer *array);
 
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
-    JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;   
+    JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
     bool IsOptionalLogEnabled() const
     {
         return optionalLogEnabled_;

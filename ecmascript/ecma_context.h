@@ -16,12 +16,10 @@
 #define ECMASCRIPT_ECMA_CONTEXT_H
 
 #include <optional>
-
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_handle.h"
-// #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/mem/c_containers.h"

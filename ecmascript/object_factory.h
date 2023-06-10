@@ -631,7 +631,7 @@ public:
     JSHandle<VTable> NewVTable(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<JSHClass> GetNonOptimizedHclass(JSHandle<JSHClass> oldHClassHandle, FunctionKind kind);
     JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
-                                     uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);   
+                                     uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
 private:
     friend class GlobalEnv;
@@ -660,8 +660,7 @@ private:
                                      uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     // used for creating jshclass in GlobalEnv, EcmaVM
     JSHandle<JSHClass> NewEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type);
-    // JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
-    //                                  uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+
     JSHandle<JSHClass> NewEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
                                              uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     JSHandle<JSHClass> InitClassClass();
