@@ -81,6 +81,8 @@ public:
     void GetAllKeys(const JSThread *thread, int end, int offset, TaggedArray *keyArray,
                     const JSHandle<JSObject> object);
     void GetAllKeys(int end, std::vector<JSTaggedValue> &keyVector, const JSHandle<JSObject> object);
+    void GetAllKeysByFilter(const JSThread *thread, uint32_t numberOfProps, uint32_t &keyArrayEffectivelength,
+        TaggedArray *keyArray, const JSHandle<JSObject> object, uint32_t filter);
     void GetAllEnumKeys(const JSThread *thread, int end, int offset, TaggedArray *keyArray, uint32_t *keys,
                         const JSHandle<JSObject> object);
 

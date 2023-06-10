@@ -390,5 +390,6 @@ inline std::pair<JSHandle<TaggedArray>, JSHandle<TaggedArray>> JSObject::GetOwnE
         thread, obj, 0, numOfKeys, copyLengthOfKeys) : factory->EmptyArray();
     return std::make_pair(keyArray, elementArray);
 }
+
 }  //  namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSOBJECT_INL_H

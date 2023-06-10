@@ -852,6 +852,28 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnPropertyKeys(JSThread *thread, const 
     return JSObject::GetOwnPropertyKeys(thread, JSHandle<JSObject>(obj));
 }
 
+JSHandle<TaggedArray> JSTaggedValue::GetAllPropertyKeys(JSThread *thread,
+    const JSHandle<JSTaggedValue> &obj, uint32_t filter)
+{
+    if (obj->IsJSProxy()) {
+        LOG_ECMA(WARN) << "GetAllPropertyKeys do not support JSProxy yet";
+        return thread->GetEcmaVM()->GetFactory()->EmptyArray();
+    }
+    if (obj->IsTypedArray()) {
+        LOG_ECMA(WARN) << "GetAllPropertyKeys do not support TypedArray yet";
+        return thread->GetEcmaVM()->GetFactory()->EmptyArray();
+    }
+    if (obj->IsSpecialContainer()) {
+        LOG_ECMA(WARN) << "GetAllPropertyKeys do not support SpecialContainer yet";
+        return thread->GetEcmaVM()->GetFactory()->EmptyArray();
+    }
+    if (obj->IsModuleNamespace()) {
+        LOG_ECMA(WARN) << "GetAllPropertyKeys do not support ModuleNamespace yet";
+        return thread->GetEcmaVM()->GetFactory()->EmptyArray();
+    }
+    return JSObject::GetAllPropertyKeys(thread, JSHandle<JSObject>(obj), filter);
+}
+
 JSHandle<TaggedArray> JSTaggedValue::GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     ASSERT(!obj->IsJSProxy());

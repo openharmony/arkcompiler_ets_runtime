@@ -489,6 +489,8 @@ public:
     static JSTaggedValue GetPrototype(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static bool PreventExtensions(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static JSHandle<TaggedArray> GetOwnPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
+    static JSHandle<TaggedArray> GetAllPropertyKeys(JSThread *thread,
+        const JSHandle<JSTaggedValue> &obj, uint32_t filter);
     static JSHandle<TaggedArray> GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static bool HasProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key);
     static bool HasProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t key);

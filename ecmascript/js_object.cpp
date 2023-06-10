@@ -18,6 +18,7 @@
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/filter_helper.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_for_in_iterator.h"
@@ -329,6 +330,30 @@ void JSObject::GetAllKeys(const JSThread *thread, const JSHandle<JSObject> &obj,
     dict->GetAllKeys(thread, offset, *keyArray);
 }
 
+void JSObject::GetAllKeysByFilter(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                  uint32_t& keyArrayEffectivelength,
+                                  const JSHandle<TaggedArray> &keyArray,
+                                  uint32_t filter)
+{
+    TaggedArray *array = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
+    if (!array->IsDictionaryMode()) {
+        uint32_t numberOfProps = obj->GetJSHClass()->NumberOfProps();
+        if (numberOfProps > 0) {
+            LayoutInfo::Cast(obj->GetJSHClass()->GetLayout().GetTaggedObject())
+                ->GetAllKeysByFilter(thread, numberOfProps, keyArrayEffectivelength, *keyArray, obj, filter);
+        }
+        return;
+    }
+
+    if (obj->IsJSGlobalObject()) {
+        GlobalDictionary *dict = GlobalDictionary::Cast(array);
+        return dict->GetAllKeysByFilter(thread, keyArrayEffectivelength, *keyArray, filter);
+    }
+
+    NameDictionary *dict = NameDictionary::Cast(obj->GetProperties().GetTaggedObject());
+    dict->GetAllKeysByFilter(thread, keyArrayEffectivelength, *keyArray, filter);
+}
+
 // For Serialization use. Does not support JSGlobalObject
 void JSObject::GetAllKeys(const JSHandle<JSObject> &obj, std::vector<JSTaggedValue> &keyVector)
 {
@@ -432,6 +457,46 @@ void JSObject::GetAllElementKeys(JSThread *thread, const JSHandle<JSObject> &obj
         }
     } else {
         NumberDictionary::GetAllKeys(thread, JSHandle<NumberDictionary>(elements), elementIndex, keyArray);
+    }
+}
+
+void JSObject::GetAllElementKeysByFilter(JSThread *thread,
+                                         const JSHandle<JSObject> &obj,
+                                         const JSHandle<TaggedArray> &keyArray,
+                                         uint32_t &keyArrayEffectivelength,
+                                         uint32_t filter)
+{
+    ASSERT_PRINT(obj->IsECMAObject(), "obj is not object");
+    uint32_t elementIndex = 0;
+
+    // For strings attributes, only enumerable is true
+    if ((filter & NATIVE_ENUMERABLE) && obj->IsJSPrimitiveRef() && JSPrimitiveRef::Cast(*obj)->IsString()) {
+        elementIndex = JSPrimitiveRef::Cast(*obj)->GetStringLength();
+        for (uint32_t i = 0; i < elementIndex; ++i) {
+            keyArray->Set(thread, keyArrayEffectivelength, JSTaggedValue(i));
+            keyArrayEffectivelength++;
+        }
+    }
+
+    JSHandle<TaggedArray> elements(thread, obj->GetElements());
+    JSHandle<JSTaggedValue> objValue(obj);
+    
+    if (!elements->IsDictionaryMode()) {
+        uint32_t elementsLen = elements->GetLength();
+        for (uint32_t i = 0; i < elementsLen; ++i) {
+            if (!elements->Get(i).IsHole()) {
+                ObjectOperator op(thread, objValue, i, OperatorType::OWN);
+                bool bIgnore = FilterHelper::IgnoreKeyByFilter<ObjectOperator>(op, filter);
+                if (bIgnore) {
+                    continue;
+                }
+                keyArray->Set(thread, keyArrayEffectivelength, JSTaggedValue(i));
+                keyArrayEffectivelength++;
+            }
+        }
+    } else {
+        NumberDictionary::GetAllKeysByFilter(thread, JSHandle<NumberDictionary>(elements),
+            keyArrayEffectivelength, keyArray, filter);
     }
 }
 
@@ -1179,6 +1244,66 @@ JSHandle<TaggedArray> JSObject::GetOwnPropertyKeys(JSThread *thread, const JSHan
     }
     GetAllKeys(thread, obj, static_cast<int32_t>(numOfElements), keyArray);
     return keyArray;
+}
+
+JSHandle<TaggedArray> JSObject::GetAllPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t filter)
+{
+    bool isInculdePrototypes = (filter & NATIVE_KEY_INCLUDE_PROTOTYPES);
+    JSMutableHandle<JSObject> currentObj(thread, obj);
+    JSMutableHandle<JSTaggedValue> currentObjValue(thread, currentObj);
+    
+    uint32_t curObjNumberOfElements = currentObj->GetNumberOfElements();
+    uint32_t curObjNumberOfKeys = currentObj->GetNumberOfKeys();
+    uint32_t curObjectKeysLength = curObjNumberOfElements + curObjNumberOfKeys;
+    uint32_t retArraylength = curObjectKeysLength;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSMutableHandle<TaggedArray> retArray(thread, factory->NewTaggedArray(retArraylength));
+    uint32_t retArrayEffectivelength = 0;
+    
+    do {
+        curObjNumberOfElements = currentObj->GetNumberOfElements();
+        curObjNumberOfKeys = currentObj->GetNumberOfKeys();
+        curObjectKeysLength = curObjNumberOfElements + curObjNumberOfKeys;
+        uint32_t minRequireLength = curObjectKeysLength + retArrayEffectivelength;
+        if (retArraylength < minRequireLength) {
+            // expand retArray
+            retArray.Update(factory->NewAndCopyTaggedArray(retArray, minRequireLength, retArraylength));
+            retArraylength = minRequireLength;
+        }
+
+        GetAllElementKeysByFilter(thread, currentObj, retArray, retArrayEffectivelength, filter);
+
+        GetAllKeysByFilter(thread, currentObj, retArrayEffectivelength, retArray, filter);
+
+        if (!isInculdePrototypes) {
+            break;
+        }
+        currentObj.Update(GetPrototype(currentObj));
+        currentObjValue.Update(currentObj);
+    } while (currentObjValue->IsHeapObject());
+
+    JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
+    if (filter & NATIVE_KEY_NUMBERS_TO_STRINGS) {
+        for (uint32_t i = 0; i < retArrayEffectivelength; i++) {
+            element.Update(retArray->Get(i));
+            if (element->IsNumber()) {
+                retArray->Set(thread, i, base::NumberHelper::NumberToString(thread,
+                    JSTaggedValue(element->GetNumber())));
+            }
+        }
+    }
+    uint32_t elementIndex = 0;
+    while ((filter & NATIVE_KEY_SKIP_STRINGS) && (retArrayEffectivelength > 0) &&
+           (elementIndex < retArrayEffectivelength)) {
+        if (retArray->Get(elementIndex).IsString()) {
+            TaggedArray::RemoveElementByIndex(thread, retArray, elementIndex, retArrayEffectivelength);
+            retArrayEffectivelength--;
+        } else {
+            elementIndex++;
+        }
+    }
+    retArray->Trim(thread, retArrayEffectivelength);
+    return retArray;
 }
 
 JSHandle<TaggedArray> JSObject::GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj)

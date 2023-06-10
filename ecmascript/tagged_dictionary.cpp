@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/tagged_dictionary.h"
-
+#include "ecmascript/filter_helper.h"
 #include "ecmascript/tagged_hash_table.h"
 
 namespace panda::ecmascript {
@@ -58,6 +58,36 @@ void NameDictionary::GetAllKeys(const JSThread *thread, int offset, TaggedArray 
     for (const auto &entry : sortArr) {
         keyArray->Set(thread, arrayIndex + offset, entry.first);
         arrayIndex++;
+    }
+}
+
+void NameDictionary::GetAllKeysByFilter(const JSThread *thread, uint32_t &keyArrayEffectivelength,
+    TaggedArray *keyArray, uint32_t filter) const
+{
+    int size = Size();
+    CVector<std::pair<JSTaggedValue, PropertyAttributes>> sortArr;
+    for (int hashIndex = 0; hashIndex < size; hashIndex++) {
+        JSTaggedValue key = GetKey(hashIndex);
+        if (!key.IsUndefined() && !key.IsHole()) {
+            PropertyAttributes attr = GetAttributes(hashIndex);
+            bool bIgnore = FilterHelper::IgnoreKeyByFilter<PropertyAttributes>(attr, filter);
+            if (bIgnore) {
+                continue;
+            }
+            if (key.IsString() && (filter & NATIVE_KEY_SKIP_STRINGS)) {
+                continue;
+            }
+            if (key.IsSymbol() && (filter & NATIVE_KEY_SKIP_SYMBOLS)) {
+                continue;
+            }
+            std::pair<JSTaggedValue, PropertyAttributes> pair(key, attr);
+            sortArr.push_back(pair);
+        }
+    }
+    std::sort(sortArr.begin(), sortArr.end(), CompKey);
+    for (const auto &entry : sortArr) {
+        keyArray->Set(thread, keyArrayEffectivelength, entry.first);
+        keyArrayEffectivelength++;
     }
 }
 
@@ -177,6 +207,36 @@ void NumberDictionary::GetAllKeys(const JSThread *thread, const JSHandle<NumberD
         ASSERT_NO_ABRUPT_COMPLETION(thread);
         keyArray->Set(thread, arrayIndex + offset, str.GetTaggedValue());
         arrayIndex++;
+    }
+}
+
+void NumberDictionary::GetAllKeysByFilter(const JSThread *thread, const JSHandle<NumberDictionary> &obj,
+    uint32_t &keyArrayEffectivelength, const JSHandle<TaggedArray> &keyArray, uint32_t filter)
+{
+    ASSERT_PRINT(keyArrayEffectivelength + static_cast<uint32_t>(obj->EntriesCount()) <= keyArray->GetLength(),
+                 "keyArray capacity is not enough for dictionary");
+
+    uint32_t size = static_cast<uint32_t>(obj->Size());
+    CVector<JSTaggedValue> sortArr;
+    for (uint32_t hashIndex = 0; hashIndex < size; hashIndex++) {
+        JSTaggedValue key = obj->GetKey(hashIndex);
+        if (key.IsUndefined() || key.IsHole()) {
+            continue;
+        }
+        
+        PropertyAttributes attr = obj->GetAttributes(hashIndex);
+        bool bIgnore = FilterHelper::IgnoreKeyByFilter<PropertyAttributes>(attr, filter);
+
+        if (!bIgnore) {
+            sortArr.push_back(JSTaggedValue(static_cast<uint32_t>(key.GetInt())));
+        }
+    }
+    std::sort(sortArr.begin(), sortArr.end(), CompKey);
+    for (auto entry : sortArr) {
+        JSHandle<JSTaggedValue> keyHandle(thread, entry);
+        ASSERT_NO_ABRUPT_COMPLETION(thread);
+        keyArray->Set(thread, keyArrayEffectivelength, keyHandle.GetTaggedValue());
+        keyArrayEffectivelength++;
     }
 }
 

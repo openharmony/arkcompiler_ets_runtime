@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_GLOBAL_DICTIONARY_INL_H
 #define ECMASCRIPT_GLOBAL_DICTIONARY_INL_H
 
+#include "ecmascript/filter_helper.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/ic/property_box.h"
@@ -117,6 +118,40 @@ void GlobalDictionary::GetAllKeys(const JSThread *thread, int offset, TaggedArra
         JSTaggedValue nameKey = entry.first;
         keyArray->Set(thread, arrayIndex + offset, nameKey);
         arrayIndex++;
+    }
+}
+
+void GlobalDictionary::GetAllKeysByFilter(const JSThread *thread,
+    uint32_t &keyArrayEffectivelength, TaggedArray *keyArray, uint32_t filter) const
+{
+    ASSERT_PRINT(keyArrayEffectivelength + static_cast<int>(EntriesCount()) <= keyArray->GetLength(),
+                 "keyArray capacity is not enough for dictionary");
+    int size = Size();
+
+    CVector<std::pair<JSTaggedValue, uint32_t>> sortArr;
+    for (int hashIndex = 0; hashIndex < size; hashIndex++) {
+        JSTaggedValue key = GetKey(hashIndex);
+        if (!key.IsUndefined() && !key.IsHole()) {
+            PropertyAttributes attr = GetAttributes(hashIndex);
+            bool bIgnore = FilterHelper::IgnoreKeyByFilter<PropertyAttributes>(attr, filter);
+            if (bIgnore) {
+                continue;
+            }
+            if (key.IsString() && (filter & NATIVE_KEY_SKIP_STRINGS)) {
+                continue;
+            }
+            if (key.IsSymbol() && (filter & NATIVE_KEY_SKIP_SYMBOLS)) {
+                continue;
+            }
+            std::pair<JSTaggedValue, uint32_t> pair(key, attr.GetOffset());
+            sortArr.push_back(pair);
+        }
+    }
+    std::sort(sortArr.begin(), sortArr.end(), CompKey);
+    for (auto entry : sortArr) {
+        JSTaggedValue nameKey = entry.first;
+        keyArray->Set(thread, keyArrayEffectivelength, nameKey);
+        keyArrayEffectivelength++;
     }
 }
 
