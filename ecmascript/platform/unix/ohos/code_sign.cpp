@@ -24,6 +24,7 @@ using namespace OHOS::Security::CodeSign;
 namespace panda::ecmascript {
 void CodeSignForAOTFile(const std::string &filename)
 {
+    LOG_ECMA(DEBUG) << "start to sign the aot file!";
     ByteBuffer sig;
     if (LocalCodeSignKit::SignLocalCode(filename, sig) != CommonErrCode::CS_SUCCESS) {
         LOG_ECMA(ERROR) << "Failed to sign the aot file!";
@@ -31,6 +32,8 @@ void CodeSignForAOTFile(const std::string &filename)
     }
     if (CodeSignUtils::EnforceCodeSignForFile(filename, sig) != CommonErrCode::CS_SUCCESS) {
         LOG_ECMA(ERROR) << "Failed to enable code signature for the aot file!";
+        return;
     }
+    LOG_ECMA(DEBUG) << "sign the aot file success";
 }
 }  // namespace panda::ecmascript

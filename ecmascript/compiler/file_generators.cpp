@@ -351,8 +351,14 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
 {
     Module *latestModule = GetLatestModule();
     uint32_t latestModuleIdx = GetModuleVecSize() - 1;
-    latestModule->RunAssembler(*(log_));
-    CollectCodeInfo(latestModule, latestModuleIdx);
+    {
+        TimeScope timescope("LLVMIROpt", const_cast<CompilerLog *>(log_));
+        latestModule->RunAssembler(*(log_));
+    }
+    {
+        TimeScope timescope("LLVMCodeGen", const_cast<CompilerLog *>(log_));
+        CollectCodeInfo(latestModule, latestModuleIdx);
+    }
     // message has been put into aotInfo, so latestModule could be destroyed
     latestModule->DestroyModule();
 }
