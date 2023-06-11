@@ -258,7 +258,8 @@ void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *
                     continue;
                 }
 
-                JSTaggedValue patchConstpoolValue = context->FindConstpool(patchFile, patchMethodLiteral->GetMethodId());
+                JSTaggedValue patchConstpoolValue = context->FindConstpool(patchFile,
+                    patchMethodLiteral->GetMethodId());
                 ReplaceMethod(thread, baseMethod, patchMethodLiteral, patchConstpoolValue);
 
                 BaseMethodIndex indexs = {constpoolNum, constpoolIndex};
@@ -283,7 +284,8 @@ void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *
                         continue;
                     }
 
-                    JSTaggedValue patchConstpoolValue = context->FindConstpool(patchFile, patchMethodLiteral->GetMethodId());
+                    JSTaggedValue patchConstpoolValue = context->FindConstpool(patchFile,
+                        patchMethodLiteral->GetMethodId());
                     ReplaceMethod(thread, baseMethod, patchMethodLiteral, patchConstpoolValue);
 
                     BaseMethodIndex indexs = {constpoolNum, constpoolIndex, literalIndex};

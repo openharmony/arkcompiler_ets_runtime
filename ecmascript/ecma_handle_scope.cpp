@@ -18,8 +18,7 @@
 #include "ecmascript/ecma_context.h"
 
 namespace panda::ecmascript {
-EcmaHandleScope::EcmaHandleScope(JSThread *thread) :
-    thread_(thread)
+EcmaHandleScope::EcmaHandleScope(JSThread *thread) : thread_(thread)
 {
     auto context = thread_->GetCurrentEcmaContext();
     prevNext_ = context->handleScopeStorageNext_;

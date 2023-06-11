@@ -223,7 +223,7 @@ public:
         glueData_.lastFp_ = fp;
     }
 
-    const JSTaggedType *GetLastFp()const
+    const JSTaggedType *GetLastFp() const
     {
         return glueData_.lastFp_;
     }
