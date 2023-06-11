@@ -7202,6 +7202,7 @@ void EcmaInterpreter::InitStackFrame(EcmaContext *context)
     }
     InitStackFrameForSP(const_cast<JSTaggedType *>(context->GetCurrentFrame()));
 }
+
 void EcmaInterpreter::InitStackFrameForSP(JSTaggedType *prevSp)
 {
     InterpretedFrame *state = GET_FRAME(prevSp);

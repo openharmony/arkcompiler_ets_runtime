@@ -1240,7 +1240,7 @@ public:
 
     // JS code
     static bool ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry,
-        bool needUpdate = false);
+                                 bool needUpdate = false);
     static bool Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate = false);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
                         const std::string &filename = "", bool needUpdate = false);

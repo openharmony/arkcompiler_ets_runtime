@@ -102,5 +102,5 @@ host_moduletest_action("container") {
     ":gen_container_treeset_abc",
     ":gen_container_vector_abc",
   ]
-  timeout = "1200"
+  timeout = "300"
 }

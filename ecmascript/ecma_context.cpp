@@ -14,12 +14,14 @@
  */
 
 #include "ecmascript/ecma_context.h"
+
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_global.h"
+#include "ecmascript/builtins/builtins_regexp.h"
+#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/ecma_string_table.h"
-#include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants-inl.h"
@@ -27,7 +29,6 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
@@ -62,7 +63,6 @@ EcmaContext *EcmaContext::Create(JSThread *thread)
 // static
 bool EcmaContext::Destroy(EcmaContext *context)
 {
-    LOG_ECMA(INFO) << "EcmaContext::Destroy";
     if (context != nullptr) {
         delete context;
         context = nullptr;
@@ -73,7 +73,7 @@ bool EcmaContext::Destroy(EcmaContext *context)
 
 bool EcmaContext::Initialize()
 {
-    LOG_ECMA(INFO) << "EcmaContext::Initialize";
+    LOG_ECMA(DEBUG) << "EcmaContext::Initialize";
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaContext::Initialize");
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     aotFileManager_ = new AOTFileManager(vm_);
@@ -129,6 +129,7 @@ void EcmaContext::InitializeEcmaScriptRunStat()
         UNREACHABLE();
     }
 }
+
 void EcmaContext::SetRuntimeStatEnable(bool flag)
 {
     static uint64_t start = 0;
@@ -151,7 +152,6 @@ void EcmaContext::SetRuntimeStatEnable(bool flag)
 
 EcmaContext::~EcmaContext()
 {
-    LOG_ECMA(INFO) << "~EcmaContext";
     if (runtimeStat_ != nullptr && runtimeStat_->IsRuntimeStatEnabled()) {
         runtimeStat_->Print();
     }
@@ -203,6 +203,7 @@ EcmaContext::~EcmaContext()
         propertiesCache_ = nullptr;
     }
 }
+
 JSTaggedValue EcmaContext::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                                    const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                                    CJSInfo* cjsInfo)
@@ -225,6 +226,7 @@ JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
                                                             needPushUndefined);
     return res;
 }
+
 Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
                                                                 std::string_view entryPoint, bool excuteFromJob)
 {
@@ -689,6 +691,7 @@ void EcmaContext::ShrinkHandleStorage(int prevIndex)
         }
     }
 }
+
 void EcmaContext::LoadStubFile()
 {
     std::string stubFile = vm_->GetJSOptions().GetStubFile();
@@ -724,5 +727,4 @@ void EcmaContext::DumpAOTInfo() const
 {
     aotFileManager_->DumpAOTInfo();
 }
-
 }  // namespace panda::ecmascript

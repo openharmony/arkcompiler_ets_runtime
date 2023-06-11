@@ -19,6 +19,7 @@ namespace panda::ecmascript {
 JSHandle<ConstantPool> ConstantPool::GetDeserializedConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                                                  int32_t cpID)
 {
-    return JSHandle<ConstantPool>(vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager()->GetDeserializedConstantPool(jsPandaFile, cpID));
+    auto context = vm->GetJSThread()->GetCurrentEcmaContext();
+    return JSHandle<ConstantPool>(context->GetAOTFileManager()->GetDeserializedConstantPool(jsPandaFile, cpID));
 }
 }

@@ -185,7 +185,7 @@ using SharedArrayBuffer = builtins::BuiltinsSharedArrayBuffer;
 using BuiltinsAsyncIterator = builtins::BuiltinsAsyncIterator;
 using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
 
-void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit)
+void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit, bool isRealm)
 {
     thread_ = thread;
     vm_ = thread->GetEcmaVM();
@@ -266,15 +266,15 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
                                                   JSType::JS_FUNCTION, env->GetFunctionPrototype());
     env->SetFunctionClassWithoutName(thread_, FunctionClass);
 
-    if (env == vm_->GetGlobalEnv()) {
+    if (!isRealm) {
         InitializeAllTypeError(env, objFuncClass);
         InitializeSymbol(env, primRefObjHClass);
         InitializeBigInt(env, primRefObjHClass);
     } else {
         // error and symbol need to be shared when initialize realm
-        InitializeAllTypeError(env, objFuncClass);
-        InitializeSymbol(env, primRefObjHClass);
-        InitializeBigInt(env, primRefObjHClass);
+        InitializeAllTypeErrorWithRealm(env);
+        InitializeSymbolWithRealm(env, primRefObjHClass);
+        InitializeBigIntWithRealm(env);
     }
 
     InitializeArray(env, objFuncPrototypeVal);

@@ -803,7 +803,8 @@ void HostPromiseRejectionTracker(const EcmaVM *vm,
 void JSNApi::SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data)
 {
     vm->GetJSThread()->GetCurrentEcmaContext()->SetHostPromiseRejectionTracker(HostPromiseRejectionTracker);
-    vm->GetJSThread()->GetCurrentEcmaContext()->SetPromiseRejectCallback(reinterpret_cast<ecmascript::PromiseRejectCallback>(cb));
+    vm->GetJSThread()->GetCurrentEcmaContext()->SetPromiseRejectCallback(
+        reinterpret_cast<ecmascript::PromiseRejectCallback>(cb));
     vm->GetJSThread()->GetCurrentEcmaContext()->SetData(data);
 }
 

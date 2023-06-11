@@ -102,10 +102,6 @@ inline int LayoutInfo::FindElementWithCache(const JSThread *thread, JSHClass *cl
     if (propertiesNumber <= MAX_ELEMENTS_LINER_SEARCH) {
         Span<struct Properties> sp(GetProperties(), propertiesNumber);
         for (int i = 0; i < propertiesNumber; i++) {
-            if (key.IsString() && sp[i].key_.IsString()) {
-                EcmaStringAccessor::StringsAreEqual(EcmaString::Cast(sp[i].key_.GetTaggedObject()),
-                    EcmaString::Cast(key.GetTaggedObject()));
-            }
             if (sp[i].key_ == key) {
                 return i;
             }

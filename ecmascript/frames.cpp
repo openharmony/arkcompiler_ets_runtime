@@ -28,7 +28,7 @@ FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current
 {
     if (thread != nullptr) {
         arkStackMapParser_ =
-            const_cast<JSThread*>(thread)->GetCurrentEcmaContext()->GetAOTFileManager()->GetStackMapParser();
+            const_cast<JSThread *>(thread)->GetCurrentEcmaContext()->GetAOTFileManager()->GetStackMapParser();
     }
 }
 
@@ -111,7 +111,7 @@ JSTaggedValue FrameIterator::GetFunction() const
 
 AOTFileInfo::CallSiteInfo FrameIterator::CalCallSiteInfo(uintptr_t retAddr) const
 {
-    auto loader = const_cast<JSThread*>(thread_)->GetCurrentEcmaContext()->GetAOTFileManager();
+    auto loader = const_cast<JSThread *>(thread_)->GetCurrentEcmaContext()->GetAOTFileManager();
     return loader->CalCallSiteInfo(retAddr);
 }
 

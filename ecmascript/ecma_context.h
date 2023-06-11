@@ -18,15 +18,15 @@
 #include <optional>
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
-#include "libpandafile/file.h"
 #include "ecmascript/waiter_list.h"
+#include "libpandafile/file.h"
 
 namespace panda {
 class JSNApi;
@@ -383,10 +383,10 @@ private:
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
     JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                           const JSPandaFile *jsPandaFile, std::string_view entryPoint,
-                                          CJSInfo* cjsInfo = nullptr);
+                                          CJSInfo *cjsInfo = nullptr);
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                                        bool excuteFromJob = false);
-    bool LoadAOTFiles(const std::string& aotFileName);
+    bool LoadAOTFiles(const std::string &aotFileName);
     NO_MOVE_SEMANTIC(EcmaContext);
     NO_COPY_SEMANTIC(EcmaContext);
 
@@ -419,7 +419,7 @@ private:
     // Registered Callbacks
     PromiseRejectCallback promiseRejectCallback_ {nullptr};
     HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
-    void* data_ {nullptr};
+    void* data_{nullptr};
 
     // opt code Profiler
     OptCodeProfiler *optCodeProfiler_ {nullptr};

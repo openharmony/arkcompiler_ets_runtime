@@ -27,7 +27,7 @@ bool PassManager::ShouldCollect() const
 {
     return passOptions_->EnableTypeInfer() &&
         (profilerDecoder_.IsLoaded() || vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AssertTypes() ||
-            log_->OutputType());
+         log_->OutputType());
 }
 
 bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &gen)

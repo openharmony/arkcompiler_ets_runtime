@@ -107,7 +107,8 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     JSHandle<ConstantPool> constpool;
     bool isNewVersion = jsPandaFile->IsNewVersion();
     if (isNewVersion) {
-        constpool = vm->GetJSThread()->GetCurrentEcmaContext()->FindOrCreateConstPool(jsPandaFile, EntityId(mainMethodIndex));
+        constpool = vm->GetJSThread()->GetCurrentEcmaContext()->FindOrCreateConstPool(
+            jsPandaFile, EntityId(mainMethodIndex));
     } else {
         JSTaggedValue constpoolVal = vm->GetJSThread()->GetCurrentEcmaContext()->FindConstpool(jsPandaFile, 0);
         if (constpoolVal.IsHole()) {

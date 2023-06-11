@@ -2113,7 +2113,7 @@ JSHandle<JSRealm> ObjectFactory::NewJSRealm()
     realmEnvHandle->SetTemplateMap(thread_, result);
 
     Builtins builtins;
-    builtins.Initialize(realmEnvHandle, thread_);
+    builtins.Initialize(realmEnvHandle, thread_, false, true);
     JSHandle<JSTaggedValue> protoValue = thread_->GlobalConstants()->GetHandledJSRealmClass();
     JSHandle<JSHClass> hclassHandle = NewEcmaHClass(JSRealm::SIZE, JSType::JS_REALM, protoValue);
     JSHandle<JSRealm> realm(NewJSObject(hclassHandle));

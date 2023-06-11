@@ -59,7 +59,7 @@ HWTEST_F_L0(EcmaContextTest, Create)
     EXPECT_EQ(Cv1.size(), 1);
     thread->PushContext(context2);
     Cv1 = thread->GetEcmaContexts();
-    EXPECT_EQ(Cv1.size(), 2);
+    EXPECT_EQ(Cv1.size(), 2);  // 2: size of contexts.
 }
 
 HWTEST_F_L0(EcmaContextTest, CreatePushContext)
@@ -68,13 +68,13 @@ HWTEST_F_L0(EcmaContextTest, CreatePushContext)
     auto context1 = EcmaContext::Create(thread);
     thread->PushContext(context1);
     CVector<EcmaContext *> context3 = thread->GetEcmaContexts();
-    EXPECT_EQ(context3.size(), 2);
+    EXPECT_EQ(context3.size(), 2);  // 2: size of contexts.
     thread->PushContext(context);
     context3 = thread->GetEcmaContexts();
-    EXPECT_EQ(context3.size(), 3);
+    EXPECT_EQ(context3.size(), 3);  // 3: size of contexts.
     thread->PopContext();
     context3 = thread->GetEcmaContexts();
-    EXPECT_EQ(context3.size(), 2);
+    EXPECT_EQ(context3.size(), 2);  // 2: size of contexts.
 }
 
 HWTEST_F_L0(EcmaContextTest, GetRegExpCache)
