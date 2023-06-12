@@ -354,10 +354,6 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
             if ((bb & BIT_MASK_ONE) == 0) {
                 if (!IsInURISet(bb)) {
                     sStr = StringHelper::Utf8ToU16String(&bb, 1);
-                    if (bb == 0) {
-                        return factory->NewFromUtf16Literal(reinterpret_cast<uint16_t *>(sStr.data()), 1)
-                            .GetTaggedValue();
-                    }
                 } else {
                     auto substr = EcmaStringAccessor::FastSubString(
                         thread->GetEcmaVM(), str, start, static_cast<uint32_t>(k) - start + 1U);
