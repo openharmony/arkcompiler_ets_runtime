@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-declare function print(arg:any):string;
+declare function print(arg: any): string;
 declare class ArkTools {
     static isNotHoleProperty(obj: object, key: string): boolean;
 }

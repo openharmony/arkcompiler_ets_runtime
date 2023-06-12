@@ -88,7 +88,7 @@ JSHandle<JSHClass> TSHClassGenerator::Generate(const JSHandle<TSClassType> &clas
 JSHandle<JSHClass> TSHClassGenerator::CreateHClass(const JSThread *thread, const JSHandle<TSClassType> &classType,
                                                    Kind kind) const
 {
-    JSHandle<JSHClass> hclass;
+    JSHandle<JSHClass> hclass(thread->GlobalConstants()->GetHandledUndefined());
     switch (kind) {
         case Kind::INSTANCE: {
             hclass = CreateIHClass(thread, classType);
@@ -151,7 +151,6 @@ JSHandle<JSHClass> TSHClassGenerator::CreatePHClass(const JSThread *thread,
                                                     const JSHandle<TSClassType> &classType) const
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     JSHandle<TSObjectType> prototypeType(thread, classType->GetPrototypeType());
     JSHandle<TSObjLayoutInfo> tsLayout(thread, prototypeType->GetObjLayoutInfo());
@@ -159,6 +158,7 @@ JSHandle<JSHClass> TSHClassGenerator::CreatePHClass(const JSThread *thread,
     JSHandle<JSHClass> hclass;
     if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
         TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
+        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         JSHandle<JSTaggedValue> ctor = globalConst->GetHandledConstructorString();
         CVector<std::pair<JSHandle<JSTaggedValue>, GlobalTSTypeRef>> sortedPrototype {{ctor, GlobalTSTypeRef()}};
         CVector<std::pair<JSHandle<JSTaggedValue>, GlobalTSTypeRef>> signatureVec {};
@@ -221,7 +221,6 @@ JSHandle<JSHClass> TSHClassGenerator::CreateCHClass(const JSThread *thread,
                                                     const JSHandle<TSClassType> &classType) const
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     JSHandle<TSObjectType> constructorType(thread, classType->GetConstructorType());
     JSHandle<TSObjLayoutInfo> tsLayout(thread, constructorType->GetObjLayoutInfo());
@@ -232,6 +231,7 @@ JSHandle<JSHClass> TSHClassGenerator::CreateCHClass(const JSThread *thread,
     bool hasFunction = false;
     if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
         TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
+        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(numOfProps);
         for (uint32_t index = 0; index < numOfProps; ++index) {
             JSTaggedValue tsPropKey;

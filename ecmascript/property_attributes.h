@@ -69,26 +69,26 @@ public:
     static constexpr uint32_t MAX_CAPACITY_OF_PROPERTIES = (1U << OFFSET_BITFIELD_NUM) - 1;
 
     using PropertyMetaDataField = BitField<int, 0, 4>;    // 4: property metaData field occupies 4 bits
-    using AttributesField = BitField<int, 0, 4>;         // 4: attributes field occupies 4 bits
-    using DefaultAttributesField = BitField<int, 0, 3>;  // 3: default attributes field occupies 3 bits
-    using WritableField = BitField<bool, 0, 1>;          // 1: writable field occupies 1 bits
+    using AttributesField = BitField<int, 0, 4>;          // 4: attributes field occupies 4 bits
+    using DefaultAttributesField = BitField<int, 0, 3>;   // 3: default attributes field occupies 3 bits
+    using WritableField = BitField<bool, 0, 1>;           // 1: writable field occupies 1 bits
     using EnumerableField = WritableField::NextFlag;
     using ConfigurableField = EnumerableField::NextFlag;
     using IsAccessorField = ConfigurableField::NextFlag;  // 4
 
     // fast mode
-    using IsInlinedPropsField = PropertyMetaDataField::NextFlag;                         // 5
+    using IsInlinedPropsField = PropertyMetaDataField::NextFlag;                        // 5
     using RepresentationField = IsInlinedPropsField::NextField<Representation, 3>;      // 3: 3 bits, 6-8
     using OffsetField = RepresentationField::NextField<uint32_t, OFFSET_BITFIELD_NUM>;  // 18
-    using TrackTypeField = OffsetField::NextField<TrackType, 2>;  // 2: 2 bits
+    using TrackTypeField = OffsetField::NextField<TrackType, 2>;                        // 2: 2 bits
 
     static constexpr uint32_t NORMAL_ATTR_BITS = 20;
     using NormalAttrField = BitField<int, 0, NORMAL_ATTR_BITS>;
     using SortedIndexField = TrackTypeField::NextField<uint32_t, OFFSET_BITFIELD_NUM>;  // 30
-    using IsConstPropsField = SortedIndexField::NextFlag;                            // 31
-    using IsNotHoleField = IsConstPropsField::NextFlag;                              // 32
+    using IsConstPropsField = SortedIndexField::NextFlag;                               // 31
+    using IsNotHoleField = IsConstPropsField::NextFlag;                                 // 32
     // dictionary mode, include global
-    using PropertyBoxTypeField = PropertyMetaDataField::NextField<PropertyBoxType, 2>;              // 2: 2 bits, 5-6
+    using PropertyBoxTypeField = PropertyMetaDataField::NextField<PropertyBoxType, 2>;             // 2: 2 bits, 5-6
     using DictionaryOrderField = PropertyBoxTypeField::NextField<uint32_t, DICTIONARY_ORDER_NUM>;  // 26
 
     static constexpr uint32_t BIT_SIZE = 28;

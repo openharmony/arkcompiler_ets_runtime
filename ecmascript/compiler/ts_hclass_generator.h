@@ -21,7 +21,7 @@
 namespace panda::ecmascript::kungfu {
 class TSHClassGenerator {
 public:
-    TSHClassGenerator(TSManager *tsManager): tsManager_(tsManager) {};
+    explicit TSHClassGenerator(TSManager *tsManager): tsManager_(tsManager) {};
     ~TSHClassGenerator() = default;
 
     void GenerateTSHClasses() const;
@@ -31,7 +31,7 @@ private:
 
     JSHandle<JSHClass> Generate(const JSHandle<TSClassType> &classType) const;
 
-    enum class Kind: uint8_t {
+    enum class Kind : uint8_t {
         INSTANCE = 0,
         PROTOTYPE,
         CONSTRUCTOR,
