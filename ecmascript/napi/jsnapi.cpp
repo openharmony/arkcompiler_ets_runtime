@@ -28,6 +28,8 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_object.h"
+#include "ecmascript/builtins/builtins_string.h"
+#include "ecmascript/builtins/builtins_typedarray.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -2050,6 +2052,103 @@ bool ArrayBufferRef::IsDetach()
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     return arrayBuffer->IsDetach();
 }
+
+JSTaggedValue BufferRef::BufferToStringCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo)
+{
+    JSThread *thread = ecmaRuntimeCallInfo->GetThread();
+    [[maybe_unused]] LocalScope scope(thread->GetEcmaVM());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> arrayBuff = ecmaRuntimeCallInfo->GetThis();
+    JSHandle<JSArrayBuffer> arrayBuffer(arrayBuff);
+
+    uint32_t length = arrayBuffer->GetArrayBufferByteLength();
+    JSTaggedValue data = arrayBuffer->GetArrayBufferData();
+
+    ecmascript::CVector<uint16_t> valueTable;
+    valueTable.reserve(length);
+    for (uint32_t i = 0; i < length; i++) {
+        void* rawData = reinterpret_cast<void *>(
+            ToUintPtr(JSNativePointer::Cast(data.GetTaggedObject())->GetExternalPointer()) + i);
+        uint8_t *block = reinterpret_cast<uint8_t *>(rawData);
+        uint16_t nextCv = static_cast<uint16_t>(*block);
+        valueTable.emplace_back(nextCv);
+    }
+
+    auto *char16tData0 = reinterpret_cast<const char16_t *>(valueTable.data());
+    std::u16string u16str(char16tData0, length);
+
+    const char16_t *constChar16tData = u16str.data();
+    auto *char16tData = const_cast<char16_t *>(constChar16tData);
+    auto *uint16tData = reinterpret_cast<uint16_t *>(char16tData);
+    uint32_t u16strSize = u16str.size();
+    JSTaggedValue rString = factory->NewFromUtf16Literal(uint16tData, u16strSize).GetTaggedValue();
+    JSHandle<EcmaString> StringHandle = JSTaggedValue::ToString(thread, rString);
+    RETURN_VALUE_IF_ABRUPT(thread, JSTaggedValue::Undefined());
+    return StringHandle.GetTaggedValue();
+}
+
+Local<BufferRef> BufferRef::New(const EcmaVM *vm, int32_t length)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    ObjectFactory *factory = vm->GetFactory();
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSArrayBuffer> arrayBuffer = JSHandle<JSArrayBuffer>::Cast(factory->NewJSArrayBuffer(length));
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSFunction> current =
+        factory->NewJSFunction(env, reinterpret_cast<void *>(BufferRef::BufferToStringCallback));
+    Local<StringRef> key = StringRef::NewFromUtf8(vm, "toString");
+    JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
+    JSHandle<JSTaggedValue> currentTaggedValue(current);
+    JSHandle<JSTaggedValue> obj(arrayBuffer);
+    bool result = JSTaggedValue::SetProperty(vm->GetJSThread(), obj, keyValue, currentTaggedValue);
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    if (!result) {
+        LOG_ECMA(ERROR) << "SetProperty failed ! ! !";
+    }
+    return JSNApiHelper::ToLocal<BufferRef>(obj);
+}
+
+Local<BufferRef> BufferRef::New(
+    const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter, void *data)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    ObjectFactory *factory = vm->GetFactory();
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSArrayBuffer> arrayBuffer =
+        factory->NewJSArrayBuffer(buffer, length, reinterpret_cast<ecmascript::DeleteEntryPoint>(deleter), data);
+
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    JSHandle<JSFunction> current =
+        factory->NewJSFunction(env, reinterpret_cast<void *>(BufferRef::BufferToStringCallback));
+    Local<StringRef> key = StringRef::NewFromUtf8(vm, "toString");
+    JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
+    JSHandle<JSTaggedValue> currentTaggedValue(current);
+    JSHandle<JSTaggedValue> obj(arrayBuffer);
+    bool result = JSTaggedValue::SetProperty(vm->GetJSThread(), obj, keyValue, currentTaggedValue);
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    if (!result) {
+        LOG_ECMA(ERROR) << "SetProperty failed ! ! !";
+    }
+    return JSNApiHelper::ToLocal<ArrayBufferRef>(JSHandle<JSTaggedValue>(arrayBuffer));
+}
+
+int32_t BufferRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
+{
+    JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(arrayBuffer, FATAL);
+    return arrayBuffer->GetArrayBufferByteLength();
+}
+
+void *BufferRef::GetBuffer()
+{
+    JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(arrayBuffer, FATAL);
+    JSTaggedValue bufferData = arrayBuffer->GetArrayBufferData();
+    if (!bufferData.IsJSNativePointer()) {
+        return nullptr;
+    }
+    return JSNativePointer::Cast(bufferData.GetTaggedObject())->GetExternalPointer();
+}
 // ---------------------------------- Buffer -----------------------------------
 
 // ---------------------------------- DataView -----------------------------------
@@ -2950,6 +3049,11 @@ bool JSValueRef::IsMapIterator()
 }
 
 bool JSValueRef::IsArrayBuffer()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsArrayBuffer();
+}
+
+bool JSValueRef::IsBuffer()
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsArrayBuffer();
 }

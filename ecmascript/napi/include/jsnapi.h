@@ -53,9 +53,10 @@ class JsiRuntimeCallInfo;
 namespace test {
 class JSNApiTests;
 }  // namespace test
-
+class BufferRef;
 namespace ecmascript {
 class EcmaVM;
+class JSTaggedValue;
 class JSRuntimeOptions;
 class JSThread;
 struct EcmaRuntimeCallInfo;
@@ -432,6 +433,7 @@ public:
     bool IsSetIterator();
     bool IsMapIterator();
     bool IsArrayBuffer();
+    bool IsBuffer();
     bool IsUint8Array();
     bool IsInt8Array();
     bool IsUint8ClampedArray();
@@ -769,6 +771,17 @@ public:
 
     void Detach(const EcmaVM *vm);
     bool IsDetach();
+};
+
+class PUBLIC_API BufferRef : public ObjectRef {
+public:
+    static Local<BufferRef> New(const EcmaVM *vm, int32_t length);
+    static Local<BufferRef> New(const EcmaVM *vm, void *buffer, int32_t length, const Deleter &deleter,
+                                void *data);
+
+    int32_t ByteLength(const EcmaVM *vm);
+    void *GetBuffer();
+    static ecmascript::JSTaggedValue BufferToStringCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo);
 };
 
 class PUBLIC_API DataViewRef : public ObjectRef {

@@ -8,6 +8,7 @@
       panda::ecmascript::HELP_OPTION_MSG;
 
       panda::ArrayBufferRef::*;
+      panda::BufferRef::*;
       panda::ArrayRef::*;
       panda::BigInt64ArrayRef::*;
       panda::BigIntRef::*;
