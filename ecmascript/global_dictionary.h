@@ -74,6 +74,8 @@ public:
     inline void SetAttributes(const JSThread *thread, int entry, const PropertyAttributes &metaData);
 
     inline void GetAllKeys(const JSThread *thread, int offset, TaggedArray *keyArray) const;
+    inline void GetAllKeysByFilter(const JSThread *thread,
+        uint32_t &keyArrayEffectivelength, TaggedArray *keyArray, uint32_t filter) const;
 
     inline void GetEnumAllKeys(const JSThread *thread, int offset, TaggedArray *keyArray, uint32_t *keys) const;
 

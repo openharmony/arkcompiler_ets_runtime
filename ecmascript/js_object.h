@@ -18,6 +18,7 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_string.h"
+#include "ecmascript/filter_helper.h"
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
@@ -500,6 +501,8 @@ public:
     // [[OwnPropertyKeys]]
     static JSHandle<TaggedArray> GetOwnPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj);
 
+    static JSHandle<TaggedArray> GetAllPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t filter);
+
     static JSHandle<TaggedArray> GetOwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj);
 
     // 9.1.13 ObjectCreate
@@ -568,8 +571,19 @@ public:
     static void GetAllKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                            const JSHandle<TaggedArray> &keyArray);
     static void GetAllKeys(const JSHandle<JSObject> &obj, std::vector<JSTaggedValue> &keyVector);
+
+    static void GetAllKeysByFilter(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                   uint32_t& keyArrayEffectivelength,
+                                   const JSHandle<TaggedArray> &keyArray,
+                                   uint32_t filter);
     static void GetAllElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                                   const JSHandle<TaggedArray> &keyArray);
+    static void GetAllElementKeysByFilter(JSThread *thread,
+                                          const JSHandle<JSObject> &obj,
+                                          const JSHandle<TaggedArray> &keyArray,
+                                          uint32_t &keyArrayEffectivelength,
+                                          uint32_t filter);
+
     static void GetALLElementKeysIntoVector(const JSThread *thread, const JSHandle<JSObject> &obj,
                                             std::vector<JSTaggedValue> &keyVector);
     uint32_t GetNumberOfKeys();

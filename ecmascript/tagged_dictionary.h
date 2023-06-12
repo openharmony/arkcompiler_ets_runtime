@@ -56,6 +56,8 @@ public:
     void UpdateAttributes(int entry, const PropertyAttributes &metaData);
     void ClearEntry(const JSThread *thread, int entry);
     void GetAllKeys(const JSThread *thread, int offset, TaggedArray *keyArray) const;
+    void GetAllKeysByFilter(const JSThread *thread, uint32_t &keyArrayEffectivelength,
+        TaggedArray *keyArray, uint32_t filter) const;
     void GetAllEnumKeys(const JSThread *thread, int offset, TaggedArray *keyArray, uint32_t *keys) const;
     static inline bool CompKey(const std::pair<JSTaggedValue, PropertyAttributes> &a,
                                const std::pair<JSTaggedValue, PropertyAttributes> &b)
@@ -106,6 +108,8 @@ public:
 
     static void GetAllKeys(const JSThread *thread, const JSHandle<NumberDictionary> &obj, int offset,
                            const JSHandle<TaggedArray> &keyArray);
+    static void GetAllKeysByFilter(const JSThread *thread, const JSHandle<NumberDictionary> &obj,
+        uint32_t &keyArrayEffectivelength, const JSHandle<TaggedArray> &keyArray, uint32_t filter);
     static void GetAllEnumKeys(const JSThread *thread, const JSHandle<NumberDictionary> &obj, int offset,
                                const JSHandle<TaggedArray> &keyArray, uint32_t *keys);
     static inline bool CompKey(const JSTaggedValue &a, const JSTaggedValue &b)

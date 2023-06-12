@@ -1433,6 +1433,20 @@ Local<ArrayRef> ObjectRef::GetOwnPropertyNames(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<ArrayRef>(jsArray);
 }
 
+Local<ArrayRef> ObjectRef::GetAllPropertyNames(const EcmaVM *vm, uint32_t filter)
+{
+    // This interface is only used by napi.
+    // This interface currently only supports normal objects.
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> obj(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(obj, ERROR);
+    JSHandle<TaggedArray> array(JSTaggedValue::GetAllPropertyKeys(thread, obj, filter));
+    JSHandle<JSTaggedValue> jsArray(JSArray::CreateArrayFromList(thread, array));
+    RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+    return JSNApiHelper::ToLocal<ArrayRef>(jsArray);
+}
+
 Local<ArrayRef> ObjectRef::GetOwnEnumerablePropertyNames(const EcmaVM *vm)
 {
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);

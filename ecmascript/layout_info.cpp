@@ -16,6 +16,7 @@
 #include "ecmascript/layout_info-inl.h"
 
 #include "ecmascript/ecma_string.h"
+#include "ecmascript/filter_helper.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/mem/assert_scope.h"
@@ -70,6 +71,47 @@ void LayoutInfo::GetAllKeys(const JSThread *thread, int end, int offset, TaggedA
             if (key.IsSymbol()) {
                 keyArray->Set(thread, enumKeys + offset, key);
                 enumKeys++;
+            }
+        }
+    }
+}
+void LayoutInfo::GetAllKeysByFilter(const JSThread *thread, uint32_t numberOfProps, uint32_t &keyArrayEffectivelength,
+    TaggedArray *keyArray, const JSHandle<JSObject> object, uint32_t filter)
+{
+    ASSERT(numberOfProps <= NumberOfElements());
+    ASSERT_PRINT(keyArrayEffectivelength + numberOfProps <= keyArray->GetLength(),
+                 "keyArray capacity is not enough for dictionary");
+
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t enumKeys = 0;
+    for (uint32_t i = 0; i < numberOfProps; i++) {
+        JSTaggedValue key = GetKey(static_cast<int>(i));
+        if (key.IsString() && !(filter & NATIVE_KEY_SKIP_STRINGS)) {
+            if (IsUninitializedProperty(object, i)) {
+                continue;
+            }
+            PropertyAttributes attr = GetAttr(static_cast<int>(i));
+            bool bIgnore = FilterHelper::IgnoreKeyByFilter<PropertyAttributes>(attr, filter);
+            if (bIgnore) {
+                continue;
+            }
+            keyArray->Set(thread, keyArrayEffectivelength, key);
+            keyArrayEffectivelength++;
+            enumKeys++;
+        }
+    }
+
+    if (enumKeys < numberOfProps) {
+        for (uint32_t i = 0; i < numberOfProps; i++) {
+            JSTaggedValue key = GetKey(static_cast<int>(i));
+            if (key.IsSymbol() && !(filter & NATIVE_KEY_SKIP_SYMBOLS)) {
+                PropertyAttributes attr = GetAttr(static_cast<int>(i));
+                bool bIgnore = FilterHelper::IgnoreKeyByFilter<PropertyAttributes>(attr, filter);
+                if (bIgnore) {
+                    continue;
+                }
+                keyArray->Set(thread, keyArrayEffectivelength, key);
+                keyArrayEffectivelength++;
             }
         }
     }
