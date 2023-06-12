@@ -79,12 +79,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
 
     bool isModule = jsPandaFile->IsModule(thread, entry, realEntry);
     if (thread->HasPendingException()) {
-        vm->HandleUncaughtException(thread->GetException());
+        thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
         return Unexpected(false);
     }
     if (isModule) {
         [[maybe_unused]] EcmaHandleScope scope(thread);
-        ModuleManager *moduleManager = vm->GetModuleManager();
+        ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
         JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
         if (jsPandaFile->IsBundlePack()) {
             moduleRecord = moduleManager->HostResolveImportedModule(name);
@@ -94,7 +94,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         SourceTextModule::Instantiate(thread, moduleRecord);
         if (thread->HasPendingException()) {
             if (!excuteFromJob) {
-                vm->HandleUncaughtException(thread->GetException());
+                thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
             }
             return Unexpected(false);
         }
@@ -169,7 +169,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     // will be refactored, temporarily use the function IsModule to verify realEntry
     [[maybe_unused]] bool isModule = jsPandaFile->IsModule(thread, entry, realEntry);
     if (thread->HasPendingException()) {
-        vm->HandleUncaughtException(thread->GetException());
+        thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
         return Unexpected(false);
     }
     ASSERT(isModule);
@@ -181,8 +181,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     bool isBundle, const CString &filename, const CString &entry, const void *buffer, size_t size)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread);
-    EcmaVM *vm = thread->GetEcmaVM();
-    ModuleManager *moduleManager = vm->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     moduleManager->SetExecuteMode(true);
     JSMutableHandle<JSTaggedValue> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
     if (isBundle) {
@@ -193,7 +192,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 
     SourceTextModule::Instantiate(thread, moduleRecord);
     if (thread->HasPendingException()) {
-        vm->HandleUncaughtException(thread->GetException());
+        thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
         return Unexpected(false);
     }
 
@@ -207,23 +206,23 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
                                                            std::string_view entryPoint, bool excuteFromJob)
 {
     // For Ark application startup
-    EcmaVM *vm = thread->GetEcmaVM();
+    EcmaContext *context = thread->GetCurrentEcmaContext();
 
-    QuickFixManager *quickFixManager = vm->GetQuickFixManager();
+    QuickFixManager *quickFixManager = thread->GetEcmaVM()->GetQuickFixManager();
     quickFixManager->LoadPatchIfNeeded(thread, jsPandaFile);
 
-    Expected<JSTaggedValue, bool> result = vm->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, excuteFromJob);
+    Expected<JSTaggedValue, bool> result = context->InvokeEcmaEntrypoint(jsPandaFile, entryPoint, excuteFromJob);
     return result;
 }
 
 void JSPandaFileExecutor::LoadAOTFilesForFile(EcmaVM *vm, JSPandaFile *jsPandaFile)
 {
     if (vm->GetJSOptions().GetEnableAsmInterpreter()) {
-        auto aotFM = vm->GetAOTFileManager();
+        auto aotFM = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
         if (vm->GetJSOptions().WasAOTOutputFileSet()) {
             AnFileDataManager::GetInstance()->SetEnable(true);
             std::string aotFilename = vm->GetJSOptions().GetAOTOutputFile();
-            vm->LoadAOTFiles(aotFilename);
+            vm->GetJSThread()->GetCurrentEcmaContext()->LoadAOTFiles(aotFilename);
         }
         if (aotFM->IsLoad(jsPandaFile)) {
             uint32_t index = aotFM->GetAnFileIndex(jsPandaFile);
@@ -258,8 +257,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     const CString &entry, const JSPandaFile *jsPandaFile)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread);
-    EcmaVM *vm = thread->GetEcmaVM();
-    ModuleManager *moduleManager = vm->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     moduleManager->SetExecuteMode(true);
     JSMutableHandle<JSTaggedValue> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
     if (jsPandaFile->IsBundlePack()) {
@@ -270,7 +268,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 
     SourceTextModule::Instantiate(thread, moduleRecord);
     if (thread->HasPendingException()) {
-        vm->HandleUncaughtException(thread->GetException());
+        thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
         return Unexpected(false);
     }
 
@@ -317,7 +315,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     // will be refactored, temporarily use the function IsModule to verify realEntry
     [[maybe_unused]] bool isModule = jsPandaFile->IsModule(thread, entry, realEntry);
     if (thread->HasPendingException()) {
-        vm->HandleUncaughtException(thread->GetException());
+        thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
         return Unexpected(false);
     }
     ASSERT(isModule);

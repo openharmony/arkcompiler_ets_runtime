@@ -185,7 +185,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     }
     bool isModule = jsPandaFile->IsModule(thread, entryPoint);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
-    ModuleManager *moduleManager = vm->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
     if (!moduleManager->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
         if (!JSPandaFileExecutor::ExecuteFromFile(thread, fileNameStr.c_str(), entryPoint.c_str(), false, true)) {

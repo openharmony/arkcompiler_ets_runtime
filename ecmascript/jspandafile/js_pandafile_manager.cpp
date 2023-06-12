@@ -68,7 +68,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     }
 
     EcmaVM *vm = thread->GetEcmaVM();
-    bool mode = vm->GetModuleManager()->GetCurrentMode();
+    bool mode = thread->GetCurrentEcmaContext()->GetModuleManager()->GetCurrentMode();
     std::unique_ptr<const panda_file::File> pf;
     if (!vm->IsBundlePack() && mode) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
@@ -202,7 +202,7 @@ JSHandle<Program> JSPandaFileManager::GenerateProgram(EcmaVM *vm, const JSPandaF
 {
     ASSERT(GetJSPandaFile(jsPandaFile->GetPandaFile()) != nullptr);
     if (AnFileDataManager::GetInstance()->IsEnable()) {
-        vm->GetAOTFileManager()->LoadAiFile(jsPandaFile);
+        vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager()->LoadAiFile(jsPandaFile);
     }
 
     return PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);

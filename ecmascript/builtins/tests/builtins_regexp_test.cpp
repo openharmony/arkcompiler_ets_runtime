@@ -645,7 +645,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, Replace3)
 
 HWTEST_F_L0(BuiltinsRegExpTest, RegExpParseCache)
 {
-    RegExpParserCache *regExpParserCache = thread->GetEcmaVM()->GetRegExpParserCache();
+    RegExpParserCache *regExpParserCache = thread->GetCurrentEcmaContext()->GetRegExpParserCache();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> string1 = factory->NewFromASCII("abc");
     JSHandle<EcmaString> string2 = factory->NewFromASCII("abcd");

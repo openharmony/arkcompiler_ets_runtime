@@ -29,64 +29,13 @@ namespace panda::ecmascript {
  * Handles are only valid within a HandleScope. When a handle is created for an object a cell is allocated in the
  * current HandleScope.
  */
+
 class EcmaHandleScope {
 public:
-    inline explicit EcmaHandleScope(JSThread *thread) :
-        thread_(thread), prevNext_(thread->handleScopeStorageNext_), prevEnd_(thread->handleScopeStorageEnd_),
-        prevHandleStorageIndex_(thread->currentHandleStorageIndex_)
-    {
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-        thread_->HandleScopeCountAdd();
-        prevHandleScope_ = thread->GetLastHandleScope();
-        thread_->SetLastHandleScope(this);
-#endif
-    }
+    explicit PUBLIC_API EcmaHandleScope(JSThread *thread);
 
-    inline ~EcmaHandleScope()
-    {
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-        thread_->HandleScopeCountDec();
-        thread_->SetLastHandleScope(prevHandleScope_);
-        prevHandleScope_ = nullptr;
-#endif
-        thread_->handleScopeStorageNext_ = prevNext_;
-        if (thread_->handleScopeStorageEnd_ != prevEnd_) {
-            thread_->handleScopeStorageEnd_ = prevEnd_;
-            thread_->ShrinkHandleStorage(prevHandleStorageIndex_);
-        }
-    }
-
-    static inline uintptr_t PUBLIC_API NewHandle(JSThread *thread, JSTaggedType value)
-    {
-#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-        // Each Handle must be managed by HandleScope, otherwise it may cause Handle leakage.
-        if (thread->handleScopeCount_ <= 0) {
-            LOG_ECMA(ERROR) << "New handle must be in handlescope" << thread->handleScopeCount_;
-        }
-        static const long MAYBE_HANDLE_LEAK_TIME_MS = 5000;
-        if (thread->GetLastHandleScope() != nullptr) {
-            float totalSpentTime = thread->GetLastHandleScope()->scope_.TotalSpentTime();
-            if (totalSpentTime >= MAYBE_HANDLE_LEAK_TIME_MS) {
-                LOG_ECMA(INFO) << "New handle in scope count:" << thread->handleScopeCount_
-                               << ", time:" << totalSpentTime << "ms";
-                std::ostringstream stack;
-                Backtrace(stack, true);
-                LOG_ECMA(INFO) << stack.str();
-            }
-        }
-#endif
-#if ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK
-        thread->CheckJSTaggedType(value);
-#endif
-        auto result = thread->handleScopeStorageNext_;
-        if (result == thread->handleScopeStorageEnd_) {
-            result = reinterpret_cast<JSTaggedType *>(thread->ExpandHandleStorage());
-        }
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        thread->handleScopeStorageNext_ = result + 1;
-        *result = value;
-        return reinterpret_cast<uintptr_t>(result);
-    }
+    PUBLIC_API ~EcmaHandleScope();
+    static uintptr_t PUBLIC_API NewHandle(JSThread *thread, JSTaggedType value);
 
     JSThread *GetThread() const
     {

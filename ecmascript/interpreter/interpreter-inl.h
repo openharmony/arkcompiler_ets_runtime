@@ -17,6 +17,7 @@
 #define ECMASCRIPT_INTERPRETER_INTERPRETER_INL_H
 
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -820,7 +821,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), func.GetTaggedType(), true);
 #endif
-    auto res = thread->GetEcmaVM()->ExecuteAot(method->GetNumArgs(), args.data(), prevFp, false);
+    auto res = thread->GetCurrentEcmaContext()->ExecuteAot(method->GetNumArgs(), args.data(), prevFp, false);
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::EndCallTimer(thread->GetGlueAddr(), func.GetTaggedType());
 #endif
@@ -7191,7 +7192,19 @@ void EcmaInterpreter::InitStackFrame(JSThread *thread)
     if (thread->IsAsmInterpreter()) {
         return InterpreterAssembly::InitStackFrame(thread);
     }
-    JSTaggedType *prevSp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
+    InitStackFrameForSP(const_cast<JSTaggedType *>(thread->GetCurrentSPFrame()));
+}
+
+void EcmaInterpreter::InitStackFrame(EcmaContext *context)
+{
+    if (context->GetJSThread()->IsAsmInterpreter()) {
+        return InterpreterAssembly::InitStackFrame(context);
+    }
+    InitStackFrameForSP(const_cast<JSTaggedType *>(context->GetCurrentFrame()));
+}
+
+void EcmaInterpreter::InitStackFrameForSP(JSTaggedType *prevSp)
+{
     InterpretedFrame *state = GET_FRAME(prevSp);
     state->pc = nullptr;
     state->function = JSTaggedValue::Hole();

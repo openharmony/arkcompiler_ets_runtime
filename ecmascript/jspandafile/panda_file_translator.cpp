@@ -107,13 +107,14 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
     JSHandle<ConstantPool> constpool;
     bool isNewVersion = jsPandaFile->IsNewVersion();
     if (isNewVersion) {
-        constpool = vm->FindOrCreateConstPool(jsPandaFile, EntityId(mainMethodIndex));
+        constpool = vm->GetJSThread()->GetCurrentEcmaContext()->FindOrCreateConstPool(
+            jsPandaFile, EntityId(mainMethodIndex));
     } else {
-        JSTaggedValue constpoolVal = vm->FindConstpool(jsPandaFile, 0);
+        JSTaggedValue constpoolVal = vm->GetJSThread()->GetCurrentEcmaContext()->FindConstpool(jsPandaFile, 0);
         if (constpoolVal.IsHole()) {
             constpool = ParseConstPool(vm, jsPandaFile);
             // old version dont support multi constpool
-            vm->AddConstpool(jsPandaFile, constpool.GetTaggedValue());
+            vm->GetJSThread()->GetCurrentEcmaContext()->AddConstpool(jsPandaFile, constpool.GetTaggedValue());
         } else {
             constpool = JSHandle<ConstantPool>(vm->GetJSThread(), constpoolVal);
         }

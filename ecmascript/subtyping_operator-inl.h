@@ -96,7 +96,7 @@ JSTaggedValue SubtypingOperator::GetType(const JSThread *thread, T *obj, uint32_
         if (ConditionType == ConditionType::SUB_LOCAL_CONTAIN_SUP_LOCAL) {
             return obj->GetTypeId(index);
         } else if (ConditionType == ConditionType::SUB_VTABLE_CONTAIN_SUP_VTABLE) {
-            TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+            TSManager *tsManager = const_cast<JSThread*>(thread)->GetCurrentEcmaContext()->GetTSManager();
             GlobalTSTypeRef typeGT = GlobalTSTypeRef(obj->GetTypeId(index).GetInt());
                 return JSTaggedValue(tsManager->IsGetterSetterFunc(typeGT));
         }

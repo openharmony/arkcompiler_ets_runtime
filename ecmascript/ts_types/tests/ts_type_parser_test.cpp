@@ -58,7 +58,7 @@ public:
 
 HWTEST_F_L0(TSTypeParserTest, TestPrimetiveType)
 {
-    auto tsManager = ecmaVm->GetTSManager();
+    auto tsManager = ecmaVm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     JSPandaFile *jsPandaFile = nullptr;
@@ -70,7 +70,7 @@ HWTEST_F_L0(TSTypeParserTest, TestPrimetiveType)
 
 HWTEST_F_L0(TSTypeParserTest, TestBuiltinType)
 {
-    auto tsManager = ecmaVm->GetTSManager();
+    auto tsManager = ecmaVm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     JSPandaFile *jsPandaFile = nullptr;
@@ -141,7 +141,7 @@ HWTEST_F_L0(TSTypeParserTest, TestTSClassType)
     const auto jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
     EXPECT_NE(jsPandaFile, nullptr);
 
-    auto tsManager = ecmaVm->GetTSManager();
+    auto tsManager = ecmaVm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
@@ -214,7 +214,7 @@ HWTEST_F_L0(TSTypeParserTest, TestTSFunctionType)
     const auto jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
     EXPECT_NE(jsPandaFile, nullptr);
 
-    auto tsManager = ecmaVm->GetTSManager();
+    auto tsManager = ecmaVm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
@@ -280,7 +280,7 @@ HWTEST_F_L0(TSTypeParserTest, TestTSUnionType)
     const auto jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
     EXPECT_NE(jsPandaFile, nullptr);
 
-    auto tsManager = ecmaVm->GetTSManager();
+    auto tsManager = ecmaVm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
@@ -341,7 +341,7 @@ HWTEST_F_L0(TSTypeParserTest, TestTSArrayType)
     const auto jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
     EXPECT_NE(jsPandaFile, nullptr);
 
-    auto tsManager = ecmaVm->GetTSManager();
+    auto tsManager = ecmaVm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");
@@ -407,7 +407,7 @@ HWTEST_F_L0(TSTypeParserTest, TestTSObjectType)
     const auto jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
     EXPECT_NE(jsPandaFile, nullptr);
 
-    auto tsManager = ecmaVm->GetTSManager();
+    auto tsManager = ecmaVm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     tsManager->Initialize();
     TSTypeParser tsTypeParser(tsManager);
     const CString recordName("test");

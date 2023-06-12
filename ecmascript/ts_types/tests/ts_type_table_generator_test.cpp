@@ -56,7 +56,7 @@ public:
 
 HWTEST_F_L0(TSTypeTableGeneratorTest, TestTryGetModuleId)
 {
-    auto tsManager = ecmaVm->GetTSManager();
+    auto tsManager = ecmaVm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     tsManager->Initialize();
     TSTypeTableGenerator tableGenerator(tsManager);
     uint32_t primitiveTableId = tableGenerator.TryGetModuleId(TSTypeTable::PRIMITIVE_TABLE_NAME);
@@ -75,7 +75,7 @@ HWTEST_F_L0(TSTypeTableGeneratorTest, TestTryGetModuleId)
 
 HWTEST_F_L0(TSTypeTableGeneratorTest, TestTryGetLocalId)
 {
-    auto tsManager = ecmaVm->GetTSManager();
+    auto tsManager = ecmaVm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     tsManager->Initialize();
     TSTypeTableGenerator tableGenerator(tsManager);
     JSHandle<TSTypeTable> table = ecmaVm->GetFactory()->NewTSTypeTable(0);
@@ -111,7 +111,7 @@ HWTEST_F_L0(TSTypeTableGeneratorTest, GetOrGenerateTSTypeTable)
     std::shared_ptr<JSPandaFile> jsPandaFile = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
     EXPECT_NE(jsPandaFile, nullptr);
 
-    auto tsManager = ecmaVm->GetTSManager();
+    auto tsManager = ecmaVm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     tsManager->Initialize();
     TSTypeTableGenerator tableGenerator(tsManager);
     [[maybe_unused]] JSHandle<TSTypeTable> table =

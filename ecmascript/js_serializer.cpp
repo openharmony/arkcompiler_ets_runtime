@@ -1325,7 +1325,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadMethod()
         return JSHandle<JSTaggedValue>();
     }
     JSHandle<ConstantPool> constPool =
-        thread_->GetEcmaVM()->FindOrCreateConstPool(jsPandaFile.get(), method->GetMethodId());
+        thread_->GetCurrentEcmaContext()->FindOrCreateConstPool(jsPandaFile.get(), method->GetMethodId());
     method->SetConstantPool(thread_, constPool.GetTaggedValue());
     return methodTag;
 }

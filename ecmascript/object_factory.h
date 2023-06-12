@@ -630,6 +630,8 @@ public:
     JSHandle<AOTLiteralInfo> NewAOTLiteralInfo(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<VTable> NewVTable(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<JSHClass> GetNonOptimizedHclass(JSHandle<JSHClass> oldHClassHandle, FunctionKind kind);
+    JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
+                                     uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 
 private:
     friend class GlobalEnv;
@@ -658,8 +660,7 @@ private:
                                      uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     // used for creating jshclass in GlobalEnv, EcmaVM
     JSHandle<JSHClass> NewEcmaHClassClass(JSHClass *hclass, uint32_t size, JSType type);
-    JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
-                                     uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+
     JSHandle<JSHClass> NewEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
                                              uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     JSHandle<JSHClass> InitClassClass();
@@ -700,7 +701,7 @@ private:
 
     JSHandle<TaggedArray> NewEmptyArray();  // only used for EcmaVM.
 
-    JSHandle<JSHClass> CreateJSArguments();
+    JSHandle<JSHClass> CreateJSArguments(const JSHandle<GlobalEnv> &env);
     JSHandle<JSHClass> CreateJSArrayInstanceClass(JSHandle<JSTaggedValue> proto);
     JSHandle<JSHClass> CreateJSRegExpInstanceClass(JSHandle<JSTaggedValue> proto);
 
@@ -719,6 +720,7 @@ private:
     friend class ModuleDataExtractor;
     friend class ModuleDataAccessor;
     friend class ConstantPool;
+    friend class EcmaContext;
     friend class kungfu::TSHClassGenerator;
 };
 

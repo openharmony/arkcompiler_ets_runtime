@@ -389,7 +389,7 @@ JSTaggedValue BuiltinsPromise::PerformPromiseThen(JSThread *thread, const JSHand
 {
     auto ecmaVm = thread->GetEcmaVM();
     BUILTINS_API_TRACE(thread, Promise, PerformPromiseThen);
-    JSHandle<job::MicroJobQueue> job = ecmaVm->GetMicroJobQueue();
+    JSHandle<job::MicroJobQueue> job = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSMutableHandle<JSTaggedValue> fulfilled(thread, onFulfilled.GetTaggedValue());
@@ -434,7 +434,7 @@ JSTaggedValue BuiltinsPromise::PerformPromiseThen(JSThread *thread, const JSHand
         // argument set to "handle".
         if (!promise->GetPromiseIsHandled()) {
             JSHandle<JSTaggedValue> reason(thread, JSTaggedValue::Null());
-            thread->GetEcmaVM()->PromiseRejectionTracker(promise, reason, PromiseRejectionEvent::HANDLE);
+            thread->GetCurrentEcmaContext()->PromiseRejectionTracker(promise, reason, PromiseRejectionEvent::HANDLE);
         }
         JSHandle<JSFunction> promiseReactionsJob(env->GetPromiseReactionJob());
         job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, promiseReactionsJob, argv);

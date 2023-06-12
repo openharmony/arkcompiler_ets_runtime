@@ -94,7 +94,7 @@ JSTaggedValue BuiltinsPromiseHandler::Resolve(EcmaRuntimeCallInfo *argv)
     arguments->Set(thread, 2, thenValue);  // 2: 2 means index of array is 2
 
     JSHandle<JSFunction> promiseResolveThenableJob(env->GetPromiseResolveThenableJob());
-    JSHandle<job::MicroJobQueue> job = thread->GetEcmaVM()->GetMicroJobQueue();
+    JSHandle<job::MicroJobQueue> job = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
     job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, promiseResolveThenableJob, arguments);
 
     // 13. Return undefined.

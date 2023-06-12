@@ -35,6 +35,7 @@
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
@@ -171,6 +172,7 @@ using ecmascript::DebugInfoExtractor;
 using ecmascript::PatchErrorCode;
 using ecmascript::base::NumberHelper;
 using ecmascript::Log;
+using ecmascript::EcmaContext;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
@@ -513,7 +515,21 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
     std::string aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir();
     aotFileName += moduleName;
     LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
-    vm->LoadAOTFiles(aotFileName);
+    vm->GetJSThread()->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
+}
+
+bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)
+{
+    LOG_ECMA(DEBUG) << "start to execute ark file in context: " << fileName;
+    JSThread *thread = vm->GetAssociatedJSThread();
+    EcmaContext::MountContext(thread);
+    if (!ecmascript::JSPandaFileExecutor::ExecuteFromFile(thread, fileName.c_str(), entry, needUpdate)) {
+        LOG_ECMA(ERROR) << "Cannot execute ark file '" << fileName
+                        << "' with entry '" << entry << "'" << std::endl;
+        return false;
+    }
+    EcmaContext::UnmountContext(thread);
+    return true;
 }
 
 bool JSNApi::Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)
@@ -650,7 +666,7 @@ bool JSNApi::HasPendingException(const EcmaVM *vm)
 
 void JSNApi::EnableUserUncaughtErrorHandler(EcmaVM *vm)
 {
-    return vm->EnableUserUncaughtErrorHandler();
+    return vm->GetJSThread()->GetCurrentEcmaContext()->EnableUserUncaughtErrorHandler();
 }
 
 Local<ObjectRef> JSNApi::GetGlobalObject(const EcmaVM *vm)
@@ -663,7 +679,7 @@ Local<ObjectRef> JSNApi::GetGlobalObject(const EcmaVM *vm)
 void JSNApi::ExecutePendingJob(const EcmaVM *vm)
 {
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
-    EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
+    EcmaVM::ConstCast(vm)->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
 }
 
 uintptr_t JSNApi::GetHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
@@ -776,7 +792,8 @@ void HostPromiseRejectionTracker(const EcmaVM *vm,
                                  void* data)
 {
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
-    ecmascript::PromiseRejectCallback promiseRejectCallback = vm->GetPromiseRejectCallback();
+    ecmascript::PromiseRejectCallback promiseRejectCallback =
+        vm->GetJSThread()->GetCurrentEcmaContext()->GetPromiseRejectCallback();
     if (promiseRejectCallback != nullptr) {
         Local<JSValueRef> promiseVal = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>::Cast(promise));
         PromiseRejectInfo promiseRejectInfo(promiseVal, JSNApiHelper::ToLocal<JSValueRef>(reason),
@@ -787,9 +804,10 @@ void HostPromiseRejectionTracker(const EcmaVM *vm,
 
 void JSNApi::SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data)
 {
-    vm->SetHostPromiseRejectionTracker(HostPromiseRejectionTracker);
-    vm->SetPromiseRejectCallback(reinterpret_cast<ecmascript::PromiseRejectCallback>(cb));
-    vm->SetData(data);
+    vm->GetJSThread()->GetCurrentEcmaContext()->SetHostPromiseRejectionTracker(HostPromiseRejectionTracker);
+    vm->GetJSThread()->GetCurrentEcmaContext()->SetPromiseRejectCallback(
+        reinterpret_cast<ecmascript::PromiseRejectCallback>(cb));
+    vm->GetJSThread()->GetCurrentEcmaContext()->SetData(data);
 }
 
 void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm, std::function<std::vector<uint8_t>(std::string dirPath)> cb)
@@ -807,7 +825,7 @@ void JSNApi::SetHostEnqueueJob(const EcmaVM *vm, Local<JSValueRef> cb)
     CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
     JSHandle<JSFunction> fun = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(cb));
     JSHandle<TaggedArray> array = vm->GetFactory()->EmptyArray();
-    JSHandle<MicroJobQueue> job = vm->GetMicroJobQueue();
+    JSHandle<MicroJobQueue> job = vm->GetJSThread()->GetCurrentEcmaContext()->GetMicroJobQueue();
     MicroJobQueue::EnqueueJob(vm->GetJSThread(), job, QueueType::QUEUE_PROMISE, fun, array);
 }
 
@@ -864,7 +882,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
             PathHelper::CroppingRecord(entry);
         }
     }
-    ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(entry);
     if (ecmaModule->GetIsNewBcVersion()) {
         int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key);
@@ -884,8 +902,8 @@ Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string
                                                    const std::string &key)
 {
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
-    ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
     JSThread *thread = vm->GetJSThread();
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(file.c_str());
 
     if (ecmaModule->GetIsNewBcVersion()) {
@@ -947,31 +965,31 @@ void JSNApi::DestroyAnDataManager()
 // ----------------------------------- HandleScope -------------------------------------
 LocalScope::LocalScope(const EcmaVM *vm) : thread_(vm->GetJSThread())
 {
-    auto thread = reinterpret_cast<JSThread *>(thread_);
-    prevNext_ = thread->GetHandleScopeStorageNext();
-    prevEnd_ = thread->GetHandleScopeStorageEnd();
-    prevHandleStorageIndex_ = thread->GetCurrentHandleStorageIndex();
-    thread->HandleScopeCountAdd();
+    auto context = reinterpret_cast<JSThread *>(thread_)->GetCurrentEcmaContext();
+    prevNext_ = context->GetHandleScopeStorageNext();
+    prevEnd_ = context->GetHandleScopeStorageEnd();
+    prevHandleStorageIndex_ = context->GetCurrentHandleStorageIndex();
+    context->HandleScopeCountAdd();
 }
 
 LocalScope::LocalScope(const EcmaVM *vm, JSTaggedType value) : thread_(vm->GetJSThread())
 {
-    auto thread = reinterpret_cast<JSThread *>(thread_);
-    ecmascript::EcmaHandleScope::NewHandle(thread, value);
-    prevNext_ = thread->GetHandleScopeStorageNext();
-    prevEnd_ = thread->GetHandleScopeStorageEnd();
-    prevHandleStorageIndex_ = thread->GetCurrentHandleStorageIndex();
-    thread->HandleScopeCountAdd();
+    auto context = reinterpret_cast<JSThread *>(thread_)->GetCurrentEcmaContext();
+    ecmascript::EcmaHandleScope::NewHandle(reinterpret_cast<JSThread *>(thread_), value);
+    prevNext_ = context->GetHandleScopeStorageNext();
+    prevEnd_ = context->GetHandleScopeStorageEnd();
+    prevHandleStorageIndex_ = context->GetCurrentHandleStorageIndex();
+    context->HandleScopeCountAdd();
 }
 
 LocalScope::~LocalScope()
 {
-    auto thread = reinterpret_cast<JSThread *>(thread_);
-    thread->HandleScopeCountDec();
-    thread->SetHandleScopeStorageNext(static_cast<JSTaggedType *>(prevNext_));
-    if (thread->GetHandleScopeStorageEnd() != prevEnd_) {
-        thread->SetHandleScopeStorageEnd(static_cast<JSTaggedType *>(prevEnd_));
-        thread->ShrinkHandleStorage(prevHandleStorageIndex_);
+    auto context = reinterpret_cast<JSThread *>(thread_)->GetCurrentEcmaContext();
+    context->HandleScopeCountDec();
+    context->SetHandleScopeStorageNext(static_cast<JSTaggedType *>(prevNext_));
+    if (context->GetHandleScopeStorageEnd() != prevEnd_) {
+        context->SetHandleScopeStorageEnd(static_cast<JSTaggedType *>(prevEnd_));
+        context->ShrinkHandleStorage(prevHandleStorageIndex_);
     }
 }
 
@@ -980,7 +998,7 @@ EscapeLocalScope::EscapeLocalScope(const EcmaVM *vm) : LocalScope(vm, JSTaggedVa
 {
     auto thread = vm->GetJSThread();
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    escapeHandle_ = ToUintPtr(thread->GetHandleScopeStorageNext() - 1);
+    escapeHandle_ = ToUintPtr(thread->GetCurrentEcmaContext()->GetHandleScopeStorageNext() - 1);
 }
 
 // ----------------------------------- PritimitiveRef ---------------------------------------
@@ -1661,7 +1679,7 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     JSHandle<JSTaggedValue> resultValue(thread, result);
 
     if (!isNapi) {
-        EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
+        vm->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
     }
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     vm->GetHeap()->ClearKeptObjects();
@@ -1865,7 +1883,7 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
     JSFunction::Call(info);
     RETURN_VALUE_IF_ABRUPT(thread, false);
 
-    EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
+    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
     vm->GetHeap()->ClearKeptObjects();
     return true;
@@ -1890,7 +1908,7 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, Local<JSValueRef> reason)
     JSFunction::Call(info);
     RETURN_VALUE_IF_ABRUPT(thread, false);
 
-    EcmaVM::ConstCast(vm)->ExecutePromisePendingJob();
+    thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
     RETURN_VALUE_IF_ABRUPT(thread, false);
     vm->GetHeap()->ClearKeptObjects();
     return true;
@@ -3265,7 +3283,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
         LOG_ECMA(DEBUG) << "Current function is not from ES Module's file.";
         return true;
     }
-    ecmascript::ModuleManager *moduleManager = vm->GetModuleManager();
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<ecmascript::JSTaggedValue> moduleRecord;
     // check compileMode
     if (jsPandaFile->IsBundlePack()) {
@@ -3275,7 +3293,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
         LOG_ECMA(DEBUG) << "compileMode is esmodule";
         moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
         if (ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
-            vm->GetAOTFileManager()->LoadAiFile(jsPandaFile);
+            thread->GetCurrentEcmaContext()->GetAOTFileManager()->LoadAiFile(jsPandaFile);
         }
     }
     ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
@@ -3320,7 +3338,8 @@ void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
     vm->SetModuleName(hostVM->GetModuleName());
     vm->SetAssetPath(hostVM->GetAssetPath());
     vm->SetIsBundlePack(hostVM->IsBundlePack());
-    vm->GetModuleManager()->SetExecuteMode(hostVM->GetModuleManager()->GetCurrentMode());
+    vm->GetJSThread()->GetCurrentEcmaContext()->GetModuleManager()->SetExecuteMode(
+        hostVM->GetJSThread()->GetCurrentEcmaContext()->GetModuleManager()->GetCurrentMode());
     vm->SetResolveBufferCallback(hostVM->GetResolveBufferCallback());
 }
 

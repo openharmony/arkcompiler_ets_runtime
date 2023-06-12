@@ -1084,87 +1084,88 @@ void RuntimeStubs::RuntimeSetGeneratorState(JSThread *thread, const JSHandle<JST
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, int32_t index)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(index);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleNamespace(index);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, int32_t index,
                                                       JSTaggedValue jsFunc)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(index, jsFunc);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleNamespace(index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, JSTaggedValue localName)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(localName);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleNamespace(localName);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetModuleNamespace(JSThread *thread, JSTaggedValue localName,
                                                       JSTaggedValue jsFunc)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleNamespace(localName, jsFunc);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleNamespace(localName, jsFunc);
 }
 
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, int32_t index, JSTaggedValue value)
 {
-    thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(index, value);
+    thread->GetCurrentEcmaContext()->GetModuleManager()->StoreModuleValue(index, value);
 }
 
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, int32_t index, JSTaggedValue value,
                                       JSTaggedValue jsFunc)
 {
-    thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(index, value, jsFunc);
+    thread->GetCurrentEcmaContext()->GetModuleManager()->StoreModuleValue(index, value, jsFunc);
 }
 
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value)
 {
-    thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(key, value);
+    thread->GetCurrentEcmaContext()->GetModuleManager()->StoreModuleValue(key, value);
 }
 
 void RuntimeStubs::RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value,
                                       JSTaggedValue jsFunc)
 {
-    thread->GetEcmaVM()->GetModuleManager()->StoreModuleValue(key, value, jsFunc);
+    thread->GetCurrentEcmaContext()->GetModuleManager()->StoreModuleValue(key, value, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVar(JSThread *thread, int32_t index)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueInner(index);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueInner(index);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueInner(index, jsFunc);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueInner(index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVar(JSThread *thread, int32_t index)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(index);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueOutter(index);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(index, jsFunc);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueOutter(index, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner)
 {
     if (inner) {
-        JSTaggedValue moduleValue = thread->GetEcmaVM()->GetModuleManager()->GetModuleValueInner(key);
+        JSTaggedValue moduleValue = thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueInner(key);
         return moduleValue;
     }
 
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(key);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueOutter(key);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner,
                                                JSTaggedValue jsFunc)
 {
     if (inner) {
-        JSTaggedValue moduleValue = thread->GetEcmaVM()->GetModuleManager()->GetModuleValueInner(key, jsFunc);
+        JSTaggedValue moduleValue =
+            thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueInner(key, jsFunc);
         return moduleValue;
     }
 
-    return thread->GetEcmaVM()->GetModuleManager()->GetModuleValueOutter(key, jsFunc);
+    return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueOutter(key, jsFunc);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetPropIterator(JSThread *thread, const JSHandle<JSTaggedValue> &value)
@@ -1394,7 +1395,7 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<PromiseCapability> promiseCapability = JSPromise::NewPromiseCapability(thread, promiseFunc);
 
-    JSHandle<job::MicroJobQueue> job = ecmaVm->GetMicroJobQueue();
+    JSHandle<job::MicroJobQueue> job = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
 
     JSHandle<TaggedArray> argv = factory->NewTaggedArray(5); // 5: 5 means parameters stored in array
     argv->Set(thread, 0, promiseCapability->GetResolve());
@@ -2463,7 +2464,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
             }
             resultValue = thread->GetEcmaVM()->FastCallAot(size, values.data(), prevFp);
         } else {
-            resultValue = thread->GetEcmaVM()->ExecuteAot(size, values.data(), prevFp, needPushUndefined);
+            resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(size, values.data(), prevFp, needPushUndefined);
         }
     } else {
         ctor->GetCallTarget()->SetAotCodeBit(false); // if Construct is not ClassConstructor, don't run aot

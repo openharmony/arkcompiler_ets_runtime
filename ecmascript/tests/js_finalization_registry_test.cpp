@@ -190,7 +190,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_003)
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     EXPECT_EQ(testValue, 1);
@@ -224,7 +224,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Register_004)
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     EXPECT_EQ(testValue, 2);
@@ -261,7 +261,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Unregister_001)
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     EXPECT_EQ(testValue, 0);
@@ -298,7 +298,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, Unregister_002)
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     // only trigger second finalization callback
@@ -338,7 +338,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, CheckAndCall)
     EXPECT_EQ(finRegLists.GetTaggedValue(), JSHandle<JSTaggedValue>::Cast(finaRegObj).GetTaggedValue());
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     EXPECT_EQ(testValue, 1);
@@ -384,7 +384,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, CleanupFinalizationRegistry)
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     EXPECT_EQ(testValue, 1);
@@ -464,7 +464,7 @@ HWTEST_F_L0(JSFinalizationRegistryTest, AddFinRegLists)
     }
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     if (!thread->HasPendingException()) {
-        job::MicroJobQueue::ExecutePendingJob(thread, vm->GetMicroJobQueue());
+        job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
     vm->SetEnableForceGC(true);
     EXPECT_EQ(testValue, 1);

@@ -33,7 +33,7 @@ public:
     PassContext(const std::string &triple, CompilerLog *log, BytecodeInfoCollector* collector, LLVMModule *aotModule)
         : vm_(collector->GetVM()),
           bcInfoCollector_(collector),
-          tsManager_(vm_->GetTSManager()),
+          tsManager_(vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()),
           lexEnvManager_(bcInfoCollector_->GetEnvManager()),
           cmpCfg_(triple, &vm_->GetJSOptions()),
           log_(log),

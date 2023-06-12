@@ -75,6 +75,7 @@
       panda::panda_file::File::MAGIC;
       panda::os::unix::memory::*;
       panda::ecmascript::JSHClass::*;
+      panda::ecmascript::EcmaHandleScope::*;
     };
     extern "C" {
       get_ark_js_heap_crash_info;

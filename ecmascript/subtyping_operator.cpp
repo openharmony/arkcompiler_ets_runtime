@@ -45,7 +45,7 @@ bool SubtypingOperator::CheckBaseClass(const JSThread *thread, const JSHandle<TS
 
 bool SubtypingOperator::CheckSubtyping(const JSThread *thread, const JSHandle<TSClassType> &classType)
 {
-    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    TSManager *tsManager = const_cast<JSThread*>(thread)->GetCurrentEcmaContext()->GetTSManager();
     JSHandle<TSClassType> eClassType = tsManager->GetExtendedClassType(classType);
     JSHClass *eIhc = JSHClass::Cast(tsManager->GetInstanceTSHClass(eClassType).GetTaggedObject());
     WeakVector *eSupers = WeakVector::Cast(eIhc->GetSupers().GetTaggedObject());
@@ -81,7 +81,7 @@ bool SubtypingOperator::CheckSubtyping(const JSThread *thread, const JSHandle<TS
 void SubtypingOperator::MergeClassField(const JSThread *thread, const JSHandle<TSClassType> &classType)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    TSManager *tsManager = const_cast<JSThread*>(thread)->GetCurrentEcmaContext()->GetTSManager();
 
     JSHandle<TSClassType> eClassType = tsManager->GetExtendedClassType(classType);
     JSHandle<TSObjectType> field(thread, classType->GetInstanceType());
@@ -119,7 +119,7 @@ void SubtypingOperator::MergeClassField(const JSThread *thread, const JSHandle<T
 void SubtypingOperator::FillTSInheritInfo(JSThread *thread, const JSHandle<TSClassType> &classType,
                                           const JSHandle<JSHClass> &ihcHandle)
 {
-    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
     JSObject *prototype = JSObject::Cast(ihcHandle->GetProto());
     JSHandle<JSHClass> phcHandle(thread, prototype->GetJSHClass());
     JSHandle<JSHClass> eIhcHandle(thread, JSTaggedValue::Undefined());

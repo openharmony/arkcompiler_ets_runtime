@@ -20,7 +20,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_method_index.h"
-#include "ecmascript/js_handle.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
@@ -28,7 +28,6 @@
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/taskpool/taskpool.h"
-#include "ecmascript/waiter_list.h"
 
 namespace panda {
 class JSNApi;
@@ -75,38 +74,17 @@ class JSFunction;
 class Program;
 class TSManager;
 class AOTFileManager;
-class ModuleManager;
-class CjsModule;
-class CjsExports;
-class CjsRequire;
-class CjsModuleCache;
 class SlowRuntimeStub;
 class RequireManager;
-struct CJSInfo;
 class QuickFixManager;
 class ConstantPool;
-class OptCodeProfiler;
 class FunctionCallTimer;
-
-enum class IcuFormatterType {
-    SIMPLE_DATE_FORMAT_DEFAULT,
-    SIMPLE_DATE_FORMAT_DATE,
-    SIMPLE_DATE_FORMAT_TIME,
-    NUMBER_FORMATTER,
-    COLLATOR
-};
-using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
-                                             const JSHandle<JSPromise> promise,
-                                             const JSHandle<JSTaggedValue> reason,
-                                             PromiseRejectionEvent operation,
-                                             void* data);
-using PromiseRejectCallback = void (*)(void* info);
+class EcmaStringTable;
 
 using NativePtrGetter = void* (*)(void* info);
 
 using ResolvePathCallback = std::function<std::string(std::string dirPath, std::string requestPath)>;
 using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath)>;
-using IcuDeleteEntry = void(*)(void *pointer, void *data);
 
 class EcmaVM {
 public:
@@ -133,11 +111,6 @@ public:
     bool IsInitialized() const
     {
         return initialized_;
-    }
-
-    bool IsGlobalConstInitialized() const
-    {
-        return globalConstInitialized_;
     }
 
     ObjectFactory *GetFactory() const
@@ -174,25 +147,9 @@ public:
 
     JSHandle<GlobalEnv> GetGlobalEnv() const;
 
-    JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
-
-    bool ExecutePromisePendingJob();
-
     static EcmaVM *ConstCast(const EcmaVM *vm)
     {
         return const_cast<EcmaVM *>(vm);
-    }
-
-    RegExpParserCache *GetRegExpParserCache() const
-    {
-        ASSERT(regExpParserCache_ != nullptr);
-        return regExpParserCache_;
-    }
-
-    EcmaStringTable *GetEcmaStringTable() const
-    {
-        ASSERT(stringTable_ != nullptr);
-        return stringTable_;
     }
 
     void CheckThread() const
@@ -227,15 +184,6 @@ public:
 
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
-    void EnableUserUncaughtErrorHandler();
-
-    EcmaRuntimeStat *GetRuntimeStat() const
-    {
-        return runtimeStat_;
-    }
-
-    void SetRuntimeStatEnable(bool flag);
-
     bool IsOptionalLogEnabled() const
     {
         return optionalLogEnabled_;
@@ -247,7 +195,6 @@ public:
     {
         return heap_;
     }
-
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER) const;
 
     void StartHeapTracking(HeapTracker *tracker);
@@ -271,36 +218,9 @@ public:
     void ProcessNativeDelete(const WeakRootVisitor &visitor);
     void ProcessReferences(const WeakRootVisitor &visitor);
 
-    ModuleManager *GetModuleManager() const
-    {
-        return moduleManager_;
-    }
-
-    TSManager *GetTSManager() const
-    {
-        return tsManager_;
-    }
-
-    AOTFileManager* PUBLIC_API GetAOTFileManager() const
-    {
-        return aotFileManager_;
-    }
-
     SnapshotEnv *GetSnapshotEnv() const
     {
         return snapshotEnv_;
-    }
-
-    void SetupRegExpResultCache();
-
-    JSHandle<JSTaggedValue> GetRegExpCache() const
-    {
-        return JSHandle<JSTaggedValue>(reinterpret_cast<uintptr_t>(&regexpCache_));
-    }
-
-    void SetRegExpCache(JSTaggedValue newCache)
-    {
-        regexpCache_ = newCache;
     }
 
     tooling::JsDebuggerManager *GetJsDebuggerManager() const
@@ -311,21 +231,6 @@ public:
     void SetEnableForceGC(bool enable)
     {
         options_.SetEnableForceGC(enable);
-    }
-
-    void SetData(void* data)
-    {
-        data_ = data;
-    }
-
-    void SetPromiseRejectCallback(PromiseRejectCallback cb)
-    {
-        promiseRejectCallback_ = cb;
-    }
-
-    PromiseRejectCallback GetPromiseRejectCallback() const
-    {
-        return promiseRejectCallback_;
     }
 
     void SetNativePtrGetter(NativePtrGetter cb)
@@ -341,34 +246,6 @@ public:
     size_t GetNativePointerListSize()
     {
         return nativePointerList_.size();
-    }
-
-    void SetHostPromiseRejectionTracker(HostPromiseRejectionTracker cb)
-    {
-        hostPromiseRejectionTracker_ = cb;
-    }
-
-    void SetAllowAtomicWait(bool wait)
-    {
-        AllowAtomicWait_ = wait;
-    }
-
-    bool GetAllowAtomicWait() const
-    {
-        return AllowAtomicWait_;
-    }
-
-    WaiterListNode *GetWaiterListNode()
-    {
-        return &waiterListNode_;
-    }
-
-    void PromiseRejectionTracker(const JSHandle<JSPromise> &promise,
-                                 const JSHandle<JSTaggedValue> &reason, PromiseRejectionEvent operation)
-    {
-        if (hostPromiseRejectionTracker_ != nullptr) {
-            hostPromiseRejectionTracker_(this, promise, reason, operation, data_);
-        }
     }
 
     void SetResolveBufferCallback(ResolveBufferCallback cb)
@@ -388,20 +265,6 @@ public:
     }
 
     void TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint);
-
-    void AddConstpool(const JSPandaFile *jsPandaFile, JSTaggedValue constpool, int32_t index = 0);
-
-    bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
-
-    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, int32_t index);
-    // For new version instruction.
-    JSTaggedValue FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
-    std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
-        const JSPandaFile *jsPandaFile);
-
-    JSHandle<ConstantPool> PUBLIC_API FindOrCreateConstPool(const JSPandaFile *jsPandaFile,
-                                                            panda_file::File::EntityId id);
-    void CreateAllConstpool(const JSPandaFile *jsPandaFile);
 
     void WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm)
     {
@@ -501,8 +364,6 @@ public:
         return moduleName_;
     }
 
-    void DumpAOTInfo() const DUMP_API_ATTR;
-
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
     {
@@ -531,86 +392,31 @@ public:
         return quickFixManager_;
     }
 
-    JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
-        const JSTaggedType *prevFp, bool needPushUndefined);
-
     JSTaggedValue FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp);
-
-    // For icu objects cache
-    void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
-                                IcuDeleteEntry deleteEntry = nullptr)
-    {
-        EcmaVM::IcuFormatter icuFormatter = IcuFormatter(locale, icuObj, deleteEntry);
-        icuObjCache_.insert_or_assign(type, std::move(icuFormatter));
-    }
-
-    void *GetIcuFormatterFromCache(IcuFormatterType type, std::string locale)
-    {
-        auto iter = icuObjCache_.find(type);
-        if (iter != icuObjCache_.end()) {
-            EcmaVM::IcuFormatter icuFormatter = iter->second;
-            if (icuFormatter.locale == locale) {
-                return icuFormatter.icuObj;
-            }
-        }
-        return nullptr;
-    }
-
-    void ClearIcuCache()
-    {
-        auto iter = icuObjCache_.begin();
-        while (iter != icuObjCache_.end()) {
-            EcmaVM::IcuFormatter icuFormatter = iter->second;
-            IcuDeleteEntry deleteEntry = icuFormatter.deleteEntry;
-            if (deleteEntry != nullptr) {
-                deleteEntry(icuFormatter.icuObj, this);
-            }
-            iter->second = EcmaVM::IcuFormatter{};
-            iter++;
-        }
-    }
-
-    OptCodeProfiler *GetOptCodeProfiler() const
-    {
-        return optCodeProfiler_;
-    }
 
     void HandleUncaughtException(JSTaggedValue exception);
     void DumpCallTimeInfo();
-    void PrintOptStat();
 
     FunctionCallTimer *GetCallTimer() const
     {
         return callTimer_;
     }
 
-
+    EcmaStringTable *GetEcmaStringTable() const
+    {
+        ASSERT(stringTable_ != nullptr);
+        return stringTable_;
+    }
+    JSTaggedValue GetHClassClass() const
+    {
+        return hClassClass_;
+    }
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
 
 private:
-    void SetGlobalEnv(GlobalEnv *global);
-
-    void SetMicroJobQueue(job::MicroJobQueue *queue);
-
-    Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
-                                                       bool excuteFromJob = false);
-
-    JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
-                                          const JSPandaFile *jsPandaFile, std::string_view entryPoint,
-                                          CJSInfo* cjsInfo = nullptr);
-
-    void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
-                      const JSPandaFile *jsPandaFile, std::string_view entryPoint);
-
-    void InitializeEcmaScriptRunStat();
-
     void ClearBufferData();
-
-    bool LoadAOTFiles(const std::string& aotFileName);
-    void LoadStubFile();
-
     void CheckStartCpuProfiler();
 
     // For Internal Native MethodLiteral.
@@ -623,11 +429,10 @@ private:
     JSRuntimeOptions options_;
     bool icEnabled_ {true};
     bool initialized_ {false};
-    bool globalConstInitialized_ {false};
     GCStats *gcStats_ {nullptr};
-    bool isUncaughtExceptionRegistered_ {false};
+    EcmaStringTable *stringTable_;
+
     // VM memory management.
-    EcmaStringTable *stringTable_ {nullptr};
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     std::unique_ptr<HeapRegionAllocator> heapRegionAllocator_;
     Chunk chunk_;
@@ -636,21 +441,11 @@ private:
     CList<JSNativePointer *> nativePointerList_;
     // VM execution states.
     JSThread *thread_ {nullptr};
-    RegExpParserCache *regExpParserCache_ {nullptr};
-    JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
-    JSTaggedValue regexpCache_ {JSTaggedValue::Hole()};
-    JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
-    EcmaRuntimeStat *runtimeStat_ {nullptr};
-
-    CMap<const JSPandaFile *, CMap<int32_t, JSTaggedValue>> cachedConstpools_ {};
+    JSTaggedValue hClassClass_ {JSTaggedValue::Hole()};
 
     // VM resources.
-    ModuleManager *moduleManager_ {nullptr};
-    TSManager *tsManager_ {nullptr};
     SnapshotEnv *snapshotEnv_ {nullptr};
     bool optionalLogEnabled_ {false};
-    AOTFileManager *aotFileManager_ {nullptr};
-
     // Debugger
     tooling::JsDebuggerManager *debuggerManager_ {nullptr};
     // merge abc
@@ -662,15 +457,8 @@ private:
     CString bundleName_;
     CString moduleName_;
     // Registered Callbacks
-    PromiseRejectCallback promiseRejectCallback_ {nullptr};
-    HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
     NativePtrGetter nativePtrGetter_ {nullptr};
-    void* data_ {nullptr};
-
-    bool isProcessingPendingJob_ = false;
-	// atomics
-    bool AllowAtomicWait_ {true};
-    WaiterListNode waiterListNode_;
+    void *loop_ {nullptr};
 
     // CJS resolve path Callbacks
     ResolvePathCallback resolvePathCallback_ {nullptr};
@@ -697,30 +485,15 @@ private:
     // PGO Profiler
     PGOProfiler *pgoProfiler_ {nullptr};
 
-    // opt code Profiler
-    OptCodeProfiler *optCodeProfiler_ {nullptr};
-
-    // For icu objects cache
-    struct IcuFormatter {
-        std::string locale;
-        void *icuObj {nullptr};
-        IcuDeleteEntry deleteEntry {nullptr};
-
-        IcuFormatter() = default;
-        IcuFormatter(const std::string &locale, void *icuObj, IcuDeleteEntry deleteEntry = nullptr)
-            : locale(locale), icuObj(icuObj), deleteEntry(deleteEntry) {}
-    };
-    std::unordered_map<IcuFormatterType, IcuFormatter> icuObjCache_;
-
     friend class Snapshot;
     friend class SnapshotProcessor;
     friend class ObjectFactory;
     friend class ValueSerializer;
     friend class panda::JSNApi;
     friend class JSPandaFileExecutor;
+    friend class EcmaContext;
     CMap<uint32_t, EcmaVM *> workerList_ {};
     os::memory::Mutex mutex_;
-    void *loop_ {nullptr};
 };
 }  // namespace ecmascript
 }  // namespace panda

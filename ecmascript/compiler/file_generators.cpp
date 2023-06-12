@@ -423,7 +423,7 @@ void AOTFileGenerator::SaveSnapshotFile()
     TimeScope timescope("LLVMCodeGenPass-AI", const_cast<CompilerLog *>(log_));
     Snapshot snapshot(vm_);
     const CString snapshotPath(vm_->GetJSOptions().GetAOTOutputFile().c_str());
-    vm_->GetTSManager()->ResolveSnapshotConstantPool(methodToEntryIndexMap_);
+    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->ResolveSnapshotConstantPool(methodToEntryIndexMap_);
     CString aiPath = snapshotPath + AOTFileManager::FILE_EXTENSION_AI;
     snapshot.Serialize(aiPath);
     if (!panda::ecmascript::SetFileModeAsDefault(aiPath.c_str())) {

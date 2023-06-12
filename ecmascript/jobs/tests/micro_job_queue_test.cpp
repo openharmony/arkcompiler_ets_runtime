@@ -99,7 +99,7 @@ HWTEST_F_L0(MicroJobQueueTest, EnqueuePromiseJob)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<MicroJobQueue> handleMicrojob = thread->GetEcmaVM()->GetMicroJobQueue();
+    JSHandle<MicroJobQueue> handleMicrojob = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
     JSHandle<TaggedQueue> originalPromiseQueue(thread, handleMicrojob->GetPromiseJobQueue());
     JSHandle<JSTaggedValue> scriptQueue(thread, handleMicrojob->GetScriptJobQueue());
 
@@ -135,7 +135,7 @@ HWTEST_F_L0(MicroJobQueueTest, EnqueueScriptJob)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<MicroJobQueue> handleMicrojob = thread->GetEcmaVM()->GetMicroJobQueue();
+    JSHandle<MicroJobQueue> handleMicrojob = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
     JSHandle<JSTaggedValue> promiseQueue(thread, handleMicrojob->GetPromiseJobQueue());
     JSHandle<TaggedQueue> originalScriptQueue(thread, handleMicrojob->GetScriptJobQueue());
 
@@ -183,7 +183,7 @@ HWTEST_F_L0(MicroJobQueueTest, ExecutePendingJob_001)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> promiseReactionsJob(env->GetPromiseReactionJob());
-    JSHandle<MicroJobQueue> handleMicrojob = thread->GetEcmaVM()->GetMicroJobQueue();
+    JSHandle<MicroJobQueue> handleMicrojob = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
 
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promiseFunc);
@@ -226,7 +226,7 @@ HWTEST_F_L0(MicroJobQueueTest, ExecutePendingJob_002)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> promiseReactionsJob(env->GetPromiseReactionJob());
-    JSHandle<MicroJobQueue> handleMicrojob = thread->GetEcmaVM()->GetMicroJobQueue();
+    JSHandle<MicroJobQueue> handleMicrojob = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
 
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<PromiseCapability> capbility1 = JSPromise::NewPromiseCapability(thread, promiseFunc);

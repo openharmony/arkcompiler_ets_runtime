@@ -76,7 +76,7 @@ GlobalTSTypeRef TSClassType::GetPropTypeGT(JSThread *thread, JSHandle<TSClassTyp
                                            JSHandle<JSTaggedValue> propName)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
     JSMutableHandle<TSClassType> mutableClassType(thread, classType.GetTaggedValue());
     JSMutableHandle<TSObjectType> mutableConstructorType(thread, mutableClassType->GetConstructorType());
     GlobalTSTypeRef propTypeGT = GlobalTSTypeRef::Default();
@@ -102,7 +102,7 @@ GlobalTSTypeRef TSClassType::GetSuperPropTypeGT(JSThread *thread, JSHandle<TSCla
                                                 JSHandle<JSTaggedValue> propName, PropertyType propType)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
     JSMutableHandle<TSClassType> mutableClassType(thread, classType.GetTaggedValue());
     GlobalTSTypeRef propTypeGT = GlobalTSTypeRef::Default();
     GlobalTSTypeRef notExistPropGt = kungfu::GateType::UndefinedType().GetGTRef();
@@ -136,7 +136,7 @@ GlobalTSTypeRef TSClassType::GetNonStaticPropTypeGT(JSThread *thread, JSHandle<T
                                                     JSHandle<JSTaggedValue> propName)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
 
     JSHandle<TSObjectType> instanceType(thread, classType->GetInstanceType());
 
@@ -169,7 +169,7 @@ GlobalTSTypeRef TSClassInstanceType::GetPropTypeGT(JSThread *thread, JSHandle<TS
                                                    JSHandle<JSTaggedValue> propName)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
     GlobalTSTypeRef classTypeGT = classInstanceType->GetClassGT();
     JSHandle<JSTaggedValue> type = tsManager->GetTSType(classTypeGT);
 
@@ -188,7 +188,7 @@ GlobalTSTypeRef TSClassInstanceType::GetIndexSignType(JSThread *thread,
                                                       const uint32_t typeId)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
     GlobalTSTypeRef classTypeGT = classInstanceType->GetClassGT();
     JSHandle<JSTaggedValue> type = tsManager->GetTSType(classTypeGT);
     // Es2abc no longer obeys that what is stored in classinstance types must be classtype,
@@ -257,7 +257,7 @@ GlobalTSTypeRef TSIteratorInstanceType::GetPropTypeGT(JSThread *thread,
     JSHandle<TSIteratorInstanceType> iteratorInstanceType, JSHandle<JSTaggedValue> propName)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
     GlobalTSTypeRef kindGt = iteratorInstanceType->GetKindGT();
     GlobalTSTypeRef elementGt = iteratorInstanceType->GetElementGT();
 
@@ -289,7 +289,7 @@ GlobalTSTypeRef TSInterfaceType::GetPropTypeGT(JSThread *thread, JSHandle<TSInte
                                                JSHandle<JSTaggedValue> propName)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    TSManager *tsManager = thread->GetEcmaVM()->GetTSManager();
+    TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
 
     JSMutableHandle<TSInterfaceType> mutableInterfaceType(thread, interfaceType.GetTaggedValue());
     JSMutableHandle<TSObjectType> mutableFieldsType(thread, mutableInterfaceType->GetFields());

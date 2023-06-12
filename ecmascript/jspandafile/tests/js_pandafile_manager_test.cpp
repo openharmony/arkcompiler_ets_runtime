@@ -155,8 +155,8 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
 
     JSHandle<ConstantPool> constpool1 = instance->GetFactory()->NewConstantPool(1);
     JSHandle<ConstantPool> constpool2 = instance->GetFactory()->NewConstantPool(2);
-    instance->AddConstpool(pf1.get(), constpool1.GetTaggedValue(), 0);
-    instance->AddConstpool(pf2.get(), constpool2.GetTaggedValue(), 0);
+    instance->GetJSThread()->GetCurrentEcmaContext()->AddConstpool(pf1.get(), constpool1.GetTaggedValue(), 0);
+    instance->GetJSThread()->GetCurrentEcmaContext()->AddConstpool(pf2.get(), constpool2.GetTaggedValue(), 0);
 
     EcmaVM *instance1;
     EcmaHandleScope *scope1;
@@ -165,7 +165,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
 
     std::shared_ptr<JSPandaFile> loadedPf1 =
         pfManager->LoadJSPandaFile(thread1, filename1, JSPandaFile::ENTRY_MAIN_FUNCTION);
-    instance1->AddConstpool(pf1.get(), constpool1.GetTaggedValue(), 0);
+    instance1->GetJSThread()->GetCurrentEcmaContext()->AddConstpool(pf1.get(), constpool1.GetTaggedValue(), 0);
     EXPECT_TRUE(pf1 == loadedPf1);
     TestHelper::DestroyEcmaVMWithScope(instance1, scope1); // Remove 'instance1' when ecmaVM destruct.
 
@@ -195,7 +195,7 @@ void CreateJSPandaFileAndConstpool(EcmaVM *vm)
 
     [[maybe_unused]] EcmaHandleScope handleScope(vm->GetJSThread());
     JSHandle<ConstantPool> constpool = vm->GetFactory()->NewConstantPool(1);
-    vm->AddConstpool(pf.get(), constpool.GetTaggedValue(), 0);
+    vm->GetJSThread()->GetCurrentEcmaContext()->AddConstpool(pf.get(), constpool.GetTaggedValue(), 0);
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, GC_Add_Find_Remove_JSPandaFile)

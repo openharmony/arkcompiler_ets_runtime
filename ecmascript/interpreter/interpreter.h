@@ -52,6 +52,7 @@ public:
     static inline void RunInternal(JSThread *thread, const uint8_t *pc, JSTaggedType *sp);
 #endif
     static inline void InitStackFrame(JSThread *thread);
+    static inline void InitStackFrame(EcmaContext *context);
     static inline size_t GetJumpSizeAfterCall(const uint8_t *prevPc);
 
     static inline JSTaggedValue GetRuntimeProfileTypeInfo(JSTaggedType *sp);
@@ -70,6 +71,8 @@ public:
     static inline bool IsFastNewFrameExit(JSTaggedType *sp);
     static inline int16_t GetHotnessCounter(uint32_t codeSize);
     static inline JSTaggedType *GetInterpreterFrameEnd(JSThread *thread, JSTaggedType *sp);
+private:
+    static inline void InitStackFrameForSP(JSTaggedType *prevSp);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_INTERPRETER_INTERPRETER_H

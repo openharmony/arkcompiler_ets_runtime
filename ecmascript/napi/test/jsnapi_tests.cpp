@@ -429,7 +429,7 @@ HWTEST_F_L0(JSNApiTests, PromiseCatch)
     Local<StringRef> reason = StringRef::NewFromUtf8(vm_, "Reject");
     ASSERT_TRUE(capability->Reject(vm_, reason));
 
-    vm_->ExecutePromisePendingJob();
+    vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
 }
 
 void CheckResolve(JsiRuntimeCallInfo* info)
@@ -461,7 +461,7 @@ HWTEST_F_L0(JSNApiTests, PromiseThen)
 
     Local<StringRef> value = NumberRef::New(vm_, 300.3); // 300.3 : test case of input
     ASSERT_TRUE(capability->Resolve(vm_, value));
-    vm_->ExecutePromisePendingJob();
+    vm_->GetJSThread()->GetCurrentEcmaContext()->ExecutePromisePendingJob();
 }
 
 HWTEST_F_L0(JSNApiTests, Constructor)
@@ -1218,7 +1218,7 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SetHostPromiseRejectionTracker)
 {
     void *data = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
     JSNApi::SetHostPromiseRejectionTracker(vm_, data, data);
-    PromiseRejectCallback res = vm_->GetPromiseRejectCallback();
+    PromiseRejectCallback res = vm_->GetJSThread()->GetCurrentEcmaContext()->GetPromiseRejectCallback();
     ASSERT_EQ(res, reinterpret_cast<ecmascript::PromiseRejectCallback>(data));
 }
 

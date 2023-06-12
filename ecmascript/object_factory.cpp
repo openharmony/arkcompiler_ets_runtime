@@ -716,9 +716,8 @@ JSHandle<JSHClass> ObjectFactory::CreateJSArrayInstanceClass(JSHandle<JSTaggedVa
     return arrayClass;
 }
 
-JSHandle<JSHClass> ObjectFactory::CreateJSArguments()
+JSHandle<JSHClass> ObjectFactory::CreateJSArguments(const JSHandle<GlobalEnv> &env)
 {
-    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     JSHandle<JSTaggedValue> proto = env->GetObjectFunctionPrototype();
 
@@ -1343,12 +1342,8 @@ FreeObject *ObjectFactory::FillFreeObject(uintptr_t address, size_t size, Remove
         object->SetNext(INVALID_OBJECT);
     } else if (size >= FreeObject::SIZE) {
         object = reinterpret_cast<FreeObject *>(address);
-        if (!vm_->IsGlobalConstInitialized()) {
-            object->SetClassWithoutBarrier(nullptr);
-        } else {
-            object->SetClassWithoutBarrier(
-                JSHClass::Cast(globalConst->GetFreeObjectWithTwoFieldClass().GetTaggedObject()));
-        }
+        object->SetClassWithoutBarrier(
+            JSHClass::Cast(globalConst->GetFreeObjectWithTwoFieldClass().GetTaggedObject()));
         object->SetAvailable(size);
         object->SetNext(INVALID_OBJECT);
     } else if (size == FreeObject::NEXT_OFFSET) {
@@ -1633,7 +1628,8 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
         method->SetConstantPool(thread_, constpool);
     }
     if (needSetAotFlag) {
-        vm_->GetAOTFileManager()->SetAOTFuncEntry(jsPandaFile, *method, entryIndex, canFastCall);
+        thread_->GetCurrentEcmaContext()->GetAOTFileManager()->
+            SetAOTFuncEntry(jsPandaFile, *method, entryIndex, canFastCall);
     }
     return method;
 }
@@ -2117,7 +2113,7 @@ JSHandle<JSRealm> ObjectFactory::NewJSRealm()
     realmEnvHandle->SetTemplateMap(thread_, result);
 
     Builtins builtins;
-    builtins.Initialize(realmEnvHandle, thread_);
+    builtins.Initialize(realmEnvHandle, thread_, false, true);
     JSHandle<JSTaggedValue> protoValue = thread_->GlobalConstants()->GetHandledJSRealmClass();
     JSHandle<JSHClass> hclassHandle = NewEcmaHClass(JSRealm::SIZE, JSType::JS_REALM, protoValue);
     JSHandle<JSRealm> realm(NewJSObject(hclassHandle));

@@ -43,7 +43,7 @@ public:
     NO_COPY_SEMANTIC(Builtins);
     NO_MOVE_SEMANTIC(Builtins);
 
-    void Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit = false);
+    void Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit = false, bool isRealm = false);
     void InitializeForSnapshot(JSThread *thread);
 
 private:

@@ -458,16 +458,16 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
             locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
         switch (type) {
             case IcuCacheType::DEFAULT:
-                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DEFAULT, cacheEntry,
-                                               simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
+                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DEFAULT,
+                    cacheEntry, simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             case IcuCacheType::DATE:
-                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DATE, cacheEntry,
-                                               simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
+                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_DATE,
+                    cacheEntry, simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             case IcuCacheType::TIME:
-                ecmaVm->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_TIME, cacheEntry,
-                                               simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
+                thread->GetCurrentEcmaContext()->SetIcuFormatterToCache(IcuFormatterType::SIMPLE_DATE_FORMAT_TIME,
+                    cacheEntry, simpleDateFormatIcu.release(), JSDateTimeFormat::FreeSimpleDateFormat);
                 break;
             default:
                 UNREACHABLE();
@@ -503,8 +503,7 @@ icu::SimpleDateFormat *JSDateTimeFormat::GetCachedIcuSimpleDateFormat(JSThread *
                                                                       IcuFormatterType type)
 {
     std::string cacheEntry = locales->IsUndefined() ? "" : EcmaStringAccessor(locales.GetTaggedValue()).ToStdString();
-    EcmaVM *ecmaVm = thread->GetEcmaVM();
-    void *cachedSimpleDateFormat = ecmaVm->GetIcuFormatterFromCache(type, cacheEntry);
+    void *cachedSimpleDateFormat = thread->GetCurrentEcmaContext()->GetIcuFormatterFromCache(type, cacheEntry);
     if (cachedSimpleDateFormat != nullptr) {
         return reinterpret_cast<icu::SimpleDateFormat*>(cachedSimpleDateFormat);
     }

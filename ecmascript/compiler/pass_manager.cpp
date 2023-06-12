@@ -26,7 +26,8 @@ namespace panda::ecmascript::kungfu {
 bool PassManager::ShouldCollect() const
 {
     return passOptions_->EnableTypeInfer() &&
-        (profilerDecoder_.IsLoaded() || vm_->GetTSManager()->AssertTypes() || log_->OutputType());
+        (profilerDecoder_.IsLoaded() || vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AssertTypes() ||
+         log_->OutputType());
 }
 
 bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &gen)
@@ -165,7 +166,7 @@ void PassManager::ProcessConstantPool(BytecodeInfoCollector *collector)
 {
     LOG_COMPILER(INFO) << collector->GetBytecodeInfo().GetSkippedMethodSize()
                        << " methods have been skipped";
-    vm_->GetTSManager()->ProcessSnapshotConstantPool(collector);
+    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->ProcessSnapshotConstantPool(collector);
 }
 
 bool PassManager::IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const
@@ -186,8 +187,8 @@ bool PassManager::IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const
 void PassManager::ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName)
 {
     const auto &recordInfo = jsPandaFile->GetJSRecordInfo();
-    ModuleManager *moduleManager = vm_->GetModuleManager();
     JSThread *thread = vm_->GetJSThread();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     [[maybe_unused]] EcmaHandleScope scope(thread);
     for (auto info: recordInfo) {
         auto recordName = info.first;

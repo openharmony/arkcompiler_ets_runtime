@@ -36,6 +36,7 @@ class InterpreterAssembly {
 public:
     enum ActualNumArgsOfCall : uint8_t { CALLARG0 = 0, CALLARG1, CALLARGS2, CALLARGS3 };
     static void InitStackFrame(JSThread *thread);
+    static void InitStackFrame(EcmaContext *context);
     static JSTaggedValue Execute(EcmaRuntimeCallInfo *info);
     static JSTaggedValue GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context);
     static inline size_t GetJumpSizeAfterCall(const uint8_t *prevPc);
@@ -52,6 +53,7 @@ public:
     static JSTaggedType *GetAsmInterpreterFramePointer(AsmInterpretedFrame *state);
 
     static bool AssemblyIsFastNewFrameEnter(JSFunction *ctor, JSHandle<Method> method);
+
 #ifndef EXCLUDE_C_INTERPRETER
 #define DEF_HANDLER(name)                                                    \
     static void name(JSThread *thread, const uint8_t *pc, JSTaggedType *sp,  \
@@ -61,6 +63,8 @@ public:
     ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(DEF_HANDLER)
 #undef DEF_HANDLER
 #endif
+private:
+    static void InitStackFrameForSP(JSTaggedType *prevSp);
 };
 
 #ifndef EXCLUDE_C_INTERPRETER

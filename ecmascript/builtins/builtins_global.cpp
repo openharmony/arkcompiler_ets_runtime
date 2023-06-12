@@ -540,7 +540,7 @@ JSTaggedValue BuiltinsGlobal::StartRuntimeStat(EcmaRuntimeCallInfo *msg)
     BUILTINS_API_TRACE(thread, Global, StartRuntimeStat);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
-    thread->GetEcmaVM()->SetRuntimeStatEnable(true);
+    thread->GetCurrentEcmaContext()->SetRuntimeStatEnable(true);
     return JSTaggedValue::Undefined();
 }
 
@@ -550,7 +550,7 @@ JSTaggedValue BuiltinsGlobal::StopRuntimeStat(EcmaRuntimeCallInfo *msg)
     BUILTINS_API_TRACE(thread, Global, StopRuntimeStat);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
-    thread->GetEcmaVM()->SetRuntimeStatEnable(false);
+    thread->GetCurrentEcmaContext()->SetRuntimeStatEnable(false);
     return JSTaggedValue::Undefined();
 }
 #endif
@@ -562,7 +562,7 @@ JSTaggedValue BuiltinsGlobal::PrintOptStat(EcmaRuntimeCallInfo *msg)
     BUILTINS_API_TRACE(thread, Global, PrintOptStat);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
-    thread->GetEcmaVM()->PrintOptStat();
+    thread->GetCurrentEcmaContext()->PrintOptStat();
     return JSTaggedValue::Undefined();
 }
 #endif

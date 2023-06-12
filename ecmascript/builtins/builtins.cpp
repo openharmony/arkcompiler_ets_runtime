@@ -185,7 +185,7 @@ using SharedArrayBuffer = builtins::BuiltinsSharedArrayBuffer;
 using BuiltinsAsyncIterator = builtins::BuiltinsAsyncIterator;
 using AsyncGeneratorObject = builtins::BuiltinsAsyncGenerator;
 
-void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit)
+void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool lazyInit, bool isRealm)
 {
     thread_ = thread;
     vm_ = thread->GetEcmaVM();
@@ -266,7 +266,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
                                                   JSType::JS_FUNCTION, env->GetFunctionPrototype());
     env->SetFunctionClassWithoutName(thread_, FunctionClass);
 
-    if (env == vm_->GetGlobalEnv()) {
+    if (!isRealm) {
         InitializeAllTypeError(env, objFuncClass);
         InitializeSymbol(env, primRefObjHClass);
         InitializeBigInt(env, primRefObjHClass);
@@ -276,6 +276,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
         InitializeSymbolWithRealm(env, primRefObjHClass);
         InitializeBigIntWithRealm(env);
     }
+
     InitializeArray(env, objFuncPrototypeVal);
     if (lazyInit) {
         LazyInitializeDate(env);
@@ -308,7 +309,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeRegExp(env);
     InitializeString(env, primRefObjHClass);
 
-    JSHandle<JSHClass> argumentsClass = factory_->CreateJSArguments();
+    JSHandle<JSHClass> argumentsClass = factory_->CreateJSArguments(env);
     env->SetArgumentsClass(thread_, argumentsClass);
     SetArgumentsSharedAccessor(env);
 

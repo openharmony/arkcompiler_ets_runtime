@@ -35,7 +35,7 @@
 namespace panda::ecmascript {
 void Snapshot::Serialize(const CString &fileName)
 {
-    TSManager *tsManager = vm_->GetTSManager();
+    TSManager *tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     JSTaggedValue root = tsManager->GetSnapshotCPList();
     Serialize(root.GetTaggedObject(), nullptr, fileName);
 }

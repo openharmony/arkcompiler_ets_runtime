@@ -236,7 +236,7 @@ HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModule)
 
     JSNApi::EnableUserUncaughtErrorHandler(instance);
 
-    ModuleManager *moduleManager = instance->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     ObjectFactory *factory = instance->GetFactory();
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
     JSHandle<JSTaggedValue> moduleRecord(thread, module.GetTaggedValue());
@@ -269,7 +269,7 @@ HWTEST_F_L0(EcmaModuleTest, Instantiate_Evaluate_GetNamespace_SetNamespace)
 
     bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
     EXPECT_TRUE(result);
-    ModuleManager *moduleManager = instance->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
     module->SetStatus(ModuleStatus::UNINSTANTIATED);
     ModuleRecord::Instantiate(thread, JSHandle<JSTaggedValue>(module));

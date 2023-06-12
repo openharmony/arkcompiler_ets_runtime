@@ -26,7 +26,7 @@ using BuiltinsPromiseJob = builtins::BuiltinsPromiseJob;
 JSTaggedValue DynamicImport::ExecuteNativeModule(JSThread *thread, JSHandle<EcmaString> specifierString,
     ModuleTypes moduleType, JSHandle<JSPromiseReactionsFunction> resolve, JSHandle<JSPromiseReactionsFunction> reject)
 {
-    ModuleManager *moduleManager = thread->GetEcmaVM()->GetModuleManager();
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     CString requestPath = ConvertToString(specifierString.GetTaggedValue());
     CString entryPoint = PathHelper::GetStrippedModuleName(requestPath);
     JSHandle<JSTaggedValue> nativeModule = moduleManager->ResolveNativeModule(requestPath, moduleType);
