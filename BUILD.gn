@@ -940,7 +940,13 @@ ohos_source_set("libark_jsruntime_set") {
     cflags_cc += [ "-fvisibility=hidden" ]
   }
 
-  external_deps = [ "runtime_core:arkfile_header_deps" ]
+  external_deps = []
+  deps = []
+  if (!is_cross_platform_build) {
+    external_deps += [ "runtime_core:arkfile_header_deps" ]
+  } else {
+    deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  }
 
   if (enable_target_compilation) {
     external_deps += [ "c_utils:utils" ]
@@ -948,7 +954,7 @@ ohos_source_set("libark_jsruntime_set") {
 
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
-  deps = hiviewdfx_deps
+  deps += hiviewdfx_deps
 
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
@@ -967,11 +973,17 @@ ohos_source_set("libark_js_intl_set") {
     cflags_cc += [ "-fvisibility=hidden" ]
   }
 
-  external_deps = [ "runtime_core:arkfile_header_deps" ]
+  external_deps = []
+  deps = []
+  if (!is_cross_platform_build) {
+    external_deps += [ "runtime_core:arkfile_header_deps" ]
+  } else {
+    deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  }
 
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
-  deps = hiviewdfx_deps
+  deps += hiviewdfx_deps
 
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
@@ -1006,7 +1018,12 @@ ohos_source_set("libark_jsruntime_test_set") {
     "$ark_third_party_root/icu/icu4c:shared_icui18n",
     "$ark_third_party_root/icu/icu4c:shared_icuuc",
   ]
-  external_deps = [ "runtime_core:arkfile_header_deps" ]
+  external_deps = []
+  if (!is_cross_platform_build) {
+    external_deps += [ "runtime_core:arkfile_header_deps" ]
+  } else {
+    deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  }
 
   if (enable_coverage) {
     ldflags = [ "--coverage" ]
@@ -1050,7 +1067,12 @@ ohos_source_set("libark_jsruntime_static") {
     ":libark_js_intl_set",
     ":libark_jsruntime_set",
   ]
-  external_deps = [ "runtime_core:arkfile_header_deps" ]
+  external_deps = []
+  if (!is_cross_platform_build) {
+    external_deps += [ "runtime_core:arkfile_header_deps" ]
+  } else {
+    deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  }
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
 
@@ -1072,7 +1094,12 @@ ohos_shared_library("libark_jsruntime") {
     ":libark_jsruntime_static",
     sdk_libc_secshared_dep,
   ]
-  external_deps = [ "runtime_core:libarkfile_static" ]
+  external_deps = []
+  if (!is_cross_platform_build) {
+    external_deps += [ "runtime_core:libarkfile_static" ]
+  } else {
+    deps += [ "$ark_root/libpandafile:libarkfile_static" ]
+  }
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
 

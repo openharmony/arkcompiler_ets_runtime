@@ -21,11 +21,19 @@ ohos_executable("ark_js_vm") {
     "$js_root:ark_jsruntime_public_config",
   ]
 
+  external_deps = []
   deps = [ "$js_root:libark_jsruntime" ]
-  external_deps = [
-    "runtime_core:arkfile_header_deps",
-    "runtime_core:libarkbase_static",
-  ]
+  if (!is_cross_platform_build) {
+    external_deps += [
+      "runtime_core:arkfile_header_deps",
+      "runtime_core:libarkbase_static",
+    ]
+  } else {
+    deps += [
+      "$ark_root/libpandabase:libarkbase_static",
+      "$ark_root/libpandafile:arkfile_header_deps",
+    ]
+  }
 
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps

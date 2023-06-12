@@ -96,8 +96,8 @@ if (enable_hilog) {
   }
 }
 
-enable_target_compilation =
-    !ark_standalone_build && !is_mac && current_cpu == "arm64"
+enable_target_compilation = !ark_standalone_build && !is_mac &&
+                            !is_cross_platform_build && current_cpu == "arm64"
 
 have_local_code_sign = false
 if (defined(global_parts_info) &&
