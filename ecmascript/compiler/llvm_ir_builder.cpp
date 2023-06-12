@@ -221,8 +221,8 @@ void LLVMIRBuilder::InitializeHandlers()
         OpCode::ARG_LIST, OpCode::THROW,
         OpCode::DEPEND_SELECTOR, OpCode::DEPEND_RELAY,
         OpCode::FRAME_STATE, OpCode::STATE_SPLIT, OpCode::FRAME_ARGS,
-        OpCode::LOOP_EXIT_DEPEND, OpCode::LOOP_EXIT, OpCode::FRAME_STATE_CHAIN, OpCode::REPLACEABLE,
-        OpCode::START_ALLOCATE, OpCode::FINISH_ALLOCATE
+        OpCode::LOOP_EXIT_DEPEND, OpCode::LOOP_EXIT,
+        OpCode::START_ALLOCATE, OpCode::FINISH_ALLOCATE, OpCode::FRAME_VALUES
     };
 }
 
@@ -2354,8 +2354,7 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
 {
     LLVMValueRef glue = gate2LValue_.at(acc_.GetGlueFromArgList());
     GateRef deoptFrameState = acc_.GetValueIn(gate, 1); // 1: frame state
-    ASSERT(acc_.GetOpCode(deoptFrameState) == OpCode::FRAME_STATE_CHAIN ||
-           acc_.GetOpCode(deoptFrameState) == OpCode::FRAME_STATE);
+    ASSERT(acc_.GetOpCode(deoptFrameState) == OpCode::FRAME_STATE);
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
     GateRef deoptType = acc_.GetValueIn(gate, 2); // 2: deopt type
@@ -2366,35 +2365,33 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
     LLVMTypeRef funcType = GetExperimentalDeoptTy();
 
     std::vector<LLVMValueRef> values;
-    size_t depth = 0;
-    if (acc_.GetOpCode(deoptFrameState) == OpCode::FRAME_STATE_CHAIN) {
-        depth = acc_.GetNumValueIn(deoptFrameState) - 1;
+    size_t maxDepth = 0;
+    GateRef frameState = acc_.GetFrameState(deoptFrameState);
+    while ((acc_.GetOpCode(frameState) == OpCode::FRAME_STATE)) {
+        maxDepth++;
+        frameState = acc_.GetFrameState(frameState);
     }
     params.push_back(ConvertInt32ToTaggedInt(LLVMConstInt(LLVMInt32TypeInContext(context_),
-        static_cast<uint32_t>(depth), false)));
-    size_t shift = Deoptimizier::ComputeShift(depth);
+        static_cast<uint32_t>(maxDepth), false)));
+    size_t shift = Deoptimizier::ComputeShift(maxDepth);
+    frameState = deoptFrameState;
     ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));
-    for (size_t curDepth = 0; curDepth <= depth; curDepth++) {
-        GateRef frameState = Circuit::NullGate();
-        if (depth == 0) {
-            frameState = deoptFrameState;
-        } else {
-            frameState = acc_.GetValueIn(deoptFrameState, curDepth);
-        }
-        const size_t numValueIn = acc_.GetNumValueIn(frameState);
-        const size_t envIndex = numValueIn - 3; // 3: env valueIn index
-        const size_t accIndex = numValueIn - 2; // 2: acc valueIn index
-        const size_t pcIndex = numValueIn - 1;
-        GateRef env = acc_.GetValueIn(frameState, envIndex);
-        GateRef acc = acc_.GetValueIn(frameState, accIndex);
-        GateRef pc = acc_.GetValueIn(frameState, pcIndex);
+    for (size_t curDepth = 0; curDepth <= maxDepth; curDepth++) {
+        ASSERT(acc_.GetOpCode(frameState) == OpCode::FRAME_STATE);
+        GateRef frameValues = acc_.GetValueIn(frameState, 1); // 1: frame values
+        const size_t numValueIn = acc_.GetNumValueIn(frameValues);
+        const size_t envIndex = numValueIn - 2; // 2: env valueIn index
+        const size_t accIndex = numValueIn - 1; // 1: acc valueIn index
+        GateRef env = acc_.GetValueIn(frameValues, envIndex);
+        GateRef acc = acc_.GetValueIn(frameValues, accIndex);
+        auto pc = acc_.TryGetPcOffset(frameState);
         GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
         GateRef newTarget = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::NEW_TARGET);
         GateRef thisObj = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::THIS_OBJECT);
         GateRef actualArgc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGC);
         // vreg
         for (size_t i = 0; i < envIndex; i++) {
-            GateRef vregValue = acc_.GetValueIn(frameState, i);
+            GateRef vregValue = acc_.GetValueIn(frameValues, i);
             if (acc_.IsConstantValue(vregValue, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
                 continue;
             }
@@ -2414,7 +2411,7 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
         int32_t specPcOffsetIndex = static_cast<int32_t>(SpecVregIndex::PC_OFFSET_INDEX);
         int32_t encodeIndex = Deoptimizier::EncodeDeoptVregIndex(specPcOffsetIndex, curDepth, shift);
         values.emplace_back(LLVMConstInt(LLVMInt32TypeInContext(context_), encodeIndex, false));
-        values.emplace_back(gate2LValue_.at(pc));
+        values.emplace_back(LLVMConstInt(LLVMInt32TypeInContext(context_), pc, false));
         // func
         int32_t specCallTargetIndex = static_cast<int32_t>(SpecVregIndex::FUNC_INDEX);
         SaveDeoptVregInfo(values, specCallTargetIndex, curDepth, shift, jsFunc);
@@ -2426,6 +2423,7 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
         SaveDeoptVregInfo(values, specThisIndex, curDepth, shift, thisObj);
         int32_t specArgcIndex = static_cast<int32_t>(SpecVregIndex::ACTUAL_ARGC_INDEX);
         SaveDeoptVregInfoWithI64(values, specArgcIndex, curDepth, shift, actualArgc);
+        frameState = acc_.GetFrameState(frameState);
     }
     LLVMValueRef runtimeCall =
         LLVMBuildCall3(builder_, funcType, callee, params.data(), params.size(), "", values.data(), values.size());

@@ -148,14 +148,6 @@ public:
     GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
 
-#define DECLARE_FRAME_STATE_GATE_META(NAME, OP, R, S, D, V)   \
-    const GateMetaData* NAME(uint64_t value)                  \
-    {                                                         \
-        return metaBuilder_.NAME(value);                      \
-    }
-    FRAME_STATE(DECLARE_FRAME_STATE_GATE_META)
-#undef DECLARE_FRAME_STATE_GATE_META
-
     const GateMetaData* Nop()
     {
         return metaBuilder_.Nop();
@@ -196,14 +188,6 @@ public:
     }
 
     bool GetDebugInfo(GateRef g, size_t &index) const;
-
-    GateRef ReplaceableGate()
-    {
-        if (replaceable_ == NullGate()) {
-            replaceable_ = NewGate(Replaceable(), MachineType::NOVALUE, GateType::Empty());
-        }
-        return replaceable_;
-    }
 
 private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB

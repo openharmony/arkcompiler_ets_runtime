@@ -60,9 +60,15 @@ public:
         return state_;
     }
 
+    size_t GetId() const
+    {
+        return id_;
+    }
+
 private:
     enum StateKind {
         BRANCH,
+        MERGE,
         LOOP_HEAD,
         OTHER,
     };
@@ -80,7 +86,7 @@ private:
     friend class GateScheduler;
     friend class ImmediateDominatorsGenerator;
     friend class GraphLinearizer;
-    friend class StateSplitLinearizer;
+    friend class StateDependBuilder;
 };
 
 class GraphLinearizer {
@@ -94,6 +100,7 @@ public:
 
     void Run(ControlFlowGraph &result);
 private:
+    enum class ScheduleModel { LIR, JS_OPCODE };
     enum class ScheduleState { NONE, FIXED, SELECTOR, SCHEDELABLE };
     struct GateInfo {
         GateInfo(GateRegion* region) : region(region) {}
@@ -109,7 +116,7 @@ private:
 
         bool IsFixed() const
         {
-            return state_ == ScheduleState::FIXED;
+            return state_ == ScheduleState::FIXED || IsSelector();
         }
 
         bool IsSelector() const
@@ -136,6 +143,7 @@ private:
     void LinearizeGraph();
     void LinearizeRegions(ControlFlowGraph &result);
     void CreateGateRegion(GateRef gate);
+    GateRegion* FindPredRegion(GateRef input);
 
     GateInfo& GetGateInfo(GateRef gate)
     {
@@ -216,9 +224,35 @@ private:
         return loopNumber_ != 0;
     }
 
+    void Reset()
+    {
+        gateIdToGateInfo_.clear();
+        regionList_.clear();
+        regionRootList_.clear();
+        scheduleUpperBound_ = false;
+        model_ = ScheduleModel::LIR;
+    }
+
+    void EnableScheduleUpperBound()
+    {
+        scheduleUpperBound_ = true;
+    }
+
+    void SetScheduleJSOpcode()
+    {
+        model_ = ScheduleModel::JS_OPCODE;
+    }
+
+    bool IsSchedueLIR() const
+    {
+        return model_ == ScheduleModel::LIR;
+    }
+
     void PrintGraph(const char* title);
 
     bool enableLog_ {false};
+    bool scheduleUpperBound_ { false};
+    ScheduleModel model_ {ScheduleModel::LIR};
     std::string methodName_;
     Chunk* chunk_ {nullptr};
     Circuit* circuit_ {nullptr};
@@ -227,7 +261,7 @@ private:
     GateAccessor acc_;
     ChunkVector<GateInfo> gateIdToGateInfo_;
     ChunkVector<GateRegion*> regionList_;
-    ChunkDeque<GateRef> regionRootList_;
+    ChunkVector<GateRef> regionRootList_;
 
     friend class CFGBuilder;
     friend class GateScheduler;

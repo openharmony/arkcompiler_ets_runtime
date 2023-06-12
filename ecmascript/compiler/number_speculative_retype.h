@@ -96,6 +96,8 @@ private:
     GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);
     GateRef ConvertToTagged(GateRef gate);
     GateRef TryConvertConstant(GateRef gate, bool needInt32);
+    GateRef ConvertTaggedToNJSValue(GateRef gate, TypeInfo output);
+    TypeInfo GetOuputForPhi(GateRef gate, bool ignoreConstant);
 
     TypeInfo GetOutputTypeInfo(GateRef gate) const
     {

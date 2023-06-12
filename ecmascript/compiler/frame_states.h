@@ -75,9 +75,9 @@ public:
         Circuit *circuit, const MethodLiteral *literal);
     ~FrameStateBuilder();
 
-    void BuildFrameState(GateRef frameArgs);
-
+    void BuildFrameState();
 private:
+    static constexpr size_t FIXED_ARGS = 2; // ac & env
     GateRef ValuesAt(size_t index) const
     {
         return liveOutResult_->ValuesAt(index);
@@ -100,12 +100,12 @@ private:
     {
         UpdateVirtualRegister(accumulatorIndex_, gate);
     }
-    void BindStateSplit(GateRef state, GateRef depend,
-        size_t pcOffset, FrameStateInfo *stateInfo);
-    void BindStateSplit(GateRef gate, size_t pcOffset, FrameStateInfo *stateInfo);
-    void BindStateSplit(size_t size);
+    void BindStateSplit(GateRef state, GateRef depend, GateRef frameState);
+    void BindStateSplit(GateRef gate, GateRef frameState);
+    void BindBBStateSplit();
     void UpdateVirtualRegister(size_t id, size_t index, GateRef gate);
-    GateRef FrameState(size_t pcOffset, FrameStateInfo *stateInfo);
+    GateRef BuildFrameStateGate(size_t pcOffset, GateRef frameValues, FrameStateOutput output);
+    GateRef BuildFrameValues(FrameStateInfo *stateInfo);
 
     FrameStateInfo *CreateEmptyStateInfo();
     void BuildPostOrderList(size_t size);
@@ -133,10 +133,15 @@ private:
     void UpdateVirtualRegistersOfSuspend(GateRef gate);
     void UpdateVirtualRegistersOfResume(GateRef gate);
     void SaveBBBeginStateInfo(size_t bbId);
-    FrameStateInfo *GetCurrentFrameInfo(BytecodeRegion &bb, uint32_t bcId);
+    FrameStateInfo *GetFrameInfoBefore(BytecodeRegion &bb, uint32_t bcId);
+    FrameStateInfo *GetFrameInfoAfter(uint32_t bcId);
     GateRef GetPreBBInput(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef gate);
     GateRef GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef phi);
-    bool NeedBindStateSplit(BytecodeRegion& bb, const BytecodeInfo &bytecodeInfo, size_t index);
+    void BuildFrameState(BytecodeRegion& bb, const BytecodeInfo &bytecodeInfo, size_t index);
+    void BuildStateSplitAfter(size_t index);
+    void BuildStateSplitBefore(BytecodeRegion& bb, size_t index);
+    bool ShouldInsertFrameStateBefore(BytecodeRegion& bb,
+        const BytecodeInfo &bytecodeInfo, size_t index);
 
     BytecodeCircuitBuilder *builder_{nullptr};
     FrameStateInfo *liveOutResult_{nullptr};
@@ -144,10 +149,9 @@ private:
     size_t accumulatorIndex_ {0};
     Circuit *circuit_ {nullptr};
     GateAccessor gateAcc_;
-    ArgumentAccessor argAcc_;
-    std::vector<FrameStateInfo *> bcEndStateInfos_;
-    std::vector<FrameStateInfo *> bbBeginStateInfos_;
-    std::vector<size_t> postOrderList_;
+    ChunkVector<FrameStateInfo *> bcEndStateInfos_;
+    ChunkVector<FrameStateInfo *> bbBeginStateInfos_;
+    ChunkVector<size_t> postOrderList_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_FRAME_STATE_H

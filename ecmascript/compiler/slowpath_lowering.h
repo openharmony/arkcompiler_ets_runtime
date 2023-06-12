@@ -278,6 +278,7 @@ private:
     void LowerAsyncFunctionEnter(GateRef gate);
     void LowerTypeof(GateRef gate);
     void LowerResumeGenerator(GateRef gate);
+    void LowerStoreRegister(GateRef gate, GateRef arrayGate);
     void LowerGetResumeMode(GateRef gate);
     void LowerDefineMethod(GateRef gate);
     void LowerGetUnmappedArgs(GateRef gate);

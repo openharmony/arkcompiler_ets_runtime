@@ -20,11 +20,13 @@ namespace panda::ecmascript::kungfu {
 FrameStateBuilder::FrameStateBuilder(BytecodeCircuitBuilder *builder,
     Circuit *circuit, const MethodLiteral *literal)
     : builder_(builder),
-      numVregs_(literal->GetNumberVRegs() + 2), // 2: env and acc
+      numVregs_(literal->GetNumberVRegs() + FIXED_ARGS),
       accumulatorIndex_(literal->GetNumberVRegs() + 1), // 1: acc
       circuit_(circuit),
       gateAcc_(circuit),
-      argAcc_(circuit)
+      bcEndStateInfos_(circuit->chunk()),
+      bbBeginStateInfos_(circuit->chunk()),
+      postOrderList_(circuit->chunk())
 {
 }
 
@@ -49,10 +51,10 @@ FrameStateBuilder::~FrameStateBuilder()
     builder_ = nullptr;
 }
 
-GateRef FrameStateBuilder::FrameState(size_t pcOffset, FrameStateInfo *stateInfo)
+GateRef FrameStateBuilder::BuildFrameValues(FrameStateInfo *stateInfo)
 {
-    size_t frameStateInputs = numVregs_ + 1; // +1: for pc
-    std::vector<GateRef> inList(frameStateInputs + 1, Circuit::NullGate()); // 1: frameArgs
+    size_t frameStateInputs = numVregs_;
+    std::vector<GateRef> inList(frameStateInputs, Circuit::NullGate());
     auto optimizedGate = circuit_->GetConstantGate(MachineType::I64,
                                                    JSTaggedValue::VALUE_OPTIMIZED_OUT,
                                                    GateType::TaggedValue());
@@ -63,18 +65,20 @@ GateRef FrameStateBuilder::FrameState(size_t pcOffset, FrameStateInfo *stateInfo
         }
         inList[i] = value;
     }
-    auto pcGate = circuit_->GetConstantGate(MachineType::I64,
-                                            pcOffset,
-                                            GateType::NJSValue());
-    inList[numVregs_] = pcGate;
-    inList[numVregs_ + 1] = argAcc_.GetFrameArgs();
-    return circuit_->NewGate(circuit_->FrameState(frameStateInputs), inList);
+    return circuit_->NewGate(circuit_->FrameValues(frameStateInputs), inList);
 }
 
-void FrameStateBuilder::BindStateSplit(GateRef state, GateRef depend,
-                                       size_t pcOffset, FrameStateInfo *stateInfo)
+GateRef FrameStateBuilder::BuildFrameStateGate(size_t pcOffset, GateRef frameValues, FrameStateOutput output)
 {
-    GateRef frameState = FrameState(pcOffset, stateInfo);
+    GateRef frameArgs = builder_->GetFrameArgs();
+    GateRef preFrameState = builder_->GetPreFrameState();
+    UInt32PairAccessor accessor(static_cast<uint32_t>(pcOffset), output.GetValue());
+    return circuit_->NewGate(circuit_->FrameState(accessor.ToValue()),
+        {frameArgs, frameValues, preFrameState});
+}
+
+void FrameStateBuilder::BindStateSplit(GateRef state, GateRef depend, GateRef frameState)
+{
     GateRef stateSplit = circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
     auto uses = gateAcc_.Uses(depend);
     for (auto useIt = uses.begin(); useIt != uses.end();) {
@@ -89,14 +93,13 @@ void FrameStateBuilder::BindStateSplit(GateRef state, GateRef depend,
     }
 }
 
-void FrameStateBuilder::BindStateSplit(GateRef gate, size_t pcOffset, FrameStateInfo *stateInfo)
+void FrameStateBuilder::BindStateSplit(GateRef gate, GateRef frameState)
 {
     auto state = gateAcc_.GetState(gate);
     auto depend = gateAcc_.GetDep(gate);
     if (gateAcc_.GetOpCode(state) == OpCode::IF_SUCCESS) {
         state = gateAcc_.GetState(state);
     }
-    GateRef frameState = FrameState(pcOffset, stateInfo);
     GateRef stateSplit = circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
     gateAcc_.ReplaceDependIn(gate, stateSplit);
     if (builder_->IsLogEnabled()) {
@@ -335,17 +338,15 @@ void FrameStateBuilder::ComputeLiveState()
     }
 }
 
-void FrameStateBuilder::BuildFrameState(GateRef frameArgs)
+void FrameStateBuilder::BuildFrameState()
 {
-    argAcc_.CollectArgs();
-    argAcc_.SetFrameArgs(frameArgs);
     bcEndStateInfos_.resize(builder_->GetLastBcIndex() + 1, nullptr); // 1: +1 pcOffsets size
     auto size = builder_->GetBasicBlockCount();
     bbBeginStateInfos_.resize(size, nullptr);
     liveOutResult_ = CreateEmptyStateInfo();
     BuildPostOrderList(size);
     ComputeLiveState();
-    BindStateSplit(size);
+    BindBBStateSplit();
 }
 
 void FrameStateBuilder::ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo, size_t bbId)
@@ -417,58 +418,115 @@ bool FrameStateBuilder::IsAsyncResolveOrSusp(const BytecodeInfo &bytecodeInfo)
     return opcode == EcmaOpcode::SUSPENDGENERATOR_V8 || opcode == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8;
 }
 
-bool FrameStateBuilder::NeedBindStateSplit(BytecodeRegion& bb,
+void FrameStateBuilder::BuildStateSplitAfter(size_t index)
+{
+    auto gate = builder_->GetGateByBcIndex(index);
+    ASSERT(gateAcc_.GetOpCode(gate) == OpCode::JS_BYTECODE);
+    auto pcOffset = builder_->GetPcOffset(index + 1); // 1: for after
+    auto stateInfo = GetFrameInfoAfter(index);
+    GateRef frameValues = BuildFrameValues(stateInfo);
+    GateRef frameStateAfter = BuildFrameStateGate(
+        pcOffset, frameValues, FrameStateOutput::Invalid());
+    BindStateSplit(gate, gate, frameStateAfter);
+}
+
+void FrameStateBuilder::BuildStateSplitBefore(BytecodeRegion& bb, size_t index)
+{
+    auto pcOffset = builder_->GetPcOffset(index);
+    auto stateInfo = GetFrameInfoBefore(bb, index);
+    GateRef frameValues = BuildFrameValues(stateInfo);
+    GateRef frameStateBefore = BuildFrameStateGate(
+        pcOffset, frameValues, FrameStateOutput::Invalid());
+    if (index == bb.start) {
+        BindStateSplit(bb.stateCurrent, bb.dependCurrent, frameStateBefore);
+    } else {
+        auto gate = builder_->GetGateByBcIndex(index);
+        BindStateSplit(gate, frameStateBefore);
+    }
+}
+
+bool FrameStateBuilder::ShouldInsertFrameStateBefore(BytecodeRegion& bb,
     const BytecodeInfo &bytecodeInfo, size_t index)
 {
-    if (index == bb.start && bb.numOfStatePreds > 1) {
+    // add Call State Split for inline
+    if (bytecodeInfo.IsCall()) {
         return true;
     }
-    if (bytecodeInfo.Deopt() || !bytecodeInfo.NoSideEffects()) {
-        return true;
+    auto gate = builder_->GetGateByBcIndex(index);
+    if (index == bb.start) {
+        if (bb.numOfStatePreds > 1) { // 1: > 1 is merge
+            return true;
+        }
+        if (gateAcc_.GetOpCode(bb.dependCurrent) == OpCode::GET_EXCEPTION) {
+            return true;
+        }
+        if (gateAcc_.GetOpCode(bb.stateCurrent) == OpCode::IF_SUCCESS) {
+            return true;
+        }
+    } else {
+        if (gate == Circuit::NullGate() || gateAcc_.GetStateCount(gate) != 1) {
+            return false;
+        }
+        auto state = gateAcc_.GetState(gate);
+        if (gateAcc_.GetOpCode(state) == OpCode::IF_SUCCESS) {
+            return true;
+        }
     }
     return false;
 }
 
-void FrameStateBuilder::BindStateSplit(size_t size)
+void FrameStateBuilder::BuildFrameState(BytecodeRegion& bb,
+    const BytecodeInfo &bytecodeInfo, size_t index)
 {
-    for (size_t i = 0; i < size; i++) {
-        auto &bb = builder_->GetBasicBlockById(i);
-        if (bb.isDead) {
-            continue;
+    bool needStateSplitBefore = ShouldInsertFrameStateBefore(bb, bytecodeInfo, index);
+    auto gate = builder_->GetGateByBcIndex(index);
+    if (needStateSplitBefore && index != bb.start) {
+        auto depend = gateAcc_.GetDep(gate);
+        if (gateAcc_.GetOpCode(depend) == OpCode::STATE_SPLIT) {
+            needStateSplitBefore = false;
         }
-        bool needStateSplit = true;
+    }
+    if (needStateSplitBefore) {
+        BuildStateSplitBefore(bb, index);
+    }
+
+    if (!bytecodeInfo.NoSideEffects() && !bytecodeInfo.IsThrow()) {
+        if (!gateAcc_.HasIfExceptionUse(gate)) {
+            BuildStateSplitAfter(index);
+        }
+    }
+}
+
+void FrameStateBuilder::BindBBStateSplit()
+{
+    auto& dfsList = builder_->GetDfsList();
+    for (auto &bbId: dfsList) {
+        auto &bb = builder_->GetBasicBlockById(bbId);
+        if (builder_->IsFirstBasicBlock(bb.id)) {
+            BuildStateSplitBefore(bb, bb.start);
+        }
+        ASSERT(!bb.isDead);
         builder_->EnumerateBlock(bb, [&](const BytecodeInfo &bytecodeInfo) -> bool {
             auto &iterator = bb.GetBytecodeIterator();
             auto index = iterator.Index();
-            if (bytecodeInfo.IsCall()) {
-                needStateSplit = true;
-            }
-            if (needStateSplit && NeedBindStateSplit(bb, bytecodeInfo, index)) {
-                auto pcOffset = builder_->GetPcOffset(index);
-                auto stateInfo = GetCurrentFrameInfo(bb, index);
-                if (index == bb.start) {
-                    BindStateSplit(bb.stateCurrent, bb.dependCurrent, pcOffset, stateInfo);
-                } else {
-                    auto gate = builder_->GetGateByBcIndex(index);
-                    BindStateSplit(gate, pcOffset, stateInfo);
-                }
-                needStateSplit = false;
-            }
-            if (!bytecodeInfo.NoSideEffects()) {
-                needStateSplit = true;
-            }
+            BuildFrameState(bb, bytecodeInfo, index);
             return true;
         });
     }
 }
 
-FrameStateInfo *FrameStateBuilder::GetCurrentFrameInfo(BytecodeRegion &bb, uint32_t bcId)
+FrameStateInfo *FrameStateBuilder::GetFrameInfoBefore(BytecodeRegion &bb, uint32_t bcId)
 {
     if (bcId == bb.start) {
         return GetBBBeginStateInfo(bb.id);
     } else {
         return GetOrOCreateBCEndStateInfo(bcId - 1); // 1: prev pc
     }
+}
+
+FrameStateInfo *FrameStateBuilder::GetFrameInfoAfter(uint32_t bcId)
+{
+    return GetOrOCreateBCEndStateInfo(bcId);
 }
 
 void FrameStateBuilder::SaveBBBeginStateInfo(size_t bbId)
@@ -491,11 +549,12 @@ void FrameStateBuilder::UpdateVirtualRegistersOfSuspend(GateRef gate)
 
 void FrameStateBuilder::UpdateVirtualRegistersOfResume(GateRef gate)
 {
-    auto restoreGate = gateAcc_.GetDep(gate);
-    while (gateAcc_.GetOpCode(restoreGate) == OpCode::RESTORE_REGISTER) {
-        auto vreg = static_cast<size_t>(gateAcc_.GetVirtualRegisterIndex(restoreGate));
-        UpdateVirtualRegister(vreg, Circuit::NullGate());
-        restoreGate = gateAcc_.GetDep(restoreGate);
+    auto uses = gateAcc_.Uses(gate);
+    for (auto it = uses.begin(); it != uses.end(); it++) {
+        if (gateAcc_.IsValueIn(it) && gateAcc_.GetOpCode(*it) == OpCode::RESTORE_REGISTER) {
+            auto vreg = static_cast<size_t>(gateAcc_.GetVirtualRegisterIndex(*it));
+            UpdateVirtualRegister(vreg, Circuit::NullGate());
+        }
     }
 }
 

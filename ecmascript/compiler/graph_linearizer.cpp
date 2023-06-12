@@ -38,7 +38,8 @@ class CFGBuilder {
 public:
     explicit CFGBuilder(GraphLinearizer *linearizer)
         : linearizer_(linearizer), pendingList_(linearizer->chunk_),
-        acc_(linearizer->circuit_) {}
+        endStateList_(linearizer->chunk_),
+        acc_(linearizer->circuit_), scheduleLIR_(linearizer->IsSchedueLIR()) {}
 
     void Run()
     {
@@ -50,9 +51,15 @@ public:
             for (size_t i = 0; i < numStateIn; i++) {
                 auto input = acc_.GetState(rootGate, i);
                 ASSERT(acc_.IsState(input) || acc_.GetOpCode(input) == OpCode::STATE_ENTRY);
-                auto fromRegion = linearizer_->GateToRegion(input);
+                auto fromRegion = linearizer_->FindPredRegion(input);
                 fromRegion->AddSucc(toRegion);
             }
+        }
+        for (auto fixedGate : endStateList_) {
+            auto state = acc_.GetState(fixedGate);
+            auto region = linearizer_->FindPredRegion(state);
+            linearizer_->AddFixedGateToRegion(fixedGate, region);
+            linearizer_->ScheduleGate(fixedGate, region);
         }
     }
 
@@ -67,7 +74,7 @@ public:
         while (!pendingList_.empty()) {
             auto curGate = pendingList_.back();
             pendingList_.pop_back();
-            linearizer_->CreateGateRegion(curGate);
+            VisitStateGate(curGate);
             if (acc_.GetOpCode(curGate) != OpCode::LOOP_BACK) {
                 auto uses = acc_.Uses(curGate);
                 for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
@@ -80,10 +87,70 @@ public:
         }
     }
 
+    void VisitStateGate(GateRef gate)
+    {
+        if (scheduleLIR_) {
+            linearizer_->CreateGateRegion(gate);
+        } else {
+            auto op = acc_.GetOpCode(gate);
+            switch (op) {
+                case OpCode::LOOP_BEGIN:
+                case OpCode::MERGE:
+                case OpCode::IF_TRUE:
+                case OpCode::IF_FALSE:
+                case OpCode::SWITCH_CASE:
+                case OpCode::STATE_ENTRY:
+                case OpCode::IF_EXCEPTION:
+                case OpCode::IF_SUCCESS:
+                    linearizer_->CreateGateRegion(gate);
+                    break;
+                case OpCode::LOOP_BACK:
+                case OpCode::IF_BRANCH:
+                case OpCode::SWITCH_BRANCH:
+                case OpCode::RETURN:
+                case OpCode::RETURN_VOID:
+                case OpCode::TYPED_CONDITION_JUMP:
+                    endStateList_.emplace_back(gate);
+                    break;
+                case OpCode::JS_BYTECODE:
+                    if (IsStateSplit(gate)) {
+                        endStateList_.emplace_back(gate);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    bool IsStateSplit(GateRef gate)
+    {
+        size_t stateOut = 0;
+        auto uses = acc_.Uses(gate);
+        for (auto it = uses.begin(); it != uses.end(); it++) {
+            if (acc_.IsStateIn(it)) {
+                auto op = acc_.GetOpCode(*it);
+                switch (op) {
+                    case OpCode::IF_TRUE:
+                    case OpCode::IF_FALSE:
+                    case OpCode::IF_EXCEPTION:
+                    case OpCode::IF_SUCCESS:
+                        stateOut++;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        return stateOut > 1; // 1: depend out
+    }
+
 private:
     GraphLinearizer* linearizer_;
     ChunkDeque<GateRef> pendingList_;
+    ChunkVector<GateRef> endStateList_;
     GateAccessor acc_;
+    bool scheduleLIR_;
 };
 
 class ImmediateDominatorsGenerator {
@@ -244,7 +311,7 @@ public:
     explicit GateScheduler(GraphLinearizer *linearizer)
         : linearizer_(linearizer), fixedGateList_(linearizer->chunk_),
         pendingList_(linearizer->chunk_), acc_(linearizer->circuit_),
-        scheduleUpperBound_(false) {}
+        scheduleUpperBound_(linearizer_->scheduleUpperBound_) {}
 
     void InitializeFixedGate()
     {
@@ -257,8 +324,7 @@ public:
             auto uses = acc_.Uses(fixedGate);
             for (auto it = uses.begin(); it != uses.end(); it++) {
                 GateRef succGate = *it;
-                if (acc_.IsStateIn(it) &&
-                    (acc_.IsFixed(succGate) || acc_.IsVirtualState(succGate))) {
+                if (acc_.IsStateIn(it) && acc_.IsFixed(succGate)) {
                     linearizer_->AddFixedGateToRegion(succGate, region);
                     fixedGateList_.emplace_back(succGate);
                 }
@@ -341,7 +407,7 @@ public:
     {
         auto curGate = edge.GetGate();
         auto prevGate = acc_.GetIn(curGate, edge.GetIndex());
-        if (!acc_.IsSchedulable(prevGate)) {
+        if (acc_.IsProlog(prevGate) || acc_.IsRoot(prevGate)) {
             return;
         }
         auto& prevInfo = linearizer_->GetGateInfo(prevGate);
@@ -354,7 +420,7 @@ public:
             pendingList_.emplace_back(prevGate);
         }
         auto& curInfo = linearizer_->GetGateInfo(curGate);
-        if (curInfo.IsSchedulable()) {
+        if (prevInfo.IsSchedulable() && curInfo.IsSchedulable()) {
             prevInfo.schedulableUseCount++;
         }
     }
@@ -406,8 +472,12 @@ public:
             GateRegion* useRegion = useInfo.region;
             if (useInfo.IsSelector()) {
                 GateRef state = acc_.GetState(useGate);
+                ASSERT(acc_.IsCFGMerge(state));
                 useGate = acc_.GetIn(state, useIt.GetIndex() - 1); // -1: for state
-                useRegion = linearizer_->GateToRegion(useGate);
+                useRegion = linearizer_->FindPredRegion(useGate);
+            } else if (acc_.IsCFGMerge(useGate)) {
+                useGate = acc_.GetIn(useGate, useIt.GetIndex());
+                useRegion = linearizer_->FindPredRegion(useGate);
             }
 
             if (region == nullptr) {
@@ -454,10 +524,11 @@ public:
         std::vector<GateRef> gateList;
         linearizer_->circuit_->GetAllGates(gateList);
         for (const auto &gate : gateList) {
-            auto& GateInfo = linearizer_->GetGateInfo(gate);
-            if (GateInfo.IsSchedulable()) {
+            auto& gateInfo = linearizer_->GetGateInfo(gate);
+            if (gateInfo.IsSchedulable()) {
                 ASSERT(linearizer_->IsScheduled(gate));
             }
+            ASSERT(gateInfo.schedulableUseCount == 0);
         }
     }
 
@@ -510,6 +581,18 @@ void GraphLinearizer::LinearizeRegions(ControlFlowGraph &result)
         auto &gateList = region->gateList_;
         result[i].insert(result[i].end(), gateList.begin(), gateList.end());
     }
+}
+
+GateRegion* GraphLinearizer::FindPredRegion(GateRef input)
+{
+    GateRegion* predRegion = GateToRegion(input);
+    while (predRegion == nullptr) {
+        ASSERT(acc_.GetStateCount(input) == 1); // 1: fall through block
+        input = acc_.GetState(input);
+        predRegion = GateToRegion(input);
+    }
+    ASSERT(predRegion != nullptr);
+    return predRegion;
 }
 
 void GraphLinearizer::PrintGraph(const char* title)

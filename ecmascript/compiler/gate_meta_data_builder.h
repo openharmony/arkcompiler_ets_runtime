@@ -152,10 +152,6 @@ public:
         return new (chunk_) StringMetaData(chunk_, str);
     }
 
-    const GateMetaData* FrameState(uint64_t valueIn)
-    {
-        return new (chunk_) FrameStateMetaData(valueIn);
-    }
 private:
     const GateMetaDataChache cache_;
     const GateMetaData cachedNop_ { OpCode::NOP, GateFlags::NONE_FLAG, 0, 0, 0 };

@@ -64,8 +64,6 @@ private:
 
     void ModifyStateInput(GateRef stateInGate, GateRef ifBranch, GateRef ifFalse);
 
-    GateRef GetFirstRestoreRegister(GateRef gate) const;
-
     GateRef GetDependPhiFromLoopBegin(GateRef loopbegin) const;
 
     BytecodeCircuitBuilder *bcBuilder_;

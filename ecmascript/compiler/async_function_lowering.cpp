@@ -73,7 +73,6 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
     if (accessor_.GetOpCode(suspendGate) == OpCode::IF_SUCCESS) {
         suspendGate = accessor_.GetState(suspendGate);
     }
-    GateRef firstRestoreRegGate = GetFirstRestoreRegister(resumeGate);
     GateRef offsetConstantGate = accessor_.GetValueIn(suspendGate);
     offsetConstantGate = builder_.TruncInt64ToInt32(offsetConstantGate);
     auto stateInGate = accessor_.GetState(resumeGate);
@@ -93,7 +92,7 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
             if (flag) {
                 accessor_.ReplaceStateIn(resumeGate, ifTrue);
                 accessor_.ReplaceValueIn(resumeGate, newTarget);
-                accessor_.ReplaceDependIn(firstRestoreRegGate, ifTrueDepend);
+                accessor_.ReplaceDependIn(resumeGate, ifTrueDepend);
                 circuit_->NewGate(circuit_->Return(), MachineType::NOVALUE,
                     { stateGate, suspendGate, suspendGate, circuit_->GetReturnRoot() },
                     GateType::AnyType());
@@ -134,7 +133,7 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
                 if (accessor_.GetOpCode(resumeStateGate) != OpCode::IF_TRUE) {
                     accessor_.ReplaceStateIn(resumeGate, ifTrue);
                     accessor_.ReplaceValueIn(resumeGate, newTarget);
-                    accessor_.ReplaceDependIn(firstRestoreRegGate, GetDependPhiFromLoopBegin(stateInGate));
+                    accessor_.ReplaceDependIn(resumeGate, GetDependPhiFromLoopBegin(stateInGate));
                     circuit_->NewGate(circuit_->Return(), MachineType::NOVALUE,
                         { stateGate, suspendGate, suspendGate, circuit_->GetReturnRoot() },
                         GateType::AnyType());
@@ -267,20 +266,6 @@ void AsyncFunctionLowering::CheckResumeInLoopBody(GateRef stateInGate, bool &res
             }
         }
     }
-}
-
-GateRef AsyncFunctionLowering::GetFirstRestoreRegister(GateRef gate) const
-{
-    GateRef firstRestoreGate = gate;
-    GateRef curRestoreGate = accessor_.GetDep(gate);
-    if (accessor_.GetOpCode(curRestoreGate) == OpCode::STATE_SPLIT) {
-        curRestoreGate = accessor_.GetDep(curRestoreGate);
-    }
-    while (accessor_.GetOpCode(curRestoreGate) == OpCode::RESTORE_REGISTER) {
-        firstRestoreGate = curRestoreGate;
-        curRestoreGate = accessor_.GetDep(curRestoreGate);
-    }
-    return firstRestoreGate;
 }
 
 GateRef AsyncFunctionLowering::GetDependPhiFromLoopBegin(GateRef gate) const

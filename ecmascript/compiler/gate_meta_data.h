@@ -235,10 +235,9 @@ std::string MachineTypeToStr(MachineType machineType);
     V(GetSuperConstructor, GET_SUPER_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)         \
     V(UpdateHotness, UPDATE_HOTNESS, GateFlags::NO_WRITE, 1, 1, 0)                      \
     V(Dead, DEAD, GateFlags::NONE_FLAG, 0, 0, 0)                                        \
-    V(FrameArgs, FRAME_ARGS, GateFlags::HAS_FRAME_STATE, 0, 0, 4)                       \
+    V(FrameArgs, FRAME_ARGS, GateFlags::NONE_FLAG, 0, 0, 4)                             \
     V(GetEnv, GET_ENV, GateFlags::NONE_FLAG, 0, 0, 1)                                   \
     V(ConvertHoleAsUndefined, CONVERT_HOLE_AS_UNDEFINED, GateFlags::NO_WRITE, 1, 1, 1)  \
-    V(Replaceable, REPLACEABLE, GateFlags::NONE_FLAG, 0, 0, 0)                          \
     V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                     \
     V(FinishAllocate, FINISH_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                   \
     BINARY_GATE_META_DATA_CACHE_LIST(V)                                                 \
@@ -246,7 +245,7 @@ std::string MachineTypeToStr(MachineType machineType);
 
 #define GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                             \
     V(ValueSelector, VALUE_SELECTOR, GateFlags::FIXED, 1, 0, value)                      \
-    V(FrameStateChain, FRAME_STATE_CHAIN, GateFlags::NONE_FLAG, 0, 0, value)             \
+    V(FrameValues, FRAME_VALUES, GateFlags::NONE_FLAG, 0, 0, value)                      \
     V(RuntimeCall, RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)                      \
     V(RuntimeCallWithArgv, RUNTIME_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)    \
     V(NoGcRuntimeCall, NOGC_RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)             \
@@ -287,7 +286,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                                           \
     V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)                               \
     V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                                             \
-    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                                     \
+    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 0, 0, 1)                                    \
     V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                                      \
     V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)
 
@@ -302,11 +301,12 @@ std::string MachineTypeToStr(MachineType machineType);
     V(StoreConstOffset, STORE_CONST_OFFSET, GateFlags::NONE_FLAG, 1, 1, 2)              \
     V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 2)                          \
     V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 3)                       \
-    V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 1, 0)                 \
+    V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 0, 1)                 \
     V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                                \
     V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)                 \
     V(GetGlobalEnvObjHClass, GET_GLOBAL_ENV_OBJ_HCLASS, GateFlags::NO_WRITE, 0, 1, 1)   \
-    V(GetGlobalConstantValue, GET_GLOBAL_CONSTANT_VALUE, GateFlags::NO_WRITE, 0, 1, 0)
+    V(GetGlobalConstantValue, GET_GLOBAL_CONSTANT_VALUE, GateFlags::NO_WRITE, 0, 1, 0)  \
+    V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, 2)
 
 #define GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     V(Arg, ARG, GateFlags::HAS_ROOT, 0, 0, 0)             \
@@ -322,9 +322,6 @@ std::string MachineTypeToStr(MachineType machineType);
     V(TYPED_BINARY_OP)          \
     V(CONSTSTRING)
 
-#define FRAME_STATE(V)                                              \
-    V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, value)  \
-
 enum class OpCode : uint8_t {
     NOP = 0,
 #define DECLARE_GATE_OPCODE(NAME, OP, R, S, D, V) OP,
@@ -334,7 +331,6 @@ enum class OpCode : uint8_t {
     GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_BOOL(DECLARE_GATE_OPCODE)
-    FRAME_STATE(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 #define DECLARE_GATE_OPCODE(NAME) NAME,
     GATE_OPCODE_LIST(DECLARE_GATE_OPCODE)
@@ -364,7 +360,6 @@ public:
         MUTABLE_STRING,
         JSBYTECODE,
         TYPED_BINARY_OP,
-        FRAME_STATE,
     };
     GateMetaData() = default;
     GateMetaData(OpCode opcode, GateFlags flags,
@@ -479,11 +474,6 @@ public:
     bool IsStringType() const
     {
         return GetKind() == Kind::MUTABLE_STRING;
-    }
-
-    bool IsFrameState() const
-    {
-        return GetKind() == Kind::FRAME_STATE;
     }
 
     bool IsRoot() const;
@@ -718,35 +708,6 @@ private:
     ChunkVector<char> stringData_;
 };
 
-class FrameStateMetaData : public GateMetaData {
-public:
-    FrameStateMetaData(uint64_t value)
-        : GateMetaData(OpCode::FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, value)
-    {
-        SetKind(GateMetaData::Kind::FRAME_STATE);
-        isInlineCallFrameState_ = false;
-    }
-
-    static const FrameStateMetaData* Cast(const GateMetaData* meta)
-    {
-        ASSERT(meta->IsFrameState());
-        return static_cast<const FrameStateMetaData*>(meta);
-    }
-
-    bool IsInlineCallFrameState() const
-    {
-        return isInlineCallFrameState_;
-    }
-
-    void SetInlineCallFrameStateFlag(bool isInline)
-    {
-        isInlineCallFrameState_ = isInline;
-    }
-
-private:
-    bool isInlineCallFrameState_ {false};
-};
-
 class GateTypeAccessor {
 public:
     explicit GateTypeAccessor(uint64_t value)
@@ -878,6 +839,61 @@ public:
 private:
     using TypedValueBits = panda::BitField<uint32_t, 0, OPRAND_TYPE_BITS>;
     using TypedJumpOpBits = TypedValueBits::NextField<TypedJumpOp, OPRAND_TYPE_BITS>;
+
+    uint64_t bitField_;
+};
+
+class FrameStateOutput {
+public:
+    static constexpr uint32_t INVALID_INDEX = static_cast<uint32_t>(-1);
+    explicit FrameStateOutput(uint32_t value) : index_(value) {}
+
+    static FrameStateOutput Invalid()
+    {
+        return FrameStateOutput(INVALID_INDEX);
+    }
+
+    bool IsInvalid() const
+    {
+        return index_ == INVALID_INDEX;
+    }
+
+    uint32_t GetValue() const
+    {
+        return index_;
+    }
+private:
+    uint32_t index_;
+};
+
+class UInt32PairAccessor {
+public:
+    // type bits shift
+    static constexpr int OPRAND_TYPE_BITS = 32;
+    explicit UInt32PairAccessor(uint64_t value) : bitField_(value) {}
+    explicit UInt32PairAccessor(uint32_t first, uint32_t second)
+    {
+        bitField_ = FirstBits::Encode(first) | SecondBits::Encode(second);
+    }
+
+    uint32_t GetFirstValue() const
+    {
+        return FirstBits::Get(bitField_);
+    }
+
+    uint32_t GetSecondValue() const
+    {
+        return SecondBits::Get(bitField_);
+    }
+
+    uint64_t ToValue() const
+    {
+        return bitField_;
+    }
+
+private:
+    using FirstBits = panda::BitField<uint32_t, 0, OPRAND_TYPE_BITS>;
+    using SecondBits = FirstBits::NextField<uint32_t, OPRAND_TYPE_BITS>;
 
     uint64_t bitField_;
 };

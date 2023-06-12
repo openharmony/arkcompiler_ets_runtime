@@ -50,9 +50,6 @@ void LCRLowering::Run()
             case OpCode::CONVERT_HOLE_AS_UNDEFINED:
                 LowerConvertHoleAsUndefined(gate);
                 break;
-            case OpCode::CONVERT:
-                LowerConvert(gate);
-                break;
             case OpCode::GET_GLOBAL_ENV:
                 LowerGetGlobalEnv(gate);
                 break;
@@ -178,14 +175,14 @@ void LCRLowering::LowerHClassStableArrayCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void LCRLowering::LowerConvert(GateRef gate)
+StateDepend LCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
 {
+    Environment env(stateDepend.State(), stateDepend.Depend(), {}, circuit_, &builder_);
     GateRef value = acc_.GetValueIn(gate);
-    ValueType srcType = acc_.GetSrcType(gate);
     ValueType dstType = acc_.GetDstType(gate);
     GateRef result = Circuit::NullGate();
-
-    switch (srcType) {
+    Label exit(&builder_);
+    switch (acc_.GetSrcType(gate)) {
         case ValueType::BOOL:
             ASSERT(dstType == ValueType::TAGGED_BOOLEAN);
             result = ConvertBoolToTaggedBoolean(value);
@@ -203,6 +200,8 @@ void LCRLowering::LowerConvert(GateRef gate)
         case ValueType::FLOAT64:
             if (dstType == ValueType::TAGGED_DOUBLE) {
                 result = ConvertFloat64ToTaggedDouble(value);
+            } else if (dstType == ValueType::INT32) {
+                result = ConvertFloat64ToInt32(value, &exit);
             } else {
                 ASSERT(dstType == ValueType::BOOL);
                 result = ConvertFloat64ToBool(value);
@@ -222,10 +221,10 @@ void LCRLowering::LowerConvert(GateRef gate)
             break;
         default:
             LOG_COMPILER(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
             break;
     }
     acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), result);
+    return builder_.GetStateDepend();
 }
 
 GateRef LCRLowering::ConvertTaggedNumberToBool(GateRef gate, Label *exit)
@@ -284,38 +283,28 @@ GateRef LCRLowering::ConvertTaggedNumberToFloat64(GateRef gate, Label *exit)
     return *result;
 }
 
-void LCRLowering::LowerCheckAndConvert(GateRef gate, GateRef frameState)
+StateDepend LCRLowering::LowerCheckAndConvert(StateDepend stateDepend, GateRef gate, GateRef frameState)
 {
-    Environment env(gate, circuit_, &builder_);
+    Environment env(stateDepend.State(), stateDepend.Depend(), {}, circuit_, &builder_);
     ValueType srcType = acc_.GetSrcType(gate);
+    Label exit(&builder_);
     switch (srcType) {
-        case ValueType::FLOAT64:
-            LowerCheckFloat64AndConvert(gate);
-            break;
         case ValueType::TAGGED_INT:
             LowerCheckTaggedIntAndConvert(gate, frameState);
             break;
         case ValueType::TAGGED_DOUBLE:
-            LowerCheckTaggedDoubleAndConvert(gate, frameState);
+            LowerCheckTaggedDoubleAndConvert(gate, frameState, &exit);
             break;
         case ValueType::TAGGED_BOOLEAN:
             LowerCheckTaggedBoolAndConvert(gate, frameState);
             break;
         case ValueType::TAGGED_NUMBER:
-            LowerCheckTaggedNumberAndConvert(gate, frameState);
+            LowerCheckTaggedNumberAndConvert(gate, frameState, &exit);
             break;
         default:
             UNREACHABLE();
     }
-}
-
-void LCRLowering::LowerCheckFloat64AndConvert(GateRef gate)
-{
-    ASSERT(acc_.GetDstType(gate) == ValueType::INT32);
-    Label exit(&builder_);
-    GateRef value = acc_.GetValueIn(gate, 0);
-    GateRef result = ConvertFloat64ToInt32(value, &exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    return builder_.GetStateDepend();
 }
 
 void LCRLowering::LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState)
@@ -331,43 +320,41 @@ void LCRLowering::LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState
     } else {
         result = ConvertTaggedIntToFloat64(value);
     }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), result);
 }
 
-void LCRLowering::LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState)
+void LCRLowering::LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState, Label *exit)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef typeCheck = builder_.TaggedIsDouble(value);
-    Label exit(&builder_);
     builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTDOUBLE);
     GateRef result = Circuit::NullGate();
     ValueType dst = acc_.GetDstType(gate);
     ASSERT(dst == ValueType::INT32 || dst == ValueType::FLOAT64);
     if (dst == ValueType::INT32) {
-        result = ConvertTaggedDoubleToInt32(value, &exit);
+        result = ConvertTaggedDoubleToInt32(value, exit);
     } else {
         result = ConvertTaggedDoubleToFloat64(value);
     }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), result);
 }
 
-void LCRLowering::LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState)
+void LCRLowering::LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState, Label *exit)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef typeCheck = builder_.TaggedIsNumber(value);
     builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTNUMBER);
     GateRef result = Circuit::NullGate();
     ValueType dst = acc_.GetDstType(gate);
-    Label exit(&builder_);
     if (dst == ValueType::INT32) {
-        result = ConvertTaggedNumberToInt32(value, &exit);
+        result = ConvertTaggedNumberToInt32(value, exit);
     } else if (dst == ValueType::FLOAT64) {
-        result = ConvertTaggedNumberToFloat64(value, &exit);
+        result = ConvertTaggedNumberToFloat64(value, exit);
     } else {
         ASSERT(dst == ValueType::BOOL);
-        result = ConvertTaggedNumberToBool(value, &exit);
+        result = ConvertTaggedNumberToBool(value, exit);
     }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), result);
 }
 
 void LCRLowering::LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameState)
@@ -378,7 +365,7 @@ void LCRLowering::LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameStat
     GateRef result = Circuit::NullGate();
     ASSERT(acc_.GetDstType(gate) == ValueType::BOOL);
     result = ConvertTaggedBooleanToBool(value);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), result);
 }
 
 GateRef LCRLowering::ConvertTaggedBooleanToBool(GateRef value)

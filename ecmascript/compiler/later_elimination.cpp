@@ -49,7 +49,6 @@ GateRef LaterElimination::VisitGate(GateRef gate)
         case OpCode::GET_GLOBAL_ENV:
         case OpCode::GET_GLOBAL_ENV_OBJ_HCLASS:
         case OpCode::GET_GLOBAL_CONSTANT_VALUE:
-        case OpCode::CHECK_AND_CONVERT:
         case OpCode::ARRAY_GUARDIAN_CHECK:
         case OpCode::HCLASS_STABLE_ARRAY_CHECK:
         case OpCode::HEAP_OBJECT_CHECK:
@@ -149,14 +148,6 @@ bool LaterElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         }
     }
     auto opcode = acc_.GetOpCode(lhs);
-    if (opcode == OpCode::CHECK_AND_CONVERT) {
-        if (acc_.GetSrcType(lhs) != acc_.GetSrcType(rhs)) {
-            return false;
-        }
-        if (acc_.GetDstType(lhs) != acc_.GetDstType(rhs)) {
-            return false;
-        }
-    }
     if (opcode == OpCode::GET_GLOBAL_ENV_OBJ_HCLASS ||
         opcode == OpCode::GET_GLOBAL_CONSTANT_VALUE) {
         if (acc_.GetIndex(lhs) != acc_.GetIndex(rhs)) {

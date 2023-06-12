@@ -266,6 +266,10 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
         case OpCode::CALL_GETTER:
         case OpCode::CALL_SETTER:
             return static_cast<uint32_t>(gatePtr->GetOneParameterMetaData()->GetValue());
+        case OpCode::FRAME_STATE: {
+            UInt32PairAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+            return accessor.GetFirstValue();
+        }
         default:
             break;
     }
@@ -553,6 +557,11 @@ bool GateAccessor::IsSchedulable(GateRef gate) const
 bool GateAccessor::IsVirtualState(GateRef gate) const
 {
     return GetMetaData(gate)->IsVirtualState();
+}
+
+bool GateAccessor::IsGeneralState(GateRef gate) const
+{
+    return GetMetaData(gate)->IsGeneralState();
 }
 
 GateRef GateAccessor::GetDep(GateRef gate, size_t idx) const
@@ -1053,6 +1062,7 @@ bool GateAccessor::HasFrameState(GateRef gate) const
 
 void GateAccessor::ReplaceFrameStateIn(GateRef gate, GateRef in)
 {
+    ASSERT(HasFrameState(gate));
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     size_t index = gatePtr->GetInFrameStateStarts();
     circuit_->ModifyIn(gate, index, in);
@@ -1120,6 +1130,11 @@ bool GateAccessor::IsProlog(GateRef g) const
     return GetMetaData(g)->IsProlog();
 }
 
+bool GateAccessor::IsCFGMerge(GateRef g) const
+{
+    return GetMetaData(g)->IsCFGMerge();
+}
+
 bool GateAccessor::MetaDataEqu(GateRef g1, GateRef g2) const
 {
     return GetMetaData(g1) == GetMetaData(g2);
@@ -1155,43 +1170,29 @@ bool ConstGateAccessor::IsSchedulable(GateRef g) const
     return GetMetaData(g)->IsSchedulable();
 }
 
-GateRef GateAccessor::GetPreFrameState(GateRef gate) const
+GateRef GateAccessor::GetDependSelectorFromMerge(GateRef gate)
 {
-    ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE);
-    GateRef frameArgs = GetFrameState(gate);
-    GateRef preFrameState = GetFrameState(frameArgs);
-    return preFrameState;
-}
-
-void GateAccessor::SetInlineCallFrameStateFlag(GateRef gate, bool isInline)
-{
-    ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    const_cast<FrameStateMetaData *>(gatePtr->GetFrameStateMetaData())->SetInlineCallFrameStateFlag(isInline);
-}
-
-bool GateAccessor::IsInlineCallFrameState(GateRef gate) const
-{
-    ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetFrameStateMetaData()->IsInlineCallFrameState();
-}
-
-size_t GateAccessor::GetFrameStateDepth(GateRef gate) const
-{
-    ASSERT(GetOpCode(gate) == OpCode::FRAME_STATE);
-    GateRef frameArgs = GetFrameState(gate);
-    GateRef preFrameState = GetFrameState(frameArgs);
-    size_t depth = 0;
-    while (GetOpCode(preFrameState) != OpCode::REPLACEABLE) {
-        if (GetOpCode(preFrameState) == OpCode::FRAME_STATE) {
-            frameArgs = GetFrameState(preFrameState);
-            preFrameState = GetFrameState(frameArgs);
-            depth++;
-        } else {
+    GateRef depend = Circuit::NullGate();
+    auto uses = Uses(gate);
+    for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
+        if (GetOpCode(*useIt) == OpCode::DEPEND_SELECTOR) {
+            depend = *useIt;
             break;
         }
     }
-    return depth;
+    ASSERT(depend != Circuit::NullGate());
+    return depend;
+}
+
+bool GateAccessor::HasIfExceptionUse(GateRef gate) const
+{
+    ASSERT(GetStateCount(gate) > 0);
+    auto uses = ConstUses(gate);
+    for (auto it = uses.begin(); it != uses.end(); it++) {
+        if (GetOpCode(*it) == OpCode::IF_EXCEPTION) {
+            return true;
+        }
+    }
+    return false;
 }
 }  // namespace panda::ecmascript::kungfu

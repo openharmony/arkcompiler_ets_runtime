@@ -34,7 +34,7 @@ void ValueNumbering::Run()
 GateRef ValueNumbering::VisitGate(GateRef gate)
 {
     auto opcode = acc_.GetOpCode(gate);
-    if (opcode != OpCode::CONVERT) {
+    if (opcode != OpCode::CONVERT && opcode != OpCode::CHECK_AND_CONVERT) {
         return Circuit::NullGate();
     }
     size_t hash = HashCode(gate);
@@ -78,8 +78,14 @@ bool ValueNumbering::CheckReplacement(GateRef lhs, GateRef rhs)
             return false;
         }
     }
+    if (acc_.HasFrameState(lhs)) {
+        ASSERT(acc_.HasFrameState(rhs));
+        if (acc_.GetFrameState(lhs) != acc_.GetFrameState(rhs)) {
+            return false;
+        }
+    }
     auto opcode = acc_.GetOpCode(lhs);
-    if (opcode == OpCode::CONVERT) {
+    if (opcode == OpCode::CONVERT || opcode == OpCode::CHECK_AND_CONVERT) {
         if (acc_.GetSrcType(lhs) != acc_.GetSrcType(rhs)) {
             return false;
         }

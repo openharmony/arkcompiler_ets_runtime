@@ -154,7 +154,13 @@ GateRef ArgumentAccessor::GetFrameArgsIn(GateRef gate, FrameArgIdx idx)
 {
     GateAccessor gateAcc(circuit_);
     ASSERT(gateAcc.GetOpCode(gate) == OpCode::JS_BYTECODE || gateAcc.GetOpCode(gate) == OpCode::FRAME_STATE);
-    GateRef frameArgs = gateAcc.GetFrameState(gate);
+    GateRef frameArgs = Circuit::NullGate();
+    if (gateAcc.GetOpCode(gate) == OpCode::JS_BYTECODE) {
+        frameArgs = gateAcc.GetFrameState(gate);
+        ASSERT(gateAcc.GetOpCode(frameArgs) == OpCode::FRAME_ARGS);
+    } else {
+        frameArgs = gateAcc.GetValueIn(gate, 0); // 0: frame args
+    }
     return gateAcc.GetValueIn(frameArgs, static_cast<size_t>(idx));
 }
 }  // namespace panda::ecmascript::kungfu

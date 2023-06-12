@@ -191,6 +191,7 @@ GateRef Circuit::GetGateRef(const Gate *gate) const
 
 Gate *Circuit::LoadGatePtr(GateRef shift)
 {
+    ASSERT(shift != Circuit::NullGate());
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     return reinterpret_cast<Gate *>(GetDataPtr(shift));
 }

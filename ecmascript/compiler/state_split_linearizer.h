@@ -30,8 +30,8 @@ public:
     StateSplitLinearizer(Circuit *circuit, CompilationConfig *cmpCfg,
                          bool enableLog, const std::string& name, Chunk* chunk)
         : enableLog_(enableLog), methodName_(name), circuit_(circuit),
-        acc_(circuit), graphLinearizer_(circuit, enableLog, name, chunk),
-        lcrLowering_(circuit, cmpCfg, enableLog, name), pendingList_(chunk) {}
+        graphLinearizer_(circuit, enableLog, name, chunk),
+        lcrLowering_(circuit, cmpCfg, enableLog, name) {}
 
     void Run();
 private:
@@ -45,19 +45,14 @@ private:
         return methodName_;
     }
 
-    void VisitGate(GateRef gate);
-    void VisitRegion(GateRegion* region);
     void LinearizeStateSplit();
 
     bool enableLog_ {false};
     std::string methodName_;
     Circuit* circuit_ {nullptr};
-    GateRef state_ {Circuit::NullGate()};
-    GateRef frameState_ {Circuit::NullGate()};
-    GateAccessor acc_;
     GraphLinearizer graphLinearizer_;
     LCRLowering lcrLowering_;
-    ChunkDeque<GateRegion*> pendingList_;
+    friend class StateDependBuilder;
 };
 };  // namespace panda::ecmascript::kungfu
 

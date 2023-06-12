@@ -169,12 +169,11 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
                                    ctx_->GetByteCodes(), true, IsLogEnabled(),
                                    enableTypeLowering_, fullName, recordName, nullptr);
     {
+        if (enableTypeLowering_) {
+            BuildFrameStateChain(gate, builder);
+        }
         TimeScope timeScope("BytecodeToCircuit", methodName, method->GetMethodId().GetOffset(), log);
         builder.BytecodeToCircuit();
-    }
-
-    if (enableTypeLowering_) {
-        BuildFrameStateChain(gate, builder);
     }
 
     PassData data(&builder, circuit_, ctx_, log, fullName,
@@ -389,11 +388,9 @@ void TSInlineLowering::BuildFrameStateChain(GateRef gate, BytecodeCircuitBuilder
     GateRef check = acc_.GetDep(gate);
     GateRef stateSplit = acc_.GetDep(check);
     ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    GateRef preFrameState = acc_.FindNearestFrameState(stateSplit);
+    GateRef preFrameState = acc_.GetFrameState(stateSplit);
     ASSERT(acc_.GetOpCode(preFrameState) == OpCode::FRAME_STATE);
-    acc_.SetInlineCallFrameStateFlag(preFrameState, true);
-    GateRef frameArgs = builder.GetFrameArgs();
-    acc_.ReplaceFrameStateIn(frameArgs, preFrameState);
+    builder.SetPreFrameState(preFrameState);
 }
 
 bool TSInlineLowering::FilterCallInTryCatch(GateRef gate)
