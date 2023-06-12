@@ -25,7 +25,8 @@
               "faultloggerd",
               "hitrace_native",
               "hiviewdfx_hilog_native",
-              "runtime_core"
+              "runtime_core",
+              "c_utils"
             ],
             "third_party": [
               "bounds_checking_function",
