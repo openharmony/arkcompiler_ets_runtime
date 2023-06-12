@@ -27,6 +27,7 @@
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
+#include "ecmascript/builtins/builtins_object.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -142,6 +143,7 @@ using ecmascript::Region;
 using ecmascript::TaggedArray;
 using ecmascript::JSTypedArray;
 using ecmascript::base::BuiltinsBase;
+using ecmascript::builtins::BuiltinsObject;
 using ecmascript::base::JsonParser;
 using ecmascript::base::JsonStringifier;
 using ecmascript::base::StringHelper;
@@ -1505,6 +1507,56 @@ bool ObjectRef::Delete(const EcmaVM *vm, uint32_t key)
     bool result = object->DeleteProperty(thread, object, keyHandle);
     RETURN_VALUE_IF_ABRUPT(thread, false);
     return result;
+}
+
+Local<JSValueRef> ObjectRef::Freeze(const EcmaVM *vm)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    EscapeLocalScope scope(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> object = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(object, ERROR);
+    JSHandle<JSObject> obj(object);
+    bool status = JSObject::SetIntegrityLevel(thread, obj, ecmascript::IntegrityLevel::FROZEN);
+    if (JSNApi::HasPendingException(vm)) {
+        JSHandle<JSTaggedValue> exception(thread, JSTaggedValue::Exception());
+        return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(exception));
+    }
+    if (!status) {
+        LOG_ECMA(ERROR) << "Freeze: freeze failed";
+        Local<StringRef> message = StringRef::NewFromUtf8(vm, "Freeze: freeze failed");
+        Local<JSValueRef> error = Exception::Error(vm, message);
+        JSNApi::ThrowException(vm, error);
+        JSHandle<JSTaggedValue> exception(thread, JSTaggedValue::Exception());
+        return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(exception));
+    }
+    JSHandle<JSTaggedValue> resultValue(obj);
+    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
+}
+
+Local<JSValueRef> ObjectRef::Seal(const EcmaVM *vm)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    EscapeLocalScope scope(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> object = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(object, ERROR);
+    JSHandle<JSObject> obj(object);
+    bool status = JSObject::SetIntegrityLevel(thread, obj, ecmascript::IntegrityLevel::SEALED);
+    if (JSNApi::HasPendingException(vm)) {
+        JSHandle<JSTaggedValue> exception(thread, JSTaggedValue::Exception());
+        return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(exception));
+    }
+    if (!status) {
+        LOG_ECMA(ERROR) << "Seal: seal failed";
+        Local<StringRef> message = StringRef::NewFromUtf8(vm, "Freeze: freeze failed");
+        Local<JSValueRef> error = Exception::Error(vm, message);
+        JSNApi::ThrowException(vm, error);
+        JSHandle<JSTaggedValue> exception(thread, JSTaggedValue::Exception());
+        return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(exception));
+    }
+    JSHandle<JSTaggedValue> resultValue(obj);
+    return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(resultValue));
 }
 
 void ObjectRef::SetNativePointerFieldCount(int32_t count)
