@@ -563,7 +563,7 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
     JSHandle<JSFunction> functionInfo(functionValue);
     JSTaggedValue extraInfoValue = functionInfo->GetFunctionExtraInfo();
     if (!extraInfoValue.IsJSNativePointer()) {
-        LOG_ECMA(ERROR) << "FunctionExtraInfo is not JSNativePointer";
+        LOG_ECMA(INFO) << "FunctionExtraInfo is not JSNativePointer";
         return;
     }
     JSHandle<JSNativePointer> extraInfo(thread_, extraInfoValue);

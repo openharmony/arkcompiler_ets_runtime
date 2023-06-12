@@ -42,6 +42,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
+#include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
@@ -3274,7 +3275,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
     JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(function);
     JSHandle<JSFunction> transFunc = JSHandle<JSFunction>::Cast(funcVal);
     if (transFunc->GetFunctionKind() != ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
-        LOG_ECMA(ERROR) << "function is not concurrent";
+        LOG_ECMA(ERROR) << "Function is not concurrent";
         return false;
     }
     ecmascript::JSThread *thread = vm->GetJSThread();
@@ -3282,7 +3283,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
     JSHandle<Method> method(thread, transFunc->GetMethod());
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "jsPandaFile is nullptr";
+        LOG_ECMA(ERROR) << "JSPandaFile is nullptr";
         return false;
     }
     ecmascript::CString moduleName = jsPandaFile->GetJSPandaFileDesc();
@@ -3301,10 +3302,10 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
     JSHandle<ecmascript::JSTaggedValue> moduleRecord;
     // check compileMode
     if (jsPandaFile->IsBundlePack()) {
-        LOG_ECMA(DEBUG) << "compileMode is jsbundle";
+        LOG_ECMA(DEBUG) << "CompileMode is jsbundle";
         moduleRecord = moduleManager->HostResolveImportedModule(moduleName);
     } else {
-        LOG_ECMA(DEBUG) << "compileMode is esmodule";
+        LOG_ECMA(DEBUG) << "CompileMode is esmodule";
         moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
         if (ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
             thread->GetCurrentEcmaContext()->GetAOTFileManager()->LoadAiFile(jsPandaFile);
@@ -3316,6 +3317,32 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module);
     transFunc->SetModule(thread, module);
     return true;
+}
+
+void* JSNApi::GetCurrentTaskInfo(const EcmaVM *vm)
+{
+    CHECK_HAS_PENDING_EXCEPTION(vm, nullptr);
+    auto thread = vm->GetJSThread();
+    ecmascript::FrameHandler frameHandler(thread);
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+        if (!frameHandler.IsJSFrame()) {
+            continue;
+        }
+        auto funcObj = frameHandler.GetFunction();
+        JSHandle<JSFunction> function(thread, funcObj);
+        if (function->GetFunctionKind() != ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
+            continue;
+        }
+        JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
+        if (!extraInfoValue.IsJSNativePointer()) {
+            LOG_ECMA(DEBUG) << "Concurrent function donnot have taskInfo";
+            continue;
+        }
+        JSHandle<JSNativePointer> extraInfo(thread, extraInfoValue);
+        return extraInfo->GetData();
+    }
+    LOG_ECMA(ERROR) << "TaskInfo is nullptr";
+    return nullptr;
 }
 
 void JSNApi::SetBundleName(EcmaVM *vm, const std::string &bundleName)
