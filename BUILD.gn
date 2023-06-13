@@ -122,26 +122,26 @@ group("ark_unittest") {
   if (host_os != "mac") {
     # js unittest
     deps += [
+      "ecmascript/base/tests:host_unittest",
+      "ecmascript/builtins/tests:host_unittest",
+      "ecmascript/containers/tests:host_unittest",
+      "ecmascript/dfx/hprof/tests:host_unittest",
+      "ecmascript/ic/tests:host_unittest",
+      "ecmascript/jobs/tests:host_unittest",
+      "ecmascript/jspandafile/tests:host_unittest",
+      "ecmascript/module/tests:host_unittest",
+      "ecmascript/napi/test:host_unittest",
       "ecmascript/pgo_profiler/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/base/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/builtins/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/containers/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/ic/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/jobs/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/jspandafile/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/module/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/napi/test:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/regexp/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/require/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/snapshot/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/tests:host_unittest",
-      "//arkcompiler/ets_runtime/ecmascript/ts_types/tests:host_unittest",
+      "ecmascript/regexp/tests:host_unittest",
+      "ecmascript/require/tests:host_unittest",
+      "ecmascript/snapshot/tests:host_unittest",
+      "ecmascript/tests:host_unittest",
+      "ecmascript/ts_types/tests:host_unittest",
     ]
     if (!run_with_asan) {
-      deps += [
-        "//arkcompiler/ets_runtime/ecmascript/compiler/tests:host_unittest",
-      ]
+      if (!(ark_standalone_build && current_os == "ohos")) {
+        deps += [ "ecmascript/compiler/tests:host_unittest" ]
+      }
     }
   }
 }
