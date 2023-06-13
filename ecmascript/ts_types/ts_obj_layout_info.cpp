@@ -36,7 +36,7 @@ void TSObjLayoutInfo::AddProperty(const JSThread *thread, const JSTaggedValue ke
 
 bool TSObjLayoutInfo::Find(JSTaggedValue key) const
 {
-    return GetElementIndexByKey(key) != INVAILD_INDEX;
+    return GetElementIndexByKey(key) != INVALID_INDEX;
 }
 
 int TSObjLayoutInfo::GetElementIndexByKey(JSTaggedValue key) const
@@ -52,7 +52,7 @@ int TSObjLayoutInfo::GetElementIndexByKey(JSTaggedValue key) const
             return i;
         }
     }
-    return INVAILD_INDEX;
+    return INVALID_INDEX;
 }
 
 JSTaggedValue TSObjLayoutInfo::TryGetTypeByIndexSign(const uint32_t keyType)

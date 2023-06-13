@@ -108,6 +108,8 @@ public:
         }
     }
 
+    void Print() const;
+
 private:
     static constexpr uint32_t KEY_OFFSET = 1;
     static constexpr uint32_t VALUE_OFFSET = 2;
@@ -119,6 +121,7 @@ private:
     }
 
     void ProcessTypeLiteral(const JSPandaFile *jsPandaFile, const uint32_t typeOffset);
+    std::string PrintTypeKind(TSTypeKind typeKind) const;
 
     std::vector<TypeLiteralValue> array_;
     uint32_t typeOffset_ { 0 };
@@ -147,9 +150,12 @@ public:
         return numOfTypes_;
     }
 
+    void Print() const;
+
 private:
     void ProcessTypeSummary(const JSPandaFile *jsPandaFile, const uint32_t summaryOffset);
 
+    const JSPandaFile *jsPandaFile_ {nullptr};
     std::vector<uint32_t> typeOffsets_ {};
     std::vector<CString> reDirects_ {};
     uint32_t numOfTypes_ { 0 };
@@ -185,6 +191,8 @@ public:
         return isNamespace_;
     }
 
+    void Print() const;
+
 private:
     static constexpr const char *TYPE_ANNO_ELEMENT_NAME = "_TypeOfInstruction";
     static constexpr int METHOD_ANNOTATION_FUNCTION_TYPE_OFFSET = -1;
@@ -193,6 +201,7 @@ private:
 
     void ProcessTypeAnnotation(const JSPandaFile *jsPandaFile, const uint32_t methodOffset);
     void CollectTSMethodKind();
+    std::string PrintTag(LiteralTag tag) const;
 
     uint32_t methodTypeOffset_ {0};
     std::vector<int32_t> bcOffsets_ {};
@@ -223,7 +232,9 @@ public:
             callback(exportVars_[i], typeIds_[i]);
         }
     }
-    
+
+    void Print() const;
+
 private:
     static constexpr const char *DECLARED_SYMBOL_TYPES = "declaredSymbolTypes";
     static constexpr const char *EXPORTED_SYMBOL_TYPES = "exportedSymbolTypes";

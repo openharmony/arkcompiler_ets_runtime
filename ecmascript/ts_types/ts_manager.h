@@ -324,11 +324,6 @@ public:
         return assertTypes_;
     }
 
-    bool PUBLIC_API PrintAnyTypes() const
-    {
-        return printAnyTypes_;
-    }
-
     double PUBLIC_API GetTypeThreshold() const
     {
         return typeThreshold_;
@@ -713,6 +708,8 @@ public:
 
     void PrintNumOfTypes() const;
 
+    void PrintTypeInfo(const JSPandaFile *jsPandaFile) const;
+
     kungfu::GateType TryNarrowUnionType(kungfu::GateType gateType);
 
     JSHandle<TaggedArray> GetExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName);
@@ -811,7 +808,6 @@ private:
     std::map<GlobalTSTypeRef, IHClassData> gtIhcMap_ {};
     std::map<GlobalTSTypeRef, IHClassData> gtConstructorhcMap_ {};
     bool assertTypes_ {false};
-    bool printAnyTypes_ {false};
     double typeThreshold_ {-1};
 
     // when the passmanager iterates each method, the curCP_ and curCPID_ should be updated

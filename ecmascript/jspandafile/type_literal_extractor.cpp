@@ -15,6 +15,7 @@
 
 #include "ecmascript/jspandafile/type_literal_extractor.h"
 
+#include <iomanip>
 #include "libpandafile/literal_data_accessor-inl.h"
 #include "libpandafile/method_data_accessor-inl.h"
 
@@ -117,7 +118,63 @@ void TypeLiteralExtractor::ProcessTypeLiteral(const JSPandaFile *jsPandaFile, co
         });
 }
 
+void TypeLiteralExtractor::Print() const
+{
+    std::string log("[TypeLiteral] TypeOffset: ");
+    log += (std::to_string(typeOffset_) + ", " + PrintTypeKind(kind_));
+    if (isGenerics_) {
+        log += ", generics";
+    }
+    uint32_t length = array_.size();
+    log += ", [";
+    for (uint32_t i = 0; i < length; ++i) {
+        if (std::holds_alternative<uint32_t>(array_[i])) {
+            log += std::to_string(std::get<uint32_t>(array_[i]));
+        } else if (std::holds_alternative<CString>(array_[i])) {
+            log += std::get<CString>(array_[i]);
+        }
+        if (i == length - 1) {
+            log += "]";
+        } else {
+            log += ", ";
+        }
+    }
+    LOG_COMPILER(INFO) << log;
+}
+
+std::string TypeLiteralExtractor::PrintTypeKind(TSTypeKind typeKind) const
+{
+    switch (typeKind) {
+        case TSTypeKind::CLASS:
+            return "class";
+        case TSTypeKind::CLASS_INSTANCE:
+            return "class_instance";
+        case TSTypeKind::FUNCTION:
+            return "function";
+        case TSTypeKind::UNION:
+            return "union";
+        case TSTypeKind::ARRAY:
+            return "array";
+        case TSTypeKind::OBJECT:
+            return "object";
+        case TSTypeKind::IMPORT:
+            return "import";
+        case TSTypeKind::INTERFACE:
+            return "interface";
+        case TSTypeKind::BUILTIN_INSTANCE:
+            return "builtin_instance";
+        case TSTypeKind::GENERIC_INSTANCE:
+            return "generic_instance";
+        case TSTypeKind::INDEXSIG:
+            return "index_signature";
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+}
+
 TypeSummaryExtractor::TypeSummaryExtractor(const JSPandaFile *jsPandaFile, const CString &recordName)
+    : jsPandaFile_(jsPandaFile)
 {
     ProcessTypeSummary(jsPandaFile, jsPandaFile->GetTypeSummaryOffset(recordName));
 }
@@ -162,6 +219,13 @@ void TypeSummaryExtractor::ProcessTypeSummary(const JSPandaFile *jsPandaFile, co
         });
     ASSERT(typeOffsets_.size() == numOfTypes_ + 1);
     ASSERT(reDirects_.size() == numOfRedirects_);
+}
+
+void TypeSummaryExtractor::Print() const
+{
+    for (uint32_t i = 1; i <= numOfTypes_; ++i) {  // 1: start index of typeOffsets
+        TypeLiteralExtractor(jsPandaFile_, typeOffsets_[i]).Print();
+    }
 }
 
 TypeAnnotationExtractor::TypeAnnotationExtractor(const JSPandaFile *jsPandaFile, const uint32_t methodOffset)
@@ -227,6 +291,36 @@ void TypeAnnotationExtractor::CollectTSMethodKind()
     }
 }
 
+void TypeAnnotationExtractor::Print() const
+{
+    const uint32_t typeRightAdjustment = 6;
+    ASSERT(bcOffsets_.size() == typeIds_.size());
+    ASSERT(tags_.size() == typeIds_.size());
+    LOG_COMPILER(INFO) << "====================================================================";
+    LOG_COMPILER(INFO) << "[TypeAnnotation]";
+    uint32_t length = bcOffsets_.size();
+    for (uint32_t i = 0; i < length; ++i) {
+        LOG_COMPILER(INFO) << "Order of bytecodes: " << std::setw(typeRightAdjustment) << bcOffsets_[i] << ", "
+                           << "typeId: " << std::setw(typeRightAdjustment) << typeIds_[i] << ", "
+                           << "tag of typeId: " << PrintTag(tags_[i]);
+    }
+}
+
+std::string TypeAnnotationExtractor::PrintTag(LiteralTag tag) const
+{
+    switch (tag) {
+        case LiteralTag::LITERALARRAY: {
+            return "type literal offset";
+        }
+        case LiteralTag::BUILTINTYPEINDEX: {
+            return "builtin type index";
+        }
+        default: {
+            return "none";
+        }
+    }
+}
+
 ExportTypeTableExtractor::ExportTypeTableExtractor(const JSPandaFile *jsPandaFile,
                                                    const CString &recordName,
                                                    bool isBuiltinTable)
@@ -269,5 +363,16 @@ void ExportTypeTableExtractor::ProcessExportTable(const JSPandaFile *jsPandaFile
         }
     });
     ASSERT(exportVars_.size() == typeIds_.size());
+}
+
+void ExportTypeTableExtractor::Print() const
+{
+    ASSERT(exportVars_.size() == typeIds_.size());
+    LOG_COMPILER(INFO) << "[ExportTypeTable]";
+    uint32_t length = typeIds_.size();
+    for (uint32_t i = 0; i < length; ++i) {
+        LOG_COMPILER(INFO) << "Export variable: " << exportVars_[i] << ", "
+                           << "typeId: " << typeIds_[i];
+    }
 }
 }  // namespace panda::ecmascript

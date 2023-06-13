@@ -47,7 +47,9 @@ BytecodeInfoCollector::~BytecodeInfoCollector()
         delete envManager_;
         envManager_ = nullptr;
     }
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetBytecodeInfoCollector(nullptr);
+    auto tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
+    tsManager->PrintTypeInfo(jsPandaFile_);
+    tsManager->SetBytecodeInfoCollector(nullptr);
 }
 
 void BytecodeInfoCollector::ProcessEnvs()

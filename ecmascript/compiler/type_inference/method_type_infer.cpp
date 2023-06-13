@@ -56,29 +56,16 @@ MethodTypeInfer::MethodTypeInfer(BytecodeCircuitBuilder *builder, Circuit *circu
 
 void MethodTypeInfer::CheckAndPrint()
 {
-    if (IsLogEnabled()) {
-        PrintAllByteCodesTypes();
-    }
-
     VerifyTypePercent();
 
     if (tsManager_->AssertTypes()) {
         Verify();
     }
 
-    if (tsManager_->PrintAnyTypes()) {
-        FilterAnyTypeGates();
-    }
     if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m"
-                           << "===================="
-                           << " After ts type infer "
-                           << "[" << GetMethodName() << "]"
-                           << "===================="
-                           << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+        PrintTypeAnnotation();
+        PrintByteCodesWithTypes();
+        PrintCircuitWithTypes();
     }
 }
 
@@ -1224,39 +1211,82 @@ bool MethodTypeInfer::CheckNamespaceFunc(GateRef func) const
     return false;
 }
 
-void MethodTypeInfer::PrintAllByteCodesTypes() const
+void MethodTypeInfer::PrintTypeAnnotation() const
+{
+    const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
+    panda_file::File::EntityId fieldId = methodLiteral_->GetMethodId();
+    TypeAnnotationExtractor annoExtractor(jsPandaFile, fieldId.GetOffset());
+    annoExtractor.Print();
+}
+
+void MethodTypeInfer::PrintByteCodesWithTypes() const
 {
     std::vector<GateRef> gateList;
     circuit_->GetAllGates(gateList);
 
     const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
     const MethodLiteral *methodLiteral = builder_->GetMethod();
-    const std::string functionName = MethodLiteral::ParseFunctionName(jsPandaFile, methodLiteral->GetMethodId());
+    auto methodId = methodLiteral->GetMethodId();
+    const std::string functionName = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
 
+    const uint32_t adjustment = 6;
+    LOG_COMPILER(INFO) << "====================================================================";
     LOG_COMPILER(INFO) << "print bytecode types:";
     LOG_COMPILER(INFO) << ".recordName " + recordName_;
     LOG_COMPILER(INFO) << ".function " + functionName + "() {";
     uint32_t lastBcIndex = builder_->GetLastBcIndex();
+    DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     for (uint32_t bcIndex = 0; bcIndex < lastBcIndex; bcIndex++) {  // ignore last element
         const uint8_t *pc = builder_->GetPCByIndex(bcIndex);
         BytecodeInstruction inst(pc);
+        int32_t lineNumber = 0;
+        auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
+            lineNumber = line + 1;
+            return true;
+        };
+        int32_t columnNumber = 0;
+        auto callbackColumnFunc = [&columnNumber](int32_t column) -> bool {
+            columnNumber += column + 1;
+            return true;
+        };
+        auto offset = builder_->GetPcOffset(bcIndex);
+        debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset);
+        debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset);
+
         auto gates = builder_->GetGatesByBcIndex(bcIndex);
-        for (auto gate : gates) {
+        if (gates.empty()) {
+            LOG_COMPILER(INFO) << std::setw(adjustment) << std::to_string(bcIndex) << "  " << inst << ", "
+                               << "at line: " + std::to_string(lineNumber) + " column: " + std::to_string(columnNumber);
+        }
+
+        for (const auto gate : gates) {
             if (gate == Circuit::NullGate()) {
                 continue;
             }
+
             GateType type = gateAccessor_.GetGateType(gate);
-            if (!tsManager_->IsPrimitiveTypeKind(type)) {
-                GlobalTSTypeRef gt = type.GetGTRef();
-                LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type)
-                                   << ", [moduleId: " + std::to_string(gt.GetModuleId())
-                                   << ", localId: " + std::to_string(gt.GetLocalId()) + "]";
-            } else {
-                LOG_COMPILER(INFO) << "    " << inst << ", type: " + tsManager_->GetTypeStr(type);
-            }
+            GlobalTSTypeRef gt = type.GetGTRef();
+            LOG_COMPILER(INFO) << std::setw(adjustment) << std::to_string(bcIndex) << "  " << inst << ", "
+                               << "[type: " + tsManager_->GetTypeStr(type) + ", "
+                               << "moduleId: " + std::to_string(gt.GetModuleId()) + ", "
+                               << "localId: " + std::to_string(gt.GetLocalId()) + "], "
+                               << "at line: " + std::to_string(lineNumber) + " column: " + std::to_string(columnNumber);
         }
     }
     LOG_COMPILER(INFO) << "}";
+}
+
+void MethodTypeInfer::PrintCircuitWithTypes() const
+{
+    LOG_COMPILER(INFO) << "\033[34m"
+                       << "===================="
+                       << " After ts type infer "
+                       << "[" << GetMethodName() << "]"
+                       << "===================="
+                       << "\033[0m";
+    circuit_->PrintAllGatesWithBytecode();
+    LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+    LOG_COMPILER(INFO) << "";
 }
 
 void MethodTypeInfer::Verify() const
@@ -1312,29 +1342,6 @@ void MethodTypeInfer::TypeCheck(GateRef gate) const
             LOG_COMPILER(FATAL) << log << "[compiler] [TypeAssertion] end";
         }
     }
-}
-
-void MethodTypeInfer::FilterAnyTypeGates() const
-{
-    const JSPandaFile *jsPandaFile = builder_->GetJSPandaFile();
-    EntityId methodId = builder_->GetMethod()->GetMethodId();
-
-    DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
-    const std::string &sourceFileName = debugExtractor->GetSourceFile(methodId);
-    const std::string functionName = MethodLiteral::ParseFunctionName(jsPandaFile, methodId);
-
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    std::string log;
-    for (const auto &gate : gateList) {
-        GateType type = gateAccessor_.GetGateType(gate);
-        if (ShouldInfer(gate) && type.IsAnyType()) {
-            log += CollectGateTypeLogInfo(gate, debugExtractor, "[TypeFilter] ");
-        }
-    }
-
-    LOG_COMPILER(INFO) << "[TypeFilter] [" << sourceFileName << ":" << functionName << "] begin:";
-    LOG_COMPILER(INFO) << log << "[TypeFilter] end";
 }
 
 std::string MethodTypeInfer::CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *debugExtractor,
@@ -1398,7 +1405,7 @@ void MethodTypeInfer::VerifyTypePercent()
         methodInfo_->SetTypeInferAbort(true);
     }
     if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "";
+        LOG_COMPILER(INFO) << "====================================================================";
         LOG_COMPILER(INFO) << "[TypeCoverage] print method type coverage: \n"
                            << "[compiler] [TypeCoverage] [ShouldInferedGate]: " << shouldInferNum_
                            << " || [NormalInferedGate]: " << normalInferNum_ << "\n"

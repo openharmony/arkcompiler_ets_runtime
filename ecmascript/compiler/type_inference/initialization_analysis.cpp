@@ -63,7 +63,7 @@ void InitializationAnalysis::Analyse(GateRef gate)
             CollectThisEscapedInfo(gate);
             break;
         }
-        default : {
+        default: {
             break;
         }
     }
@@ -107,7 +107,7 @@ bool InitializationAnalysis::IsThisFromSuperCall(GateRef gate) const
         case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8: {
             return true;
         }
-        default : {
+        default: {
             break;
         }
     }
@@ -136,7 +136,7 @@ bool InitializationAnalysis::CheckSimpleGate(GateRef gate, const uint16_t index)
         case OpCode::JS_BYTECODE: {
             return CheckSimpleJSGate(gate, index);
         }
-        default : {
+        default: {
             break;
         }
     }
@@ -175,7 +175,7 @@ bool InitializationAnalysis::CheckSimpleJSGate(GateRef gate, const uint16_t inde
         case EcmaOpcode::THROW_IFSUPERNOTCORRECTCALL_PREF_IMM16: {
             return false;
         }
-        default : {
+        default: {
             return CheckThisAsValueIn(gate);
         }
     }

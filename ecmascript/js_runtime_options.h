@@ -87,7 +87,7 @@ enum CommandValues {
     OPTION_COMPILER_TYPE_THRESHOLD,
     OPTION_ENABLE_RUNTIME_STAT,
     OPTION_COMPILER_ASSERT_TYPES,
-    OPTION_COMPILER_PRINT_ANY_TYPES,
+    OPTION_COMPILER_PRINT_TYPE_INFO,
     OPTION_COMPILER_LOG_SNAPSHOT,
     OPTION_COMPILER_LOG_TIME,
     OPTION_ENABLE_WORKER,
@@ -638,14 +638,14 @@ public:
         assertTypes_ = value;
     }
 
-    bool PrintAnyTypes() const
+    bool PrintTypeInfo() const
     {
-        return printAnyTypes_;
+        return printTypeInfo_;
     }
 
-    void SetPrintAnyTypes(bool value)
+    void SetPrintTypeInfo(bool value)
     {
-        printAnyTypes_ = value;
+        printTypeInfo_ = value;
     }
 
     void SetBuiltinsDTS(const std::string& value)
@@ -1153,7 +1153,7 @@ private:
     bool compilerLogTime_ {false};
     bool enableRuntimeStat_ {false};
     bool assertTypes_ {false};
-    bool printAnyTypes_ {false};
+    bool printTypeInfo_ {false};
     bool isWorker_ {false};
     std::string builtinsDTS_ {""};
     bool traceBc_ {false};

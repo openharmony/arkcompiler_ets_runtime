@@ -39,7 +39,7 @@ public:
     static constexpr int ENTRY_ATTRIBUTE_OFFSET = 2;
     static constexpr int DEFAULT_CAPACITY = 1;
     static constexpr int INCREASE_CAPACITY_RATE = 1;
-    static constexpr int INVAILD_INDEX = -1;
+    static constexpr int INVALID_INDEX = -1;
 
     inline static TSObjLayoutInfo *Cast(TaggedObject *obj)
     {
@@ -77,7 +77,7 @@ public:
 
     static inline bool IsValidIndex(int index)
     {
-        return index != INVAILD_INDEX;
+        return index != INVALID_INDEX;
     }
 
     inline uint32_t GetLength() const

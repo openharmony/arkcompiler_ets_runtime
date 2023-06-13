@@ -136,11 +136,12 @@ private:
         return tsManager_->IsArrayTypeKind(type) && tsManager_->IsBuiltinsDTSEnabled();
     }
 
-    void PrintAllByteCodesTypes() const;
+    void PrintTypeAnnotation() const;
+    void PrintByteCodesWithTypes() const;
+    void PrintCircuitWithTypes() const;
     void Verify() const;
     void VerifyTypePercent();
     void TypeCheck(GateRef gate) const;
-    void FilterAnyTypeGates() const;
 
     std::string CollectGateTypeLogInfo(GateRef gate, DebugInfoExtractor *debugExtractor,
                                        const std::string &logPreFix) const;
