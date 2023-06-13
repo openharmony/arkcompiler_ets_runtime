@@ -269,6 +269,7 @@ namespace panda::ecmascript {
     V(Array, Includes)                        \
     V(Array, Flat)                            \
     V(Array, FlatMap)                         \
+    V(Array, At)                              \
     V(ArrayBuffer, Constructor)               \
     V(ArrayBuffer, Slice)                     \
     V(ArrayBuffer, Species)                   \

@@ -2924,4 +2924,52 @@ JSTaggedValue BuiltinsArray::Includes(EcmaRuntimeCallInfo *argv)
     // 11. Return false.
     return GetTaggedBoolean(false);
 }
+
+// 23.1.3.1 Array.prototype.at ( index )
+JSTaggedValue BuiltinsArray::At(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), Array, At);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. Let O be ToObject(this value).
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    // ReturnIfAbrupt(O).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+
+    // 2. Let len be ? LengthOfArrayLike(O).
+    int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
+    // ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 3. Let index be ? ToIntegerOrInfinity(index).
+    JSTaggedNumber index = JSTaggedValue::ToInteger(thread, GetCallArg(argv, 0));
+    // ReturnIfAbrupt(index).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 4. If relativeIndex ≥ 0, then
+    //     a. Let k be relativeIndex.
+    // 5. Else,
+    //     a. Let k be len + relativeIndex.
+    int64_t relativeIndex = index.GetNumber();
+    int64_t k = 0;
+    if (relativeIndex >= 0) {
+        k = relativeIndex;
+    } else {
+        k = len + relativeIndex;
+    }
+
+    // 6. If k < 0 or k ≥ len, return undefined.
+    if (k < 0 || k >= len) {
+        // Return undefined.
+        return JSTaggedValue::Undefined();
+    }
+    // 7. Return ? Get(O, ! ToString(𝔽(k))).
+    JSHandle<JSTaggedValue> element = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return element.GetTaggedValue();
+}
 }  // namespace panda::ecmascript::builtins
