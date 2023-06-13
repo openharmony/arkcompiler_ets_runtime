@@ -124,7 +124,7 @@ void GlobalDictionary::GetAllKeys(const JSThread *thread, int offset, TaggedArra
 void GlobalDictionary::GetAllKeysByFilter(const JSThread *thread,
     uint32_t &keyArrayEffectivelength, TaggedArray *keyArray, uint32_t filter) const
 {
-    ASSERT_PRINT(keyArrayEffectivelength + static_cast<int>(EntriesCount()) <= keyArray->GetLength(),
+    ASSERT_PRINT(keyArrayEffectivelength + static_cast<uint32_t>(EntriesCount()) <= keyArray->GetLength(),
                  "keyArray capacity is not enough for dictionary");
     int size = Size();
 
