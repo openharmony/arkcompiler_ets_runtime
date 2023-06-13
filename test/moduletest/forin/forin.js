@@ -103,3 +103,12 @@ for (const key in view) {
     print(key);
     delete view.hhh;
 }
+
+try {
+    const obj = {};
+    obj.getOwnPropertyDescriptor = {};
+    const proxy = new Proxy(new Array(100), obj);
+    for (const i in proxy) {}
+} catch (err) {
+    print(err instanceof TypeError);
+}

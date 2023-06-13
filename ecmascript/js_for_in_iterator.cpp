@@ -57,11 +57,13 @@ void JSForInIterator::GetAllEnumKeys(JSThread *thread, const JSHandle<JSForInIte
     JSMutableHandle<TaggedQueue> remaining(thread, thread->GlobalConstants()->GetEmptyTaggedQueue());
     if (object->IsJSProxy()) {
         JSHandle<TaggedArray> proxyArr = JSProxy::OwnPropertyKeys(thread, JSHandle<JSProxy>(object));
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         uint32_t length = proxyArr->GetLength();
         for (uint32_t i = 0; i < length; i++) {
             value.Update(proxyArr->Get(i));
             PropertyDescriptor desc(thread);
             JSProxy::GetOwnProperty(thread, JSHandle<JSProxy>(object), value, desc);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             if (desc.IsEnumerable()) {
                 TaggedQueue *newQueue = TaggedQueue::Push(thread, remaining, value);
                 remaining.Update(JSTaggedValue(newQueue));
@@ -89,6 +91,7 @@ void JSForInIterator::GetAllEnumKeys(JSThread *thread, const JSHandle<JSForInIte
                 value.Update(visited->Get(i));
                 PropertyDescriptor desc(thread);
                 has = JSTaggedValue::GetOwnProperty(thread, value, key, desc);
+                RETURN_IF_ABRUPT_COMPLETION(thread);
                 if (has) {
                     break;
                 }
@@ -115,6 +118,7 @@ std::pair<JSTaggedValue, bool> JSForInIterator::NextInternal(JSThread *thread, c
         }
         if (!it->GetWasVisited()) {
             GetAllEnumKeys(thread, it, object);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, std::make_pair(JSTaggedValue::Exception(), false));
         }
 
         JSHandle<TaggedQueue> remaining(thread, it->GetRemainingKeys());
