@@ -257,8 +257,13 @@ ohos_source_set("libark_jsoptimizer_set") {
       "windowsapp",
     ]
   }
-
-  external_deps = [ "runtime_core:arkfile_header_deps" ]
+  external_deps = []
+  deps = []
+  if (!is_cross_platform_build) {
+    external_deps += [ "runtime_core:arkfile_header_deps" ]
+  } else {
+    deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  }
 
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
@@ -268,7 +273,7 @@ ohos_source_set("libark_jsoptimizer_set") {
       "code_signature:liblocal_code_sign_sdk",
     ]
   }
-  deps = hiviewdfx_deps
+  deps += hiviewdfx_deps
 
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
@@ -361,7 +366,12 @@ ohos_executable("ark_stub_compiler") {
     "$js_root:libark_js_intl_set",
     "$js_root:libark_jsruntime_set",
   ]
-  external_deps = [ "runtime_core:libarkfile_static" ]
+  external_deps = []
+  if (!is_cross_platform_build) {
+    external_deps += [ "runtime_core:libarkfile_static" ]
+  } else {
+    deps += [ "$ark_root/libpandafile:libarkfile_static" ]
+  }
 
   if (!ark_standalone_build && host_os != "mac") {
     ldflags = [ "-Wl,--lto-O0" ]
@@ -404,11 +414,20 @@ ohos_executable("ark_aot_compiler") {
     "$js_root:libark_jsruntime_set",
     "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
   ]
-  external_deps = [
-    "runtime_core:arkfile_header_deps",
-    "runtime_core:libarkbase_static",
-    "runtime_core:libarkfile_static",
-  ]
+  external_deps = []
+  if (!is_cross_platform_build) {
+    external_deps += [
+      "runtime_core:arkfile_header_deps",
+      "runtime_core:libarkbase_static",
+      "runtime_core:libarkfile_static",
+    ]
+  } else {
+    deps += [
+      "$ark_root/libpandabase:libarkbase_static",
+      "$ark_root/libpandafile:arkfile_header_deps",
+      "$ark_root/libpandafile:libarkfile_static",
+    ]
+  }
 
   if (target_os == "ios") {
     deps += [
