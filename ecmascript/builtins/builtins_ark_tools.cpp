@@ -132,7 +132,7 @@ JSTaggedValue BuiltinsArkTools::IsNotHoleProperty(EcmaRuntimeCallInfo *info)
     JSThread *thread = info->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    ASSERT(info->GetArgsNumber() == 2); // 2 : ArgsNumber
+    ASSERT(info->GetArgsNumber() == 2);  // 2 : object and key
     JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
     JSTaggedValue key = GetCallArg(info, 1).GetTaggedValue();
     JSHClass *hclass = object->GetTaggedObject()->GetClass();

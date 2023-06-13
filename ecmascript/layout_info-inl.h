@@ -50,35 +50,35 @@ inline uint32_t LayoutInfo::GetAttrIndex(int index) const
 inline void LayoutInfo::SetPropertyInit(const JSThread *thread, int index, const JSTaggedValue &key,
                                         const PropertyAttributes &attr)
 {
-    uint32_t fixed_idx = GetKeyIndex(index);
-    TaggedArray::Set(thread, fixed_idx, key);
-    TaggedArray::Set(thread, fixed_idx + ATTR_INDEX_OFFSET, attr.GetNormalTagged());
+    uint32_t fixedIdx = GetKeyIndex(index);
+    TaggedArray::Set(thread, fixedIdx, key);
+    TaggedArray::Set(thread, fixedIdx + ATTR_INDEX_OFFSET, attr.GetNormalTagged());
 }
 
 inline void LayoutInfo::SetNormalAttr(const JSThread *thread, int index, const PropertyAttributes &attr)
 {
-    uint32_t fixed_idx = GetAttrIndex(index);
-    PropertyAttributes oldAttr(TaggedArray::Get(fixed_idx));
+    uint32_t fixedIdx = GetAttrIndex(index);
+    PropertyAttributes oldAttr(TaggedArray::Get(fixedIdx));
     oldAttr.SetNormalAttr(attr.GetNormalAttr());
-    TaggedArray::Set(thread, fixed_idx, oldAttr.GetTaggedValue());
+    TaggedArray::Set(thread, fixedIdx, oldAttr.GetTaggedValue());
 }
 
 inline JSTaggedValue LayoutInfo::GetKey(int index) const
 {
-    uint32_t fixed_idx = GetKeyIndex(index);
-    return TaggedArray::Get(fixed_idx);
+    uint32_t fixedIdx = GetKeyIndex(index);
+    return TaggedArray::Get(fixedIdx);
 }
 
 inline PropertyAttributes LayoutInfo::GetAttr(int index) const
 {
-    uint32_t fixed_idx = GetAttrIndex(index);
-    return PropertyAttributes(TaggedArray::Get(fixed_idx));
+    uint32_t fixedIdx = GetAttrIndex(index);
+    return PropertyAttributes(TaggedArray::Get(fixedIdx));
 }
 
 inline JSTaggedValue LayoutInfo::GetSortedKey(int index) const
 {
-    uint32_t fixed_idx = GetSortedIndex(index);
-    return GetKey(fixed_idx);
+    uint32_t fixedIdx = GetSortedIndex(index);
+    return GetKey(fixedIdx);
 }
 
 inline uint32_t LayoutInfo::GetSortedIndex(int index) const
@@ -88,10 +88,10 @@ inline uint32_t LayoutInfo::GetSortedIndex(int index) const
 
 inline void LayoutInfo::SetSortedIndex(const JSThread *thread, int index, int sortedIndex)
 {
-    uint32_t fixed_idx = GetAttrIndex(index);
-    PropertyAttributes attr(TaggedArray::Get(fixed_idx));
+    uint32_t fixedIdx = GetAttrIndex(index);
+    PropertyAttributes attr(TaggedArray::Get(fixedIdx));
     attr.SetSortedIndex(sortedIndex);
-    TaggedArray::Set(thread, fixed_idx, attr.GetTaggedValue());
+    TaggedArray::Set(thread, fixedIdx, attr.GetTaggedValue());
 }
 
 inline int LayoutInfo::FindElementWithCache(const JSThread *thread, JSHClass *cls, JSTaggedValue key,
@@ -174,10 +174,10 @@ inline int LayoutInfo::BinarySearch(JSTaggedValue key, int propertiesNumber)
 
 inline void LayoutInfo::SetIsNotHole(const JSThread *thread, int index)
 {
-    uint32_t fixed_idx = GetAttrIndex(index);
-    PropertyAttributes attr(TaggedArray::Get(fixed_idx));
+    uint32_t fixedIdx = GetAttrIndex(index);
+    PropertyAttributes attr(TaggedArray::Get(fixedIdx));
     attr.SetIsNotHole(true);
-    TaggedArray::Set(thread, fixed_idx, attr.GetTaggedValue());
+    TaggedArray::Set(thread, fixedIdx, attr.GetTaggedValue());
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_LAYOUT_INFO_INL_H
