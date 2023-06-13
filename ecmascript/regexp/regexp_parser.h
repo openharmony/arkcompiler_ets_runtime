@@ -54,7 +54,8 @@ public:
     static constexpr uint32_t UNICODE_HEX_ADVANCE = 2;
     static constexpr uint32_t CAPTURE_CONUT_ADVANCE = 3;
     static constexpr uint32_t UTF8_CHAR_LEN_MAX = 6;
-
+    static int Canonicalize(int c, bool isUnicode);
+    
     explicit RegExpParser(Chunk *chunk)
         : base_(nullptr),
           pc_(nullptr),
@@ -176,20 +177,31 @@ public:
         return (flags_ & FLAG_STICKY) != 0;
     }
 
-    inline static int Canonicalize(int c, bool isUnicode)
+    inline static int GetcurrentCharNext(int c)
     {
-        if (c < TMP_BUF_SIZE) {  // NOLINTNEXTLINE(readability-magic-numbers)
-            if (c >= 'a' && c <= 'z') {
-                c = c - 'a' + 'A';
-            }
-        } else {
-            if (isUnicode) {
-                c = u_toupper(static_cast<UChar32>(c));
-            }
+        int cur = c;
+        c = u_tolower(static_cast<UChar32>(c));
+        if (c == cur) {
+            c = u_toupper(static_cast<UChar32>(c));
+        }
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+            c = cur;
         }
         return c;
     }
-
+    inline static void ProcessIntersection(RangeSet *result)
+    {
+        RangeSet cr;
+        RangeSet cr1;
+        uint32_t pt[2]; // 2: Range values for a and z + 1
+        const uint32_t MINLOWERCHAR = 'a';
+        const uint32_t MAXLOWERCHAR = 'z' + 1;
+        pt[0] = MINLOWERCHAR;
+        pt[1] = MAXLOWERCHAR;
+        cr.Insert(pt[0], pt[1]);
+        result->Inter(cr1, cr);
+        result->Insert(cr1);
+    }
 private:
     friend class RegExpExecutor;
     static constexpr int TMP_BUF_SIZE = 128;
