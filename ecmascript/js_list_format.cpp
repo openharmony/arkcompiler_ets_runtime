@@ -202,7 +202,10 @@ JSHandle<JSListFormat> JSListFormat::InitializeListFormat(JSThread *thread,
     icu::ListFormatter *icuListFormatter = icu::ListFormatter::createInstance(icuLocale, uType, uStyle, status);
     if (U_FAILURE(status) || icuListFormatter == nullptr) {
         delete icuListFormatter;
-        THROW_RANGE_ERROR_AND_RETURN(thread, "icu ListFormatter Error", listFormat);
+        if (status == UErrorCode::U_MISSING_RESOURCE_ERROR) {
+            THROW_REFERENCE_ERROR_AND_RETURN(thread, "can not find icu data resources", listFormat);
+        }
+        THROW_RANGE_ERROR_AND_RETURN(thread, "create icu::ListFormatter failed", listFormat);
     }
     SetIcuListFormatter(thread, listFormat, icuListFormatter, JSListFormat::FreeIcuListFormatter);
     return listFormat;

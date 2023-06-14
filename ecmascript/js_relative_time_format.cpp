@@ -125,7 +125,10 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
     icu::NumberFormat *icuNumberFormat = icu::NumberFormat::createInstance(icuLocale, UNUM_DECIMAL, status);
     if (U_FAILURE(status) != 0) {
         delete icuNumberFormat;
-        THROW_RANGE_ERROR_AND_RETURN(thread, "icu Number Format Error", relativeTimeFormat);
+        if (status == UErrorCode::U_MISSING_RESOURCE_ERROR) {
+            THROW_REFERENCE_ERROR_AND_RETURN(thread, "can not find icu data resources", relativeTimeFormat);
+        }
+        THROW_RANGE_ERROR_AND_RETURN(thread, "create icu::NumberFormat failed", relativeTimeFormat);
     }
     // Display grouping using the default strategy for all locales
     icu::DecimalFormat* icuDecimalFormat = static_cast<icu::DecimalFormat*>(icuNumberFormat);
