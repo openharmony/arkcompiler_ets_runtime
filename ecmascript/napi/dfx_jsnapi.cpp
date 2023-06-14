@@ -16,6 +16,7 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 
 #include "ecmascript/base/block_hook_scope.h"
+#include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/ecma_vm.h"
@@ -36,6 +37,7 @@
 namespace panda {
 using ecmascript::CString;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+using BuiltinsArkTools = ecmascript::builtins::BuiltinsArkTools;
 using ecmascript::CpuProfiler;
 #endif
 using ecmascript::EcmaString;
@@ -75,13 +77,24 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif
 }
 
+[[maybe_unused]] static uint8_t killCount = 0;
+
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    DFXJSNApi::StopCpuProfilerForFile(vm);
+    // for CpuProfiler kill contral
+    if (DFXJSNApi::StopCpuProfilerForColdStart(vm)) {
+        return;
+    }
+
+    (void)killCount;
+    if (DFXJSNApi::CpuProfilerSamplingAnyTime(vm)) {
+        killCount++;
+        return;
+    }
 #endif // ECMASCRIPT_SUPPORT_CPUPROFILER
     auto &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
     options.SwitchStartGlobalLeakCheck();
@@ -244,6 +257,93 @@ void DFXJSNApi::NotifyIdleTime(const EcmaVM *vm, int idleMicroSec)
 void DFXJSNApi::NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure)
 {
     const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyMemoryPressure(inHighMemoryPressure);
+}
+
+bool DFXJSNApi::StopCpuProfilerForColdStart([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    bool success = false;
+    auto &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
+    if (options.EnableCpuProfilerColdStartMainThread()) {
+        success = true;
+        DFXJSNApi::StopCpuProfilerForFile(vm);
+    }
+
+    if (options.EnableCpuProfilerColdStartWorkerThread()) {
+        success = true;
+        const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
+            if (workerVm->GetJSThread()->GetIsProfiling()) {
+                DFXJSNApi::StopCpuProfilerForFile(workerVm);
+            }
+        });
+    }
+
+    return success;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
+    return false;
+#endif
+}
+
+bool DFXJSNApi::CpuProfilerSamplingAnyTime([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    (void)killCount;
+    bool success = false;
+    const uint8_t KILL_COUNT_FACTOR = 2;
+    auto &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
+    if (options.EnableCpuProfilerAnyTimeMainThread()) {
+        success = true;
+        if (killCount % KILL_COUNT_FACTOR == 0) {
+            uint8_t fileCount = killCount / KILL_COUNT_FACTOR + 1;
+            LOG_ECMA(INFO) << "Start CpuProfiler Any Time Main Thread, killCount = " << killCount;
+            std::string fileName = ConvertToStdString(const_cast<EcmaVM *>(vm)->GetBundleName())
+                                    + "_" + std::to_string(fileCount) + ".cpuprofile";
+            if (!BuiltinsArkTools::CreateFile(fileName)) {
+                LOG_ECMA(ERROR) << "createFile failed " << fileName;
+            } else {
+                DFXJSNApi::StartCpuProfilerForFile(vm, fileName, CpuProfiler::INTERVAL_OF_INNER_START);
+            }
+        } else {
+            LOG_ECMA(INFO) << "Stop CpuProfiler Any Time Main Thread, killCount = " << killCount;
+            if (vm->GetJSThread()->GetIsProfiling()) {
+                DFXJSNApi::StopCpuProfilerForFile(vm);
+            }
+        }
+    }
+
+    if (options.EnableCpuProfilerAnyTimeWorkerThread()) {
+        success = true;
+        if (killCount % KILL_COUNT_FACTOR == 0) {
+            uint8_t fileCount = killCount / KILL_COUNT_FACTOR + 1;
+            LOG_ECMA(INFO) << "Start CpuProfiler Any Time Worker Thread, killCount = " << killCount;
+            const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
+                auto *thread = workerVm->GetAssociatedJSThread();
+                std::string fileName = ConvertToStdString(workerVm->GetBundleName()) + "_"
+                                       + std::to_string(thread->GetThreadId()) + "_"
+                                       + std::to_string(fileCount) + ".cpuprofile";
+                if (!BuiltinsArkTools::CreateFile(fileName)) {
+                    LOG_ECMA(ERROR) << "createFile failed " << fileName;
+                } else {
+                    thread->SetCpuProfileName(fileName);
+                    thread->SetNeedProfiling(true);
+                }
+            });
+        } else {
+            LOG_ECMA(INFO) << "Stop CpuProfiler Any Time Worker Thread, killCount = " << killCount;
+            const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
+                if (workerVm->GetJSThread()->GetIsProfiling()) {
+                    DFXJSNApi::StopCpuProfilerForFile(workerVm);
+                }
+            });
+        }
+    }
+
+    return success;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler cpu profiler";
+    return false;
+#endif
 }
 
 void DFXJSNApi::StartCpuProfilerForFile([[maybe_unused]] const EcmaVM *vm,

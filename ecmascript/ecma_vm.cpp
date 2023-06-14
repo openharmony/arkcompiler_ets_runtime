@@ -326,13 +326,28 @@ JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, cons
 void EcmaVM::CheckStartCpuProfiler()
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (profiler_ == nullptr && !options_.IsWorker() &&
-        options_.EnableCpuProfiler() && options_.GetArkBundleName().compare(bundleName_) == 0) {
+    if (options_.EnableCpuProfilerColdStartMainThread() && options_.GetArkBundleName().compare(bundleName_) == 0 &&
+        !options_.IsWorker() && profiler_ == nullptr) {
         std::string fileName = options_.GetArkBundleName() + ".cpuprofile";
         if (!builtins::BuiltinsArkTools::CreateFile(fileName)) {
             LOG_ECMA(ERROR) << "createFile failed " << fileName;
+            return;
         } else {
-            DFXJSNApi::StartCpuProfilerForFile(this, fileName, 100); // 100:Sampling interval 100 microseconds
+            DFXJSNApi::StartCpuProfilerForFile(this, fileName, CpuProfiler::INTERVAL_OF_INNER_START);
+            return;
+        }
+    }
+
+    if (options_.EnableCpuProfilerColdStartWorkerThread() && options_.GetArkBundleName().compare(bundleName_) == 0 &&
+        options_.IsWorker() && profiler_ == nullptr) {
+        std::string fileName = options_.GetArkBundleName() + "_"
+                               + std::to_string(thread_->GetThreadId()) + ".cpuprofile";
+        if (!builtins::BuiltinsArkTools::CreateFile(fileName)) {
+            LOG_ECMA(ERROR) << "createFile failed " << fileName;
+            return;
+        } else {
+            DFXJSNApi::StartCpuProfilerForFile(this, fileName, CpuProfiler::INTERVAL_OF_INNER_START);
+            return;
         }
     }
 #endif

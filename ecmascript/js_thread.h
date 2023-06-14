@@ -459,6 +459,11 @@ public:
         return getStackSignal_;
     }
 
+    void SetNeedProfiling(bool needProfiling)
+    {
+        needProfiling_.store(needProfiling);
+    }
+
     void SetIsProfiling(bool isProfiling)
     {
         isProfiling_ = isProfiling;
@@ -487,6 +492,11 @@ public:
     bool GetRuntimeState() const
     {
         return runtimeState_;
+    }
+
+    void SetCpuProfileName(std::string &profileName)
+    {
+        profileName_ = profileName;
     }
 
     void EnableAsmInterpreter()
@@ -875,11 +885,15 @@ private:
 
     // Run-time state
     bool getStackSignal_ {false};
-    bool isProfiling_ {false};
-    bool gcState_ {false};
     bool runtimeState_ {false};
     bool isAsmInterpreter_ {false};
     VmThreadControl *vmThreadControl_ {nullptr};
+
+    // CpuProfiler
+    bool isProfiling_ {false};
+    bool gcState_ {false};
+    std::atomic_bool needProfiling_ {false};
+    std::string profileName_ {""};
 
     bool finalizationCheckState_ {false};
 

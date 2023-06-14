@@ -309,6 +309,16 @@ public:
         return false;
     }
 
+    template<typename Callback>
+    void EnumerateWorkerVm(Callback cb)
+    {
+        // since there is a lock, so cannot mark function const
+        os::memory::LockHolder lock(mutex_);
+        for (const auto &item : workerList_) {
+            cb(item.second);
+        }
+    }
+
     bool IsWorkerThread()
     {
         return options_.IsWorker();
