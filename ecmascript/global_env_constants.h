@@ -27,6 +27,7 @@ template<typename T>
 class JSHandle;
 class JSHClass;
 class JSThread;
+class ObjectFactory;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_CLASS(V)                                                                                  \
@@ -119,6 +120,9 @@ class JSThread;
     V(JSTaggedValue, MethodClass, METHOD_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
+    V(JSTaggedValue, ClassConstructorOptimizedClass, CLASS_CONSTRUCTOR_OPTIMIZED_HCLASS_INDEX, ecma_roots_class)      \
+    V(JSTaggedValue, ClassConstructorOptimizedWithFastCallClass,                                                      \
+        CLASS_CONSTRUCTOR_OPTIMIZED_WITH_FAST_CALL_HCLASS_INDEX, ecma_roots_class)                                    \
     V(JSTaggedValue, AOTLiteralInfoClass, AOT_LITERAL_INFO_CLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, VTableClass, VTABLE_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, ClassLiteralClass, CLASS_LITERAL_HCLASS_INDEX, ecma_roots_class)                                 \
@@ -491,6 +495,7 @@ public:
     void InitJSAPIContainers();
 
     void InitSpecialForSnapshot();
+    void InitClassConstructorOptimizedClass(ObjectFactory *factory);
 
     void SetConstant(ConstantIndex index, JSTaggedValue value);
 

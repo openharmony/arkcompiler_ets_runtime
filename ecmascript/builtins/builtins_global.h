@@ -50,11 +50,11 @@ public:
 #endif
 
 #if ECMASCRIPT_ENABLE_OPT_CODE_PROFILER
-    static JSTaggedValue PrintOptStat(EcmaRuntimeCallInfo *msg)
+    static JSTaggedValue PrintOptStat(EcmaRuntimeCallInfo *msg);
 #endif
 
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
-    static JSTaggedValue PrintFunctionCallStat(EcmaRuntimeCallInfo *msg)
+    static JSTaggedValue PrintFunctionCallStat(EcmaRuntimeCallInfo *msg);
 #endif
 
 private:

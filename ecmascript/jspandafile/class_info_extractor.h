@@ -53,7 +53,8 @@ public:
 
     static JSHandle<JSHClass> CreateConstructorHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
                                                       JSHandle<TaggedArray> &keys,
-                                                      JSHandle<TaggedArray> &properties);
+                                                      JSHandle<TaggedArray> &properties,
+                                                      JSHandle<Method> &method);
 
     static void CorrectConstructorHClass(JSThread *thread,
                                          JSHandle<TaggedArray> &properties,
