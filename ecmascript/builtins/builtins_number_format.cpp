@@ -173,6 +173,10 @@ JSTaggedValue BuiltinsNumberFormat::ResolvedOptions(EcmaRuntimeCallInfo *argv)
     // 3. Let nf be ? UnwrapNumberFormat(nf).
     JSHandle<JSTaggedValue> nf = JSNumberFormat::UnwrapNumberFormat(thread, thisValue);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // Perform ? RequireInternalSlot(nf, [[InitializedNumberFormat]]).
+    if (!nf->IsJSNumberFormat()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "nf is not JSNumberFormat", JSTaggedValue::Exception());
+    }
     // 4. Let options be ! ObjectCreate(%ObjectPrototype%).
     auto ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
