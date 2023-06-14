@@ -43,6 +43,10 @@ enable_cow_array = true
 enable_coverage = false
 enable_asm_assert = false
 ark_compile_mode = "debug"
+if (is_cross_platform_build && !is_debug && !is_profile) {
+  ark_compile_mode = "release"
+}
+
 asan_lib_path = "/usr/lib/llvm-10/lib/clang/10.0.0/lib/linux"
 
 # under /system/lib64 dir
