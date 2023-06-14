@@ -634,6 +634,8 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
     for (uint32_t i = 0; i < srcLength; i++) {
         if (i < elemLen) {
             elem.Update(elements->Get(i));
+        } else {
+            elem.Update(JSTaggedValue::Hole());
         }
         if (contentType == ContentType::BigInt) {
             kValue.Update(JSTaggedValue::ToBigInt(thread, elem));

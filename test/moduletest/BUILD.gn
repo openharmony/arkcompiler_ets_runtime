@@ -44,6 +44,7 @@ group("ark_js_moduletest") {
     "forin",
     "fortest",
     "generator",
+    "getpropertybyindex",
     "getunmappedargs",
     "globalaccessor",
     "globalrecord",
