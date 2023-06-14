@@ -1661,7 +1661,6 @@ HWTEST_F_L0(BuiltinsArrayTest, At)
     TestHelper::TearDownFrame(thread, prev1);
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(2).GetRawData());
 
-
     auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo2->SetThis(obj.GetTaggedValue());
