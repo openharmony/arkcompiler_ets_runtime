@@ -1527,7 +1527,7 @@ DEF_CALL_SIGNATURE(InsertOldToNewRSet)
 DEF_CALL_SIGNATURE(FloatMod)
 {
     // 2 : 2 input parameters
-    CallSignature index("FloatMod", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    CallSignature index("FloatMod", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::FLOAT64());
     *callSign = index;
     // 2 : 2 input parameters
     std::array<VariableType, 2> params = {

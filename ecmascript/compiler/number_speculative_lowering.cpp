@@ -162,6 +162,10 @@ void NumberSpeculativeLowering::VisitNumberBinaryOp(GateRef gate)
             VisitNumberDiv(gate);
             break;
         }
+        case TypedBinOp::TYPED_MOD: {
+            VisitNumberMod<TypedBinOp::TYPED_MOD>(gate);
+            break;
+        }
         default:
             break;
     }
@@ -300,6 +304,39 @@ void NumberSpeculativeLowering::VisitNumberDiv(GateRef gate)
     builder_.DeoptCheck(rightNotZero, frameState, DeoptType::DIVZERO);
     GateRef result = builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, left, right);
     acc_.SetMachineType(gate, MachineType::F64);
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+template<TypedBinOp Op>
+void NumberSpeculativeLowering::VisitNumberMod(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateType gateType = acc_.GetGateType(gate);
+    PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
+    if (sampleType.IsNumber()) {
+        if (sampleType.IsInt()) {
+            gateType = GateType::IntType();
+        } else {
+            gateType = GateType::DoubleType();
+        }
+    }
+    GateRef result = Circuit::NullGate();
+    if (gateType.IsIntType()) {
+        GateRef rightNotZero = builder_.Int32NotEqual(right, builder_.Int32(0));
+        GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
+        builder_.DeoptCheck(rightNotZero, frameState, DeoptType::MODZERO);
+        result = CalculateInts<Op>(left, right);    // int op int
+        UpdateRange(result, GetRange(gate));
+        acc_.SetMachineType(gate, MachineType::I32);
+    } else {
+        GateRef glue = acc_.GetGlueFromArgList();
+        result = builder_.CallNGCRuntime(
+                        glue, RTSTUB_ID(FloatMod), Gate::InvalidGateRef, {left, right},
+                        Circuit::NullGate());
+        acc_.SetMachineType(gate, MachineType::F64);
+    }
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
@@ -481,6 +518,10 @@ GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
         case TypedBinOp::TYPED_MUL:
             res = builder_.MulWithOverflow(left, right);
             break;
+        case TypedBinOp::TYPED_MOD: {
+            return builder_.BinaryArithmetic(circuit_->Smod(), MachineType::I32, left, right);
+            break;
+        }
         default:
             break;
     }

@@ -364,7 +364,7 @@ public:
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static int32_t DoubleToInt(double x);
-    static JSTaggedType FloatMod(double x, double y);
+    static double FloatMod(double x, double y);
     static JSTaggedType FloatSqrt(double x);
     static JSTaggedType FloatCos(double x);
     static JSTaggedType FloatSin(double x);

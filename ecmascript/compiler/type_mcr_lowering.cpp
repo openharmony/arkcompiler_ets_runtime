@@ -83,9 +83,6 @@ void TypeMCRLowering::LowerType(GateRef gate)
         case OpCode::JSINLINETARGET_TYPE_CHECK:
             LowerJSInlineTargetTypeCheck(gate);
             break;
-        case OpCode::TYPED_BINARY_OP:
-            LowerTypedBinaryOp(gate);
-            break;
         case OpCode::TYPE_CONVERT:
             LowerTypeConvert(gate);
             break;
@@ -714,44 +711,6 @@ void TypeMCRLowering::LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerTypedBinaryOp(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    TypedBinOp op = acc_.GetTypedBinaryOp(gate);
-    switch (op) {
-        case TypedBinOp::TYPED_MOD: {
-            LowerTypedMod(gate);
-            break;
-        }
-        default:
-            LOG_COMPILER(FATAL) << "unkown TypedBinOp: " << static_cast<int>(op);
-            break;
-    }
-}
-
-void TypeMCRLowering::LowerTypedMod(GateRef gate)
-{
-    auto leftType = acc_.GetLeftType(gate);
-    auto rightType = acc_.GetRightType(gate);
-    if (leftType.IsNumberType() && rightType.IsNumberType()) {
-        LowerNumberMod(gate);
-    } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
-    }
-}
-
-void TypeMCRLowering::LowerNumberMod(GateRef gate)
-{
-    GateRef left = acc_.GetValueIn(gate, 0);
-    GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = acc_.GetLeftType(gate);
-    GateType rightType = acc_.GetRightType(gate);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    result = ModNumbers(left, right, leftType, rightType);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
-}
-
 GateRef TypeMCRLowering::DoubleToTaggedDoublePtr(GateRef gate)
 {
     return builder_.DoubleToTaggedDoublePtr(gate);
@@ -767,181 +726,10 @@ GateRef TypeMCRLowering::TruncDoubleToInt(GateRef gate)
     return builder_.TruncInt64ToInt32(builder_.TruncFloatToInt64(gate));
 }
 
-GateRef TypeMCRLowering::Int32Mod(GateRef left, GateRef right)
-{
-    return builder_.BinaryArithmetic(circuit_->Smod(), MachineType::I32, left, right);
-}
-
-GateRef TypeMCRLowering::DoubleMod(GateRef left, GateRef right)
-{
-    return builder_.BinaryArithmetic(circuit_->Fmod(), MachineType::F64, left, right);
-}
-
 GateRef TypeMCRLowering::IntToTaggedIntPtr(GateRef x)
 {
     GateRef val = builder_.SExtInt32ToInt64(x);
     return builder_.ToTaggedIntPtr(val);
-}
-
-GateRef TypeMCRLowering::ModNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType)
-{
-    auto env = builder_.GetCurrentEnvironment();
-    Label entry(&builder_);
-    env->SubCfgEntry(&entry);
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-    DEFVAlUE(intLeft, (&builder_), VariableType::INT32(), builder_.Int32(0));
-    DEFVAlUE(intRight, (&builder_), VariableType::INT32(), builder_.Int32(0));
-    DEFVAlUE(doubleLeft, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
-    DEFVAlUE(doubleRight, (&builder_), VariableType::FLOAT64(), builder_.Double(0));
-
-    Label exit(&builder_);
-    Label doFloatOp(&builder_);
-    Label doIntOp(&builder_);
-    Label leftIsIntRightIsDouble(&builder_);
-    Label rightIsInt(&builder_);
-    Label rightIsDouble(&builder_);
-    Label leftIsInt(&builder_);
-    Label leftIsDouble(&builder_);
-    bool intOptAccessed = false;
-
-    auto LowerIntOpInt = [&]() -> void {
-        builder_.Jump(&doIntOp);
-        intOptAccessed = true;
-    };
-    auto LowerDoubleOpInt = [&]() -> void {
-        doubleLeft = builder_.GetDoubleOfTDouble(left);
-        doubleRight = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(right));
-        builder_.Jump(&doFloatOp);
-    };
-    auto LowerIntOpDouble = [&]() -> void {
-        doubleLeft = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(left));
-        doubleRight = builder_.GetDoubleOfTDouble(right);
-        builder_.Jump(&doFloatOp);
-    };
-    auto LowerDoubleOpDouble = [&]() -> void {
-        doubleLeft = builder_.GetDoubleOfTDouble(left);
-        doubleRight = builder_.GetDoubleOfTDouble(right);
-        builder_.Jump(&doFloatOp);
-    };
-    auto LowerRightWhenLeftIsInt = [&]() -> void {
-        if (rightType.IsIntType()) {
-            LowerIntOpInt();
-        } else if (rightType.IsDoubleType()) {
-            LowerIntOpDouble();
-        } else {
-            builder_.Branch(builder_.TaggedIsInt(right), &doIntOp, &leftIsIntRightIsDouble);
-            intOptAccessed = true;
-            builder_.Bind(&leftIsIntRightIsDouble);
-            LowerIntOpDouble();
-        }
-    };
-    auto LowerRightWhenLeftIsDouble = [&]() -> void {
-        if (rightType.IsIntType()) {
-            LowerDoubleOpInt();
-        } else if (rightType.IsDoubleType()) {
-            LowerDoubleOpDouble();
-        } else {
-            builder_.Branch(builder_.TaggedIsInt(right), &rightIsInt, &rightIsDouble);
-            builder_.Bind(&rightIsInt);
-            LowerDoubleOpInt();
-            builder_.Bind(&rightIsDouble);
-            LowerDoubleOpDouble();
-        }
-    };
-
-    if (leftType.IsIntType()) {
-        // left is int
-        LowerRightWhenLeftIsInt();
-    } else if (leftType.IsDoubleType()) {
-        // left is double
-        LowerRightWhenLeftIsDouble();
-    } else {
-        // left is number and need typecheck in runtime
-        builder_.Branch(builder_.TaggedIsInt(left), &leftIsInt, &leftIsDouble);
-        builder_.Bind(&leftIsInt);
-        LowerRightWhenLeftIsInt();
-        builder_.Bind(&leftIsDouble);
-        LowerRightWhenLeftIsDouble();
-    }
-    if (intOptAccessed) {
-        builder_.Bind(&doIntOp);
-        {
-            intLeft = builder_.GetInt32OfTInt(left);
-            intRight = builder_.GetInt32OfTInt(right);
-            doubleLeft = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(left));
-            doubleRight = ChangeInt32ToFloat64(builder_.GetInt32OfTInt(right));
-            Label leftGreaterZero(&builder_);
-            builder_.Branch(builder_.Int32GreaterThan(*intLeft, builder_.Int32(0)),
-                            &leftGreaterZero, &doFloatOp);
-            builder_.Bind(&leftGreaterZero);
-            {
-                Label rightGreaterZero(&builder_);
-                builder_.Branch(builder_.Int32GreaterThan(*intRight, builder_.Int32(0)),
-                                &rightGreaterZero, &doFloatOp);
-                builder_.Bind(&rightGreaterZero);
-                {
-                    result = IntToTaggedIntPtr(Int32Mod(*intLeft, *intRight));
-                    builder_.Jump(&exit);
-                }
-            }
-        }
-    }
-    builder_.Bind(&doFloatOp);
-    {
-        Label rightNotZero(&builder_);
-        Label rightIsZeroOrNanOrLeftIsNanOrInf(&builder_);
-        Label rightNotZeroAndNanAndLeftNotNanAndInf(&builder_);
-        builder_.Branch(builder_.Equal(*doubleRight, builder_.Double(0.0)), &rightIsZeroOrNanOrLeftIsNanOrInf,
-                        &rightNotZero);
-        builder_.Bind(&rightNotZero);
-        {
-            Label rightNotNan(&builder_);
-            builder_.Branch(builder_.DoubleIsNAN(*doubleRight), &rightIsZeroOrNanOrLeftIsNanOrInf, &rightNotNan);
-            builder_.Bind(&rightNotNan);
-            {
-                Label leftNotNan(&builder_);
-                builder_.Branch(builder_.DoubleIsNAN(*doubleLeft), &rightIsZeroOrNanOrLeftIsNanOrInf, &leftNotNan);
-                builder_.Bind(&leftNotNan);
-                builder_.Branch(builder_.DoubleIsINF(*doubleLeft),
-                                &rightIsZeroOrNanOrLeftIsNanOrInf,
-                                &rightNotZeroAndNanAndLeftNotNanAndInf);
-            }
-        }
-        builder_.Bind(&rightIsZeroOrNanOrLeftIsNanOrInf);
-        {
-            result = DoubleToTaggedDoublePtr(builder_.Double(base::NAN_VALUE));
-            builder_.Jump(&exit);
-        }
-        builder_.Bind(&rightNotZeroAndNanAndLeftNotNanAndInf);
-        {
-            Label leftNotZero(&builder_);
-            Label leftIsZeroOrRightIsInf(&builder_);
-            builder_.Branch(builder_.Equal(*doubleLeft, builder_.Double(0.0)), &leftIsZeroOrRightIsInf,
-                            &leftNotZero);
-            builder_.Bind(&leftNotZero);
-            {
-                Label rightNotInf(&builder_);
-                builder_.Branch(builder_.DoubleIsINF(*doubleRight), &leftIsZeroOrRightIsInf, &rightNotInf);
-                builder_.Bind(&rightNotInf);
-                {
-                    GateRef glue = acc_.GetGlueFromArgList();
-                    result = builder_.CallNGCRuntime(
-                        glue, RTSTUB_ID(FloatMod), Gate::InvalidGateRef, {*doubleLeft, *doubleRight},
-                        Circuit::NullGate());
-                    builder_.Jump(&exit);
-                }
-            }
-            builder_.Bind(&leftIsZeroOrRightIsInf);
-            {
-                result = DoubleToTaggedDoublePtr(*doubleLeft);
-                builder_.Jump(&exit);
-            }
-        }
-    }
-    builder_.Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
 }
 
 void TypeMCRLowering::LowerTypedCallBuitin(GateRef gate)

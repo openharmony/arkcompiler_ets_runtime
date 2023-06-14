@@ -288,6 +288,9 @@ GateRef NumberSpeculativeRetype::VisitNumberBinaryOp(GateRef gate)
         case TypedBinOp::TYPED_DIV: {
             return VisitNumberDiv(gate);
         }
+        case TypedBinOp::TYPED_MOD: {
+            return VisitNumberMod(gate);
+        }
         default:
             return VisitNumberRelated(gate);
     }
@@ -921,6 +924,26 @@ GateRef NumberSpeculativeRetype::VisitNumberDiv(GateRef gate)
 
     return Circuit::NullGate();
 }
+
+GateRef NumberSpeculativeRetype::VisitNumberMod(GateRef gate)
+{
+    if (IsRetype()) {
+        PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
+        if (sampleType.IsNumber()) {
+            return SetOutputType(gate, sampleType);
+        } else {
+            GateType gateType = acc_.GetGateType(gate);
+            GateType resType = gateType.IsIntType() ? GateType::IntType() : GateType::DoubleType();
+            return SetOutputType(gate, resType);
+        }
+    } else if (IsConvert()) {
+        Environment env(gate, circuit_, &builder_);
+        ConvertForBinaryOp(gate);
+    }
+
+    return Circuit::NullGate();
+}
+
 
 void NumberSpeculativeRetype::Run()
 {

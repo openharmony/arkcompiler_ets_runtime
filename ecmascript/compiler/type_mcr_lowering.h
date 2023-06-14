@@ -121,9 +121,7 @@ private:
     void Lower(GateRef gate);
     void LowerType(GateRef gate);
     void LowerPrimitiveTypeCheck(GateRef gate);
-    void LowerTypedBinaryOp(GateRef gate);
     void LowerTypeConvert(GateRef gate);
-    void LowerTypedMod(GateRef gate);
     void LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType srcType);
     void LowerIntCheck(GateRef gate);
     void LowerDoubleCheck(GateRef gate);
@@ -180,11 +178,7 @@ private:
     GateRef DoubleToTaggedDoublePtr(GateRef gate);
     GateRef ChangeInt32ToFloat64(GateRef gate);
     GateRef TruncDoubleToInt(GateRef gate);
-    GateRef Int32Mod(GateRef left, GateRef right);
-    GateRef DoubleMod(GateRef left, GateRef right);
     GateRef IntToTaggedIntPtr(GateRef x);
-    void LowerNumberMod(GateRef gate);
-    GateRef ModNumbers(GateRef left, GateRef right, GateType leftType, GateType rightType);
     GateType GetLeftType(GateRef gate);
     GateType GetRightType(GateRef gate);
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
