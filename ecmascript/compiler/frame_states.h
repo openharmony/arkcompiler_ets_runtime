@@ -29,7 +29,8 @@ struct BytecodeRegion;
 
 class FrameStateInfo {
 public:
-    explicit FrameStateInfo(size_t numVregs) : values_(numVregs), liveout_(numVregs) {}
+    explicit FrameStateInfo(Chunk* chunk, size_t numVregs)
+        : values_(numVregs, chunk), liveout_(chunk, numVregs) {}
 
     void SetValuesAt(size_t index, GateRef gate)
     {
@@ -65,7 +66,7 @@ public:
     }
 private:
     // [numVRegs_] [extra args] [numArgs_] [accumulator]
-    std::vector<GateRef> values_ {};
+    ChunkVector<GateRef> values_;
     BitSet liveout_;
 };
 

@@ -32,19 +32,6 @@ FrameStateBuilder::FrameStateBuilder(BytecodeCircuitBuilder *builder,
 
 FrameStateBuilder::~FrameStateBuilder()
 {
-    for (auto state : bcEndStateInfos_) {
-        if (state != nullptr) {
-            delete state;
-        }
-    }
-    for (auto state : bbBeginStateInfos_) {
-        if (state != nullptr) {
-            delete state;
-        }
-    }
-    if (liveOutResult_ != nullptr) {
-        delete liveOutResult_;
-    }
     liveOutResult_ = nullptr;
     bcEndStateInfos_.clear();
     bbBeginStateInfos_.clear();
@@ -109,7 +96,8 @@ void FrameStateBuilder::BindStateSplit(GateRef gate, GateRef frameState)
 
 FrameStateInfo *FrameStateBuilder::CreateEmptyStateInfo()
 {
-    auto frameInfo = new FrameStateInfo(numVregs_);
+    auto chunk = circuit_->chunk();
+    auto frameInfo = chunk->New<FrameStateInfo>(chunk, numVregs_);
     for (size_t i = 0; i < numVregs_; i++) {
         frameInfo->SetValuesAt(i, Circuit::NullGate());
     }
@@ -458,9 +446,6 @@ bool FrameStateBuilder::ShouldInsertFrameStateBefore(BytecodeRegion& bb,
             return true;
         }
         if (gateAcc_.GetOpCode(bb.dependCurrent) == OpCode::GET_EXCEPTION) {
-            return true;
-        }
-        if (gateAcc_.GetOpCode(bb.stateCurrent) == OpCode::IF_SUCCESS) {
             return true;
         }
     } else {

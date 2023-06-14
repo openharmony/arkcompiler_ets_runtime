@@ -45,9 +45,24 @@ public:
         acc.SetMark(state_, MarkCode::VISITED);
     }
 
+    void SetFinished(GateAccessor& acc)
+    {
+        acc.SetMark(state_, MarkCode::FINISHED);
+    }
+
+    bool IsUnvisited(GateAccessor& acc) const
+    {
+        return acc.GetMark(state_) == MarkCode::NO_MARK;
+    }
+
     bool IsVisited(GateAccessor& acc) const
     {
         return acc.GetMark(state_) == MarkCode::VISITED;
+    }
+
+    bool IsFinished(GateAccessor& acc) const
+    {
+        return acc.GetMark(state_) == MarkCode::FINISHED;
     }
 
     bool IsLoopHead() const
@@ -65,6 +80,21 @@ public:
         return id_;
     }
 
+    void SetLoopNumber(size_t loopNumber)
+    {
+        loopNumber_ = static_cast<int32_t>(loopNumber);
+    }
+
+    size_t GetLoopNumber() const
+    {
+        return static_cast<size_t>(loopNumber_);
+    }
+
+    bool HasLoopNumber() const
+    {
+        return loopNumber_ >= 0;
+    }
+
 private:
     enum StateKind {
         BRANCH,
@@ -76,15 +106,18 @@ private:
     size_t id_ {0};
     int32_t depth_ {INVALID_DEPTH};
     GateRegion* iDominator_ {nullptr};
+    GateRegion* loopHead_ {nullptr};
     ChunkVector<GateRef> gateList_;
     ChunkVector<GateRegion*> preds_;
     ChunkVector<GateRegion*> succs_;
     ChunkVector<GateRegion*> dominatedRegions_;
     GateRef state_ {Circuit::NullGate()};
     StateKind stateKind_ {StateKind::OTHER};
+    int32_t loopNumber_ {INVALID_DEPTH};
     friend class CFGBuilder;
     friend class GateScheduler;
     friend class ImmediateDominatorsGenerator;
+    friend class LoopInfoBuilder;
     friend class GraphLinearizer;
     friend class StateDependBuilder;
 };
@@ -144,6 +177,7 @@ private:
     void LinearizeRegions(ControlFlowGraph &result);
     void CreateGateRegion(GateRef gate);
     GateRegion* FindPredRegion(GateRef input);
+    GateRegion* GetCommonDominator(GateRegion* left, GateRegion* right) const;
 
     GateInfo& GetGateInfo(GateRef gate)
     {
@@ -231,6 +265,7 @@ private:
         regionRootList_.clear();
         scheduleUpperBound_ = false;
         model_ = ScheduleModel::LIR;
+        loopNumber_ = 0;
     }
 
     void EnableScheduleUpperBound()
@@ -251,7 +286,7 @@ private:
     void PrintGraph(const char* title);
 
     bool enableLog_ {false};
-    bool scheduleUpperBound_ { false};
+    bool scheduleUpperBound_ {false};
     ScheduleModel model_ {ScheduleModel::LIR};
     std::string methodName_;
     Chunk* chunk_ {nullptr};
@@ -266,6 +301,7 @@ private:
     friend class CFGBuilder;
     friend class GateScheduler;
     friend class ImmediateDominatorsGenerator;
+    friend class LoopInfoBuilder;
     friend class StateSplitLinearizer;
 };
 };  // namespace panda::ecmascript::kungfu

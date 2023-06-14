@@ -18,6 +18,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include "ecmascript/mem/chunk.h"
 
 namespace panda::ecmascript::kungfu {
 class BitSet {
@@ -29,19 +30,31 @@ public:
     static constexpr uint32_t BIT_PER_WORD_LOG2 = 6;
     static constexpr uint32_t BIT_PER_WORD_MASK = BIT_PER_WORD - 1;
 
-    explicit BitSet(size_t bitSize)
+    explicit BitSet(Chunk* chunk, size_t bitSize)
     {
         wordCount_ = SizeOf(bitSize);
         if (UseWords()) {
-            data_.words_ = new uint64_t[wordCount_];
+            data_.words_ = chunk->NewArray<uint64_t>(wordCount_);
+            Reset();
         }
     }
 
     ~BitSet()
     {
         if (UseWords()) {
-            delete[] data_.words_;
+            // no need delete chunk memory
             data_.words_ = nullptr;
+        }
+    }
+
+    void Reset()
+    {
+        if (!UseWords()) {
+            data_.inlineWord_ = 0;
+        } else {
+            for (size_t i = 0; i < wordCount_; i++) {
+                data_.words_[i] = 0;
+            }
         }
     }
 
@@ -127,7 +140,7 @@ private:
 
     uint64_t Mask(size_t index) const
     {
-        return 1 << index;
+        return uint64_t{1} << index;
     }
 
     size_t IndexInWord(size_t offset) const

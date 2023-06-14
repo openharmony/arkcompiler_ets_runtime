@@ -19,3 +19,16 @@ for (var tmp of someArray) {
     var tmpNumber = tmp;
     print(tmpNumber);
 }
+
+class A {
+    x: number;
+}
+
+function foo(arr: A[]) {
+    for (var tmp of arr) {
+        tmp.x = 1;
+    }
+}
+
+let arr = [new A()]
+foo(arr);
