@@ -1749,6 +1749,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadTransferJSNativePointer()
     JSHandle<JSNativePointer> np = factory_->NewJSNativePointer(ToVoidPtr(externalPtr),
                                                                 reinterpret_cast<DeleteEntryPoint>(deleter),
                                                                 ToVoidPtr(allocatorPtr),
+                                                                false,
                                                                 bindingSize);
     return JSHandle<JSTaggedValue>::Cast(np);
 }
