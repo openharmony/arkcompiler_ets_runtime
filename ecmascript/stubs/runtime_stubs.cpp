@@ -2096,10 +2096,9 @@ JSTaggedType RuntimeStubs::GetActualArgvNoGC(uintptr_t argGlue)
     return reinterpret_cast<uintptr_t>(optimizedJSFunctionFrame->GetArgv(it));
 }
 
-JSTaggedType RuntimeStubs::FloatMod(double x, double y)
+double RuntimeStubs::FloatMod(double x, double y)
 {
-    double result = std::fmod(x, y);
-    return JSTaggedValue(result).GetRawData();
+    return std::fmod(x, y);
 }
 
 JSTaggedType RuntimeStubs::FloatSqrt(double x)

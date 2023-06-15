@@ -294,9 +294,7 @@ void TSHCRLowering::LowerTypedMod(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = acc_.GetGateType(left);
-    GateType rightType = acc_.GetGateType(right);
-    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+    if (HasNumberType(gate, left, right)) {
         SpeculateNumbers<TypedBinOp::TYPED_MOD>(gate);
     }
 }
@@ -305,9 +303,7 @@ void TSHCRLowering::LowerTypedDiv(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = acc_.GetGateType(left);
-    GateType rightType = acc_.GetGateType(right);
-    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+    if (HasNumberType(gate, left, right)) {
         SpeculateNumbers<TypedBinOp::TYPED_DIV>(gate);
     }
 }
@@ -331,9 +327,7 @@ void TSHCRLowering::LowerTypedShl(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = acc_.GetGateType(left);
-    GateType rightType = acc_.GetGateType(right);
-    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+    if (HasNumberType(gate, left, right)) {
         SpeculateNumbers<TypedBinOp::TYPED_SHL>(gate);
     }
 }
@@ -342,9 +336,7 @@ void TSHCRLowering::LowerTypedShr(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = acc_.GetGateType(left);
-    GateType rightType = acc_.GetGateType(right);
-    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+    if (HasNumberType(gate, left, right)) {
         SpeculateNumbers<TypedBinOp::TYPED_SHR>(gate);
     }
 }
@@ -353,9 +345,7 @@ void TSHCRLowering::LowerTypedAshr(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = acc_.GetGateType(left);
-    GateType rightType = acc_.GetGateType(right);
-    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+    if (HasNumberType(gate, left, right)) {
         SpeculateNumbers<TypedBinOp::TYPED_ASHR>(gate);
     }
 }
@@ -364,9 +354,7 @@ void TSHCRLowering::LowerTypedAnd(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = acc_.GetGateType(left);
-    GateType rightType = acc_.GetGateType(right);
-    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+    if (HasNumberType(gate, left, right)) {
         SpeculateNumbers<TypedBinOp::TYPED_AND>(gate);
     }
 }
@@ -375,9 +363,7 @@ void TSHCRLowering::LowerTypedOr(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = acc_.GetGateType(left);
-    GateType rightType = acc_.GetGateType(right);
-    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+    if (HasNumberType(gate, left, right)) {
         SpeculateNumbers<TypedBinOp::TYPED_OR>(gate);
     }
 }
@@ -386,9 +372,7 @@ void TSHCRLowering::LowerTypedXor(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateType leftType = acc_.GetGateType(left);
-    GateType rightType = acc_.GetGateType(right);
-    if (leftType.IsNumberType() && rightType.IsNumberType()) {
+    if (HasNumberType(gate, left, right)) {
         SpeculateNumbers<TypedBinOp::TYPED_XOR>(gate);
     }
 }
