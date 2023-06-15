@@ -529,8 +529,10 @@ JSHandle<JSTaggedValue> TSTypeParser::GenerateExportTableFromRecord(const JSPand
     JSHandle<JSTaggedValue> exportValeTable = TSTypeTable::GetExportValueTable(thread_, table);
     if (exportValeTable->IsUndefined()) {
         // Read export-data from annotation of the .abc File
-        JSHandle<TaggedArray> exportTable = tsManager_->GetExportTableFromLiteral(jsPandaFile, recordName);
-        uint32_t length = exportTable->GetLength();
+        JSHandle<TaggedArray> literalTable = tsManager_->GetExportTableFromLiteral(jsPandaFile, recordName);
+        ObjectFactory *factory = vm_->GetFactory();
+        uint32_t length = literalTable->GetLength();
+        JSHandle<TaggedArray> exportTable = factory->NewAndCopyTaggedArray(literalTable, length, length);
         for (uint32_t i = 1; i < length; i += 2) {  // 2: skip a pair of key and value
             JSTaggedValue target = exportTable->Get(i);
             // Create GT based on typeId, and wrapped it into a JSTaggedValue
