@@ -116,3 +116,6 @@ var arr14 = Array.apply(null, Array(16));
 print(arr14.length);
 var arr15 = Array.apply(null, [1, 2, 3, 4, 5, 6]);
 print(arr15.length);
+
+var a = '0';
+print(Array(5).indexOf(a));
