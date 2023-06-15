@@ -229,6 +229,11 @@ JSTaggedValue BuiltinsDateTimeFormat::ResolvedOptions(EcmaRuntimeCallInfo *argv)
     thisValue = JSDateTimeFormat::UnwrapDateTimeFormat(thread, thisValue);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
+    // Perform ? RequireInternalSlot(dtf, [[InitializedDateTimeFormat]]).
+    if (!thisValue->IsJSDateTimeFormat()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "dtf is not JSDateTimeFormat", JSTaggedValue::Exception());
+    }
+
     auto ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     ObjectFactory *factory = ecmaVm->GetFactory();
