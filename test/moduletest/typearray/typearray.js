@@ -171,3 +171,11 @@ let a1 = new ArrayBuffer(1024*1024*8);
 let a2 = new Uint8Array(a1);
 let a3 = Uint8Array.from(a2);
 print(a3.length);
+
+const a4 = new Uint32Array(1024);
+const obj1 = {
+    "c": a4,
+    __proto__: a4
+}
+obj1[235] = 1024;
+print(obj1[235])

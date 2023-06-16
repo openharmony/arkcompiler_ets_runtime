@@ -2423,12 +2423,17 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
         // TypeArray
         Label isFastTypeArray(env);
         Label notFastTypeArray(env);
+        Label checkIsOnPrototypeChain(env);
         Branch(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
         Bind(&isFastTypeArray);
         {
-            returnValue = CallRuntime(glue, RTSTUB_ID(SetTypeArrayPropertyByIndex),
-                { receiver, IntToTaggedInt(index), value, IntToTaggedInt(jsType)});
-            Jump(&exit);
+            Branch(Equal(*holder, receiver), &checkIsOnPrototypeChain, &exit);
+            Bind(&checkIsOnPrototypeChain);
+            {
+                returnValue = CallRuntime(glue, RTSTUB_ID(SetTypeArrayPropertyByIndex),
+                    { receiver, IntToTaggedInt(index), value, IntToTaggedInt(jsType)});
+                Jump(&exit);
+            }
         }
         Bind(&notFastTypeArray);
         returnValue = Hole();

@@ -284,6 +284,7 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
         JSType jsType = hclass->GetObjectType();
         if (IsSpecialIndexedObj(jsType)) {
             if (IsFastTypeArray(jsType)) {
+                CHECK_IS_ON_PROTOTYPE_CHAIN(receiver, holder);
                 return JSTypedArray::FastSetPropertyByIndex(thread, receiver, index, value, jsType);
             }
             if (IsSpecialContainer(jsType)) {
