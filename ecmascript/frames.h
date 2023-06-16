@@ -179,19 +179,22 @@ public:
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor) const;
 
-    static size_t GetTypeOffset()
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(OptimizedFrame, type);
+        return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
     }
-    static size_t GetPrevOffset()
+
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(OptimizedFrame, prevFp);
+        return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
     }
+
     static size_t ComputeReservedSize(size_t slotSize)
     {
         size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::TypeIndex);
         return slotSize * slotOffset;
     }
+
     FrameType GetType() const
     {
         return type;
@@ -231,14 +234,14 @@ struct AsmBridgeFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                    base::AlignedPointer,
                                                    base::AlignedPointer> {
 public:
-    static size_t GetTypeOffset()
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(AsmBridgeFrame, type);
+        return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
     }
 
-    static size_t GetPrevOffset()
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(AsmBridgeFrame, prevFp);
+        return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
     }
 
     uintptr_t GetCallSiteSp() const
@@ -298,14 +301,16 @@ struct OptimizedJSFunctionUnfoldArgVFrame : public base::AlignedStruct<base::Ali
                                                                        base::AlignedPointer,
                                                                        base::AlignedPointer> {
 public:
-    static size_t GetTypeOffset()
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(OptimizedJSFunctionUnfoldArgVFrame, type);
+        return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
     }
-    static size_t GetPrevOffset()
+
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(OptimizedJSFunctionUnfoldArgVFrame, prevFp);
+        return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
     }
+
     FrameType GetType() const
     {
         return type;
@@ -369,14 +374,16 @@ struct OptimizedJSFunctionArgConfigFrame : public base::AlignedStruct<base::Alig
                                                                       base::AlignedPointer,
                                                                       base::AlignedPointer> {
 public:
-    static size_t GetTypeOffset()
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(OptimizedJSFunctionArgConfigFrame, type);
+        return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
     }
-    static size_t GetPrevOffset()
+
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(OptimizedJSFunctionArgConfigFrame, prevFp);
+        return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
     }
+
     FrameType GetType() const
     {
         return type;
@@ -494,14 +501,14 @@ public:
         return reinterpret_cast<uintptr_t>(fp) + offset * sizeof(uintptr_t);
     }
 
-    static size_t GetTypeOffset()
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(OptimizedJSFunctionFrame, type);
+        return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
     }
 
-    static size_t GetPrevOffset()
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(OptimizedJSFunctionFrame, prevFp);
+        return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
     }
 
     static size_t ComputeReservedJSFuncOffset(size_t slotSize)
@@ -570,14 +577,14 @@ public:
         NumOfMembers
     };
 
-    static size_t GetTypeOffset()
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(OptimizedEntryFrame, type);
+        return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
     }
 
-    static size_t GetLeaveFrameFpOffset()
+    static size_t GetLeaveFrameFpOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(OptimizedEntryFrame, preLeaveFrameFp);
+        return GetOffset<static_cast<size_t>(Index::PreLeaveFrameFpIndex)>(isArch32);
     }
 
     inline JSTaggedType* GetPrevFrameFp()
@@ -641,12 +648,12 @@ struct InterpretedFrameBase : public base::AlignedStruct<base::AlignedPointer::S
         return reinterpret_cast<InterpretedFrameBase *>(const_cast<JSTaggedType *>(sp)) - 1;
     }
 
-    static size_t GetPrevOffset(bool isArch32)
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
         return GetOffset<static_cast<size_t>(Index::PrevIndex)>(isArch32);
     }
 
-    static size_t GetTypeOffset(bool isArch32)
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
         return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
     }
@@ -747,15 +754,18 @@ public:
         return sizeof(InterpretedFrame) / JSTaggedValue::TaggedTypeSize();
     }
 
-    static size_t GetTypeOffset()
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(InterpretedFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, type);
+        return GetOffset<static_cast<size_t>(Index::BaseIndex)>(isArch32) +
+            InterpretedFrameBase::GetTypeOffset(isArch32);
     }
 
-    static size_t GetPrevOffset()
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(InterpretedFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, prev);
+        return GetOffset<static_cast<size_t>(Index::BaseIndex)>(isArch32) +
+            InterpretedFrameBase::GetPrevOffset(isArch32);
     }
+
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 
     alignas(EAS) JSTaggedValue constpool {JSTaggedValue::Hole()};
@@ -809,14 +819,16 @@ struct InterpretedBuiltinFrame : public base::AlignedStruct<JSTaggedValue::Tagge
         return sizeof(InterpretedBuiltinFrame) / JSTaggedValue::TaggedTypeSize();
     }
 
-    static size_t GetTypeOffset()
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(InterpretedBuiltinFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, type);
+        return GetOffset<static_cast<size_t>(Index::BaseIndex)>(isArch32) +
+            InterpretedFrameBase::GetTypeOffset(isArch32);
     }
 
-    static size_t GetPrevOffset()
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(InterpretedBuiltinFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, prev);
+        return GetOffset<static_cast<size_t>(Index::BaseIndex)>(isArch32) +
+            InterpretedFrameBase::GetPrevOffset(isArch32);
     }
 
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
@@ -1021,14 +1033,16 @@ struct InterpretedEntryFrame : public base::AlignedStruct<JSTaggedValue::TaggedT
         return sizeof(InterpretedEntryFrame) / JSTaggedValue::TaggedTypeSize();
     }
 
-    static size_t GetTypeOffset()
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(InterpretedEntryFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, type);
+        return GetOffset<static_cast<size_t>(Index::BaseIndex)>(isArch32) +
+            InterpretedFrameBase::GetTypeOffset(isArch32);
     }
 
-    static size_t GetPrevOffset()
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(InterpretedEntryFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, prev);
+        return GetOffset<static_cast<size_t>(Index::BaseIndex)>(isArch32) +
+            InterpretedFrameBase::GetPrevOffset(isArch32);
     }
 
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor,
@@ -1076,14 +1090,16 @@ struct AsmInterpretedEntryFrame : public base::AlignedStruct<JSTaggedValue::Tagg
         return reinterpret_cast<AsmInterpretedEntryFrame *>(const_cast<JSTaggedType *>(sp)) - 1;
     }
 
-    static size_t GetTypeOffset()
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(AsmInterpretedEntryFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, type);
+        return GetOffset<static_cast<size_t>(Index::BaseIndex)>(isArch32) +
+            InterpretedFrameBase::GetTypeOffset(isArch32);
     }
 
-    static size_t GetPrevOffset()
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(AsmInterpretedEntryFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, prev);
+        return GetOffset<static_cast<size_t>(Index::BaseIndex)>(isArch32) +
+            InterpretedFrameBase::GetPrevOffset(isArch32);
     }
 
     alignas(EAS) const uint8_t *pc {nullptr};
@@ -1134,25 +1150,26 @@ struct AsmInterpretedBridgeFrame : public base::AlignedStruct<base::AlignedPoint
         return isArch32 ? AsmInterpretedBridgeFrame::SizeArch32 : AsmInterpretedBridgeFrame::SizeArch64;
     }
 
-    static size_t GetTypeOffset()
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(AsmInterpretedBridgeFrame, entry) +
-               MEMBER_OFFSET(AsmInterpretedEntryFrame, base) +
-               MEMBER_OFFSET(InterpretedFrameBase, type);
+        return GetOffset<static_cast<size_t>(Index::EntryIndex)>(isArch32) +
+            AsmInterpretedEntryFrame::GetBaseOffset(isArch32) +
+            InterpretedFrameBase::GetTypeOffset(isArch32);
     }
-    static size_t GetPrevOffset()
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(AsmInterpretedBridgeFrame, entry) +
-               MEMBER_OFFSET(AsmInterpretedEntryFrame, base) +
-               MEMBER_OFFSET(InterpretedFrameBase, prev);
+        return GetOffset<static_cast<size_t>(Index::EntryIndex)>(isArch32) +
+            AsmInterpretedEntryFrame::GetBaseOffset(isArch32) +
+            InterpretedFrameBase::GetPrevOffset(isArch32);
     }
 
-    AsmInterpretedEntryFrame entry;
-    alignas(EAS) uintptr_t returnAddr;
     uintptr_t GetReturnAddr() const
     {
         return returnAddr;
     }
+
+    AsmInterpretedEntryFrame entry;
+    alignas(EAS) uintptr_t returnAddr;
 };
 
 // * Optimized-leaved-frame layout as the following:
@@ -1181,16 +1198,19 @@ struct OptimizedLeaveFrame {
     uintptr_t returnAddr;
     uint64_t argRuntimeId;
     uint64_t argc;
+
     // argv[0]...argv[argc-1] dynamic according to agc
     static OptimizedLeaveFrame* GetFrameFromSp(const JSTaggedType *sp)
     {
         return reinterpret_cast<OptimizedLeaveFrame *>(reinterpret_cast<uintptr_t>(sp) -
             MEMBER_OFFSET(OptimizedLeaveFrame, callsiteFp));
     }
+
     uintptr_t GetCallSiteSp() const
     {
         return ToUintPtr(this) + MEMBER_OFFSET(OptimizedLeaveFrame, argRuntimeId);
     }
+
     inline JSTaggedType* GetPrevFrameFp() const
     {
         return reinterpret_cast<JSTaggedType*>(callsiteFp);
@@ -1205,10 +1225,12 @@ struct OptimizedLeaveFrame {
     {
         return MEMBER_OFFSET(OptimizedLeaveFrame, type);
     }
+
     static size_t GetPrevOffset()
     {
         return MEMBER_OFFSET(OptimizedLeaveFrame, callsiteFp);
     }
+
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 };
 
@@ -1239,26 +1261,32 @@ struct OptimizedWithArgvLeaveFrame {
         return reinterpret_cast<OptimizedWithArgvLeaveFrame *>(reinterpret_cast<uintptr_t>(sp) -
             MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, callsiteFp));
     }
+
     uintptr_t GetCallSiteSp() const
     {
         return ToUintPtr(this) + MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, argRuntimeId);
     }
+
     inline JSTaggedType* GetPrevFrameFp()
     {
         return reinterpret_cast<JSTaggedType*>(callsiteFp);
     }
+
     uintptr_t GetReturnAddr() const
     {
         return returnAddr;
     }
+
     static size_t GetTypeOffset()
     {
         return MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, type);
     }
+
     static size_t GetPrevOffset()
     {
         return MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, callsiteFp);
     }
+
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 };
 
@@ -1291,27 +1319,34 @@ public:
         return reinterpret_cast<OptimizedBuiltinLeaveFrame *>(reinterpret_cast<uintptr_t>(sp) -
             MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, callsiteFp));
     }
+
     uintptr_t GetCallSiteSp() const
     {
         return ToUintPtr(this) + MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, argc);
     }
+
     inline JSTaggedType* GetPrevFrameFp() const
     {
         return reinterpret_cast<JSTaggedType*>(callsiteFp);
     }
+
     uintptr_t GetReturnAddr() const
     {
         return returnAddr;
     }
+
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
+
     static size_t GetTypeOffset()
     {
         return MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, type);
     }
+
     static size_t GetPrevOffset()
     {
         return MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, callsiteFp);
     }
+
     const JSTaggedType* GetArgv() const
     {
         return reinterpret_cast<const JSTaggedType *>(&argc + 1);
@@ -1378,38 +1413,46 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
         return reinterpret_cast<BuiltinFrame *>(reinterpret_cast<uintptr_t>(sp) -
             MEMBER_OFFSET(BuiltinFrame, prevFp));
     }
+
     inline JSTaggedType* GetPrevFrameFp()
     {
         return prevFp;
     }
+
     uintptr_t GetCallSiteSp() const
     {
         return ToUintPtr(this) + MEMBER_OFFSET(BuiltinFrame, thread);
     }
+
     static size_t GetPreFpOffset(bool isArch32)
     {
         return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
     }
+
     static size_t GetNumArgsToFpDelta(bool isArch32)
     {
         auto offset = GetOffset<static_cast<size_t>(Index::NumArgsIndex)>(isArch32);
         return offset - GetPreFpOffset(isArch32);
     }
+
     static size_t GetStackArgsToFpDelta(bool isArch32)
     {
         auto offset = GetOffset<static_cast<size_t>(Index::StackArgsIndex)>(isArch32);
         return offset - GetPreFpOffset(isArch32);
     }
+
     uintptr_t GetStackArgsAddress()
     {
         return reinterpret_cast<uintptr_t>(&stackArgs);
     }
+
     JSTaggedValue GetFunction()
     {
         auto functionAddress = reinterpret_cast<JSTaggedType *>(GetStackArgsAddress());
         return JSTaggedValue(*functionAddress);
     }
-    int32_t GetNumArgs()
+
+    uint32_t GetNumArgs()
     {
         return numArgs;
     }
@@ -1419,20 +1462,23 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
         return returnAddr;
     }
 
-    static size_t GetTypeOffset()
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(BuiltinFrame, type);
+        return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
     }
-    static size_t GetPrevOffset()
+
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(BuiltinFrame, prevFp);
+        return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
     }
+
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
+
     alignas(EAS) FrameType type;
     alignas(EAS) JSTaggedType *prevFp;
     alignas(EAS) uintptr_t returnAddr;
     alignas(EAS) uintptr_t thread;
-    alignas(EAS) int32_t numArgs;
+    alignas(EAS) uint32_t numArgs;
     alignas(EAS) uintptr_t stackArgs;
 };
 
@@ -1475,14 +1521,17 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
         return reinterpret_cast<BuiltinWithArgvFrame *>(reinterpret_cast<uintptr_t>(sp) -
             MEMBER_OFFSET(BuiltinFrame, prevFp));
     }
+
     inline JSTaggedType* GetPrevFrameFp()
     {
         return prevFp;
     }
+
     uintptr_t GetCallSiteSp() const
     {
         return ToUintPtr(this) + sizeof(BuiltinWithArgvFrame);
     }
+
     uintptr_t GetStackArgsAddress()
     {
         auto topAddress = ToUintPtr(this) +
@@ -1490,29 +1539,35 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
         auto numberArgs = GetNumArgs() + NUM_MANDATORY_JSFUNC_ARGS;
         return topAddress - static_cast<uint32_t>(numberArgs) * sizeof(uintptr_t);
     }
+
     JSTaggedValue GetFunction()
     {
         auto functionAddress = reinterpret_cast<JSTaggedType *>(GetStackArgsAddress());
         return JSTaggedValue(*functionAddress);
     }
+
     int32_t GetNumArgs()
     {
         auto argcAddress = reinterpret_cast<int32_t *>(
             ToUintPtr(this) + (static_cast<int>(Index::NumArgsIndex) * sizeof(uintptr_t)));
         return *argcAddress;
     }
+
     uintptr_t GetReturnAddr() const
     {
         return returnAddr;
     }
-    static size_t GetTypeOffset()
+
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(BuiltinWithArgvFrame, type);
+        return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
     }
-    static size_t GetPrevOffset()
+
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
-        return MEMBER_OFFSET(BuiltinWithArgvFrame, prevFp);
+        return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
     }
+
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
     // argv(... this, new.target, function)
     // numargs
