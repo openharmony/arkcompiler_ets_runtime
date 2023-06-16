@@ -472,6 +472,7 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
     if (!replacer->IsArray(thread_)) {
         if (UNLIKELY(value->IsJSProxy() || value->IsTypedArray())) {  // serialize proxy and typedArray
             JSHandle<TaggedArray> propertyArray = JSObject::EnumerableOwnNames(thread_, obj);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             uint32_t arrLength = propertyArray->GetLength();
             for (uint32_t i = 0; i < arrLength; i++) {
                 handleKey_.Update(propertyArray->Get(i));
