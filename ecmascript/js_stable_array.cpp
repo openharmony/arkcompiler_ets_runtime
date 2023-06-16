@@ -431,7 +431,10 @@ JSTaggedValue JSStableArray::IndexOf(JSThread *thread, JSHandle<JSTaggedValue> r
 {
     JSHandle<TaggedArray> elements(thread, JSHandle<JSObject>::Cast(receiver)->GetElements());
     while (from < len) {
-        JSTaggedValue value = elements->Get(from);
+        JSTaggedValue value = JSTaggedValue::Hole();
+        if (elements->GetLength() > from) {
+            value = elements->Get(from);
+        }
         if (!value.IsUndefined() && !value.IsHole()) {
             if (JSTaggedValue::StrictEqual(searchElement.GetTaggedValue(), value)) {
                 return JSTaggedValue(from);
