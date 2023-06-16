@@ -313,4 +313,5 @@ void CompilerLog::SetPGOMismatchResult(uint32_t &totalMethodCount, uint32_t &mis
     mismatchPGOMethodCount_ = mismatchMethodCount;
     mismatchPGOMethodSet_ = std::move(mismatchMethodSet);
 }
+
 } // namespace panda::ecmascript::kungfu

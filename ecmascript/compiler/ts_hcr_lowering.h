@@ -171,6 +171,7 @@ private:
     void AddProfiling(GateRef gate);
     void AddVTableLoadVerifer(GateRef gate, GateRef value);
     void AddVTableStoreVerifer(GateRef gate, GateRef store, bool isThis);
+    
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
