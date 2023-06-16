@@ -182,7 +182,10 @@ CString BigIntHelper::GetBinary(const BigInt *bigint)
 
 JSHandle<BigInt> BigInt::CreateBigint(JSThread *thread, uint32_t length)
 {
-    ASSERT(length < MAXSIZE);
+    if (length > MAXSIZE) {
+        JSHandle<BigInt> bigint(thread, JSTaggedValue::Exception());
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Maximum BigInt size exceeded", bigint);
+    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<BigInt> bigint = factory->NewBigInt(length);
     return bigint;
@@ -997,6 +1000,7 @@ JSHandle<BigInt> BigInt::Exponentiate(JSThread *thread, JSHandle<BigInt> base, J
     if (base->GetLength() == 1 && base->GetDigit(0) == 2) { // 2 : We use fast path processing 2 ^ n
         uint32_t needLength = expValue / DATEBITS + 1;
         JSHandle<BigInt> bigint = CreateBigint(thread, needLength);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         uint32_t value = 1U << (expValue % DATEBITS);
         bigint->SetDigit(needLength - 1, value);
         if (base->GetSign()) {
@@ -1441,9 +1445,10 @@ JSTaggedValue BigInt::AsUintN(JSThread *thread, JSTaggedNumber &bits, JSHandle<B
     if (bigint->IsZero()) {
         return bigint.GetTaggedValue();
     }
-    JSHandle<BigInt> exponent = Int32ToBigInt(thread, bit);
+    JSHandle<BigInt> exponent = Uint32ToBigInt(thread, bit);
     JSHandle<BigInt> base = Int32ToBigInt(thread, 2); // 2 : base value
     JSHandle<BigInt> tValue = Exponentiate(thread, base, exponent);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return FloorMod(thread, bigint, tValue).GetTaggedValue();
 }
 
@@ -1460,8 +1465,10 @@ JSTaggedValue BigInt::AsintN(JSThread *thread, JSTaggedNumber &bits, JSHandle<Bi
     JSHandle<BigInt> exponent = Int32ToBigInt(thread, bit - 1);
     JSHandle<BigInt> base = Int32ToBigInt(thread, 2); // 2 : base value
     JSHandle<BigInt> tValue = Exponentiate(thread, base, exp);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<BigInt> modValue = FloorMod(thread, bigint, tValue);
     JSHandle<BigInt> resValue = Exponentiate(thread, base, exponent);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // If mod ≥ 2bits - 1, return ℤ(mod - 2bits); otherwise, return (mod).
     if (Compare(*resValue, *modValue) != ComparisonResult::GREAT) {
         return Subtract(thread, modValue, tValue).GetTaggedValue();
