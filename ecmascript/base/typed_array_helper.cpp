@@ -334,24 +334,24 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
     //   a. If bufferByteLength modulo elementSize ≠ 0, throw a RangeError exception.
     //   b. Let newByteLength be bufferByteLength - offset.
     //   c. If newByteLength < 0, throw a RangeError exception.
-    int32_t newByteLength = 0;
+    uint32_t newByteLength = 0;
     if (length->IsUndefined()) {
         if (bufferByteLength % elementSize != 0) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "The bufferByteLength cannot be an integral multiple of elementSize.",
                                          JSTaggedValue::Exception());
         }
-        newByteLength = static_cast<int32_t>(bufferByteLength - offset);
-        if (newByteLength < 0) {
+        if (bufferByteLength < offset) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "The newByteLength is less than 0.", JSTaggedValue::Exception());
         }
+        newByteLength = bufferByteLength - offset;
     } else {
         // 12. Else,
         //   a. Let newByteLength be newLength × elementSize.
         //   b. If offset + newByteLength > bufferByteLength, throw a RangeError exception.
         ASSERT((static_cast<size_t>(newLength) * static_cast<size_t>(elementSize)) <=
             static_cast<size_t>(INT32_MAX));
-        newByteLength = newLength * static_cast<int32_t>(elementSize);
-        if (offset + static_cast<uint32_t>(newByteLength) > bufferByteLength) {
+        newByteLength = static_cast<uint32_t>(newLength) * elementSize;
+        if (offset + newByteLength > bufferByteLength) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "The newByteLength is out of range.", JSTaggedValue::Exception());
         }
     }
@@ -361,9 +361,9 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
     // 16. Set O.[[ArrayLength]] to newByteLength / elementSize.
     JSTypedArray *jsTypedArray = JSTypedArray::Cast(*obj);
     jsTypedArray->SetViewedArrayBufferOrByteArray(thread, buffer);
-    jsTypedArray->SetByteLength(newByteLength);
+    jsTypedArray->SetByteLength(static_cast<int32_t>(newByteLength));
     jsTypedArray->SetByteOffset(offset);
-    jsTypedArray->SetArrayLength(newByteLength / static_cast<int32_t>(elementSize));
+    jsTypedArray->SetArrayLength(static_cast<int32_t>(newByteLength / elementSize));
     // 17. Return O.
     return obj.GetTaggedValue();
 }

@@ -179,3 +179,10 @@ const obj1 = {
 }
 obj1[235] = 1024;
 print(obj1[235])
+
+try {
+    const a5 = new Uint8ClampedArray(new ArrayBuffer(1283053413), 9007199254740991);
+    a5.copyWithin(-13602);
+} catch(e) {
+    print("test successful !!!")
+}
