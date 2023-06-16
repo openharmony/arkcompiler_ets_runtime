@@ -177,6 +177,9 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
 
     std::unique_ptr<icu::Collator> icuCollator(icu::Collator::createInstance(icuLocale, status));
     if (U_FAILURE(status) || icuCollator == nullptr) {  // NOLINT(readability-implicit-bool-conversion)
+        if (status == UErrorCode::U_MISSING_RESOURCE_ERROR) {
+            THROW_REFERENCE_ERROR_AND_RETURN(thread, "can not find icu data resources", collator);
+        }
         status = U_ZERO_ERROR;
         icu::Locale localeName(icuLocale.getBaseName());
         icuCollator.reset(icu::Collator::createInstance(localeName, status));

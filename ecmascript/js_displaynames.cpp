@@ -223,6 +223,10 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     }
     UDisplayContext displayContext[] = {uStyle};
     icu::LocaleDisplayNames *icudisplaynames(icu::LocaleDisplayNames::createInstance(icuLocale, displayContext, 1));
+    if (icudisplaynames == nullptr) {
+        delete icudisplaynames;
+        THROW_RANGE_ERROR_AND_RETURN(thread, "create icu::LocaleDisplayNames failed", displayNames);
+    }
     SetIcuLocaleDisplayNames(thread, displayNames, icudisplaynames, JSDisplayNames::FreeIcuLocaleDisplayNames);
     return displayNames;
 }

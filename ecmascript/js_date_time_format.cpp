@@ -324,8 +324,11 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     // 36.a. Let hcDefault be dataLocaleData.[[hourCycle]].
     std::unique_ptr<icu::DateTimePatternGenerator> generator(
         icu::DateTimePatternGenerator::createInstance(icuLocale, status));
-    if (!U_SUCCESS(status)) {
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, "create icu::DateTimePatternGenerator failed", dateTimeFormat);
+    if (U_FAILURE(status) || generator == nullptr) {
+        if (status == UErrorCode::U_MISSING_RESOURCE_ERROR) {
+            THROW_REFERENCE_ERROR_AND_RETURN(thread, "can not find icu data resources", dateTimeFormat);
+        }
+        THROW_RANGE_ERROR_AND_RETURN(thread, "create icu::DateTimePatternGenerator failed", dateTimeFormat);
     }
     HourCycleOption hcDefault = OptionToHourCycle(generator->getDefaultHourCycle(status));
     // b. Let hc be dateTimeFormat.[[HourCycle]].
@@ -1241,6 +1244,9 @@ std::unique_ptr<icu::Calendar> JSDateTimeFormat::BuildCalendar(const icu::Locale
 {
     UErrorCode status = U_ZERO_ERROR;
     std::unique_ptr<icu::Calendar> calendar(icu::Calendar::createInstance(timeZone, locale, status));
+    if (U_FAILURE(status) || calendar == nullptr) {
+       return nullptr;
+    }
     ASSERT_PRINT(U_SUCCESS(status), "buildCalendar failed");
     ASSERT_PRINT(calendar.get() != nullptr, "calendar is nullptr");
 
