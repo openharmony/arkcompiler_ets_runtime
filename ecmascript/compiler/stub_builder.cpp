@@ -1939,6 +1939,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(holder, VariableType::JS_ANY(), receiver);
+    DEFVARIABLE(proto, VariableType::JS_ANY(), Hole());
     Label exit(env);
     Label loopHead(env);
     Label loopEnd(env);
@@ -1960,6 +1961,10 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             Branch(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
             Bind(&isFastTypeArray);
             {
+                proto = GetPrototypeFromHClass(LoadHClass(receiver));
+                Label notOnProtoChain(env);
+                Branch(Int64NotEqual(*proto, *holder), &exit, &notOnProtoChain);
+                Bind(&notOnProtoChain);
                 TypedArrayStubBuilder typedArrayStubBuilder(this);
                 result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, *holder, index, jsType);
                 Jump(&exit);
