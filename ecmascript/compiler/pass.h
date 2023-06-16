@@ -257,7 +257,8 @@ public:
     {
         TimeScope timescope("TSHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        TSHCRLowering lowering(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName());
+        bool enableTypeLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
+        TSHCRLowering lowering(data->GetCircuit(), data->GetPassContext(), enableLog, enableTypeLog, data->GetMethodName());
         bool success = lowering.RunTSHCRLowering();
         if (!success) {
             data->MarkAsTypeAbort();

@@ -227,5 +227,67 @@ int CompilerLog::GetIndex()
 {
     return (idx_++);
 }
+
+void PGOTypeLogList::CollectGateTypeLogInfo(GateRef gate, bool isBinOp)
+{
+    log_ += "[PGOTypePrinter] ";
+    log_ += "gate id: "+ std::to_string(acc_.GetId(gate)) + ", ";
+    EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
+    log_ += "bytecode: " + GetEcmaOpcodeStr(ecmaOpcode);
+
+    uint32_t pcOffset = acc_.TryGetPcOffset(gate);
+    if (isBinOp) {
+        PGOSampleType sampleType = acc_.TryGetPGOType(gate);
+        if (sampleType.IsNumber()) {
+            if (sampleType.IsInt()) {
+                log_ += " [left type: int, right type: int]";
+            } else {
+                if (sampleType.IsIntOverFlow()) {
+                    log_ += " [left type: int, right type: int]";
+                } else if (sampleType.IsDouble()) {
+                    log_ += " [left type: double, right type: double]";
+                } else {
+                    log_ += " [left type: number, right type: number]";
+                }
+            }
+        } else {
+            GateRef left = acc_.GetValueIn(gate, 0);
+            GateRef right = acc_.GetValueIn(gate, 1);
+            GateType leftType = acc_.GetGateType(left);
+            GateType rightType = acc_.GetGateType(right);
+            if (leftType.IsIntType()) {
+                log_ += " [left type: int, ";
+            } else if (leftType.IsDoubleType()) {
+                log_ += " [left type: double, ";
+            } else {
+                log_ += " [left type: number, ";
+            }
+            if (rightType.IsIntType()) {
+                log_ += "right type: int]";
+            } else if (rightType.IsDoubleType()) {
+                log_ += "right type: double]";
+            } else {
+                log_ += "right type: number]";
+            }
+        }
+    } else {
+        GateRef value = acc_.GetValueIn(gate, 0);
+        GateType valueType = acc_.GetGateType(value);
+        if (valueType.IsIntType()) {
+            log_ += " [type: int]";
+        } else if (valueType.IsDoubleType()) {
+            log_ += " [type: double]";
+        } else {
+            log_ += " [type: number]";
+        }
+    }
+    log_ += ", pcOffset: " + std::to_string(pcOffset);
+    log_ += "\n[compiler] ";
+}
+
+void PGOTypeLogList::PrintPGOTypeLog()
+{
+    LOG_COMPILER(INFO) << log_;
+}
 // namespace panda::ecmascript::kungfu
 }

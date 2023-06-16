@@ -1256,7 +1256,8 @@ void MethodTypeInfer::PrintByteCodesWithTypes() const
         auto gates = builder_->GetGatesByBcIndex(bcIndex);
         if (gates.empty()) {
             LOG_COMPILER(INFO) << std::setw(adjustment) << std::to_string(bcIndex) << "  " << inst << ", "
-                               << "at line: " + std::to_string(lineNumber) + " column: " + std::to_string(columnNumber);
+                               << "at line: " + std::to_string(lineNumber) + " column: " + std::to_string(columnNumber)
+                               << ", pcOffset: " + std::to_string(offset);
         }
 
         for (const auto gate : gates) {
@@ -1270,7 +1271,8 @@ void MethodTypeInfer::PrintByteCodesWithTypes() const
                                << "[type: " + tsManager_->GetTypeStr(type) + ", "
                                << "moduleId: " + std::to_string(gt.GetModuleId()) + ", "
                                << "localId: " + std::to_string(gt.GetLocalId()) + "], "
-                               << "at line: " + std::to_string(lineNumber) + " column: " + std::to_string(columnNumber);
+                               << "at line: " + std::to_string(lineNumber) + " column: " + std::to_string(columnNumber)
+                               << ", pcOffset: " + std::to_string(offset);
         }
     }
     LOG_COMPILER(INFO) << "}";

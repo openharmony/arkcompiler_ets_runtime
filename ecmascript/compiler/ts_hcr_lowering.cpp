@@ -44,6 +44,10 @@ bool TSHCRLowering::RunTSHCRLowering()
         }
     }
 
+    if (IsTypeLogEnabled()) {
+        pgoTypeLog_.PrintPGOTypeLog();
+    }
+
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";
         LOG_COMPILER(INFO) << "\033[34m"
@@ -56,6 +60,22 @@ bool TSHCRLowering::RunTSHCRLowering()
         LOG_COMPILER(INFO) << "\033[34m" << " =========================== End typeHitRate: "
                            << std::to_string(typeHitRate)
                            << " ===========================" << "\033[0m";
+        for (auto a : bytecodeMap_) {
+            if (bytecodeHitTimeMap_.find(a.first) != bytecodeHitTimeMap_.end()) {
+                double rate = static_cast<double>(bytecodeHitTimeMap_[a.first]) / static_cast<double>(a.second);
+                LOG_COMPILER(INFO) << "\033[34m" << " =========================== End opHitRate: "
+                                   << GetEcmaOpcodeStr(a.first) << " rate: " << std::to_string(rate)
+                                   << "(" << std::to_string(bytecodeHitTimeMap_[a.first])
+                                   << " / " << std::to_string(a.second) << ")"
+                                   << " ===========================" << "\033[0m";
+            } else {
+                LOG_COMPILER(INFO) << "\033[34m" << " =========================== End opHitRate: "
+                                   << GetEcmaOpcodeStr(a.first) << " rate: " << std::to_string(0)
+                                   << "(" << std::to_string(0)
+                                   << " / " << std::to_string(a.second) << ")"
+                                   << " ===========================" << "\033[0m";
+            }
+        }
     }
 
     return success;
@@ -106,6 +126,7 @@ void TSHCRLowering::Lower(GateRef gate)
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);
+    AddBytecodeCount(ecmaOpcode);
     switch (ecmaOpcode) {
         case EcmaOpcode::ADD2_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_ADD>(gate);
@@ -160,9 +181,6 @@ void TSHCRLowering::Lower(GateRef gate)
             break;
         case EcmaOpcode::XOR2_IMM8_V8:
             LowerTypedXor(gate);
-            break;
-        case EcmaOpcode::EXP_IMM8_V8:
-            // lower JS_EXP
             break;
         case EcmaOpcode::TONUMERIC_IMM8:
             LowerTypeToNumeric(gate);
@@ -275,6 +293,7 @@ void TSHCRLowering::Lower(GateRef gate)
             LowerTypedCallthisrange(gate);
             break;
         default:
+            DeleteBytecodeCount(ecmaOpcode);
             allNonTypedOpCount_++;
             break;
     }
@@ -418,6 +437,7 @@ void TSHCRLowering::SpeculateNumbers(GateRef gate)
     GateType rightType = acc_.GetGateType(right);
     GateType gateType = acc_.GetGateType(gate);
     PGOSampleType sampleType = acc_.TryGetPGOType(gate);
+    pgoTypeLog_.CollectGateTypeLogInfo(gate, true);
 
     GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType, sampleType);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
@@ -426,9 +446,11 @@ void TSHCRLowering::SpeculateNumbers(GateRef gate)
 template<TypedUnOp Op>
 void TSHCRLowering::SpeculateNumber(GateRef gate)
 {
+    AddProfiling(gate);
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
     GateType gateType = acc_.GetGateType(gate);
+    pgoTypeLog_.CollectGateTypeLogInfo(gate, false);
 
     GateRef result = builder_.TypedUnaryOp<Op>(value, valueType, gateType);
 
@@ -1196,6 +1218,7 @@ void TSHCRLowering::LowerTypedCreateEmptyArray(GateRef gate)
 void TSHCRLowering::AddProfiling(GateRef gate)
 {
     hitTypedOpCount_++;
+    AddHitBytecodeCount();
     if (IsTraceBC()) {
         // see stateSplit as a part of JSByteCode if exists
         GateRef maybeStateSplit = acc_.GetDep(gate);
@@ -1235,6 +1258,30 @@ void TSHCRLowering::AddProfiling(GateRef gate)
                                                  { constOpcode, mode }, gate);
         acc_.SetDep(current, profiling);
         builder_.SetDepend(acc_.GetDep(gate));  // set gate depend: profiling or STATE_SPLIT
+    }
+}
+
+void TSHCRLowering::AddBytecodeCount(EcmaOpcode op)
+{
+    currentOp_ = op;
+    if (bytecodeMap_.find(op) != bytecodeMap_.end()) {
+        bytecodeMap_[op]++;
+    } else {
+        bytecodeMap_[op] = 1;
+    }
+}
+
+void TSHCRLowering::DeleteBytecodeCount(EcmaOpcode op)
+{
+    bytecodeMap_.erase(op);
+}
+
+void TSHCRLowering::AddHitBytecodeCount()
+{
+    if (bytecodeHitTimeMap_.find(currentOp_) != bytecodeHitTimeMap_.end()) {
+        bytecodeHitTimeMap_[currentOp_]++;
+    } else {
+        bytecodeHitTimeMap_[currentOp_] = 1;
     }
 }
 

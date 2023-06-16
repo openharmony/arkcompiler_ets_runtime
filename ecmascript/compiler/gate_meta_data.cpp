@@ -44,6 +44,68 @@ std::string MachineTypeToStr(MachineType machineType)
     }
 }
 
+std::string GateMetaData::TypedBinOpToStr(TypedBinOp typedBinOp) const
+{
+    switch (typedBinOp) {
+        case TypedBinOp::TYPED_ADD: {
+            return "Add";
+        }
+        case TypedBinOp::TYPED_SUB: {
+            return "Sub";
+        }
+        case TypedBinOp::TYPED_MUL: {
+            return "Mul";
+        }
+        case TypedBinOp::TYPED_LESS: {
+            return "Less";
+        }
+        case TypedBinOp::TYPED_LESSEQ: {
+            return "LessOrEqual";
+        }
+        case TypedBinOp::TYPED_GREATER: {
+            return "Greater";
+        }
+        case TypedBinOp::TYPED_GREATEREQ: {
+            return "GreaterOrEqual";
+        }
+        case TypedBinOp::TYPED_EQ: {
+            return "Equal";
+        }
+        case TypedBinOp::TYPED_NOTEQ: {
+            return "NotEqual";
+        }
+        case TypedBinOp::TYPED_STRICTEQ: {
+            return "StrictEqual";
+        }
+        case TypedBinOp::TYPED_SHL: {
+            return "Shl";
+        }
+        case TypedBinOp::TYPED_SHR: {
+            return "Shr";
+        }
+        case TypedBinOp::TYPED_ASHR: {
+            return "Ashr";
+        }
+        case TypedBinOp::TYPED_AND: {
+            return "And";
+        }
+        case TypedBinOp::TYPED_OR: {
+            return "Or";
+        }
+        case TypedBinOp::TYPED_XOR: {
+            return "Xor";
+        }
+        case TypedBinOp::TYPED_DIV: {
+            return "Div";
+        }
+        case TypedBinOp::TYPED_EXP: {
+            return "Exp";
+        }
+        default:
+            return "Unknown";
+    }
+}
+
 std::string GateMetaData::Str(OpCode opcode)
 {
     const std::map<OpCode, const char *> strMap = {

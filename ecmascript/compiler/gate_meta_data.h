@@ -506,6 +506,7 @@ public:
 
     ~GateMetaData() = default;
 
+    std::string TypedBinOpToStr(TypedBinOp typedBinOp) const;
     static std::string Str(OpCode opcode);
     std::string Str() const
     {
