@@ -405,6 +405,7 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleExpImm8V8, V)                 \
     APPEND_SUFFIX(HandleNegImm8, V)                   \
     APPEND_SUFFIX(HandleNotImm8, V)                   \
+    APPEND_SUFFIX(HandleEqImm8V8, V)                  \
     APPEND_SUFFIX(HandleIncImm8, V)                   \
     APPEND_SUFFIX(HandleDecImm8, V)                   \
     APPEND_SUFFIX(HandleNoteqImm8V8, V)               \
