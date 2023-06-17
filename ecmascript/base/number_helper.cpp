@@ -96,7 +96,7 @@ JSTaggedValue NumberHelper::DoubleToString(JSThread *thread, double number, int 
         number = -number;
     }
 
-    int64_t numberInteger = static_cast<int64_t>(std::floor(number));
+    double numberInteger = std::floor(number);
     double numberFraction = number - numberInteger;
 
     auto value = bit_cast<uint64_t>(number);
@@ -259,23 +259,23 @@ char NumberHelper::Carry(char current, int radix)
     return CHARS[digit];
 }
 
-CString NumberHelper::IntegerToString(int64_t number, int radix)
+CString NumberHelper::IntegerToString(double number, int radix)
 {
     ASSERT(radix >= MIN_RADIX && radix <= MAX_RADIX);
     CString result;
-    while (number / radix > static_cast<int64_t>(MAX_MANTISSA)) {
+    while (number / radix > MAX_MANTISSA) {
         number /= radix;
         result = CString("0").append(result);
     }
     do {
-        uint8_t remainder = static_cast<uint8_t>(std::fmod(number, radix));
-        result = CHARS[remainder] + result;
+        double remainder = std::fmod(number, radix);
+        result = CHARS[static_cast<int>(remainder)] + result;
         number = (number - remainder) / radix;
     } while (number > 0);
     return result;
 }
 
-CString NumberHelper::DecimalsToString(int64_t *numberInteger, double fraction, int radix, double delta)
+CString NumberHelper::DecimalsToString(double *numberInteger, double fraction, int radix, double delta)
 {
     CString result;
     while (fraction >= delta) {
