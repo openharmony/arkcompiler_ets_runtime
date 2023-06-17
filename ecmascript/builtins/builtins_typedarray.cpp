@@ -610,6 +610,7 @@ JSTaggedValue BuiltinsTypedArray::Filter(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(kValue.GetTaggedValue(), tKey.GetTaggedValue(), thisHandle.GetTaggedValue());
         JSTaggedValue callResult = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         bool testResult = callResult.ToBoolean();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (testResult) {

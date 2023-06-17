@@ -119,3 +119,10 @@ print(arr15.length);
 
 var a = '0';
 print(Array(5).indexOf(a));
+
+const v3 = new Float32Array(7);
+try {
+    v3.filter(Float32Array)
+} catch (error) {
+    print("The NewTarget is undefined")
+}
