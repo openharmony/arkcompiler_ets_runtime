@@ -1,5 +1,5 @@
 {
-    "name": "@ohos/arkcompiler_ets_runtime",
+    "name": "@ohos/ets_runtime",
     "version": "",
     "description": "支持应用TS/JS语言代码的运行，行为符合ArkUI框架需要的Strict模式的ES2015标准",
     "homePage": "https://gitee.com/openharmony",
@@ -30,7 +30,8 @@
             ],
             "third_party": [
               "bounds_checking_function",
-              "icu"
+              "icu",
+              "zlib"
             ]
         },
         "build": {

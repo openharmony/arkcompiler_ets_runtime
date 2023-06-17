@@ -180,7 +180,7 @@ bool CompilationDriver::FilterMethod(const CString &recordName, const MethodLite
                                      const MethodPcInfo &methodPCInfo, const std::string &methodName) const
 {
     if (methodPCInfo.methodsSize > bytecodeInfo_.GetMaxMethodSize() ||
-        !pfDecoder_.Match(recordName, methodLiteral->GetMethodId())) {
+        !pfDecoder_.Match(jsPandaFile_, recordName, methodLiteral)) {
         return true;
     }
 

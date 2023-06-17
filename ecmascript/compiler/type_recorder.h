@@ -47,7 +47,8 @@ private:
     void LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
                    TSManager *tsManager, const CString &recordName);
 
-    void LoadTypesFromPGO(const MethodLiteral *methodLiteral, const CString &recordName);
+    void LoadTypesFromPGO(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
+                          const CString &recordName);
 
     void LoadArgTypes(const TSManager *tsManager, GlobalTSTypeRef funcGT, GlobalTSTypeRef thisGT);
 

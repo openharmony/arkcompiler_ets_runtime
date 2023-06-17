@@ -14,10 +14,13 @@
  */
 
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
+#include <cstdint>
+#include <iomanip>
 
 #include "ecmascript/base/bit_helper.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
+#include "macros.h"
 
 namespace panda::ecmascript {
 static const std::string ELEMENT_SEPARATOR = "/";
@@ -31,6 +34,7 @@ static const std::string SPACE = " ";
 static const std::string BLOCK_AND_ARRAY_START = BLOCK_START + SPACE + ARRAY_START + SPACE;
 static const std::string VERSION_HEADER = "Profiler Version" + BLOCK_START + SPACE;
 static const std::string PANDA_FILE_INFO_HEADER = "Panda file sumcheck list" + BLOCK_AND_ARRAY_START;
+static const uint32_t HEX_FORMAT_WIDTH_FOR_32BITS = 10; // for example, 0xffffffff is 10 characters
 
 bool PGOProfilerHeader::ParseFromBinary(void *buffer, PGOProfilerHeader **header)
 {
@@ -471,7 +475,8 @@ void PGOMethodTypeSet::ObjDefOpTypeInfo::ProcessToText(std::string &text) const
     text += (SPACE + ARRAY_END);
 }
 
-bool PGOMethodInfoMap::AddMethod(Chunk *chunk, EntityId methodId, const CString &methodName, SampleMode mode)
+bool PGOMethodInfoMap::AddMethod(Chunk *chunk, EntityId methodId, uint32_t checksum, const CString &methodName,
+                                 SampleMode mode)
 {
     auto result = methodInfos_.find(methodId);
     if (result != methodInfos_.end()) {
@@ -485,6 +490,7 @@ bool PGOMethodInfoMap::AddMethod(Chunk *chunk, EntityId methodId, const CString 
         void *infoAddr = chunk->Allocate(size);
         auto info = new (infoAddr) PGOMethodInfo(methodId, 1, mode, methodName.c_str());
         methodInfos_.emplace(methodId, info);
+        methodsChecksum_.emplace(methodId, checksum);
         return true;
     }
 }
@@ -553,6 +559,14 @@ void PGOMethodInfoMap::Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos)
             methodTypeInfos_.emplace(methodId, typeInfoSet);
         }
     }
+
+    for (auto iter = methodInfos->methodsChecksum_.begin(); iter != methodInfos->methodsChecksum_.end(); iter++) {
+        auto methodId = iter->first;
+        auto result = methodsChecksum_.find(methodId);
+        if (result == methodsChecksum_.end()) {
+            methodsChecksum_.emplace(methodId, iter->second);
+        }
+    }
 }
 
 bool PGOMethodInfoMap::ParseFromBinary(Chunk *chunk, uint32_t threshold, void **buffer, PGOProfilerHeader *const header)
@@ -561,6 +575,9 @@ bool PGOMethodInfoMap::ParseFromBinary(Chunk *chunk, uint32_t threshold, void **
     for (uint32_t j = 0; j < secInfo.number_; j++) {
         PGOMethodInfo *info = base::ReadBufferInSize<PGOMethodInfo>(buffer);
         if (info->IsFilter(threshold)) {
+            if (header->SupportMethodChecksum()) {
+                base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
+            }
             if (header->SupportType()) {
                 PGOMethodTypeSet::SkipFromBinary(buffer);
             }
@@ -570,7 +587,10 @@ bool PGOMethodInfoMap::ParseFromBinary(Chunk *chunk, uint32_t threshold, void **
         LOG_ECMA(DEBUG) << "Method:" << info->GetMethodId() << ELEMENT_SEPARATOR << info->GetCount()
                         << ELEMENT_SEPARATOR << std::to_string(static_cast<int>(info->GetSampleMode()))
                         << ELEMENT_SEPARATOR << info->GetMethodName();
-
+        if (header->SupportMethodChecksum()) {
+            auto checksum = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
+            methodsChecksum_.emplace(info->GetMethodId(), checksum);
+        }
         if (header->SupportType()) {
             auto typeInfoSet = chunk->New<PGOMethodTypeSet>();
             typeInfoSet->ParseFromBinary(buffer);
@@ -598,6 +618,15 @@ bool PGOMethodInfoMap::ProcessToBinary(uint32_t threshold, const CString &record
             continue;
         }
         methodStream.write(reinterpret_cast<char *>(curMethodInfo), curMethodInfo->Size());
+        if (header->SupportMethodChecksum()) {
+            auto checksumIter = methodsChecksum_.find(curMethodInfo->GetMethodId());
+            uint32_t checksum = 0;
+            ASSERT(checksumIter != methodsChecksum_.end());
+            if (checksumIter != methodsChecksum_.end()) {
+                checksum = checksumIter->second;
+            }
+            methodStream.write(reinterpret_cast<char *>(&checksum), sizeof(uint32_t));
+        }
         if (header->SupportType()) {
             auto typeInfoIter = methodTypeInfos_.find(curMethodInfo->GetMethodId());
             if (typeInfoIter != methodTypeInfos_.end()) {
@@ -698,6 +727,13 @@ void PGOMethodInfoMap::ProcessToText(uint32_t threshold, const CString &recordNa
         }
         methodInfo->ProcessToText(profilerString);
         profilerString += ELEMENT_SEPARATOR;
+        auto checksumIter = methodsChecksum_.find(methodInfo->GetMethodId());
+        if (checksumIter != methodsChecksum_.end()) {
+            std::stringstream parseStream;
+            parseStream << std::internal << std::setfill('0') << std::showbase << std::setw(HEX_FORMAT_WIDTH_FOR_32BITS)
+                        << std::hex << checksumIter->second << ELEMENT_SEPARATOR;
+            profilerString += parseStream.str();
+        }
         auto iter = methodTypeInfos_.find(methodInfo->GetMethodId());
         if (iter != methodTypeInfos_.end()) {
             iter->second->ProcessToText(profilerString);
@@ -716,6 +752,9 @@ bool PGOMethodIdSet::ParseFromBinary(
     for (uint32_t j = 0; j < secInfo.number_; j++) {
         PGOMethodInfo *info = base::ReadBufferInSize<PGOMethodInfo>(buffer);
         if (info->IsFilter(threshold)) {
+            if (header->SupportMethodChecksum()) {
+                base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
+            }
             if (header->SupportType()) {
                 PGOMethodTypeSet::SkipFromBinary(buffer);
             }
@@ -725,7 +764,17 @@ bool PGOMethodIdSet::ParseFromBinary(
         LOG_ECMA(DEBUG) << "Method:" << info->GetMethodId() << ELEMENT_SEPARATOR << info->GetCount()
                         << ELEMENT_SEPARATOR << std::to_string(static_cast<int>(info->GetSampleMode()))
                         << ELEMENT_SEPARATOR << info->GetMethodName();
-
+        if (header->SupportMethodChecksum()) {
+            auto checksum = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
+            auto checksumIter = methodsChecksumMapping_.find(checksum);
+            if (checksumIter != methodsChecksumMapping_.end()) {
+                checksumIter->second.emplace(info->GetMethodId());
+            } else {
+                std::unordered_set<EntityId> methodIdSet = { info->GetMethodId() };
+                methodsChecksumMapping_.emplace(checksum, methodIdSet);
+            }
+            methodIdNameMapping_.emplace(info->GetMethodId(), info->GetMethodName());
+        }
         if (header->SupportType()) {
             auto typeInfoSet = allocator->New<PGOMethodTypeSet>();
             typeInfoSet->ParseFromBinary(buffer);
@@ -749,11 +798,11 @@ PGOMethodInfoMap *PGORecordDetailInfos::GetMethodInfoMap(const CString &recordNa
 }
 
 bool PGORecordDetailInfos::AddMethod(
-    const CString &recordName, EntityId methodId, const CString &methodName, SampleMode mode)
+    const CString &recordName, EntityId methodId, uint32_t checksum, const CString &methodName, SampleMode mode)
 {
     auto curMethodInfos = GetMethodInfoMap(recordName);
     ASSERT(curMethodInfos != nullptr);
-    return curMethodInfos->AddMethod(chunk_.get(), methodId, methodName, mode);
+    return curMethodInfos->AddMethod(chunk_.get(), methodId, checksum, methodName, mode);
 }
 
 bool PGORecordDetailInfos::AddType(const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type)
