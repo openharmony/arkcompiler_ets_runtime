@@ -39,3 +39,10 @@ let obj = new Proxy(EmployeeEntity,{});
 let arr = [obj];
 let set = new Set(arr);
 print(set.has(obj));
+
+const a1 = [-122934378,536870889,-4294967295,-8,11];
+const a2 = {
+};
+const a3 = new Proxy(a1, a2);
+Object.freeze(a3);
+print(Object.isFrozen(a3));
