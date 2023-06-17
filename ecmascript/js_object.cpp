@@ -1416,13 +1416,13 @@ bool JSObject::SetIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &obj
     ASSERT_PRINT((level == IntegrityLevel::SEALED || level == IntegrityLevel::FROZEN),
                  "level is not a valid IntegrityLevel");
 
-    bool status = JSTaggedValue::PreventExtensions(thread, JSHandle<JSTaggedValue>(obj));
+    bool status = PreventExtensions(thread, obj);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (!status) {
         return false;
     }
 
-    JSHandle<TaggedArray> jshandleKeys = JSTaggedValue::GetOwnPropertyKeys(thread, JSHandle<JSTaggedValue>(obj));
+    JSHandle<TaggedArray> jshandleKeys = GetOwnPropertyKeys(thread, obj);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     PropertyDescriptor descNoConf(thread);
     descNoConf.SetConfigurable(false);
@@ -1455,7 +1455,7 @@ bool JSObject::SetIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &obj
             auto taggedKey = JSTaggedValue(jshandleKeys->Get(i));
             handleKey.Update(taggedKey);
             PropertyDescriptor currentDesc(thread);
-            bool curDescStatus = JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>(obj), handleKey, currentDesc);
+            bool curDescStatus = GetOwnProperty(thread, obj, handleKey, currentDesc);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
             if (curDescStatus) {
                 PropertyDescriptor desc = currentDesc.IsAccessorDescriptor() ? descNoConf : descNoConfWrite;
@@ -1475,14 +1475,13 @@ bool JSObject::TestIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &ob
     ASSERT_PRINT((level == IntegrityLevel::SEALED || level == IntegrityLevel::FROZEN),
                  "level is not a valid IntegrityLevel");
 
-    bool status = JSHandle<JSTaggedValue>(obj)->IsExtensible(thread);
+    bool status = obj->IsExtensible();
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (status) {
         return false;
     }
 
-    JSHandle<TaggedArray> jshandleKeys =
-        JSTaggedValue::GetOwnPropertyKeys(thread, JSHandle<JSTaggedValue>(obj));
+    JSHandle<TaggedArray> jshandleKeys = GetOwnPropertyKeys(thread, obj);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     uint32_t length = jshandleKeys->GetLength();
     if (length == 0) {
@@ -1494,8 +1493,7 @@ bool JSObject::TestIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &ob
         auto taggedKey = JSTaggedValue(jshandleKeys->Get(i));
         handleKey.Update(taggedKey);
         PropertyDescriptor currentDesc(thread);
-        bool curDescStatus =
-            JSTaggedValue::GetOwnProperty(thread,JSHandle<JSTaggedValue>(obj), handleKey, currentDesc);
+        bool curDescStatus = GetOwnProperty(thread, obj, handleKey, currentDesc);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         if (curDescStatus) {
             if (currentDesc.IsConfigurable()) {
