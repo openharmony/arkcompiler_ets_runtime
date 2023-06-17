@@ -743,7 +743,7 @@ EcmaString *EcmaString::TrimBody(const JSThread *thread, const JSHandle<EcmaStri
 {
     uint32_t srcLen = src->GetLength();
     uint32_t start = 0;
-    uint32_t end = srcLen - 1;
+    int64_t end = srcLen - 1;
 
     if (mode == TrimMode::TRIM || mode == TrimMode::TRIM_START) {
         start = base::StringHelper::GetStart(data, srcLen);

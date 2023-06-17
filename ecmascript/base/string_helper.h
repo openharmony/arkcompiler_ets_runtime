@@ -316,12 +316,12 @@ public:
     }
 
     template<typename T>
-    static inline uint32_t GetEnd(Span<T> &data, uint32_t start, uint32_t length)
+    static inline int64_t GetEnd(Span<T> &data, uint32_t start, uint32_t length)
     {
         if (length == 0U) {
             return 0;
         }
-        uint32_t end = length - 1;
+        int64_t end = length - 1;
         while (end >= start && IsNonspace(data[end])) {
             end--;
         }
