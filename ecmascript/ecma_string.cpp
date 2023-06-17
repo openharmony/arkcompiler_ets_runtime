@@ -742,8 +742,8 @@ template<typename T>
 EcmaString *EcmaString::TrimBody(const JSThread *thread, const JSHandle<EcmaString> &src, Span<T> &data, TrimMode mode)
 {
     uint32_t srcLen = src->GetLength();
-    uint32_t start = 0;
-    int64_t end = srcLen - 1;
+    int32_t start = 0;
+    int32_t end = srcLen - 1;
 
     if (mode == TrimMode::TRIM || mode == TrimMode::TRIM_START) {
         start = base::StringHelper::GetStart(data, srcLen);
@@ -751,7 +751,7 @@ EcmaString *EcmaString::TrimBody(const JSThread *thread, const JSHandle<EcmaStri
     if (mode == TrimMode::TRIM || mode == TrimMode::TRIM_END) {
         end = base::StringHelper::GetEnd(data, start, srcLen);
     }
-    EcmaString *res = FastSubString(thread->GetEcmaVM(), src, start, end - start + 1);
+    EcmaString *res = FastSubString(thread->GetEcmaVM(), src, start, static_cast<uint32_t>(end - start + 1));
     return res;
 }
 
