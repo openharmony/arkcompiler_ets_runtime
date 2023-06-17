@@ -86,7 +86,7 @@ public:
     void GetAllEnumKeys(const JSThread *thread, int end, int offset, TaggedArray *keyArray, uint32_t *keys,
                         const JSHandle<JSObject> object);
 
-    void DumpFieldIndexForProfile(int index, CMap<CString, TrackType> &infos);
+    void DumpFieldIndexForProfile(int index, PGOHClassLayoutDesc &desc, PGOObjLayoutKind kind);
     DECL_DUMP()
 
 private:

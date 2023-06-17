@@ -66,7 +66,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     func->SetModule(vm_->GetJSThread(), recordName);
-    vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
     // Loader
     PGOProfilerDecoder loader("ark-profiler/modules.ap", 2);
@@ -107,12 +107,12 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     func1->SetModule(vm_->GetJSThread(), recordName);
     func2->SetModule(vm_->GetJSThread(), recordName);
     for (int i = 0; i < 5; i++) {
-        vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+        vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     }
     for (int i = 0; i < 50; i++) {
-        vm_->GetPGOProfiler()->Sample(func2.GetTaggedType());
+        vm_->GetPGOProfiler()->ProfileCall(func2.GetTaggedType());
     }
-    vm_->GetPGOProfiler()->Sample(func1.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(func1.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
@@ -152,9 +152,9 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     JSHandle<JSFunction> func1 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method1);
     JSHandle<JSTaggedValue> recordName1(vm_->GetFactory()->NewFromStdString("test1"));
     func1->SetModule(vm_->GetJSThread(), recordName1);
-    vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     for (int i = 0; i < 5; i++) {
-        vm_->GetPGOProfiler()->Sample(func1.GetTaggedType());
+        vm_->GetPGOProfiler()->ProfileCall(func1.GetTaggedType());
     }
     JSNApi::DestroyJSVM(vm_);
 
@@ -190,7 +190,7 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     func->SetModule(vm_->GetJSThread(), recordName);
-    vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
 
     // Loader
@@ -240,14 +240,14 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
     JSHandle<JSArray> array = vm_->GetFactory()->NewJSArray();
-    vm_->GetPGOProfiler()->Sample(array.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(array.GetTaggedType());
 
     // RecordName is hole
     MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
     JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     func->SetModule(vm_->GetJSThread(), JSTaggedValue::Hole());
-    vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
 
     PGOProfilerDecoder loader("", 2);
@@ -282,7 +282,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     JSHandle<JSFunction> func = vm2->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     func->SetModule(vm2->GetJSThread(), recordName);
-    vm2->GetPGOProfiler()->Sample(func.GetTaggedType());
+    vm2->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
 
     JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiteral);
     JSHandle<Method> method2 = vm_->GetFactory()->NewMethod(methodLiteral1);
@@ -291,8 +291,8 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     JSHandle<JSTaggedValue> recordName1(vm_->GetFactory()->NewFromStdString("test"));
     func1->SetModule(vm_->GetJSThread(), recordName);
     func2->SetModule(vm_->GetJSThread(), recordName);
-    vm_->GetPGOProfiler()->Sample(func1.GetTaggedType());
-    vm_->GetPGOProfiler()->Sample(func2.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(func1.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(func2.GetTaggedType());
 
     JSNApi::DestroyJSVM(vm2);
     JSNApi::DestroyJSVM(vm_);
@@ -332,7 +332,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     func->SetModule(vm_->GetJSThread(), recordName);
-    vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
 
     PGOProfilerDecoder loader("ark-profiler8/modules.ap", 2);
@@ -365,9 +365,9 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
         JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
         JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
         func->SetModule(vm_->GetJSThread(), recordName);
-        vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+        vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
         if (i % 3 == 0) {
-            vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+            vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
         }
     }
 
@@ -505,7 +505,7 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     func->SetModule(vm_->GetJSThread(), recordName);
-    vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
 
     // Loader

@@ -270,7 +270,7 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
         } else {
             if (thread_->IsPGOProfilerEnable()) {
-                vm_->GetPGOProfiler()->Sample(func.GetTaggedType());
+                vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
             }
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);

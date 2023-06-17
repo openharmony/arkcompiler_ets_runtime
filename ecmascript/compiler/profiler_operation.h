@@ -61,17 +61,17 @@ public:
         }
     }
 
-    inline void ProfileObjLayoutByStore(GateRef receiver) const
+    inline void ProfileObjLayoutByStore(GateRef object) const
     {
         if (callback_) {
-            callback_(receiver, OperationType::STORE_LAYOUT);
+            callback_(object, OperationType::STORE_LAYOUT);
         }
     }
 
-    inline void ProfileObjLayoutByLoad(GateRef receiver) const
+    inline void ProfileObjLayoutByLoad(GateRef object) const
     {
         if (callback_) {
-            callback_(receiver, OperationType::LOAD_LAYOUT);
+            callback_(object, OperationType::LOAD_LAYOUT);
         }
     }
 

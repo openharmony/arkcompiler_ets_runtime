@@ -20,13 +20,18 @@
 #include <string>
 #include <variant>
 
-#include "ecmascript/property_attributes.h"
+#include "macros.h"
 
 namespace panda::ecmascript {
 class ClassType {
 public:
     ClassType() = default;
     explicit ClassType(int32_t type) : type_(type) {}
+
+    bool IsNone() const
+    {
+        return type_ == 0;
+    }
 
     int32_t GetClassType() const
     {
@@ -43,6 +48,16 @@ public:
         return type_ != right.type_;
     }
 
+    bool operator==(const ClassType &right) const
+    {
+        return type_ == right.type_;
+    }
+
+    std::string GetTypeString() const
+    {
+        return std::to_string(type_);
+    }
+
 private:
     int32_t type_ { 0 };
 };
@@ -50,24 +65,24 @@ private:
 class PGOType {
 public:
     enum class TypeKind : uint8_t {
-        SAMPLE_TYPE,
-        LAYOUT_DESC,
+        SCALAR_OP_TYPE,
+        RW_OP_TYPE,
     };
     PGOType() = default;
     explicit PGOType(TypeKind kind) : kind_(kind) {}
 
-    bool IsSampleType() const
+    bool IsScalarOpType() const
     {
-        return kind_ == TypeKind::SAMPLE_TYPE;
+        return kind_ == TypeKind::SCALAR_OP_TYPE;
     }
 
-    bool IsLayoutDesc() const
+    bool IsRwOpType() const
     {
-        return kind_ == TypeKind::LAYOUT_DESC;
+        return kind_ == TypeKind::RW_OP_TYPE;
     }
 
 private:
-    TypeKind kind_ { TypeKind::SAMPLE_TYPE };
+    TypeKind kind_ { TypeKind::SCALAR_OP_TYPE };
 };
 
 /**
@@ -171,6 +186,11 @@ public:
         return static_cast<int32_t>(curType) | static_cast<int32_t>(newType);
     }
 
+    static PGOSampleType NoneClassType()
+    {
+        return PGOSampleType(ClassType());
+    }
+
     PGOSampleType CombineType(PGOSampleType type)
     {
         if (type_.index() == 0) {
@@ -192,7 +212,7 @@ public:
         if (type_.index() == 0) {
             return std::to_string(static_cast<uint32_t>(std::get<Type>(type_)));
         } else {
-            return std::to_string(std::get<ClassType>(type_).GetClassType());
+            return std::get<ClassType>(type_).GetTypeString();
         }
     }
 
@@ -259,32 +279,64 @@ public:
         return type_ != right.type_;
     }
 
+    bool operator==(const PGOSampleType &right) const
+    {
+        return type_ == right.type_;
+    }
+
 private:
     std::variant<Type, ClassType> type_;
 };
 
-class PGOSampleLayoutDesc : public PGOType {
+class PGORWOpType : public PGOType {
 public:
-    PGOSampleLayoutDesc() = default;
-    explicit PGOSampleLayoutDesc(ClassType type) : PGOType(TypeKind::LAYOUT_DESC), type_(type) {}
-
-    void AddKeyAndDesc(const char *key, TrackType rep)
+    PGORWOpType() : PGOType(TypeKind::RW_OP_TYPE) {};
+    explicit PGORWOpType(const PGOSampleType &type) : PGOType(TypeKind::RW_OP_TYPE), count_(0)
     {
-        layoutDesc_.emplace(key, rep);
+        ASSERT(type.IsClassType());
+        AddClassType(type.GetClassType());
     }
 
-    bool FindDescWithKey(const CString &key, TrackType &type) const
+    void Merge(const PGORWOpType &type)
     {
-        if (layoutDesc_.find(key) == layoutDesc_.end()) {
-            return false;
+        for (int i = 0; i < type.count_; i++) {
+            AddClassType(type.type_[i]);
         }
-        type = layoutDesc_.at(key);
-        return true;
+    }
+
+    void AddClassType(const ClassType &type)
+    {
+        if (type.IsNone()) {
+            return;
+        }
+        int32_t count = 0;
+        for (; count < count_; count++) {
+            if (type_[count] == type) {
+                return;
+            }
+        }
+        if (count < 4) {
+            type_[count] = type;
+            count_++;
+        } else {
+            LOG_ECMA(DEBUG) << "Class type exceeds 4, discard";
+        }
+    }
+
+    ClassType GetType(int32_t index) const
+    {
+        ASSERT(index < count_);
+        return type_[index];
+    }
+
+    int32_t GetCount() const
+    {
+        return count_;
     }
 
 private:
-    ClassType type_;
-    std::unordered_map<CString, TrackType> layoutDesc_;
+    int count_ = 0;
+    ClassType type_[4];
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_PGO_PROFILER_TYPE_H

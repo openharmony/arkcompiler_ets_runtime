@@ -16,11 +16,10 @@
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 
 #include "ecmascript/js_function.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 namespace panda::ecmascript {
-void PGOProfiler::Sample(JSTaggedType value, SampleMode mode)
+void PGOProfiler::ProfileCall(JSTaggedType value, SampleMode mode)
 {
     if (!isEnable_) {
         return;
@@ -47,7 +46,7 @@ void PGOProfiler::Sample(JSTaggedType value, SampleMode mode)
     }
 }
 
-void PGOProfiler::TypeSample(JSTaggedType func, int32_t offset, uint32_t type)
+void PGOProfiler::ProfileOpType(JSTaggedType func, int32_t offset, uint32_t type)
 {
     if (!isEnable_) {
         return;
@@ -66,7 +65,7 @@ void PGOProfiler::TypeSample(JSTaggedType func, int32_t offset, uint32_t type)
     }
 }
 
-void PGOProfiler::DefineSample(JSTaggedType func, int32_t offset, int32_t methodId)
+void PGOProfiler::ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType ctor)
 {
     if (!isEnable_) {
         return;
@@ -76,32 +75,64 @@ void PGOProfiler::DefineSample(JSTaggedType func, int32_t offset, int32_t method
     JSTaggedValue funcValue(func);
     if (funcValue.IsJSFunction()) {
         JSFunction *funcFunction = JSFunction::Cast(funcValue);
-        auto method = funcFunction->GetMethod();
-        if (!method.IsMethod()) {
-            return;
-        }
-        auto jsMethod = Method::Cast(method);
         JSTaggedValue recordNameValue = funcFunction->GetRecordName();
         if (recordNameValue.IsHole()) {
             return;
         }
         CString recordName = ConvertToString(recordNameValue);
+
+        auto method = funcFunction->GetMethod();
+        if (!method.IsMethod()) {
+            return;
+        }
+        auto jsMethod = Method::Cast(method);
         auto funcMethodId = jsMethod->GetMethodId();
-        auto classType = PGOSampleType::CreateClassType(methodId);
-        recordInfos_->AddDefine(recordName, funcMethodId, offset, classType);
+
+        JSHandle<JSTaggedValue> ctorValue(thread, JSTaggedValue(ctor));
+        if (!ctorValue->IsJSFunction()) {
+            return;
+        }
+        JSFunction *ctorFunction = JSFunction::Cast(ctorValue->GetTaggedObject());
+        auto ctorMethod = ctorFunction->GetMethod();
+        if (!ctorMethod.IsMethod()) {
+            return;
+        }
+        auto ctorJSMethod = Method::Cast(ctorMethod);
+        int32_t ctorMethodId = ctorJSMethod->GetMethodId().GetOffset();
+        auto currentType = PGOSampleType::CreateClassType(ctorMethodId);
+
+        auto superFuncValue = JSTaggedValue::GetPrototype(thread, ctorValue);
+        PGOSampleType superType = PGOSampleType::CreateClassType(0);
+        if (superFuncValue.IsJSFunction()) {
+            auto superFuncFunction = JSFunction::Cast(superFuncValue);
+            if (superFuncFunction->GetMethod().IsMethod()) {
+                auto superMethod = Method::Cast(superFuncFunction->GetMethod());
+                auto superMethodId = superMethod->GetMethodId().GetOffset();
+                superType = PGOSampleType::CreateClassType(superMethodId);
+            }
+        }
+        recordInfos_->AddDefine(recordName, funcMethodId, offset, currentType, superType);
+
+        auto prototype = ctorFunction->GetProtoOrHClass();
+        if (!prototype.IsJSObject()) {
+            return;
+        }
+        auto prototypeObj = JSObject::Cast(prototype);
+        auto prototypeHClass = JSTaggedType(prototypeObj->GetClass());
+        recordInfos_->AddLayout(currentType, prototypeHClass, PGOObjLayoutKind::PROTOTYPE);
+
+        auto ctorHClass = JSTaggedType(ctorFunction->GetJSHClass());
+        recordInfos_->AddLayout(currentType, ctorHClass, PGOObjLayoutKind::CONSTRUCTOR);
     }
 }
 
-void PGOProfiler::LayoutSample(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType hclass, bool store)
+void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType object, bool store)
 {
     if (!isEnable_) {
         return;
     }
 
     DISALLOW_GARBAGE_COLLECTION;
-    if (!JSTaggedValue(hclass).IsJSHClass()) {
-        return;
-    }
     JSTaggedValue funcValue(func);
     if (funcValue.IsJSFunction()) {
         JSFunction *funcFunction = JSFunction::Cast(funcValue);
@@ -116,19 +147,23 @@ void PGOProfiler::LayoutSample(JSThread *thread, JSTaggedType func, int32_t offs
         }
         CString recordName = ConvertToString(recordNameValue);
 
-        auto hclassObj = JSHClass::Cast(JSTaggedValue(hclass).GetTaggedObject());
-        JSHandle<JSTaggedValue> prototype(thread, hclassObj->GetProto());
-        if (!prototype->IsJSObject()) {
-            return;
+        auto holder = JSTaggedValue(object);
+        auto hclass = holder.GetTaggedObject()->GetClass();
+        auto ctor = JSTaggedValue::Undefined();
+        PGOObjLayoutKind kind = PGOObjLayoutKind::LOCAL;
+        if (hclass->IsClassPrototype()) {
+            ctor = JSObject::GetCtorFromPrototype(thread, holder);
+            kind = PGOObjLayoutKind::PROTOTYPE;
+        } else if (hclass->IsClassConstructor()) {
+            ctor = holder;
+            kind = PGOObjLayoutKind::CONSTRUCTOR;
+        } else {
+            auto prototype = hclass->GetProto();
+            ctor = JSObject::GetCtorFromPrototype(thread, prototype);
         }
-        JSHandle<JSTaggedValue> ctorKey = thread->GlobalConstants()->GetHandledConstructorString();
-        JSHandle<JSTaggedValue> ctorObj(JSObject::GetProperty(thread, prototype, ctorKey).GetValue());
-        if (thread->HasPendingException()) {
-            thread->ClearException();
-            return;
-        }
-        if (ctorObj->IsJSFunction()) {
-            auto ctorFunc = JSFunction::Cast(ctorObj.GetTaggedValue());
+
+        if (ctor.IsJSFunction()) {
+            auto ctorFunc = JSFunction::Cast(ctor);
             auto ctorMethod = ctorFunc->GetMethod();
             if (!ctorMethod.IsMethod()) {
                 return;
@@ -138,7 +173,7 @@ void PGOProfiler::LayoutSample(JSThread *thread, JSTaggedType func, int32_t offs
             PGOSampleType type = PGOSampleType::CreateClassType(methodId.GetOffset());
             recordInfos_->AddType(recordName, jsMethod->GetMethodId(), offset, type);
             if (store) {
-                recordInfos_->AddLayout(recordName, type, hclass);
+                recordInfos_->AddLayout(type, JSTaggedType(hclass), kind);
             }
         }
     }

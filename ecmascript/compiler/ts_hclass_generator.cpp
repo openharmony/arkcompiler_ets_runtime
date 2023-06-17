@@ -40,6 +40,31 @@ void TSHClassGenerator::GenerateTSHClasses() const
     }
 }
 
+void TSHClassGenerator::UpdateTSHClassFromPGO(JSHClass *hclass, const PGOHClassLayoutDesc &desc) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    const JSThread *thread = tsManager_->GetThread();
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    int element = layoutInfo->NumberOfElements();
+    for (int i = 0; i < element; i++) {
+        auto key = layoutInfo->GetKey(i);
+        if (!key.IsString()) {
+            continue;
+        }
+        auto keyString = EcmaStringAccessor(key).ToCString();
+        PGOHandler newHandler;
+        if (desc.FindDescWithKey(keyString, newHandler)) {
+            auto attr = layoutInfo->GetAttr(i);
+            if (newHandler.GetTrackType() == TrackType::DOUBLE) {
+                attr.SetRepresentation(Representation::DOUBLE);
+            } else {
+                attr.SetRepresentation(Representation::OBJECT);
+            }
+            layoutInfo->SetNormalAttr(thread, i, attr);
+        }
+    }
+}
+
 void TSHClassGenerator::RecursiveGenerate(const JSHandle<TSClassType> &classType) const
 {
     if (!classType->IsBaseClassType()) {

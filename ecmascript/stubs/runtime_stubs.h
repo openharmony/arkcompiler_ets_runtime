@@ -96,10 +96,10 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
     V(DebugPrint)                              \
     V(DebugPrintInstruction)                   \
-    V(PGOProfiler)                             \
-    V(PGODefineProfiler)                       \
-    V(PGOTypeProfiler)                         \
-    V(PGOLayoutProfiler)                       \
+    V(ProfileCall)                             \
+    V(ProfileDefineClass)                      \
+    V(ProfileOpType)                           \
+    V(ProfileObjLayout)                        \
     V(Comment)                                 \
     V(FatalPrint)                              \
     V(GetActualArgvNoGC)                       \
@@ -351,10 +351,10 @@ public:
     static void DebugPrint(int fmtMessageId, ...);
     static void DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc);
     static void Comment(uintptr_t argStr);
-    static void PGOProfiler(uintptr_t argGlue, uintptr_t func);
-    static void PGODefineProfiler(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t methodId);
-    static void PGOTypeProfiler(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type);
-    static void PGOLayoutProfiler(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t hclass, int32_t store);
+    static void ProfileCall(uintptr_t argGlue, uintptr_t func);
+    static void ProfileDefineClass(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t ctor);
+    static void ProfileOpType(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type);
+    static void ProfileObjLayout(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object, int32_t store);
     static void FatalPrint(int fmtMessageId, ...);
     static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);

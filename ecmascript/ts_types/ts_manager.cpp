@@ -648,19 +648,17 @@ void TSManager::AddConstructorTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &c
     gtConstructorhcMap_.insert({gt, ihcData});
 }
 
-void TSManager::UpdateTSHClassFromPGO(const kungfu::GateType &gateType, const PGOSampleLayoutDesc &desc)
+JSTaggedValue TSManager::GetTSHClass(const kungfu::GateType &gateType) const
 {
     if (!IsClassTypeKind(gateType)) {
-        return;
+        return JSTaggedValue::Hole();
     }
     GlobalTSTypeRef classGT = gateType.GetGTRef();
     auto iter = gtIhcMap_.find(classGT);
     if (iter != gtIhcMap_.end()) {
-        auto value = JSTaggedValue(iter->second.GetIHC());
-        if (value.IsJSHClass()) {
-            TSObjectType::UpdateHClassFromPGO(thread_, JSHClass::Cast(value.GetTaggedObject()), desc);
-        }
+        return JSTaggedValue(iter->second.GetIHC());
     }
+    return JSTaggedValue::Hole();
 }
 
 JSTaggedValue TSManager::GetInstanceTSHClass(const JSHandle<TSClassType> &classType) const

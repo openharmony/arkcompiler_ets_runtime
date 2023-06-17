@@ -1409,11 +1409,11 @@ DEF_CALL_SIGNATURE(Comment)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(PGOProfiler)
+DEF_CALL_SIGNATURE(ProfileCall)
 {
     // 2 : 2 input parameters
-    CallSignature pgoProfilerInstruction("PGOProfiler", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = pgoProfilerInstruction;
+    CallSignature callProfilerInstruction("ProfileCall", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = callProfilerInstruction;
     // 2 : 2 input parameters
     std::array<VariableType, 2> params = {
         VariableType::NATIVE_POINTER(),
@@ -1425,17 +1425,18 @@ DEF_CALL_SIGNATURE(PGOProfiler)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(PGODefineProfiler)
+DEF_CALL_SIGNATURE(ProfileDefineClass)
 {
     // 4: 4 input parameters
-    CallSignature defineProfInstruction("PGODefineProfiler", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    CallSignature defineProfInstruction(
+        "ProfileDefineClass", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = defineProfInstruction;
     // 4: 4 input parameters
     std::array<VariableType, 4> params = { // 4 : 4 input parameters
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
         VariableType::INT32(),
-        VariableType::INT32(),
+        VariableType::JS_ANY(),
     };
     callSign->SetVariadicArgs(true);
     callSign->SetParameters(params.data());
@@ -1443,10 +1444,10 @@ DEF_CALL_SIGNATURE(PGODefineProfiler)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(PGOTypeProfiler)
+DEF_CALL_SIGNATURE(ProfileOpType)
 {
     // 4: 4 input parameters
-    CallSignature typeProfInstruction("PGOTypeProfiler", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    CallSignature typeProfInstruction("ProfileOpType", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = typeProfInstruction;
     // 4: 4 input parameters
     std::array<VariableType, 4> params = { // 4 : 4 input parameters
@@ -1461,10 +1462,10 @@ DEF_CALL_SIGNATURE(PGOTypeProfiler)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(PGOLayoutProfiler)
+DEF_CALL_SIGNATURE(ProfileObjLayout)
 {
     // 4: 4 input parameters
-    CallSignature layoutProfInstruction("PGOLayoutProfiler", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    CallSignature layoutProfInstruction("ProfileObjLayout", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = layoutProfInstruction;
     // 4: 4 input parameters
     std::array<VariableType, 5> params = { // 5 : 5 input parameters

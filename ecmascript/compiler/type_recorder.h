@@ -65,8 +65,8 @@ private:
     bool TypeNeedFilter(GlobalTSTypeRef gt) const;
 
     std::unordered_map<int32_t, GateType> bcOffsetGtMap_ {};
-    std::unordered_map<int32_t, PGOSampleType> bcOffsetPGOTypeMap_ {};
-    std::unordered_map<int32_t, PGOSampleLayoutDesc> bcOffsetPGODescMap_ {};
+    std::unordered_map<int32_t, PGOSampleType> bcOffsetPGOOpTypeMap_ {};
+    std::unordered_map<int32_t, PGORWOpType> bcOffsetPGORwTypeMap_ {};
     std::vector<GateType> argTypes_;
     PGOProfilerDecoder *decoder_ {nullptr};
 };

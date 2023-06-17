@@ -27,10 +27,10 @@ public:
     NO_COPY_SEMANTIC(PGOProfiler);
     NO_MOVE_SEMANTIC(PGOProfiler);
 
-    void Sample(JSTaggedType value, SampleMode mode = SampleMode::CALL_MODE);
-    void TypeSample(JSTaggedType func, int32_t offset, uint32_t type);
-    void DefineSample(JSTaggedType func, int32_t offset, int32_t methodId);
-    void LayoutSample(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType hclass, bool store);
+    void ProfileCall(JSTaggedType value, SampleMode mode = SampleMode::CALL_MODE);
+    void ProfileOpType(JSTaggedType func, int32_t offset, uint32_t type);
+    void ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType ctor);
+    void ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType object, bool store);
 
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT = 20;

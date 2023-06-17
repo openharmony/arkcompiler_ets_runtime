@@ -380,28 +380,28 @@ void RuntimeStubs::Comment(uintptr_t argStr)
     LOG_ECMA(DEBUG) << str;
 }
 
-void RuntimeStubs::PGOProfiler(uintptr_t argGlue, uintptr_t func)
+void RuntimeStubs::ProfileCall(uintptr_t argGlue, uintptr_t func)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->Sample(func);
+    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(func);
 }
 
-void RuntimeStubs::PGOTypeProfiler(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type)
+void RuntimeStubs::ProfileOpType(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->TypeSample(func, offset, type);
+    thread->GetEcmaVM()->GetPGOProfiler()->ProfileOpType(func, offset, type);
 }
 
-void RuntimeStubs::PGODefineProfiler(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t methodId)
+void RuntimeStubs::ProfileDefineClass(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t ctor)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->DefineSample(func, offset, methodId);
+    thread->GetEcmaVM()->GetPGOProfiler()->ProfileDefineClass(thread, func, offset, ctor);
 }
 
-void RuntimeStubs::PGOLayoutProfiler(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t hclass, int32_t store)
+void RuntimeStubs::ProfileObjLayout(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object, int32_t store)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->LayoutSample(thread, func, offset, hclass, store != 0);
+    thread->GetEcmaVM()->GetPGOProfiler()->ProfileObjLayout(thread, func, offset, object, store != 0);
 }
 
 void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
@@ -955,7 +955,7 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounterWithProf)
     JSHandle<Method> method(thread, thisFunc->GetMethod());
     auto profileTypeInfo = method->GetProfileTypeInfo();
     if (profileTypeInfo.IsUndefined()) {
-        thread->GetEcmaVM()->GetPGOProfiler()->Sample(thisFunc.GetTaggedType(), SampleMode::HOTNESS_MODE);
+        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(thisFunc.GetTaggedType(), SampleMode::HOTNESS_MODE);
         uint32_t slotSize = method->GetSlotSize();
         auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
         return res.GetRawData();

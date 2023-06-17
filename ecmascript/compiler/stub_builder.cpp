@@ -772,7 +772,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
             attr = SetIsInlinePropsFieldInPropAttr(*attr, Int32(1)); // 1: set inInlineProps true
             attr = ProfilerStubBuilder(env).UpdateTrackTypeInPropAttr(*attr, value, callback);
             JSHClassAddProperty(glue, receiver, key, *attr);
-            callback.ProfileObjLayoutByLoad(receiver);
+            callback.ProfileObjLayoutByStore(receiver);
             result = Undefined();
             Jump(&exit);
         }
@@ -853,7 +853,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 attr = ProfilerStubBuilder(env).UpdateTrackTypeInPropAttr(*attr, value, callback);
                 JSHClassAddProperty(glue, receiver, key, *attr);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array, outProps, value);
-                callback.ProfileObjLayoutByLoad(receiver);
+                callback.ProfileObjLayoutByStore(receiver);
                 Jump(&exit);
             }
         }

@@ -17,6 +17,7 @@
 #define ECMASCRIPT_PGO_PROFILE_DECODER_H
 
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
 #include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript {
@@ -65,6 +66,8 @@ public:
         }
         recordSimpleInfos_->GetTypeInfo(recordName, methodId, callback);
     }
+
+    bool GetHClassLayoutDesc(PGOSampleType classType, PGOHClassLayoutDesc **desc) const;
 
     bool IsLoaded() const
     {

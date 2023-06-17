@@ -427,6 +427,8 @@ public:
     // [[SetPrototypeOf]]
     static bool SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &proto);
 
+    static JSTaggedValue GetCtorFromPrototype(JSThread *thread, JSTaggedValue prototype);
+
     // [[IsExtensible]]
     bool IsExtensible() const;
 
