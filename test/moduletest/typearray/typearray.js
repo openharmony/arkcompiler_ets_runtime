@@ -178,11 +178,24 @@ const obj1 = {
     __proto__: a4
 }
 obj1[235] = 1024;
-print(obj1[235])
+print(obj1[235]);
 
 try {
     const a5 = new Uint8ClampedArray(new ArrayBuffer(1283053413), 9007199254740991);
     a5.copyWithin(-13602);
 } catch(e) {
-    print("test successful !!!")
+    print("test successful !!!");
 }
+
+try {
+    const a6 = new BigInt64Array(10);
+    Int16Array.apply(null, a6);
+} catch(e) {
+    print("test successful !!!");
+}
+
+const a7 = new BigInt64Array(4);
+function foo() {}
+const f = new foo();
+const protoOf = f.isPrototypeOf;
+print(protoOf.apply(protoOf, a7));
