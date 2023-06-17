@@ -1550,7 +1550,7 @@ JSTaggedNumber BigInt::BigIntToNumber(JSHandle<BigInt> bigint)
     if (remainMantissaBits < 0) {
         remainDigitBits = -remainMantissaBits;
     } else {
-        if (!index) {
+        if (index <= 0) {
             return CalculateNumber(sign, mantissa, exponent);
         }
         digit = bigint->GetDigit(index--);
