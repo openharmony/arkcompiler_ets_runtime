@@ -23,8 +23,8 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
-static constexpr size_t DEFAULT_HEAP_SIZE = 256_MB;                 // Recommended range: 128-256MB
-static constexpr size_t DEFAULT_WORKER_HEAP_SIZE = 128_MB;          // Recommended range: 128_MB
+static constexpr size_t DEFAULT_HEAP_SIZE = 384_MB;                 // Recommended range: 128-384MB
+static constexpr size_t DEFAULT_WORKER_HEAP_SIZE = 768_MB;          // Recommended range: 128_MB, LargeHeap: 768_MB
 
 class EcmaParamConfiguration {
 public:
@@ -76,11 +76,11 @@ public:
             minGrowingStep_ = 8_MB;
             maxStackSize_ = 128_KB;
             maxJSSerializerSize_ = 32_MB;
-        }  else { // 256_MB
+        }  else { // 256_MB ~ 384_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 16_MB;
             defaultReadOnlySpaceSize_ = 256_KB;
-            defaultNonMovableSpaceSize_ = 6_MB;
+            defaultNonMovableSpaceSize_ = 10_MB;
             defaultSnapshotSpaceSize_ = 4_MB;
             defaultMachineCodeSpaceSize_ = 8_MB;
             semiSpaceTriggerConcurrentMark_ = 1.5_MB;
