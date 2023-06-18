@@ -73,10 +73,10 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(61)));
+    ASSERT_TRUE(!loader.Match(nullptr, expectRecordName, methodLiteral));
 #else
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
+    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral));
 #endif
     unlink("ark-profiler/modules.ap");
     rmdir("ark-profiler/");
@@ -120,12 +120,12 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(70)));
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(80)));
-    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(75)));
+    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral));
+    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral2));
+    ASSERT_TRUE(!loader.Match(nullptr, expectRecordName, methodLiteral1));
 #else
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(75)));
+    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral1));
 #endif
     unlink("ark-profiler1/modules.ap");
     rmdir("ark-profiler1/");
@@ -164,12 +164,12 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     CString expectRecordName1 = "test1";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(61)));
+    ASSERT_TRUE(!loader.Match(nullptr, expectRecordName, methodLiteral));
 #else
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
+    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral));
 #endif
-    ASSERT_TRUE(loader.Match(expectRecordName1, EntityId(62)));
+    ASSERT_TRUE(loader.Match(nullptr, expectRecordName1, methodLiteral1));
     unlink("ark-profiler2/modules.ap");
     rmdir("ark-profiler2/");
 }
@@ -198,7 +198,7 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     // path is empty()
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "test";
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
+    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral));
     rmdir("ark-profiler3/");
 }
 
@@ -301,15 +301,15 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     mkdir("ark-profiler5/profiler", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "test";
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(75)));
+    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral1));
 
     PGOProfilerDecoder loader1("ark-profiler5/modules.ap", 2);
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader1.LoadAndVerify(checksum));
-    ASSERT_TRUE(!loader1.Match(expectRecordName, EntityId(75)));
+    ASSERT_TRUE(!loader1.Match(nullptr, expectRecordName, methodLiteral1));
 #else
     ASSERT_TRUE(!loader1.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader1.Match(expectRecordName, EntityId(75)));
+    ASSERT_TRUE(loader1.Match(nullptr, expectRecordName, methodLiteral1));
 #endif
 
     unlink("ark-profiler5/modules.ap");
@@ -339,10 +339,10 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(61)));
+    ASSERT_TRUE(!loader.Match(nullptr, expectRecordName, methodLiteral));
 #else
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
+    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral));
 #endif
 
     unlink("ark-profiler8/modules.ap");
@@ -382,12 +382,12 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     CString expectRecordName = "test";
     for (int i = 61; i < 91; i++) {
         if (i % 3 == 0) {
-            ASSERT_TRUE(loader.Match(expectRecordName, EntityId(i)));
+            ASSERT_TRUE(loader.Match(nullptr, expectRecordName, new MethodLiteral(EntityId(i))));
         } else {
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-            ASSERT_TRUE(!loader.Match(expectRecordName, EntityId(i)));
+            ASSERT_TRUE(!loader.Match(nullptr, expectRecordName, new MethodLiteral(EntityId(i))));
 #else
-            ASSERT_TRUE(loader.Match(expectRecordName, EntityId(i)));
+            ASSERT_TRUE(loader.Match(nullptr, expectRecordName, new MethodLiteral(EntityId(i))));
 #endif
         }
     }
@@ -407,9 +407,9 @@ HWTEST_F_L0(PGOProfilerTest, BinaryToText)
     std::unique_ptr<PGOPandaFileInfos> pandaFileInfos = std::make_unique<PGOPandaFileInfos>();
     std::unique_ptr<PGORecordDetailInfos> recordInfos = std::make_unique<PGORecordDetailInfos>(2);
     pandaFileInfos->Sample(0x34556738);
-    ASSERT_TRUE(recordInfos->AddMethod("test", EntityId(23), "test", SampleMode::CALL_MODE));
-    ASSERT_FALSE(recordInfos->AddMethod("test", EntityId(23), "test", SampleMode::CALL_MODE));
-    ASSERT_FALSE(recordInfos->AddMethod("test", EntityId(23), "test", SampleMode::CALL_MODE));
+    ASSERT_TRUE(recordInfos->AddMethod("test", EntityId(23), 0, "test", SampleMode::CALL_MODE));
+    ASSERT_FALSE(recordInfos->AddMethod("test", EntityId(23), 0, "test", SampleMode::CALL_MODE));
+    ASSERT_FALSE(recordInfos->AddMethod("test", EntityId(23), 0, "test", SampleMode::CALL_MODE));
 
     pandaFileInfos->ProcessToBinary(file, header->GetPandaInfoSection());
     recordInfos->ProcessToBinary(nullptr, file, header);
@@ -513,7 +513,7 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     // path is empty()
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "test";
-    ASSERT_TRUE(loader.Match(expectRecordName, EntityId(61)));
+    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral));
     rmdir("ark-profiler12/");
 }
 }  // namespace panda::test

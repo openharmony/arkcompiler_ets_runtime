@@ -18,14 +18,21 @@
 
 #include <memory>
 #include <sstream>
+#include <unordered_map>
+#include <unordered_set>
 #include <string.h>
 
 #include "ecmascript/base/file_header.h"
+#include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/property_attributes.h"
+
+#include "zlib.h"
 
 namespace panda::ecmascript {
 class SaveTask;
@@ -94,7 +101,8 @@ static constexpr size_t ALIGN_SIZE = 4;
 class PGOProfilerHeader : public base::FileHeader {
 public:
     static constexpr VersionType TYPE_MINI_VERSION = {0, 0, 0, 2};
-    static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 3};
+    static constexpr VersionType METHOD_CHECKSUM_MINI_VERSION = {0, 0, 0, 4};
+    static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 4};
     static constexpr size_t SECTION_SIZE = 3;
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
@@ -159,6 +167,11 @@ public:
     bool SupportType() const
     {
         return InternalVerifyVersion(TYPE_MINI_VERSION);
+    }
+
+    bool SupportMethodChecksum() const
+    {
+        return InternalVerifyVersion(METHOD_CHECKSUM_MINI_VERSION);
     }
 
     NO_COPY_SEMANTIC(PGOProfilerHeader);
@@ -252,6 +265,19 @@ public:
             UNREACHABLE();
         }
         *(&methodName_ + len) = '\0';
+    }
+
+    static uint32_t CalcChecksum(const char *name, const uint8_t *byteCodeArray, uint32_t byteCodeLength)
+    {
+        uint32_t checksum = 0;
+        if (byteCodeArray != nullptr) {
+            checksum = adler32(checksum, byteCodeArray, byteCodeLength);
+        }
+
+        if (name != nullptr) {
+            checksum = adler32(checksum, reinterpret_cast<const Bytef *>(name), strlen(name));
+        }
+        return checksum;
     }
 
     static int32_t Size(uint32_t length)
@@ -688,7 +714,7 @@ public:
         methodTypeInfos_.clear();
     }
 
-    bool AddMethod(Chunk *chunk, EntityId methodId, const CString &methodName, SampleMode mode);
+    bool AddMethod(Chunk *chunk, EntityId methodId, uint32_t checksum, const CString &methodName, SampleMode mode);
     bool AddType(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type);
     bool AddDefine(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
@@ -708,6 +734,8 @@ private:
 
     CMap<EntityId, PGOMethodInfo *> methodInfos_;
     CMap<EntityId, PGOMethodTypeSet *> methodTypeInfos_;
+    CMap<EntityId, uint32_t> methodsChecksum_;
+    CMap<PGOSampleType, CMap<CString, TrackType>> globalLayoutDescInfos_;
 };
 
 class PGOMethodIdSet {
@@ -753,6 +781,23 @@ public:
         return methodTypeSet_;
     }
 
+    bool GetMethodIdInPGO(uint32_t checksum, const char *methodName, EntityId &methodId) const
+    {
+        auto iter = methodsChecksumMapping_.find(checksum);
+        if (iter == methodsChecksumMapping_.end()) {
+            return false;
+        }
+        for (const auto &pgoMethodId : iter->second) {
+            auto methodNameIter = methodIdNameMapping_.find(pgoMethodId);
+            ASSERT(methodNameIter != methodIdNameMapping_.end());
+            if (methodNameIter->second == methodName) {
+                methodId = pgoMethodId;
+                return true;
+            }
+        }
+        return false;
+    }
+
     bool ParseFromBinary(
         NativeAreaAllocator *allocator, uint32_t threshold, void **buffer, PGOProfilerHeader *const header);
 
@@ -762,6 +807,8 @@ public:
 private:
     std::unordered_set<EntityId> methodIdSet_;
     std::map<EntityId, PGOMethodTypeSet *> methodTypeSet_;
+    std::unordered_map<EntityId, CString> methodIdNameMapping_;
+    std::unordered_map<uint32_t, std::unordered_set<EntityId>> methodsChecksumMapping_;
 };
 
 class PGORecordDetailInfos {
@@ -787,7 +834,8 @@ public:
     }
 
     // If it is a new method, return true.
-    bool AddMethod(const CString &recordName, EntityId methodId, const CString &methodName, SampleMode mode);
+    bool AddMethod(const CString &recordName, EntityId methodId, uint32_t checksum, const CString &methodName,
+                   SampleMode mode);
     bool AddType(const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type);
     bool AddDefine(
         const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
@@ -875,6 +923,16 @@ public:
         if (iter != moduleLayoutDescInfos_.end()) {
             *desc = &(const_cast<PGOHClassLayoutDesc &>(*iter));
             return true;
+        }
+        return false;
+    }
+
+    bool GetMethodIdInPGO(const CString &recordName, uint32_t checksum, const char *methodName,
+                          EntityId &methodId) const
+    {
+        auto iter = methodIds_.find(recordName);
+        if (iter != methodIds_.end()) {
+            return iter->second->GetMethodIdInPGO(checksum, methodName, methodId);
         }
         return false;
     }

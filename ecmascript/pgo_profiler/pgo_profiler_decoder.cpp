@@ -15,6 +15,7 @@
 
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/platform/file.h"
@@ -51,7 +52,11 @@ bool PGOProfilerDecoder::Verify(uint32_t checksum)
     if (!isLoaded_) {
         return false;
     }
-    isVerifySuccess_ = pandaFileInfos_.CheckSum(checksum);
+    if (IsMethodMatchEnabled()) {
+        isVerifySuccess_ = true;
+    } else {
+        isVerifySuccess_ = pandaFileInfos_.CheckSum(checksum);
+    }
     return isVerifySuccess_;
 }
 
@@ -151,6 +156,7 @@ void PGOProfilerDecoder::Clear()
     if (isLoaded_) {
         UnLoadAPBinaryFile();
         isVerifySuccess_ = true;
+        enableMethodMatch_ = false;
         hotnessThreshold_ = 0;
         PGOProfilerHeader::Destroy(&header_);
         pandaFileInfos_.Clear();
@@ -164,7 +170,8 @@ void PGOProfilerDecoder::Clear()
     }
 }
 
-bool PGOProfilerDecoder::Match(const CString &recordName, EntityId methodId)
+bool PGOProfilerDecoder::Match(const JSPandaFile *jsPandaFile, const CString &recordName,
+                               const MethodLiteral *methodLiteral)
 {
     if (!isLoaded_) {
         return true;
@@ -172,7 +179,21 @@ bool PGOProfilerDecoder::Match(const CString &recordName, EntityId methodId)
     if (!isVerifySuccess_) {
         return false;
     }
-    return recordSimpleInfos_->Match(recordName, methodId);
+    EntityId methodId = methodLiteral->GetMethodId();
+    EntityId pgoMethodId(methodId);
+    if (IsMethodMatchEnabled()) {
+        if (jsPandaFile == nullptr) {
+            return false;
+        }
+        const char *methodName = MethodLiteral::GetMethodName(jsPandaFile, methodId);
+        uint32_t checksum =
+            PGOMethodInfo::CalcChecksum(methodName, methodLiteral->GetBytecodeArray(),
+                                        MethodLiteral::GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()));
+        if (!GetMethodIdInPGO(recordName, checksum, methodName, pgoMethodId)) {
+            return false;
+        }
+    }
+    return recordSimpleInfos_->Match(recordName, pgoMethodId);
 }
 
 bool PGOProfilerDecoder::GetHClassLayoutDesc(PGOSampleType classType, PGOHClassLayoutDesc **desc) const

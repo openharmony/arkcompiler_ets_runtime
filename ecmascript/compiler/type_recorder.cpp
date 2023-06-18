@@ -32,7 +32,7 @@ TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *
         LoadTypes(jsPandaFile, methodLiteral, tsManager, recordName);
         generator.GenerateTSHClasses();
     }
-    LoadTypesFromPGO(methodLiteral, recordName);
+    LoadTypesFromPGO(jsPandaFile, methodLiteral, recordName);
 }
 
 void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
@@ -64,7 +64,8 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
     LoadArgTypes(tsManager, funcGT, thisGT);
 }
 
-void TypeRecorder::LoadTypesFromPGO(const MethodLiteral *methodLiteral, const CString &recordName)
+void TypeRecorder::LoadTypesFromPGO(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
+                                    const CString &recordName)
 {
     auto callback = [this] (uint32_t offset, PGOType *type) {
         if (type->IsScalarOpType()) {
@@ -76,7 +77,7 @@ void TypeRecorder::LoadTypesFromPGO(const MethodLiteral *methodLiteral, const CS
         }
     };
     if (decoder_ != nullptr) {
-        decoder_->GetTypeInfo(recordName, methodLiteral->GetMethodId(), callback);
+        decoder_->GetTypeInfo(jsPandaFile, recordName, methodLiteral, callback);
     }
 }
 

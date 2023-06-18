@@ -49,7 +49,8 @@ public:
     {
         const auto &methodList = bytecodeInfo_.GetMethodList();
         auto &resolvedMethodInfo = methodList.at(resolvedMethod.GetOffset());
-        if (pfDecoder_.Match(recordName, resolvedMethod) && !resolvedMethodInfo.IsTypeInferAbort()) {
+        MethodLiteral *methodLiteral = jsPandaFile_->GetMethodLiteralByIndex(resolvedMethod.GetOffset());
+        if (pfDecoder_.Match(jsPandaFile_, recordName, methodLiteral) && !resolvedMethodInfo.IsTypeInferAbort()) {
             return;
         }
         // update profile and update compile queue
