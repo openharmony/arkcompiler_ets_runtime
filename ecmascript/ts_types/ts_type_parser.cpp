@@ -244,6 +244,7 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPa
             JSHandle<TSObjectType> objectType = ParseObjectType(jsPandaFile, recordName, typeLiteralExtractor);
             return JSHandle<JSTaggedValue>(objectType);
         }
+        case TSTypeKind::BUILTIN_INSTANCE:
         case TSTypeKind::GENERIC_INSTANCE: {
             return ParseGenericsInstanceType(jsPandaFile, recordName, typeLiteralExtractor);
         }
@@ -631,7 +632,8 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseGenericsInstanceType(const JSPandaFil
                                                                 const CString &recordName,
                                                                 TypeLiteralExtractor *typeLiteralExtractor)
 {
-    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::GENERIC_INSTANCE);
+    ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::BUILTIN_INSTANCE ||
+           typeLiteralExtractor->GetTypeKind() == TSTypeKind::GENERIC_INSTANCE);
     GlobalTSTypeRef genericsGT = CreateGT(jsPandaFile, recordName, typeLiteralExtractor->GetIntValue(DEFAULT_INDEX));
     JSHandle<JSTaggedValue> genericsType = tsManager_->GetTSType(genericsGT);
     std::vector<GlobalTSTypeRef> paras {};
@@ -693,7 +695,7 @@ JSHandle<TSClassType> TSTypeParser::InstantiateClassGenericsType(const JSHandle<
                                                                  const std::vector<GlobalTSTypeRef> &paras)
 {
     JSHandle<TSClassType> classType = factory_->NewTSClassType();
-    classType->SetName(thread_, genericsType->GetName());
+    CopyClassName(genericsType, classType);
     classType->SetExtensionGT(genericsType->GetExtensionGT());
     classType->SetHasLinked(genericsType->GetHasLinked());
 
@@ -709,6 +711,18 @@ JSHandle<TSClassType> TSTypeParser::InstantiateClassGenericsType(const JSHandle<
     JSHandle<TSObjectType> newConstructorType = InstantiateObjGenericsType(oldConstructorType, paras);
     classType->SetConstructorType(thread_, newConstructorType);
     return classType;
+}
+
+void TSTypeParser::CopyClassName(const JSHandle<TSClassType> &genericsType, const JSHandle<TSClassType> &classType)
+{
+    auto gt = genericsType->GetGT();
+    if (gt.IsBuiltinModule()) {
+        const std::string name = tsManager_->GetBuiltinsName(gt);
+        JSHandle<EcmaString> ecmaStr = factory_->NewFromStdString(name);
+        classType->SetName(thread_, ecmaStr);
+    } else {
+        classType->SetName(thread_, genericsType->GetName());
+    }
 }
 
 JSHandle<TSInterfaceType> TSTypeParser::InstantiateInterfaceGenericsType(const JSHandle<TSInterfaceType> &genericsType,

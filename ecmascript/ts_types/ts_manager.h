@@ -780,6 +780,12 @@ public:
         return bcInfo->GetPGOExtendGTCount(recordName);
     }
 
+    inline std::string GetBuiltinsName(GlobalTSTypeRef builtinGT) const
+    {
+        uint32_t index = GetBuiltinIndex(builtinGT);
+        return GetBuiltinsName(index);
+    }
+
 #define TSTYPETABLE_ACCESSOR_LIST(V)       \
     V(Builtin, ModuleTableIdx::BUILTIN)    \
     V(Inferred, ModuleTableIdx::INFERRED)  \

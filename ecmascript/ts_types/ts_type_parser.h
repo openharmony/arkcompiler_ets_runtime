@@ -225,6 +225,8 @@ private:
     JSHandle<TSClassType> InstantiateClassGenericsType(const JSHandle<TSClassType> &genericsType,
                                                        const std::vector<GlobalTSTypeRef> &paras);
 
+    void CopyClassName(const JSHandle<TSClassType> &genericsType, const JSHandle<TSClassType> &classType);
+
     JSHandle<TSInterfaceType> InstantiateInterfaceGenericsType(const JSHandle<TSInterfaceType> &genericsType,
                                                                const std::vector<GlobalTSTypeRef> &paras);
 
