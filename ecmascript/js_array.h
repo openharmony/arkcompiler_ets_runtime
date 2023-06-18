@@ -22,6 +22,7 @@
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
+enum class ArrayMode : uint8_t { UNDEFINED = 0, DICTIONARY, LITERAL };
 // ecma6 9.4.2 Array Exotic Object
 class JSArray : public JSObject {
 public:
@@ -29,9 +30,11 @@ public:
 
     CAST_CHECK(JSArray, IsJSArray);
 
-    static JSHandle<JSTaggedValue> ArrayCreate(JSThread *thread, JSTaggedNumber length);
     static JSHandle<JSTaggedValue> ArrayCreate(JSThread *thread, JSTaggedNumber length,
-                                               const JSHandle<JSTaggedValue> &newTarget);
+                                               ArrayMode mode = ArrayMode::UNDEFINED);
+    static JSHandle<JSTaggedValue> ArrayCreate(JSThread *thread, JSTaggedNumber length,
+                                               const JSHandle<JSTaggedValue> &newTarget,
+                                               ArrayMode mode = ArrayMode::UNDEFINED);
     static JSTaggedValue ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObject> &originalArray,
                                             JSTaggedNumber length);
     static bool ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, const PropertyDescriptor &desc);

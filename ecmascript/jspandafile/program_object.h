@@ -293,7 +293,7 @@ public:
                     JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id,
                         constpoolHandle, entry, needSetAotFlag, entryIndexes);
                     uint32_t length = literal->GetLength();
-                    JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length)));
+                    JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length), ArrayMode::LITERAL));
                     arr->SetElements(thread, literal);
                     val = arr.GetTaggedValue();
                     break;
