@@ -4302,7 +4302,7 @@ GateRef StubBuilder::FastMod(GateRef glue, GateRef left, GateRef right, ProfileO
             intLeft = GetInt32OfTInt(left);
             intRight = GetInt32OfTInt(right);
             Label leftGreaterZero(env);
-            Branch(Int32GreaterThan(*intLeft, Int32(0)), &leftGreaterZero, &leftNotIntOrRightNotInt);
+            Branch(Int32GreaterThanOrEqual(*intLeft, Int32(0)), &leftGreaterZero, &leftNotIntOrRightNotInt);
             Bind(&leftGreaterZero);
             {
                 Label rightGreaterZero(env);
