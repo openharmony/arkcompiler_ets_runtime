@@ -42,6 +42,7 @@ group("ark_js_moduletest") {
     "dyninstruction",
     "ecmastringtable",
     "equal",
+    "errorhelper",
     "forawaitof",
     "forin",
     "fortest",

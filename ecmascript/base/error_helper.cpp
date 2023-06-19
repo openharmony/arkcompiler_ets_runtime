@@ -92,37 +92,37 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorName(JSThread *thread, const JSHand
 {
     auto globalConst = thread->GlobalConstants();
     if (name->IsUndefined()) {
-        TaggedObject *errorKey = nullptr;
+        JSHandle<JSTaggedValue> errorKey;
         switch (errorType) {
             case ErrorType::RANGE_ERROR:
-                errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledRangeErrorString());
+                errorKey = globalConst->GetHandledRangeErrorString();
                 break;
             case ErrorType::EVAL_ERROR:
-                errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledEvalErrorString());
+                errorKey = globalConst->GetHandledEvalErrorString();
                 break;
             case ErrorType::REFERENCE_ERROR:
-                errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledReferenceErrorString());
+                errorKey = globalConst->GetHandledReferenceErrorString();
                 break;
             case ErrorType::TYPE_ERROR:
-                errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledTypeErrorString());
+                errorKey = globalConst->GetHandledTypeErrorString();
                 break;
             case ErrorType::AGGREGATE_ERROR:
-                errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledAggregateErrorString());
+                errorKey = globalConst->GetHandledAggregateErrorString();
                 break;
             case ErrorType::URI_ERROR:
-                errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledURIErrorString());
+                errorKey = globalConst->GetHandledURIErrorString();
                 break;
             case ErrorType::SYNTAX_ERROR:
-                errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledSyntaxErrorString());
+                errorKey = globalConst->GetHandledSyntaxErrorString();
                 break;
             case ErrorType::OOM_ERROR:
-                errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledOOMErrorString());
+                errorKey = globalConst->GetHandledOOMErrorString();
                 break;
             default:
-                errorKey = reinterpret_cast<TaggedObject *>(*globalConst->GetHandledErrorString());
+                errorKey = globalConst->GetHandledErrorString();
                 break;
         }
-        return JSHandle<JSTaggedValue>(thread, JSTaggedValue(errorKey));
+        return errorKey;
     }
     return JSHandle<JSTaggedValue>::Cast(JSTaggedValue::ToString(thread, name));
 }
