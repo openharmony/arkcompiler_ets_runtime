@@ -141,7 +141,7 @@ private:
     bool WriteJSTypedArray(const JSHandle<JSTaggedValue> &value, SerializationUID uId);
     bool WritePlainObject(const JSHandle<JSTaggedValue> &value);
     bool WriteNativeBindingObject(const JSHandle<JSTaggedValue> &value);
-    bool TransferJSNativePointer(const JSHandle<JSNativePointer> &value);
+    bool WriteJSNativePointer(const JSHandle<JSNativePointer> &value);
     bool WriteJSArrayBuffer(const JSHandle<JSTaggedValue> &value);
     bool WriteBigInt(const JSHandle<JSTaggedValue> &value);
     bool WriteDesc(const PropertyDescriptor &desc);
@@ -198,7 +198,7 @@ private:
     JSHandle<JSTaggedValue> ReadJSSet();
     JSHandle<JSTaggedValue> ReadJSRegExp();
     JSHandle<JSTaggedValue> ReadJSTypedArray(SerializationUID uid);
-    JSHandle<JSTaggedValue> ReadTransferJSNativePointer();
+    JSHandle<JSTaggedValue> ReadJSNativePointer();
     JSHandle<JSTaggedValue> ReadJSArrayBuffer(SerializationUID uid);
     JSHandle<JSTaggedValue> ReadReference();
     JSHandle<JSTaggedValue> ReadNativeBindingObject();

@@ -449,8 +449,6 @@ public:
 
     JSHandle<JSArrayBuffer> NewJSArrayBuffer(int32_t length);
 
-    JSHandle<JSArrayBuffer> NewJSArrayBuffer(int32_t length, const JSHandle<JSNativePointer> &nativePtr);
-
     JSHandle<JSArrayBuffer> NewJSArrayBuffer(void *buffer, int32_t length, const DeleteEntryPoint &deleter, void *data,
                                              bool share = false);
 

@@ -40,14 +40,15 @@ public:
     inline void Destroy()
     {
         DeleteExternalPointer();
-        Detach();
+        SetExternalPointer(nullptr);
+        SetDeleter(nullptr);
+        SetData(nullptr);
     }
 
     inline void Detach()
     {
-        SetExternalPointer(nullptr);
+        // Keep other fields accessible after detached
         SetDeleter(nullptr);
-        SetData(nullptr);
     }
 
     static constexpr size_t POINTER_OFFSET = TaggedObjectSize();
