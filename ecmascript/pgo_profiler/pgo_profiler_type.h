@@ -126,6 +126,11 @@ public:
         return PGOSampleType(Type::NONE);
     }
 
+    static int32_t None()
+    {
+        return static_cast<int32_t>(Type::NONE);
+    }
+
     static int32_t AnyType()
     {
         return static_cast<int32_t>(Type::ANY);
