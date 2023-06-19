@@ -103,6 +103,11 @@ HWTEST_F_L0(NumberHelperTest, DoubleToString_001)
     JSHandle<EcmaString> handleEcmaStr4(thread, NumberHelper::DoubleToString(thread, 37, radix));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr4, resultStr), 0);
 
+    radix = 5;
+    resultStr = factory->NewFromASCII("-1104332401304422434310320000");
+    JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToString(thread, static_cast<double>(-9223372036854775807), radix));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr5, resultStr), 0);
+
     radix = 6;
     resultStr = factory->NewFromASCII("101");
     JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToString(thread, 37, radix));
@@ -115,8 +120,8 @@ HWTEST_F_L0(NumberHelperTest, DoubleToString_001)
 
     radix = 36;
     resultStr = factory->NewFromASCII("11");
-    JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToString(thread, 37, radix));
-    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr5, resultStr), 0);
+    JSHandle<EcmaString> handleEcmaStr8(thread, NumberHelper::DoubleToString(thread, 37, radix));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr8, resultStr), 0);
 }
 
 HWTEST_F_L0(NumberHelperTest, DoubleToString_002)
