@@ -63,28 +63,25 @@ JSTaggedValue BuiltinsSymbol::ToString(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), Symbol, ToString);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    // 1.Let s be the this value.
+    // Let s be the this value.
     JSHandle<JSTaggedValue> valueHandle = GetThis(argv);
-    // 2.If Type(s) is Symbol, let sym be s.
-    JSTaggedValue sym = valueHandle.GetTaggedValue();
-    // 3.Else
-    if (!valueHandle->IsSymbol()) {
-        if (valueHandle->IsHeapObject()) {
-            if (!valueHandle->IsJSPrimitiveRef()) {
-                // If s does not have a [[SymbolData]] internal slot, throw a TypeError exception.
-                THROW_TYPE_ERROR_AND_RETURN(thread, "ToString: no [[SymbolData]]", JSTaggedValue::Exception());
-            }
-            // Let sym be the value of s's [[SymbolData]] internal slot.
-            JSTaggedValue primitive = JSPrimitiveRef::Cast(valueHandle->GetTaggedObject())->GetValue();
-            ASSERT(primitive.IsSymbol());
-            sym = primitive;
-        } else {
-            // If Type(s) is not Object, throw a TypeError exception.
-            THROW_TYPE_ERROR_AND_RETURN(thread, "ToString: s is not Object", JSTaggedValue::Exception());
+    // 1.If value is a Symbol, return value.
+    if (valueHandle->IsSymbol()) {
+        // Return SymbolDescriptiveString(sym).
+        return SymbolDescriptiveString(thread, valueHandle.GetTaggedValue());
+    }
+
+    // 2.If value is an Object and value has a [[SymbolData]] internal slot, then
+    if (valueHandle->IsJSPrimitiveRef()) {
+        // Let sym be the value of s's [[SymbolData]] internal slot.
+        JSTaggedValue primitive = JSPrimitiveRef::Cast(valueHandle->GetTaggedObject())->GetValue();
+        if (primitive.IsSymbol()) {
+            return SymbolDescriptiveString(thread, primitive);
         }
     }
-    // Return SymbolDescriptiveString(sym).
-    return SymbolDescriptiveString(thread, sym);
+
+    // 3.If s does not have a [[SymbolData]] internal slot, throw a TypeError exception.
+    THROW_TYPE_ERROR_AND_RETURN(thread, "ToString: no [[SymbolData]]", JSTaggedValue::Exception());
 }
 
 JSTaggedValue BuiltinsSymbol::SymbolDescriptiveString(JSThread *thread, JSTaggedValue sym)
@@ -126,24 +123,22 @@ JSTaggedValue BuiltinsSymbol::ValueOf(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // Let s be the this value.
     JSHandle<JSTaggedValue> valueHandle = GetThis(argv);
-    // If Type(s) is Symbol, return s.
+    // 1.If value is a Symbol, return value.
     if (valueHandle->IsSymbol()) {
         return valueHandle.GetTaggedValue();
     }
-    // If Type(s) is not Object, throw a TypeError exception.
-    if (!valueHandle->IsHeapObject()) {
-        // return TypeError
-        THROW_TYPE_ERROR_AND_RETURN(thread, "ValueOf: s is not Object", JSTaggedValue::Exception());
+
+    // 2.If value is an Object and value has a [[SymbolData]] internal slot, then
+    if (valueHandle->IsJSPrimitiveRef()) {
+        // Let sym be the value of s's [[SymbolData]] internal slot.
+        JSTaggedValue primitive = JSPrimitiveRef::Cast(valueHandle->GetTaggedObject())->GetValue();
+        if (primitive.IsSymbol()) {
+            return primitive;
+        }
     }
-    // If s does not have a [[SymbolData]] internal slot, throw a TypeError exception.
-    if (!valueHandle->IsJSPrimitiveRef()) {
-        // If s does not have a [[SymbolData]] internal slot, throw a TypeError exception.
-        THROW_TYPE_ERROR_AND_RETURN(thread, "ValueOf: no [[SymbolData]]", JSTaggedValue::Exception());
-    }
-    JSTaggedValue primitive = JSPrimitiveRef::Cast(valueHandle->GetTaggedObject())->GetValue();
-    ASSERT(primitive.IsSymbol());
-    // Return the value of s's [[SymbolData]] internal slot.
-    return primitive;
+
+    // 3.If s does not have a [[SymbolData]] internal slot, throw a TypeError exception.
+    THROW_TYPE_ERROR_AND_RETURN(thread, "ValueOf: no [[SymbolData]]", JSTaggedValue::Exception());
 }
 
 // 19.4.2.1 Symbol.for (key)
