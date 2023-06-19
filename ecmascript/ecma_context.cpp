@@ -611,23 +611,21 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (propertiesCache_ != nullptr) {
         propertiesCache_->Clear();
     }
-    if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
-        IterateHandle(rv);
-    } else {
-        if (currentHandleStorageIndex_ != -1) {
-            int32_t nid = currentHandleStorageIndex_;
-            for (int32_t i = 0; i <= nid; ++i) {
-                auto node = handleStorageNodes_.at(i);
-                auto start = node->data();
-                auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-                rv(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
-            }
+    if (!vm_->GetJSOptions().EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
+        // IterateHandle when disableGlobalLeakCheck.
+        int32_t nid = currentHandleStorageIndex_;
+        for (int32_t i = 0; i <= nid; ++i) {
+            auto node = handleStorageNodes_.at(i);
+            auto start = node->data();
+            auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
+            rv(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
         }
     }
 }
 
 size_t EcmaContext::IterateHandle(const RootRangeVisitor &rangeVisitor)
 {
+    // EnableGlobalLeakCheck.
     size_t handleCount = 0;
     if (currentHandleStorageIndex_ != -1) {
         int32_t nid = currentHandleStorageIndex_;
