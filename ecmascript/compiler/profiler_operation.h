@@ -29,10 +29,6 @@ enum class OperationType : uint8_t {
     LOAD_LAYOUT,
 };
 
-#define COMBINE_TYPE_CALL_BACK(curType, type) \
-    callback.ProfileCombineOpType(            \
-        *curType, type, [this](GateRef curType, GateRef type) -> GateRef { return Int32Or(curType, type); });
-
 using Callback = std::function<void(GateRef, OperationType)>;
 class ProfileOperation {
 public:
@@ -55,15 +51,6 @@ public:
     {
         if (callback_) {
             callback_(type, OperationType::OPERATION_TYPE);
-        }
-    }
-
-    template <typename TypeCombine>
-    inline void ProfileCombineOpType(GateRef curType, GateRef type, TypeCombine combine) const
-    {
-        if (callback_) {
-            GateRef ret = combine(curType, type);
-            callback_(ret, OperationType::OPERATION_TYPE);
         }
     }
 

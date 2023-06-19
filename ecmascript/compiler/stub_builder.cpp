@@ -3704,12 +3704,11 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, 
         {
             DEFVARIABLE(doubleLeft, VariableType::FLOAT64(), Double(0.0));
             DEFVARIABLE(doubleRight, VariableType::FLOAT64(), Double(0.0));
-            DEFVARIABLE(curType, VariableType::INT32(), Int32(PGOSampleType::IntType()));
             Label leftIsInt(env);
             Label leftNotInt(env);
             Label getRight(env);
             Label numberEqualCheck(env);
-
+            int32_t curType = PGOSampleType::IntType();
             Branch(TaggedIsInt(left), &leftIsInt, &leftNotInt);
             Bind(&leftIsInt);
             {
@@ -3718,7 +3717,7 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, 
             }
             Bind(&leftNotInt);
             {
-                curType = Int32(PGOSampleType::DoubleType());
+                curType = PGOSampleType::DoubleType();
                 doubleLeft = GetDoubleOfTDouble(left);
                 Jump(&getRight);
             }
@@ -3729,15 +3728,15 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, 
                 Branch(TaggedIsInt(right), &rightIsInt, &rightNotInt);
                 Bind(&rightIsInt);
                 {
-                    GateRef type = Int32(PGOSampleType::IntType());
-                    COMBINE_TYPE_CALL_BACK(curType, type);
+                    int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::IntType());
+                    callback.ProfileOpType(Int32(type));
                     doubleRight = ChangeInt32ToFloat64(GetInt32OfTInt(right));
                     Jump(&numberEqualCheck);
                 }
                 Bind(&rightNotInt);
                 {
-                    GateRef type = Int32(PGOSampleType::DoubleType());
-                    COMBINE_TYPE_CALL_BACK(curType, type);
+                    int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::DoubleType());
+                    callback.ProfileOpType(Int32(type));
                     doubleRight = GetDoubleOfTDouble(right);
                     Jump(&numberEqualCheck);
                 }
@@ -3868,20 +3867,20 @@ GateRef StubBuilder::FastEqual(GateRef left, GateRef right, ProfileOperation cal
         }
         Bind(&leftNotNumberOrLeftNotIntOrRightNotInt);
         {
-            DEFVARIABLE(curType, VariableType::INT32(), Int32(PGOSampleType::None()));
+            int32_t curType;
             Label rightIsUndefinedOrNull(env);
             Label leftOrRightNotUndefinedOrNull(env);
             Branch(TaggedIsUndefinedOrNull(right), &rightIsUndefinedOrNull, &leftOrRightNotUndefinedOrNull);
             Bind(&rightIsUndefinedOrNull);
             {
-                curType = Int32(PGOSampleType::UndefineOrNullType());
+                curType = PGOSampleType::UndefineOrNullType();
                 Label leftIsHeapObject(env);
                 Label leftNotHeapObject(env);
                 Branch(TaggedIsHeapObject(left), &leftIsHeapObject, &leftNotHeapObject);
                 Bind(&leftIsHeapObject);
                 {
-                    GateRef type = Int32(PGOSampleType::HeapObjectType());
-                    COMBINE_TYPE_CALL_BACK(curType, type);
+                    int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::HeapObjectType());
+                    callback.ProfileOpType(Int32(type));
                     result = TaggedFalse();
                     Jump(&exit);
                 }
@@ -3891,7 +3890,7 @@ GateRef StubBuilder::FastEqual(GateRef left, GateRef right, ProfileOperation cal
                     Branch(TaggedIsUndefinedOrNull(left), &leftIsUndefinedOrNull, &leftOrRightNotUndefinedOrNull);
                     Bind(&leftIsUndefinedOrNull);
                     {
-                        callback.ProfileOpType(*curType);
+                        callback.ProfileOpType(Int32(curType));
                         result = TaggedTrue();
                         Jump(&exit);
                     }
@@ -3904,13 +3903,13 @@ GateRef StubBuilder::FastEqual(GateRef left, GateRef right, ProfileOperation cal
                 Branch(TaggedIsBoolean(left), &leftIsBool, &leftNotBoolOrRightNotSpecial);
                 Bind(&leftIsBool);
                 {
-                    curType = Int32(PGOSampleType::BooleanType());
+                    curType = PGOSampleType::BooleanType();
                     Label rightIsSpecial(env);
                     Branch(TaggedIsSpecial(right), &rightIsSpecial, &leftNotBoolOrRightNotSpecial);
                     Bind(&rightIsSpecial);
                     {
-                        GateRef type = Int32(PGOSampleType::SpecialType());
-                        COMBINE_TYPE_CALL_BACK(curType, type);
+                        int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::SpecialType());
+                        callback.ProfileOpType(Int32(type));
                         result = TaggedFalse();
                         Jump(&exit);
                     }
@@ -4023,12 +4022,12 @@ GateRef StubBuilder::FastDiv(GateRef left, GateRef right, ProfileOperation callb
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(doubleLeft, VariableType::FLOAT64(), Double(0));
     DEFVARIABLE(doubleRight, VariableType::FLOAT64(), Double(0));
-    DEFVARIABLE(curType, VariableType::INT32(), Int32(PGOSampleType::None()));
     Label leftIsNumber(env);
     Label leftNotNumberOrRightNotNumber(env);
     Label leftIsNumberAndRightIsNumber(env);
     Label leftIsDoubleAndRightIsDouble(env);
     Label exit(env);
+    int32_t curType = PGOSampleType::IntType();
     Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
     Bind(&leftIsNumber);
     {
@@ -4041,24 +4040,12 @@ GateRef StubBuilder::FastDiv(GateRef left, GateRef right, ProfileOperation callb
             Branch(TaggedIsInt(left), &leftIsInt, &leftNotInt);
             Bind(&leftIsInt);
             {
-                Label rightIsInt(env);
-                Label bailout(env);
-                Branch(TaggedIsInt(right), &rightIsInt, &bailout);
-                Bind(&rightIsInt);
-                {
-                    result = FastIntDiv(left, right, &bailout, callback);
-                    Jump(&exit);
-                }
-                Bind(&bailout);
-                {
-                    curType = Int32(PGOSampleType::IntOverFlowType());
-                    doubleLeft = ChangeInt32ToFloat64(GetInt32OfTInt(left));
-                    Jump(&leftIsNumberAndRightIsNumber);
-                }
+                doubleLeft = ChangeInt32ToFloat64(GetInt32OfTInt(left));
+                Jump(&leftIsNumberAndRightIsNumber);
             }
             Bind(&leftNotInt);
             {
-                curType = Int32(PGOSampleType::DoubleType());
+                curType = PGOSampleType::DoubleType();
                 doubleLeft = GetDoubleOfTDouble(left);
                 Jump(&leftIsNumberAndRightIsNumber);
             }
@@ -4075,15 +4062,15 @@ GateRef StubBuilder::FastDiv(GateRef left, GateRef right, ProfileOperation callb
         Branch(TaggedIsInt(right), &rightIsInt, &rightNotInt);
         Bind(&rightIsInt);
         {
-            GateRef type = Int32(PGOSampleType::IntType());
-            COMBINE_TYPE_CALL_BACK(curType, type)
+            int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::IntType());
+            callback.ProfileOpType(Int32(type));
             doubleRight = ChangeInt32ToFloat64(GetInt32OfTInt(right));
             Jump(&leftIsDoubleAndRightIsDouble);
         }
         Bind(&rightNotInt);
         {
-            GateRef type = Int32(PGOSampleType::DoubleType());
-            COMBINE_TYPE_CALL_BACK(curType, type)
+            int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::DoubleType());
+            callback.ProfileOpType(Int32(type));
             doubleRight = GetDoubleOfTDouble(right);
             Jump(&leftIsDoubleAndRightIsDouble);
         }
@@ -4277,41 +4264,6 @@ GateRef StubBuilder::FastAddSubAndMul(GateRef left, GateRef right, ProfileOperat
     return FastBinaryOp(left, right, intOperation, floatOperation, callback);
 }
 
-GateRef StubBuilder::FastIntDiv(GateRef left, GateRef right, Label *bailout, ProfileOperation callback)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    DEFVARIABLE(intResult, VariableType::INT32(), Int32(0));
-
-    GateRef intLeft = GetInt32OfTInt(left);
-    GateRef intRight = GetInt32OfTInt(right);
-    Label exit(env);
-    Label rightIsNotZero(env);
-    Branch(Int32Equal(intRight, Int32(0)), bailout, &rightIsNotZero);
-    Bind(&rightIsNotZero);
-    {
-        Label leftIsZero(env);
-        Label leftIsNotZero(env);
-        Branch(Int32Equal(intLeft, Int32(0)), &leftIsZero, &leftIsNotZero);
-        Bind(&leftIsZero);
-        {
-            Branch(Int32LessThan(intRight, Int32(0)), bailout, &leftIsNotZero);
-        }
-        Bind(&leftIsNotZero);
-        {
-            intResult = Int32Div(intLeft, intRight);
-            GateRef truncated = Int32Mul(*intResult, intRight);
-            Branch(Equal(intLeft, truncated), &exit, bailout);
-        }
-    }
-    Bind(&exit);
-    callback.ProfileOpType(Int32(PGOSampleType::IntType()));
-    auto ret = IntToTaggedPtr(*intResult);
-    env->SubCfgExit();
-    return ret;
-}
-
 GateRef StubBuilder::FastAdd(GateRef left, GateRef right, ProfileOperation callback)
 {
     return FastAddSubAndMul<OpCode::ADD>(left, right, callback);
@@ -4370,7 +4322,7 @@ GateRef StubBuilder::FastMod(GateRef glue, GateRef left, GateRef right, ProfileO
         Label leftNotNumberOrRightNotNumber(env);
         Label leftIsNumberAndRightIsNumber(env);
         Label leftIsDoubleAndRightIsDouble(env);
-        DEFVARIABLE(curType, VariableType::INT32(), Int32(PGOSampleType::None()));
+        int32_t curType = PGOSampleType::IntType();
         Branch(TaggedIsNumber(left), &leftIsNumber, &leftNotNumberOrRightNotNumber);
         Bind(&leftIsNumber);
         {
@@ -4383,13 +4335,12 @@ GateRef StubBuilder::FastMod(GateRef glue, GateRef left, GateRef right, ProfileO
                 Branch(TaggedIsInt(left), &leftIsInt1, &leftNotInt1);
                 Bind(&leftIsInt1);
                 {
-                    curType = Int32(PGOSampleType::IntType());
                     doubleLeft = ChangeInt32ToFloat64(GetInt32OfTInt(left));
                     Jump(&leftIsNumberAndRightIsNumber);
                 }
                 Bind(&leftNotInt1);
                 {
-                    curType = Int32(PGOSampleType::DoubleType());
+                    curType = PGOSampleType::DoubleType();
                     doubleLeft = GetDoubleOfTDouble(left);
                     Jump(&leftIsNumberAndRightIsNumber);
                 }
@@ -4406,15 +4357,15 @@ GateRef StubBuilder::FastMod(GateRef glue, GateRef left, GateRef right, ProfileO
             Branch(TaggedIsInt(right), &rightIsInt1, &rightNotInt1);
             Bind(&rightIsInt1);
             {
-                GateRef type = Int32(PGOSampleType::IntType());
-                COMBINE_TYPE_CALL_BACK(curType, type)
+                int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::IntType());
+                callback.ProfileOpType(Int32(type));
                 doubleRight = ChangeInt32ToFloat64(GetInt32OfTInt(right));
                 Jump(&leftIsDoubleAndRightIsDouble);
             }
             Bind(&rightNotInt1);
             {
-                GateRef type = Int32(PGOSampleType::DoubleType());
-                COMBINE_TYPE_CALL_BACK(curType, type)
+                int32_t type = PGOSampleType::CombineType(curType, PGOSampleType::DoubleType());
+                callback.ProfileOpType(Int32(type));
                 doubleRight = GetDoubleOfTDouble(right);
                 Jump(&leftIsDoubleAndRightIsDouble);
             }

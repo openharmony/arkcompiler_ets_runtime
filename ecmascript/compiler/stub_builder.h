@@ -624,7 +624,6 @@ private:
     GateRef ChangeTaggedPointerToInt64(GateRef x);
     template<OpCode Op>
     GateRef FastAddSubAndMul(GateRef left, GateRef right, ProfileOperation callback);
-    GateRef FastIntDiv(GateRef left, GateRef right, Label *bailout, ProfileOperation callback);
     GateRef FastBinaryOp(GateRef left, GateRef right,
                          const BinaryOperation& intOp, const BinaryOperation& floatOp, ProfileOperation callback);
     void InitializeArguments();
