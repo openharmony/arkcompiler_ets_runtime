@@ -36,3 +36,8 @@ let res = JSON.parse(strData);
 print(res["11111111"]);
 print(res["22222222"]);
 print(res["00000000"]);
+
+var a = `{"code": 0, "msg": "ok"}`
+function reviver(k, v) { return v; }
+var o = JSON.parse(a, reviver);
+print(o);

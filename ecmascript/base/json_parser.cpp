@@ -47,8 +47,7 @@ JSHandle<JSTaggedValue> Internalize::InternalizeJsonProperty(JSThread *thread, c
             uint32_t namesLength = ownerNames->GetLength();
             JSMutableHandle<JSTaggedValue> keyName(thread, JSTaggedValue::Undefined());
             for (uint32_t i = 0; i < namesLength; i++) {
-                keyName.Update(JSTaggedValue::GetProperty(thread, JSHandle<JSTaggedValue>(ownerNames), i)
-                    .GetValue().GetTaggedValue());
+                keyName.Update(ownerNames->Get(i));
                 RecurseAndApply(thread, obj, keyName, receiver);
             }
         }
