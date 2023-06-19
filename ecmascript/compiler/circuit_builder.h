@@ -353,6 +353,7 @@ public:
     inline GateRef True();
     inline GateRef False();
     inline GateRef Undefined();
+    inline GateRef Hole();
 
     // call operation
     GateRef CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args,
@@ -496,6 +497,7 @@ public:
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     inline GateRef GetGlobalConstantString(ConstantIndex index);
     inline GateRef LoadObjectFromWeakRef(GateRef x);
+    GateRef ComputeTaggedArraySize(GateRef length);
 
     GateRef IsJSHClass(GateRef obj);
     GateRef HasPendingException(GateRef glue);
@@ -593,7 +595,7 @@ public:
     GateRef StartAllocate();
     GateRef FinishAllocate();
     GateRef HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag);
-    GateRef CreateArray(GateRef obj, bool isEmptyArray);
+    GateRef CreateArray(size_t arraySize);
 
     void SetEnvironment(Environment *env)
     {

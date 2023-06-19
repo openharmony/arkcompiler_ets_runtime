@@ -28,3 +28,78 @@ print(b[1][0]);
 print(b[1][1]);
 print(b["100"][0]);
 print(b["100"][1]);
+
+class Attrs {
+	constructor(a : number, b : number, c : number) {
+		this.x = a;
+		this.y = b;
+		this.z = c;
+	}
+	x : number;
+	y : number;
+	z : number;
+}
+function test() : void {
+	for (let j = 0; j < 5; ++j) {
+		var _attrs : Attrs[] = [
+			new Attrs(1, 1, 1),
+			new Attrs(2, 2, 2),
+			new Attrs(3, 3, 3),
+			new Attrs(4, 4, 4),
+			new Attrs(5, 5, 5),
+		];
+        print(_attrs[j].x);
+	}
+}
+test();
+
+const tests = [
+	[
+	  	99.99,
+	  	"ark"
+	],
+	[
+	  	-88.48,
+	  	"brk"
+	],
+	[
+		-1024,
+		"crk"
+  	],
+	[
+		6666,
+		"drk"
+  	],
+];
+  
+for (const [number, strData] of tests) {
+  	print(number);
+  	print(strData);
+}
+
+const units = [
+	"second",
+	"minute",
+];
+  
+const exceptions = {
+	"minute": {
+	  	"-1": "1 minute ago",
+	  	'0': 'this minute',
+	  	"1": "in 1 minute",
+	},
+	"second": {
+	  	"-1": "1 second ago",
+	  	"0": "now",
+	  	"1": "in 1 second",
+	},
+};
+  
+  
+for (const unit of units) {
+	const expected = unit in exceptions
+		? [exceptions[unit]["1"], exceptions[unit]["0"], exceptions[unit]["0"], exceptions[unit]["-1"]]
+	  	: [`in 1 ${unit}`, `in 0 ${unit}s`, `0 ${unit}s ago`, `1 ${unit} ago`];
+  
+	print(expected);
+}

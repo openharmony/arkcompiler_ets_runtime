@@ -381,6 +381,8 @@ public:
     FCmpCondition GetFCmpCondition(GateRef gate) const;
     size_t GetOffset(GateRef gate) const;
     size_t GetIndex(GateRef gate) const;
+    size_t GetArraySize(GateRef gate) const;
+    void SetArraySize(GateRef gate, size_t size);
     size_t GetVirtualRegisterIndex(GateRef gate) const;
     TypedLoadOp GetTypedLoadOp(GateRef gate) const;
     TypedStoreOp GetTypedStoreOp(GateRef gate) const;
@@ -394,7 +396,6 @@ public:
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;
-    bool IsEmptyArray(GateRef gate) const;
     uint32_t TryGetPcOffset(GateRef gate) const;
     PGOSampleType TryGetPGOType(GateRef gate) const;
     void TrySetPGOType(GateRef gate, PGOSampleType type);

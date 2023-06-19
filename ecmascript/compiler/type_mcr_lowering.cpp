@@ -123,9 +123,6 @@ void TypeMCRLowering::LowerType(GateRef gate)
         case OpCode::GET_SUPER_CONSTRUCTOR:
             LowerGetSuperConstructor(gate);
             break;
-        case OpCode::CREATE_ARRAY:
-            LowerCreateArray(gate);
-            break;
         default:
             break;
     }
@@ -972,49 +969,6 @@ void TypeMCRLowering::LowerGetSuperConstructor(GateRef gate)
     GateRef protoOffset = builder_.IntPtr(JSHClass::PROTOTYPE_OFFSET);
     GateRef superCtor = builder_.Load(VariableType::JS_ANY(), hclass, protoOffset);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), superCtor);
-}
-
-void TypeMCRLowering::LowerCreateArray(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    if (acc_.IsEmptyArray(gate)) {
-        LowerCreateEmptyArray(gate);
-    } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
-    }
-}
-
-void TypeMCRLowering::LowerCreateEmptyArray(GateRef gate)
-{
-    JSHandle<JSFunction> arrayFunc(tsManager_->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
-    JSTaggedValue protoOrHClass = arrayFunc->GetProtoOrHClass();
-    JSHClass *arrayHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
-    size_t arraySize = arrayHC->GetObjectSize();
-    size_t lengthAccessorOffset = arrayHC->GetInlinedPropertiesOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX);
-
-    GateRef obj = acc_.GetValueIn(gate);
-    GateRef globalEnv = builder_.GetGlobalEnv();
-    GateRef accessor = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    GateRef hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef size = builder_.IntPtr(arrayHC->GetObjectSize());
-
-    builder_.StartAllocate();
-    GateRef array = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
-    // initialization
-    for (size_t offset = JSArray::SIZE; offset < arraySize; offset += JSTaggedValue::TaggedTypeSize()) {
-        builder_.StoreConstOffset(VariableType::INT64(), array, offset, builder_.Undefined());
-    }
-    builder_.StoreConstOffset(VariableType::INT64(), array, ECMAObject::HASH_OFFSET,
-                              builder_.Int64(JSTaggedValue(0).GetRawData()));
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, 0, hclass);
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::PROPERTIES_OFFSET, obj);
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::ELEMENTS_OFFSET, obj);
-    builder_.StoreConstOffset(VariableType::JS_ANY(), array, JSArray::LENGTH_OFFSET,
-                              builder_.Int32ToTaggedInt(builder_.Int32(0)));
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, lengthAccessorOffset, accessor);
-    builder_.FinishAllocate();
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
 GateRef TypeMCRLowering::LoadFromTaggedArray(GateRef array, size_t index)

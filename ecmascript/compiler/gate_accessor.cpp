@@ -105,6 +105,20 @@ size_t GateAccessor::GetIndex(GateRef gate) const
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }
 
+size_t GateAccessor::GetArraySize(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetOneParameterMetaData()->GetValue();
+}
+
+void GateAccessor::SetArraySize(GateRef gate, size_t size)
+{
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    const_cast<OneParameterMetaData *>(gatePtr->GetOneParameterMetaData())->SetValue(size);
+}
+
 TypedUnaryAccessor GateAccessor::GetTypedUnAccessor(GateRef gate) const
 {
     ASSERT((GetOpCode(gate) == OpCode::TYPED_UNARY_OP));
@@ -249,13 +263,6 @@ const ChunkVector<char>& GateAccessor::GetConstantString(GateRef gate) const
 bool GateAccessor::IsVtable(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::LOAD_PROPERTY);
-    Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetBoolMetaData()->getBool();
-}
-
-bool GateAccessor::IsEmptyArray(GateRef gate) const
-{
-    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetBoolMetaData()->getBool();
 }
