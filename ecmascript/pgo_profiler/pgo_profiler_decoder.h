@@ -95,15 +95,15 @@ public:
             hasRecord = recordSimpleInfos_->GetMethodIdInPGO(recordName, checksum, methodName, methodId);
         }
         if (!hasRecord) {
-            LOG_COMPILER(WARN) << "No matched method found in PGO. recordName: " << recordName
-                               << ", methodName: " << methodName << ", checksum: " << std::hex << checksum;
+            LOG_COMPILER(DEBUG) << "No matched method found in PGO. recordName: " << recordName
+                                << ", methodName: " << methodName << ", checksum: " << std::hex << checksum;
         }
         return hasRecord;
     }
 
     bool IsMethodMatchEnabled() const
     {
-        return enableMethodMatch_;  // open this later
+        return enableMethodMatch_;
     }
 
     bool GetHClassLayoutDesc(PGOSampleType classType, PGOHClassLayoutDesc **desc) const;

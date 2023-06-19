@@ -52,7 +52,9 @@ bool PGOProfilerDecoder::Verify(uint32_t checksum)
     if (!isLoaded_) {
         return false;
     }
-    if (IsMethodMatchEnabled()) {
+    if (header_->SupportMethodChecksum()) {
+        LOG_ECMA(INFO) << "Skip verify file checksum, use method checksum instead.";
+        enableMethodMatch_ = true;
         isVerifySuccess_ = true;
     } else {
         isVerifySuccess_ = pandaFileInfos_.CheckSum(checksum);

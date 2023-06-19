@@ -13,19 +13,29 @@
  * limitations under the License.
  */
 
+#include <cstdint>
+#include <sstream>
+#include <string>
 #include "gtest/gtest.h"
 
+#include "assembler/assembly-emitter.h"
+#include "assembler/assembly-parser.h"
 #include "ecmascript/ecma_vm.h"
-#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/jspandafile/program_object.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
+using namespace panda::panda_file;
+using namespace panda::pandasm;
 
 namespace panda::test {
 class PGOProfilerTest : public testing::Test {
@@ -47,22 +57,58 @@ public:
     }
 
 protected:
+    std::shared_ptr<JSPandaFile> CreateJSPandaFile(const char *source, const CString filename,
+                                                   std::vector<MethodLiteral *> &methodLiterals)
+    {
+        Parser parser;
+        const std::string fn = "SRC.abc";  // test file name : "SRC.abc"
+        auto res = parser.Parse(source, fn);
+
+        std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+        JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+        std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), filename);
+
+        const File *file = pf->GetPandaFile();
+        const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
+        File::EntityId classId = file->GetClassId(typeDesc);
+        EXPECT_TRUE(classId.IsValid());
+
+        ClassDataAccessor cda(*file, classId);
+        cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
+            auto *methodLiteral = new MethodLiteral(mda.GetMethodId());
+            methodLiteral->Initialize(pf.get());
+            pf->SetMethodLiteralToMap(methodLiteral);
+            methodLiterals.push_back(methodLiteral);
+        });
+        return pf;
+    }
+
     EcmaVM *vm_ = nullptr;
 };
 
 HWTEST_F_L0(PGOProfilerTest, Sample)
 {
+    const char *source = R"(
+        .language ECMAScript
+        .function void foo1(any a0, any a1, any a2) {}
+    )";
+    std::vector<MethodLiteral *> methodLiterals {};
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, "ark-profiler.abc", methodLiterals);
+    EXPECT_EQ(methodLiterals.size(), 1);  // number of methods
+
     mkdir("ark-profiler/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler/");
     vm_ = JSNApi::CreateJSVM(option);
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
-    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
-    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
+    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
+    method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     func->SetModule(vm_->GetJSThread(), recordName);
@@ -73,10 +119,10 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(!loader.Match(nullptr, expectRecordName, methodLiteral));
+    ASSERT_TRUE(!loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
 #else
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral));
+    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
 #endif
     unlink("ark-profiler/modules.ap");
     rmdir("ark-profiler/");
@@ -84,21 +130,37 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
 
 HWTEST_F_L0(PGOProfilerTest, Sample1)
 {
+    const char *source = R"(
+        .language ECMAScript
+        .function void foo1(any a0, any a1, any a2) {
+            lda.str "helloworld"
+            return
+        }
+        .function void foo2(any a0, any a1, any a2) {}
+        .function void foo3(any a0, any a1, any a2) {}
+    )";
+    std::vector<MethodLiteral *> methodLiterals {};
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, "ark-profiler1.abc", methodLiterals);
+    EXPECT_EQ(methodLiterals.size(), 3);  // number of methods
+
     mkdir("ark-profiler1/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler1/");
     vm_ = JSNApi::CreateJSVM(option);
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
-    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(70));
-    MethodLiteral *methodLiteral1 = new MethodLiteral(EntityId(75));
-    MethodLiteral *methodLiteral2 = new MethodLiteral(EntityId(80));
-    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
-    JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiteral1);
-    JSHandle<Method> method2 = vm_->GetFactory()->NewMethod(methodLiteral2);
+    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
+    JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiterals[1]);
+    JSHandle<Method> method2 = vm_->GetFactory()->NewMethod(methodLiterals[2]);
+    method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    method1->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    method2->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSFunction> func1 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method1);
     JSHandle<JSFunction> func2 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method2);
@@ -120,12 +182,12 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral));
-    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral2));
-    ASSERT_TRUE(!loader.Match(nullptr, expectRecordName, methodLiteral1));
+    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
+    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[2]));
+    ASSERT_TRUE(!loader.Match(pf.get(), expectRecordName, methodLiterals[1]));
 #else
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral1));
+    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[1]));
 #endif
     unlink("ark-profiler1/modules.ap");
     rmdir("ark-profiler1/");
@@ -133,19 +195,31 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
 
 HWTEST_F_L0(PGOProfilerTest, Sample2)
 {
+    const char *source = R"(
+        .language ECMAScript
+        .function void foo1(any a0, any a1, any a2) {}
+        .function void foo2(any a0, any a1, any a2) {}
+    )";
+    std::vector<MethodLiteral *> methodLiterals {};
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, "ark-profiler2.abc", methodLiterals);
+    EXPECT_EQ(methodLiterals.size(), 2);  // number of methods
+
     mkdir("ark-profiler2/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler2/");
     vm_ = JSNApi::CreateJSVM(option);
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    constPool->SetJSPandaFile(pf.get());
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
 
-    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
-    MethodLiteral *methodLiteral1 = new MethodLiteral(EntityId(62));
-    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
-    JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiteral1);
+    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
+    JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiterals[1]);
+
+    method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    method1->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     func->SetModule(vm_->GetJSThread(), recordName);
@@ -164,29 +238,39 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     CString expectRecordName1 = "test1";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(!loader.Match(nullptr, expectRecordName, methodLiteral));
+    ASSERT_TRUE(!loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
 #else
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral));
+    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
 #endif
-    ASSERT_TRUE(loader.Match(nullptr, expectRecordName1, methodLiteral1));
+    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName1, methodLiterals[1]));
     unlink("ark-profiler2/modules.ap");
     rmdir("ark-profiler2/");
 }
 
 HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
 {
+    const char *source = R"(
+        .language ECMAScript
+        .function void foo1(any a0, any a1, any a2) {}
+    )";
+    std::vector<MethodLiteral *> methodLiterals {};
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, "ark-profiler3.abc", methodLiterals);
+    EXPECT_EQ(methodLiterals.size(), 1);  // number of methods
     mkdir("ark-profiler3/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(false);
     option.SetProfileDir("ark-profiler3/");
     vm_ = JSNApi::CreateJSVM(option);
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
-    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
-    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
+    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
+
+    method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     func->SetModule(vm_->GetJSThread(), recordName);
@@ -198,7 +282,7 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     // path is empty()
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "test";
-    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral));
+    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
     rmdir("ark-profiler3/");
 }
 
@@ -261,31 +345,44 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerManagerSample)
 
 HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
 {
+    const char *source = R"(
+        .language ECMAScript
+        .function void foo1(any a0, any a1, any a2) {}
+        .function void foo2(any a0, any a1, any a2) {}
+    )";
+    std::vector<MethodLiteral *> methodLiterals {};
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, "ark-profiler5.abc", methodLiterals);
+    EXPECT_EQ(methodLiterals.size(), 2);  // number of methods
     mkdir("ark-profiler5/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
     // outDir is empty
     option.SetProfileDir("ark-profiler5/");
     vm_ = JSNApi::CreateJSVM(option);
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
     // worker vm read profile enable from PGOProfilerManager singleton
     option.SetEnableProfile(false);
     auto vm2 = JSNApi::CreateJSVM(option);
+    JSHandle<ConstantPool> constPool2 = vm2->GetFactory()->NewConstantPool(4);
+    constPool2->SetJSPandaFile(pf.get());
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm2 != nullptr) << "Cannot create Runtime";
 
-    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(70));
-    MethodLiteral *methodLiteral1 = new MethodLiteral(EntityId(75));
-    JSHandle<Method> method = vm2->GetFactory()->NewMethod(methodLiteral);
+    JSHandle<Method> method = vm2->GetFactory()->NewMethod(methodLiterals[0]);
+    method->SetConstantPool(vm2->GetJSThread(), constPool2.GetTaggedValue());
     JSHandle<JSFunction> func = vm2->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     func->SetModule(vm2->GetJSThread(), recordName);
     vm2->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
 
-    JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiteral);
-    JSHandle<Method> method2 = vm_->GetFactory()->NewMethod(methodLiteral1);
+    JSHandle<Method> method1 = vm_->GetFactory()->NewMethod(methodLiterals[0]);
+    JSHandle<Method> method2 = vm_->GetFactory()->NewMethod(methodLiterals[1]);
+    method1->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    method2->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSFunction> func1 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method1);
     JSHandle<JSFunction> func2 = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method2);
     JSHandle<JSTaggedValue> recordName1(vm_->GetFactory()->NewFromStdString("test"));
@@ -301,15 +398,15 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     mkdir("ark-profiler5/profiler", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "test";
-    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral1));
+    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[1]));
 
     PGOProfilerDecoder loader1("ark-profiler5/modules.ap", 2);
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader1.LoadAndVerify(checksum));
-    ASSERT_TRUE(!loader1.Match(nullptr, expectRecordName, methodLiteral1));
+    ASSERT_TRUE(!loader1.Match(pf.get(), expectRecordName, methodLiterals[1]));
 #else
     ASSERT_TRUE(!loader1.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader1.Match(nullptr, expectRecordName, methodLiteral1));
+    ASSERT_TRUE(loader1.Match(pf.get(), expectRecordName, methodLiterals[1]));
 #endif
 
     unlink("ark-profiler5/modules.ap");
@@ -319,16 +416,26 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
 
 HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
 {
+    const char *source = R"(
+        .language ECMAScript
+        .function void foo1(any a0, any a1, any a2) {}
+    )";
+    std::vector<MethodLiteral *> methodLiterals {};
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, "ark-profiler8.abc", methodLiterals);
+    EXPECT_EQ(methodLiterals.size(), 1);  // number of methods
     mkdir("ark-profiler8/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler8/");
     vm_ = JSNApi::CreateJSVM(option);
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
 
-    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
-    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
+    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
+
+    method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     func->SetModule(vm_->GetJSThread(), recordName);
@@ -339,10 +446,10 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(!loader.Match(nullptr, expectRecordName, methodLiteral));
+    ASSERT_TRUE(!loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
 #else
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral));
+    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
 #endif
 
     unlink("ark-profiler8/modules.ap");
@@ -351,18 +458,29 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
 
 HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
 {
+    std::stringstream sourceStream;
+    sourceStream << "  .language ECMAScript" << std::endl;
+    for (uint32_t funcIdx = 0; funcIdx < 100; funcIdx++) {
+        sourceStream << "  .function void foo" << std::to_string(funcIdx) << "(any a0, any a1, any a2) {}" << std::endl;
+    }
+    std::vector<MethodLiteral *> methodLiterals {};
+    std::shared_ptr<JSPandaFile> pf =
+        CreateJSPandaFile(sourceStream.str().c_str(), "ark-profiler9.abc", methodLiterals);
+    EXPECT_EQ(methodLiterals.size(), 100);  // number of methods
     mkdir("ark-profiler9/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     option.SetEnableProfile(true);
     option.SetProfileDir("ark-profiler9/");
     vm_ = JSNApi::CreateJSVM(option);
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
 
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     for (int i = 61; i < 91; i++) {
-        MethodLiteral *methodLiteral = new MethodLiteral(EntityId(i));
-        JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
+        JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[i]);
+        method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
         JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
         func->SetModule(vm_->GetJSThread(), recordName);
         vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
@@ -382,12 +500,12 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     CString expectRecordName = "test";
     for (int i = 61; i < 91; i++) {
         if (i % 3 == 0) {
-            ASSERT_TRUE(loader.Match(nullptr, expectRecordName, new MethodLiteral(EntityId(i))));
+            ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[i]));
         } else {
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-            ASSERT_TRUE(!loader.Match(nullptr, expectRecordName, new MethodLiteral(EntityId(i))));
+            ASSERT_TRUE(!loader.Match(pf.get(), expectRecordName, methodLiterals[i]));
 #else
-            ASSERT_TRUE(loader.Match(nullptr, expectRecordName, new MethodLiteral(EntityId(i))));
+            ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[i]));
 #endif
         }
     }
@@ -488,6 +606,13 @@ HWTEST_F_L0(PGOProfilerTest, TextRecover)
 
 HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
 {
+    const char *source = R"(
+        .language ECMAScript
+        .function void foo1(any a0, any a1, any a2) {}
+    )";
+    std::vector<MethodLiteral *> methodLiterals {};
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, "ark-profiler12.abc", methodLiterals);
+    EXPECT_EQ(methodLiterals.size(), 1);  // number of methods
     mkdir("ark-profiler12/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     RuntimeOption option;
     // Although enableProfle is set in option, but it will not work when isWorker is set.
@@ -500,8 +625,11 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
     ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
 
-    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(61));
-    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiteral);
+    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
+
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    constPool->SetJSPandaFile(pf.get());
+    method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     func->SetModule(vm_->GetJSThread(), recordName);
@@ -513,7 +641,7 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     // path is empty()
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "test";
-    ASSERT_TRUE(loader.Match(nullptr, expectRecordName, methodLiteral));
+    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
     rmdir("ark-profiler12/");
 }
 }  // namespace panda::test
