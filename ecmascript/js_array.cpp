@@ -49,16 +49,16 @@ bool JSArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, con
     return true;
 }
 
-JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber length)
+JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber length, ArrayMode mode)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> arrayFunction = env->GetArrayFunction();
-    return JSArray::ArrayCreate(thread, length, arrayFunction);
+    return JSArray::ArrayCreate(thread, length, arrayFunction, mode);
 }
 
 // 9.4.2.2 ArrayCreate(length, proto)
 JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber length,
-                                             const JSHandle<JSTaggedValue> &newTarget)
+                                             const JSHandle<JSTaggedValue> &newTarget, ArrayMode mode)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // Assert: length is an integer Number ≥ 0.
@@ -81,7 +81,11 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
 
     // 10. Perform OrdinaryDefineOwnProperty(A, "length", PropertyDescriptor{[[Value]]: length, [[Writable]]:
     // true, [[Enumerable]]: false, [[Configurable]]: false}).
-    JSArray::SetCapacity(thread, obj, 0, normalArrayLength);
+    if (mode == ArrayMode::LITERAL) {
+        JSArray::Cast(*obj)->SetArrayLength(thread, normalArrayLength);
+    } else {
+        JSArray::SetCapacity(thread, obj, 0, normalArrayLength);
+    }
 
     return JSHandle<JSTaggedValue>(obj);
 }

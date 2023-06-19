@@ -32,6 +32,7 @@ group("ark_js_moduletest") {
     "compareobjecthclass",
     "concurrent",
     "container",
+    "createarray",
     "dataproperty",
     "datecase",
     "datecompare",
