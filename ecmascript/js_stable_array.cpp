@@ -64,11 +64,16 @@ JSTaggedValue JSStableArray::Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     uint32_t capacity = elements->GetLength();
     uint32_t index = length - 1;
-    auto result = elements->Get(index);
-    if (TaggedArray::ShouldTrim(capacity, index)) {
-        elements->Trim(thread, index);
-    } else {
-        elements->Set(thread, index, JSTaggedValue::Hole());
+    auto result = JSTaggedValue::Hole();
+    if (index < capacity) {
+        result = elements->Get(index);
+    }
+    if (!result.IsHole()) {
+        if (TaggedArray::ShouldTrim(capacity, index)) {
+            elements->Trim(thread, index);
+        } else {
+            elements->Set(thread, index, JSTaggedValue::Hole());
+        }
     }
     receiver->SetArrayLength(thread, index);
     return result.IsHole() ? JSTaggedValue::Undefined() : result;

@@ -126,3 +126,12 @@ try {
 } catch (error) {
     print("The NewTarget is undefined")
 }
+
+const v20 = new Array(2);
+let v21;
+try {
+     v21 = v20.pop();
+     print(v21)
+} catch (error) {
+    
+}

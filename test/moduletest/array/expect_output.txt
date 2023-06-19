@@ -68,3 +68,4 @@ undefined
 6
 -1
 The NewTarget is undefined
+undefined
