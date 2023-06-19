@@ -475,6 +475,22 @@ public:
     Local<StringRef> Typeof(const EcmaVM *vm);
     bool InstanceOf(const EcmaVM *vm, Local<JSValueRef> value);
 
+    bool IsArrayList();
+    bool IsDeque();
+    bool IsHashMap();
+    bool IsHashSet();
+    bool IsLightWeightMap();
+    bool IsLightWeightSet();
+    bool IsLinkedList();
+    bool IsLinkedListIterator();
+    bool IsList();
+    bool IsPlainArray();
+    bool IsQueue();
+    bool IsStack();
+    bool IsTreeMap();
+    bool IsTreeSet();
+    bool IsVector();
+
 private:
     JSTaggedType value_;
     friend JSNApi;
