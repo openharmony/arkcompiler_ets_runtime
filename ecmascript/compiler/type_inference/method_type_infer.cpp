@@ -886,7 +886,7 @@ bool MethodTypeInfer::GetSuperProp(GateRef gate, uint64_t index, bool isString)
     auto newTarget = argAcc.GetFrameArgsIn(gate, FrameArgIdx::NEW_TARGET);
     auto funcType = gateAccessor_.GetGateType(func);
     auto classType = gateAccessor_.GetGateType(newTarget);
-    if (funcType.IsAnyType() || classType.IsAnyType()) {
+    if (funcType.IsAnyType() || classType.IsAnyType() || classType.IsUndefinedType()) {
         return UpdateType(gate, GateType::AnyType());
     }
 
