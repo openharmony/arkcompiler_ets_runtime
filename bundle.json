@@ -23,8 +23,8 @@
         "deps": {
             "components": [
               "faultloggerd",
-              "hitrace_native",
-              "hiviewdfx_hilog_native",
+              "hitrace",
+              "hilog",
               "runtime_core",
               "c_utils"
             ],
