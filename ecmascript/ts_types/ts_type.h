@@ -56,6 +56,9 @@ public:
     static GlobalTSTypeRef GetPropTypeGT(JSThread *thread, JSHandle<TSObjectType> objectType,
                                          JSHandle<JSTaggedValue> propName);
 
+    static bool UpdatePropTypeGT(JSThread *thread, JSHandle<TSObjectType> objectType,
+                                 JSHandle<JSTaggedValue> propName, GlobalTSTypeRef newGT);
+
     static GlobalTSTypeRef GetIndexSignType(JSThread *thread, const JSHandle<TSObjectType> &objectType,
                                             const uint32_t typeId);
 
@@ -80,6 +83,12 @@ public:
 
     static GlobalTSTypeRef GetNonStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
                                                   JSHandle<JSTaggedValue> propName);
+
+    static void UpdateNonStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
+                                          JSHandle<JSTaggedValue> propName, GlobalTSTypeRef newGT);
+
+    static void UpdateStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
+                                       JSHandle<JSTaggedValue> propName, GlobalTSTypeRef newGT);
 
     ACCESSORS(InstanceType, INSTANCE_TYPE_OFFSET, CONSTRUCTOR_TYPE_OFFSET);
     ACCESSORS(ConstructorType, CONSTRUCTOR_TYPE_OFFSET, PROTOTYPE_TYPE_OFFSET);

@@ -268,8 +268,8 @@ public:
                            bool isInline)
         : tsManager_(tsManager), circuit_(circuit), file_(jsPandaFile),
           method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
-          typeRecorder_(jsPandaFile, method_, tsManager, recordName, decoder), hasTypes_(hasTypes),
-          enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
+          typeRecorder_(jsPandaFile, method_, tsManager, recordName, decoder, methodPCInfo, bytecodes),
+          hasTypes_(hasTypes), enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
           pcOffsets_(methodPCInfo.pcOffsets),
           frameStateBuilder_(this, circuit, methodLiteral),
           methodName_(name), recordName_(recordName),

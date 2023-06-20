@@ -274,6 +274,16 @@ public:
         innerMethods_.insert(innerMethods_.begin(), constructorMethods_.begin(), constructorMethods_.end());
     }
 
+    inline void AddBcToTypeId(int32_t bcIndex, uint32_t innerFuncTypeId)
+    {
+        bcToFuncTypeId_.emplace(bcIndex, innerFuncTypeId);
+    }
+
+    inline const std::unordered_map<int32_t, uint32_t> &GetBCAndTypes() const
+    {
+        return bcToFuncTypeId_;
+    }
+
     inline void MarkMethodNamespace()
     {
         isNamespace_ = true;
@@ -369,6 +379,7 @@ private:
     uint32_t methodPcInfoIndex_ { 0 };
     std::vector<uint32_t> innerMethods_ {};
     std::vector<uint32_t> constructorMethods_ {};
+    std::unordered_map<int32_t, uint32_t> bcToFuncTypeId_ {};
     uint32_t outerMethodId_ { LexEnv::DEFAULT_ROOT };
     uint32_t outerMethodOffset_ { MethodInfo::DEFAULT_OUTMETHOD_OFFSET };
     uint32_t numOfLexVars_ { 0 };
@@ -760,6 +771,7 @@ private:
     void CollectInnerMethods(const MethodLiteral *method, uint32_t innerMethodOffset, bool isConstructor = false);
     void CollectInnerMethods(uint32_t methodId, uint32_t innerMethodOffset, bool isConstructor = false);
     void CollectInnerMethodsFromLiteral(const MethodLiteral *method, uint64_t index);
+    void CollectInnerFuncType(const MethodLiteral *method, uint32_t innerMethodOffset, int32_t bcIndex);
     void NewLexEnvWithSize(const MethodLiteral *method, uint64_t numOfLexVars);
     void CollectInnerMethodsFromNewLiteral(const MethodLiteral *method, panda_file::File::EntityId literalId);
     void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,

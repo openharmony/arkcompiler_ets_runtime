@@ -176,6 +176,21 @@ void BytecodeInfoCollector::CollectFunctionTypeId(panda_file::File::EntityId fie
     }
 }
 
+void BytecodeInfoCollector::CollectInnerFuncType(const MethodLiteral *method, uint32_t innerMethodId, int32_t bcIndex)
+{
+    auto &methodList = bytecodeInfo_.GetMethodList();
+    auto methodId = method->GetMethodId().GetOffset();
+    auto methodIter = methodList.find(methodId);
+    if (methodIter == methodList.end()) {
+        return;
+    }
+    TypeAnnotationExtractor annoExtractor(jsPandaFile_, innerMethodId);
+    uint32_t innerFuncType = annoExtractor.GetMethodTypeOffset();
+    if (innerFuncType != 0) {
+        methodIter->second.AddBcToTypeId(bcIndex, innerFuncType);
+    }
+}
+
 void BytecodeInfoCollector::IterateLiteral(const MethodLiteral *method,
                                            std::vector<uint32_t> &classOffsetVector)
 {
@@ -380,6 +395,7 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
                 methodId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     static_cast<uint16_t>(bcIns.GetId().AsRawValue())).GetOffset();
                 CollectInnerMethods(method, methodId);
+                CollectInnerFuncType(method, methodId, bcIndex);
                 break;
             }
             case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM8_ID16_IMM8:

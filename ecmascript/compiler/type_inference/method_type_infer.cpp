@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/type_inference/method_type_infer.h"
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/ts_types/ts_type_accessor.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
 
 namespace panda::ecmascript::kungfu {
@@ -713,14 +714,24 @@ bool MethodTypeInfer::InferStObjByName(GateRef gate)
 
     GateRef receiver = gateAccessor_.GetValueIn(gate, 2);  // 2: index of receiver
     GateType receiverType = gateAccessor_.GetGateType(receiver);
-    if (!tsManager_->IsNamespaceTypeKind(receiverType)) {
-        return false;
-    }
 
     uint16_t index = gateAccessor_.GetConstantValue(gateAccessor_.GetValueIn(gate, 1));  // 1: index of key
     JSTaggedValue propKey = tsManager_->GetStringFromConstantPool(index);
-    tsManager_->AddNamespacePropType(receiverType, propKey, valueType);
-    return true;
+    if (tsManager_->IsNamespaceTypeKind(receiverType)) {
+        tsManager_->AddNamespacePropType(receiverType, propKey, valueType);
+        return true;
+    }
+
+    if (valueType.IsNumberType()) {
+        valueType = GateType::NumberType();
+    }
+
+    if (tsManager_->IsClassTypeKind(receiverType)) {
+        TSTypeAccessor typeAccessor(tsManager_, receiverType);
+        typeAccessor.UpdateStaticProp(propKey, valueType.GetGTRef());
+        return true;
+    }
+    return false;
 }
 
 bool MethodTypeInfer::InferNewObject(GateRef gate)
@@ -773,6 +784,23 @@ bool MethodTypeInfer::InferCallFunction(GateRef gate)
     size_t funcIndex = gateAccessor_.GetNumValueIn(gate) - 1;
     auto funcType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, funcIndex));
     if (tsManager_->IsFunctionTypeKind(funcType)) {
+        // forEach CallBack
+        TSTypeAccessor typeAccessor(tsManager_, funcType);
+        if (typeAccessor.GetFunctionName() == "forEach") {
+            auto funcGate = gateAccessor_.GetValueIn(gate, funcIndex);
+            auto &bytecodeInfo = GetByteCodeInfo(funcGate);
+            if (bytecodeInfo.GetOpcode() == EcmaOpcode::LDOBJBYNAME_IMM8_ID16 ||
+                bytecodeInfo.GetOpcode() == EcmaOpcode::LDOBJBYNAME_IMM16_ID16) {
+                // 2: the third parameter is receiver
+                auto objType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(funcGate, 2));
+                // get callBack function type
+                auto callBackType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+                TSTypeAccessor newTypeAccessor(tsManager_, callBackType);
+                newTypeAccessor.UpdateForEachCBPara(objType);
+            }
+        }
+
+        // normal Call
         auto returnType = tsManager_->GetFuncReturnValueTypeGT(funcType);
         return UpdateType(gate, returnType);
     }

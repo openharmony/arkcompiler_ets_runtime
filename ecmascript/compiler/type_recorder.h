@@ -33,7 +33,8 @@ enum class TypedArgIdx : uint8_t {
 class TypeRecorder {
 public:
     TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
-                 TSManager *tsManager, const CString &recordName, PGOProfilerDecoder *decoder);
+                 TSManager *tsManager, const CString &recordName, PGOProfilerDecoder *decoder,
+                 const MethodPcInfo &methodPCInfo, const Bytecodes *bytecodes);
     ~TypeRecorder() = default;
 
     GateType GetType(const int32_t offset) const;
@@ -69,11 +70,15 @@ private:
 
     bool TypeNeedFilter(GlobalTSTypeRef gt) const;
 
+    bool CheckTypeMarkForDefineFunc(uint32_t checkBc) const;
+
     std::unordered_map<int32_t, GateType> bcOffsetGtMap_ {};
     std::unordered_map<int32_t, PGOSampleType> bcOffsetPGOOpTypeMap_ {};
     std::unordered_map<int32_t, PGORWOpType> bcOffsetPGORwTypeMap_ {};
     std::vector<GateType> argTypes_;
     PGOProfilerDecoder *decoder_ {nullptr};
+    const std::vector<const uint8_t*> &pcOffsets_;
+    const Bytecodes *bytecodes_ {nullptr};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_RECORDER_H

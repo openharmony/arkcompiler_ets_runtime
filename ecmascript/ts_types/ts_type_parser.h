@@ -46,6 +46,12 @@ public:
         return typeId > USER_DEFINED_TYPE_OFFSET;
     }
 
+    inline const std::unordered_map<uint32_t, kungfu::MethodInfo> &GetMethodList() const
+    {
+        ASSERT(bcInfo_ != nullptr);
+        return bcInfo_->GetMethodList();
+    }
+
 private:
     static constexpr size_t BUILDIN_TYPE_OFFSET = 20;
     static constexpr size_t USER_DEFINED_TYPE_OFFSET = 100;

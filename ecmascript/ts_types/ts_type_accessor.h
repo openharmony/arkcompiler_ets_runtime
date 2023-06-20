@@ -76,11 +76,19 @@ public:
 
     void PUBLIC_API MarkPropertyInitialized(JSTaggedValue key);
 
+    void PUBLIC_API UpdateNonStaticProp(JSTaggedValue key, GlobalTSTypeRef newGT);
+
+    void PUBLIC_API UpdateStaticProp(JSTaggedValue key, GlobalTSTypeRef newGT);
+
+    void PUBLIC_API UpdateForEachCBPara(kungfu::GateType targetType);
+
     bool PUBLIC_API IsPropertyInitialized(JSTaggedValue key) const;
 
     std::string PUBLIC_API GetInitializedProperties() const;
 
     std::string PUBLIC_API GetClassTypeName() const;
+
+    std::string PUBLIC_API GetFunctionName() const;
 
 #define CLASS_TYPE_BITFIELD_ACCESSOR(NAME)                 \
     inline void PUBLIC_API MarkClass##NAME()               \
