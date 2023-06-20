@@ -32,8 +32,7 @@ EcmaString *EcmaStringTable::GetString(const JSHandle<EcmaString> &firstString,
     uint32_t hashCode = EcmaStringAccessor(firstString).GetHashcode();
     hashCode = EcmaStringAccessor(secondString).ComputeHashcode(hashCode);
     auto range = table_.equal_range(hashCode);
-    auto item = range.first;
-    for (; item != range.second; ++item) {
+    for (auto item = range.first; item != range.second; ++item) {
         auto foundString = item->second;
         if (EcmaStringAccessor(foundString).EqualToSplicedString(*firstString, *secondString)) {
             return foundString;
@@ -46,8 +45,7 @@ EcmaString *EcmaStringTable::GetString(const uint8_t *utf8Data, uint32_t utf8Len
 {
     uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
     auto range = table_.equal_range(hashCode);
-    auto item = range.first;
-    for (; item != range.second; ++item) {
+    for (auto item = range.first; item != range.second; ++item) {
         auto foundString = item->second;
         if (EcmaStringAccessor::StringsAreEqualUtf8(foundString, utf8Data, utf8Len, canBeCompress)) {
             return foundString;
@@ -60,8 +58,7 @@ EcmaString *EcmaStringTable::GetString(const uint16_t *utf16Data, uint32_t utf16
 {
     uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t *>(utf16Data), utf16Len);
     auto range = table_.equal_range(hashCode);
-    auto item = range.first;
-    for (; item != range.second; ++item) {
+    for (auto item = range.first; item != range.second; ++item) {
         auto foundString = item->second;
         if (EcmaStringAccessor::StringsAreEqualUtf16(foundString, utf16Data, utf16Len)) {
             return foundString;
@@ -75,8 +72,7 @@ EcmaString *EcmaStringTable::GetString(EcmaString *string) const
     ASSERT(EcmaStringAccessor(string).IsLineOrConstantString());
     auto hashcode = EcmaStringAccessor(string).GetHashcode();
     auto range = table_.equal_range(hashcode);
-    auto item = range.first;
-    for (; item != range.second; ++item) {
+    for (auto item = range.first; item != range.second; ++item) {
         auto foundString = item->second;
         if (EcmaStringAccessor::StringsAreEqual(foundString, string)) {
             return foundString;

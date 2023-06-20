@@ -59,7 +59,6 @@ public:
     template<typename Callback>
     void EnumerateJSPandaFiles(Callback cb)
     {
-        // since there is a lock, so cannot mark function const
         os::memory::LockHolder lock(jsPandaFileLock_);
         for (const auto &item : loadedJSPandaFiles_) {
             if (!cb(item.second.first.get())) {

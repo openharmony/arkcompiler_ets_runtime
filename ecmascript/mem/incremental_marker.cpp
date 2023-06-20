@@ -127,8 +127,7 @@ void IncrementalMarker::Finish()
 
 double IncrementalMarker::GetCurrentTimeInMs()
 {
-    struct timeval tv {
-    };
+    struct timeval tv;
     gettimeofday(&tv, nullptr);
     return static_cast<double>(tv.tv_sec) * MS_PER_SECOND + (tv.tv_usec / MS_PER_SECOND);
 }

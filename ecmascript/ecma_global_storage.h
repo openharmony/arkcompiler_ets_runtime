@@ -408,8 +408,8 @@ public:
             weakCurrent->IterateUsageGlobal([] (WeakNode *node) {
                 node->SetUsing(false);
                 node->SetObject(JSTaggedValue::Undefined().GetRawData());
-                reinterpret_cast<WeakNode *>(node)->CallFreeGlobalCallback();
-                reinterpret_cast<WeakNode *>(node)->CallNativeFinalizeCallback();
+                node->CallFreeGlobalCallback();
+                node->CallNativeFinalizeCallback();
             });
             allocator_->Delete(weakCurrent);
         }
@@ -429,8 +429,7 @@ public:
 
     inline uintptr_t NewGlobalHandle(JSTaggedType value)
     {
-        uintptr_t ret = NewGlobalHandleImplement(&lastGlobalNodes_, &freeListNodes_, value);
-        return ret;
+        return NewGlobalHandleImplement(&lastGlobalNodes_, &freeListNodes_, value);
     }
 
     inline void DisposeGlobalHandle(uintptr_t nodeAddr)

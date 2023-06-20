@@ -235,7 +235,7 @@ inline SlotStatus SemiGCMarker::EvacuateObject(uint32_t threadId, TaggedObject *
 
     uintptr_t forwardAddress = AllocateDstSpace(threadId, size, isPromoted);
     bool result = Barriers::AtomicSetPrimitive(object, 0, markWord.GetValue(),
-                                                  MarkWord::FromForwardingAddress(forwardAddress));
+                                               MarkWord::FromForwardingAddress(forwardAddress));
     if (result) {
         UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, markWord, slot, isPromoted);
         return isPromoted ? SlotStatus::CLEAR_SLOT : SlotStatus::KEEP_SLOT;
