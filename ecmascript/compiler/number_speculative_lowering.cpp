@@ -299,11 +299,35 @@ void NumberSpeculativeLowering::VisitNumberDiv(GateRef gate)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateRef rightNotZero = builder_.DoubleNotEqual(right, builder_.Double(0.0));
-    GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
-    builder_.DeoptCheck(rightNotZero, frameState, DeoptType::DIVZERO);
-    GateRef result = builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, left, right);
-    acc_.SetMachineType(gate, MachineType::F64);
+    GateType gateType = acc_.GetGateType(gate);
+    PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
+    if (sampleType.IsNumber()) {
+        if (sampleType.IsInt()) {
+            gateType = GateType::IntType();
+        } else {
+            gateType = GateType::DoubleType();
+        }
+    }
+    GateRef result = Circuit::NullGate();
+    if (gateType.IsIntType()) {
+        GateRef rightGreaterZero = builder_.Int32GreaterThan(right, builder_.Int32(0));
+        GateRef rightLessZero = builder_.Int32LessThan(right, builder_.Int32(0));
+        GateRef leftNotZero = builder_.Int32NotEqual(left, builder_.Int32(0));
+        GateRef condition = builder_.BoolOr(rightGreaterZero, builder_.BoolAnd(rightLessZero, leftNotZero));
+        GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
+        builder_.DeoptCheck(condition, frameState, DeoptType::DIVZERO);
+        result = builder_.BinaryArithmetic(circuit_->Sdiv(), MachineType::I32, left, right);
+        GateRef truncated = builder_.BinaryArithmetic(circuit_->Mul(), MachineType::I32, result, right);
+        GateRef overCheck = builder_.Int32Equal(truncated, left);
+        builder_.DeoptCheck(overCheck, frameState, DeoptType::NOTINT);
+        acc_.SetMachineType(gate, MachineType::I32);
+    } else {
+        GateRef rightNotZero = builder_.DoubleNotEqual(right, builder_.Double(0.0));
+        GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
+        builder_.DeoptCheck(rightNotZero, frameState, DeoptType::DIVZERO);
+        result = builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, left, right);
+        acc_.SetMachineType(gate, MachineType::F64);
+    }
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
