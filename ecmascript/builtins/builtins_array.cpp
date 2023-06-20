@@ -94,7 +94,7 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
                 THROW_RANGE_ERROR_AND_RETURN(thread, "The length is out of range.", JSTaggedValue::Exception());
             }
         }
-        JSArray::Cast(*newArrayHandle)->SetArrayLength(thread, newLen);
+        JSArray::SetCapacity(thread, newArrayHandle, 0, newLen);
 
         // 11. Return array.
         return newArrayHandle.GetTaggedValue();
