@@ -25,3 +25,6 @@ try {
 } catch (e) {
     print("test successful");
 }
+
+const n1 = Number(0x1fffeffafbfcfen);
+print(n1);
