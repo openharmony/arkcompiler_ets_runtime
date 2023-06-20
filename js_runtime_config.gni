@@ -85,10 +85,10 @@ if (enable_dump_in_faultlog) {
   hiviewdfx_ext_deps += [ "faultloggerd:libfaultloggerd" ]
 }
 if (enable_bytrace) {
-  hiviewdfx_ext_deps += [ "hitrace_native:hitrace_meter" ]
+  hiviewdfx_ext_deps += [ "hitrace:hitrace_meter" ]
 }
 if (enable_hitrace) {
-  hiviewdfx_ext_deps += [ "hitrace_native:libhitracechain" ]
+  hiviewdfx_ext_deps += [ "hitrace:libhitracechain" ]
 }
 if (enable_hilog) {
   if (is_mingw) {
@@ -96,7 +96,7 @@ if (enable_hilog) {
   } else if (is_mac) {
     hiviewdfx_deps += [ "$hilog_root:libhilog_mac" ]
   } else if (is_ohos) {
-    hiviewdfx_ext_deps += [ "hiviewdfx_hilog_native:libhilog" ]
+    hiviewdfx_ext_deps += [ "hilog:libhilog" ]
   }
 }
 
