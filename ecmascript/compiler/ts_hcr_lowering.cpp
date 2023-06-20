@@ -380,8 +380,7 @@ void TSHCRLowering::LowerTypedXor(GateRef gate)
 void TSHCRLowering::LowerTypedInc(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetGateType(value);
-    if (valueType.IsNumberType()) {
+    if (HasNumberType(gate, value)) {
         SpeculateNumber<TypedUnOp::TYPED_INC>(gate);
     }
 }
@@ -389,10 +388,20 @@ void TSHCRLowering::LowerTypedInc(GateRef gate)
 void TSHCRLowering::LowerTypedDec(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetGateType(value);
-    if (valueType.IsNumberType()) {
+    if (HasNumberType(gate, value)) {
         SpeculateNumber<TypedUnOp::TYPED_DEC>(gate);
     }
+}
+
+bool TSHCRLowering::HasNumberType(GateRef gate, GateRef value) const
+{
+    GateType valueType = acc_.GetGateType(value);
+    PGOSampleType sampleType = acc_.TryGetPGOType(gate);
+    if (sampleType.IsNumber() ||
+        (sampleType.IsNone() && valueType.IsNumberType())) {
+        return true;
+    }
+    return false;
 }
 
 bool TSHCRLowering::HasNumberType(GateRef gate, GateRef left, GateRef right) const
@@ -430,6 +439,18 @@ void TSHCRLowering::SpeculateNumber(GateRef gate)
     GateType valueType = acc_.GetGateType(value);
     GateType gateType = acc_.GetGateType(gate);
 
+    PGOSampleType sampleType = acc_.TryGetPGOType(gate);
+    if (sampleType.IsNumber()) {
+        if (sampleType.IsInt()) {
+            gateType = GateType::IntType();
+        } else if (sampleType.IsDouble()) {
+            gateType = GateType::DoubleType();
+        } else {
+            gateType = GateType::NumberType();
+        }
+        valueType = gateType;
+    }
+
     GateRef result = builder_.TypedUnaryOp<Op>(value, valueType, gateType);
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
@@ -438,8 +459,7 @@ void TSHCRLowering::SpeculateNumber(GateRef gate)
 void TSHCRLowering::LowerTypeToNumeric(GateRef gate)
 {
     GateRef src = acc_.GetValueIn(gate, 0);
-    GateType srcType = acc_.GetGateType(src);
-    if (srcType.IsNumberType()) {
+    if (HasNumberType(gate, src)) {
         AddProfiling(gate);
         LowerPrimitiveTypeToNumber(gate);
     }
@@ -481,8 +501,7 @@ void TSHCRLowering::SpeculateConditionJump(GateRef gate, bool flag)
 void TSHCRLowering::LowerTypedNeg(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetGateType(value);
-    if (valueType.IsNumberType()) {
+    if (HasNumberType(gate, value)) {
         SpeculateNumber<TypedUnOp::TYPED_NEG>(gate);
     }
 }
@@ -490,8 +509,7 @@ void TSHCRLowering::LowerTypedNeg(GateRef gate)
 void TSHCRLowering::LowerTypedNot(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateType valueType = acc_.GetGateType(value);
-    if (valueType.IsNumberType()) {
+    if (HasNumberType(gate, value)) {
         SpeculateNumber<TypedUnOp::TYPED_NOT>(gate);
     }
 }

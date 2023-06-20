@@ -125,6 +125,7 @@ private:
     // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed,
     // or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;
+    bool HasNumberType(GateRef gate, GateRef value) const;
     bool HasNumberType(GateRef gate, GateRef left, GateRef right) const;
 
     template<TypedBinOp Op>
