@@ -892,6 +892,29 @@ HWTEST_F_L0(BuiltinsStringTest, trim2)
     ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
 }
 
+HWTEST_F_L0(BuiltinsStringTest, trimRight)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> thisStr = factory->NewFromASCII("      ");
+    JSHandle<JSFunction> stringObject(env->GetStringFunction());
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(thisStr.GetTaggedValue().GetTaggedObject()));
+    JSHandle<JSPrimitiveRef> str = factory->NewJSPrimitiveRef(stringObject, value);
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(str.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsString::TrimRight(ecmaRuntimeCallInfo);
+    ASSERT_TRUE(result.IsString());
+    JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
+    JSHandle<EcmaString> test = factory->NewFromASCII("");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
+}
+
 HWTEST_F_L0(BuiltinsStringTest, ToString)
 {
     auto ecmaVM = thread->GetEcmaVM();
