@@ -16,4 +16,7 @@
 3
 4
 4
+4
 3
+0
+TypeError: Cannot assign to read only property

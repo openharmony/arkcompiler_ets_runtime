@@ -546,7 +546,7 @@ void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
             return;
         }
 
-        PropertyLookupResult plr = JSHClass::LookupProperty(thread, hclass, prop);
+        PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread, hclass, prop);
         if (!plr.IsFound()) {  // slowpath
             return;
         }
@@ -578,7 +578,7 @@ void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
     }
     JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
 
-    PropertyLookupResult plr = JSHClass::LookupProperty(thread, hclass, prop);
+    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread, hclass, prop);
     if (!plr.IsFound() || !plr.IsLocal() || plr.IsAccessor()) {  // slowpath
         return;
     }
@@ -626,7 +626,7 @@ void TSHCRLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
             return;
         }
 
-        PropertyLookupResult plr = JSHClass::LookupProperty(thread, hclass, prop);
+        PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread, hclass, prop);
         if (!plr.IsFound() || plr.IsFunction()) {  // slowpath
             return;
         }
@@ -656,8 +656,8 @@ void TSHCRLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
     }
     JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
 
-    PropertyLookupResult plr = JSHClass::LookupProperty(thread, hclass, prop);
-    if (!plr.IsFound() || !plr.IsLocal() || plr.IsAccessor()) {  // slowpath
+    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread, hclass, prop);
+    if (!plr.IsFound() || !plr.IsLocal() || plr.IsAccessor() || !plr.IsWritable()) {  // slowpath
         return;
     }
     AddProfiling(gate);
