@@ -2447,8 +2447,7 @@ JSHandle<LayoutInfo> ObjectFactory::CopyAndReSort(const JSHandle<LayoutInfo> &ol
     ASSERT(capacity >= end);
     JSHandle<LayoutInfo> newArr = CreateLayoutInfo(capacity);
     Span<struct Properties> sp(old->GetProperties(), end);
-    int i = 0;
-    for (; i < end; i++) {
+    for (int i = 0; i < end; i++) {
         newArr->AddKey(thread_, i, sp[i].key_, PropertyAttributes(sp[i].attr_));
     }
 
