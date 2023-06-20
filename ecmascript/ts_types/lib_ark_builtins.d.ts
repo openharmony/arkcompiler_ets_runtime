@@ -599,6 +599,8 @@ declare class String extends Object {
 
     constructor(value?: any): String;
 
+    at(index: number): string;
+
     charAt(pos: number): string;
 
     charCodeAt(index: number): number;

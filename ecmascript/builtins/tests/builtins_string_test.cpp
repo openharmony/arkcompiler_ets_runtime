@@ -1277,4 +1277,74 @@ HWTEST_F_L0(BuiltinsStringTest, Split2)
     ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*string2, *expected2));
     ASSERT_TRUE(EcmaStringAccessor::StringsAreEqual(*string3, *expected3));
 }
+
+// "一二三四".at(3)
+HWTEST_F_L0(BuiltinsStringTest, at1)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> thisVal = factory->NewFromUtf8("一二三四");
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(thisVal.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(3)));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsString::At(ecmaRuntimeCallInfo);
+    ASSERT_TRUE(result.IsString());
+    JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
+    JSHandle<EcmaString> test = factory->NewFromUtf8("四");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
+}
+
+// "一二三四".at(-2)
+HWTEST_F_L0(BuiltinsStringTest, at2)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> thisVal = factory->NewFromUtf8("一二三四");
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(thisVal.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(-2)));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsString::At(ecmaRuntimeCallInfo);
+    ASSERT_TRUE(result.IsString());
+    JSHandle<EcmaString> resultHandle(thread, reinterpret_cast<EcmaString *>(result.GetRawData()));
+    JSHandle<EcmaString> test = factory->NewFromUtf8("三");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, test), 0);
+}
+
+// "一二三四".at(-5)
+HWTEST_F_L0(BuiltinsStringTest, at3)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> thisVal = factory->NewFromUtf8("一二三四");
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(thisVal.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(-5)));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsString::At(ecmaRuntimeCallInfo);
+    ASSERT_TRUE(result.IsUndefined());
+}
+
+// "abcabcabc".at(9)
+HWTEST_F_L0(BuiltinsStringTest, at4)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> thisVal = factory->NewFromASCII("abcabcabc");
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(thisVal.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<double>(9)));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsString::At(ecmaRuntimeCallInfo);
+    ASSERT_TRUE(result.IsUndefined());
+}
 }  // namespace panda::test
