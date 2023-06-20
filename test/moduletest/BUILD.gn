@@ -58,6 +58,7 @@ group("ark_js_moduletest") {
     "ldmodulensbyic",
     "lexicalenv",
     "linkedhashtable",
+    "loadicbyname",
     "loadicbyvalue",
     "localelowercase",
     "memleakobjectcreate",
