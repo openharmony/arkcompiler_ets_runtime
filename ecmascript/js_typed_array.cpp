@@ -488,9 +488,10 @@ bool JSTypedArray::FastCopyElementToArray(JSThread *thread, const JSHandle<JSTag
     ASSERT(typedArray->IsTypedArray());
     // 3. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSTypedArray> typedarrayObj(typedArray);
-    JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
+    JSHandle<JSTaggedValue> bufferHandle = JSHandle<JSTaggedValue>(thread,
+                                                                   typedarrayObj->GetViewedArrayBufferOrByteArray());
     // 4. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer)) {
+    if (BuiltinsArrayBuffer::IsDetachedBuffer(bufferHandle.GetTaggedValue())) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Is Detached Buffer", false);
     }
 
@@ -508,7 +509,8 @@ bool JSTypedArray::FastCopyElementToArray(JSThread *thread, const JSHandle<JSTag
         // 12. Let indexedPosition = (index × elementSize) + offset.
         uint32_t byteIndex = index * elementSize + offset;
         // 14. Return GetValueFromBuffer(buffer, indexedPosition, elementType).
-        JSTaggedValue result = BuiltinsArrayBuffer::GetValueFromBuffer(thread, buffer, byteIndex, elementType, true);
+        JSTaggedValue result = BuiltinsArrayBuffer::GetValueFromBuffer(thread, bufferHandle.GetTaggedValue(),
+                                                                       byteIndex, elementType, true);
         array->Set(thread, index, result);
     }
     return true;
