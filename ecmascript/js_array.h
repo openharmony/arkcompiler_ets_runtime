@@ -94,7 +94,6 @@ public:
                                      const JSHandle<JSTaggedValue> &value);
     static JSHandle<TaggedArray> ToTaggedArray(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static void CheckAndCopyArray(const JSThread *thread, JSHandle<JSArray> obj);
-private:
     static void SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen);
 };
 }  // namespace panda::ecmascript
