@@ -42,9 +42,12 @@ enum ArkProperties {
     GLOBAL_OBJECT_LEAK_CHECK = 1 << 10,
     GLOBAL_PRIMITIVE_LEAK_CHECK = 1 << 11,
     ENABLE_IDLE_GC = 1 << 12,  // default enable
-    CPU_PROFILER = 1 << 13,
+    CPU_PROFILER_COLD_START_MAIN_THREAD = 1 << 13,
     ENABLE_CPU_PROFILER_VM_TAG = 1 << 14,
     ENABLE_GC_TRACER = 1 << 15,
+    CPU_PROFILER_COLD_START_WORKER_THREAD = 1 << 16,
+    CPU_PROFILER_ANY_TIME_MAIN_THREAD = 1 << 17,
+    CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18
 };
 
 // asm interpreter control parsed option
@@ -372,9 +375,24 @@ public:
         return EnableGlobalObjectLeakCheck() || EnableGlobalPrimitiveLeakCheck();
     }
 
-    bool EnableCpuProfiler() const
+    bool EnableCpuProfilerColdStartMainThread() const
     {
-        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CPU_PROFILER) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CPU_PROFILER_COLD_START_MAIN_THREAD) != 0;
+    }
+
+    bool EnableCpuProfilerColdStartWorkerThread() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CPU_PROFILER_COLD_START_WORKER_THREAD) != 0;
+    }
+
+    bool EnableCpuProfilerAnyTimeMainThread() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CPU_PROFILER_ANY_TIME_MAIN_THREAD) != 0;
+    }
+
+    bool EnableCpuProfilerAnyTimeWorkerThread() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CPU_PROFILER_ANY_TIME_WORKER_THREAD) != 0;
     }
 
     bool EnableCpuProfilerVMTag() const

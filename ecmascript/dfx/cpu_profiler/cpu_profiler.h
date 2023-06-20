@@ -75,6 +75,7 @@ class CpuProfiler {
 public:
     static const int CPUPROFILER_DEFAULT_INTERVAL = 500; // 500:Default Sampling interval 500 microseconds
     static const int INTERVAL_OF_ACTIVE_SAMPLING = 300; // 300:interval of active sampling
+    static const int INTERVAL_OF_INNER_START = 100; // 100:interval of inner start(stake in runtime) sampling
 
     bool InHeaderOrTail(uint64_t pc, uint64_t entryBegin, uint64_t entryDuration, uint64_t headerSize,
                         uint64_t tailSize) const;

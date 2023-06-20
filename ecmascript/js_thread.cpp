@@ -19,17 +19,21 @@
 #include <sys/resource.h>
 #endif
 
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/platform/file.h"
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/platform/backtrace.h"
+#endif
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_param_configuration.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mark_word.h"
+#include "ecmascript/napi/include/dfx_jsnapi.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript {
@@ -431,6 +435,12 @@ bool JSThread::CheckSafepoint()
     if (vmThreadControl_->VMNeedSuspension()) {
         vmThreadControl_->SuspendVM();
     }
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (needProfiling_.load() && !isProfiling_) {
+        DFXJSNApi::StartCpuProfilerForFile(vm_, profileName_, CpuProfiler::INTERVAL_OF_INNER_START);
+        SetNeedProfiling(false);
+    }
+#endif // ECMASCRIPT_SUPPORT_CPUPROFILER
     bool gcTriggered = false;
 #ifndef NDEBUG
     if (vm_->GetJSOptions().EnableForceGC()) {
