@@ -57,7 +57,6 @@ group("ark_typeinfer_test") {
     "createemptyarray",
     "createemptyobject",
     "createobjecthavingmethod",
-    "defineasyncfunc",
     "defineclasswithbuffer",
     "definefunctiondyn",
     "definegeneratorfunc",
@@ -105,7 +104,7 @@ group("ark_typeinfer_test") {
 
   deps = []
   foreach(test, test_list) {
-    deps += [ "${test}:${test}AotTypeInferAction" ]
+    deps += [ "${test}:${test}Es2abcAotTypeInferAction" ]
   }
 
   deps += [ "module_test:ark_typeinfer_module_test" ]
@@ -113,7 +112,7 @@ group("ark_typeinfer_test") {
 
   if (is_enable_typeinfer_automatedcases) {
     foreach(file, ts_files) {
-      deps += [ ":${file}AotTypeInferAction" ]
+      deps += [ ":${file}Es2abcAotTypeInferAction" ]
     }
   }
 }
