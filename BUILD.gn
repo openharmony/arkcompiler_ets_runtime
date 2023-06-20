@@ -389,7 +389,7 @@ config("ark_jsruntime_common_config") {
   }
 
   if (!is_mac && target_os != "ios" && !use_libfuzzer &&
-      !ark_standalone_build) {
+      !(ark_standalone_build && !enable_lto)) {
     cflags_cc += [ "-flto=thin" ]
     ldflags += [ "-flto=thin" ]
   }
