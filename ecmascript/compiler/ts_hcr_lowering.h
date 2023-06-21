@@ -26,19 +26,22 @@ namespace panda::ecmascript::kungfu {
 class TSHCRLowering {
 public:
     TSHCRLowering(Circuit *circuit, PassContext *ctx,
-                   bool enableLog, const std::string& name)
+                   bool enableLog, bool enableTypeLog,
+                   const std::string& name)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
           dependEntry_(circuit->GetDependRoot()),
           tsManager_(ctx->GetTSManager()),
           enableLog_(enableLog),
+          enableTypeLog_(enableTypeLog),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
           verifyVTable_(ctx->GetCompilerConfig()->IsVerifyVTbale()),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
           methodName_(name),
           glue_(acc_.GetGlueFromArgList()),
-          argAcc_(circuit) {}
+          argAcc_(circuit),
+          pgoTypeLog_(circuit) {}
 
     ~TSHCRLowering() = default;
 
@@ -48,6 +51,11 @@ private:
     bool IsLogEnabled() const
     {
         return enableLog_;
+    }
+
+    bool IsTypeLogEnabled() const
+    {
+        return enableTypeLog_;
     }
 
     bool IsProfiling() const
@@ -120,13 +128,15 @@ private:
     void CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
         GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
 
-    bool CheckParam(GateRef gate, bool isCallThis, MethodLiteral* method);
-
     // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed,
     // or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;
     bool HasNumberType(GateRef gate, GateRef value) const;
     bool HasNumberType(GateRef gate, GateRef left, GateRef right) const;
+
+    void AddBytecodeCount(EcmaOpcode op);
+    void DeleteBytecodeCount(EcmaOpcode op);
+    void AddHitBytecodeCount();
 
     template<TypedBinOp Op>
     void SpeculateNumbers(GateRef gate);
@@ -146,6 +156,7 @@ private:
     GateRef dependEntry_ {Gate::InvalidGateRef};
     TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
+    bool enableTypeLog_ {false};
     bool profiling_ {false};
     bool verifyVTable_ {false};
     bool traceBc_ {false};
@@ -155,6 +166,10 @@ private:
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
     ArgumentAccessor argAcc_;
+    EcmaOpcode currentOp_;
+    PGOTypeLogList pgoTypeLog_;
+    std::unordered_map<EcmaOpcode, uint32_t> bytecodeMap_;
+    std::unordered_map<EcmaOpcode, uint32_t> bytecodeHitTimeMap_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_HCR_LOWERING_H

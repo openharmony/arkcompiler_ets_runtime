@@ -28,6 +28,8 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/argument_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 class AotMethodLogList;
@@ -188,6 +190,17 @@ private:
     CompilerLog *log_ {nullptr};
 
     const std::string GetShortName(const std::string& methodName);
+};
+
+class PGOTypeLogList {
+public:
+    explicit PGOTypeLogList(Circuit *circuit) : acc_(circuit) {}
+    ~PGOTypeLogList() = default;
+    void CollectGateTypeLogInfo(GateRef gate, bool isBinOp);
+    void PrintPGOTypeLog();
+private:
+    GateAccessor acc_;
+    std::string log_ {};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_LOG_H
