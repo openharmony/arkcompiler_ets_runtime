@@ -634,7 +634,7 @@ bool JSHClass::IsTSIHCWithInheritInfo() const
     return IsTS() && !IsPrototype() && HasTSSubtyping();
 }
 
-PropertyLookupResult JSHClass::LookupProperty(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)
+PropertyLookupResult JSHClass::LookupPropertyInAotHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)
 {
     DISALLOW_GARBAGE_COLLECTION;
     ASSERT(hclass->IsTS());
@@ -654,6 +654,7 @@ PropertyLookupResult JSHClass::LookupProperty(const JSThread *thread, JSHClass *
         if (attr.IsAccessor()) {
             result.SetIsAccessor(true);
         }
+        result.SetIsWritable(attr.IsWritable());
         return result;
     }
 

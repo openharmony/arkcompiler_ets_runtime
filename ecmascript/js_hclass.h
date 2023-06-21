@@ -1642,7 +1642,7 @@ public:
 
     inline static int FindPropertyEntry(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
 
-    static PropertyLookupResult LookupProperty(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
+    static PropertyLookupResult LookupPropertyInAotHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
 
     static constexpr size_t PROTOTYPE_OFFSET = TaggedObjectSize();
     ACCESSORS(Proto, PROTOTYPE_OFFSET, LAYOUT_OFFSET);
@@ -1704,11 +1704,13 @@ static_assert(JSHClass::BIT_FIELD_OFFSET % static_cast<uint8_t>(MemAlignment::ME
 // record property look up info in local and vtable
 class PropertyLookupResult {
 public:
+    static constexpr uint32_t OFFSET_BITFIELD_NUM = 14;
     using IsFoundBit = BitField<bool, 0, 1>;
     using IsLocalBit = IsFoundBit::NextFlag;
     using IsNotHoleBit = IsLocalBit::NextFlag;
     using IsAccessorBit = IsNotHoleBit::NextFlag;
-    using OffsetBits = IsAccessorBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
+    using OffsetBits = IsAccessorBit::NextField<uint32_t, OFFSET_BITFIELD_NUM>;
+    using WritableField = OffsetBits::NextFlag;
 
     explicit PropertyLookupResult(uint32_t data = 0) : data_(data) {}
     ~PropertyLookupResult() = default;
@@ -1723,6 +1725,16 @@ public:
     inline void SetIsFound(bool flag)
     {
         IsFoundBit::Set(flag, &data_);
+    }
+
+    inline bool IsWritable() const
+    {
+        return WritableField::Get(data_);
+    }
+
+    inline void SetIsWritable(bool flag)
+    {
+        WritableField::Set(flag, &data_);
     }
 
     inline bool IsLocal() const
@@ -1789,6 +1801,8 @@ public:
 private:
     uint32_t data_ {0};
 };
+static_assert(PropertyLookupResult::OffsetBits::MaxValue() >
+              (PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES * JSTaggedValue::TaggedTypeSize()));
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_JS_HCLASS_H
