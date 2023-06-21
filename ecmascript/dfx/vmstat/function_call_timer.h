@@ -25,8 +25,8 @@ namespace panda::ecmascript {
 class EcmaVM;
 
 // Description:
-// FunctionCallTimer is a tool used to count the number of calls, maximum time, total time, and average time of JS&TS 
-// functions in an application or use case. 
+// FunctionCallTimer is a tool used to count the number of calls, maximum time, total time, and average time of JS&TS
+// functions in an application or use case.
 
 // Use:
 // If you want to use FunctionCallTimer, open the ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER macro.

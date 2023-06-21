@@ -1218,7 +1218,7 @@ int RegExpParser::ParseCharacterEscape()
             break;
         }
     }
-    return result;
+    return static_cast<int>(result);
 }
 
 bool RegExpParser::ParseClassRanges(RangeSet *result)

@@ -39,7 +39,7 @@ namespace OHOS {
             std::cout << "memcpy_s failed !" << std::endl;
             UNREACHABLE();
         }
-        JSNApi::DebugOption debugOption = {(char *)data, true};
+        JSNApi::DebugOption const debugOption = {nullptr, true, -1};
         JSNApi::StartDebugger(vm, debugOption, instanceId);
         JSNApi::StopDebugger(vm);
         JSNApi::DestroyJSVM(vm);

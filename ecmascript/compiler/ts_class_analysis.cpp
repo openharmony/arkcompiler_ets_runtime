@@ -73,7 +73,6 @@ bool TSClassAnalysis::HasEscapedThisOnSuper(const TSClassType *classType) const
 
     while (true) {
         classType = tsManager_->GetExtendedClassType(classType);
-
         if (classType->GetHasEscapedThisInConstructor()) {
             return true;
         }
