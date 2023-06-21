@@ -69,9 +69,9 @@ void TypeRecorder::LoadTypesFromPGO(const JSPandaFile *jsPandaFile, const Method
 {
     auto callback = [this] (uint32_t offset, PGOType *type) {
         if (type->IsScalarOpType()) {
-           bcOffsetPGOOpTypeMap_[offset] = *reinterpret_cast<PGOSampleType *>(type);
+            bcOffsetPGOOpTypeMap_[offset] = *reinterpret_cast<PGOSampleType *>(type);
         } else if (type->IsRwOpType()) {
-           bcOffsetPGORwTypeMap_[offset] = *reinterpret_cast<PGORWOpType *>(type);
+            bcOffsetPGORwTypeMap_[offset] = *reinterpret_cast<PGORWOpType *>(type);
         } else {
             UNREACHABLE();
         }

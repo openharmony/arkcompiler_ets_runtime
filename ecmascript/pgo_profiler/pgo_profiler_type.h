@@ -188,7 +188,7 @@ public:
 
     static int32_t CombineType(int32_t curType, int32_t newType)
     {
-        return static_cast<int32_t>(curType) | static_cast<int32_t>(newType);
+        return static_cast<int32_t>(static_cast<uint32_t>(curType) | static_cast<uint32_t>(newType));
     }
 
     static PGOSampleType NoneClassType()

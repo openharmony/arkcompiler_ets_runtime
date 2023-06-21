@@ -336,19 +336,19 @@ size_t PGOHClassLayoutDescInner::CaculateSize(const PGOHClassLayoutDesc &desc)
     for (const auto &iter : desc.GetLayoutDesc()) {
         auto key = iter.first;
         if (key.size() > 0) {
-            size += PGOLayoutDescInfo::Size(key.size());
+            size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
         }
     }
     for (const auto &iter : desc.GetPtLayoutDesc()) {
         auto key = iter.first;
         if (key.size() > 0) {
-            size += PGOLayoutDescInfo::Size(key.size());
+            size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
         }
     }
     for (const auto &iter : desc.GetCtorLayoutDesc()) {
         auto key = iter.first;
         if (key.size() > 0) {
-            size += PGOLayoutDescInfo::Size(key.size());
+            size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
         }
     }
     return size;

@@ -100,7 +100,7 @@ void PGOProfiler::ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_
             return;
         }
         auto ctorJSMethod = Method::Cast(ctorMethod);
-        int32_t ctorMethodId = ctorJSMethod->GetMethodId().GetOffset();
+        int32_t ctorMethodId = static_cast<int32_t>(ctorJSMethod->GetMethodId().GetOffset());
         auto currentType = PGOSampleType::CreateClassType(ctorMethodId);
 
         auto superFuncValue = JSTaggedValue::GetPrototype(thread, ctorValue);

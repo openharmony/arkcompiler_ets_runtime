@@ -26,7 +26,7 @@
 namespace panda::ecmascript {
 class PGOHandler {
 public:
-    using TrackTypeField = BitField<TrackType, 0, 2>;
+    using TrackTypeField = BitField<TrackType, 0, 2>; // 2 : two binary bits
     using IsAccessorField = TrackTypeField::NextFlag;
 
     PGOHandler()

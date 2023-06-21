@@ -702,7 +702,7 @@ bool JSHClass::DumpForProfile(const JSHClass *hclass, PGOHClassLayoutDesc &desc,
     }
 
     LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    int element = hclass->NumberOfProps();
+    int element = static_cast<int>(hclass->NumberOfProps());
     for (int i = 0; i < element; i++) {
         layout->DumpFieldIndexForProfile(i, desc, kind);
     }

@@ -1900,6 +1900,7 @@ DEF_CALL_SIGNATURE(StartCallTimer)
 {
     CallSignature index("StartCallTimer", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = index;
+    // 3 : 3 input parameters
     std::array<VariableType, 3> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
@@ -1914,6 +1915,7 @@ DEF_CALL_SIGNATURE(EndCallTimer)
 {
     CallSignature index("EndCallTimer", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = index;
+    // 3 : 3 input parameters
     std::array<VariableType, 3> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY()
