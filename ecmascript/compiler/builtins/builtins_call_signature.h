@@ -64,7 +64,8 @@ namespace panda::ecmascript::kungfu {
     V(ACOS)                                         \
     V(ATAN)                                         \
     V(ABS)                                          \
-    V(FLOOR)
+    V(FLOOR)                                        \
+    V(LocaleCompare)
 
 class BuiltinsStubCSigns {
 public:
@@ -161,6 +162,7 @@ public:
             {"atan", ATAN},
             {"abs", ABS},
             {"floor", FLOOR},
+            {"localeCompare", LocaleCompare},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);

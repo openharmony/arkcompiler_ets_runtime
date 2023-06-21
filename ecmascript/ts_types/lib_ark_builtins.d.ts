@@ -613,7 +613,7 @@ declare class String extends Object {
 
     lastIndexOf(searchString: string, position?: number): number;
 
-    localeCompare(that: string): number;
+    localeCompare(that: string, locale?: string, options?: any): number;
 
     match(regexp: string | RegExp): RegExpMatchArray | null;
 

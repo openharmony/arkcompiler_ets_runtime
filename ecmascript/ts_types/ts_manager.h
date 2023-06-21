@@ -553,7 +553,7 @@ public:
 
     bool PUBLIC_API IsBuiltin(kungfu::GateType funcType) const;
 
-    bool PUBLIC_API IsBuiltinMath(kungfu::GateType funcType) const;
+    bool PUBLIC_API IsBuiltinObject(BuiltinTypeId id, kungfu::GateType funcType) const;
 
     inline const JSPandaFile *GetBuiltinPandaFile() const
     {

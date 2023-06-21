@@ -1330,7 +1330,7 @@ JSHandle<TaggedArray> TSManager::GenerateExportTableFromLiteral(const JSPandaFil
     return typeOfExportedSymbols;
 }
 
-bool TSManager::IsBuiltinMath(kungfu::GateType funcType) const
+bool TSManager::IsBuiltinObject(BuiltinTypeId id, kungfu::GateType funcType) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     GlobalTSTypeRef funcGT = funcType.GetGTRef();
@@ -1339,17 +1339,17 @@ bool TSManager::IsBuiltinMath(kungfu::GateType funcType) const
     }
 
     if (IsBuiltinsDTSEnabled()) {
-        uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::MATH);
+        uint32_t idx = static_cast<uint32_t>(id);
         const JSPandaFile *builtinPandaFile = GetBuiltinPandaFile();
-        uint32_t mathOffset = GetBuiltinOffset(idx);
-        bool hasCreatedGT = HasCreatedGT(builtinPandaFile, mathOffset);
+        uint32_t builtinOffset = GetBuiltinOffset(idx);
+        bool hasCreatedGT = HasCreatedGT(builtinPandaFile, builtinOffset);
         if (hasCreatedGT) {
             JSHandle<JSTaggedValue> funcTsType = GetTSType(funcGT);
             ASSERT(funcTsType->IsTSFunctionType());
             JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(funcTsType);
             auto name = functionType->GetName();
 
-            auto gt = GetGTFromOffset(builtinPandaFile, mathOffset);
+            auto gt = GetGTFromOffset(builtinPandaFile, builtinOffset);
             auto tsType = GetTSType(gt);
             ASSERT(tsType->IsTSClassType());
             JSHandle<TSClassType> classType(tsType);
@@ -1358,8 +1358,16 @@ bool TSManager::IsBuiltinMath(kungfu::GateType funcType) const
             TSObjLayoutInfo *itLayout = TSObjLayoutInfo::Cast(layout.GetTaggedObject());
             int index = itLayout->GetElementIndexByKey(name);
             if (index != -1) {
-                auto mathFuncGt = GlobalTSTypeRef(itLayout->GetTypeId(index).GetInt());
-                return mathFuncGt == funcGT;
+                auto builtinFuncGt = GlobalTSTypeRef(itLayout->GetTypeId(index).GetInt());
+                return builtinFuncGt == funcGT;
+            }
+            JSHandle<TSObjectType> prototypeType(thread_, classType->GetPrototypeType());
+            JSTaggedValue prototypeLayout = prototypeType->GetObjLayoutInfo();
+            TSObjLayoutInfo *pPrototypeLayout = TSObjLayoutInfo::Cast(prototypeLayout.GetTaggedObject());
+            index = pPrototypeLayout->GetElementIndexByKey(name);
+            if (index != -1) {
+                auto builtinFuncGt = GlobalTSTypeRef(pPrototypeLayout->GetTypeId(index).GetInt());
+                return builtinFuncGt == funcGT;
             }
         }
     }
