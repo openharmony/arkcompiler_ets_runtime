@@ -321,6 +321,10 @@ void ObjectOperator::LookupPropertyInlinedProps(const JSHandle<JSObject> &obj)
         return;
     }
 
+    if (!obj.GetTaggedValue().IsJSObject()) {
+        return;
+    }
+
     if (obj->IsJSGlobalObject()) {
         DISALLOW_GARBAGE_COLLECTION;
         TaggedArray *array = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
