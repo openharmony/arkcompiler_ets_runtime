@@ -1294,7 +1294,6 @@ public:
     static void SetLoop(EcmaVM *vm, void *loop);
     static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func);
     static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
-    static void SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
 
 private:
     static int vmCount_;
