@@ -26,7 +26,8 @@
               "hitrace",
               "hilog",
               "runtime_core",
-              "c_utils"
+              "c_utils",
+              "code_signature"
             ],
             "third_party": [
               "bounds_checking_function",
