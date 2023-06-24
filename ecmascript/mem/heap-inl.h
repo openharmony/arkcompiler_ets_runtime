@@ -336,6 +336,14 @@ void Heap::SwapNewSpace()
     thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
 }
 
+void Heap::SwapOldSpace()
+{
+    compressSpace_->SetInitialCapacity(oldSpace_->GetInitialCapacity());
+    auto *oldSpace = compressSpace_;
+    compressSpace_ = oldSpace_;
+    oldSpace_ = oldSpace;
+}
+
 void Heap::ReclaimRegions(TriggerGCType gcType)
 {
     activeSemiSpace_->EnumerateRegionsWithRecord([] (Region *region) {

@@ -338,6 +338,7 @@ public:
     }
 
     inline void SwapNewSpace();
+    inline void SwapOldSpace();
 
     inline bool MoveYoungRegionSync(Region *region);
     inline void MergeToOldSpaceSync(LocalSpace *localSpace);
