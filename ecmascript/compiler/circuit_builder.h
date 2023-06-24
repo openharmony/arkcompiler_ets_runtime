@@ -267,6 +267,14 @@ public:
     GateRef MulWithOverflow(GateRef left, GateRef right);
     GateRef ExtractValue(MachineType mt, GateRef pointer, GateRef index);
     GateRef Sqrt(GateRef param);
+    GateRef Int32CheckRightIsZero(GateRef right);
+    GateRef Float64CheckRightIsZero(GateRef right);
+    GateRef ValueCheckNegOverflow(GateRef value);
+    GateRef NegativeIndexCheck(GateRef index);
+    GateRef LargeIndexCheck(GateRef index, GateRef length);
+    GateRef OverflowCheck(GateRef value);
+    GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);
+    GateRef Int32DivWithCheck(GateRef left, GateRef right);
     MachineType GetMachineTypeOfValueType(ValueType type);
     GateType GetGateTypeOfValueType(ValueType type);
     GateRef IsJsCOWArray(GateRef obj);

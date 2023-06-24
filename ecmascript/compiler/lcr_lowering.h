@@ -60,6 +60,14 @@ private:
     void LowerGetGlobalEnvObjHClass(GateRef gate);
     void LowerGetGlobalConstantValue(GateRef gate);
     void LowerHeapAllocate(GateRef gate);
+    void LowerInt32CheckRightIsZero(GateRef gate);
+    void LowerFloat64CheckRightIsZero(GateRef gate);
+    void LowerValueCheckNegOverflow(GateRef gate);
+    void LowerNegativeIndexCheck(GateRef gate);
+    void LowerLargeIndexCheck(GateRef gate);
+    void LowerOverflowCheck(GateRef gate);
+    void LowerInt32UnsignedUpperBoundCheck(GateRef gate);
+    void LowerInt32DivWithCheck(GateRef gate);
 
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
     GateRef ConvertInt32ToFloat64(GateRef gate);

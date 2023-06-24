@@ -62,6 +62,30 @@ void LCRLowering::Run()
             case OpCode::HEAP_ALLOC:
                 LowerHeapAllocate(gate);
                 break;
+            case OpCode::INT32_CHECK_RIGHT_IS_ZERO:
+                LowerInt32CheckRightIsZero(gate);
+                break;
+            case OpCode::FLOAT64_CHECK_RIGHT_IS_ZERO:
+                LowerFloat64CheckRightIsZero(gate);
+                break;
+            case OpCode::VALUE_CHECK_NEG_OVERFLOW:
+                LowerValueCheckNegOverflow(gate);
+                break;
+            case OpCode::NEGATIVE_INDEX_CHECK:
+                LowerNegativeIndexCheck(gate);
+                break;
+            case OpCode::LARGE_INDEX_CHECK:
+                LowerLargeIndexCheck(gate);
+                break;
+            case OpCode::OVERFLOW_CHECK:
+                LowerOverflowCheck(gate);
+                break;
+            case OpCode::INT32_UNSIGNED_UPPER_BOUND_CHECK:
+                LowerInt32UnsignedUpperBoundCheck(gate);
+                break;
+            case OpCode::INT32_DIV_WITH_CHECK:
+                LowerInt32DivWithCheck(gate);
+                break;
             default:
                 break;
         }
@@ -501,6 +525,97 @@ void LCRLowering::HeapAllocateInYoung(GateRef gate)
     builder_.Bind(&exit);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void LCRLowering::LowerInt32CheckRightIsZero(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef right = acc_.GetValueIn(gate, 0);
+    GateRef rightNotZero = builder_.Int32NotEqual(right, builder_.Int32(0));
+    builder_.DeoptCheck(rightNotZero, frameState, DeoptType::MODZERO);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void LCRLowering::LowerFloat64CheckRightIsZero(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef right = acc_.GetValueIn(gate, 0);
+    GateRef rightNotZero = builder_.DoubleNotEqual(right, builder_.Double(0.0));
+    builder_.DeoptCheck(rightNotZero, frameState, DeoptType::DIVZERO);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void LCRLowering::LowerValueCheckNegOverflow(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef valueNotZero = builder_.NotEqual(value, builder_.Int32(0));
+    builder_.DeoptCheck(valueNotZero, frameState, DeoptType::NOTNEGOV);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void LCRLowering::LowerNegativeIndexCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef index = acc_.GetValueIn(gate, 0);
+    GateRef condition = builder_.Int32LessThanOrEqual(builder_.Int32(0), index);
+    builder_.DeoptCheck(condition, frameState, DeoptType::NEGTIVEINDEX);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void LCRLowering::LowerLargeIndexCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef index = acc_.GetValueIn(gate, 0);
+    GateRef length = acc_.GetValueIn(gate, 1);
+    GateRef condition = builder_.Int32LessThan(index, length);
+    builder_.DeoptCheck(condition, frameState, DeoptType::LARGEINDEX);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void LCRLowering::LowerOverflowCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef result = acc_.GetValueIn(gate, 0);
+    GateRef condition = builder_.BoolNot(builder_.ExtractValue(MachineType::I1, result, builder_.Int32(1)));
+    builder_.DeoptCheck(condition, frameState, DeoptType::NOTINT);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void LCRLowering::LowerInt32UnsignedUpperBoundCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef upperBound = acc_.GetValueIn(gate, 1);
+    GateRef condition = builder_.Int32UnsignedLessThanOrEqual(value, upperBound);
+    builder_.DeoptCheck(condition, frameState, DeoptType::NOTINT);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void LCRLowering::LowerInt32DivWithCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateRef result = Circuit::NullGate();
+    GateRef rightGreaterZero = builder_.Int32GreaterThan(right, builder_.Int32(0));
+    GateRef rightLessZero = builder_.Int32LessThan(right, builder_.Int32(0));
+    GateRef leftNotZero = builder_.Int32NotEqual(left, builder_.Int32(0));
+    GateRef condition = builder_.BoolOr(rightGreaterZero, builder_.BoolAnd(rightLessZero, leftNotZero));
+    builder_.DeoptCheck(condition, frameState, DeoptType::DIVZERO);
+    result = builder_.BinaryArithmetic(circuit_->Sdiv(), MachineType::I32, left, right, GateType::NJSValue());
+    GateRef truncated = builder_.BinaryArithmetic(circuit_->Mul(), MachineType::I32, result, right);
+    GateRef overCheck = builder_.Int32Equal(truncated, left);
+    builder_.DeoptCheck(overCheck, frameState, DeoptType::NOTINT);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void LCRLowering::InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue,
