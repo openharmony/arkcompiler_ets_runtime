@@ -153,28 +153,36 @@ enum class TypedLoadOp : uint8_t {
 
 std::string MachineTypeToStr(MachineType machineType);
 
-#define BINARY_GATE_META_DATA_CACHE_LIST(V)                                 \
-    V(Add, ADD, GateFlags::NONE_FLAG, 0, 0, 2)                              \
-    V(Sub, SUB, GateFlags::NONE_FLAG, 0, 0, 2)                              \
-    V(Mul, MUL, GateFlags::NONE_FLAG, 0, 0, 2)                              \
-    V(Exp, EXP, GateFlags::NONE_FLAG, 0, 0, 2)                              \
-    V(Sdiv, SDIV, GateFlags::NONE_FLAG, 0, 0, 2)                            \
-    V(Smod, SMOD, GateFlags::NONE_FLAG, 0, 0, 2)                            \
-    V(Udiv, UDIV, GateFlags::NONE_FLAG, 0, 0, 2)                            \
-    V(Umod, UMOD, GateFlags::NONE_FLAG, 0, 0, 2)                            \
-    V(Fdiv, FDIV, GateFlags::NONE_FLAG, 0, 0, 2)                            \
-    V(Fmod, FMOD, GateFlags::NONE_FLAG, 0, 0, 2)                            \
-    V(And, AND, GateFlags::NONE_FLAG, 0, 0, 2)                              \
-    V(Xor, XOR, GateFlags::NONE_FLAG, 0, 0, 2)                              \
-    V(Or, OR, GateFlags::NONE_FLAG, 0, 0, 2)                                \
-    V(Lsl, LSL, GateFlags::NONE_FLAG, 0, 0, 2)                              \
-    V(Lsr, LSR, GateFlags::NONE_FLAG, 0, 0, 2)                              \
-    V(Asr, ASR, GateFlags::NONE_FLAG, 0, 0, 2)                              \
-    V(AddWithOverflow, ADD_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 2)    \
-    V(SubWithOverflow, SUB_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 2)    \
-    V(MulWithOverflow, MUL_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 2)    \
-    V(ExtractValue, EXTRACT_VALUE, GateFlags::NONE_FLAG, 0, 0, 2)           \
-    V(Sqrt, SQRT, GateFlags::NO_WRITE, 0, 0, 1)
+#define BINARY_GATE_META_DATA_CACHE_LIST(V)                                                          \
+    V(Add, ADD, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
+    V(Sub, SUB, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
+    V(Mul, MUL, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
+    V(Exp, EXP, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
+    V(Sdiv, SDIV, GateFlags::NONE_FLAG, 0, 0, 2)                                                     \
+    V(Smod, SMOD, GateFlags::NONE_FLAG, 0, 0, 2)                                                     \
+    V(Udiv, UDIV, GateFlags::NONE_FLAG, 0, 0, 2)                                                     \
+    V(Umod, UMOD, GateFlags::NONE_FLAG, 0, 0, 2)                                                     \
+    V(Fdiv, FDIV, GateFlags::NONE_FLAG, 0, 0, 2)                                                     \
+    V(Fmod, FMOD, GateFlags::NONE_FLAG, 0, 0, 2)                                                     \
+    V(And, AND, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
+    V(Xor, XOR, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
+    V(Or, OR, GateFlags::NONE_FLAG, 0, 0, 2)                                                         \
+    V(Lsl, LSL, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
+    V(Lsr, LSR, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
+    V(Asr, ASR, GateFlags::NONE_FLAG, 0, 0, 2)                                                       \
+    V(AddWithOverflow, ADD_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 2)                             \
+    V(SubWithOverflow, SUB_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 2)                             \
+    V(MulWithOverflow, MUL_WITH_OVERFLOW, GateFlags::NONE_FLAG, 0, 0, 2)                             \
+    V(ExtractValue, EXTRACT_VALUE, GateFlags::NONE_FLAG, 0, 0, 2)                                    \
+    V(Sqrt, SQRT, GateFlags::NO_WRITE, 0, 0, 1)                                                      \
+    V(Int32CheckRightIsZero, INT32_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)               \
+    V(Float64CheckRightIsZero, FLOAT64_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)           \
+    V(ValueCheckNegOverflow, VALUE_CHECK_NEG_OVERFLOW, GateFlags::CHECKABLE, 1, 1, 1)                \
+    V(NegativeIndexCheck, NEGATIVE_INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                       \
+    V(LargeIndexCheck, LARGE_INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                             \
+    V(OverflowCheck, OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                  \
+    V(Int32UnsignedUpperBoundCheck, INT32_UNSIGNED_UPPER_BOUND_CHECK, GateFlags::CHECKABLE, 1, 1, 2) \
+    V(Int32DivWithCheck, INT32_DIV_WITH_CHECK, GateFlags::CHECKABLE, 1, 1, 2)
 
 #define UNARY_GATE_META_DATA_CACHE_LIST(V)                                       \
     V(Zext, ZEXT, GateFlags::NONE_FLAG, 0, 0, 1)                                 \

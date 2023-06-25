@@ -565,6 +565,110 @@ GateRef CircuitBuilder::Sqrt(GateRef param)
     return GetCircuit()->NewGate(circuit_->Sqrt(), MachineType::F64, {param}, GateType::DoubleType());
 }
 
+GateRef CircuitBuilder::Int32CheckRightIsZero(GateRef right)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->Int32CheckRightIsZero(),
+    MachineType::I1, {currentControl, currentDepend, right, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::Float64CheckRightIsZero(GateRef right)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->Float64CheckRightIsZero(),
+    MachineType::I1, {currentControl, currentDepend, right, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ValueCheckNegOverflow(GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->ValueCheckNegOverflow(),
+    MachineType::I1, {currentControl, currentDepend, value, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::NegativeIndexCheck(GateRef index)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->NegativeIndexCheck(),
+    MachineType::I1, {currentControl, currentDepend, index, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::LargeIndexCheck(GateRef index, GateRef length)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->LargeIndexCheck(),
+        MachineType::I1, {currentControl, currentDepend, index, length, frameState}, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::OverflowCheck(GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->OverflowCheck(),
+        MachineType::I1, {currentControl, currentDepend, value, frameState}, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->Int32UnsignedUpperBoundCheck(),
+        MachineType::I1, {currentControl, currentDepend, value, upperBound, frameState}, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::Int32DivWithCheck(GateRef left, GateRef right)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->Int32DivWithCheck(),
+        MachineType::I32, {currentControl, currentDepend, left, right, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateType typeTo,
                                     const std::vector<GateRef>& inList)
 {

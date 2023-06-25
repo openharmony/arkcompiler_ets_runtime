@@ -310,21 +310,10 @@ void NumberSpeculativeLowering::VisitNumberDiv(GateRef gate)
     }
     GateRef result = Circuit::NullGate();
     if (gateType.IsIntType()) {
-        GateRef rightGreaterZero = builder_.Int32GreaterThan(right, builder_.Int32(0));
-        GateRef rightLessZero = builder_.Int32LessThan(right, builder_.Int32(0));
-        GateRef leftNotZero = builder_.Int32NotEqual(left, builder_.Int32(0));
-        GateRef condition = builder_.BoolOr(rightGreaterZero, builder_.BoolAnd(rightLessZero, leftNotZero));
-        GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
-        builder_.DeoptCheck(condition, frameState, DeoptType::DIVZERO);
-        result = builder_.BinaryArithmetic(circuit_->Sdiv(), MachineType::I32, left, right);
-        GateRef truncated = builder_.BinaryArithmetic(circuit_->Mul(), MachineType::I32, result, right);
-        GateRef overCheck = builder_.Int32Equal(truncated, left);
-        builder_.DeoptCheck(overCheck, frameState, DeoptType::NOTINT);
+        result = builder_.Int32DivWithCheck(left, right);
         acc_.SetMachineType(gate, MachineType::I32);
     } else {
-        GateRef rightNotZero = builder_.DoubleNotEqual(right, builder_.Double(0.0));
-        GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
-        builder_.DeoptCheck(rightNotZero, frameState, DeoptType::DIVZERO);
+        builder_.Float64CheckRightIsZero(right);
         result = builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, left, right);
         acc_.SetMachineType(gate, MachineType::F64);
     }
@@ -348,10 +337,8 @@ void NumberSpeculativeLowering::VisitNumberMod(GateRef gate)
     }
     GateRef result = Circuit::NullGate();
     if (gateType.IsIntType()) {
-        GateRef rightNotZero = builder_.Int32NotEqual(right, builder_.Int32(0));
-        GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
-        builder_.DeoptCheck(rightNotZero, frameState, DeoptType::MODZERO);
-        result = CalculateInts<Op>(left, right);    // int op int
+        builder_.Int32CheckRightIsZero(right);
+        result = CalculateInts<Op>(left, right);
         UpdateRange(result, GetRange(gate));
         acc_.SetMachineType(gate, MachineType::I32);
     } else {
@@ -375,9 +362,7 @@ void NumberSpeculativeLowering::VisitNumberMonocular(GateRef gate)
     GateRef result = Circuit::NullGate();
     if (type.IsIntType()) {
         if (Op == TypedUnOp::TYPED_NEG) {
-            GateRef valueNotZero = builder_.NotEqual(value, builder_.Int32(0));
-            GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
-            builder_.DeoptCheck(valueNotZero, frameState, DeoptType::NOTNEGOV);
+            builder_.ValueCheckNegOverflow(value);
         }
         result = MonocularInt<Op>(value);
         UpdateRange(result, GetRange(gate));
@@ -502,16 +487,13 @@ void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)
         return;
     }
     Environment env(gate, circuit_, &builder_);
-    GateRef frameState = acc_.FindNearestFrameState(gate);
     GateRef length = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     RangeInfo indexRange = GetRange(index);
     if (indexRange.GetMin() < 0) {
-        GateRef condition = builder_.Int32LessThanOrEqual(builder_.Int32(0), index);
-        builder_.DeoptCheck(condition, frameState, DeoptType::NEGTIVEINDEX);
+        builder_.NegativeIndexCheck(index);
     }
-    GateRef condition = builder_.Int32LessThan(index, length);
-    builder_.DeoptCheck(condition, frameState, DeoptType::LARGEINDEX);
+    builder_.LargeIndexCheck(index, length);
     // return checked index value
     acc_.SetGateType(gate, GateType::NJSValue());
     acc_.SetMachineType(gate, MachineType::I32);
@@ -550,8 +532,7 @@ GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
             break;
     }
     // DeoptCheckForOverFlow
-    GateRef condition = builder_.BoolNot(builder_.ExtractValue(MachineType::I1, res, GetConstInt32(1)));
-    builder_.DeoptCheck(condition, acc_.FindNearestFrameState(builder_.GetDepend()), DeoptType::NOTINT);
+    builder_.OverflowCheck(res);
     return builder_.ExtractValue(MachineType::I32, res, GetConstInt32(0));
 }
 
@@ -659,9 +640,7 @@ GateRef NumberSpeculativeLowering::ShiftInts(GateRef left, GateRef right)
             if (!leftRange.MaybeShrOverflow(rightRange)) {
                 return value;
             }
-            GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
-            GateRef condition = builder_.Int32UnsignedLessThanOrEqual(value, GetConstInt32(INT32_MAX));
-            builder_.DeoptCheck(condition, frameState, DeoptType::NOTINT);
+            builder_.Int32UnsignedUpperBoundCheck(value, builder_.Int32(INT32_MAX));
             break;
         }
         case TypedBinOp::TYPED_ASHR: {
