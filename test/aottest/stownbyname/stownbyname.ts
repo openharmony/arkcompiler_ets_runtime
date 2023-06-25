@@ -19,3 +19,36 @@ var foo = {
   };
 print(foo.bar[0]);
 print(foo.bar[1]);
+
+interface objInterface {
+    [key: string]: any
+}
+let obj:objInterface = {};
+obj.a = 100;
+obj.b = "helloworld";
+print(obj.a)
+print(obj.b);
+
+function ArkFunc(depth: number, tag: string): {
+    array: number[],
+    string: string
+} | {
+    left: object,
+    right: object
+} {
+    if (depth == 0) {
+        return {
+            array: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            string: 'Ark ' + tag + ' Departure!'
+        };
+    } else {
+        return {
+            left: ArkFunc(depth - 1, tag),
+            right: ArkFunc(depth - 1, tag)
+        };
+    }
+}
+
+var arkDepth: number = 5;
+var arkTag: number = 18;
+var arkResult = ArkFunc(arkDepth, String(arkTag));

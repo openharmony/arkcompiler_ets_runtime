@@ -87,6 +87,10 @@ void PGOTypeInfer::RunTypeInfer(GateRef gate)
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
             InferStObjByName(gate, true);
             break;
+        case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
+            InferStOwnByName(gate);
+            break;
         default:
             break;
     }
@@ -284,6 +288,21 @@ void PGOTypeInfer::InferStObjByName(GateRef gate, bool isThis)
         ASSERT(acc_.GetNumValueIn(gate) == 4);
         receiver = acc_.GetValueIn(gate, 2); // 2: receiver
     }
+
+    UpdateTypeForRWOp(gate, receiver, prop);
+}
+
+void PGOTypeInfer::InferStOwnByName(GateRef gate)
+{
+    if (!builder_->ShouldPGOTypeInfer(gate)) {
+        return;
+    }
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    GateRef constData = acc_.GetValueIn(gate, 0);
+    uint16_t propIndex = acc_.GetConstantValue(constData);
+    JSTaggedValue prop = tsManager_->GetStringFromConstantPool(propIndex);
+    GateRef receiver = acc_.GetValueIn(gate, 1);
 
     UpdateTypeForRWOp(gate, receiver, prop);
 }
