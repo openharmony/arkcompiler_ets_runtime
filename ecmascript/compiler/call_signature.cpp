@@ -1444,6 +1444,26 @@ DEF_CALL_SIGNATURE(ProfileDefineClass)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(ProfileCreateObject)
+{
+    // 4: 4 input parameters
+    CallSignature defineProfInstruction(
+        "ProfileCreateObject", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = defineProfInstruction;
+    // 4: 4 input parameters
+    std::array<VariableType, 5> params = { // 4 : 4 input parameters
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::INT32(),
+        VariableType::JS_ANY(),
+        VariableType::JS_ANY(),
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(ProfileOpType)
 {
     // 4: 4 input parameters

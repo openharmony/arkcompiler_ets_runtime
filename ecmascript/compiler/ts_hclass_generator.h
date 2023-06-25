@@ -26,7 +26,7 @@ public:
     ~TSHClassGenerator() = default;
 
     void GenerateTSHClasses() const;
-    void UpdateTSHClassFromPGO(JSHClass *hclass, const PGOHClassLayoutDesc &desc) const;
+    void UpdateTSHClassFromPGO(const kungfu::GateType &type, const PGOHClassLayoutDesc &desc) const;
 
 private:
     void RecursiveGenerate(const JSHandle<TSClassType> &classType) const;

@@ -243,7 +243,7 @@ void PGOMethodTypeSet::SkipFromBinary(void **buffer)
     }
 }
 
-bool PGOMethodTypeSet::ParseFromBinary(void **buffer)
+bool PGOMethodTypeSet::ParseFromBinary(void **buffer, PGOProfilerHeader *const header)
 {
     uint32_t size = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
     for (uint32_t i = 0; i < size; i++) {
@@ -252,7 +252,7 @@ bool PGOMethodTypeSet::ParseFromBinary(void **buffer)
             scalarOpTypeInfos_.emplace(*reinterpret_cast<ScalarOpTypeInfo *>(typeInfo));
         } else if (typeInfo->GetInfoType() == InfoType::DEFINE_CLASS_TYPE) {
             objDefOpTypeInfos_.emplace(*reinterpret_cast<ObjDefOpTypeInfo *>(typeInfo));
-        } else if (typeInfo->GetInfoType() == InfoType::USE_HCLASS_TYPE) {
+        } else if (header->SupportUseHClassType() && typeInfo->GetInfoType() == InfoType::USE_HCLASS_TYPE) {
             rwScalarOpTypeInfos_.emplace(*reinterpret_cast<RWScalarOpTypeInfo *>(typeInfo));
         }
     }
@@ -488,7 +488,7 @@ void PGOMethodTypeSet::RWScalarOpTypeInfo::ProcessToText(std::string &text) cons
             text += TYPE_SEPARATOR + SPACE;
         }
         isFirst = false;
-        text += type_.GetType(i).GetTypeString();
+        text += type_.GetObjectInfo(i).GetInfoString();
     }
     text += (SPACE + ARRAY_END);
 }
@@ -544,6 +544,14 @@ bool PGOMethodInfoMap::AddType(Chunk *chunk, PGOMethodId methodId, int32_t offse
     auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
     ASSERT(typeInfoSet != nullptr);
     typeInfoSet->AddType(offset, type);
+    return true;
+}
+
+bool PGOMethodInfoMap::AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info)
+{
+    auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
+    ASSERT(typeInfoSet != nullptr);
+    typeInfoSet->AddObjectInfo(offset, info);
     return true;
 }
 
@@ -625,7 +633,7 @@ bool PGOMethodInfoMap::ParseFromBinary(Chunk *chunk, uint32_t threshold, void **
         }
         if (header->SupportType()) {
             auto typeInfoSet = chunk->New<PGOMethodTypeSet>();
-            typeInfoSet->ParseFromBinary(buffer);
+            typeInfoSet->ParseFromBinary(buffer, header);
             methodTypeInfos_.emplace(info->GetMethodId(), typeInfoSet);
         }
     }
@@ -802,7 +810,7 @@ bool PGOMethodIdSet::ParseFromBinary(uint32_t threshold, void **buffer, PGOProfi
                         << ELEMENT_SEPARATOR << std::to_string(static_cast<int>(info->GetSampleMode()))
                         << ELEMENT_SEPARATOR << info->GetMethodName();
         if (header->SupportType()) {
-            methodInfo.GetPGOMethodTypeSet().ParseFromBinary(buffer);
+            methodInfo.GetPGOMethodTypeSet().ParseFromBinary(buffer, header);
         }
     }
 
@@ -850,6 +858,14 @@ bool PGORecordDetailInfos::AddType(const CString &recordName, PGOMethodId method
     return curMethodInfos->AddType(chunk_.get(), methodId, offset, type);
 }
 
+bool PGORecordDetailInfos::AddObjectInfo(
+    const CString &recordName, EntityId methodId, int32_t offset, const PGOObjectInfo &info)
+{
+    auto curMethodInfos = GetMethodInfoMap(recordName);
+    ASSERT(curMethodInfos != nullptr);
+    return curMethodInfos->AddObjectInfo(chunk_.get(), methodId, offset, info);
+}
+
 bool PGORecordDetailInfos::AddDefine(
     const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType)
 {
@@ -867,7 +883,7 @@ bool PGORecordDetailInfos::AddDefine(
     return true;
 }
 
-bool PGORecordDetailInfos::AddLayout(PGOSampleType type, JSTaggedType hclass, PGOObjLayoutKind kind)
+bool PGORecordDetailInfos::AddLayout(PGOSampleType type, JSTaggedType hclass, PGOObjKind kind)
 {
     auto hclassObject = JSHClass::Cast(JSTaggedValue(hclass).GetTaggedObject());
     PGOHClassLayoutDesc descInfo(type.GetClassType());

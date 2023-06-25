@@ -52,59 +52,47 @@ static constexpr size_t ALIGN_SIZE = 4;
 using PGOMethodId = EntityId;
 
 /**
- * |----PGOProfilerHeader
- * |--------MAGIC
- * |--------VERSION
- * |--------SECTION_NUMBER
- * |--------PANDA_FILE_INFO_SECTION_INFO
- * |------------offset
- * |------------size (reserve)
- * |------------number
- * |--------RECORD_INFO_SECTION_INFO
- * |------------offset
- * |------------size (reserve)
- * |------------number
- * |----PGOPandaFileInfos
- * |--------SIZE
- * |--------CHECK_SUM
- * |--------...
- * |----PGORecordDetailInfos
- * |--------PGOMethodInfoMap
- * |------------PGOMethodInfo
- * |----------------size
- * |----------------id
- * |----------------count
- * |----------------mode
- * |----------------methodName
- * |----------------methodChecksum
- * |----------------...
- * |------------PGOMethodTypeSet
- * |----------------ScalarOpTypeInfo
- * |--------------------size
- * |--------------------offset
- * |--------------------type
- * |----------------...
- * |----------------PGOHClassLayoutDescInner
- * |--------------------size
- * |--------------------offset
- * |--------------------type
- * |--------------------count
- * |--------------------PGOLayoutDescInfo
- * |------------------------size
- * |------------------------type
- * |------------------------key
- * |--------------------...
- * |----------------...
- * |----PGORecordSimpleInfos
- * |--------PGOMethodIdSet
- * |------------id
- * |------------...
+  |----PGOProfilerHeader
+  |--------MAGIC(8)
+  |------------{ 'P', 'A', 'N', 'D', 'A', '\0', '\0', '\0' }
+  |--------VERSION(4)
+  |------------{ '0', '0', '0', '0' }
+  |--------SECTION_NUMBER(4)
+  |------------{ 3 }
+  |--------PANDA_FILE_INFO_SECTION_INFO(12)
+  |------------{ offset, size (reserve), number1 }
+  |--------RECORD_INFO_SECTION_INFO(12)
+  |------------{ offset, size (reserve), number2 }
+  |--------LAYOUT_DESC_SECTION_INFO(12)
+  |------------{ offset, size (reserve), number3 }
+  |
+  |----Section1: PGOPandaFileInfos(number1)
+  |--------[{ size, CHECK_SUM }, { size, CHECK_SUM }, ...]
+  |
+  |----Section2: PGORecordDetailInfos(number2)
+  |--------[ PGOMethodInfoMap(number4)
+  |------------{ offset, size, number4 }
+  |------------[ PGOMethodInfo(size1)
+  |----------------{ size1, entityId, count, mode, methodName, [{ size, offset, type }, { size, offset, type }, ...]},
+  |------------  PGOMethodInfo(size1)
+  |----------------{ size1, entityId, count, mode, methodName, [{ size, offset, type }, { size, offset, type }, ...]},
+  |--------------... ]
+  |--------  PGOMethodInfoMap()
+  |--------... ]
+  |
+  |----Section3: PGHClassLayoutDescs(number3)
+  |--------{ offset, size, number5 }
+  |--------[ PGOHClassLayoutDescInner(size)
+  |------------{ size, type, superType, count, ptCount, ctorCount, [{ size, handle, key }, { size, heandle, key }, ...]}
+  |--------  PGOHClassLayoutDescInner(size)
+  |------------{ size, type, superType, count, ptCount, ctorCount, [{ size, handle, key }, { size, heandle, key }, ...]}
  */
 class PGOProfilerHeader : public base::FileHeader {
 public:
     static constexpr VersionType TYPE_MINI_VERSION = {0, 0, 0, 2};
     static constexpr VersionType METHOD_CHECKSUM_MINI_VERSION = {0, 0, 0, 4};
-    static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 4};
+    static constexpr VersionType USE_HCLASS_TYPE_MINI_VERSION = {0, 0, 0, 5};
+    static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 5};
     static constexpr size_t SECTION_SIZE = 3;
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
@@ -174,6 +162,11 @@ public:
     bool SupportMethodChecksum() const
     {
         return InternalVerifyVersion(METHOD_CHECKSUM_MINI_VERSION);
+    }
+
+    bool SupportUseHClassType() const
+    {
+        return InternalVerifyVersion(USE_HCLASS_TYPE_MINI_VERSION);
     }
 
     NO_COPY_SEMANTIC(PGOProfilerHeader);
@@ -395,26 +388,22 @@ public:
 
     void AddType(uint32_t offset, PGOSampleType type)
     {
-        if (type.IsClassType()) {
-            AddClassType(offset, type);
+        auto result = scalarOpTypeInfos_.find(ScalarOpTypeInfo(offset, type));
+        if (result != scalarOpTypeInfos_.end()) {
+            auto combineType = result->GetType().CombineType(type);
+            const_cast<ScalarOpTypeInfo &>(*result).SetType(combineType);
         } else {
-            auto result = scalarOpTypeInfos_.find(ScalarOpTypeInfo(offset, type));
-            if (result != scalarOpTypeInfos_.end()) {
-                auto combineType = result->GetType().CombineType(type);
-                const_cast<ScalarOpTypeInfo &>(*result).SetType(combineType);
-            } else {
-                scalarOpTypeInfos_.emplace(offset, type);
-            }
+            scalarOpTypeInfos_.emplace(offset, type);
         }
     }
 
-    void AddClassType(uint32_t offset, PGOSampleType type)
+    void AddObjectInfo(uint32_t offset, const PGOObjectInfo &info)
     {
         auto result = rwScalarOpTypeInfos_.find(RWScalarOpTypeInfo(offset));
         if (result != rwScalarOpTypeInfos_.end()) {
-            const_cast<RWScalarOpTypeInfo &>(*result).AddClassType(type);
+            const_cast<RWScalarOpTypeInfo &>(*result).AddObjectInfo(info);
         } else {
-            rwScalarOpTypeInfos_.emplace(offset, type);
+            rwScalarOpTypeInfos_.emplace(offset, info);
         }
     }
 
@@ -447,7 +436,7 @@ public:
     void Merge(const PGOMethodTypeSet *info);
     static void SkipFromBinary(void **buffer);
 
-    bool ParseFromBinary(void **buffer);
+    bool ParseFromBinary(void **buffer, PGOProfilerHeader *const header);
     bool ProcessToBinary(std::stringstream &stream) const;
 
     bool ParseFromText(const std::string &typeString);
@@ -490,10 +479,10 @@ private:
     public:
         explicit RWScalarOpTypeInfo(uint32_t offset)
             : TypeInfoHeader(InfoType::USE_HCLASS_TYPE, offset) {};
-        RWScalarOpTypeInfo(uint32_t offset, PGOSampleType type)
+        RWScalarOpTypeInfo(uint32_t offset, PGOObjectInfo info)
             : TypeInfoHeader(sizeof(RWScalarOpTypeInfo), InfoType::USE_HCLASS_TYPE, offset)
         {
-            type_.AddClassType(type.GetClassType());
+            type_.AddObjectInfo(info);
         }
 
         bool operator<(const RWScalarOpTypeInfo &right) const
@@ -511,10 +500,9 @@ private:
             type_.Merge(type.type_);
         }
 
-        void AddClassType(const PGOSampleType &type)
+        void AddObjectInfo(const PGOObjectInfo &info)
         {
-            ASSERT(type.IsClassType());
-            type_.AddClassType(type.GetClassType());
+            type_.AddObjectInfo(info);
         }
 
         PGORWOpType GetType() const
@@ -761,6 +749,7 @@ public:
 
     bool AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode);
     bool AddType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
+    bool AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
     bool AddDefine(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
 
@@ -883,9 +872,10 @@ public:
     // If it is a new method, return true.
     bool AddMethod(const CString &recordName, Method *jsMethod, SampleMode mode);
     bool AddType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type);
+    bool AddObjectInfo(const CString &recordName, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
     bool AddDefine(
         const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
-    bool AddLayout(PGOSampleType type, JSTaggedType hclass, PGOObjLayoutKind kind);
+    bool AddLayout(PGOSampleType type, JSTaggedType hclass, PGOObjKind kind);
     void Merge(const PGORecordDetailInfos &recordInfos);
 
     void ParseFromBinary(void *buffer, PGOProfilerHeader *const header);

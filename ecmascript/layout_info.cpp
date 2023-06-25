@@ -164,7 +164,7 @@ bool LayoutInfo::IsUninitializedProperty(const JSHandle<JSObject> object, uint32
     return val.IsHole();
 }
 
-void LayoutInfo::DumpFieldIndexForProfile(int index, PGOHClassLayoutDesc &desc, PGOObjLayoutKind kind)
+void LayoutInfo::DumpFieldIndexForProfile(int index, PGOHClassLayoutDesc &desc, PGOObjKind kind)
 {
     auto key = GetKey(index);
     if (key.IsString()) {

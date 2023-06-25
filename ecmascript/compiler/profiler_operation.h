@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_PROFILER_OPERATION_H
 
 #include <functional>
+#include <initializer_list>
 
 #include "ecmascript/compiler/gate_meta_data.h"
 
@@ -25,6 +26,7 @@ enum class OperationType : uint8_t {
     CALL,
     OPERATION_TYPE,
     DEFINE_CLASS,
+    CREATE_OBJECT,
     STORE_LAYOUT,
     LOAD_LAYOUT,
 };
@@ -33,7 +35,7 @@ enum class OperationType : uint8_t {
     callback.ProfileCombineOpType(            \
         *curType, type, [this](GateRef curType, GateRef type) -> GateRef { return Int32Or(curType, type); });
 
-using Callback = std::function<void(GateRef, OperationType)>;
+using Callback = std::function<void(const std::initializer_list<GateRef> &, OperationType)>;
 class ProfileOperation {
 public:
     ProfileOperation() : callback_(nullptr) {}
@@ -47,14 +49,14 @@ public:
     inline void ProfileCall(GateRef func) const
     {
         if (callback_) {
-            callback_(func, OperationType::CALL);
+            callback_({ func }, OperationType::CALL);
         }
     }
 
     inline void ProfileOpType(GateRef type) const
     {
         if (callback_) {
-            callback_(type, OperationType::OPERATION_TYPE);
+            callback_({ type }, OperationType::OPERATION_TYPE);
         }
     }
 
@@ -63,28 +65,35 @@ public:
     {
         if (callback_) {
             GateRef ret = combine(curType, type);
-            callback_(ret, OperationType::OPERATION_TYPE);
+            callback_({ ret }, OperationType::OPERATION_TYPE);
         }
     }
 
     inline void ProfileDefineClass(GateRef constructor) const
     {
         if (callback_) {
-            callback_(constructor, OperationType::DEFINE_CLASS);
+            callback_({ constructor }, OperationType::DEFINE_CLASS);
+        }
+    }
+
+    inline void ProfileCreateObject(GateRef originObj, GateRef newObj) const
+    {
+        if (callback_) {
+            callback_({ originObj, newObj }, OperationType::CREATE_OBJECT);
         }
     }
 
     inline void ProfileObjLayoutByStore(GateRef object) const
     {
         if (callback_) {
-            callback_(object, OperationType::STORE_LAYOUT);
+            callback_({ object }, OperationType::STORE_LAYOUT);
         }
     }
 
     inline void ProfileObjLayoutByLoad(GateRef object) const
     {
         if (callback_) {
-            callback_(object, OperationType::LOAD_LAYOUT);
+            callback_({ object }, OperationType::LOAD_LAYOUT);
         }
     }
 

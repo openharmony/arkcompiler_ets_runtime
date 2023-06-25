@@ -82,11 +82,6 @@ private:
 
 using PropertyDesc = std::pair<CString, PGOHandler>;
 using LayoutDesc = CVector<PropertyDesc>;
-enum class PGOObjLayoutKind {
-    LOCAL,
-    PROTOTYPE,
-    CONSTRUCTOR,
-};
 
 class PGOHClassLayoutDesc {
 public:
@@ -154,7 +149,7 @@ public:
         ctorLayoutDesc_.emplace_back(key, handler);
     }
 
-    void UpdateKeyAndDesc(const CString &key, const PGOHandler &handler, PGOObjLayoutKind kind);
+    void UpdateKeyAndDesc(const CString &key, const PGOHandler &handler, PGOObjKind kind);
 
     bool FindDescWithKey(const CString &key, PGOHandler &handler) const;
 

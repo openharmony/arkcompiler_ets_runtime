@@ -695,7 +695,7 @@ void JSHClass::CopyTSInheritInfo(const JSThread *thread, const JSHandle<JSHClass
     newHClass->SetVTable(thread, copyVtable);
 }
 
-bool JSHClass::DumpForProfile(const JSHClass *hclass, PGOHClassLayoutDesc &desc, PGOObjLayoutKind kind)
+bool JSHClass::DumpForProfile(const JSHClass *hclass, PGOHClassLayoutDesc &desc, PGOObjKind kind)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (hclass->IsDictionaryMode()) {

@@ -459,6 +459,8 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleDefineclasswithbufferImm8Id16Id16Imm16V8, V)  \
     APPEND_SUFFIX(HandleDefineclasswithbufferImm16Id16Id16Imm16V8, V) \
     APPEND_SUFFIX(HandleDefinegettersetterbyvalueV8V8V8V8, V)         \
+    APPEND_SUFFIX(HandleCreateobjectwithbufferImm8Id16, V)            \
+    APPEND_SUFFIX(HandleCreateobjectwithbufferImm16Id16, V)           \
     APPEND_SUFFIX(HandleLdobjbynameImm8Id16, V)                       \
     APPEND_SUFFIX(HandleLdobjbynameImm16Id16, V)                      \
     APPEND_SUFFIX(HandleLdthisbynameImm16Id16, V)                     \

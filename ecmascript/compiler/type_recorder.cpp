@@ -19,6 +19,7 @@
 #include "ecmascript/jspandafile/type_literal_extractor.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
 
 namespace panda::ecmascript::kungfu {
@@ -166,24 +167,21 @@ PGOSampleType TypeRecorder::GetOrUpdatePGOType(TSManager *tsManager, int32_t off
             if (!decoder_->GetHClassLayoutDesc(iter, &desc)) {
                 return PGOSampleType::NoneClassType();
             }
-            auto hclassValue = tsManager->GetTSHClass(type);
-            if (hclassValue.IsJSHClass()) {
-                auto hclass = JSHClass::Cast(hclassValue.GetTaggedObject());
-                TSHClassGenerator generator(tsManager);
-                generator.UpdateTSHClassFromPGO(hclass, *desc);
-            }
+            TSHClassGenerator generator(tsManager);
+            generator.UpdateTSHClassFromPGO(type, *desc);
         }
         return iter;
     }
 
-    if (bcOffsetPGORwTypeMap_.find(offset) != bcOffsetPGORwTypeMap_.end()) {
-        auto defineType = bcOffsetPGORwTypeMap_.at(offset);
-        // pass mono first
-        if (defineType.GetCount() == 1) {
-            return PGOSampleType(defineType.GetType(0));
-        }
-    }
     return PGOSampleType::NoneType();
+}
+
+PGORWOpType TypeRecorder::GetRwOpType(int32_t offset) const
+{
+    if (bcOffsetPGORwTypeMap_.find(offset) != bcOffsetPGORwTypeMap_.end()) {
+        return bcOffsetPGORwTypeMap_.at(offset);
+    }
+    return PGORWOpType();
 }
 
 bool TypeRecorder::TypeNeedFilter(GlobalTSTypeRef gt) const

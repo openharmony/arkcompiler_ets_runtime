@@ -30,12 +30,15 @@ public:
 
     void ProfileCall(JSTaggedType value, SampleMode mode = SampleMode::CALL_MODE);
     void ProfileOpType(JSTaggedType func, int32_t offset, uint32_t type);
+    void ProfileCreateObject(JSTaggedType func, int32_t offset, JSTaggedType originObj, JSTaggedType newObj);
     void ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType ctor);
     void ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType object, bool store);
     void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp)
     {
         saveTimestamp_ = timestamp;
     }
+
+    void InsertLiteralId(JSTaggedType hclass, EntityId literalId);
 
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT = 20;
@@ -69,6 +72,7 @@ private:
     bool isEnable_ {false};
     uint32_t methodCount_ {0};
     std::chrono::system_clock::time_point saveTimestamp_;
+    CMap<JSTaggedType, EntityId> literalIds_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
     friend class PGOProfilerManager;
 };

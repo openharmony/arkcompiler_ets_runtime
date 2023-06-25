@@ -26,6 +26,7 @@
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/patch/quick_fix_manager.h"
+#include "ecmascript/pgo_profiler/pgo_profiler.h"
 
 #include "libpandafile/class_data_accessor-inl.h"
 #include "libpandafile/index_accessor.h"
@@ -286,6 +287,9 @@ public:
                         valueHandle.Update(elements->Get(i + 1));
                         JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
                     }
+
+                    PGOProfiler *profiler = thread->GetEcmaVM()->GetPGOProfiler();
+                    profiler->InsertLiteralId(JSTaggedType(obj->GetJSHClass()), id);
                     val = obj.GetTaggedValue();
                     break;
                 }
