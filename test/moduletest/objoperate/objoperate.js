@@ -35,3 +35,15 @@ assertEqual(obj2, {d:1, a:2, b:3, c:4, e:5});
 
 var obj = {["a" + "b" + "de"]:function() {return 1;}}
 assertEqual(obj.abde.name, "abde");
+
+var foo = () => {
+    function f1() {
+        return this;
+    }
+    function f2() {
+        return f1;
+    }
+    Object.defineProperty(this, "detailed", {configurable:true, enumerable:true, get:f1, set:f2});
+};
+foo();
+foo();  // expect no error
