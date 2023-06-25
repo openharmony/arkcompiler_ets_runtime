@@ -424,7 +424,12 @@ void ObjectOperator::TransitionForAttributeChanged(const JSHandle<JSObject> &rec
 bool ObjectOperator::UpdateValueAndDetails(const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &value,
                                            PropertyAttributes attr, bool attrChanged)
 {
-    bool isInternalAccessor = IsAccessorDescriptor() && AccessorData::Cast(GetValue().GetTaggedObject())->IsInternal();
+    auto valueAccessor = GetValue();
+    if (valueAccessor.IsPropertyBox()) {
+        valueAccessor = PropertyBox::Cast(valueAccessor.GetTaggedObject())->GetValue();
+    }
+    bool isInternalAccessor = IsAccessorDescriptor()
+        && AccessorData::Cast(valueAccessor.GetTaggedObject())->IsInternal();
     if (attrChanged) {
         TransitionForAttributeChanged(receiver, attr);
     }
@@ -568,9 +573,13 @@ bool ObjectOperator::WriteDataProperty(const JSHandle<JSObject> &receiver, const
             }
         }
 
+        auto valueAccessor = GetValue();
+        if (valueAccessor.IsPropertyBox()) {
+            valueAccessor = PropertyBox::Cast(valueAccessor.GetTaggedObject())->GetValue();
+        }
         JSHandle<AccessorData> accessor =
-            (IsAccessorDescriptor() && !JSHandle<AccessorData>::Cast(value_)->IsInternal()) ?
-            JSHandle<AccessorData>::Cast(value_) :
+            (IsAccessorDescriptor() && !JSHandle<AccessorData>(thread_, valueAccessor)->IsInternal()) ?
+            JSHandle<AccessorData>(thread_, valueAccessor) :
             thread_->GetEcmaVM()->GetFactory()->NewAccessorData();
         if (desc.HasGetter()) {
             accessor->SetGetter(thread_, desc.GetGetter().GetTaggedValue());
