@@ -52,9 +52,8 @@ bool PGOProfilerDecoder::Verify(uint32_t checksum)
     if (!isLoaded_) {
         return false;
     }
-    if (header_->SupportMethodChecksum()) {
+    if (IsMethodMatchEnabled()) {
         LOG_ECMA(INFO) << "Skip verify file checksum, use method checksum instead.";
-        enableMethodMatch_ = true;
         isVerifySuccess_ = true;
     } else {
         isVerifySuccess_ = pandaFileInfos_.CheckSum(checksum);
@@ -158,7 +157,6 @@ void PGOProfilerDecoder::Clear()
     if (isLoaded_) {
         UnLoadAPBinaryFile();
         isVerifySuccess_ = true;
-        enableMethodMatch_ = false;
         hotnessThreshold_ = 0;
         PGOProfilerHeader::Destroy(&header_);
         pandaFileInfos_.Clear();

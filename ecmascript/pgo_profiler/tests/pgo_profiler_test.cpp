@@ -14,8 +14,10 @@
  */
 
 #include <cstdint>
+#include <memory>
 #include <sstream>
 #include <string>
+#include "ecmascript/object_factory.h"
 #include "gtest/gtest.h"
 
 #include "assembler/assembly-emitter.h"
@@ -524,10 +526,18 @@ HWTEST_F_L0(PGOProfilerTest, BinaryToText)
     PGOProfilerHeader::Build(&header, PGOProfilerHeader::LastSize());
     std::unique_ptr<PGOPandaFileInfos> pandaFileInfos = std::make_unique<PGOPandaFileInfos>();
     std::unique_ptr<PGORecordDetailInfos> recordInfos = std::make_unique<PGORecordDetailInfos>(2);
+
+    RuntimeOption option;
+    vm_ = JSNApi::CreateJSVM(option);
+    ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
     pandaFileInfos->Sample(0x34556738);
-    ASSERT_TRUE(recordInfos->AddMethod("test", EntityId(23), 0, "test", SampleMode::CALL_MODE));
-    ASSERT_FALSE(recordInfos->AddMethod("test", EntityId(23), 0, "test", SampleMode::CALL_MODE));
-    ASSERT_FALSE(recordInfos->AddMethod("test", EntityId(23), 0, "test", SampleMode::CALL_MODE));
+    std::shared_ptr<MethodLiteral> methodLiteral = std::make_shared<MethodLiteral>(EntityId(61));
+    auto *jsMethod =
+        Method::Cast(vm_->GetFactory()->NewMethod(methodLiteral.get(), MemSpaceType::NON_MOVABLE).GetTaggedValue());
+
+    ASSERT_TRUE(recordInfos->AddMethod("test", jsMethod, SampleMode::CALL_MODE));
+    ASSERT_FALSE(recordInfos->AddMethod("test", jsMethod, SampleMode::CALL_MODE));
+    ASSERT_FALSE(recordInfos->AddMethod("test", jsMethod, SampleMode::CALL_MODE));
 
     pandaFileInfos->ProcessToBinary(file, header->GetPandaInfoSection());
     recordInfos->ProcessToBinary(nullptr, file, header);
@@ -536,7 +546,7 @@ HWTEST_F_L0(PGOProfilerTest, BinaryToText)
 
     ASSERT_TRUE(PGOProfilerManager::GetInstance()->BinaryToText(
         "ark-profiler7/modules.ap", "ark-profiler7/modules.text", 2));
-
+    JSNApi::DestroyJSVM(vm_);
     unlink("ark-profiler7/modules.ap");
     unlink("ark-profiler7/modules.text");
     rmdir("ark-profiler7");

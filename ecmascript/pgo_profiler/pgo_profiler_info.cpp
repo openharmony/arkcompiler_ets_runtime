@@ -19,8 +19,10 @@
 
 #include "ecmascript/base/bit_helper.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/mem/c_string.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "macros.h"
+#include "zlib.h"
 
 namespace panda::ecmascript {
 static const std::string ELEMENT_SEPARATOR = "/";
@@ -181,6 +183,32 @@ std::vector<std::string> PGOMethodInfo::ParseFromText(const std::string &infoStr
 {
     std::vector<std::string> infoStrings = base::StringHelper::SplitString(infoString, ELEMENT_SEPARATOR);
     return infoStrings;
+}
+
+uint32_t PGOMethodInfo::CalcChecksum(const char *name, const uint8_t *byteCodeArray, uint32_t byteCodeLength)
+{
+    uint32_t checksum = 0;
+    if (byteCodeArray != nullptr) {
+        checksum = CalcOpCodeChecksum(byteCodeArray, byteCodeLength);
+    }
+
+    if (name != nullptr) {
+        checksum = adler32(checksum, reinterpret_cast<const Bytef *>(name), strlen(name));
+    }
+    return checksum;
+}
+
+uint32_t PGOMethodInfo::CalcOpCodeChecksum(const uint8_t *byteCodeArray, uint32_t byteCodeLength)
+{
+    uint32_t checksum = 0;
+    BytecodeInstruction bcIns(byteCodeArray);
+    auto bcInsLast = bcIns.JumpTo(byteCodeLength);
+    while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
+        auto opCode = bcIns.GetOpcode();
+        checksum = adler32(checksum, reinterpret_cast<const Bytef *>(&opCode), sizeof(decltype(opCode)));
+        bcIns = bcIns.GetNext();
+    }
+    return checksum;
 }
 
 void PGOMethodTypeSet::Merge(const PGOMethodTypeSet *info)
@@ -475,9 +503,9 @@ void PGOMethodTypeSet::ObjDefOpTypeInfo::ProcessToText(std::string &text) const
     text += (SPACE + ARRAY_END);
 }
 
-bool PGOMethodInfoMap::AddMethod(Chunk *chunk, EntityId methodId, uint32_t checksum, const CString &methodName,
-                                 SampleMode mode)
+bool PGOMethodInfoMap::AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode)
 {
+    EntityId methodId(jsMethod->GetMethodId());
     auto result = methodInfos_.find(methodId);
     if (result != methodInfos_.end()) {
         auto info = result->second;
@@ -485,11 +513,14 @@ bool PGOMethodInfoMap::AddMethod(Chunk *chunk, EntityId methodId, uint32_t check
         info->SetSampleMode(mode);
         return false;
     } else {
+        CString methodName = jsMethod->GetMethodName();
         size_t strlen = methodName.size();
         size_t size = static_cast<size_t>(PGOMethodInfo::Size(strlen));
         void *infoAddr = chunk->Allocate(size);
         auto info = new (infoAddr) PGOMethodInfo(methodId, 1, mode, methodName.c_str());
         methodInfos_.emplace(methodId, info);
+        auto checksum = PGOMethodInfo::CalcChecksum(jsMethod->GetMethodName(), jsMethod->GetBytecodeArray(),
+                                                    jsMethod->GetCodeSize());
         methodsChecksum_.emplace(methodId, checksum);
         return true;
     }
@@ -797,12 +828,12 @@ PGOMethodInfoMap *PGORecordDetailInfos::GetMethodInfoMap(const CString &recordNa
     }
 }
 
-bool PGORecordDetailInfos::AddMethod(
-    const CString &recordName, EntityId methodId, uint32_t checksum, const CString &methodName, SampleMode mode)
+bool PGORecordDetailInfos::AddMethod(const CString &recordName, Method *jsMethod, SampleMode mode)
 {
     auto curMethodInfos = GetMethodInfoMap(recordName);
     ASSERT(curMethodInfos != nullptr);
-    return curMethodInfos->AddMethod(chunk_.get(), methodId, checksum, methodName, mode);
+    ASSERT(jsMethod != nullptr);
+    return curMethodInfos->AddMethod(chunk_.get(), jsMethod, mode);
 }
 
 bool PGORecordDetailInfos::AddType(const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type)
