@@ -100,6 +100,8 @@ public:
     static JSTaggedValue Flat(EcmaRuntimeCallInfo *argv);
     // es12 23.1.3.11
     static JSTaggedValue FlatMap(EcmaRuntimeCallInfo *argv);
+    // 23.1.3.1 Array.prototype.at ( index )
+    static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
 };
 }  // namespace panda::ecmascript::builtins
 
