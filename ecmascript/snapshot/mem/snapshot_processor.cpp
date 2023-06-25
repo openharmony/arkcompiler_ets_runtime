@@ -461,6 +461,7 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(BuiltinsTypedArray::BigInt64ArrayConstructor),
     reinterpret_cast<uintptr_t>(BuiltinsTypedArray::BigUint64ArrayConstructor),
     reinterpret_cast<uintptr_t>(BuiltinsString::StringConstructor),
+    reinterpret_cast<uintptr_t>(BuiltinsString::At),
     reinterpret_cast<uintptr_t>(BuiltinsString::CharAt),
     reinterpret_cast<uintptr_t>(BuiltinsString::CharCodeAt),
     reinterpret_cast<uintptr_t>(BuiltinsString::CodePointAt),

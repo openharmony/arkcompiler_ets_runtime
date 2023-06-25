@@ -1799,6 +1799,44 @@ JSTaggedValue BuiltinsString::SubStr(EcmaRuntimeCallInfo *argv)
     return JSTaggedValue(EcmaStringAccessor::FastSubString(thread->GetEcmaVM(), thisString, start, resultLength));
 }
 
+// 22.1.3.1
+JSTaggedValue BuiltinsString::At(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), String, Substring);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. Let O be RequireObjectCoercible(this value).
+    // 2. Let S be ToString(O).
+    JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
+    JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 3. Let len be the length of S.
+    int32_t thisLen = static_cast<int32_t>(EcmaStringAccessor(thisHandle).GetLength());
+
+    // 4. Let relativeIndex be ? ToIntegerOrInfinity(index).
+    JSHandle<JSTaggedValue> indexTag = BuiltinsString::GetCallArg(argv, 0);
+    JSTaggedNumber indexVal = JSTaggedValue::ToInteger(thread, indexTag);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int32_t relativeIndex = ConvertDoubleToInt(indexVal.GetNumber());
+
+    // 5. If relativeIndex ≥ 0, then Let k be relativeIndex. 6. Else, Let k be len + relativeIndex.
+    int32_t k = 0;
+    if (relativeIndex >= 0) {
+        k = relativeIndex;
+    } else {
+        k = thisLen + relativeIndex;
+    }
+    // 7. If k < 0 or k ≥ len, return undefined.
+    if (k < 0 || k >= thisLen) {
+        return JSTaggedValue::Undefined();
+    }
+    // 8. Return the substring of S from k to k + 1.
+    return JSTaggedValue(EcmaStringAccessor::FastSubString(thread->GetEcmaVM(), thisHandle, k, 1));
+}
+
 JSTaggedValue BuiltinsString::GetLength(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);

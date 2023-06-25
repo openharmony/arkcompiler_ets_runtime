@@ -675,6 +675,7 @@ namespace panda::ecmascript {
     V(String, FromCodePoint)                  \
     V(String, Raw)                            \
     V(String, GetSubstitution)                \
+    V(String, At)                             \
     V(String, CharAt)                         \
     V(String, CharCodeAt)                     \
     V(String, CodePointAt)                    \

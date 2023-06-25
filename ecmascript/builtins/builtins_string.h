@@ -122,6 +122,8 @@ public:
     static uint16_t UTF16Decode(uint16_t lead, uint16_t trail);
     // annexB B.2.3.1
     static JSTaggedValue SubStr(EcmaRuntimeCallInfo *argv);
+    // 22.1.3.1
+    static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
 
     static JSTaggedValue GetLength(EcmaRuntimeCallInfo *argv);
 
