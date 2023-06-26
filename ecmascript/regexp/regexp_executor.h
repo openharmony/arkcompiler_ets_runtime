@@ -576,8 +576,8 @@ public:
         int32_t idxMax = static_cast<int32_t>(rangeCount - 1);
         int32_t idx = 0;
         uint32_t low = 0;
-        uint32_t high =
-            byteCode.GetU16(currentPc + RANGE32_HEAD_OFFSET + idxMax * RANGE32_MAX_HALF_OFFSET + RANGE32_OFFSET);
+        uint32_t high = byteCode.GetU16(currentPc + RANGE32_HEAD_OFFSET +
+            static_cast<size_t>(idxMax) * RANGE32_MAX_HALF_OFFSET + RANGE32_OFFSET);
         if (nowChar <= high) {
             while (idxMin <= idxMax) {
                 idx = (idxMin + idxMax) / RANGE32_OFFSET;
@@ -597,7 +597,7 @@ public:
         }
         return isFound;
     }
-    
+
     uint32_t GetCurrentPC() const
     {
         return currentPc_;
