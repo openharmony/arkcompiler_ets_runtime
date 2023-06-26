@@ -313,6 +313,7 @@ void JSPandaFileManager::RemoveJSPandaFileVm(const EcmaVM *vm, const JSPandaFile
             }
             return;
         }
+        iterOld++;
     }
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
     auto iter = loadedJSPandaFiles_.find(filename);
