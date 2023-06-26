@@ -33,9 +33,7 @@ void PGOProfiler::ProfileCall(JSTaggedType value, SampleMode mode)
             return;
         }
         CString recordName = ConvertToString(recordNameValue);
-        auto checksum = PGOMethodInfo::CalcChecksum(jsMethod->GetMethodName(), jsMethod->GetBytecodeArray(),
-                                                    jsMethod->GetCodeSize());
-        if (recordInfos_->AddMethod(recordName, jsMethod->GetMethodId(), checksum, jsMethod->GetMethodName(), mode)) {
+        if (recordInfos_->AddMethod(recordName, jsMethod, mode)) {
             methodCount_++;
         }
         // Merged every 10 methods

@@ -32,7 +32,6 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/property_attributes.h"
 
-#include "zlib.h"
 
 namespace panda::ecmascript {
 class SaveTask;
@@ -267,18 +266,9 @@ public:
         *(&methodName_ + len) = '\0';
     }
 
-    static uint32_t CalcChecksum(const char *name, const uint8_t *byteCodeArray, uint32_t byteCodeLength)
-    {
-        uint32_t checksum = 0;
-        if (byteCodeArray != nullptr) {
-            checksum = adler32(checksum, byteCodeArray, byteCodeLength);
-        }
+    static uint32_t CalcChecksum(const char *name, const uint8_t *byteCodeArray, uint32_t byteCodeLength);
 
-        if (name != nullptr) {
-            checksum = adler32(checksum, reinterpret_cast<const Bytef *>(name), strlen(name));
-        }
-        return checksum;
-    }
+    static uint32_t CalcOpCodeChecksum(const uint8_t *byteCodeArray, uint32_t byteCodeLength);
 
     static int32_t Size(uint32_t length)
     {
@@ -714,7 +704,7 @@ public:
         methodTypeInfos_.clear();
     }
 
-    bool AddMethod(Chunk *chunk, EntityId methodId, uint32_t checksum, const CString &methodName, SampleMode mode);
+    bool AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode);
     bool AddType(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type);
     bool AddDefine(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
@@ -749,6 +739,7 @@ public:
             allocator->Delete(iter.second);
         }
         methodTypeSet_.clear();
+        methodsChecksumMapping_.clear();
     }
 
     bool Match(EntityId methodId)
@@ -834,8 +825,7 @@ public:
     }
 
     // If it is a new method, return true.
-    bool AddMethod(const CString &recordName, EntityId methodId, uint32_t checksum, const CString &methodName,
-                   SampleMode mode);
+    bool AddMethod(const CString &recordName, Method *jsMethod, SampleMode mode);
     bool AddType(const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type);
     bool AddDefine(
         const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);

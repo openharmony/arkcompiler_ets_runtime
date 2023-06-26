@@ -103,7 +103,7 @@ public:
 
     bool IsMethodMatchEnabled() const
     {
-        return enableMethodMatch_;
+        return false;
     }
 
     bool GetHClassLayoutDesc(PGOSampleType classType, PGOHClassLayoutDesc **desc) const;
@@ -122,7 +122,6 @@ private:
 
     bool isLoaded_ {false};
     bool isVerifySuccess_ {false};
-    bool enableMethodMatch_ {false};
     std::string inPath_;
     uint32_t hotnessThreshold_ {0};
     PGOProfilerHeader *header_ {nullptr};
