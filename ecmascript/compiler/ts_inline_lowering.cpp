@@ -184,6 +184,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
         pipeline.RunPass<LoopOptimizationPass>();
     }
     pipeline.RunPass<TypeInferPass>();
+    pipeline.RunPass<PGOTypeInferPass>();
 }
 
 bool TSInlineLowering::CheckParameter(GateRef gate, bool isCallThis, MethodLiteral* method)
