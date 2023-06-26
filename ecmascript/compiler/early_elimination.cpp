@@ -82,6 +82,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::LOAD_PROPERTY:
         case OpCode::LOAD_ELEMENT:
         case OpCode::LOAD_ARRAY_LENGTH:
+        case OpCode::LOAD_TYPED_ARRAY_LENGTH:
         case OpCode::TYPED_ARRAY_CHECK:
         case OpCode::OBJECT_TYPE_CHECK:
         case OpCode::STABLE_ARRAY_CHECK:
@@ -90,6 +91,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::LOAD_CONST_OFFSET:
         case OpCode::TYPED_BINARY_OP:
         case OpCode::TYPED_UNARY_OP:
+        case OpCode::JSINLINETARGET_TYPE_CHECK:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
             return TryEliminateFrameState(gate);
@@ -315,6 +317,12 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         }
         case OpCode::LOAD_CONST_OFFSET: {
             if (acc_.GetOffset(lhs) != acc_.GetOffset(rhs)) {
+                return false;
+            }
+            break;
+        }
+        case OpCode::JSINLINETARGET_TYPE_CHECK: {
+            if (acc_.GetFuncGT(lhs) != acc_.GetFuncGT(rhs)) {
                 return false;
             }
             break;

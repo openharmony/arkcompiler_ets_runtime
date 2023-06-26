@@ -131,11 +131,9 @@ private:
     void LowerObjectTypeCheck(GateRef gate);
     void LowerConstruntorTypeCheck(GateRef gate);
     void LowerTSSubtypingCheck(GateRef gate);
-    void LowerFloat32ArrayCheck(GateRef gate);
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);
-    void LowerFloat32ArrayIndexCheck(GateRef gate);
-    void LowerArrayIndexCheck(GateRef gate);
+    void LowerLoadTypedArrayLength(GateRef gate);
     void LowerLoadProperty(GateRef gate);
     void LowerCallGetter(GateRef gate, GateRef glue);
     void LowerStoreProperty(GateRef gate);
@@ -146,9 +144,13 @@ private:
     void LowerLoadFromTaggedArray(GateRef gate);
     void LowerStoreToTaggedArray(GateRef gate, GateRef glue);
     void LowerArrayLoadElement(GateRef gate);
+    void LowerInt32ArrayLoadElement(GateRef gate);
+    void LowerFloat64ArrayLoadElement(GateRef gate);
     void LowerFloat32ArrayLoadElement(GateRef gate);
     void LowerArrayStoreElement(GateRef gate, GateRef glue);
+    void LowerInt32ArrayStoreElement(GateRef gate, GateRef glue);
     void LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue);
+    void LowerFloat64ArrayStoreElement(GateRef gate, GateRef glue);
     void LowerTypedCallBuitin(GateRef gate);
     void LowerCallTargetCheck(GateRef gate);
     void LowerJSCallTargetFromDefineFuncCheck(GateRef gate);

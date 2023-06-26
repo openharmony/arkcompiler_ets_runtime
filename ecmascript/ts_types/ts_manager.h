@@ -436,7 +436,11 @@ public:
 
     bool PUBLIC_API IsTypedArrayType(kungfu::GateType gateType) const;
 
+    bool PUBLIC_API IsInt32ArrayType(kungfu::GateType gateType) const;
+
     bool PUBLIC_API IsFloat32ArrayType(kungfu::GateType gateType) const;
+
+    bool PUBLIC_API IsFloat64ArrayType(kungfu::GateType gateType) const;
 
     inline void AddElementToLiteralOffsetGTMap(const JSPandaFile *jsPandaFile, uint32_t offset,
                                                const CString &recordName, GlobalTSTypeRef gt,

@@ -71,6 +71,15 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitCallBuiltins(gate);
             break;
         }
+        case OpCode::LOAD_ELEMENT: {
+            VisitLoadElement(gate);
+            break;
+        }
+        case OpCode::LOAD_ARRAY_LENGTH:
+        case OpCode::LOAD_TYPED_ARRAY_LENGTH: {
+            VisitLoadArrayLength(gate);
+            break;
+        }
         default:
             break;
     }
@@ -490,6 +499,31 @@ void NumberSpeculativeLowering::VisitPhi(GateRef gate)
         default:
             break;
     }
+}
+
+void NumberSpeculativeLowering::VisitLoadArrayLength(GateRef gate)
+{
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.SetMachineType(gate, MachineType::I32);
+}
+
+void NumberSpeculativeLowering::VisitLoadElement(GateRef gate)
+{
+    auto op = acc_.GetTypedLoadOp(gate);
+    switch (op) {
+        case TypedLoadOp::INT32ARRAY_LOAD_ELEMENT:
+            acc_.SetMachineType(gate, MachineType::I32);
+            break;
+        case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
+            acc_.SetMachineType(gate, MachineType::F64);
+            break;
+        case TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT:
+            acc_.SetMachineType(gate, MachineType::F64);
+            break;
+        default:
+            break;
+    }
+    acc_.SetGateType(gate, GateType::NJSValue());
 }
 
 void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)
