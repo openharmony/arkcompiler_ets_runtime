@@ -19,6 +19,17 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+const o = {
+}
+o.toString = 'a'
+const o11 = {
+} 
+try {
+    o11[[o]] = []
+} catch (error) {
+    print("TypeError")
+}
+
 try {
     var a = 1;
     a();

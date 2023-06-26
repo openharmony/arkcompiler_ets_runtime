@@ -517,7 +517,7 @@ JSTaggedValue RuntimeStubs::RuntimeStObjByValue(JSThread *thread, const JSHandle
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     JSHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, prop));
-
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // strict mode is true
     JSTaggedValue::SetProperty(thread, object, propKey, value, true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

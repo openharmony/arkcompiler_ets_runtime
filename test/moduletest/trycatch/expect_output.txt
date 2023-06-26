@@ -12,5 +12,6 @@
 # limitations under the License.
 
 TypeError
+TypeError
 RangeError
 ReferenceError
