@@ -56,7 +56,8 @@ using ColumnNumberTable = CVector<ColumnTableEntry>;
 using JSPtLocation = tooling::JSPtLocation;
 
 /*
- * LocalVariableInfo define in frontend, now only use name and regNumber:
+ * Full version of LocalVariableInfo is defined in frontend,
+ * here only using name, reg_number, start_offset, and end_offset:
  *   std::string name
  *   std::string type
  *   std::string typeSignature
@@ -64,7 +65,13 @@ using JSPtLocation = tooling::JSPtLocation;
  *   uint32_t startOffset
  *   uint32_t endOffset
  */
-using LocalVariableTable = CUnorderedMap<std::string, int32_t>;  // name, regNumber
+struct LocalVariableInfo {
+    std::string name
+    int32_t reg_number;
+    uint32_t start_offset;
+    uint32_t end_offset;
+};
+using LocalVariableTable = CVector<LocalVariableInfo>;
 
 // public for debugger
 class PUBLIC_API DebugInfoExtractor {
