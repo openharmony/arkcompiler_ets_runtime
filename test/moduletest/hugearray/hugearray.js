@@ -28,3 +28,14 @@ for (let i = 0; i < 100000; i++) {
     }
 }
 print(arr.length);
+
+let v2 = new Array(2);
+let t = 0
+do {
+    try {
+        v2["lastIndexOf"](...16);
+    } catch (e) {
+        
+    }
+} while (t++ < 18000)
+print(t);

@@ -852,6 +852,7 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const J
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread_, ctor, nativePrototype, undefined, 1, needCheckStack);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
     info->SetCallArg(message.GetTaggedValue());
     Method *method = JSHandle<ECMAObject>::Cast(ctor)->GetCallTarget();
     JSTaggedValue obj = reinterpret_cast<EcmaEntrypoint>(const_cast<void *>(method->GetNativePointer()))(info);
