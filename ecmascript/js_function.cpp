@@ -262,11 +262,13 @@ JSTaggedValue JSFunction::Call(EcmaRuntimeCallInfo *info)
     // 2. If argumentsList was not passed, let argumentsList be a new empty List.
     // 3. If IsCallable(F) is false, throw a TypeError exception.
     if (!func->IsCallable()) {
+        RETURN_STACK_BEFORE_THROW_IF_ASM(thread);
         THROW_TYPE_ERROR_AND_RETURN(thread, "Callable is false", JSTaggedValue::Exception());
     }
 
     auto *hclass = func->GetTaggedObject()->GetClass();
     if (hclass->IsClassConstructor()) {
+        RETURN_STACK_BEFORE_THROW_IF_ASM(thread);
         THROW_TYPE_ERROR_AND_RETURN(thread, "class constructor cannot call", JSTaggedValue::Exception());
     }
     return EcmaInterpreter::Execute(info);
@@ -286,6 +288,7 @@ JSTaggedValue JSFunction::Construct(EcmaRuntimeCallInfo *info)
         info->SetNewTarget(target.GetTaggedValue());
     }
     if (!(func->IsConstructor() && target->IsConstructor())) {
+        RETURN_STACK_BEFORE_THROW_IF_ASM(thread);
         THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor is false", JSTaggedValue::Exception());
     }
 
@@ -425,6 +428,7 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     JSHandle<JSTaggedValue> newTarget(info->GetNewTarget());
     ASSERT(newTarget->IsECMAObject());
     if (!func->IsConstructor()) {
+        RETURN_STACK_BEFORE_THROW_IF_ASM(thread);
         THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor is false", JSTaggedValue::Exception());
     }
 
@@ -464,6 +468,7 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
     }
 
     if (!resultValue.IsUndefined()) {
+        RETURN_STACK_BEFORE_THROW_IF_ASM(thread);
         THROW_TYPE_ERROR_AND_RETURN(thread, "function is non-constructor", JSTaggedValue::Exception());
     }
     return obj.GetTaggedValue();

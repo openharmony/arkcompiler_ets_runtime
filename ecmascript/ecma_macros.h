@@ -354,6 +354,16 @@
     THROW_ERROR(thread, ErrorType::OOM_ERROR, message)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define RETURN_STACK_BEFORE_THROW_IF_ASM(thread)                                                   \
+    do {                                                                                           \
+        if ((thread)->IsAsmInterpreter()) {                                                        \
+            FrameIterator it(const_cast<JSTaggedType *>((thread)->GetCurrentSPFrame()), (thread)); \
+            it.Advance();                                                                          \
+            (thread)->SetCurrentSPFrame(it.GetSp());                                               \
+        }                                                                                          \
+    } while (false)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define RETURN_REJECT_PROMISE_IF_ABRUPT(thread, value, capability)                                 \
     do {                                                                                           \
         const GlobalEnvConstants *globalConst = (thread)->GlobalConstants();                       \
