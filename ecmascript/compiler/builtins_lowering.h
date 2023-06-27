@@ -30,12 +30,17 @@ public:
     GateRef LowerCallTargetCheck(Environment *env, GateRef gate);
     void LowerTypedSqrt(GateRef gate);
     GateRef CheckPara(GateRef gate, GateRef funcCheck);
+    void LowerTypedLocaleCompare(GateRef gate);
+
 private:
     void LowerTypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
     GateRef TypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);
     GateRef IntToTaggedIntPtr(GateRef x);
     void LowerTypedAbs(GateRef gate);
     GateRef TypedAbs(GateRef gate);
+    GateRef LowerCallRuntime(GateRef glue, GateRef gate, int index, const std::vector<GateRef> &args,
+                             bool useLabel = false);
+    void ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow = false);
 
     Circuit *circuit_ {nullptr};
     CircuitBuilder builder_;

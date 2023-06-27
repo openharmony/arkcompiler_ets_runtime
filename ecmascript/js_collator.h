@@ -84,17 +84,22 @@ public:
     static JSHandle<JSCollator> InitializeCollator(JSThread *thread, const JSHandle<JSCollator> &collator,
                                                    const JSHandle<JSTaggedValue> &locales,
                                                    const JSHandle<JSTaggedValue> &options,
-                                                   bool forIcuCache = false);
+                                                   bool forIcuCache = false,
+                                                   bool enableLocaleCache = false);
 
     static icu::Collator *GetCachedIcuCollator(JSThread *thread, const JSHandle<JSTaggedValue> &locales);
 
     // 11.3.4 Intl.Collator.prototype.resolvedOptions ()
     static JSHandle<JSObject> ResolvedOptions(JSThread *thread, const JSHandle<JSCollator> &collator);
 
-    static JSHandle<TaggedArray> GetAvailableLocales(JSThread *thread);
+    static JSHandle<TaggedArray> GetAvailableLocales(JSThread *thread, bool enableLocaleCache = false);
 
     static JSTaggedValue CompareStrings(const icu::Collator *icuCollator, const JSHandle<EcmaString> &string1,
                                         const JSHandle<EcmaString> &string2);
+
+    static JSTaggedValue FastCompareStrings(JSThread *thread, const icu::Collator *icuCollator,
+                                            const JSHandle<EcmaString> &string1,
+                                            const JSHandle<EcmaString> &string2);
 
 private:
     static CaseFirstOption StringToCaseFirstOption(const std::string &str);

@@ -276,7 +276,7 @@ inline JSHandle<JSTaggedValue> JSTaggedValue::RequireObjectCoercible(JSThread *t
                                                                      const JSHandle<JSTaggedValue> &tagged,
                                                                      const char *message)
 {
-    if (tagged->IsUndefined() || tagged->IsNull()) {
+    if (tagged->IsUndefinedOrNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, message, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
     }
     return tagged;

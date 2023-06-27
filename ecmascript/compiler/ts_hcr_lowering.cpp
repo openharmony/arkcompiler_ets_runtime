@@ -920,15 +920,26 @@ void TSHCRLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, GateRef a0,
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-BuiltinsStubCSigns::ID TSHCRLowering::GetBuiltinId(GateRef func)
+void TSHCRLowering::SpeculateCallThis3Builtin(GateRef gate, BuiltinsStubCSigns::ID id)
+{
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef a0 = acc_.GetValueIn(gate, 1);  // 1: the first-para
+    GateRef a1 = acc_.GetValueIn(gate, 2);  // 2: the third-para
+    GateRef a2 = acc_.GetValueIn(gate, 3);  // 3: the fourth-para
+    GateRef result = builder_.TypedCallThis3Builtin(gate, thisObj, a0, a1, a2, id);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+BuiltinsStubCSigns::ID TSHCRLowering::GetBuiltinId(BuiltinTypeId id, GateRef func)
 {
     GateType funcType = acc_.GetGateType(func);
-    if (!tsManager_->IsBuiltinMath(funcType)) {
+    if (!tsManager_->IsBuiltinObject(id, funcType)) {
         return BuiltinsStubCSigns::ID::NONE;
     }
     std::string name = tsManager_->GetFuncName(funcType);
-    BuiltinsStubCSigns::ID id = BuiltinsStubCSigns::GetBuiltinId(name);
-    return id;
+    BuiltinsStubCSigns::ID stubId = BuiltinsStubCSigns::GetBuiltinId(name);
+    return stubId;
 }
 
 void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
@@ -1011,7 +1022,7 @@ void TSHCRLowering::LowerTypedCallArg1(GateRef gate)
     }
     GateRef a0Value = acc_.GetValueIn(gate, 0);
     GateType a0Type = acc_.GetGateType(a0Value);
-    BuiltinsStubCSigns::ID id = GetBuiltinId(func);
+    BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::MATH, func);
     if (id != BuiltinsStubCSigns::ID::NONE && a0Type.IsNumberType()) {
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, func, a0Value, id);
@@ -1146,7 +1157,7 @@ void TSHCRLowering::LowerTypedCallthis1(GateRef gate)
     GateRef a0 = acc_.GetValueIn(gate, 1); // 1:parameter index
     GateType a0Type = acc_.GetGateType(a0);
     GateRef func = acc_.GetValueIn(gate, 2); // 2:function
-    BuiltinsStubCSigns::ID id = GetBuiltinId(func);
+    BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::MATH, func);
     if (id != BuiltinsStubCSigns::ID::NONE && a0Type.IsNumberType()) {
         AddProfiling(gate);
         SpeculateCallBuiltin(gate, func, a0, id);
@@ -1178,6 +1189,13 @@ void TSHCRLowering::LowerTypedCallthis3(GateRef gate)
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
     GateRef func = acc_.GetValueIn(gate, 4); // 4: func
+    BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::STRING, func);
+    if (id == BuiltinsStubCSigns::ID::LocaleCompare) {
+        AddProfiling(gate);
+        SpeculateCallThis3Builtin(gate, id);
+        return;
+    }
+
     if (!CanOptimizeAsFastCall(func)) {
         return;
     }

@@ -451,7 +451,9 @@ class ObjectFactory;
     V(JSTaggedValue, FunctionPrototypeAccessor, FUNCTION_PROTOTYPE_ACCESSOR, ecma_roots_accessor) \
     V(JSTaggedValue, FunctionNameAccessor, FUNCTION_NAME_ACCESSOR, ecma_roots_accessor)           \
     V(JSTaggedValue, ArrayLengthAccessor, ARRAY_LENGTH_ACCESSOR, ecma_roots_accessor)
-/* RealmConstant */
+
+#define GLOBAL_ENV_CACHES(V)                \
+    V(JSTaggedValue, CachedJSCollatorLocales, CACHED_JSCOLLATOR_LOCALES_INDEX, cachedCollatorLocales)
 
 // ConstantIndex used for explicit visit each constant.
 enum class ConstantIndex : size_t {
@@ -459,6 +461,7 @@ enum class ConstantIndex : size_t {
 #define INDEX_FILTER(Type, Name, Index, Desc) Index,
     GLOBAL_ENV_CONSTANT_CLASS(INDEX_FILTER) GLOBAL_ENV_CONSTANT_SPECIAL(INDEX_FILTER)
         GLOBAL_ENV_CONSTANT_CONSTANT(INDEX_FILTER) GLOBAL_ENV_CONSTANT_ACCESSOR(INDEX_FILTER)
+        GLOBAL_ENV_CACHES(INDEX_FILTER)
 
 #undef INDEX_FILTER
             CONSTATNT_COUNT,
@@ -492,10 +495,13 @@ public:
     void InitGlobalConstantSpecial(JSThread *thread);
 
     void InitGlobalConstant(JSThread *thread);
+    void InitGlobalCaches();
     void InitJSAPIContainers();
 
     void InitSpecialForSnapshot();
     void InitClassConstructorOptimizedClass(ObjectFactory *factory);
+
+    void SetCachedLocales(JSTaggedValue value);
 
     void SetConstant(ConstantIndex index, JSTaggedValue value);
 
@@ -514,6 +520,7 @@ public:
     GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET)
     GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET)
     GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET)
+    GLOBAL_ENV_CACHES(DECL_GET)
 #undef DECL_GET
 
     void VisitRangeSlot(const RootRangeVisitor &visitor)

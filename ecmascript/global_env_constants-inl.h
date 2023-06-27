@@ -74,6 +74,7 @@ inline uintptr_t GlobalEnvConstants::GetGlobalConstantAddr(ConstantIndex index) 
     GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL)  // NOLINT(readability-const-return-type)
     GLOBAL_ENV_CONSTANT_CONSTANT(DECL_GET_IMPL)  // NOLINT(readability-const-return-type)
     GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET_IMPL)  // NOLINT(readability-const-return-type)
+    GLOBAL_ENV_CACHES(DECL_GET_IMPL)  // NOLINT(readability-const-return-type)
 #undef DECL_GET_IMPL
 // clang-format on
 }  // namespace panda::ecmascript

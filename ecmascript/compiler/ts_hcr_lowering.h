@@ -144,7 +144,8 @@ private:
     void SpeculateNumber(GateRef gate);
     void SpeculateConditionJump(GateRef gate, bool flag);
     void SpeculateCallBuiltin(GateRef gate, GateRef func, GateRef a0, BuiltinsStubCSigns::ID Op);
-    BuiltinsStubCSigns::ID GetBuiltinId(GateRef func);
+    void SpeculateCallThis3Builtin(GateRef gate, BuiltinsStubCSigns::ID id);
+    BuiltinsStubCSigns::ID GetBuiltinId(BuiltinTypeId id, GateRef func);
     void DeleteConstDataIfNoUser(GateRef gate);
 
     void AddProfiling(GateRef gate);

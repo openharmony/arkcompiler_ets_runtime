@@ -304,7 +304,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(SlowFlattenString)                  \
     V(NotifyConcurrentResult)             \
     V(OtherToNumber)                      \
-    V(AotInlineTrace)
+    V(AotInlineTrace)                     \
+    V(LocaleCompare)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

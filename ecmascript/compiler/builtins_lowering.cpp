@@ -33,6 +33,9 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
         case BUILTINS_STUB_ID(ATAN):
             LowerTypedTrigonometric(gate, id);
             break;
+        case BUILTINS_STUB_ID(LocaleCompare):
+            LowerTypedLocaleCompare(gate);
+            break;
         default:
             break;
     }
@@ -174,6 +177,64 @@ GateRef BuiltinLowering::TypedAbs(GateRef gate)
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+GateRef BuiltinLowering::LowerCallRuntime(GateRef glue, GateRef gate, int index, const std::vector<GateRef> &args,
+                                          bool useLabel)
+{
+    const std::string name = RuntimeStubCSigns::GetRTName(index);
+    if (useLabel) {
+        GateRef result = builder_.CallRuntime(glue, index, Gate::InvalidGateRef, args, gate, name.c_str());
+        return result;
+    } else {
+        const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntime));
+        GateRef target = builder_.IntPtr(index);
+        GateRef result = builder_.Call(cs, glue, target, builder_.GetDepend(), args, gate, name.c_str());
+        return result;
+    }
+}
+
+void BuiltinLowering::ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow)
+{
+    if (!noThrow) {
+        GateRef state = builder_.GetState();
+        // copy depend-wire of hirGate to value
+        GateRef depend = builder_.GetDepend();
+        // exception value
+        GateRef exceptionVal = builder_.ExceptionConstant();
+        // compare with trampolines result
+        GateRef equal = builder_.Equal(value, exceptionVal);
+        auto ifBranch = builder_.Branch(state, equal);
+
+        GateRef ifTrue = builder_.IfTrue(ifBranch);
+        GateRef ifFalse = builder_.IfFalse(ifBranch);
+        GateRef eDepend = builder_.DependRelay(ifTrue, depend);
+        GateRef sDepend = builder_.DependRelay(ifFalse, depend);
+        StateDepend success(ifFalse, sDepend);
+        StateDepend exception(ifTrue, eDepend);
+        acc_.ReplaceHirWithIfBranch(hirGate, success, exception, value);
+    } else {
+        acc_.ReplaceHirDirectly(hirGate, builder_.GetStateDepend(), value);
+    }
+}
+
+void BuiltinLowering::LowerTypedLocaleCompare(GateRef gate)
+{
+    GateRef glue = acc_.GetGlueFromArgList();
+    uint32_t index = 0;
+    GateRef thisObj = acc_.GetValueIn(gate, index++);
+    GateRef a0 = acc_.GetValueIn(gate, index++);
+    GateRef a1 = acc_.GetValueIn(gate, index++);
+    GateRef a2 = acc_.GetValueIn(gate, index++);
+
+    std::vector<GateRef> args;
+    args.reserve(index);
+    args.emplace_back(thisObj);
+    args.emplace_back(a0);
+    args.emplace_back(a1);
+    args.emplace_back(a2);
+    GateRef result = LowerCallRuntime(glue, gate, RTSTUB_ID(LocaleCompare), args);
+    ReplaceHirWithValue(gate, result);
 }
 
 GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)

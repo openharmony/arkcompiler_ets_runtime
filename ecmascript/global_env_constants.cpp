@@ -79,6 +79,7 @@ void GlobalEnvConstants::Init(JSThread *thread, JSHClass *hClass)
 {
     InitRootsClass(thread, hClass);
     InitGlobalConstant(thread);
+    InitGlobalCaches();
 }
 
 void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
@@ -607,6 +608,19 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_HCLASS_INDEX,
                 factory->CreateDefaultClassConstructorHClass(JSHClass::Cast(GetHClassClass().GetTaggedObject())));
     InitClassConstructorOptimizedClass(factory);
+}
+
+void GlobalEnvConstants::InitGlobalCaches()
+{
+    SetConstant(ConstantIndex::CACHED_JSCOLLATOR_LOCALES_INDEX, JSTaggedValue::Undefined());
+}
+
+void GlobalEnvConstants::SetCachedLocales(JSTaggedValue value)
+{
+    JSTaggedValue cached = GetCachedJSCollatorLocales();
+    if (cached.IsUndefined()) {
+        SetConstant(ConstantIndex::CACHED_JSCOLLATOR_LOCALES_INDEX, value);
+    }
 }
 
 void GlobalEnvConstants::InitJSAPIContainers()

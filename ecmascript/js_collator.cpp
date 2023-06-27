@@ -37,12 +37,23 @@ const std::map<CaseFirstOption, UColAttributeValue> JSCollator::uColAttributeVal
     {CaseFirstOption::UNDEFINED, UCOL_OFF}
 };
 
-JSHandle<TaggedArray> JSCollator::GetAvailableLocales(JSThread *thread)
+JSHandle<TaggedArray> JSCollator::GetAvailableLocales(JSThread *thread, bool enableLocaleCache)
 {
     const char *key = nullptr;
     const char *path = JSCollator::uIcuDataColl.c_str();
+    // key and path are const, so we can cache the result
+    if (enableLocaleCache) {
+        JSHandle<JSTaggedValue> cachedLocales = thread->GlobalConstants()->GetHandledCachedJSCollatorLocales();
+        if (cachedLocales->IsHeapObject()) {
+            return JSHandle<TaggedArray>(cachedLocales);
+        }
+    }
     std::vector<std::string> availableStringLocales = intl::LocaleHelper::GetAvailableLocales(thread, key, path);
     JSHandle<TaggedArray> availableLocales = JSLocale::ConstructLocaleList(thread, availableStringLocales);
+    if (enableLocaleCache) {
+        GlobalEnvConstants *constants = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
+        constants->SetCachedLocales(availableLocales.GetTaggedValue());
+    }
     return availableLocales;
 }
 
@@ -68,7 +79,8 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
                                                     const JSHandle<JSCollator> &collator,
                                                     const JSHandle<JSTaggedValue> &locales,
                                                     const JSHandle<JSTaggedValue> &options,
-                                                    bool forIcuCache)
+                                                    bool forIcuCache,
+                                                    bool enableLocaleCache)
 {
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
@@ -143,7 +155,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     if (requestedLocales->GetLength() == 0) {
         availableLocales = factory->EmptyArray();
     } else {
-        availableLocales = GetAvailableLocales(thread);
+        availableLocales = GetAvailableLocales(thread, enableLocaleCache);
     }
     ResolvedLocale r =
         JSLocale::ResolveLocale(thread, availableLocales, requestedLocales, matcher, relevantExtensionKeys);
@@ -458,6 +470,41 @@ JSTaggedValue JSCollator::CompareStrings(const icu::Collator *icuCollator, const
     result = icuCollator->compare(uString1, uString2, status);
     ASSERT(U_SUCCESS(status));
 
+    return JSTaggedValue(result);
+}
+
+JSTaggedValue JSCollator::FastCompareStrings(JSThread *thread, const icu::Collator *icuCollator,
+                                             const JSHandle<EcmaString> &string1,
+                                             const JSHandle<EcmaString> &string2)
+{
+    if (*string1 == *string2) {
+        return JSTaggedValue(UCollationResult::UCOL_EQUAL);
+    }
+
+    auto flatString1 = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), string1));
+    auto flatString2 = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), string2));
+
+    UCollationResult result;
+    UErrorCode status = U_ZERO_ERROR;
+    {
+        DISALLOW_GARBAGE_COLLECTION;
+        CString str1 = ConvertToString(*flatString1, StringConvertedUsage::LOGICOPERATION);
+        icu::StringPiece stringPiece1(str1.c_str());
+        if (!stringPiece1.empty()) {
+            CString str2 = ConvertToString(*flatString2, StringConvertedUsage::LOGICOPERATION);
+            icu::StringPiece stringPiece2(str2.c_str());
+            if (!stringPiece2.empty()) {
+                result = icuCollator->compareUTF8(stringPiece1, stringPiece2, status);
+                return JSTaggedValue(result);
+            }
+        }
+
+        icu::UnicodeString uString1 = EcmaStringToUString(flatString1);
+        icu::UnicodeString uString2 = EcmaStringToUString(flatString2);
+
+        result = icuCollator->compare(uString1, uString2, status);
+        ASSERT(U_SUCCESS(status));
+    }
     return JSTaggedValue(result);
 }
 }  // namespace panda::ecmascript

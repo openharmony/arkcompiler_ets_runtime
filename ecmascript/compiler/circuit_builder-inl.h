@@ -1085,6 +1085,20 @@ inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, GateRef x, Buil
     return numberMathOp;
 }
 
+inline GateRef CircuitBuilder::TypedCallThis3Builtin(GateRef hirGate, GateRef thisObj, GateRef a0, GateRef a1,
+                                                     GateRef a2, BuiltinsStubCSigns::ID id)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef idGate = Int8(static_cast<int8_t>(id));
+    auto numberMathOp = TypedCallOperator(hirGate, MachineType::I64,
+        {currentControl, currentDepend, thisObj, a0, a1, a2, idGate});
+    currentLabel->SetControl(numberMathOp);
+    currentLabel->SetDepend(numberMathOp);
+    return numberMathOp;
+}
+
 inline GateRef CircuitBuilder::GetMethodId(GateRef func)
 {
     GateRef method = GetMethodFromFunction(func);

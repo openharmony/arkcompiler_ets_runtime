@@ -54,6 +54,14 @@
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "libpandafile/bytecode_instruction-inl.h"
+#ifdef ARK_SUPPORT_INTL
+#include "ecmascript/js_collator.h"
+#include "ecmascript/js_locale.h"
+#else
+#ifndef ARK_NOT_SUPPORT_INTL_GLOBAL
+#include "ecmascript/intl/global_intl_helper.h"
+#endif
+#endif
 
 namespace panda::ecmascript {
 #if defined(__clang__)
@@ -2285,7 +2293,14 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
         THROW_TYPE_ERROR_AND_RETURN(thread, "class constructor cannot called without 'new'",
                                     JSTaggedValue::Exception());
     }
-
+    if (thread->IsPGOProfilerEnable()) {
+        ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(targetFunc.GetTaggedValue().GetTaggedObject());
+        ASSERT(callTarget != nullptr);
+        Method *method = callTarget->GetCallTarget();
+        if (!method->IsNativeWithCallField()) {
+            thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(targetFunc.GetTaggedType());
+        }
+    }
     JSHandle<TaggedArray> boundArgs(thread, boundFunc->GetBoundArguments());
     const int32_t boundLength = static_cast<int32_t>(boundArgs->GetLength());
     const int32_t argsLength = static_cast<int32_t>(info->GetArgsNumber()) + boundLength;
@@ -2336,6 +2351,65 @@ DEF_RUNTIME_STUBS(AotInlineTrace)
 
     LOG_TRACE(INFO) << "aot inline function name: " << inlineFullName << " caller function name: " << callerFullName;
     return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LocaleCompare)
+{
+    RUNTIME_STUBS_HEADER(LocaleCompare);
+
+    JSHandle<JSTaggedValue> thisTag = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thatTag = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> locales = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSHandle<JSTaggedValue> options = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
+
+    JSHandle<JSTaggedValue> thisObj(JSTaggedValue::RequireObjectCoercible(thread, thisTag));
+    [[maybe_unused]] JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisObj);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    [[maybe_unused]] JSHandle<EcmaString> thatHandle = JSTaggedValue::ToString(thread, thatTag);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+
+    [[maybe_unused]] bool cacheable = options->IsUndefined() && (locales->IsUndefined() || locales->IsString());
+#ifdef ARK_SUPPORT_INTL
+    if (cacheable) {
+        auto collator = JSCollator::GetCachedIcuCollator(thread, locales);
+        if (collator != nullptr) {
+            JSTaggedValue result = JSCollator::CompareStrings(collator, thisHandle, thatHandle);
+            return result.GetRawData();
+        }
+    }
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSTaggedValue> ctor = ecmaVm->GetGlobalEnv()->GetCollatorFunction();
+    JSHandle<JSCollator> collator =
+        JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor)));
+    JSHandle<JSCollator> initCollator =
+        JSCollator::InitializeCollator(thread, collator, locales, options, cacheable, true);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    icu::Collator *icuCollator = nullptr;
+    if (cacheable) {
+        icuCollator = JSCollator::GetCachedIcuCollator(thread, locales);
+        ASSERT(icuCollator != nullptr);
+    } else {
+        icuCollator = initCollator->GetIcuCollator();
+    }
+    JSTaggedValue result = JSCollator::FastCompareStrings(thread, icuCollator, thisHandle, thatHandle);
+    return result.GetRawData();
+#else
+#ifdef ARK_NOT_SUPPORT_INTL_GLOBAL
+    ARK_SUPPORT_INTL_RETURN_JSVALUE(thread, "LocaleCompare");
+#else
+    intl::GlobalIntlHelper gh(thread, intl::GlobalFormatterType::Collator);
+    auto collator = gh.GetGlobalObject<intl::GlobalCollator>(thread,
+        locales, options, intl::GlobalFormatterType::Collator, cacheable);
+    if (collator == nullptr) {
+        LOG_ECMA(ERROR) << "BuiltinsString::LocaleCompare:collator is nullptr";
+    }
+    ASSERT(collator != nullptr);
+    auto result = collator->Compare(EcmaStringAccessor(thisHandle).ToStdString(),
+        EcmaStringAccessor(thatHandle).ToStdString());
+    return JSTaggedValue(result).GetRawData();
+#endif
+#endif
 }
 
 void RuntimeStubs::StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot)
