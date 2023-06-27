@@ -105,7 +105,8 @@ HWTEST_F_L0(NumberHelperTest, DoubleToString_001)
 
     radix = 5;
     resultStr = factory->NewFromASCII("-1104332401304422434310320000");
-    JSHandle<EcmaString> handleEcmaStr5(thread, NumberHelper::DoubleToString(thread, static_cast<double>(-9223372036854775807), radix));
+    JSHandle<EcmaString> handleEcmaStr5(thread,
+        NumberHelper::DoubleToString(thread, static_cast<double>(-9223372036854775807), radix));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr5, resultStr), 0);
 
     radix = 6;

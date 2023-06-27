@@ -320,7 +320,7 @@ public:
                 return;
             }
         }
-        if (count < 4) {
+        if (count < 4) { // 4 : Class type
             type_[count] = type;
             count_++;
         } else {

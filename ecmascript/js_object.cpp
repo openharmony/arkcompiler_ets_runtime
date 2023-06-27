@@ -480,7 +480,7 @@ void JSObject::GetAllElementKeysByFilter(JSThread *thread,
 
     JSHandle<TaggedArray> elements(thread, obj->GetElements());
     JSHandle<JSTaggedValue> objValue(obj);
-    
+
     if (!elements->IsDictionaryMode()) {
         uint32_t elementsLen = elements->GetLength();
         for (uint32_t i = 0; i < elementsLen; ++i) {
@@ -1266,7 +1266,7 @@ JSHandle<TaggedArray> JSObject::GetAllPropertyKeys(JSThread *thread, const JSHan
     bool isInculdePrototypes = (filter & NATIVE_KEY_INCLUDE_PROTOTYPES);
     JSMutableHandle<JSObject> currentObj(thread, obj);
     JSMutableHandle<JSTaggedValue> currentObjValue(thread, currentObj);
-    
+
     uint32_t curObjNumberOfElements = currentObj->GetNumberOfElements();
     uint32_t curObjNumberOfKeys = currentObj->GetNumberOfKeys();
     uint32_t curObjectKeysLength = curObjNumberOfElements + curObjNumberOfKeys;
@@ -1274,7 +1274,7 @@ JSHandle<TaggedArray> JSObject::GetAllPropertyKeys(JSThread *thread, const JSHan
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<TaggedArray> retArray(thread, factory->NewTaggedArray(retArraylength));
     uint32_t retArrayEffectivelength = 0;
-    
+
     do {
         curObjNumberOfElements = currentObj->GetNumberOfElements();
         curObjNumberOfKeys = currentObj->GetNumberOfKeys();
@@ -1512,13 +1512,14 @@ bool JSObject::TestIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &ob
         handleKey.Update(taggedKey);
         PropertyDescriptor currentDesc(thread);
         bool curDescStatus =
-            JSTaggedValue::GetOwnProperty(thread,JSHandle<JSTaggedValue>(obj), handleKey, currentDesc);
+            JSTaggedValue::GetOwnProperty(thread, JSHandle<JSTaggedValue>(obj), handleKey, currentDesc);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         if (curDescStatus) {
             if (currentDesc.IsConfigurable()) {
                 return false;
             }
-            if (level == IntegrityLevel::FROZEN && currentDesc.IsDataDescriptor() && currentDesc.IsWritable()) {
+            if (level == IntegrityLevel::FROZEN &&
+                currentDesc.IsDataDescriptor() && currentDesc.IsWritable()) {
                 return false;
             }
         }

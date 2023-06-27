@@ -1061,7 +1061,6 @@ void PGORecordDetailInfos::ProcessToText(std::ofstream &stream) const
         } else {
             profilerString += BLOCK_SEPARATOR + SPACE;
         }
-        isFirst = false;
         profilerString += PGOHClassLayoutDescInner::GetTypeString(layoutInfoIter);
     }
     if (!isFirst) {
