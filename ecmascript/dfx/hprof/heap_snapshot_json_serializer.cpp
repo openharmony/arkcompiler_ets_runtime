@@ -170,9 +170,9 @@ void HeapSnapshotJSONSerializer::SerializeTraceFunctionInfo()
         writer_->Write(",");
         writer_->Write(info.scriptId);
         writer_->Write(",");
-        writer_->Write(info.columnNumber);
-        writer_->Write(",");
         writer_->Write(info.lineNumber);
+        writer_->Write(",");
+        writer_->Write(info.columnNumber);
         writer_->Write("\n");
         i++;
     }
