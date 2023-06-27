@@ -113,6 +113,7 @@ public:
     int ParseEscape(const uint8_t **pp, int isUtf16);
     int RecountCaptures();
     int IsIdentFirst(uint32_t c);
+    bool NeedIntersection(uint32_t c);
 
     inline CVector<CString> GetGroupNames() const
     {

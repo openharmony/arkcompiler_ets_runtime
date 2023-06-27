@@ -1227,12 +1227,13 @@ bool RegExpParser::ParseClassRanges(RangeSet *result)
     PrintF("Parse ClassRanges------\n");
     while (c0_ != ']') {
         RangeSet s1;
+        bool needInter = false;
         uint32_t c1 = ParseClassAtom(&s1);
         if (c1 == UINT32_MAX) {
             ParseError("invalid class range");
             return false;
         }
-
+        needInter = NeedIntersection(c1);
         int next_c0 = *pc_;
         if (c0_ == '-' && next_c0 != ']') {
             if (c1 == CLASS_RANGE_BASE) {
@@ -1264,11 +1265,12 @@ bool RegExpParser::ParseClassRanges(RangeSet *result)
                     return false;
                 }
             }
+            needInter = NeedIntersection(c2);
             result->Insert(c1, c2);
         } else {
             result->Insert(s1);
         }
-        if (IsIgnoreCase()) {
+        if (IsIgnoreCase() && needInter) {
             ProcessIntersection(result);
         }
     }
@@ -1483,5 +1485,10 @@ int RegExpParser::Canonicalize(int c, bool isUnicode)
         }
     }
     return c;
+}
+
+bool RegExpParser::NeedIntersection(uint32_t c)
+{
+    return (c <= 'z' && c >= 'a') || (c <= 'Z' && c >= 'A');
 }
 }  // namespace panda::ecmascript

@@ -22,23 +22,31 @@
 var reg = /[\x5d-\x7e]/i;
 var result = reg.test("a");
 print(result);
-// true
 
 var reg1 = new RegExp("^[-+]?([0-9]+)?(\\٫[0-9]{1,})?$");
 var result1 = reg1.test('0٫0000000000001');
 print(result1);
-// true
 
 var reg2 = /^[Α-ώ]+$/i
 print(reg2.test('άέήίΰϊϋόύώ'));
-// true
+
 print(reg2.test('ΆΈΉΊΪΫΎΏ'));
-// true
+
 print(reg2.test('αβγδεζηθικλμνξοπρςστυφχψω'));
-// true
+
 print(reg2.test('ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ'));
-// true
 
 let reg3 =/^[A-Z0-9_\-]*$/i
 print(reg3.test(''))
-//true
+
+let reg4 =   new RegExp("^(?<urlStrIndex>.*?)(?<urlStr>https?[:：]//[^/]+/svn(?:/[a-z0-9.,;?'*:+&%$#=~_ \\u4E00-\\u9FA5-]*)*).*$", "i")
+print(reg4.test('a'));
+
+let reg5 =   new RegExp("^(?<urlStrIndex>.*?)(?<urlStr>(?:(?:ht|f)tps?[:：]//)?(?:[a-z0-9-]+\\.)+" + "(?:com|edu|gov|mil|net|org|biz|info|name|museum|us|ca|uk|cn|cc|tw|de|au|sg|hk|ei|fr|me|im)(?![a-z])" + "(?:\\:[0-9][0-9]*)?(?:\\.?/[a-z0-9.,;?'\\|*:\\\\+&%$#=~_-]*)*).*$", "i")
+print(reg5.test('a'));
+
+let reg6 =   new RegExp("^(?<urlStrIndex>.*?)(?<urlStr>(?:ht|f)tps?[:：]//(?:[a-z0-9-]+\\.)*[a-z0-9-]+(?:/[a-z0-9]+)*[/a-z0-9.,;?'\\|*:\\\\+&%$#=~_-]*).*$", "i")
+print(reg6.test('a'));
+
+let reg7 =   new RegExp("^(?<urlStrIndex>.*?)(?<urlStr>(?:https?[:：]//)?(?:[a-z0-9-\\\\]+\\.)+" + "(?:com|edu|gov|mil|net|org|biz|info|name|museum|us|ca|uk|cn|cc|tw|de|au|sg|hk|ei|fr|me|im)(?![a-z])" + "(?:\\:\\d{4})?(?:/[a-z0-9.,;?'\\|*:\\\\+&%$#=~_-]*)*\\?(?:[a-z0-9]*=[a-z0-9.,;?'*:+%$#=~_\\u4E00-\\u9FA5-]*&?)*).*$", "i")
+print(reg7.test('a'));
