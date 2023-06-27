@@ -2935,6 +2935,9 @@ JSTaggedValue BuiltinsArray::At(EcmaRuntimeCallInfo *argv)
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (thisHandle->IsStableJSArray(thread)) {
+        return JSStableArray::At(JSHandle<JSArray>::Cast(thisHandle), argv);
+    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

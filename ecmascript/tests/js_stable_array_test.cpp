@@ -342,4 +342,67 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_DefinedSep)
     EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
         "a <> a <> a <> a <> a <> a <> a <> a <> a <> a");
 }
+
+/**
+ * @tc.name: At
+ * @tc.desc: Create a source Array whose elements are Numbers and an EcmaRuntimeCallInfo, define the first arg of the
+             EcmaRuntimeCallInfo an number as the index, check whether the element returned through calling
+             At function with the source Array and the EcmaRuntimeCallInfo is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSStableArrayTest, At_NUMBER_INDEX)
+{
+    ObjectFactory *objFactory = thread->GetEcmaVM()->GetFactory();
+
+    int32_t lengthArr = 10;
+    JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
+    for (int i = 0; i < lengthArr; i++) {
+        handleTagArr->Set(thread, i, JSTaggedValue(i));
+    }
+    JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(0));
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+
+    JSTaggedValue thisTagValue = JSStableArray::At(handleArr, ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_EQ(thisTagValue.GetNumber(), 0);
+
+    ecmaRuntimeCallInfo  = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(9));
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+
+    thisTagValue = JSStableArray::At(handleArr, ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_EQ(thisTagValue.GetNumber(), 9);
+
+    ecmaRuntimeCallInfo  = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(-1));
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+
+    thisTagValue = JSStableArray::At(handleArr, ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_EQ(thisTagValue.GetNumber(), 9);
+
+    ecmaRuntimeCallInfo  = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(10));
+    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+
+    thisTagValue = JSStableArray::At(handleArr, ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_EQ(thisTagValue, JSTaggedValue::Undefined());
+}
 }  // namespace panda::test

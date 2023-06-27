@@ -658,4 +658,29 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
     }
     return JSTaggedValue::Undefined();
 }
+
+JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
+{
+    JSThread *thread = argv->GetThread();
+    uint32_t thisLen = receiver->GetArrayLength();
+    if (thisLen == 0) {
+        return JSTaggedValue::Undefined();
+    }
+    JSTaggedNumber index = JSTaggedValue::ToInteger(thread, base::BuiltinsBase::GetCallArg(argv, 0));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int64_t relativeIndex = index.GetNumber();
+    int64_t k = 0;
+    if (relativeIndex >= 0) {
+        k = relativeIndex;
+    } else {
+        k = thisLen + relativeIndex;
+    }
+    if (k < 0 || k >= thisLen) {
+        return JSTaggedValue::Undefined();
+    }
+
+    JSHandle<JSTaggedValue> taggedValue = JSArray::FastGetPropertyByValue(thread, JSHandle<JSTaggedValue>(receiver), k);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return taggedValue.GetTaggedValue();
+}
 }  // namespace panda::ecmascript
