@@ -36,7 +36,6 @@ private:
     void RemoveGate();
     void PropagateGate(const Edge& edge);
     void PropagateMerge(const Edge& edge);
-    void PropagateLoopBack(const Edge& edge);
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;

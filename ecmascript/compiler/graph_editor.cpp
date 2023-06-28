@@ -55,11 +55,9 @@ void GraphEditor::RemoveGate()
             case OpCode::DEPEND_SELECTOR:
                 // dead op, just continue
                 break;
+            case OpCode::LOOP_BEGIN:
             case OpCode::MERGE:
                 PropagateMerge(edge);
-                break;
-            case OpCode::LOOP_BACK:
-                PropagateLoopBack(edge);
                 break;
             default:
                 PropagateGate(edge);
@@ -110,26 +108,4 @@ void GraphEditor::PropagateMerge(const Edge& edge)
         acc_.DecreaseIn(gate, edge.GetIndex());
     }
 }
-
-void GraphEditor::PropagateLoopBack(const Edge& edge)
-{
-    GateRef gate = edge.GetGate();
-
-    auto uses = acc_.Uses(gate);
-    auto firstUse = uses.begin();
-    if (firstUse == uses.end()) {
-        // LoopBegin => LoopBack
-        ReplaceGate(gate);
-    } else {
-        // maybe Merge => LoopBack
-        GateRef loopBegin = *firstUse;
-        GateRef otherStateIn = acc_.GetState(loopBegin, 0);
-
-        firstUse = acc_.Uses(loopBegin).begin();
-        acc_.ReplaceIn(*firstUse, firstUse.GetIndex(), otherStateIn);
-        ReplaceGate(gate);
-        acc_.DeleteGate(loopBegin);
-    }
-}
-
 }  // namespace panda::ecmascript::kungfu
