@@ -54,6 +54,8 @@ public:
 
     inline static void InvalidateAndReplaceEntry(JSThread *thread, const JSHandle<GlobalDictionary> &dictHandle,
                                                  int entry, const JSHandle<JSTaggedValue> &oldValue);
+    
+    inline bool IsValidateBox(int entry) const;
 
     inline PropertyBox *GetBox(int entry) const;
 

@@ -205,11 +205,17 @@ void GlobalDictionary::InvalidatePropertyBox(JSThread *thread, const JSHandle<Gl
 void GlobalDictionary::InvalidateAndReplaceEntry(JSThread *thread, const JSHandle<GlobalDictionary> &dictHandle,
                                                  int entry, const JSHandle<JSTaggedValue> &oldValue)
 {
+    if (!dictHandle->IsValidateBox(entry)) {
+        return;
+    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // Swap with a copy.
     JSHandle<PropertyBox> newBox = factory->NewPropertyBox(oldValue);
     PropertyBox *box = dictHandle->GetBox(entry);
     PropertyAttributes attr = dictHandle->GetAttributes(entry);
+    if (!attr.IsConfigurable() || box->GetValue().IsHole()) {
+        return;
+    }
     ASSERT_PRINT(attr.IsConfigurable(), "property must be configurable");
     ASSERT_PRINT(!box->GetValue().IsHole(), "value must not be hole");
 
@@ -218,6 +224,12 @@ void GlobalDictionary::InvalidateAndReplaceEntry(JSThread *thread, const JSHandl
     dictHandle->SetAttributes(thread, entry, attr);
     dictHandle->UpdateValue(thread, entry, newBox.GetTaggedValue());
     box->Clear(thread);
+}
+
+bool GlobalDictionary::IsValidateBox(int entry) const
+{
+    int index = GetEntryIndex(entry) + ENTRY_VALUE_INDEX;
+    return !Get(index).IsUndefined();
 }
 }  // namespace ecmascript
 }  // namespace panda
