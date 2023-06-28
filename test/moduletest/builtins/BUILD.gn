@@ -44,8 +44,8 @@ host_moduletest_action("builtins") {
   deps = [
     ":gen_builtinsir_abc",
     ":gen_builtinsnumber_abc",
+    ":gen_builtinsobject_abc",
     ":gen_builtinsregexp_abc",
     ":gen_builtinsstring_abc",
-    ":gen_builtinsobject_abc",
   ]
 }
