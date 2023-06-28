@@ -85,11 +85,16 @@ enum class TypedJumpOp : uint8_t {
     V(NotBool, NOTBOOL)                       \
     V(NotHeapObject, NOTHEAPOBJECT)           \
     V(NotStableArray, NOTSARRAY)              \
+    V(NotI32Array, NOTI32ARRAY)               \
     V(NotF32Array, NOTF32ARRAY)               \
+    V(NotF64Array, NOTF64ARRAY)               \
+    V(NotOnHeap, NOTONHEAP)                   \
     V(InconsistentHClass, INCONSISTENTHCLASS) \
     V(NotNewObj, NOTNEWOBJ)                   \
     V(NotArrayIndex, NOTARRAYIDX)             \
+    V(NotI32ArrayIndex, NOTI32ARRAYIDX)       \
     V(NotF32ArrayIndex, NOTF32ARRAYIDX)       \
+    V(NotF64ArrayIndex, NOTF64ARRAYIDX)       \
     V(NotIncOverflow, NOTINCOV)               \
     V(NotDecOverflow, NOTDECOV)               \
     V(NotNegativeOverflow, NOTNEGOV)          \
@@ -143,12 +148,16 @@ enum class FCmpCondition : uint8_t {
 
 enum class TypedStoreOp : uint8_t {
     ARRAY_STORE_ELEMENT = 0,
+    INT32ARRAY_STORE_ELEMENT,
     FLOAT32ARRAY_STORE_ELEMENT,
+    FLOAT64ARRAY_STORE_ELEMENT,
 };
 
 enum class TypedLoadOp : uint8_t {
     ARRAY_LOAD_ELEMENT = 0,
+    INT32ARRAY_LOAD_ELEMENT,
     FLOAT32ARRAY_LOAD_ELEMENT,
+    FLOAT64ARRAY_LOAD_ELEMENT,
 };
 
 std::string MachineTypeToStr(MachineType machineType);
@@ -291,6 +300,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(JSCallThisTargetTypeCheck, JSCALLTHISTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                \
     V(JSFastCallThisTargetTypeCheck, JSFASTCALLTHISTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)        \
     V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                    \
+    V(LoadTypedArrayLength, LOAD_TYPED_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                          \
     V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                               \
     V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                                           \
     V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)                               \

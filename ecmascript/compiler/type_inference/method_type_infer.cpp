@@ -599,6 +599,15 @@ bool MethodTypeInfer::InferLdObjByIndex(GateRef gate)
         auto type = tsManager_->GetArrayParameterTypeGT(inValueType);
         return UpdateType(gate, type);
     }
+    
+    if (tsManager_->IsInt32ArrayType(inValueType)) {
+        return UpdateType(gate, GateType::IntType());
+    }
+
+    if (tsManager_->IsFloat32ArrayType(inValueType) ||
+        tsManager_->IsFloat64ArrayType(inValueType)) {
+        return UpdateType(gate, GateType::DoubleType());
+    }
 
     if (tsManager_->IsTypedArrayType(inValueType)) {
         return UpdateType(gate, GateType::NumberType());
@@ -813,6 +822,13 @@ bool MethodTypeInfer::InferLdObjByValue(GateRef gate)
     if (tsManager_->IsArrayTypeKind(objType)) {
         auto elementType = tsManager_->GetArrayParameterTypeGT(objType);
         return UpdateType(gate, elementType);
+    }
+    if (tsManager_->IsInt32ArrayType(objType)) {
+        return UpdateType(gate, GateType::IntType());
+    }
+    if (tsManager_->IsFloat32ArrayType(objType) ||
+        tsManager_->IsFloat64ArrayType(objType)) {
+        return UpdateType(gate, GateType::DoubleType());
     }
     // handle object
     if (ShouldInferWithLdObjByValue(objType)) {

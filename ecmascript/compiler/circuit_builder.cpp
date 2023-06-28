@@ -208,6 +208,18 @@ GateRef CircuitBuilder::TypedArrayCheck(GateType type, GateRef gate)
     return ret;
 }
 
+GateRef CircuitBuilder::LoadTypedArrayLength(GateType type, GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->LoadTypedArrayLength(static_cast<size_t>(type.Value())),
+        MachineType::I64, {currentControl, currentDepend, gate}, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
 {
     auto currentLabel = env_->GetCurrentLabel();

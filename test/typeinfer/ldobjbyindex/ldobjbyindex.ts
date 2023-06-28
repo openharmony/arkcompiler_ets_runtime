@@ -30,9 +30,9 @@ declare function AssertType(value:any, type:string):void;
     }
 
     function test(c:C) {
-        AssertType(c._array[0], "number");
-        AssertType(c._array[1], "number");
-        AssertType(c._array["1"], "number");
+        AssertType(c._array[0], "double");
+        AssertType(c._array[1], "double");
+        AssertType(c._array["1"], "double");
     }
 
     let obj : {

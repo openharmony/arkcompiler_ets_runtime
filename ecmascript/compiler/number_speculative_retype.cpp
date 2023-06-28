@@ -18,6 +18,7 @@
 #include "ecmascript/compiler/gate_meta_data.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
+#include <cstdint>
 
 namespace panda::ecmascript::kungfu {
 GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, GateType gateType)
@@ -63,6 +64,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::INDEX_CHECK:
             return VisitIndexCheck(gate);
         case OpCode::LOAD_ARRAY_LENGTH:
+        case OpCode::LOAD_TYPED_ARRAY_LENGTH:
             return VisitLoadArrayLength(gate);
         case OpCode::LOAD_ELEMENT:
             return VisitLoadElement(gate);
@@ -817,7 +819,16 @@ GateRef NumberSpeculativeRetype::VisitLoadArrayLength(GateRef gate)
 GateRef NumberSpeculativeRetype::VisitLoadElement(GateRef gate)
 {
     if (IsRetype()) {
-        return SetOutputType(gate, GateType::AnyType());
+        auto op = acc_.GetTypedLoadOp(gate);
+        switch (op) {
+            case TypedLoadOp::INT32ARRAY_LOAD_ELEMENT:
+                return SetOutputType(gate, GateType::IntType());
+            case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
+            case TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT:
+                return SetOutputType(gate, GateType::DoubleType());
+            default:
+                return SetOutputType(gate, GateType::AnyType());
+        }
     }
 
     if (IsConvert()) {
@@ -844,7 +855,19 @@ GateRef NumberSpeculativeRetype::VisitStoreElement(GateRef gate)
         if (indexType.IsNumberType()) {
             acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType), 1);
         }
-        acc_.ReplaceValueIn(gate, ConvertToTagged(value), 2);   // 2: index of value to be stored.
+        auto op = acc_.GetTypedStoreOp(gate);
+        switch (op) {
+            case TypedStoreOp::INT32ARRAY_STORE_ELEMENT:
+                acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, GateType::IntType()), 2);   // 2: value idx
+                break;
+            case TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT:
+            case TypedStoreOp::FLOAT64ARRAY_STORE_ELEMENT:
+                acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(value, GateType::DoubleType()), 2);  // 2: value idx
+                break;
+            default:
+                acc_.ReplaceValueIn(gate, ConvertToTagged(value), 2);   // 2: value idx
+                break;
+        }
     }
 
     return Circuit::NullGate();

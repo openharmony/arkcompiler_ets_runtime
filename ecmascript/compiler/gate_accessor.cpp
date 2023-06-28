@@ -163,6 +163,14 @@ bool GateAccessor::HasNumberType(GateRef gate) const
     return false;
 }
 
+GlobalTSTypeRef GateAccessor::GetFuncGT(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::JSINLINETARGET_TYPE_CHECK);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    auto value = static_cast<uint32_t>((gatePtr->GetOneParameterMetaData()->GetValue()));
+    return GlobalTSTypeRef(value);
+}
+
 GateType GateAccessor::GetParamGateType(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::PRIMITIVE_TYPE_CHECK ||

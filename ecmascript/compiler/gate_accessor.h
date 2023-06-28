@@ -387,6 +387,7 @@ public:
     TypedBinOp GetTypedBinaryOp(GateRef gate) const;
     PGOSampleType GetTypedBinaryType(GateRef gate) const;
     bool HasNumberType(GateRef gate) const;
+    GlobalTSTypeRef GetFuncGT(GateRef gate) const;
     GateType GetParamGateType(GateRef gate) const;
     TypedUnaryAccessor GetTypedUnAccessor(GateRef gate) const;
     TypedJumpAccessor GetTypedJumpAccessor(GateRef gate) const;

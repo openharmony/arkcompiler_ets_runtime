@@ -99,6 +99,7 @@ private:
     void LowerTypedNot(GateRef gate);
     void LowerTypedLdObjByName(GateRef gate);
     void LowerTypedLdArrayLength(GateRef gate);
+    void LowerTypedLdTypedArrayLength(GateRef gate);
     void LowerTypedStObjByName(GateRef gate, bool isThis);
     void LowerTypedLdObjByIndex(GateRef gate);
     void LowerTypedStObjByIndex(GateRef gate);
@@ -127,6 +128,11 @@ private:
         GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
     void CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
         GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
+
+    GateRef LoadJSArrayByIndex(GateRef receiver, GateRef propKey);
+    GateRef LoadTypedArrayByIndex(GateRef receiver, GateRef propKey);
+    void StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value);
+    void StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, GateRef value);
 
     // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed,
     // or the gate is constant and no need to check.

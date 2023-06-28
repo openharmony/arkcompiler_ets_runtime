@@ -45,6 +45,8 @@ private:
     void VisitUndefinedStrictEq(GateRef gate);
     void VisitCallBuiltins(GateRef gate);
     void VisitIndexCheck(GateRef gate);
+    void VisitLoadArrayLength(GateRef gate);
+    void VisitLoadElement(GateRef gate);
 
     template<TypedBinOp Op>
     void VisitNumberCalculate(GateRef gate);

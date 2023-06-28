@@ -738,6 +738,22 @@ bool TSManager::IsTypedArrayType(kungfu::GateType gateType) const
            (l <= static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_LAST));
 }
 
+bool TSManager::IsInt32ArrayType(kungfu::GateType gateType) const
+{
+    if (!IsClassInstanceTypeKind(gateType)) {
+        return false;
+    }
+    const GlobalTSTypeRef gateGT = GlobalTSTypeRef(gateType.Value());
+    GlobalTSTypeRef classGT = GetClassType(gateGT);
+    if (IsBuiltinsDTSEnabled()) {
+        uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::INT32_ARRAY);
+        return (HasCreatedGT(GetBuiltinPandaFile(), GetBuiltinOffset(idx))) &&
+               (GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(idx)) == classGT);
+    }
+    uint32_t l = classGT.GetLocalId();
+    return classGT.IsBuiltinModule() && (l == static_cast<uint32_t>(BuiltinTypeId::INT32_ARRAY));
+}
+
 bool TSManager::IsFloat32ArrayType(kungfu::GateType gateType) const
 {
     if (!IsClassInstanceTypeKind(gateType)) {
@@ -752,6 +768,22 @@ bool TSManager::IsFloat32ArrayType(kungfu::GateType gateType) const
     }
     uint32_t l = classGT.GetLocalId();
     return classGT.IsBuiltinModule() && (l == static_cast<uint32_t>(BuiltinTypeId::FLOAT32_ARRAY));
+}
+
+bool TSManager::IsFloat64ArrayType(kungfu::GateType gateType) const
+{
+    if (!IsClassInstanceTypeKind(gateType)) {
+        return false;
+    }
+    const GlobalTSTypeRef gateGT = GlobalTSTypeRef(gateType.Value());
+    GlobalTSTypeRef classGT = GetClassType(gateGT);
+    if (IsBuiltinsDTSEnabled()) {
+        uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::FLOAT64_ARRAY);
+        return (HasCreatedGT(GetBuiltinPandaFile(), GetBuiltinOffset(idx))) &&
+               (GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(idx)) == classGT);
+    }
+    uint32_t l = classGT.GetLocalId();
+    return classGT.IsBuiltinModule() && (l == static_cast<uint32_t>(BuiltinTypeId::FLOAT64_ARRAY));
 }
 
 std::string TSManager::GetBuiltinsName(uint32_t index) const

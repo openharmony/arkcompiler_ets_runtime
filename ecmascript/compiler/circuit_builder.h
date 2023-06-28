@@ -249,6 +249,7 @@ public:
     GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState);
     GateRef ArrayGuardianCheck(GateRef frameState);
     GateRef TypedArrayCheck(GateType type, GateRef gate);
+    GateRef LoadTypedArrayLength(GateType type, GateRef gate);
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
