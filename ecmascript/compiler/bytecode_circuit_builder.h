@@ -284,7 +284,8 @@ public:
     NO_MOVE_SEMANTIC(BytecodeCircuitBuilder);
     void PUBLIC_API BytecodeToCircuit();
     void CollectRegionInfo(uint32_t bcIndex);
-    GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc);
+    GateRef ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc, bool needIter = true);
+    GateRef ResolveDef(const BytecodeRegion &bb, int32_t bcId, const uint16_t reg, const bool acc);
 
     [[nodiscard]] Circuit* GetCircuit() const
     {

@@ -852,9 +852,7 @@ GateRef NumberSpeculativeRetype::VisitStoreElement(GateRef gate)
         GateRef index = acc_.GetValueIn(gate, 1);
         GateType indexType = acc_.GetGateType(index);
         GateRef value = acc_.GetValueIn(gate, 2);
-        if (indexType.IsNumberType()) {
-            acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType), 1);
-        }
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType), 1);
         auto op = acc_.GetTypedStoreOp(gate);
         switch (op) {
             case TypedStoreOp::INT32ARRAY_STORE_ELEMENT:
