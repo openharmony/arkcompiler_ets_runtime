@@ -1226,7 +1226,7 @@ void TSHCRLowering::LowerTypedCallthis0(GateRef gate)
     }
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHIS0_IMM8_V8));
-    LowerTypedThisCall(gate, func, actualArgc, 1);
+    LowerTypedThisCall(gate, func, actualArgc, 0);
 }
 
 void TSHCRLowering::LowerTypedCallthis1(GateRef gate)

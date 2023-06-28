@@ -161,3 +161,16 @@ function funcAsm(value: number, value1: number, value2: number): number {
 }
 ArkTools.removeAOTFlag(funcAsm);
 funcAsm(1, 2);
+
+class TestCallThis0 {
+    foo(arg?: any) {
+        print(arg);
+    }
+}
+
+function testCallThis0() {
+    let t = new TestCallThis0();
+    t.foo();
+}
+
+testCallThis0();
