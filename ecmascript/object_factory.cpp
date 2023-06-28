@@ -251,6 +251,7 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
                                                            vm_->GetNativeAreaAllocator(), false, size);
     array->SetArrayBufferData(thread_, pointer);
+    array->SetWithNativeAreaAllocator(true);
 }
 
 void ObjectFactory::NewJSSharedArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length)
@@ -268,6 +269,7 @@ void ObjectFactory::NewJSSharedArrayBufferData(const JSHandle<JSArrayBuffer> &ar
     JSHandle<JSNativePointer> pointer = NewJSNativePointer(newData, JSSharedMemoryManager::RemoveSharedMemory,
                                                            JSSharedMemoryManager::GetInstance(), false, size);
     array->SetArrayBufferData(thread_, pointer);
+    array->SetWithNativeAreaAllocator(false);
 }
 
 JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(int32_t length)
@@ -286,17 +288,8 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(int32_t length)
         JSHandle<JSNativePointer> pointer = NewJSNativePointer(newData, NativeAreaAllocator::FreeBufferFunc,
                                                                vm_->GetNativeAreaAllocator(), false, length);
         arrayBuffer->SetArrayBufferData(thread_, pointer.GetTaggedValue());
+        arrayBuffer->SetWithNativeAreaAllocator(true);
     }
-    return arrayBuffer;
-}
-
-JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(int32_t length, const JSHandle<JSNativePointer> &nativePtr)
-{
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> constructor(env->GetArrayBufferFunction());
-    JSHandle<JSArrayBuffer> arrayBuffer(NewJSObjectByConstructor(constructor));
-    arrayBuffer->SetArrayBufferByteLength(length);
-    arrayBuffer->SetArrayBufferData(thread_, nativePtr.GetTaggedValue());
     return arrayBuffer;
 }
 
@@ -313,6 +306,8 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(void *buffer, int32_t le
         JSHandle<JSNativePointer> pointer = NewJSNativePointer(buffer, deleter, data, false, length);
         arrayBuffer->SetArrayBufferData(thread_, pointer.GetTaggedValue());
         arrayBuffer->SetShared(share);
+        arrayBuffer->SetWithNativeAreaAllocator(deleter == NativeAreaAllocator::FreeBufferFunc &&
+                                                data == vm_->GetNativeAreaAllocator());
     }
     return arrayBuffer;
 }
@@ -362,6 +357,7 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSSharedArrayBuffer(void *buffer, int3
                                                                JSSharedMemoryManager::GetInstance(), false, length);
         sharedArrayBuffer->SetArrayBufferData(thread_, pointer);
         sharedArrayBuffer->SetShared(true);
+        sharedArrayBuffer->SetWithNativeAreaAllocator(false);
     }
     return sharedArrayBuffer;
 }

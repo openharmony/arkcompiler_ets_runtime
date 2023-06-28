@@ -19,6 +19,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/platform/os.h"
 #include "ecmascript/tagged_array.h"
 
 #include "securec.h"
@@ -41,14 +42,23 @@ void JSArrayBuffer::CopyDataPointBytes(void *toBuf, void *fromBuf, int32_t fromI
     }
 }
 
-void JSArrayBuffer::Attach(JSThread *thread, uint32_t arrayBufferByteLength, JSTaggedValue arrayBufferData)
+void JSArrayBuffer::Attach(JSThread *thread, uint32_t arrayBufferByteLength,
+                           JSTaggedValue arrayBufferData, bool transferWithNativeAreaAllocator)
 {
-    ASSERT(arrayBufferData.IsNativePointer());
+    ASSERT(arrayBufferData.IsJSNativePointer());
+    // only in transition, should the JSArrayBuffer with NativeAreaAllocator increase mem usage
+    if (transferWithNativeAreaAllocator) {
+        LOG_FULL(DEBUG) << "attaching for transfer";
+        JSHandle<JSNativePointer> np(thread, arrayBufferData.GetTaggedObject());
+        NativeAreaAllocator *allocator = thread->GetEcmaVM()->GetNativeAreaAllocator();
+        allocator->IncreaseNativeMemoryUsage(MallocUsableSize(np->GetExternalPointer()));
+        np->SetData(allocator);
+    }
     SetArrayBufferByteLength(arrayBufferByteLength);
     SetArrayBufferData(thread, arrayBufferData);
 }
 
-void JSArrayBuffer::Detach(JSThread *thread)
+void JSArrayBuffer::Detach(JSThread *thread, bool transferWithNativeAreaAllocator)
 {
     JSTaggedValue arrayBufferData = GetArrayBufferData();
     // already detached.
@@ -56,6 +66,14 @@ void JSArrayBuffer::Detach(JSThread *thread)
         return;
     }
 
+    // only in transition, should the JSArrayBuffer with NativeAreaAllocator decrease mem usage
+    if (transferWithNativeAreaAllocator) {
+        LOG_FULL(DEBUG) << "detaching for transfer";
+        JSHandle<JSNativePointer> np(thread, arrayBufferData.GetTaggedObject());
+        NativeAreaAllocator *allocator = thread->GetEcmaVM()->GetNativeAreaAllocator();
+        allocator->DecreaseNativeMemoryUsage(MallocUsableSize(np->GetExternalPointer()));
+        np->SetData(nullptr);
+    }
     SetArrayBufferData(thread, JSTaggedValue::Null());
     SetArrayBufferByteLength(0);
 }

@@ -27,8 +27,9 @@ public:
     static void CopyDataBlockBytes(JSTaggedValue toBlock, JSTaggedValue fromBlock, int32_t fromIndex, int32_t count);
     static void CopyDataPointBytes(void *toBuf, void *fromBuf, int32_t fromIndex, int32_t count);
 
-    void Attach(JSThread *thread, uint32_t arrayBufferByteLength, JSTaggedValue arrayBufferData);
-    void Detach(JSThread *thread);
+    void Attach(JSThread *thread, uint32_t arrayBufferByteLength, JSTaggedValue arrayBufferData,
+                bool transferWithNativeAreaAllocator = false);
+    void Detach(JSThread *thread, bool transferWithNativeAreaAllocator = false);
 
     bool IsDetach()
     {
@@ -43,8 +44,11 @@ public:
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     // define BitField
-    static constexpr size_t SHARED_BITS = 2;
+    static constexpr size_t SHARED_BITS = 1;
+    static constexpr size_t WITH_NATIVE_AREA_ALLOCATOR_BITS = 1;
+
     FIRST_BIT_FIELD(BitField, Shared, bool, SHARED_BITS)
+    NEXT_BIT_FIELD(BitField, WithNativeAreaAllocator, bool, WITH_NATIVE_AREA_ALLOCATOR_BITS, Shared)
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, DATA_OFFSET, BYTE_LENGTH_OFFSET)
     DECL_DUMP()
