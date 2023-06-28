@@ -1191,7 +1191,7 @@ private:
     bool enableEarlyElimination_ {true};
     bool enableLaterElimination_ {true};
     bool enableValueNumbering_ {true};
-    bool enableOptInlining_ {true};
+    bool enableOptInlining_ {false};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};
     uint32_t compilerModuleMethods_ {100};
