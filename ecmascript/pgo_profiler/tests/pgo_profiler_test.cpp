@@ -121,10 +121,10 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(!loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
+    ASSERT_TRUE(!loader.Match(expectRecordName, methodLiterals[0]->GetMethodId()));
 #else
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
+    ASSERT_TRUE(loader.Match(expectRecordName, methodLiterals[0]->GetMethodId()));
 #endif
     unlink("ark-profiler/modules.ap");
     rmdir("ark-profiler/");
@@ -184,12 +184,17 @@ HWTEST_F_L0(PGOProfilerTest, Sample1)
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
-    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[2]));
-    ASSERT_TRUE(!loader.Match(pf.get(), expectRecordName, methodLiterals[1]));
+    for (uint32_t idx = 0; idx < 3; idx++) {
+        loader.MatchAndMarkMethod(expectRecordName,
+                                 methodLiterals[idx]->GetMethodName(pf.get(), methodLiterals[idx]->GetMethodId()),
+                                 methodLiterals[idx]->GetMethodId());
+    }
+    ASSERT_TRUE(loader.Match(expectRecordName, methodLiterals[0]->GetMethodId()));
+    ASSERT_TRUE(loader.Match(expectRecordName, methodLiterals[2]->GetMethodId()));
+    ASSERT_TRUE(!loader.Match(expectRecordName, methodLiterals[1]->GetMethodId()));
 #else
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[1]));
+    ASSERT_TRUE(loader.Match(expectRecordName, methodLiterals[1]->GetMethodId()));
 #endif
     unlink("ark-profiler1/modules.ap");
     rmdir("ark-profiler1/");
@@ -240,12 +245,20 @@ HWTEST_F_L0(PGOProfilerTest, Sample2)
     CString expectRecordName1 = "test1";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(!loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
+    for (uint32_t idx = 0; idx < 2; idx++) {
+        loader.MatchAndMarkMethod(expectRecordName,
+                                 methodLiterals[idx]->GetMethodName(pf.get(), methodLiterals[idx]->GetMethodId()),
+                                 methodLiterals[idx]->GetMethodId());
+        loader.MatchAndMarkMethod(expectRecordName1,
+                                 methodLiterals[idx]->GetMethodName(pf.get(), methodLiterals[idx]->GetMethodId()),
+                                 methodLiterals[idx]->GetMethodId());
+    }
+    ASSERT_TRUE(!loader.Match(expectRecordName, methodLiterals[0]->GetMethodId()));
 #else
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
+    ASSERT_TRUE(loader.Match(expectRecordName, methodLiterals[0]->GetMethodId()));
 #endif
-    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName1, methodLiterals[1]));
+    ASSERT_TRUE(loader.Match(expectRecordName1, methodLiterals[1]->GetMethodId()));
     unlink("ark-profiler2/modules.ap");
     rmdir("ark-profiler2/");
 }
@@ -284,7 +297,7 @@ HWTEST_F_L0(PGOProfilerTest, DisEnableSample)
     // path is empty()
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "test";
-    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
+    ASSERT_TRUE(loader.Match(expectRecordName, methodLiterals[0]->GetMethodId()));
     rmdir("ark-profiler3/");
 }
 
@@ -400,15 +413,15 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDoubleVM)
     mkdir("ark-profiler5/profiler", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "test";
-    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[1]));
+    ASSERT_TRUE(loader.Match(expectRecordName, methodLiterals[1]->GetMethodId()));
 
     PGOProfilerDecoder loader1("ark-profiler5/modules.ap", 2);
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader1.LoadAndVerify(checksum));
-    ASSERT_TRUE(!loader1.Match(pf.get(), expectRecordName, methodLiterals[1]));
+    ASSERT_TRUE(!loader1.Match(expectRecordName, methodLiterals[1]->GetMethodId()));
 #else
     ASSERT_TRUE(!loader1.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader1.Match(pf.get(), expectRecordName, methodLiterals[1]));
+    ASSERT_TRUE(loader1.Match(expectRecordName, methodLiterals[1]->GetMethodId()));
 #endif
 
     unlink("ark-profiler5/modules.ap");
@@ -448,10 +461,10 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerDecoderNoHotMethod)
     CString expectRecordName = "test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
     ASSERT_TRUE(loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(!loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
+    ASSERT_TRUE(!loader.Match(expectRecordName, methodLiterals[0]->GetMethodId()));
 #else
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
-    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
+    ASSERT_TRUE(loader.Match(expectRecordName, methodLiterals[0]->GetMethodId()));
 #endif
 
     unlink("ark-profiler8/modules.ap");
@@ -500,14 +513,18 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
 #endif
     CString expectRecordName = "test";
+    for (int i = 0; i < 100; i++) {
+        EntityId methodId = methodLiterals[i]->GetMethodId();
+        loader.MatchAndMarkMethod(expectRecordName, methodLiterals[i]->GetMethodName(pf.get(), methodId), methodId);
+    }
     for (int i = 61; i < 91; i++) {
         if (i % 3 == 0) {
-            ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[i]));
+            ASSERT_TRUE(loader.Match(expectRecordName, methodLiterals[i]->GetMethodId()));
         } else {
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
-            ASSERT_TRUE(!loader.Match(pf.get(), expectRecordName, methodLiterals[i]));
+            ASSERT_TRUE(!loader.Match(expectRecordName, methodLiterals[i]->GetMethodId()));
 #else
-            ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[i]));
+            ASSERT_TRUE(loader.Match(expectRecordName, methodLiterals[i]->GetMethodId()));
 #endif
         }
     }
@@ -651,7 +668,7 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     // path is empty()
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
     CString expectRecordName = "test";
-    ASSERT_TRUE(loader.Match(pf.get(), expectRecordName, methodLiterals[0]));
+    ASSERT_TRUE(loader.Match(expectRecordName, methodLiterals[0]->GetMethodId()));
     rmdir("ark-profiler12/");
 }
 }  // namespace panda::test

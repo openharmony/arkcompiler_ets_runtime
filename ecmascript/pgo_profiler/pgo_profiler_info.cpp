@@ -19,6 +19,7 @@
 
 #include "ecmascript/base/bit_helper.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "macros.h"
@@ -505,7 +506,7 @@ void PGOMethodTypeSet::ObjDefOpTypeInfo::ProcessToText(std::string &text) const
 
 bool PGOMethodInfoMap::AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode)
 {
-    EntityId methodId(jsMethod->GetMethodId());
+    PGOMethodId methodId(jsMethod->GetMethodId());
     auto result = methodInfos_.find(methodId);
     if (result != methodInfos_.end()) {
         auto info = result->second;
@@ -526,7 +527,7 @@ bool PGOMethodInfoMap::AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode
     }
 }
 
-PGOMethodTypeSet *PGOMethodInfoMap::GetOrInsertMethodTypeSet(Chunk *chunk, EntityId methodId)
+PGOMethodTypeSet *PGOMethodInfoMap::GetOrInsertMethodTypeSet(Chunk *chunk, PGOMethodId methodId)
 {
     auto typeInfoSetIter = methodTypeInfos_.find(methodId);
     if (typeInfoSetIter != methodTypeInfos_.end()) {
@@ -538,7 +539,7 @@ PGOMethodTypeSet *PGOMethodInfoMap::GetOrInsertMethodTypeSet(Chunk *chunk, Entit
     }
 }
 
-bool PGOMethodInfoMap::AddType(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type)
+bool PGOMethodInfoMap::AddType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type)
 {
     auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
     ASSERT(typeInfoSet != nullptr);
@@ -547,7 +548,7 @@ bool PGOMethodInfoMap::AddType(Chunk *chunk, EntityId methodId, int32_t offset, 
 }
 
 bool PGOMethodInfoMap::AddDefine(
-    Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType)
+    Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType)
 {
     auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
     ASSERT(typeInfoSet != nullptr);
@@ -710,7 +711,7 @@ bool PGOMethodInfoMap::ParseFromText(Chunk *chunk, uint32_t threshold, const std
 
         size_t len = methodName.size();
         void *infoAddr = chunk->Allocate(PGOMethodInfo::Size(len));
-        auto info = new (infoAddr) PGOMethodInfo(EntityId(methodId), count, mode, methodName.c_str());
+        auto info = new (infoAddr) PGOMethodInfo(PGOMethodId(methodId), count, mode, methodName.c_str());
         methodInfos_.emplace(methodId, info);
 
         // Parse Type Info
@@ -776,8 +777,7 @@ void PGOMethodInfoMap::ProcessToText(uint32_t threshold, const CString &recordNa
     }
 }
 
-bool PGOMethodIdSet::ParseFromBinary(
-    NativeAreaAllocator *allocator, uint32_t threshold, void **buffer, PGOProfilerHeader *const header)
+bool PGOMethodIdSet::ParseFromBinary(uint32_t threshold, void **buffer, PGOProfilerHeader *const header)
 {
     SectionInfo secInfo = base::ReadBuffer<SectionInfo>(buffer);
     for (uint32_t j = 0; j < secInfo.number_; j++) {
@@ -791,29 +791,36 @@ bool PGOMethodIdSet::ParseFromBinary(
             }
             continue;
         }
-        methodIdSet_.emplace(info->GetMethodId());
+        methodInfoMap_.emplace(info->GetMethodName(), info->GetMethodId());
+        auto methodIter = methodInfoMap_.find(info->GetMethodName());
+        ASSERT(methodIter != methodInfoMap_.end());
+        auto &methodInfo = methodIter->second;
+        if (header->SupportMethodChecksum()) {
+            methodInfo.GetConsistencyInfo().SetChecksum(base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t)));
+        }
         LOG_ECMA(DEBUG) << "Method:" << info->GetMethodId() << ELEMENT_SEPARATOR << info->GetCount()
                         << ELEMENT_SEPARATOR << std::to_string(static_cast<int>(info->GetSampleMode()))
                         << ELEMENT_SEPARATOR << info->GetMethodName();
-        if (header->SupportMethodChecksum()) {
-            auto checksum = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
-            auto checksumIter = methodsChecksumMapping_.find(checksum);
-            if (checksumIter != methodsChecksumMapping_.end()) {
-                checksumIter->second.emplace(info->GetMethodId());
-            } else {
-                std::unordered_set<EntityId> methodIdSet = { info->GetMethodId() };
-                methodsChecksumMapping_.emplace(checksum, methodIdSet);
-            }
-            methodIdNameMapping_.emplace(info->GetMethodId(), info->GetMethodName());
-        }
         if (header->SupportType()) {
-            auto typeInfoSet = allocator->New<PGOMethodTypeSet>();
-            typeInfoSet->ParseFromBinary(buffer);
-            methodTypeSet_.emplace(info->GetMethodId(), typeInfoSet);
+            methodInfo.GetPGOMethodTypeSet().ParseFromBinary(buffer);
         }
     }
 
-    return methodIdSet_.size() != 0;
+    return !methodInfoMap_.empty();
+}
+
+void PGOMethodIdSet::GetMismatchResult(const CString &recordName, uint32_t &totalMethodCount,
+                                       uint32_t &mismatchMethodCount,
+                                       std::set<std::pair<std::string, CString>> &mismatchMethodSet) const
+{
+    totalMethodCount += methodInfoMap_.size();
+    for (const auto &method : methodInfoMap_) {
+        if (!method.second.IsMatch()) {
+            auto info = std::make_pair(method.first, recordName);
+            mismatchMethodSet.emplace(info);
+            mismatchMethodCount++;
+        }
+    }
 }
 
 PGOMethodInfoMap *PGORecordDetailInfos::GetMethodInfoMap(const CString &recordName)
@@ -836,7 +843,7 @@ bool PGORecordDetailInfos::AddMethod(const CString &recordName, Method *jsMethod
     return curMethodInfos->AddMethod(chunk_.get(), jsMethod, mode);
 }
 
-bool PGORecordDetailInfos::AddType(const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type)
+bool PGORecordDetailInfos::AddType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type)
 {
     auto curMethodInfos = GetMethodInfoMap(recordName);
     ASSERT(curMethodInfos != nullptr);
@@ -844,7 +851,7 @@ bool PGORecordDetailInfos::AddType(const CString &recordName, EntityId methodId,
 }
 
 bool PGORecordDetailInfos::AddDefine(
-    const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType)
+    const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType)
 {
     auto curMethodInfos = GetMethodInfoMap(recordName);
     ASSERT(curMethodInfos != nullptr);
@@ -1090,8 +1097,8 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
     void *addr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
     for (uint32_t i = 0; i < info->number_; i++) {
         auto recordName = base::ReadBuffer(&addr);
-        PGOMethodIdSet *methodIds = nativeAreaAllocator_.New<PGOMethodIdSet>();
-        if (methodIds->ParseFromBinary(&nativeAreaAllocator_, hotnessThreshold_, &addr, header)) {
+        PGOMethodIdSet *methodIds = nativeAreaAllocator_.New<PGOMethodIdSet>(chunk_.get());
+        if (methodIds->ParseFromBinary(hotnessThreshold_, &addr, header)) {
             methodIds_.emplace(recordName, methodIds);
         }
     }

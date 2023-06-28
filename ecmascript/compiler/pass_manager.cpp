@@ -45,7 +45,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
     }
 
     ResolveModule(jsPandaFile, fileName);
-    BytecodeInfoCollector collector(vm_, jsPandaFile, maxAotMethodSize_, ShouldCollect());
+    BytecodeInfoCollector collector(vm_, jsPandaFile, profilerDecoder_, maxAotMethodSize_, ShouldCollect());
 
     // Checking released/debuggable pandafile uses method literals, which are initialized in BytecodeInfoCollector,
     // should after it.
@@ -63,6 +63,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
                                 fileName,
                                 triple_,
                                 &lOptions,
+                                log_,
                                 log_->OutputASM(),
                                 maxMethodsInModule_);
 

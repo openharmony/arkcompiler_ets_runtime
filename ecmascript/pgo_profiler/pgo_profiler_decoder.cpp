@@ -170,8 +170,7 @@ void PGOProfilerDecoder::Clear()
     }
 }
 
-bool PGOProfilerDecoder::Match(const JSPandaFile *jsPandaFile, const CString &recordName,
-                               const MethodLiteral *methodLiteral)
+bool PGOProfilerDecoder::Match(const CString &recordName, PGOMethodId methodId)
 {
     if (!isLoaded_) {
         return true;
@@ -179,21 +178,7 @@ bool PGOProfilerDecoder::Match(const JSPandaFile *jsPandaFile, const CString &re
     if (!isVerifySuccess_) {
         return false;
     }
-    EntityId methodId = methodLiteral->GetMethodId();
-    EntityId pgoMethodId(methodId);
-    if (IsMethodMatchEnabled()) {
-        if (jsPandaFile == nullptr) {
-            return false;
-        }
-        const char *methodName = MethodLiteral::GetMethodName(jsPandaFile, methodId);
-        uint32_t checksum =
-            PGOMethodInfo::CalcChecksum(methodName, methodLiteral->GetBytecodeArray(),
-                                        MethodLiteral::GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()));
-        if (!GetMethodIdInPGO(recordName, checksum, methodName, pgoMethodId)) {
-            return false;
-        }
-    }
-    return recordSimpleInfos_->Match(recordName, pgoMethodId);
+    return recordSimpleInfos_->Match(recordName, methodId);
 }
 
 bool PGOProfilerDecoder::GetHClassLayoutDesc(PGOSampleType classType, PGOHClassLayoutDesc **desc) const
@@ -202,5 +187,14 @@ bool PGOProfilerDecoder::GetHClassLayoutDesc(PGOSampleType classType, PGOHClassL
         return false;
     }
     return recordSimpleInfos_->GetHClassLayoutDesc(classType, desc);
+}
+
+void PGOProfilerDecoder::GetMismatchResult(uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
+                                           std::set<std::pair<std::string, CString>> &mismatchMethodSet) const
+{
+    if (!isLoaded_ || !isVerifySuccess_) {
+        return;
+    }
+    return recordSimpleInfos_->GetMismatchResult(totalMethodCount, mismatchMethodCount, mismatchMethodSet);
 }
 } // namespace panda::ecmascript
