@@ -114,6 +114,7 @@ HWTEST_F_L0(PGOProfilerTest, Sample)
     JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
     func->SetModule(vm_->GetJSThread(), recordName);
+    vm_->GetPGOProfiler()->SetSaveTimestamp(std::chrono::system_clock::now());
     vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
     JSNApi::DestroyJSVM(vm_);
     // Loader
