@@ -1589,6 +1589,48 @@ JSTaggedValue BuiltinsTypedArray::ToStringTag(EcmaRuntimeCallInfo *argv)
     return name;
 }
 
+// 23.2.3.1
+JSTaggedValue BuiltinsTypedArray::At(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, At);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. Let O be ToObject(this value).
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    // 2. Perform ? ValidateTypedArray(O).
+    if (!thisHandle->IsTypedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
+    }
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    // ReturnIfAbrupt(O).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 3. Let len be O.[[ArrayLength]].
+    uint32_t len = JSHandle<JSTypedArray>::Cast(thisObjHandle)->GetArrayLength();
+    // ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 4. Let relativeIndex be ? ToIntegerOrInfinity(index).
+    JSTaggedNumber indexVal = JSTaggedValue::ToInteger(thread, GetCallArg(argv, 0));
+    // ReturnIfAbrupt(indexVal).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int64_t relativeIndex = indexVal.GetNumber();
+    int64_t k = 0;
+    // 5. If relativeIndex ≥ 0, then Let k be relativeIndex.
+    // 6. Else, Let k be len + relativeIndex.
+    k = relativeIndex >= 0 ? relativeIndex : len + relativeIndex;
+    // 7. If k < 0 or k ≥ len, return undefined.
+    if (k < 0 || k >= len) {
+        return JSTaggedValue::Undefined();
+    }
+    // 8. Return ! Get(O, ! ToString(𝔽(k))).
+    JSHandle<JSTaggedValue> kValue = JSTypedArray::GetProperty(thread, thisHandle, k).GetValue();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return kValue.GetTaggedValue();
+}
+
 // es12 23.2.3.13
 JSTaggedValue BuiltinsTypedArray::Includes(EcmaRuntimeCallInfo *argv)
 {

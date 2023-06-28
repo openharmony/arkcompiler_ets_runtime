@@ -2175,6 +2175,7 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHand
     SetFunction(env, typedArrFuncPrototype, "copyWithin", BuiltinsTypedArray::CopyWithin, FunctionLength::TWO);
     SetFunction(env, typedArrFuncPrototype, "entries", BuiltinsTypedArray::Entries, FunctionLength::ZERO);
     SetFunction(env, typedArrFuncPrototype, "every", BuiltinsTypedArray::Every, FunctionLength::ONE);
+    SetFunction(env, typedArrFuncPrototype, "at", BuiltinsTypedArray::At, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "fill", BuiltinsTypedArray::Fill, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "filter", BuiltinsTypedArray::Filter, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "find", BuiltinsTypedArray::Find, FunctionLength::ONE);
