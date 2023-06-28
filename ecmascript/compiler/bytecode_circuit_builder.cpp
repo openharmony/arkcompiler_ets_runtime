@@ -552,6 +552,9 @@ void BytecodeCircuitBuilder::BuildFrameArgs()
 
 bool BytecodeCircuitBuilder::ShouldBeDead(BytecodeRegion &curBlock)
 {
+    if (curBlock.iDominator->isDead) {
+        return true;
+    }
     auto isDead = false;
     for (auto bbPred : curBlock.preds) {
         if (!bbPred->isDead) {
@@ -1246,8 +1249,18 @@ GateRef BytecodeCircuitBuilder::NewLoopExitValue(GateRef loopExit, uint16_t reg,
     return value;
 }
 
+GateRef BytecodeCircuitBuilder::ResolveDef(const BytecodeRegion &bb, int32_t bcId, const uint16_t reg, const bool acc)
+{
+    // Ensure that bcId is not negative
+    if (bcId == 0) {
+        return ResolveDef(bb.id, bcId, reg, acc, false);
+    }
+    return ResolveDef(bb.id, bcId - 1, reg, acc);
+}
+
 // recursive variables renaming algorithm
-GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, const uint16_t reg, const bool acc)
+GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId,
+    const uint16_t reg, const bool acc, bool needIter)
 {
     auto tmpReg = reg;
     // find def-site in bytecodes of basic block
@@ -1256,54 +1269,56 @@ GateRef BytecodeCircuitBuilder::ResolveDef(const size_t bbId, int32_t bcId, cons
     GateType type = GateType::AnyType();
     auto tmpAcc = acc;
 
-    BytecodeIterator iterator(this, bb.start, bcId);
-    for (iterator.Goto(bcId); !iterator.Done(); --iterator) {
-        const BytecodeInfo& curInfo = iterator.GetBytecodeInfo();
-        // original bc use acc as input && current bc use acc as output
-        bool isTransByAcc = tmpAcc && curInfo.AccOut();
-        // 0 : the index in vreg-out list
-        bool isTransByVreg = (!tmpAcc && curInfo.IsOut(tmpReg, 0));
-        if (isTransByAcc || isTransByVreg) {
-            if (curInfo.IsMov()) {
-                tmpAcc = curInfo.AccIn();
-                if (!curInfo.inputs.empty()) {
-                    ASSERT(!tmpAcc);
-                    ASSERT(curInfo.inputs.size() == 1);
-                    tmpReg = std::get<VirtualRegister>(curInfo.inputs.at(0)).GetId();
+    if (needIter) {
+        BytecodeIterator iterator(this, bb.start, bcId);
+        for (iterator.Goto(bcId); !iterator.Done(); --iterator) {
+            const BytecodeInfo& curInfo = iterator.GetBytecodeInfo();
+            // original bc use acc as input && current bc use acc as output
+            bool isTransByAcc = tmpAcc && curInfo.AccOut();
+            // 0 : the index in vreg-out list
+            bool isTransByVreg = (!tmpAcc && curInfo.IsOut(tmpReg, 0));
+            if (isTransByAcc || isTransByVreg) {
+                if (curInfo.IsMov()) {
+                    tmpAcc = curInfo.AccIn();
+                    if (!curInfo.inputs.empty()) {
+                        ASSERT(!tmpAcc);
+                        ASSERT(curInfo.inputs.size() == 1);
+                        tmpReg = std::get<VirtualRegister>(curInfo.inputs.at(0)).GetId();
+                    }
+                    if (HasTypes()) {
+                        type = typeRecorder_.UpdateType(iterator.Index(), type);
+                    }
+                } else {
+                    ans = byteCodeToJSGates_.at(iterator.Index()).at(0);
+                    auto oldType = gateAcc_.GetGateType(ans);
+                    if (!type.IsAnyType() && oldType.IsAnyType()) {
+                        typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(ans), type);
+                        gateAcc_.SetGateType(ans, type);
+                    }
+                    break;
                 }
-                if (HasTypes()) {
-                    type = typeRecorder_.UpdateType(iterator.Index(), type);
-                }
-            } else {
-                ans = byteCodeToJSGates_.at(iterator.Index()).at(0);
-                auto oldType = gateAcc_.GetGateType(ans);
-                if (!type.IsAnyType() && oldType.IsAnyType()) {
-                    typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(ans), type);
-                    gateAcc_.SetGateType(ans, type);
-                }
+            }
+            if (curInfo.GetOpcode() != EcmaOpcode::RESUMEGENERATOR) {
+                continue;
+            }
+            // New RESTORE_REGISTER HIR, used to restore the register content when processing resume instruction.
+            // New SAVE_REGISTER HIR, used to save register content when processing suspend instruction.
+            auto resumeGate = byteCodeToJSGates_.at(iterator.Index()).at(0);
+            ans = GetExistingRestore(resumeGate, tmpReg);
+            if (ans != Circuit::NullGate()) {
                 break;
             }
-        }
-        if (curInfo.GetOpcode() != EcmaOpcode::RESUMEGENERATOR) {
-            continue;
-        }
-        // New RESTORE_REGISTER HIR, used to restore the register content when processing resume instruction.
-        // New SAVE_REGISTER HIR, used to save register content when processing suspend instruction.
-        auto resumeGate = byteCodeToJSGates_.at(iterator.Index()).at(0);
-        ans = GetExistingRestore(resumeGate, tmpReg);
-        if (ans != Circuit::NullGate()) {
+            ans = circuit_->NewGate(circuit_->RestoreRegister(tmpReg), MachineType::I64,
+                                    { resumeGate }, GateType::AnyType());
+            SetExistingRestore(resumeGate, tmpReg, ans);
+            auto saveRegGate = ResolveDef(bbId, iterator.Index() - 1, tmpReg, tmpAcc);
+            [[maybe_unused]] EcmaOpcode opcode = Bytecodes::GetOpcode(iterator.PeekPrevPc(2)); // 2: prev bc
+            ASSERT(opcode == EcmaOpcode::SUSPENDGENERATOR_V8 || opcode == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8);
+            GateRef suspendGate = byteCodeToJSGates_.at(iterator.Index() - 2).at(0); // 2: prev bc
+            GateRef saveRegs = gateAcc_.GetDep(suspendGate);
+            gateAcc_.ReplaceValueIn(saveRegs, saveRegGate, tmpReg);
             break;
         }
-        ans = circuit_->NewGate(circuit_->RestoreRegister(tmpReg), MachineType::I64,
-                                { resumeGate }, GateType::AnyType());
-        SetExistingRestore(resumeGate, tmpReg, ans);
-        auto saveRegGate = ResolveDef(bbId, iterator.Index() - 1, tmpReg, tmpAcc);
-        [[maybe_unused]] EcmaOpcode opcode = Bytecodes::GetOpcode(iterator.PeekPrevPc(2)); // 2: prev bc
-        ASSERT(opcode == EcmaOpcode::SUSPENDGENERATOR_V8 || opcode == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8);
-        GateRef suspendGate = byteCodeToJSGates_.at(iterator.Index() - 2).at(0); // 2: prev bc
-        GateRef saveRegs = gateAcc_.GetDep(suspendGate);
-        gateAcc_.ReplaceValueIn(saveRegs, saveRegGate, tmpReg);
-        break;
     }
     // find GET_EXCEPTION gate if this is a catch block
     if (ans == Circuit::NullGate() && tmpAcc) {
@@ -1431,7 +1446,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
                     size_t depCount = gateAcc_.GetNumValueIn(depIn);
                     GateRef defVreg = Circuit::NullGate();
                     for (size_t idx = 0; idx < depCount; idx++) {
-                        defVreg = ResolveDef(bbIndex, bcIndex - 1, idx, false);
+                        defVreg = ResolveDef(bb, bcIndex, idx, false);
                         gateAcc_.ReplaceValueIn(depIn, defVreg, idx);
                     }
                 }
@@ -1441,11 +1456,11 @@ void BytecodeCircuitBuilder::BuildCircuit()
                     if (IsFirstBCEnvIn(bbIndex, bcIndex, vregId)) {
                         defVreg = gateAcc_.GetInitialEnvGate(argAcc_.GetCommonArgGate(CommonArgIdx::FUNC));
                     } else {
-                        defVreg = ResolveDef(bbIndex, bcIndex - 1, vregId, false);
+                        defVreg = ResolveDef(bb, bcIndex, vregId, false);
                     }
                     gateAcc_.NewIn(gate, inIdx, defVreg);
                 } else {
-                    GateRef defAcc = ResolveDef(bbIndex, bcIndex - 1, 0, true);
+                    GateRef defAcc = ResolveDef(bb, bcIndex, 0, true);
                     gateAcc_.NewIn(gate, inIdx, defAcc);
                 }
             }
