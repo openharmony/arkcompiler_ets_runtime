@@ -385,6 +385,7 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::TO_JSON_STRING_INDEX, factory->NewFromASCIINonMovable("toJSON"));
     SetConstant(ConstantIndex::GLOBAL_STRING_INDEX, factory->NewFromASCIINonMovable("global"));
     SetConstant(ConstantIndex::MESSAGE_STRING_INDEX, factory->NewFromASCIINonMovable("message"));
+    SetConstant(ConstantIndex::CAUSE_STRING_INDEX, factory->NewFromASCIINonMovable("cause"));
     SetConstant(ConstantIndex::ERROR_STRING_INDEX, factory->NewFromASCIINonMovable("Error"));
     SetConstant(ConstantIndex::ERRORS_STRING_INDEX, factory->NewFromASCII("errors"));
     SetConstant(ConstantIndex::AGGREGATE_ERROR_STRING_INDEX, factory->NewFromASCII("AggregateError"));
