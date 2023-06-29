@@ -494,7 +494,6 @@ bool JSNApi::IsMixedDebugEnabled([[maybe_unused]] const EcmaVM *vm)
     CHECK_HAS_PENDING_EXCEPTION(vm, false);
     return vm->GetJsDebuggerManager()->IsMixedDebugEnabled();
 #else
-    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
     return false;
 #endif
 }
