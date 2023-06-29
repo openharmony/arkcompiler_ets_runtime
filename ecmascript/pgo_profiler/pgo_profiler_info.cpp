@@ -893,16 +893,15 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
         }
 
         toMethodInfos->Merge(chunk_.get(), fromMethodInfos);
-
-        // Merge global layout desc infos to global method info map
-        for (auto info = recordInfos.moduleLayoutDescInfos_.begin(); info != recordInfos.moduleLayoutDescInfos_.end();
-             info++) {
-            auto result = moduleLayoutDescInfos_.find(*info);
-            if (result == moduleLayoutDescInfos_.end()) {
-                moduleLayoutDescInfos_.emplace(*info);
-            } else {
-                const_cast<PGOHClassLayoutDesc &>(*result).Merge(*info);
-            }
+    }
+    // Merge global layout desc infos to global method info map
+    for (auto info = recordInfos.moduleLayoutDescInfos_.begin(); info != recordInfos.moduleLayoutDescInfos_.end();
+         info++) {
+        auto result = moduleLayoutDescInfos_.find(*info);
+        if (result == moduleLayoutDescInfos_.end()) {
+            moduleLayoutDescInfos_.emplace(*info);
+        } else {
+            const_cast<PGOHClassLayoutDesc &>(*result).Merge(*info);
         }
     }
 }

@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_PGO_PROFILER_H
 #define ECMASCRIPT_PGO_PROFILER_H
 
+#include <chrono>
 #include <memory>
 
 #include "ecmascript/ecma_vm.h"
@@ -31,9 +32,14 @@ public:
     void ProfileOpType(JSTaggedType func, int32_t offset, uint32_t type);
     void ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType ctor);
     void ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType object, bool store);
+    void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp)
+    {
+        saveTimestamp_ = timestamp;
+    }
 
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT = 20;
+    static constexpr auto MERGED_MIN_INTERVAL = std::chrono::milliseconds(15);
 
     PGOProfiler([[maybe_unused]] EcmaVM *vm, bool isEnable) : isEnable_(isEnable)
     {
@@ -62,6 +68,7 @@ private:
 
     bool isEnable_ {false};
     uint32_t methodCount_ {0};
+    std::chrono::system_clock::time_point saveTimestamp_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
     friend class PGOProfilerManager;
 };

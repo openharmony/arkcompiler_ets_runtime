@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
+#include <chrono>
 
 #include "ecmascript/js_function.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -36,11 +37,13 @@ void PGOProfiler::ProfileCall(JSTaggedType value, SampleMode mode)
         if (recordInfos_->AddMethod(recordName, jsMethod, mode)) {
             methodCount_++;
         }
-        // Merged every 10 methods
-        if (methodCount_ >= MERGED_EVERY_COUNT) {
+        auto interval = std::chrono::system_clock::now() - saveTimestamp_;
+        // Merged every 10 methods and merge interval greater than minimal interval
+        if (methodCount_ >= MERGED_EVERY_COUNT && interval > MERGED_MIN_INTERVAL) {
             LOG_ECMA(DEBUG) << "Sample: post task to save profiler";
             PGOProfilerManager::GetInstance()->Merge(this);
             PGOProfilerManager::GetInstance()->AsynSave();
+            SetSaveTimestamp(std::chrono::system_clock::now());
             methodCount_ = 0;
         }
     }
