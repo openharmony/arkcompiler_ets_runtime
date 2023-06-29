@@ -121,7 +121,7 @@ public:
     {
         for (auto iter = lvt_.rbegin(); iter != lvt_.rend(); iter++) {
             // reversely finds the variable and updates its end_offset to be state address
-            if (iter->reg_number == regNumber) {
+            if (iter->reg_number == regNumber && iter->end_offset == 0) {
                 iter->end_offset = state_->GetAddress();
                 break;
             }
