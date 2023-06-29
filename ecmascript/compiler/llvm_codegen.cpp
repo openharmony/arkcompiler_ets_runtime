@@ -112,7 +112,7 @@ CodeInfo::CodeSpace::~CodeSpace()
     unreqSecs_ = nullptr;
 }
 
-uint8_t *CodeInfo::CodeSpace::Alloca(uintptr_t size, bool isReq, bool alignFlag)
+uint8_t *CodeInfo::CodeSpace::Alloca(uintptr_t size, bool isReq, size_t alignSize, bool alignFlag)
 {
     // align up for rodata section
     if (alignFlag) {
@@ -127,19 +127,22 @@ uint8_t *CodeInfo::CodeSpace::Alloca(uintptr_t size, bool isReq, bool alignFlag)
                             << " plus size:" << size << "exceed limit:" << limit;
         return nullptr;
     }
+    if (alignSize > 0) {
+        curPos = AlignUp(curPos, alignSize);
+    }
     addr = bufBegin + curPos;
     curPos += size;
     return addr;
 }
 
-uint8_t *CodeInfo::AllocaInReqSecBuffer(uintptr_t size, bool alignFlag)
+uint8_t *CodeInfo::AllocaInReqSecBuffer(uintptr_t size, size_t alignSize, bool alignFlag)
 {
-    return CodeSpace::GetInstance()->Alloca(size, true, alignFlag);
+    return CodeSpace::GetInstance()->Alloca(size, true, alignSize, alignFlag);
 }
 
-uint8_t *CodeInfo::AllocaInNotReqSecBuffer(uintptr_t size)
+uint8_t *CodeInfo::AllocaInNotReqSecBuffer(uintptr_t size, size_t alignSize)
 {
-    return CodeSpace::GetInstance()->Alloca(size, false);
+    return CodeSpace::GetInstance()->Alloca(size, false, alignSize);
 }
 
 uint8_t *CodeInfo::AllocaCodeSection(uintptr_t size, const char *sectionName)
@@ -161,8 +164,11 @@ uint8_t *CodeInfo::AllocaDataSection(uintptr_t size, const char *sectionName)
     // rodata section needs 16 bytes alignment
     if (curSec.InRodataSection()) {
         size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+        addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size, AOTFileInfo::TEXT_SEC_ALIGN)
+                                           : AllocaInNotReqSecBuffer(size, AOTFileInfo::TEXT_SEC_ALIGN);
+    } else {
+        addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size) : AllocaInNotReqSecBuffer(size);
     }
-    addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size) : AllocaInNotReqSecBuffer(size);
     if (curSec.isValidAOTSec()) {
         secInfos_[curSec.GetIntIndex()] = std::make_pair(addr, size);
     }

@@ -56,7 +56,7 @@ struct CodeInfo {
     public:
         static CodeSpace *GetInstance();
 
-        uint8_t *Alloca(uintptr_t size, bool isReq, bool alignFlag = true);
+        uint8_t *Alloca(uintptr_t size, bool isReq, size_t alignSize, bool alignFlag = true);
 
     private:
         CodeSpace();
@@ -73,9 +73,9 @@ struct CodeInfo {
         size_t unreqBufPos_ {0};
     };
 
-    uint8_t *AllocaInReqSecBuffer(uintptr_t size, bool alignFlag = true);
+    uint8_t *AllocaInReqSecBuffer(uintptr_t size, size_t alignSize = 0, bool alignFlag = true);
 
-    uint8_t *AllocaInNotReqSecBuffer(uintptr_t size);
+    uint8_t *AllocaInNotReqSecBuffer(uintptr_t size, size_t alignSize = 0);
 
     uint8_t *AllocaCodeSection(uintptr_t size, const char *sectionName);
 
