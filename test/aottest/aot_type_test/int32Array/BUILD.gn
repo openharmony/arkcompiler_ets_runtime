@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Copyright (c) 2023 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,27 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("aot_type_test") {
-  testonly = true
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-  test_list = [
-    "arraylength",
-    "float32Array",
-    "float64Array",
-    "int32Array",
-    "typeadd",
-    "typediv",
-    "typeequal",
-    "typelogicalop",
-    "typemod",
-    "typemul",
-    "typenewsuper",
-    "typenotequal",
-    "typesub",
-  ]
-
+host_aot_test_action("int32Array") {
   deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}AotAction" ]
-  }
 }
