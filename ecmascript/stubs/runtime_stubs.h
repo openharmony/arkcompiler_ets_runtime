@@ -98,6 +98,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(DebugPrintInstruction)                   \
     V(ProfileCall)                             \
     V(ProfileDefineClass)                      \
+    V(ProfileCreateObject)                     \
     V(ProfileOpType)                           \
     V(ProfileObjLayout)                        \
     V(Comment)                                 \
@@ -354,6 +355,8 @@ public:
     static void Comment(uintptr_t argStr);
     static void ProfileCall(uintptr_t argGlue, uintptr_t func);
     static void ProfileDefineClass(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t ctor);
+    static void ProfileCreateObject(
+        uintptr_t argGlue, JSTaggedType func, int32_t offset, JSTaggedType originObj, JSTaggedType newObj);
     static void ProfileOpType(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type);
     static void ProfileObjLayout(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object, int32_t store);
     static void FatalPrint(int fmtMessageId, ...);

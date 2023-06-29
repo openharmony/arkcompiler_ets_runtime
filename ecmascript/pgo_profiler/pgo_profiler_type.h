@@ -293,45 +293,99 @@ private:
     std::variant<Type, ClassType> type_;
 };
 
+enum class PGOObjKind {
+    LOCAL,
+    PROTOTYPE,
+    CONSTRUCTOR,
+};
+
+class PGOObjectInfo {
+public:
+    PGOObjectInfo() : type_(ClassType()), objKind_(PGOObjKind::LOCAL) {}
+    PGOObjectInfo(ClassType type, PGOObjKind kind) : type_(type), objKind_(PGOObjKind::LOCAL)
+    {
+        if (kind == PGOObjKind::CONSTRUCTOR) {
+            objKind_ = kind;
+        }
+    }
+
+    std::string GetInfoString() const
+    {
+        std::string result = type_.GetTypeString();
+        result += "(";
+        if (objKind_ == PGOObjKind::CONSTRUCTOR) {
+            result += "c";
+        } else {
+            result += "l";
+        }
+        result += ")";
+        return result;
+    }
+
+    ClassType GetClassType() const
+    {
+        return type_;
+    }
+
+    bool IsNone() const
+    {
+        return type_.IsNone();
+    }
+
+    bool InConstructor() const
+    {
+        return objKind_ == PGOObjKind::CONSTRUCTOR;
+    }
+
+    bool operator<(const PGOObjectInfo &right) const
+    {
+        return type_ < right.type_ || objKind_ < right.objKind_;
+    }
+
+    bool operator==(const PGOObjectInfo &right) const
+    {
+        return type_ == right.type_ && objKind_ == right.objKind_;
+    }
+
+private:
+    ClassType type_ { ClassType() };
+    PGOObjKind objKind_ { PGOObjKind::LOCAL };
+};
+
 class PGORWOpType : public PGOType {
 public:
-    PGORWOpType() : PGOType(TypeKind::RW_OP_TYPE) {};
-    explicit PGORWOpType(const PGOSampleType &type) : PGOType(TypeKind::RW_OP_TYPE), count_(0)
-    {
-        ASSERT(type.IsClassType());
-        AddClassType(type.GetClassType());
-    }
+    PGORWOpType() : PGOType(TypeKind::RW_OP_TYPE), count_(0) {};
 
     void Merge(const PGORWOpType &type)
     {
         for (int i = 0; i < type.count_; i++) {
-            AddClassType(type.type_[i]);
+            AddObjectInfo(type.infos_[i]);
         }
     }
 
-    void AddClassType(const ClassType &type)
+    void AddObjectInfo(const PGOObjectInfo &info)
     {
-        if (type.IsNone()) {
+        if (info.IsNone()) {
             return;
         }
         int32_t count = 0;
         for (; count < count_; count++) {
-            if (type_[count] == type) {
+            if (infos_[count] == info) {
                 return;
             }
         }
-        if (count < 4) { // 4 : Class type
-            type_[count] = type;
+        if (count < POLY_CASE_NUM) {
+            infos_[count] = info;
             count_++;
         } else {
             LOG_ECMA(DEBUG) << "Class type exceeds 4, discard";
         }
     }
 
-    ClassType GetType(int32_t index) const
+    PGOObjectInfo GetObjectInfo(int32_t index) const
     {
         ASSERT(index < count_);
-        return type_[index];
+        return infos_[index];
     }
 
     int32_t GetCount() const
@@ -340,8 +394,9 @@ public:
     }
 
 private:
+    static constexpr int POLY_CASE_NUM = 4;
     int count_ = 0;
-    ClassType type_[4];
+    PGOObjectInfo infos_[POLY_CASE_NUM];
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_PGO_PROFILER_TYPE_H

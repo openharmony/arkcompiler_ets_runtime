@@ -1670,7 +1670,7 @@ public:
     DECL_DUMP()
 
     static CString DumpJSType(JSType type);
-    static bool DumpForProfile(const JSHClass *hclass, PGOHClassLayoutDesc &desc, PGOObjLayoutKind kind);
+    static bool DumpForProfile(const JSHClass *hclass, PGOHClassLayoutDesc &desc, PGOObjKind kind);
 
     DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, BIT_FIELD_OFFSET);
 

@@ -417,6 +417,7 @@ private:
     V(Comment)                              \
     V(ProfileCall)                          \
     V(ProfileDefineClass)                   \
+    V(ProfileCreateObject)                  \
     V(ProfileOpType)                        \
     V(ProfileObjLayout)                     \
     V(FatalPrint)                           \

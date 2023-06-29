@@ -40,9 +40,16 @@ void TSHClassGenerator::GenerateTSHClasses() const
     }
 }
 
-void TSHClassGenerator::UpdateTSHClassFromPGO(JSHClass *hclass, const PGOHClassLayoutDesc &desc) const
+void TSHClassGenerator::UpdateTSHClassFromPGO(const kungfu::GateType &type, const PGOHClassLayoutDesc &desc) const
 {
     DISALLOW_GARBAGE_COLLECTION;
+    auto hclassValue = tsManager_->GetTSHClass(type);
+    if (!hclassValue.IsJSHClass()) {
+        return;
+    }
+
+    tsManager_->InsertPtToGtMap(desc.GetClassType(), type);
+    auto hclass = JSHClass::Cast(hclassValue.GetTaggedObject());
     const JSThread *thread = tsManager_->GetThread();
     LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     int element = layoutInfo->NumberOfElements();

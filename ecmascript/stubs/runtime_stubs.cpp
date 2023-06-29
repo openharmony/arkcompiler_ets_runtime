@@ -406,6 +406,13 @@ void RuntimeStubs::ProfileDefineClass(uintptr_t argGlue, uintptr_t func, int32_t
     thread->GetEcmaVM()->GetPGOProfiler()->ProfileDefineClass(thread, func, offset, ctor);
 }
 
+void RuntimeStubs::ProfileCreateObject(
+    uintptr_t argGlue, JSTaggedType func, int32_t offset, JSTaggedType originObj, JSTaggedType newObj)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCreateObject(func, offset, originObj, newObj);
+}
+
 void RuntimeStubs::ProfileObjLayout(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object, int32_t store)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);

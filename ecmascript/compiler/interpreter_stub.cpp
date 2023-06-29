@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <initializer_list>
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/bc_call_signature.h"
@@ -59,11 +60,12 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
                                      GateRef acc, GateRef hotnessCounter,            \
                                      [[maybe_unused]] ProfileOperation callback)
 
-#define REGISTER_PROFILE_CALL_BACK()                                                                      \
-    ProfileOperation callback([this, glue, sp, pc, profileTypeInfo](GateRef value, OperationType type) {  \
-        ProfilerStubBuilder profiler(this);                                                               \
-        profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(GetFrame(sp)), profileTypeInfo, value, type); \
-    });
+#define REGISTER_PROFILE_CALL_BACK()                                                                              \
+    ProfileOperation callback(                                                                                    \
+        [this, glue, sp, pc, profileTypeInfo](const std::initializer_list<GateRef> &values, OperationType type) { \
+            ProfilerStubBuilder profiler(this);                                                                   \
+            profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(GetFrame(sp)), profileTypeInfo, values, type);    \
+        });
 
 #define REGISTER_NULL_CALL_BACK() ProfileOperation callback;
 
@@ -3851,6 +3853,7 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Id16)
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
     GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
+    callback.ProfileCreateObject(result, res);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
 }
 
@@ -3862,6 +3865,7 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
     GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
+    callback.ProfileCreateObject(result, res);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
 }
 

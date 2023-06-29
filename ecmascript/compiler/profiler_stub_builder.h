@@ -29,11 +29,12 @@ public:
     NO_COPY_SEMANTIC(ProfilerStubBuilder);
     void GenerateCircuit() override {}
 
-    void PGOProfiler(
-        GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, GateRef value, OperationType type);
+    void PGOProfiler(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo,
+        const std::vector<GateRef> &values, OperationType type);
     void ProfileCall(GateRef glue, GateRef func);
     void ProfileOpType(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, GateRef type);
     void ProfileDefineClass(GateRef glue, GateRef pc, GateRef func, GateRef constructor);
+    void ProfileCreateObject(GateRef glue, GateRef pc, GateRef func, GateRef originObj, GateRef newObj);
     void ProfileObjLayout(GateRef glue, GateRef pc, GateRef func, GateRef object, GateRef store);
 
     GateRef UpdateTrackTypeInPropAttr(GateRef attr, GateRef value, ProfileOperation callback);

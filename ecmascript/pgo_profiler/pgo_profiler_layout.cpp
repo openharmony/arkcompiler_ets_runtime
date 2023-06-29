@@ -16,16 +16,16 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 
 namespace panda::ecmascript {
-void PGOHClassLayoutDesc::UpdateKeyAndDesc(const CString &key, const PGOHandler &handler, PGOObjLayoutKind kind)
+void PGOHClassLayoutDesc::UpdateKeyAndDesc(const CString &key, const PGOHandler &handler, PGOObjKind kind)
 {
     switch (kind) {
-        case PGOObjLayoutKind::LOCAL:
+        case PGOObjKind::LOCAL:
             UpdateKeyAndDesc(key, handler, layoutDesc_);
             break;
-        case PGOObjLayoutKind::PROTOTYPE:
+        case PGOObjKind::PROTOTYPE:
             UpdateKeyAndDesc(key, handler, ptLayoutDesc_);
             break;
-        case PGOObjLayoutKind::CONSTRUCTOR:
+        case PGOObjKind::CONSTRUCTOR:
             UpdateKeyAndDesc(key, handler, ctorLayoutDesc_);
             break;
         default:
@@ -47,13 +47,13 @@ bool PGOHClassLayoutDesc::FindDescWithKey(const CString &key, PGOHandler &handle
 void PGOHClassLayoutDesc::Merge(const PGOHClassLayoutDesc &from)
 {
     for (const auto &iter : from.layoutDesc_) {
-        UpdateKeyAndDesc(iter.first, iter.second, PGOObjLayoutKind::LOCAL);
+        UpdateKeyAndDesc(iter.first, iter.second, PGOObjKind::LOCAL);
     }
     for (const auto &iter : from.ptLayoutDesc_) {
-        UpdateKeyAndDesc(iter.first, iter.second, PGOObjLayoutKind::PROTOTYPE);
+        UpdateKeyAndDesc(iter.first, iter.second, PGOObjKind::PROTOTYPE);
     }
     for (const auto &iter : from.ctorLayoutDesc_) {
-        UpdateKeyAndDesc(iter.first, iter.second, PGOObjLayoutKind::CONSTRUCTOR);
+        UpdateKeyAndDesc(iter.first, iter.second, PGOObjKind::CONSTRUCTOR);
     }
 }
 

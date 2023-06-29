@@ -709,6 +709,11 @@ public:
         return collectedGT_;
     }
 
+    inline void InsertPtToGtMap(ClassType pgoType, const kungfu::GateType &gateType)
+    {
+        ptToGtMap_.emplace(pgoType, gateType);
+    }
+
     void PrintNumOfTypes() const;
 
     void PrintTypeInfo(const JSPandaFile *jsPandaFile) const;
@@ -808,6 +813,7 @@ private:
     JSThread *thread_ {nullptr};
     ObjectFactory *factory_ {nullptr};
     JSTaggedValue globalModuleTable_ {JSTaggedValue::Hole()};
+    CMap<ClassType, const kungfu::GateType> ptToGtMap_ {};
     std::map<GlobalTSTypeRef, IHClassData> gtIhcMap_ {};
     std::map<GlobalTSTypeRef, IHClassData> gtConstructorhcMap_ {};
     bool assertTypes_ {false};

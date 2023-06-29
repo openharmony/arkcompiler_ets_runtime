@@ -19,24 +19,27 @@
 #include "ecmascript/compiler/stub_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
-void ProfilerStubBuilder::PGOProfiler(
-    GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, GateRef value, OperationType type)
+void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo,
+    const std::vector<GateRef> &values, OperationType type)
 {
     switch (type) {
         case OperationType::CALL:
-            ProfileCall(glue, value);
+            ProfileCall(glue, values[0]);
             break;
         case OperationType::OPERATION_TYPE:
-            ProfileOpType(glue, pc, func, profileTypeInfo, value);
+            ProfileOpType(glue, pc, func, profileTypeInfo, values[0]);
             break;
         case OperationType::DEFINE_CLASS:
-            ProfileDefineClass(glue, pc, func, value);
+            ProfileDefineClass(glue, pc, func, values[0]);
+            break;
+        case OperationType::CREATE_OBJECT:
+            ProfileCreateObject(glue, pc, func, values[0], values[1]);
             break;
         case OperationType::STORE_LAYOUT:
-            ProfileObjLayout(glue, pc, func, value, Int32(1));
+            ProfileObjLayout(glue, pc, func, values[0], Int32(1));
             break;
         case OperationType::LOAD_LAYOUT:
-            ProfileObjLayout(glue, pc, func, value, Int32(0));
+            ProfileObjLayout(glue, pc, func, values[0], Int32(0));
             break;
         default:
             break;
@@ -103,6 +106,21 @@ void ProfilerStubBuilder::ProfileDefineClass(GateRef glue, GateRef pc, GateRef f
         Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
     GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
     CallNGCRuntime(glue, RTSTUB_ID(ProfileDefineClass), { glue, func, offset, constructor });
+
+    env->SubCfgExit();
+}
+
+void ProfilerStubBuilder::ProfileCreateObject(GateRef glue, GateRef pc, GateRef func, GateRef originObj, GateRef newObj)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+
+    GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
+    GateRef firstPC =
+        Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+    GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
+    CallNGCRuntime(glue, RTSTUB_ID(ProfileCreateObject), { glue, func, offset, originObj, newObj });
 
     env->SubCfgExit();
 }

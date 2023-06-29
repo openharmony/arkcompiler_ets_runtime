@@ -122,10 +122,53 @@ void PGOProfiler::ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_
         }
         auto prototypeObj = JSObject::Cast(prototype);
         auto prototypeHClass = JSTaggedType(prototypeObj->GetClass());
-        recordInfos_->AddLayout(currentType, prototypeHClass, PGOObjLayoutKind::PROTOTYPE);
+        recordInfos_->AddLayout(currentType, prototypeHClass, PGOObjKind::PROTOTYPE);
 
         auto ctorHClass = JSTaggedType(ctorFunction->GetJSHClass());
-        recordInfos_->AddLayout(currentType, ctorHClass, PGOObjLayoutKind::CONSTRUCTOR);
+        recordInfos_->AddLayout(currentType, ctorHClass, PGOObjKind::CONSTRUCTOR);
+    }
+}
+
+void PGOProfiler::ProfileCreateObject(JSTaggedType func, int32_t offset, JSTaggedType originObj, JSTaggedType newObj)
+{
+    if (!isEnable_) {
+        return;
+    }
+
+    DISALLOW_GARBAGE_COLLECTION;
+    JSTaggedValue funcValue(func);
+    if (funcValue.IsJSFunction()) {
+        JSFunction *funcFunction = JSFunction::Cast(funcValue);
+        JSTaggedValue recordNameValue = funcFunction->GetRecordName();
+        if (recordNameValue.IsHole()) {
+            return;
+        }
+        CString recordName = ConvertToString(recordNameValue);
+
+        auto method = funcFunction->GetMethod();
+        if (!method.IsMethod()) {
+            return;
+        }
+        auto jsMethod = Method::Cast(method);
+        auto funcMethodId = jsMethod->GetMethodId();
+
+        auto originObjValue = JSTaggedValue(originObj);
+        auto newObjValue = JSTaggedValue(newObj);
+        if (!originObjValue.IsJSObject() || !newObjValue.IsJSObject()) {
+            return;
+        }
+        auto originHclass = JSObject::Cast(originObjValue)->GetJSHClass();
+        auto iter = literalIds_.find(JSTaggedType(originHclass));
+        if (iter == literalIds_.end()) {
+            return;
+        }
+        auto newHClass = JSObject::Cast(newObjValue) ->GetJSHClass();
+        InsertLiteralId(JSTaggedType(newHClass), iter->second);
+
+        auto currentType = PGOSampleType::CreateClassType(iter->second.GetOffset());
+        auto superType = PGOSampleType::CreateClassType(0);
+        recordInfos_->AddDefine(recordName, funcMethodId, offset, currentType, superType);
+        recordInfos_->AddLayout(currentType, JSTaggedType(newHClass), PGOObjKind::LOCAL);
     }
 }
 
@@ -153,13 +196,20 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
         auto holder = JSTaggedValue(object);
         auto hclass = holder.GetTaggedObject()->GetClass();
         auto ctor = JSTaggedValue::Undefined();
-        PGOObjLayoutKind kind = PGOObjLayoutKind::LOCAL;
+        PGOObjKind kind = PGOObjKind::LOCAL;
         if (hclass->IsClassPrototype()) {
             ctor = JSObject::GetCtorFromPrototype(thread, holder);
-            kind = PGOObjLayoutKind::PROTOTYPE;
+            kind = PGOObjKind::PROTOTYPE;
         } else if (hclass->IsClassConstructor()) {
             ctor = holder;
-            kind = PGOObjLayoutKind::CONSTRUCTOR;
+            kind = PGOObjKind::CONSTRUCTOR;
+        } else if (hclass->IsLiteral()) {
+            auto iter = literalIds_.find(JSTaggedType(hclass));
+            if (iter != literalIds_.end()) {
+                PGOObjectInfo info(ClassType(iter->second.GetOffset()), kind);
+                recordInfos_->AddObjectInfo(recordName, jsMethod->GetMethodId(), offset, info);
+            }
+            return;
         } else {
             auto prototype = hclass->GetProto();
             ctor = JSObject::GetCtorFromPrototype(thread, prototype);
@@ -173,12 +223,27 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
             }
             auto ctorJSMethod = Method::Cast(ctorMethod);
             auto methodId = ctorJSMethod->GetMethodId();
-            PGOSampleType type = PGOSampleType::CreateClassType(methodId.GetOffset());
-            recordInfos_->AddType(recordName, jsMethod->GetMethodId(), offset, type);
+            PGOObjectInfo info(ClassType(methodId.GetOffset()), kind);
+            recordInfos_->AddObjectInfo(recordName, jsMethod->GetMethodId(), offset, info);
             if (store) {
+                PGOSampleType type = PGOSampleType::CreateClassType(methodId.GetOffset());
                 recordInfos_->AddLayout(type, JSTaggedType(hclass), kind);
             }
         }
     }
+}
+
+void PGOProfiler::InsertLiteralId(JSTaggedType hclass, EntityId literalId)
+{
+    if (!isEnable_) {
+        return;
+    }
+    auto iter = literalIds_.find(hclass);
+    if (iter != literalIds_.end()) {
+        if (!(iter->second == literalId)) {
+            literalIds_.erase(iter);
+        }
+    }
+    literalIds_.emplace(hclass, literalId);
 }
 } // namespace panda::ecmascript
