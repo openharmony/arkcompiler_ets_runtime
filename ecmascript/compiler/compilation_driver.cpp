@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/compilation_driver.h"
 #include "ecmascript/compiler/file_generators.h"
+#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -26,6 +27,7 @@ CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
                                      const std::string &fileName,
                                      const std::string &triple,
                                      LOptions *lOptions,
+                                     CompilerLog *log,
                                      bool outputAsm,
                                      size_t maxMethodsInModule)
     : vm_(collector->GetVM()),
@@ -36,6 +38,7 @@ CompilationDriver::CompilationDriver(PGOProfilerDecoder &profilerDecoder,
       fileName_(fileName),
       triple_(triple),
       lOptions_(lOptions),
+      log_(log),
       outputAsm_(outputAsm),
       maxMethodsInModule_(maxMethodsInModule)
 {
@@ -151,6 +154,16 @@ void CompilationDriver::TopologicalSortForRecords()
     ASSERT(tpOrder.size() == mainMethods.size());
 }
 
+void CompilationDriver::FetchPGOMismatchResult()
+{
+    ASSERT(log_ != nullptr);
+    uint32_t totalMethodCount = 0;
+    uint32_t mismatchMethodCount = 0;
+    std::set<std::pair<std::string, CString>> mismatchMethodSet {};
+    pfDecoder_.GetMismatchResult(totalMethodCount, mismatchMethodCount, mismatchMethodSet);
+    log_->SetPGOMismatchResult(totalMethodCount, mismatchMethodCount, mismatchMethodSet);
+}
+
 void CompilationDriver::UpdatePGO()
 {
     std::unordered_set<EntityId> newMethodIds;
@@ -165,6 +178,7 @@ void CompilationDriver::UpdatePGO()
             return newMethodIds;
         };
     pfDecoder_.Update(dfs);
+    FetchPGOMismatchResult();
 }
 
 void CompilationDriver::InitializeCompileQueue()
@@ -180,7 +194,7 @@ bool CompilationDriver::FilterMethod(const CString &recordName, const MethodLite
                                      const MethodPcInfo &methodPCInfo, const std::string &methodName) const
 {
     if (methodPCInfo.methodsSize > bytecodeInfo_.GetMaxMethodSize() ||
-        !pfDecoder_.Match(jsPandaFile_, recordName, methodLiteral)) {
+        !pfDecoder_.Match(recordName, methodLiteral->GetMethodId())) {
         return true;
     }
 

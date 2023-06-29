@@ -108,6 +108,8 @@ public:
     void AddMethodTime(const std::string& name, uint32_t id, double time);
     void AddPassTime(const std::string& name, double time);
     int GetIndex();
+    void SetPGOMismatchResult(uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
+                              std::set<std::pair<std::string, CString>> &mismatchMethodSet);
 
     std::map<std::string, int> nameIndex_;
 
@@ -125,6 +127,7 @@ private:
     void PrintMethodTime() const;
     void PrintTime() const;
     void PrintCompiledMethod() const;
+    void PrintPGOMismatchedMethod() const;
 
     int idx_ {0};
     bool allMethod_ {false};
@@ -139,6 +142,9 @@ private:
     std::map<std::string, double> timePassMap_ {};
     std::map<std::pair<uint32_t, std::string>, double> timeMethodMap_ {};
     std::set<std::pair<std::string, CString>> compiledMethodSet_ {};
+    uint32_t totalPGOMethodCount_ {0};
+    uint32_t mismatchPGOMethodCount_ {0};
+    std::set<std::pair<std::string, CString>> mismatchPGOMethodSet_ {};
 };
 
 class MethodLogList {

@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/type_literal_extractor.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
 #include "libpandafile/code_data_accessor.h"
 
@@ -29,11 +30,12 @@ static T *InitializeMemory(T *mem, Args... args)
     return new (mem) T(std::forward<Args>(args)...);
 }
 
-BytecodeInfoCollector::BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile,
+BytecodeInfoCollector::BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile, PGOProfilerDecoder &pfDecoder,
                                              size_t maxAotMethodSize, bool enableCollectLiteralInfo)
     : vm_(vm),
       jsPandaFile_(jsPandaFile),
       bytecodeInfo_(maxAotMethodSize),
+      pfDecoder_(pfDecoder),
       enableCollectLiteralInfo_(enableCollectLiteralInfo)
 {
     vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->SetBytecodeInfoCollector(this);
@@ -126,6 +128,7 @@ void BytecodeInfoCollector::ProcessClasses()
 
             SetMethodPcInfoIndex(methodOffset, processedInsns[insns]);
             jsPandaFile_->SetMethodLiteralToMap(methodLiteral);
+            pfDecoder_.MatchAndMarkMethod(recordName, name.c_str(), methodId);
         });
     }
     // class Construct need to use new target, can not fastcall

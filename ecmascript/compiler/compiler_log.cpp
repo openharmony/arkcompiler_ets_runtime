@@ -139,6 +139,7 @@ void CompilerLog::Print() const
     if (compilerLogTime_) {
         PrintTime();
     }
+    PrintPGOMismatchedMethod();
     PrintCompiledMethod();
 }
 
@@ -197,6 +198,21 @@ void CompilerLog::PrintCompiledMethod() const
         LOG_COMPILER(INFO) << " method: " << std::setw(METHOD_LENS) << it->first
                            << " in record: " << std::setw(RECORD_LENS) << it->second
                            << " has been full compiled ";
+    }
+}
+
+void CompilerLog::PrintPGOMismatchedMethod() const
+{
+    if (totalPGOMethodCount_ == 0) {
+        return;
+    }
+    LOG_COMPILER(INFO) << " ";
+    LOG_COMPILER(INFO) << " Number of mismatched methods from ap file : " << mismatchPGOMethodCount_ << " / "
+                       << totalPGOMethodCount_;
+    for (const auto &it : mismatchPGOMethodSet_) {
+        LOG_COMPILER(INFO) << " method: " << std::setw(METHOD_LENS) << it.first
+                           << " in record: " << std::setw(RECORD_LENS) << it.second
+                           << " has not been found in abc, and will be abandoned.";
     }
 }
 
@@ -289,5 +305,12 @@ void PGOTypeLogList::PrintPGOTypeLog()
 {
     LOG_COMPILER(INFO) << log_;
 }
-// namespace panda::ecmascript::kungfu
+
+void CompilerLog::SetPGOMismatchResult(uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
+                                       std::set<std::pair<std::string, CString>> &mismatchMethodSet)
+{
+    totalPGOMethodCount_ = totalMethodCount;
+    mismatchPGOMethodCount_ = mismatchMethodCount;
+    mismatchPGOMethodSet_ = std::move(mismatchMethodSet);
 }
+} // namespace panda::ecmascript::kungfu

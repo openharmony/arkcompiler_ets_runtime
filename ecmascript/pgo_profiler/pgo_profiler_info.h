@@ -27,6 +27,7 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
@@ -48,6 +49,7 @@ struct SectionInfo {
     uint32_t number_ {0};
 };
 static constexpr size_t ALIGN_SIZE = 4;
+using PGOMethodId = EntityId;
 
 /**
  * |----PGOProfilerHeader
@@ -74,6 +76,7 @@ static constexpr size_t ALIGN_SIZE = 4;
  * |----------------count
  * |----------------mode
  * |----------------methodName
+ * |----------------methodChecksum
  * |----------------...
  * |------------PGOMethodTypeSet
  * |----------------ScalarOpTypeInfo
@@ -252,9 +255,9 @@ public:
     static constexpr int METHOD_MODE_INDEX = 2;
     static constexpr int METHOD_NAME_INDEX = 3;
 
-    explicit PGOMethodInfo(EntityId id) : id_(id) {}
+    explicit PGOMethodInfo(PGOMethodId id) : id_(id) {}
 
-    PGOMethodInfo(EntityId id, uint32_t count, SampleMode mode, const char *methodName)
+    PGOMethodInfo(PGOMethodId id, uint32_t count, SampleMode mode, const char *methodName)
         : id_(id), count_(count), mode_(mode)
     {
         size_t len = strlen(methodName);
@@ -312,7 +315,7 @@ public:
         SetSampleMode(info->GetSampleMode());
     }
 
-    EntityId GetMethodId() const
+    PGOMethodId GetMethodId() const
     {
         return id_;
     }
@@ -375,7 +378,7 @@ public:
 
 private:
     uint32_t size_ {0};
-    EntityId id_;
+    PGOMethodId id_;
     uint32_t count_ {0};
     SampleMode mode_ {SampleMode::CALL_MODE};
     char methodName_ {0};
@@ -593,6 +596,58 @@ private:
     std::set<ObjDefOpTypeInfo> objDefOpTypeInfos_;
 };
 
+class PGODecodeMethodInfo {
+public:
+    explicit PGODecodeMethodInfo(PGOMethodId id) : methodId_(id) {}
+
+    class ConsistencyInfo {
+    public:
+        void SetChecksum(uint32_t checksum)
+        {
+            checksum_ = checksum;
+        }
+
+        uint32_t GetChecksum() const
+        {
+            return checksum_;
+        }
+
+    private:
+        uint32_t checksum_ {0};
+    };
+
+    PGOMethodId GetMethodId() const
+    {
+        return methodId_;
+    }
+
+    PGOMethodTypeSet &GetPGOMethodTypeSet()
+    {
+        return pgoMethodTypeSet_;
+    }
+
+    ConsistencyInfo &GetConsistencyInfo()
+    {
+        return consistencyInfo_;
+    }
+
+    void SetMatch()
+    {
+        methodNameMatch_ = true;
+    }
+
+    bool IsMatch() const
+    {
+        return methodNameMatch_;
+    }
+
+private:
+    PGOMethodId methodId_ {0};
+    bool methodNameMatch_ {false};
+    PGOMethodTypeSet pgoMethodTypeSet_ {};
+    ConsistencyInfo consistencyInfo_ {};
+};
+
 class PGOHClassLayoutDescInner {
 public:
     PGOHClassLayoutDescInner(size_t size, PGOSampleType type, PGOSampleType superType)
@@ -705,8 +760,8 @@ public:
     }
 
     bool AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode);
-    bool AddType(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type);
-    bool AddDefine(Chunk *chunk, EntityId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
+    bool AddType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
+    bool AddDefine(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
 
     bool ParseFromBinary(Chunk *chunk, uint32_t threshold, void **buffer, PGOProfilerHeader *const header);
@@ -720,86 +775,87 @@ public:
     NO_MOVE_SEMANTIC(PGOMethodInfoMap);
 
 private:
-    PGOMethodTypeSet *GetOrInsertMethodTypeSet(Chunk *chunk, EntityId methodId);
+    PGOMethodTypeSet *GetOrInsertMethodTypeSet(Chunk *chunk, PGOMethodId methodId);
 
-    CMap<EntityId, PGOMethodInfo *> methodInfos_;
-    CMap<EntityId, PGOMethodTypeSet *> methodTypeInfos_;
-    CMap<EntityId, uint32_t> methodsChecksum_;
+    CMap<PGOMethodId, PGOMethodInfo *> methodInfos_;
+    CMap<PGOMethodId, PGOMethodTypeSet *> methodTypeInfos_;
+    CMap<PGOMethodId, uint32_t> methodsChecksum_;
     CMap<PGOSampleType, CMap<CString, TrackType>> globalLayoutDescInfos_;
 };
 
 class PGOMethodIdSet {
 public:
-    PGOMethodIdSet() = default;
+    explicit PGOMethodIdSet(Chunk* chunk): methodInfoMap_(chunk) {};
+    ~PGOMethodIdSet() = default;
 
-    void Clear(NativeAreaAllocator *allocator)
+    void Clear()
     {
-        methodIdSet_.clear();
-        for (auto iter : methodTypeSet_) {
-            allocator->Delete(iter.second);
-        }
-        methodTypeSet_.clear();
-        methodsChecksumMapping_.clear();
+        candidateSet_.clear();
+        methodInfoMap_.clear();
     }
 
     bool Match(EntityId methodId)
     {
-        return methodIdSet_.find(methodId) != methodIdSet_.end();
+        return candidateSet_.find(methodId) != candidateSet_.end();
     }
 
     template <typename Callback>
     bool Update(const CString &recordName, Callback callback)
     {
-        std::unordered_set<EntityId> newIds = callback(recordName, methodIdSet_);
+        std::unordered_set<EntityId> newIds = callback(recordName, candidateSet_);
         if (!newIds.empty()) {
-            methodIdSet_.insert(newIds.begin(), newIds.end());
+            candidateSet_.insert(newIds.begin(), newIds.end());
             return true;
         }
         return false;
     }
 
     template <typename Callback>
-    void GetTypeInfo(EntityId methodId, Callback callback)
+    void GetTypeInfo(const char *methodName, Callback callback)
     {
-        auto iter = methodTypeSet_.find(methodId);
-        if (iter != methodTypeSet_.end()) {
-            iter->second->GetTypeInfo(callback);
+        auto iter = methodInfoMap_.find(methodName);
+        if (iter != methodInfoMap_.end()) {
+            iter->second.GetPGOMethodTypeSet().GetTypeInfo(callback);
         }
     }
 
-    const std::map<EntityId, PGOMethodTypeSet *> &GetMethodTypeSet() const
+    template <typename Callback>
+    void GetTypeInfo(const char *methodName, uint32_t checksum, Callback callback)
     {
-        return methodTypeSet_;
+        auto iter = methodInfoMap_.find(methodName);
+        if (iter == methodInfoMap_.end()) {
+            return;
+        }
+        auto &methodInfo = iter->second;
+        if (methodInfo.GetConsistencyInfo().GetChecksum() != checksum) {
+            LOG_ECMA(DEBUG) << "Method checksum mismatched, name: " << methodName;
+            return;
+        }
+        return methodInfo.GetPGOMethodTypeSet().GetTypeInfo(callback);
     }
 
-    bool GetMethodIdInPGO(uint32_t checksum, const char *methodName, EntityId &methodId) const
+    void MatchAndMarkMethod(const char *methodName, EntityId methodId)
     {
-        auto iter = methodsChecksumMapping_.find(checksum);
-        if (iter == methodsChecksumMapping_.end()) {
-            return false;
+        const auto &iter = methodInfoMap_.find(methodName);
+        if (iter == methodInfoMap_.end()) {
+            // no matching method in PGO file.
+            return;
         }
-        for (const auto &pgoMethodId : iter->second) {
-            auto methodNameIter = methodIdNameMapping_.find(pgoMethodId);
-            ASSERT(methodNameIter != methodIdNameMapping_.end());
-            if (methodNameIter->second == methodName) {
-                methodId = pgoMethodId;
-                return true;
-            }
-        }
-        return false;
+        candidateSet_.emplace(methodId);
+        iter->second.SetMatch();
     }
 
-    bool ParseFromBinary(
-        NativeAreaAllocator *allocator, uint32_t threshold, void **buffer, PGOProfilerHeader *const header);
+    bool ParseFromBinary(uint32_t threshold, void **buffer, PGOProfilerHeader *const header);
+
+    void GetMismatchResult(const CString &recordName, uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
+                           std::set<std::pair<std::string, CString>> &mismatchMethodSet) const;
 
     NO_COPY_SEMANTIC(PGOMethodIdSet);
     NO_MOVE_SEMANTIC(PGOMethodIdSet);
 
 private:
-    std::unordered_set<EntityId> methodIdSet_;
-    std::map<EntityId, PGOMethodTypeSet *> methodTypeSet_;
-    std::unordered_map<EntityId, CString> methodIdNameMapping_;
-    std::unordered_map<uint32_t, std::unordered_set<EntityId>> methodsChecksumMapping_;
+    std::unordered_set<EntityId> candidateSet_; // methodId in abc file, DO NOT for pgo internal use
+    ChunkUnorderedMap<CString, PGODecodeMethodInfo> methodInfoMap_;
 };
 
 class PGORecordDetailInfos {
@@ -826,9 +882,9 @@ public:
 
     // If it is a new method, return true.
     bool AddMethod(const CString &recordName, Method *jsMethod, SampleMode mode);
-    bool AddType(const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type);
+    bool AddType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddDefine(
-        const CString &recordName, EntityId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
+        const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
     bool AddLayout(PGOSampleType type, JSTaggedType hclass, PGOObjLayoutKind kind);
     void Merge(const PGORecordDetailInfos &recordInfos);
 
@@ -855,7 +911,11 @@ private:
 
 class PGORecordSimpleInfos {
 public:
-    explicit PGORecordSimpleInfos(uint32_t threshold) : hotnessThreshold_(threshold) {}
+    explicit PGORecordSimpleInfos(uint32_t threshold) : hotnessThreshold_(threshold)
+    {
+        chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
+    }
+
     ~PGORecordSimpleInfos()
     {
         Clear();
@@ -863,11 +923,12 @@ public:
 
     void Clear()
     {
-        for (auto iter : methodIds_) {
-            iter.second->Clear(&nativeAreaAllocator_);
+        for (const auto& iter : methodIds_) {
+            iter.second->Clear();
             nativeAreaAllocator_.Delete(iter.second);
         }
         methodIds_.clear();
+        chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
     }
 
     bool Match(const CString &recordName, EntityId methodId);
@@ -889,7 +950,7 @@ public:
         if (iter != methodIds_.end()) {
             iter->second->Update(recordName, callback);
         } else {
-            PGOMethodIdSet *methodIds = nativeAreaAllocator_.New<PGOMethodIdSet>();
+            PGOMethodIdSet *methodIds = nativeAreaAllocator_.New<PGOMethodIdSet>(chunk_.get());
             if (methodIds->Update(recordName, callback)) {
                 methodIds_.emplace(recordName, methodIds);
             } else {
@@ -899,11 +960,20 @@ public:
     }
 
     template <typename Callback>
-    void GetTypeInfo(const CString &recordName, EntityId methodId, Callback callback)
+    void GetTypeInfo(const CString &recordName, const char *methodName, Callback callback)
     {
         auto iter = methodIds_.find(recordName);
         if (iter != methodIds_.end()) {
-            iter->second->GetTypeInfo(methodId, callback);
+            iter->second->GetTypeInfo(methodName, callback);
+        }
+    }
+
+    template <typename Callback>
+    void GetTypeInfo(const CString &recordName, const char *methodName, uint32_t checksum, Callback callback)
+    {
+        auto iter = methodIds_.find(recordName);
+        if (iter != methodIds_.end()) {
+            iter->second->GetTypeInfo(methodName, checksum, callback);
         }
     }
 
@@ -917,14 +987,21 @@ public:
         return false;
     }
 
-    bool GetMethodIdInPGO(const CString &recordName, uint32_t checksum, const char *methodName,
-                          EntityId &methodId) const
+    void MatchAndMarkMethod(const CString &recordName, const char *methodName, EntityId methodId)
     {
         auto iter = methodIds_.find(recordName);
         if (iter != methodIds_.end()) {
-            return iter->second->GetMethodIdInPGO(checksum, methodName, methodId);
+            return iter->second->MatchAndMarkMethod(methodName, methodId);
         }
-        return false;
+    }
+
+    void GetMismatchResult(uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
+                           std::set<std::pair<std::string, CString>> &mismatchMethodSet) const
+    {
+        for (const auto &methodId : methodIds_) {
+            methodId.second->GetMismatchResult(methodId.first, totalMethodCount, mismatchMethodCount,
+                                               mismatchMethodSet);
+        }
     }
 
     void ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
@@ -937,6 +1014,7 @@ private:
 
     uint32_t hotnessThreshold_ {2};
     NativeAreaAllocator nativeAreaAllocator_;
+    std::unique_ptr<Chunk> chunk_;
     CUnorderedMap<CString, PGOMethodIdSet *> methodIds_;
     std::set<PGOHClassLayoutDesc> moduleLayoutDescInfos_;
 };

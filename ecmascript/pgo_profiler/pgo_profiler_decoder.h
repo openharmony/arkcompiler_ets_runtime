@@ -35,8 +35,7 @@ public:
     NO_COPY_SEMANTIC(PGOProfilerDecoder);
     NO_MOVE_SEMANTIC(PGOProfilerDecoder);
 
-    bool PUBLIC_API Match(const JSPandaFile *jsPandaFile, const CString &recordName,
-                          const MethodLiteral *methodLiteral);
+    bool PUBLIC_API Match(const CString &recordName, PGOMethodId methodId);
 
     bool PUBLIC_API LoadAndVerify(uint32_t checksum);
     bool PUBLIC_API LoadFull();
@@ -69,41 +68,31 @@ public:
         if (!isLoaded_ || !isVerifySuccess_) {
             return;
         }
-        EntityId methodId(methodLiteral->GetMethodId());
-        EntityId pgoMethodId(methodId);
+        const auto *methodName = MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId());
         if (IsMethodMatchEnabled()) {
             auto checksum =
-                PGOMethodInfo::CalcChecksum(MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId()),
-                                            methodLiteral->GetBytecodeArray(),
+                PGOMethodInfo::CalcChecksum(methodName, methodLiteral->GetBytecodeArray(),
                                             MethodLiteral::GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()));
-            const auto *methodName = MethodLiteral::GetMethodName(jsPandaFile, methodId);
-            if (!GetMethodIdInPGO(recordName, checksum, methodName, pgoMethodId)) {
-                return;
-            }
+
+            return recordSimpleInfos_->GetTypeInfo(recordName, methodName, checksum, callback);
         }
-        recordSimpleInfos_->GetTypeInfo(recordName, pgoMethodId, callback);
+        recordSimpleInfos_->GetTypeInfo(recordName, methodName, callback);
     }
 
-    bool GetMethodIdInPGO(const CString &recordName, uint32_t checksum, const char *methodName,
-                          EntityId &methodId) const
+    void MatchAndMarkMethod(const CString &recordName, const char *methodName, EntityId methodId)
     {
-        bool hasRecord = true;
         if (!isLoaded_ || !isVerifySuccess_) {
-            hasRecord = false;
+            return;
         }
-        if (hasRecord) {
-            hasRecord = recordSimpleInfos_->GetMethodIdInPGO(recordName, checksum, methodName, methodId);
-        }
-        if (!hasRecord) {
-            LOG_COMPILER(DEBUG) << "No matched method found in PGO. recordName: " << recordName
-                                << ", methodName: " << methodName << ", checksum: " << std::hex << checksum;
-        }
-        return hasRecord;
+        recordSimpleInfos_->MatchAndMarkMethod(recordName, methodName, methodId);
     }
+
+    void GetMismatchResult(uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
+                           std::set<std::pair<std::string, CString>> &mismatchMethodSet) const;
 
     bool IsMethodMatchEnabled() const
     {
-        return false;
+        return header_->SupportMethodChecksum();
     }
 
     bool GetHClassLayoutDesc(PGOSampleType classType, PGOHClassLayoutDesc **desc) const;

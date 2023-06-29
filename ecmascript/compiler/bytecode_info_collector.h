@@ -673,7 +673,7 @@ private:
 
 class BytecodeInfoCollector {
 public:
-    BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile,
+    BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFile, PGOProfilerDecoder &pfDecoder,
                           size_t maxAotMethodSize, bool enableCollectLiteralInfo);
     ~BytecodeInfoCollector();
     NO_COPY_SEMANTIC(BytecodeInfoCollector);
@@ -778,6 +778,7 @@ private:
     EcmaVM *vm_;
     JSPandaFile *jsPandaFile_ {nullptr};
     BCInfo bytecodeInfo_;
+    PGOProfilerDecoder &pfDecoder_;
     size_t methodInfoIndex_ {0};
     bool enableCollectLiteralInfo_ {false};
     std::set<int32_t> classDefBCIndexes_ {};

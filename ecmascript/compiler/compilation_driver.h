@@ -21,6 +21,7 @@
 
 namespace panda::ecmascript::kungfu {
 class AOTFileGenerator;
+class CompilerLog;
 struct LOptions;
 class Module;
 class CompilationDriver {
@@ -33,6 +34,7 @@ public:
                       const std::string &fileName,
                       const std::string &triple,
                       LOptions *lOptions,
+                      CompilerLog *log,
                       bool outputAsm,
                       size_t maxMethodsInModule);
     ~CompilationDriver();
@@ -49,8 +51,7 @@ public:
     {
         const auto &methodList = bytecodeInfo_.GetMethodList();
         auto &resolvedMethodInfo = methodList.at(resolvedMethod.GetOffset());
-        MethodLiteral *methodLiteral = jsPandaFile_->GetMethodLiteralByIndex(resolvedMethod.GetOffset());
-        if (pfDecoder_.Match(jsPandaFile_, recordName, methodLiteral) && !resolvedMethodInfo.IsTypeInferAbort()) {
+        if (pfDecoder_.Match(recordName, resolvedMethod) && !resolvedMethodInfo.IsTypeInferAbort()) {
             return;
         }
         // update profile and update compile queue
@@ -135,6 +136,8 @@ public:
         }
         CompileLastModuleThenDestroyIfNeeded();
     }
+
+    void FetchPGOMismatchResult();
 
     void AddResolvedMethod(const CString &recordName, uint32_t classLiteralOffset)
     {
@@ -352,6 +355,7 @@ private:
     std::string fileName_ {};
     std::string triple_ {};
     LOptions *lOptions_ {nullptr};
+    CompilerLog *log_ {nullptr};
     bool outputAsm_ {false};
     size_t maxMethodsInModule_ {0};
 };
