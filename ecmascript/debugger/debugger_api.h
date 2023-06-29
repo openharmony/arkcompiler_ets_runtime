@@ -123,6 +123,7 @@ public:
     // HotReload
     static DebugInfoExtractor *GetPatchExtractor(const EcmaVM *ecmaVm, const std::string &url);
     static const JSPandaFile *GetBaseJSPandaFile(const EcmaVM *ecmaVm, const JSPandaFile *jsPandaFile);
+    static std::vector<void *> GetNativePointer(const EcmaVM *ecmaVm);
 };
 }  // namespace panda::ecmascript::tooling
 
