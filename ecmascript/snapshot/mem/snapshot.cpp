@@ -37,6 +37,11 @@ void Snapshot::Serialize(const CString &fileName)
 {
     TSManager *tsManager = vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager();
     JSTaggedValue root = tsManager->GetSnapshotCPList();
+    if (root == JSTaggedValue::Hole()) {
+        // root equals hole means no data stored.
+        LOG_COMPILER(ERROR) << "error: no data for ai file generation!";
+        return;
+    }
     Serialize(root.GetTaggedObject(), nullptr, fileName);
 }
 
