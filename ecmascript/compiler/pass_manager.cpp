@@ -121,7 +121,6 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
             data.AbortCompilation();
             return;
         }
-        pipeline.RunPass<PGOTypeInferPass>();
         pipeline.RunPass<TSClassAnalysisPass>();
         if (passOptions_->EnableOptInlining() && passOptions_->EnableTypeLowering()) {
             pipeline.RunPass<TSInlineLoweringPass>();

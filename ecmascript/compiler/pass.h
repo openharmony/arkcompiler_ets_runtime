@@ -36,7 +36,6 @@
 #include "ecmascript/compiler/ts_hcr_lowering.h"
 #include "ecmascript/compiler/type_inference/global_type_infer.h"
 #include "ecmascript/compiler/type_inference/initialization_analysis.h"
-#include "ecmascript/compiler/type_inference/pgo_type_infer.h"
 #include "ecmascript/compiler/type_mcr_lowering.h"
 #include "ecmascript/compiler/value_numbering.h"
 #include "ecmascript/compiler/verifier.h"
@@ -237,20 +236,6 @@ public:
                 initAnalysis.Run();
             }
         }
-        return true;
-    }
-};
-
-class PGOTypeInferPass {
-public:
-    bool Run(PassData* data)
-    {
-        TimeScope timescope("PGOTypeInferPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
-        bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
-        Chunk chunk(data->GetNativeAreaAllocator());
-        PGOTypeInfer pgoTypeInfer(data->GetCircuit(), data->GetTSManager(), data->GetBuilder(),
-                                  data->GetMethodName(), &chunk, enableLog);
-        pgoTypeInfer.Run();
         return true;
     }
 };

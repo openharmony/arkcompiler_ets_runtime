@@ -405,21 +405,6 @@ public:
         return GetPcOffset(pc);
     }
 
-    size_t GetPcOffsetByGate(GateRef gate) const
-    {
-        return GetPcOffset(jsGatesToByteCode_.at(gate));
-    }
-
-    PGORWOpType GetPGOType(GateRef gate) const
-    {
-        return typeRecorder_.GetRwOpType(GetPcOffsetByGate(gate));
-    }
-
-    bool ShouldPGOTypeInfer(GateRef gate) const
-    {
-        return jsGatesToByteCode_.find(gate) != jsGatesToByteCode_.end();
-    }
-
     size_t GetNumberVRegs() const
     {
         return static_cast<size_t>(method_->GetNumberVRegs());
