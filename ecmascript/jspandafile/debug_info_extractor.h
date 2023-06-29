@@ -66,7 +66,7 @@ using JSPtLocation = tooling::JSPtLocation;
  *   uint32_t endOffset
  */
 struct LocalVariableInfo {
-    std::string name
+    std::string name;
     int32_t reg_number;
     uint32_t start_offset;
     uint32_t end_offset;
