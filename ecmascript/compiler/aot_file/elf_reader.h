@@ -53,7 +53,7 @@ private:
         return moduleInfoSize / sizeof(ModuleSectionDes::ModuleRegionInfo);
     }
 
-    static constexpr uint32_t TEXT_SEC_ALIGN = 16;
+    static constexpr uint32_t TEXT_SEC_ALIGN = 4096;
     static constexpr uint32_t ASMSTUB_MODULE_NUM = 3;
     ExecutedMemoryAllocator::ExeMem stubsMem_ {};
     MemMap fileMapMem_ {};
