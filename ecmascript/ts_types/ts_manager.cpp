@@ -205,22 +205,6 @@ bool TSManager::IsStaticFunc(GlobalTSTypeRef gt) const
     return functionType->GetStatic();
 }
 
-bool TSManager::GetSuperGateType(kungfu::GateType &gateType) const
-{
-    JSHandle<JSTaggedValue> type = GetTSType(gateType.GetGTRef());
-    if (type->IsTSClassType()) {
-        JSHandle<TSClassType> classType(type);
-        if (classType->IsBaseClassType()) {
-            return false;
-        }
-        gateType = kungfu::GateType(classType->GetExtensionGT());
-        return true;
-    } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
-    }
-}
-
 GlobalTSTypeRef TSManager::GetSuperPropType(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> propertyName,
                                             PropertyType propType) const
 {
