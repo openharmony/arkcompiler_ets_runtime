@@ -111,6 +111,11 @@ public:
                 methodIds.push_back(mda.GetMethodId());
             });
 
+            int32_t minColumn = INT32_MAX;
+            uint32_t currentOffset = UINT32_MAX;
+            uint32_t minColumnOffset = UINT32_MAX;
+            EntityId currentMethodId;
+            EntityId minColumnMethodId;
             for (auto &methodId : methodIds) {
                 const std::string &sourceFile = GetSourceFile(methodId);
                 // the url for testcases is empty
@@ -123,15 +128,27 @@ public:
                     if (lineTable[j].line != line) {
                         continue;
                     }
-                    uint32_t currentOffset = lineTable[j].offset;
+                    currentMethodId = methodId;
+                    currentOffset = lineTable[j].offset;
                     uint32_t nextOffset = ((j == lineTable.size() - 1) ? UINT32_MAX : lineTable[j + 1].offset);
                     for (const auto &pair : columnTable) {
-                        if (pair.column == column && pair.offset >= currentOffset && pair.offset < nextOffset) {
-                            return cb(JSPtLocation(jsPandaFile_, methodId, pair.offset, url));
+                        if (pair.offset >= currentOffset && pair.offset < nextOffset) {
+                            if (pair.column == column) {
+                                return cb(JSPtLocation(jsPandaFile_, methodId, pair.offset, url));
+                            } else if (pair.column < minColumn) {
+                                minColumn = pair.column;
+                                minColumnOffset = currentOffset;
+                                minColumnMethodId = currentMethodId;
+                            }
                         }
                     }
-                    return cb(JSPtLocation(jsPandaFile_, methodId, currentOffset, url));
                 }
+            }
+            if (minColumn != INT32_MAX) { // find the smallest column for the corresponding row
+                return cb(JSPtLocation(jsPandaFile_, minColumnMethodId, minColumnOffset, url));
+            }
+            if (currentOffset != UINT32_MAX) { // find corresponding row, but not find corresponding column
+                return cb(JSPtLocation(jsPandaFile_, currentMethodId, currentOffset, url));
             }
         }
         return false;
