@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#include <cerrno>
+#include <cstdio>
+
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 
 #include "ecmascript/platform/file.h"
@@ -79,15 +82,21 @@ bool PGOProfilerEncoder::Save()
 
 bool PGOProfilerEncoder::SaveProfiler(const SaveTask *task)
 {
-    std::ofstream fileStream(realOutPath_.c_str());
+    static const char *tempSuffix = ".tmp";
+    auto tmpOutPath = realOutPath_ + tempSuffix;
+    std::ofstream fileStream(tmpOutPath.c_str());
     if (!fileStream.is_open()) {
-        LOG_ECMA(ERROR) << "The file path(" << realOutPath_ << ") open failure!";
+        LOG_ECMA(ERROR) << "The file path(" << tmpOutPath << ") open failure!";
         return false;
     }
     pandaFileInfos_->ProcessToBinary(fileStream, header_->GetPandaInfoSection());
     globalRecordInfos_->ProcessToBinary(task, fileStream, header_);
     header_->ProcessToBinary(fileStream);
     fileStream.close();
+    if (rename(tmpOutPath.c_str(), realOutPath_.c_str())) {
+        LOG_ECMA(ERROR) << "Rename " << tmpOutPath << " --> " << realOutPath_ << " failure!, errno: " << errno;
+        return false;
+    }
     return true;
 }
 
