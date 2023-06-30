@@ -13,23 +13,23 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_COMPILER_NTYPE_MCR_LOWERING_H
-#define ECMASCRIPT_COMPILER_NTYPE_MCR_LOWERING_H
+#ifndef ECMASCRIPT_COMPILER_NTYPE_HCR_LOWERING_H
+#define ECMASCRIPT_COMPILER_NTYPE_HCR_LOWERING_H
 
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/pass_manager.h"
+
 namespace panda::ecmascript::kungfu {
-class NTypeMCRLowering {
+class NTypeHCRLowering {
 public:
-    NTypeMCRLowering(Circuit *circuit, PassContext *ctx, TSManager *tsManager,
-                     bool enableLog, const std::string& name)
+    NTypeHCRLowering(Circuit *circuit, PassContext *ctx, TSManager *tsManager,
+                    bool enableLog, const std::string& name)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
-          dependEntry_(circuit->GetDependRoot()),
           tsManager_(tsManager),
           enableLog_(enableLog),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
@@ -37,23 +37,27 @@ public:
           methodName_(name),
           glue_(acc_.GetGlueFromArgList()) {}
 
-    ~NTypeMCRLowering() = default;
+    ~NTypeHCRLowering() = default;
 
-    void RunNTypeMCRLowering();
+    void RunNTypeHCRLowering();
 private:
-    static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
     void Lower(GateRef gate);
-    void LowerCreateArray(GateRef gate, GateRef glue);
-    void LowerCreateEmptyArray(GateRef gate);
-    void LowerCreateArrayWithOwn(GateRef gate, GateRef glue);
-
-    GateRef NewTaggedArray(size_t length);
-    GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
-                             bool useLabel = false);
+    void LowerTypedCreateEmptyArray(GateRef gate);
+    void LowerTypedStownByIndex(GateRef gate);
 
     bool IsLogEnabled() const
     {
         return enableLog_;
+    }
+
+    bool IsProfiling() const
+    {
+        return profiling_;
+    }
+
+    bool IsTraceBC() const
+    {
+        return traceBc_;
     }
 
     const std::string& GetMethodName() const
@@ -61,11 +65,11 @@ private:
         return methodName_;
     }
 
+    void AddProfiling(GateRef gate);
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
-    GateRef dependEntry_;
-    TSManager *tsManager_ {nullptr};
+    [[maybe_unused]] TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
     bool profiling_ {false};
     bool traceBc_ {false};
@@ -73,4 +77,4 @@ private:
     GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu
-#endif  // ECMASCRIPT_COMPILER_NTYPE_MCR_LOWERING_H
+#endif  // ECMASCRIPT_COMPILER_NTYPE_HCR_LOWERING_H

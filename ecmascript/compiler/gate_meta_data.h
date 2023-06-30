@@ -325,7 +325,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)                 \
     V(GetGlobalEnvObjHClass, GET_GLOBAL_ENV_OBJ_HCLASS, GateFlags::NO_WRITE, 0, 1, 1)   \
     V(GetGlobalConstantValue, GET_GLOBAL_CONSTANT_VALUE, GateFlags::NO_WRITE, 0, 1, 0)  \
-    V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, 2)
+    V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, 2)                     \
+    V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 0)
 
 #define GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     V(Arg, ARG, GateFlags::HAS_ROOT, 0, 0, 0)             \
@@ -334,7 +335,6 @@ std::string MachineTypeToStr(MachineType machineType);
 
 #define GATE_META_DATA_LIST_WITH_BOOL(V)                                           \
     V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)                   \
-    V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 1)
 
 #define GATE_OPCODE_LIST(V)     \
     V(JS_BYTECODE)              \
@@ -668,6 +668,11 @@ public:
     uint64_t GetValue() const
     {
         return value_;
+    }
+
+    void SetValue(uint64_t value)
+    {
+        value_ = value;
     }
 
 private:

@@ -108,57 +108,42 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         }
 
         PassData data(&builder, &circuit, &ctx, log_, fullName, &methodInfo, hasTypes, recordName,
-                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder);
+                      methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder, passOptions_);
 
         PassRunner<PassData> pipeline(&data);
         if (builder.EnableLoopOptimization()) {
             pipeline.RunPass<LoopOptimizationPass>();
         }
-        if (passOptions_->EnableTypeInfer()) {
-            pipeline.RunPass<TypeInferPass>();
-        }
+        pipeline.RunPass<TypeInferPass>();
         if (data.IsTypeAbort()) {
             data.AbortCompilation();
             return;
         }
         pipeline.RunPass<PGOTypeInferPass>();
         pipeline.RunPass<TSClassAnalysisPass>();
-        if (passOptions_->EnableOptInlining() && passOptions_->EnableTypeLowering()) {
-            pipeline.RunPass<TSInlineLoweringPass>();
-        }
+        pipeline.RunPass<TSInlineLoweringPass>();
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         // skip async function, because some application run with errors
         if (methodInfo.IsTypeInferAbort()) {
             data.AbortCompilation();
             return;
         }
-        if (passOptions_->EnableTypeLowering()) {
-            pipeline.RunPass<TSHCRLoweringPass>();
-            if (data.IsTypeAbort()) {
-                data.AbortCompilation();
-                return;
-            }
-            if (passOptions_->EnableEarlyElimination()) {
-                pipeline.RunPass<EarlyEliminationPass>();
-            }
-            pipeline.RunPass<NumberSpeculativePass>();
-            if (passOptions_->EnableLaterElimination()) {
-                pipeline.RunPass<LaterEliminationPass>();
-            }
-            if (passOptions_->EnableValueNumbering()) {
-                pipeline.RunPass<ValueNumberingPass>();
-            }
-            pipeline.RunPass<StateSplitLinearizerPass>();
-            pipeline.RunPass<TypeMCRLoweringPass>();
-            pipeline.RunPass<NTypeMCRLoweringPass>();
-            if (passOptions_->EnableEarlyElimination()) {
-                pipeline.RunPass<EarlyEliminationPass>();
-            }
-            if (passOptions_->EnableLaterElimination()) {
-                pipeline.RunPass<LaterEliminationPass>();
-            }
-            pipeline.RunPass<LCRLoweringPass>();
+        pipeline.RunPass<TSHCRLoweringPass>();
+        pipeline.RunPass<NTypeHCRLoweringPass>();
+        if (data.IsTypeAbort()) {
+            data.AbortCompilation();
+            return;
         }
+        pipeline.RunPass<EarlyEliminationPass>();
+        pipeline.RunPass<NumberSpeculativePass>();
+        pipeline.RunPass<LaterEliminationPass>();
+        pipeline.RunPass<ValueNumberingPass>();
+        pipeline.RunPass<StateSplitLinearizerPass>();
+        pipeline.RunPass<NTypeMCRLoweringPass>();
+        pipeline.RunPass<TypeMCRLoweringPass>();
+        pipeline.RunPass<EarlyEliminationPass>();
+        pipeline.RunPass<LaterEliminationPass>();
+        pipeline.RunPass<LCRLoweringPass>();
         pipeline.RunPass<SlowPathLoweringPass>();
         pipeline.RunPass<VerifierPass>();
         pipeline.RunPass<GraphLinearizerPass>();

@@ -1503,13 +1503,19 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     return ret;
 }
 
-GateRef CircuitBuilder::CreateArray(GateRef obj, bool isEmptyArray)
+GateRef CircuitBuilder::ComputeTaggedArraySize(GateRef length)
+{
+    return PtrAdd(IntPtr(TaggedArray::DATA_OFFSET),
+        PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), length));
+}
+
+GateRef CircuitBuilder::CreateArray(size_t arraySize)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArray(isEmptyArray), MachineType::I64,
-                                            { currentControl, currentDepend, obj }, GateType::TaggedValue());
+    GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArray(arraySize), MachineType::I64,
+                                            { currentControl, currentDepend }, GateType::TaggedValue());
     currentLabel->SetControl(newGate);
     currentLabel->SetDepend(newGate);
     return newGate;

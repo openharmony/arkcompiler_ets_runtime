@@ -36,6 +36,11 @@ GateRef CircuitBuilder::Undefined()
     return UndefineConstant();
 }
 
+GateRef CircuitBuilder::Hole()
+{
+    return HoleConstant();
+}
+
 GateRef CircuitBuilder::Equal(GateRef x, GateRef y)
 {
     auto xType = acc_.GetMachineType(x);
