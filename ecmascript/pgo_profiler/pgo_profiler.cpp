@@ -20,7 +20,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 namespace panda::ecmascript {
-void PGOProfiler::ProfileCall(JSTaggedType value, SampleMode mode)
+void PGOProfiler::ProfileCall(JSTaggedType value, SampleMode mode, int32_t incCount)
 {
     if (!isEnable_) {
         return;
@@ -34,7 +34,7 @@ void PGOProfiler::ProfileCall(JSTaggedType value, SampleMode mode)
             return;
         }
         CString recordName = ConvertToString(recordNameValue);
-        if (recordInfos_->AddMethod(recordName, jsMethod, mode)) {
+        if (recordInfos_->AddMethod(recordName, jsMethod, mode, incCount)) {
             methodCount_++;
         }
         auto interval = std::chrono::system_clock::now() - saveTimestamp_;

@@ -24,7 +24,7 @@ void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, Ga
 {
     switch (type) {
         case OperationType::CALL:
-            ProfileCall(glue, values[0]);
+            ProfileCall(glue, pc, profileTypeInfo, values[0]);
             break;
         case OperationType::OPERATION_TYPE:
             ProfileOpType(glue, pc, func, profileTypeInfo, values[0]);
@@ -146,12 +146,49 @@ void ProfilerStubBuilder::ProfileObjLayout(GateRef glue, GateRef pc, GateRef fun
     env->SubCfgExit();
 }
 
-void ProfilerStubBuilder::ProfileCall(GateRef glue, GateRef func)
+void ProfilerStubBuilder::ProfileCall(GateRef glue, GateRef pc, GateRef profileTypeInfo, GateRef target)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
-    CallNGCRuntime(glue, RTSTUB_ID(ProfileCall), { glue, func });
+
+    Label exit(env);
+    Label fastpath(env);
+    Label slowpath(env);
+
+    DEFVARIABLE(inc, VariableType::INT32(), Int32(1));
+    Branch(TaggedIsUndefined(profileTypeInfo), &slowpath, &fastpath);
+    Bind(&fastpath);
+    {
+        Label initialLabel(env);
+        Label uninitialLabel(env);
+        GateRef slotId = ZExtInt8ToInt32(Load(VariableType::INT8(), pc, IntPtr(1)));
+        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        Branch(TaggedIsInt(slotValue), &initialLabel, &uninitialLabel);
+        Bind(&initialLabel);
+        {
+            Label fastLabel(env);
+            GateRef oldInc = TaggedGetInt(slotValue);
+            Branch(Int32GreaterThan(oldInc, Int32(MAX_PROFILE_CALL_COUNT)), &exit, &fastLabel);
+            Bind(&fastLabel);
+            GateRef count = Int32Add(oldInc, *inc);
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(count));
+            inc = Int32(MIN_PROFILE_CALL_INTERVAL);
+            GateRef mod = Int32Mod(oldInc, *inc);
+            Branch(Int32Equal(mod, Int32(0)), &slowpath, &exit);
+        }
+        Bind(&uninitialLabel);
+        {
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(*inc));
+            Jump(&slowpath);
+        }
+    }
+    Bind(&slowpath);
+    {
+        CallNGCRuntime(glue, RTSTUB_ID(ProfileCall), { glue, target, *inc});
+        Jump(&exit);
+    }
+    Bind(&exit);
     env->SubCfgExit();
 }
 

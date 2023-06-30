@@ -288,9 +288,9 @@ public:
         return true;
     }
 
-    void IncreaseCount()
+    void IncreaseCount(int32_t inc)
     {
-        count_++;
+        count_ += inc;
     }
 
     void ClearCount()
@@ -747,7 +747,7 @@ public:
         methodTypeInfos_.clear();
     }
 
-    bool AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode);
+    bool AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode, int32_t incCount);
     bool AddType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
     bool AddDefine(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
@@ -870,7 +870,7 @@ public:
     }
 
     // If it is a new method, return true.
-    bool AddMethod(const CString &recordName, Method *jsMethod, SampleMode mode);
+    bool AddMethod(const CString &recordName, Method *jsMethod, SampleMode mode, int32_t incCount);
     bool AddType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(const CString &recordName, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
     bool AddDefine(

@@ -553,9 +553,9 @@ HWTEST_F_L0(PGOProfilerTest, BinaryToText)
     auto *jsMethod =
         Method::Cast(vm_->GetFactory()->NewMethod(methodLiteral.get(), MemSpaceType::NON_MOVABLE).GetTaggedValue());
 
-    ASSERT_TRUE(recordInfos->AddMethod("test", jsMethod, SampleMode::CALL_MODE));
-    ASSERT_FALSE(recordInfos->AddMethod("test", jsMethod, SampleMode::CALL_MODE));
-    ASSERT_FALSE(recordInfos->AddMethod("test", jsMethod, SampleMode::CALL_MODE));
+    ASSERT_TRUE(recordInfos->AddMethod("test", jsMethod, SampleMode::CALL_MODE, 1));
+    ASSERT_FALSE(recordInfos->AddMethod("test", jsMethod, SampleMode::CALL_MODE, 1));
+    ASSERT_FALSE(recordInfos->AddMethod("test", jsMethod, SampleMode::CALL_MODE, 1));
 
     pandaFileInfos->ProcessToBinary(file, header->GetPandaInfoSection());
     recordInfos->ProcessToBinary(nullptr, file, header);
