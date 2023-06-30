@@ -63,9 +63,6 @@ void ConcurrentMarker::Mark()
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ConcurrentMarking);
     InitializeMarking();
     Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<MarkerTask>(heap_->GetJSThread()->GetThreadId(), heap_));
-    if (!heap_->IsFullMark() && heap_->IsParallelGCEnabled()) {
-        heap_->PostParallelGCTask(ParallelGCTaskPhase::CONCURRENT_HANDLE_OLD_TO_NEW_TASK);
-    }
 }
 
 void ConcurrentMarker::Finish()
@@ -80,12 +77,7 @@ void ConcurrentMarker::ReMark()
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ReMarking);
     Marker *nonMovableMarker = heap_->GetNonMovableMarker();
     nonMovableMarker->MarkRoots(MAIN_THREAD_INDEX);
-    if (!heap_->IsFullMark() && !heap_->IsParallelGCEnabled()) {
-        nonMovableMarker->ProcessOldToNew(MAIN_THREAD_INDEX);
-        nonMovableMarker->ProcessSnapshotRSet(MAIN_THREAD_INDEX);
-    } else {
-        nonMovableMarker->ProcessMarkStack(MAIN_THREAD_INDEX);
-    }
+    nonMovableMarker->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningTaskFinished();
 }
 
@@ -152,6 +144,10 @@ void ConcurrentMarker::InitializeMarking()
         heapObjectSize_ = heap_->GetNewSpace()->GetHeapObjectSize();
     }
     workManager_->Initialize(TriggerGCType::OLD_GC, ParallelGCTaskPhase::CONCURRENT_HANDLE_GLOBAL_POOL_TASK);
+    if (!heap_->IsFullMark()) {
+        heap_->GetNonMovableMarker()->ProcessOldToNewNoMarkStack(MAIN_THREAD_INDEX);
+        heap_->GetNonMovableMarker()->ProcessSnapshotRSetNoMarkStack(MAIN_THREAD_INDEX);
+    }
     heap_->GetNonMovableMarker()->MarkRoots(MAIN_THREAD_INDEX);
 }
 

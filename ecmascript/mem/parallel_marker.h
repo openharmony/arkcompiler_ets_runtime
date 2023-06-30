@@ -41,8 +41,10 @@ public:
 
     void MarkRoots(uint32_t threadId);
     void ProcessOldToNew(uint32_t threadId);                  // for HPPGC only semi mode
+    void ProcessOldToNewNoMarkStack(uint32_t threadId);
     void ProcessOldToNew(uint32_t threadId, Region *region);  // for SemiGC
     void ProcessSnapshotRSet(uint32_t threadId);              // for SemiGC
+    void ProcessSnapshotRSetNoMarkStack(uint32_t threadId);
 
     virtual void ProcessMarkStack([[maybe_unused]] uint32_t threadId)
     {
