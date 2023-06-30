@@ -504,13 +504,13 @@ void PGOMethodTypeSet::ObjDefOpTypeInfo::ProcessToText(std::string &text) const
     text += (SPACE + ARRAY_END);
 }
 
-bool PGOMethodInfoMap::AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode)
+bool PGOMethodInfoMap::AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode, int32_t incCount)
 {
     PGOMethodId methodId(jsMethod->GetMethodId());
     auto result = methodInfos_.find(methodId);
     if (result != methodInfos_.end()) {
         auto info = result->second;
-        info->IncreaseCount();
+        info->IncreaseCount(incCount);
         info->SetSampleMode(mode);
         return false;
     } else {
@@ -518,7 +518,7 @@ bool PGOMethodInfoMap::AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode
         size_t strlen = methodName.size();
         size_t size = static_cast<size_t>(PGOMethodInfo::Size(strlen));
         void *infoAddr = chunk->Allocate(size);
-        auto info = new (infoAddr) PGOMethodInfo(methodId, 1, mode, methodName.c_str());
+        auto info = new (infoAddr) PGOMethodInfo(methodId, incCount, mode, methodName.c_str());
         methodInfos_.emplace(methodId, info);
         auto checksum = PGOMethodInfo::CalcChecksum(jsMethod->GetMethodName(), jsMethod->GetBytecodeArray(),
                                                     jsMethod->GetCodeSize());
@@ -843,12 +843,12 @@ PGOMethodInfoMap *PGORecordDetailInfos::GetMethodInfoMap(const CString &recordNa
     }
 }
 
-bool PGORecordDetailInfos::AddMethod(const CString &recordName, Method *jsMethod, SampleMode mode)
+bool PGORecordDetailInfos::AddMethod(const CString &recordName, Method *jsMethod, SampleMode mode, int32_t incCount)
 {
     auto curMethodInfos = GetMethodInfoMap(recordName);
     ASSERT(curMethodInfos != nullptr);
     ASSERT(jsMethod != nullptr);
-    return curMethodInfos->AddMethod(chunk_.get(), jsMethod, mode);
+    return curMethodInfos->AddMethod(chunk_.get(), jsMethod, mode, incCount);
 }
 
 bool PGORecordDetailInfos::AddType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type)

@@ -388,10 +388,10 @@ void RuntimeStubs::Comment(uintptr_t argStr)
     LOG_ECMA(DEBUG) << str;
 }
 
-void RuntimeStubs::ProfileCall(uintptr_t argGlue, uintptr_t func)
+void RuntimeStubs::ProfileCall(uintptr_t argGlue, uintptr_t target, uint32_t incCount)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(func);
+    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(target, SampleMode::CALL_MODE, incCount);
 }
 
 void RuntimeStubs::ProfileOpType(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type)

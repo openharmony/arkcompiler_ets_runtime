@@ -28,7 +28,7 @@ public:
     NO_COPY_SEMANTIC(PGOProfiler);
     NO_MOVE_SEMANTIC(PGOProfiler);
 
-    void ProfileCall(JSTaggedType value, SampleMode mode = SampleMode::CALL_MODE);
+    void ProfileCall(JSTaggedType value, SampleMode mode = SampleMode::CALL_MODE, int32_t incCount = 1);
     void ProfileOpType(JSTaggedType func, int32_t offset, uint32_t type);
     void ProfileCreateObject(JSTaggedType func, int32_t offset, JSTaggedType originObj, JSTaggedType newObj);
     void ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType ctor);

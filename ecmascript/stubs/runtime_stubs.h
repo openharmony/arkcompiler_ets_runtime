@@ -353,7 +353,7 @@ public:
     static void DebugPrint(int fmtMessageId, ...);
     static void DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc);
     static void Comment(uintptr_t argStr);
-    static void ProfileCall(uintptr_t argGlue, uintptr_t func);
+    static void ProfileCall(uintptr_t argGlue, uintptr_t target, uint32_t incCount);
     static void ProfileDefineClass(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t ctor);
     static void ProfileCreateObject(
         uintptr_t argGlue, JSTaggedType func, int32_t offset, JSTaggedType originObj, JSTaggedType newObj);
