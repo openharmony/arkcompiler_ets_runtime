@@ -26,8 +26,17 @@ async function *a() {
   print(c);
 }
 
+async function *f() {
+  return 0;
+}
+
 let b = a();
 print("asyncgenerator next start");
 b.next();
 b.next(3);
+
+const g = f();
+g.next();
+g.next();
+print("asyncgenerator double next");
 print("asyncgenerator next end");
