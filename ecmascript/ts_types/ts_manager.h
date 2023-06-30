@@ -265,6 +265,8 @@ public:
 
     bool PUBLIC_API IsStaticFunc(GlobalTSTypeRef gt) const;
 
+    bool PUBLIC_API GetSuperGateType(kungfu::GateType &gateType) const;
+
     GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
                                                 JSHandle<JSTaggedValue> propertyName,
                                                 PropertyType propType) const;
@@ -712,6 +714,15 @@ public:
     inline void InsertPtToGtMap(ClassType pgoType, const kungfu::GateType &gateType)
     {
         ptToGtMap_.emplace(pgoType, gateType);
+    }
+
+    inline const kungfu::GateType GetGateTypeByPt(ClassType pgoType)
+    {
+        auto it = ptToGtMap_.find(pgoType);
+        if (it != ptToGtMap_.end()) {
+            return it->second;
+        }
+        return kungfu::GateType::AnyType();
     }
 
     void PrintNumOfTypes() const;

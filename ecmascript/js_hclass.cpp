@@ -574,11 +574,14 @@ void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass>
         protoChangeMarker->SetHasChanged(true);
     }
 
-    if (jshclass->HasTSSubtyping() && addedKey.IsString()) {
-        JSHandle<JSTaggedValue> key(thread, addedKey);
-        if (!SubtypingOperator::TryMaintainTSSubtypingOnPrototype(thread, jshclass, key)) {
-            jshclass->InitTSInheritInfo(thread);
+    if (jshclass->HasTSSubtyping()) {
+        if (addedKey.IsString()) {
+            JSHandle<JSTaggedValue> key(thread, addedKey);
+            if (SubtypingOperator::TryMaintainTSSubtypingOnPrototype(thread, jshclass, key)) {
+                return;
+            }
         }
+        jshclass->InitTSInheritInfo(thread);
     }
 }
 
