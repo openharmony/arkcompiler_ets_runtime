@@ -3427,16 +3427,19 @@ void* JSNApi::GetCurrentTaskInfo(const EcmaVM *vm)
 {
     CHECK_HAS_PENDING_EXCEPTION(vm, nullptr);
     auto thread = vm->GetJSThread();
-    ecmascript::FrameHandler frameHandler(thread);
-    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
-        if (!frameHandler.IsJSFrame()) {
+    JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
+    ecmascript::FrameIterator it(current, thread);
+    for (; !it.Done(); it.Advance<ecmascript::GCVisitedFlag::VISITED>()) {
+        if (!it.IsJSFrame()) {
             continue;
         }
-        auto funcObj = frameHandler.GetFunction();
-        JSHandle<JSFunction> function(thread, funcObj);
-        if (function->GetFunctionKind() != ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
+        auto method = it.CheckAndGetMethod();
+        if (method == nullptr || method->IsNativeWithCallField() ||
+            method->GetFunctionKind() != ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
             continue;
         }
+        auto functionObj = it.GetFunction();
+        JSHandle<JSFunction> function(thread, functionObj);
         JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
         if (!extraInfoValue.IsJSNativePointer()) {
             LOG_ECMA(DEBUG) << "Concurrent function donnot have taskInfo";
