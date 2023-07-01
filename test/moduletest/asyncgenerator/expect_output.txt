@@ -14,6 +14,7 @@
 async generator start
 asyncgenerator next start
 1
+asyncgenerator double next
 asyncgenerator next end
 3
 asyncgenerator return start
