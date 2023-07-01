@@ -217,6 +217,8 @@ public:
         return GetAddress() == nullptr;
     }
 
+    void SetWeakCallback(void *ref, WeakRefClearCallBack freeGlobalCallBack,
+                         WeakRefClearCallBack nativeFinalizeCallback);
     void SetWeak();
 
     void ClearWeak();
@@ -1522,6 +1524,13 @@ inline void CopyableGlobal<T>::Free()
         JSNApi::DisposeGlobalHandleAddr(vm_, address_);
         address_ = 0U;
     }
+}
+
+template <typename T>
+void CopyableGlobal<T>::SetWeakCallback(void *ref, WeakRefClearCallBack freeGlobalCallBack,
+                                        WeakRefClearCallBack nativeFinalizeCallback)
+{
+    address_ = JSNApi::SetWeakCallback(vm_, address_, ref, freeGlobalCallBack, nativeFinalizeCallback);
 }
 
 template<typename T>
