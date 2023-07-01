@@ -20,9 +20,10 @@ group("ark_js_packages") {
   deps = []
   if (host_os != "mac") {
     deps += [
-      "//arkcompiler/ets_runtime:libark_jsruntime",
-      "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm",
-      "//arkcompiler/ets_runtime/ecmascript/quick_fix:quick_fix",
+      ":libark_jsruntime",
+      "ecmascript/compiler:stub.an",
+      "ecmascript/js_vm:ark_js_vm",
+      "ecmascript/quick_fix:quick_fix",
     ]
     if (is_clang && clang_version != "9.0.3" && current_cpu == "arm64" &&
         is_ohos) {

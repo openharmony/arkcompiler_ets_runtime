@@ -283,10 +283,7 @@ ohos_source_set("libark_jsoptimizer_set") {
 
 ohos_source_set("libark_stub_set") {
   stack_protector_ret = false
-  deps = [
-    ":build_stub_to_cpp",
-    ":stub.an",
-  ]
+  deps = [ ":build_stub_to_cpp" ]
 
   sources = [ "$root_gen_dir/arkcompiler/ets_runtime/stub_an.cpp" ]
 
