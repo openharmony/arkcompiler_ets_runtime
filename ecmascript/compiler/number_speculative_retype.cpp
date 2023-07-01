@@ -368,6 +368,16 @@ GateRef NumberSpeculativeRetype::VisitNumberShiftAndLogical(GateRef gate)
         Environment env(gate, circuit_, &builder_);
         GateType leftType = acc_.GetLeftType(gate);
         GateType rightType = acc_.GetRightType(gate);
+        PGOSampleType sampleType = acc_.GetTypedBinaryType(gate);
+        if (sampleType.IsNumber()) {
+            if (sampleType.IsInt()) {
+                leftType = GateType::IntType();
+                rightType = GateType::IntType();
+            } else {
+                leftType = GateType::NumberType();
+                rightType = GateType::NumberType();
+            }
+        }
         ConvertForIntOperator(gate, leftType, rightType);
     }
     return Circuit::NullGate();
