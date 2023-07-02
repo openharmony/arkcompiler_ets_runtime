@@ -132,7 +132,8 @@ enum CommandValues {
     OPTION_TARGET_COMPILER_MODE,
     OPTION_HAP_PATH,
     OPTION_HAP_ABC_OFFSET,
-    OPTION_HAP_ABC_SIZE
+    OPTION_HAP_ABC_SIZE,
+    OPTION_COMPILER_NOCHECK
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1121,6 +1122,16 @@ public:
         return hapAbcSize_;
     }
 
+    void SetCompilerNoCheck(bool value)
+    {
+        compilerNoCheck_ = value;
+    }
+
+    bool IsCompilerNoCheck() const
+    {
+        return compilerNoCheck_;
+    }
+
     void SetTargetBuiltinsDtsPath();
 
     void SetOptionsForTargetCompilation();
@@ -1215,6 +1226,7 @@ private:
     std::string hapPath_ {""};
     uint32_t hapAbcOffset_ {0};
     uint32_t hapAbcSize_ {0};
+    bool compilerNoCheck_ {false};
 };
 }  // namespace panda::ecmascript
 

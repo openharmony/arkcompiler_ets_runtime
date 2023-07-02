@@ -143,7 +143,8 @@ public:
     V(ValueNumbering, false)     \
     V(TypeInfer, false)          \
     V(OptInlining, false)        \
-    V(OptPGOType, false)
+    V(OptPGOType, false)         \
+    V(NoCheck, false)
 
 #define DECL_OPTION(NAME, DEFAULT)    \
 public:                               \

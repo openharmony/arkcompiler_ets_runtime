@@ -537,7 +537,9 @@ void TSHCRLowering::LowerTypedLdArrayLength(GateRef gate)
 {
     AddProfiling(gate);
     GateRef array = acc_.GetValueIn(gate, 2);
-    builder_.StableArrayCheck(array);
+    if (!noCheck_) {
+        builder_.StableArrayCheck(array);
+    }
 
     GateRef result = builder_.LoadArrayLength(array);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
@@ -549,7 +551,9 @@ void TSHCRLowering::LowerTypedLdTypedArrayLength(GateRef gate)
     GateRef array = acc_.GetValueIn(gate, 2);
     GateType arrayType = acc_.GetGateType(array);
     arrayType = tsManager_->TryNarrowUnionType(arrayType);
-    builder_.TypedArrayCheck(arrayType, array);
+    if (!noCheck_) {
+        builder_.TypedArrayCheck(arrayType, array);
+    }
     GateRef result = builder_.LoadTypedArrayLength(arrayType, array);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
@@ -608,8 +612,10 @@ void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
 
         AddProfiling(gate);
 
-        GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-        builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
+        if (!noCheck_) {
+            GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
+            builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
+        }
 
         GateRef pfrGate = builder_.Int32(plr.GetData());
         GateRef result = Circuit::NullGate();
@@ -638,8 +644,10 @@ void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
         return;
     }
     AddProfiling(gate);
-    GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-    builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
+    if (!noCheck_) {
+        GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
+        builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
+    }
 
     GateRef pfrGate = builder_.Int32(plr.GetData());
     GateRef result = builder_.LoadProperty(receiver, pfrGate, false);
@@ -688,8 +696,10 @@ void TSHCRLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
 
         AddProfiling(gate);
 
-        GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-        builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
+        if (!noCheck_) {
+            GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
+            builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
+        }
 
         GateRef pfrGate = builder_.Int32(plr.GetData());
         if (LIKELY(plr.IsLocal())) {
@@ -716,8 +726,10 @@ void TSHCRLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
         return;
     }
     AddProfiling(gate);
-    GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-    builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
+    if (!noCheck_) {
+        GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
+        builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
+    }
 
     GateRef pfrGate = builder_.Int32(plr.GetData());
     builder_.StoreProperty(receiver, pfrGate, value);
@@ -763,7 +775,9 @@ void TSHCRLowering::LowerTypedStObjByIndex(GateRef gate)
     AddProfiling(gate);
 
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
-        builder_.TypedArrayCheck(receiverType, receiver);
+        if (!noCheck_) {
+            builder_.TypedArrayCheck(receiverType, receiver);
+        }
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
@@ -772,7 +786,9 @@ void TSHCRLowering::LowerTypedStObjByIndex(GateRef gate)
     uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
     index = builder_.Int32(indexValue);
     auto length = builder_.LoadTypedArrayLength(receiverType, receiver);
-    builder_.IndexCheck(receiverType, length, index);
+    if (!noCheck_) {
+        builder_.IndexCheck(receiverType, length, index);
+    }
 
     if (tsManager_->IsFloat32ArrayType(receiverType)) {
         builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value);
@@ -823,11 +839,13 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
 
 GateRef TSHCRLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey)
 {
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    builder_.StableArrayCheck(receiver);
-    GateRef length = builder_.LoadArrayLength(receiver);
-    propKey = builder_.IndexCheck(receiverType, length, propKey);
+    if (!noCheck_) {
+        GateType receiverType = acc_.GetGateType(receiver);
+        receiverType = tsManager_->TryNarrowUnionType(receiverType);
+        builder_.StableArrayCheck(receiver);
+        GateRef length = builder_.LoadArrayLength(receiver);
+        propKey = builder_.IndexCheck(receiverType, length, propKey);
+    }
     return builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, propKey);
 }
 
@@ -835,9 +853,11 @@ GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
 {
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    builder_.TypedArrayCheck(receiverType, receiver);
-    GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
-    propKey = builder_.IndexCheck(receiverType, length, propKey);
+    if (!noCheck_) {
+        builder_.TypedArrayCheck(receiverType, receiver);
+        GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
+        propKey = builder_.IndexCheck(receiverType, length, propKey);
+    }
     if (tsManager_->IsInt32ArrayType(receiverType)) {
         return builder_.LoadElement<TypedLoadOp::INT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
     } else if (tsManager_->IsFloat32ArrayType(receiverType)) {
@@ -854,11 +874,13 @@ GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
 
 void TSHCRLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value)
 {
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    builder_.StableArrayCheck(receiver);
-    GateRef length = builder_.LoadArrayLength(receiver);
-    builder_.IndexCheck(receiverType, length, propKey);
+    if (!noCheck_) {
+        GateType receiverType = acc_.GetGateType(receiver);
+        receiverType = tsManager_->TryNarrowUnionType(receiverType);
+        builder_.StableArrayCheck(receiver);
+        GateRef length = builder_.LoadArrayLength(receiver);
+        builder_.IndexCheck(receiverType, length, propKey);
+    }
     builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, propKey, value);
 }
 
@@ -867,9 +889,11 @@ void TSHCRLowering::StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, Ga
 {
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    builder_.TypedArrayCheck(receiverType, receiver);
-    GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
-    propKey = builder_.IndexCheck(receiverType, length, propKey);
+    if (!noCheck_) {
+        builder_.TypedArrayCheck(receiverType, receiver);
+        GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
+        propKey = builder_.IndexCheck(receiverType, length, propKey);
+    }
     if (tsManager_->IsInt32ArrayType(receiverType)) {
         builder_.StoreElement<TypedStoreOp::INT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
     } else if (tsManager_->IsFloat32ArrayType(receiverType)) {
@@ -989,7 +1013,9 @@ void TSHCRLowering::LowerTypedSuperCall(GateRef gate)
 
 void TSHCRLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, GateRef a0, BuiltinsStubCSigns::ID id)
 {
-    builder_.CallTargetCheck(func, builder_.IntPtr(static_cast<int64_t>(id)), a0);
+    if (!noCheck_) {
+        builder_.CallTargetCheck(func, builder_.IntPtr(static_cast<int64_t>(id)), a0);
+    }
     GateRef result = builder_.TypedCallBuiltin(gate, a0, id);
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
@@ -1022,13 +1048,17 @@ void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, Glob
 {
     if (IsLoadVtable(func)) {
         if (tsManager_->CanFastCall(funcGt)) {
-            builder_.JSFastCallThisTargetTypeCheck(funcType, func);
+            if (!noCheck_) {
+                builder_.JSFastCallThisTargetTypeCheck(funcType, func);
+            }
             builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
             GateRef result = builder_.TypedFastCall(gate, argsFastCall);
             builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
             acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
         } else {
-            builder_.JSCallThisTargetTypeCheck(funcType, func);
+            if (!noCheck_) {
+                builder_.JSCallThisTargetTypeCheck(funcType, func);
+            }
             builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
             GateRef result = builder_.TypedCall(gate, args);
             builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
@@ -1042,13 +1072,17 @@ void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, Glob
         if (op == OpCode::JS_BYTECODE && (acc_.GetByteCodeOpcode(func) == EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8 ||
                                           acc_.GetByteCodeOpcode(func) == EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8)) {
             if (tsManager_->CanFastCall(funcGt)) {
-                builder_.JSCallTargetFromDefineFuncCheck(funcType, func);
+                if (!noCheck_) {
+                    builder_.JSCallTargetFromDefineFuncCheck(funcType, func);
+                }
                 builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
                 GateRef result = builder_.TypedFastCall(gate, argsFastCall);
                 builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
                 acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
             } else {
-                builder_.JSCallTargetFromDefineFuncCheck(funcType, func);
+                if (!noCheck_) {
+                    builder_.JSCallTargetFromDefineFuncCheck(funcType, func);
+                }
                 builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
                 GateRef result = builder_.TypedCall(gate, args);
                 builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
@@ -1061,13 +1095,17 @@ void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, Glob
             return;
         }
         if (tsManager_->CanFastCall(funcGt)) {
-            builder_.JSFastCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
+            if (!noCheck_) {
+                builder_.JSFastCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
+            }
             builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
             GateRef result = builder_.TypedFastCall(gate, argsFastCall);
             builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
             acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
         } else {
-            builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
+            if (!noCheck_) {
+                builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex));
+            }
             builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
             GateRef result = builder_.TypedCall(gate, args);
             builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
@@ -1198,13 +1236,17 @@ void TSHCRLowering::CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, 
         return;
     }
     if (tsManager_->CanFastCall(funcGt)) {
-        builder_.JSFastCallThisTargetTypeCheck(funcType, func);
+        if (!noCheck_) {
+            builder_.JSFastCallThisTargetTypeCheck(funcType, func);
+        }
         builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
         GateRef result = builder_.TypedFastCall(gate, argsFastCall);
         builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     } else {
-        builder_.JSCallThisTargetTypeCheck(funcType, func);
+        if (!noCheck_) {
+            builder_.JSCallThisTargetTypeCheck(funcType, func);
+        }
         builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
         GateRef result = builder_.TypedCall(gate, args);
         builder_.EndCallTimer(glue_, gate, {glue_, func}, true);

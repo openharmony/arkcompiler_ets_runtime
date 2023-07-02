@@ -41,7 +41,8 @@ public:
           methodName_(name),
           glue_(acc_.GetGlueFromArgList()),
           argAcc_(circuit),
-          pgoTypeLog_(circuit) {}
+          pgoTypeLog_(circuit),
+          noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()) {}
 
     ~TSHCRLowering() = default;
 
@@ -176,6 +177,7 @@ private:
     PGOTypeLogList pgoTypeLog_;
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeMap_;
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeHitTimeMap_;
+    bool noCheck_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_HCR_LOWERING_H

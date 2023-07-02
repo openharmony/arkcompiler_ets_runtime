@@ -54,7 +54,7 @@ void NumberSpeculativeRunner::Run()
         LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
     }
 
-    NumberSpeculativeLowering lowering(circuit_, chunk_, tsManager_, typeInfos_, rangeInfos_);
+    NumberSpeculativeLowering lowering(circuit_, chunk_, tsManager_, typeInfos_, rangeInfos_, noCheck_);
     lowering.Run();
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";

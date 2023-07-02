@@ -264,7 +264,8 @@ public:
                            bool enableTypeLowering,
                            std::string name,
                            const CString &recordName,
-                           PGOProfilerDecoder *decoder)
+                           PGOProfilerDecoder *decoder,
+                           bool isInline)
         : tsManager_(tsManager), circuit_(circuit), file_(jsPandaFile),
           method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
           typeRecorder_(jsPandaFile, method_, tsManager, recordName, decoder), hasTypes_(hasTypes),
@@ -276,7 +277,8 @@ public:
           dfsList_(circuit->chunk()),
           loopExitToVregGate_(circuit->chunk()),
           loopExitToAccGate_(circuit->chunk()),
-          preFrameState_(circuit_->GetRoot())
+          preFrameState_(circuit_->GetRoot()),
+          isInline_(isInline)
     {
     }
     ~BytecodeCircuitBuilder() = default;
@@ -605,6 +607,7 @@ private:
     ChunkMap<std::pair<GateRef, uint16_t>, GateRef> loopExitToVregGate_;
     ChunkMap<GateRef, GateRef> loopExitToAccGate_;
     GateRef preFrameState_ {Circuit::NullGate()};
+    bool isInline_ {false};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H

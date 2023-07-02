@@ -139,7 +139,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      Default: ''\n"
     "--hap-path                            The path of the app hap. Default: ''\n"
     "--hap-abc-offset                      The offset of the abc file in app hap. Default: '0'\n"
-    "--hap-abc-size                        The size of the abc file in app hap. Default: '0'\n\n";
+    "--hap-abc-size                        The size of the abc file in app hap. Default: '0'\n"
+    "--compiler-no-check                   Enable remove checks for aot compiler. Default: 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -213,6 +214,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"hap-path", required_argument, nullptr, OPTION_HAP_PATH},
         {"hap-abc-offset", required_argument, nullptr, OPTION_HAP_ABC_OFFSET},
         {"hap-abc-size", required_argument, nullptr, OPTION_HAP_ABC_SIZE},
+        {"compiler-no-check", required_argument, nullptr, OPTION_COMPILER_NOCHECK},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -689,6 +691,13 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 SetHapAbcSize(argUint32);
+                break;
+            case OPTION_COMPILER_NOCHECK:
+                ret = ParseBoolParam(&argBool);
+                if (!ret) {
+                    return false;
+                }
+                SetCompilerNoCheck(argBool);
                 break;
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";

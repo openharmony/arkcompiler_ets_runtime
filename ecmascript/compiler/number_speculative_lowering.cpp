@@ -521,16 +521,18 @@ void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)
         return;
     }
     Environment env(gate, circuit_, &builder_);
-    GateRef length = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
-    RangeInfo indexRange = GetRange(index);
-    if (indexRange.GetMin() < 0) {
-        builder_.NegativeIndexCheck(index);
+    if (!noCheck_) {
+        GateRef length = acc_.GetValueIn(gate, 0);
+        RangeInfo indexRange = GetRange(index);
+        if (indexRange.GetMin() < 0) {
+            builder_.NegativeIndexCheck(index);
+        }
+        builder_.LargeIndexCheck(index, length);
+        // return checked index value
+        acc_.SetGateType(gate, GateType::NJSValue());
+        acc_.SetMachineType(gate, MachineType::I32);
     }
-    builder_.LargeIndexCheck(index, length);
-    // return checked index value
-    acc_.SetGateType(gate, GateType::NJSValue());
-    acc_.SetMachineType(gate, MachineType::I32);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), index);
 }
 
