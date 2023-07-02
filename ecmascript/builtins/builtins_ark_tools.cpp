@@ -23,6 +23,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/tagged_object-inl.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
+#include "ecmascript/mem/clock_scope.h"
 
 namespace panda::ecmascript::builtins {
 using StringHelper = base::StringHelper;
@@ -304,5 +305,11 @@ JSTaggedValue BuiltinsArkTools::IsPrototype(EcmaRuntimeCallInfo *info)
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
     JSHClass *objHclass = obj->GetTaggedObject()->GetClass();
     return JSTaggedValue(objHclass->IsPrototype());
+}
+
+JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *info)
+{
+    ClockScope scope;
+    return JSTaggedValue(scope.GetCurTime());
 }
 }  // namespace panda::ecmascript::builtins

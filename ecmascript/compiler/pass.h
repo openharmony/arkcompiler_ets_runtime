@@ -420,7 +420,7 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         NumberSpeculativeRunner(data->GetCircuit(), data->GetTSManager(),
-                                enableLog, data->GetMethodName(), &chunk).Run();
+                                enableLog, data->GetMethodName(), &chunk, data->GetPassContext()).Run();
         return true;
     }
 };

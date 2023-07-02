@@ -91,7 +91,9 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
             if (inlineSuccess_) {
                 GateRef glue = acc_.GetGlueFromArgList();
                 CircuitRootScope scope(circuit_);
-                InlineFuncCheck(gate);
+                if (!noCheck_) {
+                    InlineFuncCheck(gate);
+                }
                 InlineCall(methodInfo, methodPcInfo, inlinedMethod, gate);
                 ReplaceCallInput(gate, isCallThis, glue, inlinedMethod);
                 inlinedCall_++;
@@ -167,7 +169,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo,
                                    tsManager, circuit_,
                                    ctx_->GetByteCodes(), true, IsLogEnabled(),
-                                   enableTypeLowering_, fullName, recordName, ctx_->GetPfDecoder());
+                                   enableTypeLowering_, fullName, recordName, ctx_->GetPfDecoder(), true);
     {
         if (enableTypeLowering_) {
             BuildFrameStateChain(gate, builder);
@@ -386,8 +388,13 @@ void TSInlineLowering::RemoveRoot()
 
 void TSInlineLowering::BuildFrameStateChain(GateRef gate, BytecodeCircuitBuilder &builder)
 {
-    GateRef check = acc_.GetDep(gate);
-    GateRef stateSplit = acc_.GetDep(check);
+    GateRef stateSplit = Circuit::NullGate();
+    if (noCheck_) {
+        stateSplit = acc_.GetDep(gate);
+    } else {
+        GateRef check = acc_.GetDep(gate);
+        stateSplit = acc_.GetDep(check);
+    }
     ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
     GateRef preFrameState = acc_.GetFrameState(stateSplit);
     ASSERT(acc_.GetOpCode(preFrameState) == OpCode::FRAME_STATE);

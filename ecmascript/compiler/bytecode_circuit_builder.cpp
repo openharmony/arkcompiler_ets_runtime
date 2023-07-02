@@ -1055,8 +1055,10 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
         ASSERT(stateCur != Circuit::NullGate());
         ASSERT(dependCur != Circuit::NullGate());
         if (IsEntryBlock(bb.id)) {
-            stateCur = circuit_->NewGate(circuit_->UpdateHotness(), {stateCur, dependCur});
-            dependCur = stateCur;
+            if (!isInline_) {
+                stateCur = circuit_->NewGate(circuit_->UpdateHotness(), {stateCur, dependCur});
+                dependCur = stateCur;
+            }
             auto &bbNext = graph_[bb.id + 1];
             SetBlockPred(bb, bbNext, stateCur, dependCur);
             bbNext.expandedPreds.push_back({bb.id, bb.end, false});

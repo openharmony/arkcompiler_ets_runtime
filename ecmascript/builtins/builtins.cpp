@@ -3687,6 +3687,7 @@ JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) 
     SetFunction(env, tools, "stopCpuProf", builtins::BuiltinsArkTools::StopCpuProfiler, FunctionLength::ZERO);
 #endif
     SetFunction(env, tools, "isPrototype", builtins::BuiltinsArkTools::IsPrototype, FunctionLength::ONE);
+    SetFunction(env, tools, "timeInUs",  builtins::BuiltinsArkTools::TimeInUs, FunctionLength::ZERO);
     return tools;
 }
 

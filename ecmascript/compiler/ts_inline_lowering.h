@@ -57,7 +57,8 @@ public:
           enableTypeLowering_(ctx->GetEcmaVM()->GetJSOptions().IsEnableTypeLowering()),
           traceInline_(ctx->GetEcmaVM()->GetJSOptions().GetTraceInline()),
           maxInlineBytecodesCount_(ctx->GetEcmaVM()->GetJSOptions().GetMaxInlineBytecodes()),
-          nativeAreaAllocator_(nativeAreaAllocator) {}
+          nativeAreaAllocator_(nativeAreaAllocator),
+          noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()) {}
 
     ~TSInlineLowering() = default;
 
@@ -108,6 +109,7 @@ private:
     bool traceInline_ {false};
     size_t maxInlineBytecodesCount_ {0};
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
+    bool noCheck_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_INLINE_LOWERING_H

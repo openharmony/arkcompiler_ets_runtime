@@ -24,7 +24,7 @@ namespace panda::ecmascript {
 enum class ContentType : uint8_t { None = 1, Number, BigInt };
 class JSTypedArray : public JSObject {
 public:
-    static constexpr size_t MAX_ONHEAP_LENGTH = 64 * 8;
+    static constexpr size_t MAX_ONHEAP_LENGTH = 512 * 8;
     static JSTypedArray *Cast(TaggedObject *object)
     {
     #if ECMASCRIPT_ENABLE_CAST_CHECK

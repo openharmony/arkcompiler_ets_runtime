@@ -71,7 +71,7 @@ void GlobalTypeInfer::NewTypeInfer(const uint32_t methodOffset)
     BytecodeCircuitBuilder *builder =
         new BytecodeCircuitBuilder(jsPandaFile_, methodLiteral, methodPcInfo, ctx_->GetTSManager(), circuit,
                                    ctx_->GetByteCodes(), jsPandaFile_->HasTSTypes(recordName_), enableLog_, true,
-                                   fullName, recordName_, decoder_);
+                                   fullName, recordName_, decoder_, false);
     builder->BytecodeToCircuit();
     builders_.emplace_back(builder);
 
