@@ -303,6 +303,24 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
     return CreateEcmaVM(runtimeOptions);
 }
 
+EcmaContext *JSNApi::CreateJSContext(EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    return EcmaContext::CreateAndInitialize(thread);
+}
+
+void JSNApi::SwitchCurrentContext(EcmaVM *vm, EcmaContext *context)
+{
+    JSThread *thread = vm->GetJSThread();
+    thread->SwitchCurrentContext(context);
+}
+
+void JSNApi::DestroyJSContext(EcmaVM *vm, EcmaContext *context)
+{
+    JSThread *thread = vm->GetJSThread();
+    EcmaContext::CheckAndDestroy(thread, context);
+}
+
 EcmaVM *JSNApi::CreateEcmaVM(const JSRuntimeOptions &options)
 {
     {

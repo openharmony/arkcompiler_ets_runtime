@@ -782,11 +782,13 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
     Bind(&notNull);
     {
         GateRef target = GetTargetFromJSProxy(proxy);
-        GateRef globalConstOffset = IntPtr(JSThread::GlueData::GetGlobalConstOffset(env->Is32Bit()));
-        GateRef keyOffset = PtrAdd(globalConstOffset,
+        GateRef gConstPointer = Load(VariableType::JS_ANY(), glue,
+            IntPtr(JSThread::GlueData::GetGlobalConstOffset(env->Is32Bit())));
+
+        GateRef keyOffset = PtrAdd(gConstPointer,
             PtrMul(IntPtr(static_cast<int64_t>(ConstantIndex::APPLY_STRING_INDEX)),
             IntPtr(sizeof(JSTaggedValue))));
-        GateRef key = Load(VariableType::JS_ANY(), glue, keyOffset);
+        GateRef key = Load(VariableType::JS_ANY(), keyOffset);
         GateRef method = CallRuntime(glue, RTSTUB_ID(JSObjectGetMethod), {handler, key});
         ReturnExceptionIfAbruptCompletion(glue);
 

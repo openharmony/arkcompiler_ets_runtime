@@ -80,16 +80,21 @@ bool EcmaContext::Initialize()
     propertiesCache_ = new PropertiesCache();
     regExpParserCache_ = new RegExpParserCache();
 
+    JSHandle<JSHClass> hClassHandle = factory_->InitClassClass();
+
     JSHandle<JSHClass> globalEnvClass = factory_->NewEcmaHClass(
-        JSHClass::Cast(vm_->GetHClassClass().GetTaggedObject()),
+        *hClassHandle,
         GlobalEnv::SIZE,
         JSType::GLOBAL_ENV);
+    thread_->SetGlobalConst(&globalConst_);
+    globalConst_.Init(thread_, *hClassHandle);
 
     JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
     globalEnv->Init(thread_);
     globalEnv_ = globalEnv.GetTaggedValue();
     Builtins builtins;
-    builtins.Initialize(globalEnv, thread_);
+    bool builtinsLazyEnabled = vm_->GetJSOptions().IsWorker() && vm_->GetJSOptions().GetEnableBuiltinsLazy();
+    builtins.Initialize(globalEnv, thread_, builtinsLazyEnabled);
 
     SetupRegExpResultCache();
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
@@ -576,9 +581,7 @@ JSHandle<job::MicroJobQueue> EcmaContext::GetMicroJobQueue() const
 
 void EcmaContext::MountContext(JSThread *thread)
 {
-    EcmaContext *context = EcmaContext::Create(thread);
-    thread->PushContext(context);
-    context->Initialize();
+    EcmaContext *context = EcmaContext::CreateAndInitialize(thread);
     thread->SwitchCurrentContext(context);
 }
 
@@ -589,6 +592,22 @@ void EcmaContext::UnmountContext(JSThread *thread)
     Destroy(context);
 }
 
+EcmaContext *EcmaContext::CreateAndInitialize(JSThread *thread)
+{
+    EcmaContext *context = EcmaContext::Create(thread);
+    thread->PushContext(context);
+    context->Initialize();
+    return context;
+}
+
+void EcmaContext::CheckAndDestroy(JSThread *thread, EcmaContext *context)
+{
+    if (thread->EraseContext(context)) {
+        Destroy(context);
+    }
+    LOG_ECMA(FATAL) << "CheckAndDestroy a nonexistent context.";
+}
+
 void EcmaContext::SetupRegExpResultCache()
 {
     regexpCache_ = builtins::RegExpExecResultCache::CreateCacheTable(thread_);
@@ -596,6 +615,9 @@ void EcmaContext::SetupRegExpResultCache()
 
 void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
 {
+    // visit global Constant
+    globalConst_.VisitRangeSlot(rv);
+
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&globalEnv_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&regexpCache_)));
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&microJobQueue_)));

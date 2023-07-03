@@ -85,8 +85,10 @@ using PromiseRejectCallback = void (*)(void* info);
 using IcuDeleteEntry = void(*)(void *pointer, void *data);
 class EcmaContext {
 public:
-    static EcmaContext *Create(JSThread *thread);
+    static EcmaContext *CreateAndInitialize(JSThread *thread);
+    static void CheckAndDestroy(JSThread *thread, EcmaContext *context);
 
+    static EcmaContext *Create(JSThread *thread);
     static bool Destroy(EcmaContext *context);
 
     EcmaContext(JSThread *thread);
@@ -377,6 +379,10 @@ public:
         return propertiesCache_;
     }
     void ClearBufferData();
+    const GlobalEnvConstants *GlobalConstants() const
+    {
+        return &globalConst_;
+    }
 
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
@@ -453,8 +459,8 @@ private:
     JSTaggedType *frameBase_ {nullptr};
     uint64_t stackStart_ {0};
     uint64_t stackLimit_ {0};
-
     PropertiesCache *propertiesCache_ {nullptr};
+    GlobalEnvConstants globalConst_;
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

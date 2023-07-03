@@ -22,6 +22,7 @@ group("ark_js_packages") {
     deps += [
       ":libark_jsruntime",
       "ecmascript/compiler:stub.an",
+      "ecmascript/js_vm:ark_js_context",
       "ecmascript/js_vm:ark_js_vm",
       "ecmascript/quick_fix:quick_fix",
     ]
@@ -39,9 +40,10 @@ group("ark_js_host_windows_tools_packages") {
   deps = []
   if (host_os != "mac" && target_os != "android") {
     deps += [
+      "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/mingw:mingw_x86_64)",
+      "ecmascript/js_vm:ark_js_context($build_root/toolchain/mingw:mingw_x86_64)",
+      "ecmascript/js_vm:ark_js_vm($build_root/toolchain/mingw:mingw_x86_64)",
       "ecmascript/pgo_profiler/prof_dump:profdump($build_root/toolchain/mingw:mingw_x86_64)",
-      "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler($build_root/toolchain/mingw:mingw_x86_64)",
-      "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm($build_root/toolchain/mingw:mingw_x86_64)",
     ]
   }
 }
@@ -52,12 +54,14 @@ group("ark_js_host_mac_tools_packages") {
     if (host_cpu == "arm64") {
       deps += [
         "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/mac:clang_arm64)",
+        "ecmascript/js_vm:ark_js_context($build_root/toolchain/mac:clang_arm64)",
         "ecmascript/js_vm:ark_js_vm($build_root/toolchain/mac:clang_arm64)",
         "ecmascript/pgo_profiler/prof_dump:profdump($build_root/toolchain/mac:clang_arm64)",
       ]
     } else {
       deps += [
         "ecmascript/compiler:ark_aot_compiler($build_root/toolchain/mac:clang_x64)",
+        "ecmascript/js_vm:ark_js_context($build_root/toolchain/mac:clang_x64)",
         "ecmascript/js_vm:ark_js_vm($build_root/toolchain/mac:clang_x64)",
         "ecmascript/pgo_profiler/prof_dump:profdump($build_root/toolchain/mac:clang_x64)",
       ]
@@ -69,8 +73,9 @@ group("ark_js_host_linux_tools_packages") {
   deps = []
   if (host_os != "mac") {
     deps += [
-      "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})",
-      "//arkcompiler/ets_runtime/ecmascript/quick_fix:quick_fix(${host_toolchain})",
+      "ecmascript/js_vm:ark_js_context(${host_toolchain})",
+      "ecmascript/js_vm:ark_js_vm(${host_toolchain})",
+      "ecmascript/quick_fix:quick_fix(${host_toolchain})",
     ]
     if (is_standard_system) {
       deps += [

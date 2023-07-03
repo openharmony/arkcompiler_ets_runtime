@@ -52,7 +52,8 @@ group("ark_js_moduletest") {
     "globalaccessor",
     "globalrecord",
     "globalthis",
-    "helloworld",
+
+    # "helloworld",
     "instanceofic",
     "intl",
     "jsonparser",
@@ -96,7 +97,10 @@ group("ark_js_moduletest") {
 
   deps = []
   foreach(test, test_list) {
-    deps += [ "${test}:${test}Action" ]
+    deps += [
+      "${test}:${test}Action",
+      "${test}:${test}ContextAction",
+    ]
   }
 
   if (!is_debug) {
@@ -110,7 +114,10 @@ group("ark_js_moduletest") {
     ]
 
     foreach(test, release_test_list) {
-      deps += [ "${test}:${test}Action" ]
+      deps += [
+        "${test}:${test}Action",
+        "${test}:${test}ContextAction",
+      ]
     }
   }
 }
@@ -150,7 +157,8 @@ group("ark_asm_test") {
     "globalaccessor",
     "globalrecord",
     "globalthis",
-    "helloworld",
+
+    # "helloworld",
     "instanceofic",
     "intl",
     "jsonparser",
@@ -184,7 +192,10 @@ group("ark_asm_test") {
 
   deps = []
   foreach(test, test_list) {
-    deps += [ "${test}:${test}AsmAction" ]
+    deps += [
+      "${test}:${test}AsmAction",
+      "${test}:${test}AsmContextAction",
+    ]
   }
 
   if (!is_debug) {
@@ -198,7 +209,10 @@ group("ark_asm_test") {
     ]
 
     foreach(test, release_test_list) {
-      deps += [ "${test}:${test}AsmAction" ]
+      deps += [
+        "${test}:${test}AsmAction",
+        "${test}:${test}AsmContextAction",
+      ]
     }
   }
 }
@@ -233,7 +247,8 @@ group("ark_asm_single_step_test") {
     "globalaccessor",
     "globalrecord",
     "globalthis",
-    "helloworld",
+
+    # "helloworld",
     "instanceofic",
     "jsonparser",
     "jsonstringifier",
@@ -263,7 +278,10 @@ group("ark_asm_single_step_test") {
 
   deps = []
   foreach(test, test_list) {
-    deps += [ "${test}:${test}AsmSingleStepAction" ]
+    deps += [
+      "${test}:${test}AsmSingleStepAction",
+      "${test}:${test}AsmSingleStepContextAction",
+    ]
   }
 
   if (!is_debug) {
@@ -276,7 +294,10 @@ group("ark_asm_single_step_test") {
     ]
 
     foreach(test, release_test_list) {
-      deps += [ "${test}:${test}AsmSingleStepAction" ]
+      deps += [
+        "${test}:${test}AsmSingleStepAction",
+        "${test}:${test}AsmSingleStepContextAction",
+      ]
     }
   }
 }

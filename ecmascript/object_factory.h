@@ -614,7 +614,7 @@ public:
     JSHandle<CjsExports> NewCjsExports();
     JSHandle<CjsRequire> NewCjsRequire();
 
-    JSHandle<JSHClass> CreateIteratorResultInstanceClass();
+    JSHandle<JSHClass> CreateIteratorResultInstanceClass(const JSHandle<GlobalEnv> &env);
 
     // --------------------------------------old space object--------------------------------------------
     JSHandle<JSObject> NewOldSpaceJSObject(const JSHandle<JSHClass> &jshclass);

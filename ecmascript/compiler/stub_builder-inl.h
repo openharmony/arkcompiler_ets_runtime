@@ -2190,7 +2190,7 @@ inline GateRef StubBuilder::ComputeTaggedArraySize(GateRef length)
 
 inline GateRef StubBuilder::GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index)
 {
-    GateRef gConstAddr = PtrAdd(glue,
+    GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
         IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
     auto constantIndex = IntPtr(JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(index));
     return Load(type, gConstAddr, constantIndex);

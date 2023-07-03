@@ -129,7 +129,12 @@ EcmaString *EcmaStringTable::GetOrInternString(const uint8_t *utf8Data, uint32_t
 */
 EcmaString *EcmaStringTable::CreateAndInternStringNonMovable(const uint8_t *utf8Data, uint32_t utf8Len)
 {
-    EcmaString *result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, true, MemSpaceType::NON_MOVABLE);
+    EcmaString *result = GetString(utf8Data, utf8Len, true);
+    if (result != nullptr) {
+        return result;
+    }
+
+    result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, true, MemSpaceType::NON_MOVABLE);
     InternString(result);
     return result;
 }
