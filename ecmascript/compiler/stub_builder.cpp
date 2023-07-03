@@ -4076,14 +4076,14 @@ GateRef StubBuilder::FastDiv(GateRef left, GateRef right, ProfileOperation callb
         Bind(&rightIsInt);
         {
             GateRef type = Int32(PGOSampleType::IntType());
-            COMBINE_TYPE_CALL_BACK(curType, type)
+            COMBINE_TYPE_CALL_BACK(curType, type);
             doubleRight = ChangeInt32ToFloat64(GetInt32OfTInt(right));
             Jump(&leftIsDoubleAndRightIsDouble);
         }
         Bind(&rightNotInt);
         {
             GateRef type = Int32(PGOSampleType::DoubleType());
-            COMBINE_TYPE_CALL_BACK(curType, type)
+            COMBINE_TYPE_CALL_BACK(curType, type);
             doubleRight = GetDoubleOfTDouble(right);
             Jump(&leftIsDoubleAndRightIsDouble);
         }
@@ -4407,14 +4407,14 @@ GateRef StubBuilder::FastMod(GateRef glue, GateRef left, GateRef right, ProfileO
             Bind(&rightIsInt1);
             {
                 GateRef type = Int32(PGOSampleType::IntType());
-                COMBINE_TYPE_CALL_BACK(curType, type)
+                COMBINE_TYPE_CALL_BACK(curType, type);
                 doubleRight = ChangeInt32ToFloat64(GetInt32OfTInt(right));
                 Jump(&leftIsDoubleAndRightIsDouble);
             }
             Bind(&rightNotInt1);
             {
                 GateRef type = Int32(PGOSampleType::DoubleType());
-                COMBINE_TYPE_CALL_BACK(curType, type)
+                COMBINE_TYPE_CALL_BACK(curType, type);
                 doubleRight = GetDoubleOfTDouble(right);
                 Jump(&leftIsDoubleAndRightIsDouble);
             }
@@ -4456,7 +4456,8 @@ GateRef StubBuilder::FastMod(GateRef glue, GateRef left, GateRef right, ProfileO
                     Branch(DoubleIsINF(*doubleRight), &leftIsZeroOrRightIsInf, &rightNotInf);
                     Bind(&rightNotInf);
                     {
-                        result = DoubleToTaggedDoublePtr(CallNGCRuntime(glue, RTSTUB_ID(FloatMod), { *doubleLeft, *doubleRight })); 
+                        result = DoubleToTaggedDoublePtr(CallNGCRuntime(glue, RTSTUB_ID(FloatMod),
+                            { *doubleLeft, *doubleRight }));
                         Jump(&exit);
                     }
                 }

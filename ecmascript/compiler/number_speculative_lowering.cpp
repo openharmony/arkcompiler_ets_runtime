@@ -352,9 +352,8 @@ void NumberSpeculativeLowering::VisitNumberMod(GateRef gate)
         acc_.SetMachineType(gate, MachineType::I32);
     } else {
         GateRef glue = acc_.GetGlueFromArgList();
-        result = builder_.CallNGCRuntime(
-                        glue, RTSTUB_ID(FloatMod), Gate::InvalidGateRef, {left, right},
-                        Circuit::NullGate());
+        result = builder_.CallNGCRuntime(glue, RTSTUB_ID(FloatMod),
+            Gate::InvalidGateRef, {left, right}, Circuit::NullGate());
         acc_.SetMachineType(gate, MachineType::F64);
     }
     acc_.SetGateType(gate, GateType::NJSValue());

@@ -1446,12 +1446,12 @@ DEF_CALL_SIGNATURE(ProfileDefineClass)
 
 DEF_CALL_SIGNATURE(ProfileCreateObject)
 {
-    // 4: 4 input parameters
+    // 5: 5 input parameters
     CallSignature defineProfInstruction(
         "ProfileCreateObject", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = defineProfInstruction;
     // 4: 4 input parameters
-    std::array<VariableType, 5> params = { // 4 : 4 input parameters
+    std::array<VariableType, 5> params = { // 5 : 5 input parameters
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
         VariableType::INT32(),
