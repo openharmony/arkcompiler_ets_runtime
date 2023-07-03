@@ -215,7 +215,7 @@ bool PGOTypeInfer::CheckPGOType(PGORWOpType pgoTypes, RWOpLoc &rwOpLoc) const
             continue;
         }
         if ((rwOpLoc == RWOpLoc::CONSTRUCTOR && pgoTypes.GetObjectInfo(i).InConstructor()) ||
-            (rwOpLoc == RWOpLoc::INSTANCE && !pgoTypes.GetObjectInfo(i).InConstructor())){
+            (rwOpLoc == RWOpLoc::INSTANCE && !pgoTypes.GetObjectInfo(i).InConstructor())) {
             continue;
         } else {
             return false;
@@ -265,7 +265,7 @@ void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedVal
     RWOpLoc rwOpLoc = RWOpLoc::UNKONWN;
     if (tsManager_->IsClassTypeKind(tsType)) {
         rwOpLoc = RWOpLoc::CONSTRUCTOR;
-    } else if (tsManager_->IsClassInstanceTypeKind(tsType)){
+    } else if (tsManager_->IsClassInstanceTypeKind(tsType)) {
         rwOpLoc = RWOpLoc::INSTANCE;
         GlobalTSTypeRef instanceGT = tsType.GetGTRef();
         tsType = GateType(tsManager_->GetClassType(instanceGT));

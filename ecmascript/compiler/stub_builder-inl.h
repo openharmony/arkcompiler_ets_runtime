@@ -1043,7 +1043,7 @@ inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
 
 inline GateRef StubBuilder::IsEcmaObject(GateRef obj)
 {
-	auto isHeapObject = TaggedIsHeapObject(obj);
+    auto isHeapObject = TaggedIsHeapObject(obj);
     return env_->GetBuilder()->LogicAnd(isHeapObject, TaggedObjectIsEcmaObject(obj));
 }
 

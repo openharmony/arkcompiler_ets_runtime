@@ -33,7 +33,7 @@ enum class OperationType : uint8_t {
 
 #define COMBINE_TYPE_CALL_BACK(curType, type) \
     callback.ProfileCombineOpType(            \
-        *curType, type, [this](GateRef curType, GateRef type) -> GateRef { return Int32Or(curType, type); });
+        *(curType), type, [this](GateRef curType, GateRef type)->GateRef{ return Int32Or(curType, type); })
 
 using Callback = std::function<void(const std::initializer_list<GateRef> &, OperationType)>;
 class ProfileOperation {

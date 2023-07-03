@@ -1245,7 +1245,7 @@ std::unique_ptr<icu::Calendar> JSDateTimeFormat::BuildCalendar(const icu::Locale
     UErrorCode status = U_ZERO_ERROR;
     std::unique_ptr<icu::Calendar> calendar(icu::Calendar::createInstance(timeZone, locale, status));
     if (U_FAILURE(status) || calendar == nullptr) {
-       return nullptr;
+        return nullptr;
     }
     ASSERT_PRINT(U_SUCCESS(status), "buildCalendar failed");
     ASSERT_PRINT(calendar.get() != nullptr, "calendar is nullptr");
