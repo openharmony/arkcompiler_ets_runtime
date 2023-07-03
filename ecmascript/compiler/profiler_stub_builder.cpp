@@ -179,6 +179,9 @@ void ProfilerStubBuilder::ProfileCall(GateRef glue, GateRef pc, GateRef profileT
         }
         Bind(&uninitialLabel);
         {
+            Label fastLabel(env);
+            Branch(TaggedIsUndefined(slotValue), &fastLabel, &slowpath);
+            Bind(&fastLabel);
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(*inc));
             Jump(&slowpath);
         }
