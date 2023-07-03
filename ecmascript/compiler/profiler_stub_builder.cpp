@@ -17,6 +17,7 @@
 
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/ic/profile_type_info.h"
 
 namespace panda::ecmascript::kungfu {
 void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo,
@@ -24,7 +25,8 @@ void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, Ga
 {
     switch (type) {
         case OperationType::CALL:
-            ProfileCall(glue, pc, profileTypeInfo, values[0]);
+        case OperationType::CALL_WIDE:
+            ProfileCall(glue, pc, profileTypeInfo, values[0], type);
             break;
         case OperationType::OPERATION_TYPE:
             ProfileOpType(glue, pc, func, profileTypeInfo, values[0]);
@@ -146,7 +148,8 @@ void ProfilerStubBuilder::ProfileObjLayout(GateRef glue, GateRef pc, GateRef fun
     env->SubCfgExit();
 }
 
-void ProfilerStubBuilder::ProfileCall(GateRef glue, GateRef pc, GateRef profileTypeInfo, GateRef target)
+void ProfilerStubBuilder::ProfileCall(
+    GateRef glue, GateRef pc, GateRef profileTypeInfo, GateRef target, OperationType type)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -162,7 +165,15 @@ void ProfilerStubBuilder::ProfileCall(GateRef glue, GateRef pc, GateRef profileT
     {
         Label initialLabel(env);
         Label uninitialLabel(env);
-        GateRef slotId = ZExtInt8ToInt32(Load(VariableType::INT8(), pc, IntPtr(1)));
+        GateRef slotId = Int32(panda::ecmascript::ProfileTypeInfo::INVALID_SLOT_INDEX);
+        if (type == OperationType::CALL_WIDE) {
+            GateRef currentInstHigh = ZExtInt8ToInt16(Load(VariableType::INT8(), pc, IntPtr(HIGH_WORD_OFFSET)));
+            GateRef currentInstHighLsl = Int16LSL(currentInstHigh, Int16(BITS_OF_WORD));
+            GateRef currentInstLow = ZExtInt8ToInt16(Load(VariableType::INT8(), pc, IntPtr(LOW_WORD_OFFSET)));
+            slotId = ZExtInt16ToInt32(Int16Add(currentInstHighLsl, currentInstLow));
+        } else {
+            slotId = ZExtInt8ToInt32(Load(VariableType::INT8(), pc, IntPtr(1)));
+        }
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
         Branch(TaggedIsInt(slotValue), &initialLabel, &uninitialLabel);
         Bind(&initialLabel);
