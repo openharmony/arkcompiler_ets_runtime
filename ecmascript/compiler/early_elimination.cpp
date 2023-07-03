@@ -173,6 +173,7 @@ GateRef EarlyElimination::TryEliminateFrameState(GateRef gate)
         auto frameValues = acc_.GetValueIn(curFrame, 1); // 1: frameValues
         acc_.DeleteGate(frameValues);
         acc_.DeleteGate(curFrame);
+        return depIn;
     } else {
         dependChain = dependChain->UpdateFrameState(curFrame);
     }

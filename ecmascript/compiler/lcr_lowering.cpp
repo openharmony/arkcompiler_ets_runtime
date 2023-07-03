@@ -344,7 +344,7 @@ void LCRLowering::LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState
     } else {
         result = ConvertTaggedIntToFloat64(value);
     }
-    acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void LCRLowering::LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState, Label *exit)
@@ -360,7 +360,7 @@ void LCRLowering::LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameSt
     } else {
         result = ConvertTaggedDoubleToFloat64(value);
     }
-    acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void LCRLowering::LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState, Label *exit)
@@ -378,7 +378,7 @@ void LCRLowering::LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameSt
         ASSERT(dst == ValueType::BOOL);
         result = ConvertTaggedNumberToBool(value, exit);
     }
-    acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void LCRLowering::LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameState)
@@ -389,7 +389,7 @@ void LCRLowering::LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameStat
     GateRef result = Circuit::NullGate();
     ASSERT(acc_.GetDstType(gate) == ValueType::BOOL);
     result = ConvertTaggedBooleanToBool(value);
-    acc_.ReplaceGate(gate, Circuit::NullGate(), Circuit::NullGate(), result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 GateRef LCRLowering::ConvertTaggedBooleanToBool(GateRef value)
