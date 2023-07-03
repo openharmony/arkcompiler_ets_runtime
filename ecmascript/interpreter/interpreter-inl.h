@@ -731,8 +731,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(JSHandle<JSTaggedValue>(thread, context->GetMethod()));
-    Method *method = func->GetCallTarget();
-    if (method->IsAotWithCallField()) {
+    if (func->GetClass()->CanFastCall()) {
         return GeneratorReEnterAot(thread, context);
     }
 
@@ -769,6 +768,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
         newSp[i] = regsArray->Get(i).GetRawData();  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     }
     uint32_t pcOffset = context->GetBCOffset();
+    Method *method = func->GetCallTarget();
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     const uint8_t *resumePc = method->GetBytecodeArray() + pcOffset;
 
