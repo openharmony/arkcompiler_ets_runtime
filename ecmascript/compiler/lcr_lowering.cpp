@@ -453,7 +453,7 @@ void LCRLowering::LowerGetGlobalEnv(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(false));
-    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
+    GateRef glueGlobalEnv = builder_.Load(VariableType::JS_POINTER(), glue_, glueGlobalEnvOffset);
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), glueGlobalEnv);
 }
 

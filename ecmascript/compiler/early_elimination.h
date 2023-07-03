@@ -41,6 +41,7 @@ public:
     {
         head_ = other->head_;
         size_ = other->size_;
+        frameState_ = other->frameState_;
     }
 private:
     struct Node {

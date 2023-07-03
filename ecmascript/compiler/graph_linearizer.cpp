@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/graph_linearizer.h"
+#include "ecmascript/compiler/base/bit_set.h"
 #include "ecmascript/compiler/scheduler.h"
 
 namespace panda::ecmascript::kungfu {
@@ -306,6 +307,249 @@ private:
     ChunkVector<ChunkDeque<size_t>> semiDomTree_;
 };
 
+struct LoopInfo {
+    GateRegion* loopHead {nullptr};
+    BitSet* loopBodys {nullptr};
+    ChunkVector<GateRegion*>* loopExits {nullptr};
+    LoopInfo* outer_ {nullptr};
+};
+
+class LoopInfoBuilder {
+public:
+    explicit LoopInfoBuilder(GraphLinearizer *linearizer, Chunk* chunk)
+        : linearizer_(linearizer), pendingList_(chunk),
+        loops_(chunk), loopbacks_(chunk), chunk_(chunk),
+        dfsStack_(chunk), acc_(linearizer->circuit_) {}
+
+    void Run()
+    {
+        ComputeLoopNumber();
+        ComputeLoopInfo();
+        ComputeLoopExit();
+        ComputeLoopHeader();
+        if (linearizer_->IsLogEnabled()) {
+            for (size_t i = 0; i < numLoops_; i++) {
+                auto& loopInfo = loops_[i];
+                PrintLoop(loopInfo);
+            }
+        }
+    }
+
+    void PrintLoop(LoopInfo& loopInfo)
+    {
+        auto size = linearizer_->regionList_.size();
+        LOG_COMPILER(INFO) << "--------------------------------- LoopInfo Start ---------------------------------";
+        LOG_COMPILER(INFO) << "Head: " << acc_.GetId(loopInfo.loopHead->state_);
+        LOG_COMPILER(INFO) << "loopNumber: " << loopInfo.loopHead->loopNumber_;
+        LOG_COMPILER(INFO) << "Body: [";
+        for (size_t i = 0; i < size; i++) {
+            if (loopInfo.loopBodys->TestBit(i)) {
+                auto current = linearizer_->regionList_.at(i)->state_;
+                LOG_COMPILER(INFO) << acc_.GetId(current) << ", ";
+            }
+        }
+        LOG_COMPILER(INFO) << "]";
+        LOG_COMPILER(INFO) << "Exit: [";
+        if (loopInfo.loopExits != nullptr) {
+            for (auto region : *loopInfo.loopExits) {
+                auto current = region->state_;
+                LOG_COMPILER(INFO) << acc_.GetId(current) << ", ";
+            }
+        }
+        LOG_COMPILER(INFO) << "]";
+        LOG_COMPILER(INFO) << "--------------------------------- LoopInfo End ---------------------------------";
+    }
+
+    void ComputeLoopInfo()
+    {
+        auto size = linearizer_->regionList_.size();
+        loops_.resize(numLoops_, LoopInfo());
+
+        for (auto curState : loopbacks_) {
+            GateRegion* curRegion = curState.region;
+            GateRegion* loopHead = curRegion->succs_[curState.index];
+            auto loopNumber = loopHead->GetLoopNumber();
+            auto& loopInfo = loops_[loopNumber];
+
+            if (loopInfo.loopHead == nullptr) {
+                loopInfo.loopHead = loopHead;
+                loopInfo.loopBodys = chunk_->New<BitSet>(chunk_, size);
+            }
+            if (curRegion != loopHead) {
+                loopInfo.loopBodys->SetBit(curRegion->GetId());
+                pendingList_.emplace_back(curRegion);
+            }
+            PropagateLoopBody(loopInfo);
+        }
+    }
+
+    void PropagateLoopBody(LoopInfo& loopInfo)
+    {
+        while (!pendingList_.empty()) {
+            auto curRegion = pendingList_.back();
+            pendingList_.pop_back();
+            for (auto pred : curRegion->preds_) {
+                if (pred != loopInfo.loopHead) {
+                    if (!loopInfo.loopBodys->TestBit(pred->GetId())) {
+                        loopInfo.loopBodys->SetBit(pred->GetId());
+                        pendingList_.emplace_back(pred);
+                    }
+                }
+            }
+        }
+    }
+
+    void ComputeLoopNumber()
+    {
+        auto size = linearizer_->regionList_.size();
+        dfsStack_.resize(size, DFSState(nullptr, 0));
+        linearizer_->circuit_->AdvanceTime();
+
+        auto entry = linearizer_->regionList_.front();
+        auto currentDepth = Push(entry, 0);
+        while (currentDepth > 0) {
+            auto& curState = dfsStack_[currentDepth - 1]; // -1: for current
+            auto curRegion = curState.region;
+            auto index = curState.index;
+
+            if (index == curRegion->succs_.size()) {
+                currentDepth--;
+                curRegion->SetFinished(acc_);
+            } else {
+                GateRegion* succ = curRegion->succs_[index];
+                curState.index = ++index;
+                if (succ->IsFinished(acc_)) {
+                    continue;
+                }
+                if (succ->IsUnvisited(acc_)) {
+                    currentDepth = Push(succ, currentDepth);
+                } else {
+                    ASSERT(succ->IsVisited(acc_));
+                    loopbacks_.emplace_back(DFSState(curRegion, index - 1)); // -1: for prev
+                    if (!succ->HasLoopNumber()) {
+                        succ->SetLoopNumber(numLoops_++);
+                    }
+                }
+            }
+        }
+    }
+
+    void ComputeLoopExit()
+    {
+        linearizer_->circuit_->AdvanceTime();
+        auto entry = linearizer_->regionList_.front();
+        LoopInfo *loopInfo = nullptr;
+        auto currentDepth = Push(entry, 0);
+        while (currentDepth > 0) {
+            auto &curState = dfsStack_[currentDepth - 1]; // -1: for current
+            auto curRegion = curState.region;
+            auto index = curState.index;
+            GateRegion* succ = nullptr;
+            if (index >= curRegion->succs_.size()) {
+                if (curRegion->HasLoopNumber()) {
+                    if (curRegion->IsVisited(acc_)) {
+                        ASSERT(loopInfo != nullptr && loopInfo->loopHead == curRegion);
+                        loopInfo = loopInfo->outer_;
+                    }
+                }
+                curRegion->SetFinished(acc_);
+                currentDepth--;
+            } else {
+                succ = curRegion->succs_[index];
+                curState.index = ++index;
+                if (!succ->IsUnvisited(acc_)) {
+                    continue;
+                }
+                if (loopInfo != nullptr) {
+                    if (!loopInfo->loopBodys->TestBit(succ->GetId())) {
+                        AddLoopExit(succ, loopInfo);
+                    } else {
+                        succ->loopHead_ = loopInfo->loopHead;
+                    }
+                }
+                currentDepth = Push(succ, currentDepth);
+                loopInfo = EnterInnerLoop(succ, loopInfo);
+            }
+        }
+    }
+
+    void AddLoopExit(GateRegion* succ, LoopInfo *loopInfo)
+    {
+        if (loopInfo->loopExits == nullptr) {
+            loopInfo->loopExits = chunk_->New<ChunkVector<GateRegion*>>(chunk_);
+        }
+        loopInfo->loopExits->emplace_back(succ);
+    }
+
+    LoopInfo *EnterInnerLoop(GateRegion* succ, LoopInfo *loopInfo)
+    {
+        // enter inner loop
+        if (succ->HasLoopNumber()) {
+            auto& innerLoop = loops_[succ->GetLoopNumber()];
+            innerLoop.outer_ = loopInfo;
+            loopInfo = &innerLoop;
+        }
+        return loopInfo;
+    }
+
+    void ComputeLoopHeader()
+    {
+        auto size = linearizer_->regionList_.size();
+        for (size_t i = 0; i < numLoops_; i++) {
+            auto& loopInfo = loops_[i];
+            for (size_t j = 0; j < size; j++) {
+                if (loopInfo.loopBodys->TestBit(j)) {
+                    auto current = linearizer_->regionList_.at(j);
+                    if (!CheckRegionDomLoopExist(current, loopInfo)) {
+                        current->loopHead_ = nullptr;
+                    }
+                }
+            }
+        }
+    }
+
+    bool CheckRegionDomLoopExist(GateRegion* region, LoopInfo& loopInfo)
+    {
+        if (loopInfo.loopExits == nullptr) {
+            return true;
+        }
+        for (auto exitRegion : *loopInfo.loopExits) {
+            if (linearizer_->GetCommonDominator(region, exitRegion) != region) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    size_t Push(GateRegion *region, size_t depth)
+    {
+        if (region->IsUnvisited(acc_)) {
+            dfsStack_[depth].region = region;
+            dfsStack_[depth].index = 0;
+            region->SetVisited(acc_);
+            return depth + 1;
+        }
+        return depth;
+    }
+
+private:
+    struct DFSState {
+        DFSState(GateRegion *region, size_t index)
+            : region(region), index(index) {}
+
+        GateRegion *region;
+        size_t index;
+    };
+    GraphLinearizer* linearizer_ {nullptr};
+    ChunkDeque<GateRegion*> pendingList_;
+    ChunkVector<LoopInfo> loops_;
+    ChunkVector<DFSState> loopbacks_;
+    Chunk* chunk_ {nullptr};
+    ChunkVector<DFSState> dfsStack_;
+    GateAccessor acc_;
+    size_t numLoops_{0};
+};
+
 class GateScheduler {
 public:
     explicit GateScheduler(GraphLinearizer *linearizer)
@@ -435,10 +679,26 @@ public:
         auto region = GetCommonDominatorOfAllUses(curGate);
         if (scheduleUpperBound_) {
             ASSERT(curInfo.upperBound != nullptr);
-            ASSERT(GetCommonDominator(region, curInfo.upperBound) == curInfo.upperBound);
-            region = curInfo.upperBound;
+            ASSERT(linearizer_->GetCommonDominator(region, curInfo.upperBound) == curInfo.upperBound);
+            auto uppermost = curInfo.upperBound->depth_;
+            auto upperRegion = GetUpperBoundRegion(region);
+            while (upperRegion != nullptr && upperRegion->depth_ >= uppermost) {
+                region = upperRegion;
+                upperRegion = GetUpperBoundRegion(region);
+            }
         }
         ScheduleGate(curGate, region);
+    }
+
+    GateRegion* GetUpperBoundRegion(GateRegion* region)
+    {
+        if (region->IsLoopHead()) {
+            return region->iDominator_;
+        }
+        if (region->loopHead_ != nullptr) {
+            return region->loopHead_->iDominator_;
+        }
+        return nullptr;
     }
 
     void ScheduleGate(GateRef gate, GateRegion* region)
@@ -484,27 +744,15 @@ public:
                 region = useRegion;
             } else {
                 ASSERT(useRegion != nullptr);
-                region = GetCommonDominator(region, useRegion);
+                region = linearizer_->GetCommonDominator(region, useRegion);
             }
         }
         return region;
     }
 
-    GateRegion* GetCommonDominator(GateRegion* left, GateRegion* right) const
-    {
-        while (left != right) {
-            if (left->depth_ < right->depth_) {
-                right = right->iDominator_;
-            } else {
-                left = left->iDominator_;
-            }
-        }
-        return left;
-    }
-
     bool IsInSameDominatorChain(GateRegion* left, GateRegion* right) const
     {
-        auto dom = GetCommonDominator(left, right);
+        auto dom = linearizer_->GetCommonDominator(left, right);
         return left == dom || right == dom;
     }
 
@@ -547,6 +795,11 @@ void GraphLinearizer::LinearizeGraph()
     builder.Run();
     ImmediateDominatorsGenerator generator(this, chunk_, regionList_.size());
     generator.Run();
+    if (!IsSchedueLIR() && loopNumber_ > 0) {
+        scheduleUpperBound_ = true;
+        LoopInfoBuilder loopInfoBuilder(this, chunk_);
+        loopInfoBuilder.Run();
+    }
     GateScheduler scheduler(this);
     scheduler.Prepare();
     scheduler.ScheduleUpperBound();
@@ -595,6 +848,18 @@ GateRegion* GraphLinearizer::FindPredRegion(GateRef input)
     return predRegion;
 }
 
+GateRegion* GraphLinearizer::GetCommonDominator(GateRegion* left, GateRegion* right) const
+{
+    while (left != right) {
+        if (left->depth_ < right->depth_) {
+            right = right->iDominator_;
+        } else {
+            left = left->iDominator_;
+        }
+    }
+    return left;
+}
+
 void GraphLinearizer::PrintGraph(const char* title)
 {
     LOG_COMPILER(INFO) << "======================== " << title << " ========================";
@@ -602,9 +867,10 @@ void GraphLinearizer::PrintGraph(const char* title)
         auto bb = regionList_[i];
         auto front = bb->gateList_.front();
         auto opcode = acc_.GetOpCode(front);
+        auto loopHeadId = bb->loopHead_ != nullptr ? bb->loopHead_->id_ : 0;
         LOG_COMPILER(INFO) << "B" << bb->id_ << ": " << "depth: [" << bb->depth_ << "] "
                            << opcode << "(" << acc_.GetId(front) << ") "
-                           << "IDom B" << bb->iDominator_->id_;
+                           << "IDom B" << bb->iDominator_->id_ << " loop Header: " << loopHeadId;
         std::string log("\tPreds: ");
         for (size_t k = 0; k < bb->preds_.size(); ++k) {
             log += std::to_string(bb->preds_[k]->id_) + ", ";
