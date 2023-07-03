@@ -758,10 +758,14 @@ int HeapSnapshot::AddTraceNode(int sequenceId, int size)
         if (method == nullptr || method->IsNativeWithCallField()) {
             continue;
         }
-
         MethodLiteral *methodLiteral = method->GetMethodLiteral();
+        if (methodLiteral == nullptr) {
+            continue;
+        }
         if (stackInfo_.count(methodLiteral) == 0) {
-            AddMethodInfo(methodLiteral, it, method->GetJSPandaFile(), sequenceId);
+            if (!AddMethodInfo(methodLiteral, method->GetJSPandaFile(), sequenceId)) {
+                continue;
+            }
         }
         AddTraceNodeId(methodLiteral);
     }
@@ -779,8 +783,7 @@ int HeapSnapshot::AddTraceNode(int sequenceId, int size)
     return topNode->GetId();
 }
 
-void HeapSnapshot::AddMethodInfo(MethodLiteral *methodLiteral,
-                                 const FrameIterator &it,
+bool HeapSnapshot::AddMethodInfo(MethodLiteral *methodLiteral,
                                  const JSPandaFile *jsPandaFile,
                                  int sequenceId)
 {
@@ -814,29 +817,16 @@ void HeapSnapshot::AddMethodInfo(MethodLiteral *methodLiteral,
     GetString(codeEntry.scriptName.c_str());
 
     // line number
-    int32_t lineNumber = 0;
-    int32_t columnNumber = 0;
-    auto callbackLineFunc = [&](int32_t line) -> bool {
-        lineNumber = line + 1;
-        return true;
-    };
-    auto callbackColumnFunc = [&](int32_t column) -> bool {
-        columnNumber = column + 1;
-        return true;
-    };
-    uint32_t offset = it.GetBytecodeOffset();
-    if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
-        !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
-        codeEntry.lineNumber = 0;
-        codeEntry.columnNumber = 0;
-    } else {
-        codeEntry.lineNumber = lineNumber;
-        codeEntry.columnNumber = columnNumber;
+    codeEntry.lineNumber = debugExtractor->GetFristLine(methodId);
+    // lineNumber is 0 means that lineTable error or empty function body, so jump this frame.
+    if (UNLIKELY(codeEntry.lineNumber == 0)) {
+        return false;
     }
+    codeEntry.columnNumber = debugExtractor->GetFristColumn(methodId);
 
     traceInfoStack_.emplace_back(codeEntry);
     stackInfo_.emplace(methodLiteral, codeEntry);
-    return;
+    return true;
 }
 
 Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, int sequenceId, bool isInFinish)
