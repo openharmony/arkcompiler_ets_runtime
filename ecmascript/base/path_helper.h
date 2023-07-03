@@ -257,8 +257,11 @@ public:
             if (bundleName != vm->GetBundleName()) {
                 baseFileName =
                     BUNDLE_INSTALL_PATH + bundleName + '/' + moduleName + '/' + moduleName + MERGE_ABC_ETS_MODULES;
-            } else {
+            } else if (moduleName != vm->GetModuleName()) {
                 baseFileName = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_ETS_MODULES;
+            } else {
+                // Support multi-module card service
+                baseFileName = vm->GetAssetPath();
             }
 #else
             CVector<CString> currentVec;
