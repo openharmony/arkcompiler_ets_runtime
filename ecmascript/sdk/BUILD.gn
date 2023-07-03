@@ -52,9 +52,8 @@ if (is_standard_system) {
       hilog_path =
           get_label_info("$hilog_root:libhilog_windows", "root_out_dir")
       deps += [ "$hilog_root:libhilog_windows" ]
-      sources += [
-        "${hilog_path}/hiviewdfx/hilog_native/libhilog_windows${dylib_suffix}",
-      ]
+      sources +=
+          [ "${hilog_path}/hiviewdfx/hilog/libhilog_windows${dylib_suffix}" ]
 
       # Add dynamic library "icu"
       icu_path =
@@ -134,9 +133,8 @@ if (is_standard_system) {
       # Add dynamic library "hilog"
       hilog_path = get_label_info("$hilog_root:libhilog_linux", "root_out_dir")
       deps += [ "$hilog_root:libhilog_linux" ]
-      sources += [
-        "${hilog_path}/hiviewdfx/hilog_native/libhilog_linux${dylib_suffix}",
-      ]
+      sources +=
+          [ "${hilog_path}/hiviewdfx/hilog/libhilog_linux${dylib_suffix}" ]
 
       # Add dynamic library "icu"
       icu_path =
@@ -236,8 +234,7 @@ if (is_standard_system) {
       # Add dynamic library "hilog"
       hilog_path = get_label_info("$hilog_root:libhilog_mac", "root_out_dir")
       deps += [ "$hilog_root:libhilog_mac" ]
-      sources +=
-          [ "${hilog_path}/hiviewdfx/hilog_native/libhilog_mac${dylib_suffix}" ]
+      sources += [ "${hilog_path}/hiviewdfx/hilog/libhilog_mac${dylib_suffix}" ]
 
       # Set the output directory for all dynamic libraries.
       outputs = [ target_out_dir + "/ets/build-tools/ets-loader/bin/ark/build-mac/bin/{{source_file_part}}" ]
