@@ -103,3 +103,10 @@ for (const unit of units) {
   
 	print(expected);
 }
+
+Object.defineProperty(Array.prototype, '0', {
+	value: 42,
+});
+let arr = [, 2, 3];
+arr.pop();
+print(arr[1]);
