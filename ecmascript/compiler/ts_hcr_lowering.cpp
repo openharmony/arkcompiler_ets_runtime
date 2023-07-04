@@ -909,15 +909,27 @@ GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
         GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
         propKey = builder_.IndexCheck(receiverType, length, propKey);
     }
-    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, receiverType)) {
-        return builder_.LoadElement<TypedLoadOp::INT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
-    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, receiverType)) {
-        return builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
-    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, receiverType)) {
-        return builder_.LoadElement<TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT>(receiver, propKey);
-    } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
+    auto builtinTypeId = tsManager_->GetTypedArrayBuiltinId(receiverType);
+    switch (builtinTypeId) {
+        case BuiltinTypeId::INT8_ARRAY:
+            return builder_.LoadElement<TypedLoadOp::INT8ARRAY_LOAD_ELEMENT>(receiver, propKey);
+        case BuiltinTypeId::UINT8_ARRAY:
+            return builder_.LoadElement<TypedLoadOp::UINT8ARRAY_LOAD_ELEMENT>(receiver, propKey);
+        case BuiltinTypeId::UINT8_CLAMPED_ARRAY:
+            return builder_.LoadElement<TypedLoadOp::UINT8CLAMPEDARRAY_LOAD_ELEMENT>(receiver, propKey);
+        case BuiltinTypeId::INT16_ARRAY:
+            return builder_.LoadElement<TypedLoadOp::INT16ARRAY_LOAD_ELEMENT>(receiver, propKey);
+        case BuiltinTypeId::UINT16_ARRAY:
+            return builder_.LoadElement<TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT>(receiver, propKey);
+        case BuiltinTypeId::INT32_ARRAY:
+            return builder_.LoadElement<TypedLoadOp::INT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
+        case BuiltinTypeId::FLOAT32_ARRAY:
+            return builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
+        case BuiltinTypeId::FLOAT64_ARRAY:
+            return builder_.LoadElement<TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT>(receiver, propKey);
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
     }
 
     return Circuit::NullGate();
@@ -945,15 +957,36 @@ void TSHCRLowering::StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, Ga
         GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
         propKey = builder_.IndexCheck(receiverType, length, propKey);
     }
-    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, receiverType)) {
-        builder_.StoreElement<TypedStoreOp::INT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
-    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, receiverType)) {
-        builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
-    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, receiverType)) {
-        builder_.StoreElement<TypedStoreOp::FLOAT64ARRAY_STORE_ELEMENT>(receiver, propKey, value);
-    } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
+
+    auto builtinTypeId = tsManager_->GetTypedArrayBuiltinId(receiverType);
+    switch (builtinTypeId) {
+        case BuiltinTypeId::INT8_ARRAY:
+            builder_.StoreElement<TypedStoreOp::INT8ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            break;
+        case BuiltinTypeId::UINT8_ARRAY:
+            builder_.StoreElement<TypedStoreOp::UINT8ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            break;
+        case BuiltinTypeId::UINT8_CLAMPED_ARRAY:
+            builder_.StoreElement<TypedStoreOp::UINT8CLAMPEDARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            break;
+        case BuiltinTypeId::INT16_ARRAY:
+            builder_.StoreElement<TypedStoreOp::INT16ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            break;
+        case BuiltinTypeId::UINT16_ARRAY:
+            builder_.StoreElement<TypedStoreOp::UINT16ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            break;
+        case BuiltinTypeId::INT32_ARRAY:
+            builder_.StoreElement<TypedStoreOp::INT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            break;
+        case BuiltinTypeId::FLOAT32_ARRAY:
+            builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            break;
+        case BuiltinTypeId::FLOAT64_ARRAY:
+            builder_.StoreElement<TypedStoreOp::FLOAT64ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
     }
 }
 

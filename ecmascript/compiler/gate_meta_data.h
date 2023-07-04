@@ -85,16 +85,11 @@ enum class TypedJumpOp : uint8_t {
     V(NotBool, NOTBOOL)                       \
     V(NotHeapObject, NOTHEAPOBJECT)           \
     V(NotStableArray, NOTSARRAY)              \
-    V(NotI32Array, NOTI32ARRAY)               \
-    V(NotF32Array, NOTF32ARRAY)               \
-    V(NotF64Array, NOTF64ARRAY)               \
+    V(NotArray, NOTARRAY)                     \
     V(NotOnHeap, NOTONHEAP)                   \
     V(InconsistentHClass, INCONSISTENTHCLASS) \
     V(NotNewObj, NOTNEWOBJ)                   \
     V(NotArrayIndex, NOTARRAYIDX)             \
-    V(NotI32ArrayIndex, NOTI32ARRAYIDX)       \
-    V(NotF32ArrayIndex, NOTF32ARRAYIDX)       \
-    V(NotF64ArrayIndex, NOTF64ARRAYIDX)       \
     V(NotIncOverflow, NOTINCOV)               \
     V(NotDecOverflow, NOTDECOV)               \
     V(NotNegativeOverflow, NOTNEGOV)          \
@@ -148,14 +143,26 @@ enum class FCmpCondition : uint8_t {
 
 enum class TypedStoreOp : uint8_t {
     ARRAY_STORE_ELEMENT = 0,
+    INT8ARRAY_STORE_ELEMENT,
+    UINT8ARRAY_STORE_ELEMENT,
+    UINT8CLAMPEDARRAY_STORE_ELEMENT,
+    INT16ARRAY_STORE_ELEMENT,
+    UINT16ARRAY_STORE_ELEMENT,
     INT32ARRAY_STORE_ELEMENT,
+    UINT32ARRAY_STORE_ELEMENT,
     FLOAT32ARRAY_STORE_ELEMENT,
     FLOAT64ARRAY_STORE_ELEMENT,
 };
 
 enum class TypedLoadOp : uint8_t {
     ARRAY_LOAD_ELEMENT = 0,
+    INT8ARRAY_LOAD_ELEMENT,
+    UINT8ARRAY_LOAD_ELEMENT,
+    UINT8CLAMPEDARRAY_LOAD_ELEMENT,
+    INT16ARRAY_LOAD_ELEMENT,
+    UINT16ARRAY_LOAD_ELEMENT,
     INT32ARRAY_LOAD_ELEMENT,
+    UINT32ARRAY_LOAD_ELEMENT,
     FLOAT32ARRAY_LOAD_ELEMENT,
     FLOAT64ARRAY_LOAD_ELEMENT,
 };

@@ -15,7 +15,7 @@
 
 declare function print(arg:any):string;
 {
-    let typedArray : Int32Array = new Int32Array([1, 2, 2147483640, -2147483640, 7, 8, 8, 9]);
+    let typedArray : Uint16Array = new Uint16Array([1, 2, 65530, 5, 5, 5, 6, 6]);
     typedArray[0] = typedArray[2] + typedArray[4]; //upper bound
     print(typedArray[0]);
     typedArray[1] = typedArray[3] - typedArray[5]; //lower bound

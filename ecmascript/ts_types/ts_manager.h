@@ -447,6 +447,14 @@ public:
         return gateType.GetGTRef().IsBuiltinModule() && IsClassTypeKind(gateType);
     }
 
+    bool PUBLIC_API IsIntTypedArrayType(kungfu::GateType gateType) const;
+
+    bool PUBLIC_API IsDoubleTypedArrayType(kungfu::GateType gateType) const;
+
+    BuiltinTypeId PUBLIC_API GetTypedArrayBuiltinId(kungfu::GateType gateType) const;
+
+    static const std::vector<BuiltinTypeId> &GetValidTypedArrayIds();
+
     inline void AddElementToPGOGTMap(uint32_t methodOffset, uint32_t cpIdx, GlobalTSTypeRef gt)
     {
         auto key = std::make_pair(methodOffset, cpIdx);

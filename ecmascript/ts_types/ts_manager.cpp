@@ -766,10 +766,70 @@ bool TSManager::IsTypedArrayType(kungfu::GateType gateType) const
            (l <= static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_LAST));
 }
 
+const std::vector<BuiltinTypeId> &TSManager::GetValidTypedArrayIds()
+{
+    static const std::vector<BuiltinTypeId> validTypedArrayIds = {
+        BuiltinTypeId::INT8_ARRAY,
+        BuiltinTypeId::UINT8_ARRAY,
+        BuiltinTypeId::UINT8_CLAMPED_ARRAY,
+        BuiltinTypeId::INT16_ARRAY,
+        BuiltinTypeId::UINT16_ARRAY,
+        BuiltinTypeId::INT32_ARRAY,
+        BuiltinTypeId::FLOAT32_ARRAY,
+        BuiltinTypeId::FLOAT64_ARRAY
+    };
+    return validTypedArrayIds;
+}
+
+BuiltinTypeId TSManager::GetTypedArrayBuiltinId(kungfu::GateType gateType) const
+{
+    if (!IsClassInstanceTypeKind(gateType)) {
+        return BuiltinTypeId::NUM_INDEX_IN_SUMMARY;
+    }
+    const GlobalTSTypeRef gateGT = GlobalTSTypeRef(gateType.Value());
+    GlobalTSTypeRef classGT = GetClassType(gateGT);
+    const auto pandaFile = GetBuiltinPandaFile();
+    for (uint32_t i = static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_FIRST);
+            i <= static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_LAST); i++) {
+        if (IsBuiltinsDTSEnabled()) {
+            const auto offset = GetBuiltinOffset(i);
+            if ((HasCreatedGT(pandaFile, offset)) &&
+               (GetGTFromOffset(pandaFile, offset) == classGT)) {
+                return static_cast<BuiltinTypeId>(i);
+            }
+        }
+        uint32_t l = classGT.GetLocalId();
+        if (classGT.IsBuiltinModule() && (l == i)) {
+            return static_cast<BuiltinTypeId>(i);
+        }
+    }
+    return BuiltinTypeId::NUM_INDEX_IN_SUMMARY;
+}
+
 bool TSManager::IsValidTypedArrayType(kungfu::GateType gateType) const
 {
-    return IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, gateType) ||
-           IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, gateType) ||
+    std::vector<BuiltinTypeId> ids = GetValidTypedArrayIds();
+    for (const auto &id : ids) {
+        if (IsBuiltinInstanceType(id, gateType)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool TSManager::IsIntTypedArrayType(kungfu::GateType gateType) const
+{
+    return IsBuiltinInstanceType(BuiltinTypeId::INT8_ARRAY, gateType) ||
+           IsBuiltinInstanceType(BuiltinTypeId::UINT8_ARRAY, gateType) ||
+           IsBuiltinInstanceType(BuiltinTypeId::UINT8_CLAMPED_ARRAY, gateType) ||
+           IsBuiltinInstanceType(BuiltinTypeId::INT16_ARRAY, gateType) ||
+           IsBuiltinInstanceType(BuiltinTypeId::UINT16_ARRAY, gateType) ||
+           IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, gateType);
+}
+
+bool TSManager::IsDoubleTypedArrayType(kungfu::GateType gateType) const
+{
+    return IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, gateType) ||
            IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, gateType);
 }
 

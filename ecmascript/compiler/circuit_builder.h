@@ -106,6 +106,7 @@ class StubBuilder;
     V(TruncInt64ToInt1, Trunc, MachineType::I1)                        \
     V(TruncInt64ToInt16, Trunc, MachineType::I16)                      \
     V(TruncInt32ToInt1, Trunc, MachineType::I1)                        \
+    V(TruncInt32ToInt8, Trunc, MachineType::I8)                        \
     V(TruncInt32ToInt16, Trunc, MachineType::I16)                      \
     V(TruncFloatToInt64, TruncFloatToInt64, MachineType::I64)          \
     V(TruncFloatToInt32, TruncFloatToInt32, MachineType::I32)          \
