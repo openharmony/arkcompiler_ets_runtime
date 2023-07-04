@@ -185,7 +185,8 @@ public:
         if (c == cur) {
             c = u_toupper(static_cast<UChar32>(c));
         }
-        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+        if (((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) &&
+            !((cur >= 'A' && cur <= 'Z') || (cur >= 'a' && cur <= 'z'))) {
             c = cur;
         }
         return c;
