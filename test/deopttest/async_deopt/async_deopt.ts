@@ -17,22 +17,26 @@
 declare function print(arg:any):string;
 class A {
     n: number = 2
+
+    x(){}
 }
 
 class B {
     m:number = 3
+
+    y(){}
 }
 
 async function foo() {
-    A.prototype.o = 1
     let a = new A()
+    a.x = 1
     let r = await a.n // deopt before suspendgenerator
     print(r)
 }
 
 async function bar() {
-    B.prototype.o = 1
     let b = new B()
+    b.y = 1
     let r = await 1
     let c = b.m // deopt after suspendgenerator
     print(c)
