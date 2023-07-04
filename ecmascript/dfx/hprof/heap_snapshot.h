@@ -380,7 +380,7 @@ public:
     bool FinishSnapshot();
     void PushHeapStat(Stream* stream);
     int AddTraceNode(int sequenceId, int size);
-    void AddMethodInfo(MethodLiteral *methodLiteral, const FrameIterator &it,
+    bool AddMethodInfo(MethodLiteral *methodLiteral,
                        const JSPandaFile *jsPandaFile, int sequenceId);
     void AddTraceNodeId(MethodLiteral *methodLiteral);
 

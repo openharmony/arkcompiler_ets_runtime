@@ -178,25 +178,33 @@ public:
         return cb(column);
     }
 
-#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER) || defined(ECMASCRIPT_SUPPORT_HEAPSAMPLING)
     int32_t GetFristLine(panda_file::File::EntityId methodId)
     {
         const LineNumberTable &lineTable = GetLineNumberTable(methodId);
-        if (lineTable.size() <= 1) {
+        auto tableSize = lineTable.size();
+        if (tableSize == 0) {
             return 0;
         }
-        return lineTable[1].line + 1;
+        if (tableSize == 1) {
+            return lineTable[0].line + 1;
+        }
+        int firstLineIndex = ((lineTable[0].line == SPECIAL_LINE_MARK) ? 1 : 0);
+        return lineTable[firstLineIndex].line + 1;
     }
 
     int32_t GetFristColumn(panda_file::File::EntityId methodId)
     {
         const ColumnNumberTable &columnTable = GetColumnNumberTable(methodId);
-        if (columnTable.size() == 0) {
+        auto tableSize = columnTable.size();
+        if (tableSize == 0) {
             return 0;
         }
-        return columnTable[0].column + 1;
+        if (tableSize == 1) {
+            return columnTable[0].column + 1;
+        }
+        int firstColumnIndex = ((columnTable[0].column == SPECIAL_LINE_MARK) ? 1 : 0);
+        return columnTable[firstColumnIndex].column + 1;
     }
-#endif
 
     void Extract();
 
