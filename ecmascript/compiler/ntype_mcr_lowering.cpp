@@ -154,7 +154,7 @@ GateRef NTypeMCRLowering::NewTaggedArray(size_t length)
 }
 
 GateRef NTypeMCRLowering::LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
-                                          bool useLabel)
+    bool useLabel)
 {
     if (useLabel) {
         GateRef result = builder_.CallRuntime(glue, index, Gate::InvalidGateRef, args, hirGate);
