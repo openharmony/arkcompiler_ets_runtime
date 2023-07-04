@@ -287,6 +287,15 @@ public:
                         valueHandle.Update(elements->Get(i + 1));
                         JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
                     }
+                    if (needSetAotFlag) {
+                        JSTaggedValue ihcVal = entryIndexes->GetIhc();
+                        if (!ihcVal.IsUndefined()) {
+                            JSHClass *ihc = JSHClass::Cast(ihcVal.GetTaggedObject());
+                            JSHClass *oldHC = obj->GetJSHClass();
+                            ihc->SetPrototype(thread, oldHC->GetPrototype());
+                            obj->SetClass(ihc);
+                        }
+                    }
 
                     PGOProfiler *profiler = thread->GetEcmaVM()->GetPGOProfiler();
                     profiler->InsertLiteralId(JSTaggedType(obj->GetJSHClass()), id);

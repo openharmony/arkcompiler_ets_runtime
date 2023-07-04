@@ -337,7 +337,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 int entryIndex = 0;
                 bool needSetAotFlag = (isLoadedAOT && (epos % pairSize == 0) && !flag);
                 if (needSetAotFlag) {
-                    entryIndex = entryIndexes->Get(pos++).GetInt();
+                    entryIndex = entryIndexes->GetObjectFromCache(pos++).GetInt();
                     // -1 : this jsfunction is a large function
                     if (entryIndex == -1) {
                         needSetAotFlag = false;
@@ -425,7 +425,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                     int entryIndex = 0;
                     bool needSetAotFlag = isLoadedAOT;
                     if (isLoadedAOT) {
-                        entryIndex = entryIndexes->Get(index++).GetInt();
+                        entryIndex = entryIndexes->GetObjectFromCache(index++).GetInt();
                         if (entryIndex == -1) {
                             needSetAotFlag = false;
                         }

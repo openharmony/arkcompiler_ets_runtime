@@ -129,7 +129,7 @@ private:
     void LowerBooleanCheck(GateRef gate);
     void LowerIndexCheck(GateRef gate);
     void LowerObjectTypeCheck(GateRef gate);
-    void LowerConstruntorTypeCheck(GateRef gate);
+    void LowerSimpleHClassCheck(GateRef gate);
     void LowerTSSubtypingCheck(GateRef gate);
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);

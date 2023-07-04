@@ -1419,18 +1419,13 @@ void BytecodeCircuitBuilder::BuildCircuit()
                 return true;
             }
 
-            if (HasTypes()) {
-                auto type = typeRecorder_.GetType(bcIndex);
-                if (!type.IsAnyType()) {
-                    gateAcc_.SetGateType(gate, type);
-                }
-                auto pgoType = typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(gate), type);
-                gateAcc_.TrySetPGOType(gate, pgoType);
-            } else {
-                auto type = GateType::AnyType();
-                auto pgoType = typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(gate), type);
-                gateAcc_.TrySetPGOType(gate, pgoType);
+            auto type = typeRecorder_.GetType(bcIndex);
+            if (HasValidType(type)) {
+                gateAcc_.SetGateType(gate, type);
             }
+            auto pgoType = typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(gate), type);
+            gateAcc_.TrySetPGOType(gate, pgoType);
+
             auto valueCount = gateAcc_.GetInValueCount(gate);
             [[maybe_unused]] size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
             [[maybe_unused]] size_t numValueOutputs = bytecodeInfo.ComputeOutCount();

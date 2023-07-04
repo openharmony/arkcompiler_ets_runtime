@@ -18,6 +18,7 @@
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
+#include "ecmascript/compiler/pgo_bc_info.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
@@ -694,6 +695,11 @@ public:
         return &bytecodeInfo_;
     }
 
+    PGOBCInfo* GetPGOBCInfo()
+    {
+        return &pgoBCInfo_;
+    }
+
     bool IsSkippedMethod(uint32_t methodOffset) const
     {
         return bytecodeInfo_.IsSkippedMethod(methodOffset);
@@ -779,6 +785,7 @@ private:
     JSPandaFile *jsPandaFile_ {nullptr};
     BCInfo bytecodeInfo_;
     PGOProfilerDecoder &pfDecoder_;
+    PGOBCInfo pgoBCInfo_ {};
     size_t methodInfoIndex_ {0};
     bool enableCollectLiteralInfo_ {false};
     std::set<int32_t> classDefBCIndexes_ {};

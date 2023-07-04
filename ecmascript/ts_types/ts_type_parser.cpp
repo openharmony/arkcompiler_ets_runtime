@@ -15,9 +15,11 @@
 
 #include "ecmascript/ts_types/ts_type_parser.h"
 
+#include "ecmascript/subtyping_operator.h"
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript {
 // For each property of one class, object or interface, it's name and typeIndex are recorded in order,
@@ -765,6 +767,72 @@ GlobalTSTypeRef TSTypeParser::TryReplaceTypePara(GlobalTSTypeRef gt, const std::
         return tsManager_->AddTSTypeToInferredTable(JSHandle<TSType>(funcInst));
     }
     return gt;
+}
+
+GlobalTSTypeRef TSTypeParser::CreatePGOGT(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                          uint32_t methodOffset, uint32_t cpIdx, kungfu::PGOBCInfo::Type type)
+{
+    if (tsManager_->HasPGOGT(methodOffset, cpIdx)) {
+        return tsManager_->GetPGOGT(methodOffset, cpIdx);
+    }
+    return ParsePGOType(jsPandaFile, recordName, methodOffset, cpIdx, type);
+}
+
+GlobalTSTypeRef TSTypeParser::ParsePGOType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                           uint32_t methodOffset, uint32_t cpIdx, kungfu::PGOBCInfo::Type type)
+{
+    uint32_t moduleId = tableGenerator_.TryGetModuleId(recordName);
+    if (UNLIKELY(!GlobalTSTypeRef::IsVaildModuleId(moduleId))) {
+        LOG_COMPILER(DEBUG) << "The maximum number of TSTypeTables is reached. All TSTypes in the record "
+                            << recordName << " will not be parsed and will be treated as any.";
+        return GetAndStorePGOGT(methodOffset, cpIdx);
+    }
+
+    JSHandle<TSTypeTable> table = tableGenerator_.GetOrGenerateTSTypeTable(jsPandaFile, recordName, moduleId);
+    uint32_t localId = tableGenerator_.TryGetLocalId(table);
+    if (UNLIKELY(!GlobalTSTypeRef::IsVaildLocalId(localId))) {
+        LOG_COMPILER(DEBUG) << "The maximum number of TSTypes in TSTypeTable " << moduleId << " is reached. "
+                            << "The objLiteral with constantpool index " << cpIdx << " in the record " << recordName
+                            << " will not be parsed and will be treated as any.";
+        return GetAndStorePGOGT(methodOffset, cpIdx);
+    }
+
+    table->SetNumberOfTypes(thread_, localId);
+    GlobalTSTypeRef gt = GetAndStorePGOGT(methodOffset, cpIdx, moduleId, localId);
+    JSHandle<JSTaggedValue> parseType = ParseNonImportPGOType(gt, recordName, cpIdx, type);
+    if (UNLIKELY(parseType->IsUndefined())) {
+        return GetAndStorePGOGT(methodOffset, cpIdx);
+    }
+    SetTSType(table, parseType, gt);
+    tsManager_->InsertPGOGT(gt);
+    return gt;
+}
+
+JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportPGOType(GlobalTSTypeRef gt, const CString &recordName,
+                                                                uint32_t cpIdx, kungfu::PGOBCInfo::Type type)
+{
+    switch(type) {
+        case kungfu::PGOBCInfo::Type::OBJ_LITERAL: {
+            return JSHandle<JSTaggedValue>(ParseObjectPGOType(gt, recordName, cpIdx));
+        }
+        default:
+            LOG_COMPILER(DEBUG) << "Do not support parse extend types with kind " << static_cast<uint32_t>(type);
+            return thread_->GlobalConstants()->GetHandledUndefined();
+    }
+}
+
+JSHandle<TSObjectType> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, const CString &recordName, uint32_t cpIdx)
+{
+    JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
+    JSTaggedValue obj = ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
+            thread_, constpoolHandle.GetTaggedValue(), cpIdx, recordName);
+    JSHandle<JSObject> objHandle(thread_, obj);
+    JSHandle<JSHClass> oldHClass(thread_, objHandle->GetClass());
+    JSHandle<JSHClass> hclass = JSHClass::Clone(thread_, oldHClass);
+    hclass->SetTS(true);
+    JSHandle<TSObjectType> objectType = factory_->NewTSObjectType(0);
+    tsManager_->AddInstanceTSHClass(gt, hclass);
+    return objectType;
 }
 
 static uint32_t CalculateNextNumIndex(const TypeLiteralExtractor *typeLiteralExtractor,

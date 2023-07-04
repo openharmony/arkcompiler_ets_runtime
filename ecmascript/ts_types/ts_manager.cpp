@@ -38,6 +38,16 @@ void TSManager::Initialize()
     tableGenerator.GenerateDefaultTSTypeTables();
 }
 
+int TSManager::GetHClassIndexByObjectType(const kungfu::GateType &gateType)
+{
+    // make sure already setting correct curCP_ and curCPID_ before calling this method
+    if (!IsObjectTypeKind(gateType)) {
+        return -1;
+    }
+    GlobalTSTypeRef objectGT = gateType.GetGTRef();
+    return GetHClassIndex(objectGT);
+}
+
 int TSManager::GetHClassIndexByInstanceGateType(const kungfu::GateType &gateType)
 {
     // make sure already setting correct curCP_ and curCPID_ before calling this method
@@ -666,7 +676,7 @@ void TSManager::AddConstructorTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &c
 
 JSTaggedValue TSManager::GetTSHClass(const kungfu::GateType &gateType) const
 {
-    if (!IsClassTypeKind(gateType)) {
+    if (!IsClassTypeKind(gateType) && !IsObjectTypeKind(gateType)) {
         return JSTaggedValue::Hole();
     }
     GlobalTSTypeRef classGT = gateType.GetGTRef();
@@ -752,6 +762,11 @@ bool TSManager::IsTypedArrayType(kungfu::GateType gateType) const
     return classGT.IsBuiltinModule() &&
            (l >= static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_FIRST)) &&
            (l <= static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_LAST));
+}
+
+bool TSManager::IsValidTypedArrayType(kungfu::GateType gateType) const
+{
+    return IsInt32ArrayType(gateType) || IsFloat32ArrayType(gateType) || IsFloat64ArrayType(gateType);
 }
 
 bool TSManager::IsInt32ArrayType(kungfu::GateType gateType) const
@@ -1173,7 +1188,8 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
 
         uint32_t cpListIndex = cpListIndexMap.at(oldCPID);
         JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
-        CollectLiteralInfo(arrayHandle, data.index, newCP, bcInfoCollector);
+        JSHandle<JSTaggedValue> ihclass = thread_->GlobalConstants()->GetHandledUndefined();
+        CollectLiteralInfo(arrayHandle, data.index, newCP, bcInfoCollector, ihclass);
         snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::LITERAL,
                                                std::make_pair(cpListIndex, data.index));
     });
@@ -1192,7 +1208,13 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
 
         uint32_t cpListIndex = cpListIndexMap.at(oldCPID);
         JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
-        CollectLiteralInfo(properties, data.index, newCP, bcInfoCollector);
+        JSHandle<JSTaggedValue> ihclass = thread_->GlobalConstants()->GetHandledUndefined();
+        if (HasPGOGT(data.outerMethodOffset, data.index)) {
+            GlobalTSTypeRef gt = GetPGOGT(data.outerMethodOffset, data.index);
+            IHClassData ihcData = gtIhcMap_.at(gt);
+            ihclass = JSHandle<JSTaggedValue>(thread_, JSTaggedValue(ihcData.GetIHC()));
+        }
+        CollectLiteralInfo(properties, data.index, newCP, bcInfoCollector, ihclass);
         snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::LITERAL,
                                                std::make_pair(cpListIndex, data.index));
     });
@@ -1209,7 +1231,8 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
 
         uint32_t cpListIndex = cpListIndexMap.at(oldCPID);
         JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
-        CollectLiteralInfo(literal, data.index, newCP, bcInfoCollector);
+        JSHandle<JSTaggedValue> ihclass = thread_->GlobalConstants()->GetHandledUndefined();
+        CollectLiteralInfo(literal, data.index, newCP, bcInfoCollector, ihclass);
         snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::LITERAL,
                                                std::make_pair(cpListIndex, data.index));
     });
@@ -1239,7 +1262,8 @@ void TSManager::AddHClassToSnapshotConstantPoolList(const std::map<int32_t, uint
 
 void TSManager::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
                                    JSHandle<ConstantPool> snapshotConstantPool,
-                                   kungfu::BytecodeInfoCollector *bcInfoCollector)
+                                   kungfu::BytecodeInfoCollector *bcInfoCollector,
+                                   JSHandle<JSTaggedValue> ihclass)
 {
     JSMutableHandle<JSTaggedValue> valueHandle(thread_, JSTaggedValue::Undefined());
     uint32_t len = array->GetLength();
@@ -1260,7 +1284,11 @@ void TSManager::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constan
     JSHandle<AOTLiteralInfo> aotLiteralInfo = factory_->NewAOTLiteralInfo(methodSize);
     for (uint32_t i = 0; i < methodSize; ++i) {
         auto methodOffset = methodOffsetVec[i];
-        aotLiteralInfo->Set(thread_, i, JSTaggedValue(methodOffset));
+        aotLiteralInfo->SetObjectToCache(thread_, i, JSTaggedValue(methodOffset));
+    }
+
+    if (!ihclass->IsUndefined()) {
+        aotLiteralInfo->SetIhc(ihclass.GetTaggedValue());
     }
 
     snapshotConstantPool->SetObjectToCache(thread_, constantPoolIndex, aotLiteralInfo.GetTaggedValue());
@@ -1291,9 +1319,9 @@ void TSManager::ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &
 
         JSTaggedValue val = newCP->GetObjectFromCache(literalIndex);
         AOTLiteralInfo *aotLiteralInfo = AOTLiteralInfo::Cast(val.GetTaggedObject());
-        uint32_t aotLiteralInfoLen = aotLiteralInfo->GetLength();
+        uint32_t aotLiteralInfoLen = aotLiteralInfo->GetCacheLength();
         for (uint32_t i = 0; i < aotLiteralInfoLen; ++i) {
-            JSTaggedValue methodOffsetVal = aotLiteralInfo->Get(i);
+            JSTaggedValue methodOffsetVal = aotLiteralInfo->GetObjectFromCache(i);
             if (methodOffsetVal.GetInt() == -1) {
                 continue;
             }
@@ -1303,7 +1331,7 @@ void TSManager::ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &
                                    << methodOffset << ") ";
             }
             uint32_t entryIndex = methodToEntryIndexMap.at(methodOffset);
-            aotLiteralInfo->Set(thread_, i, JSTaggedValue(entryIndex));
+            aotLiteralInfo->SetObjectToCache(thread_, i, JSTaggedValue(entryIndex));
         }
     }
 }

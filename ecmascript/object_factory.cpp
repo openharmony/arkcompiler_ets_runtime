@@ -4066,7 +4066,7 @@ JSHandle<AsyncIteratorRecord> ObjectFactory::NewAsyncIteratorRecord(const JSHand
 JSHandle<AOTLiteralInfo> ObjectFactory::NewAOTLiteralInfo(uint32_t length, JSTaggedValue initVal)
 {
     NewObjectHook();
-    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    size_t size = AOTLiteralInfo::ComputeSize(length);
     auto header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetAOTLiteralInfoClass().GetTaggedObject()), size);
 

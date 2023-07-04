@@ -561,6 +561,7 @@ ecma_source = [
   "ecmascript/compiler/aot_file/binary_buffer_parser.cpp",
   "ecmascript/compiler/aot_file/module_section_des.cpp",
   "ecmascript/compiler/aot_file/aot_file_manager.cpp",
+  "ecmascript/compiler/pgo_bc_info.cpp",
   "ecmascript/containers/containers_arraylist.cpp",
   "ecmascript/containers/containers_deque.cpp",
   "ecmascript/containers/containers_errors.cpp",

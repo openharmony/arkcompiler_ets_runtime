@@ -355,6 +355,8 @@ public:
 
     std::string PUBLIC_API GetTypeStr(kungfu::GateType gateType) const;
 
+    int PUBLIC_API GetHClassIndexByObjectType(const kungfu::GateType &gateType);
+
     int PUBLIC_API GetHClassIndexByInstanceGateType(const kungfu::GateType &gateType);
 
     int PUBLIC_API GetConstructorHClassIndexByClassGateType(const kungfu::GateType &gateType);
@@ -438,11 +440,34 @@ public:
 
     bool PUBLIC_API IsTypedArrayType(kungfu::GateType gateType) const;
 
+    bool PUBLIC_API IsValidTypedArrayType(kungfu::GateType gateType) const;
+
     bool PUBLIC_API IsInt32ArrayType(kungfu::GateType gateType) const;
 
     bool PUBLIC_API IsFloat32ArrayType(kungfu::GateType gateType) const;
 
     bool PUBLIC_API IsFloat64ArrayType(kungfu::GateType gateType) const;
+
+    inline void AddElementToPGOGTMap(uint32_t methodOffset, uint32_t cpIdx, GlobalTSTypeRef gt)
+    {
+        auto key = std::make_pair(methodOffset, cpIdx);
+        if (pgoGTInfo_.methodCpIdxGTMap.find(key) != pgoGTInfo_.methodCpIdxGTMap.end()) {
+            pgoGTInfo_.methodCpIdxGTMap[key] = gt;
+        } else {
+            pgoGTInfo_.methodCpIdxGTMap.emplace(key, gt);
+        }
+    }
+
+    inline bool HasPGOGT(uint32_t methodOffset, uint32_t cpIdx)
+    {
+        auto key = std::make_pair(methodOffset, cpIdx);
+        return pgoGTInfo_.methodCpIdxGTMap.find(key) != pgoGTInfo_.methodCpIdxGTMap.end();
+    }
+
+    inline GlobalTSTypeRef GetPGOGT(uint32_t methodOffset, uint32_t cpIdx) {
+        auto key = std::make_pair(methodOffset, cpIdx);
+        return pgoGTInfo_.methodCpIdxGTMap.at(key);
+    }
 
     inline void AddElementToLiteralOffsetGTMap(const JSPandaFile *jsPandaFile, uint32_t offset,
                                                const CString &recordName, GlobalTSTypeRef gt,
@@ -725,6 +750,17 @@ public:
         return kungfu::GateType::AnyType();
     }
 
+    inline void InsertPGOGT(GlobalTSTypeRef gt)
+    {
+        pgoGTInfo_.pgoGT.insert(gt);
+    }
+
+    bool IsPGOGT(GlobalTSTypeRef gt) const
+    {
+        auto it = pgoGTInfo_.pgoGT.find(gt);
+        return it != pgoGTInfo_.pgoGT.end();
+    }
+
     void PrintNumOfTypes() const;
 
     void PrintTypeInfo(const JSPandaFile *jsPandaFile) const;
@@ -734,6 +770,15 @@ public:
     JSHandle<TaggedArray> GetExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName);
 
     int GetHClassIndex(GlobalTSTypeRef classGT, bool isConstructor = false);
+
+    uint32_t GetPGOGTCountByRecordName(const CString &recordName) const
+    {
+        if (bcInfoCollector_ == nullptr) {
+            return 0;
+        }
+        kungfu::PGOBCInfo *bcInfo = bcInfoCollector_->GetPGOBCInfo();
+        return bcInfo->GetPGOExtendGTCount(recordName);
+    }
 
 #define TSTYPETABLE_ACCESSOR_LIST(V)       \
     V(Builtin, ModuleTableIdx::BUILTIN)    \
@@ -763,6 +808,11 @@ public:
 private:
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);
+
+    struct PGOGTInfo {
+        std::set<GlobalTSTypeRef> pgoGT {};
+        std::map<std::pair<uint32_t, uint32_t>, GlobalTSTypeRef> methodCpIdxGTMap {};
+    };
 
     GlobalTSTypeRef AddTSTypeToTypeTable(const JSHandle<TSType> &type, int tableId) const;
 
@@ -794,7 +844,8 @@ private:
 
     void CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
                             JSHandle<ConstantPool> snapshotConstantPool,
-                            kungfu::BytecodeInfoCollector *bcInfoCollector);
+                            kungfu::BytecodeInfoCollector *bcInfoCollector,
+                            JSHandle<JSTaggedValue> ihclass);
 
     inline void SetBuiltinPandaFile(JSPandaFile *jsPandaFile)
     {
@@ -838,6 +889,7 @@ private:
     // for snapshot
     SnapshotData snapshotData_ {};
 
+    PGOGTInfo pgoGTInfo_ {};
     std::map<std::pair<const JSPandaFile *, uint32_t>, GlobalTSTypeRef> literalOffsetGTMap_ {};
     std::map<GlobalTSTypeRef, std::pair<CString, uint32_t>> gtLiteralOffsetMap_ {};
     std::vector<uint32_t> builtinOffsets_ {};
