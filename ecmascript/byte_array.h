@@ -40,7 +40,7 @@ public:
         return reinterpret_cast<void *>(ToUintPtr(this) + DATA_OFFSET + index * GetByteLength());
     }
 
-    void Set(uint32_t idx, DataViewType type, JSTaggedType val, uint32_t offset = 0);
+    void Set(JSThread* thread, uint32_t idx, DataViewType type, JSTaggedType val, uint32_t offset = 0);
     JSTaggedValue Get(JSThread *thread, uint32_t idx, DataViewType type, uint32_t offset = 0);
 
     static constexpr size_t ARRAY_LENGTH_OFFSET = TaggedObjectSize();

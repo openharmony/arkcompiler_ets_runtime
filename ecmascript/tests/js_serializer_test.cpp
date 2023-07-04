@@ -1712,7 +1712,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSTypedArray2)
     int byteArrayLength = 10; // 10: arrayLength
     JSHandle<ByteArray> byteArray = factory->NewByteArray(byteArrayLength, sizeof(value));
     for (int i = 0; i < byteArrayLength; i++) {
-        byteArray->Set(i, DataViewType::UINT8, val);
+        byteArray->Set(thread, i, DataViewType::UINT8, val);
     }
     int8Array->SetViewedArrayBufferOrByteArray(thread, byteArray);
     int byteLength = 10;
