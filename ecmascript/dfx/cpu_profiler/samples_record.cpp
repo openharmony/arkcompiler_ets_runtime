@@ -788,10 +788,10 @@ void SamplesQueue::PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
 {
     os::memory::LockHolder holder(mtx_);
     if (!IsFull()) {
-        int frameInfoTempsLength = static_cast<int>(napiFrameInfoTemps.size());
-        int frameStackLength = static_cast<int>(napiFrameStack.size());
+        size_t frameInfoTempsLength = napiFrameInfoTemps.size();
+        size_t frameStackLength = napiFrameStack.size();
         // napiFrameInfoTemps
-        for (int i = 0; i < frameInfoTempsLength; i++) {
+        for (size_t i = 0; i < frameInfoTempsLength; i++) {
             CheckAndCopy(frames_[rear_].frameInfoTemps[i].functionName,
                 sizeof(frames_[rear_].frameInfoTemps[i].functionName), napiFrameInfoTemps[i].functionName);
             frames_[rear_].frameInfoTemps[i].columnNumber = napiFrameInfoTemps[i].columnNumber;
@@ -804,7 +804,7 @@ void SamplesQueue::PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
             frames_[rear_].frameInfoTemps[i].methodKey.state = napiFrameInfoTemps[i].methodKey.state;
         }
         // napiFrameStack
-        for (int i = 0; i < frameStackLength; i++) {
+        for (size_t i = 0; i < frameStackLength; i++) {
             frames_[rear_].frameStack[i].methodIdentifier = napiFrameStack[i].methodIdentifier;
             frames_[rear_].frameStack[i].state = napiFrameStack[i].state;
         }

@@ -481,7 +481,7 @@ public:
             return JSTaggedValue::Undefined();
         }
     };
-    
+
     static void ContainersVectorReplaceAllElementsFuzzTest(const uint8_t* data, size_t size)
     {
         if (size <= 0) {
@@ -847,7 +847,7 @@ public:
 
         JSNApi::DestroyJSVM(vm);
     }
-    
+
 };
 }
 #endif

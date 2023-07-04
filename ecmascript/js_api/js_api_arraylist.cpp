@@ -376,12 +376,12 @@ JSHandle<TaggedArray> JSAPIArrayList::GrowCapacity(const JSThread *thread, const
 bool JSAPIArrayList::Has(const JSTaggedValue value) const
 {
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
-    int32_t length = GetSize();
+    uint32_t length = GetSize();
     if (length == 0) {
         return false;
     }
 
-    for (int32_t i = 0; i < length; i++) {
+    for (uint32_t i = 0; i < length; i++) {
         if (JSTaggedValue::SameValue(elements->Get(i), value)) {
             return true;
         }

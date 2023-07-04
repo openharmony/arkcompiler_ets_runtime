@@ -134,7 +134,7 @@ public:
     void VisitRegion(GateRegion* curRegion)
     {
         replacement_.SetState(curRegion->GetState());
-        currentIndex_ = curRegion->gateList_.size() - 1; // 1: -1 for size
+        currentIndex_ = static_cast<int32_t>(curRegion->gateList_.size() - 1); // 1: -1 for size
         TryLoadDependStart(curRegion);
         // 0: is state
         for (; currentIndex_ > 0; currentIndex_--) {
