@@ -16,14 +16,15 @@
 #include "ecmascript/byte_array.h"
 
 #include "ecmascript/builtins/builtins_arraybuffer.h"
+#include "ecmascript/mem/tagged_object-inl.h"
 
 namespace panda::ecmascript {
-void ByteArray::Set(uint32_t idx, DataViewType type, JSTaggedType val, uint32_t offset)
+void ByteArray::Set(JSThread* thread, uint32_t idx, DataViewType type, JSTaggedType val, uint32_t offset)
 {
     void *pointer = GetData();
     auto *block = reinterpret_cast<uint8_t *>(pointer) + offset;
-    builtins::BuiltinsArrayBuffer::SetValueInBuffer(idx * GetByteLength(), block, type,
-                                                    JSTaggedValue(val).GetNumber(), true);
+    builtins::BuiltinsArrayBuffer::SetValueInBuffer(thread, idx * GetByteLength(), block,
+                                                    type, JSTaggedValue(val).GetNumber(), true);
 }
 
 JSTaggedValue ByteArray::Get(JSThread *thread, uint32_t idx, DataViewType type, uint32_t offset)

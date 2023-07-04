@@ -55,7 +55,7 @@ namespace OHOS {
         JSTaggedValue arrayBuffer = BuiltinsArrayBuffer::AllocateArrayBuffer(thread, bufferConstructor, MAXBYTELEN);
     
         double val = JSTaggedValue(input).GetNumber();
-        BuiltinsArrayBuffer::FastSetValueInBuffer(arrayBuffer, 0, DataViewType::INT32, val, true);
+        BuiltinsArrayBuffer::FastSetValueInBuffer(thread, arrayBuffer, 0, DataViewType::INT32, val, true);
         JSNApi::DestroyJSVM(vm);
     }
 }

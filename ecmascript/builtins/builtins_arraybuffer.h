@@ -71,10 +71,10 @@ public:
     // es12 25.1.2.7 IsBigIntElementType ( type )
     static bool IsBigIntElementType(DataViewType type);
 
-    static JSTaggedValue FastSetValueInBuffer(JSTaggedValue arrBuf, uint32_t byteIndex, DataViewType type, double val,
-                                              bool littleEndian);
-    static JSTaggedValue SetValueInBuffer(uint32_t byteIndex, uint8_t *block, DataViewType type, double val,
-                                          bool littleEndian);
+    static JSTaggedValue FastSetValueInBuffer(JSThread* thread, JSTaggedValue arrBuf, uint32_t byteIndex,
+                                              DataViewType type, double val, bool littleEndian);
+    static JSTaggedValue SetValueInBuffer(JSThread* thread, uint32_t byteIndex, uint8_t *block,
+                                          DataViewType type, double val, bool littleEndian);
     static JSTaggedValue GetValueFromBuffer(JSThread *thread, uint32_t byteIndex, uint8_t *block,
                                             DataViewType type, bool littleEndian);
     static void *GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t byteOffset = 0);
@@ -110,6 +110,10 @@ private:
     template<typename T>
     static void SetValueInBufferForBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &val,
                                           JSHandle<JSTaggedValue> &arrBuf, uint32_t byteIndex, bool littleEndian);
+
+    template<typename T>
+    static void SetValueInBufferForBigInt(JSThread *thread, double val,
+                                          uint8_t *block, uint32_t byteIndex, bool littleEndian);
 };
 }  // namespace panda::ecmascript::builtins
 

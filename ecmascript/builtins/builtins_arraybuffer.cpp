@@ -384,7 +384,7 @@ JSTaggedValue BuiltinsArrayBuffer::SetValueInBuffer(JSThread *thread, JSTaggedVa
     void *pointer = GetDataPointFromBuffer(arrBuf);
     uint8_t *block = reinterpret_cast<uint8_t *>(pointer);
     double val = value.GetTaggedValue().GetNumber();
-    return SetValueInBuffer(byteIndex, block, type, val, littleEndian);
+    return SetValueInBuffer(thread, byteIndex, block, type, val, littleEndian);
 }
 
 // es12 25.1.2.7 IsBigIntElementType ( type )
@@ -631,16 +631,38 @@ void BuiltinsArrayBuffer::SetValueInBufferForBigInt(JSThread *thread,
     SetTypeData(block, value, byteIndex);
 }
 
-JSTaggedValue BuiltinsArrayBuffer::FastSetValueInBuffer(JSTaggedValue arrBuf, uint32_t byteIndex,
+template<typename T>
+void BuiltinsArrayBuffer::SetValueInBufferForBigInt(JSThread *thread,
+                                                    double val, uint8_t *block,
+                                                    uint32_t byteIndex, bool littleEndian)
+{
+    static_assert(std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>, "T must be int64_t/uint64_t");
+    T value = 0;
+    bool lossless = true;
+
+    JSHandle<JSTaggedValue> valHandle(thread, GetTaggedDouble(val));
+    if constexpr(std::is_same_v<T, uint64_t>) {
+        BigInt::BigIntToUint64(thread, valHandle, reinterpret_cast<uint64_t *>(&value), &lossless);
+    } else {
+        BigInt::BigIntToInt64(thread, valHandle, reinterpret_cast<int64_t *>(&value), &lossless);
+    }
+    RETURN_IF_ABRUPT_COMPLETION(thread);
+    if (!littleEndian) {
+        value = LittleEndianToBigEndian64Bit<T>(value);
+    }
+    SetTypeData(block, value, byteIndex);
+}
+
+JSTaggedValue BuiltinsArrayBuffer::FastSetValueInBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteIndex,
                                                         DataViewType type, double val, bool littleEndian)
 {
     void *pointer = GetDataPointFromBuffer(arrBuf);
     uint8_t *block = reinterpret_cast<uint8_t *>(pointer);
-    return SetValueInBuffer(byteIndex, block, type, val, littleEndian);
+    return SetValueInBuffer(thread, byteIndex, block, type, val, littleEndian);
 }
 
-JSTaggedValue BuiltinsArrayBuffer::SetValueInBuffer(uint32_t byteIndex, uint8_t *block, DataViewType type, double val,
-                                                    bool littleEndian)
+JSTaggedValue BuiltinsArrayBuffer::SetValueInBuffer(JSThread* thread, uint32_t byteIndex, uint8_t *block,
+                                                    DataViewType type, double val, bool littleEndian)
 {
     switch (type) {
         case DataViewType::UINT8:
@@ -669,6 +691,14 @@ JSTaggedValue BuiltinsArrayBuffer::SetValueInBuffer(uint32_t byteIndex, uint8_t 
             break;
         case DataViewType::FLOAT64:
             SetValueInBufferForFloat<double>(val, block, byteIndex, littleEndian);
+            break;
+        case DataViewType::BIGINT64:
+            SetValueInBufferForBigInt<int64_t>(thread, val, block, byteIndex, littleEndian);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            break;
+        case DataViewType::BIGUINT64:
+            SetValueInBufferForBigInt<uint64_t>(thread, val, block, byteIndex, littleEndian);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
