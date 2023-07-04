@@ -36,12 +36,67 @@ namespace panda::ecmascript {
 class JSpandafile;
 class JSThread;
 
+/*                  AOTLiteralInfo
+ *      +--------------------------------+----
+ *      |             cache              |  ^
+ *      |              ...               |  |
+ *      |   -1 (No AOT Function Entry)   |  |
+ *      |     AOT Function Entry Index   |  |
+ *      |     AOT Function Entry Index   |  |
+ *      +--------------------------------+----
+ *      |      AOT Instance Hclass (IHC) |
+ *      +--------------------------------+
+ */
 class AOTLiteralInfo : public TaggedArray {
 public:
     static AOTLiteralInfo *Cast(TaggedObject *object)
     {
         ASSERT(JSTaggedValue(object).IsTaggedArray());
         return static_cast<AOTLiteralInfo *>(object);
+    }
+
+    static size_t ComputeSize(uint32_t cacheSize)
+    {
+        return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), cacheSize + RESERVED_LENGTH);
+    }
+
+    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity, uint32_t extraLength = 0)
+    {
+        TaggedArray::InitializeWithSpecialValue(initValue, capacity + RESERVED_LENGTH, extraLength);
+        SetIhc(JSTaggedValue::Undefined());
+    }
+
+    inline uint32_t GetCacheLength() const
+    {
+        return GetLength() - RESERVED_LENGTH;
+    }
+
+    inline void SetIhc(JSTaggedValue value)
+    {
+        Barriers::SetPrimitive(GetData(), GetIhcOffset(), value.GetRawData());
+    }
+
+    inline JSTaggedValue GetIhc() const
+    {
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetIhcOffset()));
+    }
+
+    inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
+    {
+        Set(thread, index, value);
+    }
+
+    inline JSTaggedValue GetObjectFromCache(uint32_t index) const
+    {
+        return Get(index);
+    }
+private:
+    static constexpr size_t AOT_IHC_INDEX = 1;
+    static constexpr size_t RESERVED_LENGTH = AOT_IHC_INDEX;
+
+    inline size_t GetIhcOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_IHC_INDEX);
     }
 };
 

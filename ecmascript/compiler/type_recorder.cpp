@@ -31,9 +31,10 @@ TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *
     TSHClassGenerator generator(tsManager);
     if (jsPandaFile->HasTSTypes(recordName)) {
         LoadTypes(jsPandaFile, methodLiteral, tsManager, recordName);
-        generator.GenerateTSHClasses();
     }
     LoadTypesFromPGO(jsPandaFile, methodLiteral, recordName);
+    CreateTypesForPGO(jsPandaFile, methodLiteral, tsManager, recordName);
+    generator.GenerateTSHClasses();
 }
 
 void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
@@ -80,6 +81,23 @@ void TypeRecorder::LoadTypesFromPGO(const JSPandaFile *jsPandaFile, const Method
     if (decoder_ != nullptr) {
         decoder_->GetTypeInfo(jsPandaFile, recordName, methodLiteral, callback);
     }
+}
+
+void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
+                                     TSManager *tsManager, const CString &recordName)
+{
+    TSTypeParser typeParser(tsManager);
+    uint32_t methodOffset = methodLiteral->GetMethodId().GetOffset();
+    PGOBCInfo *bcInfo = tsManager->GetBytecodeInfoCollector()->GetPGOBCInfo();
+    bcInfo->IterateInfoAndType(methodOffset, [this, &typeParser, methodOffset, &recordName, &jsPandaFile]
+        (const PGOBCInfo::Type type, const uint32_t bcIdx, const uint32_t cpIdx){
+        GlobalTSTypeRef gt = typeParser.CreatePGOGT(jsPandaFile, recordName, methodOffset, cpIdx, type);
+        if (TypeNeedFilter(gt)) {
+            return;
+        }
+        GateType gateType = GateType(gt);
+        bcOffsetGtMap_.emplace(bcIdx, gateType);
+    });
 }
 
 void TypeRecorder::LoadArgTypes(const TSManager *tsManager, GlobalTSTypeRef funcGT, GlobalTSTypeRef thisGT)

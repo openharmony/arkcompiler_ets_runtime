@@ -58,8 +58,14 @@ JSHandle<TSTypeTable> TSTypeTableGenerator::GetOrGenerateTSTypeTable(const JSPan
         return tsManager_->GetTSTypeTable(moduleId);
     }
     JSHandle<EcmaString> recordNameStr = factory_->NewFromUtf8(recordName);
-    TypeSummaryExtractor summExtractor(jsPandaFile, recordName);
-    JSHandle<TSTypeTable> table = AddTypeTable(recordNameStr, summExtractor.GetNumOfTypes());
+    // when PGO is enabled, no matter whether the abc file is a '.js' or a '.ts' file, it may contain PGO GT
+    uint32_t typeNum = tsManager_->GetPGOGTCountByRecordName(recordName);
+    if (jsPandaFile->HasTSTypes(recordName)) {
+        // only '.ts' file has type literal and can get number of type from it
+        TypeSummaryExtractor summExtractor(jsPandaFile, recordName);
+        typeNum += summExtractor.GetNumOfTypes();
+    }
+    JSHandle<TSTypeTable> table = AddTypeTable(recordNameStr, typeNum);
     return table;
 }
 

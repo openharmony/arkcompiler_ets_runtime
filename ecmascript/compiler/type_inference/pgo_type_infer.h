@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/argument_accessor.h"
 
 namespace panda::ecmascript::kungfu {
+struct CollectedType;
 class PGOTypeInfer {
 public:
     PGOTypeInfer(Circuit *circuit, TSManager *tsManager, BytecodeCircuitBuilder *builder,
@@ -41,12 +42,6 @@ private:
         };
         Profiler(Chunk *chunk) : datas(chunk) {}
         ChunkVector<Value> datas;
-    };
-
-    enum class RWOpLoc : uint8_t {
-        UNKONWN = 0,
-        INSTANCE,
-        CONSTRUCTOR,
     };
 
     inline bool IsLogEnabled() const
@@ -74,12 +69,13 @@ private:
     void InferStObjByName(GateRef gate, bool isThis);
 
     void UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedValue prop);
-    bool CheckPGOType(PGORWOpType pgoTypes, RWOpLoc &rwOpLoc) const;
-    ChunkSet<GateType> UpdateType(GateType tsType, PGORWOpType pgoType, JSTaggedValue prop);
-    void CollectGateType(ChunkSet<GateType> &types, GateType tsType, PGORWOpType pgoTypes);
-    void CheckAndInsert(ChunkSet<GateType> &types, GateType type);
+    void CollectGateType(CollectedType &types, GateType tsType, PGORWOpType pgoTypes);
+    void UpdateType(CollectedType &types, JSTaggedValue prop);
+    void InferTypeForClass(ChunkSet<GateType> &types, JSTaggedValue prop);
+    void CheckAndInsert(CollectedType &types, GateType type);
     void EliminateSubclassTypes(ChunkSet<GateType> &types);
     void ComputeCommonSuperClassTypes(ChunkSet<GateType> &types, JSTaggedValue prop);
+
     void Print() const;
     void AddProfiler(GateRef gate, GateType tsType, PGORWOpType pgoType, ChunkSet<GateType>& inferTypes);
 

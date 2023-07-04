@@ -37,6 +37,10 @@ public:
 
     GlobalTSTypeRef PUBLIC_API CreateGT(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId);
 
+    GlobalTSTypeRef PUBLIC_API CreatePGOGT(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                              uint32_t methodOffset, uint32_t cpIdx,
+                                              kungfu::PGOBCInfo::Type type);
+
     inline static bool IsUserDefinedType(const uint32_t typeId)
     {
         return typeId > USER_DEFINED_TYPE_OFFSET;
@@ -55,6 +59,14 @@ private:
     {
         GlobalTSTypeRef gt(moduleId, localId);
         tsManager_->AddElementToLiteralOffsetGTMap(jsPandaFile, typeId, recordName, gt);
+        return gt;
+    }
+
+    inline GlobalTSTypeRef GetAndStorePGOGT(uint32_t methodOffset, uint32_t cpIdx,
+                                            uint32_t moduleId = 0, uint32_t localId = 0)
+    {
+        GlobalTSTypeRef gt(moduleId, localId);
+        tsManager_->AddElementToPGOGTMap(methodOffset, cpIdx, gt);
         return gt;
     }
 
@@ -140,6 +152,14 @@ private:
 
     JSHandle<TSObjectType> ParseObjectType(const JSPandaFile *jsPandaFile, const CString &recordName,
                                            TypeLiteralExtractor *typeLiteralExtractor);
+
+    GlobalTSTypeRef ParsePGOType(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t methodOffset,
+                                 uint32_t cpIdx, kungfu::PGOBCInfo::Type type);
+
+    JSHandle<JSTaggedValue> ParseNonImportPGOType(GlobalTSTypeRef gt, const CString &recordName,
+                                                  uint32_t cpIdx, kungfu::PGOBCInfo::Type type);
+
+    JSHandle<TSObjectType> ParseObjectPGOType(GlobalTSTypeRef gt, const CString &recordName, uint32_t cpIdx);
 
     void FillPropTypes(const JSPandaFile *jsPandaFile,
                        const CString &recordName,

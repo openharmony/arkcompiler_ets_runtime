@@ -42,7 +42,8 @@ public:
           glue_(acc_.GetGlueFromArgList()),
           argAcc_(circuit),
           pgoTypeLog_(circuit),
-          noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()) {}
+          noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
+          thread_(ctx->GetEcmaVM()->GetJSThread()) {}
 
     ~TSHCRLowering() = default;
 
@@ -99,9 +100,16 @@ private:
     void LowerTypedNeg(GateRef gate);
     void LowerTypedNot(GateRef gate);
     void LowerTypedLdObjByName(GateRef gate);
+    void LowerTypedLdObjByNameForClassOrObject(GateRef gate, GateRef receiver, JSTaggedValue prop);
+    void LowerTypedLdObjByNameForClassInstance(GateRef gate, GateRef receiver, JSTaggedValue prop);
+    void LowerTypedLdObjByNameForArray(GateRef gate, GateRef receiver, JSTaggedValue prop);
     void LowerTypedLdArrayLength(GateRef gate);
     void LowerTypedLdTypedArrayLength(GateRef gate);
     void LowerTypedStObjByName(GateRef gate, bool isThis);
+    void LowerTypedStObjByNameForClassOrObject(GateRef gate, GateRef receiver, GateRef value,
+                                               JSTaggedValue prop);
+    void LowerTypedStObjByNameForClassInstance(GateRef gate, GateRef receiver, GateRef value,
+                                               JSTaggedValue prop, bool isThis);
     void LowerTypedLdObjByIndex(GateRef gate);
     void LowerTypedStObjByIndex(GateRef gate);
     void LowerTypedLdObjByValue(GateRef gate, bool isThis);
@@ -178,6 +186,7 @@ private:
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeMap_;
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeHitTimeMap_;
     bool noCheck_ {false};
+    const JSThread *thread_ {nullptr};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_HCR_LOWERING_H

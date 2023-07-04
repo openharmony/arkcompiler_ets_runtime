@@ -236,6 +236,7 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
         }
         CollectModuleInfoFromBC(bcIns, method, recordName);
         CollectConstantPoolIndexInfoFromBC(bcIns, method);
+        pgoBCInfo_.Record(bcIns, bcIndex, recordName, method);
         curPc = bcIns.GetAddress();
         auto nextInst = bcIns.GetNext();
         bcIns = nextInst;

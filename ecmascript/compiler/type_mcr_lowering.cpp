@@ -252,19 +252,21 @@ void TypeMCRLowering::LowerObjectTypeCheck(GateRef gate)
     auto type = acc_.GetParamGateType(gate);
     if (tsManager_->IsClassInstanceTypeKind(type)) {
         LowerTSSubtypingCheck(gate);
-    } else if (tsManager_->IsClassTypeKind(type)) {
-        LowerConstruntorTypeCheck(gate);
+    } else if (tsManager_->IsClassTypeKind(type) ||
+               tsManager_->IsObjectTypeKind(type)) {
+        LowerSimpleHClassCheck(gate);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
 
-void TypeMCRLowering::LowerConstruntorTypeCheck(GateRef gate)
+void TypeMCRLowering::LowerSimpleHClassCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto type = acc_.GetParamGateType(gate);
-    if (tsManager_->IsClassTypeKind(type)) {
+    if (tsManager_->IsClassTypeKind(type) ||
+        tsManager_->IsObjectTypeKind(type)) {
         GateRef frameState = GetFrameState(gate);
         GateRef receiver = acc_.GetValueIn(gate, 0);
         builder_.HeapObjectCheck(receiver, frameState);
@@ -694,7 +696,7 @@ void TypeMCRLowering::LowerInt32ArrayStoreElement(GateRef gate, GateRef glue)
     GateRef value = acc_.GetValueIn(gate, 2);
     GateRef arrbuffer =
         builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
-    
+
     GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
     builder_.Store(VariableType::VOID(), glue, data, builder_.PtrAdd(offset, byteOffset), value);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -718,7 +720,7 @@ void TypeMCRLowering::LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue)
     value = builder_.TruncDoubleToFloat32(value);
     GateRef arrbuffer =
         builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
-    
+
     GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
     builder_.Store(VariableType::VOID(), glue, data, builder_.PtrAdd(offset, byteOffset), value);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -741,7 +743,7 @@ void TypeMCRLowering::LowerFloat64ArrayStoreElement(GateRef gate, GateRef glue)
     GateRef value = acc_.GetValueIn(gate, 2);
     GateRef arrbuffer =
         builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
-    
+
     GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
     builder_.Store(VariableType::VOID(), glue, data, builder_.PtrAdd(offset, byteOffset), value);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());

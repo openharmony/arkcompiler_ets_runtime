@@ -212,6 +212,7 @@ void SubtypingOperator::TryMaintainTSSubtyping(const JSThread *thread, const JSH
 
     ASSERT(!oldHClass->IsPrototype());  // normal object hclass
     JSHandle<VTable> vtable(thread, oldHClass->GetVTable());
+    ASSERT(!vtable.GetTaggedValue().IsUndefined());
     ASSERT(vtable->GetNumberOfTuples() > 0);   // there have default key 'constructor' at least
 
     if (vtable->Find(key.GetTaggedValue())) {  // new key shadows vtable property
