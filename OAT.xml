@@ -54,8 +54,13 @@ Note:If the text contains special characters, please escape them according to th
 <configuration>
     <oatconfig>
         <policy name="defaultPolicy" desc="" >
-		<policyitem type="compatibility" name="Apache" path="arkcompiler/ets_runtime" rule="may" group="defaultGroup" filefilter="defaultPolicyFilter" desc=""/>
+            <policyitem type="compatibility" name="Apache" path="arkcompiler/ets_runtime" rule="may" group="defaultGroup" filefilter="defaultPolicyFilter" desc=""/>
         </policy>
+        <policylist>
+            <policy name="projectPolicy" desc="">
+                <policyitem type="copyright" name="Copyright (c) 2023 Shenzhen Kaihong Digital Industry Development Co., Ltd." path=".*" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc=""/>
+            </policy>
+        </policylist>
         <filefilterlist>
             <filefilter name="binaryFileTypePolicyFilter" desc="二进制文件校验策略的过滤条件" >
                 <filteritem type="filepath" name="docs/figures/en-us_image_0000001149439242.png" desc="自造的二进制图片"/>

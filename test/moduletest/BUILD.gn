@@ -88,6 +88,7 @@ group("ark_js_moduletest") {
     "throwdyn",
     "trycatch",
     "typearray",
+    "typedarrayat",
     "watch",
     "wrapperclassfunc",
     "yieldstar",
@@ -184,6 +185,7 @@ group("ark_asm_test") {
     "stubbuilder",
     "throwdyn",
     "trycatch",
+    "typedarrayat",
     "watch",
     "wrapperclassfunc",
     "yieldstar",
@@ -272,6 +274,7 @@ group("ark_asm_single_step_test") {
     "stubbuilder",
     "throwdyn",
     "trycatch",
+    "typedarrayat",
     "watch",
     "yieldstar",
   ]

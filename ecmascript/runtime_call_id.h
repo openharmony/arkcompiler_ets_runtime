@@ -769,6 +769,7 @@ namespace panda::ecmascript {
     V(TypedArray, Subarray)                   \
     V(TypedArray, Values)                     \
     V(TypedArray, ToStringTag)                \
+    V(TypedArray, At)                         \
     V(WeakMap, Constructor)                   \
     V(WeakMap, Delete)                        \
     V(WeakMap, Get)                           \
