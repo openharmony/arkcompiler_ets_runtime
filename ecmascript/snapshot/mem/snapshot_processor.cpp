@@ -324,6 +324,7 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(Object::ProtoSetter),
     reinterpret_cast<uintptr_t>(Object::CreateRealm),
     reinterpret_cast<uintptr_t>(Object::Entries),
+    reinterpret_cast<uintptr_t>(Object::HasOwn),
     reinterpret_cast<uintptr_t>(Boolean::BooleanConstructor),
     reinterpret_cast<uintptr_t>(Boolean::BooleanPrototypeToString),
     reinterpret_cast<uintptr_t>(Boolean::BooleanPrototypeValueOf),

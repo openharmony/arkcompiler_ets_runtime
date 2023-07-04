@@ -50,3 +50,6 @@ AAA
 AAA
 true
 builtins regexp end
+true
+false
+false

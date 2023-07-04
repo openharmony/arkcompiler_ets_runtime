@@ -1039,4 +1039,30 @@ JSTaggedValue BuiltinsObject::CreateDataPropertyOnObjectFunctions(EcmaRuntimeCal
     // 6. Return undefined.
     return JSTaggedValue::Undefined();
 }
+
+JSTaggedValue BuiltinsObject::HasOwn(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Object, HasOwn);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. Let obj be ? ToObject(O).
+    JSHandle<JSTaggedValue> obj = GetCallArg(argv, 0);
+    JSHandle<JSObject> object = JSTaggedValue::ToObject(thread, obj);
+
+    // 2.ReturnIfAbrupt(obj).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 3.Let key be ToPropertyKey(P).
+    JSHandle<JSTaggedValue> prop = GetCallArg(argv, 1);
+    JSHandle<JSTaggedValue> key = JSTaggedValue::ToPropertyKey(thread, prop);
+
+    // 4. ReturnIfAbrupt(4).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 5. Return HasOwnProperty(O, P).
+    bool res = JSTaggedValue::HasOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(object), key);
+    return GetTaggedBoolean(res);
+}
 }  // namespace panda::ecmascript::builtins

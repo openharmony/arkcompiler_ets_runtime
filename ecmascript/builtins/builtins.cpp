@@ -570,6 +570,8 @@ void Builtins::InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetFunction(env, objFunc, "entries", Object::Entries, FunctionLength::ONE);
     // 20.1.2.7 Object.fromEntries ( iterable )
     SetFunction(env, objFunc, "fromEntries", Object::FromEntries, FunctionLength::ONE);
+    // 20.1.2.13 Object.hasOwn ( O, P )
+    SetFunction(env, objFunc, "hasOwn", Object::HasOwn, FunctionLength::TWO);
 
     // Object.property method
     // 19.1.3.2 Object.prototype.hasOwnProperty(V)

@@ -973,4 +973,27 @@ HWTEST_F_L0(BuiltinsObjectTest, ValueOf)
 
     ASSERT_TRUE(result.IsECMAObject());
 }
+
+// Object.hasOwn (O, P)
+HWTEST_F_L0(BuiltinsObjectTest, HasOwn)
+{
+    JSHandle<JSTaggedValue> function(thread, BuiltinsObjectTestCreate(thread));
+    JSHandle<JSObject> object =
+        thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(JSHandle<JSFunction>(function), function);
+    JSHandle<JSTaggedValue> key(thread->GetEcmaVM()->GetFactory()->NewFromASCII("x"));
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(object), key, value);
+    EXPECT_EQ(JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(object), key).GetValue()->GetInt(), 1);
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, object.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsObject::HasOwn(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_EQ(result.GetRawData(), JSTaggedValue::True().GetRawData());
+}
 }  // namespace panda::test

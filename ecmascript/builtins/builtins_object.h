@@ -93,6 +93,9 @@ public:
 
     // 20.1.2.7.1 CreateDataPropertyOnObject Functions
     static JSTaggedValue CreateDataPropertyOnObjectFunctions(EcmaRuntimeCallInfo *argv);
+    // 20.1.2.13 Object.hasOwn ( O, P )
+    static JSTaggedValue HasOwn(EcmaRuntimeCallInfo *argv);
+
 private:
     static JSTaggedValue ObjectDefineProperties(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                 const JSHandle<JSTaggedValue> &prop);
