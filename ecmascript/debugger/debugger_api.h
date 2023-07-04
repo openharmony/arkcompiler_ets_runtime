@@ -48,6 +48,7 @@ enum StackState {
     SUCCESS,
 };
 
+enum class ArkInternalValueType {None, Entry, Scope, ScopeList};
 class PUBLIC_API DebuggerApi {
 public:
     // FrameHandler
@@ -124,6 +125,39 @@ public:
     static DebugInfoExtractor *GetPatchExtractor(const EcmaVM *ecmaVm, const std::string &url);
     static const JSPandaFile *GetBaseJSPandaFile(const EcmaVM *ecmaVm, const JSPandaFile *jsPandaFile);
     static std::vector<void *> GetNativePointer(const EcmaVM *ecmaVm);
+
+    // Container
+    static uint32_t GetContainerLength(const EcmaVM *ecmaVm, Local<JSValueRef> value);
+    static void AddInternalProperties(const EcmaVM *ecmaVm, Local<ObjectRef> object,
+                                      ArkInternalValueType type, Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetArrayListValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                               Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetDequeValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                           Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetHashMapValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                             Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetHashSetValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                             Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetLightWeightMapValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                    Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetLightWeightSetValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                    Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetLinkedListValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetListValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                          Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetPlainArrayValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetQueueValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                           Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetStackValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                           Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetTreeMapValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                             Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetTreeSetValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                             Global<MapRef> internalObjects);
+    static Local<JSValueRef> GetVectorValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                            Global<MapRef> internalObjects);
 };
 }  // namespace panda::ecmascript::tooling
 

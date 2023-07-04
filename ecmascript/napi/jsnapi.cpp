@@ -3287,6 +3287,81 @@ bool JSValueRef::IsAsyncGeneratorFunction()
     return obj->IsAsyncGeneratorFunction();
 }
 
+bool JSValueRef::IsArrayList()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIArrayList();
+}
+
+bool JSValueRef::IsDeque()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIDeque();
+}
+
+bool JSValueRef::IsHashMap()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIHashMap();
+}
+
+bool JSValueRef::IsHashSet()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIHashSet();
+}
+
+bool JSValueRef::IsLightWeightMap()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPILightWeightMap();
+}
+
+bool JSValueRef::IsLightWeightSet()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPILightWeightSet();
+}
+
+bool JSValueRef::IsLinkedList()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPILinkedList();
+}
+
+bool JSValueRef::IsLinkedListIterator()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPILinkedListIterator();
+}
+
+bool JSValueRef::IsList()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIList();
+}
+
+bool JSValueRef::IsPlainArray()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIPlainArray();
+}
+
+bool JSValueRef::IsQueue()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIQueue();
+}
+
+bool JSValueRef::IsStack()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIStack();
+}
+
+bool JSValueRef::IsTreeMap()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPITreeMap();
+}
+
+bool JSValueRef::IsTreeSet()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPITreeSet();
+}
+
+bool JSValueRef::IsVector()
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIVector();
+}
+
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------
 JsiRuntimeCallInfo::JsiRuntimeCallInfo(ecmascript::EcmaRuntimeCallInfo* ecmaInfo, void* data)
     : thread_(ecmaInfo->GetThread()), numArgs_(ecmaInfo->GetArgsNumber())
