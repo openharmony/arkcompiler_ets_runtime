@@ -2270,15 +2270,13 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
         regsArray->Set(thread, i, value);
     }
     context->SetRegsArray(thread, regsArray.GetTaggedValue());
-    JSHandle<JSTaggedValue> function(thread, frameHandler.GetFunction());
-    Method *method = JSFunction::Cast(function->GetTaggedObject())->GetCallTarget();
-    if (method->IsAotWithCallField()) {
-        FunctionKind kind = method->GetFunctionKind();
-        JSHandle<JSFunction> jsFunc(function);
-        JSHandle<JSHClass> oldHclass(thread, jsFunc->GetClass());
+    JSHandle<JSFunction> function(thread, frameHandler.GetFunction());
+    JSHandle<JSHClass> hclass(thread, function->GetClass());
+    if (hclass->IsOptimized()) {
+        FunctionKind kind = function->GetCallTarget()->GetFunctionKind();
         // instead of hclass by non_optimized hclass when method ClearAOTFlags
-        JSHandle<JSHClass> newHClass = factory->GetNonOptimizedHclass(oldHclass, kind);
-        jsFunc->SetClass(newHClass);
+        JSHandle<JSHClass> newHClass = factory->GetNonOptimizedHclass(hclass, kind);
+        function->SetClass(newHClass);
     }
     context->SetMethod(thread, function.GetTaggedValue());
     context->SetThis(thread, frameHandler.GetThis());
