@@ -78,7 +78,7 @@ HWTEST_F_L0(ByteArrayTest, SetAndGet)
     uint32_t value = 4294967295;
     JSTaggedType val = JSTaggedValue(value).GetRawData();
     JSHandle<ByteArray> byteArray = factory->NewByteArray(3, sizeof(value));
-    byteArray->Set(1, DataViewType::UINT32, val, 2);
+    byteArray->Set(thread, 1, DataViewType::UINT32, val, 2);
     EXPECT_EQ(byteArray->Get(thread, 1, DataViewType::UINT32, 2), JSTaggedValue(value));
 }
 }  // namespace panda::ecmascript

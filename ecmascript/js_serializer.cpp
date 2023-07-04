@@ -1259,7 +1259,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadByteArray()
     JSHandle<ByteArray> byteArray = factory_->NewByteArray(arrayLength, arrayType);
     for (int32_t i = 0; i < arrayLength; i++) {
         JSHandle<JSTaggedValue> val = DeserializeJSTaggedValue();
-        byteArray->Set(i, viewType, val.GetTaggedType());
+        byteArray->Set(thread_, i, viewType, val.GetTaggedType());
     }
     return JSHandle<JSTaggedValue>(byteArray);
 }
