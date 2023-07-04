@@ -313,7 +313,7 @@ public:
 
     const GlobalEnvConstants *GlobalConstants() const
     {
-        return &glueData_.globalConst_;
+        return glueData_.globalConst_;
     }
 
     void NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver);
@@ -670,7 +670,7 @@ public:
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
                                                  base::AlignedPointer,
-                                                 GlobalEnvConstants,
+                                                 base::AlignedPointer,
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
                                                  JSTaggedValue> {
@@ -824,7 +824,7 @@ public:
         alignas(EAS) uint64_t stackStart_ {0};
         alignas(EAS) uint64_t stackLimit_ {0};
         alignas(EAS) GlobalEnv *glueGlobalEnv_;
-        alignas(EAS) GlobalEnvConstants globalConst_;
+        alignas(EAS) GlobalEnvConstants *globalConst_;
         alignas(EAS) bool allowCrossThreadExecution_ {false};
         alignas(EAS) volatile uint64_t interruptVector_ {0};
         alignas(EAS) JSTaggedValue isStartHeapSampling_ {JSTaggedValue::False()};
@@ -838,20 +838,27 @@ public:
     {
         return currentContext_;
     }
-    void SwitchCurrentContext(EcmaContext *currentContext);
+    void SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate = false);
 
     CVector<EcmaContext *> GetEcmaContexts()
     {
         return contexts_;
     }
+
+    bool EraseContext(EcmaContext *context);
+
+    const GlobalEnvConstants *GetFirstGlobalConst() const;
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
+    void SetGlobalConst(GlobalEnvConstants *globalConst)
+    {
+        glueData_.globalConst_ = globalConst;
+    }
     void SetCurrentEcmaContext(EcmaContext *context)
     {
         currentContext_ = context;
     }
-    void InitGlobalConst(JSHClass *hClass);
 
     void DumpStack() DUMP_API_ATTR;
 
@@ -901,6 +908,7 @@ private:
     EcmaContext *currentContext_ {nullptr};
     friend class GlobalHandleCollection;
     friend class EcmaVM;
+    friend class EcmaContext;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_THREAD_H

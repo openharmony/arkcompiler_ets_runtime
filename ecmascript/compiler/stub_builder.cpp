@@ -722,8 +722,9 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
 //      keyHandle.GetTaggedValue() == thread->GlobalConstants()->GetConstructorString()
 GateRef StubBuilder::SetHasConstructorCondition(GateRef glue, GateRef receiver, GateRef key)
 {
-    GateRef gConstOffset = PtrAdd(glue,
-                                  IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
+    GateRef gConstOffset = Load(VariableType::JS_ANY(), glue,
+        IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
+
     GateRef gCtorStr = Load(VariableType::JS_ANY(),
         gConstOffset,
         Int64Mul(Int64(sizeof(JSTaggedValue)),
@@ -2975,8 +2976,8 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
     env->SubCfgEntry(&entry);
     Label exit(env);
 
-    GateRef gConstAddr = PtrAdd(glue,
-        IntPtr(JSThread::GlueData::GetGlobalConstOffset(env->Is32Bit())));
+    GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
+        IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
     GateRef undefinedIndex = GetGlobalConstantString(ConstantIndex::UNDEFINED_STRING_INDEX);
     GateRef gConstUndefinedStr = Load(VariableType::JS_POINTER(), gConstAddr, undefinedIndex);
     DEFVARIABLE(result, VariableType::JS_POINTER(), gConstUndefinedStr);

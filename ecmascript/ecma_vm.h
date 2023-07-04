@@ -417,10 +417,6 @@ public:
         ASSERT(stringTable_ != nullptr);
         return stringTable_;
     }
-    JSTaggedValue GetHClassClass() const
-    {
-        return hClassClass_;
-    }
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -451,7 +447,6 @@ private:
     CList<JSNativePointer *> nativePointerList_;
     // VM execution states.
     JSThread *thread_ {nullptr};
-    JSTaggedValue hClassClass_ {JSTaggedValue::Hole()};
 
     // VM resources.
     SnapshotEnv *snapshotEnv_ {nullptr};

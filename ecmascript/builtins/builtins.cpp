@@ -1867,7 +1867,7 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     globalConst->SetConstant(ConstantIndex::JS_API_ITERATOR_FUNC_CLASS_INDEX, iteratorFuncClass);
 
     // Iterator result hclass
-    JSHandle<JSHClass> iterResultHClass = factory_->CreateIteratorResultInstanceClass();
+    JSHandle<JSHClass> iterResultHClass = factory_->CreateIteratorResultInstanceClass(env);
     globalConst->SetConstant(ConstantIndex::ITERATOR_RESULT_CLASS, iterResultHClass);
 
     // ues for CloseIterator

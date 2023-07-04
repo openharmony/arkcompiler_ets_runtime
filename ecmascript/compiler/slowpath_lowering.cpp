@@ -2514,7 +2514,7 @@ void SlowPathLowering::LowerTypeof(GateRef gate)
     Label entry(&builder_);
     Label exit(&builder_);
 
-    GateRef gConstAddr = builder_.PtrAdd(glue_,
+    GateRef gConstAddr = builder_.Load(VariableType::JS_POINTER(), glue_,
         builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(builder_.GetCompilationConfig()->Is32Bit())));
     GateRef undefinedIndex = builder_.GetGlobalConstantString(ConstantIndex::UNDEFINED_STRING_INDEX);
     GateRef gConstUndefinedStr = builder_.Load(VariableType::JS_POINTER(), gConstAddr, undefinedIndex);

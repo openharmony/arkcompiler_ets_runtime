@@ -215,17 +215,16 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
     if (!glueData_.exception_.IsHole()) {
         visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
-    // visit global Constant
-    glueData_.globalConst_.VisitRangeSlot(rangeVisitor);
+
     EcmaContext *tempContext = currentContext_;
     for (EcmaContext *context : contexts_) {
         // visit stack roots
-        SwitchCurrentContext(context);
+        SwitchCurrentContext(context, true);
         FrameHandler frameHandler(this);
         frameHandler.Iterate(visitor, rangeVisitor, derivedVisitor);
         context->Iterate(visitor, rangeVisitor);
     }
-    SwitchCurrentContext(tempContext);
+    SwitchCurrentContext(tempContext, true);
     // visit tagged handle storage roots
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
         IterateHandleWithCheck(visitor, rangeVisitor);
@@ -568,6 +567,7 @@ bool JSThread::IsMainThread()
 
 void JSThread::PushContext(EcmaContext *context)
 {
+    const_cast<Heap *>(vm_->GetHeap())->WaitAllTasksFinished();
     contexts_.emplace_back(context);
 
     if (!currentContext_) {
@@ -596,9 +596,10 @@ void JSThread::PushContext(EcmaContext *context)
 void JSThread::PopContext()
 {
     contexts_.pop_back();
+    currentContext_ = contexts_.back();
 }
 
-void JSThread::SwitchCurrentContext(EcmaContext *currentContext)
+void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate)
 {
     ASSERT(std::count(contexts_.begin(), contexts_.end(), currentContext));
 
@@ -621,8 +622,30 @@ void JSThread::SwitchCurrentContext(EcmaContext *currentContext)
         SetGlueGlobalEnv(*(currentContext->GetGlobalEnv()));
         SetGlobalObject(currentContext->GetGlobalEnv()->GetGlobalObject());
     }
+    if (!isInIterate) {
+        // If isInIterate is true, it means it is in GC iterate and global variables are no need to change.
+        glueData_.globalConst_ = const_cast<GlobalEnvConstants *>(currentContext->GlobalConstants());
+    }
 
     currentContext_ = currentContext;
+}
+
+bool JSThread::EraseContext(EcmaContext *context)
+{
+    const_cast<Heap *>(vm_->GetHeap())->WaitAllTasksFinished();
+    bool isCurrentContext = false;
+    auto iter = std::find(contexts_.begin(), contexts_.end(), context);
+    if (*iter == context) {
+        if (currentContext_ == context) {
+            isCurrentContext = true;
+        }
+        contexts_.erase(iter);
+        if (isCurrentContext) {
+            SwitchCurrentContext(contexts_.back());
+        }
+        return true;
+    }
+    return false;
 }
 
 PropertiesCache *JSThread::GetPropertiesCache() const
@@ -630,8 +653,8 @@ PropertiesCache *JSThread::GetPropertiesCache() const
     return currentContext_->GetPropertiesCache();
 }
 
-void JSThread::InitGlobalConst(JSHClass *hClass)
+const GlobalEnvConstants *JSThread::GetFirstGlobalConst() const
 {
-    glueData_.globalConst_.Init(this, hClass);
+    return contexts_[0]->GlobalConstants();
 }
 }  // namespace panda::ecmascript

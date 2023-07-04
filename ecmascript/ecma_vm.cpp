@@ -204,9 +204,6 @@ bool EcmaVM::Initialize()
     auto context = new EcmaContext(thread_);
     thread_->PushContext(context);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    JSHandle<JSHClass> hClassHandle = factory_->InitClassClass();
-    hClassClass_ = hClassHandle.GetTaggedValue();
-    thread_->InitGlobalConst(*hClassHandle);
     context->Initialize();
     thread_->SetGlueGlobalEnv(reinterpret_cast<GlobalEnv *>(context->GetGlobalEnv().GetTaggedType()));
     thread_->SetGlobalObject(GetGlobalEnv()->GetGlobalObject());

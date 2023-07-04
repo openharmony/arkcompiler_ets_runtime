@@ -57,6 +57,7 @@ class BufferRef;
 namespace ecmascript {
 class EcmaVM;
 class JSTaggedValue;
+class EcmaContext;
 class JSRuntimeOptions;
 class JSThread;
 struct EcmaRuntimeCallInfo;
@@ -66,6 +67,7 @@ static constexpr uint32_t DEFAULT_GC_POOL_SIZE = 256_MB;
 using Deleter = void (*)(void *nativePointer, void *data);
 using WeakRefClearCallBack = void (*)(void *);
 using EcmaVM = ecmascript::EcmaVM;
+using EcmaContext = ecmascript::EcmaContext;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
 using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void *taskInfo, void *data);
@@ -1255,10 +1257,15 @@ public:
 
     // aot load
     static void LoadAotFile(EcmaVM *vm, const std::string &moduleName);
+    // context
+    static EcmaContext *CreateJSContext(EcmaVM *vm);
+    static void SwitchCurrentContext(EcmaVM *vm, EcmaContext *context);
+    static void DestroyJSContext(EcmaVM *vm, EcmaContext *context);
 
-    // JS code
+    // context execute
     static bool ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry,
                                  bool needUpdate = false);
+    // JS code
     static bool Execute(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate = false);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
                         const std::string &filename = "", bool needUpdate = false);

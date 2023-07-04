@@ -44,3 +44,27 @@ ohos_executable("ark_js_vm") {
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
+
+ohos_executable("ark_js_context") {
+  sources = [ "context_main.cpp" ]
+
+  configs = [
+    "$js_root:ark_jsruntime_common_config",
+    "$js_root:ark_jsruntime_public_config",
+  ]
+
+  deps = [ "$js_root:libark_jsruntime" ]
+  external_deps = [
+    "runtime_core:arkfile_header_deps",
+    "runtime_core:libarkbase_static",
+  ]
+
+  # hiviewdfx libraries
+  external_deps += hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+
+  install_enable = false
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}

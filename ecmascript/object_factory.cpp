@@ -1332,7 +1332,7 @@ FreeObject *ObjectFactory::FillFreeObject(uintptr_t address, size_t size, Remove
                                           uintptr_t hugeObjectHead)
 {
     FreeObject *object = nullptr;
-    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    const GlobalEnvConstants *globalConst = thread_->GetFirstGlobalConst();
     if (size >= FreeObject::SIZE_OFFSET && size < FreeObject::SIZE) {
         object = reinterpret_cast<FreeObject *>(address);
         object->SetClassWithoutBarrier(JSHClass::Cast(globalConst->GetFreeObjectWithOneFieldClass().GetTaggedObject()));
@@ -3956,10 +3956,10 @@ JSHandle<CellRecord> ObjectFactory::NewCellRecord()
     return obj;
 }
 
-JSHandle<JSHClass> ObjectFactory::CreateIteratorResultInstanceClass()
+JSHandle<JSHClass> ObjectFactory::CreateIteratorResultInstanceClass(const JSHandle<GlobalEnv> &env)
 {
     auto globalConst = thread_->GlobalConstants();
-    JSHandle<JSTaggedValue> proto = vm_->GetGlobalEnv()->GetObjectFunctionPrototype();
+    JSHandle<JSTaggedValue> proto = env->GetObjectFunctionPrototype();
     JSHandle<JSHClass> iterResultClass = NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
 
     uint32_t fieldOrder = 0;

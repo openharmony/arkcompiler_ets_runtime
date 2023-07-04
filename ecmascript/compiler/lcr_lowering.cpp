@@ -473,7 +473,7 @@ void LCRLowering::LowerGetGlobalConstantValue(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     size_t index = acc_.GetIndex(gate);
-    GateRef gConstAddr = builder_.PtrAdd(glue_,
+    GateRef gConstAddr = builder_.Load(VariableType::JS_POINTER(), glue_,
         builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(false)));
     GateRef constantIndex = builder_.IntPtr(JSTaggedValue::TaggedTypeSize() * index);
     GateRef result = builder_.Load(VariableType::JS_POINTER(), gConstAddr, constantIndex);

@@ -30,7 +30,10 @@ group("ark_aot_js_test") {
 
   deps = []
   foreach(test, test_list) {
-    deps += [ "${test}:${test}AotAction" ]
+    deps += [
+      "${test}:${test}AotAction",
+      "${test}:${test}AotContextAction",
+    ]
   }
 }
 
@@ -200,7 +203,10 @@ group("ark_aot_ts_test") {
 
   deps = []
   foreach(test, test_list) {
-    deps += [ "${test}:${test}AotAction" ]
+    deps += [
+      "${test}:${test}AotAction",
+      "${test}:${test}AotContextAction",
+    ]
   }
 
   if (is_debug) {
@@ -210,7 +216,10 @@ group("ark_aot_ts_test") {
       "builtins_stub",
     ]
     foreach(test, debug_test_list) {
-      deps += [ "${test}:${test}AotAction" ]
+      deps += [
+        "${test}:${test}AotAction",
+        "${test}:${test}AotContextAction",
+      ]
     }
   }
 }
