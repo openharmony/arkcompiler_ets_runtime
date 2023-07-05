@@ -544,6 +544,7 @@ JSTaggedValue RuntimeStubs::RuntimeStOwnByValue(JSThread *thread, const JSHandle
 
     PropertyDescriptor desc(thread, value, true, enumerable, true);
     JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     bool ret = JSTaggedValue::DefineOwnProperty(thread, obj, propKey, desc);
     if (!ret) {
         return RuntimeThrowTypeError(thread, "StOwnByValue failed");
@@ -563,6 +564,7 @@ JSTaggedValue RuntimeStubs::RuntimeLdSuperByValue(JSThread *thread, const JSHand
     }
 
     JSHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, key));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> superBase(thread, JSTaggedValue::GetSuperBase(thread, homeObject));
     JSTaggedValue::RequireObjectCoercible(thread, superBase);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -585,6 +587,7 @@ JSTaggedValue RuntimeStubs::RuntimeStSuperByValue(JSThread *thread, const JSHand
     }
 
     JSHandle<JSTaggedValue> propKey(JSTaggedValue::ToPropertyKey(thread, key));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> superBase(thread, JSTaggedValue::GetSuperBase(thread, homeObject));
     JSTaggedValue::RequireObjectCoercible(thread, superBase);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -969,6 +972,7 @@ JSTaggedValue RuntimeStubs::RuntimeStOwnByValueWithNameSet(JSThread *thread, con
 
     PropertyDescriptor desc(thread, value, true, enumerable, true);
     JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     bool ret = JSTaggedValue::DefineOwnProperty(thread, obj, propKey, desc);
     if (!ret) {
         return RuntimeThrowTypeError(thread, "StOwnByValueWithNameSet failed");
@@ -1007,7 +1011,7 @@ JSTaggedValue RuntimeStubs::RuntimeStOwnByNameWithNameSet(JSThread *thread,
 {
     ASSERT(propHandle->IsStringOrSymbol());
     JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, propHandle);
-
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // property in class is non-enumerable
     bool enumerable = !(objHandle->IsClassPrototype() || objHandle->IsClassConstructor());
 
@@ -2011,7 +2015,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineGetterSetterByValue(JSThread *thread, c
                                                              const JSHandle<JSTaggedValue> &setter, bool flag)
 {
     JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, prop);
-
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     auto globalConst = thread->GlobalConstants();
     if (obj.GetTaggedValue().IsClassConstructor() &&
         JSTaggedValue::SameValue(propKey, globalConst->GetHandledPrototypeString())) {

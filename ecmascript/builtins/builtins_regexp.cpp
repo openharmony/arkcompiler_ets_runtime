@@ -444,6 +444,7 @@ JSTaggedValue BuiltinsRegExp::Match(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // e. Let A be ArrayCreate(0).
     JSHandle<JSObject> array(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // f. Let n be 0.
     int resultNum = 0;
     JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue(0));
@@ -801,6 +802,7 @@ JSTaggedValue BuiltinsRegExp::Replace(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> matchedStr = globalConst->GetHandledZeroString();
     // 11. Let results be a new empty List.
     JSHandle<JSObject> resultsList(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int resultsIndex = 0;
     // 12. Let done be false.
     // 13. Repeat, while done is false
@@ -1174,6 +1176,7 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> splitter(thread, taggedSplitter);
     // 15. Let A be ArrayCreate(0).
     JSHandle<JSObject> array(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 16. Let lengthA be 0.
     uint32_t aLength = 0;
 
@@ -1459,6 +1462,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     }
     uint32_t capturesSize = matchResult.captures_.size();
     JSHandle<JSObject> results(JSArray::ArrayCreate(thread, JSTaggedNumber(capturesSize)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t matchIndex = matchResult.index_;
     // 24. Perform CreateDataProperty(A, "index", matchIndex).
     JSHandle<JSTaggedValue> indexKey = globalConst->GetHandledIndexString();

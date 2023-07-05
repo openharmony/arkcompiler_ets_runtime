@@ -478,6 +478,7 @@ JSHandle<JSArray> JSRelativeTimeFormat::FormatToParts(JSThread *thread, double v
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
     JSHandle<EcmaString> singularUnit = SingularUnitString(thread, unit);
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
     FormatToArray(thread, array, formatted, value, singularUnit);
     return array;
 }

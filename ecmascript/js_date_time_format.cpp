@@ -687,6 +687,7 @@ JSHandle<JSArray> JSDateTimeFormat::FormatDateTimeToParts(JSThread *thread,
 
     // 2. Let result be ArrayCreate(0).
     JSHandle<JSArray> result(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
     if (formattedParts.isBogus()) {
         return result;
     }
@@ -1006,6 +1007,7 @@ JSHandle<JSArray> JSDateTimeFormat::NormDateTimeRangeToParts(JSThread *thread, c
                                                              double x, double y)
 {
     JSHandle<JSArray> result(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
     // 1. Let x be TimeClip(x).
     x = JSDate::TimeClip(x);
     // 2. If x is NaN, throw a RangeError exception.
@@ -1046,6 +1048,7 @@ JSHandle<JSArray> JSDateTimeFormat::ConstructFDateIntervalToJSArray(JSThread *th
     icu::UnicodeString formattedValue = formatted.toTempString(status);
     // Let result be ArrayCreate(0).
     JSHandle<JSArray> array(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
     // Let index be 0.
     int index = 0;
     int32_t preEndPos = 0;
