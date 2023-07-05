@@ -308,7 +308,8 @@ public:
         }
         TimeScope timescope("NTypeHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        NTypeHCRLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(), enableLog, data->GetMethodName());
+        NTypeHCRLowering lowering(data->GetCircuit(), data->GetPassContext(),
+            data->GetTSManager(), enableLog, data->GetMethodName());
         lowering.RunNTypeHCRLowering();
         return true;
     }
