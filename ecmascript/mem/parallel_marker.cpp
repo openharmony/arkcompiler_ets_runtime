@@ -39,6 +39,11 @@ void Marker::ProcessOldToNew(uint32_t threadId)
     ProcessMarkStack(threadId);
 }
 
+void Marker::ProcessOldToNewNoMarkStack(uint32_t threadId)
+{
+    heap_->EnumerateOldSpaceRegions(std::bind(&Marker::HandleOldToNewRSet, this, threadId, std::placeholders::_1));
+}
+
 void Marker::ProcessOldToNew(uint32_t threadId, Region *region)
 {
     heap_->EnumerateOldSpaceRegions(std::bind(&Marker::HandleOldToNewRSet, this, threadId, std::placeholders::_1),
@@ -50,6 +55,11 @@ void Marker::ProcessSnapshotRSet(uint32_t threadId)
 {
     heap_->EnumerateSnapshotSpaceRegions(std::bind(&Marker::HandleOldToNewRSet, this, threadId, std::placeholders::_1));
     ProcessMarkStack(threadId);
+}
+
+void Marker::ProcessSnapshotRSetNoMarkStack(uint32_t threadId)
+{
+    heap_->EnumerateSnapshotSpaceRegions(std::bind(&Marker::HandleOldToNewRSet, this, threadId, std::placeholders::_1));
 }
 
 void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
