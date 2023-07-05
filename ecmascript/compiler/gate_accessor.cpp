@@ -1063,11 +1063,17 @@ GateRef GateAccessor::GetFrameState(GateRef gate) const
 
 GateRef GateAccessor::FindNearestFrameState(GateRef gate) const
 {
+    auto statesplit = FindNearestStateSplit(gate);
+    return GetFrameState(statesplit);
+}
+
+GateRef GateAccessor::FindNearestStateSplit(GateRef gate) const
+{
     auto statesplit = gate;
     while (GetOpCode(statesplit) != OpCode::STATE_SPLIT) {
         statesplit = GetDep(statesplit);
     }
-    return GetFrameState(statesplit);
+    return statesplit;
 }
 
 bool GateAccessor::HasFrameState(GateRef gate) const

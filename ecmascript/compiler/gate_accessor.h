@@ -529,6 +529,7 @@ public:
     void ReplaceFrameStateIn(GateRef gate, GateRef in);
     bool HasFrameState(GateRef gate) const;
     GateRef FindNearestFrameState(GateRef gate) const;
+    GateRef FindNearestStateSplit(GateRef gate) const;
     void SetMetaData(GateRef gate, const GateMetaData* meta);
 
     void ReplaceHirWithIfBranch(GateRef hirGate, StateDepend success, StateDepend exception, GateRef value);

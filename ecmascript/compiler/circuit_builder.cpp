@@ -295,12 +295,14 @@ GateRef CircuitBuilder::CheckAndConvert(GateRef gate, ValueType src, ValueType d
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    auto stateSplit = acc_.FindNearestStateSplit(currentDepend);
+    auto frameState = acc_.GetFrameState(stateSplit);
+    GateRef state = acc_.GetState(stateSplit);
     MachineType machineType = GetMachineTypeOfValueType(dst);
     GateType gateType = GetGateTypeOfValueType(dst);
     uint64_t value = ValuePairTypeAccessor::ToValue(src, dst);
     GateRef ret = GetCircuit()->NewGate(circuit_->CheckAndConvert(value),
-        machineType, {gate, frameState}, gateType);
+        machineType, {state, gate, frameState}, gateType);
     return ret;
 }
 

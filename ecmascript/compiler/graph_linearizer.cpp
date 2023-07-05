@@ -311,7 +311,7 @@ struct LoopInfo {
     GateRegion* loopHead {nullptr};
     BitSet* loopBodys {nullptr};
     ChunkVector<GateRegion*>* loopExits {nullptr};
-    LoopInfo* outer_ {nullptr};
+    LoopInfo* outer {nullptr};
 };
 
 class LoopInfoBuilder {
@@ -449,7 +449,7 @@ public:
                 if (curRegion->HasLoopNumber()) {
                     if (curRegion->IsVisited(acc_)) {
                         ASSERT(loopInfo != nullptr && loopInfo->loopHead == curRegion);
-                        loopInfo = loopInfo->outer_;
+                        loopInfo = loopInfo->outer;
                     }
                 }
                 curRegion->SetFinished(acc_);
@@ -486,7 +486,7 @@ public:
         // enter inner loop
         if (succ->HasLoopNumber()) {
             auto& innerLoop = loops_[succ->GetLoopNumber()];
-            innerLoop.outer_ = loopInfo;
+            innerLoop.outer = loopInfo;
             loopInfo = &innerLoop;
         }
         return loopInfo;
