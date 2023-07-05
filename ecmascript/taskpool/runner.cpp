@@ -24,7 +24,6 @@ Runner::Runner(uint32_t threadNum) : totalThreadNum_(threadNum)
     for (uint32_t i = 0; i < threadNum; i++) {
         // main thread is 0;
         std::unique_ptr<std::thread> thread = std::make_unique<std::thread>(&Runner::Run, this, i + 1);
-        os::thread::SetThreadName(thread->native_handle(), "GC_WorkerThread");
         threadPool_.emplace_back(std::move(thread));
     }
 
@@ -71,6 +70,8 @@ void Runner::SetRunTask(uint32_t threadId, Task *task)
 
 void Runner::Run(uint32_t threadId)
 {
+    os::thread::native_handle_type thread = os::thread::GetNativeHandle();
+    os::thread::SetThreadName(thread, "GC_WorkerThread");
     while (std::unique_ptr<Task> task = taskQueue_.PopTask()) {
         SetRunTask(threadId, task.get());
         task->Run(threadId);
