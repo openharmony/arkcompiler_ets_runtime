@@ -648,12 +648,12 @@ struct InterpretedFrameBase : public base::AlignedStruct<base::AlignedPointer::S
         return reinterpret_cast<InterpretedFrameBase *>(const_cast<JSTaggedType *>(sp)) - 1;
     }
 
-    static size_t GetTypeOffset(bool isArch32 = false)
+    static size_t GetPrevOffset(bool isArch32 = false)
     {
         return GetOffset<static_cast<size_t>(Index::PrevIndex)>(isArch32);
     }
 
-    static size_t GetPrevOffset(bool isArch32 = false)
+    static size_t GetTypeOffset(bool isArch32 = false)
     {
         return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
     }
