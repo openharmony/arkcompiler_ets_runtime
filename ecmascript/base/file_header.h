@@ -81,13 +81,18 @@ public:
         return version_ >= expectVersion;
     }
 
+    VersionType GetVersion() const
+    {
+        return version_;
+    }
+
 protected:
     explicit FileHeaderBase(const VersionType &lastVersion) : magic_(MAGIC), version_(lastVersion) {}
 
     static bool VerifyVersion(const char *fileDesc, const VersionType &currVersion, const VersionType &lastVersion,
                               bool strictMatch)
     {
-        bool matched = strictMatch ? currVersion == lastVersion : currVersion <= lastVersion;
+        bool matched = strictMatch ? (currVersion == lastVersion) : (currVersion <= lastVersion);
         if (!matched) {
             LOG_HOST_TOOL_ERROR << fileDesc << " version error, expected version should be "
                                 << (strictMatch ? "equal to " : "less or equal than ") << ConvToStr(lastVersion)

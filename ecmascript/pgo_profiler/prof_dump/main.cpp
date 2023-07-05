@@ -19,6 +19,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript {
 static const std::string VERSION = "0.0.0.1";
@@ -30,6 +31,7 @@ public:
         VERSION_QUERY,
         TO_BINARY,
         TO_TEXT,
+        MERGE,
     };
 
     std::string GetProfInPath() const
@@ -62,6 +64,7 @@ public:
             {"text", required_argument, nullptr, 't'},
             {"binary", required_argument, nullptr, 'b'},
             {"hotness-threshold", required_argument, nullptr, 's'},
+            {"merge", no_argument, nullptr, 'm'},
             {"help", no_argument, nullptr, 'h'},
             {"version", no_argument, nullptr, 'v'},
             {nullptr, 0, nullptr, 0},
@@ -82,6 +85,9 @@ public:
                         LOG_NO_TAG(ERROR) << "hotness-threshold parse failure";
                         return false;
                     }
+                    break;
+                case 'm':
+                    mode_ = Mode::MERGE;
                     break;
                 case 'h':
                     return false;
@@ -112,6 +118,7 @@ public:
             "-t, --text                binary to text.\n"
             "-b, --binary              text to binary.\n"
             "-s, --hotness-threshold   set minimum number of calls to filter method. default: 2\n"
+            "-m, --merge               merge multi binary ap files into one.\n"
             "-h, --help                display this help and exit\n"
             "-v, --version             output version information and exit\n";
         return PROF_DUMP_HELP_HEAD_MSG + PROF_DUMP_HELP_OPTION_MSG;
@@ -155,6 +162,13 @@ int Main(const int argc, const char **argv)
                 LOG_NO_TAG(ERROR) << "profiler dump to binary success!";
             } else {
                 LOG_NO_TAG(ERROR) << "profiler dump to binary failed!";
+            }
+            break;
+        }
+        case Option::Mode::MERGE: {
+            if (PGOProfilerManager::MergeApFiles(option.GetProfInPath(), option.GetProfOutPath(),
+                                                 option.GetHotnessThreshold())) {
+                LOG_NO_TAG(ERROR) << "profiler merge success!";
             }
             break;
         }

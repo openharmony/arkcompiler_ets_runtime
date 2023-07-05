@@ -75,6 +75,17 @@ void PGOProfilerEncoder::Merge(const PGORecordDetailInfos &recordInfos)
     globalRecordInfos_->Merge(recordInfos);
 }
 
+void PGOProfilerEncoder::Merge(const PGOPandaFileInfos &pandaFileInfos)
+{
+    return pandaFileInfos_->Merge(pandaFileInfos);
+}
+
+bool PGOProfilerEncoder::VerifyPandaFileMatched(const PGOPandaFileInfos &pandaFileInfos, const std::string &base,
+                                                const std::string &incoming) const
+{
+    return pandaFileInfos_->VerifyChecksum(pandaFileInfos, base, incoming);
+}
+
 bool PGOProfilerEncoder::Save()
 {
     if (!isInitialized_) {

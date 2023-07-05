@@ -19,6 +19,7 @@
 #include "ecmascript/ecma_handle_scope.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
@@ -39,7 +40,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         return false;
     }
 
-    if (!profilerDecoder_.LoadAndVerify(jsPandaFile->GetChecksum())) {
+    if (!PGOProfilerManager::MergeApFiles(jsPandaFile->GetChecksum(), profilerDecoder_)) {
         LOG_COMPILER(ERROR) << "Load and verify profiler failure";
         return false;
     }

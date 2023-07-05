@@ -41,6 +41,9 @@ public:
 
     void SamplePandaFileInfo(uint32_t checksum);
     void Merge(const PGORecordDetailInfos &recordInfos);
+    void Merge(const PGOPandaFileInfos &pandaFileInfos);
+    bool VerifyPandaFileMatched(const PGOPandaFileInfos &pandaFileInfos, const std::string &base,
+                                const std::string &incoming) const;
     void TerminateSaveTask();
     void PostSaveTask();
 

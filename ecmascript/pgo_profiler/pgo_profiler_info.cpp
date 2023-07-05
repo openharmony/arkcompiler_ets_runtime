@@ -15,6 +15,7 @@
 
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include <cstdint>
+#include <fstream>
 #include <iomanip>
 
 #include "ecmascript/base/bit_helper.h"
@@ -180,7 +181,7 @@ void PGOPandaFileInfos::ParseFromBinary(void *buffer, SectionInfo *const info)
 {
     void *addr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
     for (uint32_t i = 0; i < info->number_; i++) {
-        pandaFileInfos_.emplace(*base::ReadBufferInSize<PandaFileInfo>(&addr));
+        fileInfos_.emplace(*base::ReadBufferInSize<FileInfo>(&addr));
     }
     LOG_ECMA(DEBUG) << "Profiler panda file count:" << info->number_;
 }
@@ -188,11 +189,32 @@ void PGOPandaFileInfos::ParseFromBinary(void *buffer, SectionInfo *const info)
 void PGOPandaFileInfos::ProcessToBinary(std::fstream &fileStream, SectionInfo *info) const
 {
     fileStream.seekp(info->offset_);
-    info->number_ = pandaFileInfos_.size();
-    for (auto localInfo : pandaFileInfos_) {
+    info->number_ = fileInfos_.size();
+    for (auto localInfo : fileInfos_) {
         fileStream.write(reinterpret_cast<char *>(&localInfo), localInfo.Size());
     }
     info->size_ = static_cast<uint32_t>(fileStream.tellp()) - info->offset_;
+}
+
+void PGOPandaFileInfos::Merge(const PGOPandaFileInfos &pandaFileInfos)
+{
+    for (const auto &info : pandaFileInfos.fileInfos_) {
+        fileInfos_.emplace(info.GetChecksum());
+    }
+}
+
+bool PGOPandaFileInfos::VerifyChecksum(const PGOPandaFileInfos &pandaFileInfos, const std::string &base,
+                                       const std::string &incoming) const
+{
+    std::set<FileInfo> unionChecksum;
+    set_union(fileInfos_.begin(), fileInfos_.end(), pandaFileInfos.fileInfos_.begin(), pandaFileInfos.fileInfos_.end(),
+              inserter(unionChecksum, unionChecksum.begin()));
+    if (!fileInfos_.empty() && unionChecksum.empty()) {
+        LOG_ECMA(ERROR) << "First AP file(" << base << ") and the incoming file(" << incoming
+                        << ") do not come from the same abc file, skip merge the incoming file.";
+        return false;
+    }
+    return true;
 }
 
 bool PGOPandaFileInfos::ParseFromText(std::ifstream &stream)
@@ -227,7 +249,7 @@ void PGOPandaFileInfos::ProcessToText(std::ofstream &stream) const
 {
     std::string pandaFileInfo = NEW_LINE + PANDA_FILE_INFO_HEADER;
     bool isFirst = true;
-    for (auto &info : pandaFileInfos_) {
+    for (auto &info : fileInfos_) {
         if (!isFirst) {
             pandaFileInfo += BLOCK_SEPARATOR + SPACE;
         } else {
@@ -242,7 +264,7 @@ void PGOPandaFileInfos::ProcessToText(std::ofstream &stream) const
 
 bool PGOPandaFileInfos::Checksum(uint32_t checksum) const
 {
-    if (pandaFileInfos_.find(checksum) == pandaFileInfos_.end()) {
+    if (fileInfos_.find(checksum) == fileInfos_.end()) {
         LOG_ECMA(ERROR) << "Checksum verification failed. Please ensure that the .abc and .ap match.";
         return false;
     }
@@ -879,13 +901,14 @@ bool PGOMethodIdSet::ParseFromBinary(uint32_t threshold, void **buffer, PGOProfi
             }
             continue;
         }
-        methodInfoMap_.emplace(info->GetMethodName(), info->GetMethodId());
-        auto methodIter = methodInfoMap_.find(info->GetMethodName());
-        ASSERT(methodIter != methodInfoMap_.end());
-        auto &methodInfo = methodIter->second;
+        uint32_t checksum = 0;
         if (header->SupportMethodChecksum()) {
-            methodInfo.GetConsistencyInfo().SetChecksum(base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t)));
+            checksum = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
         }
+        auto ret = methodInfoMap_.emplace(info->GetMethodName(), chunk_);
+        ASSERT(ret.second);
+        auto methodNameSetIter = ret.first;
+        auto &methodInfo = methodNameSetIter->second.GetOrCreateMethodInfo(checksum, info->GetMethodId());
         LOG_ECMA(DEBUG) << "Method:" << info->GetMethodId() << ELEMENT_SEPARATOR << info->GetCount()
                         << ELEMENT_SEPARATOR << std::to_string(static_cast<int>(info->GetSampleMode()))
                         << ELEMENT_SEPARATOR << info->GetMethodName();
@@ -902,13 +925,37 @@ void PGOMethodIdSet::GetMismatchResult(const CString &recordName, uint32_t &tota
                                        std::set<std::pair<std::string, CString>> &mismatchMethodSet) const
 {
     totalMethodCount += methodInfoMap_.size();
-    for (const auto &method : methodInfoMap_) {
-        if (!method.second.IsMatch()) {
-            auto info = std::make_pair(method.first, recordName);
-            mismatchMethodSet.emplace(info);
-            mismatchMethodCount++;
+    for (const auto &methodNameSet : methodInfoMap_) {
+        if (methodNameSet.second.IsMatch()) {
+            continue;
         }
+        auto info = std::make_pair(methodNameSet.first, recordName);
+        mismatchMethodSet.emplace(info);
+        mismatchMethodCount++;
     }
+}
+
+void PGOMethodIdSet::Merge(const PGOMethodIdSet &from)
+{
+    for (const auto &methodNameSet : from.methodInfoMap_) {
+        auto iter = methodInfoMap_.find(methodNameSet.first);
+        if (iter == methodInfoMap_.end()) {
+            auto ret = methodInfoMap_.emplace(methodNameSet.first, chunk_);
+            ASSERT(ret.second);
+            iter = ret.first;
+        }
+        const_cast<PGOMethodNameSet &>(iter->second).Merge(methodNameSet.second);
+    }
+}
+
+void PGODecodeMethodInfo::Merge(const PGODecodeMethodInfo &from)
+{
+    ASSERT(methodId_.IsValid() && from.methodId_.IsValid());
+    if (!(methodId_ == from.methodId_)) {
+        LOG_ECMA(ERROR) << "MethodId not match. " << methodId_ << " vs " << from.methodId_;
+        return;
+    }
+    pgoMethodTypeSet_.Merge(&from.pgoMethodTypeSet_);
 }
 
 PGOMethodInfoMap *PGORecordDetailInfos::GetMethodInfoMap(const CString &recordName)
@@ -1083,8 +1130,8 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
     NativeAreaAllocator *allocator, const SaveTask *task, std::fstream &stream) const
 {
     SectionInfo secInfo;
-    std::stringstream layoutDescStream;
-
+    auto layoutBeginPosition = stream.tellp();
+    stream.seekp(sizeof(SectionInfo), std::ofstream::cur);
     for (const auto &typeInfo : moduleLayoutDescInfos_) {
         if (task && task->IsTerminate()) {
             LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
@@ -1099,17 +1146,16 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
         void *addr = allocator->Allocate(size);
         auto descInfos = new (addr) PGOHClassLayoutDescInner(size, classType, superType);
         descInfos->Merge(typeInfo);
-        layoutDescStream.write(reinterpret_cast<char *>(descInfos), size);
+        stream.write(reinterpret_cast<char *>(descInfos), size);
         allocator->Delete(addr);
         secInfo.number_++;
     }
 
     secInfo.offset_ = sizeof(SectionInfo);
-    secInfo.size_ = static_cast<uint32_t>(layoutDescStream.tellg());
-    stream.write(reinterpret_cast<char *>(&secInfo), sizeof(SectionInfo));
-    if (secInfo.number_ > 0) {
-        stream << layoutDescStream.rdbuf();
-    }
+    secInfo.size_ = static_cast<uint32_t>(stream.tellp()) - layoutBeginPosition - sizeof(SectionInfo);
+    stream.seekp(layoutBeginPosition, std::ofstream::beg)
+        .write(reinterpret_cast<char *>(&secInfo), sizeof(SectionInfo))
+        .seekp(0, std::ofstream::end);
     return true;
 }
 
@@ -1204,6 +1250,29 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
     }
     if (header->SupportType()) {
         ParseFromBinaryForLayout(&addr);
+    }
+}
+
+void PGORecordSimpleInfos::Merge(const PGORecordSimpleInfos &simpleInfos)
+{
+    for (const auto &method : simpleInfos.methodIds_) {
+        auto result = methodIds_.find(method.first);
+        if (result == methodIds_.end()) {
+            PGOMethodIdSet *methodIds = nativeAreaAllocator_.New<PGOMethodIdSet>(chunk_.get());
+            auto ret = methodIds_.emplace(method.first, methodIds);
+            ASSERT(ret.second);
+            result = ret.first;
+        }
+        const_cast<PGOMethodIdSet &>(*result->second).Merge(*method.second);
+    }
+    // Merge global layout desc infos to global method info map
+    for (const auto &moduleLayoutDescInfo : simpleInfos.moduleLayoutDescInfos_) {
+        auto result = moduleLayoutDescInfos_.find(moduleLayoutDescInfo);
+        if (result == moduleLayoutDescInfos_.end()) {
+            moduleLayoutDescInfos_.emplace(moduleLayoutDescInfo);
+        } else {
+            const_cast<PGOHClassLayoutDesc &>(*result).Merge(moduleLayoutDescInfo);
+        }
     }
 }
 

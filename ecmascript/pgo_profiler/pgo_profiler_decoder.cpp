@@ -15,6 +15,7 @@
 
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 
+#include "ecmascript/base/file_header.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
@@ -80,7 +81,8 @@ bool PGOProfilerDecoder::LoadFull()
     if (isLoaded_) {
         Clear();
     }
-    if (!LoadAPBinaryFile()) {
+    // profiler dump tools may write data to memory when merge ap files.
+    if (!LoadAPBinaryFile(PAGE_PROT_READWRITE)) {
         return false;
     }
     void *addr = fileMapAddr_.GetOriginAddr();
@@ -123,7 +125,7 @@ bool PGOProfilerDecoder::SaveAPTextFile(const std::string &outPath)
     return true;
 }
 
-bool PGOProfilerDecoder::LoadAPBinaryFile()
+bool PGOProfilerDecoder::LoadAPBinaryFile(int prot)
 {
     std::string realPath;
     if (!RealPath(inPath_, realPath)) {
@@ -136,7 +138,7 @@ bool PGOProfilerDecoder::LoadAPBinaryFile()
         return false;
     }
     LOG_ECMA(INFO) << "Load profiler from file:" << realPath;
-    fileMapAddr_ = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
+    fileMapAddr_ = FileMap(realPath.c_str(), FILE_RDONLY, prot);
     if (fileMapAddr_.GetOriginAddr() == nullptr) {
         LOG_ECMA(ERROR) << "File mmap failed";
         return false;
@@ -196,5 +198,35 @@ void PGOProfilerDecoder::GetMismatchResult(uint32_t &totalMethodCount, uint32_t 
         return;
     }
     return recordSimpleInfos_->GetMismatchResult(totalMethodCount, mismatchMethodCount, mismatchMethodSet);
+}
+
+bool PGOProfilerDecoder::InitMergeData()
+{
+    ASSERT(!isLoaded_);
+    if (!recordSimpleInfos_) {
+        recordSimpleInfos_ = std::make_unique<PGORecordSimpleInfos>(hotnessThreshold_);
+    }
+    if (!header_) {
+        // For merge scene, we only care about the ap capability which is in the version field.
+        PGOProfilerHeader::Build(&header_, sizeof(PGOProfilerHeader));
+        memset_s(header_, sizeof(PGOProfilerHeader), 0, sizeof(PGOProfilerHeader));
+    }
+    isLoaded_ = true;
+    isVerifySuccess_ = true;
+    return true;
+}
+
+void PGOProfilerDecoder::Merge(const PGOProfilerDecoder &decoder)
+{
+    if (!isLoaded_ || !isVerifySuccess_) {
+        return;
+    }
+    // For merge scene, we chose the highest version from input ap files
+    if (!(header_->CompatibleVerify(decoder.header_->GetVersion()))) {
+        // For merge scene, we only care about the ap capability which is in the version field.
+        memcpy_s(header_, sizeof(base::FileHeaderBase), decoder.header_, sizeof(base::FileHeaderBase));
+    }
+    pandaFileInfos_.Merge(decoder.GetPandaFileInfos());
+    recordSimpleInfos_->Merge(decoder.GetRecordSimpleInfos());
 }
 } // namespace panda::ecmascript

@@ -43,6 +43,20 @@ public:
 
     bool PUBLIC_API SaveAPTextFile(const std::string &outPath);
 
+    void Merge(const PGOProfilerDecoder &decoder);
+
+    bool InitMergeData();
+
+    const std::string& GetInPath() const
+    {
+        return inPath_;
+    }
+
+    uint32_t GetHotnessThreshold() const
+    {
+        return hotnessThreshold_;
+    }
+
     template <typename Callback>
     void Update(Callback callback)
     {
@@ -102,11 +116,26 @@ public:
         return isLoaded_;
     }
 
+    PGORecordDetailInfos &GetRecordDetailInfos() const
+    {
+        return *recordDetailInfos_;
+    }
+
+    PGORecordSimpleInfos &GetRecordSimpleInfos() const
+    {
+        return *recordSimpleInfos_;
+    }
+
+    const PGOPandaFileInfos &GetPandaFileInfos() const
+    {
+        return pandaFileInfos_;
+    }
+
 private:
     bool Load();
     bool Verify(uint32_t checksum);
 
-    bool LoadAPBinaryFile();
+    bool LoadAPBinaryFile(int prot = PAGE_PROT_READ);
     void UnLoadAPBinaryFile();
 
     bool isLoaded_ {false};

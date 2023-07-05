@@ -259,16 +259,19 @@ class PGOPandaFileInfos {
 public:
     void Sample(uint32_t checksum)
     {
-        pandaFileInfos_.insert(checksum);
+        fileInfos_.emplace(checksum);
     }
 
     void Clear()
     {
-        pandaFileInfos_.clear();
+        fileInfos_.clear();
     }
 
     void ParseFromBinary(void *buffer, SectionInfo *const info);
     void ProcessToBinary(std::fstream &fileStream, SectionInfo *info) const;
+    void Merge(const PGOPandaFileInfos &pandaFileInfos);
+    bool VerifyChecksum(const PGOPandaFileInfos &pandaFileInfos, const std::string &base,
+                        const std::string &incoming) const;
 
     void ProcessToText(std::ofstream &stream) const;
     bool ParseFromText(std::ifstream &stream);
@@ -276,22 +279,22 @@ public:
     bool Checksum(uint32_t checksum) const;
 
 private:
-    class PandaFileInfo {
+    class FileInfo {
     public:
-        PandaFileInfo() = default;
-        PandaFileInfo(uint32_t checksum) : size_(LastSize()), checksum_(checksum) {}
+        FileInfo() = default;
+        FileInfo(uint32_t checksum) : size_(LastSize()), checksum_(checksum) {}
 
         static size_t LastSize()
         {
-            return sizeof(PandaFileInfo);
+            return sizeof(FileInfo);
         }
 
-        size_t Size()
+        size_t Size() const
         {
             return static_cast<size_t>(size_);
         }
 
-        bool operator<(const PandaFileInfo &right) const
+        bool operator<(const FileInfo &right) const
         {
             return checksum_ < right.checksum_;
         }
@@ -307,7 +310,7 @@ private:
         uint32_t checksum_;
     };
 
-    std::set<PandaFileInfo> pandaFileInfos_;
+    std::set<FileInfo> fileInfos_;
 };
 
 class PGOMethodInfo {
@@ -658,22 +661,6 @@ class PGODecodeMethodInfo {
 public:
     explicit PGODecodeMethodInfo(PGOMethodId id) : methodId_(id) {}
 
-    class ConsistencyInfo {
-    public:
-        void SetChecksum(uint32_t checksum)
-        {
-            checksum_ = checksum;
-        }
-
-        uint32_t GetChecksum() const
-        {
-            return checksum_;
-        }
-
-    private:
-        uint32_t checksum_ {0};
-    };
-
     PGOMethodId GetMethodId() const
     {
         return methodId_;
@@ -684,26 +671,11 @@ public:
         return pgoMethodTypeSet_;
     }
 
-    ConsistencyInfo &GetConsistencyInfo()
-    {
-        return consistencyInfo_;
-    }
-
-    void SetMatch()
-    {
-        methodNameMatch_ = true;
-    }
-
-    bool IsMatch() const
-    {
-        return methodNameMatch_;
-    }
+    void Merge(const PGODecodeMethodInfo &from);
 
 private:
     PGOMethodId methodId_ {0};
-    bool methodNameMatch_ {false};
     PGOMethodTypeSet pgoMethodTypeSet_ {};
-    ConsistencyInfo consistencyInfo_ {};
 };
 
 class PGOHClassLayoutDescInner {
@@ -830,6 +802,11 @@ public:
     bool ParseFromText(Chunk *chunk, uint32_t threshold, const std::vector<std::string> &content);
     void ProcessToText(uint32_t threshold, const CString &recordName, std::ofstream &stream) const;
 
+    const CMap<PGOMethodId, PGOMethodInfo *> &GetMethodInfos() const
+    {
+        return methodInfos_;
+    }
+
     NO_COPY_SEMANTIC(PGOMethodInfoMap);
     NO_MOVE_SEMANTIC(PGOMethodInfoMap);
 
@@ -844,12 +821,15 @@ private:
 
 class PGOMethodIdSet {
 public:
-    explicit PGOMethodIdSet(Chunk* chunk): methodInfoMap_(chunk) {};
+    explicit PGOMethodIdSet(Chunk* chunk): chunk_(chunk), methodInfoMap_(chunk) {};
     ~PGOMethodIdSet() = default;
 
     void Clear()
     {
         candidateSet_.clear();
+        for (auto &methodNameSet : methodInfoMap_) {
+            methodNameSet.second.Clear();
+        }
         methodInfoMap_.clear();
     }
 
@@ -872,9 +852,10 @@ public:
     template <typename Callback>
     void GetTypeInfo(const char *methodName, Callback callback)
     {
+        // for no function checksum in ap file
         auto iter = methodInfoMap_.find(methodName);
-        if (iter != methodInfoMap_.end()) {
-            iter->second.GetPGOMethodTypeSet().GetTypeInfo(callback);
+        if ((iter != methodInfoMap_.end()) && (iter->second.GetFirstMethodInfo() != nullptr)) {
+            iter->second.GetFirstMethodInfo()->GetPGOMethodTypeSet().GetTypeInfo(callback);
         }
     }
 
@@ -882,15 +863,10 @@ public:
     void GetTypeInfo(const char *methodName, uint32_t checksum, Callback callback)
     {
         auto iter = methodInfoMap_.find(methodName);
-        if (iter == methodInfoMap_.end()) {
-            return;
+        if ((iter != methodInfoMap_.end()) && (iter->second.GetMethodInfo(checksum) != nullptr)) {
+            return iter->second.GetMethodInfo(checksum)->GetPGOMethodTypeSet().GetTypeInfo(callback);
         }
-        auto &methodInfo = iter->second;
-        if (methodInfo.GetConsistencyInfo().GetChecksum() != checksum) {
-            LOG_ECMA(DEBUG) << "Method checksum mismatched, name: " << methodName;
-            return;
-        }
-        return methodInfo.GetPGOMethodTypeSet().GetTypeInfo(callback);
+        LOG_ECMA(DEBUG) << "Method checksum mismatched, name: " << methodName;
     }
 
     void MatchAndMarkMethod(const char *methodName, EntityId methodId)
@@ -909,12 +885,80 @@ public:
     void GetMismatchResult(const CString &recordName, uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
                            std::set<std::pair<std::string, CString>> &mismatchMethodSet) const;
 
+    void Merge(const PGOMethodIdSet &from);
+
+    class PGOMethodNameSet {
+    public:
+        explicit PGOMethodNameSet(Chunk* chunk): methodMap_(chunk) {};
+        void SetMatch()
+        {
+            methodNameMatch_ = true;
+        }
+
+        bool IsMatch() const
+        {
+            return methodNameMatch_;
+        }
+
+        PGODecodeMethodInfo& GetOrCreateMethodInfo(uint32_t checksum, PGOMethodId methodId)
+        {
+            auto methodIter = methodMap_.find(checksum);
+            if (methodIter == methodMap_.end()) {
+                auto ret = methodMap_.emplace(checksum, methodId);
+                ASSERT(ret.second);
+                methodIter = ret.first;
+            }
+            return methodIter->second;
+        }
+
+        void Merge(const PGOMethodNameSet &from)
+        {
+            for (const auto &method : from.methodMap_) {
+                uint32_t checksum = method.first;
+                auto methodInfo = methodMap_.find(checksum);
+                if (methodInfo == methodMap_.end()) {
+                    auto ret = methodMap_.emplace(checksum, method.second.GetMethodId());
+                    ASSERT(ret.second);
+                    methodInfo = ret.first;
+                }
+                methodInfo->second.Merge(method.second);
+            }
+        }
+
+        PGODecodeMethodInfo *GetFirstMethodInfo()
+        {
+            if (methodMap_.empty()) {
+                return nullptr;
+            }
+            return &(methodMap_.begin()->second);
+        }
+
+        PGODecodeMethodInfo *GetMethodInfo(uint32_t checksum)
+        {
+            auto methodInfo = methodMap_.find(checksum);
+            if (methodInfo == methodMap_.end()) {
+                return nullptr;
+            }
+            return &(methodInfo->second);
+        }
+
+        void Clear()
+        {
+            methodMap_.clear();
+        }
+
+    private:
+        bool methodNameMatch_ {false};
+        ChunkUnorderedMap<uint32_t, PGODecodeMethodInfo> methodMap_;
+    };
+
     NO_COPY_SEMANTIC(PGOMethodIdSet);
     NO_MOVE_SEMANTIC(PGOMethodIdSet);
 
 private:
+    Chunk* chunk_;
     std::unordered_set<EntityId> candidateSet_; // methodId in abc file, DO NOT for pgo internal use
-    ChunkUnorderedMap<CString, PGODecodeMethodInfo> methodInfoMap_;
+    ChunkUnorderedMap<CString, PGOMethodNameSet> methodInfoMap_;
 };
 
 class PGORecordDetailInfos {
@@ -954,6 +998,11 @@ public:
     bool ParseFromText(std::ifstream &stream);
     void ProcessToText(std::ofstream &stream) const;
 
+    const CMap<CString, PGOMethodInfoMap *> &GetRecordInfos() const
+    {
+        return recordInfos_;
+    }
+
     NO_COPY_SEMANTIC(PGORecordDetailInfos);
     NO_MOVE_SEMANTIC(PGORecordDetailInfos);
 
@@ -983,7 +1032,7 @@ public:
 
     void Clear()
     {
-        for (const auto& iter : methodIds_) {
+        for (const auto &iter : methodIds_) {
             iter.second->Clear();
             nativeAreaAllocator_.Delete(iter.second);
         }
@@ -1065,6 +1114,8 @@ public:
     }
 
     void ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
+
+    void Merge(const PGORecordSimpleInfos &simpleInfos);
 
     NO_COPY_SEMANTIC(PGORecordSimpleInfos);
     NO_MOVE_SEMANTIC(PGORecordSimpleInfos);
