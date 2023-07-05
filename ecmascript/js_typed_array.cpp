@@ -696,7 +696,8 @@ JSTaggedValue JSTypedArray::FastSetPropertyByIndex(JSThread *thread, const JSTag
     // Let elementType be the String value of the Element Type value in Table 49 for arrayTypeName.
     DataViewType elementType = TypedArrayHelper::GetType(jsType);
     // Perform SetValueInBuffer(buffer, indexedPosition, elementType, numValue).
-    return BuiltinsArrayBuffer::FastSetValueInBuffer(thread, buffer, byteIndex, elementType, numValue.GetNumber(), true);
+    return BuiltinsArrayBuffer::FastSetValueInBuffer(thread,
+        buffer, byteIndex, elementType, numValue.GetNumber(), true);
 }
 
 JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedArray> &typedArray)
