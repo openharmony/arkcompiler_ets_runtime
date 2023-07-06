@@ -346,6 +346,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     CHECK_NO_GC
 
 #if ECMASCRIPT_ENABLE_HEAP_VERIFY
+    LOG_ECMA(INFO) << "Enable heap verify";
     isVerifying_ = true;
     // pre gc heap verify
     sweeper_->EnsureAllTaskFinished();

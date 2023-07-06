@@ -33,6 +33,7 @@
 #if ECMASCRIPT_ENABLE_NAPI_SPECIAL_CHECK
 #define LOG_IF_SPECIAL(handleValue, level)                                                       \
     do {                                                                                         \
+        LOG_ECMA(INFO) << "Enable napi special check";                                           \
         if ((handleValue).GetTaggedValue().IsSpecial()) {                                        \
             LOG_FULL(level) << "Special value " << (handleValue).GetTaggedType() << " checked!"; \
         }                                                                                        \
