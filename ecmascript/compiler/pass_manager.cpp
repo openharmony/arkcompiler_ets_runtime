@@ -86,7 +86,8 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         std::string fullName = module->GetFuncName(methodLiteral, jsPandaFile);
         bool enableMethodLog = log_->GetEnableMethodLog();
         if (enableMethodLog) {
-            LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fullName << "] log:" << "\033[0m";
+            LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fullName
+                               << "] recordName [" << recordName << "] log:" << "\033[0m";
         }
         bool hasTypes = jsPandaFile->HasTSTypes(recordName);
         if (UNLIKELY(!hasTypes)) {

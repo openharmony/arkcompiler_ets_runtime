@@ -39,7 +39,9 @@ let c:T3 = new C(10);
 AssertType(c.value, "number");
 
 type T4 = (a:number) => number;
-let f:T4 = (a) => {return a};
+let f:T4 = (a) => {
+    return a
+};
 AssertType(f, "(number) => number");
 AssertType(f(123), "number");
 

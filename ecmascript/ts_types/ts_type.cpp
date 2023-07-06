@@ -113,9 +113,7 @@ GlobalTSTypeRef TSClassType::GetNonStaticPropTypeGT(JSThread *thread, JSHandle<T
 {
     DISALLOW_GARBAGE_COLLECTION;
     TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
-
     JSHandle<TSObjectType> instanceType(thread, classType->GetInstanceType());
-
     GlobalTSTypeRef propTypeGT = TSObjectType::GetPropTypeGT(thread, instanceType, propName);
     if (!propTypeGT.IsDefault()) {
         return propTypeGT;
@@ -139,6 +137,38 @@ GlobalTSTypeRef TSClassType::GetNonStaticPropTypeGT(JSThread *thread, JSHandle<T
         mutablePrototypeType.Update(mutableClassType->GetPrototypeType());
     }
     return propTypeGT;
+}
+
+void TSClassType::UpdateNonStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
+                                            JSHandle<JSTaggedValue> propName, GlobalTSTypeRef newGT)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSHandle<TSObjectType> instanceType(thread, classType->GetInstanceType());
+    TSObjectType::UpdatePropTypeGT(thread, instanceType, propName, newGT);
+}
+
+void TSClassType::UpdateStaticPropTypeGT(JSThread *thread, JSHandle<TSClassType> classType,
+                                         JSHandle<JSTaggedValue> propName, GlobalTSTypeRef newGT)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
+    JSMutableHandle<TSClassType> mutableClassType(thread, classType.GetTaggedValue());
+    JSMutableHandle<TSObjectType> mutableConstructorType(thread, mutableClassType->GetConstructorType());
+    bool hasUpdate = false;
+    while (!hasUpdate) {
+        hasUpdate = TSObjectType::UpdatePropTypeGT(thread, mutableConstructorType, propName, newGT);
+        GlobalTSTypeRef classTypeGT = mutableClassType->GetExtensionGT();
+        if (classTypeGT.IsDefault()) {
+            break;
+        }
+
+        JSTaggedValue tmpType = tsManager->GetTSType(classTypeGT).GetTaggedValue();
+        if (tmpType.IsUndefined()) {
+            break;
+        }
+        mutableClassType.Update(tmpType);
+        mutableConstructorType.Update(mutableClassType->GetConstructorType());
+    }
 }
 
 GlobalTSTypeRef TSClassInstanceType::GetPropTypeGT(JSThread *thread, JSHandle<TSClassInstanceType> classInstanceType,
@@ -202,6 +232,23 @@ GlobalTSTypeRef TSObjectType::GetPropTypeGT(JSThread *thread, JSHandle<TSObjectT
     }
 
     return GlobalTSTypeRef::Default();
+}
+
+bool TSObjectType::UpdatePropTypeGT(JSThread *thread, JSHandle<TSObjectType> objectType,
+                                    JSHandle<JSTaggedValue> propName, GlobalTSTypeRef newGT)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSHandle<TSObjLayoutInfo> layout(thread, objectType->GetObjLayoutInfo().GetTaggedObject());
+    int propIdx = layout->GetElementIndexByKey(propName.GetTaggedValue());
+    if (!TSObjLayoutInfo::IsValidIndex(propIdx)) {
+        return false;
+    }
+    uint32_t gtRawData = static_cast<uint32_t>(layout->GetTypeId(propIdx).GetInt());
+    if (GlobalTSTypeRef(gtRawData).IsDefault()) {
+        layout->SetTypeId(thread, propIdx, JSTaggedValue(newGT.GetType()));
+        return true;
+    }
+    return false;
 }
 
 GlobalTSTypeRef TSObjectType::GetIndexSignType(JSThread *thread, const JSHandle<TSObjectType> &objectType,

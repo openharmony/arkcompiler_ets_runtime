@@ -46,12 +46,14 @@ void InitializationAnalysis::Analyse(GateRef gate)
     switch (ecmaOpcode) {
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8: {
-            CollectInitializationInfo(gate, false);
+            CollectInitializationType(gate, ThisUsage::INDEFINITE_THIS);
+            CollectInitializationInfo(gate, ThisUsage::INDEFINITE_THIS);
             break;
         }
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16: {
-            CollectInitializationInfo(gate, true);
+            CollectInitializationType(gate, ThisUsage::DEFINITE_THIS);
+            CollectInitializationInfo(gate, ThisUsage::DEFINITE_THIS);
             break;
         }
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
@@ -69,9 +71,39 @@ void InitializationAnalysis::Analyse(GateRef gate)
     }
 }
 
-void InitializationAnalysis::CollectInitializationInfo(GateRef gate, bool isThis)
+void InitializationAnalysis::CollectInitializationType(GateRef gate, ThisUsage thisUsage)
 {
-    if (!isThis) {
+    GateRef value = acc_.GetValueIn(gate, 3);  // 3: index of value
+    GateType valueType = acc_.GetGateType(value);
+    if (valueType.IsAnyType()) {
+        return;
+    }
+    if (thisUsage == ThisUsage::INDEFINITE_THIS) {
+        GateRef receiver = acc_.GetValueIn(gate, 2);  // 2: index of receiver
+        GateType receiverType = acc_.GetGateType(receiver);
+        auto receiverGT = receiverType.GetGTRef();
+        if (tsManager_->IsClassInstanceTypeKind(receiverType)) {
+            receiverGT = tsManager_->GetClassType(receiverType);
+        }
+        if (!CheckIsThisObject(receiver) && receiverGT != classType_.GetGTRef()) {
+            return;
+        }
+    }
+
+    uint16_t index = acc_.GetConstantValue(acc_.GetValueIn(gate, 1));  // 1: stringId
+    JSTaggedValue propKey = tsManager_->GetStringFromConstantPool(index);
+
+    if (valueType.IsNumberType()) {
+        valueType = GateType::NumberType();
+    }
+
+    TSTypeAccessor typeAccessor(tsManager_, classType_);
+    typeAccessor.UpdateNonStaticProp(propKey, valueType.GetGTRef());
+}
+
+void InitializationAnalysis::CollectInitializationInfo(GateRef gate, ThisUsage thisUsage)
+{
+    if (thisUsage == ThisUsage::INDEFINITE_THIS) {
         GateRef receiver = acc_.GetValueIn(gate, 2);  // 2: index of receiver
         if (!CheckIsThisObject(receiver)) {
             return;
@@ -150,11 +182,11 @@ bool InitializationAnalysis::CheckSimpleJSGate(GateRef gate, const uint16_t inde
     switch (ecmaOpcode) {
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16: {
-            return CheckLdObjByName(gate, index, false);
+            return CheckLdObjByName(gate, index, ThisUsage::INDEFINITE_THIS);
         }
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM16_ID16: {
-            return CheckLdObjByName(gate, index, true);
+            return CheckLdObjByName(gate, index, ThisUsage::DEFINITE_THIS);
         }
         case EcmaOpcode::LDTHISBYVALUE_IMM8:
         case EcmaOpcode::LDTHISBYVALUE_IMM16: {
@@ -182,9 +214,9 @@ bool InitializationAnalysis::CheckSimpleJSGate(GateRef gate, const uint16_t inde
     return false;
 }
 
-bool InitializationAnalysis::CheckLdObjByName(GateRef gate, const uint16_t index, bool isThis) const
+bool InitializationAnalysis::CheckLdObjByName(GateRef gate, const uint16_t index, ThisUsage thisUsage) const
 {
-    if (!isThis) {
+    if (thisUsage == ThisUsage::INDEFINITE_THIS) {
         GateRef receiver = acc_.GetValueIn(gate, 2);  // 2: index of receiver
         if (!CheckIsThisObject(receiver)) {
             return false;

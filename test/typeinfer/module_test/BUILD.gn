@@ -17,6 +17,7 @@ group("ark_typeinfer_module_test") {
     "module_class",
     "module_function",
     "module_function_infer",
+    "module_member_initialization",
     "module_multi_import",
     "module_retransmission",
   ]

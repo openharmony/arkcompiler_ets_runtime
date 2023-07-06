@@ -28,6 +28,54 @@ void TSTypeAccessor::MarkPropertyInitialized(JSTaggedValue key)
     }
 }
 
+void TSTypeAccessor::UpdateNonStaticProp(JSTaggedValue key, GlobalTSTypeRef newGT)
+{
+    ASSERT(tsManager_->IsClassTypeKind(gt_));
+    JSHandle<TSClassType> classType = GetClassType();
+    JSHandle<JSTaggedValue> propName(thread_, key);
+    TSClassType::UpdateNonStaticPropTypeGT(thread_, classType, propName, newGT);
+}
+
+void TSTypeAccessor::UpdateStaticProp(JSTaggedValue key, GlobalTSTypeRef newGT)
+{
+    ASSERT(tsManager_->IsClassTypeKind(gt_));
+    JSHandle<TSClassType> classType = GetClassType();
+    JSHandle<JSTaggedValue> propName(thread_, key);
+    TSClassType::UpdateStaticPropTypeGT(thread_, classType, propName, newGT);
+}
+
+void TSTypeAccessor::UpdateForEachCBPara(kungfu::GateType targetType)
+{
+    if (!tsManager_->IsFunctionTypeKind(gt_)) {
+        return;
+    }
+    JSHandle<TSFunctionType> callbackType = GetFunctionType();
+    uint32_t paraSz = callbackType->GetLength();
+    JSHandle<TaggedArray> parameterTypes(thread_, callbackType->GetParameterTypes());
+    const uint32_t maxParaSz = 3; // elementValue, index and array
+    if (paraSz > maxParaSz) {
+        return;
+    }
+    GlobalTSTypeRef indeGT = kungfu::GateType::IntType().GetGTRef();
+    GlobalTSTypeRef elementGT = GlobalTSTypeRef::Default();
+    GlobalTSTypeRef targetGT = targetType.GetGTRef();
+    if (tsManager_->IsArrayTypeKind(targetType)) {
+        elementGT = tsManager_->GetArrayParameterTypeGT(targetType);
+    }
+    if (tsManager_->IsTypedArrayType(targetType)) {
+        elementGT = kungfu::GateType::NumberType().GetGTRef();
+    }
+    if (elementGT.IsDefault()) {
+        return;
+    }
+    std::vector<GlobalTSTypeRef> tempGTs{elementGT, indeGT, targetGT};
+    for (uint32_t i = 0; i < paraSz; i++) {
+        if (!parameterTypes->Get(i).GetInt()) {
+            parameterTypes->Set(thread_, i, JSTaggedValue(tempGTs[i].GetType()));
+        }
+    }
+}
+
 JSTaggedValue TSTypeAccessor::MarkInitialized(JSTaggedValue attribute)
 {
     ASSERT(attribute.IsInt());
@@ -73,6 +121,14 @@ std::string TSTypeAccessor::GetClassTypeName() const
 {
     ASSERT(tsManager_->IsClassTypeKind(gt_));
     return tsManager_->GetClassTypeStr(gt_);
+}
+
+std::string TSTypeAccessor::GetFunctionName() const
+{
+    JSHandle<TSFunctionType> funcType = GetFunctionType();
+    EcmaStringAccessor acc(funcType->GetName());
+    std::string nameStr = acc.ToStdString();
+    return nameStr;
 }
 
 JSHandle<TSObjLayoutInfo> TSTypeAccessor::GetInstanceTypeLayout() const

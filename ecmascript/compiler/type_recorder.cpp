@@ -24,9 +24,10 @@
 
 namespace panda::ecmascript::kungfu {
 TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
-                           TSManager *tsManager, const CString &recordName, PGOProfilerDecoder *decoder)
+                           TSManager *tsManager, const CString &recordName, PGOProfilerDecoder *decoder,
+                           const MethodPcInfo &methodPCInfo, const Bytecodes *bytecodes)
     : argTypes_(methodLiteral->GetNumArgsWithCallField() + static_cast<size_t>(TypedArgIdx::NUM_OF_TYPED_ARGS),
-    GateType::AnyType()), decoder_(decoder)
+    GateType::AnyType()), decoder_(decoder), pcOffsets_(methodPCInfo.pcOffsets), bytecodes_(bytecodes)
 {
     TSHClassGenerator generator(tsManager);
     if (jsPandaFile->HasTSTypes(recordName)) {
@@ -42,7 +43,8 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
 {
     TSTypeParser typeParser(tsManager);
     panda_file::File::EntityId fieldId = methodLiteral->GetMethodId();
-    TypeAnnotationExtractor annoExtractor(jsPandaFile, fieldId.GetOffset());
+    uint32_t methodId = fieldId.GetOffset();
+    TypeAnnotationExtractor annoExtractor(jsPandaFile, methodId);
     GlobalTSTypeRef funcGT = typeParser.CreateGT(jsPandaFile, recordName, annoExtractor.GetMethodTypeOffset());
     GlobalTSTypeRef thisGT;
     annoExtractor.EnumerateInstsAndTypes([this, &typeParser, &jsPandaFile, &recordName,
@@ -63,7 +65,29 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
         auto type = GateType(gt);
         bcOffsetGtMap_.emplace(bcOffset, type);
     });
+    const auto &methodList = typeParser.GetMethodList();
+    auto methodIter = methodList.find(methodId);
+    if (methodIter != methodList.end()) {
+        const auto &methodInfo = methodIter->second;
+        const auto &bcTypes = methodInfo.GetBCAndTypes();
+        for (const auto &pair : bcTypes) {
+            GlobalTSTypeRef gt = typeParser.CreateGT(jsPandaFile, recordName, pair.second);
+            // if the function type has already recorded in the next pc, we should skip it.
+            if (CheckTypeMarkForDefineFunc(pair.first)) {
+                continue;
+            }
+            bcOffsetGtMap_.emplace(pair.first, GateType(gt));
+        }
+    }
     LoadArgTypes(tsManager, funcGT, thisGT);
+}
+
+bool TypeRecorder::CheckTypeMarkForDefineFunc(uint32_t checkBc) const
+{
+    // bcOffset of definefunc marked in es2abc maybe in the next bc whose opcode should be sta.
+    uint32_t staBc = checkBc + 1;
+    return bcOffsetGtMap_.find(staBc) != bcOffsetGtMap_.end() &&
+        staBc < pcOffsets_.size() && bytecodes_->GetOpcode(pcOffsets_[staBc]) == EcmaOpcode::STA_V8;
 }
 
 void TypeRecorder::LoadTypesFromPGO(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,

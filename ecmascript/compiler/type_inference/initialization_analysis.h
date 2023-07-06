@@ -22,6 +22,11 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
+enum class ThisUsage : uint8_t {
+    INDEFINITE_THIS = 0,
+    DEFINITE_THIS,
+};
+
 class InitializationAnalysis {
 public:
     InitializationAnalysis(Circuit *circuit, TSManager *tsManager, const CString &recordName,
@@ -52,13 +57,14 @@ private:
     }
 
     void Analyse(GateRef gate);
-    void CollectInitializationInfo(GateRef gate, bool isThis);
+    void CollectInitializationInfo(GateRef gate, ThisUsage thisUsage);
+    void CollectInitializationType(GateRef gate, ThisUsage thisUsage);
     bool CheckIsThisObject(GateRef receiver) const;
     void MarkSuperClass();
     bool CheckSimpleCFG(GateRef gate, const uint16_t index) const;
     bool CheckSimpleGate(GateRef gate, const uint16_t index) const;
     bool CheckSimpleJSGate(GateRef gate, const uint16_t index) const;
-    bool CheckLdObjByName(GateRef gate, const uint16_t index, bool isThis) const;
+    bool CheckLdObjByName(GateRef gate, const uint16_t index, ThisUsage thisUsage) const;
     bool CheckLdObjByIndexOrValue(GateRef gate) const;
     bool CheckCall() const;
     void StoreThisObject();
