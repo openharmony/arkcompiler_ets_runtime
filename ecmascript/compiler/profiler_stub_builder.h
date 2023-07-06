@@ -31,7 +31,7 @@ public:
 
     void PGOProfiler(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo,
         const std::vector<GateRef> &values, OperationType type);
-    void ProfileCall(GateRef glue, GateRef pc, GateRef profileTypeInfo, GateRef target);
+    void ProfileCall(GateRef glue, GateRef pc, GateRef profileTypeInfo, GateRef target, OperationType type);
     void ProfileOpType(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, GateRef type);
     void ProfileDefineClass(GateRef glue, GateRef pc, GateRef func, GateRef constructor);
     void ProfileCreateObject(GateRef glue, GateRef pc, GateRef func, GateRef originObj, GateRef newObj);
@@ -45,6 +45,9 @@ public:
 private:
     static constexpr size_t MAX_PROFILE_CALL_COUNT = 10000;
     static constexpr size_t MIN_PROFILE_CALL_INTERVAL = 5;
+    static constexpr size_t BITS_OF_WORD = 8;
+    static constexpr size_t HIGH_WORD_OFFSET = 2;
+    static constexpr size_t LOW_WORD_OFFSET = 1;
     GateRef TaggedToTrackType(GateRef value);
 };
 } // namespace panda::ecmascript::kungfu

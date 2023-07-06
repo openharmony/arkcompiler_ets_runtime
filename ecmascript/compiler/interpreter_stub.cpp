@@ -3695,7 +3695,8 @@ DECLARE_ASM_HANDLER(HandleWideCallrangePrefImm16V8)
     GateRef jumpSize = INT_PTR(WIDE_CALLRANGE_PREF_IMM16_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::CALL_WITH_ARGV, { numArgs, argv }, callback);
+                                 JSCallMode::CALL_WITH_ARGV, { numArgs, argv }, callback,
+                                 BytecodeInstruction::Format::IMM16);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3709,7 +3710,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallrangePrefImm16V8)
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLRANGE_PREF_IMM16_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::DEPRECATED_CALL_WITH_ARGV, { numArgs, argv }, callback);
+                                 JSCallMode::DEPRECATED_CALL_WITH_ARGV, { numArgs, argv }, callback,
+                                 BytecodeInstruction::Format::IMM16);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3739,7 +3741,8 @@ DECLARE_ASM_HANDLER(HandleWideCallthisrangePrefImm16V8)
     GateRef jumpSize = INT_PTR(WIDE_CALLTHISRANGE_PREF_IMM16_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue }, callback);
+                                 JSCallMode::CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue },
+                                 callback, BytecodeInstruction::Format::IMM16);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3755,7 +3758,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCallthisrangePrefImm16V8)
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLTHISRANGE_PREF_IMM16_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
-                                 JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue }, callback);
+                                 JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue },
+                                 callback, BytecodeInstruction::Format::IMM16);
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }
 
@@ -3992,7 +3996,8 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm16Imm8V8)
             IntPtr(-static_cast<int64_t>(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM16_IMM8_V8)));
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize, hotnessCounter,
                              JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
-                             { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj }, callback);
+                             { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj }, callback,
+                             BytecodeInstruction::Format::IMM16);
         Jump(&threadCheck);
     }
     Bind(&slowPath);
@@ -4061,7 +4066,8 @@ DECLARE_ASM_HANDLER(HandleWideNewobjrangePrefImm16V8)
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8));
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize, hotnessCounter,
                              JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV,
-                             { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj }, callback);
+                             { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj }, callback,
+                             BytecodeInstruction::Format::IMM16);
         Jump(&threadCheck);
     }
     Bind(&slowPath);

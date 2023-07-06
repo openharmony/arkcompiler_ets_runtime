@@ -4806,7 +4806,7 @@ GateRef StubBuilder::ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut
 
 GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
                                     GateRef hotnessCounter, JSCallMode mode, std::initializer_list<GateRef> args,
-                                    ProfileOperation callback)
+                                    ProfileOperation callback, BytecodeInstruction::Format format)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
@@ -4956,7 +4956,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     // 4. call nonNative
     Bind(&methodNotNative);
 
-    callback.ProfileCall(func);
+    callback.ProfileCall(func, format);
     Label funcIsClassConstructor(env);
     Label funcNotClassConstructor(env);
     Label methodNotAot(env);
