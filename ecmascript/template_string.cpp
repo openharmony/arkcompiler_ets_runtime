@@ -39,7 +39,9 @@ JSHandle<JSTaggedValue> TemplateString::GetTemplateObject(JSThread *thread, JSHa
     uint32_t count = cookedStrings->GetArrayLength();
     auto countNum = JSTaggedNumber(count);
     JSHandle<JSTaggedValue> templateArr = JSArray::ArrayCreate(thread, countNum);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<JSTaggedValue> rawArr = JSArray::ArrayCreate(thread, countNum);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<JSObject> templateObj(templateArr);
     JSHandle<JSObject> rawObj(rawArr);
     for (uint32_t i = 0; i < count; i++) {

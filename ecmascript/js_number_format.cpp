@@ -857,6 +857,7 @@ JSHandle<JSArray> JSNumberFormat::FormatNumericToParts(JSThread *thread, const J
     }
 
     JSHandle<JSTaggedValue> arr = JSArray::ArrayCreate(thread, JSTaggedNumber(0));
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
     JSHandle<JSArray> result = JSHandle<JSArray>::Cast(arr);
     GroupToParts(thread, formattedNumber, result, numberFormat, x);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);

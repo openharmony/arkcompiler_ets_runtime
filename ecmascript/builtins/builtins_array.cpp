@@ -102,6 +102,7 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
 
     // 22.1.1.3 Array(...items )
     JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(argc), newTarget).GetTaggedValue();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!newArray.IsArray(thread)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Failed to create array.", JSTaggedValue::Exception());
     }

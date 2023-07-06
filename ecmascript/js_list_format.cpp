@@ -215,6 +215,7 @@ JSHandle<JSListFormat> JSListFormat::InitializeListFormat(JSThread *thread,
 JSHandle<JSTaggedValue> JSListFormat::StringListFromIterable(JSThread *thread, const JSHandle<JSTaggedValue> &iterable)
 {
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<JSTaggedValue> arrayList = JSHandle<JSTaggedValue>::Cast(array);
     // 1. If iterable is undefined, then
     // a. Return a new empty List.
@@ -394,6 +395,7 @@ JSHandle<JSArray> JSListFormat::FormatListToParts(JSThread *thread, const JSHand
         THROW_RANGE_ERROR_AND_RETURN(thread, "formatted list toString failed", listArray);
     }
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
     FormatListToArray(thread, formatted, array, status, result);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
     return array;

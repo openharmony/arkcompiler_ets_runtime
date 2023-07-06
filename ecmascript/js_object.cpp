@@ -102,6 +102,7 @@ JSHandle<JSTaggedValue> JSObject::IterableToList(JSThread *thread, const JSHandl
     // 3. Let values be a new empty List.
     // 4. Let next be true.
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<JSTaggedValue> valuesList = JSHandle<JSTaggedValue>::Cast(array);
     JSMutableHandle<JSTaggedValue> next(thread, JSTaggedValue::True());
     // 5. Repeat, while next is not false,

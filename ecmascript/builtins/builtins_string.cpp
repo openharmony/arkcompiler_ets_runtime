@@ -1361,6 +1361,7 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // Let A be ArrayCreate(0).
     JSHandle<JSObject> resultArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t arrayLength = 0;
     // If limit is undefined, let lim = 2^53–1; else let lim = ToLength(limit).
     uint32_t lim = 0;
