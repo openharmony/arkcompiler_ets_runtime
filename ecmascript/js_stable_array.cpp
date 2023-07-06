@@ -679,8 +679,9 @@ JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo 
         return JSTaggedValue::Undefined();
     }
 
-    JSHandle<JSTaggedValue> taggedValue = JSArray::FastGetPropertyByValue(thread, JSHandle<JSTaggedValue>(receiver), k);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return taggedValue.GetTaggedValue();
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
+    auto result = JSTaggedValue::Hole();
+    result = elements->Get(k);
+    return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
 }  // namespace panda::ecmascript
