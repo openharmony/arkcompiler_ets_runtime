@@ -56,6 +56,10 @@ void NTypeHCRLowering::Lower(GateRef gate)
         case EcmaOpcode::WIDE_STOWNBYINDEX_PREF_V8_IMM32:
             LowerTypedStownByIndex(gate);
             break;
+        case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
+            LowerTypedStOwnByName(gate);
+            break;
         default:
             break;
     }
@@ -87,6 +91,42 @@ void NTypeHCRLowering::LowerTypedStownByIndex(GateRef gate)
     acc_.SetArraySize(receiver, std::max(arraySize, indexValue + 1));
     index = builder_.Int32(indexValue);
     builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, index, value);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+}
+
+void NTypeHCRLowering::LowerTypedStOwnByName(GateRef gate)
+{
+    // 3: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    auto constData = acc_.GetValueIn(gate, 0);
+    uint16_t propIndex = acc_.GetConstantValue(constData);
+    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+    auto propKey = tsManager_->GetStringFromConstantPool(propIndex);
+
+    GateRef receiver = acc_.GetValueIn(gate, 1);
+    GateRef value = acc_.GetValueIn(gate, 2);
+
+    GateType receiverType = acc_.GetGateType(receiver);
+    receiverType = tsManager_->TryNarrowUnionType(receiverType);
+
+    int hclassIndex = -1;
+    if (tsManager_->IsObjectTypeKind(receiverType)) {
+        hclassIndex = tsManager_->GetHClassIndexByObjectType(receiverType);
+    }
+    if (hclassIndex == -1) { // slowpath
+        return;
+    }
+    JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
+
+    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread, hclass, propKey);
+    if (!plr.IsFound() || !plr.IsLocal() || plr.IsAccessor() || !plr.IsWritable()) {  // slowpath
+        return;
+    }
+    AddProfiling(gate);
+
+    GateRef pfrGate = builder_.Int32(plr.GetData());
+    builder_.StoreProperty(receiver, pfrGate, value);
+
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 

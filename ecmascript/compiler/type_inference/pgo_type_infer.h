@@ -67,6 +67,7 @@ private:
     void RunTypeInfer(GateRef gate);
     void InferLdObjByName(GateRef gate);
     void InferStObjByName(GateRef gate, bool isThis);
+    void InferStOwnByName(GateRef gate);
 
     void UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedValue prop);
     void CollectGateType(CollectedType &types, GateType tsType, PGORWOpType pgoTypes);

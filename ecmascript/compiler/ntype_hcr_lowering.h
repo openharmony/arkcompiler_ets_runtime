@@ -44,6 +44,7 @@ private:
     void Lower(GateRef gate);
     void LowerTypedCreateEmptyArray(GateRef gate);
     void LowerTypedStownByIndex(GateRef gate);
+    void LowerTypedStOwnByName(GateRef gate);
 
     bool IsLogEnabled() const
     {
