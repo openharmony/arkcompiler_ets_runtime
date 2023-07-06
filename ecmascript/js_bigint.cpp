@@ -68,6 +68,7 @@ CString BigIntHelper::Conversion(const CString &num, uint32_t conversionToRadix,
 JSHandle<BigInt> BigInt::GetUint64MaxBigint(JSThread *thread)
 {
     JSHandle<BigInt> bigint = CreateBigint(thread, 3);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     bigint->SetDigit(0, 0);
     bigint->SetDigit(1, 0);
     bigint->SetDigit(2, 1);
@@ -77,6 +78,7 @@ JSHandle<BigInt> BigInt::GetUint64MaxBigint(JSThread *thread)
 JSHandle<BigInt> BigInt::GetInt64MaxBigint(JSThread *thread)
 {
     JSHandle<BigInt> bigint = CreateBigint(thread, 2);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     bigint->SetDigit(0, 0);
     bigint->SetDigit(1, 0x80000000); // 0x80000000:Int MAX
     return bigint;
@@ -104,10 +106,12 @@ JSHandle<BigInt> BigIntHelper::SetBigInt(JSThread *thread, const CString &numStr
     if (mod == 0) {
         index = static_cast<int>(len - 1);
         bigint = BigInt::CreateBigint(thread, len);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     } else {
         len++;
         index = static_cast<int>(len - 1);
         bigint = BigInt::CreateBigint(thread, len);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         uint32_t val = 0;
         for (size_t i = 0; i < mod; ++i) {
             val <<= 1;
@@ -274,6 +278,7 @@ JSHandle<BigInt> OneIsNegativeAND(JSThread *thread, JSHandle<BigInt> x, JSHandle
         minLen = yLength;
     }
     JSHandle<BigInt> newBigint = BigInt::CreateBigint(thread, xLength);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     uint32_t i = 0;
     while (i < minLen) {
         uint32_t res = x->GetDigit(i) & ~(yVal->GetDigit(i));
@@ -343,7 +348,7 @@ JSHandle<BigInt> BigInt::BitwiseSubOne(JSThread *thread, JSHandle<BigInt> bigint
     ASSERT(maxLen >= bigint->GetLength());
 
     JSHandle<BigInt> newBigint = BigInt::CreateBigint(thread, maxLen);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     uint32_t bigintLen = bigint->GetLength();
     uint32_t carry = 1;
     for (uint32_t i = 0; i < bigintLen; i++) {
@@ -371,7 +376,7 @@ JSHandle<BigInt> BigInt::BitwiseAddOne(JSThread *thread, JSHandle<BigInt> bigint
         newLength += 1;
     }
     JSHandle<BigInt> newBigint = BigInt::CreateBigint(thread, newLength);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     uint32_t carry = 1;
     for (uint32_t i = 0; i < bigintLength; i++) {
         uint32_t bigintCarry = 0;
@@ -399,6 +404,7 @@ JSHandle<BigInt> OneIsNegativeOR(JSThread *thread, JSHandle<BigInt> x, JSHandle<
         minLen = yLength;
     }
     JSHandle<BigInt> newBigint = BigInt::CreateBigint(thread, yLength);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     uint32_t i = 0;
     while (i < minLen) {
         uint32_t res = ~(x->GetDigit(i)) & yVal->GetDigit(i);
@@ -481,6 +487,7 @@ JSTaggedValue BigInt::NumberToBigInt(JSThread *thread, JSHandle<JSTaggedValue> n
     uint32_t mayNeedLen = integerDigits / DATEBITS + 1;
 
     JSHandle<BigInt> bigint = CreateBigint(thread, mayNeedLen);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     bigint->SetSign(num < 0);
     uint64_t mantissa = (bits & base::DOUBLE_SIGNIFICAND_MASK) | base::DOUBLE_HIDDEN_BIT;
     int mantissaSize = base::DOUBLE_SIGNIFICAND_SIZE;
@@ -508,6 +515,7 @@ JSTaggedValue BigInt::NumberToBigInt(JSThread *thread, JSHandle<JSTaggedValue> n
 JSHandle<BigInt> BigInt::Int32ToBigInt(JSThread *thread, const int &number)
 {
     JSHandle<BigInt> bigint = CreateBigint(thread, 1);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     uint32_t value = 0;
     bool sign = number < 0;
     if (sign) {
@@ -523,6 +531,7 @@ JSHandle<BigInt> BigInt::Int32ToBigInt(JSThread *thread, const int &number)
 JSHandle<BigInt> BigInt::Uint32ToBigInt(JSThread *thread, const uint32_t &number)
 {
     JSHandle<BigInt> bigint = CreateBigint(thread, 1);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     bigint->SetDigit(0, number);
     return bigint;
 }
@@ -544,6 +553,7 @@ JSHandle<BigInt> BigInt::Int64ToBigInt(JSThread *thread, const int64_t &number)
 JSHandle<BigInt> BigInt::Uint64ToBigInt(JSThread *thread, const uint64_t &number)
 {
     JSHandle<BigInt> bigint = CreateBigint(thread, 2); // 2 : one int64_t bits need two uint32_t bits
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     uint32_t lowBits = static_cast<uint32_t>(number & 0xffffffff);
     uint32_t highBits = static_cast<uint32_t>((number >> DATEBITS) & 0xffffffff);
     bigint->SetDigit(0, lowBits);
@@ -610,6 +620,7 @@ JSHandle<BigInt> BigInt::CreateBigWords(JSThread *thread, bool sign, uint32_t si
         THROW_RANGE_ERROR_AND_RETURN(thread, "Maximum BigInt size exceeded", bigint);
     }
     JSHandle<BigInt> bigint = CreateBigint(thread, needLen);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     for (uint32_t index = 0; index < size; ++index) {
         uint32_t lowBits = static_cast<uint32_t>(words[index] & 0xffffffff);
         uint32_t highBits = static_cast<uint32_t>((words[index] >> DATEBITS) & 0xffffffff);
@@ -687,6 +698,7 @@ JSHandle<BigInt> BigInt::BigintAdd(JSThread *thread, JSHandle<BigInt> x, JSHandl
         return BigintAdd(thread, y, x, resultSign);
     }
     JSHandle<BigInt> bigint = BigInt::CreateBigint(thread, x->GetLength() + 1);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     uint32_t bigintCarry = 0;
     uint32_t i = 0;
     while (i < y->GetLength()) {
@@ -721,6 +733,7 @@ inline uint32_t BigIntHelper::AddHelper(uint32_t x, uint32_t y, uint32_t &bigint
 JSHandle<BigInt> BigInt::BigintSub(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y, bool resultSign)
 {
     JSHandle<BigInt> bigint = BigInt::CreateBigint(thread, x->GetLength());
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     uint32_t bigintCarry = 0;
     uint32_t i = 0;
     while (i < y->GetLength()) {
@@ -882,6 +895,7 @@ JSHandle<BigInt> BigInt::RightShiftHelper(JSThread *thread, JSHandle<BigInt> x, 
         JudgeRoundDown(x, digitMove, bitsMove, needLen, roundDown);
     }
     JSHandle<BigInt> bigint = CreateBigint(thread, needLen);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
 
     RightShift(bigint, x, digitMove, bitsMove);
     bigint = BigIntHelper::RightTruncate(thread, bigint);
@@ -914,6 +928,7 @@ JSHandle<BigInt> BigInt::LeftShiftHelper(JSThread *thread, JSHandle<BigInt> x, J
     uint32_t needLen = digitMove + x->GetLength() + static_cast<uint32_t>(!!bitsMove);
     ASSERT(needLen < MAXSIZE);
     JSHandle<BigInt> bigint = CreateBigint(thread, needLen);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     if (bitsMove == 0) {
         uint32_t index = digitMove;
         while (index < needLen) {
@@ -948,6 +963,7 @@ JSHandle<BigInt> BigInt::Copy(JSThread *thread, JSHandle<BigInt> x, uint32_t len
 {
     ASSERT(x->GetLength() >= len);
     JSHandle<BigInt> newBig = CreateBigint(thread, len);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     std::copy(x->GetData(), x->GetData() + len, newBig->GetData());
     newBig->SetSign(x->GetSign());
     return newBig;
@@ -1058,7 +1074,7 @@ JSHandle<BigInt> BigInt::Multiply(JSThread *thread, JSHandle<BigInt> x, JSHandle
     }
     uint32_t needLength = x->GetLength() + y->GetLength();
     JSHandle<BigInt> bigint = BigInt::CreateBigint(thread, needLength);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     // the algorithm here is similar to the way we use paper money to calculate multiplication.
     // Generally, we first calculate the partial product, and then add up to get the result.
     // The only difference here is that multiplication and addition are calculated synchronously
@@ -1197,6 +1213,7 @@ JSHandle<BigInt> BigInt::FormatLeftShift(JSThread *thread, uint32_t shift, JSHan
         needLen += 1;
     }
     JSHandle<BigInt> result = CreateBigint(thread, needLen);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     if (shift == 0) {
         std::copy(bigint->GetData(), bigint->GetData() + len, result->GetData());
     } else {
@@ -1298,6 +1315,7 @@ JSHandle<BigInt> BigInt::DivideAndRemainderWithBigintDivisor(JSThread *thread, J
     JSMutableHandle<BigInt> quotient(thread, JSTaggedValue::Null());
     if (remainder.GetTaggedValue().IsNull()) {
         quotient.Update(CreateBigint(thread, quotientLen + 1));
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     }
     // format the divisor and dividend so that the highest order of the divisor is
     // greater than or equal to half of uint32_t
@@ -1306,6 +1324,7 @@ JSHandle<BigInt> BigInt::DivideAndRemainderWithBigintDivisor(JSThread *thread, J
     JSHandle<BigInt> u = FormatLeftShift(thread, leadingZeros, dividend, true);
     // qv is used to store the result of quotient * divisor of each round
     JSHandle<BigInt> qv = CreateBigint(thread, divisorLen + 1);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     uint32_t vHighest = v->GetDigit(divisorLen - 1);
     for (int i = static_cast<int>(quotientLen); i >= 0; --i) {
         uint32_t currentUHighest = u->GetDigit(i + divisorLen);
@@ -1354,6 +1373,7 @@ JSHandle<BigInt> BigInt::DivideAndRemainderWithUint32Divisor(JSThread *thread, J
         }
     } else {
         quotient.Update(CreateBigint(thread, dividend->GetLength()));
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         for (int i = static_cast<int>(dividend->GetLength()) - 1; i >= 0; --i) {
             uint32_t q = DivideAndRemainder(r, dividend->GetDigit(i), divisor, r);
             quotient->SetDigit(i, q);
