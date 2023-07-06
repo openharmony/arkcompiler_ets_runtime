@@ -48,6 +48,8 @@
       panda::Uint32ArrayRef::*;
       panda::Uint8ArrayRef::*;
       panda::Uint8ClampedArrayRef::*;
+      panda::WeakMapRef::*;
+      panda::WeakSetRef::*;
 
       panda::JSNApi::*;
       panda::DFXJSNApi::*;

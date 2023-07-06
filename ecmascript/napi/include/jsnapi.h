@@ -915,7 +915,22 @@ public:
     void Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
 };
 
+class PUBLIC_API WeakMapRef : public ObjectRef {
+public:
+    int32_t GetSize();
+    int32_t GetTotalElements();
+    Local<JSValueRef> GetKey(const EcmaVM *vm, int entry);
+    Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
+};
+
 class PUBLIC_API SetRef : public ObjectRef {
+public:
+    int32_t GetSize();
+    int32_t GetTotalElements();
+    Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
+};
+
+class PUBLIC_API WeakSetRef : public ObjectRef {
 public:
     int32_t GetSize();
     int32_t GetTotalElements();

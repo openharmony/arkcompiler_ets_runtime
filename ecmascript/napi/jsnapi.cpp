@@ -81,6 +81,7 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/regexp/regexp_parser.h"
 #include "ecmascript/tagged_array.h"
+#include "ecmascript/js_weak_container.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -176,6 +177,8 @@ using ecmascript::PatchErrorCode;
 using ecmascript::base::NumberHelper;
 using ecmascript::Log;
 using ecmascript::EcmaContext;
+using ecmascript::JSWeakMap;
+using ecmascript::JSWeakSet;
 template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 
@@ -2553,6 +2556,40 @@ Local<JSValueRef> MapRef::GetValue(const EcmaVM *vm, int entry)
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, map->GetValue(entry)));
 }
 
+int32_t WeakMapRef::GetSize()
+{
+    JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(weakMap, FATAL);
+    return weakMap->GetSize();
+}
+
+int32_t WeakMapRef::GetTotalElements()
+{
+    JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(weakMap, FATAL);
+    return weakMap->GetSize() +
+                LinkedHashMap::Cast(weakMap->GetLinkedMap().GetTaggedObject())->NumberOfDeletedElements();
+}
+
+Local<JSValueRef> WeakMapRef::GetKey(const EcmaVM *vm, int entry)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(weakMap, FATAL);
+    JSTaggedValue key = weakMap->GetKey(entry);
+    JSThread *thread = vm->GetJSThread();
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, key.GetWeakRawValue()));
+}
+
+Local<JSValueRef> WeakMapRef::GetValue(const EcmaVM *vm, int entry)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(weakMap, FATAL);
+    JSThread *thread = vm->GetJSThread();
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, weakMap->GetValue(entry)));
+}
+
 int32_t SetRef::GetSize()
 {
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
@@ -2574,6 +2611,31 @@ Local<JSValueRef> SetRef::GetValue(const EcmaVM *vm, int entry)
     LOG_IF_SPECIAL(set, FATAL);
     JSThread *thread = vm->GetJSThread();
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, set->GetValue(entry)));
+}
+
+int32_t WeakSetRef::GetSize()
+{
+    JSHandle<JSWeakSet> weakSet(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(weakSet, FATAL);
+    return weakSet->GetSize();
+}
+
+int32_t WeakSetRef::GetTotalElements()
+{
+    JSHandle<JSWeakSet> weakSet(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(weakSet, FATAL);
+    return weakSet->GetSize() +
+                LinkedHashSet::Cast(weakSet->GetLinkedSet().GetTaggedObject())->NumberOfDeletedElements();
+}
+
+Local<JSValueRef> WeakSetRef::GetValue(const EcmaVM *vm, int entry)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSHandle<JSWeakSet> weakSet(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(weakSet, FATAL);
+    JSTaggedValue value = weakSet->GetValue(entry);
+    JSThread *thread = vm->GetJSThread();
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, value.GetWeakRawValue()));
 }
 
 int32_t MapIteratorRef::GetIndex()
