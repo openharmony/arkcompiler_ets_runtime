@@ -84,6 +84,7 @@ group("ark_js_moduletest") {
     "setobjectwithproto",
     "spreadoperator",
     "stackoverflow",
+    "string",
     "stubbuilder",
     "throwdyn",
     "trycatch",

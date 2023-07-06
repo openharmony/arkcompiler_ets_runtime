@@ -573,7 +573,7 @@ bool EcmaString::StringsAreEquals(Span<const T> &str1, Span<const T> &str2)
         }
         return true;
     }
-    return !memcmp(str1.data(), str2.data(), size);
+    return memcmp(str1.data(), str2.data(), size * sizeof(T)) == 0;
 }
 
 template<typename T>
