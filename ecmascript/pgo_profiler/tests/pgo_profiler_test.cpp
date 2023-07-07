@@ -85,6 +85,26 @@ protected:
         return pf;
     }
 
+    std::shared_ptr<JSPandaFile> ExecuteAndLoadJSPandaFile(std::string profDir, std::string recordName)
+    {
+        RuntimeOption option;
+        option.SetLogLevel(LOG_LEVEL::INFO);
+        option.SetEnableProfile(true);
+        option.SetProfileDir(profDir);
+        vm_ = JSNApi::CreateJSVM(option);
+        JSNApi::EnableUserUncaughtErrorHandler(vm_);
+
+        std::string targetAbcPath = TARGET_ABC_PATH + recordName + ".abc";
+        auto result = JSNApi::Execute(vm_, targetAbcPath, recordName, false);
+        EXPECT_TRUE(result);
+
+        std::shared_ptr<JSPandaFile> jsPandaFile =
+            JSPandaFileManager::GetInstance()->FindJSPandaFile(CString(targetAbcPath));
+
+        JSNApi::DestroyJSVM(vm_);
+        return jsPandaFile;
+    }
+
     EcmaVM *vm_ = nullptr;
 };
 
@@ -672,4 +692,180 @@ HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
     ASSERT_TRUE(loader.Match(expectRecordName, methodLiterals[0]->GetMethodId()));
     rmdir("ark-profiler12/");
 }
+
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
+HWTEST_F_L0(PGOProfilerTest, ProfileCallTest)
+{
+    mkdir("ark-profiler13/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "call_test";
+    std::shared_ptr<JSPandaFile> jsPandaFile = ExecuteAndLoadJSPandaFile("ark-profiler13/", targetRecordName);
+    ASSERT_NE(jsPandaFile, nullptr);
+    uint32_t checksum = jsPandaFile->GetChecksum();
+
+    // Loader
+    PGOProfilerDecoder decoder("ark-profiler13/modules.ap", 1);
+    PGOProfilerDecoder decoder1("ark-profiler13/modules.ap", 10);
+    PGOProfilerDecoder decoder2("ark-profiler13/modules.ap", 11000);
+    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    ASSERT_TRUE(decoder1.LoadAndVerify(checksum));
+    ASSERT_TRUE(decoder2.LoadAndVerify(checksum));
+    auto methodLiterals = jsPandaFile->GetMethodLiteralMap();
+    for (auto iter : methodLiterals) {
+        auto methodLiteral = iter.second;
+        auto methodId = methodLiteral->GetMethodId();
+        auto methodName = methodLiteral->GetMethodName(jsPandaFile.get(), methodId);
+        decoder.MatchAndMarkMethod(targetRecordName, methodName, methodId);
+        decoder1.MatchAndMarkMethod(targetRecordName, methodName, methodId);
+        decoder2.MatchAndMarkMethod(targetRecordName, methodName, methodId);
+        ASSERT_TRUE(decoder.Match(targetRecordName, methodId));
+        if (std::string(methodName) == "foo") {
+            ASSERT_TRUE(decoder1.Match(targetRecordName, methodId));
+        } else {
+            ASSERT_TRUE(!decoder1.Match(targetRecordName, methodId));
+        }
+        ASSERT_TRUE(!decoder2.Match(targetRecordName, methodId));
+    }
+    unlink("ark-profiler13/modules.ap");
+    rmdir("ark-profiler13/");
+}
+
+HWTEST_F_L0(PGOProfilerTest, UseClassTypeTest)
+{
+    mkdir("ark-profiler14/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "class_test";
+    std::shared_ptr<JSPandaFile> jsPandaFile = ExecuteAndLoadJSPandaFile("ark-profiler14/", targetRecordName);
+    ASSERT_NE(jsPandaFile, nullptr);
+    uint32_t checksum = jsPandaFile->GetChecksum();
+
+    // Loader
+    PGOProfilerDecoder decoder("ark-profiler14/modules.ap", 1);
+    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    auto methodLiterals = jsPandaFile->GetMethodLiteralMap();
+    for (auto iter : methodLiterals) {
+        auto methodLiteral = iter.second;
+        auto methodId = methodLiteral->GetMethodId();
+        auto methodName = methodLiteral->GetMethodName(jsPandaFile.get(), methodId);
+        decoder.MatchAndMarkMethod(targetRecordName, methodName, methodId);
+        ASSERT_TRUE(decoder.Match(targetRecordName, methodId));
+        auto callback = [methodName, methodId](uint32_t offset, PGOType *type) {
+            ASSERT_NE(offset, 0);
+            if (type->IsScalarOpType()) {
+            } else if (type->IsRwOpType()) {
+                auto pgoRWOpType = *reinterpret_cast<PGORWOpType *>(type);
+                if (std::string(methodName) == "Foot" || std::string(methodName) == "Arm") {
+                    ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
+                    ASSERT_EQ(pgoRWOpType.GetObjectInfo(0).GetClassType(), ClassType(methodId.GetOffset()));
+                } else if (std::string(methodName) == "foo" || std::string(methodName) == "Body") {
+                    ASSERT_TRUE(pgoRWOpType.GetCount() == 3);
+                }
+            } else {
+                ASSERT_TRUE(false);
+            }
+        };
+        decoder.GetTypeInfo(jsPandaFile.get(), targetRecordName, methodLiteral, callback);
+    }
+    unlink("ark-profiler14/modules.ap");
+    rmdir("ark-profiler14/");
+}
+
+HWTEST_F_L0(PGOProfilerTest, DefineClassTypeTest)
+{
+    mkdir("ark-profiler15/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "class_test";
+    std::shared_ptr<JSPandaFile> jsPandaFile = ExecuteAndLoadJSPandaFile("ark-profiler15/", targetRecordName);
+    ASSERT_NE(jsPandaFile, nullptr);
+    uint32_t checksum = jsPandaFile->GetChecksum();
+
+    // Loader
+    PGOProfilerDecoder decoder("ark-profiler15/modules.ap", 1);
+    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    auto methodLiterals = jsPandaFile->GetMethodLiteralMap();
+    for (auto iter : methodLiterals) {
+        auto methodLiteral = iter.second;
+        auto methodId = methodLiteral->GetMethodId();
+        auto methodName = methodLiteral->GetMethodName(jsPandaFile.get(), methodId);
+        decoder.MatchAndMarkMethod(targetRecordName, methodName, methodId);
+        ASSERT_TRUE(decoder.Match(targetRecordName, methodId));
+        auto callback = [methodName, &decoder, jsPandaFile](uint32_t offset, PGOType *type) {
+            ASSERT_NE(offset, 0);
+            if (type->IsScalarOpType()) {
+                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                if (sampleType.IsClassType()) {
+                    ASSERT_EQ(std::string(methodName), "func_main_0");
+                    PGOHClassLayoutDesc *desc;
+                    ASSERT_TRUE(decoder.GetHClassLayoutDesc(sampleType, &desc));
+                    ASSERT_EQ(desc->GetCtorLayoutDesc().size(), 3);
+                    ASSERT_EQ(desc->GetPtLayoutDesc().size(), 1);
+                    auto classId = EntityId(sampleType.GetClassType().GetClassType());
+                    auto className = MethodLiteral::GetMethodName(jsPandaFile.get(), classId);
+                    if (std::string(className) == "Arm") {
+                        auto superClassId = EntityId(desc->GetSuperClassType().GetClassType());
+                        auto superClassName = MethodLiteral::GetMethodName(jsPandaFile.get(), superClassId);
+                        ASSERT_EQ(std::string(superClassName), "Body");
+                        ASSERT_EQ(desc->GetLayoutDesc().size(), 3);
+                        ASSERT_EQ(desc->GetLayoutDesc()[0].first, "x");
+                        ASSERT_EQ(desc->GetLayoutDesc()[1].first, "y");
+                        ASSERT_EQ(desc->GetLayoutDesc()[2].first, "t");
+                    } else if (std::string(className) == "Foot") {
+                        auto superClassId = EntityId(desc->GetSuperClassType().GetClassType());
+                        auto superClassName = MethodLiteral::GetMethodName(jsPandaFile.get(), superClassId);
+                        ASSERT_EQ(std::string(superClassName), "Body");
+                        ASSERT_EQ(desc->GetLayoutDesc().size(), 4);
+                        ASSERT_EQ(desc->GetLayoutDesc()[0].first, "x");
+                        ASSERT_EQ(desc->GetLayoutDesc()[1].first, "y");
+                        ASSERT_EQ(desc->GetLayoutDesc()[2].first, "u");
+                        ASSERT_EQ(desc->GetLayoutDesc()[3].first, "v");
+                    } else {
+                        ASSERT_EQ(desc->GetSuperClassType().GetClassType(), 0);
+                        ASSERT_EQ(desc->GetLayoutDesc().size(), 2);
+                        ASSERT_EQ(desc->GetLayoutDesc()[0].first, "x");
+                        ASSERT_EQ(desc->GetLayoutDesc()[1].first, "y");
+                    }
+                }
+            }
+        };
+        decoder.GetTypeInfo(jsPandaFile.get(), targetRecordName, methodLiteral, callback);
+    }
+    unlink("ark-profiler15/modules.ap");
+    rmdir("ark-profiler15/");
+}
+
+HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
+{
+    mkdir("ark-profiler16/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "op_type_test";
+    std::shared_ptr<JSPandaFile> jsPandaFile = ExecuteAndLoadJSPandaFile("ark-profiler16/", targetRecordName);
+    ASSERT_NE(jsPandaFile, nullptr);
+    uint32_t checksum = jsPandaFile->GetChecksum();
+
+    // Loader
+    PGOProfilerDecoder decoder("ark-profiler16/modules.ap", 1);
+    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    std::string types[17] = { "1", "1", "1", "5", "4", "4", "4", "4", "4", "4", "5", "4", "4", "1", "4", "5", "1" };
+    int index = 0;
+    auto methodLiterals = jsPandaFile->GetMethodLiteralMap();
+    for (auto iter : methodLiterals) {
+        auto methodLiteral = iter.second;
+        auto methodId = methodLiteral->GetMethodId();
+        auto methodName = methodLiteral->GetMethodName(jsPandaFile.get(), methodId);
+        decoder.MatchAndMarkMethod(targetRecordName, methodName, methodId);
+        ASSERT_TRUE(decoder.Match(targetRecordName, methodId));
+        auto callback = [methodName, types, &index](uint32_t offset, PGOType *type) {
+            ASSERT_NE(offset, 0);
+            if (type->IsScalarOpType()) {
+                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                if (sampleType.IsClassType()) {
+                    return;
+                }
+                if (std::string(methodName) == "advance") {
+                    ASSERT_EQ(sampleType.GetTypeString(), types[index++]);
+                }
+            }
+        };
+        decoder.GetTypeInfo(jsPandaFile.get(), targetRecordName, methodLiteral, callback);
+    }
+    unlink("ark-profiler16/modules.ap");
+    rmdir("ark-profiler16/");
+}
+#endif
 }  // namespace panda::test

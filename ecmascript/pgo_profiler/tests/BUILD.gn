@@ -16,6 +16,33 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 module_output_path = "arkcompiler/ets_runtime"
 
+test_js_path =
+    "//arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/pgo_test_case/"
+
+test_js_files = [
+  "op_type_test",
+  "class_test",
+  "call_test",
+]
+
+foreach(file, test_js_files) {
+  es2abc_gen_abc("gen_${file}_abc") {
+    test_js = "${test_js_path}${file}.js"
+    test_abc = "$target_out_dir/${file}.abc"
+
+    # Only targets in this file can depend on this.
+    extra_visibility = [ ":*" ]
+    src_js = rebase_path(test_js)
+    dst_file = rebase_path(test_abc)
+    extra_args = []
+    extra_args += [ "--module" ]
+    extra_args += [ "--merge-abc" ]
+    extra_args += [ "--type-extractor" ]
+    in_puts = [ test_js ]
+    out_puts = [ test_abc ]
+  }
+}
+
 host_unittest_action("PGOProfilerTest") {
   module_out_path = module_output_path
 
@@ -37,6 +64,17 @@ host_unittest_action("PGOProfilerTest") {
     "//arkcompiler/ets_runtime:libark_jsruntime_test",
     sdk_libc_secshared_dep,
   ]
+
+  foreach(file, test_js_files) {
+    deps += [ ":gen_${file}_abc" ]
+  }
+
+  if (is_ohos && is_standard_system) {
+    test_abc_dir = "/data/test"
+  } else {
+    test_abc_dir = rebase_path(target_out_dir)
+  }
+  defines = [ "TARGET_ABC_PATH=\"${test_abc_dir}/\"" ]
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
