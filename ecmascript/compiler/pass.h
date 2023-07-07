@@ -289,7 +289,7 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableTypeLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         TSHCRLowering lowering(data->GetCircuit(), data->GetPassContext(),
-            enableLog, enableTypeLog, data->GetMethodName());
+            enableLog, enableTypeLog, passOptions->EnableOptStaticMethod(), data->GetMethodName());
         bool success = lowering.RunTSHCRLowering();
         if (!success) {
             data->MarkAsTypeAbort();
@@ -386,10 +386,12 @@ class SlowPathLoweringPass {
 public:
     bool Run(PassData* data)
     {
+        PassOptions *passOptions = data->GetPassOptions();
         TimeScope timescope("SlowPathLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         SlowPathLowering lowering(data->GetCircuit(), data->GetCompilerConfig(), data->GetTSManager(),
-                                  data->GetMethodLiteral(), enableLog, data->GetMethodName());
+                                  data->GetMethodLiteral(), enableLog,
+                                  passOptions->EnableOptStaticMethod(), data->GetMethodName());
         lowering.CallRuntimeLowering();
         return true;
     }
