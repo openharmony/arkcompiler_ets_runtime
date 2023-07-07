@@ -582,6 +582,7 @@ void RangeSet::Insert(uint32_t start, uint32_t end)
                 IsAdjacent(start, end, iter->first, iter->second)) {
                 iter->first = std::min(iter->first, start);
                 iter->second = std::max(iter->second, end);
+                Compress();
                 return;
             }
             if (iter->first > end) {

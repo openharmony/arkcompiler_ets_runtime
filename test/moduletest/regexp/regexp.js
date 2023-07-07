@@ -50,3 +50,204 @@ print(reg6.test('a'));
 
 let reg7 =   new RegExp("^(?<urlStrIndex>.*?)(?<urlStr>(?:https?[:：]//)?(?:[a-z0-9-\\\\]+\\.)+" + "(?:com|edu|gov|mil|net|org|biz|info|name|museum|us|ca|uk|cn|cc|tw|de|au|sg|hk|ei|fr|me|im)(?![a-z])" + "(?:\\:\\d{4})?(?:/[a-z0-9.,;?'\\|*:\\\\+&%$#=~_-]*)*\\?(?:[a-z0-9]*=[a-z0-9.,;?'*:+%$#=~_\\u4E00-\\u9FA5-]*&?)*).*$", "i")
 print(reg7.test('a'));
+
+
+var quotedEmailUserUtf8 = /^([\s\x01-\x08\x0b\x0c\x0e-\x1f\x7f\x21\x23-\x5b\x5d-\x7e\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]|(\\[\x01-\x09\x0b\x0c\x0d-\x7f\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))*$/i;
+print(quotedEmailUserUtf8.test(" foo m端ller "))
+
+let reg8 = /^[A-ZÃÁÀÂÄÇÉÊËÍÏÕÓÔÖÚÜ]+$/i
+print(reg8.test('palíndromo'))
+print(reg8.test('órgão'))
+print(reg8.test('qwértyúão'))
+print(reg8.test('àäãcëüïÄÏÜ'))
+
+let reg9 = /^[A-ZÀÉÈÌÎÓÒÙ]+$/i
+print(reg9.test('àéèìîóòù'))
+print(reg9.test('metró'))
+print(reg9.test('pèsca'))
+print(reg9.test('genî'))
+
+let reg10 = /^[A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴĐÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸ]+$/i
+print(reg10.test('thiến'))
+print(reg10.test('nghiêng'))
+print(reg10.test('chào'))
+print(reg10.test('thế'))
+print(reg10.test('giới'))
+
+let reg11 = /^[A-ZÅÄÖ]+$/i
+print(reg11.test('äiti'))
+
+let reg12 = /^[A-ZÆØÅ]+$/i
+print(reg12.test('aøå'))
+
+let reg13 = /^[A-ZĄĆĘŚŁŃÓŻŹ]+$/i
+print(reg13.test('kreską'))
+print(reg13.test('zamknięte'))
+print(reg13.test('zwykłe'))
+print(reg13.test('kropką'))
+print(reg13.test('przyjęły'))
+print(reg13.test('święty'))
+print(reg13.test('Pozwól'))
+
+let reg14 = /^[А-ЯЂЈЉЊЋЏ]+$/i
+print(reg14.test('ШћжЂљЕ'))
+
+let reg15 = /^[A-ZČĆŽŠĐ]+$/i
+print(reg15.test('ŠAabčšđćž'))
+print(reg15.test('ŠATROĆčđš'))
+
+let reg16 = /^[A-ZÁÉÍÑÓÚÜ]+$/i
+print(reg16.test('ábcó'))
+print(reg16.test('dormís'))
+print(reg16.test('volvés'))
+print(reg16.test('español'))
+
+let reg17 = /^[A-ZÅÄÖ]+$/i
+print(reg17.test('religiös'))
+print(reg17.test('stjäla'))
+print(reg17.test('västgöte'))
+
+let reg18 = /^[A-ZÇĞİıÖŞÜ]+$/i
+print(reg18.test('AİıÖöÇçŞşĞğÜüZ'))
+
+let reg19 = /^[Α-ώ]+$/i
+print(reg19.test('άέήίΰϊϋόύώ'))
+print(reg19.test('ΆΈΉΊΪΫΎΏ'))
+
+let reg20 = /^[0-9A-VXYZÇƏĞİıÖŞÜ]+$/i
+print(reg20.test('Azərbaycan'))
+print(reg20.test('abcç2'))
+print(reg20.test('3kərə4kərə'))
+
+let reg21 = /^[0-9А-Я]+$/i
+print(reg21.test('абв1'))
+print(reg21.test('жаба'))
+print(reg21.test('яГоДа2'))
+print(reg21.test('йЮя'))
+
+let reg22 = /^[0-9A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]+$/i
+print(reg22.test('řiť123'))
+
+let reg23 = /^[0-9A-ZÁČĎÉÍŇÓŠŤÚÝŽĹŔĽÄÔ]+$/i
+print(reg23.test('1môj'))
+print(reg23.test('2ľúbím'))
+print(reg23.test('3mäkčeň'))
+print(reg23.test('5vŕba'))
+print(reg23.test('6ňorimberk'))
+print(reg23.test('7ťava'))
+print(reg23.test('8žanéta'))
+print(reg23.test('9Ďábelské'))
+print(reg23.test('10ódy'))
+
+let reg24 = /^[0-9A-ZÁÉËÏÓÖÜÚ]+$/i
+print(reg24.test('Kán123'))
+print(reg24.test('één354'))
+
+let reg25 = /^[0-9A-ZÅÄÖ]+$/i
+print(reg25.test('äiti124'))
+print(reg25.test('451åå23'))
+
+let reg26 = /^[0-9A-ZÄÖÜß]+$/i
+print(reg26.test('äbc123'))
+
+let reg27 = /^[0-9A-ZÁÉÍÓÖŐÚÜŰ]+$/i
+print(reg27.test('0árvíztűrőtükörfúrógép123'))
+
+let reg28 = /^[0-9A-ZÃÁÀÂÄÇÉÊËÍÏÕÓÔÖÚÜ]+$/i
+print(reg28.test('palíndromo'))
+print(reg28.test('2órgão'))
+print(reg28.test('qwértyúão9'))
+print(reg28.test('àäãcë4üïÄÏÜ'))
+
+let reg29 = /^[0-9A-ZÀÉÈÌÎÓÒÙ]+$/i
+print(reg29.test('123àéèìîóòù'))
+print(reg29.test('met23ró'))
+print(reg29.test('pès56ca'))
+print(reg29.test('gen45î'))
+
+let reg30 = /^[0-9A-ZÁÉÍÑÓÚÜ]+$/i
+print(reg30.test('ábcó123'))
+
+let reg31 = /^[0-9A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴĐÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸ]+$/i
+print(reg31.test('Thầy3'))
+print(reg31.test('3Gà'))
+
+let reg32 = /^[0-9A-ZĄĆĘŚŁŃÓŻŹ]+$/i
+print(reg32.test('kre123ską'))
+print(reg32.test('zam21knięte'))
+print(reg32.test('zw23ykłe'))
+print(reg32.test('prz23yjęły'))
+print(reg32.test('świ23ęty'))
+print(reg32.test('Poz1322wól'))
+
+let reg33 = /^[0-9А-ЯЂЈЉЊЋЏ]+$/i
+print(reg33.test('ШћжЂљЕ123'))
+
+let reg34 = /^[0-9A-ZČĆŽŠĐ]+$/i
+print(reg34.test('ŠAabčšđćž123'))
+print(reg34.test('ŠATRO11Ćčđš'))
+
+let reg35 = /^[0-9A-ZÅÄÖ]+$/i
+print(reg35.test('religiös13'))
+print(reg35.test('st23jäla'))
+print(reg35.test('västgöte123'))
+
+let reg36 = /^[0-9A-ZÇĞİıÖŞÜ]+$/i
+print(reg36.test('AİıÖöÇçŞşĞğÜüZ123'))
+
+let reg37 = new RegExp("^[-+]?([0-9]+)?(\\٫[0-9]{1,})?$")
+print(reg37.test('0٫0000000000001'))
+
+let reg38 = new RegExp("^(?:[-+])?(?:[0-9]+)?(?:\\٫[0-9]*)?(?:[eE][\\+\\-]?(?:[0-9]+))?$")
+print(reg38.test('123٫'))
+print(reg38.test('123٫123'))
+print(reg38.test('-123٫123'))
+
+let reg39 =/^[A-Z0-9_\-]*$/i
+print(reg39.test(''))
+
+let reg40 = RegExp("^(?!-? )(?=.*\\d)(\\¥)?-?(0|[1-9]\\d|[1-9]\\d{0,2}(\\,\\d{3})*)?(\\.(\\d{2}))?$")
+print(reg40.test('¥6,954,231'))
+print(reg40.test('¥-6,954,231'))
+
+var reg41 = /^[A-VXYZÇƏĞİıÖŞÜ]+$/i;
+print(reg41.test('Azərbaycan'))
+print(reg41.test('üöğıəçş'))
+print(reg41.test('sizAzərbaycanlaşdırılmışlardansınızmı'))
+print(reg41.test('dahaBirDüzgünString'))
+print(reg41.test('abcçdeəfgğhxıijkqlmnoöprsştuüvyz'))
+
+let reg42 = /^[А-Я]+$/i
+print(reg42.test('абв'))
+print(reg42.test('жаба'))
+print(reg42.test('яГоДа'))
+
+let reg43 = /^[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]+$/i
+print(reg43.test('žluťoučký'))
+print(reg43.test('Pěl'))
+print(reg43.test('Ďábelské'))
+print(reg43.test('ódy'))
+
+let reg44 = /^[A-ZÁČĎÉÍŇÓŠŤÚÝŽĹŔĽÄÔ]+$/i
+print(reg44.test('môj'))
+print(reg44.test('ľúbím'))
+print(reg44.test('mäkčeň'))
+print(reg44.test('vŕba'))
+print(reg44.test('ňorimberk'))
+
+let reg45 = /^[A-ZÆØÅ]+$/i
+print(reg45.test('aøå'))
+
+let reg46 = /^[A-ZÁÉËÏÓÖÜÚ]+$/i
+print(reg46.test('Kán'))
+print(reg46.test('één'))
+print(reg46.test('vóór'))
+print(reg46.test('nú'))
+print(reg46.test('héél'))
+
+let reg47 = /^[A-ZÄÖÜß]+$/i
+print(reg47.test('äbc'))
+print(reg47.test('FöÖbär'))
+
+let reg48 = /^[A-ZÁÉÍÓÖŐÚÜŰ]+$/i
+print(reg48.test('árvíztűrőtükörfúrógép'))
