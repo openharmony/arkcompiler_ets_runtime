@@ -146,7 +146,7 @@ HWTEST_F_L0(TypedArrayHelperTest, AllocateTypedArray_001)
     auto prev = TestHelper::SetupFrame(thread, argv);
     JSHandle<JSTaggedValue> newTarget = BuiltinsBase::GetNewTarget(argv);
     JSHandle<JSObject> arrayObj =
-        TypedArrayHelper::AllocateTypedArray(factory, ecmaVm, constructorName, newTarget, DataViewType::UINT8);
+        TypedArrayHelper::AllocateTypedArray(thread, constructorName, newTarget, DataViewType::UINT8);
     TestHelper::TearDownFrame(thread, prev);
     JSTypedArray *jsTypedArray = JSTypedArray::Cast(*arrayObj);
     EXPECT_EQ(jsTypedArray->GetContentType(), ContentType::Number);
@@ -167,7 +167,7 @@ HWTEST_F_L0(TypedArrayHelperTest, AllocateTypedArray_002)
     auto prev = TestHelper::SetupFrame(thread, argv);
     JSHandle<JSTaggedValue> newTarget = BuiltinsBase::GetNewTarget(argv);
     JSHandle<JSObject> arrayObj =
-        TypedArrayHelper::AllocateTypedArray(factory, ecmaVm, constructorName, newTarget, length, DataViewType::UINT8);
+        TypedArrayHelper::AllocateTypedArray(thread, constructorName, newTarget, length, DataViewType::UINT8);
     TestHelper::TearDownFrame(thread, prev);
     JSTypedArray *jsTypedArray = JSTypedArray::Cast(*arrayObj);
     EXPECT_EQ(jsTypedArray->GetContentType(), ContentType::Number);

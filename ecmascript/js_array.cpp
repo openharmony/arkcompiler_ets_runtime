@@ -74,7 +74,7 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
     // 8. Set the [[Prototype]] internal slot of A to proto.
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> arrayFunc(env->GetArrayFunction());
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(arrayFunc), newTarget);
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(arrayFunc, newTarget);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     // 9. Set the [[Extensible]] internal slot of A to true.
     obj->GetJSHClass()->SetExtensible(true);
@@ -480,15 +480,16 @@ void JSArray::CheckAndCopyArray(const JSThread *thread, JSHandle<JSArray> obj)
     JSHandle<TaggedArray> arr(thread, obj->GetElements());
     // Check whether array is shared in the nonmovable space before set properties and elements.
     // If true, then really copy array in the semi space.
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (arr.GetTaggedValue().IsCOWArray()) {
-        auto newArray = thread->GetEcmaVM()->GetFactory()->CopyArray(arr, arr->GetLength(), arr->GetLength(),
+        auto newArray = factory->CopyArray(arr, arr->GetLength(), arr->GetLength(),
             JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
         obj->SetElements(thread, newArray.GetTaggedValue());
     }
     JSHandle<TaggedArray> prop(thread, obj->GetProperties());
     if (prop.GetTaggedValue().IsCOWArray()) {
-        auto newProps = thread->GetEcmaVM()->GetFactory()->CopyArray(prop,
-            prop->GetLength(), prop->GetLength(), JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        auto newProps = factory->CopyArray(prop, prop->GetLength(), prop->GetLength(),
+            JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
         obj->SetProperties(thread, newProps.GetTaggedValue());
     }
 }

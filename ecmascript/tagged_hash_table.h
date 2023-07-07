@@ -102,14 +102,14 @@ public:
     static JSHandle<Derived> Insert(const JSThread *thread, JSHandle<Derived> &table,
                                     const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
     {
-        // Make sure the key object has an identity hash code.
-        int32_t hash = static_cast<int32_t>(Derived::Hash(key.GetTaggedValue()));
         int entry = table->FindEntry(key.GetTaggedValue());
         if (entry != -1) {
             table->SetValue(thread, entry, value.GetTaggedValue());
             return table;
         }
 
+        // Make sure the key object has an identity hash code.
+        int32_t hash = static_cast<int32_t>(Derived::Hash(key.GetTaggedValue()));
         JSHandle<Derived> newTable = GrowHashTable(thread, table);
         newTable->AddElement(thread, newTable->FindInsertIndex(hash), key, value);
         return newTable;
@@ -410,13 +410,12 @@ public:
                                          const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
                                          const PropertyAttributes &metaData)
     {
-        int32_t hash = static_cast<int32_t>(Derived::Hash(key.GetTaggedValue()));
-
         /* no need to add key if exist */
         int entry = table->FindEntry(key.GetTaggedValue());
         if (entry != -1) {
             return table;
         }
+
         int enumIndex = table->NextEnumerationIndex(thread);
         PropertyAttributes attr(metaData);
         attr.SetDictionaryOrder(enumIndex);
@@ -424,6 +423,7 @@ public:
         JSHandle<Derived> newTable = HashTableT::GrowHashTable(thread, table);
 
         // Compute the key object.
+        int32_t hash = static_cast<int32_t>(Derived::Hash(key.GetTaggedValue()));
         entry = newTable->FindInsertIndex(hash);
         newTable->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue(), attr);
 
@@ -436,7 +436,6 @@ public:
                                  const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
                                  const PropertyAttributes &metaData)
     {
-        int hash = Derived::Hash(key.GetTaggedValue());
         int enumIndex = table->NextEnumerationIndex(thread);
         PropertyAttributes attr(metaData);
         attr.SetDictionaryOrder(enumIndex);
@@ -445,10 +444,12 @@ public:
             table->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue(), attr);
             return table;
         }
+
         // Check whether the table should be extended.
         JSHandle<Derived> newTable = HashTableT::GrowHashTable(thread, table);
 
         // Compute the key object.
+        int hash = Derived::Hash(key.GetTaggedValue());
         entry = newTable->FindInsertIndex(hash);
         newTable->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue(), attr);
 
