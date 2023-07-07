@@ -20,6 +20,7 @@
 #include "ecmascript/base/bit_helper.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "macros.h"
@@ -39,10 +40,10 @@ static const std::string VERSION_HEADER = "Profiler Version" + BLOCK_START + SPA
 static const std::string PANDA_FILE_INFO_HEADER = "Panda file sumcheck list" + BLOCK_AND_ARRAY_START;
 static const uint32_t HEX_FORMAT_WIDTH_FOR_32BITS = 10; // for example, 0xffffffff is 10 characters
 
-bool PGOProfilerHeader::ParseFromBinary(void *buffer, PGOProfilerHeader **header)
+bool PGOProfilerHeader::ParseFromBinary(void *buffer, size_t bufferSize, PGOProfilerHeader **header)
 {
     auto in = reinterpret_cast<PGOProfilerHeader *>(buffer);
-    if (in->Verify()) {
+    if (in->Verify(buffer, bufferSize)) {
         size_t desSize = in->Size();
         if (desSize > LastSize()) {
             LOG_ECMA(ERROR) << "header size error, expected size is less than " << LastSize() << ", but got "
@@ -58,7 +59,36 @@ bool PGOProfilerHeader::ParseFromBinary(void *buffer, PGOProfilerHeader **header
     return false;
 }
 
-void PGOProfilerHeader::ProcessToBinary(std::ofstream &fileStream) const
+bool PGOProfilerHeader::VerifyFileSize(size_t bufferSize) const
+{
+    if (!SupportFileSize()) {
+        return true;
+    }
+    if (GetFileSize() != bufferSize) {
+        LOG_ECMA(ERROR) << "Verify ap file's file size failed. size: " << std::hex << bufferSize << " vs "
+                        << GetFileSize();
+        return false;
+    }
+    return true;
+}
+
+bool PGOProfilerHeader::VerifyConsistency(void *buffer, size_t bufferSize) const
+{
+    if (!SupportFileConsistency()) {
+        return true;
+    }
+    uint32_t checksum = adler32(0, reinterpret_cast<const Bytef *>(buffer) + MAGIC_SIZE, VERSION_SIZE);
+    checksum = adler32(checksum, reinterpret_cast<const Bytef *>(buffer) + CHECKSUM_END_OFFSET,
+                       bufferSize - CHECKSUM_END_OFFSET);
+    if (checksum != GetChecksum()) {
+        LOG_ECMA(ERROR) << "Verify ap file's consistency failed. checksum: " << std::hex << checksum << " vs "
+                        << std::hex << GetChecksum();
+        return false;
+    }
+    return true;
+}
+
+void PGOProfilerHeader::ProcessToBinary(std::fstream &fileStream) const
 {
     fileStream.seekp(0);
     fileStream.write(reinterpret_cast<const char *>(this), Size());
@@ -93,6 +123,10 @@ bool PGOProfilerHeader::ProcessToText(std::ofstream &stream) const
         return false;
     }
     stream << VERSION_HEADER << InternalGetVersion() << NEW_LINE;
+    if (SupportFileConsistency()) {
+        stream << "FileSize: " << GetFileSize() << " ,HeaderSize: " << GetHeaderSize() << " ,Checksum: " << std::hex
+               << GetChecksum() << NEW_LINE;
+    }
     return true;
 }
 
@@ -105,7 +139,7 @@ void PGOPandaFileInfos::ParseFromBinary(void *buffer, SectionInfo *const info)
     LOG_ECMA(DEBUG) << "Profiler panda file count:" << info->number_;
 }
 
-void PGOPandaFileInfos::ProcessToBinary(std::ofstream &fileStream, SectionInfo *info) const
+void PGOPandaFileInfos::ProcessToBinary(std::fstream &fileStream, SectionInfo *info) const
 {
     fileStream.seekp(info->offset_);
     info->number_ = pandaFileInfos_.size();
@@ -160,7 +194,7 @@ void PGOPandaFileInfos::ProcessToText(std::ofstream &stream) const
     stream << pandaFileInfo;
 }
 
-bool PGOPandaFileInfos::CheckSum(uint32_t checksum) const
+bool PGOPandaFileInfos::Checksum(uint32_t checksum) const
 {
     if (pandaFileInfos_.find(checksum) == pandaFileInfos_.end()) {
         LOG_ECMA(ERROR) << "Checksum verification failed. Please ensure that the .abc and .ap match.";
@@ -641,7 +675,7 @@ bool PGOMethodInfoMap::ParseFromBinary(Chunk *chunk, uint32_t threshold, void **
 }
 
 bool PGOMethodInfoMap::ProcessToBinary(uint32_t threshold, const CString &recordName, const SaveTask *task,
-    std::ofstream &stream, PGOProfilerHeader *const header) const
+    std::fstream &stream, PGOProfilerHeader *const header) const
 {
     SectionInfo secInfo;
     std::stringstream methodStream;
@@ -965,7 +999,7 @@ bool PGORecordDetailInfos::ParseFromBinaryForLayout(void **buffer)
 }
 
 void PGORecordDetailInfos::ProcessToBinary(
-    const SaveTask *task, std::ofstream &fileStream, PGOProfilerHeader *const header) const
+    const SaveTask *task, std::fstream &fileStream, PGOProfilerHeader *const header) const
 {
     auto info = header->GetRecordInfoSection();
     info->number_ = 0;
@@ -996,10 +1030,11 @@ void PGORecordDetailInfos::ProcessToBinary(
         info->number_++;
     }
     info->size_ = static_cast<uint32_t>(fileStream.tellp()) - info->offset_;
+    header->SetFileSize(static_cast<uint32_t>(fileStream.tellp()));
 }
 
 bool PGORecordDetailInfos::ProcessToBinaryForLayout(
-    NativeAreaAllocator *allocator, const SaveTask *task, std::ofstream &stream) const
+    NativeAreaAllocator *allocator, const SaveTask *task, std::fstream &stream) const
 {
     SectionInfo secInfo;
     std::stringstream layoutDescStream;

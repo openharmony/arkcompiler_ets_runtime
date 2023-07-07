@@ -14,6 +14,7 @@
  */
 
 #include <cstdint>
+#include <fstream>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -558,7 +559,8 @@ HWTEST_F_L0(PGOProfilerTest, BinaryToText)
 {
     mkdir("ark-profiler7/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
-    std::ofstream file("ark-profiler7/modules.ap");
+    std::fstream file("ark-profiler7/modules.ap",
+                      std::fstream::binary | std::fstream::out | std::fstream::in | std::fstream::trunc);
 
     PGOProfilerHeader *header = nullptr;
     PGOProfilerHeader::Build(&header, PGOProfilerHeader::LastSize());
@@ -580,6 +582,7 @@ HWTEST_F_L0(PGOProfilerTest, BinaryToText)
     pandaFileInfos->ProcessToBinary(file, header->GetPandaInfoSection());
     recordInfos->ProcessToBinary(nullptr, file, header);
     header->ProcessToBinary(file);
+    PGOProfilerEncoder::AddChecksum(file);
     file.close();
 
     ASSERT_TRUE(PGOProfilerManager::GetInstance()->BinaryToText(
@@ -868,4 +871,55 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
     rmdir("ark-profiler16/");
 }
 #endif
+
+HWTEST_F_L0(PGOProfilerTest, FileConsistencyCheck)
+{
+    const char *source = R"(
+        .language ECMAScript
+        .function void foo1(any a0, any a1, any a2) {}
+    )";
+    std::vector<MethodLiteral *> methodLiterals {};
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, "ark-profiler.abc", methodLiterals);
+    EXPECT_EQ(methodLiterals.size(), 1);  // number of methods
+
+    mkdir("ark-profiler17/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    RuntimeOption option;
+    option.SetEnableProfile(true);
+    option.SetProfileDir("ark-profiler17/");
+    vm_ = JSNApi::CreateJSVM(option);
+    JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
+    constPool->SetJSPandaFile(pf.get());
+    uint32_t checksum = 304293;
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
+    ASSERT_TRUE(vm_ != nullptr) << "Cannot create Runtime";
+
+    JSHandle<Method> method = vm_->GetFactory()->NewMethod(methodLiterals[0]);
+    method->SetConstantPool(vm_->GetJSThread(), constPool.GetTaggedValue());
+    JSHandle<JSFunction> func = vm_->GetFactory()->NewJSFunction(vm_->GetGlobalEnv(), method);
+    JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
+    func->SetModule(vm_->GetJSThread(), recordName);
+    vm_->GetPGOProfiler()->SetSaveTimestamp(std::chrono::system_clock::now());
+    vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
+    JSNApi::DestroyJSVM(vm_);
+
+    // write to corrupt the ap file's consistency
+    std::ofstream fWriter("ark-profiler17/modules.ap", std::fstream::app);
+
+    fWriter.write(reinterpret_cast<char *>(&checksum), sizeof(checksum));
+    fWriter.seekp(100);
+    fWriter.write(reinterpret_cast<char *>(&checksum), sizeof(checksum));
+    fWriter.close();
+
+    // Loader
+    PGOProfilerDecoder loader("ark-profiler17/modules.ap", 2);
+    CString expectRecordName = "test";
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
+    ASSERT_FALSE(loader.LoadAndVerify(checksum));
+#else
+    ASSERT_TRUE(!loader.LoadAndVerify(checksum));
+    ASSERT_TRUE(loader.Match(expectRecordName, methodLiterals[0]->GetMethodId()));
+#endif
+    unlink("ark-profiler17/modules.ap");
+    rmdir("ark-profiler17/");
+}
 }  // namespace panda::test

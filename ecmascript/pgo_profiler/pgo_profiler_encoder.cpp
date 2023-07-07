@@ -15,10 +15,14 @@
 
 #include <cerrno>
 #include <cstdio>
+#include <fstream>
+#include <memory>
 
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 
 #include "ecmascript/platform/file.h"
+#include "zlib.h"
 
 namespace panda::ecmascript {
 static const std::string PROFILE_FILE_NAME = "/modules.ap";
@@ -82,22 +86,54 @@ bool PGOProfilerEncoder::Save()
 
 bool PGOProfilerEncoder::SaveProfiler(const SaveTask *task)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerEncoder::SaveProfiler");
     static const char *tempSuffix = ".tmp";
     auto tmpOutPath = realOutPath_ + tempSuffix;
-    std::ofstream fileStream(tmpOutPath.c_str());
+    std::fstream fileStream(tmpOutPath.c_str(),
+                            std::fstream::binary | std::fstream::out | std::fstream::in | std::fstream::trunc);
     if (!fileStream.is_open()) {
-        LOG_ECMA(ERROR) << "The file path(" << tmpOutPath << ") open failure!";
+        LOG_ECMA(ERROR) << "The file path(" << tmpOutPath << ") open failure! errno: " << errno;
         return false;
     }
     pandaFileInfos_->ProcessToBinary(fileStream, header_->GetPandaInfoSection());
     globalRecordInfos_->ProcessToBinary(task, fileStream, header_);
     header_->ProcessToBinary(fileStream);
+    AddChecksum(fileStream);
     fileStream.close();
+    if (FileExist(realOutPath_.c_str()) && remove(realOutPath_.c_str())) {
+        LOG_ECMA(ERROR) << "Remove " << realOutPath_ << " failure!, errno: " << errno;
+        return false;
+    }
     if (rename(tmpOutPath.c_str(), realOutPath_.c_str())) {
         LOG_ECMA(ERROR) << "Rename " << tmpOutPath << " --> " << realOutPath_ << " failure!, errno: " << errno;
         return false;
     }
     return true;
+}
+
+void PGOProfilerEncoder::AddChecksum(std::fstream &fileStream)
+{
+    static constexpr uint32_t KILO_BYTES = 1024;
+    static constexpr uint32_t STEP_IN_KB = 256;
+    static constexpr uint32_t STEP_SIZE = STEP_IN_KB * KILO_BYTES;
+    uint32_t size = fileStream.seekp(0, std::fstream::end).tellp();
+    std::unique_ptr<std::vector<uint8_t>> buffer = std::make_unique<std::vector<uint8_t>>(STEP_SIZE);
+    // first, calculate the version field's checksum.
+    fileStream.seekg(PGOProfilerHeader::MAGIC_SIZE, std::fstream::beg)
+        .read(reinterpret_cast<char *>(buffer->data()), PGOProfilerHeader::VERSION_SIZE);
+    uint32_t checksum = adler32(0, reinterpret_cast<const Bytef *>(buffer->data()), PGOProfilerHeader::VERSION_SIZE);
+    // second, calculate the checksum for remaining content(exclude checksum field).
+    uint32_t remainingSize = size - PGOProfilerHeader::CHECKSUM_END_OFFSET;
+    fileStream.seekg(PGOProfilerHeader::CHECKSUM_END_OFFSET);
+    while (remainingSize > 0) {
+        uint32_t readSize = std::min(STEP_SIZE, remainingSize);
+        remainingSize = remainingSize - readSize;
+        fileStream.read(reinterpret_cast<char *>(buffer->data()), readSize);
+        checksum = adler32(checksum, reinterpret_cast<const Bytef *>(buffer->data()), readSize);
+    }
+    // third, write the checksum back to the checksum field in the output stream.
+    fileStream.seekp(PGOProfilerHeader::MAGIC_SIZE + PGOProfilerHeader::VERSION_SIZE, std::fstream::beg);
+    fileStream.write(reinterpret_cast<char *>(&checksum), sizeof(checksum));
 }
 
 void PGOProfilerEncoder::TerminateSaveTask()

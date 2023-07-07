@@ -31,7 +31,7 @@ bool PGOProfilerDecoder::Load()
     }
     void *addr = fileMapAddr_.GetOriginAddr();
 
-    if (!PGOProfilerHeader::ParseFromBinary(addr, &header_)) {
+    if (!PGOProfilerHeader::ParseFromBinary(addr, fileMapAddr_.GetSize(), &header_)) {
         UnLoadAPBinaryFile();
         LOG_ECMA(ERROR) << "Parse profiler header failed";
         return false;
@@ -56,7 +56,7 @@ bool PGOProfilerDecoder::Verify(uint32_t checksum)
         LOG_ECMA(INFO) << "Skip verify file checksum, use method checksum instead.";
         isVerifySuccess_ = true;
     } else {
-        isVerifySuccess_ = pandaFileInfos_.CheckSum(checksum);
+        isVerifySuccess_ = pandaFileInfos_.Checksum(checksum);
     }
     return isVerifySuccess_;
 }
@@ -85,7 +85,7 @@ bool PGOProfilerDecoder::LoadFull()
     }
     void *addr = fileMapAddr_.GetOriginAddr();
 
-    if (!PGOProfilerHeader::ParseFromBinary(addr, &header_)) {
+    if (!PGOProfilerHeader::ParseFromBinary(addr, fileMapAddr_.GetSize(), &header_)) {
         UnLoadAPBinaryFile();
         LOG_ECMA(ERROR) << "Parse profiler header failed";
         return false;

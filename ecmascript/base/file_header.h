@@ -28,6 +28,8 @@ class FileHeader {
 public:
     static constexpr size_t MAGIC_SIZE = 8;
     static constexpr size_t VERSION_SIZE = 4;
+    static constexpr uint32_t ENDIAN_VALUE = 0x12345678;
+    static constexpr uint32_t CHECKSUM_END_OFFSET = MAGIC_SIZE + VERSION_SIZE + sizeof(uint32_t);
     static constexpr std::array<uint8_t, MAGIC_SIZE> MAGIC = {'P', 'A', 'N', 'D', 'A', '\0', '\0', '\0'};
     using VersionType = std::array<uint8_t, VERSION_SIZE>;
 
@@ -59,6 +61,36 @@ public:
         return ret;
     }
 
+    void SetChecksum(uint32_t checksum)
+    {
+        checksum_ = checksum;
+    }
+
+    uint32_t GetChecksum() const
+    {
+        return checksum_;
+    }
+
+    void SetHeaderSize(uint32_t size)
+    {
+        headerSize_ = size;
+    }
+
+    uint32_t GetHeaderSize() const
+    {
+        return headerSize_;
+    }
+
+    void SetFileSize(uint32_t size)
+    {
+        fileSize_ = size;
+    }
+
+    uint32_t GetFileSize() const
+    {
+        return fileSize_;
+    }
+
 protected:
     explicit FileHeader(const VersionType &lastVersion) : magic_(MAGIC), version_(lastVersion) {}
 
@@ -87,7 +119,8 @@ protected:
         if (!VerifyVersion(fileDesc, version_, lastVersion, strictMatch)) {
             return false;
         }
-        LOG_ECMA(DEBUG) << "Magic:" << ConvToStr(magic_) << ", version:" << InternalGetVersion();
+        LOG_ECMA(DEBUG) << "Magic:" << ConvToStr(magic_) << ", version:" << InternalGetVersion()
+                        << ", endianTag: " << std::hex << endianTag_;
         return true;
     }
 
@@ -122,6 +155,10 @@ protected:
 private:
     std::array<uint8_t, MAGIC_SIZE> magic_;
     VersionType version_;
+    uint32_t checksum_ {0};
+    uint32_t fileSize_ {0};
+    uint32_t headerSize_ {0};
+    uint32_t endianTag_ { ENDIAN_VALUE };
 };
 
 }  // namespace panda::ecmascript::base
