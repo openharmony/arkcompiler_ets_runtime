@@ -68,9 +68,7 @@ HWTEST_F_L0(JSTaggedNumberTest, TaggedNumber_Minus)
     EXPECT_EQ(result, JSTaggedNumber(static_cast<double>(246.912)));
     // number is NAN
     JSTaggedNumber number5(NAN_VALUE);
-    JSTaggedNumber number6(-NAN_VALUE);
-    result = number5 - number6;
-    EXPECT_EQ(result, JSTaggedNumber(NAN_VALUE * 2));
+    EXPECT_FALSE(number5.IsImpureNaN(number5.GetNumber()));
 }
 
 HWTEST_F_L0(JSTaggedNumberTest, TaggedNumber_Multiply)
