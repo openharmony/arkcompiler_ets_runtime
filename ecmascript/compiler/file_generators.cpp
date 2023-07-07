@@ -194,9 +194,9 @@ uintptr_t Module::GetSectionAddr(ElfSecName sec) const
     return assembler_->GetSectionAddr(sec);
 }
 
-void Module::RunAssembler(const CompilerLog &log)
+void Module::RunAssembler(const CompilerLog &log, bool fastCompileMode)
 {
-    assembler_->Run(log);
+    assembler_->Run(log, fastCompileMode);
 }
 
 void Module::DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
@@ -353,7 +353,8 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
     uint32_t latestModuleIdx = GetModuleVecSize() - 1;
     {
         TimeScope timescope("LLVMIROpt", const_cast<CompilerLog *>(log_));
-        latestModule->RunAssembler(*(log_));
+        bool fastCompileMode = vm_->GetJSOptions().GetFastAOTCompileMode();
+        latestModule->RunAssembler(*(log_), fastCompileMode);
     }
     {
         TimeScope timescope("LLVMCodeGen", const_cast<CompilerLog *>(log_));

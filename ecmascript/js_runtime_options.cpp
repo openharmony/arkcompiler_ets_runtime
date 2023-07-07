@@ -140,6 +140,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--hap-path                            The path of the app hap. Default: ''\n"
     "--hap-abc-offset                      The offset of the abc file in app hap. Default: '0'\n"
     "--hap-abc-size                        The size of the abc file in app hap. Default: '0'\n"
+    "--compiler-fast-compile               Disable some time-consuming pass. Default: 'true'\n"
     "--compiler-no-check                   Enable remove checks for aot compiler. Default: 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
@@ -215,6 +216,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"hap-abc-offset", required_argument, nullptr, OPTION_HAP_ABC_OFFSET},
         {"hap-abc-size", required_argument, nullptr, OPTION_HAP_ABC_SIZE},
         {"compiler-no-check", required_argument, nullptr, OPTION_COMPILER_NOCHECK},
+        {"compiler-fast-compile", required_argument, nullptr, OPTION_FAST_AOT_COMPILE_MODE},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -698,6 +700,13 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 SetCompilerNoCheck(argBool);
+                break;
+            case OPTION_FAST_AOT_COMPILE_MODE:
+                ret = ParseBoolParam(&argBool);
+                if (!ret) {
+                    return false;
+                }
+                SetFastAOTCompileMode(argBool);
                 break;
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";
