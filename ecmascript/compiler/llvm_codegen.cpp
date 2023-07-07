@@ -300,6 +300,32 @@ void LLVMAssembler::BuildAndRunPasses()
     LLVMDisposePassManager(modPass1);
 }
 
+void LLVMAssembler::BuildAndRunPassesFastMode()
+{
+    LLVMPassManagerBuilderRef pmBuilder = LLVMPassManagerBuilderCreate();
+    LLVMPassManagerBuilderSetOptLevel(pmBuilder, options_.OptLevel); // using O3 optimization level
+    LLVMPassManagerBuilderSetSizeLevel(pmBuilder, 0);
+
+    // pass manager creation:rs4gc pass is the only pass in modPass, other opt module-based pass are in modPass1
+    LLVMPassManagerRef funcPass = LLVMCreateFunctionPassManagerForModule(module_);
+    LLVMPassManagerRef modPass = LLVMCreatePassManager();
+
+    // add pass into pass managers
+    LLVMPassManagerBuilderPopulateFunctionPassManager(pmBuilder, funcPass);
+    llvm::unwrap(modPass)->add(llvm::createRewriteStatepointsForGCLegacyPass()); // rs4gc pass added
+
+    LLVMInitializeFunctionPassManager(funcPass);
+    for (LLVMValueRef fn = LLVMGetFirstFunction(module_); fn; fn = LLVMGetNextFunction(fn)) {
+        LLVMRunFunctionPassManager(funcPass, fn);
+    }
+    LLVMFinalizeFunctionPassManager(funcPass);
+    LLVMRunPassManager(modPass, module_);
+
+    LLVMPassManagerBuilderDispose(pmBuilder);
+    LLVMDisposePassManager(funcPass);
+    LLVMDisposePassManager(modPass);
+}
+
 LLVMAssembler::LLVMAssembler(LLVMModule *lm, LOptions option)
     : llvmModule_(lm),
       module_(llvmModule_->GetModule()),
@@ -325,7 +351,7 @@ LLVMAssembler::~LLVMAssembler()
     error_ = nullptr;
 }
 
-void LLVMAssembler::Run(const CompilerLog &log)
+void LLVMAssembler::Run(const CompilerLog &log, bool fastCompileMode)
 {
     char *error = nullptr;
     std::string originName = llvm::unwrap(module_)->getModuleIdentifier() + ".ll";
@@ -342,7 +368,11 @@ void LLVMAssembler::Run(const CompilerLog &log)
         return;
     }
     llvm::unwrap(engine_)->setProcessAllSections(true);
-    BuildAndRunPasses();
+    if (fastCompileMode) {
+        BuildAndRunPassesFastMode();
+    } else {
+        BuildAndRunPasses();
+    }
     if (log.OutputLLIR()) {
         error = nullptr;
         LLVMPrintModuleToFile(module_, optName.c_str(), &error);

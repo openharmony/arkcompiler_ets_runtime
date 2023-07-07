@@ -58,7 +58,7 @@ public:
 
     uintptr_t GetSectionAddr(ElfSecName sec) const;
 
-    void RunAssembler(const CompilerLog &log);
+    void RunAssembler(const CompilerLog &log, bool fastCompileMode);
 
     void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset, const CompilerLog &log,
                           const MethodLogList &logList, std::ostringstream &codeStream);
@@ -121,7 +121,7 @@ protected:
     void RunLLVMAssembler()
     {
         for (auto m : modulePackage_) {
-            m.RunAssembler(*(log_));
+            m.RunAssembler(*(log_), false);
         }
     }
 

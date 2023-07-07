@@ -124,7 +124,7 @@ class LLVMAssembler {
 public:
     explicit LLVMAssembler(LLVMModule *lm, LOptions option = LOptions());
     virtual ~LLVMAssembler();
-    void Run(const CompilerLog &log);
+    void Run(const CompilerLog &log, bool fastCompileMode);
     const LLVMExecutionEngineRef &GetEngine()
     {
         return engine_;
@@ -184,6 +184,7 @@ private:
     void UseRoundTripSectionMemoryManager();
     bool BuildMCJITEngine();
     void BuildAndRunPasses();
+    void BuildAndRunPassesFastMode();
     void Initialize(LOptions option);
     static void PrintInstAndStep(uint64_t &pc, uint8_t **byteSp, uintptr_t &numBytes, size_t instSize,
                                  uint64_t textOffset, char *outString, std::ostringstream &codeStream,
