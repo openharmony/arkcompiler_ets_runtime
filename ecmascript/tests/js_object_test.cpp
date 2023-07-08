@@ -871,7 +871,7 @@ HWTEST_F_L0(JSObjectTest, FastToSlow)
     }
     ecmaVM->SetEnableForceGC(true);
 
-    EXPECT_FALSE(TaggedArray::Cast(obj1->GetProperties().GetTaggedObject())->IsDictionaryMode());
+    EXPECT_TRUE(TaggedArray::Cast(obj1->GetProperties().GetTaggedObject())->IsDictionaryMode());
 
     number.Update(JSTaggedValue(PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES));
     number.Update(JSTaggedValue::ToString(thread, number).GetTaggedValue());
