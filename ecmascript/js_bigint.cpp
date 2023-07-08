@@ -919,14 +919,15 @@ JSHandle<BigInt> BigInt::LeftShift(JSThread *thread, JSHandle<BigInt> x, JSHandl
 
 JSHandle<BigInt> BigInt::LeftShiftHelper(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y)
 {
-    ASSERT(y->GetLength() == 1);
-    ASSERT(y->GetDigit(0) <= MAXBITS);
+    if (x->IsZero()) {
+        return x;
+    }
+    ASSERT(y->GetLength() > 0);
     uint32_t moveNum = y->GetDigit(0);
     uint32_t digitMove = moveNum / DATEBITS;
     uint32_t bitsMove = moveNum % DATEBITS;
     // If bitsMove is not zero, needLen needs to be increased by 1
     uint32_t needLen = digitMove + x->GetLength() + static_cast<uint32_t>(!!bitsMove);
-    ASSERT(needLen < MAXSIZE);
     JSHandle<BigInt> bigint = CreateBigint(thread, needLen);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     if (bitsMove == 0) {
@@ -999,20 +1000,26 @@ JSHandle<BigInt> BigInt::Exponentiate(JSThread *thread, JSHandle<BigInt> base, J
         JSHandle<BigInt> bigint(thread, JSTaggedValue::Exception());
         THROW_RANGE_ERROR_AND_RETURN(thread, "Exponent must be positive", bigint);
     }
-    ASSERT(exponent->GetLength() == 1);
+    ASSERT(exponent->GetLength() > 0);
     if (exponent->IsZero()) {
         return Int32ToBigInt(thread, 1);
     }
-    uint32_t expValue = exponent->GetDigit(0);
-    if (base->IsZero() || expValue == 1) {
+    if (base->IsZero()) {
         return base;
     }
+    uint32_t expValue = exponent->GetDigit(0);
     if (base->GetLength() == 1 && base->GetDigit(0) == 1) {
         if (base->GetSign() && !(expValue & 1)) {
             return BigInt::UnaryMinus(thread, base);
         }
         return base;
     }
+    if (exponent->GetLength() > 1) {
+        // The result is at least 2n ** 2n ** 32n, which is too big.
+        JSHandle<BigInt> bigint(thread, JSTaggedValue::Exception());
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Maximum BigInt size exceeded", bigint);
+    }
+
     if (base->GetLength() == 1 && base->GetDigit(0) == 2) { // 2 : We use fast path processing 2 ^ n
         uint32_t needLength = expValue / DATEBITS + 1;
         JSHandle<BigInt> bigint = CreateBigint(thread, needLength);
@@ -1032,11 +1039,13 @@ JSHandle<BigInt> BigInt::Exponentiate(JSThread *thread, JSHandle<BigInt> base, J
     expValue >>= 1;
     for (; expValue; expValue >>= 1) {
         temp.Update(BigInt::Multiply(thread, temp, temp));
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
         if (expValue & 1) {
             if (result.GetTaggedValue().IsNull()) {
                 result.Update(temp);
             } else {
                 result.Update(BigInt::Multiply(thread, result, temp));
+                RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
             }
         }
     }
