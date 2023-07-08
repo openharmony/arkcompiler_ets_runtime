@@ -18,7 +18,7 @@ group("ark_aot_js_test") {
     "bigint_typed_array_constructors",
     "call_default_args",
     "constructor_returns_non_object",
-
+    "tryldglobalbyname",
     "dynamicimport",
     "emptyif",
     "formatrangetoparts",

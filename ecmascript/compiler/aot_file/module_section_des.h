@@ -30,6 +30,7 @@ public:
         uint32_t rodataSize {0};
         uint32_t textSize {0};
         uint32_t stackMapSize {0};
+        uint32_t rodataAfterText {0};
     };
     static std::string GetSecName(ElfSecName idx);
 

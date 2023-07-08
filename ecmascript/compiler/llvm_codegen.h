@@ -56,7 +56,7 @@ struct CodeInfo {
     public:
         static CodeSpace *GetInstance();
 
-        uint8_t *Alloca(uintptr_t size, bool isReq, size_t alignSize, bool alignFlag = true);
+        uint8_t *Alloca(uintptr_t size, bool isReq, size_t alignSize);
 
     private:
         CodeSpace();
@@ -73,7 +73,7 @@ struct CodeInfo {
         size_t unreqBufPos_ {0};
     };
 
-    uint8_t *AllocaInReqSecBuffer(uintptr_t size, size_t alignSize = 0, bool alignFlag = true);
+    uint8_t *AllocaInReqSecBuffer(uintptr_t size, size_t alignSize = 0);
 
     uint8_t *AllocaInNotReqSecBuffer(uintptr_t size, size_t alignSize = 0);
 
@@ -103,6 +103,7 @@ struct CodeInfo {
 private:
     std::array<sectionInfo, static_cast<int>(ElfSecName::SIZE)> secInfos_;
     std::vector<std::pair<uint8_t *, uintptr_t>> codeInfo_ {}; // info for disasssembler, planed to be deprecated
+    bool alreadyPageAlign_ {false};
 };
 
 enum class FPFlag : uint32_t {

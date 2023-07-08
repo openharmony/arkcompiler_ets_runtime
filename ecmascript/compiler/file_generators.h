@@ -81,6 +81,11 @@ private:
         return assembler_->GetSectionSize(ElfSecName::TEXT);
     }
 
+    uintptr_t GetRODataAddr() const
+    {
+        return assembler_->GetSectionAddr(ElfSecName::RODATA_CST8);
+    }
+
     uint32_t GetRODataSize() const
     {
         return assembler_->GetSectionSize(ElfSecName::RODATA_CST8);
