@@ -103,9 +103,10 @@ public:
 
     /**
      * \brief handle debugger statement event
-     * @param location debugger statement location
+     * @param method Current method
+     * @param bcOffset Current bytecode offset
      */
-    virtual bool HandleDebuggerStmt(JSHandle<Method> method, uint32_t bc_offset) = 0;
+    virtual bool HandleDebuggerStmt(JSHandle<Method> method, uint32_t bcOffset) = 0;
 
     /**
      * \brief Register debug hooks in the ecmavm
@@ -134,8 +135,7 @@ public:
     virtual bool RemoveBreakpoint(const JSPtLocation &location) = 0;
 
     /**
-     * \brief Remove all breakpoints from \param location
-     * @param location Breakpoint location
+     * \brief Remove all breakpoints
      */
     virtual void RemoveAllBreakpoints() = 0;
 

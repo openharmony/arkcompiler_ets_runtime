@@ -38,9 +38,9 @@ public:
                                                const CString &descriptor, const CString &moduleFilename);
     static JSHandle<JSTaggedValue> ParseCjsModule(JSThread *thread, const JSPandaFile *jsPandaFile);
     static JSHandle<JSTaggedValue> ParseJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
-        const CString &moduleFilename, const CString &recordName = nullptr);
-    static JSHandle<JSTaggedValue> ParseNativeModule(JSThread *thread,
-        const CString &moduleRequestName, ModuleTypes moduleType);
+                                                   const CString &moduleFilename, const CString &recordName = nullptr);
+    static JSHandle<JSTaggedValue> ParseNativeModule(JSThread *thread, const CString &moduleRequestName,
+                                                     ModuleTypes moduleType);
     static JSTaggedValue JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint);
 };
 }  // namespace panda::ecmascript

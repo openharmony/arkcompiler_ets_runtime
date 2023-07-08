@@ -32,9 +32,9 @@ public:
     virtual void LoadModule(std::string_view name, std::string_view) = 0;
 
     virtual void BytecodePcChanged(JSThread *thread, JSHandle<Method> method,
-                                   uint32_t bc_offset) = 0;
+                                   uint32_t bcOffset) = 0;
     
-    virtual bool HandleDebuggerStmt(JSHandle<Method> method, uint32_t bc_offset) = 0;
+    virtual bool HandleDebuggerStmt(JSHandle<Method> method, uint32_t bcOffset) = 0;
     virtual void VmStart() = 0;
     virtual void VmDeath() = 0;
     virtual void PendingJobEntry() = 0;
