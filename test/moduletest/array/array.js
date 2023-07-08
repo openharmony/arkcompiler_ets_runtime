@@ -135,3 +135,11 @@ try {
 } catch (error) {
     
 }
+
+var arr21 = [1,2,3,4,,6];
+print(arr21.at(0));
+print(arr21.at(5));
+print(arr21.at(-1));
+print(arr21.at(6));
+print(arr21.at('1.9'));
+print(arr21.at(true));

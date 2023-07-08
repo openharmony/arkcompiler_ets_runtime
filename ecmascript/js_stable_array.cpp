@@ -658,4 +658,30 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
     }
     return JSTaggedValue::Undefined();
 }
+
+JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
+{
+    JSThread *thread = argv->GetThread();
+    uint32_t thisLen = receiver->GetArrayLength();
+    if (thisLen == 0) {
+        return JSTaggedValue::Undefined();
+    }
+    JSTaggedNumber index = JSTaggedValue::ToInteger(thread, base::BuiltinsBase::GetCallArg(argv, 0));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int64_t relativeIndex = index.GetNumber();
+    int64_t k = 0;
+    if (relativeIndex >= 0) {
+        k = relativeIndex;
+    } else {
+        k = thisLen + relativeIndex;
+    }
+    if (k < 0 || k >= thisLen) {
+        return JSTaggedValue::Undefined();
+    }
+
+    TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
+    auto result = JSTaggedValue::Hole();
+    result = elements->Get(k);
+    return result.IsHole() ? JSTaggedValue::Undefined() : result;
+}
 }  // namespace panda::ecmascript
