@@ -33,18 +33,18 @@ public:
         return SnapShotHeader::ConvToStr(lastVersion_);
     }
 
-    void SetLastVersion(base::FileHeader::VersionType &lastVersion)
+    void SetLastVersion(base::FileHeaderBase::VersionType &lastVersion)
     {
         lastVersion_ = lastVersion;
     }
 
-    const base::FileHeader::VersionType &GetLastVersion() const override
+    const base::FileHeaderBase::VersionType &GetLastVersion() const override
     {
         return lastVersion_;
     }
 
 private:
-    base::FileHeader::VersionType lastVersion_ {};
+    base::FileHeaderBase::VersionType lastVersion_ {};
 };
 
 }  // namespace panda::ecmascript

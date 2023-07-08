@@ -41,13 +41,13 @@ public:
     bool Deserialize(SnapshotType type, const CString &snapshotFile, bool isBuiltins = false);
 
 protected:
-    struct SnapShotHeader : public base::FileHeader {
+    struct SnapShotHeader : public base::FileHeaderBase {
     public:
-        explicit SnapShotHeader(const VersionType &lastVersion) : base::FileHeader(lastVersion) {}
+        explicit SnapShotHeader(const VersionType &lastVersion) : base::FileHeaderBase(lastVersion) {}
 
         bool Verify(const VersionType &lastVersion) const
         {
-            return InternalVerify("snapshot file", lastVersion, AOTFileVersion::AI_STRICT_MATCH);
+            return VerifyVersion("snapshot file", lastVersion, AOTFileVersion::AI_STRICT_MATCH);
         }
 
         uint32_t oldSpaceObjSize {0};
@@ -60,7 +60,7 @@ protected:
         uint32_t rootObjectSize {0};
     };
 
-    virtual const base::FileHeader::VersionType &GetLastVersion() const
+    virtual const base::FileHeaderBase::VersionType &GetLastVersion() const
     {
         return AOTFileVersion::AI_VERSION;
     }

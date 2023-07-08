@@ -18,12 +18,14 @@
 #include <iomanip>
 
 #include "ecmascript/base/bit_helper.h"
+#include "ecmascript/base/file_header.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "macros.h"
+#include "securec.h"
 #include "zlib.h"
 
 namespace panda::ecmascript {
@@ -40,21 +42,53 @@ static const std::string VERSION_HEADER = "Profiler Version" + BLOCK_START + SPA
 static const std::string PANDA_FILE_INFO_HEADER = "Panda file sumcheck list" + BLOCK_AND_ARRAY_START;
 static const uint32_t HEX_FORMAT_WIDTH_FOR_32BITS = 10; // for example, 0xffffffff is 10 characters
 
+bool PGOProfilerHeader::BuildFromLegacy(void *buffer, PGOProfilerHeader **header)
+{
+    auto *inHeader = reinterpret_cast<PGOProfilerHeaderLegacy *>(buffer);
+    size_t desSize = Size(inHeader->GetSectionNumber());
+    if (desSize > LastSize()) {
+        LOG_ECMA(ERROR) << "header size error, expected size is less than " << LastSize() << ", but got " << desSize;
+        return false;
+    }
+    Build(header, desSize);
+    // copy header base.
+    if (memcpy_s(*header, sizeof(FileHeaderBase), inHeader, sizeof(FileHeaderBase)) != EOK) {
+        UNREACHABLE();
+    }
+    // skip elastic header field, and copy section info from incoming buffer.
+    auto sectionSize = desSize - sizeof(FileHeaderElastic);
+    if (memcpy_s(&((*header)->sectionNumber_), sectionSize, &(inHeader->GetSectionNumber()), sectionSize) != EOK) {
+        UNREACHABLE();
+    }
+    return true;
+}
+
+bool PGOProfilerHeader::BuildFromElastic(void *buffer, size_t bufferSize, PGOProfilerHeader **header)
+{
+    auto *inHeader = reinterpret_cast<PGOProfilerHeader *>(buffer);
+    if (!inHeader->Verify(buffer, bufferSize)) {
+        return false;
+    }
+    size_t desSize = inHeader->Size();
+    if (desSize > LastSize()) {
+        LOG_ECMA(ERROR) << "header size error, expected size is less than " << LastSize() << ", but got " << desSize;
+        return false;
+    }
+    Build(header, desSize);
+    if (memcpy_s(*header, desSize, inHeader, desSize) != EOK) {
+        UNREACHABLE();
+    }
+    return true;
+}
+
 bool PGOProfilerHeader::ParseFromBinary(void *buffer, size_t bufferSize, PGOProfilerHeader **header)
 {
-    auto in = reinterpret_cast<PGOProfilerHeader *>(buffer);
-    if (in->Verify(buffer, bufferSize)) {
-        size_t desSize = in->Size();
-        if (desSize > LastSize()) {
-            LOG_ECMA(ERROR) << "header size error, expected size is less than " << LastSize() << ", but got "
-                            << desSize;
-            return false;
+    auto *inHeaderBase = reinterpret_cast<FileHeaderBase *>(buffer);
+    if (inHeaderBase->VerifyVersion("apPath file", LAST_VERSION, false)) {
+        if (!inHeaderBase->CompatibleVerify(ELASTIC_HEADER_MINI_VERSION)) {
+            return BuildFromLegacy(buffer, header);
         }
-        Build(header, desSize);
-        if (memcpy_s(*header, desSize, in, in->Size()) != EOK) {
-            UNREACHABLE();
-        }
-        return true;
+        return BuildFromElastic(buffer, bufferSize, header);
     }
     return false;
 }
@@ -91,7 +125,15 @@ bool PGOProfilerHeader::VerifyConsistency(void *buffer, size_t bufferSize) const
 void PGOProfilerHeader::ProcessToBinary(std::fstream &fileStream) const
 {
     fileStream.seekp(0);
-    fileStream.write(reinterpret_cast<const char *>(this), Size());
+    if (base::FileHeaderBase::CompatibleVerify(ELASTIC_HEADER_MINI_VERSION)) {
+        fileStream.write(reinterpret_cast<const char *>(this), Size());
+    } else {
+        // copy header base.
+        fileStream.write(reinterpret_cast<const char *>(this), sizeof(FileHeaderBase));
+        // skip elastic header field, and copy section info from incoming buffer.
+        auto sectionSize = Size() - sizeof(FileHeaderElastic);
+        fileStream.write(reinterpret_cast<const char *>(&sectionNumber_), sectionSize);
+    }
 }
 
 bool PGOProfilerHeader::ParseFromText(std::ifstream &stream)
@@ -111,6 +153,10 @@ bool PGOProfilerHeader::ParseFromText(std::ifstream &stream)
         }
         if (!Verify()) {
             return false;
+        }
+        if (!base::FileHeaderBase::CompatibleVerify(ELASTIC_HEADER_MINI_VERSION)) {
+            auto *pandaInfoSection = GetPandaInfoSection();
+            pandaInfoSection->offset_ -= sizeof(PGOProfilerHeader) - sizeof(PGOProfilerHeaderLegacy);
         }
         return true;
     }
