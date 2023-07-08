@@ -159,6 +159,22 @@ JSTaggedValue BuiltinsAggregateError::AggregateErrorConstructor(EcmaRuntimeCallI
         PropertyDescriptor msgDesc(thread, JSHandle<JSTaggedValue>::Cast(handleStr), true, false, true);
         JSTaggedValue::DefinePropertyOrThrow(thread, taggedObj, msgKey, msgDesc);
     }
+    // InstallErrorCause
+    JSHandle<JSTaggedValue> options = BuiltinsBase::GetCallArg(argv, 2);
+    // If options is an Object and ? HasProperty(options, "cause") is true, then
+    //   a. Let cause be ? Get(options, "cause").
+    //   b. Perform CreateNonEnumerableDataPropertyOrThrow(O, "cause", cause).
+    if (options->IsECMAObject()) {
+        JSHandle<JSTaggedValue> causeKey = globalConst->GetHandledCauseString();
+        bool causePresent = JSTaggedValue::HasProperty(thread, options, causeKey);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (causePresent) {
+            JSHandle<JSTaggedValue> cause = JSObject::GetProperty(thread, options, causeKey).GetValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            PropertyDescriptor causeDesc(thread, cause, true, false, true);
+            JSTaggedValue::DefinePropertyOrThrow(thread, taggedObj, causeKey, causeDesc);
+        }
+    }
     // 4. Let errorsList be ? IterableToList(errors).
     JSHandle<JSTaggedValue> errorsList = JSObject::IterableToList(thread, errors);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

@@ -166,7 +166,23 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
         [[maybe_unused]] bool status = JSObject::DefineOwnProperty(thread, nativeInstanceObj, msgKey, msgDesc);
         ASSERT_PRINT(status == true, "return result exception!");
     }
-
+    // InstallErrorCause
+    JSHandle<JSTaggedValue> options = BuiltinsBase::GetCallArg(argv, 1);
+    // If options is an Object and ? HasProperty(options, "cause") is true, then
+    //   a. Let cause be ? Get(options, "cause").
+    //   b. Perform CreateNonEnumerableDataPropertyOrThrow(O, "cause", cause).
+    if (options->IsECMAObject()) {
+        JSHandle<JSTaggedValue> causeKey = globalConst->GetHandledCauseString();
+        bool causePresent = JSTaggedValue::HasProperty(thread, options, causeKey);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (causePresent) {
+            JSHandle<JSTaggedValue> cause = JSObject::GetProperty(thread, options, causeKey).GetValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            PropertyDescriptor causeDesc(thread, cause, true, false, true);
+            [[maybe_unused]] bool status = JSObject::DefineOwnProperty(thread, nativeInstanceObj, causeKey, causeDesc);
+            ASSERT_PRINT(status == true, "return result exception!");
+        }
+    }
     JSHandle<JSTaggedValue> errorFunc = GetErrorJSFunction(thread);
     if (!errorFunc->IsUndefined()) {
         JSHandle<JSTaggedValue> errorFunckey = globalConst->GetHandledErrorFuncString();

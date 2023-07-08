@@ -246,6 +246,7 @@ class ObjectFactory;
     V(JSTaggedValue, ToJsonString, TO_JSON_STRING_INDEX, toJSON)                                                      \
     V(JSTaggedValue, GlobalString, GLOBAL_STRING_INDEX, global)                                                       \
     V(JSTaggedValue, MessageString, MESSAGE_STRING_INDEX, message)                                                    \
+    V(JSTaggedValue, CauseString, CAUSE_STRING_INDEX, cause)                                                          \
     V(JSTaggedValue, ErrorString, ERROR_STRING_INDEX, Error)                                                          \
     V(JSTaggedValue, RangeErrorString, RANGE_ERROR_STRING_INDEX, RangeError)                                          \
     V(JSTaggedValue, ReferenceErrorString, REFERENCE_ERROR_STRING_INDEX, ReferenceError)                              \

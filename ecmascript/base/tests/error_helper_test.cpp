@@ -324,4 +324,56 @@ HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_003)
     EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(aggregateNameValue)).ToCString().c_str(),
                  "AggregateError");
 }
+
+HWTEST_F_L0(ErrorHelperTest, ErrorCommonConstructor_004)
+{
+    auto factory = instance->GetFactory();
+    auto env = instance->GetGlobalEnv();
+    JSHandle<JSTaggedValue> msgKey = thread->GlobalConstants()->GetHandledMessageString();
+    JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
+    JSHandle<JSTaggedValue> causeKey = thread->GlobalConstants()->GetHandledCauseString();
+
+    JSHandle<JSFunction> error(env->GetErrorFunction());
+    JSHandle<JSFunction> typeError(env->GetTypeErrorFunction());
+    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
+    JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSTaggedValue> causeValue(factory->NewFromASCII("error cause")); // test error cause
+    JSObject::SetProperty(thread, optionsObj, causeKey, causeValue);
+
+    JSHandle<JSTaggedValue> errorMsg(factory->NewFromASCII("You have an Error!"));
+    EcmaRuntimeCallInfo *argv1 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*error), 8); // 8 means 2 call args
+    argv1->SetFunction(error.GetTaggedValue());
+    argv1->SetThis(JSTaggedValue(*error));
+    argv1->SetCallArg(0, errorMsg.GetTaggedValue());
+    argv1->SetCallArg(1, optionsObj.GetTaggedValue());
+    auto prev1 = TestHelper::SetupFrame(thread, argv1);
+    JSHandle<JSTaggedValue> errorResult(thread, ErrorHelper::ErrorCommonConstructor(argv1, ErrorType::ERROR));
+    TestHelper::TearDownFrame(thread, prev1);
+    JSHandle<JSTaggedValue> errorMsgValue(JSObject::GetProperty(thread, errorResult, msgKey).GetValue());
+    JSHandle<JSTaggedValue> errorNameValue(JSObject::GetProperty(thread, errorResult, nameKey).GetValue());
+    JSHandle<JSTaggedValue> errorCauseValue(JSObject::GetProperty(thread, errorResult, causeKey).GetValue());
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorMsgValue)).ToCString().c_str(),
+                 "You have an Error!");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorNameValue)).ToCString().c_str(), "Error");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(errorCauseValue)).ToCString().c_str(), "error cause");
+
+    JSHandle<JSTaggedValue> typeErrorMsg(factory->NewFromASCII("You have a type error!"));
+    EcmaRuntimeCallInfo *argv2 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*typeError), 8); // 8 means 2 call args
+    argv2->SetFunction(typeError.GetTaggedValue());
+    argv2->SetThis(JSTaggedValue(*typeError));
+    argv2->SetCallArg(0, typeErrorMsg.GetTaggedValue());
+    argv2->SetCallArg(1, optionsObj.GetTaggedValue());
+    auto prev2 = TestHelper::SetupFrame(thread, argv2);
+    JSHandle<JSTaggedValue> typeErrorResult(thread, ErrorHelper::ErrorCommonConstructor(argv2, ErrorType::TYPE_ERROR));
+    TestHelper::TearDownFrame(thread, prev2);
+    JSHandle<JSTaggedValue> typeMsgValue(JSObject::GetProperty(thread, typeErrorResult, msgKey).GetValue());
+    JSHandle<JSTaggedValue> typeNameValue(JSObject::GetProperty(thread, typeErrorResult, nameKey).GetValue());
+    JSHandle<JSTaggedValue> typeCauseValue(JSObject::GetProperty(thread, typeErrorResult, causeKey).GetValue());
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeMsgValue)).ToCString().c_str(),
+                 "You have a type error!");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeNameValue)).ToCString().c_str(), "TypeError");
+    EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(typeCauseValue)).ToCString().c_str(), "error cause");
+}
 }  // namespace panda::test

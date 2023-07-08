@@ -40,6 +40,7 @@ using TypeError = builtins::BuiltinsTypeError;
 using URIError = builtins::BuiltinsURIError;
 using EvalError = builtins::BuiltinsEvalError;
 using SyntaxError = builtins::BuiltinsSyntaxError;
+using AggregateError = builtins::BuiltinsAggregateError;
 using JSType = ecmascript::JSType;
 
 class BuiltinsErrorsTest : public testing::Test {
@@ -979,5 +980,56 @@ HWTEST_F_L0(BuiltinsErrorsTest, EvalErrorToString)
     EXPECT_TRUE(result.IsString());
     EXPECT_EQ(EcmaStringAccessor::Compare(instance,
         factory->NewFromASCII("EvalError: This is EvalError!"), resultHandle), 0);
+}
+
+/*
+ * @tc.name: AggregateErrorParameterConstructor
+ * @tc.desc: new AggregateError([], "Hello AggregateError", {cause: "error cause"})
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(BuiltinsErrorsTest, AggregateErrorParameterConstructor)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<GlobalEnv> env = instance->GetGlobalEnv();
+
+    JSHandle<JSFunction> error(env->GetAggregateErrorFunction());
+    JSHandle<JSTaggedValue> paramMsg(factory->NewFromASCII("Hello AggregateError!"));
+
+    JSHandle<JSTaggedValue> errayFunc = env->GetArrayFunction();
+    JSHandle<JSObject> newArray = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(errayFunc), errayFunc);
+
+    JSHandle<JSTaggedValue> causeKey = thread->GlobalConstants()->GetHandledCauseString();
+    JSHandle<JSTaggedValue> objFun = env->GetObjectFunction();
+    JSHandle<JSObject> optionsObj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun);
+    JSHandle<JSTaggedValue> causeValue(factory->NewFromASCII("error cause")); // test error cause
+    JSObject::SetProperty(thread, optionsObj, causeKey, causeValue);
+
+    auto ecmaRuntimeCallInfo =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*error), 10); // 10 means 3 call args
+    ecmaRuntimeCallInfo->SetFunction(error.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue(*error));
+    ecmaRuntimeCallInfo->SetCallArg(0, newArray.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, paramMsg.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, optionsObj.GetTaggedValue()); // 2 means the options arg
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = AggregateError::AggregateErrorConstructor(ecmaRuntimeCallInfo);
+    EXPECT_TRUE(result.IsECMAObject());
+
+    JSHandle<JSTaggedValue> errorObject(thread, reinterpret_cast<TaggedObject *>(result.GetRawData()));
+    JSHandle<JSTaggedValue> msgKey(factory->NewFromASCII("message"));
+    JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
+
+    JSHandle<JSTaggedValue> msgValue(JSObject::GetProperty(thread, errorObject, msgKey).GetValue());
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        factory->NewFromASCII("Hello AggregateError!"), JSHandle<EcmaString>(msgValue)), 0);
+
+    JSHandle<JSTaggedValue> nameValue(JSObject::GetProperty(thread, errorObject, nameKey).GetValue());
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        factory->NewFromASCII("AggregateError"), JSHandle<EcmaString>(nameValue)), 0);
+
+    JSHandle<JSTaggedValue> errCauseValue(JSObject::GetProperty(thread, errorObject, causeKey).GetValue());
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance,
+        factory->NewFromASCII("error cause"), JSHandle<EcmaString>(errCauseValue)), 0);
 }
 }  // namespace panda::test
