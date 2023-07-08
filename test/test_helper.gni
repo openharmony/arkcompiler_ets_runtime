@@ -905,10 +905,7 @@ template("host_aot_test_action") {
       _host_jsvm_target_,
     ]
     if (!defined(invoker.is_only_typed_path) || !invoker.is_only_typed_path) {
-      deps += [
-        ":${_target_name_}AotActionSlowPath",
-        ":${_target_name_}AotContextActionSlowPath",
-      ]
+      deps += [ ":${_target_name_}AotActionSlowPath" ]
     }
     deps += _deps_
 
@@ -1049,56 +1046,6 @@ template("host_aot_test_action") {
     inputs = [ _test_abc_path_ ]
 
     outputs = [ "$target_out_dir/${_target_name_}/SlowPath" ]
-  }
-
-  action("${_target_name_}AotContextActionSlowPath") {
-    testonly = true
-    _host_jsvm_target_ =
-        "$js_root/ecmascript/js_vm:ark_js_context(${host_toolchain})"
-    _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
-
-    deps = [
-      ":${_target_name_}AotCompileActionSlowPath",
-      ":gen_${_target_name_}_abc",
-      _host_jsvm_target_,
-    ]
-    deps += _deps_
-
-    script = "$js_root/script/run_ark_executable.py"
-
-    _aot_run_options_ =
-        " --aot-file=" + rebase_path(_test_aot_arg_slowpath_) +
-        " --asm-interpreter=true" + " --entry-point=${_target_name_}"
-
-    if (defined(invoker.is_enable_enableArkTools) &&
-        invoker.is_enable_enableArkTools) {
-      _aot_run_options_ += " --enable-ark-tools=true"
-      _aot_run_options_ += " --enable-force-gc=false"
-    }
-
-    if (defined(invoker.log_option)) {
-      _aot_run_options_ += invoker.log_option
-    }
-
-    args = [
-      "--script-file",
-      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_context",
-      "--script-options",
-      _aot_run_options_,
-      "--script-args",
-      _script_args_,
-      "--expect-file",
-      rebase_path(_test_expect_path_),
-      "--env-path",
-      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
-          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
-          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
-          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
-    ]
-
-    inputs = [ _test_abc_path_ ]
-
-    outputs = [ "$target_out_dir/${_target_name_}/ContextSlowPath" ]
   }
 }
 
