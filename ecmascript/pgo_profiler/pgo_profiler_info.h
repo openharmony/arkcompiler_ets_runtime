@@ -57,6 +57,14 @@ using PGOMethodId = EntityId;
   |------------{ 'P', 'A', 'N', 'D', 'A', '\0', '\0', '\0' }
   |--------VERSION(4)
   |------------{ '0', '0', '0', '0' }
+  |--------CHECKSUM(4)
+  |------------{ checksum }
+  |--------FILE_SIZE(4)
+  |------------{ fileSize }
+  |--------HEADER_SIZE(4)
+  |------------{ headerSize, from MAGIC to SECTION_NUMBER }
+  |--------ENDIAN_TAG(4)
+  |------------{ ENDIAN_TAG }  
   |--------SECTION_NUMBER(4)
   |------------{ 3 }
   |--------PANDA_FILE_INFO_SECTION_INFO(12)
@@ -92,7 +100,10 @@ public:
     static constexpr VersionType TYPE_MINI_VERSION = {0, 0, 0, 2};
     static constexpr VersionType METHOD_CHECKSUM_MINI_VERSION = {0, 0, 0, 4};
     static constexpr VersionType USE_HCLASS_TYPE_MINI_VERSION = {0, 0, 0, 5};
-    static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 5};
+    static constexpr VersionType FILE_CONSISTENCY_MINI_VERSION = {0, 0, 0, 6};
+    static constexpr VersionType FILE_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
+    static constexpr VersionType HEADER_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
+    static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 6};
     static constexpr size_t SECTION_SIZE = 3;
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
@@ -101,6 +112,7 @@ public:
     PGOProfilerHeader() : base::FileHeader(LAST_VERSION), sectionNumber_(SECTION_SIZE)
     {
         GetPandaInfoSection()->offset_ = Size();
+        SetHeaderSize(Size());
     }
 
     static size_t LastSize()
@@ -118,6 +130,24 @@ public:
         return InternalVerify("apPath file", LAST_VERSION, false);
     }
 
+    bool Verify(void *buffer, size_t bufferSize) const
+    {
+        if (!Verify()) {
+            return false;
+        }
+        if (!VerifyConsistency(buffer, bufferSize)) {
+            return false;
+        }
+        if (!VerifyFileSize(bufferSize)) {
+            return false;
+        }
+        return true;
+    }
+
+    bool VerifyFileSize(size_t bufferSize) const;
+
+    bool VerifyConsistency(void *buffer, size_t bufferSize) const;
+
     static void Build(PGOProfilerHeader **header, size_t size)
     {
         *header = reinterpret_cast<PGOProfilerHeader *>(malloc(size));
@@ -133,8 +163,8 @@ public:
     }
 
     // Copy Header.
-    static bool ParseFromBinary(void *buffer, PGOProfilerHeader **header);
-    void ProcessToBinary(std::ofstream &fileStream) const;
+    static bool ParseFromBinary(void *buffer, size_t bufferSize, PGOProfilerHeader **header);
+    void ProcessToBinary(std::fstream &fileStream) const;
 
     bool ParseFromText(std::ifstream &stream);
     bool ProcessToText(std::ofstream &stream) const;
@@ -169,6 +199,21 @@ public:
         return InternalVerifyVersion(USE_HCLASS_TYPE_MINI_VERSION);
     }
 
+    bool SupportFileConsistency() const
+    {
+        return InternalVerifyVersion(FILE_CONSISTENCY_MINI_VERSION);
+    }
+
+    bool SupportFileSize() const
+    {
+        return InternalVerifyVersion(FILE_SIZE_MINI_VERSION);
+    }
+
+    bool SupportHeaderSize() const
+    {
+        return InternalVerifyVersion(HEADER_SIZE_MINI_VERSION);
+    }
+
     NO_COPY_SEMANTIC(PGOProfilerHeader);
     NO_MOVE_SEMANTIC(PGOProfilerHeader);
 
@@ -198,12 +243,12 @@ public:
     }
 
     void ParseFromBinary(void *buffer, SectionInfo *const info);
-    void ProcessToBinary(std::ofstream &fileStream, SectionInfo *info) const;
+    void ProcessToBinary(std::fstream &fileStream, SectionInfo *info) const;
 
     void ProcessToText(std::ofstream &stream) const;
     bool ParseFromText(std::ifstream &stream);
 
-    bool CheckSum(uint32_t checksum) const;
+    bool Checksum(uint32_t checksum) const;
 
 private:
     class PandaFileInfo {
@@ -754,7 +799,7 @@ public:
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
 
     bool ParseFromBinary(Chunk *chunk, uint32_t threshold, void **buffer, PGOProfilerHeader *const header);
-    bool ProcessToBinary(uint32_t threshold, const CString &recordName, const SaveTask *task, std::ofstream &fileStream,
+    bool ProcessToBinary(uint32_t threshold, const CString &recordName, const SaveTask *task, std::fstream &fileStream,
         PGOProfilerHeader *const header) const;
 
     bool ParseFromText(Chunk *chunk, uint32_t threshold, const std::vector<std::string> &content);
@@ -879,7 +924,7 @@ public:
     void Merge(const PGORecordDetailInfos &recordInfos);
 
     void ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
-    void ProcessToBinary(const SaveTask *task, std::ofstream &fileStream, PGOProfilerHeader *const header) const;
+    void ProcessToBinary(const SaveTask *task, std::fstream &fileStream, PGOProfilerHeader *const header) const;
 
     bool ParseFromText(std::ifstream &stream);
     void ProcessToText(std::ofstream &stream) const;
@@ -890,7 +935,7 @@ public:
 private:
     PGOMethodInfoMap *GetMethodInfoMap(const CString &recordName);
     bool ParseFromBinaryForLayout(void **buffer);
-    bool ProcessToBinaryForLayout(NativeAreaAllocator *allocator, const SaveTask *task, std::ofstream &stream) const;
+    bool ProcessToBinaryForLayout(NativeAreaAllocator *allocator, const SaveTask *task, std::fstream &stream) const;
 
     uint32_t hotnessThreshold_ {2};
     NativeAreaAllocator nativeAreaAllocator_;

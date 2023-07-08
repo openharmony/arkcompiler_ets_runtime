@@ -28,6 +28,8 @@ public:
     NO_COPY_SEMANTIC(PGOProfilerEncoder);
     NO_MOVE_SEMANTIC(PGOProfilerEncoder);
 
+    static void AddChecksum(std::fstream& fileStream);
+
     bool PUBLIC_API InitializeData();
 
     void PUBLIC_API Destroy();
