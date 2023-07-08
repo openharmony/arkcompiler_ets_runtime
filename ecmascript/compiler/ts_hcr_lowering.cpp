@@ -799,9 +799,7 @@ void TSHCRLowering::LowerTypedLdObjByIndex(GateRef gate)
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
     GateRef result = Circuit::NullGate();
-    if (tsManager_->IsInt32ArrayType(receiverType) ||
-        tsManager_->IsFloat32ArrayType(receiverType) ||
-        tsManager_->IsFloat64ArrayType(receiverType)) {
+    if (tsManager_->IsValidTypedArrayType(receiverType)) {
         AddProfiling(gate);
         GateRef index = acc_.GetValueIn(gate, 0);
         uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
@@ -822,13 +820,14 @@ void TSHCRLowering::LowerTypedStObjByIndex(GateRef gate)
     GateType receiverType = acc_.GetGateType(receiver);
     GateType valueType = acc_.GetGateType(value);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    if ((!tsManager_->IsFloat32ArrayType(receiverType)) || (!valueType.IsNumberType())) { // slowpath
+    if ((!tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, receiverType)) ||
+        (!valueType.IsNumberType())) { // slowpath
         return;
     }
 
     AddProfiling(gate);
 
-    if (tsManager_->IsFloat32ArrayType(receiverType)) {
+    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, receiverType)) {
         if (!noCheck_) {
             builder_.TypedArrayCheck(receiverType, receiver);
         }
@@ -844,7 +843,7 @@ void TSHCRLowering::LowerTypedStObjByIndex(GateRef gate)
         builder_.IndexCheck(receiverType, length, index);
     }
 
-    if (tsManager_->IsFloat32ArrayType(receiverType)) {
+    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, receiverType)) {
         builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, index, value);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -880,9 +879,7 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     if (tsManager_->IsArrayTypeKind(receiverType)) {
         AddProfiling(gate);
         result = LoadJSArrayByIndex(receiver, propKey);
-    } else if (tsManager_->IsInt32ArrayType(receiverType) ||
-               tsManager_->IsFloat32ArrayType(receiverType) ||
-               tsManager_->IsFloat64ArrayType(receiverType)) {
+    } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
         AddProfiling(gate);
         result = LoadTypedArrayByIndex(receiver, propKey);
     } else {
@@ -912,11 +909,11 @@ GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
         GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
         propKey = builder_.IndexCheck(receiverType, length, propKey);
     }
-    if (tsManager_->IsInt32ArrayType(receiverType)) {
+    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, receiverType)) {
         return builder_.LoadElement<TypedLoadOp::INT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
-    } else if (tsManager_->IsFloat32ArrayType(receiverType)) {
+    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, receiverType)) {
         return builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
-    } else if (tsManager_->IsFloat64ArrayType(receiverType)) {
+    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, receiverType)) {
         return builder_.LoadElement<TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT>(receiver, propKey);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -948,11 +945,11 @@ void TSHCRLowering::StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, Ga
         GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
         propKey = builder_.IndexCheck(receiverType, length, propKey);
     }
-    if (tsManager_->IsInt32ArrayType(receiverType)) {
+    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, receiverType)) {
         builder_.StoreElement<TypedStoreOp::INT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
-    } else if (tsManager_->IsFloat32ArrayType(receiverType)) {
+    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, receiverType)) {
         builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
-    } else if (tsManager_->IsFloat64ArrayType(receiverType)) {
+    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, receiverType)) {
         builder_.StoreElement<TypedStoreOp::FLOAT64ARRAY_STORE_ELEMENT>(receiver, propKey, value);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -976,9 +973,7 @@ void TSHCRLowering::LowerTypedStObjByValue(GateRef gate)
     if (tsManager_->IsArrayTypeKind(receiverType)) {
         AddProfiling(gate);
         StoreJSArrayByIndex(receiver, propKey, value);
-    } else if (tsManager_->IsInt32ArrayType(receiverType) ||
-               tsManager_->IsFloat32ArrayType(receiverType) ||
-               tsManager_->IsFloat64ArrayType(receiverType)) {
+    } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
         AddProfiling(gate);
         StoreTypedArrayByIndex(receiver, propKey, value);
     } else {
@@ -1089,7 +1084,7 @@ void TSHCRLowering::SpeculateCallThis3Builtin(GateRef gate, BuiltinsStubCSigns::
 BuiltinsStubCSigns::ID TSHCRLowering::GetBuiltinId(BuiltinTypeId id, GateRef func)
 {
     GateType funcType = acc_.GetGateType(func);
-    if (!tsManager_->IsBuiltinObject(id, funcType)) {
+    if (!tsManager_->IsBuiltinObjectMethod(id, funcType)) {
         return BuiltinsStubCSigns::ID::NONE;
     }
     std::string name = tsManager_->GetFuncName(funcType);

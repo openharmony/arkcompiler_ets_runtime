@@ -436,17 +436,16 @@ public:
     IS_TSTYPEKIND_METHOD_LIST(IS_TSTYPEKIND)
 #undef IS_TSTYPEKIND
 
-    bool PUBLIC_API IsBuiltinArrayType(kungfu::GateType gateType) const;
+    bool PUBLIC_API IsBuiltinInstanceType(BuiltinTypeId id, kungfu::GateType gateType) const;
 
     bool PUBLIC_API IsTypedArrayType(kungfu::GateType gateType) const;
 
     bool PUBLIC_API IsValidTypedArrayType(kungfu::GateType gateType) const;
 
-    bool PUBLIC_API IsInt32ArrayType(kungfu::GateType gateType) const;
-
-    bool PUBLIC_API IsFloat32ArrayType(kungfu::GateType gateType) const;
-
-    bool PUBLIC_API IsFloat64ArrayType(kungfu::GateType gateType) const;
+    inline bool PUBLIC_API IsBuiltinObjectType(kungfu::GateType gateType) const
+    {
+        return gateType.GetGTRef().IsBuiltinModule() && IsClassTypeKind(gateType);
+    }
 
     inline void AddElementToPGOGTMap(uint32_t methodOffset, uint32_t cpIdx, GlobalTSTypeRef gt)
     {
@@ -583,9 +582,7 @@ public:
         return EcmaStringAccessor(str).ToStdString(StringConvertedUsage::LOGICOPERATION);
     }
 
-    bool PUBLIC_API IsBuiltin(kungfu::GateType funcType) const;
-
-    bool PUBLIC_API IsBuiltinObject(BuiltinTypeId id, kungfu::GateType funcType) const;
+    bool PUBLIC_API IsBuiltinObjectMethod(BuiltinTypeId id, kungfu::GateType funcType) const;
 
     inline const JSPandaFile *GetBuiltinPandaFile() const
     {

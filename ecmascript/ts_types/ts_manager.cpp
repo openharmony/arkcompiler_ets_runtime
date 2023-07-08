@@ -391,7 +391,7 @@ GlobalTSTypeRef TSManager::FindIteratorInstanceInInferTable(GlobalTSTypeRef kind
 GlobalTSTypeRef TSManager::AddTSTypeToTypeTable(const JSHandle<TSType> &type, int tableId) const
 {
     JSHandle<TSTypeTable> iTable = GetTSTypeTable(tableId);
-    if (UNLIKELY(!GlobalTSTypeRef::IsVaildLocalId(iTable->GetNumberOfTypes() + 1))) {
+    if (UNLIKELY(!GlobalTSTypeRef::IsValidLocalId(iTable->GetNumberOfTypes() + 1))) {
         LOG_COMPILER(DEBUG) << "The maximum number of TSTypes in TSTypeTable " << tableId << " is reached. ";
         return GlobalTSTypeRef::Default();
     }
@@ -723,25 +723,24 @@ JSHandle<JSTaggedValue> TSManager::GetTSType(const GlobalTSTypeRef &gt) const
     return tsType;
 }
 
-bool TSManager::IsBuiltinArrayType(kungfu::GateType gateType) const
+bool TSManager::IsBuiltinInstanceType(BuiltinTypeId id, kungfu::GateType gateType) const
 {
     if (!IsClassInstanceTypeKind(gateType)) {
         return false;
     }
-    const GlobalTSTypeRef gateGT = GlobalTSTypeRef(gateType.Value());
-    GlobalTSTypeRef classGT = GetClassType(gateGT);
-    if (IsBuiltinsDTSEnabled()) {
-        uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::ARRAY);
-        const JSPandaFile *builtinPandaFile = GetBuiltinPandaFile();
-        uint32_t arrayOffset = GetBuiltinOffset(idx);
-        bool hasCreatedGT = HasCreatedGT(builtinPandaFile, arrayOffset);
-        if (hasCreatedGT) {
-            auto gt = GetGTFromOffset(builtinPandaFile, arrayOffset);
-            return (gt == classGT);
-        }
+    auto classGT = GetClassType(gateType.GetGTRef());
+    if (UNLIKELY(!IsBuiltinsDTSEnabled())) {
+        uint32_t localId = classGT.GetLocalId();
+        return classGT.IsBuiltinModule() && (localId == static_cast<uint32_t>(id));
     }
-    uint32_t l = classGT.GetLocalId();
-    return classGT.IsBuiltinModule() && (l == static_cast<uint32_t>(BuiltinTypeId::ARRAY));
+
+    const JSPandaFile *builtinPandaFile = GetBuiltinPandaFile();
+    uint32_t typeOffset = GetBuiltinOffset(static_cast<uint32_t>(id));
+    if (HasCreatedGT(builtinPandaFile, typeOffset)) {
+        auto gt = GetGTFromOffset(builtinPandaFile, typeOffset);
+        return (gt == classGT);
+    }
+    return false;
 }
 
 bool TSManager::IsTypedArrayType(kungfu::GateType gateType) const
@@ -769,55 +768,9 @@ bool TSManager::IsTypedArrayType(kungfu::GateType gateType) const
 
 bool TSManager::IsValidTypedArrayType(kungfu::GateType gateType) const
 {
-    return IsInt32ArrayType(gateType) || IsFloat32ArrayType(gateType) || IsFloat64ArrayType(gateType);
-}
-
-bool TSManager::IsInt32ArrayType(kungfu::GateType gateType) const
-{
-    if (!IsClassInstanceTypeKind(gateType)) {
-        return false;
-    }
-    const GlobalTSTypeRef gateGT = GlobalTSTypeRef(gateType.Value());
-    GlobalTSTypeRef classGT = GetClassType(gateGT);
-    if (IsBuiltinsDTSEnabled()) {
-        uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::INT32_ARRAY);
-        return (HasCreatedGT(GetBuiltinPandaFile(), GetBuiltinOffset(idx))) &&
-               (GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(idx)) == classGT);
-    }
-    uint32_t l = classGT.GetLocalId();
-    return classGT.IsBuiltinModule() && (l == static_cast<uint32_t>(BuiltinTypeId::INT32_ARRAY));
-}
-
-bool TSManager::IsFloat32ArrayType(kungfu::GateType gateType) const
-{
-    if (!IsClassInstanceTypeKind(gateType)) {
-        return false;
-    }
-    const GlobalTSTypeRef gateGT = GlobalTSTypeRef(gateType.Value());
-    GlobalTSTypeRef classGT = GetClassType(gateGT);
-    if (IsBuiltinsDTSEnabled()) {
-        uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::FLOAT32_ARRAY);
-        return (HasCreatedGT(GetBuiltinPandaFile(), GetBuiltinOffset(idx))) &&
-               (GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(idx)) == classGT);
-    }
-    uint32_t l = classGT.GetLocalId();
-    return classGT.IsBuiltinModule() && (l == static_cast<uint32_t>(BuiltinTypeId::FLOAT32_ARRAY));
-}
-
-bool TSManager::IsFloat64ArrayType(kungfu::GateType gateType) const
-{
-    if (!IsClassInstanceTypeKind(gateType)) {
-        return false;
-    }
-    const GlobalTSTypeRef gateGT = GlobalTSTypeRef(gateType.Value());
-    GlobalTSTypeRef classGT = GetClassType(gateGT);
-    if (IsBuiltinsDTSEnabled()) {
-        uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::FLOAT64_ARRAY);
-        return (HasCreatedGT(GetBuiltinPandaFile(), GetBuiltinOffset(idx))) &&
-               (GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(idx)) == classGT);
-    }
-    uint32_t l = classGT.GetLocalId();
-    return classGT.IsBuiltinModule() && (l == static_cast<uint32_t>(BuiltinTypeId::FLOAT64_ARRAY));
+    return IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, gateType) ||
+           IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, gateType) ||
+           IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, gateType);
 }
 
 std::string TSManager::GetBuiltinsName(uint32_t index) const
@@ -1409,7 +1362,7 @@ JSHandle<TaggedArray> TSManager::GenerateExportTableFromLiteral(const JSPandaFil
     return typeOfExportedSymbols;
 }
 
-bool TSManager::IsBuiltinObject(BuiltinTypeId id, kungfu::GateType funcType) const
+bool TSManager::IsBuiltinObjectMethod(BuiltinTypeId id, kungfu::GateType funcType) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     GlobalTSTypeRef funcGT = funcType.GetGTRef();
@@ -1451,12 +1404,6 @@ bool TSManager::IsBuiltinObject(BuiltinTypeId id, kungfu::GateType funcType) con
         }
     }
     return false;
-}
-
-bool TSManager::IsBuiltin(kungfu::GateType funcType) const
-{
-    GlobalTSTypeRef funcGt = funcType.GetGTRef();
-    return funcGt.IsBuiltinModule();
 }
 
 void TSManager::GenerateBuiltinSummary()

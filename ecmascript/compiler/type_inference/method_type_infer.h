@@ -66,6 +66,7 @@ private:
     // savePreType: save the previous type, which is true by default
     bool UpdateType(GateRef gate, const GateType type, bool savePreType = true);
     bool UpdateType(GateRef gate, const GlobalTSTypeRef &typeRef, bool savePreType = true);
+    GateType HandleTypeCompatibility(const GateType preType, const GateType type) const;
     bool ShouldInfer(const GateRef gate) const;
     bool Infer(GateRef gate);
     bool InferPhiGate(GateRef gate);
@@ -94,6 +95,7 @@ private:
     bool SetStGlobalBcType(GateRef gate, bool hasIC = false);
     bool InferLdStr(GateRef gate);
     bool InferCallFunction(GateRef gate);
+    bool InferCallMethod(GateRef gate);
     bool InferLdObjByValue(GateRef gate);
     bool InferGetNextPropName(GateRef gate);
     bool InferDefineGetterSetterByValue(GateRef gate);

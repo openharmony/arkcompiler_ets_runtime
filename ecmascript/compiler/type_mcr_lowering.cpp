@@ -212,13 +212,13 @@ void TypeMCRLowering::LowerTypedArrayCheck(GateRef gate)
     auto type = acc_.GetParamGateType(gate);
     size_t typedArrayFuncIndex = GlobalEnv::TYPED_ARRAY_FUNCTION_INDEX;
     auto deoptType = DeoptType::NOTCHECK;
-    if (tsManager_->IsFloat32ArrayType(type)) {
+    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, type)) {
         typedArrayFuncIndex = GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX;
         deoptType = DeoptType::NOTF32ARRAY;
-    } else if (tsManager_->IsInt32ArrayType(type)) {
+    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, type)) {
         typedArrayFuncIndex = GlobalEnv::INT32_ARRAY_FUNCTION_INDEX;
         deoptType = DeoptType::NOTI32ARRAY;
-    } else if (tsManager_->IsFloat64ArrayType(type)) {
+    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, type)) {
         typedArrayFuncIndex = GlobalEnv::FLOAT64_ARRAY_FUNCTION_INDEX;
         deoptType = DeoptType::NOTF64ARRAY;
     } else {
@@ -338,11 +338,11 @@ void TypeMCRLowering::LowerIndexCheck(GateRef gate)
 
     if (tsManager_->IsArrayTypeKind(type)) {
         deoptType = DeoptType::NOTARRAYIDX;
-    } else if (tsManager_->IsFloat32ArrayType(type)) {
+    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, type)) {
         deoptType = DeoptType::NOTF32ARRAYIDX;
-    } else if (tsManager_->IsInt32ArrayType(type)) {
+    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, type)) {
         deoptType = DeoptType::NOTI32ARRAYIDX;
-    } else if (tsManager_->IsFloat64ArrayType(type)) {
+    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, type)) {
         deoptType = DeoptType::NOTF64ARRAYIDX;
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
