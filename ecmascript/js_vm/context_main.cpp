@@ -100,8 +100,6 @@ int Main(const int argc, const char **argv)
         arg_list_t fileNames = base::StringHelper::SplitString(files, ":");
 #endif
         EcmaContext *context1 = JSNApi::CreateJSContext(vm);
-        EcmaContext *context2 = JSNApi::CreateJSContext(vm);
-        JSNApi::SwitchCurrentContext(vm, context1);
         ClockScope execute;
         for (const auto &fileName : fileNames) {
             auto res = JSNApi::Execute(vm, fileName, entry);
@@ -112,7 +110,6 @@ int Main(const int argc, const char **argv)
             }
         }
         auto totalTime = execute.TotalSpentTime();
-        JSNApi::DestroyJSContext(vm, context2);
         JSNApi::DestroyJSContext(vm, context1);
 
         if (runtimeOptions.IsEnablePrintExecuteTime()) {

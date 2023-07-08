@@ -604,6 +604,7 @@ void EcmaContext::CheckAndDestroy(JSThread *thread, EcmaContext *context)
 {
     if (thread->EraseContext(context)) {
         Destroy(context);
+        return;
     }
     LOG_ECMA(FATAL) << "CheckAndDestroy a nonexistent context.";
 }

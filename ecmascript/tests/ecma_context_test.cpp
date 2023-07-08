@@ -51,51 +51,55 @@ public:
 
 HWTEST_F_L0(EcmaContextTest, Create)
 {
-    [[maybe_unused]]auto context = EcmaContext::Create(thread);
+    auto context = EcmaContext::CreateAndInitialize(thread);
     CVector<EcmaContext *> Cv1 = thread->GetEcmaContexts();
-    EXPECT_EQ(Cv1.size(), 1);
-    auto context2 = EcmaContext::Create(thread);
+    EXPECT_EQ(Cv1.size(), 2);  // 2: size of contexts.
+    auto context2 = EcmaContext::CreateAndInitialize(thread);
     Cv1 = thread->GetEcmaContexts();
-    EXPECT_EQ(Cv1.size(), 1);
-    thread->PushContext(context2);
+    EXPECT_EQ(Cv1.size(), 3);  // 3: size of contexts.
+    EcmaContext::CheckAndDestroy(thread, context);
     Cv1 = thread->GetEcmaContexts();
     EXPECT_EQ(Cv1.size(), 2);  // 2: size of contexts.
-}
-
-HWTEST_F_L0(EcmaContextTest, CreatePushContext)
-{
-    auto context = EcmaContext::Create(thread);
-    auto context1 = EcmaContext::Create(thread);
-    thread->PushContext(context1);
-    CVector<EcmaContext *> context3 = thread->GetEcmaContexts();
-    EXPECT_EQ(context3.size(), 2);  // 2: size of contexts.
-    thread->PushContext(context);
-    context3 = thread->GetEcmaContexts();
-    EXPECT_EQ(context3.size(), 3);  // 3: size of contexts.
-    thread->PopContext();
-    context3 = thread->GetEcmaContexts();
-    EXPECT_EQ(context3.size(), 2);  // 2: size of contexts.
+    EcmaContext::CheckAndDestroy(thread, context2);
 }
 
 HWTEST_F_L0(EcmaContextTest, GetRegExpCache)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
-    auto context = EcmaContext::Create(thread);
+    auto context = EcmaContext::CreateAndInitialize(thread);
     JSHandle<EcmaString> regexp = factory->NewFromASCII("\\g");
     JSHandle<JSTaggedValue> value2(regexp);
     context->SetRegExpCache(value2.GetTaggedValue());
     JSHandle<JSTaggedValue> res2 = context->GetRegExpCache();
     EXPECT_EQ(res2.GetTaggedValue(), value2.GetTaggedValue());
+    EcmaContext::CheckAndDestroy(thread, context);
 }
 
 HWTEST_F_L0(EcmaContextTest, AllowAtomicWait)
 {
-    auto context = EcmaContext::Create(thread);
+    auto context = EcmaContext::CreateAndInitialize(thread);
     bool value = context->GetAllowAtomicWait();
     EXPECT_TRUE(value);
     context->SetAllowAtomicWait(false);
     bool value2 = context->GetAllowAtomicWait();
     EXPECT_FALSE(value2);
+    EcmaContext::CheckAndDestroy(thread, context);
+}
+
+HWTEST_F_L0(EcmaContextTest, SwitchCurrentContext)
+{
+    auto context = EcmaContext::CreateAndInitialize(thread);
+    auto context1 = EcmaContext::CreateAndInitialize(thread);
+
+    CVector<EcmaContext *> contextVector = thread->GetEcmaContexts();
+    EXPECT_EQ(contextVector.size(), 3);  // 3: size of contexts.
+
+    thread->SwitchCurrentContext(context);
+
+    EcmaContext::CheckAndDestroy(thread, context);
+    contextVector = thread->GetEcmaContexts();
+    EXPECT_EQ(contextVector.size(), 2);  // 3: size of contexts.
+    EcmaContext::CheckAndDestroy(thread, context1);
 }
 }  // namespace panda::test
