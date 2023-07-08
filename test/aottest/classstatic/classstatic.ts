@@ -167,6 +167,23 @@ class cpu1 {
     constructor() {
         this.mode = 4;
     }
+
+    public static color1(op: number): number {
+        return op;
+    }
+
+    public static color(color1:string, op: number): number;
+
+    public static color(color1:number, op: number): number;
+
+    public static color(color1: string | number, op: number): void {
+        print("method is ok");
+    }
+
+    public static color2(op: number): number {
+        return op;
+    }
+
     get kind() { 
         print(this.mode);
         return this.mode;
@@ -186,6 +203,7 @@ print(systems.kind);
 cpu.sub(1, 4);
 print(cpu1.TwoC);
 print(cpu1.length);
+cpu1.color();
 
 try {
     cpu1.length = 4;

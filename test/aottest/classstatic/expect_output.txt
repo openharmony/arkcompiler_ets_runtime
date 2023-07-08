@@ -19,4 +19,5 @@
 4
 3
 0
+method is ok
 TypeError: Cannot assign to read only property

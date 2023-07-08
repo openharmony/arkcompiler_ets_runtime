@@ -27,7 +27,7 @@ class TSHCRLowering {
 public:
     TSHCRLowering(Circuit *circuit, PassContext *ctx,
                    bool enableLog, bool enableTypeLog,
-                   const std::string& name)
+                   bool enableOptStaticMethod, const std::string& name)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -35,6 +35,7 @@ public:
           tsManager_(ctx->GetTSManager()),
           enableLog_(enableLog),
           enableTypeLog_(enableTypeLog),
+          enableOptStaticMethod_(enableOptStaticMethod),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
           verifyVTable_(ctx->GetCompilerConfig()->IsVerifyVTbale()),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
@@ -58,6 +59,11 @@ private:
     bool IsTypeLogEnabled() const
     {
         return enableTypeLog_;
+    }
+
+    bool EnableOptStaticMethod() const
+    {
+        return enableOptStaticMethod_;
     }
 
     bool IsProfiling() const
@@ -172,6 +178,7 @@ private:
     TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
     bool enableTypeLog_ {false};
+    bool enableOptStaticMethod_ {false};
     bool profiling_ {false};
     bool verifyVTable_ {false};
     bool traceBc_ {false};

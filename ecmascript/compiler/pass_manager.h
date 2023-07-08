@@ -125,13 +125,15 @@ private:
 class PassOptions {
 public:
     PassOptions(bool enableTypeLowering, bool enableEarlyElimination, bool enableLaterElimination,
-                bool enableValueNumbering, bool enableTypeInfer, bool enableOptInlining, bool enableOptPGOType)
+                bool enableValueNumbering, bool enableTypeInfer, bool enableOptInlining,
+                bool enableOptStaticMethod, bool enableOptPGOType)
         : enableTypeLowering_(enableTypeLowering),
           enableEarlyElimination_(enableEarlyElimination),
           enableLaterElimination_(enableLaterElimination),
           enableValueNumbering_(enableValueNumbering),
           enableTypeInfer_(enableTypeInfer),
           enableOptInlining_(enableOptInlining),
+          enableOptStaticMethod_(enableOptStaticMethod),
           enableOptPGOType_(enableOptPGOType)
         {
         }
@@ -143,6 +145,7 @@ public:
     V(ValueNumbering, false)     \
     V(TypeInfer, false)          \
     V(OptInlining, false)        \
+    V(OptStaticMethod, false)    \
     V(OptPGOType, false)         \
     V(NoCheck, false)
 

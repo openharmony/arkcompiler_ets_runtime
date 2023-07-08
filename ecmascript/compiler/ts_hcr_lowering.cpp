@@ -574,6 +574,9 @@ void TSHCRLowering::LowerTypedLdObjByNameForClassOrObject(GateRef gate, GateRef 
 
     int hclassIndex = -1;
     if (tsManager_->IsClassTypeKind(receiverType)) {
+        if (!enableOptStaticMethod_) {
+            return;
+        }
         hclassIndex = tsManager_->GetConstructorHClassIndexByClassGateType(receiverType);
     } else if (tsManager_->IsObjectTypeKind(receiverType)){
         hclassIndex = tsManager_->GetHClassIndexByObjectType(receiverType);
@@ -688,6 +691,9 @@ void TSHCRLowering::LowerTypedStObjByNameForClassOrObject(GateRef gate, GateRef 
 
     int hclassIndex = -1;
     if (tsManager_->IsClassTypeKind(receiverType)) {
+        if (!enableOptStaticMethod_) {
+            return;
+        }
         hclassIndex = tsManager_->GetConstructorHClassIndexByClassGateType(receiverType);
     } else if (tsManager_->IsObjectTypeKind(receiverType)){
         hclassIndex = tsManager_->GetHClassIndexByObjectType(receiverType);
