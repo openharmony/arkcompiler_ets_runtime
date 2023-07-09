@@ -17,6 +17,7 @@
 
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_record.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/base/string_helper.h"
@@ -56,6 +57,7 @@ JSHandle<ModuleNamespace> ModuleNamespace::ModuleNamespaceCreate(JSThread *threa
     JSHandle<JSObject> mNpObj = JSHandle<JSObject>::Cast(mNp);
     JSObject::DefineOwnProperty(thread, mNpObj, toStringTag, des);
     // 10. Set module.[[Namespace]] to M.
+    SetModuleDeregisterProcession(thread, mNp, ModuleDeregister::FreeModuleRecord);
     ModuleRecord::SetNamespace(thread, moduleRecord.GetTaggedValue(), mNp.GetTaggedValue());
     mNp->GetJSHClass()->SetExtensible(false);
     return mNp;
@@ -313,5 +315,27 @@ bool ModuleNamespace::ValidateKeysAvailable(JSThread *thread, const JSHandle<Tag
         }
     }
     return true;
+}
+
+void ModuleNamespace::SetModuleDeregisterProcession(JSThread *thread, const JSHandle<ModuleNamespace> &nameSpace,
+    const DeleteEntryPoint &callback)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    JSHandle<SourceTextModule> module(thread, nameSpace->GetModule());
+    JSHandle<JSTaggedValue> moduleName(thread, SourceTextModule::GetModuleName(module.GetTaggedValue()));
+    CString moduleStr = ConvertToString(moduleName.GetTaggedValue());
+    int srcLength = strlen(moduleStr.c_str()) + 1;
+    auto moduleNameData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(srcLength);
+    if (memcpy_s(moduleNameData, srcLength, moduleStr.c_str(), srcLength) != EOK) {
+        LOG_ECMA(FATAL) << "Failed to copy module name's data.";
+        UNREACHABLE();
+    }
+    char *tmpData = reinterpret_cast<char *>(moduleNameData);
+    tmpData[srcLength - 1] = '\0';
+    ASSERT(nameSpace->GetDeregisterProcession().IsUndefined());
+    JSHandle<JSNativePointer> registerPointer = factory->NewJSNativePointer(
+        reinterpret_cast<void *>(moduleNameData), callback, reinterpret_cast<void *>(thread), false, srcLength);
+    nameSpace->SetDeregisterProcession(thread, registerPointer.GetTaggedValue());
 }
 }  // namespace panda::ecmascript

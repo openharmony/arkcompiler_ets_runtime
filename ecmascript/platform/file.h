@@ -30,6 +30,7 @@
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_tagged_value.h"
 namespace panda::ecmascript {
+class SourceTextModule;
 #ifdef PANDA_TARGET_WINDOWS
 using fd_t = HANDLE;
 #define INVALID_FD INVALID_HANDLE_VALUE
@@ -72,5 +73,6 @@ JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue d
                                                JSTaggedValue request);
 bool FileExist(const char *filename);
 int Unlink(const char *filename);
+bool TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_FILE_H

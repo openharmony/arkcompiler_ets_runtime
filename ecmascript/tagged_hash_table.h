@@ -240,6 +240,29 @@ public:
         return -1;
     }
 
+    inline int FindEntry(const uint8_t* str, int strSize)
+    {
+        int size = Size();
+        int count = 1;
+        JSTaggedValue keyValue;
+        int32_t hash = static_cast<int32_t>(Derived::Hash(str, strSize));
+
+        for (uint32_t entry = GetFirstPosition(hash, size);; entry = GetNextPosition(entry, count++, size)) {
+            keyValue = GetKey(entry);
+            if (keyValue.IsHole()) {
+                continue;
+            }
+            if (keyValue.IsUndefined()) {
+                return -1;
+            }
+            // keyValue defaults to ecmaString
+            if (Derived::IsMatch(str, strSize, keyValue)) {
+                return entry;
+            }
+        }
+        return -1;
+    }
+
     inline int FindInsertIndex(int hash)
     {
         int size = Size();

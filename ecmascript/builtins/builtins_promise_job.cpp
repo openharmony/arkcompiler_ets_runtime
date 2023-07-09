@@ -26,6 +26,7 @@
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/module/js_dynamic_import.h"
+#include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/require/js_cjs_module.h"
@@ -135,46 +136,45 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSPromiseReactionsFunction> resolve(GetCallArg(argv, 0));
-    JSHandle<JSPromiseReactionsFunction> reject(GetCallArg(argv, 1));   // 1 : first argument
-    JSHandle<EcmaString> dirPath(GetCallArg(argv, 2));                  // 2 : second argument
-    JSHandle<JSTaggedValue> specifier(GetCallArg(argv, 3));             // 3 : third argument
-    JSHandle<JSTaggedValue> recordName(GetCallArg(argv, 4));            // 4 : fourth recordName
+    JSHandle<JSPromiseReactionsFunction> reject(GetCallArg(argv, 1));   // 1 : reject method
+    JSHandle<EcmaString> dirPath(GetCallArg(argv, 2));                  // 2 : current file path(containing file name)
+    JSHandle<JSTaggedValue> specifier(GetCallArg(argv, 3));             // 3 : request module's path
+    JSHandle<JSTaggedValue> recordName(GetCallArg(argv, 4));            // 4 : js recordName or undefined
 
     // Let specifierString be Completion(ToString(specifier))
     JSHandle<EcmaString> specifierString = JSTaggedValue::ToString(thread, specifier);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
 
-    JSHandle<EcmaString> moduleName;
+    // Resolve request module's ohmurl
+    JSMutableHandle<JSTaggedValue> moduleName(thread, thread->GlobalConstants()->GetUndefined());
     CString entryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
-    CString baseFilename = ConvertToString(dirPath.GetTaggedValue());
-    CString fileNameStr = "";
+    CString fileNameStr = ConvertToString(dirPath.GetTaggedValue());
     CString requestPath = ConvertToString(specifierString.GetTaggedValue());
+    LOG_FULL(DEBUG) << "Start importing dynamic module : " << requestPath;
 
     // resolve native module
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
-    if (isNative) {
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    if (isNative && !moduleManager->IsImportedModuleLoaded(specifierString.GetTaggedValue())) {
         return DynamicImport::ExecuteNativeModule(thread, specifierString, moduleType, resolve, reject);
     }
+
     if (recordName->IsUndefined()) {
-        moduleName = ResolveFilenameFromNative(thread, dirPath.GetTaggedValue(),
-                                               specifierString.GetTaggedValue());
+        moduleName.Update(ResolveFilenameFromNative(thread, dirPath.GetTaggedValue(),
+            specifierString.GetTaggedValue()).GetTaggedValue());
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         fileNameStr = ConvertToString(moduleName.GetTaggedValue());
     } else {
         CString recordNameStr = ConvertToString(recordName.GetTaggedValue());
         std::shared_ptr<JSPandaFile> jsPandaFile =
-            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordNameStr.c_str());
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileNameStr, recordNameStr.c_str());
         if (jsPandaFile == nullptr) {
-            CString msg = "Load file with filename '" + baseFilename + "' failed, recordName '" + recordNameStr + "'";
-            JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
+            LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << recordNameStr;
         }
-
         entryPoint =
-            PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(), baseFilename, recordNameStr, requestPath);
+            PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(), fileNameStr, recordNameStr, requestPath);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
-        fileNameStr = baseFilename;
-        moduleName = vm->GetFactory()->NewFromUtf8(entryPoint);
+        moduleName.Update(factory->NewFromUtf8(entryPoint).GetTaggedValue());
     }
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileNameStr, entryPoint);
@@ -183,28 +183,34 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
     }
-    bool isModule = jsPandaFile->IsModule(thread, entryPoint);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
+
+    // Loading request module.
     if (!moduleManager->IsImportedModuleLoaded(moduleName.GetTaggedValue())) {
         if (!JSPandaFileExecutor::ExecuteFromFile(thread, fileNameStr.c_str(), entryPoint.c_str(), false, true)) {
             CString msg = "Cannot execute request dynamic-imported module : " + entryPoint;
             JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
         }
+        thread->GetEcmaVM()->PushToDeregisterModuleList(ConvertToString(moduleName.GetTaggedValue()));
+    } else {
+        ModuleDeregister::ReviseLoadedModuleCount(thread, moduleName.GetTaggedValue());
     }
 
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+    bool isModule = jsPandaFile->IsModule(thread, entryPoint);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+    JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
+    // only support importing es module, or return a default object.
     if (!isModule) {
         moduleNamespace.Update(vm->GetGlobalEnv()->GetExportOfScript());
     } else {
         // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).
         JSHandle<SourceTextModule> moduleRecord =
             moduleManager->HostGetImportedModule(moduleName.GetTaggedValue());
-        // d. Let namespace be ? GetModuleNamespace(moduleRecord).
-        moduleNamespace.Update(SourceTextModule::GetModuleNamespace(thread, moduleRecord));
+        JSHandle<JSTaggedValue> nameSp = SourceTextModule::GetModuleNamespace(thread, moduleRecord);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+        // d. Let namespace be ? GetModuleNamespace(moduleRecord).
+        moduleNamespace.Update(nameSp);
     }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =

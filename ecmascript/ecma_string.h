@@ -21,6 +21,7 @@
 #include <cstring>
 
 #include "ecmascript/base/utf_helper.h"
+#include "ecmascript/common.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
@@ -70,6 +71,9 @@ private:
     friend class LineEcmaString;
     friend class ConstantString;
     friend class TreeEcmaString;
+    friend class NameDictionary;
+
+    static constexpr int SMALL_STRING_SIZE = 128;
 
     static EcmaString *CreateEmptyString(const EcmaVM *vm);
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
@@ -185,9 +189,24 @@ private:
     // can change left and right data structure
     static int32_t Compare(const EcmaVM *vm, const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right);
 
-    template<typename T>
     // Check that two spans are equal. Should have the same length.
-    static bool StringsAreEquals(Span<const T> &str1, Span<const T> &str2);
+    /* static */
+    template<typename T>
+    static bool StringsAreEquals(Span<const T> &str1, Span<const T> &str2)
+    {
+        ASSERT(str1.Size() <= str2.Size());
+        size_t size = str1.Size();
+        if (size < SMALL_STRING_SIZE) {
+            for (size_t i = 0; i < size; i++) {
+                if (str1[i] != str2[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return memcmp(str1.data(), str2.data(), size * sizeof(T)) == 0;
+    }
+
     // Converts utf8Data to utf16 and compare it with given utf16_data.
     static bool IsUtf8EqualsUtf16(const uint8_t *utf8Data, size_t utf8Len, const uint16_t *utf16Data,
                                   uint32_t utf16Len);
@@ -446,6 +465,18 @@ private:
     // memory block copy
     template<typename T>
     static bool MemCopyChars(Span<T> &dst, size_t dstMax, Span<const T> &src, size_t count);
+
+    template<typename T>
+    static uint32_t ComputeHashForData(const T *data, size_t size, uint32_t hashSeed)
+    {
+        uint32_t hash = hashSeed;
+        Span<const T> sp(data, size);
+        for (auto c : sp) {
+            constexpr size_t SHIFT = 5;
+            hash = (hash << SHIFT) - hash + c;
+        }
+        return hash;
+    }
 
     static bool IsASCIICharacter(uint16_t data)
     {

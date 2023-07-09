@@ -255,6 +255,11 @@ HWTEST_F_L0(EcmaModuleTest, PreventExtensions_IsExtensible)
     JSHandle<LocalExportEntry> localExportEntry2 = objectFactory->NewLocalExportEntry();
     SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry2, 1, 2);
     JSHandle<TaggedArray> localExportEntries(thread, module->GetLocalExportEntries());
+    CString baseFileName = "a.abc";
+    JSHandle<EcmaString> moduleFilename = objectFactory->NewFromUtf8(baseFileName);
+    module->SetEcmaModuleFilename(thread, moduleFilename);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    moduleManager->AddResolveImportedModule(baseFileName, JSHandle<JSTaggedValue>::Cast(module));
     JSHandle<ModuleNamespace> np =
     ModuleNamespace::ModuleNamespaceCreate(thread, JSHandle<JSTaggedValue>::Cast(module), localExportEntries);
     EXPECT_FALSE(np->IsExtensible());

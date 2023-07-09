@@ -1300,7 +1300,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_MODULE_NAMESPACE: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, ModuleNamespace::SIZE, 2U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, ModuleNamespace::SIZE, 3U);
                 JSHandle<ModuleNamespace> moduleNamespace = factory->NewModuleNamespace();
                 DUMP_FOR_HANDLE(moduleNamespace);
                 break;

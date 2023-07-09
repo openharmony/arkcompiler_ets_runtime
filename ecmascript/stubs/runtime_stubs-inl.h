@@ -38,6 +38,7 @@
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
 #include "ecmascript/template_string.h"
 #include "ecmascript/ts_types/ts_manager.h"
@@ -1380,29 +1381,16 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
     // get current filename
     Method *method = JSFunction::Cast(func->GetTaggedObject())->GetCallTarget();
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
-    CString filename = jsPandaFile->GetJSPandaFileDesc();
+    CString currentfilename = jsPandaFile->GetJSPandaFileDesc();
 
-    // parse dirPath from filename
-    JSHandle<EcmaString> dirPath;
+    JSMutableHandle<JSTaggedValue> dirPath(thread, thread->GlobalConstants()->GetUndefined());
     JSMutableHandle<JSTaggedValue> recordName(thread, thread->GlobalConstants()->GetUndefined());
     if (jsPandaFile->IsBundlePack()) {
-        int foundPos = static_cast<int>(filename.find_last_of("/\\"));
-        if (foundPos == -1) {
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Hole());
-        }
-        CString dirPathStr = filename.substr(0, foundPos + 1);
-        dirPath = factory->NewFromUtf8(dirPathStr);
+        dirPath.Update(factory->NewFromUtf8(currentfilename).GetTaggedValue());
     } else {
-        JSHandle<JSTaggedValue> module(thread, JSFunction::Cast(func->GetTaggedObject())->GetModule());
-        dirPath = factory->NewFromUtf8(filename.c_str());
-        if (module->IsSourceTextModule()) {
-            recordName.Update(SourceTextModule::Cast(module->GetTaggedObject())->GetEcmaModuleRecordName());
-        } else if (module->IsString()) {
-            recordName.Update(module);
-        } else {
-            LOG_INTERPRETER(FATAL) << "module is undefined";
-            UNREACHABLE();
-        }
+        JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());
+        recordName.Update(function->GetRecordName());
+        dirPath.Update(factory->NewFromUtf8(currentfilename).GetTaggedValue());
     }
 
     // 4. Let promiseCapability be !NewPromiseCapability(%Promise%).
@@ -1413,10 +1401,10 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
 
     JSHandle<TaggedArray> argv = factory->NewTaggedArray(5); // 5: 5 means parameters stored in array
     argv->Set(thread, 0, promiseCapability->GetResolve());
-    argv->Set(thread, 1, promiseCapability->GetReject());    // 1 : first argument
-    argv->Set(thread, 2, dirPath);                           // 2: second argument
-    argv->Set(thread, 3, specifier);                         // 3 : third argument
-    argv->Set(thread, 4, recordName);                        // 4 : fourth argument
+    argv->Set(thread, 1, promiseCapability->GetReject());    // 1 : reject method
+    argv->Set(thread, 2, dirPath);                           // 2 : current file path(containing file name)
+    argv->Set(thread, 3, specifier);                         // 3 : request module's path
+    argv->Set(thread, 4, recordName);                        // 4 : js recordName or undefined
 
     JSHandle<JSFunction> dynamicImportJob(env->GetDynamicImportJob());
     job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, dynamicImportJob, argv);

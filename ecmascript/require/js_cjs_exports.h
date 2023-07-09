@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_REQUIRE_JS_EXPORTS_H
-#define ECMASCRIPT_REQUIRE_JS_EXPORTS_H
+#ifndef ECMASCRIPT_REQUIRE_JS_CJS_EXPORTS_H
+#define ECMASCRIPT_REQUIRE_JS_CJS_EXPORTS_H
 
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
@@ -31,4 +31,4 @@ public:
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, JS_CJS_EXPORTS_OFFSET, SIZE)
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_REQUIRE_JS_MODULE_NAMESPACE_H
+#endif  // ECMASCRIPT_REQUIRE_JS_CJS_EXPORTS_H

@@ -19,7 +19,6 @@
 #include "ecmascript/mem/c_containers.h"
 
 namespace panda::ecmascript {
-static constexpr int SMALL_STRING_SIZE = 128;
 
 EcmaString *EcmaString::Concat(const EcmaVM *vm,
     const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right)
@@ -559,23 +558,6 @@ bool EcmaString::StringsAreEqualUtf16(const EcmaString *str1, const uint16_t *ut
     }
 }
 
-/* static */
-template<typename T>
-bool EcmaString::StringsAreEquals(Span<const T> &str1, Span<const T> &str2)
-{
-    ASSERT(str1.Size() <= str2.Size());
-    size_t size = str1.Size();
-    if (size < SMALL_STRING_SIZE) {
-        for (size_t i = 0; i < size; i++) {
-            if (str1[i] != str2[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-    return memcmp(str1.data(), str2.data(), size * sizeof(T)) == 0;
-}
-
 template<typename T>
 bool EcmaString::MemCopyChars(Span<T> &dst, size_t dstMax, Span<const T> &src, size_t count)
 {
@@ -586,18 +568,6 @@ bool EcmaString::MemCopyChars(Span<T> &dst, size_t dstMax, Span<const T> &src, s
         UNREACHABLE();
     }
     return true;
-}
-
-template<class T>
-static uint32_t ComputeHashForData(const T *data, size_t size, uint32_t hashSeed)
-{
-    uint32_t hash = hashSeed;
-    Span<const T> sp(data, size);
-    for (auto c : sp) {
-        constexpr size_t SHIFT = 5;
-        hash = (hash << SHIFT) - hash + c;
-    }
-    return hash;
 }
 
 uint32_t EcmaString::ComputeHashcode(uint32_t hashSeed) const

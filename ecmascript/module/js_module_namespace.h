@@ -24,6 +24,9 @@ class ModuleNamespace final : public JSObject {
 public:
     CAST_CHECK(ModuleNamespace, IsModuleNamespace);
 
+    static void SetModuleDeregisterProcession(JSThread *thread, const JSHandle<ModuleNamespace> &nameSpace,
+        const DeleteEntryPoint &callback);
+
     // 9.4.6.11ModuleNamespaceCreate ( module, exports )
     static JSHandle<ModuleNamespace> ModuleNamespaceCreate(JSThread *thread, const JSHandle<JSTaggedValue> &module,
                                                            const JSHandle<TaggedArray> &exports);
@@ -57,7 +60,8 @@ public:
 
     static constexpr size_t MODULE_OFFSET = JSObject::SIZE;
     ACCESSORS(Module, MODULE_OFFSET, EXPORTS_OFFSET)
-    ACCESSORS(Exports, EXPORTS_OFFSET, SIZE)
+    ACCESSORS(Exports, EXPORTS_OFFSET, DEREGISTER_PROCESSION_OFFSET)
+    ACCESSORS(DeregisterProcession, DEREGISTER_PROCESSION_OFFSET, SIZE)
 
     DECL_DUMP()
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, MODULE_OFFSET, SIZE)

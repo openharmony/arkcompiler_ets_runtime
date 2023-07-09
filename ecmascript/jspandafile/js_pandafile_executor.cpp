@@ -87,11 +87,11 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
         JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
         if (jsPandaFile->IsBundlePack()) {
-            moduleRecord = moduleManager->HostResolveImportedModule(name);
+            moduleRecord = moduleManager->HostResolveImportedModule(name, excuteFromJob);
         } else {
-            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(name, entry);
+            moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(name, entry, excuteFromJob);
         }
-        SourceTextModule::Instantiate(thread, moduleRecord);
+        SourceTextModule::Instantiate(thread, moduleRecord, excuteFromJob);
         if (thread->HasPendingException()) {
             if (!excuteFromJob) {
                 thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());

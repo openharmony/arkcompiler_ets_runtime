@@ -2483,6 +2483,7 @@ JSHandle<ModuleNamespace> ObjectFactory::NewModuleNamespace()
     JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
     moduleNamespace->SetModule(thread_, JSTaggedValue::Undefined());
     moduleNamespace->SetExports(thread_, JSTaggedValue::Undefined());
+    moduleNamespace->SetDeregisterProcession(thread_, JSTaggedValue::Undefined());
     return moduleNamespace;
 }
 
@@ -3902,6 +3903,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetStatus(ModuleStatus::UNINSTANTIATED);
     obj->SetTypes(ModuleTypes::UNKNOWN);
     obj->SetIsNewBcVersion(false);
+    obj->SetRegisterCounts(UINT16_MAX);
     return obj;
 }
 

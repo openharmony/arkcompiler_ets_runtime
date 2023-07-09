@@ -42,6 +42,7 @@ public:
     static JSTaggedValue EncodeURIComponent(EcmaRuntimeCallInfo *msg);
 
     static JSTaggedValue PrintEntrypoint(EcmaRuntimeCallInfo *msg);
+    static JSTaggedValue MarkModuleCollectable(EcmaRuntimeCallInfo *msg);
     static JSTaggedValue CallJsBoundFunction(EcmaRuntimeCallInfo *msg);
     static JSTaggedValue CallJsProxy(EcmaRuntimeCallInfo *msg);
 #if ECMASCRIPT_ENABLE_RUNTIME_STAT

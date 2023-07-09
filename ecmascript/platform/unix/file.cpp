@@ -20,9 +20,11 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/ecma_macros.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript {
@@ -141,5 +143,17 @@ bool FileExist(const char *filename)
 int Unlink(const char *filename)
 {
     return unlink(filename);
+}
+
+bool TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module)
+{
+    UnloadNativeModuleCallback unloadNativeModuleCallback = thread->GetEcmaVM()->GetUnloadNativeModuleCallback();
+    if (unloadNativeModuleCallback == nullptr) {
+        LOG_ECMA(ERROR) << "unloadNativeModuleCallback is nullptr";
+        return false;
+    }
+
+    CString soName = base::PathHelper::GetStrippedModuleName(ConvertToString(module->GetEcmaModuleRecordName()));
+    return unloadNativeModuleCallback(soName.c_str());
 }
 }  // namespace panda::ecmascript
