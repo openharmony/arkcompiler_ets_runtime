@@ -40,7 +40,7 @@ void AnFileInfo::Save(const std::string &filename, Triple triple)
 
     ElfBuilder builder(des_, GetDumpSectionNames());
     llvm::ELF::Elf64_Ehdr header;
-    builder.PackELFHeader(header, base::FileHeader::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
+    builder.PackELFHeader(header, base::FileHeaderBase::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
     file.write(reinterpret_cast<char *>(&header), sizeof(llvm::ELF::Elf64_Ehdr));
     builder.PackELFSections(file);
     builder.PackELFSegment(file);
@@ -69,7 +69,7 @@ bool AnFileInfo::Load(const std::string &filename)
 
     ElfReader reader(fileMapMem_);
     std::vector<ElfSecName> secs = GetDumpSectionNames();
-    if (!reader.VerifyELFHeader(base::FileHeader::ToVersionNumber(AOTFileVersion::AN_VERSION),
+    if (!reader.VerifyELFHeader(base::FileHeaderBase::ToVersionNumber(AOTFileVersion::AN_VERSION),
                                 AOTFileVersion::AN_STRICT_MATCH)) {
         return false;
     }

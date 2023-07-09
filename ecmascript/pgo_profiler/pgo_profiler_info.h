@@ -95,7 +95,7 @@ using PGOMethodId = EntityId;
   |--------  PGOHClassLayoutDescInner(size)
   |------------{ size, type, superType, count, ptCount, ctorCount, [{ size, handle, key }, { size, heandle, key }, ...]}
  */
-class PGOProfilerHeader : public base::FileHeader {
+class PGOProfilerHeader : public base::FileHeaderElastic {
 public:
     static constexpr VersionType TYPE_MINI_VERSION = {0, 0, 0, 2};
     static constexpr VersionType METHOD_CHECKSUM_MINI_VERSION = {0, 0, 0, 4};
@@ -103,13 +103,14 @@ public:
     static constexpr VersionType FILE_CONSISTENCY_MINI_VERSION = {0, 0, 0, 6};
     static constexpr VersionType FILE_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType HEADER_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
-    static constexpr std::array<uint8_t, VERSION_SIZE> LAST_VERSION = {0, 0, 0, 6};
+    static constexpr VersionType ELASTIC_HEADER_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
+    static constexpr VersionType LAST_VERSION = {0, 0, 0, 6};
     static constexpr size_t SECTION_SIZE = 3;
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
     static constexpr size_t LAYOUT_DESC_SECTION_INDEX = 2;
 
-    PGOProfilerHeader() : base::FileHeader(LAST_VERSION), sectionNumber_(SECTION_SIZE)
+    PGOProfilerHeader() : base::FileHeaderElastic(LAST_VERSION), sectionNumber_(SECTION_SIZE)
     {
         GetPandaInfoSection()->offset_ = Size();
         SetHeaderSize(Size());
@@ -120,14 +121,19 @@ public:
         return sizeof(PGOProfilerHeader) + (SECTION_SIZE - 1) * sizeof(SectionInfo);
     }
 
+    static size_t Size(uint32_t sectionNumber)
+    {
+        return sizeof(PGOProfilerHeader) + (sectionNumber - 1) * sizeof(SectionInfo);
+    }
+
     size_t Size() const
     {
-        return sizeof(PGOProfilerHeader) + (sectionNumber_ - 1) * sizeof(SectionInfo);
+        return Size(sectionNumber_);
     }
 
     bool Verify() const
     {
-        return InternalVerify("apPath file", LAST_VERSION, false);
+        return VerifyVersion("apPath file", LAST_VERSION, false);
     }
 
     bool Verify(void *buffer, size_t bufferSize) const
@@ -186,38 +192,41 @@ public:
 
     bool SupportType() const
     {
-        return InternalVerifyVersion(TYPE_MINI_VERSION);
+        return CompatibleVerify(TYPE_MINI_VERSION);
     }
 
     bool SupportMethodChecksum() const
     {
-        return InternalVerifyVersion(METHOD_CHECKSUM_MINI_VERSION);
+        return CompatibleVerify(METHOD_CHECKSUM_MINI_VERSION);
     }
 
     bool SupportUseHClassType() const
     {
-        return InternalVerifyVersion(USE_HCLASS_TYPE_MINI_VERSION);
+        return CompatibleVerify(USE_HCLASS_TYPE_MINI_VERSION);
     }
 
     bool SupportFileConsistency() const
     {
-        return InternalVerifyVersion(FILE_CONSISTENCY_MINI_VERSION);
+        return CompatibleVerify(FILE_CONSISTENCY_MINI_VERSION);
     }
 
     bool SupportFileSize() const
     {
-        return InternalVerifyVersion(FILE_SIZE_MINI_VERSION);
+        return CompatibleVerify(FILE_SIZE_MINI_VERSION);
     }
 
     bool SupportHeaderSize() const
     {
-        return InternalVerifyVersion(HEADER_SIZE_MINI_VERSION);
+        return CompatibleVerify(HEADER_SIZE_MINI_VERSION);
     }
 
     NO_COPY_SEMANTIC(PGOProfilerHeader);
     NO_MOVE_SEMANTIC(PGOProfilerHeader);
 
 private:
+    static bool BuildFromLegacy(void *buffer, PGOProfilerHeader **header);
+    static bool BuildFromElastic(void *buffer, size_t bufferSize, PGOProfilerHeader **header);
+
     SectionInfo *GetSectionInfo(size_t index) const
     {
         if (index >= sectionNumber_) {
@@ -226,6 +235,22 @@ private:
         return const_cast<SectionInfo *>(&sectionInfos_) + index;
     }
 
+    uint32_t sectionNumber_ {SECTION_SIZE};
+    SectionInfo sectionInfos_;
+};
+
+class PGOProfilerHeaderLegacy : public base::FileHeaderBase {
+public:
+    static constexpr size_t SECTION_SIZE = 3;
+    static constexpr VersionType LAST_VERSION = {0, 0, 0, 5};
+    PGOProfilerHeaderLegacy() : base::FileHeaderBase(LAST_VERSION), sectionNumber_(SECTION_SIZE) {};
+
+    const uint32_t& GetSectionNumber () const
+    {
+        return sectionNumber_;
+    }
+
+private:
     uint32_t sectionNumber_ {SECTION_SIZE};
     SectionInfo sectionInfos_;
 };

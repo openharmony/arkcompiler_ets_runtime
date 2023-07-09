@@ -49,7 +49,7 @@ void StubFileInfo::Save(const std::string &filename, Triple triple)
 
     ElfBuilder builder(des_, GetDumpSectionNames());
     llvm::ELF::Elf64_Ehdr header;
-    builder.PackELFHeader(header, base::FileHeader::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
+    builder.PackELFHeader(header, base::FileHeaderBase::ToVersionNumber(AOTFileVersion::AN_VERSION), triple);
     file.write(reinterpret_cast<char *>(&header), sizeof(llvm::ELF::Elf64_Ehdr));
     builder.PackELFSections(file);
     builder.PackELFSegment(file);

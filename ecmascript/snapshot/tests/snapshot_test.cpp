@@ -60,8 +60,8 @@ public:
         JSNApi::DestroyJSVM(ecmaVm);
     }
 
-    void CompatibilityHelper(base::FileHeader::VersionType serializeVersion,
-                             base::FileHeader::VersionType deserializeVersion, bool expected)
+    void CompatibilityHelper(base::FileHeaderBase::VersionType serializeVersion,
+                             base::FileHeaderBase::VersionType deserializeVersion, bool expected)
     {
         static constexpr uint32_t ARRAY_SIZE = 300;
         static constexpr uint32_t KILO_BITS = 1024;
@@ -312,30 +312,30 @@ HWTEST_F_L0(SnapshotTest, SerializeHugeObject)
 
 HWTEST_F_L0(SnapshotTest, BackwardCompatibility)
 {
-    base::FileHeader::VersionType oldVersion = {0, 0, 0, 1};
-    base::FileHeader::VersionType newVersion = {4, 0, 0, 1};
+    base::FileHeaderBase::VersionType oldVersion = {0, 0, 0, 1};
+    base::FileHeaderBase::VersionType newVersion = {4, 0, 0, 1};
     CompatibilityHelper(oldVersion, newVersion, false);
 }
 
 HWTEST_F_L0(SnapshotTest, ForwardCompatibility)
 {
-    base::FileHeader::VersionType oldVersion = {0, 0, 0, 1};
-    base::FileHeader::VersionType newVersion = {4, 0, 0, 1};
+    base::FileHeaderBase::VersionType oldVersion = {0, 0, 0, 1};
+    base::FileHeaderBase::VersionType newVersion = {4, 0, 0, 1};
     CompatibilityHelper(newVersion, oldVersion, false);
 }
 
 HWTEST_F_L0(SnapshotTest, StrictCompatibility)
 {
-    base::FileHeader::VersionType newVersion = {4, 0, 0, 1};
+    base::FileHeaderBase::VersionType newVersion = {4, 0, 0, 1};
     CompatibilityHelper(newVersion, newVersion, true);
 }
 
 HWTEST_F_L0(SnapshotTest, VersionTest)
 {
-    base::FileHeader::VersionType version = {4, 3, 2, 1};
+    base::FileHeaderBase::VersionType version = {4, 3, 2, 1};
     uint32_t versionNumber = 0x04030201U;
-    EXPECT_EQ(version, base::FileHeader::ToVersion(versionNumber));
-    EXPECT_EQ(versionNumber, base::FileHeader::ToVersionNumber(version));
+    EXPECT_EQ(version, base::FileHeaderBase::ToVersion(versionNumber));
+    EXPECT_EQ(versionNumber, base::FileHeaderBase::ToVersionNumber(version));
 }
 
 }  // namespace panda::test

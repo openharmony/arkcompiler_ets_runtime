@@ -98,7 +98,9 @@ bool PGOProfilerEncoder::SaveProfiler(const SaveTask *task)
     pandaFileInfos_->ProcessToBinary(fileStream, header_->GetPandaInfoSection());
     globalRecordInfos_->ProcessToBinary(task, fileStream, header_);
     header_->ProcessToBinary(fileStream);
-    AddChecksum(fileStream);
+    if (header_->SupportFileConsistency()) {
+        AddChecksum(fileStream);
+    }
     fileStream.close();
     if (FileExist(realOutPath_.c_str()) && remove(realOutPath_.c_str())) {
         LOG_ECMA(ERROR) << "Remove " << realOutPath_ << " failure!, errno: " << errno;

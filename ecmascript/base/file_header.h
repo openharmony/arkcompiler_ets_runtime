@@ -24,11 +24,10 @@
 #include <stdint.h>
 
 namespace panda::ecmascript::base {
-class FileHeader {
+class FileHeaderBase {
 public:
     static constexpr size_t MAGIC_SIZE = 8;
     static constexpr size_t VERSION_SIZE = 4;
-    static constexpr uint32_t ENDIAN_VALUE = 0x12345678;
     static constexpr uint32_t CHECKSUM_END_OFFSET = MAGIC_SIZE + VERSION_SIZE + sizeof(uint32_t);
     static constexpr std::array<uint8_t, MAGIC_SIZE> MAGIC = {'P', 'A', 'N', 'D', 'A', '\0', '\0', '\0'};
     using VersionType = std::array<uint8_t, VERSION_SIZE>;
@@ -61,6 +60,74 @@ public:
         return ret;
     }
 
+    bool VerifyVersion(const char *fileDesc, const VersionType &lastVersion, bool strictMatch) const
+    {
+        if (magic_ != MAGIC) {
+            LOG_HOST_TOOL_ERROR << "Magic mismatch, please make sure " << fileDesc
+                                << " and the source code are matched";
+            LOG_ECMA(ERROR) << "magic error, expected magic is " << ConvToStr(MAGIC) << ", but got "
+                            << ConvToStr(magic_);
+            return false;
+        }
+        if (!VerifyVersion(fileDesc, version_, lastVersion, strictMatch)) {
+            return false;
+        }
+        LOG_ECMA(DEBUG) << "Magic:" << ConvToStr(magic_) << ", version:" << InternalGetVersion();
+        return true;
+    }
+
+    bool CompatibleVerify(const VersionType &expectVersion) const
+    {
+        return version_ >= expectVersion;
+    }
+
+protected:
+    explicit FileHeaderBase(const VersionType &lastVersion) : magic_(MAGIC), version_(lastVersion) {}
+
+    static bool VerifyVersion(const char *fileDesc, const VersionType &currVersion, const VersionType &lastVersion,
+                              bool strictMatch)
+    {
+        bool matched = strictMatch ? currVersion == lastVersion : currVersion <= lastVersion;
+        if (!matched) {
+            LOG_HOST_TOOL_ERROR << fileDesc << " version error, expected version should be "
+                                << (strictMatch ? "equal to " : "less or equal than ") << ConvToStr(lastVersion)
+                                << ", but got " << ConvToStr(currVersion);
+            return false;
+        }
+        return true;
+    }
+
+    std::string InternalGetVersion() const
+    {
+        return ConvToStr(version_);
+    }
+
+    bool InternalSetVersion(const std::string &version)
+    {
+        std::vector<std::string> versionNumber = StringHelper::SplitString(version, ".");
+        if (versionNumber.size() != VERSION_SIZE) {
+            LOG_ECMA(ERROR) << "version: " << version << " format error";
+            return false;
+        }
+        for (uint32_t i = 0; i < VERSION_SIZE; i++) {
+            uint32_t result = 0;
+            if (!StringHelper::StrToUInt32(versionNumber[i].c_str(), &result)) {
+                LOG_ECMA(ERROR) << "version: " << version << " format error";
+                return false;
+            }
+            version_.at(i) = static_cast<uint8_t>(result);
+        }
+        return true;
+    }
+
+private:
+    std::array<uint8_t, MAGIC_SIZE> magic_;
+    VersionType version_;
+};
+
+class FileHeaderElastic : public FileHeaderBase {
+public:
+    static constexpr uint32_t ENDIAN_VALUE = 0x12345678;
     void SetChecksum(uint32_t checksum)
     {
         checksum_ = checksum;
@@ -91,75 +158,19 @@ public:
         return fileSize_;
     }
 
+    uint32_t GetEndianTag() const
+    {
+        return endianTag_;
+    }
+
 protected:
-    explicit FileHeader(const VersionType &lastVersion) : magic_(MAGIC), version_(lastVersion) {}
-
-    static bool VerifyVersion(const char *fileDesc, const VersionType &currVersion, const VersionType &lastVersion,
-                              bool strictMatch)
-    {
-        bool matched = strictMatch ? currVersion == lastVersion : currVersion <= lastVersion;
-        if (!matched) {
-            LOG_HOST_TOOL_ERROR << fileDesc << " version error, expected version should be "
-                                << (strictMatch ? "equal to " : "less or equal than ") << ConvToStr(lastVersion)
-                                << ", but got " << ConvToStr(currVersion);
-            return false;
-        }
-        return true;
-    }
-
-    bool InternalVerify(const char *fileDesc, const VersionType &lastVersion, bool strictMatch) const
-    {
-        if (magic_ != MAGIC) {
-            LOG_HOST_TOOL_ERROR << "Magic mismatch, please make sure " << fileDesc
-                                << " and the source code are matched";
-            LOG_ECMA(ERROR) << "magic error, expected magic is " << ConvToStr(MAGIC) << ", but got "
-                            << ConvToStr(magic_);
-            return false;
-        }
-        if (!VerifyVersion(fileDesc, version_, lastVersion, strictMatch)) {
-            return false;
-        }
-        LOG_ECMA(DEBUG) << "Magic:" << ConvToStr(magic_) << ", version:" << InternalGetVersion()
-                        << ", endianTag: " << std::hex << endianTag_;
-        return true;
-    }
-
-    bool InternalVerifyVersion(const VersionType &expectVersion) const
-    {
-        return version_ >= expectVersion;
-    }
-
-    std::string InternalGetVersion() const
-    {
-        return ConvToStr(version_);
-    }
-
-    bool InternalSetVersion(const std::string &version)
-    {
-        std::vector<std::string> versionNumber = StringHelper::SplitString(version, ".");
-        if (versionNumber.size() != VERSION_SIZE) {
-            LOG_ECMA(ERROR) << "version: " << version << " format error";
-            return false;
-        }
-        for (uint32_t i = 0; i < VERSION_SIZE; i++) {
-            uint32_t result = 0;
-            if (!StringHelper::StrToUInt32(versionNumber[i].c_str(), &result)) {
-                LOG_ECMA(ERROR) << "version: " << version << " format error";
-                return false;
-            }
-            version_.at(i) = static_cast<uint8_t>(result);
-        }
-        return true;
-    }
+    explicit FileHeaderElastic(const VersionType &lastVersion) : FileHeaderBase(lastVersion) {}
 
 private:
-    std::array<uint8_t, MAGIC_SIZE> magic_;
-    VersionType version_;
     uint32_t checksum_ {0};
     uint32_t fileSize_ {0};
     uint32_t headerSize_ {0};
-    uint32_t endianTag_ { ENDIAN_VALUE };
+    uint32_t endianTag_ {ENDIAN_VALUE};
 };
-
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_FILE_HEADER_H
