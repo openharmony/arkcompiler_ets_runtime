@@ -21,6 +21,7 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/module_data_extractor.h"
@@ -420,7 +421,7 @@ void SourceTextModule::InitializeEnvironment(JSThread *thread, const JSHandle<So
                           "' does not provide an export named '" +
                           ConvertToString(importName.GetTaggedValue()) +
                           "' which imported by '" +
-                          ConvertToString(requestedName.GetTaggedValue()) + "'";
+                          ConvertToString(currentModule->GetEcmaModuleRecordName()) + "'";
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
         // iii. Call envRec.CreateImportBinding(
@@ -440,7 +441,8 @@ JSHandle<SourceTextModule> SourceTextModule::GetModuleFromBinding(JSThread *thre
     return JSHandle<SourceTextModule>(thread, binding->GetModule());
 }
 
-int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl)
+int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl,
+    bool excuteFromJob)
 {
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleHdl);
@@ -451,7 +453,7 @@ int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue
     CVector<JSHandle<SourceTextModule>> stack;
     // 4. Let result be InnerModuleInstantiation(module, stack, 0).
     JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
-    int result = SourceTextModule::InnerModuleInstantiation(thread, moduleRecord, stack, 0);
+    int result = SourceTextModule::InnerModuleInstantiation(thread, moduleRecord, stack, 0, excuteFromJob);
     // 5. If result is an abrupt completion, then
     if (thread->HasPendingException()) {
         // a. For each module m in stack, do
@@ -480,7 +482,7 @@ int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue
 }
 
 int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
-                                               CVector<JSHandle<SourceTextModule>> &stack, int index)
+    CVector<JSHandle<SourceTextModule>> &stack, int index, bool excuteFromJob)
 {
     // 1. If module is not a Source Text Module Record, then
     if (!moduleRecord.GetTaggedValue().IsSourceTextModule()) {
@@ -524,6 +526,7 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
                 JSHandle<JSTaggedValue> requiredVal =
                     SourceTextModule::HostResolveImportedModule(thread, module, required);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
+                ModuleDeregister::InitForDeregisterModule(requiredVal, excuteFromJob);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
                 requestedModules->Set(thread, idx, requiredModule->GetEcmaModuleFilename());
             } else {
@@ -531,13 +534,15 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
                 JSHandle<JSTaggedValue> requiredVal =
                     SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
+                ModuleDeregister::InitForDeregisterModule(requiredVal, excuteFromJob);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
                 requestedModules->Set(thread, idx, requiredModule->GetEcmaModuleRecordName());
             }
 
             // b. Set index to ? InnerModuleInstantiation(requiredModule, stack, index).
             JSHandle<ModuleRecord> requiredModuleRecord = JSHandle<ModuleRecord>::Cast(requiredModule);
-            index = SourceTextModule::InnerModuleInstantiation(thread, requiredModuleRecord, stack, index);
+            index = SourceTextModule::InnerModuleInstantiation(thread,
+                requiredModuleRecord, stack, index, excuteFromJob);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
             // c. Assert: requiredModule.[[Status]] is either "instantiating", "instantiated", or "evaluated".
             ModuleStatus requiredModuleStatus = requiredModule->GetStatus();
@@ -1526,4 +1531,23 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
         }
     }
 }
+
+JSTaggedValue SourceTextModule::GetModuleName(JSTaggedValue currentModule)
+{
+    SourceTextModule *module = SourceTextModule::Cast(currentModule.GetTaggedObject());
+    JSTaggedValue recordName = module->GetEcmaModuleRecordName();
+    if (recordName.IsUndefined()) {
+        return module->GetEcmaModuleFilename();
+    }
+    return recordName;
+}
+
+bool SourceTextModule::IsDynamicModule(LoadingTypes types)
+{
+    if (types == LoadingTypes::DYNAMITC_MODULE) {
+        return true;
+    }
+    return false;
+}
+
 } // namespace panda::ecmascript

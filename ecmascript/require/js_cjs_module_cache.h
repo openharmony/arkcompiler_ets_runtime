@@ -143,4 +143,4 @@ public:
     static constexpr int DEAULT_DICTIONART_CAPACITY = 4;
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_REQUIRE_CJS_MODULE_CACHE_H
+#endif  // ECMASCRIPT_REQUIRE_JS_CJS_MODULE_CACHE_H

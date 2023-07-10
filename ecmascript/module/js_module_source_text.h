@@ -36,9 +36,18 @@ enum class ModuleTypes : uint8_t {
     UNKNOWN
 };
 
+enum class LoadingTypes : uint8_t {
+    STABLE_MODULE = 0x01,
+    DYNAMITC_MODULE,
+    OTHERS
+};
+
 class SourceTextModule final : public ModuleRecord {
 public:
     static constexpr int UNDEFINED_INDEX = -1;
+    static constexpr size_t DEFAULT_DICTIONART_CAPACITY = 2;
+    static constexpr size_t DEFAULT_ARRAY_CAPACITY = 2;
+    static constexpr uint8_t DEREGISTER_MODULE_TAG = 1;
 
     CAST_CHECK(SourceTextModule, IsSourceTextModule);
 
@@ -62,8 +71,9 @@ public:
                                                        const JSHandle<JSTaggedValue> &exportObject,
                                                        const JSHandle<JSTaggedValue> &exportName);
     // 15.2.1.16.4.1 InnerModuleInstantiation ( module, stack, index )
-    static int InnerModuleInstantiation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
-                                        CVector<JSHandle<SourceTextModule>> &stack, int index);
+    static int InnerModuleInstantiation(JSThread *thread,
+        const JSHandle<ModuleRecord> &moduleRecord, CVector<JSHandle<SourceTextModule>> &stack,
+        int index, bool excuteFromJob = false);
 
     // 15.2.1.16.4.2 ModuleDeclarationEnvironmentSetup ( module )
     static void ModuleDeclarationEnvironmentSetup(JSThread *thread, const JSHandle<SourceTextModule> &module);
@@ -128,9 +138,14 @@ public:
     static constexpr size_t STATUS_BITS = 3;
     static constexpr size_t MODULE_TYPE_BITS = 4;
     static constexpr size_t IS_NEW_BC_VERSION_BITS = 1;
+    static constexpr size_t LOADING_TYPE_BITS = 3;
+    static constexpr uint16_t REGISTER_COUNTS = 16;
+
     FIRST_BIT_FIELD(BitField, Status, ModuleStatus, STATUS_BITS)
     NEXT_BIT_FIELD(BitField, Types, ModuleTypes, MODULE_TYPE_BITS, Status)
     NEXT_BIT_FIELD(BitField, IsNewBcVersion, bool, IS_NEW_BC_VERSION_BITS, Types)
+    NEXT_BIT_FIELD(BitField, LoadingTypes, LoadingTypes, LOADING_TYPE_BITS, IsNewBcVersion)
+    NEXT_BIT_FIELD(BitField, RegisterCounts, uint16_t, REGISTER_COUNTS, LoadingTypes)
 
     DECL_DUMP()
     DECL_VISIT_OBJECT(SOURCE_TEXT_MODULE_OFFSET, EVALUATION_ERROR_OFFSET)
@@ -141,7 +156,8 @@ public:
     static int EvaluateForConcurrent(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     // 15.2.1.16.4 Instantiate()
-    static int Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl);
+    static int Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl,
+        bool excuteFromJob = false);
     static void InstantiateCJS(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
                                const JSHandle<SourceTextModule> &requiredModule);
     static void InstantiateNativeModule(JSThread *thread, JSHandle<SourceTextModule> &currentModule,
@@ -159,8 +175,9 @@ public:
                                                          const JSHandle<SourceTextModule> &module,
                                                          CVector<std::pair<JSHandle<SourceTextModule>,
                                                          JSHandle<JSTaggedValue>>> &resolveVector);
-    static constexpr size_t DEFAULT_DICTIONART_CAPACITY = 2;
-    static constexpr size_t DEFAULT_ARRAY_CAPACITY = 2;
+    static JSTaggedValue GetModuleName(JSTaggedValue currentModule);
+
+    static bool IsDynamicModule(LoadingTypes types);
 private:
     static void SetExportName(JSThread *thread,
                               const JSHandle<JSTaggedValue> &moduleRequest, const JSHandle<SourceTextModule> &module,

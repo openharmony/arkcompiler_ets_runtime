@@ -25,6 +25,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -499,6 +500,26 @@ JSTaggedValue BuiltinsGlobal::PrintEntrypoint(EcmaRuntimeCallInfo *msg)
     }
     std::cout << std::endl;
     return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsGlobal::MarkModuleCollectable(EcmaRuntimeCallInfo *msg)
+{
+    ASSERT(msg);
+    JSThread *thread = msg->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    uint32_t numArgs = msg->GetArgsNumber();
+    if (numArgs != 1) {
+        LOG_FULL(ERROR) << "The number of parameters received by markModuleCollectable is incorrect.";
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSTaggedValue> module = GetCallArg(msg, 0);
+    if (!module->IsModuleNamespace()) {
+        return JSTaggedValue::False();
+    }
+
+    ModuleDeregister::ProcessModuleReference(thread, module);
+    return JSTaggedValue::True();
 }
 
 JSTaggedValue BuiltinsGlobal::CallJsBoundFunction(EcmaRuntimeCallInfo *msg)

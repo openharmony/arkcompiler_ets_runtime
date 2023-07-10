@@ -42,7 +42,11 @@ public:
         return ENTRY_SIZE;
     }
     static int Hash(const JSTaggedValue &key);
+    static int Hash(const uint8_t* str, int strSize);
+
     static bool IsMatch(const JSTaggedValue &key, const JSTaggedValue &other);
+    static bool IsMatch(const uint8_t* str, int size, const JSTaggedValue &other);
+
     static JSHandle<NameDictionary> Create(const JSThread *thread,
                                   int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
     // Returns the property metaData for the property at entry.

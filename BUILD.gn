@@ -730,6 +730,7 @@ ecma_source = [
   "ecmascript/module/js_module_namespace.cpp",
   "ecmascript/module/js_module_record.cpp",
   "ecmascript/module/js_module_source_text.cpp",
+  "ecmascript/module/js_module_deregister.cpp",
   "ecmascript/module/module_data_extractor.cpp",
   "ecmascript/napi/jsnapi.cpp",
   "ecmascript/object_factory.cpp",

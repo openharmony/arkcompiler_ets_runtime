@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/tagged_dictionary.h"
+#include "ecmascript/ecma_string.h"
 #include "ecmascript/filter_helper.h"
 #include "ecmascript/tagged_hash_table.h"
 
@@ -36,9 +37,26 @@ int NameDictionary::Hash(const JSTaggedValue &key)
     UNREACHABLE();
 }
 
+int NameDictionary::Hash(const uint8_t* str, int strSize)
+{
+    return EcmaString::ComputeHashForData(str, strSize, 0);
+}
+
 bool NameDictionary::IsMatch(const JSTaggedValue &key, const JSTaggedValue &other)
 {
     return key == other;
+}
+
+bool NameDictionary::IsMatch(const uint8_t* str, int size, const JSTaggedValue &other)
+{
+    if (!other.IsString()) {
+        return false;
+    }
+    EcmaString *keyString = reinterpret_cast<EcmaString *>(other.GetTaggedObject());
+
+    Span<const uint8_t> data1(EcmaStringAccessor(keyString).GetDataUtf8(), keyString->GetLength());
+    Span<const uint8_t> data2(str, size);
+    return EcmaString::StringsAreEquals(data1, data2);
 }
 
 void NameDictionary::GetAllKeys(const JSThread *thread, int offset, TaggedArray *keyArray) const

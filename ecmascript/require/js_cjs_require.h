@@ -37,4 +37,4 @@ public:
     static JSTaggedValue Resolve(EcmaRuntimeCallInfo *argv);
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_REQUIRE_CJS_REQUIRE_H
+#endif  // ECMASCRIPT_REQUIRE_JS_CJS_REQUIRE_H

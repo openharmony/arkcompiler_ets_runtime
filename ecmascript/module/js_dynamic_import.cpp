@@ -31,12 +31,18 @@ JSTaggedValue DynamicImport::ExecuteNativeModule(JSThread *thread, JSHandle<Ecma
     CString entryPoint = PathHelper::GetStrippedModuleName(requestPath);
     JSHandle<JSTaggedValue> nativeModule = moduleManager->ResolveNativeModule(requestPath, moduleType);
     JSHandle<SourceTextModule> requiredModule = JSHandle<SourceTextModule>::Cast(nativeModule);
-    if (!SourceTextModule::LoadNativeModule(thread, requiredModule,
-        JSHandle<JSTaggedValue>(specifierString), moduleType)) {
-        LOG_FULL(WARN) << "LoadNativeModule " << requestPath << " failed";
+
+    if (!SourceTextModule::LoadNativeModule(thread, requiredModule, JSHandle<JSTaggedValue>(specifierString),
+        moduleType)) {
+        LOG_FULL(ERROR) << " dynamically loading native module" << requestPath << " failed";
     }
-    JSHandle<JSTaggedValue> nativeExports(thread, requiredModule->GetModuleValue(thread, 0, false));
+
+    // initialize native module
     requiredModule->SetStatus(ModuleStatus::EVALUATED);
+    requiredModule->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
+    requiredModule->SetRegisterCounts(1);
+    thread->GetEcmaVM()->PushToDeregisterModuleList(requestPath);
+
     JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, requiredModule);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, BuiltinsPromiseJob::CatchException(thread, reject));
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();

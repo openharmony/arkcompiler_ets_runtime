@@ -437,6 +437,28 @@ void EcmaVM::RemoveFromNativePointerList(JSNativePointer *array)
     }
 }
 
+void EcmaVM::PushToDeregisterModuleList(CString module)
+{
+    deregisterModuleList_.emplace_back(module);
+}
+
+void EcmaVM::RemoveFromDeregisterModuleList(CString module)
+{
+    auto iter = std::find(deregisterModuleList_.begin(), deregisterModuleList_.end(), module);
+    if (iter != deregisterModuleList_.end()) {
+        deregisterModuleList_.erase(iter);
+    }
+}
+
+bool EcmaVM::ContainInDeregisterModuleList(CString module)
+{
+    auto iter = std::find(deregisterModuleList_.begin(), deregisterModuleList_.end(), module);
+    if (iter != deregisterModuleList_.end()) {
+        return true;
+    }
+    return false;
+}
+
 void EcmaVM::ClearBufferData()
 {
     for (auto iter : nativePointerList_) {
@@ -446,6 +468,7 @@ void EcmaVM::ClearBufferData()
     thread_->GetCurrentEcmaContext()->ClearBufferData();
     internalNativeMethods_.clear();
     workerList_.clear();
+    deregisterModuleList_.clear();
 }
 
 void EcmaVM::CollectGarbage(TriggerGCType gcType, GCReason reason) const

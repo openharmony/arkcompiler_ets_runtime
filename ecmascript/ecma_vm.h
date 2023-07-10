@@ -83,9 +83,8 @@ class EcmaStringTable;
 
 using NativePtrGetter = void* (*)(void* info);
 
-using ResolvePathCallback = std::function<std::string(std::string dirPath, std::string requestPath)>;
 using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath)>;
-
+using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 class EcmaVM {
 public:
     static EcmaVM *Create(const JSRuntimeOptions &options, EcmaParamConfiguration &config);
@@ -181,7 +180,9 @@ public:
 
     void PushToNativePointerList(JSNativePointer *array);
     void RemoveFromNativePointerList(JSNativePointer *array);
-
+    void PushToDeregisterModuleList(CString module);
+    void RemoveFromDeregisterModuleList(CString module);
+    bool ContainInDeregisterModuleList(CString module);
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;
     JSHandle<ecmascript::JSTaggedValue> GetEcmaUncaughtException() const;
     bool IsOptionalLogEnabled() const
@@ -256,6 +257,16 @@ public:
     ResolveBufferCallback GetResolveBufferCallback() const
     {
         return resolveBufferCallback_;
+    }
+
+    void SetUnloadNativeModuleCallback(const UnloadNativeModuleCallback &cb)
+    {
+        unloadNativeModuleCallback_ = cb;
+    }
+
+    UnloadNativeModuleCallback GetUnloadNativeModuleCallback() const
+    {
+        return unloadNativeModuleCallback_;
     }
 
     void SetConcurrentCallback(ConcurrentCallback callback, void *data)
@@ -461,13 +472,16 @@ private:
     CString assetPath_;
     CString bundleName_;
     CString moduleName_;
+    CList<CString> deregisterModuleList_;
     // Registered Callbacks
     NativePtrGetter nativePtrGetter_ {nullptr};
     void *loop_ {nullptr};
 
-    // CJS resolve path Callbacks
-    ResolvePathCallback resolvePathCallback_ {nullptr};
+    // resolve path to get abc's buffer
     ResolveBufferCallback resolveBufferCallback_ {nullptr};
+
+    // delete the native module and dlclose so from NativeModuleManager
+    UnloadNativeModuleCallback unloadNativeModuleCallback_ {nullptr};
 
     // Concurrent taskpool callback and data
     ConcurrentCallback concurrentCallback_ {nullptr};

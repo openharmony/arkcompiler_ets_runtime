@@ -835,6 +835,11 @@ void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm, std::function<std::vector<u
     vm->SetResolveBufferCallback(cb);
 }
 
+void JSNApi::SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb)
+{
+    vm->SetUnloadNativeModuleCallback(cb);
+}
+
 void JSNApi::SetNativePtrGetter(EcmaVM *vm, void* cb)
 {
     vm->SetNativePtrGetter(reinterpret_cast<ecmascript::NativePtrGetter>(cb));
