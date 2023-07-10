@@ -385,6 +385,7 @@ private:
                 // slow path
                 JSTaggedValue::SetProperty(thread_, JSHandle<JSTaggedValue>(result), keyHandle,
                                            JSHandle<JSTaggedValue>(thread_, value), true);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
             }
             GetNextNonSpaceChar();
             if (*current_ == ',') {

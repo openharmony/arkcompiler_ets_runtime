@@ -107,6 +107,7 @@ JSTaggedValue BuiltinsWeakMap::Has(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSWeakMap.", JSTaggedValue::Exception());
     }
     JSWeakMap *jsWeakMap = JSWeakMap::Cast(*JSTaggedValue::ToObject(thread, self));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
     // 5.if Type(key) is not Object, return false.
     if (!key->IsHeapObject()) {
@@ -128,6 +129,7 @@ JSTaggedValue BuiltinsWeakMap::Get(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSWeakMap.", JSTaggedValue::Exception());
     }
     JSWeakMap *jsWeakMap = JSWeakMap::Cast(*JSTaggedValue::ToObject(thread, self));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
     if (!key->IsHeapObject()) {
         return JSTaggedValue::Undefined();

@@ -407,7 +407,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSTaggedValue::DefinePropertyOrThrow(thread, JSHandle<JSTaggedValue>(prototype),
                                          globalConst->GetHandledConstructorString(), ctorDesc);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSFunction, thread);
     constructor->SetHomeObject(thread, prototype);
     constructor->SetProtoOrHClass(thread, prototype);
 
@@ -547,7 +547,7 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithConstructorHClass(JSThread *thr
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSTaggedValue::DefinePropertyOrThrow(thread, JSHandle<JSTaggedValue>(prototype),
                                          globalConst->GetHandledConstructorString(), ctorDesc);
-
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSFunction, thread);
     constructor->SetHomeObject(thread, prototype);
     constructor->SetProtoOrHClass(thread, ihclass);
 

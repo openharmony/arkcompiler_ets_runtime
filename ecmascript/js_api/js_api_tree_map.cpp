@@ -27,6 +27,7 @@ void JSAPITreeMap::Set(JSThread *thread, const JSHandle<JSAPITreeMap> &map, cons
 {
     if (!TaggedTreeMap::IsKey(key.GetTaggedValue())) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"key\" must be not null. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());

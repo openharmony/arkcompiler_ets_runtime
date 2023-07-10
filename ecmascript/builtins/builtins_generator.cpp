@@ -40,6 +40,7 @@ JSTaggedValue BuiltinsGenerator::GeneratorPrototypeNext(EcmaRuntimeCallInfo *arg
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a generator object.", JSTaggedValue::Exception());
     }
     JSHandle<JSGeneratorObject> generator(thread, JSGeneratorObject::Cast(*JSTaggedValue::ToObject(thread, msg)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
 
     // 2.Return ? GeneratorResume(g, value).
@@ -60,7 +61,7 @@ JSTaggedValue BuiltinsGenerator::GeneratorPrototypeReturn(EcmaRuntimeCallInfo *a
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a generator object.", JSTaggedValue::Exception());
     }
     JSHandle<JSGeneratorObject> generator(thread, JSGeneratorObject::Cast(*JSTaggedValue::ToObject(thread, msg)));
-
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 2.Let C be Completion { [[Type]]: return, [[Value]]: value, [[Target]]: empty }.
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -85,7 +86,7 @@ JSTaggedValue BuiltinsGenerator::GeneratorPrototypeThrow(EcmaRuntimeCallInfo *ar
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a generator object.", JSTaggedValue::Exception());
     }
     JSHandle<JSGeneratorObject> generator(thread, JSGeneratorObject::Cast(*JSTaggedValue::ToObject(thread, msg)));
-
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 2.Let C be ThrowCompletion(exception).
     JSHandle<JSTaggedValue> exception = GetCallArg(argv, 0);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

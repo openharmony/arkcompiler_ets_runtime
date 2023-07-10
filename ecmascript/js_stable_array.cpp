@@ -124,6 +124,7 @@ JSTaggedValue JSStableArray::Splice(JSHandle<JSArray> receiver, EcmaRuntimeCallI
                 toKey.Update(JSTaggedValue(k));
                 if (newArrayHandle->IsJSProxy()) {
                     toKey.Update(JSTaggedValue::ToString(thread, toKey).GetTaggedValue());
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 }
                 JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, fromValue);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -581,11 +582,13 @@ JSTaggedValue JSStableArray::Reverse(JSThread *thread, JSHandle<JSObject> thisOb
         } else if (upperExists) {
             array->Set(thread, lower, upperValueHandle.GetTaggedValue());
             JSTaggedValue::SetProperty(thread, thisObjVal, lowerP, upperValueHandle, true);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             JSTaggedValue::DeletePropertyOrThrow(thread, thisObjVal, upperP);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         } else if (lowerExists) {
             array->Set(thread, upper, lowerValueHandle.GetTaggedValue());
             JSTaggedValue::SetProperty(thread, thisObjVal, upperP, lowerValueHandle, true);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             JSTaggedValue::DeletePropertyOrThrow(thread, thisObjVal, lowerP);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }

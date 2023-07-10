@@ -128,7 +128,7 @@ JSTaggedValue BuiltinsWeakSet::Add(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSWeakSet> weakSet(thread, JSWeakSet::Cast(*JSTaggedValue::ToObject(thread, self)));
-
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSWeakSet::Add(thread, weakSet, value);
     return weakSet.GetTaggedValue();
 }
@@ -147,6 +147,7 @@ JSTaggedValue BuiltinsWeakSet::Delete(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSWeakSet> weakSet(thread, JSWeakSet::Cast(*JSTaggedValue::ToObject(thread, self)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     if (!value->IsHeapObject()) {
         GetTaggedBoolean(false);
@@ -167,6 +168,7 @@ JSTaggedValue BuiltinsWeakSet::Has(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSWeakSet", JSTaggedValue::Exception());
     }
     JSWeakSet *jsWeakSet = JSWeakSet::Cast(*JSTaggedValue::ToObject(thread, self));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     if (!value->IsHeapObject()) {
         GetTaggedBoolean(false);

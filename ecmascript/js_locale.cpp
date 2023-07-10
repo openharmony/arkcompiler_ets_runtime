@@ -647,6 +647,7 @@ JSHandle<JSObject> JSLocale::PutElement(JSThread *thread, int index, const JSHan
 
     JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(array), index,
                                JSHandle<JSTaggedValue>::Cast(record), true);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread);
     return record;
 }
 

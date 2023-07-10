@@ -26,6 +26,7 @@ void JSAPITreeSet::Add(JSThread *thread, const JSHandle<JSAPITreeSet> &set, cons
 {
     if (!TaggedTreeSet::IsKey(value.GetTaggedValue())) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"value\" must be Key of JS. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());

@@ -524,15 +524,19 @@ public:
         // 6. Let mnfd be ? Get(options, "minimumFractionDigits").
         JSHandle<JSTaggedValue> mnfdKey = globalConst->GetHandledMinimumFractionDigitsString();
         JSHandle<JSTaggedValue> mnfd = JSTaggedValue::GetProperty(thread, options, mnfdKey).GetValue();
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         // 7. Let mxfd be ? Get(options, "maximumFractionDigits").
         JSHandle<JSTaggedValue> mxfdKey = globalConst->GetHandledMaximumFractionDigitsString();
         JSHandle<JSTaggedValue> mxfd = JSTaggedValue::GetProperty(thread, options, mxfdKey).GetValue();
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         // 8. Let mnsd be ? Get(options, "minimumSignificantDigits").
         JSHandle<JSTaggedValue> mnsdKey = globalConst->GetHandledMinimumSignificantDigitsString();
         JSHandle<JSTaggedValue> mnsd = JSTaggedValue::GetProperty(thread, options, mnsdKey).GetValue();
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         // 9. Let mxsd be ? Get(options, "maximumSignificantDigits").
         JSHandle<JSTaggedValue> mxsdKey = globalConst->GetHandledMaximumSignificantDigitsString();
         JSHandle<JSTaggedValue> mxsd = JSTaggedValue::GetProperty(thread, options, mxsdKey).GetValue();
+        RETURN_IF_ABRUPT_COMPLETION(thread);
 
         // 10. Set intlObj.[[MinimumIntegerDigits]] to mnid.
         intlObj->SetMinimumIntegerDigits(thread, JSTaggedValue(mnid));

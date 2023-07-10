@@ -238,6 +238,7 @@ bool JSFunction::MakeConstructor(JSThread *thread, const JSHandle<JSFunction> &f
         PropertyDescriptor constructorDesc(thread, JSHandle<JSTaggedValue>::Cast(func), writable, false, true);
         status = JSTaggedValue::DefinePropertyOrThrow(thread, proto, constructorKey, constructorDesc);
     }
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
 
     ASSERT_PRINT(status, "DefineProperty construct failed");
     // func.prototype = proto

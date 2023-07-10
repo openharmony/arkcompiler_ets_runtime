@@ -94,6 +94,7 @@ JSTaggedValue ContainersArrayList::Insert(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 1);
     if (!index->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg = "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
@@ -218,6 +219,7 @@ JSTaggedValue ContainersArrayList::IncreaseCapacityTo(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> newCapacity = GetCallArg(argv, 0);
     if (!newCapacity->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, newCapacity);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"newCapacity\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -366,6 +368,7 @@ JSTaggedValue ContainersArrayList::RemoveByIndex(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     if (!value->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -429,6 +432,7 @@ JSTaggedValue ContainersArrayList::RemoveByRange(EcmaRuntimeCallInfo *argv)
     if (!startIndex->IsInteger()) {
         std::ostringstream oss;
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, startIndex);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"fromIndex\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -437,6 +441,7 @@ JSTaggedValue ContainersArrayList::RemoveByRange(EcmaRuntimeCallInfo *argv)
     if (!endIndex->IsInteger()) {
         std::ostringstream oss;
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, endIndex);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"toIndex\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -470,6 +475,7 @@ JSTaggedValue ContainersArrayList::ReplaceAllElements(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -528,6 +534,7 @@ JSTaggedValue ContainersArrayList::SubArrayList(EcmaRuntimeCallInfo *argv)
     if (!value1->IsInteger()) {
         std::ostringstream oss;
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value1);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"fromIndex\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -536,6 +543,7 @@ JSTaggedValue ContainersArrayList::SubArrayList(EcmaRuntimeCallInfo *argv)
     if (!value2->IsInteger()) {
         std::ostringstream oss;
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value2);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"toIndex\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -567,6 +575,7 @@ JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsUndefined() && !callbackFnHandle->IsCallable() && !callbackFnHandle->IsNull()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"comparator\" must be callable. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -677,6 +686,7 @@ JSTaggedValue ContainersArrayList::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());

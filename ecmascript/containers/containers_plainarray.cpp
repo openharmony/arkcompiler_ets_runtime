@@ -70,6 +70,7 @@ JSTaggedValue ContainersPlainArray::Add(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 1));
     if (!key->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"key\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -140,6 +141,7 @@ JSTaggedValue ContainersPlainArray::Has(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     if (!value->IsNumber()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"key\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -170,6 +172,7 @@ JSTaggedValue ContainersPlainArray::Get(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> key(GetCallArg(argv, 0));
     if (!key->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"key\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -220,6 +223,7 @@ JSTaggedValue ContainersPlainArray::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -266,6 +270,7 @@ JSTaggedValue ContainersPlainArray::GetIndexOfKey(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     if (!value->IsNumber()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"key\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -336,6 +341,7 @@ JSTaggedValue ContainersPlainArray::GetKeyAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     if (!value->IsNumber()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -365,6 +371,7 @@ JSTaggedValue ContainersPlainArray::Remove(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> key(GetCallArg(argv, 0));
     if (!key->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"key\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -393,6 +400,7 @@ JSTaggedValue ContainersPlainArray::RemoveAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> index(GetCallArg(argv, 0));
     if (!index->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -422,6 +430,7 @@ JSTaggedValue ContainersPlainArray::RemoveRangeFrom(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> valueSize(GetCallArg(argv, 1));
     if (!valueIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, valueIndex.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -429,6 +438,7 @@ JSTaggedValue ContainersPlainArray::RemoveRangeFrom(EcmaRuntimeCallInfo *argv)
     }
     if (!valueSize->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, valueSize.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"size\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -461,6 +471,7 @@ JSTaggedValue ContainersPlainArray::SetValueAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 1));
     if (!index->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -490,6 +501,7 @@ JSTaggedValue ContainersPlainArray::GetValueAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> idx(GetCallArg(argv, 0));
     if (!idx->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, idx.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());

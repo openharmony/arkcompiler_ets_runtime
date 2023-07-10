@@ -45,6 +45,7 @@ void JSAsyncGeneratorObject::AsyncGeneratorValidate(JSThread *thread, const JSHa
     }
     // 4. If generator.[[GeneratorBrand]] is not the same value as generatorBrand, throw a TypeError exception.
     JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, gen);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSAsyncGeneratorObject> generator = JSHandle<JSAsyncGeneratorObject>::Cast(obj);
     if (!JSTaggedValue::SameValue(generator->GetGeneratorBrand(), val)) {
         THROW_TYPE_ERROR(thread, "Results are not equal");
@@ -271,6 +272,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
     }
     // 4. Let queue be generator.[[AsyncGeneratorQueue]].
     JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, gen);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSAsyncGeneratorObject> generator = JSHandle<JSAsyncGeneratorObject>::Cast(obj);
     JSHandle<TaggedQueue> queue(thread, generator->GetAsyncGeneratorQueue());
     // 5. Let request be AsyncGeneratorRequest { [[Completion]]: completion, [[Capability]]: promiseCapability }.

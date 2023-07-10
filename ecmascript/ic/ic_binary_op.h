@@ -77,10 +77,12 @@ public:
                 if (left.IsString()) {
                     JSHandle<EcmaString> stringA0 = JSHandle<EcmaString>(leftValue);
                     JSHandle<EcmaString> stringA1 = JSTaggedValue::ToString(thread, rightValue);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                     EcmaString *ret = EcmaStringAccessor::Concat(thread->GetEcmaVM(), stringA0, stringA1);
                     return JSTaggedValue(ret);
                 } else {
                     JSHandle<EcmaString> stringA0 = JSTaggedValue::ToString(thread, leftValue);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                     JSHandle<EcmaString> stringA1 = JSHandle<EcmaString>(rightValue);
                     EcmaString *ret = EcmaStringAccessor::Concat(thread->GetEcmaVM(), stringA0, stringA1);
                     return JSTaggedValue(ret);

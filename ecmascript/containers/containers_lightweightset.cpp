@@ -96,6 +96,7 @@ JSTaggedValue ContainersLightWeightSet::AddAll(EcmaRuntimeCallInfo *argv)
             value = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(value)->GetTarget());
         } else {
             JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             CString errorMsg =
                 "The type of \"set\" must be LightWeightSet. Received value is: " + ConvertToString(*result);
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -145,6 +146,7 @@ JSTaggedValue ContainersLightWeightSet::GetValueAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     if (!value->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -177,6 +179,7 @@ JSTaggedValue ContainersLightWeightSet::HasAll(EcmaRuntimeCallInfo *argv)
             value = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(value)->GetTarget());
         } else {
             JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             CString errorMsg =
                 "The type of \"set\" must be LightWeightSet. Received value is: " + ConvertToString(*result);
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -268,6 +271,7 @@ JSTaggedValue ContainersLightWeightSet::IncreaseCapacityTo(EcmaRuntimeCallInfo *
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     if (!value->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"minimumCapacity\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -364,6 +368,7 @@ JSTaggedValue ContainersLightWeightSet::ForEach(EcmaRuntimeCallInfo *argv)
 
     if (!callbackFnHandle->IsCallable()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -435,6 +440,7 @@ JSTaggedValue ContainersLightWeightSet::RemoveAt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
     if (!value->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());

@@ -100,10 +100,12 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTagg
     JSHandle<JSTaggedValue> asyncCtxt;
     if (asyncFuncObj->IsAsyncGeneratorObject()) {
         JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, asyncFuncObj);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         JSHandle<JSAsyncGeneratorObject> asyncGen = JSHandle<JSAsyncGeneratorObject>::Cast(obj);
         asyncCtxt = JSHandle<JSTaggedValue>(thread, asyncGen->GetGeneratorContext());
     } else {
         JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, asyncFuncObj);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         JSHandle<JSAsyncFuncObject> asyncFun = JSHandle<JSAsyncFuncObject>::Cast(obj);
         asyncCtxt = JSHandle<JSTaggedValue>(thread, asyncFun->GetGeneratorContext());
     }

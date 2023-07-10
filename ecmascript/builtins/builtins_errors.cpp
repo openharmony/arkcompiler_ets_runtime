@@ -184,6 +184,7 @@ JSTaggedValue BuiltinsAggregateError::AggregateErrorConstructor(EcmaRuntimeCallI
     JSHandle<JSTaggedValue> errorsValues(JSArray::CreateArrayFromList(thread, errorsArray));
     PropertyDescriptor msgDesc(thread, errorsValues, true, false, true);
     JSTaggedValue::DefinePropertyOrThrow(thread, taggedObj, errorsKey, msgDesc);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 6. Return O.
     return taggedObj.GetTaggedValue();
 }

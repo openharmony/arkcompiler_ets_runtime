@@ -138,6 +138,7 @@ JSTaggedValue ContainersHashMap::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -218,6 +219,7 @@ JSTaggedValue ContainersHashMap::SetAll(EcmaRuntimeCallInfo *argv)
             obj = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(obj)->GetTarget());
         } else {
             JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, obj);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             CString errorMsg =
                 "The type of \"map\" must be HashMap. Received value is: " + ConvertToString(*result);
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());

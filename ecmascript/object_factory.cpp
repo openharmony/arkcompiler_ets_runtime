@@ -1696,6 +1696,7 @@ JSHandle<JSIntlBoundFunction> ObjectFactory::NewJSIntlBoundFunction(MethodIndex 
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
     PropertyDescriptor nameDesc(thread_, emptyString, false, false, true);
     JSTaggedValue::DefinePropertyOrThrow(thread_, JSHandle<JSTaggedValue>::Cast(function), nameKey, nameDesc);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSIntlBoundFunction, thread_);
     return intlBoundFunc;
 }
 
@@ -1716,6 +1717,7 @@ JSHandle<JSProxyRevocFunction> ObjectFactory::NewJSProxyRevocFunction(const JSHa
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
     PropertyDescriptor nameDesc(thread_, emptyString, false, false, true);
     JSTaggedValue::DefinePropertyOrThrow(thread_, JSHandle<JSTaggedValue>::Cast(function), nameKey, nameDesc);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSProxyRevocFunction, thread_);
     return revocFunction;
 }
 
@@ -1810,6 +1812,7 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSPrimitiveRef(const JSHandle<JSFunct
         uint32_t length = EcmaStringAccessor(object.GetTaggedValue()).GetLength();
         PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>(thread_, JSTaggedValue(length)), false, false, false);
         JSTaggedValue::DefinePropertyOrThrow(thread_, JSHandle<JSTaggedValue>(obj), lengthStr, desc);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSPrimitiveRef, thread_);
     }
 
     return obj;

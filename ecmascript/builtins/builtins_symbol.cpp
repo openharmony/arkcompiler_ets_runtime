@@ -110,6 +110,7 @@ JSTaggedValue BuiltinsSymbol::SymbolDescriptiveString(JSThread *thread, JSTagged
     JSHandle<EcmaString> rightHandle(factory->NewFromASCII(")"));
     JSHandle<EcmaString> stringLeft =
         factory->ConcatFromString(leftHandle, JSTaggedValue::ToString(thread, descHandle));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> str = factory->ConcatFromString(stringLeft, rightHandle);
     return str.GetTaggedValue();
 }
