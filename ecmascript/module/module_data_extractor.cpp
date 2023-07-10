@@ -126,8 +126,8 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, c
     return JSHandle<JSTaggedValue>::Cast(moduleRecord);
 }
 
-JSHandle<JSTaggedValue> ModuleDataExtractor::ParseNativeModule(JSThread *thread,
-    const CString &moduleRequestName, ModuleTypes moduleType)
+JSHandle<JSTaggedValue> ModuleDataExtractor::ParseNativeModule(JSThread *thread, const CString &moduleRequestName,
+                                                               ModuleTypes moduleType)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();

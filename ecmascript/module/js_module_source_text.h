@@ -44,10 +44,11 @@ public:
 
     // 15.2.1.17 Runtime Semantics: HostResolveImportedModule ( referencingModule, specifier )
     static JSHandle<JSTaggedValue> HostResolveImportedModule(JSThread *thread,
-                                                                const JSHandle<SourceTextModule> &module,
-                                                                const JSHandle<JSTaggedValue> &moduleRequest);
-    static JSHandle<JSTaggedValue> HostResolveImportedModuleWithMerge(
-        JSThread *thread, const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest);
+                                                             const JSHandle<SourceTextModule> &module,
+                                                             const JSHandle<JSTaggedValue> &moduleRequest);
+    static JSHandle<JSTaggedValue> HostResolveImportedModuleWithMerge(JSThread *thread,
+                                                                      const JSHandle<SourceTextModule> &module,
+                                                                      const JSHandle<JSTaggedValue> &moduleRequest);
 
     // 15.2.1.16.2 GetExportedNames(exportStarSet)
     static CVector<std::string> GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
@@ -58,8 +59,8 @@ public:
         const JSHandle<JSTaggedValue> &exportName,
         CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector);
     static JSHandle<JSTaggedValue> ResolveExportObject(JSThread *thread, const JSHandle<SourceTextModule> &module,
-                                                    const JSHandle<JSTaggedValue> &exportObject,
-                                                    const JSHandle<JSTaggedValue> &exportName);
+                                                       const JSHandle<JSTaggedValue> &exportObject,
+                                                       const JSHandle<JSTaggedValue> &exportName);
     // 15.2.1.16.4.1 InnerModuleInstantiation ( module, stack, index )
     static int InnerModuleInstantiation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
                                         CVector<JSHandle<SourceTextModule>> &stack, int index);
@@ -96,7 +97,7 @@ public:
     static void MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
                                  const CString &moduleRequestName);
     static bool LoadNativeModule(JSThread *thread, JSHandle<SourceTextModule> &requiredModule,
-        const JSHandle<JSTaggedValue> &moduleRequest, ModuleTypes moduleType);
+                                 const JSHandle<JSTaggedValue> &moduleRequest, ModuleTypes moduleType);
     inline static bool IsNativeModule(ModuleTypes moduleType)
     {
         return moduleType == ModuleTypes::OHOS_MODULE ||
@@ -144,8 +145,9 @@ public:
     static void InstantiateCJS(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
                                const JSHandle<SourceTextModule> &requiredModule);
     static void InstantiateNativeModule(JSThread *thread, JSHandle<SourceTextModule> &currentModule,
-        JSHandle<SourceTextModule> &requiredModule, const JSHandle<JSTaggedValue> &moduleRequest,
-        ModuleTypes moduleType);
+                                        JSHandle<SourceTextModule> &requiredModule,
+                                        const JSHandle<JSTaggedValue> &moduleRequest,
+                                        ModuleTypes moduleType);
 
     JSTaggedValue GetModuleValue(JSThread *thread, int32_t index, bool isThrow);
     void StoreModuleValue(JSThread *thread, int32_t index, const JSHandle<JSTaggedValue> &value);

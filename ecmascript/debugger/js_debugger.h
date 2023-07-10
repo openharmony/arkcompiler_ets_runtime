@@ -115,7 +115,7 @@ public:
         notificationMgr_->VmDeathEvent();
         hooks_ = nullptr;
     }
-    bool HandleDebuggerStmt(JSHandle<Method> method, uint32_t bc_offset) override;
+    bool HandleDebuggerStmt(JSHandle<Method> method, uint32_t bcOffset) override;
     bool SetBreakpoint(const JSPtLocation &location, Local<FunctionRef> condFuncRef) override;
     bool RemoveBreakpoint(const JSPtLocation &location) override;
     void RemoveAllBreakpoints() override;

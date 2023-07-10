@@ -153,8 +153,9 @@ bool SourceTextModule::CheckCircularImport(const JSHandle<SourceTextModule> &mod
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
-    const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &exportObject,
-    const JSHandle<JSTaggedValue> &exportName)
+                                                              const JSHandle<SourceTextModule> &module,
+                                                              const JSHandle<JSTaggedValue> &exportObject,
+                                                              const JSHandle<JSTaggedValue> &exportName)
 {
     // Let module be this Source Text Module Record.
     auto globalConstants = thread->GlobalConstants();
@@ -429,7 +430,7 @@ void SourceTextModule::InitializeEnvironment(JSThread *thread, const JSHandle<So
 }
 
 JSHandle<SourceTextModule> SourceTextModule::GetModuleFromBinding(JSThread *thread,
-    const JSTaggedValue &resolvedBinding)
+                                                                  const JSTaggedValue &resolvedBinding)
 {
     if (resolvedBinding.IsResolvedIndexBinding()) {
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
