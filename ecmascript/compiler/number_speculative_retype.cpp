@@ -891,11 +891,11 @@ GateRef NumberSpeculativeRetype::VisitStoreElement(GateRef gate)
             case TypedStoreOp::INT16ARRAY_STORE_ELEMENT:
             case TypedStoreOp::UINT16ARRAY_STORE_ELEMENT:
             case TypedStoreOp::INT32ARRAY_STORE_ELEMENT:
-                acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, GateType::IntType()), 2);   // 2: value idx
+                acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, GateType::NumberType()), 2);   // 2: value idx
                 break;
             case TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT:
             case TypedStoreOp::FLOAT64ARRAY_STORE_ELEMENT:
-                acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(value, GateType::DoubleType()), 2);  // 2: value idx
+                acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(value, GateType::NumberType()), 2);  // 2: value idx
                 break;
             default:
                 acc_.ReplaceValueIn(gate, ConvertToTagged(value), 2);   // 2: value idx

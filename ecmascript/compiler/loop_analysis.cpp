@@ -79,8 +79,12 @@ void LoopAnalysis::CollectLoopBody(LoopInfo* loopInfo)
                 // only calculate loop depth for state & depend edges,
                 // since there is no phi of each value and each loop head.
                 gateToDepth[nex] = ComputeLoopDepth(cur, nex, gateToDepth[cur]);
-                if (acc_.GetOpCode(nex) == OpCode::STATE_SPLIT) {
-                    gateToDepth[acc_.GetFrameState(nex)] = gateToDepth[nex];
+                if (acc_.HasFrameState(nex)) {
+                    auto frameState = acc_.GetFrameState(nex);
+                    if (acc_.GetOpCode(frameState) == OpCode::FRAME_STATE) {
+                        gateToDepth[frameState] = gateToDepth[nex];
+                        gateToDepth[acc_.GetValueIn(frameState, 1)] = gateToDepth[nex];
+                    }
                 }
                 // state and depend edge should be visited first.
                 firstList.push(nex);
@@ -120,13 +124,16 @@ void LoopAnalysis::UpdateLoopInfo(LoopInfo* loopInfo, GateRef gate, size_t dep)
             }
             break;
         }
-        case OpCode::STATE_SPLIT: {
-            loopInfo->size++;
-            loopInfo->loopBodys.emplace_back(acc_.GetFrameState(gate));
-            break;
-        }
         default:
             break;
+    }
+    if (acc_.HasFrameState(gate)) {
+        auto frameState = acc_.GetFrameState(gate);
+        if (acc_.GetOpCode(frameState) == OpCode::FRAME_STATE) {
+            loopInfo->size += 2;    // 2: framestate and framevalues
+            loopInfo->loopBodys.emplace_back(frameState);
+            loopInfo->loopBodys.emplace_back(acc_.GetValueIn(frameState, 1));
+        }
     }
     loopInfo->loopBodys.emplace_back(gate);
 }

@@ -86,6 +86,7 @@ private:
     bool InferMul2(GateRef gate);
     bool InferDiv2(GateRef gate);
     bool InferIncDec(GateRef gate);
+    bool InferToNumberic(GateRef gate);
     bool InferLdObjByIndex(GateRef gate);
     bool InferLdGlobalVar(GateRef gate);
     bool InferReturnUndefined(GateRef gate);

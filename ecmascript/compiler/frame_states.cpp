@@ -454,6 +454,11 @@ bool FrameStateBuilder::ShouldInsertFrameStateBefore(BytecodeRegion& bb, size_t 
     if (index == bb.start) {
         if (bb.numOfStatePreds > 1) { // 1: > 1 is merge
             return true;
+        } else if (bb.numOfStatePreds == 1) {   // 1: == 1 maybe loopexit
+            auto predBb = (bb.preds.size() > 0) ? bb.preds.at(0) : bb.trys.at(0);
+            if (LoopExitCount(predBb, &bb) > 0) {
+                return true;
+            }
         }
         if (gateAcc_.GetOpCode(bb.dependCurrent) == OpCode::GET_EXCEPTION) {
             return true;

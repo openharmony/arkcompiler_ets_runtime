@@ -211,7 +211,6 @@ bool MethodTypeInfer::Infer(GateRef gate)
         case EcmaOpcode::OR2_IMM8_V8:
         case EcmaOpcode::XOR2_IMM8_V8:
         case EcmaOpcode::TONUMBER_IMM8:
-        case EcmaOpcode::TONUMERIC_IMM8:
         case EcmaOpcode::NEG_IMM8:
         case EcmaOpcode::EXP_IMM8_V8:
         case EcmaOpcode::STARRAYSPREAD_V8_V8:
@@ -289,6 +288,8 @@ bool MethodTypeInfer::Infer(GateRef gate)
             return InferLdObjByName(gate);
         case EcmaOpcode::LDA_STR_ID16:
             return InferLdStr(gate);
+        case EcmaOpcode::TONUMERIC_IMM8:
+            return InferToNumberic(gate);
         case EcmaOpcode::CALLARG0_IMM8:
         case EcmaOpcode::CALLARG1_IMM8_V8:
         case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
@@ -595,6 +596,16 @@ bool MethodTypeInfer::InferIncDec(GateRef gate)
     }
     if (firInType.IsIntType()) {
         return UpdateType(gate, GateType::IntType());
+    }
+    return UpdateType(gate, GateType::NumberType());
+}
+
+bool MethodTypeInfer::InferToNumberic(GateRef gate)
+{
+    GateRef src = gateAccessor_.GetValueIn(gate, 0);
+    GateType srcType = gateAccessor_.GetGateType(src);
+    if (srcType.IsNumberType()) {
+        return UpdateType(gate, srcType);
     }
     return UpdateType(gate, GateType::NumberType());
 }
