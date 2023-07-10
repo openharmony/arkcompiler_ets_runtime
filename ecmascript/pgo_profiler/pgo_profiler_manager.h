@@ -131,6 +131,9 @@ public:
         return ret;
     }
 
+    static bool MergeApFiles(const std::string &inFiles, const std::string &outPath, uint32_t hotnessThreshold);
+    static bool MergeApFiles(uint32_t checksum, PGOProfilerDecoder &merger);
+
 private:
     bool InitializeData()
     {

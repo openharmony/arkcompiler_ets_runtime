@@ -922,4 +922,36 @@ HWTEST_F_L0(PGOProfilerTest, FileConsistencyCheck)
     unlink("ark-profiler17/modules.ap");
     rmdir("ark-profiler17/");
 }
+
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
+HWTEST_F_L0(PGOProfilerTest, MergeApSelfTwice)
+{
+    mkdir("ark-profiler18/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "op_type_test";
+    std::shared_ptr<JSPandaFile> jsPandaFile = ExecuteAndLoadJSPandaFile("ark-profiler18/", targetRecordName);
+    ASSERT_NE(jsPandaFile, nullptr);
+
+    // Loader
+    PGOProfilerDecoder decoder("ark-profiler18/modules_merge.ap", 1);
+    PGOProfilerDecoder decoderSingle("ark-profiler18/modules.ap", 1);
+    ASSERT_TRUE(PGOProfilerManager::MergeApFiles("ark-profiler18/modules.ap:ark-profiler18/modules.ap",
+                                                 "ark-profiler18/modules_merge.ap", 1));
+    ASSERT_TRUE(decoder.LoadFull());
+    ASSERT_TRUE(decoderSingle.LoadFull());
+
+    auto doubleCount =
+        decoder.GetRecordDetailInfos().GetRecordInfos().begin()->second->GetMethodInfos().begin()->second->GetCount();
+    auto singleCount = decoderSingle.GetRecordDetailInfos()
+                           .GetRecordInfos()
+                           .begin()
+                           ->second->GetMethodInfos()
+                           .begin()
+                           ->second->GetCount();
+    ASSERT_EQ(doubleCount, singleCount + singleCount);
+
+    unlink("ark-profiler18/modules.ap");
+    unlink("ark-profiler18/modules_merge.ap");
+    rmdir("ark-profiler18/");
+}
+#endif
 }  // namespace panda::test

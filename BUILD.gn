@@ -742,6 +742,7 @@ ecma_source = [
   "ecmascript/pgo_profiler/pgo_profiler_encoder.cpp",
   "ecmascript/pgo_profiler/pgo_profiler_info.cpp",
   "ecmascript/pgo_profiler/pgo_profiler_layout.cpp",
+  "ecmascript/pgo_profiler/pgo_profiler_manager.cpp",
   "ecmascript/stackmap/ark_stackmap_builder.cpp",
   "ecmascript/stackmap/ark_stackmap_parser.cpp",
   "ecmascript/stackmap/llvm_stackmap_parser.cpp",

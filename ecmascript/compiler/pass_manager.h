@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/file_generators.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -166,7 +167,7 @@ private:                              \
 
 class PassManager {
 public:
-    PassManager(EcmaVM* vm, std::string entry, std::string &triple, size_t optLevel, size_t relocMode,
+    PassManager(EcmaVM* vm, std::string &entry, std::string &triple, size_t optLevel, size_t relocMode,
                 CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, size_t maxMethodsInModule,
                 const std::string &profIn, uint32_t hotnessThreshold, PassOptions *passOptions)
         : vm_(vm), entry_(entry), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
