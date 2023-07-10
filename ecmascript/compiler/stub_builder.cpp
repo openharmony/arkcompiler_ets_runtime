@@ -815,14 +815,14 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
             Label isArrayFull(env);
             Label arrayNotFull(env);
             Label afterArrLenCon(env);
-            Branch(Int32Equal(*length, outProps), &isArrayFull, &arrayNotFull);
+            Branch(Int32GreaterThanOrEqual(*length, outProps), &isArrayFull, &arrayNotFull);
             {
                 Bind(&isArrayFull);
                 {
                     Label ChangeToDict(env);
                     Label notChangeToDict(env);
                     Label afterDictChangeCon(env);
-                    Branch(Int32Equal(*length, Int32(JSHClass::MAX_CAPACITY_OF_OUT_OBJECTS)),
+                    Branch(Int32GreaterThanOrEqual(*length, Int32(JSHClass::MAX_CAPACITY_OF_OUT_OBJECTS)),
                         &ChangeToDict, &notChangeToDict);
                     {
                         Bind(&ChangeToDict);

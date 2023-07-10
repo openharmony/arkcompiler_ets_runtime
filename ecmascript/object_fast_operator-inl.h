@@ -513,8 +513,8 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
         uint32_t nonInlinedProps = static_cast<uint32_t>(objHandle->GetJSHClass()->GetNextNonInlinedPropsIndex());
         ASSERT(length >= nonInlinedProps);
         // if array is full, grow array or change to dictionary mode
-        if (length == nonInlinedProps) {
-            if (UNLIKELY(length == JSHClass::MAX_CAPACITY_OF_OUT_OBJECTS)) {
+        if (length >= nonInlinedProps) {
+            if (UNLIKELY(length >= JSHClass::MAX_CAPACITY_OF_OUT_OBJECTS)) {
                 // change to dictionary and add one.
                 JSHandle<NameDictionary> dict(JSObject::TransitionToDictionary(thread, objHandle));
                 JSHandle<NameDictionary> newDict =
