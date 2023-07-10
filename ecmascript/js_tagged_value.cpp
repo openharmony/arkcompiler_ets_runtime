@@ -387,6 +387,7 @@ JSTaggedValue JSTaggedValue::OrdinaryToPrimitive(JSThread *thread, const JSHandl
             keyString = globalConst->GetHandledValueOfString();
         }
         JSHandle<JSTaggedValue> entryfunc = GetProperty(thread, tagged, keyString).GetValue();
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
         if (entryfunc->IsCallable()) {
             JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
             EcmaRuntimeCallInfo *info =

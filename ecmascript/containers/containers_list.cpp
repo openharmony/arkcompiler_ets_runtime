@@ -94,6 +94,7 @@ JSTaggedValue ContainersList::Insert(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 1);
     if (!index->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -206,6 +207,7 @@ JSTaggedValue ContainersList::Get(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
     if (!index->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -276,6 +278,7 @@ JSTaggedValue ContainersList::Set(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 1);
     if (!index->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -309,6 +312,7 @@ JSTaggedValue ContainersList::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> callbackFnHandle(GetCallArg(argv, 0));
     if (!callbackFnHandle->IsCallable()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -379,6 +383,7 @@ JSTaggedValue ContainersList::RemoveByIndex(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
     if (!index->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -429,6 +434,7 @@ JSTaggedValue ContainersList::ReplaceAllElements(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsCallable()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -486,6 +492,7 @@ JSTaggedValue ContainersList::Sort(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
     if (!callbackFnHandle->IsUndefined() && !callbackFnHandle->IsCallable()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"comparator\" must be callable. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -545,6 +552,7 @@ JSTaggedValue ContainersList::GetSubList(EcmaRuntimeCallInfo *argv)
 
     if (!fromIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, fromIndex.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"fromIndex\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -555,6 +563,7 @@ JSTaggedValue ContainersList::GetSubList(EcmaRuntimeCallInfo *argv)
 
     if (!toIndex->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, toIndex.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"toIndex\" must be number. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());

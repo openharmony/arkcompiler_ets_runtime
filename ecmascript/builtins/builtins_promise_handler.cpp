@@ -551,6 +551,7 @@ JSTaggedValue BuiltinsPromiseHandler::AnyRejectElementFunction(EcmaRuntimeCallIn
         PropertyDescriptor msgDesc(thread, errorsValue, true, false, true);
         JSHandle<JSTaggedValue> errorTagged = JSHandle<JSTaggedValue>::Cast(error);
         JSTaggedValue::DefinePropertyOrThrow(thread, errorTagged, errorsKey, msgDesc);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // c. Return ? Call(promiseCapability.[[Reject]], undefined, « error »).
         JSHandle<JSTaggedValue> capaReject(thread, capa->GetReject());
         JSHandle<JSTaggedValue> undefined(globalConst->GetHandledUndefined());

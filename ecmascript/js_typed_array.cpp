@@ -121,6 +121,7 @@ bool JSTypedArray::HasProperty(JSThread *thread, const JSHandle<JSTaggedValue> &
         return true;
     }
     JSTaggedValue parent = JSTaggedValue::GetPrototype(thread, JSHandle<JSTaggedValue>::Cast(typedarrayObj));
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (!parent.IsNull()) {
         return JSTaggedValue::HasProperty(thread, JSHandle<JSTaggedValue>(thread, parent), key);
     }
@@ -295,6 +296,7 @@ JSHandle<TaggedArray> JSTypedArray::OwnPropertyKeys(JSThread *thread, const JSHa
     for (uint32_t k = 0; k < bufferKeysLen; k++) {
         tKey.Update(JSTaggedValue(k));
         JSHandle<JSTaggedValue> sKey(JSTaggedValue::ToString(thread, tKey));
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
         nameList->Set(thread, copyLength, sKey.GetTaggedValue());
         copyLength++;
     }

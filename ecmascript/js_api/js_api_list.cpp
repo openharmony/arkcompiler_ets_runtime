@@ -218,6 +218,7 @@ bool JSAPIList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIList> &list
     uint32_t index = 0;
     if (UNLIKELY(!JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &index))) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         CString errorMsg =
             "The type of \"index\" can not obtain attributes of no-number type. Received value is: "
             + ConvertToString(*result);

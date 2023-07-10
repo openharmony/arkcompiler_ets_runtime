@@ -95,6 +95,7 @@ JSTaggedValue BuiltinsRegExp::RegExpConstructor(EcmaRuntimeCallInfo *argv)
             // 5.c Else, let F be flags.
             flagsTemp = JSHandle<JSTaggedValue>(thread, *JSTaggedValue::ToString(thread, flags));
         }
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // 6. Else if patternIsRegExp is true
     } else if (patternIsRegExp) {
         JSHandle<JSTaggedValue> sourceString(globalConst->GetHandledSourceString());
@@ -114,6 +115,7 @@ JSTaggedValue BuiltinsRegExp::RegExpConstructor(EcmaRuntimeCallInfo *argv)
         } else {
             // 6.d Else, let F be flags.
             flagsTemp = JSHandle<JSTaggedValue>(thread, *JSTaggedValue::ToString(thread, flags));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
     } else {
         // 7.a Let P be pattern.
@@ -123,6 +125,7 @@ JSTaggedValue BuiltinsRegExp::RegExpConstructor(EcmaRuntimeCallInfo *argv)
             flagsTemp = flags;
         } else {
             flagsTemp = JSHandle<JSTaggedValue>(thread, *JSTaggedValue::ToString(thread, flags));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
     }
     // 8. Let O be RegExpAlloc(newTarget).
@@ -377,6 +380,7 @@ JSTaggedValue BuiltinsRegExp::Match(EcmaRuntimeCallInfo *argv)
     // 3. Let S be ToString(string)
     JSHandle<JSTaggedValue> inputString = GetCallArg(argv, 0);
     JSHandle<EcmaString> stringHandle = JSTaggedValue::ToString(thread, inputString);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     bool useCache = true;
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
     if (cacheTable->GetLargeStrCount() == 0 || cacheTable->GetConflictCount() == 0) {
@@ -1437,6 +1441,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
         return JSTaggedValue::Null();
     }
     JSHandle<EcmaString> inputString = JSTaggedValue::ToString(thread, inputStr);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     bool isUtf16 = EcmaStringAccessor(inputString).IsUtf16();
     auto inputPtr = EcmaStringAccessor(inputString).ToOneByteDataForced();
     const uint8_t *strBuffer = inputPtr.get();
@@ -1548,7 +1553,7 @@ JSTaggedValue BuiltinsRegExp::RegExpExec(JSThread *thread, const JSHandle<JSTagg
     ASSERT(inputString->IsString());
     // 3. Let exec be Get(R, "exec").
     JSHandle<EcmaString> inputStr = JSTaggedValue::ToString(thread, inputString);
-
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> execHandle = globalConst->GetHandledExecString();
     JSTaggedValue execVal = ObjectFastOperator::FastGetPropertyByValue(thread, regexp.GetTaggedValue(),

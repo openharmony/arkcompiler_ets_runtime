@@ -360,6 +360,7 @@ JSTaggedValue BuiltinsString::Concat(EcmaRuntimeCallInfo *argv)
     for (uint32_t i = 0; i < argLength; i++) {
         JSHandle<JSTaggedValue> nextTag = BuiltinsString::GetCallArg(argv, i);
         JSHandle<EcmaString> nextHandle = JSTaggedValue::ToString(thread, nextTag);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         u16strNext = EcmaStringAccessor(nextHandle).ToU16String();
         if (EcmaStringAccessor(nextHandle).IsUtf16()) {
             canBeCompress = false;
@@ -912,6 +913,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
         replHandle.Update(GetSubstitution(thread, searchString, thisString, pos, capturesList, undefined, replacement));
     }
     JSHandle<EcmaString> realReplaceStr = JSTaggedValue::ToString(thread, replHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // Let tailPos be pos + the number of code units in matched.
     int32_t tailPos = pos + static_cast<int32_t>(EcmaStringAccessor(searchString).GetLength());
     // Let newString be the String formed by concatenating the first pos code units of string,
@@ -1034,6 +1036,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
                                               capturesList, undefined, replacement));
         }
         JSHandle<EcmaString> realReplaceStr = JSTaggedValue::ToString(thread, replHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // Let tailPos be pos + the number of code units in matched.
         // Let newString be the String formed by concatenating the first pos code units of string,
         // replStr, and the trailing substring of string starting at index tailPos.
@@ -1875,6 +1878,7 @@ JSTaggedValue BuiltinsString::GetLength(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
 
     JSHandle<EcmaString> thisString = JSTaggedValue::ToString(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return GetTaggedInt(EcmaStringAccessor(thisString).GetLength());
 }
 
@@ -1919,6 +1923,7 @@ JSTaggedValue BuiltinsString::Pad(EcmaRuntimeCallInfo *argv, bool isStart)
         stringBuilder = u" ";
     } else {
         JSHandle<EcmaString> filler = JSTaggedValue::ToString(thread, fillString);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         stringBuilder = EcmaStringAccessor(filler).ToU16String();
     }
     if (stringBuilder.size() == 0) {

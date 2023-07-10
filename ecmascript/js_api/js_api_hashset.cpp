@@ -32,6 +32,7 @@ JSTaggedValue JSAPIHashSet::Has(JSThread *thread, JSTaggedValue value)
 {
     if (!TaggedHashArray::IsKey(value)) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"value\" must be Key of JS. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
@@ -80,6 +81,7 @@ JSTaggedValue JSAPIHashSet::Remove(JSThread *thread, JSHandle<JSAPIHashSet> hash
 {
     if (!TaggedHashArray::IsKey(key)) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"key\" must be not null. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());

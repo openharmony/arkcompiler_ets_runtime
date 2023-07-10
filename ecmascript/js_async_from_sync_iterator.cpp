@@ -45,6 +45,7 @@ JSHandle<JSTaggedValue> JSAsyncFromSyncIterator::CreateAsyncFromSyncIterator(JST
     JSHandle<JSTaggedValue> nextStr = thread->GlobalConstants()->GetHandledNextString();
     JSHandle<JSTaggedValue> tmpAsyncIterator(thread, asyncIterator.GetTaggedValue());
     JSHandle<JSTaggedValue> nextMethod = JSTaggedValue::GetProperty(thread, tmpAsyncIterator, nextStr).GetValue();
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
     // 4.Let iteratorRecord be the Record {[[Iterator]]: asyncIterator, [[NextMethod]]: nextMethod, [[Done]]: false}.
     JSHandle<AsyncIteratorRecord> iteratorRecord = factory->NewAsyncIteratorRecord(tmpAsyncIterator, nextMethod, false);

@@ -187,6 +187,7 @@ JSTaggedValue ArrayHelper::FlattenIntoArray(JSThread *thread, const JSHandle<JSO
     while (sourceIndex < args.sourceLen) {
         sourceIndexHandle.Update(JSTaggedValue(sourceIndex));
         sourceIndexStr = JSTaggedValue::ToString(thread, sourceIndexHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         p.Update(sourceIndexStr.GetTaggedValue());
         bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, p);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -227,6 +228,7 @@ JSTaggedValue ArrayHelper::FlattenIntoArray(JSThread *thread, const JSHandle<JSO
                 }
                 sourceIndexHandle.Update(JSTaggedValue(tempArgs.start));
                 sourceIndexStr = JSTaggedValue::ToString(thread, sourceIndexHandle);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 targetIndexHandle.Update(sourceIndexStr.GetTaggedValue());
                 JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, targetIndexHandle, element);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

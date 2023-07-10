@@ -259,6 +259,7 @@ void ObjectOperator::GlobalLookupProperty()
         return;
     }
     JSTaggedValue proto = JSTaggedValue::GetPrototype(thread_, holder_);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     if (!proto.IsHeapObject()) {
         return;
     }
@@ -280,6 +281,7 @@ void ObjectOperator::LookupProperty()
         }
 
         JSTaggedValue proto = JSTaggedValue::GetPrototype(thread_, holder_);
+        RETURN_IF_ABRUPT_COMPLETION(thread_);
         if (!proto.IsHeapObject()) {
             return;
         }

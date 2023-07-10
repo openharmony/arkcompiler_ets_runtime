@@ -337,6 +337,7 @@ JSTaggedValue BuiltinsTypedArray::Of(EcmaRuntimeCallInfo *argv)
     while (k < len) {
         tKey.Update(JSTaggedValue(k));
         JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSHandle<JSTaggedValue> kValue = GetCallArg(argv, k);
         JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(newObj), kKey, kValue, true);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1116,6 +1117,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         while (targetByteIndex < limit) {
             tKey.Update(JSTaggedValue(k));
             JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             kValue.Update(ObjectFastOperator::FastGetPropertyByValue(
                 thread, JSHandle<JSTaggedValue>::Cast(src).GetTaggedValue(), kKey.GetTaggedValue()));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

@@ -144,6 +144,7 @@ JSTaggedValue ContainersQueue::ForEach(EcmaRuntimeCallInfo *argv)
     // If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!callbackFnHandle->IsCallable()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, callbackFnHandle.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
             "The type of \"callbackfn\" must be callable. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());

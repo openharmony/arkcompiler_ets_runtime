@@ -42,6 +42,7 @@ JSHandle<JSPrimitiveRef> JSPrimitiveRef::StringCreate(JSThread *thread, const JS
     //    [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }).
     PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(length)), false, false, false);
     [[maybe_unused]] bool status = JSTaggedValue::DefinePropertyOrThrow(thread, str, lengthStr, desc);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSPrimitiveRef, thread);
     ASSERT(status);
     // 9. Return S.
     return JSHandle<JSPrimitiveRef>(str);

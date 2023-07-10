@@ -56,6 +56,7 @@ JSTaggedValue BuiltinsLocale::LocaleConstructor(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> localeString = factory->GetEmptyString();
     if (!tag->IsJSLocale()) {
         localeString = JSTaggedValue::ToString(thread, tag);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     } else {
         icu::Locale *icuLocale = (JSHandle<JSLocale>::Cast(tag))->GetIcuLocale();
         localeString = intl::LocaleHelper::ToLanguageTag(thread, *icuLocale);

@@ -644,6 +644,7 @@ JSTaggedValue BuiltinsArray::CopyWithin(EcmaRuntimeCallInfo *argv)
         } else {
             if (thisObjVal->IsJSProxy()) {
                 toKey.Update(JSTaggedValue::ToString(thread, toKey).GetTaggedValue());
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
             JSTaggedValue::DeletePropertyOrThrow(thread, thisObjVal, toKey);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2369,6 +2370,7 @@ JSTaggedValue BuiltinsArray::Splice(EcmaRuntimeCallInfo *argv)
             toKey.Update(JSTaggedValue(k));
             if (newArrayHandle->IsJSProxy()) {
                 toKey.Update(JSTaggedValue::ToString(thread, toKey).GetTaggedValue());
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
             JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, fromValue);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2914,6 +2916,7 @@ JSTaggedValue BuiltinsArray::Includes(EcmaRuntimeCallInfo *argv)
     while (from < len) {
         JSHandle<JSTaggedValue> handledFrom(thread, JSTaggedValue(from));
         fromStr = JSTaggedValue::ToString(thread, handledFrom);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         key.Update(fromStr.GetTaggedValue());
         kValueHandle.Update(JSArray::FastGetPropertyByValue(thread, thisObjVal, key).GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

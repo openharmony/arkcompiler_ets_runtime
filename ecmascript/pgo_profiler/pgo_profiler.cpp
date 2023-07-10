@@ -105,6 +105,7 @@ void PGOProfiler::ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_
         auto currentType = PGOSampleType::CreateClassType(ctorMethodId);
 
         auto superFuncValue = JSTaggedValue::GetPrototype(thread, ctorValue);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         PGOSampleType superType = PGOSampleType::CreateClassType(0);
         if (superFuncValue.IsJSFunction()) {
             auto superFuncFunction = JSFunction::Cast(superFuncValue);

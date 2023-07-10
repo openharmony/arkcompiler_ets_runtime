@@ -88,6 +88,7 @@ JSHandle<JSTaggedValue> JSIterator::GetAsyncIterator(JSThread *thread, const JSH
         JSHandle<JSTaggedValue> syncIterator = GetIterator(thread, obj, func);
         JSHandle<JSTaggedValue> nextStr = thread->GlobalConstants()->GetHandledNextString();
         JSHandle<JSTaggedValue> nextMethod = JSTaggedValue::GetProperty(thread, syncIterator, nextStr).GetValue();
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         JSHandle<AsyncIteratorRecord> syncIteratorRecord =
             factory->NewAsyncIteratorRecord(syncIterator, nextMethod, false);
         JSHandle<JSTaggedValue> asyncIterator =
@@ -206,6 +207,7 @@ JSHandle<JSTaggedValue> JSIterator::IteratorValue(JSThread *thread, const JSHand
     // Return Get(iterResult, "value").
     JSHandle<JSTaggedValue> valueStr = thread->GlobalConstants()->GetHandledValueString();
     JSHandle<JSTaggedValue> value = JSTaggedValue::GetProperty(thread, iterResult, valueStr).GetValue();
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     return value;
 }
 // 7.4.5

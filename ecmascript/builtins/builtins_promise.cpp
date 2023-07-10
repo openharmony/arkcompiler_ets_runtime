@@ -759,6 +759,7 @@ JSHandle<CompletionRecord> BuiltinsPromise::PerformPromiseAny(JSThread *thread,
                 PropertyDescriptor msgDesc(thread, errorsValue, true, false, true);
                 JSHandle<JSTaggedValue> errorTagged = JSHandle<JSTaggedValue>::Cast(error);
                 JSTaggedValue::DefinePropertyOrThrow(thread, errorTagged, errorsKey, msgDesc);
+                RETURN_HANDLE_IF_ABRUPT_COMPLETION(CompletionRecord, thread);
                 // 3. Return ThrowCompletion(error).
                 JSHandle<JSTaggedValue> errorCompletion(
                     factory->NewCompletionRecord(CompletionRecordType::THROW, errorTagged));

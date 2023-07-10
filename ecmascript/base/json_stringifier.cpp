@@ -477,6 +477,7 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
             for (uint32_t i = 0; i < arrLength; i++) {
                 handleKey_.Update(propertyArray->Get(i));
                 JSHandle<JSTaggedValue> valueHandle = JSTaggedValue::GetProperty(thread_, value, handleKey_).GetValue();
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 JSTaggedValue serializeValue = GetSerializeValue(value, handleKey_, valueHandle, replacer);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 if (UNLIKELY(serializeValue.IsUndefined() || serializeValue.IsSymbol() ||

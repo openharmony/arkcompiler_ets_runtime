@@ -533,6 +533,7 @@ JSHandle<TaggedArray> JSObject::GetEnumElementKeys(JSThread *thread, const JSHan
         for (uint32_t i = static_cast<uint32_t>(offset); i < elementIndex; ++i) {
             keyHandle.Update(JSTaggedValue(i));
             auto key = JSTaggedValue::ToString(thread, keyHandle);
+            RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
             elementArray->Set(thread, i, key);
         }
     }

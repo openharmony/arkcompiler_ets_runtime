@@ -155,6 +155,7 @@ JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *ar
         while (k < len) {
             tKey.Update(JSTaggedValue(k));
             JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             JSHandle<JSTaggedValue> kValue = vec[k];
             JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(obj), kKey, kValue, true);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -188,6 +189,7 @@ JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *ar
     while (k < len) {
         tKey.Update(JSTaggedValue(k));
         JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSHandle<JSTaggedValue> kValue = JSObject::GetProperty(thread, objectArg, kKey).GetValue();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(obj), kKey, kValue, true);

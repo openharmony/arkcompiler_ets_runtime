@@ -38,6 +38,7 @@ JSTaggedValue BuiltinsArkTools::ObjectDump(EcmaRuntimeCallInfo *info)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, GetCallArg(info, 0));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // The default log level of ace_engine and js_runtime is error
     LOG_ECMA(ERROR) << ": " << EcmaStringAccessor(str).ToStdString();
 
@@ -209,6 +210,7 @@ JSTaggedValue BuiltinsArkTools::StartCpuProfiler(EcmaRuntimeCallInfo *info)
     std::string fileName = "";
     if (fileNameValue->IsString()) {
         JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, fileNameValue);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         fileName = EcmaStringAccessor(str).ToStdString() + ".cpuprofile";
     } else {
         fileName = GetProfileName();

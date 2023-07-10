@@ -730,6 +730,7 @@ JSTaggedValue BuiltinsObject::IsPrototypeOf(EcmaRuntimeCallInfo *argv)
             return GetTaggedBoolean(true);
         }
         msgValueHandle.Update(JSTaggedValue::GetPrototype(thread, msgValueHandle));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     return GetTaggedBoolean(false);
 }
@@ -874,6 +875,7 @@ JSTaggedValue BuiltinsObject::ToString(EcmaRuntimeCallInfo *argv)
 
     JSHandle<EcmaString> newLeftStringHandle =
         factory->ConcatFromString(leftString, JSTaggedValue::ToString(thread, tag));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     auto result = factory->ConcatFromString(newLeftStringHandle, rightString);
     return result.GetTaggedValue();
 }

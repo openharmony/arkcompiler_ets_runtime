@@ -22,9 +22,11 @@ JSHandle<JSTaggedValue> Internalize::InternalizeJsonProperty(JSThread *thread, c
 {
     JSHandle<JSTaggedValue> objHandle(holder);
     JSHandle<JSTaggedValue> val = JSTaggedValue::GetProperty(thread, objHandle, name).GetValue();
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
     if (val->IsECMAObject()) {
         JSHandle<JSObject> obj = JSTaggedValue::ToObject(thread, val);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         bool isArray = val->IsArray(thread);
         if (isArray) {
             JSHandle<JSTaggedValue> lenResult = JSTaggedValue::GetProperty(thread, val, lengthKey).GetValue();
@@ -38,6 +40,7 @@ JSHandle<JSTaggedValue> Internalize::InternalizeJsonProperty(JSThread *thread, c
                 // Let prop be ! ToString((I)).
                 keyUnknow.Update(JSTaggedValue(i));
                 keyName.Update(JSTaggedValue::ToString(thread, keyUnknow).GetTaggedValue());
+                RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
                 RecurseAndApply(thread, obj, keyName, receiver);
             }
         } else {

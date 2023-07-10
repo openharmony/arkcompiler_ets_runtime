@@ -237,6 +237,7 @@ JSTaggedValue RuntimeStubs::RuntimeSuperCallSpread(JSThread *thread, const JSHan
                                                    const JSHandle<JSTaggedValue> &array)
 {
     JSHandle<JSTaggedValue> superFunc(thread, JSTaggedValue::GetPrototype(thread, func));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     ASSERT(superFunc->IsJSFunction());
 
     JSHandle<TaggedArray> argv(thread, RuntimeGetCallSpreadArgs(thread, array));
@@ -276,6 +277,7 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjApply(JSThread *thread, const JSHandle<
     JSHandle<TaggedArray> argsArray = factory->NewTaggedArray(length);
     for (uint32_t i = 0; i < length; ++i) {
         auto prop = JSTaggedValue::GetProperty(thread, array, i).GetValue();
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         argsArray->Set(thread, i, prop);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
@@ -384,6 +386,7 @@ JSTaggedValue RuntimeStubs::RuntimeCopyDataProperties(JSThread *thread, const JS
     if (!src->IsNull() && !src->IsUndefined()) {
         // 2. Let from be ! ToObject(source).
         JSHandle<JSTaggedValue> from(JSTaggedValue::ToObject(thread, src));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSHandle<TaggedArray> keys = JSTaggedValue::GetOwnPropertyKeys(thread, from);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -453,6 +456,7 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
         bool success = JSTaggedValue::GetOwnProperty(thread, iterResult, valueStr, desc);
         if (success && desc.IsEnumerable()) {
             JSTaggedValue::DefineOwnProperty(thread, dst, indexHandle, desc);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             int tmp = indexHandle->GetInt();
             indexHandle.Update(JSTaggedValue(tmp + 1));
         }
@@ -547,6 +551,7 @@ JSTaggedValue RuntimeStubs::RuntimeStOwnByValue(JSThread *thread, const JSHandle
     JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     bool ret = JSTaggedValue::DefineOwnProperty(thread, obj, propKey, desc);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!ret) {
         return RuntimeThrowTypeError(thread, "StOwnByValue failed");
     }
@@ -653,6 +658,7 @@ JSTaggedValue RuntimeStubs::RuntimeStOwnByIndex(JSThread *thread, const JSHandle
 
     PropertyDescriptor desc(thread, value, true, enumerable, true);
     bool ret = JSTaggedValue::DefineOwnProperty(thread, obj, idx, desc);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!ret) {
         return RuntimeThrowTypeError(thread, "SetOwnByIndex failed");
     }
@@ -905,6 +911,7 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
         method->SetFunctionKind(FunctionKind::DERIVED_CONSTRUCTOR);
         parentPrototype = JSTaggedValue::GetProperty(thread, parent,
             globalConst->GetHandledPrototypeString()).GetValue();
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!parentPrototype->IsECMAObject() && !parentPrototype->IsNull()) {
             return RuntimeThrowTypeError(thread, "parent class have no valid prototype");
         }
@@ -981,6 +988,7 @@ JSTaggedValue RuntimeStubs::RuntimeStOwnByValueWithNameSet(JSThread *thread, con
     JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     bool ret = JSTaggedValue::DefineOwnProperty(thread, obj, propKey, desc);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!ret) {
         return RuntimeThrowTypeError(thread, "StOwnByValueWithNameSet failed");
     }
@@ -1005,6 +1013,7 @@ JSTaggedValue RuntimeStubs::RuntimeStOwnByName(JSThread *thread, const JSHandle<
 
     PropertyDescriptor desc(thread, value, true, enumerable, true);
     bool ret = JSTaggedValue::DefineOwnProperty(thread, obj, prop, desc);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!ret) {
         return RuntimeThrowTypeError(thread, "SetOwnByName failed");
     }
@@ -1024,6 +1033,7 @@ JSTaggedValue RuntimeStubs::RuntimeStOwnByNameWithNameSet(JSThread *thread,
 
     PropertyDescriptor desc(thread, valueHandle, true, enumerable, true);
     bool ret = JSTaggedValue::DefineOwnProperty(thread, objHandle, propHandle, desc);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!ret) {
         return RuntimeThrowTypeError(thread, "SetOwnByNameWithNameSet failed");
     }
@@ -1302,6 +1312,7 @@ JSTaggedValue RuntimeStubs::RuntimeTryLdGlobalByName(JSThread *thread, const JSH
                                                      const JSHandle<JSTaggedValue> &prop)
 {
     OperationResult res = JSTaggedValue::GetProperty(thread, obj, prop);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!res.GetPropertyMetaData().IsFound()) {
         return RuntimeThrowReferenceError(thread, prop, " is not defined");
     }
@@ -1909,7 +1920,7 @@ JSTaggedValue RuntimeStubs::CommonCreateObjectWithExcludedKeys(JSThread *thread,
         return restObj.GetTaggedValue();
     }
     JSHandle<JSObject> obj(JSTaggedValue::ToObject(thread, objVal));
-
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<TaggedArray> allKeys = JSObject::GetOwnPropertyKeys(thread, obj);
     uint32_t numAllKeys = allKeys->GetLength();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -2062,6 +2073,7 @@ JSTaggedValue RuntimeStubs::RuntimeSuperCall(JSThread *thread, const JSHandle<JS
                                              uint16_t length)
 {
     JSHandle<JSTaggedValue> superFunc(thread, JSTaggedValue::GetPrototype(thread, func));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     ASSERT(superFunc->IsJSFunction());
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -2087,6 +2099,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuperCall(JSThread *thread, uintptr_t argv
     JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);
     JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1);
     JSHandle<JSTaggedValue> superFunc(thread, JSTaggedValue::GetPrototype(thread, func));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     ASSERT(superFunc->IsJSFunction());
     uint16_t length = argc - fixNums;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
