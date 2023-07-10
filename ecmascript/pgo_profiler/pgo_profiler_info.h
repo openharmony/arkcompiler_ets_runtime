@@ -360,7 +360,7 @@ public:
 
     void IncreaseCount(int32_t inc)
     {
-        count_ += inc;
+        count_ += static_cast<uint32_t>(inc);
     }
 
     void ClearCount()
