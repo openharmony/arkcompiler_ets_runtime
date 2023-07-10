@@ -124,7 +124,7 @@ void PGOTypeInfer::CollectGateType(CollectedType &types, GateType tsType, PGORWO
 {
     CheckAndInsert(types, tsType);
 
-    for (int i = 0; i < pgoTypes.GetCount(); i++) {
+    for (uint32_t i = 0; i < pgoTypes.GetCount(); i++) {
         ClassType classType = pgoTypes.GetObjectInfo(i).GetClassType();
         GateType pgoType = tsManager_->GetGateTypeByPt(classType);
         if (tsManager_->IsClassTypeKind(pgoType) && !pgoTypes.GetObjectInfo(i).InConstructor()) {
@@ -247,7 +247,7 @@ void PGOTypeInfer::AddProfiler(GateRef gate, GateType tsType, PGORWOpType pgoTyp
         Profiler::Value value;
         value.gate = gate;
         value.tsType = tsType;
-        for (int i = 0; i < pgoType.GetCount(); i++) {
+        for (uint32_t i = 0; i < pgoType.GetCount(); i++) {
             value.pgoTypes.emplace_back(tsManager_->GetGateTypeByPt(pgoType.GetObjectInfo(i).GetClassType()));
         }
         for (GateType type : inferTypes) {

@@ -32,7 +32,7 @@ public:
 
     bool Has(JSTaggedValue value) const;
 
-    int GetSize() const;
+    uint32_t GetSize() const;
 
     JSTaggedValue GetValue(int entry) const;
 

@@ -34,7 +34,7 @@ public:
 
     JSTaggedValue Get(JSTaggedValue key) const;
 
-    int GetSize() const;
+    uint32_t GetSize() const;
 
     JSTaggedValue GetKey(int entry) const;
 

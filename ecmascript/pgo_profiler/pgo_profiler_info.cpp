@@ -563,7 +563,7 @@ void PGOMethodTypeSet::RWScalarOpTypeInfo::ProcessToText(std::string &text) cons
     text += BLOCK_START;
     text += ARRAY_START + SPACE;
     bool isFirst = true;
-    for (int i = 0; i < type_.GetCount(); i++) {
+    for (uint32_t i = 0; i < type_.GetCount(); i++) {
         if (!isFirst) {
             text += TYPE_SEPARATOR + SPACE;
         }

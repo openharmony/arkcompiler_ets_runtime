@@ -1214,7 +1214,7 @@ std::string StringRef::ToString()
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).ToStdString();
 }
 
-int32_t StringRef::Length()
+uint32_t StringRef::Length()
 {
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).GetLength();
 }
@@ -1856,7 +1856,7 @@ Local<ArrayRef> ArrayRef::New(const EcmaVM *vm, uint32_t length)
     return JSNApiHelper::ToLocal<ArrayRef>(array);
 }
 
-int32_t ArrayRef::Length([[maybe_unused]] const EcmaVM *vm)
+uint32_t ArrayRef::Length([[maybe_unused]] const EcmaVM *vm)
 {
     CHECK_HAS_PENDING_EXCEPTION(vm, 0);
     return JSArray::Cast(JSNApiHelper::ToJSTaggedValue(this).GetTaggedObject())->GetArrayLength();
