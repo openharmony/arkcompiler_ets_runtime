@@ -187,6 +187,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
                 // 11. Perform ! PerformPromiseThen(promise, onFulfilled, onRejected).
                 JSHandle<PromiseCapability> tcap =
                     JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 [[maybe_unused]] JSTaggedValue pres = BuiltinsPromise::PerformPromiseThen(
                     thread, handPromise, JSHandle<JSTaggedValue>::Cast(onFulfilled),
                     JSHandle<JSTaggedValue>::Cast(onFulRejected), tcap);
@@ -246,6 +247,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<PromiseCapability> pcap =
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 2. Let check be AsyncGeneratorValidate(generator, generatorBrand).
     AsyncGeneratorValidate(thread, gen, JSTaggedValue::Undefined());
     // 3. If check is an abrupt completion, then

@@ -361,6 +361,7 @@ JSHandle<JSTaggedValue> BuiltinsPromiseHandler::PromiseResolve(JSThread *thread,
     // 3. Let promiseCapability be ? NewPromiseCapability(C).
     // 4. ReturnIfAbrupt(promiseCapability)
     JSHandle<PromiseCapability> promiseCapability = JSPromise::NewPromiseCapability(thread, constructor);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<JSTaggedValue> promiseCapaHandle = JSHandle<JSTaggedValue>::Cast(promiseCapability);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, promiseCapaHandle);
     // 6. Let resolveResult be Call(promiseCapability.[[Resolve]], undefined, «x»).

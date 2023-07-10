@@ -1396,7 +1396,7 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
     // 4. Let promiseCapability be !NewPromiseCapability(%Promise%).
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<PromiseCapability> promiseCapability = JSPromise::NewPromiseCapability(thread, promiseFunc);
-
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<job::MicroJobQueue> job = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
 
     JSHandle<TaggedArray> argv = factory->NewTaggedArray(5); // 5: 5 means parameters stored in array

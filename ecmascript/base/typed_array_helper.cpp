@@ -103,6 +103,7 @@ JSTaggedValue TypedArrayHelper::FastCopyElementFromArray(EcmaRuntimeCallInfo *ar
     JSHandle<JSTypedArray> targetObj = JSHandle<JSTypedArray>::Cast(obj);
     
     JSStableArray::FastCopyFromArrayToTypedArray(thread, targetObj, arrayType, 0, len, elements);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSHandle<JSObject>::Cast(targetObj).GetTaggedValue();
 }
 
@@ -623,7 +624,9 @@ int32_t TypedArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedV
             return 1;
         }
         JSTaggedNumber xNumber = JSTaggedValue::ToNumber(thread, firstValue);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
         JSTaggedNumber yNumber = JSTaggedValue::ToNumber(thread, secondValue);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
         double eZeroTemp = -0.0;
         auto eZero = JSTaggedNumber(eZeroTemp);
         double pZeroTemp = +0.0;

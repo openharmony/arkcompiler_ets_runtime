@@ -34,6 +34,7 @@ JSTaggedValue BuiltinsMath::Abs(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (numberValue.IsDouble()) {
         // if number_value is double,NaN,Undefine, deal in this case
         // if number_value is a String ,which can change to double. e.g."100",deal in this case
@@ -52,6 +53,7 @@ JSTaggedValue BuiltinsMath::Acos(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // value == -NaN , <-1  or > 1,result is  NaN
@@ -70,6 +72,7 @@ JSTaggedValue BuiltinsMath::Acosh(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     if (value >= 1) {
@@ -87,6 +90,7 @@ JSTaggedValue BuiltinsMath::Asin(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     if (value >= -1 && value <= 1) {
@@ -104,6 +108,7 @@ JSTaggedValue BuiltinsMath::Asinh(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // value == -NaN, NaN, result is  NaN
@@ -122,6 +127,7 @@ JSTaggedValue BuiltinsMath::Atan(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // value == -NaN, NaN, result is  NaN
@@ -159,7 +165,9 @@ JSTaggedValue BuiltinsMath::Atan2(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> msgX = GetCallArg(argv, 1);
     double result = base::NAN_VALUE;
     JSTaggedNumber numberValueY = JSTaggedValue::ToNumber(thread, msgY);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedNumber numberValueX = JSTaggedValue::ToNumber(thread, msgX);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double valueY = numberValueY.GetNumber();
     double valueX = numberValueX.GetNumber();
     // y = +0 and x > +0, return +0
@@ -186,6 +194,7 @@ JSTaggedValue BuiltinsMath::Cbrt(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // if value == -NaN, NaN, result is NaN
@@ -204,6 +213,7 @@ JSTaggedValue BuiltinsMath::Ceil(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // If value is NaN or -NaN, +infinite, -infinite,return value
@@ -228,6 +238,7 @@ JSTaggedValue BuiltinsMath::Clz32(EcmaRuntimeCallInfo *argv)
     constexpr int defaultValue = 32;
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     auto tmpValue = std::abs(value);
     auto result = numberValue.ToUint32();
@@ -247,6 +258,7 @@ JSTaggedValue BuiltinsMath::Cos(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     //  If value is NaN or -NaN, +infinite, -infinite, result is NaN
@@ -265,6 +277,7 @@ JSTaggedValue BuiltinsMath::Cosh(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // if value is NaN or -NaN, result is NaN
@@ -283,6 +296,7 @@ JSTaggedValue BuiltinsMath::Exp(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // if value is NaN or -NaN, result is NaN
@@ -301,6 +315,7 @@ JSTaggedValue BuiltinsMath::Expm1(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // if value is NaN or -NaN, result is NaN
@@ -319,6 +334,7 @@ JSTaggedValue BuiltinsMath::Floor(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // If value is NaN or -NaN, +infinite, -infinite, +0, -0, return value
@@ -345,6 +361,7 @@ JSTaggedValue BuiltinsMath::Fround(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result;
     if (std::isnan(std::abs(value))) {
@@ -370,6 +387,7 @@ JSTaggedValue BuiltinsMath::Hypot(EcmaRuntimeCallInfo *argv)
     for (uint32_t i = 0; i < argLen; i++) {
         JSHandle<JSTaggedValue> msg = GetCallArg(argv, i);
         numberValue = JSTaggedValue::ToNumber(thread, msg);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         value = numberValue.GetNumber();
         result = std::hypot(result, value);
     }
@@ -386,7 +404,9 @@ JSTaggedValue BuiltinsMath::Imul(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> msg1 = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> msg2 = GetCallArg(argv, 1);
     JSTaggedNumber numberValue1 = JSTaggedValue::ToNumber(thread, msg1);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSTaggedNumber numberValue2 = JSTaggedValue::ToNumber(thread, msg2);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     auto value1 = numberValue1.GetNumber();
     auto value2 = numberValue2.GetNumber();
     if (!std::isfinite(value1) || !std::isfinite(value2)) {
@@ -409,6 +429,7 @@ JSTaggedValue BuiltinsMath::Log(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // If value is NaN , -NaN , or < 0,result is NaN
@@ -427,6 +448,7 @@ JSTaggedValue BuiltinsMath::Log1p(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // If value is NaN , -NaN , or < -1,result is NaN
@@ -445,6 +467,7 @@ JSTaggedValue BuiltinsMath::Log10(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // If value is NaN , -NaN , or < 0,result is NaN
@@ -463,6 +486,7 @@ JSTaggedValue BuiltinsMath::Log2(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // If value is NaN , -NaN , or < 0,result is NaN
@@ -493,6 +517,7 @@ JSTaggedValue BuiltinsMath::Max(EcmaRuntimeCallInfo *argv)
     for (uint32_t i = 0; i < argLen; i++) {
         JSHandle<JSTaggedValue> msg = GetCallArg(argv, i);
         numberValue = JSTaggedValue::ToNumber(thread, msg);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         value = numberValue.GetNumber();
         if (std::isnan(std::abs(value))) {
             // If any value is NaN, or -NaN, the max result is NaN
@@ -527,6 +552,7 @@ JSTaggedValue BuiltinsMath::Min(EcmaRuntimeCallInfo *argv)
     for (uint32_t i = 0; i < argLen; i++) {
         JSHandle<JSTaggedValue> msg = GetCallArg(argv, i);
         numberValue = JSTaggedValue::ToNumber(thread, msg);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         value = numberValue.GetNumber();
         if (std::isnan(std::abs(value))) {
             // If any value is NaN or -NaN, the min result is NaN
@@ -600,6 +626,7 @@ JSTaggedValue BuiltinsMath::Round(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     auto result = base::NAN_VALUE;
     const double diff = 0.5;
@@ -637,6 +664,7 @@ JSTaggedValue BuiltinsMath::Sign(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     if (std::isnan(std::abs(value))) {
         return GetTaggedDouble(std::abs(value));
@@ -659,6 +687,7 @@ JSTaggedValue BuiltinsMath::Sin(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // If value is NaN or -NaN, the result is NaN
@@ -677,6 +706,7 @@ JSTaggedValue BuiltinsMath::Sinh(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // If value is NaN or -NaN, the result is NaN
@@ -695,6 +725,7 @@ JSTaggedValue BuiltinsMath::Sqrt(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // If value is negative, include -NaN and -Infinity but not -0.0, the result is NaN
@@ -717,6 +748,7 @@ JSTaggedValue BuiltinsMath::Tan(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     // If value is NaN or -NaN, +infinite, -infinite, result is NaN
@@ -735,6 +767,7 @@ JSTaggedValue BuiltinsMath::Tanh(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     if (!std::isnan(std::abs(value))) {
@@ -752,6 +785,7 @@ JSTaggedValue BuiltinsMath::Trunc(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSTaggedNumber numberValue = JSTaggedValue::ToNumber(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double value = numberValue.GetNumber();
     double result = base::NAN_VALUE;
     if (!std::isfinite(value)) {

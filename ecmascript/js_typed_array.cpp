@@ -99,6 +99,7 @@ bool JSTypedArray::HasProperty(JSThread *thread, const JSHandle<JSTaggedValue> &
             }
             JSHandle<JSTaggedValue> numericIndexHandle(thread, numericIndex);
             JSTaggedNumber numericIndexNumber = JSTaggedValue::ToNumber(thread, numericIndexHandle);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
             double tNegZero = -0.0;
             auto eZero = JSTaggedNumber(tNegZero);
             JSHandle<JSTaggedValue> zero(thread, JSTaggedValue(0));
@@ -161,6 +162,7 @@ bool JSTypedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSTaggedVa
             }
             JSHandle<JSTaggedValue> numericIndexHandle(thread, numericIndex);
             JSTaggedNumber numericIndexNumber = JSTaggedValue::ToNumber(thread, numericIndexHandle);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
             double tNegZero = -0.0;
             auto eZero = JSTaggedNumber(tNegZero);
             JSHandle<JSTaggedValue> zero(thread, JSTaggedValue(0));
