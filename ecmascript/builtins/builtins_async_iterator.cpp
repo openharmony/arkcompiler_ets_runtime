@@ -48,6 +48,7 @@ JSTaggedValue BuiltinsAsyncIterator::Return(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     JSHandle<PromiseCapability> pcap = JSPromise::NewPromiseCapability(thread, promiseFunc);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> iterResult = JSIterator::CreateIterResultObject(thread, value, true);
     JSHandle<JSTaggedValue> iterResultVal(iterResult);
     JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve());

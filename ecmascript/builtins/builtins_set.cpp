@@ -262,6 +262,7 @@ JSTaggedValue BuiltinsSet::Entries(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     JSHandle<JSTaggedValue> iter = JSSetIterator::CreateSetIterator(thread, self, IterationKind::KEY_AND_VALUE);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return iter.GetTaggedValue();
 }
 
@@ -273,6 +274,7 @@ JSTaggedValue BuiltinsSet::Values(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     JSHandle<JSTaggedValue> iter = JSSetIterator::CreateSetIterator(thread, self, IterationKind::VALUE);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return iter.GetTaggedValue();
 }
 }  // namespace panda::ecmascript::builtins

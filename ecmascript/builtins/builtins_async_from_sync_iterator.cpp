@@ -44,6 +44,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Next(EcmaRuntimeCallInfo *argv)
     // 3.Let promiseCapability be ! NewPromiseCapability(%Promise%).
     JSHandle<PromiseCapability> pcap =
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 4.Let syncIteratorRecord be O.[[SyncIteratorRecord]].
     JSHandle<JSAsyncFromSyncIterator> asyncIterator(thisValue);
     JSHandle<AsyncIteratorRecord> syncIteratorRecord(thread, asyncIterator->GetSyncIteratorRecord());
@@ -79,6 +80,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<PromiseCapability> pcap =
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 4.Let syncIterator be O.[[SyncIteratorRecord]].[[Iterator]].
     JSHandle<AsyncIteratorRecord> syncIteratorRecord(thread, asyncIterator->GetSyncIteratorRecord());
     JSHandle<JSTaggedValue> syncIterator(thread, syncIteratorRecord->GetIterator());
@@ -148,6 +150,7 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<PromiseCapability> pcap =
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 4.Let syncIterator be O.[[SyncIteratorRecord]].[[Iterator]].
     JSHandle<JSAsyncFromSyncIterator> asyncIterator(thisValue);
     JSHandle<AsyncIteratorRecord> syncIteratorRecord(thread, asyncIterator->GetSyncIteratorRecord());
