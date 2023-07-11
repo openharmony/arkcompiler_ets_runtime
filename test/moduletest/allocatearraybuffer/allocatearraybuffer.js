@@ -22,3 +22,13 @@
 var newTarget = function() {}.bind(null);
 var arrayBuffer = Reflect.construct(ArrayBuffer, [16], newTarget);
 print(arrayBuffer.length);
+
+/*
+ * @tc.name:allocatearraybuffer
+ * @tc.desc:test DataView
+ * @tc.type: FUNC
+ * @tc.require: issueI5NO8G
+ */
+const dataview = new DataView(new ArrayBuffer(64));
+dataview.setInt16(0,-1);
+print(dataview.getFloat64("cas"));
