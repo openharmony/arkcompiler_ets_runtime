@@ -23,6 +23,7 @@ namespace panda::ecmascript {
 struct CallFrameInfo {
     std::string codeType_ = "";
     std::string functionName_ = "";
+    std::string moduleName_ = "";
     int columnNumber_ = -1;
     int lineNumber_ = -1;
     int scriptId_ = 0;
