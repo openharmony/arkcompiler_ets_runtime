@@ -67,9 +67,9 @@ using JSPtLocation = tooling::JSPtLocation;
  */
 struct LocalVariableInfo {
     std::string name;
-    int32_t reg_number;
-    uint32_t start_offset;
-    uint32_t end_offset;
+    int32_t regNumber;
+    uint32_t startOffset;
+    uint32_t endOffset;
 };
 using LocalVariableTable = CVector<LocalVariableInfo>;
 
