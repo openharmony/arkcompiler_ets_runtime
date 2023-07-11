@@ -128,7 +128,7 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorName(JSThread *thread, const JSHand
 }
 
 JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
-                                                  [[maybe_unused]] const ErrorType &errorType)
+                                                  const ErrorType &errorType)
 {
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -192,7 +192,8 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
         ASSERT_PRINT(status == true, "return result exception!");
     }
 
-    JSHandle<EcmaString> handleStack = BuildEcmaStackTrace(thread);
+    bool isOOMError = errorType == ErrorType::OOM_ERROR ? true : false;
+    JSHandle<EcmaString> handleStack = BuildEcmaStackTrace(thread, isOOMError);
     JSHandle<JSTaggedValue> stackkey = globalConst->GetHandledStackString();
     PropertyDescriptor stackDesc(thread, JSHandle<JSTaggedValue>::Cast(handleStack), true, false, true);
     [[maybe_unused]] bool status = JSObject::DefineOwnProperty(thread, nativeInstanceObj, stackkey, stackDesc);
@@ -221,9 +222,12 @@ JSHandle<JSTaggedValue> ErrorHelper::GetErrorJSFunction(JSThread *thread)
     return thread->GlobalConstants()->GetHandledUndefined();
 }
 
-JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread)
+JSHandle<EcmaString> ErrorHelper::BuildEcmaStackTrace(JSThread *thread, bool isOOMError)
 {
     std::string data = JsStackInfo::BuildJsStackTrace(thread, false);
+    if (isOOMError) {
+        data = data.substr(0, MAX_ERROR_SIZE);
+    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     LOG_ECMA(DEBUG) << data;
     return factory->NewFromStdString(data);
