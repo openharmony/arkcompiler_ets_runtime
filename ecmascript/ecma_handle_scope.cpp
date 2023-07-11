@@ -25,7 +25,6 @@ EcmaHandleScope::EcmaHandleScope(JSThread *thread) : thread_(thread)
     prevEnd_ = context->handleScopeStorageEnd_;
     prevHandleStorageIndex_ = context->currentHandleStorageIndex_;
 #ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
-    LOG_ECMA(INFO) << "Enable handle leak check";
     context->HandleScopeCountAdd();
     prevHandleScope_ = context->GetLastHandleScope();
     context->SetLastHandleScope(this);
