@@ -57,6 +57,7 @@ group("ark_typeinfer_test") {
     "createemptyarray",
     "createemptyobject",
     "createobjecthavingmethod",
+    "defineasyncfunc",
     "defineclasswithbuffer",
     "definefunctiondyn",
     "definegeneratorfunc",
