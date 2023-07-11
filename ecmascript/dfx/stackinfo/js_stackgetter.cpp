@@ -64,35 +64,41 @@ bool JsStackGetter::ParseMethodInfo(struct MethodKey &methodKey,
         GetNativeStack(vm, it, codeEntry.functionName, sizeof(codeEntry.functionName), isCpuProfiler);
     } else {
         EntityId methodId = reinterpret_cast<MethodLiteral *>(methodKey.methodIdentifier)->GetMethodId();
-        const char *tempVariable = MethodLiteral::GetMethodName(jsPandaFile, methodId);
-        uint8_t length = strlen(tempVariable);
-        if (length != 0 && tempVariable[0] == '#') {
+        // function name
+        const char *functionName = MethodLiteral::GetMethodName(jsPandaFile, methodId);
+        uint8_t length = strlen(functionName);
+        if (length != 0 && functionName[0] == '#') {
             uint8_t index = length - 1;
-            while (tempVariable[index] != '#') {
+            while (functionName[index] != '#') {
                 index--;
             }
-            tempVariable += (index + 1);
+            functionName += (index + 1);
         }
-        if (strlen(tempVariable) == 0) {
-            tempVariable = "anonymous";
+        if (strlen(functionName) == 0) {
+            functionName = "anonymous";
         }
-        if (!CheckAndCopy(codeEntry.functionName, sizeof(codeEntry.functionName), tempVariable)) {
+        if (!CheckAndCopy(codeEntry.functionName, sizeof(codeEntry.functionName), functionName)) {
             return false;
         }
-        // source file
+        // record name
+        CString recordNameStr = MethodLiteral::GetRecordName(jsPandaFile, methodId);
+        if (!recordNameStr.empty()) {
+            if (!CheckAndCopy(codeEntry.recordName, sizeof(codeEntry.recordName), recordNameStr.c_str())) {
+                return false;
+            }
+        }
+
         DebugInfoExtractor *debugExtractor =
             JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
         if (debugExtractor == nullptr) {
             return false;
         }
+        // source file
         const std::string &sourceFile = debugExtractor->GetSourceFile(methodId);
-        if (sourceFile.empty()) {
-            tempVariable = "";
-        } else {
-            tempVariable = sourceFile.c_str();
-        }
-        if (!CheckAndCopy(codeEntry.url, sizeof(codeEntry.url), tempVariable)) {
-            return false;
+        if (!sourceFile.empty()) {
+            if (!CheckAndCopy(codeEntry.url, sizeof(codeEntry.url), sourceFile.c_str())) {
+                return false;
+            }
         }
         // line number and clomn number
         codeEntry.lineNumber = debugExtractor->GetFristLine(methodId);

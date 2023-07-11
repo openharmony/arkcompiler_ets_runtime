@@ -38,11 +38,11 @@ const size_t NAPI_CALL_SETP = 2; // 2: step size of the variable napiCallIdx in 
 const size_t PRE_IDX_RANGE = 5; // 5: length of variable preIdx looping backward
 
 struct FrameInfo {
-    std::string codeType = "";
-    std::string functionName = "";
-    int columnNumber = -1;
-    int lineNumber = -1;
     int scriptId = 0;
+    int lineNumber = -1;
+    int columnNumber = -1;
+    std::string functionName = "";
+    std::string moduleName = "";
     std::string url = "";
 };
 
@@ -121,6 +121,7 @@ public:
     int GetMethodNodeCount() const;
     int GetframeStackLength() const;
     std::string GetSampleData() const;
+    std::string GetModuleName(char *recordName);
     void SetThreadStartTime(uint64_t threadStartTime);
     void SetThreadStopTime();
     void SetStartsampleData(std::string sampleData);

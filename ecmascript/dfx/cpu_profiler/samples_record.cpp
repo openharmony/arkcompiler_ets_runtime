@@ -182,7 +182,8 @@ void SamplesRecord::StringifyNodes()
         replace(url.begin(), url.end(), '\\', '/');
         sampleData_ += "{\"id\":"
         + std::to_string(node.id) + ",\"callFrame\":{\"functionName\":\""
-        + codeEntry.functionName + "\",\"scriptId\":\""
+        + codeEntry.functionName + "\",\"moduleName\":\""
+        + codeEntry.moduleName + "\",\"scriptId\":\""
         + std::to_string(codeEntry.scriptId) + "\",\"url\":\""
         + url + "\",\"lineNumber\":"
         + std::to_string(codeEntry.lineNumber) + ",\"columnNumber\":"
@@ -658,6 +659,22 @@ bool SamplesRecord::PushNapiStackInfo(const FrameInfoTemp &frameInfoTemp)
     return true;
 }
 
+std::string SamplesRecord::GetModuleName(char *recordName)
+{
+    std::string recordNameStr = recordName;
+    int atPos = recordNameStr.find("@");
+    if (atPos == std::string::npos) {
+        return "";
+    }
+
+    int slashPos = recordNameStr.rfind("/", atPos);
+    if (slashPos == std::string::npos) {
+        return "";
+    }
+
+    return recordNameStr.substr(slashPos + 1, atPos - slashPos - 1);
+}
+
 void SamplesRecord::FrameInfoTempToMap(FrameInfoTemp *frameInfoTemps, int frameInfoTempLength)
 {
     if (frameInfoTempLength == 0) {
@@ -676,6 +693,9 @@ void SamplesRecord::FrameInfoTempToMap(FrameInfoTemp *frameInfoTemps, int frameI
         frameInfo.functionName = AddRunningState(frameInfoTemps[i].functionName,
                                                  frameInfoTemps[i].methodKey.state,
                                                  frameInfoTemps[i].methodKey.deoptType);
+        if (strlen(frameInfoTemps[i].recordName) != 0) {
+            frameInfo.moduleName = GetModuleName(frameInfoTemps[i].recordName);
+        }
         frameInfo.columnNumber = frameInfoTemps[i].columnNumber;
         frameInfo.lineNumber = frameInfoTemps[i].lineNumber;
         stackInfoMap_.emplace(frameInfoTemps[i].methodKey, frameInfo);
@@ -702,6 +722,9 @@ void SamplesRecord::NapiFrameInfoTempToMap()
         frameInfo.functionName = AddRunningState(napiFrameInfoTemps_[i].functionName,
                                                  napiFrameInfoTemps_[i].methodKey.state,
                                                  napiFrameInfoTemps_[i].methodKey.deoptType);
+        if (strlen(napiFrameInfoTemps_[i].recordName) != 0) {
+            frameInfo.moduleName = GetModuleName(napiFrameInfoTemps_[i].recordName);
+        }
         frameInfo.columnNumber = napiFrameInfoTemps_[i].columnNumber;
         frameInfo.lineNumber = napiFrameInfoTemps_[i].lineNumber;
         stackInfoMap_.emplace(napiFrameInfoTemps_[i].methodKey, frameInfo);
@@ -759,6 +782,8 @@ void SamplesQueue::PostFrame(FrameInfoTemp *frameInfoTemps, MethodKey *frameStac
         for (int i = 0; i < frameInfoTempsLength; i++) {
             CheckAndCopy(frames_[rear_].frameInfoTemps[i].functionName,
                 sizeof(frames_[rear_].frameInfoTemps[i].functionName), frameInfoTemps[i].functionName);
+            CheckAndCopy(frames_[rear_].frameInfoTemps[i].recordName,
+                sizeof(frames_[rear_].frameInfoTemps[i].recordName), frameInfoTemps[i].recordName);
             frames_[rear_].frameInfoTemps[i].columnNumber = frameInfoTemps[i].columnNumber;
             frames_[rear_].frameInfoTemps[i].lineNumber = frameInfoTemps[i].lineNumber;
             frames_[rear_].frameInfoTemps[i].scriptId = frameInfoTemps[i].scriptId;
@@ -794,6 +819,8 @@ void SamplesQueue::PostNapiFrame(CVector<FrameInfoTemp> &napiFrameInfoTemps,
         for (size_t i = 0; i < frameInfoTempsLength; i++) {
             CheckAndCopy(frames_[rear_].frameInfoTemps[i].functionName,
                 sizeof(frames_[rear_].frameInfoTemps[i].functionName), napiFrameInfoTemps[i].functionName);
+            CheckAndCopy(frames_[rear_].frameInfoTemps[i].recordName,
+                sizeof(frames_[rear_].frameInfoTemps[i].recordName), napiFrameInfoTemps[i].recordName);
             frames_[rear_].frameInfoTemps[i].columnNumber = napiFrameInfoTemps[i].columnNumber;
             frames_[rear_].frameInfoTemps[i].lineNumber = napiFrameInfoTemps[i].lineNumber;
             frames_[rear_].frameInfoTemps[i].scriptId = napiFrameInfoTemps[i].scriptId;

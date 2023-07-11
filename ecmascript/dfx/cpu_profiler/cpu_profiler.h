@@ -80,7 +80,9 @@ public:
     bool InHeaderOrTail(uint64_t pc, uint64_t entryBegin, uint64_t entryDuration, uint64_t headerSize,
                         uint64_t tailSize) const;
     bool IsEntryFrameHeaderOrTail(JSThread *thread, uint64_t pc) const;
-    void GetStackCallNapi(JSThread *thread, bool beforeCallNapi);
+    bool GetStackBeforeCallNapi(JSThread *thread);
+    void GetStackAfterCallNapi(JSThread *thread);
+    bool GetStackCallNapi(JSThread *thread, bool beforeCallNapi);
     static void GetStackSignalHandler(int signal, siginfo_t *siginfo, void *context);
 
     void StartCpuProfilerForInfo();

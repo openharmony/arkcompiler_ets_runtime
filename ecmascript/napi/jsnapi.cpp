@@ -2741,14 +2741,15 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
 
     JsiRuntimeCallInfo jsiRuntimeCallInfo(ecmaRuntimeCallInfo, extraInfo->GetData());
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    bool getStackBeforeCallNapiSuccess = false;
     if (thread->GetIsProfiling() && function->IsCallNapi()) {
-        thread->GetEcmaVM()->GetProfiler()->GetStackCallNapi(thread, true);
+        getStackBeforeCallNapiSuccess = thread->GetEcmaVM()->GetProfiler()->GetStackBeforeCallNapi(thread);
     }
 #endif
     Local<JSValueRef> result = nativeFunc(&jsiRuntimeCallInfo);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    if (thread->GetIsProfiling() && function->IsCallNapi()) {
-        thread->GetEcmaVM()->GetProfiler()->GetStackCallNapi(thread, false);
+    if (thread->GetIsProfiling() && function->IsCallNapi() && getStackBeforeCallNapiSuccess) {
+        thread->GetEcmaVM()->GetProfiler()->GetStackAfterCallNapi(thread);
     }
 #endif
     return JSNApiHelper::ToJSHandle(result).GetTaggedValue();

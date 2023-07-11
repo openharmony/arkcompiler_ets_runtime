@@ -302,20 +302,27 @@ void CpuProfiler::GetStack(FrameIterator &it)
     generator_->PostFrame();
 }
 
-void CpuProfiler::GetStackCallNapi(JSThread *thread, bool beforeCallNapi)
+bool CpuProfiler::GetStackBeforeCallNapi(JSThread *thread)
 {
     uint64_t tempTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
-    if (beforeCallNapi) {
-        if (tempTimeStamp - beforeCallNapiTimeStamp_ < INTERVAL_OF_ACTIVE_SAMPLING) {
-            beforeCallNapiTimeStamp_ = tempTimeStamp;
-            return;
-        }
-        beforeCallNapiTimeStamp_ = tempTimeStamp;
-    } else {
-        if (tempTimeStamp - beforeCallNapiTimeStamp_ < CPUPROFILER_DEFAULT_INTERVAL) {
-            return;
-        }
+    if (tempTimeStamp - beforeCallNapiTimeStamp_ < interval_) {
+        return false;
     }
+
+    if (GetStackCallNapi(thread, true)) {
+        beforeCallNapiTimeStamp_ = tempTimeStamp;
+        return true;
+    }
+    return false;
+}
+
+void CpuProfiler::GetStackAfterCallNapi(JSThread *thread)
+{
+    GetStackCallNapi(thread, false);
+}
+
+bool CpuProfiler::GetStackCallNapi(JSThread *thread, bool beforeCallNapi)
+{
     [[maybe_unused]] CallNapiScope scope(this);
     const CMap<struct MethodKey, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
     generator_->ClearNapiStack();
@@ -354,14 +361,15 @@ void CpuProfiler::GetStackCallNapi(JSThread *thread, bool beforeCallNapi)
                 continue;
             }
             if (UNLIKELY(!generator_->PushNapiStackInfo(codeEntry))) {
-                return;
+                return false;
             }
         }
         if (UNLIKELY(!generator_->PushNapiFrameStack(methodKey))) {
-            return;
+            return false;
         }
     }
     generator_->PostNapiFrame();
+    return true;
 }
 
 void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *siginfo, void *context)
