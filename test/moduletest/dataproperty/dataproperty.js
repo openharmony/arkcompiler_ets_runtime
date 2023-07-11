@@ -21,6 +21,12 @@
  */
 
 // CopyDataProperties
+this[1024] = 4;
+const o = {
+    ...this,
+};
+
+print(JSON.stringify(o));
 var s = "abc";
 var t = {...s};
 print(t[1]);
