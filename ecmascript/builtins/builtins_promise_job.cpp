@@ -148,13 +148,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     JSHandle<EcmaString> specifierString = JSTaggedValue::ToString(thread, specifier);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
 
-    // Resolve request module's ohmurl
-    JSMutableHandle<JSTaggedValue> moduleName(thread, thread->GlobalConstants()->GetUndefined());
-    CString entryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
-    CString fileNameStr = ConvertToString(dirPath.GetTaggedValue());
     CString requestPath = ConvertToString(specifierString.GetTaggedValue());
     LOG_ECMA(DEBUG) << "Start importing dynamic module : " << requestPath;
-
     // resolve native module
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
@@ -162,6 +157,10 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         return DynamicImport::ExecuteNativeModule(thread, specifierString, moduleType, resolve, reject);
     }
 
+    // Resolve request module's ohmurl
+    CString entryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
+    CString fileNameStr = ConvertToString(dirPath.GetTaggedValue());
+    JSMutableHandle<JSTaggedValue> moduleName(thread, thread->GlobalConstants()->GetUndefined());
     if (recordName->IsUndefined()) {
         moduleName.Update(ResolveFilenameFromNative(thread, dirPath.GetTaggedValue(),
             specifierString.GetTaggedValue()).GetTaggedValue());

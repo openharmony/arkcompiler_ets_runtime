@@ -29,12 +29,12 @@ CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPand
         // requestName: @package:pkg_modules@namespace/xxx/Index
         entryPoint = requestName.substr(PREFIX_PACKAGE_LEN);
     } else if (IsImportFile(requestName)) {
-        // this branch save for require/dynamic import/old version sdk
+        // this branch save for cjs, dynamic import and old-version's sdk
         // load a relative pathName.
         // requestName: ./ || ./xxx/xxx.js || ../xxx/xxx.js || ./xxx/xxx
         entryPoint = MakeNewRecord(jsPandaFile, baseFileName, recordName, requestName);
     } else {
-        // this branch save for require/dynamic import/old version sdk
+        // this branch save for cjs, dynamic import and old-version's sdk
         // requestName: requestPkgName
         entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, requestName);
     }

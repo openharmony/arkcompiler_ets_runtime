@@ -178,6 +178,9 @@ public:
     static JSTaggedValue GetModuleName(JSTaggedValue currentModule);
 
     static bool IsDynamicModule(LoadingTypes types);
+    static CString GetRecordName(JSTaggedValue module);
+    static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
+
 private:
     static void SetExportName(JSThread *thread,
                               const JSHandle<JSTaggedValue> &moduleRequest, const JSHandle<SourceTextModule> &module,
@@ -201,7 +204,7 @@ private:
         const JSHandle<JSTaggedValue> &exportName,
         CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector);
     static void InitializeEnvironment(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
-        JSHandle<JSTaggedValue> &moduleName, JSHandle<JSTaggedValue> &exports, bool isBundle);
+        JSHandle<JSTaggedValue> &moduleName, JSHandle<JSTaggedValue> &exports);
 
     static void CheckResolvedBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
     static void CheckResolvedIndexBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);

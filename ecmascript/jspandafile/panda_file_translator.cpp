@@ -59,7 +59,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
             auto methodId = mda.GetMethodId();
             CString name = reinterpret_cast<const char *>(jsPandaFile->GetStringData(mda.GetNameId()).data);
             auto methodOffset = methodId.GetOffset();
-            if (jsPandaFile->IsBundlePack()) {
+            if (!jsPandaFile->IsMergedPF()) {
                 if (!isUpdateMainMethodIndex && name == methodName) {
                     jsPandaFile->UpdateMainMethodIndex(methodOffset);
                     isUpdateMainMethodIndex = true;
@@ -88,7 +88,7 @@ void PandaFileTranslator::TranslateClasses(JSPandaFile *jsPandaFile, const CStri
                 const uint8_t *insns = codeDataAccessor.GetInstructions();
                 if (translatedCode.find(insns) == translatedCode.end()) {
                     translatedCode.insert(insns);
-                    if (jsPandaFile->IsBundlePack()) {
+                    if (!jsPandaFile->IsMergedPF()) {
                         TranslateBytecode(jsPandaFile, codeSize, insns, methodLiteral);
                     } else {
                         TranslateBytecode(jsPandaFile, codeSize, insns, methodLiteral, recordName);
@@ -119,7 +119,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
             constpool = JSHandle<ConstantPool>(vm->GetJSThread(), constpoolVal);
         }
 
-        if (!jsPandaFile->IsBundlePack()) {
+        if (jsPandaFile->IsMergedPF()) {
             ParseFuncAndLiteralConstPool(vm, jsPandaFile, entryPoint.data(), constpool);
         }
     }

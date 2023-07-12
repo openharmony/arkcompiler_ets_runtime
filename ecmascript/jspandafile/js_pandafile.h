@@ -139,7 +139,7 @@ public:
 
     uint32_t GetMainMethodIndex(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
-        if (IsBundlePack()) {
+        if (!IsMergedPF()) {
             return jsRecordInfo_.begin()->second.mainMethodIndex;
         }
         auto info = jsRecordInfo_.find(recordName);
@@ -168,15 +168,18 @@ public:
     uint32_t PUBLIC_API GetOrInsertConstantPool(ConstPoolType type, uint32_t offset,
                                                 const CUnorderedMap<uint32_t, uint64_t> *constpoolMap = nullptr);
 
-    void UpdateMainMethodIndex(uint32_t mainMethodIndex, const CString &recordName = ENTRY_FUNCTION_NAME)
+    // Only for unmerged abc
+    void UpdateMainMethodIndex(uint32_t mainMethodIndex)
     {
-        if (IsBundlePack()) {
-            jsRecordInfo_.begin()->second.mainMethodIndex = mainMethodIndex;
-        } else {
-            auto info = jsRecordInfo_.find(recordName);
-            if (info != jsRecordInfo_.end()) {
-                info->second.mainMethodIndex = mainMethodIndex;
-            }
+        jsRecordInfo_.begin()->second.mainMethodIndex = mainMethodIndex;
+    }
+
+    //  merged abc  
+    void UpdateMainMethodIndex(uint32_t mainMethodIndex, const CString &recordName)
+    {
+        auto info = jsRecordInfo_.find(recordName);
+        if (info != jsRecordInfo_.end()) {
+            info->second.mainMethodIndex = mainMethodIndex;
         }
     }
 
@@ -184,7 +187,7 @@ public:
 
     int GetModuleRecordIdx(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
-        if (IsBundlePack()) {
+        if (!IsMergedPF()) {
             return jsRecordInfo_.begin()->second.moduleRecordIdx;
         }
         auto info = jsRecordInfo_.find(recordName);
@@ -261,9 +264,9 @@ public:
         return jsRecordInfo.isJson;
     }
 
-    bool IsBundlePack() const
+    inline bool IsMergedPF() const
     {
-        return isBundlePack_;
+        return isMergedPF_;
     }
 
     bool IsLoadedAOT() const
@@ -313,7 +316,7 @@ public:
         return desc.substr(1, desc.size() - 2); // 2 : skip symbol "L" and ";"
     }
 
-    void CheckIsBundlePack();
+    void CheckIsMergedPF();
     void CheckIsRecordWithBundleName(const CString &entry);
     bool IsRecordWithBundleName() const
     {
@@ -397,8 +400,7 @@ private:
     uint32_t anFileInfoIndex_ {INVALID_INDEX};
     bool isNewVersion_ {false};
 
-    // marge abc
-    bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
+    bool isMergedPF_ {false};// marge abc
     CUnorderedMap<CString, JSRecordInfo> jsRecordInfo_;
     bool isRecordWithBundleName_ {true};
     static bool loadedFirstPandaFile;

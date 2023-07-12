@@ -115,6 +115,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, c
         defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX);
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
     JSTaggedValue jsonData = JsonParse(thread, jsPandaFile, recordName);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     moduleRecord->StoreModuleValue(thread, 0, JSHandle<JSTaggedValue>(thread, jsonData)); // index = 0
 
     JSHandle<EcmaString> ecmaModuleFilename = factory->NewFromUtf8(moduleFilename);

@@ -87,7 +87,7 @@ private:
     };
 
     std::shared_ptr<JSPandaFile> GenerateJSPandaFile(JSThread *thread, const panda_file::File *pf, const CString &desc,
-                                                     std::string_view entryPoint);
+                                                     std::string_view entryPoint = JSPandaFile::ENTRY_FUNCTION_NAME);
     std::shared_ptr<JSPandaFile> GetJSPandaFile(const panda_file::File *pf);
     std::shared_ptr<JSPandaFile> FindJSPandaFileWithChecksum(const CString &filename, uint32_t checksum);
     std::shared_ptr<JSPandaFile> FindJSPandaFileUnlocked(const CString &filename);

@@ -28,7 +28,7 @@ PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFil
     EcmaVM *vm = thread->GetEcmaVM();
 
     // hot reload and hot patch only support merge-abc file.
-    if (baseFile->IsBundlePack() || patchFile->IsBundlePack()) {
+    if (!baseFile->IsMergedPF() || !patchFile->IsMergedPF()) {
         LOG_ECMA(ERROR) << "base or patch is not merge abc!";
         return PatchErrorCode::PACKAGE_NOT_ESMODULE;
     }

@@ -661,7 +661,7 @@ void BytecodeInfoCollector::CollectRecordImportInfo(const CString &recordName)
             continue;
         }
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-        CString resolvedRecord = ModuleManager::GetRecordName(binding->GetModule());
+        CString resolvedRecord = SourceTextModule::GetRecordName(binding->GetModule());
         auto bindingIndex = binding->GetIndex();
         if (bytecodeInfo_.HasExportIndexToRecord(resolvedRecord, bindingIndex)) {
             bytecodeInfo_.AddImportRecordInfoToRecord(recordName, resolvedRecord, index, bindingIndex);
