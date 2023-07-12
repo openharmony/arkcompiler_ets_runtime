@@ -488,6 +488,33 @@ bool GateAccessor::IsSelector(GateRef g) const
     return (op == OpCode::VALUE_SELECTOR) || (op == OpCode::DEPEND_SELECTOR);
 }
 
+bool GateAccessor::IsIn(GateRef g, GateRef in) const
+{
+    size_t n = GetNumIns(g);
+    for (size_t id = 0; id < n; id++) {
+        GateRef i = GetIn(g, id);
+        if (i == in) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool GateAccessor::IsSimpleState(GateRef g) const
+{
+    auto op = GetOpCode(g);
+    return (op == OpCode::IF_TRUE ||
+            op == OpCode::IF_FALSE ||
+            op == OpCode::SWITCH_CASE ||
+            op == OpCode::DEFAULT_CASE ||
+            op == OpCode::LOOP_BACK ||
+            op == OpCode::MERGE ||
+            op == OpCode::VALUE_SELECTOR ||
+            op == OpCode::DEPEND_SELECTOR ||
+            op == OpCode::DEPEND_RELAY ||
+            op == OpCode::ORDINARY_BLOCK);
+}
+
 bool GateAccessor::IsControlCase(GateRef gate) const
 {
     return circuit_->IsControlCase(gate);

@@ -781,7 +781,6 @@ private:
     uint64_t bitField_;
 };
 
-
 class GatePairTypeAccessor {
 public:
     // type bits shift

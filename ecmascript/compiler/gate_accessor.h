@@ -439,6 +439,7 @@ public:
     int GetInt32FromConstant(GateRef gate) const;
     bool IsInGateNull(GateRef gate, size_t idx) const;
     bool IsSelector(GateRef g) const;
+    bool IsSimpleState(GateRef g) const;
     bool IsValueSelector(GateRef g) const;
     bool IsControlCase(GateRef gate) const;
     bool IsLoopExit(GateRef gate) const;
@@ -494,6 +495,7 @@ public:
     void DeleteGateIfNoUse(GateRef gate);
     GateRef GetDependSelectorFromMerge(GateRef gate);
     bool HasIfExceptionUse(GateRef gate) const;
+    bool IsIn(GateRef g, GateRef in) const;
 
     GateRef GetCircuitRoot() const
     {

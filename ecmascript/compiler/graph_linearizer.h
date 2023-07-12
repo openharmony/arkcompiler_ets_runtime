@@ -75,11 +75,96 @@ public:
         return state_;
     }
 
+    void SetDead()
+    {
+        stateKind_ = StateKind::DEAD;
+    }
+
+    bool IsDead() const
+    {
+        return stateKind_ == StateKind::DEAD;
+    }
+
+    bool IsSimple(GateAccessor *acc) const;
+
+    bool HasComplexOuts() const
+    {
+        return succs_.size() > 1;
+    }
+
+    GateRegion* GetSimpleSuccRegion() const
+    {
+        if (succs_.size() == 1) {
+            GateRegion* dst = succs_[0];
+            if (dst->GetPreds().size() == 1) {
+                return dst;
+            }
+        }
+        return nullptr;
+    }
+
+    void ReplaceSucc(GateRegion* oldSucc, GateRegion* newSucc)
+    {
+        for (size_t i = 0; i < succs_.size(); i++) {
+            if (succs_[i] == oldSucc) {
+                succs_[i] = newSucc;
+            }
+        }
+        newSucc->AddPred(this);
+    }
+
+    bool RemovePred(GateRegion* removedRegion)
+    {
+        for (auto it = preds_.begin(); it != preds_.end(); it++) {
+            if (*it == removedRegion) {
+                preds_.erase(it);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void AddPred(GateRegion* r)
+    {
+        for (auto p : preds_) {
+            if (p == r) {
+                return;
+            }
+        }
+        preds_.emplace_back(r);
+    }
+
+    void AddGates(ChunkVector<GateRef>& gates)
+    {
+        gateList_.insert(gateList_.end(), gates.begin(), gates.end());
+    }
+
+    ChunkVector<GateRef>& GetGates()
+    {
+        return gateList_;
+    }
+
+    ChunkVector<GateRegion*>& GetPreds()
+    {
+        return preds_;
+    }
+
     size_t GetId() const
     {
         return id_;
     }
 
+    void Clear()
+    {
+        id_ = 0;
+        depth_ = INVALID_DEPTH;
+        iDominator_ = nullptr;
+        gateList_.clear();
+        preds_.clear();
+        succs_.clear();
+        dominatedRegions_.clear();
+    }
+    
     void SetLoopNumber(size_t loopNumber)
     {
         loopNumber_ = static_cast<int32_t>(loopNumber);
@@ -101,6 +186,7 @@ private:
         MERGE,
         LOOP_HEAD,
         OTHER,
+        DEAD
     };
     static constexpr int32_t INVALID_DEPTH = -1;
     size_t id_ {0};
@@ -240,7 +326,7 @@ private:
         regionRootList_.emplace_back(gate);
     }
 
-    void ScheduleGate(GateRef gate, GateRegion* region)
+    void BindGate(GateRef gate, GateRegion* region)
     {
         GateInfo& info = GetGateInfo(gate);
         info.region = region;
@@ -283,6 +369,9 @@ private:
         return model_ == ScheduleModel::LIR;
     }
 
+    size_t OptimizeCFG();
+    size_t OptimizeControls(GateRegion *region);
+    void MoveAndClear(GateRegion *from, GateRegion *to);
     void PrintGraph(const char* title);
 
     bool enableLog_ {false};

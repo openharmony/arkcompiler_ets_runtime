@@ -22,6 +22,7 @@ void GraphLinearizer::Run(ControlFlowGraph &result)
 {
     LinearizeGraph();
     LinearizeRegions(result);
+
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";
         LOG_COMPILER(INFO) << "\033[34m"
@@ -60,7 +61,7 @@ public:
             auto state = acc_.GetState(fixedGate);
             auto region = linearizer_->FindPredRegion(state);
             linearizer_->AddFixedGateToRegion(fixedGate, region);
-            linearizer_->ScheduleGate(fixedGate, region);
+            linearizer_->BindGate(fixedGate, region);
         }
     }
 
@@ -641,7 +642,7 @@ public:
                 while (!pendingList_.empty()) {
                     auto curGate = pendingList_.back();
                     pendingList_.pop_back();
-                    VisitScheduleGate(curGate);
+                    ComputeLowerBoundAndScheduleGate(curGate);
                 }
             }
         }
@@ -669,7 +670,7 @@ public:
         }
     }
 
-    void VisitScheduleGate(GateRef curGate)
+    void ComputeLowerBoundAndScheduleGate(GateRef curGate)
     {
         auto& curInfo = linearizer_->GetGateInfo(curGate);
         if (!curInfo.IsSchedulable() ||
@@ -716,7 +717,7 @@ public:
             }
         }
         ASSERT(!linearizer_->IsScheduled(gate));
-        linearizer_->ScheduleGate(gate, region);
+        linearizer_->BindGate(gate, region);
     }
 
     GateRegion* GetCommonDominatorOfAllUses(GateRef curGate)
@@ -760,7 +761,7 @@ public:
     {
         for (auto gate : fixedGateList_) {
             GateRegion* region = linearizer_->GateToRegion(gate);
-            linearizer_->ScheduleGate(gate, region);
+            linearizer_->BindGate(gate, region);
         }
 #ifndef NDEBUG
         Verify();
@@ -822,18 +823,99 @@ void GraphLinearizer::CreateGateRegion(GateRef gate)
 
 void GraphLinearizer::LinearizeRegions(ControlFlowGraph &result)
 {
+    int liveNum = OptimizeCFG();
+
     ASSERT(result.size() == 0);
-    result.resize(regionList_.size());
+    result.resize(liveNum);
     auto uses = acc_.Uses(acc_.GetArgRoot());
     for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
         regionList_.front()->gateList_.emplace_back(*useIt);
     }
 
-    for (size_t i = 0; i < regionList_.size(); i++) {
-        auto region = regionList_[i];
-        auto &gateList = region->gateList_;
-        result[i].insert(result[i].end(), gateList.begin(), gateList.end());
+    size_t i = 0;
+    for (size_t id = 0; id < regionList_.size(); id++) {
+        GateRegion* r = regionList_[id];
+        if (r->IsDead()) {
+            continue;
+        }
+        auto& gates = r->GetGates();
+        auto& bb = result[i];
+        bb.insert(bb.end(), gates.begin(), gates.end());
+        i++;
     }
+}
+
+bool GateRegion::IsSimple(GateAccessor *acc) const
+{
+    for (auto g : gateList_) {
+        bool isSimple = acc->IsSimpleState(g);
+        bool complexOut = HasComplexOuts();
+        if (!isSimple || complexOut) {
+            return false;
+        }
+    }
+    return true;
+}
+
+size_t GraphLinearizer::OptimizeControls(GateRegion *region)
+{
+    size_t deads = 0;
+    GateRegion* target = region;
+    do {
+        GateRegion* succ = target->GetSimpleSuccRegion();
+        if (succ == nullptr) {
+            break;
+        }
+        MoveAndClear(target, succ);
+        target = succ;
+        deads++;
+    } while (target->IsSimple(&acc_));
+    return deads;
+}
+
+void GraphLinearizer::MoveAndClear(GateRegion* from, GateRegion* to)
+{
+    ASSERT(from != to);
+    ASSERT(to->GetPreds().size() == 1);
+    for (GateRef g: from->GetGates()) {
+        ASSERT(acc_.IsSimpleState(g));
+        OpCode op = acc_.GetOpCode(g);
+        switch (op) {
+            case OpCode::IF_TRUE:
+            case OpCode::IF_FALSE:
+            case OpCode::SWITCH_CASE:
+            case OpCode::DEFAULT_CASE:
+            case OpCode::LOOP_BACK:
+            case OpCode::ORDINARY_BLOCK:
+            case OpCode::MERGE:
+            case OpCode::VALUE_SELECTOR:
+                to->AddGate(g);
+                break;
+            default:
+                break;
+        }
+    }
+    for (auto p : from->GetPreds()) {
+        p->ReplaceSucc(from, to);
+    }
+    to->RemovePred(from);
+    from->SetDead();
+#ifndef NDEBUG
+    from->Clear();
+#endif
+}
+
+size_t GraphLinearizer::OptimizeCFG()
+{
+    size_t liveNum = regionList_.size();
+    for (size_t i = 0; i < regionList_.size(); i++) {
+        GateRegion* src = regionList_[i];
+        if (!src->IsDead() && src->IsSimple(&acc_)) {
+            size_t dead = OptimizeControls(src);
+            liveNum -= dead;
+        }
+    }
+    return liveNum;
 }
 
 GateRegion* GraphLinearizer::FindPredRegion(GateRef input)
@@ -863,12 +945,16 @@ GateRegion* GraphLinearizer::GetCommonDominator(GateRegion* left, GateRegion* ri
 void GraphLinearizer::PrintGraph(const char* title)
 {
     LOG_COMPILER(INFO) << "======================== " << title << " ========================";
+    int bbIdx = 0;
     for (size_t i = 0; i < regionList_.size(); i++) {
         auto bb = regionList_[i];
+        if (bb->IsDead()) {
+            continue;
+        }
         auto front = bb->gateList_.front();
         auto opcode = acc_.GetOpCode(front);
         auto loopHeadId = bb->loopHead_ != nullptr ? bb->loopHead_->id_ : 0;
-        LOG_COMPILER(INFO) << "B" << bb->id_ << ": " << "depth: [" << bb->depth_ << "] "
+        LOG_COMPILER(INFO) << "B" << bb->id_ << "_LB" << bbIdx << ": " << "depth: [" << bb->depth_ << "] "
                            << opcode << "(" << acc_.GetId(front) << ") "
                            << "IDom B" << bb->iDominator_->id_ << " loop Header: " << loopHeadId;
         std::string log("\tPreds: ");
@@ -885,6 +971,7 @@ void GraphLinearizer::PrintGraph(const char* title)
             acc_.Print(*it);
         }
         LOG_COMPILER(INFO) << "";
+        bbIdx++;
     }
 }
 }  // namespace panda::ecmascript::kungfu
