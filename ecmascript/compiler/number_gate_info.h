@@ -17,6 +17,7 @@
 #define ECMASCRIPT_NUMBER_GATE_INFO_H
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/js_hclass.h"
+#include "ecmascript/js_typed_array.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -100,8 +101,9 @@ public:
     }
     
     static constexpr int32_t UINT30_MAX = 0x3fffffff;
+    static constexpr int32_t TYPED_ARRAY_ONHEAP_MAX = JSTypedArray::MAX_ONHEAP_LENGTH;
     static const inline std::vector<int32_t> rangeBounds_ = { INT32_MIN, INT32_MIN + 1,
-                                                              -1, 0, 1, UINT30_MAX, UINT30_MAX + 1,
+                                                              -1, 0, 1, TYPED_ARRAY_ONHEAP_MAX - 1, TYPED_ARRAY_ONHEAP_MAX, TYPED_ARRAY_ONHEAP_MAX + 1, TYPED_ARRAY_ONHEAP_MAX * 3, UINT30_MAX, UINT30_MAX + 1,
                                                               INT32_MAX - 1, INT32_MAX };
 
     static RangeInfo NONE()

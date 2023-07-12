@@ -108,7 +108,7 @@ private:
     void LowerTypedLdObjByName(GateRef gate);
     void LowerTypedLdObjByNameForClassOrObject(GateRef gate, GateRef receiver, JSTaggedValue prop);
     void LowerTypedLdObjByNameForClassInstance(GateRef gate, GateRef receiver, JSTaggedValue prop);
-    void LowerTypedLdObjByNameForArray(GateRef gate, GateRef receiver, JSTaggedValue prop);
+    bool TryLowerTypedLdObjByNameForArray(GateRef gate, GateRef receiver, JSTaggedValue prop);
     void LowerTypedLdArrayLength(GateRef gate);
     void LowerTypedLdTypedArrayLength(GateRef gate);
     void LowerTypedStObjByName(GateRef gate, bool isThis);
