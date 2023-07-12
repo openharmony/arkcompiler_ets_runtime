@@ -16,9 +16,9 @@
 #include "ecmascript/ts_types/ts_type_parser.h"
 
 #include "ecmascript/subtyping_operator.h"
-#include "ecmascript/base/path_helper.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript {
@@ -144,13 +144,13 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
     JSHandle<EcmaString> relativePath = GenerateImportRelativePath(importVarNamePath);
     CString cstringRelativePath = ConvertToString(*relativePath);
     // skip @ohos:|@app:|@native: prefixed imports
-    if (base::PathHelper::IsNativeModuleRequest(cstringRelativePath)) {
+    if (ModulePathHelper::IsNativeModuleRequest(cstringRelativePath)) {
         return GetAndStoreGT(jsPandaFile, typeId, recordName);
     }
 
     CString baseFileName = jsPandaFile->GetJSPandaFileDesc();
     CString entryPoint =
-        base::PathHelper::ConcatFileNameWithMerge(thread_, jsPandaFile, baseFileName, recordName, cstringRelativePath);
+        ModulePathHelper::ConcatFileNameWithMerge(thread_, jsPandaFile, baseFileName, recordName, cstringRelativePath);
     if (entryPoint.empty()) {
         LOG_COMPILER(DEBUG) << "EntryPoint is empty. Please check whether concating file name is correct or "
                                "whether the module request recorded in the import-type literal is correct.";

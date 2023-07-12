@@ -32,6 +32,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
@@ -305,11 +306,12 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
     JSMutableHandle<JSTaggedValue> filename(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> dirname(thread_, JSTaggedValue::Undefined());
     if (jsPandaFile->IsBundlePack()) {
-        PathHelper::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
+        ModulePathHelper::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
     } else {
         filename.Update(func->GetModule());
         ASSERT(filename->IsString());
-        dirname.Update(PathHelper::ResolveDirPath(thread_, filename));
+        CString fullName = ConvertToString(filename.GetTaggedValue());
+        dirname.Update(PathHelper::ResolveDirPath(thread_, fullName));
     }
     CJSInfo cjsInfo(module, require, exports, filename, dirname);
     RequireManager::InitializeCommonJS(thread_, cjsInfo);

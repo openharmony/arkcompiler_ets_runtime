@@ -25,6 +25,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/tagged_dictionary.h"
 
@@ -104,12 +105,12 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
     }
 
     CString outFileName = baseFilename;
-    CString entryPoint = PathHelper::ConcatFileNameWithMerge(
+    CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(
         thread, jsPandaFile.get(), outFileName, moduleRecordName, moduleRequestName);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-    if (entryPoint == PathHelper::PREVIEW_OF_ACROSS_HAP_FLAG &&
+    if (entryPoint == ModulePathHelper::PREVIEW_OF_ACROSS_HAP_FLAG &&
         thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
         THROW_SYNTAX_ERROR_AND_RETURN(thread, "", thread->GlobalConstants()->GetHandledUndefined());
     }
@@ -128,7 +129,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModule(JSThread *th
     }
 
     JSHandle<EcmaString> dirname = base::PathHelper::ResolveDirPath(thread,
-        JSHandle<JSTaggedValue>(thread, module->GetEcmaModuleFilename()));
+        ConvertToString(module->GetEcmaModuleFilename()));
     JSHandle<EcmaString> moduleFilename = ResolveFilenameFromNative(thread, dirname.GetTaggedValue(),
         moduleRequest.GetTaggedValue());
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
@@ -272,19 +273,19 @@ void SourceTextModule::InstantiateCJS(JSThread *thread, const JSHandle<SourceTex
 std::pair<bool, ModuleTypes> SourceTextModule::CheckNativeModule(const CString &moduleRequestName)
 {
     if (moduleRequestName[0] != '@' ||
-        StringHelper::StringStartWith(moduleRequestName, PathHelper::PREFIX_BUNDLE) ||
-        StringHelper::StringStartWith(moduleRequestName, PathHelper::PREFIX_PACKAGE)||
+        StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::PREFIX_BUNDLE) ||
+        StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::PREFIX_PACKAGE)||
         moduleRequestName.find(':') == CString::npos) {
         return {false, ModuleTypes::UNKNOWN};
     }
 
-    if (StringHelper::StringStartWith(moduleRequestName, PathHelper::REQUIRE_NAPI_OHOS_PREFIX)) {
+    if (StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::REQUIRE_NAPI_OHOS_PREFIX)) {
         return {true, ModuleTypes::OHOS_MODULE};
     }
-    if (StringHelper::StringStartWith(moduleRequestName, PathHelper::REQUIRE_NAPI_APP_PREFIX)) {
+    if (StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::REQUIRE_NAPI_APP_PREFIX)) {
         return {true, ModuleTypes::APP_MODULE};
     }
-    if (StringHelper::StringStartWith(moduleRequestName, PathHelper::REQUIRE_NAITVE_MODULE_PREFIX)) {
+    if (StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::REQUIRE_NAITVE_MODULE_PREFIX)) {
         return {true, ModuleTypes::NATIVE_MODULE};
     }
     return {true, ModuleTypes::INTERNAL_MODULE};

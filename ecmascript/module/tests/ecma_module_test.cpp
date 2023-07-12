@@ -25,6 +25,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/linked_hash_table.h"
 
@@ -32,7 +33,7 @@
 using namespace panda::ecmascript;
 using namespace panda::panda_file;
 using namespace panda::pandasm;
-using PathHelper = panda::ecmascript::base::PathHelper;
+
 namespace panda::test {
 class EcmaModuleTest : public testing::Test {
 public:
@@ -304,14 +305,14 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge1)
     CString moduleRecordName = "moduleTest1";
     CString moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
     CString result = "com.bundleName.test/moduleName/requestModuleName1";
-    CString entryPoint = PathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName,
+    CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName,
                                                              moduleRequestName);
     EXPECT_EQ(result, entryPoint);
 
     // Test cross application
     moduleRecordName = "@bundle:com.bundleName1.test/moduleName/requestModuleName1";
     CString newBaseFileName = "/data/storage/el1/bundle/com.bundleName.test/moduleName/moduleName/ets/modules.abc";
-    PathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName, moduleRequestName);
+    ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(baseFilename, newBaseFileName);
 }
 
@@ -336,7 +337,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge2)
     CString moduleRequestName = "./requestModule.js";
     CString result = "requestModule";
     pf->InsertJSRecordInfo(result);
-    CString entryPoint = PathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName,
+    CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName,
                                                              moduleRequestName);
     EXPECT_EQ(result, entryPoint);
 
@@ -345,7 +346,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge2)
     moduleRequestName = "./requestModule.js";
     result = "moduleName/requestModule";
     pf->InsertJSRecordInfo(result);
-    entryPoint = PathHelper::ConcatFileNameWithMerge(
+    entryPoint = ModulePathHelper::ConcatFileNameWithMerge(
         thread, pf.get(), baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(result, entryPoint);
 }
@@ -372,7 +373,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge3)
     CString result = "secord";
     CString requestFileName = "secord.abc";
     CString entryPoint =
-        PathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName, moduleRequestName);
+        ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(baseFilename, requestFileName);
     EXPECT_EQ(result, entryPoint);
 
@@ -385,7 +386,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge3)
     moduleRequestName = "./test/secord.js";
     result = "secord";
     requestFileName = "test/test/secord.abc";
-    entryPoint = PathHelper::ConcatFileNameWithMerge(thread, pf2.get(), baseFilename, moduleRecordName,
+    entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, pf2.get(), baseFilename, moduleRecordName,
                                                      moduleRequestName);
     EXPECT_EQ(baseFilename, requestFileName);
     EXPECT_EQ(result, entryPoint);
@@ -415,7 +416,7 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge4)
     info.npmPackageName = "node_modules/0/moduleTest4";
     const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &>(recordInfo).insert({moduleRecordName, info});
     const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &>(recordInfo).insert({result, info});
-    CString entryPoint = PathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName,
+    CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName,
                                                              moduleRequestName);
     EXPECT_EQ(result, entryPoint);
 }
@@ -458,13 +459,14 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     CString inputFileName = "moduleName/ets/pages/index.abc";
     CString outFileName = "";
     CString res1 = "com.bundleName.test/moduleName/ets/pages/index";
-    CString entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
+    CString entryPoint;
+    ModulePathHelper::ParseOhmUrl(instance, inputFileName, outFileName, entryPoint);
     EXPECT_EQ(entryPoint, res1);
     EXPECT_EQ(outFileName, "");
 
     // new pages url
     inputFileName = "@bundle:com.bundleName.test/moduleName/ets/pages/index.abc";
-    entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
+    ModulePathHelper::ParseOhmUrl(instance, inputFileName, outFileName, entryPoint);
     EXPECT_EQ(entryPoint, res1);
     EXPECT_EQ(outFileName, "/data/storage/el1/bundle/moduleName/ets/modules.abc");
 
@@ -472,7 +474,7 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     inputFileName = "@bundle:com.bundleName.test/moduleName1/ets/pages/index.abc";
     CString outRes = "/data/storage/el1/bundle/moduleName1/ets/modules.abc";
     CString res2 = "com.bundleName.test/moduleName1/ets/pages/index";
-    entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
+    ModulePathHelper::ParseOhmUrl(instance, inputFileName, outFileName, entryPoint);
     EXPECT_EQ(entryPoint, res2);
     EXPECT_EQ(outFileName, outRes);
 
@@ -480,7 +482,7 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     inputFileName = "@bundle:com.bundleName.test1/moduleName1/ets/pages/index.abc";
     CString outRes1 = "/data/storage/el1/bundle/com.bundleName.test1/moduleName1/moduleName1/ets/modules.abc";
     CString res3 = "com.bundleName.test1/moduleName1/ets/pages/index";
-    entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
+    ModulePathHelper::ParseOhmUrl(instance, inputFileName, outFileName, entryPoint);
     EXPECT_EQ(entryPoint, res3);
     EXPECT_EQ(outFileName, outRes1);
 
@@ -488,7 +490,7 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     inputFileName = "/data/storage/el1/bundle/entry/ets/mainAbility.abc";
     CString outRes2 = "/data/storage/el1/bundle/entry/ets/modules.abc";
     CString res4 = "com.bundleName.test/entry/ets/mainAbility";
-    entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
+    ModulePathHelper::ParseOhmUrl(instance, inputFileName, outFileName, entryPoint);
     EXPECT_EQ(entryPoint, res4);
     EXPECT_EQ(outFileName, outRes2);
 
@@ -496,7 +498,7 @@ HWTEST_F_L0(EcmaModuleTest, ParseOhmUrl)
     outFileName = "";
     inputFileName = "/data/storage/el1/bundle/moduleName/ets/mainAbility.abc";
     CString res5 = "com.bundleName.test/moduleName/ets/mainAbility";
-    entryPoint = PathHelper::ParseOhmUrl(instance, inputFileName, outFileName);
+    ModulePathHelper::ParseOhmUrl(instance, inputFileName, outFileName, entryPoint);
     EXPECT_EQ(entryPoint, res5);
     EXPECT_EQ(outFileName, "/data/storage/el1/bundle/moduleName/ets/modules.abc");
 }
@@ -543,5 +545,124 @@ HWTEST_F_L0(EcmaModuleTest, CheckNativeModule)
     std::pair<bool, ModuleTypes> res7 = SourceTextModule::CheckNativeModule(requestName7);
     EXPECT_EQ(res7.first, false);
     EXPECT_EQ(res7.second, ModuleTypes::UNKNOWN);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ResolveDirPath)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+
+    CString inputFileName = "moduleName/ets/pages/index.abc";
+    CString resName1 = "moduleName/ets/pages/";
+    JSHandle<EcmaString> res1 = objectFactory->NewFromUtf8(resName1);
+    JSHandle<EcmaString> outFileName = PathHelper::ResolveDirPath(thread, inputFileName);
+    EXPECT_EQ(outFileName, res1);
+
+    inputFileName = "moduleName\\ets\\pages\\index.abc";
+    CString resName2 = "moduleName\\ets\\pages\\";
+    JSHandle<EcmaString> res2 = objectFactory->NewFromUtf8(resName2);
+    outFileName = PathHelper::ResolveDirPath(thread, inputFileName);
+    EXPECT_EQ(outFileName, res2);
+
+    inputFileName = "cjs";
+    CString resName3 = "";
+    JSHandle<EcmaString> res3 = objectFactory->NewFromUtf8(resName3);
+    outFileName = PathHelper::ResolveDirPath(thread, inputFileName);
+    EXPECT_EQ(outFileName, res3);
+}
+
+HWTEST_F_L0(EcmaModuleTest, DeleteNamespace)
+{
+    CString inputFileName = "moduleName@nameSpace";
+    CString res1 = "moduleName";
+    PathHelper::DeleteNamespace(inputFileName);
+    EXPECT_EQ(inputFileName, res1);
+
+    inputFileName = "moduleName";
+    CString res2 = "moduleName";
+    PathHelper::DeleteNamespace(inputFileName);
+    EXPECT_EQ(inputFileName, res2);
+}
+
+HWTEST_F_L0(EcmaModuleTest, AdaptOldIsaRecord)
+{
+    CString inputFileName = "bundleName/moduleName@namespace/moduleName";
+    CString res1 = "moduleName";
+    PathHelper::AdaptOldIsaRecord(inputFileName);
+    EXPECT_EQ(inputFileName, res1);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetStrippedModuleName)
+{
+    CString inputFileName = "@ohos:hilog";
+    CString res1 = "hilog";
+    CString outFileName = PathHelper::GetStrippedModuleName(inputFileName);
+    EXPECT_EQ(outFileName, res1);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetInternalModulePrefix)
+{
+    CString inputFileName = "@ohos:hilog";
+    CString res1 = "ohos";
+    CString outFileName = PathHelper::GetInternalModulePrefix(inputFileName);
+    EXPECT_EQ(outFileName, res1);
+}
+
+HWTEST_F_L0(EcmaModuleTest, IsNativeModuleRequest)
+{
+    CString inputFileName = "json5";
+    bool res1 = ModulePathHelper::IsNativeModuleRequest(inputFileName);
+    EXPECT_TRUE(!res1);
+
+    inputFileName = "@ohos:hilog";
+    bool res2 = ModulePathHelper::IsNativeModuleRequest(inputFileName);
+    EXPECT_TRUE(res2);
+
+    inputFileName = "@app:xxxx";
+    bool res3 = ModulePathHelper::IsNativeModuleRequest(inputFileName);
+    EXPECT_TRUE(res3);
+
+    inputFileName = "@native:xxxx";
+    bool res4 = ModulePathHelper::IsNativeModuleRequest(inputFileName);
+    EXPECT_TRUE(res4);
+}
+
+HWTEST_F_L0(EcmaModuleTest, IsImportFile)
+{
+    CString inputFileName = "./test";
+    bool res1 = ModulePathHelper::IsImportFile(inputFileName);
+    EXPECT_TRUE(res1);
+    CString outFileName = ModulePathHelper::RemoveSuffix(inputFileName);
+    EXPECT_EQ(outFileName, inputFileName);
+
+    inputFileName = "test";
+    bool res2 = ModulePathHelper::IsImportFile(inputFileName);
+    EXPECT_TRUE(!res2);
+    outFileName = ModulePathHelper::RemoveSuffix(inputFileName);
+    EXPECT_EQ(outFileName, inputFileName);
+
+    CString result = "test";
+    inputFileName = "test.js";
+    bool res3 = ModulePathHelper::IsImportFile(inputFileName);
+    EXPECT_TRUE(res3);
+    outFileName = ModulePathHelper::RemoveSuffix(inputFileName);
+    EXPECT_EQ(outFileName, result);
+
+    inputFileName = "test.ts";
+    bool res4 = ModulePathHelper::IsImportFile(inputFileName);
+    EXPECT_TRUE(res4);
+    outFileName = ModulePathHelper::RemoveSuffix(inputFileName);
+    EXPECT_EQ(outFileName, result);
+
+    inputFileName = "test.ets";
+    bool res5 = ModulePathHelper::IsImportFile(inputFileName);
+    EXPECT_TRUE(res5);
+    outFileName = ModulePathHelper::RemoveSuffix(inputFileName);
+    EXPECT_EQ(outFileName, result);
+
+    inputFileName = "test.json";
+    bool res6 = ModulePathHelper::IsImportFile(inputFileName);
+    EXPECT_TRUE(res6);
+    outFileName = ModulePathHelper::RemoveSuffix(inputFileName);
+    EXPECT_EQ(outFileName, result);
 }
 }  // namespace panda::test
