@@ -848,6 +848,7 @@ public:
     bool EraseContext(EcmaContext *context);
 
     const GlobalEnvConstants *GetFirstGlobalConst() const;
+    bool IsAllContextsInitialized() const;
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
