@@ -13,3 +13,9 @@
 
 test successful
 9007130451115262
+1
+0
+RangeError
+4702111234474983745
+0
+RangeError

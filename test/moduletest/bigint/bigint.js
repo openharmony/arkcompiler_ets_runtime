@@ -28,3 +28,19 @@ try {
 
 const n1 = Number(0x1fffeffafbfcfen);
 print(n1);
+
+try {
+    print((9007199254740991n + 9007199254740991n) ** 0n);
+    print(0n ** (9007199254740991n + 9007199254740991n));
+    print((9007199254740991n + 9007199254740991n) ** 9007199254740991n);
+} catch (err) {
+    print(err.name);
+}
+
+try {
+    print(0x4141414141414141n << 0n);
+    print(0n << 0x4141414141414141n);
+    print(0x4141414141414141n << 0x4141414141414141n);
+} catch (err) {
+    print(err.name);
+}
