@@ -61,7 +61,7 @@ struct NodeKey {
 struct FrameInfoTemp {
     char codeType[20] = {0}; // 20:the maximum size of the codeType
     char functionName[100] = {0}; // 100:the maximum size of the functionName
-    char recordName[100] = {0}; // 100:the maximum size of the recordName
+    char recordName[500] = {0}; // 500:the maximum size of the recordName
     int columnNumber = -1;
     int lineNumber = -1;
     int scriptId = 0;
