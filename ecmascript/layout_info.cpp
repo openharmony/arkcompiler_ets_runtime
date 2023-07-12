@@ -22,6 +22,16 @@
 #include "ecmascript/mem/assert_scope.h"
 
 namespace panda::ecmascript {
+void LayoutInfo::Initialize(const JSThread *thread, int num)
+{
+    SetExtraLength(num);
+    int propNum = GetPropertiesCapacity();
+    auto attr = PropertyAttributes();
+    for (int i = 0; i < propNum; i++) {
+        SetPropertyInit(thread, i, JSTaggedValue::Hole(), attr);
+    }
+}
+
 void LayoutInfo::AddKey(const JSThread *thread, [[maybe_unused]] int index, const JSTaggedValue &key,
                         const PropertyAttributes &attr)
 {

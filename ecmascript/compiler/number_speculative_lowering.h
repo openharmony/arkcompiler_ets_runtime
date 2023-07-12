@@ -47,6 +47,7 @@ private:
     void VisitIndexCheck(GateRef gate);
     void VisitLoadArrayLength(GateRef gate);
     void VisitLoadElement(GateRef gate);
+    void VisitLoadProperty(GateRef gate);
 
     template<TypedBinOp Op>
     void VisitNumberCalculate(GateRef gate);

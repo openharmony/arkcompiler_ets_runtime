@@ -27,16 +27,15 @@ enum class Representation {
     NONE,
     INT,
     DOUBLE,
-    NUMBER,
-    OBJECT,
-    MIXED,
+    TAGGED,
 };
 
-enum class TrackType {
-    NONE,
-    INT,
-    DOUBLE,
-    TAGGED
+enum class TrackType : uint8_t {
+    NONE = 0x0ULL,
+    INT = 0x1ULL,
+    DOUBLE = 0x1ULL << 1,
+    NUMBER = INT | DOUBLE,
+    TAGGED = 0x1ULL << 2
 };
 
 enum class PropertyBoxType {
@@ -66,6 +65,8 @@ public:
 
     static constexpr uint32_t DICTIONARY_ORDER_NUM = 20;
     static constexpr uint32_t OFFSET_BITFIELD_NUM = 10;
+    static constexpr uint32_t REPRESENTATION_NUM = 2;
+    static constexpr uint32_t TRACK_TYPE_NUM = 3;
     static constexpr uint32_t MAX_CAPACITY_OF_PROPERTIES = (1U << OFFSET_BITFIELD_NUM) - 1;
 
     using PropertyMetaDataField = BitField<int, 0, 4>;    // 4: property metaData field occupies 4 bits
@@ -78,9 +79,9 @@ public:
 
     // fast mode
     using IsInlinedPropsField = PropertyMetaDataField::NextFlag;                        // 5
-    using RepresentationField = IsInlinedPropsField::NextField<Representation, 3>;      // 3: 3 bits, 6-8
+    using RepresentationField = IsInlinedPropsField::NextField<Representation, REPRESENTATION_NUM>; // 2: 2 bits, 6-8
     using OffsetField = RepresentationField::NextField<uint32_t, OFFSET_BITFIELD_NUM>;  // 18
-    using TrackTypeField = OffsetField::NextField<TrackType, 2>;                        // 2: 2 bits
+    using TrackTypeField = OffsetField::NextField<TrackType, TRACK_TYPE_NUM>;           // 3: 3 bits
 
     static constexpr uint32_t NORMAL_ATTR_BITS = 20;
     using NormalAttrField = BitField<int, 0, NORMAL_ATTR_BITS>;
@@ -128,69 +129,23 @@ public:
         return DefaultAttributesField::Mask();
     }
 
-    static inline Representation TaggedToRepresentation(JSTaggedValue value)
-    {
-        if (value.IsInt()) {
-            return Representation::INT;
-        }
-        if (value.IsDouble()) {
-            return Representation::DOUBLE;
-        }
-
-        return Representation::OBJECT;
-    }
-
-    static Representation UpdateRepresentation(Representation oldRep, JSTaggedValue value)
-    {
-        if (oldRep == Representation::MIXED) {
-            return oldRep;
-        }
-
-        Representation newRep = TaggedToRepresentation(value);
-        if (oldRep == Representation::NONE) {
-            return newRep;
-        }
-        if (oldRep == newRep) {
-            return oldRep;
-        }
-
-        switch (oldRep) {
-            case Representation::INT:
-            case Representation::DOUBLE:
-            case Representation::NUMBER:
-                if (newRep != Representation::OBJECT) {
-                    return Representation::NUMBER;
-                }
-                return Representation::MIXED;
-            case Representation::OBJECT:
-                return Representation::MIXED;
-            default:
-                LOG_ECMA(FATAL) << "this branch is unreachable";
-                UNREACHABLE();
-        }
-    }
-
     bool UpdateTrackType(JSTaggedValue value)
     {
         TrackType oldType = GetTrackType();
         if (oldType == TrackType::TAGGED) {
             return false;
         }
-        TrackType newType = TrackType::DOUBLE;
+
+        TrackType newType = TrackType::TAGGED;
         if (value.IsInt()) {
-            newType = TrackType::INT;
-        } else if (value.IsObject()) {
-            newType = TrackType::TAGGED;
+            newType = static_cast<TrackType>(static_cast<uint8_t>(TrackType::INT) | static_cast<uint8_t>(oldType));
+        } else if (value.IsDouble()) {
+            newType = static_cast<TrackType>(static_cast<uint8_t>(TrackType::DOUBLE) | static_cast<uint8_t>(oldType));
         }
 
-        if (oldType == TrackType::NONE) {
+        if (oldType != newType) {
             SetTrackType(newType);
             return true;
-        } else {
-            if (oldType != newType) {
-                SetTrackType(TrackType::TAGGED);
-                return true;
-            }
         }
         return false;
     }
@@ -273,6 +228,23 @@ public:
     inline bool IsNotHole() const
     {
         return IsNotHoleField::Get(value_);
+    }
+
+    inline bool IsTaggedRep() const
+    {
+        return !IsDoubleRep() && !IsIntRep();
+    }
+
+    inline bool IsDoubleRep() const
+    {
+        auto rep = GetRepresentation();
+        return rep == Representation::DOUBLE;
+    }
+
+    inline bool IsIntRep() const
+    {
+        auto rep = GetRepresentation();
+        return rep == Representation::INT;
     }
 
     inline void SetRepresentation(Representation representation)

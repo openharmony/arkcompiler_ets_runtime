@@ -49,6 +49,7 @@ public:
 
 private:
     void VisitAllObjects(TaggedObject *obj);
+    void VisitObject(ObjectSlot slot);
 
     const Heap* const heap_ {nullptr};
     size_t* const failCount_ {nullptr};

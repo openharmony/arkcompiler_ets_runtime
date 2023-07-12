@@ -63,13 +63,14 @@ inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const JSHandl
     }
 }
 
+template <bool needBarrier>
 inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const JSTaggedValue &value)
 {
     ASSERT(idx < GetLength());
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
 
     // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    if (value.IsHeapObject()) {
+    if (needBarrier && value.IsHeapObject()) {
         Barriers::SetObject<true>(thread, GetData(), offset, value.GetRawData());
     } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
         Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, value.GetRawData());

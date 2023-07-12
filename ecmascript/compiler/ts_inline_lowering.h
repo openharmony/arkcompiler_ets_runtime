@@ -46,12 +46,13 @@ class TSInlineLowering {
 public:
     static constexpr size_t MAX_INLINE_CALL_ALLOWED = 5;
     TSInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string& name,
-                     NativeAreaAllocator* nativeAreaAllocator)
+                     NativeAreaAllocator* nativeAreaAllocator, PassOptions *options)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
           tsManager_(ctx->GetTSManager()),
           ctx_(ctx),
+          passOptions_(options),
           enableLog_(enableLog),
           methodName_(name),
           enableTypeLowering_(ctx->GetEcmaVM()->GetJSOptions().IsEnableTypeLowering()),
@@ -101,6 +102,7 @@ private:
     CircuitBuilder builder_;
     TSManager *tsManager_ {nullptr};
     PassContext *ctx_ {nullptr};
+    PassOptions *passOptions_ {nullptr};
     bool enableLog_ {false};
     std::string methodName_;
     size_t inlinedCall_ { 0 };

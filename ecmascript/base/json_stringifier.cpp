@@ -733,7 +733,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                 PropertyAttributes attr(layoutInfo->GetAttr(index));
                 ASSERT(static_cast<int>(attr.GetOffset()) == index);
                 value = attr.IsInlinedProps()
-                        ? obj->GetPropertyInlinedProps(static_cast<uint32_t>(index))
+                        ? obj->GetPropertyInlinedPropsWithRep(static_cast<uint32_t>(index), attr)
                         : propertiesArr->Get(static_cast<uint32_t>(index) - jsHclass->GetInlinedProperties());
                 if (attr.IsInlinedProps() && value.IsHole()) {
                     continue;
@@ -762,7 +762,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                 PropertyAttributes attr(layoutInfo->GetAttr(index));
                 ASSERT(static_cast<int>(attr.GetOffset()) == index);
                 value = attr.IsInlinedProps()
-                        ? obj->GetPropertyInlinedProps(static_cast<uint32_t>(index))
+                        ? obj->GetPropertyInlinedPropsWithRep(static_cast<uint32_t>(index), attr)
                         : propertiesArr->Get(static_cast<uint32_t>(index) - jsHclass->GetInlinedProperties());
                 if (attr.IsInlinedProps() && value.IsHole()) {
                     continue;

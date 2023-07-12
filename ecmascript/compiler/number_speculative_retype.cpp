@@ -51,6 +51,21 @@ GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, PGOSampleType pgoTy
     return old == type ? Circuit::NullGate() : gate;
 }
 
+GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, Representation rep)
+{
+    TypeInfo type = GetOutputTypeInfo(gate);
+    TypeInfo old = type;
+    if (rep == Representation::INT) {
+        type = TypeInfo::INT32;
+    } else if (rep == Representation::DOUBLE) {
+        type = TypeInfo::FLOAT64;
+    } else {
+        type = TypeInfo::TAGGED;
+    }
+    SetOutputTypeInfo(gate, type);
+    return old == type ? Circuit::NullGate() : gate;
+}
+
 GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
 {
     OpCode op = acc_.GetOpCode(gate);
@@ -72,6 +87,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitStoreElement(gate);
         case OpCode::STORE_PROPERTY:
             return VisitStoreProperty(gate);
+        case OpCode::LOAD_PROPERTY:
+            return VisitLoadProperty(gate);
         case OpCode::VALUE_SELECTOR:
             return VisitPhi(gate);
         case OpCode::CONSTANT:
@@ -84,12 +101,11 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitFrameState(gate);
         case OpCode::CALL_GETTER:
         case OpCode::CALL_SETTER:
-        case OpCode::LOAD_PROPERTY:
         case OpCode::CONSTRUCT:
         case OpCode::TYPEDCALL:
         case OpCode::TYPEDFASTCALL:
         case OpCode::OBJECT_TYPE_CHECK:
-            return VisitWithConstantValue(gate, 1); // ignoreIndex
+            return VisitWithConstantValue(gate, PROPERTY_LOOKUP_RESULT_INDEX);
         case OpCode::LOOP_EXIT_VALUE:
             return VisitLoopExitValue(gate);
         case OpCode::JS_BYTECODE:
@@ -695,7 +711,6 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
             result = builder_.ConvertFloat64ToInt32(gate);
             break;
         case TypeInfo::TAGGED: {
-            ASSERT(gateType.IsNumberType());
             if (gateType.IsIntType()) {
                 result = builder_.CheckTaggedIntAndConvertToInt32(gate);
             } else if (gateType.IsDoubleType()) {
@@ -888,20 +903,40 @@ GateRef NumberSpeculativeRetype::VisitStoreProperty(GateRef gate)
     }
     ASSERT(IsConvert());
     GateRef value = acc_.GetValueIn(gate, 2); // 2: value
-    TypeInfo output = GetOutputTypeInfo(value);
-    switch (output) {
-        case TypeInfo::INT1:
-        case TypeInfo::INT32:
-        case TypeInfo::FLOAT64:
+
+    Environment env(gate, circuit_, &builder_);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    if (plr.GetRepresentation() == Representation::DOUBLE) {
+        acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
+        acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(value, acc_.GetGateType(value)), 2); //2: value
+    } else if (plr.GetRepresentation() == Representation::INT) {
+        acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, acc_.GetGateType(value)), 2); //2: value
+    } else {
+        TypeInfo valueType = GetOutputTypeInfo(value);
+        if (valueType == TypeInfo::INT1 || valueType == TypeInfo::INT32 || valueType == TypeInfo::FLOAT64) {
             acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
-            break;
-        default:
-            break;
+        }
+        acc_.ReplaceValueIn(gate, ConvertToTagged(value), 2); // 2: value
     }
+
     GateRef receiver = acc_.GetValueIn(gate, 0); // receiver
     acc_.ReplaceValueIn(gate, ConvertToTagged(receiver), 0);
-    acc_.ReplaceValueIn(gate, ConvertToTagged(value), 2); // 2: value
     return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitLoadProperty(GateRef gate)
+{
+    if (IsRetype()) {
+        GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
+        PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+        return SetOutputType(gate, plr.GetRepresentation());
+    }
+
+    ASSERT(IsConvert());
+
+    return VisitWithConstantValue(gate, PROPERTY_LOOKUP_RESULT_INDEX); // ignoreIndex
 }
 
 GateRef NumberSpeculativeRetype::VisitTypeConvert(GateRef gate)

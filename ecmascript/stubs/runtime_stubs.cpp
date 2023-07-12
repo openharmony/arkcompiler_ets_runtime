@@ -362,6 +362,31 @@ DEF_RUNTIME_STUBS(UpdateLayOutAndAddTransition)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CopyAndUpdateObjLayout)
+{
+    RUNTIME_STUBS_HEADER(CopyAndUpdateObjLayout);
+    JSHandle<JSHClass> newHClassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue attr = GetArg(argv, argc, 3);  // 3: means the third parameter
+
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    PropertyAttributes attrValue(attr.GetInt());
+
+    // 1. Copy
+    JSHandle<LayoutInfo> oldLayout(thread, newHClassHandle->GetLayout());
+    JSHandle<LayoutInfo> newLayout(factory->CopyLayoutInfo(oldLayout));
+    newHClassHandle->SetLayout(thread, newLayout);
+
+    // 2. Update attr
+    auto hclass = JSHClass::Cast(newHClassHandle.GetTaggedValue().GetTaggedObject());
+    int entry = JSHClass::FindPropertyEntry(thread, hclass, keyHandle.GetTaggedValue());
+    ASSERT(entry != -1);
+    newLayout->SetNormalAttr(thread, entry, attrValue);
+
+    // 3. Maybe Transition And Maintain subtypeing check
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
 {
     std::string format = MessageString::GetMessageString(fmtMessageId);

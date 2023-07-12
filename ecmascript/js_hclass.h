@@ -323,6 +323,7 @@ public:
             OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED>; // 15
     using ObjectSizeInWordsBits = InlinedPropsStartBits::NextField<uint32_t, OFFSET_MAX_OBJECT_SIZE_IN_WORDS>; // 30
     using HasDeletePropertyBit = ObjectSizeInWordsBits::NextFlag;
+    using IsAllTaggedPropBit = HasDeletePropertyBit::NextFlag;  //32
 
     static JSHClass *Cast(const TaggedObject *object);
 
@@ -350,6 +351,8 @@ public:
     static JSHandle<JSHClass> TransProtoWithoutLayout(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                       const JSHandle<JSTaggedValue> &proto);
     static void TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &obj);
+    static void TransitionForRepChange(const JSThread *thread, const JSHandle<JSObject> &receiver,
+                                       const JSHandle<JSTaggedValue> &key, PropertyAttributes attr);
 
     static JSHandle<JSTaggedValue> EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
@@ -1493,12 +1496,6 @@ public:
         return LevelBit::Decode(bits);
     }
 
-    inline void UpdateRepresentation(JSTaggedValue value)
-    {
-        Representation rep = PropertyAttributes::UpdateRepresentation(GetElementRepresentation(), value);
-        SetElementRepresentation(rep);
-    }
-
     inline void SetIsDictionaryElement(bool value)
     {
         uint32_t newVal = DictionaryElementBits::Update(GetBitField(), value);
@@ -1640,6 +1637,17 @@ public:
         return HasDeletePropertyBit::Decode(bits);
     }
 
+    inline void SetIsAllTaggedProp(bool flag) const
+    {
+        IsAllTaggedPropBit::Set<uint32_t>(flag, GetBitField1Addr());
+    }
+
+    inline bool IsAllTaggedProp() const
+    {
+        uint32_t bits = GetBitField1();
+        return IsAllTaggedPropBit::Decode(bits);
+    }
+
     inline static int FindPropertyEntry(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
 
     static PropertyLookupResult LookupPropertyInAotHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
@@ -1711,6 +1719,7 @@ public:
     using IsAccessorBit = IsNotHoleBit::NextFlag;
     using OffsetBits = IsAccessorBit::NextField<uint32_t, OFFSET_BITFIELD_NUM>;
     using WritableField = OffsetBits::NextFlag;
+    using RepresentationBits = WritableField::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>;
 
     explicit PropertyLookupResult(uint32_t data = 0) : data_(data) {}
     ~PropertyLookupResult() = default;
@@ -1791,6 +1800,16 @@ public:
     inline void SetOffset(uint32_t offset)
     {
         OffsetBits::Set<uint32_t>(offset, &data_);
+    }
+
+    inline void SetRepresentation(Representation rep)
+    {
+        RepresentationBits::Set(rep, &data_);
+    }
+
+    inline Representation GetRepresentation()
+    {
+        return RepresentationBits::Get(data_);
     }
 
     inline uint32_t GetData() const

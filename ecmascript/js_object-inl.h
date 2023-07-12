@@ -223,9 +223,38 @@ inline bool JSObject::IsTypedArray() const
     return GetJSHClass()->IsTypedArray();
 }
 
+void JSObject::SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value)
+{
+    auto layout = LayoutInfo::Cast(GetJSHClass()->GetLayout().GetTaggedObject());
+    auto attr = layout->GetAttr(index);
+    if (attr.IsTaggedRep()) {
+        SetPropertyInlinedProps<true>(thread, index, value);
+    } else {
+        SetPropertyInlinedProps<false>(thread, index, value);
+    }
+}
+
+template <bool needBarrier>
 void JSObject::SetPropertyInlinedProps(const JSThread *thread, uint32_t index, JSTaggedValue value)
 {
-    SetPropertyInlinedProps(thread, GetJSHClass(), index, value);
+    SetPropertyInlinedProps<needBarrier>(thread, GetJSHClass(), index, value);
+}
+
+JSTaggedValue JSObject::GetPropertyInlinedPropsWithRep(uint32_t index, PropertyAttributes attr) const
+{
+    return GetPropertyInlinedPropsWithRep(GetJSHClass(), index, attr);
+}
+
+JSTaggedValue JSObject::GetPropertyInlinedPropsWithRep(const JSHClass *hclass, uint32_t index,
+                                                       PropertyAttributes attr) const
+{
+    auto value = GetPropertyInlinedProps(hclass, index);
+    if (attr.IsDoubleRep()) {
+        value = JSTaggedValue(bit_cast<double>(value.GetRawData()));
+    } else if (attr.IsIntRep()) {
+        value = JSTaggedValue(static_cast<int32_t>(value.GetRawData()));
+    }
+    return value;
 }
 
 JSTaggedValue JSObject::GetPropertyInlinedProps(uint32_t index) const
@@ -233,11 +262,16 @@ JSTaggedValue JSObject::GetPropertyInlinedProps(uint32_t index) const
     return GetPropertyInlinedProps(GetJSHClass(), index);
 }
 
+template <bool needBarrier>
 void JSObject::SetPropertyInlinedProps(const JSThread *thread, const JSHClass *hclass, uint32_t index,
                                        JSTaggedValue value)
 {
     uint32_t offset = hclass->GetInlinedPropertiesOffset(index);
-    SET_VALUE_WITH_BARRIER(thread, this, offset, value);
+    if (needBarrier) {
+        SET_VALUE_WITH_BARRIER(thread, this, offset, value);
+    } else {
+        SET_VALUE_PRIMITIVE(this, offset, value);
+    }
 }
 
 JSTaggedValue JSObject::GetPropertyInlinedProps(const JSHClass *hclass, uint32_t index) const
@@ -249,19 +283,20 @@ JSTaggedValue JSObject::GetPropertyInlinedProps(const JSHClass *hclass, uint32_t
 JSTaggedValue JSObject::GetProperty(const JSHClass *hclass, PropertyAttributes attr) const
 {
     if (attr.IsInlinedProps()) {
-        return GetPropertyInlinedProps(hclass, attr.GetOffset());
+        return GetPropertyInlinedPropsWithRep(hclass, attr.GetOffset(), attr);
     }
     TaggedArray *array = TaggedArray::Cast(GetProperties().GetTaggedObject());
     return array->Get(attr.GetOffset() - hclass->GetInlinedProperties());
 }
 
+template <bool needBarrier>
 void JSObject::SetProperty(const JSThread *thread, const JSHClass *hclass, PropertyAttributes attr, JSTaggedValue value)
 {
     if (attr.IsInlinedProps()) {
-        SetPropertyInlinedProps(thread, hclass, attr.GetOffset(), value);
+        SetPropertyInlinedProps<needBarrier>(thread, hclass, attr.GetOffset(), value);
     } else {
         TaggedArray *array = TaggedArray::Cast(GetProperties().GetTaggedObject());
-        array->Set(thread, attr.GetOffset() - hclass->GetInlinedProperties(), value);
+        array->Set<needBarrier>(thread, attr.GetOffset() - hclass->GetInlinedProperties(), value);
     }
 }
 
@@ -270,7 +305,7 @@ inline bool JSObject::ShouldTransToDict(uint32_t capacity, uint32_t index)
     if (index < capacity) {
         return false;
     }
-    
+
     if (index - capacity > MAX_GAP) {
         return true;
     }

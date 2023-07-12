@@ -30,6 +30,12 @@ enum class Root {
     ROOT_INTERNAL_CALL_PARAMS,
 };
 
+enum class VisitObjectArea {
+    NORMAL,
+    NATIVE_POINTER,
+    IN_OBJECT
+};
+
 enum class VisitType : size_t { SEMI_GC_VISIT, OLD_GC_VISIT, SNAPSHOT_VISIT };
 
 using RootVisitor = std::function<void(Root type, ObjectSlot p)>;
@@ -37,7 +43,7 @@ using RootRangeVisitor = std::function<void(Root type, ObjectSlot start, ObjectS
 using RootBaseAndDerivedVisitor =
     std::function<void(Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject)>;
 using EcmaObjectRangeVisitor = std::function<void(TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                  bool isNative)>;
+                                                  VisitObjectArea area)>;
 using WeakRootVisitor = std::function<TaggedObject *(TaggedObject *p)>;
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_VISITOR_H

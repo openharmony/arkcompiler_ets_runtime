@@ -30,6 +30,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
@@ -359,7 +360,7 @@ void ObjectOperator::LookupPropertyInlinedProps(const JSHandle<JSObject> &obj)
         ASSERT(entry == static_cast<int>(attr.GetOffset()));
         JSTaggedValue value;
         if (attr.IsInlinedProps()) {
-            value = obj->GetPropertyInlinedProps(entry);
+            value = obj->GetPropertyInlinedPropsWithRep(entry, attr);
             if (value.IsHole()) {
                 if (receiverHoleEntry_ == -1 && receiver_ == holder_) {
                     receiverHoleEntry_ = entry;
@@ -438,6 +439,38 @@ bool ObjectOperator::UpdateValueAndDetails(const JSHandle<JSObject> &receiver, c
     return UpdateDataValue(receiver, value, isInternalAccessor);
 }
 
+JSTaggedValue ObjectOperator::ConvertOrTransitionWithRep(const JSHandle<JSObject> &receiver,
+    const JSHandle<JSTaggedValue> &value, PropertyAttributes &attr, bool &needBarrier)
+{
+    Representation oldRep = attr.GetRepresentation();
+    if (oldRep == Representation::DOUBLE) {
+        if (value->IsInt()) {
+            double doubleValue = value->GetInt();
+            needBarrier = false;
+            return JSTaggedValue(bit_cast<JSTaggedType>(doubleValue));
+        } else if (value->IsObject()) {
+            // Is Object
+            attributes_.SetRepresentation(Representation::TAGGED);
+            // Transtion
+            JSHClass::TransitionForRepChange(thread_, receiver, key_, attributes_);
+        } else {
+            // Is TaggedDouble
+            needBarrier = false;
+            return JSTaggedValue(bit_cast<JSTaggedType>(value->GetDouble()));
+        }
+    } else if (oldRep == Representation::INT) {
+        if (value->IsInt()) {
+            int intValue = value->GetInt();
+            needBarrier = false;
+            return JSTaggedValue(static_cast<JSTaggedType>(intValue));
+        } else {
+            attributes_.SetRepresentation(Representation::TAGGED);
+            JSHClass::TransitionForRepChange(thread_, receiver, key_, attributes_);
+        }
+    }
+    return value.GetTaggedValue();
+}
+
 bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &value,
                                      bool isInternalAccessor, bool mayThrow)
 {
@@ -483,7 +516,7 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
         }
     }
 
-    TaggedArray *properties = TaggedArray::Cast(receiver->GetProperties().GetTaggedObject());
+    JSMutableHandle<TaggedArray> properties(thread_, TaggedArray::Cast(receiver->GetProperties().GetTaggedObject()));
     if (!properties->IsDictionaryMode()) {
         if (thread_->IsPGOProfilerEnable() && attributes_.UpdateTrackType(value.GetTaggedValue())) {
             LayoutInfo *layoutInfo = LayoutInfo::Cast(receiver->GetJSHClass()->GetLayout().GetTaggedObject());
@@ -494,21 +527,28 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
             }
             layoutInfo->SetNormalAttr(thread_, offset, attributes_);
         }
+        bool needBarrier = true;
+        JSTaggedValue actualValue = value.GetTaggedValue();
+        if (IsTSHClass()) {
+            actualValue = ConvertOrTransitionWithRep(receiver, value, attributes_, needBarrier);
+        }
 
         PropertyAttributes attr = GetAttr();
         if (attr.IsInlinedProps()) {
-            receiver->SetPropertyInlinedProps(thread_, GetIndex(), value.GetTaggedValue());
+            receiver->SetPropertyInlinedPropsWithRep(thread_, GetIndex(), actualValue);
         } else {
             if (receiver.GetTaggedValue().IsJSCOWArray()) {
                 JSArray::CheckAndCopyArray(thread_, JSHandle<JSArray>(receiver));
-                TaggedArray::Cast(JSHandle<JSArray>(receiver)->GetProperties())->Set(thread_,
-                    GetIndex(), value.GetTaggedValue());
-                return true;
+                properties.Update(JSHandle<JSArray>(receiver)->GetProperties());
             }
-            properties->Set(thread_, GetIndex(), value.GetTaggedValue());
+            if (needBarrier) {
+                properties->Set<true>(thread_, GetIndex(), value.GetTaggedValue());
+            } else {
+                properties->Set<false>(thread_, GetIndex(), actualValue);
+            }
         }
     } else {
-        NameDictionary::Cast(properties)->UpdateValue(thread_, GetIndex(), value.GetTaggedValue());
+        properties.GetObject<NameDictionary>()->UpdateValue(thread_, GetIndex(), value.GetTaggedValue());
     }
     return true;
 }
@@ -634,7 +674,6 @@ void ObjectOperator::WriteElement(const JSHandle<JSObject> &receiver, JSTaggedVa
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     if (!elements->IsDictionaryMode()) {
         elements->Set(thread_, index_, value);
-        receiver->GetJSHClass()->UpdateRepresentation(value);
         return;
     }
 
@@ -770,7 +809,15 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
         if (thread_->IsPGOProfilerEnable() && attr.UpdateTrackType(value.GetTaggedValue())) {
             layoutInfo->SetNormalAttr(thread_, receiverHoleEntry_, attr);
         }
-        JSObject::Cast(receiver_.GetTaggedValue())->SetProperty(thread_, hclass, attr, value.GetTaggedValue());
+        bool needBarrier = true;
+        JSTaggedValue actualValue = ConvertOrTransitionWithRep(JSHandle<JSObject>(receiver_), value, attr, needBarrier);
+        if (needBarrier) {
+            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<true>(
+                thread_, hclass, attr, value.GetTaggedValue());
+        } else {
+            JSObject::Cast(receiver_.GetTaggedValue())->SetProperty<false>(
+                thread_, hclass, attr, actualValue);
+        }
         uint32_t index = attr.IsInlinedProps() ? attr.GetOffset() :
                 attr.GetOffset() - obj->GetJSHClass()->GetInlinedProperties();
         SetIsTSHClass(true);

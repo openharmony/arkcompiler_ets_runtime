@@ -26,7 +26,7 @@
 namespace panda::ecmascript {
 class PGOHandler {
 public:
-    using TrackTypeField = BitField<TrackType, 0, 2>; // 2 : two binary bits
+    using TrackTypeField = BitField<TrackType, 0, PropertyAttributes::TRACK_TYPE_NUM>; // 3 : three binary bits
     using IsAccessorField = TrackTypeField::NextFlag;
 
     PGOHandler()
@@ -44,6 +44,28 @@ public:
     uint32_t GetValue() const
     {
         return value_;
+    }
+
+    bool SetAttribute(PropertyAttributes &attr) const
+    {
+        bool ret = false;
+        switch (GetTrackType()) {
+            case TrackType::DOUBLE:
+            case TrackType::NUMBER:
+                attr.SetRepresentation(Representation::DOUBLE);
+                ret = true;
+                break;
+            case TrackType::INT:
+                attr.SetRepresentation(Representation::INT);
+                ret = true;
+                break;
+            case TrackType::TAGGED:
+                attr.SetRepresentation(Representation::TAGGED);
+                break;
+            default:
+                break;
+        }
+        return ret;
     }
 
     void SetTrackType(TrackType type)
@@ -123,7 +145,7 @@ public:
         return ctorLayoutDesc_;
     }
 
-    bool FindProperty(const CString &key, PropertyDesc desc) const
+    bool FindProperty(const CString &key, PropertyDesc &desc) const
     {
         for (const auto &iter : layoutDesc_) {
             if (iter.first == key) {

@@ -265,10 +265,12 @@ public:
                            std::string name,
                            const CString &recordName,
                            PGOProfilerDecoder *decoder,
-                           bool isInline)
+                           bool isInline,
+                           bool enableOptTrackField)
         : tsManager_(tsManager), circuit_(circuit), file_(jsPandaFile),
           method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
-          typeRecorder_(jsPandaFile, method_, tsManager, recordName, decoder, methodPCInfo, bytecodes),
+          typeRecorder_(jsPandaFile, method_, tsManager, recordName, decoder, methodPCInfo, bytecodes,
+            enableOptTrackField),
           hasTypes_(hasTypes), enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
           pcOffsets_(methodPCInfo.pcOffsets),
           frameStateBuilder_(this, circuit, methodLiteral),

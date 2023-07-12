@@ -67,27 +67,17 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
     TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     bool isFullMark = heap_->IsFullMark();
     auto visitor = [this, threadId, isFullMark](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                [[maybe_unused]] bool isNative) {
+                                                VisitObjectArea area) {
         Region *rootRegion = Region::ObjectAddressToRange(root);
         bool needBarrier = isFullMark && !rootRegion->InYoungSpaceOrCSet();
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            JSTaggedValue value(slot.GetTaggedType());
-            if (value.IsHeapObject()) {
-                TaggedObject *obj = nullptr;
-                if (!value.IsWeakForHeapObject()) {
-                    obj = value.GetTaggedObject();
-                    MarkObject(threadId, obj);
-                } else {
-                    RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()), rootRegion);
-                    obj = value.GetWeakReferentUnChecked();
-                }
-                if (needBarrier) {
-                    Region *valueRegion = Region::ObjectAddressToRange(obj);
-                    if (valueRegion->InCollectSet()) {
-                        rootRegion->AtomicInsertCrossRegionRSet(slot.SlotAddress());
-                    }
-                }
+        if (area == VisitObjectArea::IN_OBJECT) {
+            if (VisitBodyInObj(root, start, end,
+                [&](ObjectSlot slot) { MarkValue(threadId, slot, rootRegion, needBarrier); })) {
+                return;
             }
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            MarkValue(threadId, slot, rootRegion, needBarrier);
         }
     };
     TaggedObject *obj = nullptr;
@@ -109,28 +99,18 @@ void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t m
     bool isFullMark = heap_->IsFullMark();
     uint32_t visitAddrNum = 0;
     auto visitor = [this, threadId, isFullMark, &visitAddrNum](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                [[maybe_unused]] bool isNative) {
+                                                VisitObjectArea area) {
         Region *rootRegion = Region::ObjectAddressToRange(root);
         visitAddrNum += end.SlotAddress() - start.SlotAddress();
         bool needBarrier = isFullMark && !rootRegion->InYoungSpaceOrCSet();
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            JSTaggedValue value(slot.GetTaggedType());
-            if (value.IsHeapObject()) {
-                TaggedObject *obj = nullptr;
-                if (!value.IsWeakForHeapObject()) {
-                    obj = value.GetTaggedObject();
-                    MarkObject(threadId, obj);
-                } else {
-                    RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()), rootRegion);
-                    obj = value.GetWeakReferentUnChecked();
-                }
-                if (needBarrier) {
-                    Region *valueRegion = Region::ObjectAddressToRange(obj);
-                    if (valueRegion->InCollectSet()) {
-                        rootRegion->AtomicInsertCrossRegionRSet(slot.SlotAddress());
-                    }
-                }
+        if (area == VisitObjectArea::IN_OBJECT) {
+            if (VisitBodyInObj(root, start, end,
+                [&](ObjectSlot slot) { MarkValue(threadId, slot, rootRegion, needBarrier); })) {
+                return;
             }
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            MarkValue(threadId, slot, rootRegion, needBarrier);
         }
     };
     TaggedObject *obj = nullptr;
@@ -167,21 +147,14 @@ void SemiGCMarker::ProcessMarkStack(uint32_t threadId)
 {
     TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     auto visitor = [this, threadId](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                    [[maybe_unused]] bool isNative) {
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            JSTaggedValue value(slot.GetTaggedType());
-            if (value.IsHeapObject()) {
-                Region *rootRegion = Region::ObjectAddressToRange(root);
-                if (value.IsWeakForHeapObject()) {
-                    RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()), rootRegion);
-                    continue;
-                }
-                auto slotStatus = MarkObject(threadId, value.GetTaggedObject(), slot);
-                if (!rootRegion->InYoungSpace() && slotStatus == SlotStatus::KEEP_SLOT) {
-                    SlotNeedUpdate waitUpdate(reinterpret_cast<TaggedObject *>(root), slot);
-                    workManager_->PushSlotNeedUpdate(threadId, waitUpdate);
-                }
+                                    VisitObjectArea area) {
+        if (area == VisitObjectArea::IN_OBJECT) {
+            if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { MarkValue(threadId, root, slot); })) {
+                return;
             }
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            MarkValue(threadId, root, slot);
         }
     };
     TaggedObject *obj = nullptr;
@@ -199,18 +172,15 @@ void SemiGCMarker::ProcessMarkStack(uint32_t threadId)
 void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
 {
     TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
-    auto visitor = [this, threadId]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                    [[maybe_unused]] bool isNative) {
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            JSTaggedValue value(slot.GetTaggedType());
-            if (value.IsHeapObject()) {
-                if (value.IsWeakForHeapObject()) {
-                    // It is unnecessary to use region pointer in compressGCMarker.
-                    RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()));
-                    continue;
-                }
-                MarkObject(threadId, value.GetTaggedObject(), slot);
+    auto visitor = [this, threadId](TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                       VisitObjectArea area) {
+        if (area == VisitObjectArea::IN_OBJECT) {
+            if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { MarkValue(threadId, slot); })) {
+                return;
             }
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            MarkValue(threadId, slot);
         }
     };
     TaggedObject *obj = nullptr;

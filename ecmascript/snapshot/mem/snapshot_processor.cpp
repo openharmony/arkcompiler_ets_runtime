@@ -1441,13 +1441,17 @@ void SnapshotProcessor::SerializeObject(TaggedObject *objectHeader, CQueue<Tagge
     SetObjectEncodeField(snapshotObj, 0, encodeBit.GetValue());
 
     auto visitor = [this, snapshotObj, queue, data](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                    bool isNative) {
+                                                    VisitObjectArea area) {
+        int index = 0;
         for (ObjectSlot slot = start; slot < end; slot++) {
-            if (isNative) {
+            if (area == VisitObjectArea::NATIVE_POINTER) {
                 auto nativePointer = *reinterpret_cast<void **>(slot.SlotAddress());
                 SetObjectEncodeField(snapshotObj, slot.SlotAddress() - ToUintPtr(root),
                                      NativePointerToEncodeBit(nativePointer).GetValue());
             } else {
+                if (VisitObjectBodyWithRep(root, slot, snapshotObj, index, area)) {
+                    continue;
+                }
                 auto fieldAddr = reinterpret_cast<JSTaggedType *>(slot.SlotAddress());
                 SetObjectEncodeField(snapshotObj, slot.SlotAddress() - ToUintPtr(root),
                                      SerializeTaggedField(fieldAddr, queue, data));
@@ -1456,6 +1460,32 @@ void SnapshotProcessor::SerializeObject(TaggedObject *objectHeader, CQueue<Tagge
     };
 
     objXRay_.VisitObjectBody<VisitType::SNAPSHOT_VISIT>(objectHeader, objectHeader->GetClass(), visitor);
+}
+
+bool SnapshotProcessor::VisitObjectBodyWithRep(TaggedObject *root, ObjectSlot slot, uintptr_t obj, int index,
+    VisitObjectArea area)
+{
+    if (area != VisitObjectArea::IN_OBJECT) {
+        return false;
+    }
+    auto hclass = root->GetClass();
+    if (hclass->IsAllTaggedProp()) {
+        return false;
+    }
+    auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    auto attr = layout->GetAttr(index++);
+    if (attr.GetRepresentation() == Representation::DOUBLE) {
+        auto fieldAddr = reinterpret_cast<double *>(slot.SlotAddress());
+        SetObjectEncodeField(obj, slot.SlotAddress() - ToUintPtr(root),
+                             JSTaggedValue(*fieldAddr).GetRawData());
+        return true;
+    } else if (attr.GetRepresentation() == Representation::INT) {
+        auto fieldAddr = reinterpret_cast<JSTaggedType *>(slot.SlotAddress());
+        SetObjectEncodeField(obj, slot.SlotAddress() - ToUintPtr(root),
+                             JSTaggedValue(static_cast<int32_t>(*fieldAddr)).GetRawData());
+        return true;
+    }
+    return false;
 }
 
 void SnapshotProcessor::Relocate(SnapshotType type, const JSPandaFile *jsPandaFile, uint64_t rootObjSize)
@@ -1635,10 +1665,10 @@ void SnapshotProcessor::DeserializeClassWord(TaggedObject *object)
 
 void SnapshotProcessor::DeserializeField(TaggedObject *objectHeader)
 {
-    auto visitor = [this]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end, bool isNative) {
+    auto visitor = [this]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
         for (ObjectSlot slot = start; slot < end; slot++) {
             auto encodeBitAddr = reinterpret_cast<uint64_t *>(slot.SlotAddress());
-            if (isNative) {
+            if (area == VisitObjectArea::NATIVE_POINTER) {
                 DeserializeNativePointer(encodeBitAddr);
             } else {
                 DeserializeTaggedField(encodeBitAddr, root);

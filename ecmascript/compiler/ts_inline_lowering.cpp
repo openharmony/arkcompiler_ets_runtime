@@ -169,7 +169,8 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo,
                                    tsManager, circuit_,
                                    ctx_->GetByteCodes(), true, IsLogEnabled(),
-                                   enableTypeLowering_, fullName, recordName, ctx_->GetPfDecoder(), true);
+                                   enableTypeLowering_, fullName, recordName, ctx_->GetPfDecoder(), true,
+                                   passOptions_->EnableOptTrackField());
     {
         if (enableTypeLowering_) {
             BuildFrameStateChain(gate, builder);
@@ -180,7 +181,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
 
     PassData data(&builder, circuit_, ctx_, log, fullName,
                   &methodInfo, hasTyps, recordName,
-                  method, method->GetMethodId().GetOffset(), nativeAreaAllocator_);
+                  method, method->GetMethodId().GetOffset(), nativeAreaAllocator_, ctx_->GetPfDecoder(), passOptions_);
     PassRunner<PassData> pipeline(&data);
     if (builder.EnableLoopOptimization()) {
         pipeline.RunPass<LoopOptimizationPass>();

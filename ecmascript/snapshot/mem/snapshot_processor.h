@@ -102,6 +102,7 @@ private:
             AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION)));
     }
 
+    bool VisitObjectBodyWithRep(TaggedObject *root, ObjectSlot slot, uintptr_t obj, int index, VisitObjectArea area);
     void SetObjectEncodeField(uintptr_t obj, size_t offset, uint64_t value);
 
     EncodeBit SerializeObjectHeader(TaggedObject *objectHeader, size_t objectType, CQueue<TaggedObject *> *queue,

@@ -61,18 +61,32 @@ void PGOHClassLayoutDesc::UpdateKeyAndDesc(const CString &key, const PGOHandler 
 {
     for (auto &iter : layoutDesc) {
         if (iter.first == key) {
-            PGOHandler oldType = iter.second;
-            if (oldType == handler) {
+            PGOHandler oldHandler = iter.second;
+            if (oldHandler == handler) {
                 return;
             }
-            if (oldType.GetTrackType() == TrackType::NONE) {
-                iter.second = handler;
-            } else {
-                if (oldType.GetTrackType() != handler.GetTrackType()) {
-                    iter.second = PGOHandler(TrackType::TAGGED, handler.IsAccessor());
-                } else {
+            auto oldTrackType = oldHandler.GetTrackType();
+            auto newTrackType = handler.GetTrackType();
+            if (oldTrackType == newTrackType) {
+                iter.second.SetIsAccessor(handler.IsAccessor());
+                return;
+            }
+
+            switch (oldTrackType) {
+                case TrackType::TAGGED:
                     iter.second.SetIsAccessor(handler.IsAccessor());
-                }
+                    break;
+                case TrackType::NONE:
+                case TrackType::INT:
+                case TrackType::DOUBLE:
+                    if (newTrackType != TrackType::TAGGED) {
+                        newTrackType = static_cast<TrackType>(static_cast<uint8_t>(newTrackType) |
+                            static_cast<uint8_t>(oldTrackType));
+                    }
+                    iter.second = PGOHandler(newTrackType, handler.IsAccessor());
+                    break;
+                default:
+                    break;
             }
             return;
         }

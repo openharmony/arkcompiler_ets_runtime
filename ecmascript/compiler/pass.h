@@ -240,7 +240,8 @@ public:
         if (data->HasTypes()) {
             bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
             GlobalTypeInfer globalTypeInfer(data->GetPassContext(), data->GetMethodOffset(), data->GetRecordName(),
-                                            data->GetPGOProfilerDecoder(), enableLog);
+                                            data->GetPGOProfilerDecoder(), passOptions->EnableOptTrackField(),
+                                            enableLog);
             globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
             if (data->GetMethodLiteral()->IsClassConstructor()) {
                 InitializationAnalysis initAnalysis(data->GetCircuit(), data->GetTSManager(), data->GetRecordName(),
@@ -376,7 +377,7 @@ public:
         TimeScope timescope("TSInlineLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         TSInlineLowering inlining(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName(),
-                                  data->GetNativeAreaAllocator());
+                                  data->GetNativeAreaAllocator(), passOptions);
         inlining.RunTSInlineLowering();
         return true;
     }

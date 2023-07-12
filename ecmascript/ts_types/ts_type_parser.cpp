@@ -843,6 +843,10 @@ JSHandle<TSObjectType> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, cons
     JSHandle<JSObject> objHandle(thread_, obj);
     JSHandle<JSHClass> oldHClass(thread_, objHandle->GetClass());
     JSHandle<JSHClass> hclass = JSHClass::Clone(thread_, oldHClass);
+    ObjectFactory *factory = vm_->GetFactory();
+    JSHandle<LayoutInfo> newLayout = factory->CopyLayoutInfo(JSHandle<LayoutInfo>(thread_, hclass->GetLayout()));
+    hclass->SetLayout(thread_, newLayout);
+
     hclass->SetTS(true);
     JSHandle<TSObjectType> objectType = factory_->NewTSObjectType(0);
     tsManager_->AddInstanceTSHClass(gt, hclass);

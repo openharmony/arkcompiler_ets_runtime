@@ -180,6 +180,11 @@ public:
         attributes_.SetIsInlinedProps(flag);
     }
 
+    inline Representation GetRepresentation() const
+    {
+        return GetAttr().GetRepresentation();
+    }
+
     inline JSTaggedValue GetValue() const
     {
         if (value_.IsEmpty()) {
@@ -252,6 +257,8 @@ public:
     {
         SetFound(NOT_FOUND_INDEX, JSTaggedValue::Undefined(), PropertyAttributes::GetDefaultAttributes(), false, false);
     }
+    JSTaggedValue ConvertOrTransitionWithRep(const JSHandle<JSObject> &receiver,
+        const JSHandle<JSTaggedValue> &value, PropertyAttributes &attr, bool &needBarrier);
     bool UpdateDataValue(const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &value,
                          bool isInternalAccessor, bool mayThrow = false);
     bool WriteDataPropertyInHolder(const PropertyDescriptor &desc)

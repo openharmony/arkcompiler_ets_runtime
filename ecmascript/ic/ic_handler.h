@@ -38,7 +38,8 @@ public:
     using InternalAccessorBit = AccessorBit::NextFlag;
     using IsJSArrayBit = InternalAccessorBit::NextFlag;
     using OffsetBit = IsJSArrayBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
-    using AttrIndexBit = OffsetBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
+    using RepresentationBit = OffsetBit::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>;
+    using AttrIndexBit = RepresentationBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;
 
     HandlerBase() = default;
     virtual ~HandlerBase() = default;
@@ -116,6 +117,7 @@ public:
             KindBit::Set<uint32_t>(HandlerKind::FIELD, &handler);
         }
 
+        RepresentationBit::Set(op.GetRepresentation(), &handler);
         if (op.IsInlinedProps()) {
             InlinedPropsBit::Set<uint32_t>(true, &handler);
             JSHandle<JSObject> holder = JSHandle<JSObject>::Cast(op.GetHolder());
@@ -160,6 +162,7 @@ public:
         if (!hasSetter) {
             KindBit::Set<uint32_t>(HandlerKind::FIELD, &handler);
         }
+        RepresentationBit::Set(op.GetRepresentation(), &handler);
         if (op.IsInlinedProps()) {
             InlinedPropsBit::Set<uint32_t>(true, &handler);
             uint32_t index = 0;

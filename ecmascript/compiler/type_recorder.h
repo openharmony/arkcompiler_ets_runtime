@@ -34,7 +34,7 @@ class TypeRecorder {
 public:
     TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
                  TSManager *tsManager, const CString &recordName, PGOProfilerDecoder *decoder,
-                 const MethodPcInfo &methodPCInfo, const Bytecodes *bytecodes);
+                 const MethodPcInfo &methodPCInfo, const Bytecodes *bytecodes, bool enableOptTrackField);
     ~TypeRecorder() = default;
 
     GateType GetType(const int32_t offset) const;
@@ -77,6 +77,7 @@ private:
     std::unordered_map<int32_t, PGORWOpType> bcOffsetPGORwTypeMap_ {};
     std::vector<GateType> argTypes_;
     PGOProfilerDecoder *decoder_ {nullptr};
+    bool enableOptTrackField_ {false};
     const std::vector<const uint8_t*> &pcOffsets_;
     const Bytecodes *bytecodes_ {nullptr};
 };

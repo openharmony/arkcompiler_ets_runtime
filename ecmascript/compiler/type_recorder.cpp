@@ -25,9 +25,10 @@
 namespace panda::ecmascript::kungfu {
 TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
                            TSManager *tsManager, const CString &recordName, PGOProfilerDecoder *decoder,
-                           const MethodPcInfo &methodPCInfo, const Bytecodes *bytecodes)
+                           const MethodPcInfo &methodPCInfo, const Bytecodes *bytecodes, bool enableOptTrackField)
     : argTypes_(methodLiteral->GetNumArgsWithCallField() + static_cast<size_t>(TypedArgIdx::NUM_OF_TYPED_ARGS),
-    GateType::AnyType()), decoder_(decoder), pcOffsets_(methodPCInfo.pcOffsets), bytecodes_(bytecodes)
+    GateType::AnyType()), decoder_(decoder), enableOptTrackField_(enableOptTrackField),
+    pcOffsets_(methodPCInfo.pcOffsets), bytecodes_(bytecodes)
 {
     TSHClassGenerator generator(tsManager);
     if (jsPandaFile->HasTSTypes(recordName)) {
@@ -210,7 +211,7 @@ PGOSampleType TypeRecorder::GetOrUpdatePGOType(TSManager *tsManager, int32_t off
                 return PGOSampleType::NoneClassType();
             }
             TSHClassGenerator generator(tsManager);
-            generator.UpdateTSHClassFromPGO(type, *desc);
+            generator.UpdateTSHClassFromPGO(type, *desc, enableOptTrackField_);
         }
         return iter;
     }

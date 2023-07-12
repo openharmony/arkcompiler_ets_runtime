@@ -1409,7 +1409,7 @@ void JSObject::Dump(std::ostream &os) const
             os << ": (";
             JSTaggedValue val;
             if (attr.IsInlinedProps()) {
-                val = GetPropertyInlinedProps(i);
+                val = GetPropertyInlinedPropsWithRep(i, attr);
             } else {
                 val = properties->Get(i - static_cast<int>(jshclass->GetInlinedProperties()));
             }
@@ -3564,7 +3564,7 @@ void CjsExports::Dump(std::ostream &os) const
             os << ": (";
             JSTaggedValue val;
             if (attr.IsInlinedProps()) {
-                val = GetPropertyInlinedProps(i);
+                val = GetPropertyInlinedPropsWithRep(i, attr);
             } else {
                 val = properties->Get(i - static_cast<int>(jshclass->GetInlinedProperties()));
             }
@@ -4339,7 +4339,7 @@ void JSObject::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &v
             ASSERT(i == static_cast<int>(attr.GetOffset()));
             JSTaggedValue val;
             if (attr.IsInlinedProps()) {
-                val = GetPropertyInlinedProps(i);
+                val = GetPropertyInlinedPropsWithRep(i, attr);
             } else {
                 val = properties->Get(i - static_cast<int>(jshclass->GetInlinedProperties()));
             }

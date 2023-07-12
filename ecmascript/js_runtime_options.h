@@ -120,6 +120,7 @@ enum CommandValues {
     OPTION_COMPILER_OPT_INLINING,
     OPTION_COMPILER_OPT_STATIC_METHOD,
     OPTION_COMPILER_OPT_PGOTYPE,
+    OPTION_COMPILER_OPT_TRACK_FIELD,
     OPTION_COMPILER_OPT_GLOBAL_TYPEINFER,
     OPTION_HELP,
     OPTION_COMPILER_PGO_PROFILER_PATH,
@@ -964,6 +965,16 @@ public:
         return enableOptPGOType_;
     }
 
+    void SetEnableOptTrackField(bool value)
+    {
+        enableOptTrackField_ = value;
+    }
+
+    bool IsEnableOptTrackField() const
+    {
+        return enableOptTrackField_;
+    }
+
     void SetEnableGlobalTypeInfer(bool value)
     {
         enableGlobalTypeInfer_ = value;
@@ -1228,6 +1239,7 @@ private:
     bool enableOptStaticMethod_ {false};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};
+    bool enableOptTrackField_ {true};
     uint32_t compilerModuleMethods_ {100};
     uint64_t wasSet_ {0};
     bool enablePrintExecuteTime_ {false};

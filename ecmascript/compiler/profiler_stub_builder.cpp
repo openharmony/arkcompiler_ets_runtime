@@ -226,17 +226,12 @@ GateRef ProfilerStubBuilder::UpdateTrackTypeInPropAttr(GateRef attr, GateRef val
     {
         newTrackType = TaggedToTrackType(value);
         Label update(env);
-        Label nonFirst(env);
-        Branch(Equal(oldTrackType, Int32(static_cast<int32_t>(TrackType::NONE))), &update, &nonFirst);
-        Bind(&nonFirst);
+        Label merge(env);
+        Branch(Int32Equal(*newTrackType, Int32(static_cast<int32_t>(TrackType::TAGGED))), &update, &merge);
+        Bind(&merge);
         {
-            Label isNotEqual(env);
-            Branch(Equal(oldTrackType, *newTrackType), &exit, &isNotEqual);
-            Bind(&isNotEqual);
-            {
-                newTrackType = Int32(static_cast<int32_t>(TrackType::TAGGED));
-                Jump(&update);
-            }
+            newTrackType = Int32Or(oldTrackType, *newTrackType);
+            Branch(Int32Equal(oldTrackType, *newTrackType), &exit, &update);
         }
         Bind(&update);
         {

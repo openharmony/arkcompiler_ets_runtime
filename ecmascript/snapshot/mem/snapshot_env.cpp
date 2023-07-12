@@ -63,9 +63,18 @@ void SnapshotEnv::InitGlobalEnv()
 void SnapshotEnv::HandleObjectField(TaggedObject *objectHeader, CQueue<TaggedObject *> *objectQueue,
                                     std::set<TaggedObject *> *objectSet)
 {
-    auto visitor = [objectQueue, objectSet]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                            [[maybe_unused]] bool isNative) {
+    auto visitor = [objectQueue, objectSet](TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                            VisitObjectArea area) {
+        auto hclass = root->GetClass();
+        int index = 0;
         for (ObjectSlot slot = start; slot < end; slot++) {
+            if (area == VisitObjectArea::IN_OBJECT && !hclass->IsAllTaggedProp()) {
+                auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+                auto attr = layout->GetAttr(index++);
+                if (!attr.IsTaggedRep()) {
+                    continue;
+                }
+            }
             auto fieldAddr = reinterpret_cast<JSTaggedType *>(slot.SlotAddress());
             JSTaggedValue fieldValue(*fieldAddr);
             if (fieldValue.IsHeapObject() && !fieldValue.IsWeak() && !fieldValue.IsString()

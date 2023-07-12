@@ -443,7 +443,7 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object)
     cloneObject->SetProperties(thread_, newProperties.GetTaggedValue());
 
     for (uint32_t i = 0; i < klass->GetInlinedProperties(); i++) {
-        cloneObject->SetPropertyInlinedProps(thread_, i, object->GetPropertyInlinedProps(i));
+        cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, object->GetPropertyInlinedProps(i));
     }
     return cloneObject;
 }
@@ -504,7 +504,7 @@ JSHandle<JSArray> ObjectFactory::CloneArrayLiteral(JSHandle<JSArray> object)
     }
 
     for (uint32_t i = 0; i < klass->GetInlinedProperties(); i++) {
-        cloneObject->SetPropertyInlinedProps(thread_, i, object->GetPropertyInlinedProps(i));
+        cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, object->GetPropertyInlinedProps(i));
     }
     return cloneObject;
 }
@@ -559,9 +559,10 @@ JSHandle<JSObject> ObjectFactory::CloneObjectLiteral(JSHandle<JSObject> object, 
     cloneObject->SetProperties(thread_, newProperties.GetTaggedValue());
 
     for (uint32_t i = 0; i < klass->GetInlinedProperties(); i++) {
+        auto layout = LayoutInfo::Cast(klass->GetLayout().GetTaggedObject());
         JSTaggedValue value = object->GetPropertyInlinedProps(i);
-        if (!value.IsJSFunction()) {
-            cloneObject->SetPropertyInlinedProps(thread_, i, value);
+        if (!layout->GetAttr(i).IsTaggedRep() || !value.IsJSFunction()) {
+            cloneObject->SetPropertyInlinedPropsWithRep(thread_, i, value);
         } else {
             JSHandle<JSFunction> valueHandle(thread_, value);
             JSHandle<JSFunction> newFunc = CloneJSFuction(valueHandle);
@@ -602,9 +603,10 @@ JSHandle<JSFunction> ObjectFactory::CloneClassCtor(JSHandle<JSFunction> ctor, co
     JSHandle<JSFunction> cloneCtor = NewJSFunctionByHClass(method, hclass);
 
     for (uint32_t i = 0; i < hclass->GetInlinedProperties(); i++) {
+        auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
         JSTaggedValue value = ctor->GetPropertyInlinedProps(i);
-        if (!value.IsJSFunction()) {
-            cloneCtor->SetPropertyInlinedProps(thread_, i, value);
+        if (!layout->GetAttr(i).IsTaggedRep() || !value.IsJSFunction()) {
+            cloneCtor->SetPropertyInlinedPropsWithRep(thread_, i, value);
         } else {
             JSHandle<JSFunction> valueHandle(thread_, value);
             JSHandle<JSFunction> newFunc = CloneJSFuction(valueHandle);
@@ -673,7 +675,7 @@ JSHandle<JSHClass> ObjectFactory::CreateJSRegExpInstanceClass(JSHandle<JSTaggedV
     {
         PropertyAttributes attributes = PropertyAttributes::Default(true, false, false);
         attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder++);
         layoutInfoHandle->AddKey(thread_, 0, globalConst->GetLastIndexString(), attributes);
     }
@@ -697,7 +699,7 @@ JSHandle<JSHClass> ObjectFactory::CreateJSArrayInstanceClass(JSHandle<JSTaggedVa
     {
         PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(true, false, false);
         attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder++);
         layoutInfoHandle->AddKey(thread_, 0, globalConst->GetLengthString(), attributes);
     }
@@ -725,7 +727,7 @@ JSHandle<JSHClass> ObjectFactory::CreateJSArguments(const JSHandle<GlobalEnv> &e
     {
         PropertyAttributes attributes = PropertyAttributes::Default(true, false, true);
         attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder++);
         layoutInfoHandle->AddKey(thread_, JSArguments::LENGTH_INLINE_PROPERTY_INDEX, globalConst->GetLengthString(),
                                  attributes);
@@ -735,7 +737,7 @@ JSHandle<JSHClass> ObjectFactory::CreateJSArguments(const JSHandle<GlobalEnv> &e
     {
         PropertyAttributes attributes = PropertyAttributes::Default(true, false, true);
         attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder++);
         layoutInfoHandle->AddKey(thread_, JSArguments::ITERATOR_INLINE_PROPERTY_INDEX,
                                  env->GetIteratorSymbol().GetTaggedValue(), attributes);
@@ -746,7 +748,7 @@ JSHandle<JSHClass> ObjectFactory::CreateJSArguments(const JSHandle<GlobalEnv> &e
         PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
         attributes.SetIsInlinedProps(true);
         attributes.SetIsAccessor(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder++);
         layoutInfoHandle->AddKey(thread_, JSArguments::CALLER_INLINE_PROPERTY_INDEX,
                                  thread_->GlobalConstants()->GetHandledCallerString().GetTaggedValue(), attributes);
@@ -757,7 +759,7 @@ JSHandle<JSHClass> ObjectFactory::CreateJSArguments(const JSHandle<GlobalEnv> &e
         PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
         attributes.SetIsInlinedProps(true);
         attributes.SetIsAccessor(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder++);
         layoutInfoHandle->AddKey(thread_, JSArguments::CALLEE_INLINE_PROPERTY_INDEX,
                                  thread_->GlobalConstants()->GetHandledCalleeString().GetTaggedValue(), attributes);
@@ -1454,7 +1456,7 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
     {
         PropertyAttributes attributes = PropertyAttributes::Default(false, false, true);
         attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder);
         layoutInfoHandle->AddKey(thread_, fieldOrder, globalConst->GetLengthString(), attributes);
         fieldOrder++;
@@ -1465,7 +1467,7 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
     if (!JSFunction::IsClassConstructor(kind)) {
         PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, true);
         attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder);
         layoutInfoHandle->AddKey(thread_, fieldOrder,
                                  thread_->GlobalConstants()->GetHandledNameString().GetTaggedValue(), attributes);
@@ -1476,7 +1478,7 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
         ASSERT(JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX == fieldOrder);
         PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(true, false, false);
         attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder);
         layoutInfoHandle->AddKey(thread_, fieldOrder, globalConst->GetPrototypeString(), attributes);
         fieldOrder++;
@@ -1484,7 +1486,7 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
         ASSERT(JSFunction::CLASS_PROTOTYPE_INLINE_PROPERTY_INDEX == fieldOrder);
         PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(false, false, false);
         attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder);
         layoutInfoHandle->AddKey(thread_, fieldOrder, globalConst->GetPrototypeString(), attributes);
         fieldOrder++;
@@ -1504,7 +1506,7 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassPrototypeHClass(JSHClass *hc
     PropertyAttributes attributes = PropertyAttributes::Default(true, false, true);  // non-enumerable
 
     attributes.SetIsInlinedProps(true);
-    attributes.SetRepresentation(Representation::MIXED);
+    attributes.SetRepresentation(Representation::TAGGED);
     attributes.SetOffset(ClassInfoExtractor::CONSTRUCTOR_INDEX);
     layout->AddKey(thread_, ClassInfoExtractor::CONSTRUCTOR_INDEX,
         thread_->GlobalConstants()->GetConstructorString(), attributes);
@@ -1534,7 +1536,7 @@ JSHandle<JSHClass> ObjectFactory::CreateDefaultClassConstructorHClass(JSHClass *
             attributes = PropertyAttributes::Default(false, false, true);
         }
         attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(index);
         layout->AddKey(thread_, index, array->Get(index), attributes);
     }
@@ -2417,23 +2419,32 @@ JSHandle<TaggedArray> ObjectFactory::CopyArray(const JSHandle<TaggedArray> &old,
     return newArray;
 }
 
-JSHandle<LayoutInfo> ObjectFactory::CreateLayoutInfo(int properties, MemSpaceType type,
-    GrowMode mode, JSTaggedValue initVal)
+JSHandle<LayoutInfo> ObjectFactory::CreateLayoutInfo(int properties, MemSpaceType type, GrowMode mode)
 {
     int growLength =
         mode == GrowMode::GROW ? static_cast<int>(LayoutInfo::ComputeGrowCapacity(properties)) : properties;
     uint32_t arrayLength = LayoutInfo::ComputeArrayLength(growLength);
-    JSHandle<LayoutInfo> layoutInfoHandle = JSHandle<LayoutInfo>::Cast(NewTaggedArray(arrayLength, initVal, type));
-    layoutInfoHandle->SetNumberOfElements(thread_, 0);
+    JSHandle<LayoutInfo> layoutInfoHandle = JSHandle<LayoutInfo>::Cast(NewTaggedArrayWithoutInit(arrayLength, type));
+    layoutInfoHandle->Initialize(thread_);
     return layoutInfoHandle;
 }
 
-JSHandle<LayoutInfo> ObjectFactory::ExtendLayoutInfo(const JSHandle<LayoutInfo> &old, int properties,
-                                                     JSTaggedValue initVal)
+JSHandle<LayoutInfo> ObjectFactory::ExtendLayoutInfo(const JSHandle<LayoutInfo> &old, int properties)
 {
     ASSERT(properties >= old->NumberOfElements());
     uint32_t arrayLength = LayoutInfo::ComputeArrayLength(LayoutInfo::ComputeGrowCapacity(properties));
-    return JSHandle<LayoutInfo>(ExtendArray(JSHandle<TaggedArray>(old), arrayLength, initVal));
+    ASSERT(arrayLength > old->GetLength());
+
+    auto oldArray = JSHandle<TaggedArray>(old);
+    auto newArray = NewTaggedArrayWithoutInit(arrayLength, MemSpaceType::SEMI_SPACE);
+    JSHandle<LayoutInfo>::Cast(newArray)->Initialize(thread_, oldArray->GetExtraLength());
+
+    uint32_t oldLength = old->GetLength();
+    for (uint32_t i = 0; i < oldLength; i++) {
+        JSTaggedValue value = oldArray->Get(i);
+        newArray->Set(thread_, i, value);
+    }
+    return JSHandle<LayoutInfo>::Cast(newArray);
 }
 
 JSHandle<LayoutInfo> ObjectFactory::CopyLayoutInfo(const JSHandle<LayoutInfo> &old)
@@ -3090,7 +3101,7 @@ JSHandle<JSHClass> ObjectFactory::CreateObjectClass(const JSHandle<TaggedArray> 
         }
 
         attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder);
         layoutInfoHandle->AddKey(thread_, fieldOrder, key.GetTaggedValue(), attributes);
         fieldOrder++;
@@ -3121,7 +3132,7 @@ JSHandle<JSHClass> ObjectFactory::SetLayoutInObjHClass(const JSHandle<TaggedArra
             attributes.SetIsAccessor(true);
         }
         attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOffset);
         newObjHclass = JSHClass::SetPropertyOfObjHClass(thread_, newObjHclass, key, attributes);
     }
@@ -3973,7 +3984,7 @@ JSHandle<JSHClass> ObjectFactory::CreateIteratorResultInstanceClass(const JSHand
         ASSERT(JSIterator::VALUE_INLINE_PROPERTY_INDEX == fieldOrder);
         PropertyAttributes attributes = PropertyAttributes::Default();
         attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder);
         layoutInfoHandle->AddKey(thread_, fieldOrder++, globalConst->GetValueString(), attributes);
     }
@@ -3981,7 +3992,7 @@ JSHandle<JSHClass> ObjectFactory::CreateIteratorResultInstanceClass(const JSHand
         ASSERT(JSIterator::DONE_INLINE_PROPERTY_INDEX == fieldOrder);
         PropertyAttributes attributes = PropertyAttributes::Default();
         attributes.SetIsInlinedProps(true);
-        attributes.SetRepresentation(Representation::MIXED);
+        attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder);
         layoutInfoHandle->AddKey(thread_, fieldOrder++, globalConst->GetDoneString(), attributes);
     }

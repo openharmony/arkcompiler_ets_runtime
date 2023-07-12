@@ -31,6 +31,30 @@ bool ParallelEvacuator::IsWholeRegionEvacuate(Region *region)
         !region->HasAgeMark();
 }
 
+template <typename Callback>
+bool ParallelEvacuator::VisitBodyInObj(
+    TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback)
+{
+    auto hclass = root->GetClass();
+    if (hclass->IsAllTaggedProp()) {
+        return false;
+    }
+    int index = 0;
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        TaggedObject *dst = hclass->GetLayout().GetTaggedObject();
+        MarkWord markWord(dst);
+        if (markWord.IsForwardingAddress()) {
+            dst = markWord.ToForwardingAddress();
+        }
+        auto layout = LayoutInfo::Cast(dst);
+        auto attr = layout->GetAttr(index++);
+        if (attr.IsTaggedRep()) {
+            callback(slot);
+        }
+    }
+    return true;
+}
+
 bool ParallelEvacuator::UpdateOldToNewObjectSlot(ObjectSlot &slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
@@ -120,24 +144,32 @@ void ParallelEvacuator::UpdateWeakObjectSlot(TaggedObject *value, ObjectSlot &sl
 void ParallelEvacuator::SetObjectFieldRSet(TaggedObject *object, JSHClass *cls)
 {
     Region *region = Region::ObjectAddressToRange(object);
-    auto callbackWithCSet = [region]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                     [[maybe_unused]] bool isNative) {
+    auto callbackWithCSet = [this, region](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
+        if (area == VisitObjectArea::IN_OBJECT) {
+            if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { SetObjectRSet(slot, region); })) {
+                return;
+            };
+        }
         for (ObjectSlot slot = start; slot < end; slot++) {
-            JSTaggedType value = slot.GetTaggedType();
-            if (!JSTaggedValue(value).IsHeapObject()) {
-                continue;
-            }
-            Region *valueRegion = Region::ObjectAddressToRange(value);
-            if (valueRegion->InYoungSpace()) {
-                region->InsertOldToNewRSet(slot.SlotAddress());
-            } else if (valueRegion->InCollectSet() || JSTaggedValue(value).IsWeakForHeapObject()) {
-                region->InsertCrossRegionRSet(slot.SlotAddress());
-            }
+            SetObjectRSet(slot, region);
         }
     };
     objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls, callbackWithCSet);
 }
 
+void ParallelEvacuator::SetObjectRSet(ObjectSlot slot, Region *region)
+{
+    JSTaggedType value = slot.GetTaggedType();
+    if (!JSTaggedValue(value).IsHeapObject()) {
+        return;
+    }
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (valueRegion->InYoungSpace()) {
+        region->InsertOldToNewRSet(slot.SlotAddress());
+    } else if (valueRegion->InCollectSet() || JSTaggedValue(value).IsWeakForHeapObject()) {
+        region->InsertCrossRegionRSet(slot.SlotAddress());
+    }
+}
 
 std::unique_ptr<ParallelEvacuator::Workload> ParallelEvacuator::GetWorkloadSafe()
 {

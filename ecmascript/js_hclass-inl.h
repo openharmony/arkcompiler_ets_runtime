@@ -230,6 +230,7 @@ inline void JSHClass::Copy(const JSThread *thread, const JSHClass *jshclass)
     // copy jshclass
     SetPrototype(thread, jshclass->GetPrototype());
     SetBitField(jshclass->GetBitField());
+    SetIsAllTaggedProp(jshclass->IsAllTaggedProp());
     SetNumberOfProps(jshclass->NumberOfProps());
 }
 
