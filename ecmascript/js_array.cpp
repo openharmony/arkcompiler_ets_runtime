@@ -439,14 +439,14 @@ bool JSArray::IncludeInSortedValue(JSThread *thread, const JSHandle<JSTaggedValu
 {
     ASSERT(obj->IsJSArray());
     JSHandle<JSArray> arrayObj = JSHandle<JSArray>::Cast(obj);
-    uint32_t length = arrayObj->GetArrayLength();
+    int32_t length = static_cast<int32_t>(arrayObj->GetArrayLength());
     if (length == 0) {
         return false;
     }
-    uint32_t left = 0;
-    uint32_t right = length - 1;
+    int32_t left = 0;
+    int32_t right = length - 1;
     while (left <= right) {
-        uint32_t middle = (left + right) / 2;
+        int32_t middle = (left + right) / 2;
         JSHandle<JSTaggedValue> vv = JSArray::FastGetPropertyByValue(thread, obj, middle);
         ComparisonResult res = JSTaggedValue::Compare(thread, vv, value);
         if (res == ComparisonResult::EQUAL) {
