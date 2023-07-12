@@ -163,7 +163,7 @@ JSHandle<NameDictionary> JSObject::TransitionToDictionary(const JSThread *thread
         JSTaggedValue value;
 
         if (i < numberInlinedProps) {
-            value = receiver->GetPropertyInlinedProps(i);
+            value = receiver->GetPropertyInlinedPropsWithRep(i, attr);
             // If delete a property in hclass which has subtyping info and not prototype, only set value as hole and
             // not remove. When transition to dictionary, exclude it.
             if (value.IsHole()) {
@@ -272,7 +272,6 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
         elements = *JSObject::GrowElementsCapacity(thread, receiver, index + 1);
     }
     elements->Set(thread, index, value);
-    receiver->GetJSHClass()->UpdateRepresentation(value.GetTaggedValue());
     return true;
 }
 

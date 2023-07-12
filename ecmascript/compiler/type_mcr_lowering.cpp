@@ -495,7 +495,7 @@ void TypeMCRLowering::LowerStoreProperty(GateRef gate)
     if (op == OpCode::STORE_PROPERTY) {
         builder_.StoreConstOffset(VariableType::JS_ANY(), receiver, plr.GetOffset(), value);
     } else if (op == OpCode::STORE_PROPERTY_NO_BARRIER) {
-        builder_.StoreConstOffset(VariableType::INT64(), receiver, plr.GetOffset(), value);
+        builder_.StoreConstOffset(GetVarType(plr), receiver, plr.GetOffset(), value);
     } else {
         UNREACHABLE();
     }
@@ -989,6 +989,17 @@ GateRef TypeMCRLowering::LoadFromVTable(GateRef receiver, size_t index)
     GateRef itemOwner = LoadFromTaggedArray(vtable, VTable::TupleItem::OWNER + index);
     GateRef itemOffset = LoadFromTaggedArray(vtable, VTable::TupleItem::OFFSET + index);
     return builder_.Load(VariableType::JS_ANY(), itemOwner, builder_.TaggedGetInt(itemOffset));
+}
+
+VariableType TypeMCRLowering::GetVarType(PropertyLookupResult plr)
+{
+    if (plr.GetRepresentation() == Representation::DOUBLE) {
+        return kungfu::VariableType::FLOAT64();
+    } else if (plr.GetRepresentation() == Representation::INT) {
+        return kungfu::VariableType::INT32();
+    } else {
+        return kungfu::VariableType::INT64();
+    }
 }
 
 GateRef TypeMCRLowering::LoadSupers(GateRef hclass)

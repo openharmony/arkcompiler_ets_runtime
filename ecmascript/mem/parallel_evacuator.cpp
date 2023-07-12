@@ -149,25 +149,35 @@ void ParallelEvacuator::VerifyHeapObject(TaggedObject *object)
 {
     auto klass = object->GetClass();
     objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(object, klass,
-        [&]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end, [[maybe_unused]] bool isNative) {
+        [&](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
+            if (area == VisitObjectArea::IN_OBJECT) {
+                if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { VerifyValue(object, slot); })) {
+                    return;
+                };
+            }
             for (ObjectSlot slot = start; slot < end; slot++) {
-                JSTaggedValue value(slot.GetTaggedType());
-                if (value.IsHeapObject()) {
-                    if (value.IsWeakForHeapObject()) {
-                        continue;
-                    }
-                    Region *objectRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
-                    if (!heap_->IsFullMark() && !objectRegion->InYoungSpace()) {
-                        continue;
-                    }
-                    if (!objectRegion->Test(value.GetTaggedObject()) && !objectRegion->InAppSpawnSpace()) {
-                        LOG_GC(FATAL) << "Miss mark value: " << value.GetTaggedObject()
-                                            << ", body address:" << slot.SlotAddress()
-                                            << ", header address:" << object;
-                    }
-                }
+                VerifyValue(object, slot);
             }
         });
+}
+
+void ParallelEvacuator::VerifyValue(TaggedObject *object, ObjectSlot slot)
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsHeapObject()) {
+        if (value.IsWeakForHeapObject()) {
+            return;
+        }
+        Region *objectRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
+        if (!heap_->IsFullMark() && !objectRegion->InYoungSpace()) {
+            return;
+        }
+        if (!objectRegion->Test(value.GetTaggedObject()) && !objectRegion->InAppSpawnSpace()) {
+            LOG_GC(FATAL) << "Miss mark value: " << value.GetTaggedObject()
+                                << ", body address:" << slot.SlotAddress()
+                                << ", header address:" << object;
+        }
+    }
 }
 
 void ParallelEvacuator::UpdateReference()
@@ -376,7 +386,12 @@ void ParallelEvacuator::UpdateAndSweepNewRegionReference(Region *region)
 void ParallelEvacuator::UpdateNewObjectField(TaggedObject *object, JSHClass *cls)
 {
     objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(object, cls,
-        [this]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end, [[maybe_unused]] bool isNative) {
+        [this](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
+            if (area == VisitObjectArea::IN_OBJECT) {
+                if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { UpdateObjectSlot(slot); })) {
+                    return;
+                };
+            }
             for (ObjectSlot slot = start; slot < end; slot++) {
                 UpdateObjectSlot(slot);
             }

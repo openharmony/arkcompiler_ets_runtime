@@ -144,6 +144,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CheckAndCopyArray)                  \
     V(NewEcmaHClass)                      \
     V(UpdateLayOutAndAddTransition)       \
+    V(CopyAndUpdateObjLayout)             \
     V(NoticeThroughChainAndRefreshUser)   \
     V(JumpToCInterpreter)                 \
     V(StGlobalRecord)                     \

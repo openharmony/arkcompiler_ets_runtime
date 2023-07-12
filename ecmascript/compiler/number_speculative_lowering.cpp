@@ -80,6 +80,10 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitLoadArrayLength(gate);
             break;
         }
+        case OpCode::LOAD_PROPERTY: {
+            VisitLoadProperty(gate);
+            break;
+        }
         default:
             break;
     }
@@ -508,6 +512,31 @@ void NumberSpeculativeLowering::VisitLoadElement(GateRef gate)
             break;
     }
     acc_.SetGateType(gate, GateType::NJSValue());
+}
+
+void NumberSpeculativeLowering::VisitLoadProperty(GateRef gate)
+{
+    TypeInfo output = GetOutputType(gate);
+    if (output == TypeInfo::INT32 || output == TypeInfo::FLOAT64) {
+        Environment env(gate, circuit_, &builder_);
+        ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
+        GateRef receiver = acc_.GetValueIn(gate, 0);
+        GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
+        PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+        ASSERT(plr.IsLocal() || plr.IsFunction());
+
+        // Hole check?
+        GateRef result = Circuit::NullGate();
+        if (output == TypeInfo::FLOAT64) {
+            result = builder_.LoadConstOffset(VariableType::FLOAT64(), receiver, plr.GetOffset());
+            acc_.SetMachineType(gate, MachineType::F64);
+        } else {
+            result = builder_.LoadConstOffset(VariableType::INT32(), receiver, plr.GetOffset());
+            acc_.SetMachineType(gate, MachineType::I32);
+        }
+        acc_.SetGateType(gate, GateType::NJSValue());
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    }
 }
 
 void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)

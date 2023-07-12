@@ -103,7 +103,8 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
 
         BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, tsManager, &circuit,
                                        ctx.GetByteCodes(), hasTypes, enableMethodLog && log_->OutputCIR(),
-                                       passOptions_->EnableTypeLowering(), fullName, recordName, decoder, false);
+                                       passOptions_->EnableTypeLowering(), fullName, recordName, decoder, false,
+                                       passOptions_->EnableOptTrackField());
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
             builder.BytecodeToCircuit();

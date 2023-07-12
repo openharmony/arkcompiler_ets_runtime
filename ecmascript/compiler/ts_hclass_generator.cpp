@@ -40,7 +40,8 @@ void TSHClassGenerator::GenerateTSHClasses() const
     }
 }
 
-void TSHClassGenerator::UpdateTSHClassFromPGO(const kungfu::GateType &type, const PGOHClassLayoutDesc &desc) const
+void TSHClassGenerator::UpdateTSHClassFromPGO(const kungfu::GateType &type, const PGOHClassLayoutDesc &desc,
+    bool enableOptTrackField) const
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto hclassValue = tsManager_->GetTSHClass(type);
@@ -49,6 +50,20 @@ void TSHClassGenerator::UpdateTSHClassFromPGO(const kungfu::GateType &type, cons
     }
 
     tsManager_->InsertPtToGtMap(desc.GetClassType(), type);
+    if (!enableOptTrackField) {
+        return;
+    }
+
+    std::vector<JSHClass *> superHClasses;
+    kungfu::GateType current = type;
+    while (tsManager_->GetSuperGateType(current)) {
+        auto superHClassValue = tsManager_->GetTSHClass(current);
+        if (!superHClassValue.IsJSHClass()) {
+            break;
+        }
+        superHClasses.emplace_back(JSHClass::Cast(superHClassValue.GetTaggedObject()));
+    }
+
     auto hclass = JSHClass::Cast(hclassValue.GetTaggedObject());
     const JSThread *thread = tsManager_->GetThread();
     LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
@@ -62,12 +77,24 @@ void TSHClassGenerator::UpdateTSHClassFromPGO(const kungfu::GateType &type, cons
         PGOHandler newHandler;
         if (desc.FindDescWithKey(keyString, newHandler)) {
             auto attr = layoutInfo->GetAttr(i);
-            if (newHandler.GetTrackType() == TrackType::DOUBLE) {
-                attr.SetRepresentation(Representation::DOUBLE);
-            } else {
-                attr.SetRepresentation(Representation::OBJECT);
+            if (newHandler.SetAttribute(attr)) {
+                hclass->SetIsAllTaggedProp(false);
             }
             layoutInfo->SetNormalAttr(thread, i, attr);
+
+            // Update super class representation
+            for (auto superHClass : superHClasses) {
+                int entry = JSHClass::FindPropertyEntry(thread, superHClass, key);
+                if (entry == -1) {
+                    continue;
+                }
+                auto superLayout = LayoutInfo::Cast(superHClass->GetLayout().GetTaggedObject());
+                PropertyAttributes superAttr = superLayout->GetAttr(entry);
+                if (newHandler.SetAttribute(superAttr)) {
+                    superHClass->SetIsAllTaggedProp(false);
+                }
+                superLayout->SetNormalAttr(thread, entry, superAttr);
+            }
         }
     }
 }
@@ -160,7 +187,7 @@ JSHandle<JSHClass> TSHClassGenerator::CreateIHClass(const JSThread *thread,
             ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
             PropertyAttributes attributes = PropertyAttributes::Default();
             attributes.SetIsInlinedProps(true);
-            attributes.SetRepresentation(Representation::MIXED);
+            attributes.SetRepresentation(Representation::NONE);
             attributes.SetOffset(index);
             layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
         }
@@ -228,7 +255,7 @@ JSHandle<JSHClass> TSHClassGenerator::CreatePHClass(const JSThread *thread,
                 attributes.SetIsAccessor(true);
             }
             attributes.SetIsInlinedProps(true);
-            attributes.SetRepresentation(Representation::MIXED);
+            attributes.SetRepresentation(Representation::NONE);
             attributes.SetOffset(index);
             layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
         }
@@ -302,7 +329,7 @@ JSHandle<JSHClass> TSHClassGenerator::CreateCHClass(const JSThread *thread,
             ASSERT_PRINT(JSTaggedValue::IsPropertyKey(JSHandle<JSTaggedValue>(thread, tsPropKey)),
                          "Key is not a property key");
             attributes.SetIsInlinedProps(true);
-            attributes.SetRepresentation(Representation::MIXED);
+            attributes.SetRepresentation(Representation::NONE);
             attributes.SetOffset(index - numNonStaticFunc);
             layout->AddKey(thread, index - numNonStaticFunc, tsPropKey, attributes);
         }
@@ -311,7 +338,7 @@ JSHandle<JSHClass> TSHClassGenerator::CreateCHClass(const JSThread *thread,
             JSTaggedValue tsPropKey = tsLayout->GetKey(index - ClassInfoExtractor::STATIC_RESERVED_LENGTH);
             PropertyAttributes attributes = PropertyAttributes::Default();
             attributes.SetIsInlinedProps(true);
-            attributes.SetRepresentation(Representation::MIXED);
+            attributes.SetRepresentation(Representation::NONE);
             attributes.SetOffset(index + numStaticFunc);
             layout->AddKey(thread, index + numStaticFunc, tsPropKey, attributes);
         }

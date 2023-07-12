@@ -52,6 +52,7 @@ private:
 
     GateRef SetOutputType(GateRef gate, PGOSampleType type);
     GateRef SetOutputType(GateRef gate, GateType type);
+    GateRef SetOutputType(GateRef gate, Representation rep);
     GateRef VisitPhi(GateRef gate);
     GateRef VisitConstant(GateRef gate);
     GateRef VisitTypedBinaryOp(GateRef gate);
@@ -76,6 +77,7 @@ private:
     GateRef VisitLoadElement(GateRef gate);
     GateRef VisitStoreElement(GateRef gate);
     GateRef VisitStoreProperty(GateRef gate);
+    GateRef VisitLoadProperty(GateRef gate);
     GateRef VisitNumberRelated(GateRef gate);
     GateRef VisitCallBuiltins(GateRef gate);
     GateRef VisitOthers(GateRef gate);
@@ -123,6 +125,7 @@ private:
         typeInfos_[index] = info;
     }
 
+    static constexpr size_t PROPERTY_LOOKUP_RESULT_INDEX = 1;
     GateAccessor acc_;
     CircuitBuilder builder_;
     TSManager* tsManager_ {nullptr};

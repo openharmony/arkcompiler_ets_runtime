@@ -198,7 +198,7 @@ JSHandle<JSHClass> ClassInfoExtractor::CreatePrototypeHClass(JSThread *thread, c
             }
 
             attributes.SetIsInlinedProps(true);
-            attributes.SetRepresentation(Representation::MIXED);
+            attributes.SetRepresentation(Representation::TAGGED);
             attributes.SetOffset(index);
             layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
         }
@@ -273,7 +273,7 @@ JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread,
             }
 
             attributes.SetIsInlinedProps(true);
-            attributes.SetRepresentation(Representation::MIXED);
+            attributes.SetRepresentation(Representation::TAGGED);
             attributes.SetOffset(index);
             layout->AddKey(thread, index, key.GetTaggedValue(), attributes);
         }

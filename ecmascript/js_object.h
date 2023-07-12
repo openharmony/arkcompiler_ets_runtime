@@ -614,12 +614,19 @@ public:
 
     static JSHandle<NameDictionary> TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &receiver);
 
+    inline void SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value);
+    template <bool needBarrier = true>
     inline void SetPropertyInlinedProps(const JSThread *thread, uint32_t index, JSTaggedValue value);
+    template <bool needBarrier = true>
     inline void SetPropertyInlinedProps(const JSThread *thread, const JSHClass *hclass, uint32_t index,
                                         JSTaggedValue value);
+    inline JSTaggedValue GetPropertyInlinedPropsWithRep(uint32_t index, PropertyAttributes attr) const;
+    inline JSTaggedValue GetPropertyInlinedPropsWithRep(const JSHClass *hclass, uint32_t index,
+        PropertyAttributes attr) const;
     inline JSTaggedValue GetPropertyInlinedProps(uint32_t index) const;
     inline JSTaggedValue GetPropertyInlinedProps(const JSHClass *hclass, uint32_t index) const;
     inline JSTaggedValue GetProperty(const JSHClass *hclass, PropertyAttributes attr) const;
+    template <bool needBarrier = true>
     inline void SetProperty(const JSThread *thread, const JSHClass *hclass, PropertyAttributes attr,
                             JSTaggedValue value);
 

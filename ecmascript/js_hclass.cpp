@@ -148,6 +148,7 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, ui
     SetExtensible(true);
     SetIsPrototype(false);
     SetHasDeleteProperty(false);
+    SetIsAllTaggedProp(true);
     SetElementRepresentation(Representation::NONE);
     SetTransitions(thread, JSTaggedValue::Undefined());
     SetProtoChangeMarker(thread, JSTaggedValue::Null());
@@ -432,6 +433,34 @@ void JSHClass::TransitionToDictionary(const JSThread *thread, const JSHandle<JSO
     }
 }
 
+void JSHClass::TransitionForRepChange(const JSThread *thread, const JSHandle<JSObject> &receiver,
+    const JSHandle<JSTaggedValue> &key, PropertyAttributes attr)
+{
+    JSHandle<JSHClass> oldHClass(thread, receiver->GetJSHClass());
+
+    // 1. Create hclass and copy layout
+    JSHandle<JSHClass> newHClass = JSHClass::Clone(thread, oldHClass);
+
+    JSHandle<LayoutInfo> oldLayout(thread, newHClass->GetLayout());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<LayoutInfo> newLayout(factory->CopyLayoutInfo(oldLayout));
+    newHClass->SetLayout(thread, newLayout);
+
+    // 2. update attr
+    auto hclass = JSHClass::Cast(newHClass.GetTaggedValue().GetTaggedObject());
+    int entry = JSHClass::FindPropertyEntry(thread, hclass, key.GetTaggedValue());
+    ASSERT(entry != -1);
+    newLayout->SetNormalAttr(thread, entry, attr);
+
+    // 3. update hclass in object.
+#if ECMASCRIPT_ENABLE_IC
+    JSHClass::NotifyHclassChanged(thread, oldHClass, newHClass, key.GetTaggedValue());
+#endif
+
+    receiver->SetClass(newHClass);
+    // 4. Maybe Transition And Maintain subtypeing check
+}
+
 JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
     JSTaggedValue proto = jshclass->GetPrototype();
@@ -657,6 +686,7 @@ PropertyLookupResult JSHClass::LookupPropertyInAotHClass(const JSThread *thread,
         if (attr.IsAccessor()) {
             result.SetIsAccessor(true);
         }
+        result.SetRepresentation(attr.GetRepresentation());
         result.SetIsWritable(attr.IsWritable());
         return result;
     }

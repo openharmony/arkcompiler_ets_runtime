@@ -83,6 +83,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-inlining:              Enable inlining function for aot compiler: Default: 'true'\n"
     "--compiler-opt-static-method:         Enable static method optimize for aot compiler: Default: 'false'\n"
     "--compiler-opt-pgotype:               Enable pgo type for aot compiler: Default: 'true'\n"
+    "--compiler-opt-track-field:           Enable track field for aot compiler: Default: 'false'\n"
     "--entry-point:                        Full name of entrypoint function. Default: '_GLOBAL::func_main_0'\n"
     "--force-full-gc:                      If true trigger full gc, else trigger semi and old gc. Default: 'true'\n"
     "--framework-abc-file:                 Snapshot file. Default: 'strip.native.min.abc'\n"
@@ -179,6 +180,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-opt-inlining", required_argument, nullptr, OPTION_COMPILER_OPT_INLINING},
         {"compiler-opt-static-method", required_argument, nullptr, OPTION_COMPILER_OPT_STATIC_METHOD},
         {"compiler-opt-pgotype", required_argument, nullptr, OPTION_COMPILER_OPT_PGOTYPE},
+        {"compiler-opt-track-field", required_argument, nullptr, OPTION_COMPILER_OPT_TRACK_FIELD},
         {"entry-point", required_argument, nullptr, OPTION_ENTRY_POINT},
         {"force-full-gc", required_argument, nullptr, OPTION_FORCE_FULL_GC},
         {"gc-thread-num", required_argument, nullptr, OPTION_GC_THREADNUM},
@@ -658,6 +660,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableOptPGOType(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_TRACK_FIELD:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableOptTrackField(argBool);
                 } else {
                     return false;
                 }

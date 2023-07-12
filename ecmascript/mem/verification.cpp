@@ -25,25 +25,44 @@ void VerifyObjectVisitor::VisitAllObjects(TaggedObject *obj)
 {
     auto jsHclass = obj->GetClass();
     objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(
-        obj, jsHclass, [this]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                              [[maybe_unused]] bool isNative) {
-            for (ObjectSlot slot = start; slot < end; slot++) {
-                JSTaggedValue value(slot.GetTaggedType());
-                if (value.IsWeak()) {
-                    if (!heap_->IsAlive(value.GetTaggedWeakRef())) {
-                        LOG_GC(ERROR) << "Heap verify detected a dead weak object " << value.GetTaggedObject()
-                                            << " at object:" << slot.SlotAddress();
-                        ++(*failCount_);
+        obj, jsHclass, [this](TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                              VisitObjectArea area) {
+            if (area == VisitObjectArea::IN_OBJECT) {
+                auto hclass = root->GetClass();
+                if (!hclass->IsAllTaggedProp()) {
+                    int index = 0;
+                    for (ObjectSlot slot = start; slot < end; slot++) {
+                        auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+                        auto attr = layout->GetAttr(index++);
+                        if (attr.IsTaggedRep()) {
+                            VisitObject(slot);
+                        }
                     }
-                } else if (value.IsHeapObject()) {
-                    if (!heap_->IsAlive(value.GetTaggedObject())) {
-                        LOG_GC(ERROR) << "Heap verify detected a dead object at " << value.GetTaggedObject()
-                                            << " at object:" << slot.SlotAddress();
-                        ++(*failCount_);
-                    }
+                    return;
                 }
             }
+            for (ObjectSlot slot = start; slot < end; slot++) {
+                VisitObject(slot);
+            }
         });
+}
+
+void VerifyObjectVisitor::VisitObject(ObjectSlot slot)
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsWeak()) {
+        if (!heap_->IsAlive(value.GetTaggedWeakRef())) {
+            LOG_GC(ERROR) << "Heap verify detected a dead weak object " << value.GetTaggedObject()
+                                << " at object:" << slot.SlotAddress();
+            ++(*failCount_);
+        }
+    } else if (value.IsHeapObject()) {
+        if (!heap_->IsAlive(value.GetTaggedObject())) {
+            LOG_GC(ERROR) << "Heap verify detected a dead object at " << value.GetTaggedObject()
+                                << " at object:" << slot.SlotAddress();
+            ++(*failCount_);
+        }
+    }
 }
 
 void VerifyObjectVisitor::operator()(TaggedObject *obj, JSTaggedValue value)

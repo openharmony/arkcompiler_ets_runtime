@@ -39,6 +39,7 @@ public:
         return reinterpret_cast<LayoutInfo *>(obj);
     }
 
+    void Initialize(const JSThread *thread, int num = 0);
     int GetPropertiesCapacity() const;
     int NumberOfElements() const;
     void SetNumberOfElements(const JSThread *thread, int properties);

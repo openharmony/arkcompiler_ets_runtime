@@ -36,6 +36,7 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/property_attributes.h"
 
 namespace panda::ecmascript::kungfu {
 using JSFunction = panda::ecmascript::JSFunction;
@@ -743,6 +744,16 @@ inline GateRef StubBuilder::DoubleToTaggedDoublePtr(GateRef x)
     return env_->GetBuilder()->DoubleToTaggedDoublePtr(x);
 }
 
+inline GateRef StubBuilder::TaggedPtrToTaggedDoublePtr(GateRef x)
+{
+    return DoubleToTaggedDoublePtr(CastInt64ToFloat64(ChangeTaggedPointerToInt64(x)));
+}
+
+inline GateRef StubBuilder::TaggedPtrToTaggedIntPtr(GateRef x)
+{
+    return IntToTaggedPtr(TruncInt64ToInt32(ChangeTaggedPointerToInt64(x)));
+}
+
 inline GateRef StubBuilder::CastDoubleToInt64(GateRef x)
 {
     return env_->GetBuilder()->CastDoubleToInt64(x);
@@ -1380,6 +1391,12 @@ inline GateRef StubBuilder::HandlerBaseGetAttrIndex(GateRef attr)
         Int32((1LLU << HandlerBase::AttrIndexBit::SIZE) - 1));
 }
 
+inline GateRef StubBuilder::HandlerBaseGetRep(GateRef attr)
+{
+    return Int32And(Int32LSR(attr, Int32(HandlerBase::RepresentationBit::START_BIT)),
+        Int32((1LLU << HandlerBase::RepresentationBit::SIZE) - 1));
+}
+
 inline GateRef StubBuilder::IsInternalAccessor(GateRef attr)
 {
     return Int32NotEqual(
@@ -1486,10 +1503,29 @@ inline GateRef StubBuilder::GetSecondFromTreeString(GateRef string)
     return Load(VariableType::JS_POINTER(), string, offset);
 }
 
+inline GateRef StubBuilder::GetIsAllTaggedPropFromHClass(GateRef hclass)
+{
+    GateRef bitfield = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
+    return Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::IsAllTaggedPropBit::START_BIT)),
+        Int32((1LLU << JSHClass::IsAllTaggedPropBit::SIZE) - 1));
+}
+
 inline void StubBuilder::SetBitFieldToHClass(GateRef glue, GateRef hClass, GateRef bitfield)
 {
     GateRef offset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
     Store(VariableType::INT32(), glue, hClass, offset, bitfield);
+}
+
+inline void StubBuilder::SetIsAllTaggedProp(GateRef glue, GateRef hclass, GateRef hasRep)
+{
+    GateRef bitfield1 = Load(VariableType::INT32(), hclass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));
+    GateRef mask = Int32LSL(
+        Int32((1LU << JSHClass::IsAllTaggedPropBit::SIZE) - 1),
+        Int32(JSHClass::IsAllTaggedPropBit::START_BIT));
+    GateRef newVal = Int32Or(Int32And(bitfield1, Int32Not(mask)),
+        Int32LSL(hasRep, Int32(JSHClass::IsAllTaggedPropBit::START_BIT)));
+    Store(VariableType::INT32(), glue, hclass, IntPtr(JSHClass::BIT_FIELD1_OFFSET), newVal);
 }
 
 inline void StubBuilder::SetPrototypeToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef proto)
@@ -1568,6 +1604,14 @@ inline GateRef StubBuilder::GetPropertyInlinedProps(GateRef obj, GateRef hClass,
     return Load(VariableType::JS_ANY(), obj, ZExtInt32ToInt64(propOffset));
 }
 
+inline GateRef StubBuilder::GetInlinedPropOffsetFromHClass(GateRef hclass, GateRef index)
+{
+    GateRef inlinedPropsStart = GetInlinedPropsStartFromHClass(hclass);
+    GateRef propOffset = Int32Mul(
+        Int32Add(inlinedPropsStart, index), Int32(JSTaggedValue::TaggedTypeSize()));
+    return ZExtInt32ToInt64(propOffset);
+}
+
 inline void StubBuilder::IncNumberOfProps(GateRef glue, GateRef hClass)
 {
     GateRef propNums = GetNumberOfPropsFromHClass(hClass);
@@ -1624,6 +1668,22 @@ inline GateRef StubBuilder::GetInlinedPropsStartFromHClass(GateRef hClass)
     return Int32And(Int32LSR(bitfield,
         Int32(JSHClass::InlinedPropsStartBits::START_BIT)),
         Int32((1LU << JSHClass::InlinedPropsStartBits::SIZE) - 1));
+}
+
+inline void StubBuilder::SetValueToTaggedArrayWithAttr(
+    GateRef glue, GateRef array, GateRef index, GateRef key, GateRef val, GateRef attr)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
+    SetValueWithAttr(glue, array, dataOffset, key, val, attr);
+}
+
+inline void StubBuilder::SetValueToTaggedArrayWithRep(
+    GateRef glue, GateRef array, GateRef index, GateRef val, GateRef rep, Label *repChange)
+{
+    GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+    GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
+    SetValueWithRep(glue, array, dataOffset, val, rep, repChange);
 }
 
 inline void StubBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array,
@@ -1713,6 +1773,11 @@ inline GateRef StubBuilder::GetInt32OfTInt(GateRef x)
 inline GateRef StubBuilder::TaggedCastToIntPtr(GateRef x)
 {
     return env_->Is32Bit() ? TruncInt64ToInt32(GetInt64OfTInt(x)) : GetInt64OfTInt(x);
+}
+
+inline GateRef StubBuilder::GetDoubleOfTInt(GateRef x)
+{
+    return ChangeInt32ToFloat64(GetInt32OfTInt(x));
 }
 
 inline GateRef StubBuilder::GetDoubleOfTDouble(GateRef x)
@@ -1950,6 +2015,7 @@ inline GateRef StubBuilder::SetIsInlinePropsFieldInPropAttr(GateRef attr, GateRe
     return newVal;
 }
 
+
 inline GateRef StubBuilder::SetTrackTypeInPropAttr(GateRef attr, GateRef type)
 {
     GateRef mask = Int32LSL(
@@ -1965,6 +2031,34 @@ inline GateRef StubBuilder::GetTrackTypeInPropAttr(GateRef attr)
     return Int32And(
         Int32LSR(attr, Int32(PropertyAttributes::TrackTypeField::START_BIT)),
         Int32((1LLU << PropertyAttributes::TrackTypeField::SIZE) - 1));
+}
+
+inline GateRef StubBuilder::GetRepInPropAttr(GateRef attr)
+{
+    return Int32And(
+        Int32LSR(attr, Int32(PropertyAttributes::RepresentationField::START_BIT)),
+        Int32((1LLU << PropertyAttributes::RepresentationField::SIZE) - 1));
+}
+
+inline GateRef StubBuilder::IsIntRepInPropAttr(GateRef rep)
+{
+    return Int32Equal(rep, Int32(static_cast<int32_t>(Representation::INT)));
+}
+
+inline GateRef StubBuilder::IsDoubleRepInPropAttr(GateRef rep)
+{
+    return Int32Equal(rep, Int32(static_cast<int32_t>(Representation::DOUBLE)));
+}
+
+inline GateRef StubBuilder::SetTaggedRepInPropAttr(GateRef attr)
+{
+    GateRef mask = Int32LSL(
+        Int32((1LU << PropertyAttributes::RepresentationField::SIZE) - 1),
+        Int32(PropertyAttributes::RepresentationField::START_BIT));
+    GateRef targetType = Int32(static_cast<int32_t>(Representation::TAGGED));
+    GateRef newVal = Int32Or(Int32And(attr, Int32Not(mask)),
+        Int32LSL(targetType, Int32(PropertyAttributes::RepresentationField::START_BIT)));
+    return newVal;
 }
 
 inline void StubBuilder::SetHasConstructorToHClass(GateRef glue, GateRef hClass, GateRef value)

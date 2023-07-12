@@ -30,6 +30,7 @@
 #include "ecmascript/mem/remembered_set.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_type.h"
+#include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_table.h"
 
@@ -453,13 +454,15 @@ GateRef StubBuilder::JSObjectGetProperty(GateRef obj, GateRef hclass, GateRef at
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     Label inlinedProp(env);
     Label notInlinedProp(env);
+    Label post(env);
     GateRef attrOffset = GetOffsetFieldInPropAttr(attr);
+    GateRef rep = GetRepInPropAttr(attr);
     Branch(IsInlinedProperty(attr), &inlinedProp, &notInlinedProp);
     {
         Bind(&inlinedProp);
         {
             result = GetPropertyInlinedProps(obj, hclass, attrOffset);
-            Jump(&exit);
+            Jump(&post);
         }
         Bind(&notInlinedProp);
         {
@@ -468,7 +471,28 @@ GateRef StubBuilder::JSObjectGetProperty(GateRef obj, GateRef hclass, GateRef at
                 Load(VariableType::INT64(), obj, IntPtr(JSObject::PROPERTIES_OFFSET));
             result = GetValueFromTaggedArray(array, Int32Sub(attrOffset,
                 GetInlinedPropertiesFromHClass(hclass)));
+            Jump(&post);
+        }
+    }
+    Bind(&post);
+    {
+        Label nonDoubleToTagged(env);
+        Label doubleToTagged(env);
+        Branch(IsDoubleRepInPropAttr(rep), &doubleToTagged, &nonDoubleToTagged);
+        Bind(&doubleToTagged);
+        {
+            result = TaggedPtrToTaggedDoublePtr(*result);
             Jump(&exit);
+        }
+        Bind(&nonDoubleToTagged);
+        {
+            Label intToTagged(env);
+            Branch(IsIntRepInPropAttr(rep), &intToTagged, &exit);
+            Bind(&intToTagged);
+            {
+                result = TaggedPtrToTaggedIntPtr(*result);
+                Jump(&exit);
+            }
         }
     }
     Bind(&exit);
@@ -477,7 +501,8 @@ GateRef StubBuilder::JSObjectGetProperty(GateRef obj, GateRef hclass, GateRef at
     return ret;
 }
 
-void StubBuilder::JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hclass, GateRef attr, GateRef value)
+void StubBuilder::JSObjectSetProperty(
+    GateRef glue, GateRef obj, GateRef hclass, GateRef attr, GateRef key, GateRef value)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -485,12 +510,13 @@ void StubBuilder::JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hclass,
     Label exit(env);
     Label inlinedProp(env);
     Label notInlinedProp(env);
-    GateRef attrOffset = GetOffsetFieldInPropAttr(attr);
+    GateRef attrIndex = GetOffsetFieldInPropAttr(attr);
     Branch(IsInlinedProperty(attr), &inlinedProp, &notInlinedProp);
     {
         Bind(&inlinedProp);
         {
-            SetPropertyInlinedProps(glue, obj, hclass, value, attrOffset);
+            GateRef offset = GetInlinedPropOffsetFromHClass(hclass, attrIndex);
+            SetValueWithAttr(glue, obj, offset, key, value, attr);
             Jump(&exit);
         }
         Bind(&notInlinedProp);
@@ -498,8 +524,8 @@ void StubBuilder::JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hclass,
             // compute outOfLineProp offset, get it and return
             GateRef array = Load(VariableType::JS_POINTER(), obj,
                                  IntPtr(JSObject::PROPERTIES_OFFSET));
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, Int32Sub(attrOffset,
-                GetInlinedPropertiesFromHClass(hclass)), value);
+            GateRef offset = Int32Sub(attrIndex, GetInlinedPropertiesFromHClass(hclass));
+            SetValueToTaggedArrayWithAttr(glue, array, offset, key, value, attr);
             Jump(&exit);
         }
     }
@@ -771,6 +797,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
             SetPropertyInlinedProps(glue, receiver, hclass, value, numberOfProps);
             attr = SetOffsetFieldInPropAttr(*attr, numberOfProps);
             attr = SetIsInlinePropsFieldInPropAttr(*attr, Int32(1)); // 1: set inInlineProps true
+            attr = SetTaggedRepInPropAttr(*attr);
             attr = ProfilerStubBuilder(env).UpdateTrackTypeInPropAttr(*attr, value, callback);
             JSHClassAddProperty(glue, receiver, key, *attr);
             callback.ProfileObjLayoutByStore(receiver);
@@ -851,6 +878,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
             Bind(&afterArrLenCon);
             {
                 attr = SetOffsetFieldInPropAttr(*attr, numberOfProps);
+                attr = SetTaggedRepInPropAttr(*attr);
                 attr = ProfilerStubBuilder(env).UpdateTrackTypeInPropAttr(*attr, value, callback);
                 JSHClassAddProperty(glue, receiver, key, *attr);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array, outProps, value);
@@ -879,7 +907,7 @@ GateRef StubBuilder::TaggedToRepresentation(GateRef value)
     env->SubCfgEntry(&entry);
     Label exit(env);
     DEFVARIABLE(resultRep, VariableType::INT64(),
-                Int64(static_cast<int32_t>(Representation::OBJECT)));
+                Int64(static_cast<int32_t>(Representation::TAGGED)));
     Label isInt(env);
     Label notInt(env);
 
@@ -901,7 +929,7 @@ GateRef StubBuilder::TaggedToRepresentation(GateRef value)
         }
         Bind(&notDouble);
         {
-            resultRep = Int64(static_cast<int32_t>(Representation::OBJECT));
+            resultRep = Int64(static_cast<int32_t>(Representation::TAGGED));
             Jump(&exit);
         }
     }
@@ -940,6 +968,102 @@ void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef o
         }
     }
 }
+
+void StubBuilder::SetValueWithAttr(GateRef glue, GateRef obj, GateRef offset, GateRef key, GateRef value, GateRef attr)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    Label exit(env);
+    Label repChange(env);
+    GateRef rep = GetRepInPropAttr(attr);
+    SetValueWithRep(glue, obj, offset, value, rep, &repChange);
+    Jump(&exit);
+    Bind(&repChange);
+    {
+        attr = SetTaggedRepInPropAttr(attr);
+        TransitionForRepChange(glue, obj, key, attr);
+        Store(VariableType::JS_ANY(), glue, obj, offset, value);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+void StubBuilder::SetValueWithRep(
+    GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef rep, Label *repChange)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    Label exit(env);
+    Label repIsDouble(env);
+    Label repIsNonDouble(env);
+    Branch(IsDoubleRepInPropAttr(rep), &repIsDouble, &repIsNonDouble);
+    Bind(&repIsDouble);
+    {
+        Label valueIsInt(env);
+        Label valueIsNotInt(env);
+        Branch(TaggedIsInt(value), &valueIsInt, &valueIsNotInt);
+        Bind(&valueIsInt);
+        {
+            GateRef result = GetDoubleOfTInt(value);
+            Store(VariableType::FLOAT64(), glue, obj, offset, result);
+            Jump(&exit);
+        }
+        Bind(&valueIsNotInt);
+        {
+            Label valueIsObject(env);
+            Label valueIsDouble(env);
+            Branch(TaggedIsObject(value), &valueIsObject, &valueIsDouble);
+            Bind(&valueIsDouble);
+            {
+                // TaggedDouble to double
+                GateRef result = GetDoubleOfTDouble(value);
+                Store(VariableType::FLOAT64(), glue, obj, offset, result);
+                Jump(&exit);
+            }
+            Bind(&valueIsObject);
+            {
+                Jump(repChange);
+            }
+        }
+    }
+    Bind(&repIsNonDouble);
+    {
+        Label repIsInt(env);
+        Label repIsTagged(env);
+        Branch(IsIntRepInPropAttr(rep), &repIsInt, &repIsTagged);
+        Bind(&repIsInt);
+        {
+            Label valueIsInt(env);
+            Label valueIsNotInt(env);
+            Branch(TaggedIsInt(value), &valueIsInt, &valueIsNotInt);
+            Bind(&valueIsInt);
+            {
+                GateRef result = GetInt32OfTInt(value);
+                Store(VariableType::INT32(), glue, obj, offset, result);
+                Jump(&exit);
+            }
+            Bind(&valueIsNotInt);
+            {
+                Jump(repChange);
+            }
+        }
+        Bind(&repIsTagged);
+        {
+            Store(VariableType::JS_ANY(), glue, obj, offset, value);
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    env->SubCfgExit();
+    return;
+}
+
 
 void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value)
 {
@@ -1276,6 +1400,7 @@ GateRef StubBuilder::LoadFromField(GateRef receiver, GateRef handlerInfo)
     Label exit(env);
     Label handlerInfoIsInlinedProps(env);
     Label handlerInfoNotInlinedProps(env);
+    Label handlerPost(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef index = HandlerBaseGetOffset(handlerInfo);
     Branch(HandlerBaseIsInlinedProperty(handlerInfo), &handlerInfoIsInlinedProps, &handlerInfoNotInlinedProps);
@@ -1283,12 +1408,34 @@ GateRef StubBuilder::LoadFromField(GateRef receiver, GateRef handlerInfo)
     {
         result = Load(VariableType::JS_ANY(), receiver, PtrMul(ZExtInt32ToPtr(index),
             IntPtr(JSTaggedValue::TaggedTypeSize())));
-        Jump(&exit);
+        Jump(&handlerPost);
     }
     Bind(&handlerInfoNotInlinedProps);
     {
         result = GetValueFromTaggedArray(GetPropertiesArray(receiver), index);
-        Jump(&exit);
+        Jump(&handlerPost);
+    }
+    Bind(&handlerPost);
+    {
+        Label nonDoubleToTagged(env);
+        Label doubleToTagged(env);
+        GateRef rep = HandlerBaseGetRep(handlerInfo);
+        Branch(IsDoubleRepInPropAttr(rep), &doubleToTagged, &nonDoubleToTagged);
+        Bind(&doubleToTagged);
+        {
+            result = TaggedPtrToTaggedDoublePtr(*result);
+            Jump(&exit);
+        }
+        Bind(&nonDoubleToTagged);
+        {
+            Label intToTagged(env);
+            Branch(IsIntRepInPropAttr(rep), &intToTagged, &exit);
+            Bind(&intToTagged);
+            {
+                result = TaggedPtrToTaggedIntPtr(*result);
+                Jump(&exit);
+            }
+        }
     }
     Bind(&exit);
     auto ret = *result;
@@ -1641,7 +1788,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
             Branch(IsField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
             Bind(&handlerInfoIsField);
             {
-                StoreField(glue, receiver, value, handlerInfo, callback);
+                result = StoreField(glue, receiver, value, handlerInfo, callback);
                 Jump(&exit);
             }
             Bind(&handlerInfoNotField);
@@ -1656,7 +1803,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
             Branch(TaggedIsTransitionHandler(*handler), &handlerIsTransitionHandler, &handlerNotTransitionHandler);
             Bind(&handlerIsTransitionHandler);
             {
-                StoreWithTransition(glue, receiver, value, *handler, callback);
+                result = StoreWithTransition(glue, receiver, value, *handler, callback);
                 Jump(&exit);
             }
             Bind(&handlerNotTransitionHandler);
@@ -1669,7 +1816,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                     Branch(GetHasChanged(cellValue), &cellHasChanged, &cellNotChanged);
                     Bind(&cellNotChanged);
                     {
-                        StoreWithTransition(glue, receiver, value, *handler, callback, true);
+                        result = StoreWithTransition(glue, receiver, value, *handler, callback, true);
                         Jump(&exit);
                     }
                 }
@@ -1712,7 +1859,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                     Branch(IsField(handlerInfo), &aotHandlerInfoIsField, &aotHandlerInfoNotField);
                     Bind(&aotHandlerInfoIsField);
                     {
-                        StoreField(glue, receiver, value, handlerInfo, callback);
+                        result = StoreField(glue, receiver, value, handlerInfo, callback);
                         Jump(&exit);
                     }
                     Bind(&aotHandlerInfoNotField);
@@ -1738,7 +1885,8 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
     return ret;
 }
 
-void StubBuilder::StoreField(GateRef glue, GateRef receiver, GateRef value, GateRef handler, ProfileOperation callback)
+GateRef StubBuilder::StoreField(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
+    ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1748,28 +1896,36 @@ void StubBuilder::StoreField(GateRef glue, GateRef receiver, GateRef value, Gate
     Label handlerIsInlinedProperty(env);
     Label handlerNotInlinedProperty(env);
     GateRef index = HandlerBaseGetOffset(handler);
+    GateRef rep = HandlerBaseGetRep(handler);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    Label repChange(env);
     Branch(HandlerBaseIsInlinedProperty(handler), &handlerIsInlinedProperty, &handlerNotInlinedProperty);
     Bind(&handlerIsInlinedProperty);
     {
-        Store(VariableType::JS_ANY(),
-              glue,
-              receiver,
-              PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize())),
-              value);
+        GateRef toOffset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+        SetValueWithRep(glue, receiver, toOffset, value, rep, &repChange);
         Jump(&exit);
     }
     Bind(&handlerNotInlinedProperty);
     {
         GateRef array = GetPropertiesArray(receiver);
-        SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, index, value);
+        SetValueToTaggedArrayWithRep(glue, array, index, value, rep, &repChange);
         Jump(&exit);
     }
+    Bind(&repChange);
+    {
+        result = Hole();
+        Jump(&exit);
+    }
+
     Bind(&exit);
+    auto ret = *result;
     env->SubCfgExit();
+    return ret;
 }
 
-void StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
-                                      ProfileOperation callback, bool withPrototype)
+GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
+                                         ProfileOperation callback, bool withPrototype)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1780,6 +1936,7 @@ void StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef va
     Label handlerInfoNotInlinedProps(env);
     Label indexMoreCapacity(env);
     Label indexLessCapacity(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef newHClass;
     GateRef handlerInfo;
     if (withPrototype) {
@@ -1795,6 +1952,7 @@ void StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef va
     Bind(&handlerInfoNotInlinedProps);
     {
         ProfilerStubBuilder(env).UpdatePropAttrIC(glue, receiver, value, handlerInfo, callback);
+        Label repChange(env);
         GateRef array = GetPropertiesArray(receiver);
         GateRef capacity = GetLengthOfTaggedArray(array);
         GateRef index = HandlerBaseGetOffset(handlerInfo);
@@ -1809,21 +1967,27 @@ void StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef va
         }
         Bind(&indexLessCapacity);
         {
-            Store(VariableType::JS_ANY(),
-                  glue,
-                  PtrAdd(array, IntPtr(TaggedArray::DATA_OFFSET)),
-                  PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize())),
-                  value);
+            GateRef rep = HandlerBaseGetRep(handlerInfo);
+            GateRef base = PtrAdd(array, IntPtr(TaggedArray::DATA_OFFSET));
+            GateRef toIndex = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
+            SetValueWithRep(glue, base, toIndex, value, rep, &repChange);
+            Jump(&exit);
+        }
+        Bind(&repChange);
+        {
+            result = Hole();
             Jump(&exit);
         }
     }
     Bind(&handlerInfoIsInlinedProps);
     {
-        StoreField(glue, receiver, value, handlerInfo, callback);
+        result = StoreField(glue, receiver, value, handlerInfo, callback);
         Jump(&exit);
     }
     Bind(&exit);
+    auto ret = *result;
     env->SubCfgExit();
+    return ret;
 }
 
 GateRef StubBuilder::StoreGlobal(GateRef glue, GateRef value, GateRef cell)
@@ -2303,6 +2467,7 @@ void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHCla
     auto proto = GetPrototypeFromHClass(srcHClass);
     SetPrototypeToHClass(VariableType::JS_POINTER(), glue, dstHClass, proto);
     SetBitFieldToHClass(glue, dstHClass, GetBitFieldFromHClass(srcHClass));
+    SetIsAllTaggedProp(glue, dstHClass, GetIsAllTaggedPropFromHClass(srcHClass));
     SetNumberOfPropsToHClass(glue, dstHClass, GetNumberOfPropsFromHClass(srcHClass));
     SetTransitionsToHClass(VariableType::INT64(), glue, dstHClass, Undefined());
     SetProtoChangeDetailsToHClass(VariableType::INT64(), glue, dstHClass, Null());
@@ -2310,6 +2475,29 @@ void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHCla
     SetLayoutToHClass(VariableType::JS_POINTER(), glue, dstHClass, GetLayoutFromHClass(srcHClass));
     env->SubCfgExit();
     return;
+}
+
+void StubBuilder::TransitionForRepChange(GateRef glue, GateRef receiver, GateRef key, GateRef attr)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    GateRef hclass = LoadHClass(receiver);
+    GateRef type = GetObjectType(hclass);
+    GateRef size = Int32Mul(GetInlinedPropsStartFromHClass(hclass),
+                            Int32(JSTaggedValue::TaggedTypeSize()));
+    GateRef inlineProps = GetInlinedPropertiesFromHClass(hclass);
+    GateRef newJshclass = CallRuntime(glue, RTSTUB_ID(NewEcmaHClass),
+        { IntToTaggedInt(size), IntToTaggedInt(type),
+          IntToTaggedInt(inlineProps) });
+    CopyAllHClass(glue, newJshclass, hclass);
+    CallRuntime(glue, RTSTUB_ID(CopyAndUpdateObjLayout),
+                { hclass, newJshclass, key, IntToTaggedInt(attr) });
+#if ECMASCRIPT_ENABLE_IC
+    NotifyHClassChanged(glue, hclass, newJshclass);
+#endif
+    StoreHClass(glue, receiver, newJshclass);
+    env->SubCfgExit();
 }
 
 GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hclass, GateRef key, GateRef metaData)
@@ -2716,7 +2904,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         {
                             // JSObject::Cast(holder)->SetProperty(thread, hclass, attr, value)
                             // return JSTaggedValue::Undefined()
-                            JSObjectSetProperty(glue, *holder, hclass, attr, value);
+                            JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
                             ProfilerStubBuilder(env).UpdatePropAttrWithValue(
                                 glue, *holder, layOutInfo, attr, entry, value, callback);
                             result = Undefined();
@@ -2815,7 +3003,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         GateRef receiverLayoutInfo = GetLayoutFromHClass(receiverHClass);
         GateRef holePropAttr = GetPropAttrFromLayoutInfo(receiverLayoutInfo, *receiverHoleEntry);
         GateRef holeAttr = GetInt32OfTInt(holePropAttr);
-        JSObjectSetProperty(glue, receiver, receiverHClass, holeAttr, value);
+        JSObjectSetProperty(glue, receiver, receiverHClass, holeAttr, key, value);
         ProfilerStubBuilder(env).UpdatePropAttrWithValue(
             glue, receiver, receiverLayoutInfo, holeAttr, *receiverHoleEntry, value, callback);
         result = Undefined();

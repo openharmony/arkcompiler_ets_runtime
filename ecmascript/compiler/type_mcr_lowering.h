@@ -188,6 +188,7 @@ private:
         return acc_.GetFrameState(gate);
     }
 
+    VariableType GetVarType(PropertyLookupResult plr);
     GateRef LoadSupers(GateRef hclass);
     GateRef GetLengthFromSupers(GateRef supers);
     GateRef GetValueFromSupers(GateRef supers, size_t index);

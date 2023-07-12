@@ -127,8 +127,10 @@ private:
     bool EvacuateSpace(TlabAllocator *allocation, bool isMain = false);
     void EvacuateRegion(TlabAllocator *allocator, Region *region);
     inline void SetObjectFieldRSet(TaggedObject *object, JSHClass *cls);
+    inline void SetObjectRSet(ObjectSlot slot, Region *region);
 
     inline bool IsWholeRegionEvacuate(Region *region);
+    void VerifyValue(TaggedObject *object, ObjectSlot slot);
     void VerifyHeapObject(TaggedObject *object);
 
     void UpdateReference();
@@ -140,6 +142,8 @@ private:
     void UpdateAndSweepNewRegionReference(Region *region);
     void UpdateNewObjectField(TaggedObject *object, JSHClass *cls);
 
+    template<typename Callback>
+    inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback);
     inline bool UpdateOldToNewObjectSlot(ObjectSlot &slot);
     inline void UpdateObjectSlot(ObjectSlot &slot);
     inline void UpdateWeakObjectSlot(TaggedObject *object, ObjectSlot &slot);

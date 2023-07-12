@@ -95,6 +95,9 @@ public:
 
 protected:
     void ProcessMarkStack(uint32_t threadId) override;
+    template <typename Callback>
+    inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback);
+    inline void MarkValue(uint32_t threadId, ObjectSlot &slot, Region *rootRegion, bool needBarrier);
     inline void MarkObject(uint32_t threadId, TaggedObject *object) override;
     inline void HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot) override;
     inline void HandleRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
@@ -113,6 +116,8 @@ public:
     ~MovableMarker() override = default;
 
 protected:
+    template <typename Callback>
+    inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback);
     inline void HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot) override;
     inline void HandleRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
                                  ObjectSlot end) override;
@@ -139,6 +144,7 @@ public:
 
 protected:
     void ProcessMarkStack(uint32_t threadId) override;
+    inline void MarkValue(uint32_t threadId, TaggedObject *root, ObjectSlot slot);
     inline SlotStatus MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot slot) override;
     inline SlotStatus EvacuateObject(uint32_t threadId, TaggedObject *object, const MarkWord &markWord,
                                      ObjectSlot slot) override;
@@ -163,6 +169,7 @@ public:
 
 protected:
     void ProcessMarkStack(uint32_t threadId) override;
+    inline void MarkValue(uint32_t threadId, ObjectSlot slot);
     inline SlotStatus MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot slot) override;
 
     inline SlotStatus EvacuateObject(uint32_t threadId, TaggedObject *object, const MarkWord &markWord,

@@ -27,6 +27,45 @@
 namespace panda::ecmascript {
 constexpr size_t HEAD_SIZE = TaggedObject::TaggedObjectSize();
 
+template <typename Callback>
+inline bool NonMovableMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback)
+{
+    auto hclass = root->GetClass();
+    if (hclass->IsAllTaggedProp()) {
+        return false;
+    }
+    int index = 0;
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+        auto attr = layout->GetAttr(index++);
+        if (attr.IsTaggedRep()) {
+            callback(slot);
+        }
+    }
+    return true;
+}
+
+inline void NonMovableMarker::MarkValue(uint32_t threadId, ObjectSlot &slot, Region *rootRegion, bool needBarrier)
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsHeapObject()) {
+        TaggedObject *obj = nullptr;
+        if (!value.IsWeakForHeapObject()) {
+            obj = value.GetTaggedObject();
+            MarkObject(threadId, obj);
+        } else {
+            RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()), rootRegion);
+            obj = value.GetWeakReferentUnChecked();
+        }
+        if (needBarrier) {
+            Region *valueRegion = Region::ObjectAddressToRange(obj);
+            if (valueRegion->InCollectSet()) {
+                rootRegion->AtomicInsertCrossRegionRSet(slot.SlotAddress());
+            }
+        }
+    }
+}
+
 inline void NonMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
@@ -92,6 +131,29 @@ inline void NonMovableMarker::RecordWeakReference(uint32_t threadId, JSTaggedTyp
     if (!objectRegion->InYoungSpaceOrCSet() && !valueRegion->InYoungSpaceOrCSet()) {
         workManager_->PushWeakReference(threadId, ref);
     }
+}
+
+template <typename Callback>
+inline bool MovableMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback)
+{
+    auto hclass = root->GetClass();
+    if (hclass->IsAllTaggedProp()) {
+        return false;
+    }
+    int index = 0;
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        TaggedObject *dst = hclass->GetLayout().GetTaggedObject();
+        MarkWord markWord(dst);
+        if (markWord.IsForwardingAddress()) {
+            dst = markWord.ToForwardingAddress();
+        }
+        auto layout = LayoutInfo::Cast(dst);
+        auto attr = layout->GetAttr(index++);
+        if (attr.IsTaggedRep()) {
+            callback(slot);
+        }
+    }
+    return true;
 }
 
 inline void MovableMarker::HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot)
@@ -199,6 +261,23 @@ inline bool MovableMarker::UpdateForwardAddressIfFailed(TaggedObject *object, ui
     return Region::ObjectAddressToRange(dst)->InYoungSpace();
 }
 
+inline void SemiGCMarker::MarkValue(uint32_t threadId, TaggedObject *root, ObjectSlot slot)
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsHeapObject()) {
+        Region *rootRegion = Region::ObjectAddressToRange(root);
+        if (value.IsWeakForHeapObject()) {
+            RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()), rootRegion);
+            return;
+        }
+        auto slotStatus = MarkObject(threadId, value.GetTaggedObject(), slot);
+        if (!rootRegion->InYoungSpace() && slotStatus == SlotStatus::KEEP_SLOT) {
+            SlotNeedUpdate waitUpdate(reinterpret_cast<TaggedObject *>(root), slot);
+            workManager_->PushSlotNeedUpdate(threadId, waitUpdate);
+        }
+    }
+}
+
 inline SlotStatus SemiGCMarker::MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot slot)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
@@ -247,6 +326,19 @@ inline void SemiGCMarker::RecordWeakReference(uint32_t threadId, JSTaggedType *r
     Region *valueRegion = Region::ObjectAddressToRange(value.GetTaggedWeakRef());
     if (valueRegion->InYoungSpace()) {
         workManager_->PushWeakReference(threadId, ref);
+    }
+}
+
+inline void CompressGCMarker::MarkValue(uint32_t threadId, ObjectSlot slot)
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsHeapObject()) {
+        if (value.IsWeakForHeapObject()) {
+            // It is unnecessary to use region pointer in compressGCMarker.
+            RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()));
+            return;
+        }
+        MarkObject(threadId, value.GetTaggedObject(), slot);
     }
 }
 

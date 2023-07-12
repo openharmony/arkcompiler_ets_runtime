@@ -218,6 +218,9 @@ bool TSManager::IsStaticFunc(GlobalTSTypeRef gt) const
 bool TSManager::GetSuperGateType(kungfu::GateType &gateType) const
 {
     JSHandle<JSTaggedValue> type = GetTSType(gateType.GetGTRef());
+    if (type->IsTSObjectType()) {
+        return false;
+    }
     if (type->IsTSClassType()) {
         JSHandle<TSClassType> classType(type);
         if (classType->IsBaseClassType()) {

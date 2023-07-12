@@ -39,6 +39,7 @@ public:
 
     JSTaggedValue Get(const JSThread *thread, uint32_t idx) const;
 
+    template <bool needBarrier = true>
     void Set(const JSThread *thread, uint32_t idx, const JSTaggedValue &value);
 
     static inline JSHandle<TaggedArray> Append(const JSThread *thread, const JSHandle<TaggedArray> &first,

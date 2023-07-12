@@ -370,11 +370,9 @@ public:
                                           const JSHandle<JSObject> &obj);
 
     JSHandle<LayoutInfo> CreateLayoutInfo(int properties, MemSpaceType type = MemSpaceType::SEMI_SPACE,
-                                          GrowMode mode = GrowMode::GROW,
-                                          JSTaggedValue initVal = JSTaggedValue::Hole());
+                                          GrowMode mode = GrowMode::GROW);
 
-    JSHandle<LayoutInfo> ExtendLayoutInfo(const JSHandle<LayoutInfo> &old, int properties,
-                                          JSTaggedValue initVal = JSTaggedValue::Hole());
+    JSHandle<LayoutInfo> ExtendLayoutInfo(const JSHandle<LayoutInfo> &old, int properties);
 
     JSHandle<LayoutInfo> CopyLayoutInfo(const JSHandle<LayoutInfo> &old);
 

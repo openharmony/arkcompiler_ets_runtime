@@ -213,7 +213,6 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
             return JSTaggedValue::Undefined();
         }
     }
-    UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
 
     ObjectOperator op(GetThread(), receiver, key);
     if (!op.IsFound()) {
@@ -237,6 +236,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
     }
     if (success) {
+        UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
         UpdateStoreHandler(op, key, receiver);
         return JSTaggedValue::Undefined();
     }

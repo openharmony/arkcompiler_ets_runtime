@@ -164,10 +164,11 @@ int Main(const int argc, const char **argv)
         bool isEnableTypeInfer = isEnableTypeLowering ||
             vm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AssertTypes();
         bool isEnableOptPGOType = runtimeOptions.IsEnableOptPGOType();
+        bool isEnableOptTrackField = runtimeOptions.IsEnableOptTrackField();
 
         PassOptions passOptions(isEnableTypeLowering, isEnableEarlyElimination, isEnableLaterElimination,
                                 isEnableValueNumbering, isEnableTypeInfer, isEnableOptInlining,
-                                isEnableOptStaticMethod, isEnableOptPGOType);
+                                isEnableOptStaticMethod, isEnableOptPGOType, isEnableOptTrackField);
         uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
         AOTInitialize(vm);
 
