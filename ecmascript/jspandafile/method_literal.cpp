@@ -121,6 +121,18 @@ CString MethodLiteral::GetRecordName(const JSPandaFile *jsPandaFile, EntityId me
     return JSPandaFile::ParseEntryPoint(desc);
 }
 
+const char *MethodLiteral::GetRecordNameWithSymbol(const JSPandaFile *jsPandaFile, EntityId methodId)
+{
+    if (jsPandaFile == nullptr) {
+        return "";
+    }
+
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pf, methodId);
+    panda_file::ClassDataAccessor cda(*pf, mda.GetClassId());
+    return utf::Mutf8AsCString(cda.GetDescriptor());
+}
+
 uint32_t MethodLiteral::GetCodeSize(const JSPandaFile *jsPandaFile, EntityId methodId)
 {
     if (jsPandaFile == nullptr) {

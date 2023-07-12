@@ -81,9 +81,9 @@ bool JsStackGetter::ParseMethodInfo(struct MethodKey &methodKey,
             return false;
         }
         // record name
-        CString recordNameStr = MethodLiteral::GetRecordName(jsPandaFile, methodId);
-        if (!recordNameStr.empty()) {
-            if (!CheckAndCopy(codeEntry.recordName, sizeof(codeEntry.recordName), recordNameStr.c_str())) {
+        const char *recordName = MethodLiteral::GetRecordNameWithSymbol(jsPandaFile, methodId);
+        if (strlen(recordName) != 0) {
+            if (!CheckAndCopy(codeEntry.recordName, sizeof(codeEntry.recordName), recordName)) {
                 return false;
             }
         }
