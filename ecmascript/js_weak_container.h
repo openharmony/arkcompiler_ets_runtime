@@ -38,6 +38,10 @@ public:
 
     int GetSize() const;
 
+    JSTaggedValue GetKey(int entry) const;
+
+    JSTaggedValue GetValue(int entry) const;
+
     static constexpr size_t LINKED_MAP_OFFSET = JSObject::SIZE;
     ACCESSORS(LinkedMap, LINKED_MAP_OFFSET, SIZE)
 
@@ -59,6 +63,8 @@ public:
     bool Has(JSTaggedValue value) const;
 
     int GetSize() const;
+
+    JSTaggedValue GetValue(int entry) const;
 
     static constexpr size_t LINKED_SET_OFFSET = JSObject::SIZE;
     ACCESSORS(LinkedSet, LINKED_SET_OFFSET, SIZE)

@@ -25,7 +25,7 @@ void JSWeakMap::Set(JSThread *thread, const JSHandle<JSWeakMap> &map, const JSHa
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     if (!LinkedHashMap::IsKey(JSTaggedValue(key.GetTaggedValue().CreateAndGetWeakRef()))) {
-        THROW_TYPE_ERROR(thread, "the value must be Key of JSMap");
+        THROW_TYPE_ERROR(thread, "the value must be Key of JSWeakMap");
     }
     JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject()));
 
@@ -62,6 +62,18 @@ int JSWeakMap::GetSize() const
     return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->NumberOfElements();
 }
 
+JSTaggedValue JSWeakMap::GetKey(int entry) const
+{
+    ASSERT_PRINT(entry >= 0 && entry < GetSize(), "entry must be non-negative integer less than capacity");
+    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->GetKey(entry);
+}
+
+JSTaggedValue JSWeakMap::GetValue(int entry) const
+{
+    ASSERT_PRINT(entry >= 0 && entry < GetSize(), "entry must be non-negative integer less than capacity");
+    return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->GetValue(entry);
+}
+
 void JSWeakSet::Add(JSThread *thread, const JSHandle<JSWeakSet> &weakSet, const JSHandle<JSTaggedValue> &value)
 {
     if (!LinkedHashSet::IsKey(value.GetTaggedValue())) {
@@ -94,5 +106,11 @@ bool JSWeakSet::Has(JSTaggedValue value) const
 int JSWeakSet::GetSize() const
 {
     return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->NumberOfElements();
+}
+
+JSTaggedValue JSWeakSet::GetValue(int entry) const
+{
+    ASSERT_PRINT(entry >= 0 && entry < GetSize(), "entry must be non-negative integer less than capacity");
+    return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->GetValue(entry);
 }
 }  // namespace panda::ecmascript
