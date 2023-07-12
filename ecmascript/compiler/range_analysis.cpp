@@ -59,6 +59,8 @@ GateRef RangeAnalysis::VisitGate(GateRef gate)
             return VisitIndexCheck(gate);
         case OpCode::LOAD_ARRAY_LENGTH:
             return VisitLoadArrayLength(gate);
+        case OpCode::LOAD_TYPED_ARRAY_LENGTH:
+            return VisitLoadTypedArrayLength(gate);
         default:
             return VisitOthers(gate);
     }
@@ -150,13 +152,21 @@ GateRef RangeAnalysis::VisitTypedBinaryOp(GateRef gate)
 GateRef RangeAnalysis::VisitIndexCheck(GateRef gate)
 {
     ASSERT(IsInt32Type(gate));
-    return UpdateRange(gate, RangeInfo(0, INT32_MAX - 1));
+    auto value = GetRange(acc_.GetValueIn(gate, 0));
+    auto largerRange = RangeInfo(0, INT32_MAX - 1);
+    auto intersected = value.intersection(largerRange);
+    return UpdateRange(gate, intersected);
 }
 
 GateRef RangeAnalysis::VisitLoadArrayLength(GateRef gate)
 {
     ASSERT(IsInt32Type(gate));
     return UpdateRange(gate, RangeInfo(0, INT32_MAX));
+}
+
+GateRef RangeAnalysis::VisitLoadTypedArrayLength(GateRef gate)
+{
+    return UpdateRange(gate, RangeInfo(0, RangeInfo::TYPED_ARRAY_ONHEAP_MAX));
 }
 
 template<TypedBinOp Op>

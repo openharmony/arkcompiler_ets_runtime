@@ -642,7 +642,7 @@ void TSHCRLowering::LowerTypedLdObjByNameForClassInstance(GateRef gate, GateRef 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-void TSHCRLowering::LowerTypedLdObjByNameForArray(GateRef gate, GateRef receiver, JSTaggedValue prop)
+bool TSHCRLowering::TryLowerTypedLdObjByNameForArray(GateRef gate, GateRef receiver, JSTaggedValue prop)
 {
     GateType receiverType = acc_.GetGateType(receiver);
 
@@ -651,12 +651,13 @@ void TSHCRLowering::LowerTypedLdObjByNameForArray(GateRef gate, GateRef receiver
     if (propString == lengthString) {
         if (tsManager_->IsArrayTypeKind(receiverType)) {
             LowerTypedLdArrayLength(gate);
-            return;
+            return true;
         } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
             LowerTypedLdTypedArrayLength(gate);
-            return;
+            return true;
         }
     }
+    return false;
 }
 
 void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
@@ -672,13 +673,16 @@ void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
 
+    if (TryLowerTypedLdObjByNameForArray(gate, receiver, prop)) {
+        DeleteConstDataIfNoUser(constData);
+        return;
+    }
+
     if (tsManager_->IsClassInstanceTypeKind(receiverType)) {
         LowerTypedLdObjByNameForClassInstance(gate, receiver, prop);
     } else if (tsManager_->IsClassTypeKind(receiverType) ||
                tsManager_->IsObjectTypeKind(receiverType)) {
         LowerTypedLdObjByNameForClassOrObject(gate, receiver, prop);
-    } else {
-        LowerTypedLdObjByNameForArray(gate, receiver, prop);
     }
     DeleteConstDataIfNoUser(constData);
 }
