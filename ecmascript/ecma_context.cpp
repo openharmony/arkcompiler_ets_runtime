@@ -101,6 +101,7 @@ bool EcmaContext::Initialize()
     moduleManager_ = new ModuleManager(vm_);
     tsManager_ = new TSManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
+    initialized_ = true;
     return true;
 }
 

@@ -108,6 +108,11 @@ public:
         return const_cast<EcmaContext *>(context);
     }
 
+    bool IsInitialized() const
+    {
+        return initialized_;
+    }
+
     ModuleManager *GetModuleManager() const
     {
         return moduleManager_;
@@ -401,7 +406,7 @@ private:
 
     bool isUncaughtExceptionRegistered_ {false};
     bool isProcessingPendingJob_ {false};
-
+    bool initialized_ {false};
     ObjectFactory *factory_ {nullptr};
 
     // VM execution states.
