@@ -78,6 +78,9 @@ void Close(fd_t fd)
 
 MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset)
 {
+    if (prot == PAGE_PROT_READWRITE) {
+        flag |= FILE_RDONLY | FILE_WRONLY;
+    }
     fd_t fd = CreateFile(fileName, flag, 0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (fd == INVALID_FD) {
         LOG_ECMA(ERROR) << fileName << " file open failed";
