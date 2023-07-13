@@ -258,13 +258,18 @@ void ElfReader::SeparateTextSections(std::vector<ModuleSectionDes> &des,
         auto moduleInfo = GetCurModuleInfo(i, moduleInfoOffset);
         secOffset = AlignUp(secOffset, TEXT_SEC_ALIGN);
         uint32_t rodataSize = moduleInfo->rodataSize;
-        if (rodataSize > 0) {
+        uint32_t rodataAfterText = moduleInfo->rodataAfterText;
+        if (rodataSize > 0 && rodataAfterText == 0) {
             des[i].SetSecAddrAndSize(ElfSecName::RODATA_CST8, secAddr + secOffset, rodataSize);
             secOffset += rodataSize;
         }
         uint32_t textSize = moduleInfo->textSize;
         des[i].SetSecAddrAndSize(ElfSecName::TEXT, secAddr + secOffset, textSize);
         secOffset += textSize;
+        if (rodataSize > 0 && rodataAfterText == 1) {
+            des[i].SetSecAddrAndSize(ElfSecName::RODATA_CST8, secAddr + secOffset, rodataSize);
+            secOffset += rodataSize;
+        }
     }
 }
 
@@ -296,7 +301,8 @@ void ElfReader::SeparateTextSections(BinaryBufferParser &parser,
         auto moduleInfo = moduleInfo_[i];
         secOffset = AlignUp(secOffset, TEXT_SEC_ALIGN);
         uint32_t rodataSize = moduleInfo.rodataSize;
-        if (rodataSize > 0) {
+        uint32_t rodataAfterText = moduleInfo.rodataAfterText;
+        if (rodataSize > 0 && rodataAfterText == 0) {
             parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), rodataSize, curShOffset + secOffset);
             des[i].SetSecAddrAndSize(ElfSecName::RODATA_CST8, secAddr + secOffset, rodataSize);
             secOffset += rodataSize;
@@ -305,6 +311,11 @@ void ElfReader::SeparateTextSections(BinaryBufferParser &parser,
         parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), textSize, curShOffset + secOffset);
         des[i].SetSecAddrAndSize(ElfSecName::TEXT, secAddr + secOffset, textSize);
         secOffset += textSize;
+        if (rodataSize > 0 && rodataAfterText == 1) {
+            parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), rodataSize, curShOffset + secOffset);
+            des[i].SetSecAddrAndSize(ElfSecName::RODATA_CST8, secAddr + secOffset, rodataSize);
+            secOffset += rodataSize;
+        }
     }
 }
 

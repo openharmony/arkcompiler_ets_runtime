@@ -122,9 +122,12 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
     // 2.After all functions compiled, the module sections would be fixed
     uintptr_t textAddr = GetTextAddr();
     uint32_t textSize = GetTextSize();
+    uintptr_t rodataAddr = GetRODataAddr();
     uint32_t rodataSize = GetRODataSize();
     aotInfo.AlignTextSec();
-    aotInfo.UpdateCurTextSecOffset(rodataSize);
+    if (rodataAddr < textAddr) {
+        aotInfo.UpdateCurTextSecOffset(rodataSize);
+    }
 
     const size_t funcCount = funcInfo.size();
     funcCount_ = funcCount;
@@ -149,6 +152,9 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
                          offset, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
     }
     aotInfo.UpdateCurTextSecOffset(textSize);
+    if (rodataAddr > textAddr) {
+        aotInfo.UpdateCurTextSecOffset(rodataSize);
+    }
 }
 
 void Module::CollectModuleSectionDes(ModuleSectionDes &moduleDes) const
@@ -263,7 +269,12 @@ void StubFileGenerator::DisassembleAsmStubs(std::map<uintptr_t, std::string> &ad
 
 uint64_t AOTFileGenerator::RollbackTextSize(Module *module)
 {
-    return aotInfo_.GetCurTextSecOffset() - module->GetSectionSize(ElfSecName::TEXT);
+    uintptr_t textAddr = module->GetSectionAddr(ElfSecName::TEXT);
+    uintptr_t rodataAddr = module->GetSectionAddr(ElfSecName::RODATA_CST8);
+    uint32_t textSize = module->GetSectionSize(ElfSecName::TEXT);
+    uint32_t rodataSize = module->GetSectionSize(ElfSecName::RODATA_CST8);
+    return textAddr > rodataAddr ? (aotInfo_.GetCurTextSecOffset() - textSize) :
+        (aotInfo_.GetCurTextSecOffset() - textSize - rodataSize);
 }
 
 void AOTFileGenerator::CollectCodeInfo(Module *module, uint32_t moduleIdx)

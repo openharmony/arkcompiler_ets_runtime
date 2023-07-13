@@ -334,16 +334,28 @@ void ElfBuilder::MergeTextSections(std::ofstream &file,
         curSecOffset = AlignUp(curSecOffset, AOTFileInfo::TEXT_SEC_ALIGN);
         file.seekp(curSecOffset);
         auto curModuleSec = des.GetSectionsInfo();
+        uint32_t rodataSize = 0;
+        uint64_t rodataAddr = 0;
+        curInfo.rodataAfterText = 0;
         if (curModuleSec.find(ElfSecName::RODATA_CST8) != curModuleSec.end()) {
-            uint32_t rodataSize = des.GetSecSize(ElfSecName::RODATA_CST8);
-            uint64_t rodataAddr = des.GetSecAddr(ElfSecName::RODATA_CST8);
+            rodataSize = des.GetSecSize(ElfSecName::RODATA_CST8);
+            rodataAddr = des.GetSecAddr(ElfSecName::RODATA_CST8);
+        }
+        if (rodataSize != 0 && rodataAddr < curSecAddr) {
             file.write(reinterpret_cast<char *>(rodataAddr), rodataSize);
             curInfo.rodataSize = rodataSize;
             curSecOffset += rodataSize;
         }
-        curInfo.textSize = curSecSize;
         file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
+        curInfo.textSize = curSecSize;
         curSecOffset += curSecSize;
+        if (rodataSize != 0 && rodataAddr > curSecAddr) {
+            file.write(reinterpret_cast<char *>(rodataAddr), rodataSize);
+            curInfo.rodataSize = rodataSize;
+            curSecOffset += rodataSize;
+            // .rodata is written after .text
+            curInfo.rodataAfterText = 1;
+        }
     }
 }
 
