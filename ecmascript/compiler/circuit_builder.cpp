@@ -433,59 +433,8 @@ GateRef CircuitBuilder::JSCallTargetFromDefineFuncCheck(GateType type, GateRef f
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.GetFrameState(gate);
-    GateRef ret = GetCircuit()->NewGate(circuit_->JSCallTargetFromDefineFuncCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, func, frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
-GateRef CircuitBuilder::JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.GetFrameState(gate);
-    GateRef ret = GetCircuit()->NewGate(circuit_->JSCallTargetTypeCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, func, methodIndex, frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
-GateRef CircuitBuilder::JSFastCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.GetFrameState(gate);
-    GateRef ret = GetCircuit()->NewGate(circuit_->JSFastCallTargetTypeCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, func, methodIndex, frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
-GateRef CircuitBuilder::JSCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.GetFrameState(gate);
-    GateRef ret = GetCircuit()->NewGate(circuit_->JSCallThisTargetTypeCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, func, frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
-GateRef CircuitBuilder::JSFastCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.GetFrameState(gate);
-    GateRef ret = GetCircuit()->NewGate(circuit_->JSFastCallThisTargetTypeCheck(static_cast<size_t>(type.Value())),
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(1, static_cast<size_t>(type.Value()),
+        TypedCallTargetCheckOp::JSCALL_IMMEDIATE_AFTER_FUNC_DEF),
         MachineType::I1, {currentControl, currentDepend, func, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -1030,9 +979,11 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     } else if (cs->IsRuntimeNGCStub()) {
         meta = circuit_->NoGcRuntimeCall(numValuesIn);
     } else if (cs->IsOptimizedStub()) {
-        meta = circuit_->CallOptimized(numValuesIn);
+        bool isNoGC = acc_.GetNoGCFlag(hirGate);
+        meta = circuit_->CallOptimized(numValuesIn, isNoGC);
     } else if (cs->IsOptimizedFastCallStub()) {
-        meta = circuit_->FastCallOptimized(numValuesIn);
+        bool isNoGC = acc_.GetNoGCFlag(hirGate);
+        meta = circuit_->FastCallOptimized(numValuesIn, isNoGC);
     } else {
         LOG_ECMA(FATAL) << "unknown call operator";
         UNREACHABLE();
@@ -1212,7 +1163,7 @@ GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
     return callGate;
 }
 
-GateRef CircuitBuilder::TypedCall(GateRef hirGate, std::vector<GateRef> args)
+GateRef CircuitBuilder::TypedCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
     auto currentLabel = env_->GetCurrentLabel();
@@ -1223,14 +1174,14 @@ GateRef CircuitBuilder::TypedCall(GateRef hirGate, std::vector<GateRef> args)
     ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
-    auto callGate = GetCircuit()->NewGate(circuit_->TypedCall(bitfield, pcOffset), MachineType::I64,
+    auto callGate = GetCircuit()->NewGate(circuit_->TypedCall(bitfield, pcOffset, isNoGC), MachineType::I64,
                                           args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
     currentLabel->SetDepend(callGate);
     return callGate;
 }
 
-GateRef CircuitBuilder::TypedFastCall(GateRef hirGate, std::vector<GateRef> args)
+GateRef CircuitBuilder::TypedFastCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
     auto currentLabel = env_->GetCurrentLabel();
@@ -1241,7 +1192,7 @@ GateRef CircuitBuilder::TypedFastCall(GateRef hirGate, std::vector<GateRef> args
     ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
-    auto callGate = GetCircuit()->NewGate(circuit_->TypedFastCall(bitfield, pcOffset), MachineType::I64,
+    auto callGate = GetCircuit()->NewGate(circuit_->TypedFastCall(bitfield, pcOffset, isNoGC), MachineType::I64,
                                           args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
     currentLabel->SetDepend(callGate);

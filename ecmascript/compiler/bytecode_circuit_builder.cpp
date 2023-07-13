@@ -1055,7 +1055,7 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
         ASSERT(stateCur != Circuit::NullGate());
         ASSERT(dependCur != Circuit::NullGate());
         if (IsEntryBlock(bb.id)) {
-            if (!isInline_) {
+            if (NeedUpdateHotness()) {
                 stateCur = circuit_->NewGate(circuit_->UpdateHotness(), {stateCur, dependCur});
                 dependCur = stateCur;
             }

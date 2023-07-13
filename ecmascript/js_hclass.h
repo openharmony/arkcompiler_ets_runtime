@@ -317,6 +317,9 @@ public:
     static constexpr int OFFSET_MAX_OBJECT_SIZE_IN_WORDS =
         PropertyAttributes::OFFSET_BITFIELD_NUM + OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED;
     static constexpr int MAX_OBJECT_SIZE_IN_WORDS = (1U << OFFSET_MAX_OBJECT_SIZE_IN_WORDS) - 1;
+    static constexpr uint64_t OPTIMIZED_BIT = 1LU << IsOptimizedBit::START_BIT;
+    static constexpr uint64_t FASTCALL_BIT = 1LU << CanFastCallBit::START_BIT;
+    static constexpr uint64_t OPTIMIZED_FASTCALL_BITS = OPTIMIZED_BIT | FASTCALL_BIT;
 
     using NumberOfPropsBits = BitField<uint32_t, 0, PropertyAttributes::OFFSET_BITFIELD_NUM>; // 10
     using InlinedPropsStartBits = NumberOfPropsBits::NextField<uint32_t,

@@ -317,6 +317,11 @@ public:
         return jsGatesToByteCode_.at(gate);
     }
 
+    bool NeedUpdateHotness() const
+    {
+        return !isInline_ && !method_->IsNoGC();
+    }
+
     void UpdateBcIndexGate(GateRef gate, uint32_t bcIndex)
     {
         ASSERT(gateAcc_.GetOpCode(gate) == OpCode::JS_BYTECODE);

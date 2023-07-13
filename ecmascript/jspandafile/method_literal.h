@@ -216,6 +216,7 @@ public:
     static constexpr size_t FUNCTION_KIND_NUM_BITS = 4;
     using BuiltinIdBits = BitField<uint8_t, 0, BUILTINID_NUM_BITS>; // offset 0-7
     using FunctionKindBits = BuiltinIdBits::NextField<FunctionKind, FUNCTION_KIND_NUM_BITS>; // offset 8-11
+    using IsNoGCBit = FunctionKindBits::NextFlag; // offset 12
 
     inline NO_THREAD_SANITIZE void SetHotnessCounter(int16_t counter)
     {
@@ -251,6 +252,16 @@ public:
     void SetFunctionKind(FunctionKind kind)
     {
         extraLiteralInfo_ = FunctionKindBits::Update(extraLiteralInfo_, kind);
+    }
+
+    void SetNoGCBit(bool isNoGC)
+    {
+        extraLiteralInfo_ = IsNoGCBit::Update(extraLiteralInfo_, isNoGC);
+    }
+
+    bool IsNoGC() const
+    {
+        return IsNoGCBit::Decode(extraLiteralInfo_);
     }
 
     FunctionKind GetFunctionKind() const

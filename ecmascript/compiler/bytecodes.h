@@ -49,6 +49,7 @@ enum BytecodeFlags : uint32_t {
     READ_FUNC = 1 << 9,
     READ_NEWTARGET = 1 << 10,
     READ_ARGC = 1 << 11,
+    NO_GC = 1 << 12,
 };
 
 enum BytecodeKind : uint32_t {
@@ -70,7 +71,7 @@ class BytecodeMetaData {
 public:
     static constexpr uint32_t MAX_OPCODE_SIZE = 16;
     static constexpr uint32_t MAX_SIZE_BITS = 4;
-    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 12;
+    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 13;
     static constexpr uint32_t BYTECODE_KIND_SIZE = 4;
 
     using OpcodeField = panda::BitField<EcmaOpcode, 0, MAX_OPCODE_SIZE>;
@@ -111,6 +112,11 @@ public:
     bool HasEnvOut() const
     {
         return HasFlag(BytecodeFlags::WRITE_ENV);
+    }
+
+    bool IsNoGC() const
+    {
+        return HasFlag(BytecodeFlags::NO_GC);
     }
 
     bool IsMov() const

@@ -206,6 +206,7 @@ public:
     NEXT_BIT_FIELD(BitField, IsFastCall, bool, ONE_BIT, IsSignature);
     NEXT_BIT_FIELD(BitField, IsFastCallVaild, bool, ONE_BIT, IsFastCall);
     NEXT_BIT_FIELD(BitField, IsMethodOffsetVaild, bool, ONE_BIT, IsFastCallVaild);
+    NEXT_BIT_FIELD(BitField, IsNoGC, bool, ONE_BIT, IsMethodOffsetVaild);
 
     DECL_VISIT_OBJECT(NAME_OFFSET, RETURN_GT_OFFSET)
     DECL_DUMP()

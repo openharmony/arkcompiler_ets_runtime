@@ -112,10 +112,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::PRIMITIVE_TYPE_CHECK:
         case OpCode::STABLE_ARRAY_CHECK:
         case OpCode::TYPED_ARRAY_CHECK:
-        case OpCode::JSCALLTARGET_TYPE_CHECK:
-        case OpCode::JSFASTCALLTARGET_TYPE_CHECK:
-        case OpCode::JSCALLTHISTARGET_TYPE_CHECK:
-        case OpCode::JSFASTCALLTHISTARGET_TYPE_CHECK:
+        case OpCode::TYPED_CALLTARGETCHECK_OP:
         case OpCode::TYPED_CALL_CHECK:
         case OpCode::HEAP_ALLOC:
         case OpCode::TYPED_NEW_ALLOCATE_THIS:

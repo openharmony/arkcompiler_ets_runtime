@@ -569,6 +569,17 @@ bool TSManager::CanFastCall(GlobalTSTypeRef gt) const
     return functionType->GetIsFastCall();
 }
 
+bool TSManager::IsNoGC(GlobalTSTypeRef gt) const
+{
+    if (!IsFunctionTypeKind(gt)) {
+        return false;
+    }
+    JSHandle<JSTaggedValue> tsType = GetTSType(gt);
+    ASSERT(tsType->IsTSFunctionType());
+    JSHandle<TSFunctionType> functionType(tsType);
+    return functionType->GetIsNoGC();
+}
+
 bool TSManager::MethodOffsetIsVaild(GlobalTSTypeRef gt) const
 {
     if (!IsFunctionTypeKind(gt)) {
