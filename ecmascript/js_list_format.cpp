@@ -134,6 +134,7 @@ JSHandle<JSListFormat> JSListFormat::InitializeListFormat(JSThread *thread,
     // 10. Set listFormat.[[Locale]] to r.[[locale]].
     icu::Locale icuLocale = r.localeData;
     JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSListFormat, thread);
     listFormat->SetLocale(thread, localeStr.GetTaggedValue());
 
     // 11. Let type be ? GetOption(options, "type", "string", « "conjunction", "disjunction", "unit" », "conjunction").

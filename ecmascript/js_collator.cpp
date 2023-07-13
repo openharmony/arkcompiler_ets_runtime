@@ -159,8 +159,10 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     }
     ResolvedLocale r =
         JSLocale::ResolveLocale(thread, availableLocales, requestedLocales, matcher, relevantExtensionKeys);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSCollator, thread);
     icu::Locale icuLocale = r.localeData;
     JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSCollator, thread);
     collator->SetLocale(thread, localeStr.GetTaggedValue());
     ASSERT_PRINT(!icuLocale.isBogus(), "icuLocale is bogus");
 

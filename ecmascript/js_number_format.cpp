@@ -504,6 +504,7 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
     // 12. Set numberFormat.[[Locale]] to r.[[locale]].
     icu::Locale icuLocale = r.localeData;
     JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     numberFormat->SetLocale(thread, localeStr.GetTaggedValue());
 
     // Set numberingSystemStr to UnicodeKeyWord "nu"

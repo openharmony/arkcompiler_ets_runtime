@@ -256,6 +256,7 @@ JSHandle<JSPluralRules> JSPluralRules::InitializePluralRules(JSThread *thread,
 
     // 12. Set pluralRules.[[Locale]] to the value of r.[[locale]].
     JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSPluralRules, thread);
     pluralRules->SetLocale(thread, localeStr.GetTaggedValue());
 
     // 13. Return pluralRules.

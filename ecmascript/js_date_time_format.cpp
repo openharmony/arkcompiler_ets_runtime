@@ -492,6 +492,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
         }
     }
     JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, resolvedIcuLocaleCopy);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDateTimeFormat, thread);
     dateTimeFormat->SetLocale(thread, localeStr.GetTaggedValue());
 
     // Set dateTimeFormat.[[boundFormat]].

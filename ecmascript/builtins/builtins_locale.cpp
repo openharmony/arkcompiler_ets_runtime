@@ -60,6 +60,7 @@ JSTaggedValue BuiltinsLocale::LocaleConstructor(EcmaRuntimeCallInfo *argv)
     } else {
         icu::Locale *icuLocale = (JSHandle<JSLocale>::Cast(tag))->GetIcuLocale();
         localeString = intl::LocaleHelper::ToLanguageTag(thread, *icuLocale);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     // 10. If options is undefined, then
     //    a.Let options be ! ObjectCreate(null).
