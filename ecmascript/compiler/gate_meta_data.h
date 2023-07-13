@@ -351,7 +351,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(GetGlobalEnvObjHClass, GET_GLOBAL_ENV_OBJ_HCLASS, GateFlags::NO_WRITE, 0, 1, 1)   \
     V(GetGlobalConstantValue, GET_GLOBAL_CONSTANT_VALUE, GateFlags::NO_WRITE, 0, 1, 0)  \
     V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, 2)                     \
-    V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 0)
+    V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 0)                         \
+    V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 2)
 
 #define GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     V(Arg, ARG, GateFlags::HAS_ROOT, 0, 0, 0)             \

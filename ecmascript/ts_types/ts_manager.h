@@ -343,6 +343,10 @@ public:
         return CString(fileName);
     }
 
+    void AddArrayTSElements(panda_file::File::EntityId id, JSHandle<TaggedArray> &elements);
+
+    void AddArrayTSHClass(panda_file::File::EntityId id, JSHandle<JSHClass> &ihclass);
+
     void AddInstanceTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &ihclass);
 
     void AddConstructorTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &constructorHClass);
@@ -357,6 +361,12 @@ public:
 
     std::string PUBLIC_API GetTypeStr(kungfu::GateType gateType) const;
 
+    int PUBLIC_API GetElementsIndexByArrayType(const kungfu::GateType &gateType,
+                                              const panda_file::File::EntityId id);
+
+    int PUBLIC_API GetHClassIndexByArrayType(const kungfu::GateType &gateType,
+                                             const panda_file::File::EntityId id);
+
     int PUBLIC_API GetHClassIndexByObjectType(const kungfu::GateType &gateType);
 
     int PUBLIC_API GetHClassIndexByInstanceGateType(const kungfu::GateType &gateType);
@@ -367,7 +377,7 @@ public:
 
     JSTaggedValue GetTSHClass(const kungfu::GateType &gateType) const;
 
-    JSTaggedValue PUBLIC_API GetHClassFromCache(uint32_t index);
+    JSTaggedValue PUBLIC_API GetValueFromCache(uint32_t index);
 
     GlobalTSTypeRef PUBLIC_API CreateNamespaceType();
 
@@ -589,6 +599,30 @@ public:
         bcInfoCollector_ = bcInfoCollector;
     }
 
+    class ElementData {
+    public:
+        explicit ElementData(JSTaggedType element) : element_(element) {}
+
+        void Iterate(const RootVisitor &v)
+        {
+            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&element_)));
+        }
+
+        std::unordered_map<int32_t, uint32_t>& GetCPIndexMap()
+        {
+            return cpIndexMap_;
+        }
+
+        JSTaggedType GetELM() const
+        {
+            return element_;
+        }
+
+    private:
+        JSTaggedType element_ {0};
+        std::unordered_map<int32_t, uint32_t> cpIndexMap_ {};
+    };
+
     class IHClassData {
     public:
         explicit IHClassData(JSTaggedType ihc) : ihc_(ihc) {}
@@ -611,6 +645,45 @@ public:
     private:
         JSTaggedType ihc_ {0};
         std::unordered_map<int32_t, uint32_t> cpIndexMap_ {};
+    };
+
+    class JSArrayData {
+    public:
+        explicit JSArrayData() {}
+
+        void Iterate(const RootVisitor &v)
+        {
+            for (auto iter : idElmMap_) {
+                iter.second.Iterate(v);
+            }
+            for (auto iter : idIhcMap_) {
+                iter.second.Iterate(v);
+            }
+        }
+
+        std::map<panda_file::File::EntityId, ElementData>& GetElmMap()
+        {
+            return idElmMap_;
+        }
+
+        std::map<panda_file::File::EntityId, IHClassData>& GetIhcMap()
+        {
+            return idIhcMap_;
+        }
+
+        void AddElmMap(panda_file::File::EntityId id, ElementData data)
+        {
+            idElmMap_.insert({id, data});
+        }
+
+        void AddIhcMap(panda_file::File::EntityId id, IHClassData data)
+        {
+            idIhcMap_.insert({id, data});
+        }
+
+    private:
+        std::map<panda_file::File::EntityId, ElementData> idElmMap_ {};
+        std::map<panda_file::File::EntityId, IHClassData> idIhcMap_ {};
     };
 
     // for snapshot
@@ -646,9 +719,9 @@ public:
             return snapshotCPList_;
         }
 
-        CVector<JSTaggedType>& GetSnapshotHCVector(int32_t cpID)
+        CVector<JSTaggedType>& GetSnapshotValVector(int32_t cpID)
         {
-            return snapshotHCs_[cpID];
+            return snapshotVals_[cpID];
         }
 
         void AddIndexInfoToRecordInfo(RecordType type, std::pair<uint32_t, uint32_t> indexInfo)
@@ -666,8 +739,8 @@ public:
     private:
         JSTaggedValue snapshotCPList_ {JSTaggedValue::Hole()};
 
-        // key: constantpoolnum,  value: store hclass which produced from static type info
-        CMap<int32_t, CVector<JSTaggedType>> snapshotHCs_ {};
+        // key: constantpoolnum,  value: store hclass or element which produced from static type info
+        CMap<int32_t, CVector<JSTaggedType>> snapshotVals_ {};
 
         // used to record the data that needs to be modified into the aot code entry index
         std::vector<RecordData> recordInfo_ {};
@@ -755,6 +828,10 @@ public:
 
     JSHandle<TaggedArray> GetExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName);
 
+    int GetElementsIndex(panda_file::File::EntityId id);
+
+    int GetHClassIndex(panda_file::File::EntityId id);
+
     int GetHClassIndex(GlobalTSTypeRef classGT, bool isConstructor = false);
 
     uint32_t GetPGOGTCountByRecordName(const CString &recordName) const
@@ -823,6 +900,8 @@ private:
 
     std::string GetPrimitiveStr(const GlobalTSTypeRef &gt) const;
 
+    uint32_t RecordElmToVecAndIndexMap(ElementData &elmData);
+
     uint32_t RecordIhcToVecAndIndexMap(IHClassData &ihcData);
 
     uint32_t GetBuiltinIndex(GlobalTSTypeRef builtinGT) const;
@@ -855,7 +934,7 @@ private:
     void FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
                                       kungfu::BytecodeInfoCollector *bcInfoCollector);
 
-    void AddHClassToSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
+    void AddValueToSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
                                              kungfu::BytecodeInfoCollector *bcInfoCollector);
 
     JSHandle<ConstantPool> GetSnapshotConstantPool(uint32_t cpListIndex);
@@ -875,6 +954,9 @@ private:
     // so that subsequent passes (type_infer, ts_hcr_lowering) can obtain the correct constpool.
     JSTaggedValue curCP_ {JSTaggedValue::Hole()};
     int32_t curCPID_ {0};
+
+    // for jsarray
+    JSArrayData jsArrayData_ {};
 
     // for snapshot
     SnapshotData snapshotData_ {};

@@ -381,7 +381,7 @@ GateRef TypeMCRLowering::BuildCompareSubTyping(GateRef gate, GateRef frameState,
     GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
     ArgumentAccessor argAcc(circuit_);
     GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
-    JSTaggedValue aotHC = tsManager_->GetHClassFromCache(acc_.TryGetValue(aotHCIndex));
+    JSTaggedValue aotHC = tsManager_->GetValueFromCache(acc_.TryGetValue(aotHCIndex));
     ASSERT(aotHC.IsJSHClass());
 
     int32_t level = JSHClass::Cast(aotHC.GetTaggedObject())->GetLevel();

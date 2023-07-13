@@ -24,10 +24,10 @@ class PGOBCInfo {
 public:
     enum Type {
         OBJ_LITERAL = 0,
-
+        ARRAY_LITERAL,
         TYPE_NUM,
         TYPE_FIRST = OBJ_LITERAL,
-        TYPE_LAST = OBJ_LITERAL,
+        TYPE_LAST = ARRAY_LITERAL,
     };
 
     struct InfoDetail {

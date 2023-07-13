@@ -107,14 +107,16 @@ size_t GateAccessor::GetIndex(GateRef gate) const
 
 size_t GateAccessor::GetArraySize(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }
 
 void GateAccessor::SetArraySize(GateRef gate, size_t size)
 {
-    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     const_cast<OneParameterMetaData *>(gatePtr->GetOneParameterMetaData())->SetValue(size);
 }
@@ -206,7 +208,8 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
            GetOpCode(gate) == OpCode::OBJECT_TYPE_COMPARE ||
            GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::INDEX_CHECK ||
-           GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP);
+           GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();

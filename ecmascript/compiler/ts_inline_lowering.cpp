@@ -314,7 +314,7 @@ uint32_t TSInlineLowering::GetPlrData(GateRef receiver, GateRef constData)
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
     int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
+    JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
     PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(tsManager_->GetThread(), hclass, prop);
     return plr.GetData();
 }
@@ -591,7 +591,7 @@ bool TSInlineLowering::IsAccessor(GateRef receiver, GateRef constData)
         if (hclassIndex == -1) {
             return false;
         }
-        JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
+        JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
         if (!hclass->HasTSSubtyping()) {
             return false;
         }

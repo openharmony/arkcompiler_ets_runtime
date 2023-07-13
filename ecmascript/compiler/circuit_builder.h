@@ -616,6 +616,7 @@ public:
     GateRef FinishAllocate();
     GateRef HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag);
     GateRef CreateArray(size_t arraySize);
+    GateRef CreateArrayWithBuffer(size_t arraySize, GateRef constPoolIndex, GateRef elementIndex);
 
     void SetEnvironment(Environment *env)
     {

@@ -1551,6 +1551,23 @@ GateRef CircuitBuilder::CreateArray(size_t arraySize)
     return newGate;
 }
 
+GateRef CircuitBuilder::CreateArrayWithBuffer(size_t arraySize, GateRef constPoolIndex,
+                                              GateRef elementIndex)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArrayWithBuffer(arraySize),
+                                            MachineType::I64,
+                                            { currentControl, currentDepend, constPoolIndex,
+                                              elementIndex, frameState },
+                                            GateType::NJSValue());
+    currentLabel->SetControl(newGate);
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
 GateRef CircuitBuilder::StartAllocate()
 {
     auto currentLabel = env_->GetCurrentLabel();
