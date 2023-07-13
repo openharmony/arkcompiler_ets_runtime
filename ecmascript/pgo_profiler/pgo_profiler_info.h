@@ -64,7 +64,7 @@ using PGOMethodId = EntityId;
   |--------HEADER_SIZE(4)
   |------------{ headerSize, from MAGIC to SECTION_NUMBER }
   |--------ENDIAN_TAG(4)
-  |------------{ ENDIAN_TAG }  
+  |------------{ ENDIAN_TAG }
   |--------SECTION_NUMBER(4)
   |------------{ 3 }
   |--------PANDA_FILE_INFO_SECTION_INFO(12)

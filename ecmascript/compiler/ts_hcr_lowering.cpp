@@ -578,7 +578,7 @@ void TSHCRLowering::LowerTypedLdObjByNameForClassOrObject(GateRef gate, GateRef 
             return;
         }
         hclassIndex = tsManager_->GetConstructorHClassIndexByClassGateType(receiverType);
-    } else if (tsManager_->IsObjectTypeKind(receiverType)){
+    } else if (tsManager_->IsObjectTypeKind(receiverType)) {
         hclassIndex = tsManager_->GetHClassIndexByObjectType(receiverType);
     }
     if (hclassIndex == -1) { // slowpath
@@ -672,7 +672,6 @@ void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 2); // 2: acc or this object
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
-
     if (TryLowerTypedLdObjByNameForArray(gate, receiver, prop)) {
         DeleteConstDataIfNoUser(constData);
         return;
@@ -699,7 +698,7 @@ void TSHCRLowering::LowerTypedStObjByNameForClassOrObject(GateRef gate, GateRef 
             return;
         }
         hclassIndex = tsManager_->GetConstructorHClassIndexByClassGateType(receiverType);
-    } else if (tsManager_->IsObjectTypeKind(receiverType)){
+    } else if (tsManager_->IsObjectTypeKind(receiverType)) {
         hclassIndex = tsManager_->GetHClassIndexByObjectType(receiverType);
     }
     if (hclassIndex == -1) { // slowpath

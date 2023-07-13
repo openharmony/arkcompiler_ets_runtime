@@ -14,20 +14,20 @@
  */
 
 class Test {
-    x
-    y
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-    }
+  x;
+  y;
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  }
 }
 
 function foo(p)
 {
-    return p.x
+  return p.x;
 }
 
-let a = new Test(1, 23)
+let a = new Test(1, 23);
 for (let i = 0; i < 1000000; i++) {
-    foo(a)
+  foo(a);
 }
