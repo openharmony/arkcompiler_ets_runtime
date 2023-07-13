@@ -50,6 +50,7 @@ JSTaggedValue DynamicImport::ExecuteNativeModule(JSThread *thread, JSHandle<Ecma
         EcmaInterpreter::NewRuntimeCallInfo(thread,
                                             JSHandle<JSTaggedValue>(resolve),
                                             undefined, undefined, 1);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, BuiltinsPromiseJob::CatchException(thread, reject));
     info->SetCallArg(moduleNamespace.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSFunction::Call(info);

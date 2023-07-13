@@ -54,6 +54,7 @@ JSTaggedValue BuiltinsAsyncIterator::Return(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo* info = EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(iterResultVal.GetTaggedValue());
     JSFunction::Call(info);
     return pcap->GetPromise();
