@@ -509,7 +509,7 @@ void EcmaContext::HandleUncaughtException(JSTaggedValue exception)
     // if caught exceptionHandle type is JSError
     thread_->ClearException();
     if (exceptionHandle->IsJSError()) {
-        PrintJSErrorInfo(exceptionHandle);
+        PrintJSErrorInfo(thread_, exceptionHandle);
         return;
     }
     JSHandle<EcmaString> result = JSTaggedValue::ToString(thread_, exceptionHandle);
@@ -517,14 +517,33 @@ void EcmaContext::HandleUncaughtException(JSTaggedValue exception)
     LOG_NO_TAG(ERROR) << string;
 }
 
-void EcmaContext::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo)
+// static
+void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> &exceptionInfo)
 {
-    JSHandle<JSTaggedValue> nameKey = thread_->GlobalConstants()->GetHandledNameString();
-    JSHandle<EcmaString> name(JSObject::GetProperty(thread_, exceptionInfo, nameKey).GetValue());
-    JSHandle<JSTaggedValue> msgKey = thread_->GlobalConstants()->GetHandledMessageString();
-    JSHandle<EcmaString> msg(JSObject::GetProperty(thread_, exceptionInfo, msgKey).GetValue());
-    JSHandle<JSTaggedValue> stackKey = thread_->GlobalConstants()->GetHandledStackString();
-    JSHandle<EcmaString> stack(JSObject::GetProperty(thread_, exceptionInfo, stackKey).GetValue());
+    JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
+    JSHandle<JSTaggedValue> nameValue = JSObject::GetProperty(thread, exceptionInfo, nameKey).GetValue();
+    JSHandle<EcmaString> name = JSTaggedValue::ToString(thread, nameValue);
+    // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
+    if (thread->HasPendingException()) {
+        thread->ClearException();
+        name = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
+    }
+    JSHandle<JSTaggedValue> msgKey = thread->GlobalConstants()->GetHandledMessageString();
+    JSHandle<JSTaggedValue> msgValue = JSObject::GetProperty(thread, exceptionInfo, msgKey).GetValue();
+    JSHandle<EcmaString> msg = JSTaggedValue::ToString(thread, msgValue);
+    // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
+    if (thread->HasPendingException()) {
+        thread->ClearException();
+        msg = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
+    }
+    JSHandle<JSTaggedValue> stackKey = thread->GlobalConstants()->GetHandledStackString();
+    JSHandle<JSTaggedValue> stackValue = JSObject::GetProperty(thread, exceptionInfo, stackKey).GetValue();
+    JSHandle<EcmaString> stack = JSTaggedValue::ToString(thread, stackValue);
+    // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
+    if (thread->HasPendingException()) {
+        thread->ClearException();
+        stack = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
+    }
 
     CString nameBuffer = ConvertToString(*name);
     CString msgBuffer = ConvertToString(*msg);
