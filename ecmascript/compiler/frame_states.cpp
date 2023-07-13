@@ -406,16 +406,31 @@ bool FrameStateBuilder::IsAsyncResolveOrSusp(const BytecodeInfo &bytecodeInfo)
     return opcode == EcmaOpcode::SUSPENDGENERATOR_V8 || opcode == EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8;
 }
 
-void FrameStateBuilder::BuildStateSplitAfter(size_t index)
+void FrameStateBuilder::BuildStateSplitAfter(size_t index, BytecodeRegion& bb)
 {
     auto gate = builder_->GetGateByBcIndex(index);
     ASSERT(gateAcc_.GetOpCode(gate) == OpCode::JS_BYTECODE);
-    auto pcOffset = builder_->GetPcOffset(index + 1); // 1: for after
-    auto stateInfo = GetFrameInfoAfter(index);
+    auto nextIndex = GetNearestNextIndex(index, bb);
+    if (builder_->GetBytecodeInfo(nextIndex).IsCall()) {
+        return;
+    }
+    auto pcOffset = builder_->GetPcOffset(nextIndex);
+    auto stateInfo = GetFrameInfoAfter(nextIndex - 1); // 1: after prev bc
     GateRef frameValues = BuildFrameValues(stateInfo);
     GateRef frameStateAfter = BuildFrameStateGate(
         pcOffset, frameValues, FrameStateOutput::Invalid());
     BindStateSplit(gate, gate, frameStateAfter);
+}
+
+size_t FrameStateBuilder::GetNearestNextIndex(size_t index, BytecodeRegion& bb) const
+{
+    index++;
+    auto gate = builder_->GetGateByBcIndex(index);
+    while ((gate == Circuit::NullGate() || gateAcc_.IsConstant(gate)) && index < bb.end) {
+        index++;
+        gate = builder_->GetGateByBcIndex(index);
+    }
+    return index;
 }
 
 void FrameStateBuilder::BuildStateSplitBefore(BytecodeRegion& bb, size_t index)
@@ -433,13 +448,8 @@ void FrameStateBuilder::BuildStateSplitBefore(BytecodeRegion& bb, size_t index)
     }
 }
 
-bool FrameStateBuilder::ShouldInsertFrameStateBefore(BytecodeRegion& bb,
-    const BytecodeInfo &bytecodeInfo, size_t index)
+bool FrameStateBuilder::ShouldInsertFrameStateBefore(BytecodeRegion& bb, size_t index)
 {
-    // add Call State Split for inline
-    if (bytecodeInfo.IsCall()) {
-        return true;
-    }
     auto gate = builder_->GetGateByBcIndex(index);
     if (index == bb.start) {
         if (bb.numOfStatePreds > 1) { // 1: > 1 is merge
@@ -463,7 +473,12 @@ bool FrameStateBuilder::ShouldInsertFrameStateBefore(BytecodeRegion& bb,
 void FrameStateBuilder::BuildFrameState(BytecodeRegion& bb,
     const BytecodeInfo &bytecodeInfo, size_t index)
 {
-    bool needStateSplitBefore = ShouldInsertFrameStateBefore(bb, bytecodeInfo, index);
+    // Not bind state split for Call
+    if (bytecodeInfo.IsCall()) {
+        BuildCallFrameState(index, bb);
+    }
+
+    bool needStateSplitBefore = ShouldInsertFrameStateBefore(bb, index);
     auto gate = builder_->GetGateByBcIndex(index);
     if (needStateSplitBefore && index != bb.start) {
         auto depend = gateAcc_.GetDep(gate);
@@ -477,9 +492,19 @@ void FrameStateBuilder::BuildFrameState(BytecodeRegion& bb,
 
     if (!bytecodeInfo.NoSideEffects() && !bytecodeInfo.IsThrow()) {
         if (!gateAcc_.HasIfExceptionUse(gate)) {
-            BuildStateSplitAfter(index);
+            BuildStateSplitAfter(index, bb);
         }
     }
+}
+
+void FrameStateBuilder::BuildCallFrameState(size_t index, BytecodeRegion& bb)
+{
+    auto pcOffset = builder_->GetPcOffset(index);
+    auto stateInfo = GetFrameInfoBefore(bb, index);
+    GateRef frameValues = BuildFrameValues(stateInfo);
+    GateRef frameState = BuildFrameStateGate(pcOffset, frameValues, FrameStateOutput::Invalid());
+    auto gate = builder_->GetGateByBcIndex(index);
+    gateAcc_.ReplaceFrameStateIn(gate, frameState);
 }
 
 void FrameStateBuilder::BindBBStateSplit()

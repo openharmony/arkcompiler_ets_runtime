@@ -1235,7 +1235,7 @@ private:
     bool enableEarlyElimination_ {true};
     bool enableLaterElimination_ {true};
     bool enableValueNumbering_ {true};
-    bool enableOptInlining_ {false};
+    bool enableOptInlining_ {true};
     bool enableOptStaticMethod_ {false};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};

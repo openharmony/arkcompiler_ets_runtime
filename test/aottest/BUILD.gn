@@ -194,6 +194,7 @@ group("ark_aot_ts_test") {
     "ts_inline",
     "ts_inline_change_target",
     "ts_inline_deopt",
+    "ts_inline_deopt_loop",
     "ts_inline_extends",
     "ts_inline_loop",
     "ts_inline_max_call",

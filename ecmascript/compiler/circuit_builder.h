@@ -253,12 +253,12 @@ public:
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
-    GateRef CallTargetCheck(GateRef function, GateRef id, GateRef param, const char* comment = nullptr);
-    GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func);
-    GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex);
-    GateRef JSFastCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex);
-    GateRef JSCallThisTargetTypeCheck(GateType type, GateRef func);
-    GateRef JSFastCallThisTargetTypeCheck(GateType type, GateRef func);
+    GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, GateRef param, const char* comment = nullptr);
+    GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate);
+    GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate);
+    GateRef JSFastCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate);
+    GateRef JSCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate);
+    GateRef JSFastCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate);
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args);
     inline GateRef TypedCallBuiltin(GateRef hirGate, GateRef x, BuiltinsStubCSigns::ID id);

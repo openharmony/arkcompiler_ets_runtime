@@ -411,12 +411,12 @@ GateRef CircuitBuilder::TryPrimitiveTypeCheck(GateType type, GateRef gate)
     return ret;
 }
 
-GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id, GateRef param, const char* comment)
+GateRef CircuitBuilder::CallTargetCheck(GateRef gate, GateRef function, GateRef id, GateRef param, const char* comment)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    auto frameState = acc_.GetFrameState(gate);
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallCheck(),
                                         MachineType::I1,
                                         { currentControl, currentDepend, function, id, param, frameState},
@@ -427,12 +427,12 @@ GateRef CircuitBuilder::CallTargetCheck(GateRef function, GateRef id, GateRef pa
     return ret;
 }
 
-GateRef CircuitBuilder::JSCallTargetFromDefineFuncCheck(GateType type, GateRef func)
+GateRef CircuitBuilder::JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    auto frameState = acc_.GetFrameState(gate);
     GateRef ret = GetCircuit()->NewGate(circuit_->JSCallTargetFromDefineFuncCheck(static_cast<size_t>(type.Value())),
         MachineType::I1, {currentControl, currentDepend, func, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -440,12 +440,12 @@ GateRef CircuitBuilder::JSCallTargetFromDefineFuncCheck(GateType type, GateRef f
     return ret;
 }
 
-GateRef CircuitBuilder::JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex)
+GateRef CircuitBuilder::JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    auto frameState = acc_.GetFrameState(gate);
     GateRef ret = GetCircuit()->NewGate(circuit_->JSCallTargetTypeCheck(static_cast<size_t>(type.Value())),
         MachineType::I1, {currentControl, currentDepend, func, methodIndex, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -453,12 +453,12 @@ GateRef CircuitBuilder::JSCallTargetTypeCheck(GateType type, GateRef func, GateR
     return ret;
 }
 
-GateRef CircuitBuilder::JSFastCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex)
+GateRef CircuitBuilder::JSFastCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    auto frameState = acc_.GetFrameState(gate);
     GateRef ret = GetCircuit()->NewGate(circuit_->JSFastCallTargetTypeCheck(static_cast<size_t>(type.Value())),
         MachineType::I1, {currentControl, currentDepend, func, methodIndex, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -466,12 +466,12 @@ GateRef CircuitBuilder::JSFastCallTargetTypeCheck(GateType type, GateRef func, G
     return ret;
 }
 
-GateRef CircuitBuilder::JSCallThisTargetTypeCheck(GateType type, GateRef func)
+GateRef CircuitBuilder::JSCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    auto frameState = acc_.GetFrameState(gate);
     GateRef ret = GetCircuit()->NewGate(circuit_->JSCallThisTargetTypeCheck(static_cast<size_t>(type.Value())),
         MachineType::I1, {currentControl, currentDepend, func, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -479,12 +479,12 @@ GateRef CircuitBuilder::JSCallThisTargetTypeCheck(GateType type, GateRef func)
     return ret;
 }
 
-GateRef CircuitBuilder::JSFastCallThisTargetTypeCheck(GateType type, GateRef func)
+GateRef CircuitBuilder::JSFastCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    auto frameState = acc_.GetFrameState(gate);
     GateRef ret = GetCircuit()->NewGate(circuit_->JSFastCallThisTargetTypeCheck(static_cast<size_t>(type.Value())),
         MachineType::I1, {currentControl, currentDepend, func, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
