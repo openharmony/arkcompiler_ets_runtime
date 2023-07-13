@@ -687,4 +687,23 @@ JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo 
     result = elements->Get(k);
     return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
+
+JSTaggedValue JSStableArray::ToReversed(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
+{
+    JSThread *thread = argv->GetThread();
+    uint32_t len = receiver->GetArrayLength();
+    JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(len))).GetTaggedValue();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> newArrayHandle(thread, newArray);
+    TaggedArray *srcElements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
+    TaggedArray *dstElements = TaggedArray::Cast(newArrayHandle->GetElements().GetTaggedObject());
+    int k = 0;
+    while (k < len) {
+        uint32_t start = len - k - 1;
+        JSTaggedValue value = srcElements->Get(start);
+        dstElements->Set(thread, k, value);
+        ++k;
+    }
+    return newArrayHandle.GetTaggedValue();
+}
 }  // namespace panda::ecmascript

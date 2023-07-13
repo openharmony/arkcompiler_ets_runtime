@@ -1706,4 +1706,50 @@ HWTEST_F_L0(BuiltinsArrayTest, At)
     TestHelper::TearDownFrame(thread, prev6);
     ASSERT_EQ(result, JSTaggedValue::Undefined());
 }
+
+HWTEST_F_L0(BuiltinsArrayTest, ToReversed)
+{
+    JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
+    JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
+    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
+    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(50)), true, true, true);
+    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
+    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(200)), true, true, true);
+    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
+    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
+    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
+    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result = Array::ToReversed(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev);
+    JSTaggedValue value(static_cast<JSTaggedType>(result.GetRawData()));
+    ASSERT_TRUE(value.IsECMAObject());
+
+    PropertyDescriptor descRes(thread);
+    JSHandle<JSObject> valueHandle(thread, value);
+    EXPECT_EQ(
+        JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(valueHandle), lengthKeyHandle).GetValue()->GetInt(), 3);
+    JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(3));
+    JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(200));
+    JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(50));
+    EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 3);
+    JSObject::GetOwnProperty(thread, obj, key0, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(50));
+    JSObject::GetOwnProperty(thread, obj, key1, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(200));
+    JSObject::GetOwnProperty(thread, obj, key2, descRes);
+    ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(3));
+}
 }  // namespace panda::test

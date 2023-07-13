@@ -143,3 +143,6 @@ print(arr21.at(-1));
 print(arr21.at(6));
 print(arr21.at('1.9'));
 print(arr21.at(true));
+var arr22 = arr21.toReversed();
+print(arr22)
+print(arr21)

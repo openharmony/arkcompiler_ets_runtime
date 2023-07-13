@@ -405,4 +405,40 @@ HWTEST_F_L0(JSStableArrayTest, At_NUMBER_INDEX)
 
     EXPECT_EQ(thisTagValue, JSTaggedValue::Undefined());
 }
+
+/**
+ * @tc.name: ToReversed
+ * @tc.desc: Create a source Array whose elements are Numbers and an EcmaRuntimeCallInfo, check whether the
+             value returned through calling ToReversed function with the source Array is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSStableArrayTest, ToReversed)
+{
+    ObjectFactory *objFactory = thread->GetEcmaVM()->GetFactory();
+    int32_t lengthArr = 4;
+    JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
+    for (int i = 0; i < lengthArr; i++) {
+        handleTagArr->Set(thread, i, JSTaggedValue(i));
+    }
+    JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSHandle<JSTaggedValue> destTaggedValue(thread, JSStableArray::ToReversed(handleArr, ecmaRuntimeCallInfo));
+    JSHandle<JSArray> destArr(destTaggedValue);
+    JSHandle<TaggedArray> destTaggedArr(thread, TaggedArray::Cast(destArr->GetElements().GetTaggedObject()));
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_EQ(handleTagArr->Get(0).GetNumber(), 0);
+    EXPECT_EQ(handleTagArr->Get(1).GetNumber(), 1);
+    EXPECT_EQ(handleTagArr->Get(2).GetNumber(), 2);
+    EXPECT_EQ(handleTagArr->Get(3).GetNumber(), 3);
+    EXPECT_EQ(destTaggedArr->Get(0).GetNumber(), 3);
+    EXPECT_EQ(destTaggedArr->Get(1).GetNumber(), 2);
+    EXPECT_EQ(destTaggedArr->Get(2).GetNumber(), 1);
+    EXPECT_EQ(destTaggedArr->Get(3).GetNumber(), 0);
+}
 }  // namespace panda::test

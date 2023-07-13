@@ -54,6 +54,7 @@ public:
                                                        DataViewType targetType, uint32_t targetOffset,
                                                        uint32_t srcLength, JSHandle<TaggedArray> &elements);
     static JSTaggedValue At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ToReversed(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

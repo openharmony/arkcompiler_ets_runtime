@@ -2979,4 +2979,57 @@ JSTaggedValue BuiltinsArray::At(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return element.GetTaggedValue();
 }
+
+// 23.1.3.33 Array.prototype.toReversed ( )
+JSTaggedValue BuiltinsArray::ToReversed(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), Array, At);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. Let O be ToObject(this value).
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (thisHandle->IsStableJSArray(thread)) {
+        return JSStableArray::ToReversed(JSHandle<JSArray>::Cast(thisHandle), argv);
+    }
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    // ReturnIfAbrupt(O).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+
+    // 2. Let len be ? LengthOfArrayLike(O).
+    int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
+    // ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 3. Let A be ? ArrayCreate(len).
+    JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(len))).GetTaggedValue();
+
+    // ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> newArrayHandle(thread, newArray);
+
+    // 4. Let k be 0.
+    // 5. Repeat, while k < len,
+    //    a. Let from be ! ToString(𝔽(len - k - 1)).
+    //    b. Let Pk be ! ToString(𝔽(k)).
+    //    c. Let fromValue be ? Get(O, from).
+    //    d. Perform ! CreateDataPropertyOrThrow(A, Pk, fromValue).
+    //    e. Set k to k + 1.
+    JSMutableHandle<JSTaggedValue> fromKey(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> toKey(thread, JSTaggedValue::Undefined());
+    int64_t k = 0;
+    while (k < len) {
+        int64_t from = len - k - 1;
+        fromKey.Update(JSTaggedValue(from));
+        toKey.Update(JSTaggedValue(k));
+        JSHandle<JSTaggedValue> fromValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, from);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, fromValue);
+        k++;
+    }
+    // 6. Return A.
+    return newArrayHandle.GetTaggedValue();
+}
 }  // namespace panda::ecmascript::builtins

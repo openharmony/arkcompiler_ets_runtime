@@ -102,6 +102,8 @@ public:
     static JSTaggedValue FlatMap(EcmaRuntimeCallInfo *argv);
     // 23.1.3.1 Array.prototype.at ( index )
     static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
+    // 23.1.3.33 Array.prototype.toReversed ( )
+    static JSTaggedValue ToReversed(EcmaRuntimeCallInfo *argv);
 };
 }  // namespace panda::ecmascript::builtins
 

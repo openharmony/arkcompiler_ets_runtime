@@ -2117,6 +2117,7 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     SetFunction(env, arrFuncPrototype, "flat", BuiltinsArray::Flat, FunctionLength::ZERO);
     SetFunction(env, arrFuncPrototype, "flatMap", BuiltinsArray::FlatMap, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "at", BuiltinsArray::At, FunctionLength::ONE);
+    SetFunction(env, arrFuncPrototype, "toReversed", BuiltinsArray::ToReversed, FunctionLength::ZERO);
 
     // %ArrayPrototype% [ @@iterator ]
     JSHandle<JSTaggedValue> values(factory_->NewFromASCII("values"));
