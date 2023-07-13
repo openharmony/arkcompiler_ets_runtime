@@ -35,8 +35,7 @@ void PGOTypeInfer::Run()
 }
 
 struct CollectedType {
-    CollectedType(Chunk *chunk) :
-        classTypes(chunk), classInstanceTypes(chunk), otherTypes(chunk) {}
+    explicit CollectedType(Chunk *chunk) : classTypes(chunk), classInstanceTypes(chunk), otherTypes(chunk) {}
 
     bool AllInSameKind() const
     {

@@ -464,7 +464,8 @@ public:
         return pgoGTInfo_.methodCpIdxGTMap.find(key) != pgoGTInfo_.methodCpIdxGTMap.end();
     }
 
-    inline GlobalTSTypeRef GetPGOGT(uint32_t methodOffset, uint32_t cpIdx) {
+    inline GlobalTSTypeRef GetPGOGT(uint32_t methodOffset, uint32_t cpIdx)
+    {
         auto key = std::make_pair(methodOffset, cpIdx);
         return pgoGTInfo_.methodCpIdxGTMap.at(key);
     }

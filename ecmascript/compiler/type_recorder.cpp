@@ -115,7 +115,7 @@ void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const Metho
     uint32_t methodOffset = methodLiteral->GetMethodId().GetOffset();
     PGOBCInfo *bcInfo = tsManager->GetBytecodeInfoCollector()->GetPGOBCInfo();
     bcInfo->IterateInfoAndType(methodOffset, [this, &typeParser, methodOffset, &recordName, &jsPandaFile]
-        (const PGOBCInfo::Type type, const uint32_t bcIdx, const uint32_t cpIdx){
+        (const PGOBCInfo::Type type, const uint32_t bcIdx, const uint32_t cpIdx) {
         GlobalTSTypeRef gt = typeParser.CreatePGOGT(jsPandaFile, recordName, methodOffset, cpIdx, type);
         if (TypeNeedFilter(gt)) {
             return;

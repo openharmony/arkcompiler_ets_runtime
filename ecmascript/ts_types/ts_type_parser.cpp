@@ -823,9 +823,9 @@ GlobalTSTypeRef TSTypeParser::ParsePGOType(const JSPandaFile *jsPandaFile, const
 }
 
 JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportPGOType(GlobalTSTypeRef gt, const CString &recordName,
-                                                                uint32_t cpIdx, kungfu::PGOBCInfo::Type type)
+    uint32_t cpIdx, kungfu::PGOBCInfo::Type type)
 {
-    switch(type) {
+    switch (type) {
         case kungfu::PGOBCInfo::Type::OBJ_LITERAL: {
             return JSHandle<JSTaggedValue>(ParseObjectPGOType(gt, recordName, cpIdx));
         }
@@ -839,7 +839,7 @@ JSHandle<TSObjectType> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, cons
 {
     JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
     JSTaggedValue obj = ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
-            thread_, constpoolHandle.GetTaggedValue(), cpIdx, recordName);
+        thread_, constpoolHandle.GetTaggedValue(), cpIdx, recordName);
     JSHandle<JSObject> objHandle(thread_, obj);
     JSHandle<JSHClass> oldHClass(thread_, objHandle->GetClass());
     JSHandle<JSHClass> hclass = JSHClass::Clone(thread_, oldHClass);
