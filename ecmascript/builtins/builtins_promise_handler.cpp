@@ -274,8 +274,8 @@ JSTaggedValue BuiltinsPromiseHandler::ThenFinally(EcmaRuntimeCallInfo *argv)
     EcmaRuntimeCallInfo *taggedInfo =
         EcmaInterpreter::NewRuntimeCallInfo(thread, onFinally, undefined, undefined, 0);
     JSTaggedValue result = JSFunction::Call(taggedInfo);
-    JSHandle<JSTaggedValue> resultHandle(thread, result);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> resultHandle(thread, result);
     // 5. Let C be F.[[Constructor]].
     // 6. Assert: IsConstructor(C) is true.
     JSHandle<JSTaggedValue> thenFinallyConstructor(thread, thenFinally->GetConstructor());
@@ -315,8 +315,8 @@ JSTaggedValue BuiltinsPromiseHandler::CatchFinally(EcmaRuntimeCallInfo *argv)
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread, onFinally, undefined, undefined, 0);
     JSTaggedValue result = JSFunction::Call(info);
-    JSHandle<JSTaggedValue> resultHandle(thread, result);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> resultHandle(thread, result);
     // 5. Let C be F.[[Constructor]].
     // 6. Assert: IsConstructor(C) is true.
     JSHandle<JSTaggedValue> catchFinallyConstructor(thread, catchFinally->GetConstructor());
@@ -415,10 +415,12 @@ JSTaggedValue BuiltinsPromiseHandler::AllSettledResolveElementFunction(EcmaRunti
     JSHandle<JSTaggedValue> statusKey = globalConst->GetHandledPromiseStatusString();
     JSHandle<JSTaggedValue> fulfilledKey = globalConst->GetHandledPromiseFulfilledString();
     JSObject::CreateDataPropertyOrThrow(thread, obj, statusKey, fulfilledKey);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 11. Perform ! CreateDataPropertyOrThrow(obj, "value", x).
     JSHandle<JSTaggedValue> valueKey = globalConst->GetHandledValueString();
     JSHandle<JSTaggedValue> xValue = GetCallArg(argv, 0);
     JSObject::CreateDataPropertyOrThrow(thread, obj, valueKey, xValue);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 12. Set values[index] to obj.
     JSHandle<TaggedArray> arrayValues =
         JSHandle<TaggedArray>::Cast(JSHandle<JSTaggedValue>(thread, values->GetValue()));
@@ -478,10 +480,12 @@ JSTaggedValue BuiltinsPromiseHandler::AllSettledRejectElementFunction(EcmaRuntim
     JSHandle<JSTaggedValue> statusKey = globalConst->GetHandledPromiseStatusString();
     JSHandle<JSTaggedValue> rejectedKey = globalConst->GetHandledPromiseRejectedString();
     JSObject::CreateDataPropertyOrThrow(thread, obj, statusKey, rejectedKey);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 11. Perform ! CreateDataPropertyOrThrow(obj, "reason", x).
     JSHandle<JSTaggedValue> xReason = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> reasonKey = globalConst->GetHandledPromiseReasonString();
     JSObject::CreateDataPropertyOrThrow(thread, obj, reasonKey, xReason);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 12. Set values[index] to obj.
     JSHandle<TaggedArray> arrayValues =
         JSHandle<TaggedArray>::Cast(JSHandle<JSTaggedValue>(thread, values->GetValue()));

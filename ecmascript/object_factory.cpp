@@ -1737,6 +1737,7 @@ JSHandle<JSGeneratorObject> ObjectFactory::NewJSGeneratorObject(JSHandle<JSTagge
     JSHandle<JSTaggedValue> proto(thread_, JSHandle<JSFunction>::Cast(generatorFunction)->GetProtoOrHClass());
     if (!proto->IsECMAObject()) {
         JSHandle<GlobalEnv> realmHandle = JSObject::GetFunctionRealm(thread_, generatorFunction);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSGeneratorObject, thread_);
         proto = realmHandle->GetGeneratorPrototype();
     }
     JSHandle<JSHClass> hclass = NewEcmaHClass(JSGeneratorObject::SIZE, JSType::JS_GENERATOR_OBJECT, proto);
@@ -1751,6 +1752,7 @@ JSHandle<JSAsyncGeneratorObject> ObjectFactory::NewJSAsyncGeneratorObject(JSHand
     JSHandle<JSTaggedValue> proto(thread_, JSHandle<JSFunction>::Cast(generatorFunction)->GetProtoOrHClass());
     if (!proto->IsECMAObject()) {
         JSHandle<GlobalEnv> realmHandle = JSObject::GetFunctionRealm(thread_, generatorFunction);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSAsyncGeneratorObject, thread_);
         proto = realmHandle->GetAsyncGeneratorPrototype();
     }
     JSHandle<JSHClass> hclass = NewEcmaHClass(JSAsyncGeneratorObject::SIZE,

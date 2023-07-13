@@ -77,6 +77,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResolve(JSThread *thread,
         EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
     info->SetCallArg(its.GetTaggedValue());
     [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 9. Perform ! AsyncGeneratorResumeNext(generator).
     AsyncGeneratorResumeNext(thread, generator);
@@ -110,6 +111,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorReject(JSThread *thread,
         EcmaInterpreter::NewRuntimeCallInfo(thread, reject, thisArg, undefined, 1);
     info->SetCallArg(value.GetTaggedValue());
     [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 8. Perform ! AsyncGeneratorResumeNext(generator).
     AsyncGeneratorResumeNext(thread, generator);
     // 9. Return undefined.
@@ -264,6 +266,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, thisArg, undefined, 1);
         info->SetCallArg(rstErr.GetTaggedValue());
         [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
         // c. Return promiseCapability.[[Promise]].
         JSHandle<JSObject> promise(thread, pcap->GetPromise());

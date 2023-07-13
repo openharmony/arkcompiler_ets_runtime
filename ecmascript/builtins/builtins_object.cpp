@@ -1035,6 +1035,7 @@ JSTaggedValue BuiltinsObject::CreateDataPropertyOnObjectFunctions(EcmaRuntimeCal
 
     // 5. Perform ! CreateDataPropertyOrThrow(O, propertyKey, value).
     JSObject::CreateDataPropertyOrThrow(thread, thisObjHandle, propertyKey, value);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 6. Return undefined.
     return JSTaggedValue::Undefined();

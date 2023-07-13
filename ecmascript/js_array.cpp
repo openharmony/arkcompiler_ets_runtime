@@ -167,6 +167,7 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     info->SetCallArg(JSTaggedValue(arrayLength));
     JSTaggedValue result = JSFunction::Construct(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // NOTEIf originalArray was created using the standard built-in Array constructor for
     // a Realm that is not the Realm of the running execution context, then a new Array is

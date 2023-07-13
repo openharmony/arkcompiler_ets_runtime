@@ -239,6 +239,7 @@ JSTaggedValue BuiltinsMap::Entries(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     JSHandle<JSTaggedValue> iter = JSMapIterator::CreateMapIterator(thread, self, IterationKind::KEY_AND_VALUE);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return iter.GetTaggedValue();
 }
 
@@ -249,6 +250,7 @@ JSTaggedValue BuiltinsMap::Keys(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     JSHandle<JSTaggedValue> iter = JSMapIterator::CreateMapIterator(thread, self, IterationKind::KEY);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return iter.GetTaggedValue();
 }
 
@@ -259,6 +261,7 @@ JSTaggedValue BuiltinsMap::Values(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     JSHandle<JSTaggedValue> iter = JSMapIterator::CreateMapIterator(thread, self, IterationKind::VALUE);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return iter.GetTaggedValue();
 }
 

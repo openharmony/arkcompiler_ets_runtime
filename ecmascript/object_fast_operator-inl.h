@@ -568,6 +568,7 @@ JSTaggedValue ObjectFastOperator::CallSetter(JSThread *thread, JSTaggedValue rec
 
     auto accessor = AccessorData::Cast(accessorValue.GetTaggedObject());
     bool success = JSObject::CallSetter(thread, *accessor, objHandle, valueHandle, true);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
 }
 

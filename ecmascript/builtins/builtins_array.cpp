@@ -925,6 +925,7 @@ JSTaggedValue BuiltinsArray::Filter(EcmaRuntimeCallInfo *argv)
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
             callResult = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (callResult.ToBoolean()) {
                 toIndexHandle.Update(JSTaggedValue(toIndex));
                 JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toIndexHandle, kValue);
@@ -990,8 +991,8 @@ JSTaggedValue BuiltinsArray::Find(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
         JSTaggedValue callResult = JSFunction::Call(info);
-        bool boolResult = callResult.ToBoolean();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        bool boolResult = callResult.ToBoolean();
         if (boolResult) {
             return kValue.GetTaggedValue();
         }
@@ -1060,6 +1061,7 @@ JSTaggedValue BuiltinsArray::FindIndex(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
         callResult = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (callResult.ToBoolean()) {
             return GetTaggedDouble(k);
         }

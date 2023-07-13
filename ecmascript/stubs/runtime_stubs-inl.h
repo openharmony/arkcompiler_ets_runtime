@@ -155,6 +155,7 @@ JSTaggedValue RuntimeStubs::RuntimeInstanceofByHandler(JSThread *thread, JSHandl
     // fastpath
     // 6. Return ? OrdinaryHasInstance(target, object).
     bool res = JSFunction::OrdinaryHasInstance(thread, target, object);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSTaggedValue(res);
 }
 
@@ -432,6 +433,7 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
     } else if (src->IsJSArray()) {
         JSHandle<JSTaggedValue> valuesStr = globalConst->GetHandledValuesString();
         JSHandle<JSTaggedValue> valuesMethod = JSObject::GetMethod(thread, src, valuesStr);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         iter = JSIterator::GetIterator(thread, src, valuesMethod);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     } else {
@@ -1233,6 +1235,7 @@ JSTaggedValue RuntimeStubs::RuntimeGetIterator(JSThread *thread, const JSHandle<
 JSTaggedValue RuntimeStubs::RuntimeGetAsyncIterator(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     JSHandle<JSTaggedValue> asyncit = JSIterator::GetAsyncIterator(thread, obj);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return asyncit.GetTaggedValue();
 }
 

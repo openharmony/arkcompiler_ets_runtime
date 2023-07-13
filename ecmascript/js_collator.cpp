@@ -415,6 +415,7 @@ JSHandle<JSObject> JSCollator::ResolvedOptions(JSThread *thread, const JSHandle<
     JSHandle<JSTaggedValue> property = globalConst->GetHandledLocaleString();
     JSHandle<JSTaggedValue> locale(thread, collator->GetLocale());
     JSObject::CreateDataPropertyOrThrow(thread, options, property, locale);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread);
 
     // [[Usage]]
     UsageOption usageOption = collator->GetUsage();

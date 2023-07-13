@@ -545,8 +545,8 @@ JSTaggedValue BuiltinsRegExp::MatchAll(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     runtimeInfo->SetCallArg(thisObj.GetTaggedValue(), flagsStrHandle.GetTaggedValue());
     JSTaggedValue taggedMatcher = JSFunction::Construct(runtimeInfo);
-    JSHandle<JSTaggedValue> matcherHandle(thread, taggedMatcher);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> matcherHandle(thread, taggedMatcher);
 
     // 7. Let lastIndex be ? ToLength(? Get(R, "lastIndex")).
     JSHandle<JSTaggedValue> lastIndexString(globalConstants->GetHandledLastIndexString());
@@ -963,6 +963,7 @@ JSTaggedValue BuiltinsRegExp::Replace(EcmaRuntimeCallInfo *argv)
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(argsLength, replacerArgs);
             JSTaggedValue replaceResult = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             JSHandle<JSTaggedValue> replValue(thread, replaceResult);
             // v. Let replacement be ToString(replValue).
             JSHandle<EcmaString> replacementString = JSTaggedValue::ToString(thread, replValue);

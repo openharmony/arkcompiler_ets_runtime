@@ -844,6 +844,7 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
     JSHandle<JSTaggedValue> locale(thread, dateTimeFormat->GetLocale());
     JSHandle<JSTaggedValue> property = globalConst->GetHandledLocaleString();
     JSObject::CreateDataPropertyOrThrow(thread, options, property, locale);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     // [[Calendar]]
     JSMutableHandle<JSTaggedValue> calendarValue(thread, dateTimeFormat->GetCalendar());
     icu::SimpleDateFormat *icuSimpleDateFormat = dateTimeFormat->GetIcuSimpleDateFormat();
@@ -860,6 +861,7 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
     }
     property = globalConst->GetHandledCalendarString();
     JSObject::CreateDataPropertyOrThrow(thread, options, property, calendarValue);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     // [[NumberingSystem]]
     JSHandle<JSTaggedValue> numberingSystem(thread, dateTimeFormat->GetNumberingSystem());
     if (numberingSystem->IsUndefined()) {
@@ -867,6 +869,7 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
     }
     property = globalConst->GetHandledNumberingSystemString();
     JSObject::CreateDataPropertyOrThrow(thread, options, property, numberingSystem);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     // [[TimeZone]]
     JSMutableHandle<JSTaggedValue> timezoneValue(thread, dateTimeFormat->GetTimeZone());
     const icu::TimeZone &icuTZ = calendar->getTimeZone();
@@ -885,6 +888,7 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
     }
     property = globalConst->GetHandledTimeZoneString();
     JSObject::CreateDataPropertyOrThrow(thread, options, property, timezoneValue);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
     // [[HourCycle]]
     // For web compatibility reasons, if the property "hourCycle" is set, the "hour12" property should be set to true
     // when "hourCycle" is "h11" or "h12", or to false when "hourCycle" is "h23" or "h24".
@@ -895,6 +899,7 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
         property = globalConst->GetHandledHourCycleString();
         hcValue = ToHourCycleEcmaString(thread, dateTimeFormat->GetHourCycle());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, hcValue);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         if (hc == HourCycleOption::H11 || hc == HourCycleOption::H12) {
             JSHandle<JSTaggedValue> trueValue(thread, JSTaggedValue::True());
             hcValue = trueValue;
@@ -904,6 +909,7 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
         }
         property = globalConst->GetHandledHour12String();
         JSObject::CreateDataPropertyOrThrow(thread, options, property, hcValue);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     }
     // [[DateStyle]], [[TimeStyle]].
     icu::UnicodeString patternUnicode;
@@ -921,6 +927,7 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
                     JSHandle<JSTaggedValue> fsdValue(thread, JSTaggedValue(fsd));
                     property = globalConst->GetHandledFractionalSecondDigitsString();
                     JSObject::CreateDataPropertyOrThrow(thread, options, property, fsdValue);
+                    RETURN_IF_ABRUPT_COMPLETION(thread);
                 }
             }
             property = JSHandle<JSTaggedValue>::Cast(factory->NewFromStdString(item.property));
@@ -928,6 +935,7 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
                 if (pattern.find(pair.first) != std::string::npos) {
                     hcValue = JSHandle<JSTaggedValue>::Cast(factory->NewFromStdString(pair.second));
                     JSObject::CreateDataPropertyOrThrow(thread, options, property, hcValue);
+                    RETURN_IF_ABRUPT_COMPLETION(thread);
                     break;
                 }
             }
@@ -1120,6 +1128,7 @@ JSHandle<JSArray> JSDateTimeFormat::ConstructFDateIntervalToJSArray(JSThread *th
         JSHandle<JSTaggedValue> value = JSHandle<JSTaggedValue>::Cast(
             ToValueString(thread, TrackValue(part.fBeginIndex, part.fEndIndex, begin, end)));
         JSObject::SetProperty(thread, element, thread->GlobalConstants()->GetHandledSourceString(), value, true);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
     }
     return array;
 }

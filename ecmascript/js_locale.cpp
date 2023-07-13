@@ -642,8 +642,10 @@ JSHandle<JSObject> JSLocale::PutElement(JSThread *thread, int index, const JSHan
     auto globalConst = thread->GlobalConstants();
     // obj.type = field_type_string
     JSObject::CreateDataPropertyOrThrow(thread, record, globalConst->GetHandledTypeString(), fieldTypeString);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread);
     // obj.value = value
     JSObject::CreateDataPropertyOrThrow(thread, record, globalConst->GetHandledValueString(), value);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread);
 
     JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(array), index,
                                JSHandle<JSTaggedValue>::Cast(record), true);

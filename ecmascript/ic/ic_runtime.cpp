@@ -225,6 +225,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         }
     }
     bool success = JSObject::SetProperty(&op, value, true);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
     // ic-switch
     if (!GetThread()->GetEcmaVM()->ICEnabled()) {
         icAccessor_.SetAsMega();
