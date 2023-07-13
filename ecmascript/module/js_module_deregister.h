@@ -48,9 +48,11 @@ public:
 
     static void ReviseLoadedModuleCount(JSThread *thread, JSTaggedValue moduleName);
 
-    static void IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module);
+    static void IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
+        std::set<CString> &increaseModule);
 
-    static void DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module);
+    static void DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
+        std::set<CString> &decreaseModule);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MODULE_JS_MODULE_DEREGISTER_H
