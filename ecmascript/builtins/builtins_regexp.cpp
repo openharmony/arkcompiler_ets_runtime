@@ -866,6 +866,7 @@ JSTaggedValue BuiltinsRegExp::Replace(EcmaRuntimeCallInfo *argv)
     // 16. Repeat, for each result in results,
     for (int i = 0; i < resultsIndex; i++) {
         resultValues.Update(ObjectFastOperator::FastGetPropertyByIndex(thread, resultsList.GetTaggedValue(), i));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // a. Let nCaptures be ToLength(Get(result, "length")).
         JSHandle<JSTaggedValue> lengthHandle = globalConst->GetHandledLengthString();
         ncapturesHandle.Update(ObjectFastOperator::FastGetPropertyByValue(
