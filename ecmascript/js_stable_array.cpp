@@ -697,7 +697,7 @@ JSTaggedValue JSStableArray::ToReversed(JSHandle<JSArray> receiver, EcmaRuntimeC
     JSHandle<JSObject> newArrayHandle(thread, newArray);
     TaggedArray *srcElements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     TaggedArray *dstElements = TaggedArray::Cast(newArrayHandle->GetElements().GetTaggedObject());
-    int k = 0;
+    uint32_t k = 0;
     while (k < len) {
         uint32_t start = len - k - 1;
         JSTaggedValue value = srcElements->Get(start);
