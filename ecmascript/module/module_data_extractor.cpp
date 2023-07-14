@@ -153,6 +153,7 @@ JSTaggedValue ModuleDataExtractor::JsonParse(JSThread *thread, const JSPandaFile
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(
             thread, undefined, undefined, undefined, 1); // 1 : argument numbers
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     CString value = jsPandaFile->GetJsonStringId(thread, entryPoint);
     JSHandle<JSTaggedValue> arg0(thread->GetEcmaVM()->GetFactory()->NewFromASCII(value));
     info->SetCallArg(arg0.GetTaggedValue());

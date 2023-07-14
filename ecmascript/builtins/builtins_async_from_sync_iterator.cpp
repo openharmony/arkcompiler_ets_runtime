@@ -93,9 +93,9 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
     // 7.If throw is undefined, then
     if (throwResult->IsUndefined()) {
         JSHandle<JSObject> iterResult = JSIterator::CreateIterResultObject(thread, value, true);
-        JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve());
+        JSHandle<JSTaggedValue> reject(thread, pcap->GetReject());
         EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefinedValue, undefinedValue, 1);
+            EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefinedValue, undefinedValue, 1);
         info->SetCallArg(iterResult.GetTaggedValue());
         return pcap->GetPromise();
     }
@@ -104,10 +104,12 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Throw(EcmaRuntimeCallInfo *argv)
     if (value->IsNull()) {
         EcmaRuntimeCallInfo *callInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, throwResult, syncIterator, undefinedValue, 0);
+        RETURN_REJECT_PROMISE_IF_ABRUPT(thread, throwResult, pcap);
         ret = JSFunction::Call(callInfo);
     } else {
         EcmaRuntimeCallInfo *callInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, throwResult, syncIterator, undefinedValue, 1);
+        RETURN_REJECT_PROMISE_IF_ABRUPT(thread, throwResult, pcap);
         callInfo->SetCallArg(value.GetTaggedValue());
         ret = JSFunction::Call(callInfo);
     }
@@ -177,10 +179,12 @@ JSTaggedValue BuiltinsAsyncFromSyncIterator::Return(EcmaRuntimeCallInfo *argv)
     if (value->IsNull()) {
         EcmaRuntimeCallInfo *callInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, returnResult, syncIterator, undefinedValue, 0);
+        RETURN_REJECT_PROMISE_IF_ABRUPT(thread, returnResult, pcap);
         ret = JSFunction::Call(callInfo);
     } else {
         EcmaRuntimeCallInfo *callInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, returnResult, syncIterator, undefinedValue, 1);
+        RETURN_REJECT_PROMISE_IF_ABRUPT(thread, returnResult, pcap);
         callInfo->SetCallArg(value.GetTaggedValue());
         ret = JSFunction::Call(callInfo);
     }

@@ -142,6 +142,7 @@ JSTaggedValue RuntimeStubs::RuntimeInstanceofByHandler(JSThread *thread, JSHandl
             JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
             EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, instOfHandler, target,
                                                                             undefined, 1);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue(false));
             info->SetCallArg(object.GetTaggedValue());
             JSTaggedValue tagged = JSFunction::Call(info);
 
@@ -2010,6 +2011,7 @@ JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
     uint32_t length = coretypesArray->GetLength();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, obj, undefined, length);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(length, coretypesArray);
     return EcmaInterpreter::Execute(info);
 }

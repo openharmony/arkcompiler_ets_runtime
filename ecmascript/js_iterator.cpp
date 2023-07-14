@@ -139,6 +139,7 @@ JSHandle<JSTaggedValue> JSIterator::IteratorNext(JSThread *thread, const JSHandl
     JSHandle<JSTaggedValue> next(JSObject::GetMethod(thread, iter, key));
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, next, iter, undefined, 1);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, undefined);
     info->SetCallArg(value.GetTaggedValue());
     JSTaggedValue ret = JSFunction::Call(info);
     // 3.ReturnIfAbrupt(result)
@@ -160,6 +161,7 @@ JSHandle<JSTaggedValue> JSIterator::IteratorNext(JSThread *thread, const JSHandl
     JSHandle<JSTaggedValue> next(thread, iter->GetNextMethod());
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, next, iterator, undefined, 1);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, undefined);
     info->SetCallArg(value.GetTaggedValue());
     JSTaggedValue ret = JSFunction::Call(info);
     // 3.ReturnIfAbrupt(result)

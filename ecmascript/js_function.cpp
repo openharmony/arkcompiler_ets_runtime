@@ -403,6 +403,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     if (method->IsFastCall()) {
         if (needPushUndefined) {
             info = EcmaInterpreter::ReBuildRuntimeCallInfo(thread, info, numArgs);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
         JSTaggedType *stackArgs = info->GetArgs();
         stackArgs[1] = stackArgs[0];
