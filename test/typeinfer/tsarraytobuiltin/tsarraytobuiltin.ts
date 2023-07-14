@@ -21,4 +21,45 @@ declare function AssertType(value:any, type:string):void;
     let c : number[] = [1, 2, 3];
     let d = c.indexOf(2);
     AssertType(d, "number");
+
+    let t = 2;
+    let arr1:number[] = new Array(100).fill(0);
+    AssertType(arr1, "number[]");
+    AssertType(arr1[0], "number");
+    AssertType(arr1[t], "number");
+
+    let arr2:number[] = new Array(100).fill(0, 0);
+    AssertType(arr2, "number[]");
+    AssertType(arr2[0], "number");
+    AssertType(arr2[t], "number");
+
+    let arr3:number[] = new Array(100).fill(0, 0, 99);
+    AssertType(arr3, "number[]");
+    AssertType(arr3[0], "number");
+    AssertType(arr3[t], "number");
+
+    let arr4:string[] = new Array(100).fill("abc");
+    AssertType(arr4, "string[]");
+    AssertType(arr4[0], "string");
+    AssertType(arr4[0], "string");
+
+    let arr5:number[] = new Array(100);
+    AssertType(arr5.fill(0), "number[]");
+    AssertType(arr5.sort(), "number[]");
+    AssertType(arr5.copyWithin(0, 3, 4), "number[]");
+    AssertType(arr5.fill(0)[0], "number");
+    AssertType(arr5.fill(0)[t], "number");
+    AssertType(arr5.fill(0).sort(), "number[]");
+    AssertType(arr5.fill(0).sort().copyWithin(0, 3, 4), "number[]");
+
+    function foo():number[] {
+        return [1, 2, 3, 4];
+    }
+
+    let arr6 = foo();
+    AssertType(arr6.fill(0), "number[]");
+    AssertType(arr6.sort(), "number[]");
+    AssertType(arr6.copyWithin(0, 3, 4), "number[]");
+    AssertType(arr6.fill(0)[0], "number");
+    AssertType(arr6.fill(0)[t], "number");
 }

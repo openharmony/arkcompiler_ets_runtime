@@ -85,7 +85,7 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
     }
 
     uint32_t moduleId = tableGenerator_.TryGetModuleId(recordName);
-    if (UNLIKELY(!GlobalTSTypeRef::IsVaildModuleId(moduleId))) {
+    if (UNLIKELY(!GlobalTSTypeRef::IsValidModuleId(moduleId))) {
         LOG_COMPILER(DEBUG) << "The maximum number of TSTypeTables is reached. All TSTypes in the record "
                             << recordName << " will not be parsed and will be treated as any.";
         return GetAndStoreGT(jsPandaFile, typeId, recordName);
@@ -93,7 +93,7 @@ GlobalTSTypeRef TSTypeParser::ParseType(const JSPandaFile *jsPandaFile, const CS
 
     JSHandle<TSTypeTable> table = tableGenerator_.GetOrGenerateTSTypeTable(jsPandaFile, recordName, moduleId);
     uint32_t localId = tableGenerator_.TryGetLocalId(table);
-    if (UNLIKELY(!GlobalTSTypeRef::IsVaildLocalId(localId))) {
+    if (UNLIKELY(!GlobalTSTypeRef::IsValidLocalId(localId))) {
         LOG_COMPILER(DEBUG) << "The maximum number of TSTypes in TSTypeTable " << moduleId << " is reached. "
                             << "The TSType with typeId " << typeId << " in the record " << recordName
                             << " will not be parsed and will be treated as any.";
@@ -161,7 +161,7 @@ GlobalTSTypeRef TSTypeParser::ResolveImportType(const JSPandaFile *jsPandaFile, 
     }
 
     uint32_t moduleId = tableGenerator_.TryGetModuleId(entryPoint);
-    if (UNLIKELY(!GlobalTSTypeRef::IsVaildModuleId(moduleId))) {
+    if (UNLIKELY(!GlobalTSTypeRef::IsValidModuleId(moduleId))) {
         LOG_COMPILER(DEBUG) << "The maximum number of TSTypeTables is reached. All TSTypes in the record "
                             << entryPoint << " will not be parsed and will be treated as any.";
         return GetAndStoreGT(jsPandaFile, typeId, recordName);
@@ -601,7 +601,7 @@ GlobalTSTypeRef TSTypeParser::IterateStarExport(JSHandle<EcmaString> target, con
                 continue;
             }
             uint32_t starModuleId = tableGenerator_.TryGetModuleId(star);
-            if (UNLIKELY(!GlobalTSTypeRef::IsVaildModuleId(starModuleId))) {
+            if (UNLIKELY(!GlobalTSTypeRef::IsValidModuleId(starModuleId))) {
                 continue;
             }
             JSHandle<TSTypeTable> table = tableGenerator_.GetOrGenerateTSTypeTable(jsPandaFile, star, starModuleId);
@@ -796,7 +796,7 @@ GlobalTSTypeRef TSTypeParser::ParsePGOType(const JSPandaFile *jsPandaFile, const
                                            uint32_t methodOffset, uint32_t cpIdx, kungfu::PGOBCInfo::Type type)
 {
     uint32_t moduleId = tableGenerator_.TryGetModuleId(recordName);
-    if (UNLIKELY(!GlobalTSTypeRef::IsVaildModuleId(moduleId))) {
+    if (UNLIKELY(!GlobalTSTypeRef::IsValidModuleId(moduleId))) {
         LOG_COMPILER(DEBUG) << "The maximum number of TSTypeTables is reached. All TSTypes in the record "
                             << recordName << " will not be parsed and will be treated as any.";
         return GetAndStorePGOGT(methodOffset, cpIdx);
@@ -804,7 +804,7 @@ GlobalTSTypeRef TSTypeParser::ParsePGOType(const JSPandaFile *jsPandaFile, const
 
     JSHandle<TSTypeTable> table = tableGenerator_.GetOrGenerateTSTypeTable(jsPandaFile, recordName, moduleId);
     uint32_t localId = tableGenerator_.TryGetLocalId(table);
-    if (UNLIKELY(!GlobalTSTypeRef::IsVaildLocalId(localId))) {
+    if (UNLIKELY(!GlobalTSTypeRef::IsValidLocalId(localId))) {
         LOG_COMPILER(DEBUG) << "The maximum number of TSTypes in TSTypeTable " << moduleId << " is reached. "
                             << "The objLiteral with constantpool index " << cpIdx << " in the record " << recordName
                             << " will not be parsed and will be treated as any.";

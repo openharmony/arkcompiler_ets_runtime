@@ -311,6 +311,7 @@ void TSInlineLowering::ReplaceReturnGate(GateRef callGate)
     } else {
         value = MergeAllReturn(returnVector, state, depend);
     }
+    SupplementType(callGate, value);
     ReplaceHirAndDeleteState(callGate, state, depend, value);
 }
 
@@ -406,5 +407,14 @@ bool TSInlineLowering::FilterCallInTryCatch(GateRef gate)
         }
     }
     return false;
+}
+
+void TSInlineLowering::SupplementType(GateRef callGate, GateRef targetGate)
+{
+    GateType callGateType = acc_.GetGateType(callGate);
+    GateType targetGateType = acc_.GetGateType(targetGate);
+    if (!callGateType.IsAnyType() && targetGateType.IsAnyType()) {
+        acc_.SetGateType(targetGate, callGateType);
+    }
 }
 }  // namespace panda::ecmascript

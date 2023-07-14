@@ -131,7 +131,7 @@ bool MethodTypeInfer::UpdateType(GateRef gate, const GateType type, bool savePre
     }
 
     if (type != preType) {
-        gateAccessor_.SetGateType(gate, type);
+        gateAccessor_.SetGateType(gate, HandleTypeCompatibility(preType, type));
         return true;
     }
     return false;
@@ -141,6 +141,14 @@ bool MethodTypeInfer::UpdateType(GateRef gate, const GlobalTSTypeRef &typeRef, b
 {
     auto type = GateType(typeRef);
     return UpdateType(gate, type, savePreType);
+}
+
+GateType MethodTypeInfer::HandleTypeCompatibility(const GateType preType, const GateType type) const
+{
+    if (tsManager_->IsArrayTypeKind(preType) && tsManager_->IsBuiltinInstanceType(BuiltinTypeId::ARRAY, type)) {
+        return preType;
+    }
+    return type;
 }
 
 bool MethodTypeInfer::IsNewLexEnv(EcmaOpcode opcode) const
@@ -287,14 +295,15 @@ bool MethodTypeInfer::Infer(GateRef gate)
         case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
         case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::APPLY_IMM8_V8_V8:
+            return InferCallFunction(gate);
         case EcmaOpcode::CALLTHIS0_IMM8_V8:
         case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
         case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
-        case EcmaOpcode::APPLY_IMM8_V8_V8:
-            return InferCallFunction(gate);
+            return InferCallMethod(gate);
         case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
         case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
             return InferLdObjByValue(gate);
@@ -601,12 +610,12 @@ bool MethodTypeInfer::InferLdObjByIndex(GateRef gate)
         return UpdateType(gate, type);
     }
     
-    if (tsManager_->IsInt32ArrayType(inValueType)) {
+    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, inValueType)) {
         return UpdateType(gate, GateType::IntType());
     }
 
-    if (tsManager_->IsFloat32ArrayType(inValueType) ||
-        tsManager_->IsFloat64ArrayType(inValueType)) {
+    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, inValueType) ||
+        tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, inValueType)) {
         return UpdateType(gate, GateType::DoubleType());
     }
 
@@ -757,7 +766,7 @@ bool MethodTypeInfer::InferLdStr(GateRef gate)
 bool MethodTypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_t index)
 {
     JSTaggedValue name = tsManager_->GetStringFromConstantPool(index);
-    if (tsManager_->IsBuiltinArrayType(objType) || tsManager_->IsTypedArrayType(objType)) {
+    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::ARRAY, objType) || tsManager_->IsTypedArrayType(objType)) {
         auto thread = tsManager_->GetThread();
         JSTaggedValue lengthKey = thread->GlobalConstants()->GetLengthString();
         if (JSTaggedValue::SameValue(name, lengthKey)) {
@@ -778,7 +787,7 @@ bool MethodTypeInfer::GetObjPropWithName(GateRef gate, GateType objType, uint64_
     return UpdateType(gate, type);
 }
 
-bool MethodTypeInfer::InferCallFunction(GateRef gate)
+bool MethodTypeInfer::InferCallMethod(GateRef gate)
 {
     // 1: last one elem is function
     size_t funcIndex = gateAccessor_.GetNumValueIn(gate) - 1;
@@ -802,14 +811,26 @@ bool MethodTypeInfer::InferCallFunction(GateRef gate)
 
         // normal Call
         auto returnType = tsManager_->GetFuncReturnValueTypeGT(funcType);
-        return UpdateType(gate, returnType);
-    }
-
-    if (tsManager_->IsIteratorInstanceTypeKind(funcType)) {
+        GateRef thisObj = gateAccessor_.GetValueIn(gate, 0);  // 0: index of thisObject
+        auto thisObjType = gateAccessor_.GetGateType(thisObj);
+        return UpdateType(gate, HandleTypeCompatibility(thisObjType, GateType(returnType)));
+    } else if (tsManager_->IsIteratorInstanceTypeKind(funcType)) {
         GlobalTSTypeRef elementGT = tsManager_->GetIteratorInstanceElementGt(funcType);
         GlobalTSTypeRef iteratorResultInstanceType = tsManager_->GetOrCreateTSIteratorInstanceType(
             TSRuntimeType::ITERATOR_RESULT, elementGT);
         return UpdateType(gate, iteratorResultInstanceType);
+    }
+    return UpdateType(gate, GateType::AnyType());
+}
+
+bool MethodTypeInfer::InferCallFunction(GateRef gate)
+{
+    // 1: last one elem is function
+    size_t funcIndex = gateAccessor_.GetNumValueIn(gate) - 1;
+    auto funcType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, funcIndex));
+    if (tsManager_->IsFunctionTypeKind(funcType)) {
+        auto returnType = tsManager_->GetFuncReturnValueTypeGT(funcType);
+        return UpdateType(gate, returnType);
     }
     /* According to the ECMAScript specification, user-defined classes can only be instantiated by constructing (with
      * new keyword). However, a few builtin types can be called like a function. Upon the results of calling and
@@ -835,7 +856,7 @@ bool MethodTypeInfer::InferCallFunction(GateRef gate)
      * See the list of builtin types' constructors at:
      *     https://tc39.es/ecma262/2021/#sec-constructor-properties-of-the-global-object
      */
-    if (tsManager_->IsClassTypeKind(funcType) && tsManager_->IsBuiltin(funcType)) {
+    if (tsManager_->IsBuiltinObjectType(funcType)) {
         // For simplicity, calling and constructing are considered equivalent.
         return UpdateType(gate, tsManager_->CreateClassInstanceType(funcType));
     }
@@ -851,11 +872,11 @@ bool MethodTypeInfer::InferLdObjByValue(GateRef gate)
         auto elementType = tsManager_->GetArrayParameterTypeGT(objType);
         return UpdateType(gate, elementType);
     }
-    if (tsManager_->IsInt32ArrayType(objType)) {
+    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, objType)) {
         return UpdateType(gate, GateType::IntType());
     }
-    if (tsManager_->IsFloat32ArrayType(objType) ||
-        tsManager_->IsFloat64ArrayType(objType)) {
+    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, objType) ||
+        tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, objType)) {
         return UpdateType(gate, GateType::DoubleType());
     }
     // handle object
