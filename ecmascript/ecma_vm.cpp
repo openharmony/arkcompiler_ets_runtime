@@ -452,11 +452,8 @@ void EcmaVM::RemoveFromDeregisterModuleList(CString module)
 
 bool EcmaVM::ContainInDeregisterModuleList(CString module)
 {
-    auto iter = std::find(deregisterModuleList_.begin(), deregisterModuleList_.end(), module);
-    if (iter != deregisterModuleList_.end()) {
-        return true;
-    }
-    return false;
+    return (std::find(deregisterModuleList_.begin(), deregisterModuleList_.end(), module) 
+        != deregisterModuleList_.end());
 }
 
 void EcmaVM::ClearBufferData()

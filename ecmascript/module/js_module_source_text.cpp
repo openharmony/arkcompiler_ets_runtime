@@ -528,7 +528,6 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
                 ModuleDeregister::InitForDeregisterModule(requiredVal, excuteFromJob);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
-                requestedModules->Set(thread, idx, requiredModule->GetEcmaModuleFilename());
             } else {
                 ASSERT(moduleRecordName.IsString());
                 JSHandle<JSTaggedValue> requiredVal =
@@ -536,7 +535,6 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
                 ModuleDeregister::InitForDeregisterModule(requiredVal, excuteFromJob);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
-                requestedModules->Set(thread, idx, requiredModule->GetEcmaModuleRecordName());
             }
 
             // b. Set index to ? InnerModuleInstantiation(requiredModule, stack, index).
@@ -561,7 +559,6 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
             }
         }
     }
-
     // Adapter new opcode
     // 10. Perform ? ModuleDeclarationEnvironmentSetup(module).
     if (module->GetIsNewBcVersion()) {
@@ -1544,10 +1541,6 @@ JSTaggedValue SourceTextModule::GetModuleName(JSTaggedValue currentModule)
 
 bool SourceTextModule::IsDynamicModule(LoadingTypes types)
 {
-    if (types == LoadingTypes::DYNAMITC_MODULE) {
-        return true;
-    }
-    return false;
+    return types == LoadingTypes::DYNAMITC_MODULE;
 }
-
 } // namespace panda::ecmascript

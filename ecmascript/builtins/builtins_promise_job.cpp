@@ -152,12 +152,12 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     CString entryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
     CString fileNameStr = ConvertToString(dirPath.GetTaggedValue());
     CString requestPath = ConvertToString(specifierString.GetTaggedValue());
-    LOG_FULL(DEBUG) << "Start importing dynamic module : " << requestPath;
+    LOG_ECMA(DEBUG) << "Start importing dynamic module : " << requestPath;
 
     // resolve native module
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    if (isNative && !moduleManager->IsImportedModuleLoaded(specifierString.GetTaggedValue())) {
+    if (isNative) {
         return DynamicImport::ExecuteNativeModule(thread, specifierString, moduleType, resolve, reject);
     }
 

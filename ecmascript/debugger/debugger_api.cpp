@@ -448,17 +448,15 @@ int32_t DebuggerApi::GetRequestModuleIndex(const EcmaVM *ecmaVm, JSTaggedValue m
     JSThread *thread = ecmaVm->GetJSThread();
     JSHandle<SourceTextModule> module(thread, SourceTextModule::Cast(currentModule->GetTaggedObject()));
     JSHandle<JSTaggedValue> required(thread, moduleRequest);
-    JSHandle<SourceTextModule> requiredModule = JSHandle<SourceTextModule>::Cast(
-        SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
-    JSTaggedValue requireModule = requiredModule->GetEcmaModuleRecordName();
     JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
     uint32_t requestedModulesLen = requestedModules->GetLength();
     for (uint32_t idx = 0; idx < requestedModulesLen; idx++) {
         JSTaggedValue requestModule = requestedModules->Get(idx);
-        if (JSTaggedValue::SameValue(requireModule, requestModule)) {
+        if (JSTaggedValue::SameValue(required.GetTaggedValue(), requestModule)) {
             return idx;
         }
     }
+    LOG_ECMA(FATAL) << "this branch is unreachable";
     return -1;
 }
 
