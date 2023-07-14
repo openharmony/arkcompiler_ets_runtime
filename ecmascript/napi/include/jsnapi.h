@@ -553,7 +553,7 @@ public:
     static Local<StringRef> NewFromUtf8(const EcmaVM *vm, const char *utf8, int length = -1);
     static Local<StringRef> NewFromUtf16(const EcmaVM *vm, const char16_t *utf16, int length = -1);
     std::string ToString();
-    int32_t Length();
+    uint32_t Length();
     int32_t Utf8Length(const EcmaVM *vm);
     int WriteUtf8(char *buffer, int length, bool isWriteBuffer = false);
     int WriteUtf16(char16_t *buffer, int length);
@@ -761,7 +761,7 @@ public:
 class PUBLIC_API ArrayRef : public ObjectRef {
 public:
     static Local<ArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
-    int32_t Length(const EcmaVM *vm);
+    uint32_t Length(const EcmaVM *vm);
     static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
     static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
 };

@@ -77,7 +77,7 @@ public:
     static bool SetProperty(JSThread *thread, const JSHandle<JSAPIArrayList> &obj,
                             const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value);
-    inline int GetSize() const
+    inline uint32_t GetSize() const
     {
         return GetLength().GetInt();
     }

@@ -17,7 +17,7 @@
 #include <iostream>
 #include <iterator>
 #include <ostream>
-#include <signal.h>  // NOLINTNEXTLINE(modernize-deprecated-headers)
+#include <csignal>
 #include <vector>
 
 #include "ecmascript/base/string_helper.h"

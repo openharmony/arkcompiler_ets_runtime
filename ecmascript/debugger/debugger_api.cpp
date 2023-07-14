@@ -968,7 +968,7 @@ Local<JSValueRef> DebuggerApi::GetLinkedListValue(const EcmaVM *ecmaVm, Local<JS
     uint32_t size = static_cast<uint32_t>(linkedList->Length());
     Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, size);
     JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
-    uint32_t valueNode = TaggedDoubleList::ELEMENTS_START_INDEX;
+    int valueNode = TaggedDoubleList::ELEMENTS_START_INDEX;
     uint32_t index = 0;
     while (index < size) {
         valueNode = doubleList->GetNextDataIndex(valueNode);
@@ -988,7 +988,7 @@ Local<JSValueRef> DebuggerApi::GetListValue(const EcmaVM *ecmaVm, Local<JSValueR
     uint32_t size = static_cast<uint32_t>(list->Length());
     Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, size);
     JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
-    uint32_t valueNode = TaggedDoubleList::ELEMENTS_START_INDEX;
+    int valueNode = TaggedDoubleList::ELEMENTS_START_INDEX;
     uint32_t index = 0;
     while (index < size) {
         valueNode = singleList->GetNextDataIndex(valueNode);

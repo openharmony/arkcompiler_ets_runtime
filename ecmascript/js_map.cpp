@@ -61,7 +61,7 @@ JSTaggedValue JSMap::Get(JSTaggedValue key) const
     return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->Get(key);
 }
 
-int JSMap::GetSize() const
+uint32_t JSMap::GetSize() const
 {
     return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->NumberOfElements();
 }
