@@ -340,6 +340,7 @@ void TSInlineLowering::LowerToInlineCall(GateRef callGate, const std::vector<Gat
     for (size_t i = 0; i < argAcc.ArgsCount(); i++) {
         GateRef arg = argAcc.ArgsAt(i);
         acc_.UpdateAllUses(arg, args.at(i));
+        acc_.SetGateType(args.at(i), acc_.GetGateType(arg));
         acc_.DeleteGate(arg);
     }
     // replace in depend and state
@@ -350,7 +351,9 @@ void TSInlineLowering::LowerToInlineCall(GateRef callGate, const std::vector<Gat
     } else {
         inlineFunc = args.at(static_cast<size_t>(CommonArgIdx::FUNC));
     }
-    GateRef callerFunc = argAcc.GetFrameArgsIn(callGate, FrameArgIdx::FUNC);
+    GateRef frameState = acc_.GetFrameState(callGate);
+    GateRef frameArgs = acc_.GetValueIn(frameState, 0);
+    GateRef callerFunc = acc_.GetValueIn(frameArgs, 0);
     ReplaceEntryGate(callGate, callerFunc, inlineFunc, glue);
     // replace use gate
     ReplaceReturnGate(callGate);
@@ -362,8 +365,8 @@ void TSInlineLowering::InlineFuncCheck(GateRef gate)
 {
     GateRef callState = acc_.GetState(gate);
     GateRef callDepend = acc_.GetDep(gate);
-    ASSERT(acc_.HasFrameState(callDepend));
-    GateRef frameState = acc_.GetFrameState(callDepend);
+    ASSERT(acc_.HasFrameState(gate));
+    GateRef frameState = acc_.GetFrameState(gate);
     size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
     GateRef inlineFunc =  acc_.GetValueIn(gate, funcIndex);
     auto type = acc_.GetGateType(inlineFunc);
@@ -389,15 +392,7 @@ void TSInlineLowering::RemoveRoot()
 
 void TSInlineLowering::BuildFrameStateChain(GateRef gate, BytecodeCircuitBuilder &builder)
 {
-    GateRef stateSplit = Circuit::NullGate();
-    if (noCheck_) {
-        stateSplit = acc_.GetDep(gate);
-    } else {
-        GateRef check = acc_.GetDep(gate);
-        stateSplit = acc_.GetDep(check);
-    }
-    ASSERT(acc_.GetOpCode(stateSplit) == OpCode::STATE_SPLIT);
-    GateRef preFrameState = acc_.GetFrameState(stateSplit);
+    GateRef preFrameState = acc_.GetFrameState(gate);
     ASSERT(acc_.GetOpCode(preFrameState) == OpCode::FRAME_STATE);
     builder.SetPreFrameState(preFrameState);
 }

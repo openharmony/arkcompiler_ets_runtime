@@ -139,10 +139,11 @@ private:
     GateRef GetPreBBInput(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef gate);
     GateRef GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef phi);
     void BuildFrameState(BytecodeRegion& bb, const BytecodeInfo &bytecodeInfo, size_t index);
-    void BuildStateSplitAfter(size_t index);
+    void BuildStateSplitAfter(size_t index, BytecodeRegion& bb);
     void BuildStateSplitBefore(BytecodeRegion& bb, size_t index);
-    bool ShouldInsertFrameStateBefore(BytecodeRegion& bb,
-        const BytecodeInfo &bytecodeInfo, size_t index);
+    bool ShouldInsertFrameStateBefore(BytecodeRegion& bb, size_t index);
+    void BuildCallFrameState(size_t index, BytecodeRegion& bb);
+    size_t GetNearestNextIndex(size_t index, BytecodeRegion& bb) const;
 
     BytecodeCircuitBuilder *builder_{nullptr};
     FrameStateInfo *liveOutResult_{nullptr};
