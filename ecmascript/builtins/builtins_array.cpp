@@ -2504,17 +2504,6 @@ JSTaggedValue BuiltinsArray::ToLocaleString(EcmaRuntimeCallInfo *argv)
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    // 5. Let separator be the String value for the list-separator String appropriate for the host environment’s
-    // current locale (this is derived in an implementation-defined way).
-    JSHandle<JSTaggedValue> sepHandle;
-    if ((GetCallArg(argv, 0)->IsUndefined())) {
-        sepHandle = JSHandle<JSTaggedValue>::Cast(ecmaVm->GetFactory()->NewFromASCII(","));
-    } else {
-        sepHandle = GetCallArg(argv, 0);
-    }
-    JSHandle<EcmaString> sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    CString sepString = ConvertToString(*sepStringHandle);
     // 6. If len is zero, return the empty String.
     if (len == 0) {
         return GetTaggedString(thread, "");
@@ -2566,7 +2555,7 @@ JSTaggedValue BuiltinsArray::ToLocaleString(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString nextString = ConvertToString(*nextStringHandle);
         if (k > 0) {
-            concatStr += sepString;
+            concatStr += STRING_SEPERATOR;
             concatStr += nextString;
             continue;
         }
