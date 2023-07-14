@@ -202,7 +202,7 @@ private:
             {
                 return type_ == DATE_INVALID_WORD;
             }
-            
+
             bool IsMonth() const
             {
                 return type_ == DATE_MONTH;
@@ -301,7 +301,7 @@ private:
                 return type_;
             }
 
-            int GetLength() const
+            uint32_t GetLength() const
             {
                 return len_;
             }
@@ -309,9 +309,9 @@ private:
             explicit DateUnit(DateValueType type, int value, int len) : type_(type), value_(value), len_(len) {}
             DateValueType type_;
             int value_;
-            int len_;
+            uint32_t len_;
     };
-    
+
     class DateProxy {
         public:
             explicit DateProxy(StringReader *str) : str_(str), date_(Read()) {}
@@ -422,7 +422,7 @@ private:
 
             static int NormMilliSecond(DateUnit sec)
             {
-                int len = sec.GetLength();
+                uint32_t len = sec.GetLength();
                 int value = sec.GetValue();
                 // 3: "sss" norm length
                 if (len == 3) {

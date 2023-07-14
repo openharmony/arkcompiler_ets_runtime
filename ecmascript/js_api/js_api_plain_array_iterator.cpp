@@ -49,9 +49,9 @@ JSTaggedValue JSAPIPlainArrayIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSAPIPlainArray> apiPlainArray(plainArray);
     ASSERT(plainArray->IsJSAPIPlainArray());
 
-    int32_t length = apiPlainArray->GetLength();
+    uint32_t length = apiPlainArray->GetLength();
     int32_t index = iter->GetNextIndex();
-    if (index >= length) {
+    if (static_cast<uint32_t>(index) >= length) {
         iter->SetIteratedPlainArray(thread, undefinedHandle);
         return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
     }
