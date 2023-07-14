@@ -131,6 +131,17 @@ void PGOTypeInfer::CollectGateType(CollectedType &types, GateType tsType, PGORWO
         }
         CheckAndInsert(types, pgoType);
     }
+
+    // for static TS uinon type
+    if (tsManager_->IsUnionTypeKind(tsType)) {
+        JSHandle<TSUnionType> unionType(tsManager_->GetTSType(tsType.GetGTRef()));
+        TaggedArray *components = TaggedArray::Cast(unionType->GetComponents().GetTaggedObject());
+        uint32_t length = components->GetLength();
+        for (uint32_t i = 0; i < length; ++i) {
+            GlobalTSTypeRef gt(components->Get(i).GetInt());
+            CheckAndInsert(types, GateType(gt));
+        }
+    }
 }
 
 void PGOTypeInfer::UpdateType(CollectedType &types, JSTaggedValue prop)

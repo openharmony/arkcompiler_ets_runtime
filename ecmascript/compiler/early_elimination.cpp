@@ -85,6 +85,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::LOAD_TYPED_ARRAY_LENGTH:
         case OpCode::TYPED_ARRAY_CHECK:
         case OpCode::OBJECT_TYPE_CHECK:
+        case OpCode::OBJECT_TYPE_COMPARE:
         case OpCode::STABLE_ARRAY_CHECK:
         case OpCode::INDEX_CHECK:
         case OpCode::TYPED_CALL_CHECK:
@@ -322,6 +323,7 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         }
         case OpCode::TYPED_ARRAY_CHECK:
         case OpCode::OBJECT_TYPE_CHECK:
+        case OpCode::OBJECT_TYPE_COMPARE:
         case OpCode::INDEX_CHECK: {
             if (acc_.GetParamGateType(lhs) != acc_.GetParamGateType(rhs)) {
                 return false;

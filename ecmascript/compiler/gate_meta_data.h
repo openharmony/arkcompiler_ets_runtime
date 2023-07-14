@@ -320,6 +320,7 @@ std::string MachineTypeToStr(MachineType machineType);
 #define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                                                   \
     V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                  \
     V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                        \
+    V(ObjectTypeCompare, OBJECT_TYPE_COMPARE, GateFlags::CHECKABLE, 1, 1, 2)                                    \
     V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                        \
     V(LoadTypedArrayLength, LOAD_TYPED_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                              \
     V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                                   \

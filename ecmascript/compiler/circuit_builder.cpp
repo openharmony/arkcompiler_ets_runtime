@@ -133,14 +133,27 @@ GateRef CircuitBuilder::Arguments(size_t index)
     return GetCircuit()->NewArg(MachineType::I64, index, GateType::NJSValue(), argListOfCircuit);
 }
 
-GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef index)
+GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassIndex)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(static_cast<size_t>(type.Value())),
-        MachineType::I1, {currentControl, currentDepend, gate, index, frameState}, GateType::NJSValue());
+    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(static_cast<size_t>(type.Value())), MachineType::I1,
+        {currentControl, currentDepend, gate, hclassIndex, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ObjectTypeCompare(GateType type, GateRef gate, GateRef hclassIndex)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCompare(static_cast<size_t>(type.Value())), MachineType::I1,
+        {currentControl, currentDepend, gate, hclassIndex, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -1044,7 +1057,7 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     return result;
 }
 
-GateRef CircuitBuilder::StoreMemory(MemoryType Op, VariableType type, GateRef receiver, GateRef index, GateRef value) 
+GateRef CircuitBuilder::StoreMemory(MemoryType Op, VariableType type, GateRef receiver, GateRef index, GateRef value)
 {
     auto opIdx = static_cast<uint64_t>(Op);
     auto currentLabel = env_->GetCurrentLabel();

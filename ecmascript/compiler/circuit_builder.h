@@ -40,6 +40,9 @@ class Environment;
 class Label;
 class Variable;
 class StubBuilder;
+class TSHCRLowering;
+class NTypeHCRLowering;
+class SlowPathLowering;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                    \
     V(Int16Add, Add, MachineType::I16)                                    \
@@ -255,7 +258,8 @@ public:
     GateRef LoadTypedArrayLength(GateType type, GateRef gate);
     GateRef RangeGuard(GateRef gate);
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
-    GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
+    GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassIndex);
+    GateRef ObjectTypeCompare(GateType type, GateRef gate, GateRef hclassIndex);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, GateRef param, const char* comment = nullptr);
     GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate);
@@ -650,8 +654,6 @@ public:
     inline GateRef GetState() const;
     inline GateRef GetDepend() const;
     inline StateDepend GetStateDepend() const;
-    inline void SetDepend(GateRef depend);
-    inline void SetState(GateRef state);
 
     GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     GateRef IsBase(GateRef ctor);
@@ -660,6 +662,9 @@ public:
     inline GateRef StoreToTaggedArray(GateRef array, size_t index, GateRef value);
 
 private:
+    inline void SetDepend(GateRef depend);
+    inline void SetState(GateRef state);
+
 #define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                            \
     inline GateRef NAME(GateRef x)                                                                  \
     {                                                                                               \
@@ -674,6 +679,9 @@ private:
     Environment *env_ {nullptr};
     CompilationConfig *cmpCfg_ {nullptr};
     friend StubBuilder;
+    friend TSHCRLowering;
+    friend NTypeHCRLowering;
+    friend SlowPathLowering;
 };
 
 class Label {

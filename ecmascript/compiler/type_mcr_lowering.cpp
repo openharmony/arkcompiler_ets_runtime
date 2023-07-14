@@ -62,6 +62,9 @@ void TypeMCRLowering::LowerType(GateRef gate)
         case OpCode::OBJECT_TYPE_CHECK:
             LowerObjectTypeCheck(gate);
             break;
+        case OpCode::OBJECT_TYPE_COMPARE:
+            LowerObjectTypeCompare(gate);
+            break;
         case OpCode::INDEX_CHECK:
             LowerIndexCheck(gate);
             break;
@@ -278,7 +281,7 @@ void TypeMCRLowering::LowerTypedArrayCheck(GateRef gate)
 
     auto builtinTypeId = tsManager_->GetTypedArrayBuiltinId(type);
     SetDeoptTypeInfo(builtinTypeId, deoptType, typedArrayFuncIndex);
-    
+
     GateRef frameState = GetFrameState(gate);
     GateRef glueGlobalEnv = builder_.GetGlobalEnv();
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -310,32 +313,7 @@ void TypeMCRLowering::LowerObjectTypeCheck(GateRef gate)
                tsManager_->IsObjectTypeKind(type)) {
         LowerSimpleHClassCheck(gate);
     } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
-    }
-}
-
-void TypeMCRLowering::LowerSimpleHClassCheck(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    auto type = acc_.GetParamGateType(gate);
-    if (tsManager_->IsClassTypeKind(type) ||
-        tsManager_->IsObjectTypeKind(type)) {
-        GateRef frameState = GetFrameState(gate);
-        GateRef receiver = acc_.GetValueIn(gate, 0);
-        builder_.HeapObjectCheck(receiver, frameState);
-        GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
-        auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
-        ArgumentAccessor argAcc(circuit_);
-        GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
-        GateRef aotHCGate = LoadFromConstPool(jsFunc, hclassIndex);
-        GateRef receiverHClass = builder_.LoadConstOffset(
-            VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
-        GateRef check = builder_.Equal(aotHCGate, receiverHClass);
-        builder_.DeoptCheck(check, frameState, DeoptType::INCONSISTENTHCLASS);
-        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-    } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
+        LOG_COMPILER(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
 }
@@ -343,13 +321,60 @@ void TypeMCRLowering::LowerSimpleHClassCheck(GateRef gate)
 void TypeMCRLowering::LowerTSSubtypingCheck(GateRef gate)
 {
     GateRef frameState = GetFrameState(gate);
+    Label levelValid(&builder_);
+    Label exit(&builder_);
+    GateRef compare = BuildCompareSubTyping(gate, frameState, &levelValid, &exit);
+    builder_.DeoptCheck(compare, frameState, DeoptType::INCONSISTENTHCLASS);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeMCRLowering::LowerSimpleHClassCheck(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+    GateRef compare = BuildCompareHClass(gate, frameState);
+    builder_.DeoptCheck(compare, frameState, DeoptType::INCONSISTENTHCLASS);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeMCRLowering::LowerObjectTypeCompare(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    auto type = acc_.GetParamGateType(gate);
+    if (tsManager_->IsClassInstanceTypeKind(type)) {
+        LowerTSSubtypingCompare(gate);
+    } else if (tsManager_->IsClassTypeKind(type) ||
+               tsManager_->IsObjectTypeKind(type)) {
+        LowerSimpleHClassCompare(gate);
+    } else {
+        LOG_COMPILER(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+}
+
+void TypeMCRLowering::LowerSimpleHClassCompare(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+    GateRef compare = BuildCompareHClass(gate, frameState) ;
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), compare);
+}
+
+void TypeMCRLowering::LowerTSSubtypingCompare(GateRef gate)
+{
+    GateRef frameState = GetFrameState(gate);
+    Label levelValid(&builder_);
+    Label exit(&builder_);
+    GateRef compare = BuildCompareSubTyping(gate, frameState, &levelValid, &exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), compare);
+}
+
+GateRef TypeMCRLowering::BuildCompareSubTyping(GateRef gate, GateRef frameState, Label *levelValid, Label *exit)
+{
     GateRef receiver = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(receiver, frameState);
 
     GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
     ArgumentAccessor argAcc(circuit_);
     GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
-    DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
     JSTaggedValue aotHC = tsManager_->GetHClassFromCache(acc_.TryGetValue(aotHCIndex));
     ASSERT(aotHC.IsJSHClass());
 
@@ -364,24 +389,36 @@ void TypeMCRLowering::LowerTSSubtypingCheck(GateRef gate)
     GateRef aotHCGate = LoadFromConstPool(jsFunc, hclassIndex);
 
     if (LIKELY(static_cast<uint32_t>(level) < SubtypingOperator::DEFAULT_SUPERS_CAPACITY)) {
-        check = builder_.Equal(aotHCGate, GetValueFromSupers(supers, level));
-    } else {
-        GateRef levelGate = builder_.Int32(level);
-        GateRef length = GetLengthFromSupers(supers);
-
-        Label levelValid(&builder_);
-        Label exit(&builder_);
-        builder_.Branch(builder_.Int32LessThan(levelGate, length), &levelValid, &exit);
-        builder_.Bind(&levelValid);
-        {
-            check = builder_.Equal(aotHCGate, GetValueFromSupers(supers, level));
-            builder_.Jump(&exit);
-        }
-        builder_.Bind(&exit);
+        return builder_.Equal(aotHCGate, GetValueFromSupers(supers, level));
     }
-    builder_.DeoptCheck(*check, frameState, DeoptType::INCONSISTENTHCLASS);
 
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+    DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
+    GateRef levelGate = builder_.Int32(level);
+    GateRef length = GetLengthFromSupers(supers);
+
+    builder_.Branch(builder_.Int32LessThan(levelGate, length), levelValid, exit);
+    builder_.Bind(levelValid);
+    {
+        check = builder_.Equal(aotHCGate, GetValueFromSupers(supers, level));
+        builder_.Jump(exit);
+    }
+    builder_.Bind(exit);
+
+    return *check;
+}
+
+GateRef TypeMCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
+{
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    builder_.HeapObjectCheck(receiver, frameState);
+    GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
+    auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
+    ArgumentAccessor argAcc(circuit_);
+    GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
+    GateRef aotHCGate = LoadFromConstPool(jsFunc, hclassIndex);
+    GateRef receiverHClass = builder_.LoadConstOffset(
+        VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+    return builder_.Equal(aotHCGate, receiverHClass);
 }
 
 void TypeMCRLowering::LowerIndexCheck(GateRef gate)
@@ -866,9 +903,9 @@ void TypeMCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
     }
     builder_.Bind(&exit);
     value = builder_.TruncInt32ToInt8(*result);
-    
+
     GateRef arrbuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
-    
+
     GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
 
     builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), data, builder_.PtrAdd(offset, byteOffset), value);

@@ -131,6 +131,12 @@ private:
     void LowerObjectTypeCheck(GateRef gate);
     void LowerSimpleHClassCheck(GateRef gate);
     void LowerTSSubtypingCheck(GateRef gate);
+    void LowerObjectTypeCompare(GateRef gate);
+    void LowerSimpleHClassCompare(GateRef gate);
+    void LowerTSSubtypingCompare(GateRef gate);
+    GateRef BuildCompareSubTyping(GateRef gate, GateRef frameState, Label *levelValid, Label *exit);
+    GateRef BuildCompareHClass(GateRef gate, GateRef frameState);
+    void BuildCompareSubTyping(GateRef gate);
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);
     void LowerLoadTypedArrayLength(GateRef gate);
