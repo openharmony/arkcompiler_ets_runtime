@@ -234,7 +234,9 @@ JSTaggedValue TypedArrayHelper::CreateFromTypedArray(EcmaRuntimeCallInfo *argv, 
     // 15. Let byteLength be elementSize × elementLength.
     uint32_t srcByteOffset = srcObj->GetByteOffset();
     uint32_t elementSize = TypedArrayHelper::GetSizeFromType(arrayType);
-    uint32_t byteLength = elementSize * elementLength;
+    // If elementLength is a large number, the multiplication of elementSize and elementLength may exceed
+    //     the maximum value of uint32, resulting in data overflow. Therefore, the type of byteLength is uint64_t.
+    uint64_t byteLength = elementSize * static_cast<uint64_t>(elementLength);
     // 16. If IsSharedArrayBuffer(srcData) is false, then
     //   a. Let bufferConstructor be ? SpeciesConstructor(srcData, %ArrayBuffer%).
 
@@ -368,9 +370,9 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
     // 16. Set O.[[ArrayLength]] to newByteLength / elementSize.
     JSTypedArray *jsTypedArray = JSTypedArray::Cast(*obj);
     jsTypedArray->SetViewedArrayBufferOrByteArray(thread, buffer);
-    jsTypedArray->SetByteLength(static_cast<int32_t>(newByteLength));
+    jsTypedArray->SetByteLength(newByteLength);
     jsTypedArray->SetByteOffset(offset);
-    jsTypedArray->SetArrayLength(static_cast<int32_t>(newByteLength / elementSize));
+    jsTypedArray->SetArrayLength(newByteLength / elementSize);
     // 17. Return O.
     return obj.GetTaggedValue();
 }
