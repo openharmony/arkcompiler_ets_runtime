@@ -610,12 +610,11 @@ bool MethodTypeInfer::InferLdObjByIndex(GateRef gate)
         return UpdateType(gate, type);
     }
     
-    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, inValueType)) {
+    if (tsManager_->IsIntTypedArrayType(inValueType)) {
         return UpdateType(gate, GateType::IntType());
     }
 
-    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, inValueType) ||
-        tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, inValueType)) {
+    if (tsManager_->IsDoubleTypedArrayType(inValueType)) {
         return UpdateType(gate, GateType::DoubleType());
     }
 
@@ -872,11 +871,10 @@ bool MethodTypeInfer::InferLdObjByValue(GateRef gate)
         auto elementType = tsManager_->GetArrayParameterTypeGT(objType);
         return UpdateType(gate, elementType);
     }
-    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, objType)) {
+    if (tsManager_->IsIntTypedArrayType(objType)) {
         return UpdateType(gate, GateType::IntType());
     }
-    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, objType) ||
-        tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, objType)) {
+    if (tsManager_->IsDoubleTypedArrayType(objType)) {
         return UpdateType(gate, GateType::DoubleType());
     }
     // handle object

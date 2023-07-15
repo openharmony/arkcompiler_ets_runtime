@@ -499,12 +499,15 @@ void NumberSpeculativeLowering::VisitLoadElement(GateRef gate)
 {
     auto op = acc_.GetTypedLoadOp(gate);
     switch (op) {
+        case TypedLoadOp::INT8ARRAY_LOAD_ELEMENT:
+        case TypedLoadOp::UINT8ARRAY_LOAD_ELEMENT:
+        case TypedLoadOp::UINT8CLAMPEDARRAY_LOAD_ELEMENT:
+        case TypedLoadOp::INT16ARRAY_LOAD_ELEMENT:
+        case TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT:
         case TypedLoadOp::INT32ARRAY_LOAD_ELEMENT:
             acc_.SetMachineType(gate, MachineType::I32);
             break;
         case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
-            acc_.SetMachineType(gate, MachineType::F64);
-            break;
         case TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT:
             acc_.SetMachineType(gate, MachineType::F64);
             break;

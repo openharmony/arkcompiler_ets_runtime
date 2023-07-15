@@ -206,25 +206,50 @@ void TypeMCRLowering::LowerStableArrayCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
+void TypeMCRLowering::SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &funcIndex)
+{
+    type = DeoptType::NOTARRAY;
+    switch (id) {
+        case BuiltinTypeId::INT8_ARRAY:
+            funcIndex = GlobalEnv::INT8_ARRAY_FUNCTION_INDEX;
+            break;
+        case BuiltinTypeId::UINT8_ARRAY:
+            funcIndex = GlobalEnv::UINT8_ARRAY_FUNCTION_INDEX;
+            break;
+        case BuiltinTypeId::UINT8_CLAMPED_ARRAY:
+            funcIndex = GlobalEnv::UINT8_CLAMPED_ARRAY_FUNCTION_INDEX;
+            break;
+        case BuiltinTypeId::INT16_ARRAY:
+            funcIndex = GlobalEnv::INT16_ARRAY_FUNCTION_INDEX;
+            break;
+        case BuiltinTypeId::UINT16_ARRAY:
+            funcIndex = GlobalEnv::UINT16_ARRAY_FUNCTION_INDEX;
+            break;
+        case BuiltinTypeId::INT32_ARRAY:
+            funcIndex = GlobalEnv::INT32_ARRAY_FUNCTION_INDEX;
+            break;
+        case BuiltinTypeId::FLOAT32_ARRAY:
+            funcIndex = GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX;
+            break;
+        case BuiltinTypeId::FLOAT64_ARRAY:
+            funcIndex = GlobalEnv::FLOAT64_ARRAY_FUNCTION_INDEX;
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+}
+
 void TypeMCRLowering::LowerTypedArrayCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     auto type = acc_.GetParamGateType(gate);
     size_t typedArrayFuncIndex = GlobalEnv::TYPED_ARRAY_FUNCTION_INDEX;
     auto deoptType = DeoptType::NOTCHECK;
-    if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, type)) {
-        typedArrayFuncIndex = GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX;
-        deoptType = DeoptType::NOTF32ARRAY;
-    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, type)) {
-        typedArrayFuncIndex = GlobalEnv::INT32_ARRAY_FUNCTION_INDEX;
-        deoptType = DeoptType::NOTI32ARRAY;
-    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, type)) {
-        typedArrayFuncIndex = GlobalEnv::FLOAT64_ARRAY_FUNCTION_INDEX;
-        deoptType = DeoptType::NOTF64ARRAY;
-    } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
-    }
+
+    auto builtinTypeId = tsManager_->GetTypedArrayBuiltinId(type);
+    SetDeoptTypeInfo(builtinTypeId, deoptType, typedArrayFuncIndex);
+    
     GateRef frameState = GetFrameState(gate);
     GateRef glueGlobalEnv = builder_.GetGlobalEnv();
     GateRef receiver = acc_.GetValueIn(gate, 0);
@@ -336,17 +361,10 @@ void TypeMCRLowering::LowerIndexCheck(GateRef gate)
     auto type = acc_.GetParamGateType(gate);
     auto deoptType = DeoptType::NOTCHECK;
 
-    if (tsManager_->IsArrayTypeKind(type)) {
+    if (tsManager_->IsArrayTypeKind(type) ||
+        tsManager_->IsIntTypedArrayType(type) ||
+        tsManager_->IsDoubleTypedArrayType(type)) {
         deoptType = DeoptType::NOTARRAYIDX;
-    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, type)) {
-        deoptType = DeoptType::NOTF32ARRAYIDX;
-    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::INT32_ARRAY, type)) {
-        deoptType = DeoptType::NOTI32ARRAYIDX;
-    } else if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT64_ARRAY, type)) {
-        deoptType = DeoptType::NOTF64ARRAYIDX;
-    } else {
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
     }
 
     GateRef frameState = GetFrameState(gate);
@@ -538,6 +556,64 @@ void TypeMCRLowering::LowerLoadArrayLength(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
+GateRef TypeMCRLowering::GetElementSize(BuiltinTypeId id)
+{
+    GateRef elementSize = Circuit::NullGate();
+    switch (id) {
+        case BuiltinTypeId::INT8_ARRAY:
+        case BuiltinTypeId::UINT8_ARRAY:
+        case BuiltinTypeId::UINT8_CLAMPED_ARRAY:
+            elementSize = builder_.Int32(sizeof(uint8_t));
+            break;
+        case BuiltinTypeId::INT16_ARRAY:
+        case BuiltinTypeId::UINT16_ARRAY:
+            elementSize = builder_.Int32(sizeof(uint16_t));
+            break;
+        case BuiltinTypeId::INT32_ARRAY:
+        case BuiltinTypeId::UINT32_ARRAY:
+        case BuiltinTypeId::FLOAT32_ARRAY:
+            elementSize = builder_.Int32(sizeof(uint32_t));
+            break;
+        case BuiltinTypeId::FLOAT64_ARRAY:
+            elementSize = builder_.Int32(sizeof(double));
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    return elementSize;
+}
+
+VariableType TypeMCRLowering::GetVariableType(BuiltinTypeId id)
+{
+    VariableType type = VariableType::JS_ANY();
+    switch (id) {
+        case BuiltinTypeId::INT8_ARRAY:
+        case BuiltinTypeId::UINT8_ARRAY:
+        case BuiltinTypeId::UINT8_CLAMPED_ARRAY:
+            type = VariableType::INT8();
+            break;
+        case BuiltinTypeId::INT16_ARRAY:
+        case BuiltinTypeId::UINT16_ARRAY:
+            type = VariableType::INT16();
+            break;
+        case BuiltinTypeId::INT32_ARRAY:
+        case BuiltinTypeId::UINT32_ARRAY:
+            type = VariableType::INT32();
+            break;
+        case BuiltinTypeId::FLOAT32_ARRAY:
+            type = VariableType::FLOAT32();
+            break;
+        case BuiltinTypeId::FLOAT64_ARRAY:
+            type = VariableType::FLOAT64();
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    return type;
+}
+
 void TypeMCRLowering::LowerLoadElement(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -546,14 +622,29 @@ void TypeMCRLowering::LowerLoadElement(GateRef gate)
         case TypedLoadOp::ARRAY_LOAD_ELEMENT:
             LowerArrayLoadElement(gate);
             break;
-        case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
-            LowerFloat32ArrayLoadElement(gate);
+        case TypedLoadOp::INT8ARRAY_LOAD_ELEMENT:
+            LowerTypedArrayLoadElement(gate, BuiltinTypeId::INT8_ARRAY);
+            break;
+        case TypedLoadOp::UINT8ARRAY_LOAD_ELEMENT:
+            LowerTypedArrayLoadElement(gate, BuiltinTypeId::UINT8_ARRAY);
+            break;
+        case TypedLoadOp::UINT8CLAMPEDARRAY_LOAD_ELEMENT:
+            LowerTypedArrayLoadElement(gate, BuiltinTypeId::UINT8_CLAMPED_ARRAY);
+            break;
+        case TypedLoadOp::INT16ARRAY_LOAD_ELEMENT:
+            LowerTypedArrayLoadElement(gate, BuiltinTypeId::INT16_ARRAY);
+            break;
+        case TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT:
+            LowerTypedArrayLoadElement(gate, BuiltinTypeId::UINT16_ARRAY);
             break;
         case TypedLoadOp::INT32ARRAY_LOAD_ELEMENT:
-            LowerInt32ArrayLoadElement(gate);
+            LowerTypedArrayLoadElement(gate, BuiltinTypeId::INT32_ARRAY);
+            break;
+        case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
+            LowerTypedArrayLoadElement(gate, BuiltinTypeId::FLOAT32_ARRAY);
             break;
         case TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT:
-            LowerFloat64ArrayLoadElement(gate);
+            LowerTypedArrayLoadElement(gate, BuiltinTypeId::FLOAT64_ARRAY);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -573,58 +664,41 @@ void TypeMCRLowering::LowerArrayLoadElement(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-// for Float32Array
-void TypeMCRLowering::LowerFloat32ArrayLoadElement(GateRef gate)
+void TypeMCRLowering::LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef arrbuffer =
         builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
     GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef elementSize = builder_.Int32(4);  // 4: float32 occupy 4 bytes
+    GateRef elementSize = GetElementSize(id);
     GateRef offset = builder_.PtrMul(index, elementSize);
     GateRef byteOffset =
         builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
 
     GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
-    GateRef result = builder_.Load(VariableType::FLOAT32(), data, builder_.PtrAdd(offset, byteOffset));
-    result = builder_.ExtFloat32ToDouble(result);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-}
-
-// for Int32Array
-void TypeMCRLowering::LowerInt32ArrayLoadElement(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef arrbuffer =
-        builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
-    GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef elementSize = builder_.Int32(4);  // 4: int32 occupy 4 bytes
-    GateRef offset = builder_.PtrMul(index, elementSize);
-    GateRef byteOffset =
-        builder_.LoadConstOffset(VariableType::INT32(), receiver, JSTypedArray::BYTE_OFFSET_OFFSET);
-
-    GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
-    GateRef result = builder_.Load(VariableType::INT32(), data, builder_.PtrAdd(offset, byteOffset));
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-}
-
-// for Float64Array
-void TypeMCRLowering::LowerFloat64ArrayLoadElement(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef arrbuffer =
-        builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
-    GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef elementSize = builder_.Int32(8);  // 4: float64 occupy 8 bytes
-    GateRef offset = builder_.PtrMul(index, elementSize);
-    GateRef byteOffset =
-        builder_.LoadConstOffset(VariableType::INT32(), receiver, JSTypedArray::BYTE_OFFSET_OFFSET);
-
-    GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
-    GateRef result = builder_.Load(VariableType::FLOAT64(), data, builder_.PtrAdd(offset, byteOffset));
+    auto type = GetVariableType(id);
+    GateRef result = builder_.Load(type, data, builder_.PtrAdd(offset, byteOffset));
+    switch (id) {
+        case BuiltinTypeId::INT8_ARRAY:
+            result = builder_.SExtInt8ToInt32(result);
+            break;
+        case BuiltinTypeId::UINT8_ARRAY:
+        case BuiltinTypeId::UINT8_CLAMPED_ARRAY:
+            result = builder_.ZExtInt8ToInt32(result);
+            break;
+        case BuiltinTypeId::INT16_ARRAY:
+            result = builder_.SExtInt16ToInt32(result);
+            break;
+        case BuiltinTypeId::UINT16_ARRAY:
+            result = builder_.ZExtInt16ToInt32(result);
+            break;
+        case BuiltinTypeId::FLOAT32_ARRAY:
+            result = builder_.ExtFloat32ToDouble(result);
+            break;
+        default:
+            break;
+    }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
@@ -636,14 +710,29 @@ void TypeMCRLowering::LowerStoreElement(GateRef gate, GateRef glue)
         case TypedStoreOp::ARRAY_STORE_ELEMENT:
             LowerArrayStoreElement(gate, glue);
             break;
+        case TypedStoreOp::INT8ARRAY_STORE_ELEMENT:
+            LowerTypedArrayStoreElement(gate, glue, BuiltinTypeId::INT8_ARRAY);
+            break;
+        case TypedStoreOp::UINT8ARRAY_STORE_ELEMENT:
+            LowerTypedArrayStoreElement(gate, glue, BuiltinTypeId::UINT8_ARRAY);
+            break;
+        case TypedStoreOp::UINT8CLAMPEDARRAY_STORE_ELEMENT:
+            LowerUInt8ClampedArrayStoreElement(gate, glue);
+            break;
+        case TypedStoreOp::INT16ARRAY_STORE_ELEMENT:
+            LowerTypedArrayStoreElement(gate, glue, BuiltinTypeId::INT16_ARRAY);
+            break;
+        case TypedStoreOp::UINT16ARRAY_STORE_ELEMENT:
+            LowerTypedArrayStoreElement(gate, glue, BuiltinTypeId::UINT16_ARRAY);
+            break;
         case TypedStoreOp::INT32ARRAY_STORE_ELEMENT:
-            LowerInt32ArrayStoreElement(gate, glue);
+            LowerTypedArrayStoreElement(gate, glue, BuiltinTypeId::INT32_ARRAY);
             break;
         case TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT:
-            LowerFloat32ArrayStoreElement(gate, glue);
+            LowerTypedArrayStoreElement(gate, glue, BuiltinTypeId::FLOAT32_ARRAY);
             break;
         case TypedStoreOp::FLOAT64ARRAY_STORE_ELEMENT:
-            LowerFloat64ArrayStoreElement(gate, glue);
+            LowerTypedArrayStoreElement(gate, glue, BuiltinTypeId::FLOAT64_ARRAY);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -679,71 +768,81 @@ void TypeMCRLowering::LowerArrayStoreElement(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-// for Int32Array
-void TypeMCRLowering::LowerInt32ArrayStoreElement(GateRef gate, GateRef glue)
+// for JSTypedArray
+void TypeMCRLowering::LowerTypedArrayStoreElement(GateRef gate, GateRef glue, BuiltinTypeId id)
 {
     Environment env(gate, circuit_, &builder_);
-    Label isArrayBuffer(&builder_);
-    Label isByteArray(&builder_);
-    Label afterGetValue(&builder_);
-    Label exit(&builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef elementSize = builder_.Int32(4);  // 4: int32 occupy 4 bytes
+    GateRef value = acc_.GetValueIn(gate, 2);
+
+    GateRef elementSize = GetElementSize(id);
     GateRef offset = builder_.PtrMul(index, elementSize);
     GateRef byteOffset =
         builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
-    GateRef value = acc_.GetValueIn(gate, 2);
+    switch (id) {
+        case BuiltinTypeId::INT8_ARRAY:
+        case BuiltinTypeId::UINT8_ARRAY:
+            value = builder_.TruncInt32ToInt8(value);
+            break;
+        case BuiltinTypeId::INT16_ARRAY:
+        case BuiltinTypeId::UINT16_ARRAY:
+            value = builder_.TruncInt32ToInt16(value);
+            break;
+        case BuiltinTypeId::FLOAT32_ARRAY:
+            value = builder_.TruncDoubleToFloat32(value);
+            break;
+        default:
+            break;
+    }
     GateRef arrbuffer =
         builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
-
     GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
     builder_.Store(VariableType::VOID(), glue, data, builder_.PtrAdd(offset, byteOffset), value);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-// for Float32Array
-void TypeMCRLowering::LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue)
+// for UInt8ClampedArray
+void TypeMCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
-    Label isArrayBuffer(&builder_);
-    Label isByteArray(&builder_);
-    Label afterGetValue(&builder_);
-    Label exit(&builder_);
+
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef elementSize = builder_.Int32(4);  // 4: float32 occupy 4 bytes
+    GateRef elementSize = builder_.Int32(sizeof(uint8_t));
     GateRef offset = builder_.PtrMul(index, elementSize);
     GateRef byteOffset =
         builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
     GateRef value = acc_.GetValueIn(gate, 2);
-    value = builder_.TruncDoubleToFloat32(value);
-    GateRef arrbuffer =
-        builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
 
-    GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
-    builder_.Store(VariableType::VOID(), glue, data, builder_.PtrAdd(offset, byteOffset), value);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
-// for Float64Array
-void TypeMCRLowering::LowerFloat64ArrayStoreElement(GateRef gate, GateRef glue)
-{
-    Environment env(gate, circuit_, &builder_);
-    Label isArrayBuffer(&builder_);
-    Label isByteArray(&builder_);
-    Label afterGetValue(&builder_);
+    DEFVAlUE(result, (&builder_), VariableType::INT32(), value);
+    GateRef topValue = builder_.Int32(static_cast<uint32_t>(UINT8_MAX));
+    GateRef bottomValue = builder_.Int32(static_cast<uint32_t>(0));
+    Label isOverFlow(&builder_);
+    Label notOverFlow(&builder_);
     Label exit(&builder_);
-    GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef elementSize = builder_.Int32(8);  // 8: float64 occupy 8 bytes
-    GateRef offset = builder_.PtrMul(index, elementSize);
-    GateRef byteOffset =
-        builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
-    GateRef value = acc_.GetValueIn(gate, 2);
+    builder_.Branch(builder_.Int32GreaterThan(value, topValue), &isOverFlow, &notOverFlow);
+    builder_.Bind(&isOverFlow);
+    {
+        result = topValue;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&notOverFlow);
+    {
+        Label isUnderSpill(&builder_);
+        builder_.Branch(builder_.Int32LessThan(value, bottomValue), &isUnderSpill, &exit);
+        builder_.Bind(&isUnderSpill);
+        {
+            result = bottomValue;
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&exit);
+    value = builder_.TruncInt32ToInt8(*result);
+    
     GateRef arrbuffer =
         builder_.Load(VariableType::JS_POINTER(), receiver, builder_.IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET));
-
+    
     GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
     builder_.Store(VariableType::VOID(), glue, data, builder_.PtrAdd(offset, byteOffset), value);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());

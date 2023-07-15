@@ -144,13 +144,10 @@ private:
     void LowerLoadFromTaggedArray(GateRef gate);
     void LowerStoreToTaggedArray(GateRef gate, GateRef glue);
     void LowerArrayLoadElement(GateRef gate);
-    void LowerInt32ArrayLoadElement(GateRef gate);
-    void LowerFloat64ArrayLoadElement(GateRef gate);
-    void LowerFloat32ArrayLoadElement(GateRef gate);
+    void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
     void LowerArrayStoreElement(GateRef gate, GateRef glue);
-    void LowerInt32ArrayStoreElement(GateRef gate, GateRef glue);
-    void LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue);
-    void LowerFloat64ArrayStoreElement(GateRef gate, GateRef glue);
+    void LowerTypedArrayStoreElement(GateRef gate, GateRef glue, BuiltinTypeId id);
+    void LowerUInt8ClampedArrayStoreElement(GateRef gate, GateRef glue);
     void LowerTypedCallBuitin(GateRef gate);
     void LowerCallTargetCheck(GateRef gate);
     void LowerJSCallTargetFromDefineFuncCheck(GateRef gate);
@@ -162,6 +159,7 @@ private:
     void LowerTypedSuperAllocateThis(GateRef gate, GateRef glue);
     void LowerGetSuperConstructor(GateRef gate);
     void LowerJSInlineTargetTypeCheck(GateRef gate);
+    void SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &funcIndex);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
@@ -182,6 +180,8 @@ private:
     GateType GetLeftType(GateRef gate);
     GateType GetRightType(GateRef gate);
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
+    GateRef GetElementSize(BuiltinTypeId id);
+    VariableType GetVariableType(BuiltinTypeId id);
 
     GateRef GetFrameState(GateRef gate) const
     {

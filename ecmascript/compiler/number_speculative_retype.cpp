@@ -846,6 +846,11 @@ GateRef NumberSpeculativeRetype::VisitLoadElement(GateRef gate)
     if (IsRetype()) {
         auto op = acc_.GetTypedLoadOp(gate);
         switch (op) {
+            case TypedLoadOp::INT8ARRAY_LOAD_ELEMENT:
+            case TypedLoadOp::UINT8ARRAY_LOAD_ELEMENT:
+            case TypedLoadOp::UINT8CLAMPEDARRAY_LOAD_ELEMENT:
+            case TypedLoadOp::INT16ARRAY_LOAD_ELEMENT:
+            case TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT:
             case TypedLoadOp::INT32ARRAY_LOAD_ELEMENT:
                 return SetOutputType(gate, GateType::IntType());
             case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
@@ -880,6 +885,11 @@ GateRef NumberSpeculativeRetype::VisitStoreElement(GateRef gate)
         acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType), 1);
         auto op = acc_.GetTypedStoreOp(gate);
         switch (op) {
+            case TypedStoreOp::INT8ARRAY_STORE_ELEMENT:
+            case TypedStoreOp::UINT8ARRAY_STORE_ELEMENT:
+            case TypedStoreOp::UINT8CLAMPEDARRAY_STORE_ELEMENT:
+            case TypedStoreOp::INT16ARRAY_STORE_ELEMENT:
+            case TypedStoreOp::UINT16ARRAY_STORE_ELEMENT:
             case TypedStoreOp::INT32ARRAY_STORE_ELEMENT:
                 acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, GateType::IntType()), 2);   // 2: value idx
                 break;
