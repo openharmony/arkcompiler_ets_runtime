@@ -1459,6 +1459,7 @@ JSHandle<BigInt> BigInt::Remainder(JSThread *thread, JSHandle<BigInt> n, JSHandl
 JSHandle<BigInt> BigInt::FloorMod(JSThread *thread, JSHandle<BigInt> leftVal, JSHandle<BigInt> rightVal)
 {
     JSHandle<BigInt> remainder = Remainder(thread, leftVal, rightVal);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     if (leftVal->GetSign() && !remainder->IsZero()) {
         return Add(thread, remainder, rightVal);
     }

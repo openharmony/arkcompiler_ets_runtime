@@ -193,6 +193,7 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
 
     // 18. Set displayNames.[[Locale]] to the value of r.[[Locale]].
     JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
     displayNames->SetLocale(thread, localeStr.GetTaggedValue());
     // 19. Let dataLocale be r.[[dataLocale]].
     // 20. Let dataLocaleData be localeData.[[<dataLocale>]].
@@ -256,6 +257,7 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
             THROW_TYPE_ERROR_AND_RETURN(thread, "not a structurally valid", code);
         }
         JSHandle<EcmaString> codeStr = intl::LocaleHelper::CanonicalizeUnicodeLocaleId(thread, code);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
         icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
         icu::UnicodeString result;
         std::string codeString = intl::LocaleHelper::ConvertToStdString(codeStr);

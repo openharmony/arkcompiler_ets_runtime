@@ -88,6 +88,7 @@ JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeForma
 
     // 12. Let locale be r.[[Locale]].
     JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSRelativeTimeFormat, thread);
 
     // 13. Set relativeTimeFormat.[[Locale]] to locale.
     relativeTimeFormat->SetLocale(thread, localeStr.GetTaggedValue());
