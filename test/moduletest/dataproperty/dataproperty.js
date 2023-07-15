@@ -27,6 +27,7 @@ const o = {
 };
 
 print(JSON.stringify(o));
+
 var s = "abc";
 var t = {...s};
 print(t[1]);
