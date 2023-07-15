@@ -974,9 +974,12 @@ bool JSObject::OrdinaryGetOwnProperty(JSThread *thread, const JSHandle<JSObject>
     op.ToPropertyDescriptor(desc);
 
     if (desc.HasValue() && obj->IsJSGlobalObject()) {
-        PropertyBox *cell = PropertyBox::Cast(desc.GetValue().GetTaggedValue().GetTaggedObject());
-        JSHandle<JSTaggedValue> valueHandle(thread, cell->GetValue());
-        desc.SetValue(valueHandle);
+        JSTaggedValue val = desc.GetValue().GetTaggedValue();
+        if (val.IsPropertyBox()) {
+            PropertyBox *cell = PropertyBox::Cast(val.GetTaggedObject());
+            JSHandle<JSTaggedValue> valueHandle(thread, cell->GetValue());
+            desc.SetValue(valueHandle);
+        }
     }
 
     return true;
