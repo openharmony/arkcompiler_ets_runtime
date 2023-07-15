@@ -32,9 +32,14 @@ FileStream::FileStream(const std::string &fileName)
     Initialize(fileName);
 }
 
+FileStream::~FileStream()
+{
+    EndOfStream();
+}
+
 void FileStream::EndOfStream()
 {
-    if (Good()) {
+    if (fileStream_.is_open()) {
         fileStream_.close();
     }
 }
@@ -50,7 +55,6 @@ void FileStream::Initialize(const std::string &fileName)
     std::pair<bool, std::string> realPath = FilePathValid(fileName);
     if (!realPath.first) {
         LOG_ECMA(ERROR) << "FileStream: check file path failed";
-        fileStream_.close();
         return;
     }
 
