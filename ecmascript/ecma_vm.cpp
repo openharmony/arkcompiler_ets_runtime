@@ -368,17 +368,7 @@ JSHandle<JSTaggedValue> EcmaVM::GetEcmaUncaughtException() const
 
 void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const
 {
-    JSHandle<JSTaggedValue> nameKey = thread_->GlobalConstants()->GetHandledNameString();
-    JSHandle<EcmaString> name(JSObject::GetProperty(thread_, exceptionInfo, nameKey).GetValue());
-    JSHandle<JSTaggedValue> msgKey = thread_->GlobalConstants()->GetHandledMessageString();
-    JSHandle<EcmaString> msg(JSObject::GetProperty(thread_, exceptionInfo, msgKey).GetValue());
-    JSHandle<JSTaggedValue> stackKey = thread_->GlobalConstants()->GetHandledStackString();
-    JSHandle<EcmaString> stack(JSObject::GetProperty(thread_, exceptionInfo, stackKey).GetValue());
-
-    CString nameBuffer = ConvertToString(*name);
-    CString msgBuffer = ConvertToString(*msg);
-    CString stackBuffer = ConvertToString(*stack);
-    LOG_NO_TAG(ERROR) << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
+    EcmaContext::PrintJSErrorInfo(thread_, exceptionInfo);
 }
 
 void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)

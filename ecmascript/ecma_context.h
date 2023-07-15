@@ -218,7 +218,7 @@ public:
 
     JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
 
-    void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo);
+    static void PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> &exceptionInfo);
     void Iterate(const RootVisitor &v, const RootRangeVisitor &rv);
     static void MountContext(JSThread *thread);
     static void UnmountContext(JSThread *thread);

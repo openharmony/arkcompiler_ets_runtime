@@ -30,3 +30,11 @@ const v46 = e45.toString;
 const v50 = v46.call(v34);
 print(v50);
 }
+
+// Be sure to put this case at the end because this case will change prototype of error constructor
+try {
+    0();
+} catch (err) {
+    err.constructor.prototype.name = 123456789;
+}
+0();
