@@ -25,7 +25,6 @@ this[1024] = 4;
 const o = {
     ...this,
 };
-
 print(JSON.stringify(o));
 
 var s = "abc";
