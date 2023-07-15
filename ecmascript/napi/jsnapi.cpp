@@ -75,6 +75,7 @@
 #include "ecmascript/mem/region.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -186,6 +187,8 @@ template<typename T>
 using JSMutableHandle = ecmascript::JSMutableHandle<T>;
 
 using PathHelper = ecmascript::base::PathHelper;
+using ModulePathHelper = ecmascript::ModulePathHelper;
+
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
 constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
@@ -899,7 +902,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
     JSThread *thread = vm->GetJSThread();
     ecmascript::CString name = vm->GetAssetPath();
     if (!vm->IsBundlePack()) {
-        entry = PathHelper::ParseOhmUrl(vm, entry, name);
+        ModulePathHelper::ParseOhmUrl(vm, entry, name, entry);
         std::shared_ptr<JSPandaFile> jsPandaFile =
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), false);
         if (jsPandaFile == nullptr) {
@@ -907,7 +910,7 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
             return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
         }
         if (!jsPandaFile->IsRecordWithBundleName()) {
-            PathHelper::CroppingRecord(entry);
+            PathHelper::AdaptOldIsaRecord(entry);
         }
     }
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();

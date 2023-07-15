@@ -24,6 +24,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 
 namespace panda::ecmascript {
@@ -34,14 +35,14 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename;
     CString entry;
     CString name;
-    CString normalName = PathHelper::NormalizePath(filename);
     EcmaVM *vm = thread->GetEcmaVM();
     if (!vm->IsBundlePack() && !excuteFromJob) {
 #if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST)
         name = filename;
         entry = entryPoint.data();
 #else
-        entry = PathHelper::ParseOhmUrl(vm, normalName, name);
+        CString normalName = PathHelper::NormalizePath(filename);
+        ModulePathHelper::ParseOhmUrl(vm, normalName, name, entry);
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
         if (name.empty()) {
             name = vm->GetAssetPath();
@@ -73,7 +74,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     if (!jsPandaFile->IsBundlePack() && !excuteFromJob && !vm->GetBundleName().empty()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
-            PathHelper::CroppingRecord(entry);
+            PathHelper::AdaptOldIsaRecord(entry);
         }
     }
 
@@ -147,7 +148,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
 #endif
     CString normalName = PathHelper::NormalizePath(filename);
-    CString entry = PathHelper::ParseOhmUrl(vm, normalName, name);
+    CString entry;
+    ModulePathHelper::ParseOhmUrl(vm, normalName, name, entry);
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
@@ -163,7 +165,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     if (!isBundle) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
-            PathHelper::CroppingRecord(entry);
+            PathHelper::AdaptOldIsaRecord(entry);
         }
     }
     // will be refactored, temporarily use the function IsModule to verify realEntry
@@ -294,7 +296,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
 #endif
     CString normalName = PathHelper::NormalizePath(filename);
-    CString entry = PathHelper::ParseOhmUrl(vm, normalName, name);
+    CString entry;
+    ModulePathHelper::ParseOhmUrl(vm, normalName, name, entry);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
         LoadJSPandaFileSecure(thread, name, entry, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
@@ -308,7 +311,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     if (!jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
-            PathHelper::CroppingRecord(entry);
+            PathHelper::AdaptOldIsaRecord(entry);
         }
     }
 

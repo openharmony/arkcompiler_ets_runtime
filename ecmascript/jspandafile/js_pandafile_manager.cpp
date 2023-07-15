@@ -15,11 +15,11 @@
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
-#include "ecmascript/base/path_helper.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "file.h"
 
@@ -76,7 +76,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             LOG_ECMA(ERROR) << "resolveBufferCallback is nullptr";
             return nullptr;
         }
-        std::vector<uint8_t> data = resolveBufferCallback(base::PathHelper::ParseHapPath(filename));
+        std::vector<uint8_t> data = resolveBufferCallback(ModulePathHelper::ParseHapPath(filename));
         if (data.empty()) {
             LOG_ECMA(ERROR) << "resolveBufferCallback get buffer failed";
             return nullptr;

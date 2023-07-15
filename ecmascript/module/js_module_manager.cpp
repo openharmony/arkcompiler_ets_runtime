@@ -14,7 +14,6 @@
  */
 #include "ecmascript/module/js_module_manager.h"
 
-#include "ecmascript/base/path_helper.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
@@ -27,6 +26,7 @@
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/tagged_dictionary.h"
 #ifdef PANDA_TARGET_WINDOWS
@@ -34,8 +34,8 @@
 #endif
 
 namespace panda::ecmascript {
-using PathHelper = base::PathHelper;
 using StringHelper = base::StringHelper;
+
 ModuleManager::ModuleManager(EcmaVM *vm) : vm_(vm)
 {
     resolvedModules_ = NameDictionary::Create(vm_->GetJSThread(), DEAULT_DICTIONART_CAPACITY).GetTaggedValue();
@@ -327,7 +327,7 @@ bool ModuleManager::SkipDefaultBundleFile(const CString &moduleFileName) const
     const char relativeFilePath[] = "..";
     // just to skip misunderstanding error log in LoadJSPandaFile when we ignore Module Resolving Failure.
     return !vm_->EnableReportModuleResolvingFailure() &&
-        (base::StringHelper::StringStartWith(moduleFileName, PathHelper::BUNDLE_INSTALL_PATH) ||
+        (base::StringHelper::StringStartWith(moduleFileName, ModulePathHelper::BUNDLE_INSTALL_PATH) ||
         base::StringHelper::StringStartWith(moduleFileName, relativeFilePath));
 }
 

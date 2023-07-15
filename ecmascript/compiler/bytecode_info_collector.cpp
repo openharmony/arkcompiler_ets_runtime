@@ -15,10 +15,10 @@
 
 #include "ecmascript/compiler/bytecode_info_collector.h"
 
-#include "ecmascript/base/path_helper.h"
 #include "ecmascript/compiler/type_recorder.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jspandafile/type_literal_extractor.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
 #include "libpandafile/code_data_accessor.h"
@@ -682,11 +682,11 @@ void BytecodeInfoCollector::CollectRecordExportInfo(const CString &recordName)
         starExportEntry.Update(starEntriesArray->Get(index));
         JSTaggedValue moduleRequest = starExportEntry->GetModuleRequest();
         CString moduleRequestName = ConvertToString(EcmaString::Cast(moduleRequest.GetTaggedObject()));
-        if (base::PathHelper::IsNativeModuleRequest(moduleRequestName)) {
+        if (ModulePathHelper::IsNativeModuleRequest(moduleRequestName)) {
             return;
         }
         CString baseFileName = jsPandaFile_->GetJSPandaFileDesc();
-        CString entryPoint = base::PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile_,
+        CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, jsPandaFile_,
             baseFileName, recordName, moduleRequestName);
         if (jsPandaFile_->HasTypeSummaryOffset(entryPoint)) {
             bytecodeInfo_.AddStarExportToRecord(recordName, entryPoint);

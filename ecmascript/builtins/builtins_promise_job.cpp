@@ -15,7 +15,6 @@
 
 #include "ecmascript/builtins/builtins_promise_job.h"
 
-#include "ecmascript/base/path_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -28,12 +27,13 @@
 #include "ecmascript/module/js_dynamic_import.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::builtins {
-using PathHelper = base::PathHelper;
+
 JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -174,7 +174,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
             LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << recordNameStr;
         }
         entryPoint =
-            PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(), fileNameStr, recordNameStr, requestPath);
+            ModulePathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(),
+                fileNameStr, recordNameStr, requestPath);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         moduleName.Update(factory->NewFromUtf8(entryPoint).GetTaggedValue());
     }
