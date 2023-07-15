@@ -840,7 +840,7 @@ Local<JSValueRef> DebuggerApi::GetDequeValue(const EcmaVM *ecmaVm, Local<JSValue
 Local<JSValueRef> DebuggerApi::GetHashMapValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
                                                Global<MapRef> internalObjects)
 {
-    JSHandle<JSAPIHashSet> hashMap(JSNApiHelper::ToJSHandle(value));
+    JSHandle<JSAPIHashMap> hashMap(JSNApiHelper::ToJSHandle(value));
     JSThread *thread = ecmaVm->GetJSThread();
     JSHandle<TaggedHashArray> table(thread, hashMap->GetTable());
     uint32_t length = table->GetLength();
