@@ -233,9 +233,9 @@ JSTaggedValue JSAPIVector::RemoveByRange(JSThread *thread, const JSHandle<JSAPIV
 JSHandle<JSAPIVector> JSAPIVector::SubVector(JSThread *thread, const JSHandle<JSAPIVector> &vector,
                                              int32_t fromIndex, int32_t toIndex)
 {
-    uint32_t length = vector->GetSize();
+    int32_t length = static_cast<int32_t>(vector->GetSize());
     if (fromIndex < 0 || toIndex < 0 ||
-        fromIndex >= static_cast<int32_t>(length) || toIndex >= static_cast<int32_t>(length)) {
+        fromIndex >= length || toIndex >= length) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "the fromIndex or the toIndex is out-of-bounds",
                                      JSHandle<JSAPIVector>());
     }

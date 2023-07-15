@@ -365,6 +365,7 @@ private:
             SkipStartWhiteSpace();
             if (*current_ == '"') {
                 keyHandle.Update(ParseString<true>());
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
             } else {
                 if (*current_ == '}' && (inObjorArr || current_ == range_)) {
                     return result.GetTaggedValue();
@@ -378,6 +379,7 @@ private:
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON", JSTaggedValue::Exception());
             }
             value = ParseJSONText<true>();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
             // fast path
             JSTaggedValue res = ObjectFastOperator::SetPropertyByValue<true>(thread_, result.GetTaggedValue(),
                                                                              keyHandle.GetTaggedValue(), value);

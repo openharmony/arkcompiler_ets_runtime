@@ -1025,6 +1025,7 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
             } else {
                 ASSERT(moduleRecordName.IsString());
                 requiredModule.Update(SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
             }
             ModuleTypes moduleType = requiredModule->GetTypes();
             if (SourceTextModule::IsNativeModule(moduleType)) {
