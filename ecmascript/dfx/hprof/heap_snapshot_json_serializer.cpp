@@ -22,8 +22,9 @@ namespace panda::ecmascript {
 
 HeapSnapshotJSONSerializer::~HeapSnapshotJSONSerializer()
 {
-    if (!writer_) {
+    if (writer_) {
         delete writer_;
+        writer_ = nullptr;
     }
 }
 
