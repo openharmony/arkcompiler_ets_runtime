@@ -180,6 +180,7 @@ JSTaggedValue BuiltinsArrayBuffer::Slice(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(JSTaggedValue(newLen));
     JSTaggedValue taggedNewArrBuf = JSFunction::Construct(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> newArrBuf(thread, taggedNewArrBuf);
     // 16. ReturnIfAbrupt(new).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

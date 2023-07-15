@@ -57,6 +57,7 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSAsyn
     RETURN_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(value.GetTaggedValue());
     [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // 4.Let onFulfilled be a new built-in function object as defined in AsyncFunction Awaited Fulfilled.
     JSHandle<JSAsyncAwaitStatusFunction> fulFunc = factory->NewJSAsyncAwaitStatusFunction(

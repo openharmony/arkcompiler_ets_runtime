@@ -25,8 +25,10 @@ JSTaggedValue ContainerError::BusinessError(JSThread *thread, int32_t errorCode,
     JSHandle<EcmaString> name = factory->NewFromUtf8("name");
     JSHandle<EcmaString> value = factory->NewFromUtf8("BusinessError");
     JSObject::CreateDataPropertyOrThrow(thread, error, JSHandle<JSTaggedValue>::Cast(key), code);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSObject::CreateDataPropertyOrThrow(thread, error, JSHandle<JSTaggedValue>::Cast(name),
                                         JSHandle<JSTaggedValue>::Cast(value));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return error.GetTaggedValue();
 }
 }  // namespace panda::ecmascript::containers

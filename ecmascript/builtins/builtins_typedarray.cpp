@@ -184,7 +184,9 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> usingIterator = JSObject::GetMethod(thread, source, iteratorSymbol);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> arrIter = JSObject::GetMethod(thread, env->GetArrayProtoValuesFunction(), iteratorSymbol);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> typedArrIter = JSObject::GetMethod(thread, env->GetTypedArrayPrototype(), iteratorSymbol);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     bool isArrIter = JSTaggedValue::SameValue(usingIterator, arrIter);
     bool isTypedArrIter = JSTaggedValue::SameValue(usingIterator, typedArrIter);
     // 6. If usingIterator is not undefined, then

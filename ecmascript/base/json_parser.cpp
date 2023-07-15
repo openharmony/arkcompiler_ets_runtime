@@ -63,6 +63,7 @@ JSHandle<JSTaggedValue> Internalize::InternalizeJsonProperty(JSThread *thread, c
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     info->SetCallArg(name.GetTaggedValue(), val.GetTaggedValue());
     JSTaggedValue result = JSFunction::Call(info);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     return JSHandle<JSTaggedValue>(thread, result);
 }
 

@@ -102,6 +102,7 @@ JSTaggedValue BuiltinsDisplayNames::Of(EcmaRuntimeCallInfo *argv)
     JSHandle<JSDisplayNames> displayNames = JSHandle<JSDisplayNames>::Cast(thisValue);
     TypednsOption typeOpt = displayNames->GetType();
     JSHandle<EcmaString> code = JSDisplayNames::CanonicalCodeForDisplayNames(thread, displayNames, typeOpt, codeTemp);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     std::string codeString = intl::LocaleHelper::ConvertToStdString(code);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (codeString.size()) {

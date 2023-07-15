@@ -937,6 +937,7 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
     JSHandle<JSTaggedValue> property = globalConst->GetHandledLocaleString();
     JSHandle<JSTaggedValue> locale(thread, numberFormat->GetLocale());
     JSObject::CreateDataPropertyOrThrow(thread, options, property, locale);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[NumberingSystem]]
     JSHandle<JSTaggedValue> numberingSystem(thread, numberFormat->GetNumberingSystem());
@@ -945,12 +946,14 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
     }
     property = globalConst->GetHandledNumberingSystemString();
     JSObject::CreateDataPropertyOrThrow(thread, options, property, numberingSystem);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[Style]]
     StyleOption style = numberFormat->GetStyle();
     property = globalConst->GetHandledStyleString();
     JSHandle<JSTaggedValue> styleString = OptionToEcmaString(thread, style);
     JSObject::CreateDataPropertyOrThrow(thread, options, property, styleString);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[currency]]
     JSHandle<JSTaggedValue> currency(thread, JSTaggedValue::Undefined());
@@ -961,18 +964,21 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
     if (!currency->IsUndefined()) {  // NOLINT(readability-implicit-bool-conversion)
         property = globalConst->GetHandledCurrencyString();
         JSObject::CreateDataPropertyOrThrow(thread, options, property, currency);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
 
         // [[CurrencyDisplay]]
         property = globalConst->GetHandledCurrencyDisplayString();
         CurrencyDisplayOption currencyDisplay = numberFormat->GetCurrencyDisplay();
         JSHandle<JSTaggedValue> currencyDisplayString = OptionToEcmaString(thread, currencyDisplay);
         JSObject::CreateDataPropertyOrThrow(thread, options, property, currencyDisplayString);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
 
         // [[CurrencySign]]
         property = globalConst->GetHandledCurrencySignString();
         CurrencySignOption currencySign = numberFormat->GetCurrencySign();
         JSHandle<JSTaggedValue> currencySignString = OptionToEcmaString(thread, currencySign);
         JSObject::CreateDataPropertyOrThrow(thread, options, property, currencySignString);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     }
 
     if (style == StyleOption::UNIT) {
@@ -981,17 +987,20 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
             // [[Unit]]
             property = globalConst->GetHandledUnitString();
             JSObject::CreateDataPropertyOrThrow(thread, options, property, unit);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
         }
         // [[UnitDisplay]]
         property = globalConst->GetHandledUnitDisplayString();
         UnitDisplayOption unitDisplay = numberFormat->GetUnitDisplay();
         JSHandle<JSTaggedValue> unitDisplayString = OptionToEcmaString(thread, unitDisplay);
         JSObject::CreateDataPropertyOrThrow(thread, options, property, unitDisplayString);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     }
     // [[MinimumIntegerDigits]]
     property = globalConst->GetHandledMinimumIntegerDigitsString();
     JSHandle<JSTaggedValue> minimumIntegerDigits(thread, numberFormat->GetMinimumIntegerDigits());
     JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumIntegerDigits);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     RoundingType roundingType = numberFormat->GetRoundingType();
     if (roundingType == RoundingType::SIGNIFICANTDIGITS) {
@@ -999,31 +1008,37 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
         property = globalConst->GetHandledMinimumSignificantDigitsString();
         JSHandle<JSTaggedValue> minimumSignificantDigits(thread, numberFormat->GetMinimumSignificantDigits());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumSignificantDigits);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         // [[MaximumSignificantDigits]]
         property = globalConst->GetHandledMaximumSignificantDigitsString();
         JSHandle<JSTaggedValue> maximumSignificantDigits(thread, numberFormat->GetMaximumSignificantDigits());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumSignificantDigits);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     } else {
         // [[MinimumFractionDigits]]
         property = globalConst->GetHandledMinimumFractionDigitsString();
         JSHandle<JSTaggedValue> minimumFractionDigits(thread, numberFormat->GetMinimumFractionDigits());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumFractionDigits);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         // [[MaximumFractionDigits]]
         property = globalConst->GetHandledMaximumFractionDigitsString();
         JSHandle<JSTaggedValue> maximumFractionDigits(thread, numberFormat->GetMaximumFractionDigits());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumFractionDigits);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     }
 
     // [[UseGrouping]]
     property = globalConst->GetHandledUserGroupingString();
     JSObject::CreateDataPropertyOrThrow(thread, options, property,
                                         JSHandle<JSTaggedValue>(thread, numberFormat->GetUseGrouping()));
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[Notation]]
     property = globalConst->GetHandledNotationString();
     NotationOption notation = numberFormat->GetNotation();
     JSHandle<JSTaggedValue> notationString = OptionToEcmaString(thread, notation);
     JSObject::CreateDataPropertyOrThrow(thread, options, property, notationString);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // Only output compactDisplay when notation is compact.
     if (notation == NotationOption::COMPACT) {
@@ -1032,6 +1047,7 @@ void JSNumberFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSNumberFo
         CompactDisplayOption compactDisplay = numberFormat->GetCompactDisplay();
         JSHandle<JSTaggedValue> compactDisplayString = OptionToEcmaString(thread, compactDisplay);
         JSObject::CreateDataPropertyOrThrow(thread, options, property, compactDisplayString);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     }
 
     // [[SignDisplay]]

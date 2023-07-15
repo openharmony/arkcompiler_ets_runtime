@@ -411,17 +411,20 @@ void JSListFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSListFormat
     JSHandle<JSTaggedValue> propertyKey = globalConst->GetHandledLocaleString();
     JSHandle<JSTaggedValue> locale(thread, listFormat->GetLocale());
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, locale);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[type]]
     ListTypeOption type = listFormat->GetType();
     propertyKey = globalConst->GetHandledTypeString();
     JSHandle<JSTaggedValue> typeString = ListOptionTypeToEcmaString(thread, type);
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, typeString);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[Style]]
     ListStyleOption style = listFormat->GetStyle();
     propertyKey = globalConst->GetHandledStyleString();
     JSHandle<JSTaggedValue> styleString = ListOptionStyleToEcmaString(thread, style);
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, styleString);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 }
 }  // namespace panda::ecmascript

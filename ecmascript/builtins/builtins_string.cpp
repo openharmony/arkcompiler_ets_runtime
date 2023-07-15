@@ -903,6 +903,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(searchString.GetTaggedValue(), JSTaggedValue(pos), thisString.GetTaggedValue());
         JSTaggedValue replStrDeocodeValue = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         replHandle.Update(replStrDeocodeValue);
     } else {
         // Let captures be an empty List.
@@ -1027,6 +1028,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(searchString.GetTaggedValue(), JSTaggedValue(pos), thisString.GetTaggedValue());
             JSTaggedValue replStrDeocodeValue = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             replHandle.Update(replStrDeocodeValue);
         } else {
             // Let captures be an empty List.

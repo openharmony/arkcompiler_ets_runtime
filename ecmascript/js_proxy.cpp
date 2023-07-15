@@ -303,6 +303,7 @@ bool JSProxy::GetOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, c
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue());
     JSTaggedValue trapResultObj = JSFunction::Call(info);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
 
     JSHandle<JSTaggedValue> resultHandle(thread, trapResultObj);
 

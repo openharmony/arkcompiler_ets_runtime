@@ -380,23 +380,27 @@ void JSDisplayNames::ResolvedOptions(JSThread *thread, const JSHandle<JSDisplayN
     JSHandle<JSTaggedValue> propertyKey = globalConst->GetHandledLocaleString();
     JSHandle<JSTaggedValue> locale(thread, displayNames->GetLocale());
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, locale);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[Style]]
     StyOption style = displayNames->GetStyle();
     propertyKey = globalConst->GetHandledStyleString();
     JSHandle<JSTaggedValue> styleString = StyOptionToEcmaString(thread, style);
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, styleString);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[type]]
     TypednsOption type = displayNames->GetType();
     propertyKey = globalConst->GetHandledTypeString();
     JSHandle<JSTaggedValue> typeString = TypeOptionToEcmaString(thread, type);
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, typeString);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[fallback]]
     FallbackOption fallback = displayNames->GetFallback();
     propertyKey = globalConst->GetHandledFallbackString();
     JSHandle<JSTaggedValue> fallbackString = FallbackOptionToEcmaString(thread, fallback);
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, fallbackString);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 }
 }  // namespace panda::ecmascript

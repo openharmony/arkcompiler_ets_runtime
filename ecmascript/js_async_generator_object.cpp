@@ -79,6 +79,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResolve(JSThread *thread,
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(its.GetTaggedValue());
     [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 9. Perform ! AsyncGeneratorResumeNext(generator).
     AsyncGeneratorResumeNext(thread, generator);
@@ -113,6 +114,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorReject(JSThread *thread,
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(value.GetTaggedValue());
     [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 8. Perform ! AsyncGeneratorResumeNext(generator).
     AsyncGeneratorResumeNext(thread, generator);
     // 9. Return undefined.
@@ -270,6 +272,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(rstErr.GetTaggedValue());
         [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
         // c. Return promiseCapability.[[Promise]].
         JSHandle<JSObject> promise(thread, pcap->GetPromise());

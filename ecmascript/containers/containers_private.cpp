@@ -529,6 +529,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeMap(JSThread *thread)
     JSHandle<JSTaggedValue> entries = globalConst->GetHandledEntriesString();
     JSHandle<JSTaggedValue> entriesFunc =
         JSObject::GetMethod(thread, JSHandle<JSTaggedValue>::Cast(mapFuncPrototype), entries);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     PropertyDescriptor descriptor(thread, entriesFunc, false, false, false);
     JSObject::DefineOwnProperty(thread, mapFuncPrototype, iteratorSymbol, descriptor);
     // length
@@ -601,6 +602,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeSet(JSThread *thread)
     JSHandle<JSTaggedValue> values(thread, globalConst->GetValuesString());
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread, JSHandle<JSTaggedValue>::Cast(setFuncPrototype), values);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     PropertyDescriptor descriptor(thread, valuesFunc, false, false, false);
     JSObject::DefineOwnProperty(thread, setFuncPrototype, iteratorSymbol, descriptor);
     // length
@@ -1139,6 +1141,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashMap(JSThread *thread)
     JSHandle<JSTaggedValue> entries(factory->NewFromASCII("entries"));
     JSHandle<JSTaggedValue> entriesFunc =
         JSObject::GetMethod(thread, JSHandle<JSTaggedValue>::Cast(hashMapFuncPrototype), entries);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     PropertyDescriptor descriptor(thread, entriesFunc, false, false, false);
     JSObject::DefineOwnProperty(thread, hashMapFuncPrototype, iteratorSymbol, descriptor);
 
@@ -1205,6 +1208,7 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashSet(JSThread *thread)
     JSHandle<JSTaggedValue> values(thread, globalConst->GetValuesString());
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread, JSHandle<JSTaggedValue>::Cast(hashSetFuncPrototype), values);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     PropertyDescriptor descriptor(thread, valuesFunc, false, false, false);
     JSObject::DefineOwnProperty(thread, hashSetFuncPrototype, iteratorSymbol, descriptor);
 
