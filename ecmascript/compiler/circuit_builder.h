@@ -277,6 +277,7 @@ public:
     GateRef NegativeIndexCheck(GateRef index);
     GateRef LargeIndexCheck(GateRef index, GateRef length);
     GateRef OverflowCheck(GateRef value);
+    GateRef LexVarIsHoleCheck(GateRef value);
     GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);
     GateRef Int32DivWithCheck(GateRef left, GateRef right);
     MachineType GetMachineTypeOfValueType(ValueType type);
@@ -646,6 +647,8 @@ public:
     GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     GateRef IsBase(GateRef ctor);
     inline GateRef GetMethodId(GateRef func);
+    inline GateRef LoadFromTaggedArray(GateRef array, size_t index);
+    inline GateRef StoreToTaggedArray(GateRef array, size_t index, GateRef value);
 
 private:
 #define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                            \

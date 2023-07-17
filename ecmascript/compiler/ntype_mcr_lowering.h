@@ -46,6 +46,8 @@ private:
     void LowerCreateArray(GateRef gate, GateRef glue);
     void LowerCreateEmptyArray(GateRef gate);
     void LowerCreateArrayWithOwn(GateRef gate, GateRef glue);
+    void LowerStLexVar(GateRef gate);
+    void LowerLdLexVar(GateRef gate);
 
     GateRef NewTaggedArray(size_t length);
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
