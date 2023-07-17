@@ -1624,7 +1624,7 @@ JSTaggedValue BuiltinsTypedArray::At(EcmaRuntimeCallInfo *argv)
     int64_t k = 0;
     // 5. If relativeIndex ≥ 0, then Let k be relativeIndex.
     // 6. Else, Let k be len + relativeIndex.
-    k = relativeIndex >= 0 ? relativeIndex : len + relativeIndex;
+    k = relativeIndex >= 0 ? relativeIndex : static_cast<int64_t>(len) + relativeIndex;
     // 7. If k < 0 or k ≥ len, return undefined.
     if (k < 0 || k >= len) {
         return JSTaggedValue::Undefined();

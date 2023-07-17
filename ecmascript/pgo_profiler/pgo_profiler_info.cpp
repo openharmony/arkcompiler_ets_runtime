@@ -1152,7 +1152,8 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
     }
 
     secInfo.offset_ = sizeof(SectionInfo);
-    secInfo.size_ = static_cast<uint32_t>(stream.tellp()) - layoutBeginPosition - sizeof(SectionInfo);
+    secInfo.size_ = static_cast<uint32_t>(stream.tellp()) -
+        static_cast<uint32_t>(layoutBeginPosition) - sizeof(SectionInfo);
     stream.seekp(layoutBeginPosition, std::ofstream::beg)
         .write(reinterpret_cast<char *>(&secInfo), sizeof(SectionInfo))
         .seekp(0, std::ofstream::end);

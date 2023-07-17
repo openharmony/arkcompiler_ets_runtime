@@ -678,7 +678,7 @@ JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo 
     if (relativeIndex >= 0) {
         k = relativeIndex;
     } else {
-        k = thisLen + relativeIndex;
+        k = static_cast<int64_t>(thisLen) + relativeIndex;
     }
     if (k < 0 || k >= thisLen) {
         return JSTaggedValue::Undefined();

@@ -662,12 +662,12 @@ bool SamplesRecord::PushNapiStackInfo(const FrameInfoTemp &frameInfoTemp)
 std::string SamplesRecord::GetModuleName(char *recordName)
 {
     std::string recordNameStr = recordName;
-    int atPos = recordNameStr.find("@");
+    std::string::size_type atPos = recordNameStr.find("@");
     if (atPos == std::string::npos) {
         return "";
     }
 
-    int slashPos = recordNameStr.rfind("/", atPos);
+    std::string::size_type slashPos = recordNameStr.rfind("/", atPos);
     if (slashPos == std::string::npos) {
         return "";
     }
