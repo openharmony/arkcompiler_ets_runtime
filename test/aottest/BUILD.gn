@@ -148,6 +148,7 @@ group("ark_aot_ts_test") {
     "not",
     "numberspeculativeretype",
     "optimization",
+    "optimized_call",
     "or",
     "poplexenv",
     "proxy",
