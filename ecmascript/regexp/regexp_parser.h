@@ -195,12 +195,14 @@ public:
     {
         RangeSet cr;
         RangeSet cr1;
-        uint32_t pt[2]; // 2: Range values for a and z + 1
         const uint32_t MINLOWERCHAR = 'a';
         const uint32_t MAXLOWERCHAR = 'z' + 1;
-        pt[0] = MINLOWERCHAR;
-        pt[1] = MAXLOWERCHAR;
-        cr.Insert(pt[0], pt[1]);
+        const uint32_t MINUPPERCHAR = 'A';
+        const uint32_t MAXUPPERCHAR = 'Z' + 1;
+        // Range values for a and z + 1
+        cr.Insert(MINLOWERCHAR, MAXLOWERCHAR);
+        // Range values for A and Z + 1
+        cr.Insert(MINUPPERCHAR, MAXUPPERCHAR);
         result->Inter(cr1, cr);
         result->Insert(cr1);
     }
