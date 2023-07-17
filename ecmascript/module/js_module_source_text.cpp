@@ -156,27 +156,38 @@ bool SourceTextModule::CheckCircularImport(const JSHandle<SourceTextModule> &mod
 
 JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
                                                               const JSHandle<SourceTextModule> &module,
-                                                              const JSHandle<JSTaggedValue> &exportObject,
+                                                              const JSHandle<JSTaggedValue> &exports,
                                                               const JSHandle<JSTaggedValue> &exportName)
 {
     // Let module be this Source Text Module Record.
     auto globalConstants = thread->GlobalConstants();
-    // For CJS, if exportObject is not JSObject, means the CJS module use default output
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // For CJS, if exports is not JSObject, means the CJS module use default output
     JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
     if (JSTaggedValue::SameValue(exportName, defaultString)) {
         // bind with a number
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
     }
-    if (exportObject->IsJSObject()) {
-        JSHandle<JSHClass> jsHclass(thread, JSObject::Cast(exportObject.GetTaggedValue())->GetJSHClass());
-        // Get layoutInfo and compare the input and output names of files
-        JSHandle<LayoutInfo> layoutInfo(thread, jsHclass->GetLayout());
-        if (layoutInfo->NumberOfElements() != 0) {
-            JSHandle<JSTaggedValue> resolution = ResolveElementOfObject(thread, jsHclass, exportName, module);
-            if (!resolution->IsUndefined()) {
-                return resolution;
+    if (exports->IsJSObject()) {
+        JSHandle<JSTaggedValue> resolution(thread, JSTaggedValue::Hole());
+        JSObject *exportObject = JSObject::Cast(exports.GetTaggedValue().GetTaggedObject());
+        TaggedArray *properties = TaggedArray::Cast(exportObject->GetProperties().GetTaggedObject());
+        if (!properties->IsDictionaryMode()) {
+            JSHandle<JSHClass> jsHclass(thread, exportObject->GetJSHClass());
+            // Get layoutInfo and compare the input and output names of files
+            LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
+            if (layoutInfo->NumberOfElements() != 0) {
+                resolution = ResolveElementOfObject(thread, jsHclass, exportName, module);
             }
+        } else {
+            NameDictionary *dict = NameDictionary::Cast(properties);
+            int entry = dict->FindEntry(exportName.GetTaggedValue());
+            if (entry != -1) {
+                resolution = JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, entry));
+            }
+        }
+        if (!resolution->IsUndefined()) {
+            return resolution;
         }
     }
     return globalConstants->GetHandledNull();

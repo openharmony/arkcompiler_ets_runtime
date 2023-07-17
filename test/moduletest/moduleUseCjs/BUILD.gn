@@ -28,9 +28,15 @@ host_moduletest_action("someArgsCjs") {
   is_commonjs = true
 }
 
+host_moduletest_action("CjsDictionaryMode") {
+  deps = []
+  is_commonjs = true
+}
+
 host_moduletest_action("moduleUseCjs") {
   extra_modules = [ "Cjs" ]
   deps = [
+    ":gen_CjsDictionaryMode_abc",
     ":gen_Cjs_abc",
     ":gen_cjsWithoutExports_abc",
     ":gen_someArgsCjs_abc",
