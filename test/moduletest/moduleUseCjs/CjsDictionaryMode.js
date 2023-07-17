@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,15 +19,11 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-import cjs from "./Cjs"
-import * as ns from "./someArgsCjs"
-import {json, fun} from "./someArgsCjs"
-import "./cjsWithoutExports.js"
-import {SUCCESS} from "./CjsDictionaryMode"
-
-print(JSON.stringify(cjs));
-print(JSON.stringify(json));
-fun();
-print(ns.tag);
-ns.con();
-print(SUCCESS);
+Object.defineProperty(exports,"SUCCESS", {
+    enumerable: true,
+    get:function () {
+        return "success";
+    }
+})
+exports[0] = 1;
+exports[1099] = 1;
