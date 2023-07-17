@@ -1,0 +1,21 @@
+{
+    "MTypeField": [
+        "bitfield",
+        "type",
+        "stamp",
+        "mark"
+    ],
+    "NodeColor": {
+        "control": "0xffffbf7f",
+        "depend": "0xffc0c0ff",
+        "value": "0xffc0ffc0",
+        "other": "0xffc0c0c0"
+    },
+    "LineColor": {
+        "state": "0xffffaf5f",
+        "depend": "0xff0000ff",
+        "value": "0xff00ff00",
+        "framestate": "0xff303030",
+        "root": "0xff303030"
+    }
+}
