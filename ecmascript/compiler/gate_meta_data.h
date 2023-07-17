@@ -165,6 +165,10 @@ enum class TypedStoreOp : uint8_t {
     FLOAT64ARRAY_STORE_ELEMENT,
 };
 
+enum class MemoryType : uint8_t {
+    ELEMENT_TYPE = 0,
+};
+
 enum class TypedLoadOp : uint8_t {
     ARRAY_LOAD_ELEMENT = 0,
     INT8ARRAY_LOAD_ELEMENT,
@@ -285,7 +289,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(FrameValues, FRAME_VALUES, GateFlags::NONE_FLAG, 0, 0, value)                      \
     V(RuntimeCall, RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)                      \
     V(RuntimeCallWithArgv, RUNTIME_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)    \
-    V(NoGcRuntimeCall, NOGC_RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)             \
+    V(NoGcRuntimeCall, NOGC_RUNTIME_CALL, GateFlags::NO_WRITE, 0, 1, value)              \
     V(Call, CALL, GateFlags::NONE_FLAG, 0, 1, value)                                     \
     V(BytecodeCall, BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)                    \
     V(DebuggerBytecodeCall, DEBUGGER_BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)   \
@@ -334,6 +338,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(StoreConstOffset, STORE_CONST_OFFSET, GateFlags::NONE_FLAG, 1, 1, 2)              \
     V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 2)                          \
     V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 3)                       \
+    V(StoreMemory, STORE_MEMORY, GateFlags::NONE_FLAG, 1, 1, 3)                         \
     V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 0, 1)                 \
     V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                                \
     V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)                 \
@@ -749,19 +754,19 @@ private:
     TypedCallTargetCheckOp checkOp_;
 };
 
-class TypedBinaryMegaData : public OneParameterMetaData {
+class TypedBinaryMetaData : public OneParameterMetaData {
 public:
-    TypedBinaryMegaData(uint64_t value, TypedBinOp binOp, PGOSampleType type)
+    TypedBinaryMetaData(uint64_t value, TypedBinOp binOp, PGOSampleType type)
         : OneParameterMetaData(OpCode::TYPED_BINARY_OP, GateFlags::NO_WRITE, 1, 1, 2, value), // 2: valuesIn
         binOp_(binOp), type_(type)
     {
         SetKind(GateMetaData::Kind::TYPED_BINARY_OP);
     }
 
-    static const TypedBinaryMegaData* Cast(const GateMetaData* meta)
+    static const TypedBinaryMetaData* Cast(const GateMetaData* meta)
     {
         meta->AssertKind(GateMetaData::Kind::TYPED_BINARY_OP);
-        return static_cast<const TypedBinaryMegaData*>(meta);
+        return static_cast<const TypedBinaryMetaData*>(meta);
     }
 
     TypedBinOp GetTypedBinaryOp() const

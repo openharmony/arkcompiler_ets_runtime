@@ -146,8 +146,8 @@ private:
     void LowerArrayLoadElement(GateRef gate);
     void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
     void LowerArrayStoreElement(GateRef gate, GateRef glue);
-    void LowerTypedArrayStoreElement(GateRef gate, GateRef glue, BuiltinTypeId id);
-    void LowerUInt8ClampedArrayStoreElement(GateRef gate, GateRef glue);
+    void LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id);
+    void LowerUInt8ClampedArrayStoreElement(GateRef gate);
     void LowerTypedCallBuitin(GateRef gate);
     void LowerCallTargetCheck(GateRef gate);
     void LowerJSCallTargetCheck(GateRef gate);

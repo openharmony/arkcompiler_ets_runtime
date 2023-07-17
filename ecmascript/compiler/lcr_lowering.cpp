@@ -89,6 +89,9 @@ void LCRLowering::Run()
             case OpCode::LEX_VAR_IS_HOLE_CHECK:
                 LowerLexVarIsHoleCheck(gate);
                 break;
+            case OpCode::STORE_MEMORY:
+                LowerStoreMemory(gate);
+                break;
             default:
                 break;
         }
@@ -650,6 +653,15 @@ void LCRLowering::LowerInt32DivWithCheck(GateRef gate)
     GateRef overCheck = builder_.Int32Equal(truncated, left);
     builder_.DeoptCheck(overCheck, frameState, DeoptType::NOTINT);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void LCRLowering::LowerStoreMemory(GateRef gate){
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef index = acc_.GetValueIn(gate, 1);
+    GateRef value = acc_.GetValueIn(gate, 2);
+    builder_.Store(VariableType::VOID(), glue_, receiver, index, value);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void LCRLowering::InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue,

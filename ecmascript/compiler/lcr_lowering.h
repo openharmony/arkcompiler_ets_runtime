@@ -70,6 +70,7 @@ private:
     void LowerInt32UnsignedUpperBoundCheck(GateRef gate);
     void LowerInt32DivWithCheck(GateRef gate);
     void LowerLexVarIsHoleCheck(GateRef gate);
+    void LowerStoreMemory(GateRef gate);
 
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
     GateRef ConvertInt32ToFloat64(GateRef gate);
