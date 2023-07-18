@@ -25,43 +25,47 @@
 namespace panda::ecmascript::kungfu {
 void TSInlineLowering::RunTSInlineLowering()
 {
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    for (const auto &gate : gateList) {
-        auto op = acc_.GetOpCode(gate);
-        if (op == OpCode::JS_BYTECODE) {
-            TryInline(gate);
-        }
+    circuit_->AdvanceTime();
+    ChunkQueue<CallGateInfo> workList(chunk_);
+    UpdateWorkList(workList);
+
+    while (!workList.empty()) {
+        CallGateInfo info = workList.front();
+        workList.pop();
+        TryInline(info, workList);
     }
 }
 
-void TSInlineLowering::TryInline(GateRef gate)
+void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<CallGateInfo> &workList)
 {
+    bool isCallThis = false;
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     switch (ecmaOpcode) {
-        case EcmaOpcode::CALLARG0_IMM8:
-        case EcmaOpcode::CALLARG1_IMM8_V8:
-        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
-        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
-        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
-        case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
-            TryInline(gate, false);
-            break;
         case EcmaOpcode::CALLTHIS0_IMM8_V8:
         case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
         case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
-            TryInline(gate, true);
-            break;
+            isCallThis = true;
+            [[fallthrough]];
+        case EcmaOpcode::CALLARG0_IMM8:
+        case EcmaOpcode::CALLARG1_IMM8_V8:
+        case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
+        case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
+            workList.push(CallGateInfo(gate, isCallThis));
+            lastCallId_ = acc_.GetId(gate);
         default:
             break;
     }
 }
 
-void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
+void TSInlineLowering::TryInline(CallGateInfo info, ChunkQueue<CallGateInfo> &workList)
 {
+    GateRef gate = info.GetCallGate();
+    bool isCallThis = info.IsCallThis();
     // inline doesn't support try-catch
     bool inTryCatch = FilterCallInTryCatch(gate);
     if (inTryCatch) {
@@ -85,8 +89,10 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
         auto &methodInfo = bytecodeInfo.GetMethodList().at(methodOffset);
         auto &methodPcInfos = bytecodeInfo.GetMethodPcInfos();
         auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
-        if (methodPcInfo.pcOffsets.size() <= maxInlineBytecodesCount_ &&
-            inlinedCall_ < MAX_INLINE_CALL_ALLOWED) {
+        GateRef frameState = acc_.GetFrameState(gate);
+        GateRef frameArgs = acc_.GetValueIn(frameState);
+        size_t inlineCallCounts = GetOrInitialInlineCounts(frameArgs);
+        if (IsSmallMethod(methodPcInfo.pcOffsets.size()) && !IsInlineCountsOverflow(inlineCallCounts)) {
             inlineSuccess_ = FilterInlinedMethod(inlinedMethod, methodPcInfo.pcOffsets);
             if (inlineSuccess_) {
                 GateRef glue = acc_.GetGlueFromArgList();
@@ -96,7 +102,8 @@ void TSInlineLowering::TryInline(GateRef gate, bool isCallThis)
                 }
                 InlineCall(methodInfo, methodPcInfo, inlinedMethod, gate);
                 ReplaceCallInput(gate, isCallThis, glue, inlinedMethod);
-                inlinedCall_++;
+                UpdateInlineCounts(frameArgs, inlineCallCounts);
+                UpdateWorkList(workList);
             }
         }
     }
@@ -416,5 +423,29 @@ void TSInlineLowering::SupplementType(GateRef callGate, GateRef targetGate)
     if (!callGateType.IsAnyType() && targetGateType.IsAnyType()) {
         acc_.SetGateType(targetGate, callGateType);
     }
+}
+
+void TSInlineLowering::UpdateWorkList(ChunkQueue<CallGateInfo> &workList)
+{
+    std::vector<GateRef> gateList;
+    circuit_->GetAllGates(gateList);
+    for (const auto &gate : gateList) {
+        if (acc_.GetId(gate) <= lastCallId_) {
+            continue;
+        }
+        auto op = acc_.GetOpCode(gate);
+        if (op == OpCode::JS_BYTECODE) {
+            CandidateInlineCall(gate, workList);
+        }
+    }
+}
+
+size_t TSInlineLowering::GetOrInitialInlineCounts(GateRef frameArgs)
+{
+    auto it = inlinedCallMap_.find(frameArgs);
+    if (it == inlinedCallMap_.end()) {
+        inlinedCallMap_[frameArgs] = 0;
+    }
+    return inlinedCallMap_[frameArgs];
 }
 }  // namespace panda::ecmascript
