@@ -14,11 +14,7 @@
 
 系统：建议Ubuntu 20.04或者Windows 10
 
-### 约束
-
-nodejs v14.20.0
-
-#### 首次下载源码后安装依赖库：
+#### 下载源码后安装依赖库：
 
 1.右键windows开始菜单，单击运行，输入cmd，单击确定。
 	
@@ -28,7 +24,7 @@ nodejs v14.20.0
 
 #### 打包
 
-首次使用工具或本地代码有更新时，需在circuit_viewer目录下运行npm run dist打包源码，如下图所示：
+使用工具或本地代码有更新时，需在circuit_viewer目录下运行npm run dist打包源码，如下图所示：
 
 ![](../figures/dist.png)
 
