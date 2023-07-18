@@ -289,8 +289,9 @@ public:
         }
     }
 
-    EcmaVM *GetWorkerVm(uint32_t tid) const
+    EcmaVM *GetWorkerVm(uint32_t tid)
     {
+        os::memory::LockHolder lock(mutex_);
         EcmaVM *workerVm = nullptr;
         if (!workerList_.empty()) {
             auto iter = workerList_.find(tid);
