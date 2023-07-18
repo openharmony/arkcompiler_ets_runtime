@@ -59,7 +59,7 @@ void PGOBCInfo::Record(const InfoDetail &detail, Type type)
 }
 
 void PGOBCInfo::Record(const BytecodeInstruction &bcIns, int32_t bcIndex,
-                               const CString &recordName, const MethodLiteral *method)
+    const CString &recordName, const MethodLiteral *method)
 {
     BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
     uint32_t methodOffset = method->GetMethodId().GetOffset();
