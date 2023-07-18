@@ -18,7 +18,7 @@
 namespace panda::ecmascript {
 JSHandle<JSTaggedValue> TSTypeTable::GetExportValueTable(JSThread *thread, JSHandle<TSTypeTable> typeTable)
 {
-    int index = static_cast<int>(typeTable->GetLength()) - 1;
+    uint32_t index = typeTable->GetLength() - 1;
     JSHandle<JSTaggedValue> exportValueTable(thread, typeTable->Get(index));
     return exportValueTable;
 }
