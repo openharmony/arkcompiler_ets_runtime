@@ -92,8 +92,8 @@ private:
     void ConvertForIntOperator(GateRef gate, GateType leftType, GateType rightType);
     void ConvertForDoubleOperator(GateRef gate, GateType leftType, GateType rightType);
 
-    GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType);
-    GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType);
+    GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE);
+    GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE);
     GateRef CheckAndConvertToTagged(GateRef gate, GateType gateType);
     GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);
     GateRef ConvertToTagged(GateRef gate);

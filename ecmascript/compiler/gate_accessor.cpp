@@ -201,6 +201,15 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
     return accessor.GetGateType();
 }
 
+bool GateAccessor::IsConvertSupport(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CONVERT ||
+           GetOpCode(gate) == OpCode::CHECK_AND_CONVERT);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    ValuePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.IsConvertSupport();
+}
+
 ValueType GateAccessor::GetSrcType(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::CONVERT ||

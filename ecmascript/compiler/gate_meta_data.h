@@ -774,16 +774,22 @@ public:
         return static_cast<ValueType>(RightBits::Get(bitField_));
     }
 
-    static uint16_t ToValue(ValueType srcType, ValueType dstType)
+    bool IsConvertSupport() const
+    {
+        return ConvertSupportBits::Get(bitField_) == ConvertSupport::ENABLE;
+    }
+
+    static uint64_t ToValue(ValueType srcType, ValueType dstType, ConvertSupport support = ConvertSupport::ENABLE)
     {
         uint8_t srcVlaue = static_cast<uint8_t>(srcType);
         uint8_t dstVlaue = static_cast<uint8_t>(dstType);
-        return LeftBits::Encode(srcVlaue) | RightBits::Encode(dstVlaue);
+        return LeftBits::Encode(srcVlaue) | RightBits::Encode(dstVlaue) | ConvertSupportBits::Encode(support);
     }
 
 private:
     using LeftBits = panda::BitField<uint8_t, 0, OPRAND_TYPE_BITS>;
     using RightBits = LeftBits::NextField<uint8_t, OPRAND_TYPE_BITS>;
+    using ConvertSupportBits = RightBits::NextField<ConvertSupport, OPRAND_TYPE_BITS>;
 
     uint64_t bitField_;
 };

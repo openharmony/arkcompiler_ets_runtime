@@ -413,6 +413,7 @@ public:
     UseIterator ReplaceIn(const UseIterator &useIt, GateRef replaceGate);
     // Add for lowering
     GateType GetGateType(GateRef gate) const;
+    bool IsConvertSupport(GateRef gate) const;
     ValueType GetSrcType(GateRef gate) const;
     ValueType GetDstType(GateRef gate) const;
     void SetGateType(GateRef gate, GateType gt);

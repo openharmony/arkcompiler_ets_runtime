@@ -493,6 +493,16 @@ GateRef CircuitBuilder::BooleanToTaggedBooleanPtr(GateRef x)
     return Int64ToTaggedPtr(Int64Or(val, Int64(JSTaggedValue::TAG_BOOLEAN_MASK)));
 }
 
+GateRef CircuitBuilder::BooleanToInt32(GateRef x)
+{
+    return ZExtInt1ToInt32(x);
+}
+
+GateRef CircuitBuilder::BooleanToFloat64(GateRef x)
+{
+    return ChangeInt32ToFloat64(ZExtInt1ToInt32(x));
+}
+
 GateRef CircuitBuilder::Float32ToTaggedDoublePtr(GateRef x)
 {
     GateRef val = ExtFloat32ToDouble(x);

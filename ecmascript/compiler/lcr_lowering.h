@@ -56,6 +56,7 @@ private:
     void LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState, Label *exit);
     void LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState, Label *exit);
     void LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameState);
+    void LowerCheckSupportAndConvert(GateRef gate, GateRef frameState);
     void LowerGetGlobalEnv(GateRef gate);
     void LowerGetGlobalEnvObjHClass(GateRef gate);
     void LowerGetGlobalConstantValue(GateRef gate);

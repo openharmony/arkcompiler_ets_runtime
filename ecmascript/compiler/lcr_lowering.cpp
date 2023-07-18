@@ -325,6 +325,9 @@ StateDepend LCRLowering::LowerCheckAndConvert(StateDepend stateDepend, GateRef g
         case ValueType::TAGGED_NUMBER:
             LowerCheckTaggedNumberAndConvert(gate, frameState, &exit);
             break;
+        case ValueType::BOOL:
+            LowerCheckSupportAndConvert(gate, frameState);
+            break;
         default:
             UNREACHABLE();
     }
@@ -377,6 +380,24 @@ void LCRLowering::LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameSt
     } else {
         ASSERT(dst == ValueType::BOOL);
         result = ConvertTaggedNumberToBool(value, exit);
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void LCRLowering::LowerCheckSupportAndConvert(GateRef gate, GateRef frameState)
+{
+    ValueType dstType = acc_.GetDstType(gate);
+    ASSERT(dstType == ValueType::INT32 || dstType == ValueType::FLOAT64);
+    bool support = acc_.IsConvertSupport(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+
+    GateRef result = Circuit::NullGate();
+    if (dstType == ValueType::INT32) {
+        builder_.DeoptCheck(builder_.Boolean(support), frameState, DeoptType::NOTINT);
+        result = builder_.BooleanToInt32(value);
+    } else {
+        builder_.DeoptCheck(builder_.Boolean(support), frameState, DeoptType::NOTDOUBLE);
+        result = builder_.BooleanToFloat64(value);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }

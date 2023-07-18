@@ -199,6 +199,7 @@ group("ark_aot_ts_test") {
     "ts_inline_extends",
     "ts_inline_loop",
     "ts_inline_max_call",
+    "typedarray",
     "typeof",
     "xor",
   ]

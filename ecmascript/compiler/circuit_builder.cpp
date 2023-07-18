@@ -291,7 +291,7 @@ GateType CircuitBuilder::GetGateTypeOfValueType(ValueType type)
     }
 }
 
-GateRef CircuitBuilder::CheckAndConvert(GateRef gate, ValueType src, ValueType dst)
+GateRef CircuitBuilder::CheckAndConvert(GateRef gate, ValueType src, ValueType dst, ConvertSupport support)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
@@ -300,7 +300,7 @@ GateRef CircuitBuilder::CheckAndConvert(GateRef gate, ValueType src, ValueType d
     GateRef state = acc_.GetState(stateSplit);
     MachineType machineType = GetMachineTypeOfValueType(dst);
     GateType gateType = GetGateTypeOfValueType(dst);
-    uint64_t value = ValuePairTypeAccessor::ToValue(src, dst);
+    uint64_t value = ValuePairTypeAccessor::ToValue(src, dst, support);
     GateRef ret = GetCircuit()->NewGate(circuit_->CheckAndConvert(value),
         machineType, {state, gate, frameState}, gateType);
     return ret;
@@ -313,6 +313,16 @@ GateRef CircuitBuilder::Convert(GateRef gate, ValueType src, ValueType dst)
     uint64_t value = ValuePairTypeAccessor::ToValue(src, dst);
     GateRef ret = GetCircuit()->NewGate(circuit_->Convert(value), machineType, {gate}, gateType);
     return ret;
+}
+
+GateRef CircuitBuilder::ConvertBoolToInt32(GateRef gate, ConvertSupport support)
+{
+    return CheckAndConvert(gate, ValueType::BOOL, ValueType::INT32, support);
+}
+
+GateRef CircuitBuilder::ConvertBoolToFloat64(GateRef gate, ConvertSupport support)
+{
+    return CheckAndConvert(gate, ValueType::BOOL, ValueType::FLOAT64, support);
 }
 
 GateRef CircuitBuilder::ConvertInt32ToFloat64(GateRef gate)

@@ -284,6 +284,12 @@ enum class ValueType : uint8_t {
     TAGGED_NUMBER,
 };
 
+enum class ConvertSupport : uint8_t {
+    ENABLE,
+    // Not support conversion from srcType to dstType. It is necessary to use 'deopt' to ensure semantic correctness.
+    DISABLE
+};
+
 class Type {
 public:
     explicit Type(GateType payload);
