@@ -77,9 +77,7 @@ class XSelect {
         if (i == this.tmpSelect_) {
           this.pm2f_.fillRect(x, y + h + i * 20, w, 20, this.backgroundColor_ + 0x303030);
         }
-        // if (this.list_[i] == this.default_) {
-        //   this.pm2f_.fillRect(x, y + h + i * 20, w, 20, this.backgroundColor_);
-        // }
+        
         let name1 = '...';
         if (this.list_[i].indexOf('\\') != -1) {
           let list = this.list_[i].split('\\');

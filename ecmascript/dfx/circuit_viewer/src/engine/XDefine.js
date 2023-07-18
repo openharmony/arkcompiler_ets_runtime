@@ -29,7 +29,7 @@ export class Scr {
     Scr.logich = h;
     Scr.width = w;
     Scr.height = h;
-    // NapiLog.logError('setLogicScreenSize');
+
     if ('undefined' != typeof wx) {
       var info = wx.getSystemInfoSync();
       Scr.width = info.windowWidth;

@@ -38,12 +38,10 @@ class LogParser {
     }
     this.procNormal_ = null;
     this.output_ = {};
-    // this.t1_ = Date.now();
   }
 
   parsing() {
     if (this.lineNum_ >= this.logLines_.length) {
-      // let t2 = Date.now() - this.t1_;
       return false;
     }
 
@@ -117,7 +115,6 @@ class LogParser {
           file: tt2[1],//文件名
           irList: [],
           startLine: l,
-          // callerMethod: ret[3],
         };
         this.stat_ = 1;
         [this.initBlock_.funcPoint, this.initBlock_.filePoint] = [tt2[0], tt2[tt2.length - 1]];
@@ -191,14 +188,12 @@ class LogParser {
           this.output_[this.procNormal_.file][this.procNormal_.func].push(this.procNormal_);
         }
         else {
-          NapiLog.logError("After和End之间没有指令(" + this.lineNum_ + "行)");//this.procNormal_.startLine
+          NapiLog.logError("After和End之间没有指令(" + this.lineNum_ + "行)");
         }
         this.stat_ = 0;
       }
       else {
-        NapiLog.logError("After和End之间解析失败(" + (this.lineNum_ + 1) + ")行");//+ l
-        // alert("After和End之间解析失败("+lineNum+")"+l);
-        // throw new Error("解析失败");
+        NapiLog.logError("After和End之间解析失败(" + (this.lineNum_ + 1) + ")行");
         this.stat_ = 0;
       }
     }
@@ -237,8 +232,6 @@ class LogParser {
         if (xhr.status === 200) {
           XTools.PORC_TO = 10;
           cb(fn, xhr.responseText);
-        } else {
-          // console.error('Failed to load file');
         }
       }
     };
@@ -311,9 +304,6 @@ class LogParser {
         return false;
       }
       if (!pb.oneBlock) {//完成了一个block的解析
-        // stat = 0;
-        // NapiLog.logError("parse block fail at line" + (lineNum + 1));
-        // lineNum -= 1;
         if (!(pb.blockCollect.file in this.output_)) {
           this.output_[pb.blockCollect.file] = {};
         }
@@ -382,9 +372,6 @@ class LogParser {
           return false;
         }
         if (!pb.oneBlock) {//完成了一个block的解析
-          // stat = 0;
-          // NapiLog.logError("parse block fail at line" + (lineNum + 1));
-          // lineNum -= 1;
           if (!(pb.blockCollect.file in this.output_)) {
             this.output_[pb.blockCollect.file] = {};
           }

@@ -61,7 +61,6 @@ class MainEditor {
       reader.readAsDataURL(files[0]);
       reader.onload = (e) => {
         let ret = atob(e.target.result.split(",")[1]);
-        // ret = Buffer.from(e.target.result.split(",")[1], 'base64');
         this.onLoad(files[0].name, ret);
       }
     }
@@ -77,19 +76,13 @@ class MainEditor {
       X2DFast.gi().drawText("拖入log文件", 30, Scr.logicw / 2, Scr.logich / 2, 1, 1, 0, -2, -2, 0xff000000);
       return;
     }
-    // X2DFast.gi().fillRect(0, 0, Scr.logicw, Scr.logich, 0xffffffff);
-    // X2DFast.gi().fillRect(0, 0, Scr.logicw/2, Scr.logich/2, 0x80c0c0ff);
-    // return;
-    // X2DFast.gi().fillRect(0, 0, Scr.logicw, Scr.logich, 0xffffffff);
+
     for (let v in this.viewer_) {
       if (this.filePoint_ == v) {
         this.viewer_[v].onDraw();
       }
     }
-    // if (this.filePoint_ in this.files_) {
-    //   let irList = this.files_[this.filePoint_]["b.abc"]["cxunmzadd"][0]["irList"];
-    //   X2DFast.gi().drawRect(100, 100, 200, 200, 0xffff0000, 3);
-    // }
+
     this.selectFile_.move(Scr.logicw - 200 - 10, 10, 200, 20);
     this.selectFile_.draw();
     if (XTools.PROC_TO > 0 && XTools.PROC_TO < 100) {
@@ -115,7 +108,6 @@ class MainEditor {
   }
 
   onKey(k) {
-    // console.log(k);
     for (let v in this.viewer_) {
       if (this.filePoint_ == v) {
         if (this.viewer_[v].onKey(k)) {

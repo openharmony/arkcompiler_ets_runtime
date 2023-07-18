@@ -67,8 +67,8 @@ export class X2DFast {
     gl.disable(gl.DEPTH_TEST);
 
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);//ONE_MINUS_SRC_ALPHA
-    // gl.blendEquation(gl.FUNC_SUBTRACT);//GL_FUNC_ADD、GL_FUNC_SUBTRACT、GL_FUNC_REVERSE_SUBTRACT、GL_MIN、GL_MAX和GL_LOGIC_OP
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);// ONE_MINUS_SRC_ALPHA
+    // GL_FUNC_ADD、GL_FUNC_SUBTRACT、GL_FUNC_REVERSE_SUBTRACT、GL_MIN、GL_MAX和GL_LOGIC_OP
   }
 
   DrawCircle(ox, oy, rw, rh, c = 0xffffffff, lw = 1) {
@@ -105,7 +105,7 @@ export class X2DFast {
       linewidth,
       fAngle(x2 - x1, y2 - y1),
       0,
-      0,//+0.5
+      0,// +0.5
       c
     );
   }
