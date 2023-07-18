@@ -14,6 +14,21 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
+config("include_llvm_config") {
+  if (compile_llvm_online) {
+    include_dirs = [
+      "//third_party/third_party_llvm-project/build/include",
+      "//third_party/third_party_llvm-project/llvm/include/",
+    ]
+  } else {
+    include_dirs = [
+      "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/llvm/include",
+      "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/include",
+    ]
+  }
+  cflags_cc = [ "-DARK_GC_SUPPORT" ]
+}
+
 module_output_path = "arkcompiler/ets_runtime"
 
 host_unittest_action("AssemblerTest") {
@@ -24,11 +39,81 @@ host_unittest_action("AssemblerTest") {
     "../assembler/tests/assembler_aarch64_test.cpp",
     "../assembler/tests/assembler_x64_test.cpp",
   ]
+  configs = [
+    ":include_llvm_config",
+    "//arkcompiler/ets_runtime:ecma_test_config",
+    "//arkcompiler/ets_runtime:ark_jsruntime_compiler_config",
+    "//arkcompiler/ets_runtime:ark_jsruntime_public_config",
+  ]
+
+  if (compile_llvm_online) {
+    lib_dirs = [ "//third_party/third_party_llvm-project/build/lib" ]
+  } else {
+    lib_dirs =
+        [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/lib" ]
+  }
+
+  libs = [
+    "stdc++",
+    "z",
+    "LLVMTarget",
+    "LLVMObject",
+    "LLVMMC",
+    "LLVMSupport",
+    "LLVMCore",
+    "LLVMExecutionEngine",
+    "LLVMInterpreter",
+    "LLVMMCJIT",
+    "LLVMExegesis",
+    "LLVMRuntimeDyld",
+    "LLVMInstCombine",
+    "LLVMAnalysis",
+    "LLVMScalarOpts",
+    "LLVMBinaryFormat",
+    "LLVMDebugInfoDWARF",
+    "LLVMRemarks",
+    "LLVMTextAPI",
+    "LLVMScalarOpts",
+    "LLVMTransformUtils",
+    "LLVMBitReader",
+    "LLVMAsmPrinter",
+    "LLVMProfileData",
+    "LLVMBitstreamReader",
+    "LLVMSelectionDAG",
+    "LLVMGlobalISel",
+    "LLVMLTO",
+    "LLVMCFGuard",
+    "LLVMVectorize",
+    "LLVMDemangle",
+    "LLVMipo",
+    "LLVMInstrumentation",
+    "LLVMDebugInfoCodeView",
+    "LLVMAggressiveInstCombine",
+    "LLVMAsmParser",
+    "LLVMMCParser",
+    "LLVMMIRParser",
+    "LLVMX86Info",
+    "LLVMAArch64Info",
+    "LLVMARMDesc",
+    "LLVMAArch64Desc",
+    "LLVMX86Desc",
+    "LLVMX86Disassembler",
+    "LLVMARMDisassembler",
+    "LLVMAArch64Disassembler",
+    "LLVMMCDisassembler",
+    "LLVMAArch64CodeGen",
+    "LLVMARMCodeGen",
+    "LLVMCodeGen",
+    "LLVMX86CodeGen",
+    "LLVMX86AsmParser",
+    "LLVMTransformUtils",
+    "LLVMAArch64Utils",
+    "LLVMARMUtils",
+    "LLVMIRReader",
+  ]
 
   deps = [
-    "$ark_root/libpandafile:libarkfile_static",
-    "$js_root:libark_jsruntime_test_set",
-    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+    "//arkcompiler/ets_runtime/ecmascript/compiler:libark_jsoptimizer_test",
     sdk_libc_secshared_dep,
   ]
 
