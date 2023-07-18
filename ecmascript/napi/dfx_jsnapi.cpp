@@ -493,7 +493,7 @@ bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::ve
     if (hostVm->GetAssociatedJSThread()->GetThreadId() == tid) {
         vm = const_cast<EcmaVM*>(hostVm);
     } else {
-        vm = hostVm->GetWorkerVm(tid);
+        vm = const_cast<EcmaVM*>(hostVm)->GetWorkerVm(tid);
         if (vm == nullptr) {
             return false;
         }
@@ -558,5 +558,10 @@ bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, int32_t 
         debugOption.isDebugMode = true;
         return JSNApi::StartDebugger(vm, debugOption, instanceId, debuggerPostTask);
     }
+}
+
+EcmaVM *DFXJSNApi::GetWorkerVm(EcmaVM *hostVm, uint32_t tid)
+{
+    return hostVm->GetWorkerVm(tid);
 }
 } // namespace panda
