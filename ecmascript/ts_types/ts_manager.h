@@ -297,6 +297,7 @@ public:
 
     bool IsMethodSignature(GlobalTSTypeRef gt) const;
     bool CanFastCall(GlobalTSTypeRef gt) const;
+    bool IsNoGC(GlobalTSTypeRef gt) const;
     bool MethodOffsetIsVaild(GlobalTSTypeRef gt) const;
     bool FastCallFlagIsVaild(GlobalTSTypeRef gt) const;
 

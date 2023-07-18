@@ -36,6 +36,7 @@ public:
         : vm_(collector->GetVM()),
           bcInfoCollector_(collector),
           tsManager_(vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()),
+          bytecodes_(collector->GetByteCodes()),
           lexEnvManager_(bcInfoCollector_->GetEnvManager()),
           cmpCfg_(triple, &vm_->GetJSOptions()),
           log_(log),
@@ -52,7 +53,7 @@ public:
 
     Bytecodes* GetByteCodes()
     {
-        return &bytecodes_;
+        return bytecodes_;
     }
 
     LexEnvManager* GetLexEnvManager() const
@@ -114,7 +115,7 @@ private:
     EcmaVM *vm_ {nullptr};
     BytecodeInfoCollector *bcInfoCollector_ {nullptr};
     TSManager *tsManager_ {nullptr};
-    Bytecodes bytecodes_;
+    Bytecodes *bytecodes_ {nullptr};
     LexEnvManager *lexEnvManager_ {nullptr};
     CompilationConfig cmpCfg_;
     CompilerLog *log_ {nullptr};
@@ -148,6 +149,7 @@ public:
     V(TypeInfer, false)          \
     V(OptInlining, false)        \
     V(OptStaticMethod, false)    \
+    V(OptNoGCCall, false)        \
     V(OptPGOType, false)         \
     V(NoCheck, false)            \
     V(OptTrackField, false)

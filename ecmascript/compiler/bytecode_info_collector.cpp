@@ -242,6 +242,7 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
     auto &pcOffsets = methodPcInfos.back().pcOffsets;
     const uint8_t *curPc = bcIns.GetAddress();
     bool canFastCall = true;
+    bool noGC = true;
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
         bool fastCallFlag = true;
@@ -252,14 +253,18 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
         CollectModuleInfoFromBC(bcIns, method, recordName);
         CollectConstantPoolIndexInfoFromBC(bcIns, method);
         pgoBCInfo_.Record(bcIns, bcIndex, recordName, method);
+        if (noGC && !bytecodes_.GetBytecodeMetaData(curPc).IsNoGC()) {
+            noGC = false;
+        }
         curPc = bcIns.GetAddress();
         auto nextInst = bcIns.GetNext();
         bcIns = nextInst;
         pcOffsets.emplace_back(curPc);
         bcIndex++;
     }
-    bytecodeInfo_.SetMethodOffsetToCanFastCall(methodOffset, canFastCall);
+    bytecodeInfo_.SetMethodOffsetToFastCallInfo(methodOffset, canFastCall, noGC);
     method->SetIsFastCall(canFastCall);
+    method->SetNoGCBit(noGC);
 }
 
 void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,

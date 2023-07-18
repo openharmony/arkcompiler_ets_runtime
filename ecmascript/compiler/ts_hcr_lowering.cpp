@@ -1125,51 +1125,51 @@ BuiltinsStubCSigns::ID TSHCRLowering::GetBuiltinId(BuiltinTypeId id, GateRef fun
     return stubId;
 }
 
+void TSHCRLowering::CheckCallTargetFromDefineFuncAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+    GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall, bool isNoGC)
+{
+    if (!noCheck_) {
+        builder_.JSCallTargetFromDefineFuncCheck(funcType, func, gate);
+    }
+    if (tsManager_->CanFastCall(funcGt)) {
+        LowerFastCall(gate, func, argsFastCall, isNoGC);
+    } else {
+        LowerCall(gate, func, args, isNoGC);
+    }
+}
+
+void TSHCRLowering::LowerFastCall(GateRef gate, GateRef func,
+    const std::vector<GateRef> &argsFastCall, bool isNoGC)
+{
+    builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
+    GateRef result = builder_.TypedFastCall(gate, argsFastCall, isNoGC);
+    builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void TSHCRLowering::LowerCall(GateRef gate, GateRef func,
+    const std::vector<GateRef> &args, bool isNoGC)
+{
+    builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
+    GateRef result = builder_.TypedCall(gate, args, isNoGC);
+    builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
 void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
     GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall)
 {
     if (IsLoadVtable(func)) {
-        if (tsManager_->CanFastCall(funcGt)) {
-            if (!noCheck_) {
-                builder_.JSFastCallThisTargetTypeCheck(funcType, func, gate);
-            }
-            builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-            GateRef result = builder_.TypedFastCall(gate, argsFastCall);
-            builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
-            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-        } else {
-            if (!noCheck_) {
-                builder_.JSCallThisTargetTypeCheck(funcType, func, gate);
-            }
-            builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-            GateRef result = builder_.TypedCall(gate, args);
-            builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
-            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-        }
+        CheckThisCallTargetAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall); // func = a.foo, func()
     } else {
+        bool isNoGC = tsManager_->IsNoGC(funcGt);
         auto op = acc_.GetOpCode(func);
         if (!tsManager_->FastCallFlagIsVaild(funcGt)) {
             return;
         }
         if (op == OpCode::JS_BYTECODE && (acc_.GetByteCodeOpcode(func) == EcmaOpcode::DEFINEFUNC_IMM8_ID16_IMM8 ||
                                           acc_.GetByteCodeOpcode(func) == EcmaOpcode::DEFINEFUNC_IMM16_ID16_IMM8)) {
-            if (tsManager_->CanFastCall(funcGt)) {
-                if (!noCheck_) {
-                    builder_.JSCallTargetFromDefineFuncCheck(funcType, func, gate);
-                }
-                builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-                GateRef result = builder_.TypedFastCall(gate, argsFastCall);
-                builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
-                acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-            } else {
-                if (!noCheck_) {
-                    builder_.JSCallTargetFromDefineFuncCheck(funcType, func, gate);
-                }
-                builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-                GateRef result = builder_.TypedCall(gate, args);
-                builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
-                acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
-            }
+            CheckCallTargetFromDefineFuncAndLowerCall(gate, func, funcGt, funcType, args, argsFastCall, isNoGC);
             return;
         }
         int methodIndex = tsManager_->GetMethodIndex(funcGt);
@@ -1178,20 +1178,16 @@ void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, Glob
         }
         if (tsManager_->CanFastCall(funcGt)) {
             if (!noCheck_) {
-                builder_.JSFastCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex), gate);
+                builder_.JSCallTargetTypeCheck<TypedCallTargetCheckOp::JSCALL_FAST>(funcType,
+                    func, builder_.IntPtr(methodIndex), gate);
             }
-            builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-            GateRef result = builder_.TypedFastCall(gate, argsFastCall);
-            builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
-            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+            LowerFastCall(gate, func, argsFastCall, isNoGC);
         } else {
             if (!noCheck_) {
-                builder_.JSCallTargetTypeCheck(funcType, func, builder_.IntPtr(methodIndex), gate);
+                builder_.JSCallTargetTypeCheck<TypedCallTargetCheckOp::JSCALL>(funcType,
+                    func, builder_.IntPtr(methodIndex), gate);
             }
-            builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-            GateRef result = builder_.TypedCall(gate, args);
-            builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
-            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+            LowerCall(gate, func, args, isNoGC);
         }
     }
 }
@@ -1311,28 +1307,51 @@ bool TSHCRLowering::CanOptimizeAsFastCall(GateRef func)
     return true;
 }
 
+void TSHCRLowering::CheckFastCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+                                                GateType funcType, bool isNoGC)
+{
+    if (noCheck_) {
+        return;
+    }
+    if (isNoGC) {
+        auto methodOffset = tsManager_->GetFuncMethodOffset(funcGt);
+        builder_.JSNoGCCallThisTargetTypeCheck<TypedCallTargetCheckOp::JSCALLTHIS_FAST_NOGC>(funcType,
+            func, builder_.IntPtr(methodOffset), gate);
+    } else {
+        builder_.JSCallThisTargetTypeCheck<TypedCallTargetCheckOp::JSCALLTHIS_FAST>(funcType,
+            func, gate);
+    }
+}
+
+void TSHCRLowering::CheckCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+                                                GateType funcType, bool isNoGC)
+{
+    if (noCheck_) {
+        return;
+    }
+    if (isNoGC) {
+        auto methodOffset = tsManager_->GetFuncMethodOffset(funcGt);
+        builder_.JSNoGCCallThisTargetTypeCheck<TypedCallTargetCheckOp::JSCALLTHIS_NOGC>(funcType,
+            func, builder_.IntPtr(methodOffset), gate);
+    } else {
+        builder_.JSCallThisTargetTypeCheck<TypedCallTargetCheckOp::JSCALLTHIS>(funcType,
+            func, gate);
+    }
+}
+
 void TSHCRLowering::CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
     GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall)
 {
     if (!tsManager_->FastCallFlagIsVaild(funcGt)) {
         return;
     }
+    bool isNoGC = tsManager_->IsNoGC(funcGt);
     if (tsManager_->CanFastCall(funcGt)) {
-        if (!noCheck_) {
-            builder_.JSFastCallThisTargetTypeCheck(funcType, func, gate);
-        }
-        builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-        GateRef result = builder_.TypedFastCall(gate, argsFastCall);
-        builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
-        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+        CheckFastCallThisCallTarget(gate, func, funcGt, funcType, isNoGC);
+        LowerFastCall(gate, func, argsFastCall, isNoGC);
     } else {
-        if (!noCheck_) {
-            builder_.JSCallThisTargetTypeCheck(funcType, func, gate);
-        }
-        builder_.StartCallTimer(glue_, gate, {glue_, func, builder_.True()}, true);
-        GateRef result = builder_.TypedCall(gate, args);
-        builder_.EndCallTimer(glue_, gate, {glue_, func}, true);
-        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+        CheckCallThisCallTarget(gate, func, funcGt, funcType, isNoGC);
+        LowerCall(gate, func, args, isNoGC);
     }
 }
 

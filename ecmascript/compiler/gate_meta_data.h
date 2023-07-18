@@ -64,6 +64,16 @@ enum class TypedBinOp : uint8_t {
     TYPED_EXP,
 };
 
+enum class TypedCallTargetCheckOp : uint8_t {
+    JSCALL_IMMEDIATE_AFTER_FUNC_DEF = 0,
+    JSCALL,
+    JSCALL_FAST,
+    JSCALLTHIS,
+    JSCALLTHIS_FAST,
+    JSCALLTHIS_NOGC,
+    JSCALLTHIS_FAST_NOGC,
+};
+
 enum class TypedUnOp : uint8_t {
     TYPED_NEG = 0,
     TYPED_NOT,
@@ -274,8 +284,6 @@ std::string MachineTypeToStr(MachineType machineType);
     V(RuntimeCall, RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)                      \
     V(RuntimeCallWithArgv, RUNTIME_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)    \
     V(NoGcRuntimeCall, NOGC_RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)             \
-    V(CallOptimized, CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)                  \
-    V(FastCallOptimized, FAST_CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)         \
     V(Call, CALL, GateFlags::NONE_FLAG, 0, 1, value)                                     \
     V(BytecodeCall, BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)                    \
     V(DebuggerBytecodeCall, DEBUGGER_BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)   \
@@ -285,7 +293,9 @@ std::string MachineTypeToStr(MachineType machineType);
 
 #define GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                  \
     V(TypedCallBuiltin, TYPED_CALL_BUILTIN, GateFlags::NO_WRITE, 1, 1, value)  \
-    V(Construct, CONSTRUCT, GateFlags::NONE_FLAG, 1, 1, value)                 \
+    V(Construct, CONSTRUCT, GateFlags::NONE_FLAG, 1, 1, value)
+
+#define GATE_META_DATA_LIST_FOR_CALL(V)                                        \
     V(TypedCall, TYPEDCALL, GateFlags::NONE_FLAG, 1, 1, value)                 \
     V(TypedFastCall, TYPEDFASTCALL, GateFlags::NONE_FLAG, 1, 1, value)
 
@@ -298,22 +308,17 @@ std::string MachineTypeToStr(MachineType machineType);
     V(DependSelector, DEPEND_SELECTOR, GateFlags::FIXED, 1, value, 0)               \
     GATE_META_DATA_LIST_WITH_VALUE_IN(V)
 
-#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                                               \
-    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                              \
-    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                    \
-    V(JSCallTargetFromDefineFuncCheck, JSCALLTARGET_FROM_DEFINEFUNC_CHECK, GateFlags::CHECKABLE, 1, 1, 1)   \
-    V(JSCallTargetTypeCheck, JSCALLTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                        \
-    V(JSFastCallTargetTypeCheck, JSFASTCALLTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                \
-    V(JSCallThisTargetTypeCheck, JSCALLTHISTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                \
-    V(JSFastCallThisTargetTypeCheck, JSFASTCALLTHISTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)        \
-    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                    \
-    V(LoadTypedArrayLength, LOAD_TYPED_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                          \
-    V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                               \
-    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                                           \
-    V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)                               \
-    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                                             \
-    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 0, 1)                                    \
-    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                                      \
+#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                                                   \
+    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                  \
+    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                        \
+    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                        \
+    V(LoadTypedArrayLength, LOAD_TYPED_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                              \
+    V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                                   \
+    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                                               \
+    V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)                                   \
+    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                                                 \
+    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 0, 1)                                        \
+    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                                          \
     V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                                               \
@@ -343,9 +348,14 @@ std::string MachineTypeToStr(MachineType machineType);
 #define GATE_META_DATA_LIST_WITH_BOOL(V)                                           \
     V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)                   \
 
+#define GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(V)                                  \
+    V(CallOptimized, CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)            \
+    V(FastCallOptimized, FAST_CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)   \
+
 #define GATE_OPCODE_LIST(V)     \
     V(JS_BYTECODE)              \
     V(TYPED_BINARY_OP)          \
+    V(TYPED_CALLTARGETCHECK_OP) \
     V(CONSTSTRING)
 
 enum class OpCode : uint8_t {
@@ -355,8 +365,10 @@ enum class OpCode : uint8_t {
     GATE_META_DATA_LIST_WITH_SIZE(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_LIST_FOR_CALL(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_BOOL(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 #define DECLARE_GATE_OPCODE(NAME) NAME,
     GATE_OPCODE_LIST(DECLARE_GATE_OPCODE)
@@ -386,6 +398,8 @@ public:
         MUTABLE_STRING,
         JSBYTECODE,
         TYPED_BINARY_OP,
+        TYPED_CALLTARGETCHECK_OP,
+        TYPED_CALL,
     };
     GateMetaData() = default;
     GateMetaData(OpCode opcode, GateFlags flags,
@@ -494,7 +508,7 @@ public:
     bool IsOneParameterKind() const
     {
         return GetKind() == Kind::IMMUTABLE_ONE_PARAMETER || GetKind() == Kind::MUTABLE_ONE_PARAMETER ||
-            GetKind() == Kind::TYPED_BINARY_OP;
+            GetKind() == Kind::TYPED_BINARY_OP || GetKind() == Kind::TYPED_CALLTARGETCHECK_OP;
     }
 
     bool IsStringType() const
@@ -608,7 +622,7 @@ public:
         return static_cast<const BoolMetaData*>(meta);
     }
 
-    bool getBool() const
+    bool GetBool() const
     {
         return value_;
     }
@@ -684,6 +698,53 @@ public:
 
 private:
     uint64_t value_ { 0 };
+};
+
+class TypedCallMetaData : public OneParameterMetaData {
+public:
+    TypedCallMetaData(OpCode opcode, GateFlags flags, uint32_t statesIn,
+        uint16_t dependsIn, uint32_t valuesIn, uint64_t value, bool noGC)
+        : OneParameterMetaData(opcode, flags, statesIn, dependsIn, valuesIn, value),
+        noGC_(noGC)
+    {
+        SetKind(GateMetaData::Kind::TYPED_CALL);
+    }
+
+    static const TypedCallMetaData* Cast(const GateMetaData* meta)
+    {
+        meta->AssertKind(GateMetaData::Kind::TYPED_CALL);
+        return static_cast<const TypedCallMetaData*>(meta);
+    }
+
+    bool IsNoGC() const
+    {
+        return noGC_;
+    }
+private:
+    bool noGC_;
+};
+
+class TypedCallTargetCheckMetaData : public OneParameterMetaData {
+public:
+    TypedCallTargetCheckMetaData(uint32_t valuesIn, uint64_t value, TypedCallTargetCheckOp checkOp)
+        : OneParameterMetaData(OpCode::TYPED_CALLTARGETCHECK_OP, GateFlags::CHECKABLE, 1, 1, valuesIn, value),
+        checkOp_(checkOp)
+    {
+        SetKind(GateMetaData::Kind::TYPED_CALLTARGETCHECK_OP);
+    }
+
+    static const TypedCallTargetCheckMetaData* Cast(const GateMetaData* meta)
+    {
+        meta->AssertKind(GateMetaData::Kind::TYPED_CALLTARGETCHECK_OP);
+        return static_cast<const TypedCallTargetCheckMetaData*>(meta);
+    }
+
+    TypedCallTargetCheckOp GetTypedCallTargetCheckOp() const
+    {
+        return checkOp_;
+    }
+private:
+    TypedCallTargetCheckOp checkOp_;
 };
 
 class TypedBinaryMegaData : public OneParameterMetaData {

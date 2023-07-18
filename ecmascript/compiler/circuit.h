@@ -132,6 +132,14 @@ public:
     GATE_META_DATA_LIST_WITH_BOOL(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
 
+#define DECLARE_GATE_META_WITH_BOOL_VALUE_IN(NAME, OP, R, S, D, V)          \
+    const GateMetaData* NAME(size_t value, bool flag)                       \
+    {                                                                       \
+        return metaBuilder_.NAME(value, flag);                              \
+    }
+    GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(DECLARE_GATE_META_WITH_BOOL_VALUE_IN)
+#undef DECLARE_GATE_META_WITH_BOOL_VALUE_IN
+
 #define DECLARE_GATE_META(NAME, OP, R, S, D, V)                    \
     const GateMetaData* NAME(uint64_t value, uint64_t pcOffset)    \
     {                                                              \
@@ -139,6 +147,14 @@ public:
     }
     GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
+
+#define DECLARE_GATE_META_FOR_CALL(NAME, OP, R, S, D, V)                        \
+    const GateMetaData* NAME(uint64_t value, uint64_t pcOffset, bool noGC)      \
+    {                                                                           \
+        return metaBuilder_.NAME(value, pcOffset, noGC);                        \
+    }
+    GATE_META_DATA_LIST_FOR_CALL(DECLARE_GATE_META_FOR_CALL)
+#undef DECLARE_GATE_META_FOR_CALL
 
 #define DECLARE_GATE_META(NAME, OP, R, S, D, V)                    \
     const GateMetaData* NAME(uint64_t pcOffset) const              \
@@ -165,6 +181,11 @@ public:
     const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp, PGOSampleType type)
     {
         return metaBuilder_.TypedBinaryOp(value, binOp, type);
+    }
+
+    const GateMetaData* TypedCallTargetCheckOp(uint32_t numIns, uint64_t value, TypedCallTargetCheckOp checkOp)
+    {
+        return metaBuilder_.TypedCallTargetCheckOp(numIns, value, checkOp);
     }
 
     GateRef DeadGate()

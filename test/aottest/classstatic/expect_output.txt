@@ -21,3 +21,8 @@
 0
 method is ok
 TypeError: Cannot assign to read only property
+intersect
+func1
+intersect
+func1
+2

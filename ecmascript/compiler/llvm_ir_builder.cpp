@@ -828,6 +828,7 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     LLVMValueRef rtbaseoffset;
     LLVMValueRef callee;
     CallExceptionKind kind = CallExceptionKind::NO_PC_OFFSET;
+    bool isNoGC = false;
     if (op == OpCode::CALL) {
         const size_t index = acc_.GetConstantValue(inList[targetIndex]);
         calleeDescriptor = CommonStubCSigns::Get(index);
@@ -851,6 +852,7 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
         } else {
             kind = CallExceptionKind::NO_PC_OFFSET;
         }
+        isNoGC = acc_.IsNoGC(gate);
     } else if (op == OpCode::FAST_CALL_OPTIMIZED) {
         calleeDescriptor = RuntimeStubCSigns::GetOptimizedFastCallSign();
         callee = GetCallee(inList, calleeDescriptor);
@@ -859,6 +861,7 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
         } else {
             kind = CallExceptionKind::NO_PC_OFFSET;
         }
+        isNoGC = acc_.IsNoGC(gate);
     } else {
         ASSERT(op == OpCode::BUILTINS_CALL || op == OpCode::BUILTINS_CALL_WITH_ARGV);
         LLVMValueRef opcodeOffset = gate2LValue_[inList[targetIndex]];
@@ -923,6 +926,9 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
                               "");
     }
     SetCallConvAttr(calleeDescriptor, call);
+    if (isNoGC) {
+        SetGCLeafFunction(call);
+    }
     gate2LValue_[gate] = call;
 
     if (IsLogEnabled()) {
@@ -2599,13 +2605,13 @@ LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodL
         paramTys.emplace_back(actualArgc);
         auto funcIndex = static_cast<uint32_t>(CommonArgIdx::FUNC);
         auto numOfComArgs = static_cast<uint32_t>(CommonArgIdx::NUM_OF_ARGS);
-        paramCount = methodLiteral->GetNumArgs() + numOfComArgs;
+        paramCount = methodLiteral->GetNumArgsWithCallField() + numOfComArgs;
         auto numOfRestArgs = paramCount - funcIndex;
         paramTys.insert(paramTys.end(), numOfRestArgs, NewLType(MachineType::I64, GateType::TaggedValue()));
     } else {
         auto funcIndex = static_cast<uint32_t>(FastCallArgIdx::FUNC);
         auto numOfComArgs = static_cast<uint32_t>(FastCallArgIdx::NUM_OF_ARGS);
-        paramCount = methodLiteral->GetNumArgs() + numOfComArgs;
+        paramCount = methodLiteral->GetNumArgsWithCallField() + numOfComArgs;
         auto numOfRestArgs = paramCount - funcIndex;
         paramTys.insert(paramTys.end(), numOfRestArgs, NewLType(MachineType::I64, GateType::TaggedValue()));
     }

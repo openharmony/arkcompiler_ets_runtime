@@ -387,6 +387,7 @@ public:
     TypedLoadOp GetTypedLoadOp(GateRef gate) const;
     TypedStoreOp GetTypedStoreOp(GateRef gate) const;
     TypedBinOp GetTypedBinaryOp(GateRef gate) const;
+    TypedCallTargetCheckOp GetTypedCallTargetCheckOp(GateRef gate) const;
     PGOSampleType GetTypedBinaryType(GateRef gate) const;
     bool HasNumberType(GateRef gate) const;
     GlobalTSTypeRef GetFuncGT(GateRef gate) const;
@@ -396,6 +397,9 @@ public:
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;
+    bool GetNoGCFlag(GateRef gate) const;
+    bool TypedCallIsNoGC(GateRef gate) const;
+    bool IsNoGC(GateRef gate) const;
     uint32_t TryGetPcOffset(GateRef gate) const;
     PGOSampleType TryGetPGOType(GateRef gate) const;
     void TrySetPGOType(GateRef gate, PGOSampleType type);

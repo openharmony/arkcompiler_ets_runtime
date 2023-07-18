@@ -112,9 +112,11 @@ std::string GateMetaData::Str(OpCode opcode)
 #define GATE_NAME_MAP(NAME, OP, R, S, D, V) { OpCode::OP, #OP },
     IMMUTABLE_META_DATA_CACHE_LIST(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_BOOL(GATE_NAME_MAP)
+    GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_SIZE(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_PC_OFFSET(GATE_NAME_MAP)
+    GATE_META_DATA_LIST_FOR_CALL(GATE_NAME_MAP)
     GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(GATE_NAME_MAP)
 #undef GATE_NAME_MAP
 #define GATE_NAME_MAP(OP) { OpCode::OP, #OP },
@@ -318,6 +320,15 @@ const GateMetaData* GateMetaBuilder::NAME(bool value)                     \
 GATE_META_DATA_LIST_WITH_BOOL(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
 
+#define DECLARE_GATE_META_WITH_BOOL_VALUE_IN(NAME, OP, R, S, D, V)        \
+const GateMetaData* GateMetaBuilder::NAME(size_t value, bool flag)        \
+{                                                                         \
+    auto meta = new (chunk_) BoolMetaData(OpCode::OP, R, S, D, V, flag);  \
+    return meta;                                                          \
+}
+GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(DECLARE_GATE_META_WITH_BOOL_VALUE_IN)
+#undef DECLARE_GATE_META_WITH_BOOL_VALUE_IN
+
 #define DECLARE_GATE_META(NAME, OP, R, S, D, V)                    \
 const GateMetaData* GateMetaBuilder::NAME(size_t value)            \
 {                                                                  \
@@ -385,6 +396,16 @@ const GateMetaData* GateMetaBuilder::NAME(uint64_t value, uint64_t pcOffset)    
 }
 GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_META)
 #undef DECLARE_GATE_META
+
+#define DECLARE_GATE_META_FOR_CALL(NAME, OP, R, S, D, V)                                                 \
+const GateMetaData* GateMetaBuilder::NAME(uint64_t value, uint64_t pcOffset, bool noGC)         \
+{                                                                                               \
+    auto meta = new (chunk_) TypedCallMetaData(OpCode::OP, R, S, D, value, pcOffset, noGC);     \
+    meta->SetKind(GateMetaData::Kind::TYPED_CALL);                                              \
+    return meta;                                                                                \
+}
+GATE_META_DATA_LIST_FOR_CALL(DECLARE_GATE_META_FOR_CALL)
+#undef DECLARE_GATE_META_FOR_CALL
 
 #define DECLARE_GATE_META(NAME, OP, R, S, D, V)                                          \
 const GateMetaData* GateMetaBuilder::NAME(uint64_t pcOffset) const                       \

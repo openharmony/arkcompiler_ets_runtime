@@ -244,6 +244,7 @@ public:
     ~CircuitBuilder() = default;
     NO_MOVE_SEMANTIC(CircuitBuilder);
     NO_COPY_SEMANTIC(CircuitBuilder);
+    static constexpr uint32_t GATE_TWO_VALUESIN = 2;
     // low level interface
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
     GateRef StableArrayCheck(GateRef gate);
@@ -256,10 +257,12 @@ public:
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, GateRef param, const char* comment = nullptr);
     GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate);
+    template<TypedCallTargetCheckOp Op>
     GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate);
-    GateRef JSFastCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate);
+    template<TypedCallTargetCheckOp Op>
     GateRef JSCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate);
-    GateRef JSFastCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate);
+    template<TypedCallTargetCheckOp Op>
+    inline GateRef JSNoGCCallThisTargetTypeCheck(GateType type, GateRef func, GateRef methodId, GateRef gate);
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args);
     inline GateRef TypedCallBuiltin(GateRef hirGate, GateRef x, BuiltinsStubCSigns::ID id);
@@ -527,8 +530,8 @@ public:
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
     GateRef LoadArrayLength(GateRef array);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
-    GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args);
-    GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args);
+    GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
+    GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     GateRef CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult, const char* comment = nullptr);
     GateRef CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult,
                        GateRef value, const char* comment = nullptr);
@@ -543,6 +546,7 @@ public:
     inline GateRef LoadHClass(GateRef object);
     inline GateRef IsJSFunction(GateRef obj);
     inline GateRef IsJSFunctionWithBit(GateRef obj);
+    inline GateRef IsOptimizedAndNotFastCall(GateRef obj);
     inline GateRef IsOptimized(GateRef obj);
     inline GateRef IsOptimizedWithBitField(GateRef bitfield);
     inline GateRef CanFastCall(GateRef obj);
