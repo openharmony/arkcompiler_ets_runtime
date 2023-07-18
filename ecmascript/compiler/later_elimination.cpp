@@ -52,6 +52,15 @@ GateRef LaterElimination::VisitGate(GateRef gate)
         case OpCode::ARRAY_GUARDIAN_CHECK:
         case OpCode::HCLASS_STABLE_ARRAY_CHECK:
         case OpCode::HEAP_OBJECT_CHECK:
+        case OpCode::INT32_UNSIGNED_UPPER_BOUND_CHECK:
+        case OpCode::OVERFLOW_CHECK:
+        case OpCode::LARGE_INDEX_CHECK:
+        case OpCode::NEGATIVE_INDEX_CHECK:
+        case OpCode::VALUE_CHECK_NEG_OVERFLOW:
+        case OpCode::FLOAT64_CHECK_RIGHT_IS_ZERO:
+        case OpCode::INT32_CHECK_RIGHT_IS_ZERO:
+        case OpCode::INT32_DIV_WITH_CHECK:
+        case OpCode::LEX_VAR_IS_HOLE_CHECK:
             return TryEliminateGate(gate);
         case OpCode::DEPEND_SELECTOR:
             return TryEliminateDependSelector(gate);

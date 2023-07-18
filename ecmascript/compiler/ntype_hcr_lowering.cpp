@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
+#include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 
 namespace panda::ecmascript::kungfu {
@@ -60,9 +61,77 @@ void NTypeHCRLowering::Lower(GateRef gate)
         case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
             LowerTypedStOwnByName(gate);
             break;
+        case EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16:
+            LowerThrowUndefinedIfHoleWithName(gate);
+            break;
+        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
+        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
+        case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+            LowerLdLexVar(gate);
+            break;
+        case EcmaOpcode::STLEXVAR_IMM4_IMM4:
+        case EcmaOpcode::STLEXVAR_IMM8_IMM8:
+        case EcmaOpcode::WIDE_STLEXVAR_PREF_IMM16_IMM16:
+            LowerStLexVar(gate);
+            break;
         default:
             break;
     }
+}
+
+void NTypeHCRLowering::LowerThrowUndefinedIfHoleWithName(GateRef gate)
+{
+
+    GateRef value = acc_.GetValueIn(gate, 1); // 1: the second parameter
+    builder_.LexVarIsHoleCheck(value);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+}
+
+void NTypeHCRLowering::LowerLdLexVar(GateRef gate)
+{
+    AddProfiling(gate);
+    GateRef level = acc_.GetValueIn(gate, 0); // 0: first parameter
+    GateRef index = acc_.GetValueIn(gate, 1); // 1: the second parameter
+    GateRef currentEnv = acc_.GetValueIn(gate, 2); // 2: the third parameter
+
+    uint32_t levelValue = static_cast<uint32_t>(acc_.GetConstantValue(level));
+    uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
+    indexValue += LexicalEnv::RESERVED_ENV_LENGTH;
+    GateRef result = Circuit::NullGate();
+    if (levelValue == 0) {
+        result = builder_.LoadFromTaggedArray(currentEnv, indexValue);
+    } else if (levelValue == 1) { // 1: level 1
+        auto parentEnv = builder_.LoadFromTaggedArray(currentEnv, LexicalEnv::PARENT_ENV_INDEX);
+        result = builder_.LoadFromTaggedArray(parentEnv, indexValue);
+    } else {
+        // level > 1, go slowpath
+        return;
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void NTypeHCRLowering::LowerStLexVar(GateRef gate)
+{
+    AddProfiling(gate);
+    GateRef level = acc_.GetValueIn(gate, 0); // 0: first parameter
+    GateRef index = acc_.GetValueIn(gate, 1); // 1: the second parameter
+    GateRef currentEnv = acc_.GetValueIn(gate, 2); // 2: the third parameter
+    GateRef value = acc_.GetValueIn(gate, 3); // 3: the fourth parameter
+
+    uint32_t levelValue = static_cast<uint32_t>(acc_.GetConstantValue(level));
+    uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
+    indexValue += LexicalEnv::RESERVED_ENV_LENGTH;
+    GateRef result = Circuit::NullGate();
+    if (levelValue == 0) {
+        result = builder_.StoreToTaggedArray(currentEnv, indexValue, value);
+    } else if (levelValue == 1) { // 1: level 1
+        auto parentEnv = builder_.LoadFromTaggedArray(currentEnv, LexicalEnv::PARENT_ENV_INDEX);
+        result = builder_.StoreToTaggedArray(parentEnv, indexValue, value);
+    } else {
+        // level > 1, go slowpath
+        return;
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void NTypeHCRLowering::LowerTypedCreateEmptyArray(GateRef gate)

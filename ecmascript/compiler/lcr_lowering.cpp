@@ -86,6 +86,9 @@ void LCRLowering::Run()
             case OpCode::INT32_DIV_WITH_CHECK:
                 LowerInt32DivWithCheck(gate);
                 break;
+            case OpCode::LEX_VAR_IS_HOLE_CHECK:
+                LowerLexVarIsHoleCheck(gate);
+                break;
             default:
                 break;
         }
@@ -565,6 +568,16 @@ void LCRLowering::LowerFloat64CheckRightIsZero(GateRef gate)
     GateRef right = acc_.GetValueIn(gate, 0);
     GateRef rightNotZero = builder_.DoubleNotEqual(right, builder_.Double(0.0));
     builder_.DeoptCheck(rightNotZero, frameState, DeoptType::DIVZERO);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void LCRLowering::LowerLexVarIsHoleCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef valueIsNotHole = builder_.TaggedIsNotHole(value);
+    builder_.DeoptCheck(valueIsNotHole, frameState, DeoptType::LEXVARISHOLE);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

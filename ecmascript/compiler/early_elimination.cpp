@@ -242,26 +242,34 @@ DependInfoNode* EarlyElimination::UpdateWrite(GateRef gate, DependInfoNode* depe
 
 bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
 {
-    if (acc_.GetOpCode(rhs) == OpCode::STORE_ELEMENT) {
-        return acc_.GetOpCode(lhs) == OpCode::LOAD_ELEMENT;
-    }
+    auto rop = acc_.GetOpCode(rhs);
     auto lop = acc_.GetOpCode(lhs);
-    ASSERT(acc_.GetOpCode(rhs) == OpCode::STORE_PROPERTY ||
-           acc_.GetOpCode(rhs) == OpCode::STORE_PROPERTY_NO_BARRIER ||
-           acc_.GetOpCode(rhs) == OpCode::STORE_CONST_OFFSET);
-    if (lop == OpCode::LOAD_PROPERTY) {
-        auto loff = acc_.GetValueIn(lhs, 1);
-        auto roff = acc_.GetValueIn(rhs, 1);
-        ASSERT(acc_.GetOpCode(loff) == OpCode::CONSTANT);
-        ASSERT(acc_.GetOpCode(roff) == OpCode::CONSTANT);
-        return loff == roff;
-    } else if (lop == OpCode::LOAD_CONST_OFFSET) {
-        auto loff = acc_.GetOffset(lhs);
-        auto roff = acc_.GetOffset(rhs);
-        return loff == roff;
-    } else {
-        return false;
+    switch (rop) {
+        case OpCode::STORE_ELEMENT:
+            return lop == OpCode::LOAD_ELEMENT;
+        case OpCode::STORE_PROPERTY:
+        case OpCode::STORE_PROPERTY_NO_BARRIER: {
+            if (lop == OpCode::LOAD_PROPERTY) {
+                auto loff = acc_.GetValueIn(lhs, 1);
+                auto roff = acc_.GetValueIn(rhs, 1);
+                ASSERT(acc_.GetOpCode(loff) == OpCode::CONSTANT);
+                ASSERT(acc_.GetOpCode(roff) == OpCode::CONSTANT);
+                return loff == roff;
+            }
+            break;
+        }
+        case OpCode::STORE_CONST_OFFSET: {
+            if (lop == OpCode::LOAD_CONST_OFFSET) {
+                auto loff = acc_.GetOffset(lhs);
+                auto roff = acc_.GetOffset(rhs);
+                return loff == roff;
+            }
+            break;
+        }
+        default:
+            break;
     }
+    return false;
 }
 
 bool EarlyElimination::CompareOrder(GateRef lhs, GateRef rhs)

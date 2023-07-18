@@ -123,6 +123,9 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::FRAME_ARGS:
         case OpCode::SAVE_REGISTER:
         case OpCode::RESTORE_REGISTER:
+        case OpCode::LOAD_CONST_OFFSET:
+        case OpCode::STORE_CONST_OFFSET:
+        case OpCode::LEX_VAR_IS_HOLE_CHECK:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();

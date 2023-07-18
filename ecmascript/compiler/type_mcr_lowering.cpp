@@ -468,7 +468,7 @@ void TypeMCRLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType 
 GateRef TypeMCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index)
 {
     GateRef constPool = builder_.GetConstPool(jsFunc);
-    return LoadFromTaggedArray(constPool, index);
+    return builder_.LoadFromTaggedArray(constPool, index);
 }
 
 GateRef TypeMCRLowering::GetObjectFromConstPool(GateRef jsFunc, GateRef index)
@@ -1138,12 +1138,6 @@ void TypeMCRLowering::LowerGetSuperConstructor(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), superCtor);
 }
 
-GateRef TypeMCRLowering::LoadFromTaggedArray(GateRef array, size_t index)
-{
-    auto dataOffset = TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize();
-    return builder_.LoadConstOffset(VariableType::JS_ANY(), array, dataOffset);
-}
-
 GateRef TypeMCRLowering::LoadFromVTable(GateRef receiver, size_t index)
 {
     GateRef hclass = builder_.LoadConstOffset(
@@ -1151,8 +1145,8 @@ GateRef TypeMCRLowering::LoadFromVTable(GateRef receiver, size_t index)
     GateRef vtable = builder_.LoadConstOffset(VariableType::JS_ANY(),
         hclass, JSHClass::VTABLE_OFFSET);
 
-    GateRef itemOwner = LoadFromTaggedArray(vtable, VTable::TupleItem::OWNER + index);
-    GateRef itemOffset = LoadFromTaggedArray(vtable, VTable::TupleItem::OFFSET + index);
+    GateRef itemOwner = builder_.LoadFromTaggedArray(vtable, VTable::TupleItem::OWNER + index);
+    GateRef itemOffset = builder_.LoadFromTaggedArray(vtable, VTable::TupleItem::OFFSET + index);
     return builder_.Load(VariableType::JS_ANY(), itemOwner, builder_.TaggedGetInt(itemOffset));
 }
 
@@ -1179,7 +1173,7 @@ GateRef TypeMCRLowering::GetLengthFromSupers(GateRef supers)
 
 GateRef TypeMCRLowering::GetValueFromSupers(GateRef supers, size_t index)
 {
-    GateRef val = LoadFromTaggedArray(supers, index);
+    GateRef val = builder_.LoadFromTaggedArray(supers, index);
     return builder_.LoadObjectFromWeakRef(val);
 }
 

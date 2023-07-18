@@ -14,10 +14,16 @@
  */
 
 declare function print(str:any):string;
-{
+
 function f() { return x + 1; }
+
+let gValue = 0;
+function g() {
+    gValue++;
+}
 
 const x = 1;
 
 print(f());
-}
+g();
+print(gValue);

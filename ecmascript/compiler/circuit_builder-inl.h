@@ -1036,6 +1036,18 @@ GateRef CircuitBuilder::LogicOr(GateRef x, GateRef y)
     return ret;
 }
 
+GateRef CircuitBuilder::LoadFromTaggedArray(GateRef array, size_t index)
+{
+    auto dataOffset = TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize();
+    return LoadConstOffset(VariableType::JS_ANY(), array, dataOffset);
+}
+
+GateRef CircuitBuilder::StoreToTaggedArray(GateRef array, size_t index, GateRef value)
+{
+    auto dataOffset = TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize();
+    return StoreConstOffset(VariableType::JS_ANY(), array, dataOffset, value);
+}
+
 int CircuitBuilder::NextVariableId()
 {
     return env_->NextVariableId();
