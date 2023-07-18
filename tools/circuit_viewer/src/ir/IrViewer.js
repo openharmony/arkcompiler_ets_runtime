@@ -143,9 +143,7 @@ class IrViewer {
     for (let l of lines) {
       let n1 = nodes[l.fromId];
       let n2 = nodes[l.toId];
-      // if (n1.hide || n2.hide) {
-      //   continue;
-      // }
+
       let id1 = parseInt(n1.ir.id);
       let id2 = parseInt(n2.ir.id);
       let idx = -1;
@@ -194,9 +192,7 @@ class IrViewer {
             continue;
           }
           loadonce--;
-          // console.log("******************", method.type);
-          // method.irControl = IrViewer.toPicture(method.irList, 0);
-          // console.log("---------------------");
+
           method.irAll = IrToPicture.toPicture(method.irList, 1, method.type.startsWith("block:"));
           method.loaded = true;
         }
@@ -237,15 +233,7 @@ class IrViewer {
     this.visable_ = this.direct_.irAll;
     let nodes = this.visable_.nodes;
     let lines = this.visable_.lines;
-    // for (let k in nodes) {
-    //   let n = nodes[k];
-    //   if (this.hideNodeIds_.indexOf(parseInt(n.ir.id)) >= 0) {
-    //     n.hide = true;
-    //   }
-    //   else {
-    //     n.hide = (n.mask & this.mask_) == 0;
-    //   }
-    // }
+
     let showNodes = [];
     for (let k in nodes) {
       let n = nodes[k];
@@ -300,7 +288,6 @@ class IrViewer {
 
     let sw = w / (x2 - x1);
     let sh = h / (y2 - y1);
-    // [sw, sh] = [Math.min(sw, sh), Math.min(sw, sh)];
 
     let dh = Math.max(20 * sh, 1);
     for (let k in nodes) {//画节点
@@ -317,7 +304,6 @@ class IrViewer {
           dy += this.drapSelect_.dy;
         }
         X2DFast.gi().fillRect(tx + (dx - 3) * sw, ty + (dy - 10) * sh, dw, dh, 0xff000000);
-        // X2DFast.gi().drawRect(tx + (dx - 3) * sw, ty + (dy - 10) * sh, dw, dh, 0xff000000, 2);
       }
       else {
         let selectWith = false;
@@ -342,7 +328,6 @@ class IrViewer {
           X2DFast.gi().fillRect(tx + (dx - 3) * sw, ty + (dy - 10) * sh, dw, dh, XTools.CONFIG.NodeColor[n.type]);
         }
       }
-      // X2DFast.gi().drawText(n.name, 14, dx + n.nameWidth / 2, dy + 2, 1, 1, 0, -2, -2, 0xff000000);
     }
     X2DFast.gi().drawRect(tx - (this.offx_ + x1) * sw, ty - (this.offy_ + y1) * sh, Math.min(Scr.logicw * sw, w), Math.min(Scr.logich * sh, h), 0xff00ff00, 1);
   }
@@ -449,12 +434,9 @@ class IrViewer {
       if (y < 130) {
         y = 130;
       }
-      // let r = (IrViewer.COLOR[n.type] >> 16) & 0xff;
-      // let g = (IrViewer.COLOR[n.type] >> 8) & 0xff;
-      // let b = (IrViewer.COLOR[n.type]) & 0xff;
-      // X2DFast.gi().fillRect(x, y, w, h, (parseInt(r * r * r / 255 / 255) << 16) | (parseInt(g * g * g / 255 / 255) << 8) | parseInt(b * b * b / 255 / 255) | 0x80000000);
+
       X2DFast.gi().fillRect(x, y, w, h, (XTools.CONFIG.NodeColor[n.type] & 0xffffff) | 0xC0000000);
-      // X2DFast.gi().fillRect(x, y, w, h, [r,g,b,0x80]);
+
       for (let i = 0; i < n.ir.detailList.length; i++) {
         X2DFast.gi().drawText(n.ir.detailList[i], 14, x + 1, y + 1 + i * 16, 1, 1, 0, -1, -1, 0xff000000);
       }
@@ -463,9 +445,6 @@ class IrViewer {
     for (let btn of this.btnGo_) {
       btn.draw();
     }
-    // if (this.direct_.callerMethod) {
-    //   X2DFast.gi().drawText("Caller Method:" + this.direct_.callerMethod, 14, 480, 40, 1, 1, 0, -1, -1, 0xff000000);
-    // }
 
     let x1 = 9999;
     let y1 = 9999;
@@ -509,8 +488,6 @@ class IrViewer {
     else {
       this.offy_ = (-this.scrollY_.getBarOff()) * this.dragScoll.hh - this.dragScoll.y1;
       this.offx_ = (-this.scrollX_.getBarOff()) * this.dragScoll.ww - this.dragScoll.x1;
-      // this.scrollY_.setBarOff(-(this.offy_ + this.dragScoll.y1) / this.dragScoll.hh);
-      // this.scrollX_.setBarOff(-(this.offx_ + this.dragScoll.x1) / this.dragScoll.ww);
     }
     if (this.dragScoll.hh > 1) this.scrollY_.move(Scr.logicw - 20, 100, 20, Scr.logich - 100 - 20).draw();
     if (this.dragScoll.ww > 1) this.scrollX_.move(20, Scr.logich - 20, Scr.logicw - 40, 20).draw();
@@ -523,18 +500,14 @@ class IrViewer {
       let w = this.searchInput.pos[2];
       let h = this.searchInput.pos[3];
       X2DFast.gi().fillRect(x, y, w, h, 0x80000000);
-      // X2DFast.gi().drawRect(x + 28, y + 56 / 2 - 8, 100, 20, 0xffffffff);
-      // x = x + 16 + 290 + 16;
 
       let searchResultTxt =
         this.searchInput.result.length == 0
           ? '0/0'
           : this.searchInput.point + 1 + '/' + this.searchInput.result.length;
-      // x += 16
 
-      // X2DFast.gi().fillRect(x, y + 56 / 2 - 8, 16, 16, 0xffffffff);
       this.searchInput.btnUp.move(x + 20, y + 50, 32, 24).draw();
-      // x += 32 + 16;
+
       X2DFast.gi().drawText(
         searchResultTxt,
         20,
@@ -547,16 +520,12 @@ class IrViewer {
         -2,
         0xffffffff
       ) + 16;
-      // X2DFast.gi().fillRect(x, y + 56 / 2 - 8, 16, 16, 0xffffffff);
+
       this.searchInput.btnDown.move(x + w - 20 - 32, y + 50, 32, 24).draw();
       this.searchInput.btnClose.move(x + w - 40, y + 10, 30, 30).draw();
-      // x += 16 + 16;
-      // X2DFast.gi().fillRect(x, y + 56 / 2 - 8, 16, 16, 0xffffffff);
-      // this.searchInput.btnClose.move(x, y - 8, 16, 16).draw();
     }
   }
   checkLevel(levely, n1, n2) {
-    // return n1.deep + 1 == n2.deep;
     let i1 = levely.indexOf(n1.pos.y);
     let i2 = levely.indexOf(n2.pos.y);
     return i1 + 1 == i2;
@@ -575,7 +544,7 @@ class IrViewer {
         let lor = n1.pos.x + n2.pos.x < -50 ? 0 : 1;
         if (this.checkLevel(levely, n1, n2)) { }
         else {
-          if (!(n1.outh[l.outNum] in n1.outhx)) {//???
+          if (!(n1.outh[l.outNum] in n1.outhx)) {
             mmx[lor] += lor == 0 ? aaa : -aaa;
             n1.outhx[n1.outh[l.outNum]] = mmx[lor];
           }
@@ -590,11 +559,6 @@ class IrViewer {
         continue;
       }
 
-      // try {
-      //   n1.ltypes.indexOf(l.lineType)
-      // } catch (e) {
-      //   console.log("ee");
-      // }
       let x1 = n1.pos.x + n1.nameWidth - 5 + offx - n1.ltypes.indexOf(l.lineType) * 5;
       let y1 = n1.pos.y + 10 + offy;
       let x2 = n2.pos.x + n2.nameWidth - 5 + offx - l.inNum * 5;
@@ -615,11 +579,8 @@ class IrViewer {
           }
         }
       }
-      // if (l.fromId == 1 && l.toId == 14) {
-      //   console.log(1);
-      // }
+
       if (select != selected) {
-        // if (n1.deep + 1 == n2.deep) { }
         if (this.checkLevel(levely, n1, n2)) { }
         else {
           mmx[lor] += lor == 0 ? -aaa : aaa;
@@ -641,15 +602,9 @@ class IrViewer {
         ls.push([x2, y1 + n1.outh[l.outNum], x2, y2, c, lw]);
       }
       else {
-        if (y1 >= y2) {
-          // c = 0xff00ffff;
-          // lw = 3;
-        }
-        let lx = n1.outhx[n1.outh[l.outNum]];//n1.outhx[l.outNum]     mmx[lor];
-        let ly = n2.inh[l.fromId + l.lineType];//n2.inh[l.inNum];   n2.inh[n1.ir.id]
-        // if (isNaN(ly)) {
-        //   console.log("sdf");
-        // }
+        let lx = n1.outhx[n1.outh[l.outNum]];//n1.outhx[l.outNum] 或 mmx[lor]
+        let ly = n2.inh[l.fromId + l.lineType];//n2.inh[l.inNum] 或 n2.inh[n1.ir.id]
+
         ls.push([x1, y1, x1, y1 + n1.outh[l.outNum], c, lw]);
         ls.push([x1, y1 + n1.outh[l.outNum], lx, y1 + n1.outh[l.outNum], c, lw]);
         ls.push([lx, y1 + n1.outh[l.outNum], lx, y2 - ly, c, lw]);
@@ -689,15 +644,13 @@ class IrViewer {
     else {
 
     }
-    // X2DFast.gi().drawLine(x1, y1, x2, y2, c, lw);
     return false;
   }
   locateNode(p) {
     this.selectPoint_ = [parseInt(p)];
     let nodes = this.visable_.nodes;
     let n = nodes[p];
-    // let r = [n.pos.x + this.offx_ - 3, n.pos.y + this.offy_ - 10, n.nameWidth + 6, 20];
-    // console.log(r);
+
     this.offx_ = Scr.logicw / 2 - n.pos.x;
     this.offy_ = Scr.logich / 2 - n.pos.y;
     this.scrollY_.setBarOff(-(this.offy_ + this.dragScoll.y1) / this.dragScoll.hh);
@@ -812,11 +765,6 @@ class IrViewer {
           }
         }
         return true;
-      } else {
-        // if (msg == 1) {
-        //   // this.searchInput = null;
-        // }
-        // return true;
       }
     }
     for (let i = this.btnGo_.length - 1; i >= 0; i--) {
@@ -841,7 +789,6 @@ class IrViewer {
             }
           }
           this.drapSelect_ = {
-            // levely: this.makeLevely(nodes),
             x: x,
             y: y,
             dx: 0,
@@ -920,12 +867,12 @@ class IrViewer {
             for (let i in nodes) {
               let n = nodes[i];
               if (n.ir.op == "JS_BYTECODE") {
-                if (n.ir.id == v || n.ir.bytecode.indexOf(v) >= 0 || (isRegExp(v) && n.ir.bytecode.match(v))) {//㊣
+                if (n.ir.id == v || n.ir.bytecode.indexOf(v) >= 0 || (isRegExp(v) && n.ir.bytecode.match(v))) {
                   this.searchInput.result.push(i);
                 }
               }
               else {
-                if (n.ir.id == v || n.ir.op.indexOf(v) >= 0 || (isRegExp(v) && n.ir.op.match(v))) {//㊣
+                if (n.ir.id == v || n.ir.op.indexOf(v) >= 0 || (isRegExp(v) && n.ir.op.match(v))) {
                   this.searchInput.result.push(i);
                 }
               }

@@ -50,7 +50,6 @@ function myTouch(msg, x, y) {
 }
 
 function myKey(type, code) {
-  // NapiLog.logError(type + code);
   MainEditor.gi().onKey(code);
 }
 

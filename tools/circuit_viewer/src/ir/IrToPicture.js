@@ -125,8 +125,6 @@ class IrToPicture {
       }
     }
 
-    // console.log(JSON.stringify(nodes,null,4));
-
     let lines = [];
     let lid = 0;
     for (let i in nodes) {//生成连接线
@@ -157,11 +155,7 @@ class IrToPicture {
       }
     }
 
-    // console.log(JSON.stringify(lines,null,4));
-
     this.resetPicture(nodes, isBlock);
-
-    // console.log(JSON.stringify(nodes,null,4));
 
     return {
       nodes: nodes,
@@ -293,11 +287,7 @@ class IrToPicture {
         }
       }
       collectDebug.push(enums);
-      // console.log(collectDebug.length,enums.length);
-      // if (collectDebug.length > 2000 || enums.length > 10000) {
-      //   // console.log(JSON.stringify(collectDebug));
-      //   break;
-      // }
+
       enums = nextenums;
     }
 
@@ -352,11 +342,9 @@ class IrToPicture {
             n[i].inh[l.fromId + l.lineType] = (inP + 1) * 5;
             inP += 1;
           }
-          // n[i].inh[j] = (inP + 1) * 5;
-          // inP += 1;
         }
         inCount += Object.keys(n[i].inh).length;
-        // inCount += n[i].in.length;
+
         outCount += n[i].ltypes.length;
       }
       posy += (inCount + 1) * 5;
@@ -373,9 +361,9 @@ class IrToPicture {
         n[i].pos.y = posy;
         outP += n[i].ltypes.length;
       }
-      // posy += (n.length + 1) * 5 + IrViewer.NODEH;
+
       posy += (outCount + 1) * 5 + this.NODEH;
-      // if (n.length > 1) {
+
       let w = 0;
       for (let i = 0; i < levels[k].length; i++) {//当前行总宽度
         w += levels[k][i].nameWidth + 20;
@@ -385,7 +373,6 @@ class IrToPicture {
         levels[k][i].pos.x = x + 10;
         x += levels[k][i].nameWidth + 20;
       }
-      // }
     }
   }
 }
