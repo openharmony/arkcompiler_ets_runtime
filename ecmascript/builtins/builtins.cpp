@@ -2212,6 +2212,7 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHand
                 BuiltinsTypedArray::ToLocaleString, FunctionLength::ZERO);
     SetFunction(env, typedArrFuncPrototype, "values", BuiltinsTypedArray::Values, FunctionLength::ZERO);
     SetFunction(env, typedArrFuncPrototype, "includes", BuiltinsTypedArray::Includes, FunctionLength::ONE);
+    SetFunction(env, typedArrFuncPrototype, "toReversed", BuiltinsTypedArray::ToReversed, FunctionLength::ZERO);
 
     JSHandle<JSTaggedValue> bufferGetter =
         CreateGetter(env, BuiltinsTypedArray::GetBuffer, "buffer", FunctionLength::ZERO);

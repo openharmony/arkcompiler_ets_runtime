@@ -770,6 +770,7 @@ namespace panda::ecmascript {
     V(TypedArray, Values)                     \
     V(TypedArray, ToStringTag)                \
     V(TypedArray, At)                         \
+    V(TypedArray, ToReversed)                 \
     V(WeakMap, Constructor)                   \
     V(WeakMap, Delete)                        \
     V(WeakMap, Get)                           \

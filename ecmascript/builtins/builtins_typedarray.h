@@ -109,6 +109,8 @@ public:
     static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv);
     // 23.2.3.1
     static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
+    // 23.2.3.1 23.2.3.32 %TypedArray%.prototype.toReversed ( )
+    static JSTaggedValue ToReversed(EcmaRuntimeCallInfo *argv);
     static const uint32_t MAX_ARRAY_INDEX = std::numeric_limits<uint32_t>::max();
 };
 }  // namespace panda::ecmascript::builtins

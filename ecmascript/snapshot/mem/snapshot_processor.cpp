@@ -448,6 +448,7 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(BuiltinsTypedArray::GetLength),
     reinterpret_cast<uintptr_t>(BuiltinsTypedArray::ToStringTag),
     reinterpret_cast<uintptr_t>(BuiltinsTypedArray::At),
+    reinterpret_cast<uintptr_t>(BuiltinsTypedArray::ToReversed),
     reinterpret_cast<uintptr_t>(BuiltinsTypedArray::From),
     reinterpret_cast<uintptr_t>(BuiltinsTypedArray::Of),
     reinterpret_cast<uintptr_t>(BuiltinsTypedArray::Species),
