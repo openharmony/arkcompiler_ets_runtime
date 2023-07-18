@@ -23,7 +23,7 @@
 namespace panda::ecmascript {
 class JSAPIList : public JSObject {
 public:
-    static constexpr int DEFAULT_CAPACITY_LENGTH = 10;
+    static constexpr uint32_t DEFAULT_CAPACITY_LENGTH = 10;
     static JSAPIList *Cast(TaggedObject *object)
     {
         ASSERT(JSTaggedValue(object).IsJSAPIList());
@@ -63,7 +63,7 @@ public:
     JSTaggedValue Equal(JSThread *thread, const JSHandle<JSAPIList> &list);
     void Clear(JSThread *thread);
     JSTaggedValue Remove(JSThread *thread, const JSTaggedValue &element);
-    inline int Length()
+    inline uint32_t Length()
     {
         return TaggedSingleList::Cast(GetSingleList().GetTaggedObject())->Length();
     }
