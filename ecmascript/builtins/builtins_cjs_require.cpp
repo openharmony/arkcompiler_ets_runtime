@@ -43,6 +43,7 @@ JSTaggedValue BuiltinsCjsRequire::CjsRequireConstructor(EcmaRuntimeCallInfo *arg
     }
     JSHandle<EcmaString> requestName = JSHandle<EcmaString>::Cast(GetCallArg(argv, 0));
     result = CjsModule::Load(thread, requestName);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return result.GetTaggedValue();
 }
 

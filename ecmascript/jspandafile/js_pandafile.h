@@ -241,14 +241,24 @@ public:
         return pf_->GetHeader()->file_size;
     }
 
-    bool PUBLIC_API IsModule(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME,
-                             CString fullRecordName = "") const;
+    bool CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo &recordInfo) const;
 
-    bool IsCjs(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
+    CString GetJsonStringId(const JSRecordInfo &jsRecordInfo) const;
 
-    bool IsJson(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
+    bool PUBLIC_API IsModule(const JSRecordInfo &jsRecordInfo) const
+    {
+        return jsRecordInfo.moduleRecordIdx != -1;
+    }
 
-    CString GetJsonStringId(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
+    bool IsCjs(const JSRecordInfo &jsRecordInfo) const
+    {
+        return jsRecordInfo.isCjs;
+    }
+
+    bool IsJson(const JSRecordInfo &jsRecordInfo) const
+    {
+        return jsRecordInfo.isJson;
+    }
 
     bool IsBundlePack() const
     {
@@ -332,6 +342,11 @@ public:
             return it->second.hasTSTypes;
         }
         return false;
+    }
+
+    bool HasTSTypes(const JSRecordInfo &recordInfo) const
+    {
+        return recordInfo.hasTSTypes;
     }
 
     uint32_t GetTypeSummaryOffset(const CString &recordName) const

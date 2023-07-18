@@ -132,7 +132,14 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     InitializeModule(thread, module, filename, dirname);
     PutIntoCache(thread, module, filename);
 
-    if (jsPandaFile->IsJson(thread, requestEntryPoint)) {
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(requestEntryPoint, recordInfo);
+    if (!hasRecord) {
+        CString msg = "cannot find record '" + requestEntryPoint + "', please check the request path.";
+        LOG_FULL(ERROR) << msg;
+        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+    }
+    if (jsPandaFile->IsJson(recordInfo)) {
         JSHandle<JSTaggedValue> result = JSHandle<JSTaggedValue>(thread,
             ModuleDataExtractor::JsonParse(thread, jsPandaFile, requestEntryPoint));
         // Set module.exports ---> exports

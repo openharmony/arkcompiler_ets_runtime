@@ -3561,7 +3561,13 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
     notificationMgr->LoadModuleEvent(moduleName, recordName);
 
     // check ESM or CJS
-    if (!jsPandaFile->IsModule(thread, recordName)) {
+    ecmascript::JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
+    if (!hasRecord) {
+        LOG_ECMA(ERROR) << "cannot find record '" << recordName << "', please check the request path.";
+        return false;
+    }
+    if (!jsPandaFile->IsModule(recordInfo)) {
         LOG_ECMA(DEBUG) << "Current function is not from ES Module's file.";
         return true;
     }

@@ -47,6 +47,8 @@ CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPand
         JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, entryPoint);
     }
+    LOG_ECMA(DEBUG) << "Concated baseFileName : '" << baseFileName <<
+        "'. EntryPoint : '" <<  entryPoint << "'.";
     return entryPoint;
 }
 

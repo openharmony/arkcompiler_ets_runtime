@@ -33,6 +33,7 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::builtins {
+using JSRecordInfo = ecmascript::JSPandaFile::JSRecordInfo;
 
 JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
 {
@@ -200,11 +201,16 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     }
 
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
-    bool isModule = jsPandaFile->IsModule(thread, entryPoint);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
+    if (!hasRecord) {
+        LOG_FULL(ERROR) << "cannot find record '" << entryPoint <<"' in basefileName " << fileNameStr << ".";
+        CString msg = "cannot find record '" + entryPoint + "', please check the request path.";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), CatchException(thread, reject));
+    }
     JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
     // only support importing es module, or return a default object.
-    if (!isModule) {
+    if (!jsPandaFile->IsModule(recordInfo)) {
         moduleNamespace.Update(vm->GetGlobalEnv()->GetExportOfScript());
     } else {
         // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).
