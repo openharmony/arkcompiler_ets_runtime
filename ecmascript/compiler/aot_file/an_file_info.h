@@ -47,9 +47,9 @@ public:
 
     void TryRemoveAnFile(const char *filename);
 
-    void AlignTextSec(uint32_t alignSize)
+    void AlignTextSec()
     {
-        curTextSecOffset_ = AlignUp(curTextSecOffset_, alignSize);
+        curTextSecOffset_ = AlignUp(curTextSecOffset_, TEXT_SEC_ALIGN);
     }
 
     void UpdateCurTextSecOffset(uint64_t size)

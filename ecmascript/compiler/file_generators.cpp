@@ -124,7 +124,7 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
     uint32_t textSize = GetTextSize();
     uintptr_t rodataAddr = GetRODataAddr();
     uint32_t rodataSize = GetRODataSize();
-    aotInfo.AlignTextSec(AOTFileInfo::TEXT_SEC_ALIGN);
+    aotInfo.AlignTextSec();
     if (rodataAddr < textAddr) {
         aotInfo.UpdateCurTextSecOffset(rodataSize);
     }
@@ -153,7 +153,6 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
     }
     aotInfo.UpdateCurTextSecOffset(textSize);
     if (rodataAddr > textAddr) {
-        aotInfo.AlignTextSec(AOTFileInfo::DATA_SEC_ALIGN);
         aotInfo.UpdateCurTextSecOffset(rodataSize);
     }
 }
@@ -274,14 +273,8 @@ uint64_t AOTFileGenerator::RollbackTextSize(Module *module)
     uintptr_t rodataAddr = module->GetSectionAddr(ElfSecName::RODATA_CST8);
     uint32_t textSize = module->GetSectionSize(ElfSecName::TEXT);
     uint32_t rodataSize = module->GetSectionSize(ElfSecName::RODATA_CST8);
-    uint64_t textStart = 0;
-    if (textAddr > rodataAddr) {
-        textStart = aotInfo_.GetCurTextSecOffset() - textSize;
-    } else {
-        textStart = aotInfo_.GetCurTextSecOffset() - textSize - rodataSize;
-        textStart = AlignDown(textStart, AOTFileInfo::DATA_SEC_ALIGN);
-    }
-    return textStart;
+    return textAddr > rodataAddr ? (aotInfo_.GetCurTextSecOffset() - textSize) :
+        (aotInfo_.GetCurTextSecOffset() - textSize - rodataSize);
 }
 
 void AOTFileGenerator::CollectCodeInfo(Module *module, uint32_t moduleIdx)
