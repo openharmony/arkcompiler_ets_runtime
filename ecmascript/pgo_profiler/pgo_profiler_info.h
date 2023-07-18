@@ -101,10 +101,11 @@ public:
     static constexpr VersionType METHOD_CHECKSUM_MINI_VERSION = {0, 0, 0, 4};
     static constexpr VersionType USE_HCLASS_TYPE_MINI_VERSION = {0, 0, 0, 5};
     static constexpr VersionType FILE_CONSISTENCY_MINI_VERSION = {0, 0, 0, 6};
+    static constexpr VersionType TRACK_FIELD_MINI_VERSION = {0, 0, 0, 7};
     static constexpr VersionType FILE_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType HEADER_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType ELASTIC_HEADER_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
-    static constexpr VersionType LAST_VERSION = {0, 0, 0, 6};
+    static constexpr VersionType LAST_VERSION = {0, 0, 0, 7};
     static constexpr size_t SECTION_SIZE = 3;
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
@@ -218,6 +219,11 @@ public:
     bool SupportHeaderSize() const
     {
         return CompatibleVerify(HEADER_SIZE_MINI_VERSION);
+    }
+
+    bool SupportTrackField() const
+    {
+        return CompatibleVerify(TRACK_FIELD_MINI_VERSION);
     }
 
     NO_COPY_SEMANTIC(PGOProfilerHeader);

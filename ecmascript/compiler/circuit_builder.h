@@ -293,7 +293,10 @@ public:
     GateRef ConvertFloat64ToTaggedDouble(GateRef gate);
     GateRef ConvertFloat64ToInt32(GateRef gate);
     GateRef ConvertInt32ToFloat64(GateRef gate);
-    GateRef CheckAndConvert(GateRef gate, ValueType src, ValueType dst);
+    GateRef ConvertBoolToInt32(GateRef gate, ConvertSupport support);
+    GateRef ConvertBoolToFloat64(GateRef gate, ConvertSupport support);
+    GateRef CheckAndConvert(
+        GateRef gate, ValueType src, ValueType dst, ConvertSupport support = ConvertSupport::ENABLE);
     GateRef ConvertHoleAsUndefined(GateRef receiver);
     GateRef CheckTaggedIntAndConvertToInt32(GateRef gate);
     GateRef CheckTaggedDoubleAndConvertToInt32(GateRef gate);
@@ -470,6 +473,8 @@ public:
     inline GateRef ToTaggedIntPtr(GateRef x);
     inline GateRef DoubleToTaggedDoublePtr(GateRef x);
     inline GateRef BooleanToTaggedBooleanPtr(GateRef x);
+    inline GateRef BooleanToInt32(GateRef x);
+    inline GateRef BooleanToFloat64(GateRef x);
     inline GateRef Float32ToTaggedDoublePtr(GateRef x);
     inline GateRef TaggedDoublePtrToFloat32(GateRef x);
     inline GateRef TaggedIntPtrToFloat32(GateRef x);

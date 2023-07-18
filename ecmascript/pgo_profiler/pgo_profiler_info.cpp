@@ -1072,7 +1072,7 @@ void PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
     if (info == nullptr) {
         return;
     }
-    if (header->SupportType()) {
+    if (header->SupportTrackField()) {
         ParseFromBinaryForLayout(&addr);
     }
 }
@@ -1248,7 +1248,7 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
     if (info == nullptr) {
         return;
     }
-    if (header->SupportType()) {
+    if (header->SupportTrackField()) {
         ParseFromBinaryForLayout(&addr);
     }
 }

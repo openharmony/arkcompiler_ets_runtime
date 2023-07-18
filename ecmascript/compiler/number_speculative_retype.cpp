@@ -695,7 +695,7 @@ GateRef NumberSpeculativeRetype::TryConvertConstant(GateRef gate, bool needInt32
     return Circuit::NullGate();
 }
 
-GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType gateType)
+GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support)
 {
     auto result = TryConvertConstant(gate, true);
     if (result != Circuit::NullGate()) {
@@ -705,6 +705,9 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
     }
     TypeInfo output = GetOutputTypeInfo(gate);
     switch (output) {
+        case TypeInfo::INT1:
+            result = builder_.ConvertBoolToInt32(gate, support);
+            break;
         case TypeInfo::INT32:
             return gate;
         case TypeInfo::FLOAT64:
@@ -730,7 +733,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
     return result;
 }
 
-GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType gateType)
+GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType gateType, ConvertSupport support)
 {
     auto result = TryConvertConstant(gate, false);
     if (result != Circuit::NullGate()) {
@@ -740,6 +743,9 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
     }
     TypeInfo output = GetOutputTypeInfo(gate);
     switch (output) {
+        case TypeInfo::INT1:
+            result = builder_.ConvertBoolToFloat64(gate, support);
+            break;
         case TypeInfo::INT32:
             result = builder_.ConvertInt32ToFloat64(gate);
             break;
@@ -919,10 +925,12 @@ GateRef NumberSpeculativeRetype::VisitStoreProperty(GateRef gate)
     PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
     if (plr.GetRepresentation() == Representation::DOUBLE) {
         acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
-        acc_.ReplaceValueIn(gate, CheckAndConvertToFloat64(value, acc_.GetGateType(value)), 2); //2: value
+        acc_.ReplaceValueIn(
+            gate, CheckAndConvertToFloat64(value, acc_.GetGateType(value), ConvertSupport::DISABLE), 2); // 2: value
     } else if (plr.GetRepresentation() == Representation::INT) {
         acc_.SetMetaData(gate, circuit_->StorePropertyNoBarrier());
-        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, acc_.GetGateType(value)), 2); //2: value
+        acc_.ReplaceValueIn(
+            gate, CheckAndConvertToInt32(value, acc_.GetGateType(value), ConvertSupport::DISABLE), 2); // 2: value
     } else {
         TypeInfo valueType = GetOutputTypeInfo(value);
         if (valueType == TypeInfo::INT1 || valueType == TypeInfo::INT32 || valueType == TypeInfo::FLOAT64) {
