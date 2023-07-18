@@ -779,7 +779,7 @@ GateRef NumberSpeculativeLowering::MonocularDouble(GateRef value)
             res = builder_.DoubleSub(value, builder_.Double(1));
             break;
         case TypedUnOp::TYPED_NEG:
-            res = builder_.DoubleSub(builder_.Double(0), value);
+            res = builder_.DoubleMul(builder_.Double(-1), value);
             break;
         default:
             break;
