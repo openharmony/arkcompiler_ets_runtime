@@ -104,7 +104,7 @@ HWTEST_F_L0(ArrayHelperTest, SortCompare)
     EXPECT_EQ(resultValue3, -1); // Y is Undefined
     EXPECT_EQ(resultValue4, 1);  // X > Y
     EXPECT_EQ(resultValue5, 0); // X = Y
-    EXPECT_EQ(resultValue6, 0); // X < Y
+    EXPECT_EQ(resultValue6, -1); // X < Y
 }
 
 /**

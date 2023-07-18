@@ -314,6 +314,12 @@ CString NumberHelper::IntToString(int number)
     return ToCString(number);
 }
 
+JSHandle<EcmaString> NumberHelper::IntToEcmaString(const JSThread *thread, int number)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewFromASCII(ToCString(number));
+}
+
 // 7.1.12.1 ToString Applied to the Number Type
 JSHandle<EcmaString> NumberHelper::NumberToString(const JSThread *thread, JSTaggedValue number)
 {

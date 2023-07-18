@@ -29,11 +29,11 @@ public:
     static JSTaggedValue TypedArrayConstructor(EcmaRuntimeCallInfo *argv,
                                                const JSHandle<JSTaggedValue> &constructorName,
                                                const DataViewType arrayType);
-    static JSHandle<JSObject> AllocateTypedArray(ObjectFactory *factory, EcmaVM *ecmaVm,
+    static JSHandle<JSObject> AllocateTypedArray(JSThread *thread,
                                                  const JSHandle<JSTaggedValue> &constructorName,
                                                  const JSHandle<JSTaggedValue> &newTarget,
                                                  const DataViewType arrayType);
-    static JSHandle<JSObject> AllocateTypedArray(ObjectFactory *factory, EcmaVM *ecmaVm,
+    static JSHandle<JSObject> AllocateTypedArray(JSThread *thread,
                                                  const JSHandle<JSTaggedValue> &constructorName,
                                                  const JSHandle<JSTaggedValue> &newTarget, int32_t length,
                                                  const DataViewType arrayType);
@@ -61,7 +61,7 @@ private:
                                               const DataViewType arrayType);
     static JSTaggedValue CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
                                                const DataViewType arrayType);
-    static JSHandle<JSObject> AllocateTypedArrayBuffer(JSThread *thread, EcmaVM *ecmaVm, const JSHandle<JSObject> &obj,
+    static JSHandle<JSObject> AllocateTypedArrayBuffer(JSThread *thread, const JSHandle<JSObject> &obj,
                                                        uint64_t length, const DataViewType arrayType);
     static JSTaggedValue FastCopyElementFromArray(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
                                                          const DataViewType arrayType);

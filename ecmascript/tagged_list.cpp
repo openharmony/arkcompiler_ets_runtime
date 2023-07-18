@@ -134,7 +134,7 @@ JSHandle<TaggedArray> TaggedList<Derived>::OwnKeys(JSThread *thread, const JSHan
     JSHandle<TaggedArray> keys = factory->NewTaggedArray(length);
 
     for (uint32_t i = 0; i < length; i++) {
-        auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(i));
+        auto key = base::NumberHelper::IntToEcmaString(thread, i);
         keys->Set(thread, i, key);
     }
     return keys;
