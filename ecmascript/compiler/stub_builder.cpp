@@ -4416,10 +4416,9 @@ GateRef StubBuilder::FastAddSubAndMul(GateRef left, GateRef right, ProfileOperat
         Label exit(env);
         Label overflow(env);
         Label notOverflow(env);
-        auto res = BinaryOp<Op, MachineType::I64>(GetInt64OfTInt(left), GetInt64OfTInt(right));
-        auto condition1 = Int64GreaterThan(res, Int64(INT32_MAX));
-        auto condition2 = Int64LessThan(res, Int64(INT32_MIN));
-        Branch(BoolOr(condition1, condition2), &overflow, &notOverflow);
+        auto res = BinaryOpWithOverflow<Op, MachineType::I32>(GetInt32OfTInt(left), GetInt32OfTInt(right));
+        GateRef condition = env->GetBuilder()->ExtractValue(MachineType::I1, res, Int32(1));
+        Branch(condition, &overflow, &notOverflow);
         Bind(&overflow);
         {
             auto doubleLeft = ChangeInt32ToFloat64(GetInt32OfTInt(left));
@@ -4431,11 +4430,12 @@ GateRef StubBuilder::FastAddSubAndMul(GateRef left, GateRef right, ProfileOperat
         }
         Bind(&notOverflow);
         {
+            res = env->GetBuilder()->ExtractValue(MachineType::I32, res, Int32(0));
             if (Op == OpCode::MUL) {
                 Label resultIsZero(env);
                 Label returnNegativeZero(env);
                 Label returnResult(env);
-                Branch(Int64Equal(res, Int64(0)), &resultIsZero, &returnResult);
+                Branch(Int32Equal(res, Int32(0)), &resultIsZero, &returnResult);
                 Bind(&resultIsZero);
                 GateRef leftNegative = Int32LessThan(GetInt32OfTInt(left), Int32(0));
                 GateRef rightNegative = Int32LessThan(GetInt32OfTInt(right), Int32(0));
@@ -4445,11 +4445,11 @@ GateRef StubBuilder::FastAddSubAndMul(GateRef left, GateRef right, ProfileOperat
                 callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
                 Jump(&exit);
                 Bind(&returnResult);
-                result = IntToTaggedPtr(TruncInt64ToInt32(res));
+                result = IntToTaggedPtr(res);
                 callback.ProfileOpType(Int32(PGOSampleType::IntType()));
                 Jump(&exit);
             } else {
-                result = IntToTaggedPtr(TruncInt64ToInt32(res));
+                result = IntToTaggedPtr(res);
                 callback.ProfileOpType(Int32(PGOSampleType::IntType()));
                 Jump(&exit);
             }

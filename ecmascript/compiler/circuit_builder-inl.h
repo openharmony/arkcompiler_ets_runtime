@@ -232,6 +232,20 @@ GateRef CircuitBuilder::BinaryOp(GateRef x, GateRef y)
     return Circuit::NullGate();
 }
 
+template<OpCode Op, MachineType Type>
+GateRef CircuitBuilder::BinaryOpWithOverflow(GateRef x, GateRef y)
+{
+    if (Op == OpCode::ADD) {
+        return BinaryArithmetic(circuit_->AddWithOverflow(), Type, x, y);
+    } else if (Op == OpCode::SUB) {
+        return BinaryArithmetic(circuit_->SubWithOverflow(), Type, x, y);
+    } else if (Op == OpCode::MUL) {
+        return BinaryArithmetic(circuit_->MulWithOverflow(), Type, x, y);
+    }
+    UNREACHABLE();
+    return Circuit::NullGate();
+}
+
 GateRef CircuitBuilder::IntPtrLSR(GateRef x, GateRef y)
 {
     auto ptrSize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
