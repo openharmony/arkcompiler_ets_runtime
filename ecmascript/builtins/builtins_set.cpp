@@ -254,7 +254,7 @@ JSTaggedValue BuiltinsSet::GetSize(EcmaRuntimeCallInfo *argv)
     }
     JSSet *jsSet = JSSet::Cast(*JSTaggedValue::ToObject(thread, self));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int count = jsSet->GetSize();
+    uint32_t count = jsSet->GetSize();
     return JSTaggedValue(count);
 }
 

@@ -823,7 +823,7 @@ void GraphLinearizer::CreateGateRegion(GateRef gate)
 
 void GraphLinearizer::LinearizeRegions(ControlFlowGraph &result)
 {
-    int liveNum = OptimizeCFG();
+    size_t liveNum = OptimizeCFG();
 
     ASSERT(result.size() == 0);
     result.resize(liveNum);
