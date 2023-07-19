@@ -57,6 +57,7 @@ void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<CallGateInfo
         case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
             workList.push(CallGateInfo(gate, isCallThis));
             lastCallId_ = acc_.GetId(gate);
+            break;
         default:
             break;
     }
@@ -79,6 +80,9 @@ void TSInlineLowering::TryInline(CallGateInfo info, ChunkQueue<CallGateInfo> &wo
         GlobalTSTypeRef gt = funcType.GetGTRef();
         auto methodOffset = tsManager_->GetFuncMethodOffset(gt);
         if (methodOffset == 0 || ctx_->IsSkippedMethod(methodOffset)) {
+            return;
+        }
+        if (IsRecursiveFunc(gate, methodOffset)) {
             return;
         }
         inlinedMethod = ctx_->GetJSPandaFile()->FindMethodLiteral(methodOffset);
@@ -447,5 +451,19 @@ size_t TSInlineLowering::GetOrInitialInlineCounts(GateRef frameArgs)
         inlinedCallMap_[frameArgs] = 0;
     }
     return inlinedCallMap_[frameArgs];
+}
+
+bool TSInlineLowering::IsRecursiveFunc(GateRef gate, size_t calleeMethodOffset)
+{
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef frameArgs = acc_.GetValueIn(frameState);
+    GateRef caller = acc_.GetValueIn(frameArgs);
+    auto funcType = acc_.GetGateType(caller);
+    GlobalTSTypeRef gt = funcType.GetGTRef();
+    if (!tsManager_->IsFunctionTypeKind(gt)) {
+        return false;
+    }
+    auto callerMethodOffset = tsManager_->GetFuncMethodOffset(gt);
+    return callerMethodOffset == calleeMethodOffset;
 }
 }  // namespace panda::ecmascript

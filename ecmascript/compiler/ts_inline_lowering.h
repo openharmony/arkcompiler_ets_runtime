@@ -135,6 +135,7 @@ private:
     void SupplementType(GateRef callGate, GateRef targetGate);
     void UpdateWorkList(ChunkQueue<CallGateInfo> &workList);
     size_t GetOrInitialInlineCounts(GateRef frameArgs);
+    bool IsRecursiveFunc(GateRef gate, size_t calleeMethodOffset);
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
