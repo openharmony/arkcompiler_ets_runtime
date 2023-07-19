@@ -160,7 +160,7 @@ JSTaggedValue BuiltinsAggregateError::AggregateErrorConstructor(EcmaRuntimeCallI
         JSTaggedValue::DefinePropertyOrThrow(thread, taggedObj, msgKey, msgDesc);
     }
     // InstallErrorCause
-    JSHandle<JSTaggedValue> options = BuiltinsBase::GetCallArg(argv, 2);
+    JSHandle<JSTaggedValue> options = BuiltinsBase::GetCallArg(argv, 2); // 2 : Third parameter
     // If options is an Object and ? HasProperty(options, "cause") is true, then
     //   a. Let cause be ? Get(options, "cause").
     //   b. Perform CreateNonEnumerableDataPropertyOrThrow(O, "cause", cause).

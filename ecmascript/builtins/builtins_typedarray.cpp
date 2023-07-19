@@ -614,9 +614,7 @@ JSTaggedValue BuiltinsTypedArray::Filter(EcmaRuntimeCallInfo *argv)
         info->SetCallArg(kValue.GetTaggedValue(), tKey.GetTaggedValue(), thisHandle.GetTaggedValue());
         JSTaggedValue callResult = JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        bool testResult = callResult.ToBoolean();
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (testResult) {
+        if (callResult.ToBoolean()) {
             kept->Set(thread, captured, kValue);
             captured++;
         }
@@ -1624,7 +1622,7 @@ JSTaggedValue BuiltinsTypedArray::At(EcmaRuntimeCallInfo *argv)
     int64_t k = 0;
     // 5. If relativeIndex ≥ 0, then Let k be relativeIndex.
     // 6. Else, Let k be len + relativeIndex.
-    k = relativeIndex >= 0 ? relativeIndex : len + relativeIndex;
+    k = relativeIndex >= 0 ? relativeIndex : static_cast<int64_t>(len) + relativeIndex;
     // 7. If k < 0 or k ≥ len, return undefined.
     if (k < 0 || k >= len) {
         return JSTaggedValue::Undefined();

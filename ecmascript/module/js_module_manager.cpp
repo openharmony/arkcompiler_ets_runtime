@@ -161,11 +161,18 @@ JSTaggedValue ModuleManager::GetValueFromExportObject(JSHandle<JSTaggedValue> &e
     if (index == SourceTextModule::UNDEFINED_INDEX) {
         return exportObject.GetTaggedValue();
     }
+    JSTaggedValue value = JSTaggedValue::Hole();
     JSObject *obj = JSObject::Cast(exportObject.GetTaggedValue());
-    JSHClass *jsHclass = obj->GetJSHClass();
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
-    PropertyAttributes attr = layoutInfo->GetAttr(index);
-    JSTaggedValue value = obj->GetProperty(jsHclass, attr);
+    TaggedArray *properties = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
+    if (!properties->IsDictionaryMode()) {
+        JSHClass *jsHclass = obj->GetJSHClass();
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
+        PropertyAttributes attr = layoutInfo->GetAttr(index);
+        value = obj->GetProperty(jsHclass, attr);
+    } else {
+        NameDictionary *dict = NameDictionary::Cast(properties);
+        value = dict->GetValue(index);
+    }
     if (UNLIKELY(value.IsAccessor())) {
         return FastRuntimeStub::CallGetter(vm_->GetJSThread(), JSTaggedValue(obj), JSTaggedValue(obj), value);
     }

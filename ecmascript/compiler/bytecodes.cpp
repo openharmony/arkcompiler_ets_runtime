@@ -60,6 +60,40 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
     }
 
     switch (inst.GetOpcode()) {
+        case EcmaOpcode::MOV_V4_V4:
+        case EcmaOpcode::MOV_V8_V8:
+        case EcmaOpcode::MOV_V16_V16:
+        case EcmaOpcode::STA_V8:
+        case EcmaOpcode::LDA_V8:
+        case EcmaOpcode::LDHOLE:
+        case EcmaOpcode::LDAI_IMM32:
+        case EcmaOpcode::FLDAI_IMM64:
+        case EcmaOpcode::LDFUNCTION:
+        case EcmaOpcode::TYPEOF_IMM8:
+        case EcmaOpcode::TYPEOF_IMM16:
+        case EcmaOpcode::LDNAN:
+        case EcmaOpcode::LDINFINITY:
+        case EcmaOpcode::LDUNDEFINED:
+        case EcmaOpcode::LDNULL:
+        case EcmaOpcode::LDTRUE:
+        case EcmaOpcode::LDFALSE:
+        case EcmaOpcode::LDSYMBOL:
+        case EcmaOpcode::LDGLOBAL:
+        case EcmaOpcode::LDBIGINT_ID16:
+        case EcmaOpcode::LDLEXVAR_IMM4_IMM4:
+        case EcmaOpcode::LDLEXVAR_IMM8_IMM8:
+        case EcmaOpcode::WIDE_LDLEXVAR_PREF_IMM16_IMM16:
+        case EcmaOpcode::WIDE_LDPATCHVAR_PREF_IMM16:
+        case EcmaOpcode::LDA_STR_ID16:
+        case EcmaOpcode::RETURN:
+        case EcmaOpcode::RETURNUNDEFINED:
+            flags |= BytecodeFlags::NO_GC;
+            break;
+        default:
+            break;
+    }
+
+    switch (inst.GetOpcode()) {
         case EcmaOpcode::TYPEOF_IMM8:
         case EcmaOpcode::TYPEOF_IMM16:
         case EcmaOpcode::ISTRUE:

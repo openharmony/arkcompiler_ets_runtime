@@ -36,6 +36,7 @@ public:
         : vm_(collector->GetVM()),
           bcInfoCollector_(collector),
           tsManager_(vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()),
+          bytecodes_(collector->GetByteCodes()),
           lexEnvManager_(bcInfoCollector_->GetEnvManager()),
           cmpCfg_(triple, &vm_->GetJSOptions()),
           log_(log),
@@ -52,7 +53,7 @@ public:
 
     Bytecodes* GetByteCodes()
     {
-        return &bytecodes_;
+        return bytecodes_;
     }
 
     LexEnvManager* GetLexEnvManager() const
@@ -114,7 +115,7 @@ private:
     EcmaVM *vm_ {nullptr};
     BytecodeInfoCollector *bcInfoCollector_ {nullptr};
     TSManager *tsManager_ {nullptr};
-    Bytecodes bytecodes_;
+    Bytecodes *bytecodes_ {nullptr};
     LexEnvManager *lexEnvManager_ {nullptr};
     CompilationConfig cmpCfg_;
     CompilerLog *log_ {nullptr};
@@ -127,7 +128,7 @@ class PassOptions {
 public:
     PassOptions(bool enableTypeLowering, bool enableEarlyElimination, bool enableLaterElimination,
                 bool enableValueNumbering, bool enableTypeInfer, bool enableOptInlining,
-                bool enableOptStaticMethod, bool enableOptPGOType, bool enableOptTrackField)
+                bool enableOptStaticMethod, bool enableOptPGOType, bool enableOptTrackField, bool enableOptLoopPeeling)
         : enableTypeLowering_(enableTypeLowering),
           enableEarlyElimination_(enableEarlyElimination),
           enableLaterElimination_(enableLaterElimination),
@@ -136,7 +137,8 @@ public:
           enableOptInlining_(enableOptInlining),
           enableOptStaticMethod_(enableOptStaticMethod),
           enableOptPGOType_(enableOptPGOType),
-          enableOptTrackField_(enableOptTrackField)
+          enableOptTrackField_(enableOptTrackField),
+          enableOptLoopPeeling_(enableOptLoopPeeling)
         {
         }
 
@@ -148,9 +150,11 @@ public:
     V(TypeInfer, false)          \
     V(OptInlining, false)        \
     V(OptStaticMethod, false)    \
+    V(OptNoGCCall, false)        \
     V(OptPGOType, false)         \
     V(NoCheck, false)            \
-    V(OptTrackField, false)
+    V(OptTrackField, false)      \
+    V(OptLoopPeeling, false)
 
 #define DECL_OPTION(NAME, DEFAULT)    \
 public:                               \

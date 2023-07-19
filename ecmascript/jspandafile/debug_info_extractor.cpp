@@ -55,6 +55,13 @@ public:
 
     void ProcessEnd()
     {
+        // When process ends, update any variableInfo
+        // with end_offset = 0, set it to the state address.
+        for (auto iter = lvt_.begin(); iter != lvt_.end(); iter++) {
+            if (iter->endOffset == 0) {
+                iter->endOffset = state_->GetAddress();
+            }
+        }
     }
 
     bool HandleAdvanceLine(int32_t lineDiff) const
@@ -93,21 +100,34 @@ public:
 
     bool HandleStartLocal(int32_t regNumber, uint32_t nameId, [[maybe_unused]] uint32_t typeId)
     {
+        // start_offset is the current state address, end_offset will temporarily be 0 here,
+        // then being updated inside the HandleEndLocal method.
+        uint32_t startOffset = state_->GetAddress();
+        uint32_t endOffset = 0;
         const char *name = GetStringFromConstantPool(state_->GetPandaFile(), nameId);
-        lvt_.emplace(name, regNumber);
+        lvt_.push_back({name, regNumber, startOffset, endOffset});
         return true;
     }
 
     bool HandleStartLocalExtended(int32_t regNumber, uint32_t nameId, [[maybe_unused]] uint32_t typeId,
                                   [[maybe_unused]] uint32_t typeSignatureId)
     {
+        uint32_t startOffset = state_->GetAddress();
+        uint32_t endOffset = 0;
         const char *name = GetStringFromConstantPool(state_->GetPandaFile(), nameId);
-        lvt_.emplace(name, regNumber);
+        lvt_.push_back({name, regNumber, startOffset, endOffset});
         return true;
     }
 
     bool HandleEndLocal([[maybe_unused]] int32_t regNumber)
     {
+        for (auto iter = lvt_.rbegin(); iter != lvt_.rend(); iter++) {
+            // reversely finds the variable and updates its end_offset to be state address
+            if (iter->regNumber == regNumber && iter->endOffset == 0) {
+                iter->endOffset = state_->GetAddress();
+                break;
+            }
+        }
         return true;
     }
 

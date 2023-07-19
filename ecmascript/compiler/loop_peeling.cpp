@@ -102,6 +102,8 @@ void LoopPeeling::Peel()
     for (auto gate : asyncList) {
         bcBuilder_->UpdateAsyncRelatedGate(gate);
     }
+
+    Print();
 }
 
 void LoopPeeling::SetCopy(GateRef gate)
@@ -130,7 +132,10 @@ void LoopPeeling::SetCopy(GateRef gate)
 
 GateRef LoopPeeling::GetCopy(GateRef gate) const
 {
-    return copies_.at(gate);
+    if (copies_.count(gate)) {
+        return copies_.at(gate);
+    }
+    return gate;
 }
 
 GateRef LoopPeeling::TryGetCopy(GateRef gate) const
@@ -139,5 +144,20 @@ GateRef LoopPeeling::TryGetCopy(GateRef gate) const
         return copies_.at(gate);
     }
     return Circuit::NullGate();
+}
+
+void LoopPeeling::Print() const
+{
+    if (IsLogEnabled()) {
+        LOG_COMPILER(INFO) << "";
+        LOG_COMPILER(INFO) << "\033[34m"
+                           << "===================="
+                           << " After loop peeling "
+                           << "[" << GetMethodName() << "]"
+                           << "===================="
+                           << "\033[0m";
+        circuit_->PrintAllGatesWithBytecode();
+        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+    }
 }
 }  // namespace panda::ecmascript::kungfu

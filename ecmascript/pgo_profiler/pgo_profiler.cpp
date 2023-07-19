@@ -208,7 +208,12 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
             auto iter = literalIds_.find(JSTaggedType(hclass));
             if (iter != literalIds_.end()) {
                 PGOObjectInfo info(ClassType(iter->second.GetOffset()), kind);
-                recordInfos_->AddObjectInfo(recordName, jsMethod->GetMethodId(), offset, info);
+                auto methodId = jsMethod->GetMethodId();
+                recordInfos_->AddObjectInfo(recordName, methodId, offset, info);
+                if (store) {
+                    auto type = PGOSampleType::CreateClassType(iter->second.GetOffset());
+                    recordInfos_->AddLayout(type, JSTaggedType(hclass), kind);
+                }
             }
             return;
         } else {

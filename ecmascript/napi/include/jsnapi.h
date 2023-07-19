@@ -745,7 +745,7 @@ public:
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
 
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
-        int32_t length, bool isNapi = false);
+        int32_t length);
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);
 
     Local<JSValueRef> GetFunctionPrototype(const EcmaVM *vm);
@@ -1486,6 +1486,15 @@ private:
     JSTaggedType *stackArgs_ {nullptr};
     void *data_ {nullptr};
     friend class FunctionRef;
+};
+
+class PUBLIC_API FunctionCallScope {
+public:
+    FunctionCallScope(EcmaVM *vm);
+    ~FunctionCallScope();
+
+private:
+    EcmaVM *vm_;
 };
 
 template<typename T>

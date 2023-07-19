@@ -140,9 +140,16 @@ private:
     bool CanOptimizeAsFastCall(GateRef func);
     void CheckCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
         GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
+    void CheckCallTargetFromDefineFuncAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+        GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall, bool isNoGC);
     void CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
         GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
-
+    void CheckCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+                                 GateType funcType, bool isNoGC);
+    void CheckFastCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+                                     GateType funcType, bool isNoGC);
+    void LowerFastCall(GateRef gate, GateRef func, const std::vector<GateRef> &argsFastCall, bool isNoGC);
+    void LowerCall(GateRef gate, GateRef func, const std::vector<GateRef> &args, bool isNoGC);
     GateRef LoadJSArrayByIndex(GateRef receiver, GateRef propKey);
     GateRef LoadTypedArrayByIndex(GateRef receiver, GateRef propKey);
     void StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value);

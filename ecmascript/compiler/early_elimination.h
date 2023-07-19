@@ -37,6 +37,7 @@ public:
     DependInfoNode* UpdateStoreProperty(EarlyElimination* elimination, GateRef gate);
     bool Equals(DependInfoNode* that);
     void Merge(EarlyElimination* elimination, DependInfoNode* that);
+    void GetGates(std::vector<GateRef>& gates) const;
     void CopyFrom(DependInfoNode *other)
     {
         head_ = other->head_;

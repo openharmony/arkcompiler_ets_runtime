@@ -129,7 +129,7 @@ void PGOProfilerEncoder::AddChecksum(std::fstream &fileStream)
     static constexpr uint32_t KILO_BYTES = 1024;
     static constexpr uint32_t STEP_IN_KB = 256;
     static constexpr uint32_t STEP_SIZE = STEP_IN_KB * KILO_BYTES;
-    uint32_t size = fileStream.seekp(0, std::fstream::end).tellp();
+    uint32_t size = static_cast<uint32_t>(fileStream.seekp(0, std::fstream::end).tellp());
     std::unique_ptr<std::vector<uint8_t>> buffer = std::make_unique<std::vector<uint8_t>>(STEP_SIZE);
     // first, calculate the version field's checksum.
     fileStream.seekg(PGOProfilerHeader::MAGIC_SIZE, std::fstream::beg)

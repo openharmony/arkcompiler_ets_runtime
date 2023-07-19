@@ -17,3 +17,4 @@ execute cjsWithoutExports.js success!
 jscall 1
 true
 hello world
+success

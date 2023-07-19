@@ -56,6 +56,7 @@ private:
     void LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState, Label *exit);
     void LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState, Label *exit);
     void LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameState);
+    void LowerCheckSupportAndConvert(GateRef gate, GateRef frameState);
     void LowerGetGlobalEnv(GateRef gate);
     void LowerGetGlobalEnvObjHClass(GateRef gate);
     void LowerGetGlobalConstantValue(GateRef gate);
@@ -68,6 +69,7 @@ private:
     void LowerOverflowCheck(GateRef gate);
     void LowerInt32UnsignedUpperBoundCheck(GateRef gate);
     void LowerInt32DivWithCheck(GateRef gate);
+    void LowerLexVarIsHoleCheck(GateRef gate);
 
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
     GateRef ConvertInt32ToFloat64(GateRef gate);

@@ -515,9 +515,10 @@ void TSTypeParser::StoreMethodOffset(const JSHandle<TSFunctionType> &functionTyp
             functionType->SetMethodOffset(methodOffset);
             functionType->SetIsMethodOffsetVaild(true);
             bool isVaild;
-            bool canFastCall = bcInfo_->IterateMethodOffsetToCanFastCall(methodOffset, &isVaild);
+            kungfu::FastCallInfo info = bcInfo_->IterateMethodOffsetToFastCallInfo(methodOffset, &isVaild);
             functionType->SetIsFastCallVaild(isVaild);
-            functionType->SetIsFastCall(canFastCall);
+            functionType->SetIsFastCall(info.canFastCall_);
+            functionType->SetIsNoGC(info.isNoGC_);
         } else {
             functionType->SetIsMethodOffsetVaild(false);
             functionType->SetIsFastCallVaild(false);

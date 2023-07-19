@@ -227,6 +227,11 @@ public:
         return TypedBinaryMegaData::Cast(meta_);
     }
 
+    const TypedCallTargetCheckMetaData* GetTypedCallTargetCheckMegaData() const
+    {
+        return TypedCallTargetCheckMetaData::Cast(meta_);
+    }
+
     const StringMetaData* GetStringMetaData() const
     {
         ASSERT(meta_->IsStringType());
@@ -241,6 +246,11 @@ public:
     const BoolMetaData* GetBoolMetaData() const
     {
         return BoolMetaData::Cast(meta_);
+    }
+
+    const TypedCallMetaData* GetTypedCallMetaData() const
+    {
+        return TypedCallMetaData::Cast(meta_);
     }
 
     std::string MachineTypeStr(MachineType machineType) const;

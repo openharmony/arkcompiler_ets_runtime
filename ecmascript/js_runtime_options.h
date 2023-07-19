@@ -136,7 +136,8 @@ enum CommandValues {
     OPTION_HAP_ABC_OFFSET,
     OPTION_HAP_ABC_SIZE,
     OPTION_COMPILER_NOCHECK,
-    OPTION_FAST_AOT_COMPILE_MODE
+    OPTION_FAST_AOT_COMPILE_MODE,
+    OPTION_COMPILER_OPT_LOOP_PEELING,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -1169,6 +1170,16 @@ public:
         return fastAOTCompileMode_;
     }
 
+    void SetEnableOptLoopPeeling(bool value)
+    {
+        enableOptLoopPeeling_ = value;
+    }
+
+    bool IsEnableOptLoopPeeling() const
+    {
+        return enableOptLoopPeeling_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1263,6 +1274,7 @@ private:
     uint32_t hapAbcSize_ {0};
     bool compilerNoCheck_ {false};
     bool fastAOTCompileMode_ {true};
+    bool enableOptLoopPeeling_ {false};
 };
 }  // namespace panda::ecmascript
 

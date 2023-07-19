@@ -27,9 +27,10 @@ namespace panda::ecmascript::kungfu {
 
 class LoopPeeling {
 public:
-    LoopPeeling(BytecodeCircuitBuilder* bcBuilder, Circuit *circuit, Chunk* chunk, LoopInfo* loopInfo)
-        : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit),
-          chunk_(chunk), loopInfo_(loopInfo), copies_(chunk_) {}
+    LoopPeeling(BytecodeCircuitBuilder* bcBuilder, Circuit *circuit, bool enableLog,
+                const std::string& name, Chunk* chunk, LoopInfo* loopInfo)
+        : bcBuilder_(bcBuilder), circuit_(circuit), acc_(circuit), enableLog_(enableLog),
+          methodName_(name), chunk_(chunk), loopInfo_(loopInfo), copies_(chunk_) {}
     ~LoopPeeling() = default;
     void Peel();
 
@@ -37,9 +38,20 @@ private:
     void SetCopy(GateRef gate);
     GateRef GetCopy(GateRef gate) const;
     GateRef TryGetCopy(GateRef gate) const;
+    void Print() const;
+    bool IsLogEnabled() const
+    {
+        return enableLog_;
+    }
+    std::string GetMethodName() const
+    {
+        return methodName_;
+    }
     BytecodeCircuitBuilder* bcBuilder_{nullptr};
     Circuit* circuit_;
     GateAccessor acc_;
+    bool enableLog_{false};
+    std::string methodName_;
     Chunk* chunk_{nullptr};
     LoopInfo* loopInfo_{nullptr};
     ChunkMap<GateRef, GateRef> copies_;

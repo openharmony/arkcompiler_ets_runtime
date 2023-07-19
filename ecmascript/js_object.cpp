@@ -437,11 +437,10 @@ void JSObject::GetAllElementKeys(JSThread *thread, const JSHandle<JSObject> &obj
                                  const JSHandle<TaggedArray> &keyArray)
 {
     uint32_t elementIndex = 0;
-
     if (obj->IsJSPrimitiveRef() && JSPrimitiveRef::Cast(*obj)->IsString()) {
         elementIndex = JSPrimitiveRef::Cast(*obj)->GetStringLength() + static_cast<uint32_t>(offset);
         for (uint32_t i = static_cast<uint32_t>(offset); i < elementIndex; ++i) {
-            auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(i));
+            auto key = base::NumberHelper::IntToEcmaString(thread, i);
             keyArray->Set(thread, i, key);
         }
     }
@@ -451,7 +450,7 @@ void JSObject::GetAllElementKeys(JSThread *thread, const JSHandle<JSObject> &obj
         uint32_t elementsLen = elements->GetLength();
         for (uint32_t i = 0, j = elementIndex; i < elementsLen; ++i) {
             if (!elements->Get(i).IsHole()) {
-                auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(i));
+                auto key = base::NumberHelper::IntToEcmaString(thread, i);
                 keyArray->Set(thread, j++, key);
             }
         }
@@ -530,10 +529,8 @@ JSHandle<TaggedArray> JSObject::GetEnumElementKeys(JSThread *thread, const JSHan
         *keys += elementIndex;
         elementIndex += static_cast<uint32_t>(offset);
         for (uint32_t i = static_cast<uint32_t>(offset); i < elementIndex; ++i) {
-            keyHandle.Update(JSTaggedValue(i));
-            auto key = JSTaggedValue::ToString(thread, keyHandle);
-            RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
-            elementArray->Set(thread, i, key);
+            keyHandle.Update(base::NumberHelper::IntToEcmaString(thread, i));
+            elementArray->Set(thread, i, keyHandle);
         }
     }
 
@@ -543,7 +540,7 @@ JSHandle<TaggedArray> JSObject::GetEnumElementKeys(JSThread *thread, const JSHan
         uint32_t preElementIndex = elementIndex;
         for (uint32_t i = 0; i < elementsLen; ++i) {
             if (!arr->Get(i).IsHole()) {
-                keyHandle.Update(factory->NewFromASCII(ToCString(i)).GetTaggedValue());
+                keyHandle.Update(base::NumberHelper::IntToEcmaString(thread, i));
                 elementArray->Set(thread, elementIndex++, keyHandle);
             }
         }
@@ -561,7 +558,7 @@ void JSObject::GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &ob
     if (obj->IsJSPrimitiveRef() && JSPrimitiveRef::Cast(*obj)->IsString()) {
         elementIndex = JSPrimitiveRef::Cast(*obj)->GetStringLength() + static_cast<uint32_t>(offset);
         for (uint32_t i = static_cast<uint32_t>(offset); i < elementIndex; ++i) {
-            auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(i));
+            auto key = base::NumberHelper::IntToEcmaString(thread, i);
             keyArray->Set(thread, i, key);
         }
     }
@@ -571,7 +568,7 @@ void JSObject::GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &ob
         uint32_t elementsLen = elements->GetLength();
         for (uint32_t i = 0, j = elementIndex; i < elementsLen; ++i) {
             if (!elements->Get(i).IsHole()) {
-                auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(i));
+                auto key = base::NumberHelper::IntToEcmaString(thread, i);
                 keyArray->Set(thread, j++, key);
             }
         }

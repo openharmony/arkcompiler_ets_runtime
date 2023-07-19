@@ -179,11 +179,12 @@ int32_t DebuggerApi::GetVregIndex(const FrameHandler *frameHandler, std::string_
         return -1;
     }
     auto table = extractor->GetLocalVariableTable(method->GetMethodId());
-    auto iter = table.find(name.data());
-    if (iter == table.end()) {
-        return -1;
+    for (auto iter = table.begin(); iter != table.end(); iter++) {
+        if (iter->name == name.data()) {
+            return iter->regNumber;
+        }
     }
-    return iter->second;
+    return -1;
 }
 
 Local<JSValueRef> DebuggerApi::GetVRegValue(const EcmaVM *ecmaVm,
@@ -684,6 +685,7 @@ void DebuggerApi::HandleUncaughtException(const EcmaVM *ecmaVm, std::string &mes
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> exHandle(thread, thread->GetException());
+    thread->ClearException();
     if (exHandle->IsJSError()) {
         JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
         JSHandle<EcmaString> name(JSObject::GetProperty(thread, exHandle, nameKey).GetValue());
@@ -694,7 +696,6 @@ void DebuggerApi::HandleUncaughtException(const EcmaVM *ecmaVm, std::string &mes
         JSHandle<EcmaString> ecmaStr = JSTaggedValue::ToString(thread, exHandle);
         message = ConvertToString(*ecmaStr);
     }
-    thread->ClearException();
 }
 
 Local<FunctionRef> DebuggerApi::GenerateFuncFromBuffer(const EcmaVM *ecmaVm, const void *buffer,

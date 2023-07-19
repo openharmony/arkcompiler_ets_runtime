@@ -27,27 +27,27 @@ function advance(bodies, dt) {
 
   for (let i = 0; i < size; i++) {
     const bodyi = bodies[i];
-      let vxi = bodyi.vx;
-      const xi = bodyi.x;
-      const massi = bodyi.mass;
+    let vxi = bodyi.vx;
+    const xi = bodyi.x;
+    const massi = bodyi.mass;
 
-      for (let j = i + 1; j < size; j++) {
-        const bodyj = bodies[j];
-        const dx = xi - bodyj.x;
+    for (let j = i + 1; j < size; j++) {
+      const bodyj = bodies[j];
+      const dx = xi - bodyj.x;
 
-        const d2 = dx * dx;
-        const mag = dt / (d2 * sqrt(d2));
-        const massiMag = massi * mag;
+      const d2 = dx * dx;
+      const mag = dt / (d2 * sqrt(d2));
+      const massiMag = massi * mag;
 
-        const massj = bodyj.mass;
-        const massjMag = massj * mag;
-        vxi -= dx * massjMag;
+      const massj = bodyj.mass;
+      const massjMag = massj * mag;
+      vxi -= dx * massjMag;
 
-        bodyj.vx += dx * massiMag;
-      }
-      bodyi.vx = vxi;
+      bodyj.vx += dx * massiMag;
+    }
+    bodyi.vx = vxi;
 
-      bodyi.x += dt * vxi;
+    bodyi.x += dt * vxi;
   }
 }
 

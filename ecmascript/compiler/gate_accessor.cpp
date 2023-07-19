@@ -147,6 +147,13 @@ TypedStoreOp GateAccessor::GetTypedStoreOp(GateRef gate) const
     return static_cast<TypedStoreOp>(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
+TypedCallTargetCheckOp GateAccessor::GetTypedCallTargetCheckOp(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetTypedCallTargetCheckMegaData()->GetTypedCallTargetCheckOp();
+}
+
 TypedBinOp GateAccessor::GetTypedBinaryOp(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::TYPED_BINARY_OP);
@@ -191,14 +198,19 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
            GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK ||
            GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::INDEX_CHECK ||
-           GetOpCode(gate) == OpCode::JSCALLTARGET_TYPE_CHECK ||
-           GetOpCode(gate) == OpCode::JSCALLTHISTARGET_TYPE_CHECK ||
-           GetOpCode(gate) == OpCode::JSFASTCALLTARGET_TYPE_CHECK ||
-           GetOpCode(gate) == OpCode::JSFASTCALLTHISTARGET_TYPE_CHECK ||
-           GetOpCode(gate) == OpCode::JSCALLTARGET_FROM_DEFINEFUNC_CHECK);
+           GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();
+}
+
+bool GateAccessor::IsConvertSupport(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CONVERT ||
+           GetOpCode(gate) == OpCode::CHECK_AND_CONVERT);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    ValuePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.IsConvertSupport();
 }
 
 ValueType GateAccessor::GetSrcType(GateRef gate) const
@@ -264,7 +276,33 @@ bool GateAccessor::IsVtable(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::LOAD_PROPERTY);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetBoolMetaData()->getBool();
+    return gatePtr->GetBoolMetaData()->GetBool();
+}
+
+bool GateAccessor::GetNoGCFlag(GateRef gate) const
+{
+    if (gate == Circuit::NullGate()) {
+        return false;
+    }
+    OpCode op = GetOpCode(gate);
+    if (op != OpCode::TYPEDCALL && op != OpCode::TYPEDFASTCALL) {
+        return false;
+    }
+    return TypedCallIsNoGC(gate);
+}
+
+bool GateAccessor::TypedCallIsNoGC(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::TYPEDCALL || GetOpCode(gate) == OpCode::TYPEDFASTCALL);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetTypedCallMetaData()->IsNoGC();
+}
+
+bool GateAccessor::IsNoGC(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CALL_OPTIMIZED || GetOpCode(gate) == OpCode::FAST_CALL_OPTIMIZED);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->GetBoolMetaData()->GetBool();
 }
 
 uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
@@ -276,11 +314,12 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
             return gatePtr->GetJSBytecodeMetaData()->GetPcOffset();
         case OpCode::TYPED_CALL_BUILTIN:
         case OpCode::CONSTRUCT:
-        case OpCode::TYPEDCALL:
-        case OpCode::TYPEDFASTCALL:
         case OpCode::CALL_GETTER:
         case OpCode::CALL_SETTER:
             return static_cast<uint32_t>(gatePtr->GetOneParameterMetaData()->GetValue());
+        case OpCode::TYPEDCALL:
+        case OpCode::TYPEDFASTCALL:
+            return static_cast<uint32_t>(gatePtr->GetTypedCallMetaData()->GetValue()); 
         case OpCode::FRAME_STATE: {
             UInt32PairAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
             return accessor.GetFirstValue();

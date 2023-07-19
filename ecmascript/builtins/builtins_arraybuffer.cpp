@@ -462,9 +462,9 @@ T BuiltinsArrayBuffer::LittleEndianToBigEndian64Bit(T liValue)
 template<typename T, BuiltinsArrayBuffer::NumberSize size>
 JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForInteger(uint8_t *block, uint32_t byteIndex, bool littleEndian)
 {
-    static_assert(std::is_integral_v<T>, "T must be integral");
-    static_assert(sizeof(T) == size, "Invalid number size");
-    static_assert(sizeof(T) >= sizeof(uint16_t), "T must have a size more than uint8");
+    ASSERT_PRINT(std::is_integral_v<T>, "T must be integral");
+    ASSERT_PRINT(sizeof(T) == size, "Invalid number size");
+    ASSERT_PRINT(sizeof(T) >= sizeof(uint16_t), "T must have a size more than uint8");
 
     ASSERT(size >= NumberSize::UINT16 || size <= NumberSize::FLOAT64);
     T res = *reinterpret_cast<T *>(block + byteIndex);
@@ -486,8 +486,8 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForInteger(uint8_t *block, 
 template<typename T, typename UnionType, BuiltinsArrayBuffer::NumberSize size>
 JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForFloat(uint8_t *block, uint32_t byteIndex, bool littleEndian)
 {
-    static_assert(std::is_same_v<T, float> || std::is_same_v<T, double>, "T must be correct type");
-    static_assert(sizeof(T) == size, "Invalid number size");
+    ASSERT_PRINT((std::is_same_v<T, float> || std::is_same_v<T, double>), "T must be correct type");
+    ASSERT_PRINT(sizeof(T) == size, "Invalid number size");
 
     UnionType unionValue = {0};
     // NOLINTNEXTLINE(readability-braces-around-statements)
@@ -517,7 +517,7 @@ template<typename T, BuiltinsArrayBuffer::NumberSize size>
 JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForBigInt(JSThread *thread, uint8_t *block,
                                                                uint32_t byteIndex, bool littleEndian)
 {
-    static_assert(std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>, "T must be uint64_t/int64_t");
+    ASSERT_PRINT((std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>), "T must be uint64_t/int64_t");
     auto pTmp = *reinterpret_cast<uint64_t *>(block + byteIndex);
     if (!littleEndian) {
         pTmp = LittleEndianToBigEndian64Bit(pTmp);
@@ -532,7 +532,7 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForBigInt(JSThread *thread,
 template<typename T>
 void BuiltinsArrayBuffer::SetValueInBufferForByte(double val, uint8_t *block, uint32_t byteIndex)
 {
-    static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, int8_t>, "T must be int8/uint8");
+    ASSERT_PRINT((std::is_same_v<T, uint8_t> || std::is_same_v<T, int8_t>), "T must be int8/uint8");
     T res;
     if (std::isnan(val) || std::isinf(val)) {
         res = 0;
@@ -563,8 +563,8 @@ void BuiltinsArrayBuffer::SetValueInBufferForUint8Clamped(double val, uint8_t *b
 template<typename T>
 void BuiltinsArrayBuffer::SetValueInBufferForInteger(double val, uint8_t *block, uint32_t byteIndex, bool littleEndian)
 {
-    static_assert(std::is_integral_v<T>, "T must be integral");
-    static_assert(sizeof(T) >= sizeof(uint16_t), "T must have a size more than uint8");
+    ASSERT_PRINT(std::is_integral_v<T>, "T must be integral");
+    ASSERT_PRINT(sizeof(T) >= sizeof(uint16_t), "T must have a size more than uint8");
     T res;
     if (std::isnan(val) || std::isinf(val)) {
         res = 0;
@@ -591,7 +591,7 @@ void BuiltinsArrayBuffer::SetValueInBufferForInteger(double val, uint8_t *block,
 template<typename T>
 void BuiltinsArrayBuffer::SetValueInBufferForFloat(double val, uint8_t *block, uint32_t byteIndex, bool littleEndian)
 {
-    static_assert(std::is_same_v<T, float> || std::is_same_v<T, double>, "T must be float type");
+    ASSERT_PRINT((std::is_same_v<T, float> || std::is_same_v<T, double>), "T must be float type");
     auto data = static_cast<T>(val);
     if (std::isnan(val)) {
         SetTypeData(block, data, byteIndex);
@@ -615,7 +615,7 @@ void BuiltinsArrayBuffer::SetValueInBufferForBigInt(JSThread *thread,
                                                     JSHandle<JSTaggedValue> &arrBuf,
                                                     uint32_t byteIndex, bool littleEndian)
 {
-    static_assert(std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>, "T must be int64_t/uint64_t");
+    ASSERT_PRINT((std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>), "T must be int64_t/uint64_t");
     T value = 0;
     bool lossless = true;
     if constexpr(std::is_same_v<T, uint64_t>) {
@@ -637,7 +637,7 @@ void BuiltinsArrayBuffer::SetValueInBufferForBigInt(JSThread *thread,
                                                     double val, uint8_t *block,
                                                     uint32_t byteIndex, bool littleEndian)
 {
-    static_assert(std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>, "T must be int64_t/uint64_t");
+    ASSERT_PRINT((std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>), "T must be int64_t/uint64_t");
     T value = 0;
     bool lossless = true;
 
@@ -712,14 +712,15 @@ void *BuiltinsArrayBuffer::GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t
 {
     if (arrBuf.IsByteArray()) {
         return reinterpret_cast<void *>(ToUintPtr(ByteArray::Cast(arrBuf.GetTaggedObject())->GetData()) + byteOffset);
-    } else {
-        JSArrayBuffer *arrayBuffer = JSArrayBuffer::Cast(arrBuf.GetTaggedObject());
-        if (arrayBuffer->GetArrayBufferByteLength() == 0) {
-            return nullptr;
-        }
-        JSTaggedValue data = arrayBuffer->GetArrayBufferData();
-        return reinterpret_cast<void *>(ToUintPtr(JSNativePointer::Cast(data.GetTaggedObject())
-                                                  ->GetExternalPointer()) + byteOffset);
     }
+
+    JSArrayBuffer *arrayBuffer = JSArrayBuffer::Cast(arrBuf.GetTaggedObject());
+    if (arrayBuffer->GetArrayBufferByteLength() == 0) {
+        return nullptr;
+    }
+
+    JSTaggedValue data = arrayBuffer->GetArrayBufferData();
+    return reinterpret_cast<void *>(ToUintPtr(JSNativePointer::Cast(data.GetTaggedObject())
+                                    ->GetExternalPointer()) + byteOffset);
 }
 }  // namespace panda::ecmascript::builtins

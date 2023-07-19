@@ -210,3 +210,80 @@ try {
 } catch (e) {
     print(e)
 }
+
+class Info {
+    isHit: boolean = false;
+    hitCount: int = 0;
+    distance: number;
+
+    constructor() {
+        this.distance = 0;
+    }
+
+    toString() :string {
+        return 'Intersection [' + this.distance + ']';
+    }
+}
+
+class Shape {
+    intersect(ray: number) : Info {
+        return undefined;
+    }
+    func1(a:any,...A:any) : void {
+        for (let p in A) {
+            print(A[p]);
+        }
+    }
+}
+
+class Scene {
+    shapes : Shape[];
+    constructor() {
+        this.shapes = new Array();
+    }
+}
+
+class Sphere extends Shape {
+    radius: number;
+
+    constructor(radius: number) {
+        super();
+        this.radius = radius;
+    }
+
+    intersect(ray: number) : Info {
+        var info = new Info();
+        print("intersect");
+        return info;
+    }
+
+    func1() : void {
+        print("func1")
+    }
+}
+
+function testIntersection(scene: Scene): number {
+    var hits = 0;
+    for(var i= 0; i<scene.shapes.length; i++){
+        var shape = scene.shapes[i];
+        var info = shape.intersect(hits);
+        shape.func1(hits);
+    }
+    return hits;
+}
+
+function renderScene(){
+    var scene = new Scene();
+
+    var sphere = new Sphere(3);
+
+    var sphere1 = new Sphere(4);
+
+    scene.shapes.push(sphere);
+    scene.shapes.push(sphere1);
+
+    testIntersection(scene);
+}
+renderScene();
+let sh = new Shape();
+sh.func1(1, 2);

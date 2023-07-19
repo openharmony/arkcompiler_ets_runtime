@@ -244,6 +244,7 @@ public:
     ~CircuitBuilder() = default;
     NO_MOVE_SEMANTIC(CircuitBuilder);
     NO_COPY_SEMANTIC(CircuitBuilder);
+    static constexpr uint32_t GATE_TWO_VALUESIN = 2;
     // low level interface
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
     GateRef StableArrayCheck(GateRef gate);
@@ -256,10 +257,12 @@ public:
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, GateRef param, const char* comment = nullptr);
     GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate);
+    template<TypedCallTargetCheckOp Op>
     GateRef JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate);
-    GateRef JSFastCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate);
+    template<TypedCallTargetCheckOp Op>
     GateRef JSCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate);
-    GateRef JSFastCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate);
+    template<TypedCallTargetCheckOp Op>
+    inline GateRef JSNoGCCallThisTargetTypeCheck(GateType type, GateRef func, GateRef methodId, GateRef gate);
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args);
     inline GateRef TypedCallBuiltin(GateRef hirGate, GateRef x, BuiltinsStubCSigns::ID id);
@@ -277,6 +280,7 @@ public:
     GateRef NegativeIndexCheck(GateRef index);
     GateRef LargeIndexCheck(GateRef index, GateRef length);
     GateRef OverflowCheck(GateRef value);
+    GateRef LexVarIsHoleCheck(GateRef value);
     GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);
     GateRef Int32DivWithCheck(GateRef left, GateRef right);
     MachineType GetMachineTypeOfValueType(ValueType type);
@@ -293,7 +297,10 @@ public:
     GateRef ConvertFloat64ToTaggedDouble(GateRef gate);
     GateRef ConvertFloat64ToInt32(GateRef gate);
     GateRef ConvertInt32ToFloat64(GateRef gate);
-    GateRef CheckAndConvert(GateRef gate, ValueType src, ValueType dst);
+    GateRef ConvertBoolToInt32(GateRef gate, ConvertSupport support);
+    GateRef ConvertBoolToFloat64(GateRef gate, ConvertSupport support);
+    GateRef CheckAndConvert(
+        GateRef gate, ValueType src, ValueType dst, ConvertSupport support = ConvertSupport::ENABLE);
     GateRef ConvertHoleAsUndefined(GateRef receiver);
     GateRef CheckTaggedIntAndConvertToInt32(GateRef gate);
     GateRef CheckTaggedDoubleAndConvertToInt32(GateRef gate);
@@ -470,6 +477,8 @@ public:
     inline GateRef ToTaggedIntPtr(GateRef x);
     inline GateRef DoubleToTaggedDoublePtr(GateRef x);
     inline GateRef BooleanToTaggedBooleanPtr(GateRef x);
+    inline GateRef BooleanToInt32(GateRef x);
+    inline GateRef BooleanToFloat64(GateRef x);
     inline GateRef Float32ToTaggedDoublePtr(GateRef x);
     inline GateRef TaggedDoublePtrToFloat32(GateRef x);
     inline GateRef TaggedIntPtrToFloat32(GateRef x);
@@ -491,6 +500,8 @@ public:
     inline GateRef IntPtrGreaterThan(GateRef x, GateRef y);
     template<OpCode Op, MachineType Type>
     inline GateRef BinaryOp(GateRef x, GateRef y);
+    template<OpCode Op, MachineType Type>
+    inline GateRef BinaryOpWithOverflow(GateRef x, GateRef y);
     inline GateRef GetLengthFromTaggedArray(GateRef array);
     inline GateRef GetValueFromTaggedArray(GateRef array, GateRef index);
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
@@ -522,8 +533,8 @@ public:
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
     GateRef LoadArrayLength(GateRef array);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
-    GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args);
-    GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args);
+    GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
+    GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     GateRef CallGetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult, const char* comment = nullptr);
     GateRef CallSetter(GateRef hirGate, GateRef receiver, GateRef propertyLookupResult,
                        GateRef value, const char* comment = nullptr);
@@ -538,6 +549,7 @@ public:
     inline GateRef LoadHClass(GateRef object);
     inline GateRef IsJSFunction(GateRef obj);
     inline GateRef IsJSFunctionWithBit(GateRef obj);
+    inline GateRef IsOptimizedAndNotFastCall(GateRef obj);
     inline GateRef IsOptimized(GateRef obj);
     inline GateRef IsOptimizedWithBitField(GateRef bitfield);
     inline GateRef CanFastCall(GateRef obj);
@@ -641,6 +653,8 @@ public:
     GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     GateRef IsBase(GateRef ctor);
     inline GateRef GetMethodId(GateRef func);
+    inline GateRef LoadFromTaggedArray(GateRef array, size_t index);
+    inline GateRef StoreToTaggedArray(GateRef array, size_t index, GateRef value);
 
 private:
 #define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                            \

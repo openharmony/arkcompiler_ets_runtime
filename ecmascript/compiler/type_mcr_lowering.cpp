@@ -65,20 +65,8 @@ void TypeMCRLowering::LowerType(GateRef gate)
         case OpCode::INDEX_CHECK:
             LowerIndexCheck(gate);
             break;
-        case OpCode::JSCALLTARGET_FROM_DEFINEFUNC_CHECK:
-            LowerJSCallTargetFromDefineFuncCheck(gate);
-            break;
-        case OpCode::JSCALLTARGET_TYPE_CHECK:
-            LowerJSCallTargetTypeCheck(gate);
-            break;
-        case OpCode::JSFASTCALLTARGET_TYPE_CHECK:
-            LowerJSFastCallTargetTypeCheck(gate);
-            break;
-        case OpCode::JSCALLTHISTARGET_TYPE_CHECK:
-            LowerJSCallThisTargetTypeCheck(gate);
-            break;
-        case OpCode::JSFASTCALLTHISTARGET_TYPE_CHECK:
-            LowerJSFastCallThisTargetTypeCheck(gate);
+        case OpCode::TYPED_CALLTARGETCHECK_OP:
+            LowerJSCallTargetCheck(gate);
             break;
         case OpCode::TYPED_CALL_CHECK:
             LowerCallTargetCheck(gate);
@@ -125,6 +113,44 @@ void TypeMCRLowering::LowerType(GateRef gate)
             break;
         default:
             break;
+    }
+}
+
+void TypeMCRLowering::LowerJSCallTargetCheck(GateRef gate)
+{
+    TypedCallTargetCheckOp Op = acc_.GetTypedCallTargetCheckOp(gate);
+    switch (Op) {
+        case TypedCallTargetCheckOp::JSCALL_IMMEDIATE_AFTER_FUNC_DEF: {
+            LowerJSCallTargetFromDefineFuncCheck(gate);
+            break;
+        }
+        case TypedCallTargetCheckOp::JSCALL: {
+            LowerJSCallTargetTypeCheck(gate);
+            break;
+        }
+        case TypedCallTargetCheckOp::JSCALL_FAST: {
+            LowerJSFastCallTargetTypeCheck(gate);
+            break;
+        }
+        case TypedCallTargetCheckOp::JSCALLTHIS: {
+            LowerJSCallThisTargetTypeCheck(gate);
+            break;
+        }
+        case TypedCallTargetCheckOp::JSCALLTHIS_FAST: {
+            LowerJSFastCallThisTargetTypeCheck(gate);
+            break;
+        }
+        case TypedCallTargetCheckOp::JSCALLTHIS_NOGC: {
+            LowerJSNoGCCallThisTargetTypeCheck(gate);
+            break;
+        }
+        case TypedCallTargetCheckOp::JSCALLTHIS_FAST_NOGC: {
+            LowerJSNoGCFastCallThisTargetTypeCheck(gate);
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
     }
 }
 
@@ -442,7 +468,7 @@ void TypeMCRLowering::LowerPrimitiveToNumber(GateRef dst, GateRef src, GateType 
 GateRef TypeMCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index)
 {
     GateRef constPool = builder_.GetConstPool(jsFunc);
-    return LoadFromTaggedArray(constPool, index);
+    return builder_.LoadFromTaggedArray(constPool, index);
 }
 
 GateRef TypeMCRLowering::GetObjectFromConstPool(GateRef jsFunc, GateRef index)
@@ -947,8 +973,28 @@ void TypeMCRLowering::LowerJSCallThisTargetTypeCheck(GateRef gate)
         GateRef frameState = GetFrameState(gate);
         auto func = acc_.GetValueIn(gate, 0);
         GateRef isObj = builder_.TaggedIsHeapObject(func);
-        GateRef isOptimized = builder_.IsOptimized(func);
+        GateRef isOptimized = builder_.IsOptimizedAndNotFastCall(func);
         GateRef check = builder_.BoolAnd(isObj, isOptimized);
+        builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+    } else {
+        LOG_COMPILER(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+}
+
+void TypeMCRLowering::LowerJSNoGCCallThisTargetTypeCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    auto type = acc_.GetParamGateType(gate);
+    if (tsManager_->IsFunctionTypeKind(type)) {
+        GateRef frameState = GetFrameState(gate);
+        auto func = acc_.GetValueIn(gate, 0);
+        GateRef isObj = builder_.TaggedIsHeapObject(func);
+        GateRef isOptimized = builder_.IsOptimizedAndNotFastCall(func);
+        GateRef methodId = builder_.GetMethodId(func);
+        GateRef checkOptimized = builder_.BoolAnd(isObj, isOptimized);
+        GateRef check = builder_.BoolAnd(checkOptimized, builder_.Equal(methodId, acc_.GetValueIn(gate, 1)));
         builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
     } else {
@@ -967,6 +1013,26 @@ void TypeMCRLowering::LowerJSFastCallThisTargetTypeCheck(GateRef gate)
         GateRef isObj = builder_.TaggedIsHeapObject(func);
         GateRef canFastCall = builder_.CanFastCall(func);
         GateRef check = builder_.BoolAnd(isObj, canFastCall);
+        builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+    } else {
+        LOG_COMPILER(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
+}
+
+void TypeMCRLowering::LowerJSNoGCFastCallThisTargetTypeCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    auto type = acc_.GetParamGateType(gate);
+    if (tsManager_->IsFunctionTypeKind(type)) {
+        GateRef frameState = GetFrameState(gate);
+        auto func = acc_.GetValueIn(gate, 0);
+        GateRef isObj = builder_.TaggedIsHeapObject(func);
+        GateRef canFastCall = builder_.CanFastCall(func);
+        GateRef methodId = builder_.GetMethodId(func);
+        GateRef checkOptimized = builder_.BoolAnd(isObj, canFastCall);
+        GateRef check = builder_.BoolAnd(checkOptimized, builder_.Equal(methodId, acc_.GetValueIn(gate, 1)));
         builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
     } else {
@@ -1072,12 +1138,6 @@ void TypeMCRLowering::LowerGetSuperConstructor(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), superCtor);
 }
 
-GateRef TypeMCRLowering::LoadFromTaggedArray(GateRef array, size_t index)
-{
-    auto dataOffset = TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize();
-    return builder_.LoadConstOffset(VariableType::JS_ANY(), array, dataOffset);
-}
-
 GateRef TypeMCRLowering::LoadFromVTable(GateRef receiver, size_t index)
 {
     GateRef hclass = builder_.LoadConstOffset(
@@ -1085,8 +1145,8 @@ GateRef TypeMCRLowering::LoadFromVTable(GateRef receiver, size_t index)
     GateRef vtable = builder_.LoadConstOffset(VariableType::JS_ANY(),
         hclass, JSHClass::VTABLE_OFFSET);
 
-    GateRef itemOwner = LoadFromTaggedArray(vtable, VTable::TupleItem::OWNER + index);
-    GateRef itemOffset = LoadFromTaggedArray(vtable, VTable::TupleItem::OFFSET + index);
+    GateRef itemOwner = builder_.LoadFromTaggedArray(vtable, VTable::TupleItem::OWNER + index);
+    GateRef itemOffset = builder_.LoadFromTaggedArray(vtable, VTable::TupleItem::OFFSET + index);
     return builder_.Load(VariableType::JS_ANY(), itemOwner, builder_.TaggedGetInt(itemOffset));
 }
 
@@ -1113,7 +1173,7 @@ GateRef TypeMCRLowering::GetLengthFromSupers(GateRef supers)
 
 GateRef TypeMCRLowering::GetValueFromSupers(GateRef supers, size_t index)
 {
-    GateRef val = LoadFromTaggedArray(supers, index);
+    GateRef val = builder_.LoadFromTaggedArray(supers, index);
     return builder_.LoadObjectFromWeakRef(val);
 }
 

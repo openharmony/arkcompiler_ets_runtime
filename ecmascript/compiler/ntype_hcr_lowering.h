@@ -45,6 +45,9 @@ private:
     void LowerTypedCreateEmptyArray(GateRef gate);
     void LowerTypedStownByIndex(GateRef gate);
     void LowerTypedStOwnByName(GateRef gate);
+    void LowerLdLexVar(GateRef gate);
+    void LowerStLexVar(GateRef gate);
+    void LowerThrowUndefinedIfHoleWithName(GateRef gate);
 
     bool IsLogEnabled() const
     {

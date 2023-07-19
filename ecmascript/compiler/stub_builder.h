@@ -554,6 +554,8 @@ public:
     GateRef GetPropertiesFromJSObject(GateRef object);
     template<OpCode Op, MachineType Type>
     GateRef BinaryOp(GateRef x, GateRef y);
+    template<OpCode Op, MachineType Type>
+    GateRef BinaryOpWithOverflow(GateRef x, GateRef y);
     GateRef GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key);
 
     inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
