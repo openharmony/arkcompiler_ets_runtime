@@ -179,11 +179,12 @@ int32_t DebuggerApi::GetVregIndex(const FrameHandler *frameHandler, std::string_
         return -1;
     }
     auto table = extractor->GetLocalVariableTable(method->GetMethodId());
-    auto iter = table.find(name.data());
-    if (iter == table.end()) {
-        return -1;
+    for (auto iter = table.begin(); iter != table.end(); iter++) {
+        if (iter->name == name.data()) {
+            return iter->regNumber;
+        }
     }
-    return iter->second;
+    return -1;
 }
 
 Local<JSValueRef> DebuggerApi::GetVRegValue(const EcmaVM *ecmaVm,
