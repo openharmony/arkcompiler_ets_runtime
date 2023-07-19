@@ -326,7 +326,6 @@ void NumberSpeculativeLowering::VisitNumberDiv(GateRef gate)
         result = builder_.Int32DivWithCheck(left, right);
         acc_.SetMachineType(gate, MachineType::I32);
     } else {
-        builder_.Float64CheckRightIsZero(right);
         result = builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, left, right);
         acc_.SetMachineType(gate, MachineType::F64);
     }
