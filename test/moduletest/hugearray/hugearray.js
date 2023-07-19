@@ -39,3 +39,10 @@ do {
     }
 } while (t++ < 18000)
 print(t);
+
+let bytes = new Uint8Array(new ArrayBuffer(43584));
+let arr2 = [].slice.call(bytes);
+while (arr2.length) {
+    arr2.pop();
+}
+print(arr2.length);
