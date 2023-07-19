@@ -195,7 +195,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(StObjByIndex)                       \
     V(StOwnByIndex)                       \
     V(CreateClassWithBuffer)              \
-    V(CreateClassWithIHClass)             \
     V(SetClassConstructorLength)          \
     V(LoadICByName)                       \
     V(StoreICByName)                      \
@@ -474,14 +473,6 @@ private:
                                                              const JSHandle<JSTaggedValue> &constpool,
                                                              uint16_t methodId, uint16_t literalId,
                                                              const JSHandle<JSTaggedValue> &module);
-    static inline JSTaggedValue RuntimeCreateClassWithIHClass(JSThread *thread,
-                                                              const JSHandle<JSTaggedValue> &base,
-                                                              const JSHandle<JSTaggedValue> &lexenv,
-                                                              const JSHandle<JSTaggedValue> &constpool,
-                                                              const uint16_t methodId, uint16_t literalId,
-                                                              const JSHandle<JSHClass> &ihclass,
-                                                              const JSHandle<JSTaggedValue> &constructorHClass,
-                                                              const JSHandle<JSTaggedValue> &module);
     static inline JSTaggedValue RuntimeSetClassInheritanceRelationship(JSThread *thread,
                                                                        const JSHandle<JSTaggedValue> &ctor,
                                                                        const JSHandle<JSTaggedValue> &base);

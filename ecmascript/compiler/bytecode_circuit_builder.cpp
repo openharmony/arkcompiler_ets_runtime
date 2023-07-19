@@ -1420,9 +1420,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
             }
 
             auto type = typeRecorder_.GetType(bcIndex);
-            if (HasValidType(type)) {
-                gateAcc_.SetGateType(gate, type);
-            }
+            gateAcc_.SetGateType(gate, type);
             auto pgoType = typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(gate), type);
             gateAcc_.TrySetPGOType(gate, pgoType);
 

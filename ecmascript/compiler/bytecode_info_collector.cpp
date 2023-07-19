@@ -251,7 +251,7 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
             canFastCall = false;
         }
         CollectModuleInfoFromBC(bcIns, method, recordName);
-        CollectConstantPoolIndexInfoFromBC(bcIns, method);
+        CollectConstantPoolIndexInfoFromBC(bcIns, method, bcIndex);
         pgoBCInfo_.Record(bcIns, bcIndex, recordName, method);
         if (noGC && !bytecodes_.GetBytecodeMetaData(curPc).IsNoGC()) {
             noGC = false;
@@ -709,7 +709,7 @@ void BytecodeInfoCollector::RearrangeInnerMethods()
 }
 
 void BytecodeInfoCollector::CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns,
-                                                               const MethodLiteral *method)
+                                                               const MethodLiteral *method, uint32_t bcIndex)
 {
     BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
     uint32_t methodOffset = method->GetMethodId().GetOffset();
@@ -743,7 +743,7 @@ void BytecodeInfoCollector::CollectConstantPoolIndexInfoFromBC(const BytecodeIns
         case BytecodeInstruction::Opcode::STGLOBALVAR_IMM16_ID16:
         case BytecodeInstruction::Opcode::LDBIGINT_ID16: {
             auto index = bcIns.GetId().AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::STRING, index, methodOffset);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::STRING, index, methodOffset, bcIndex);
             break;
         }
         case BytecodeInstruction::Opcode::DEFINEFUNC_IMM8_ID16_IMM8:
@@ -751,33 +751,35 @@ void BytecodeInfoCollector::CollectConstantPoolIndexInfoFromBC(const BytecodeIns
         case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM8_ID16_IMM8:
         case BytecodeInstruction::Opcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
             auto index = bcIns.GetId().AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::METHOD, index, methodOffset);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::METHOD, index, methodOffset, bcIndex);
             break;
         }
         case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
         case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
             auto index = bcIns.GetId().AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::OBJECT_LITERAL, index, methodOffset);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::OBJECT_LITERAL, index, methodOffset, bcIndex);
             break;
         }
         case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
         case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM16_ID16: {
             auto index = bcIns.GetId().AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::ARRAY_LITERAL, index, methodOffset);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::ARRAY_LITERAL, index, methodOffset, bcIndex);
             break;
         }
         case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8: {
             auto methodIndex = (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 0>()).AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::METHOD, methodIndex, methodOffset);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::METHOD, methodIndex, methodOffset, bcIndex);
             auto literalIndex = (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 1>()).AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::CLASS_LITERAL, literalIndex, methodOffset);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::CLASS_LITERAL, literalIndex,
+                                         methodOffset, bcIndex);
             break;
         }
         case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8: {
             auto methodIndex = (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 0>()).AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::METHOD, methodIndex, methodOffset);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::METHOD, methodIndex, methodOffset, bcIndex);
             auto literalIndex = (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 1>()).AsRawValue();
-            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::CLASS_LITERAL, literalIndex, methodOffset);
+            AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType::CLASS_LITERAL, literalIndex,
+                                         methodOffset, bcIndex);
             break;
         }
         default:
@@ -826,12 +828,12 @@ uint32_t LexEnvManager::GetTargetLexEnv(uint32_t methodId, uint32_t level) const
     return offset;
 }
 
-void ConstantPoolInfo::AddIndexToCPItem(ItemType type, uint32_t index, uint32_t methodOffset)
+void ConstantPoolInfo::AddIndexToCPItem(ItemType type, uint32_t index, uint32_t methodOffset, uint32_t bcIndex)
 {
     Item &item = GetCPItem(type);
     if (item.find(index) != item.end()) {
         return;
     }
-    item.insert({index, ItemData {index, methodOffset, nullptr}});
+    item.insert({index, ItemData {index, methodOffset, nullptr, bcIndex}});
 }
 }  // namespace panda::ecmascript::kungfu

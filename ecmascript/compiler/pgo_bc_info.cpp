@@ -20,9 +20,10 @@ void PGOBCInfo::Info::Record(const InfoDetail &detail)
 {
     auto it = methodOffsetToValVec_.find(detail.methodOffset);
     if (it == methodOffsetToValVec_.end()) {
-        methodOffsetToValVec_[detail.methodOffset] = ValVec { Val { detail.bcIndex, detail.cpIndex} };
+        methodOffsetToValVec_[detail.methodOffset] =
+            ValVec { Val { detail.bcIndex, detail.bcOffset, detail.cpIndex} };
     } else {
-        it->second.emplace_back(Val{ detail.bcIndex, detail.cpIndex });
+        it->second.emplace_back(Val{ detail.bcIndex, detail.bcOffset, detail.cpIndex });
     }
     recordNameToValCount_[detail.recordName]++;
 }
@@ -59,15 +60,16 @@ void PGOBCInfo::Record(const InfoDetail &detail, Type type)
 }
 
 void PGOBCInfo::Record(const BytecodeInstruction &bcIns, int32_t bcIndex,
-    const CString &recordName, const MethodLiteral *method)
+                       const CString &recordName, const MethodLiteral *method)
 {
     BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
     uint32_t methodOffset = method->GetMethodId().GetOffset();
+    uint32_t bcOffset = bcIns.GetAddress() - method->GetBytecodeArray();
     switch (opcode) {
         case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
         case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
             auto cpIndex = bcIns.GetId().AsRawValue();
-            Record(InfoDetail {recordName, methodOffset, bcIndex, cpIndex}, Type::OBJ_LITERAL);
+            Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, cpIndex}, Type::OBJ_LITERAL);
             break;
         }
         default:

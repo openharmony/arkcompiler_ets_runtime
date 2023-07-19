@@ -747,8 +747,9 @@ bool TSManager::IsBuiltinInstanceType(BuiltinTypeId id, kungfu::GateType gateTyp
 
     const JSPandaFile *builtinPandaFile = GetBuiltinPandaFile();
     uint32_t typeOffset = GetBuiltinOffset(static_cast<uint32_t>(id));
-    if (HasCreatedGT(builtinPandaFile, typeOffset)) {
-        auto gt = GetGTFromOffset(builtinPandaFile, typeOffset);
+    GlobalTypeID gId(builtinPandaFile, typeOffset);
+    if (HasCreatedGT(gId)) {
+        auto gt = GetGTByGlobalTypeID(gId);
         return (gt == classGT);
     }
     return false;
@@ -764,8 +765,9 @@ bool TSManager::IsTypedArrayType(kungfu::GateType gateType) const
     if (IsBuiltinsDTSEnabled()) {
         for (uint32_t i = static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_FIRST);
              i <= static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_LAST); i++) {
-            bool hasCreatedGT = HasCreatedGT(GetBuiltinPandaFile(), GetBuiltinOffset(i));
-            if (hasCreatedGT && (GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(i)) == classGT)) {
+            GlobalTypeID gId(GetBuiltinPandaFile(), GetBuiltinOffset(i));
+            bool hasCreatedGT = HasCreatedGT(gId);
+            if (hasCreatedGT && (GetGTByGlobalTypeID(gId) == classGT)) {
                 return true;
             }
         }
@@ -804,8 +806,9 @@ BuiltinTypeId TSManager::GetTypedArrayBuiltinId(kungfu::GateType gateType) const
             i <= static_cast<uint32_t>(BuiltinTypeId::TYPED_ARRAY_LAST); i++) {
         if (IsBuiltinsDTSEnabled()) {
             const auto offset = GetBuiltinOffset(i);
-            if ((HasCreatedGT(pandaFile, offset)) &&
-               (GetGTFromOffset(pandaFile, offset) == classGT)) {
+            GlobalTypeID gId(pandaFile, offset);
+            if ((HasCreatedGT(gId)) &&
+               (GetGTByGlobalTypeID(gId) == classGT)) {
                 return static_cast<BuiltinTypeId>(i);
             }
         }
@@ -983,8 +986,9 @@ uint32_t TSManager::GetBuiltinIndex(GlobalTSTypeRef builtinGT) const
     if (IsBuiltinsDTSEnabled()) {
         for (uint32_t idx = static_cast<uint32_t>(BuiltinTypeId::FUNCTION);
             idx <= static_cast<uint32_t>(BuiltinTypeId::INTL); idx++) {
-            if ((HasCreatedGT(GetBuiltinPandaFile(), GetBuiltinOffset(idx))) &&
-               (GetGTFromOffset(GetBuiltinPandaFile(), GetBuiltinOffset(idx)) == builtinGT)) {
+            GlobalTypeID gId(GetBuiltinPandaFile(), GetBuiltinOffset(idx));
+            if ((HasCreatedGT(gId)) &&
+               (GetGTByGlobalTypeID(gId) == builtinGT)) {
                    return idx;
                }
         }
@@ -1129,14 +1133,14 @@ JSHandle<ConstantPool> TSManager::GetSnapshotConstantPool(uint32_t cpListIndex)
     return JSHandle<ConstantPool>(thread_, snapshotCPList->Get(cpListIndex));
 }
 
-void TSManager::ProcessSnapshotConstantPool(kungfu::BytecodeInfoCollector *bcInfoCollector)
+void TSManager::ProcessSnapshotConstantPool(kungfu::BytecodeInfoCollector *bcInfoCollector, bool optStaticMethods)
 {
     const CMap<int32_t, JSTaggedValue> &oldCPValues = vm_->GetJSThread()->GetCurrentEcmaContext()->FindConstpools(
         bcInfoCollector->GetJSPandaFile()).value();
     std::map<int32_t, uint32_t> cpListIndexMap;
 
     GenerateSnapshotConstantPoolList(cpListIndexMap, oldCPValues);
-    FillSnapshotConstantPoolList(cpListIndexMap, bcInfoCollector);
+    FillSnapshotConstantPoolList(cpListIndexMap, bcInfoCollector, optStaticMethods);
     AddHClassToSnapshotConstantPoolList(cpListIndexMap, bcInfoCollector);
 }
 
@@ -1169,8 +1173,27 @@ void TSManager::GenerateSnapshotConstantPoolList(std::map<int32_t, uint32_t> &cp
     }
 }
 
+void TSManager::TryGetIhcAndChc(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> &ihc, JSHandle<JSTaggedValue> &chc,
+                                bool optStaticMethods)
+{
+    if (gt.IsDefault()) {
+        return;
+    }
+    auto ihcIt = gtIhcMap_.find(gt);
+    if (ihcIt != gtIhcMap_.end()) {
+        IHClassData ihcData = ihcIt->second;
+        ihc = JSHandle<JSTaggedValue>(thread_, JSTaggedValue(ihcData.GetIHC()));
+    }
+    auto chcIt = gtConstructorhcMap_.find(gt);
+    if (chcIt != gtConstructorhcMap_.end() && optStaticMethods) {
+        IHClassData chcData = chcIt->second;
+        chc = JSHandle<JSTaggedValue>(thread_, JSTaggedValue(chcData.GetIHC()));
+    }
+}
+
 void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
-                                             kungfu::BytecodeInfoCollector *bcInfoCollector)
+                                             kungfu::BytecodeInfoCollector *bcInfoCollector,
+                                             bool optStaticMethods)
 {
     const JSPandaFile *jsPandaFile = bcInfoCollector->GetJSPandaFile();
 
@@ -1204,7 +1227,8 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
     });
 
     bcInfoCollector->IterateConstantPoolInfo(kungfu::ConstantPoolInfo::ItemType::CLASS_LITERAL,
-        [this, jsPandaFile, &cpListIndexMap, bcInfoCollector] (const kungfu::ConstantPoolInfo::ItemData &data) {
+        [this, jsPandaFile, &cpListIndexMap, bcInfoCollector, optStaticMethods]
+        (const kungfu::ConstantPoolInfo::ItemData &data) {
         int32_t oldCPID = GetOldConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
         JSHandle<ConstantPool> oldCP(thread_,
             vm_->GetJSThread()->GetCurrentEcmaContext()->FindConstpool(jsPandaFile, oldCPID));
@@ -1215,8 +1239,12 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
 
         uint32_t cpListIndex = cpListIndexMap.at(oldCPID);
         JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
-        JSHandle<JSTaggedValue> ihclass = thread_->GlobalConstants()->GetHandledUndefined();
-        CollectLiteralInfo(arrayHandle, data.index, newCP, bcInfoCollector, ihclass);
+        JSHandle<JSTaggedValue> ihc = thread_->GlobalConstants()->GetHandledUndefined();
+        JSHandle<JSTaggedValue> chc = thread_->GlobalConstants()->GetHandledUndefined();
+        TypeLocation loc(jsPandaFile, data.outerMethodOffset, data.bcIndex);
+        GlobalTSTypeRef gt = GetLiteralGT(loc);
+        TryGetIhcAndChc(gt, ihc, chc, optStaticMethods);
+        CollectLiteralInfo(arrayHandle, data.index, newCP, bcInfoCollector, ihc, chc);
         snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::LITERAL,
                                                std::make_pair(cpListIndex, data.index));
     });
@@ -1235,13 +1263,12 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
 
         uint32_t cpListIndex = cpListIndexMap.at(oldCPID);
         JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
-        JSHandle<JSTaggedValue> ihclass = thread_->GlobalConstants()->GetHandledUndefined();
-        if (HasPGOGT(data.outerMethodOffset, data.index)) {
-            GlobalTSTypeRef gt = GetPGOGT(data.outerMethodOffset, data.index);
-            IHClassData ihcData = gtIhcMap_.at(gt);
-            ihclass = JSHandle<JSTaggedValue>(thread_, JSTaggedValue(ihcData.GetIHC()));
-        }
-        CollectLiteralInfo(properties, data.index, newCP, bcInfoCollector, ihclass);
+        JSHandle<JSTaggedValue> ihc = thread_->GlobalConstants()->GetHandledUndefined();
+        JSHandle<JSTaggedValue> chc = thread_->GlobalConstants()->GetHandledUndefined();
+        TypeLocation loc(jsPandaFile, data.outerMethodOffset, data.bcIndex);
+        GlobalTSTypeRef gt = GetLiteralGT(loc);
+        TryGetIhcAndChc(gt, ihc, chc);
+        CollectLiteralInfo(properties, data.index, newCP, bcInfoCollector, ihc, chc);
         snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::LITERAL,
                                                std::make_pair(cpListIndex, data.index));
     });
@@ -1258,8 +1285,9 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
 
         uint32_t cpListIndex = cpListIndexMap.at(oldCPID);
         JSHandle<ConstantPool> newCP = GetSnapshotConstantPool(cpListIndex);
-        JSHandle<JSTaggedValue> ihclass = thread_->GlobalConstants()->GetHandledUndefined();
-        CollectLiteralInfo(literal, data.index, newCP, bcInfoCollector, ihclass);
+        JSHandle<JSTaggedValue> ihc = thread_->GlobalConstants()->GetHandledUndefined();
+        JSHandle<JSTaggedValue> chc = thread_->GlobalConstants()->GetHandledUndefined();
+        CollectLiteralInfo(literal, data.index, newCP, bcInfoCollector, ihc, chc);
         snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::LITERAL,
                                                std::make_pair(cpListIndex, data.index));
     });
@@ -1290,7 +1318,7 @@ void TSManager::AddHClassToSnapshotConstantPoolList(const std::map<int32_t, uint
 void TSManager::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
                                    JSHandle<ConstantPool> snapshotConstantPool,
                                    kungfu::BytecodeInfoCollector *bcInfoCollector,
-                                   JSHandle<JSTaggedValue> ihclass)
+                                   JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc)
 {
     JSMutableHandle<JSTaggedValue> valueHandle(thread_, JSTaggedValue::Undefined());
     uint32_t len = array->GetLength();
@@ -1314,8 +1342,12 @@ void TSManager::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constan
         aotLiteralInfo->SetObjectToCache(thread_, i, JSTaggedValue(methodOffset));
     }
 
-    if (!ihclass->IsUndefined()) {
-        aotLiteralInfo->SetIhc(ihclass.GetTaggedValue());
+    if (!ihc->IsUndefined()) {
+        aotLiteralInfo->SetIhc(ihc.GetTaggedValue());
+    }
+
+    if (!chc->IsUndefined()) {
+        aotLiteralInfo->SetChc(chc.GetTaggedValue());
     }
 
     snapshotConstantPool->SetObjectToCache(thread_, constantPoolIndex, aotLiteralInfo.GetTaggedValue());
@@ -1445,14 +1477,15 @@ bool TSManager::IsBuiltinObjectMethod(BuiltinTypeId id, kungfu::GateType funcTyp
         uint32_t idx = static_cast<uint32_t>(id);
         const JSPandaFile *builtinPandaFile = GetBuiltinPandaFile();
         uint32_t builtinOffset = GetBuiltinOffset(idx);
-        bool hasCreatedGT = HasCreatedGT(builtinPandaFile, builtinOffset);
+        GlobalTypeID gId(builtinPandaFile, builtinOffset);
+        bool hasCreatedGT = HasCreatedGT(gId);
         if (hasCreatedGT) {
             JSHandle<JSTaggedValue> funcTsType = GetTSType(funcGT);
             ASSERT(funcTsType->IsTSFunctionType());
             JSHandle<TSFunctionType> functionType = JSHandle<TSFunctionType>(funcTsType);
             auto name = functionType->GetName();
 
-            auto gt = GetGTFromOffset(builtinPandaFile, builtinOffset);
+            auto gt = GetGTByGlobalTypeID(gId);
             auto tsType = GetTSType(gt);
             ASSERT(tsType->IsTSClassType());
             JSHandle<TSClassType> classType(tsType);

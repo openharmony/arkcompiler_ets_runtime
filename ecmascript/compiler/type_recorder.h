@@ -72,6 +72,8 @@ private:
 
     bool CheckTypeMarkForDefineFunc(uint32_t checkBc) const;
 
+    void CollectLiteralGT(TSManager *tsManager, TypeLocation &tLoc, GlobalTSTypeRef gt);
+
     std::unordered_map<int32_t, GateType> bcOffsetGtMap_ {};
     std::unordered_map<int32_t, PGOSampleType> bcOffsetPGOOpTypeMap_ {};
     std::unordered_map<int32_t, PGORWOpType> bcOffsetPGORwTypeMap_ {};
