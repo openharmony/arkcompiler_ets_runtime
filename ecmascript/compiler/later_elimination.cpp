@@ -61,6 +61,7 @@ GateRef LaterElimination::VisitGate(GateRef gate)
         case OpCode::INT32_CHECK_RIGHT_IS_ZERO:
         case OpCode::INT32_DIV_WITH_CHECK:
         case OpCode::LEX_VAR_IS_HOLE_CHECK:
+        case OpCode::COW_ARRAY_CHECK:
             return TryEliminateGate(gate);
         case OpCode::DEPEND_SELECTOR:
             return TryEliminateDependSelector(gate);

@@ -105,6 +105,7 @@ enum class TypedJumpOp : uint8_t {
     V(NotNegativeOverflow, NOTNEGOV)          \
     V(NotCallTarget, NOTCALLTGT)              \
     V(NotJSCallTarget, NOTJSCALLTGT)          \
+    V(CowArray, COWARRAY)                     \
     V(DivideZero, DIVZERO)                    \
     V(NegativeIndex, NEGTIVEINDEX)            \
     V(LargeIndex, LARGEINDEX)                 \
@@ -259,6 +260,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, 3)                  \
     V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                \
     V(StableArrayCheck, STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)              \
+    V(COWArrayCheck, COW_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                    \
     V(ArrayGuardianCheck, ARRAY_GUARDIAN_CHECK, GateFlags::CHECKABLE, 1, 1, 0)          \
     V(HClassStableArrayCheck, HCLASS_STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1) \
     V(DeoptCheck, DEOPT_CHECK, GateFlags::NO_WRITE, 1, 1, 3)                            \
