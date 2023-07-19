@@ -42,6 +42,29 @@ private:
     GateRef root_ { 0 };
 };
 
+class CallGateInfo {
+public:
+    explicit CallGateInfo(GateRef call, bool callThis)
+        : call_(call), callThis_(callThis)
+    {
+    }
+
+    ~CallGateInfo() = default;
+
+    GateRef GetCallGate() const
+    {
+        return call_;
+    }
+
+    bool IsCallThis() const
+    {
+        return callThis_;
+    }
+private:
+    GateRef call_ {Circuit::NullGate()};
+    bool callThis_ {false};
+};
+
 class TSInlineLowering {
 public:
     static constexpr size_t MAX_INLINE_CALL_ALLOWED = 5;
@@ -59,7 +82,9 @@ public:
           traceInline_(ctx->GetEcmaVM()->GetJSOptions().GetTraceInline()),
           maxInlineBytecodesCount_(ctx->GetEcmaVM()->GetJSOptions().GetMaxInlineBytecodes()),
           nativeAreaAllocator_(nativeAreaAllocator),
-          noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()) {}
+          noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
+          chunk_(circuit->chunk()),
+          inlinedCallMap_(circuit->chunk()) {}
 
     ~TSInlineLowering() = default;
 
@@ -76,8 +101,23 @@ private:
         return methodName_;
     }
 
-    void TryInline(GateRef gate);
-    void TryInline(GateRef gate, bool isCallThis);
+    bool IsSmallMethod(size_t bcSize) const
+    {
+        return bcSize <= maxInlineBytecodesCount_;
+    }
+
+    bool IsInlineCountsOverflow(size_t inlineCount) const
+    {
+        return inlineCount >= MAX_INLINE_CALL_ALLOWED;
+    }
+
+    void UpdateInlineCounts(GateRef frameArgs, size_t inlineCallCounts)
+    {
+        inlinedCallMap_[frameArgs] = ++inlineCallCounts;
+    }
+
+    void CandidateInlineCall(GateRef gate, ChunkQueue<CallGateInfo> &workList);
+    void TryInline(CallGateInfo info, ChunkQueue<CallGateInfo> &workList);
     bool FilterInlinedMethod(MethodLiteral* method, std::vector<const uint8_t*> pcOffsets);
     bool FilterCallInTryCatch(GateRef gate);
     void InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method, GateRef gate);
@@ -93,6 +133,8 @@ private:
     GateRef TraceInlineFunction(GateRef glue, GateRef depend, std::vector<GateRef> &args, GateRef callGate);
     void InlineFuncCheck(GateRef gate);
     void SupplementType(GateRef callGate, GateRef targetGate);
+    void UpdateWorkList(ChunkQueue<CallGateInfo> &workList);
+    size_t GetOrInitialInlineCounts(GateRef frameArgs);
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
@@ -102,13 +144,15 @@ private:
     PassOptions *passOptions_ {nullptr};
     bool enableLog_ {false};
     std::string methodName_;
-    size_t inlinedCall_ { 0 };
     bool enableTypeLowering_ {false};
     bool inlineSuccess_ {false};
     bool traceInline_ {false};
     size_t maxInlineBytecodesCount_ {0};
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
     bool noCheck_ {false};
+    Chunk* chunk_ {nullptr};
+    ChunkMap<GateRef, size_t> inlinedCallMap_;
+    size_t lastCallId_ {0};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_INLINE_LOWERING_H
