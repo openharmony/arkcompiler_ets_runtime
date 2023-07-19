@@ -73,7 +73,7 @@ bool JSAPIPlainArray::AdjustForward(JSThread *thread, int32_t index, int32_t for
     TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
     AdjustArray(thread, keys, index + forwardSize, index, false);
     AdjustArray(thread, values, index + forwardSize, index, false);
-    size = size - forwardSize;
+    size = size - static_cast<uint32_t>(forwardSize);
     SetLength(size);
     return true;
 }
@@ -136,8 +136,8 @@ void JSAPIPlainArray::Clear(JSThread *thread)
 
 JSTaggedValue JSAPIPlainArray::RemoveRangeFrom(JSThread *thread, int32_t index, int32_t batchSize)
 {
-    uint32_t size = GetLength();
-    if (index < 0 || static_cast<uint32_t>(index) >= size) {
+    int32_t size = static_cast<int32_t>(GetLength());
+    if (index < 0 || index >= size) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
             << ". Received value is: " << index;
@@ -348,9 +348,9 @@ JSTaggedValue JSAPIPlainArray::GetIndexOfKey(int32_t key)
 JSTaggedValue JSAPIPlainArray::GetIndexOfValue(JSTaggedValue value)
 {
     TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
-    uint32_t size = GetLength();
+    int32_t size = static_cast<int32_t>(GetLength());
     int32_t index = -1;
-    for (uint32_t i = 0; i < size; i++) {
+    for (int32_t i = 0; i < size; i++) {
         if (JSTaggedValue::SameValue(values->Get(i), value)) {
             index = i;
             break;

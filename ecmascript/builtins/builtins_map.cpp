@@ -231,7 +231,7 @@ JSTaggedValue BuiltinsMap::GetSize(EcmaRuntimeCallInfo *argv)
     }
     JSMap *jsMap = JSMap::Cast(*JSTaggedValue::ToObject(thread, self));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int count = jsMap->GetSize();
+    uint32_t count = jsMap->GetSize();
     return JSTaggedValue(count);
 }
 
