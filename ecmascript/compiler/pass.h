@@ -26,6 +26,7 @@
 #include "ecmascript/compiler/lcr_lowering.h"
 #include "ecmascript/compiler/llvm_codegen.h"
 #include "ecmascript/compiler/loop_analysis.h"
+#include "ecmascript/compiler/loop_peeling.h"
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
 #include "ecmascript/compiler/ntype_mcr_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
@@ -442,6 +443,14 @@ public:
             auto bb = data->GetBuilder()->GetBasicBlockById(head.second);
             auto loopInfo = new LoopInfo(&chunk, bb.stateCurrent);
             loopAnalysis_.CollectLoopBody(loopInfo);
+            bool enableLog = data->GetLog()->EnableMethodCIRLog();
+            if (enableLog) {
+                loopAnalysis_.PrintLoop(loopInfo);
+            }
+            if (data->GetPassOptions()->EnableOptLoopPeeling()) {
+                LoopPeeling(data->GetBuilder(), data->GetCircuit(), enableLog,
+                            data->GetMethodName(), &chunk, loopInfo).Peel();
+            }
         }
         loopAnalysis_.LoopExitElimination();
         return true;

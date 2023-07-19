@@ -143,7 +143,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--hap-abc-offset                      The offset of the abc file in app hap. Default: '0'\n"
     "--hap-abc-size                        The size of the abc file in app hap. Default: '0'\n"
     "--compiler-fast-compile               Disable some time-consuming pass. Default: 'true'\n"
-    "--compiler-no-check                   Enable remove checks for aot compiler. Default: 'false'\n\n";
+    "--compiler-no-check                   Enable remove checks for aot compiler. Default: 'false'\n"
+    "--compiler-opt-loop-peeling:          Enable loop peeling for aot compiler: Default: 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -221,6 +222,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"hap-abc-size", required_argument, nullptr, OPTION_HAP_ABC_SIZE},
         {"compiler-no-check", required_argument, nullptr, OPTION_COMPILER_NOCHECK},
         {"compiler-fast-compile", required_argument, nullptr, OPTION_FAST_AOT_COMPILE_MODE},
+        {"compiler-opt-loop-peeling", required_argument, nullptr, OPTION_COMPILER_OPT_LOOP_PEELING},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -727,6 +729,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 SetFastAOTCompileMode(argBool);
+                break;
+            case OPTION_COMPILER_OPT_LOOP_PEELING:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableOptLoopPeeling(argBool);
+                } else {
+                    return false;
+                }
                 break;
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";

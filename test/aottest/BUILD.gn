@@ -133,6 +133,7 @@ group("ark_aot_ts_test") {
     "ldstlexvar",
     "ldsuperbyname",
     "logic_op",
+    "loop_peeling",
     "loop_phi",
     "loop_with_variable_exchange",
     "loops",

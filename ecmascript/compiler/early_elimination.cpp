@@ -464,6 +464,18 @@ GateRef DependInfoNode::LookupCheckedNode(EarlyElimination* elimination, GateRef
     return gate;
 }
 
+void DependInfoNode::GetGates(std::vector<GateRef>& gates) const
+{
+    ChunkStack<GateRef> st(chunk_);
+    for (Node* node = head_; node != nullptr; node = node->next) {
+        st.push(node->gate);
+    }
+    while (!st.empty()) {
+        gates.emplace_back(st.top());
+        st.pop();
+    }
+}
+
 GateRef DependInfoNode::LookupNode(EarlyElimination* elimination, GateRef gate)
 {
     for (Node* node = head_; node != nullptr; node = node->next) {

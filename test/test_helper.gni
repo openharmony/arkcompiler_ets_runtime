@@ -581,6 +581,11 @@ template("host_aot_js_test_action") {
           " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
     }
 
+    if (defined(invoker.is_enable_opt_loop_peeling) &&
+        invoker.is_enable_opt_loop_peeling) {
+      _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+    }
+
     if (defined(invoker.is_enable_inline_trace) &&
         invoker.is_enable_inline_trace) {
       _aot_compile_options_ += " --compiler-trace-inline=true"
@@ -794,6 +799,11 @@ template("host_aot_test_action") {
           " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
     }
 
+    if (defined(invoker.is_enable_opt_loop_peeling) &&
+        invoker.is_enable_opt_loop_peeling) {
+      _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+    }
+
     if (defined(invoker.is_enable_inline_trace) &&
         invoker.is_enable_inline_trace) {
       _aot_compile_options_ += " --compiler-trace-inline=true"
@@ -860,6 +870,11 @@ template("host_aot_test_action") {
         invoker.is_enable_opt_inlining) {
       _aot_compile_options_ +=
           " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
+    }
+
+    if (defined(invoker.is_enable_opt_loop_peeling) &&
+        invoker.is_enable_opt_loop_peeling) {
+      _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
     }
 
     if (defined(invoker.is_enable_inline_trace) &&
