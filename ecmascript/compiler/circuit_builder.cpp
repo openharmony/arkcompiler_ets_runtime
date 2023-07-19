@@ -1019,6 +1019,20 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     return result;
 }
 
+GateRef CircuitBuilder::StoreMemory(MemoryType Op, VariableType type, GateRef receiver, GateRef index, GateRef value) 
+{
+    auto opIdx = static_cast<uint64_t>(Op);
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret =
+        GetCircuit()->NewGate(GetCircuit()->StoreMemory(opIdx), type.GetMachineType(),
+                            {currentControl, currentDepend, receiver, index, value}, type.GetGateType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::NoLabelCallRuntime(GateRef glue, GateRef depend, size_t index, std::vector<GateRef> &args,
                                            GateRef hirGate)
 {

@@ -234,6 +234,7 @@ DependInfoNode* EarlyElimination::UpdateWrite(GateRef gate, DependInfoNode* depe
         case OpCode::STORE_PROPERTY_NO_BARRIER:
         case OpCode::STORE_CONST_OFFSET:
         case OpCode::STORE_ELEMENT:
+        case OpCode::STORE_MEMORY:
             return dependInfo->UpdateStoreProperty(this, gate);
         default:
             return new (chunk_) DependInfoNode(chunk_);
@@ -245,6 +246,9 @@ bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
     auto rop = acc_.GetOpCode(rhs);
     auto lop = acc_.GetOpCode(lhs);
     switch (rop) {
+        case OpCode::STORE_MEMORY:
+            ASSERT(acc_.GetMemoryType(rhs) == MemoryType::ELEMENT_TYPE);
+            return acc_.GetOpCode(lhs) == OpCode::LOAD_ELEMENT;
         case OpCode::STORE_ELEMENT:
             return lop == OpCode::LOAD_ELEMENT;
         case OpCode::STORE_PROPERTY:

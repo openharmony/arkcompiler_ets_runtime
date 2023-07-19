@@ -386,6 +386,7 @@ public:
     size_t GetVirtualRegisterIndex(GateRef gate) const;
     TypedLoadOp GetTypedLoadOp(GateRef gate) const;
     TypedStoreOp GetTypedStoreOp(GateRef gate) const;
+    MemoryType GetMemoryType(GateRef gate) const;
     TypedBinOp GetTypedBinaryOp(GateRef gate) const;
     TypedCallTargetCheckOp GetTypedCallTargetCheckOp(GateRef gate) const;
     PGOSampleType GetTypedBinaryType(GateRef gate) const;

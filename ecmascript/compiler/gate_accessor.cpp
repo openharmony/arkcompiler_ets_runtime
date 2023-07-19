@@ -151,21 +151,28 @@ TypedCallTargetCheckOp GateAccessor::GetTypedCallTargetCheckOp(GateRef gate) con
 {
     ASSERT(GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetTypedCallTargetCheckMegaData()->GetTypedCallTargetCheckOp();
+    return gatePtr->GetTypedCallTargetCheckMetaData()->GetTypedCallTargetCheckOp();
+}
+
+MemoryType GateAccessor::GetMemoryType(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::STORE_MEMORY);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return static_cast<MemoryType>(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
 TypedBinOp GateAccessor::GetTypedBinaryOp(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::TYPED_BINARY_OP);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetTypedBinaryMegaData()->GetTypedBinaryOp();
+    return gatePtr->GetTypedBinaryMetaData()->GetTypedBinaryOp();
 }
 
 PGOSampleType GateAccessor::GetTypedBinaryType(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::TYPED_BINARY_OP);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetTypedBinaryMegaData()->GetType();
+    return gatePtr->GetTypedBinaryMetaData()->GetType();
 }
 
 bool GateAccessor::HasNumberType(GateRef gate) const
