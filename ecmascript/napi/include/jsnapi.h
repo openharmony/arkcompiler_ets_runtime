@@ -417,6 +417,7 @@ public:
     bool IsSymbol();
     bool IsObject();
     bool IsArray(const EcmaVM *vm);
+    bool IsJSArray(const EcmaVM *vm);
     bool IsConstructor();
     bool IsFunction();
     bool IsProxy();

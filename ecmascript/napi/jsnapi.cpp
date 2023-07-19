@@ -3067,6 +3067,12 @@ bool JSValueRef::IsArray(const EcmaVM *vm)
     return JSNApiHelper::ToJSTaggedValue(this).IsArray(thread);
 }
 
+bool JSValueRef::IsJSArray(const EcmaVM *vm)
+{
+    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSArray();
+}
+
 bool JSValueRef::IsConstructor()
 {
     JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
