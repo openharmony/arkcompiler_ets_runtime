@@ -111,6 +111,9 @@ void TypeMCRLowering::LowerType(GateRef gate)
         case OpCode::GET_SUPER_CONSTRUCTOR:
             LowerGetSuperConstructor(gate);
             break;
+        case OpCode::COW_ARRAY_CHECK:
+            LowerCowArrayCheck(gate, glue);
+            break;
         default:
             break;
     }
@@ -675,6 +678,22 @@ void TypeMCRLowering::LowerLoadElement(GateRef gate)
     }
 }
 
+void TypeMCRLowering::LowerCowArrayCheck(GateRef gate, GateRef glue) {
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    Label notCOWArray(&builder_);
+    Label isCOWArray(&builder_);
+    builder_.Branch(builder_.IsJsCOWArray(receiver), &isCOWArray, &notCOWArray);
+    builder_.Bind(&isCOWArray);
+    {
+        LowerCallRuntime(glue, gate, RTSTUB_ID(CheckAndCopyArray), {receiver}, true);
+        builder_.Jump(&notCOWArray);
+    }
+    builder_.Bind(&notCOWArray);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
 // for JSArray
 void TypeMCRLowering::LowerArrayLoadElement(GateRef gate)
 {
@@ -771,23 +790,9 @@ void TypeMCRLowering::LowerArrayStoreElement(GateRef gate, GateRef glue)
     GateRef index = acc_.GetValueIn(gate, 1);     // 1: index
     GateRef value = acc_.GetValueIn(gate, 2);     // 2: value
 
-    Label storeWithCOWArray(&builder_);
-    Label storeDirectly(&builder_);
-    Label exit(&builder_);
-    builder_.Branch(builder_.IsJsCOWArray(receiver), &storeWithCOWArray, &storeDirectly);
-    builder_.Bind(&storeWithCOWArray);
-    {
-        GateRef newElement = LowerCallRuntime(glue, gate, RTSTUB_ID(CheckAndCopyArray), {receiver}, true);
-        builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, newElement, index, value);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&storeDirectly);
-    {
-        GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
-        builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, element, index, value);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
+    GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
+    builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, element, index, value);
+
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

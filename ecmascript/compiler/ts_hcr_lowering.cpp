@@ -943,6 +943,7 @@ void TSHCRLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateR
         builder_.StableArrayCheck(receiver);
         GateRef length = builder_.LoadArrayLength(receiver);
         builder_.IndexCheck(receiverType, length, propKey);
+        builder_.COWArrayCheck(receiver);
     }
     builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, propKey, value);
 }

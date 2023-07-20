@@ -248,6 +248,7 @@ public:
     // low level interface
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
     GateRef StableArrayCheck(GateRef gate);
+    GateRef COWArrayCheck(GateRef gate);
     GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState);
     GateRef ArrayGuardianCheck(GateRef frameState);
     GateRef TypedArrayCheck(GateType type, GateRef gate);
