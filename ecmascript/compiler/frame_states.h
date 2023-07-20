@@ -127,8 +127,27 @@ private:
         }
         return currentInfo;
     }
-    FrameStateInfo *GetBBBeginStateInfo(size_t bbId) const
+    FrameStateInfo *GetEntryBBBeginStateInfo()
     {
+        auto entry = CreateEmptyStateInfo();
+        auto first = bbBeginStateInfos_.at(1);  // 1: first block
+        for (size_t i = 0; i < numVregs_; ++i) {
+            auto value = first->ValuesAt(i);
+            if (value == Circuit::NullGate()) {
+                continue;
+            }
+            if (gateAcc_.IsValueSelector(value)) {
+                value = gateAcc_.GetValueIn(value);
+            }
+            entry->SetValuesAt(i, value);
+        }
+        return entry;
+    }
+    FrameStateInfo *GetBBBeginStateInfo(size_t bbId)
+    {
+        if (bbId == 0) {    // 0: entry block
+            return GetEntryBBBeginStateInfo();
+        }
         return bbBeginStateInfos_.at(bbId);
     }
     void UpdateVirtualRegistersOfSuspend(GateRef gate);
