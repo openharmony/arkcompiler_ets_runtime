@@ -683,13 +683,28 @@ GateRef NumberSpeculativeRetype::TryConvertConstant(GateRef gate, bool needInt32
     if (acc_.GetOpCode(gate) != OpCode::CONSTANT) {
         return Circuit::NullGate();
     }
-    GateType gateType = acc_.GetGateType(gate);
-    if (gateType.IsIntType()) {
-        int32_t rawValue = acc_.GetInt32FromConstant(gate);
-        double value = static_cast<double>(rawValue);
-        return needInt32 ? builder_.Int32(rawValue) : builder_.Double(value);
-    } else if (gateType.IsDoubleType() && !needInt32) {
-        double rawValue = acc_.GetFloat64FromConstant(gate);
+
+    if (acc_.GetGateType(gate).IsNJSValueType()) {
+        MachineType mType = acc_.GetMachineType(gate);
+        if(mType == MachineType::I32) {
+            int32_t rawValue = acc_.GetInt32FromConstant(gate);
+            double value = static_cast<double>(rawValue);
+            return needInt32 ? builder_.Int32(rawValue) : builder_.Double(value);
+        } else if(mType == MachineType::F64 && !needInt32) {
+            double rawValue = acc_.GetFloat64FromConstant(gate);
+            return builder_.Double(rawValue);
+        } else {
+            return Circuit::NullGate();
+        }
+    }
+    
+    JSTaggedValue value(acc_.GetConstantValue(gate));
+    if(value.IsInt()) {
+        int32_t rawValue = value.GetInt();
+        double doubleValue = static_cast<double>(rawValue);
+        return needInt32 ? builder_.Int32(rawValue) : builder_.Double(doubleValue);
+    } else if(value.IsDouble() && !needInt32) {
+        double rawValue = value.GetDouble();
         return builder_.Double(rawValue);
     }
     return Circuit::NullGate();
