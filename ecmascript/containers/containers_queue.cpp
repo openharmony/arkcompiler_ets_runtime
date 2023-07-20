@@ -162,7 +162,7 @@ JSTaggedValue ContainersQueue::ForEach(EcmaRuntimeCallInfo *argv)
             JSHandle<JSTaggedValue>(thread, queue->Get(thread, index));
         index = queue->GetNextPosition(index);
         key.Update(JSTaggedValue(k));
-        const int32_t argsLength = 3;
+        const uint32_t argsLength = 3;
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

@@ -18,6 +18,7 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/mem/barriers-inl.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/tagged_array.h"

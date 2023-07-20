@@ -82,9 +82,9 @@ public:
                                const JSHandle<JSTaggedValue> &key,
                                PropertyDescriptor &desc);
     JSTaggedValue IsEmpty();
-    inline int32_t GetSize() const
+    inline uint32_t GetSize() const
     {
-        return static_cast<int32_t>(GetLength());
+        return GetLength();
     }
 
     static constexpr size_t LWP_HASHES_OFFSET = JSObject::SIZE;
@@ -118,7 +118,7 @@ private:
     static JSHandle<TaggedArray> GetArrayByKind(const JSThread *thread,
                                                 const JSHandle<JSAPILightWeightMap> &lightWeightMap,
                                                 AccossorsKind kind);
-    static int32_t AvoidHashCollision(HashParams &params, int32_t index, int32_t size, int32_t hash);
+    static int32_t AvoidHashCollision(HashParams &params, int32_t index, uint32_t size, int32_t hash);
 };
 }  // namespace panda::ecmascript
 

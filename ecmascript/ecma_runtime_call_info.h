@@ -156,9 +156,9 @@ public:
         }
     }
 
-    inline void SetCallArg(int32_t argsLength, const TaggedArray* args)
+    inline void SetCallArg(uint32_t argsLength, const TaggedArray* args)
     {
-        for (int32_t i = 0; i < argsLength; i++) {
+        for (uint32_t i = 0; i < argsLength; i++) {
             SetCallArg(i, args->Get(GetThread(), i));
         }
     }
