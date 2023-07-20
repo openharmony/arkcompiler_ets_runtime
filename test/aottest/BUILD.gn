@@ -204,6 +204,7 @@ group("ark_aot_ts_test") {
     "ts_multi_inline_deopt",
     "ts_multi_inline_max_call",
     "typedarray",
+    "typedarray_load_store",
     "typeof",
     "xor",
   ]
