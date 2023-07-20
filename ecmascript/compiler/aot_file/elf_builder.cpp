@@ -83,12 +83,7 @@ void ElfBuilder::Initialize()
         des_[i].AddArkStackMapSection();
     }
     sectionToAlign_ = {
-        {ElfSecName::RODATA, AOTFileInfo::TEXT_SEC_ALIGN},
-        {ElfSecName::RODATA_CST4, AOTFileInfo::TEXT_SEC_ALIGN},
-        {ElfSecName::RODATA_CST8, AOTFileInfo::TEXT_SEC_ALIGN},
-        {ElfSecName::RODATA_CST16, AOTFileInfo::TEXT_SEC_ALIGN},
-        {ElfSecName::RODATA_CST32, AOTFileInfo::TEXT_SEC_ALIGN},
-        {ElfSecName::TEXT, AOTFileInfo::TEXT_SEC_ALIGN},
+        {ElfSecName::TEXT, AOTFileInfo::PAGE_ALIGN},
         {ElfSecName::STRTAB, 1},
         {ElfSecName::SYMTAB, AOTFileInfo::DATA_SEC_ALIGN},
         {ElfSecName::SHSTRTAB, AOTFileInfo::DATA_SEC_ALIGN},
@@ -331,20 +326,19 @@ void ElfBuilder::MergeTextSections(std::ofstream &file,
         ModuleSectionDes::ModuleRegionInfo &curInfo = moduleInfo[i];
         uint32_t curSecSize = des.GetSecSize(ElfSecName::TEXT);
         uint64_t curSecAddr = des.GetSecAddr(ElfSecName::TEXT);
-        curSecOffset = AlignUp(curSecOffset, AOTFileInfo::TEXT_SEC_ALIGN);
+        curSecOffset = AlignUp(curSecOffset, AOTFileInfo::PAGE_ALIGN);
         file.seekp(curSecOffset);
         auto curModuleSec = des.GetSectionsInfo();
         uint32_t rodataSize = 0;
         uint64_t rodataAddr = 0;
         curInfo.rodataAfterText = 0;
-        if (curModuleSec.find(ElfSecName::RODATA_CST8) != curModuleSec.end()) {
-            rodataSize = des.GetSecSize(ElfSecName::RODATA_CST8);
-            rodataAddr = des.GetSecAddr(ElfSecName::RODATA_CST8);
-        }
+        std::tie(rodataAddr, rodataSize) = des.GetMergedRODataAddrAndSize();
         if (rodataSize != 0 && rodataAddr < curSecAddr) {
             file.write(reinterpret_cast<char *>(rodataAddr), rodataSize);
             curInfo.rodataSize = rodataSize;
             curSecOffset += rodataSize;
+            curSecOffset = AlignUp(curSecOffset, AOTFileInfo::TEXT_SEC_ALIGN);
+            file.seekp(curSecOffset);
         }
         file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
         curInfo.textSize = curSecSize;
@@ -441,7 +435,7 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
         std::string secNameStr = ModuleSectionDes::GetSecName(secName);
         // text section address needs 16 bytes alignment
         if (secName == ElfSecName::TEXT) {
-            curSecOffset = AlignUp(curSecOffset, AOTFileInfo::TEXT_SEC_ALIGN);
+            curSecOffset = AlignUp(curSecOffset, AOTFileInfo::PAGE_ALIGN);
             file.seekp(curSecOffset);
         }
         llvm::ELF::Elf64_Word shName = FindShName(secNameStr, shStrTab.first, shStrTab.second);

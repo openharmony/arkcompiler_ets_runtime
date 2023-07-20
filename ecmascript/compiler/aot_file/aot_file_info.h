@@ -32,8 +32,9 @@ public:
     AOTFileInfo() = default;
     virtual ~AOTFileInfo() = default;
 
+    static constexpr uint32_t TEXT_SEC_ALIGN = 16;
     static constexpr uint32_t DATA_SEC_ALIGN = 8;
-    static constexpr uint32_t TEXT_SEC_ALIGN = 4096;
+    static constexpr uint32_t PAGE_ALIGN = 4096;
 
     struct FuncEntryDes {
         uint64_t codeAddr_ {};

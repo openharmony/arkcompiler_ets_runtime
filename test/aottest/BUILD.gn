@@ -154,6 +154,7 @@ group("ark_aot_ts_test") {
     "poplexenv",
     "proxy",
     "resumegenerator",
+    "rodata",
     "setobjectwithproto",
     "shl",
     "shr",
