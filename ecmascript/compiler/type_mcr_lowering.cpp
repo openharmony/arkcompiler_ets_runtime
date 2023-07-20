@@ -114,6 +114,12 @@ void TypeMCRLowering::LowerType(GateRef gate)
         case OpCode::COW_ARRAY_CHECK:
             LowerCowArrayCheck(gate, glue);
             break;
+        case OpCode::LOAD_GETTER:
+            LowerLoadGetter(gate);
+            break;
+        case OpCode::LOAD_SETTER:
+            LowerLoadSetter(gate);
+            break;
         default:
             break;
     }
@@ -1203,5 +1209,35 @@ void TypeMCRLowering::ReplaceHirWithPendingException(GateRef hirGate, GateRef gl
     StateDepend success(ifFalse, sDepend);
     StateDepend exception(ifTrue, eDepend);
     acc_.ReplaceHirWithIfBranch(hirGate, success, exception, value);
+}
+
+void TypeMCRLowering::LowerLoadGetter(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
+
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    ASSERT(plr.IsAccessor());
+    GateRef accessor = LoadFromVTable(receiver, plr.GetOffset());
+    GateRef getter = builder_.Load(VariableType::JS_ANY(), accessor,
+                                   builder_.IntPtr(AccessorData::GETTER_OFFSET));
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), getter);
+}
+
+void TypeMCRLowering::LowerLoadSetter(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: receiver, plr
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef propertyLookupResult = acc_.GetValueIn(gate, 1);
+
+    PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
+    ASSERT(plr.IsAccessor());
+    GateRef accessor = LoadFromVTable(receiver, plr.GetOffset());
+    GateRef setter = builder_.Load(VariableType::JS_ANY(),
+        accessor, builder_.IntPtr(AccessorData::SETTER_OFFSET));
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), setter);
 }
 }  // namespace panda::ecmascript::kungfu

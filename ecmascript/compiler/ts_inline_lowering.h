@@ -25,6 +25,13 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 
 namespace panda::ecmascript::kungfu {
+enum CallKind : uint8_t {
+    CALL,
+    CALL_THIS,
+    CALL_SETTER,
+    CALL_GETTER,
+    INVALID
+};
 class CircuitRootScope {
 public:
     explicit CircuitRootScope(Circuit *circuit)
@@ -44,8 +51,8 @@ private:
 
 class CallGateInfo {
 public:
-    explicit CallGateInfo(GateRef call, bool callThis)
-        : call_(call), callThis_(callThis)
+    explicit CallGateInfo(GateRef call, CallKind kind, GlobalTSTypeRef gt)
+        : call_(call), kind_(kind), gt_(gt)
     {
     }
 
@@ -58,11 +65,37 @@ public:
 
     bool IsCallThis() const
     {
-        return callThis_;
+        return kind_ == CallKind::CALL_THIS;
+    }
+
+    bool IsNormalCall() const
+    {
+        return kind_ == CallKind::CALL || kind_ == CallKind::CALL_THIS;
+    }
+
+    bool IsCallAccessor() const
+    {
+        return kind_ == CallKind::CALL_SETTER || kind_ == CallKind::CALL_GETTER;
+    }
+
+    bool IsCallGetter() const
+    {
+        return kind_ == CallKind::CALL_GETTER;
+    }
+    
+    bool IsCallSetter() const
+    {
+        return kind_ == CallKind::CALL_SETTER;
+    }
+
+    GlobalTSTypeRef GetFuncGT() const
+    {
+        return gt_;
     }
 private:
     GateRef call_ {Circuit::NullGate()};
-    bool callThis_ {false};
+    CallKind kind_ {CallKind::INVALID};
+    GlobalTSTypeRef gt_;
 };
 
 class TSInlineLowering {
@@ -84,7 +117,8 @@ public:
           nativeAreaAllocator_(nativeAreaAllocator),
           noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
           chunk_(circuit->chunk()),
-          inlinedCallMap_(circuit->chunk()) {}
+          inlinedCallMap_(circuit->chunk()),
+          argAcc_(circuit) {}
 
     ~TSInlineLowering() = default;
 
@@ -117,25 +151,40 @@ private:
     }
 
     void CandidateInlineCall(GateRef gate, ChunkQueue<CallGateInfo> &workList);
-    void TryInline(CallGateInfo info, ChunkQueue<CallGateInfo> &workList);
+    void TryInline(CallGateInfo &info, ChunkQueue<CallGateInfo> &workList);
     bool FilterInlinedMethod(MethodLiteral* method, std::vector<const uint8_t*> pcOffsets);
     bool FilterCallInTryCatch(GateRef gate);
-    void InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method, GateRef gate);
-    void ReplaceCallInput(GateRef gate, bool isCallThis, GateRef glue, MethodLiteral *method);
+    void InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method, CallGateInfo &info);
+    void ReplaceCallInput(CallGateInfo &info, GateRef glue, MethodLiteral *method);
     void ReplaceEntryGate(GateRef callGate, GateRef callerFunc, GateRef inlineFunc, GateRef glue);
     void ReplaceReturnGate(GateRef callGate);
     void ReplaceHirAndDeleteState(GateRef gate, GateRef state, GateRef depend, GateRef value);
     GateRef MergeAllReturn(const std::vector<GateRef> &returnVector, GateRef &state, GateRef &depend);
-    bool CheckParameter(GateRef gate, bool isCallThis, MethodLiteral* method);
-    void LowerToInlineCall(GateRef gate, const std::vector<GateRef> &args, MethodLiteral* method);
+    bool CheckParameter(GateRef gate, CallGateInfo &info, MethodLiteral* method);
+    void LowerToInlineCall(CallGateInfo &info, const std::vector<GateRef> &args, MethodLiteral* method);
     void RemoveRoot();
-    void BuildFrameStateChain(GateRef gate, BytecodeCircuitBuilder &builder);
+    void BuildFrameStateChain(CallGateInfo &info, BytecodeCircuitBuilder &builder);
     GateRef TraceInlineFunction(GateRef glue, GateRef depend, std::vector<GateRef> &args, GateRef callGate);
     void InlineFuncCheck(GateRef gate);
     void SupplementType(GateRef callGate, GateRef targetGate);
     void UpdateWorkList(ChunkQueue<CallGateInfo> &workList);
     size_t GetOrInitialInlineCounts(GateRef frameArgs);
-    bool IsRecursiveFunc(GateRef gate, size_t calleeMethodOffset);
+    bool IsRecursiveFunc(CallGateInfo &info, size_t calleeMethodOffset);
+    bool IsAccessor(GateRef receiver, GateRef constData);
+    GlobalTSTypeRef GetAccessorFuncType(GateRef receiver, GateRef constData);
+    void CandidateAccessor(GateRef gate, ChunkQueue<CallGateInfo> &workList, CallKind kind);
+    void CandidateNormalCall(GateRef gate, ChunkQueue<CallGateInfo> &workList, CallKind kind);
+    void InlineAccessorCheck(GateRef gate, GateRef receiver);
+    void InlineCheck(CallGateInfo &info);
+    GateRef GetAccessorReceiver(GateRef gate);
+    GateRef GetFrameArgs(CallGateInfo &info);
+    void ReplaceAccessorInput(CallGateInfo &info, GateRef glue, MethodLiteral *method);
+    void ReplaceInput(CallGateInfo &info, GateRef glue, MethodLiteral *method);
+    GateRef BuildAccessor(CallGateInfo &info);
+    uint32_t GetPlrData(GateRef receiver, GateRef constData);
+    GateRef GetCallSetterValue(GateRef gate);
+    GlobalTSTypeRef GetAccessorFuncGT(GateRef receiver, GateRef constData);
+    GateRef GetFrameState(CallGateInfo &info);
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
@@ -154,6 +203,7 @@ private:
     Chunk* chunk_ {nullptr};
     ChunkMap<GateRef, size_t> inlinedCallMap_;
     size_t lastCallId_ {0};
+    ArgumentAccessor argAcc_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_INLINE_LOWERING_H
