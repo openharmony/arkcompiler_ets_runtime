@@ -108,6 +108,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "pass_manager.cpp",
     "profiler_stub_builder.cpp",
     "range_analysis.cpp",
+    "range_guard.cpp",
     "rt_call_signature.cpp",
     "scheduler.cpp",
     "slowpath_lowering.cpp",

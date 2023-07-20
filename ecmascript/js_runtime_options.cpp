@@ -78,6 +78,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
     "--compiler-opt-type-lowering:         Enable all type optimization pass for aot compiler. Default: 'true'\n"
     "--compiler-opt-early-elimination:     Enable EarlyElimination for aot compiler. Default: 'true'\n"
+    "--compiler-opt-range-guard:           Enable RangeGuard for aot compiler. Default: 'true'\n"
     "--compiler-opt-later-elimination:     Enable LaterElimination for aot compiler. Default: 'true'\n"
     "--compiler-opt-value-numbering:       Enable ValueNumbering for aot compiler. Default: 'true'\n"
     "--compiler-opt-inlining:              Enable inlining function for aot compiler: Default: 'true'\n"
@@ -176,6 +177,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
         {"compiler-opt-type-lowering", required_argument, nullptr, OPTION_COMPILER_OPT_TYPE_LOWERING},
         {"compiler-opt-early-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_EARLY_ELIMINATION},
+        {"compiler-opt-range-guard", required_argument, nullptr, OPTION_COMPILER_OPT_RANGE_GUARD},
         {"compiler-opt-later-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_LATER_ELIMINATION},
         {"compiler-opt-value-numbering", required_argument, nullptr, OPTION_COMPILER_OPT_VALUE_NUMBERING},
         {"compiler-opt-inlining", required_argument, nullptr, OPTION_COMPILER_OPT_INLINING},
@@ -622,6 +624,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableEarlyElimination(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_RANGE_GUARD:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableRangeGuard(argBool);
                 } else {
                     return false;
                 }

@@ -30,7 +30,7 @@ public:
     NumberSpeculativeLowering(Circuit* circuit, Chunk* chunk, TSManager* tsManager,
         ChunkVector<TypeInfo>& typeInfos, ChunkVector<RangeInfo>& rangeInfos, bool noCheck)
         : circuit_(circuit), acc_(circuit), builder_(circuit), tsManager_(tsManager),
-          typeInfos_(typeInfos), rangeInfos_(rangeInfos), checkedGates_(chunk), noCheck_(noCheck) {}
+          typeInfos_(typeInfos), rangeInfos_(rangeInfos), checkedGates_(chunk), rangeGuardGates_(chunk), noCheck_(noCheck) {}
     void Run();
 
 private:
@@ -45,6 +45,7 @@ private:
     void VisitUndefinedStrictEq(GateRef gate);
     void VisitCallBuiltins(GateRef gate);
     void VisitIndexCheck(GateRef gate);
+    void VisitRangeGuard(GateRef gate);
     void VisitLoadArrayLength(GateRef gate);
     void VisitLoadElement(GateRef gate);
     void VisitLoadProperty(GateRef gate);
@@ -100,6 +101,7 @@ private:
     ChunkVector<TypeInfo>& typeInfos_;
     ChunkVector<RangeInfo>& rangeInfos_;
     ChunkVector<GateRef> checkedGates_;
+    ChunkVector<GateRef> rangeGuardGates_;
     bool noCheck_;
 };
 }  // panda::ecmascript::kungfu
