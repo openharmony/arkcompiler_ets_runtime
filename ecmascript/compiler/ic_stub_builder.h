@@ -44,9 +44,9 @@ public:
         propKey_ = propKey;
     }
 
-    void LoadICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
+    void LoadICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success, ProfileOperation callback);
     void StoreICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
-    void LoadICByValue(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
+    void LoadICByValue(Variable* result, Label* tryFastPath, Label *slowPath, Label *success, ProfileOperation callback);
     void StoreICByValue(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
     void TryLoadGlobalICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);
     void TryStoreGlobalICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success);

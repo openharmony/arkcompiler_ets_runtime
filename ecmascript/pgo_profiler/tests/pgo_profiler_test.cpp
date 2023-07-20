@@ -721,12 +721,13 @@ HWTEST_F_L0(PGOProfilerTest, ProfileCallTest)
         decoder1.MatchAndMarkMethod(targetRecordName, methodName, methodId);
         decoder2.MatchAndMarkMethod(targetRecordName, methodName, methodId);
         ASSERT_TRUE(decoder.Match(targetRecordName, methodId));
-        if (std::string(methodName) == "foo") {
-            ASSERT_TRUE(decoder1.Match(targetRecordName, methodId));
-        } else {
+        if (std::string(methodName) == "Test") {
             ASSERT_TRUE(!decoder1.Match(targetRecordName, methodId));
+            ASSERT_TRUE(!decoder2.Match(targetRecordName, methodId));
+        } else {
+            ASSERT_TRUE(decoder1.Match(targetRecordName, methodId));
+            ASSERT_TRUE(decoder2.Match(targetRecordName, methodId));
         }
-        ASSERT_TRUE(!decoder2.Match(targetRecordName, methodId));
     }
     unlink("ark-profiler13/modules.ap");
     rmdir("ark-profiler13/");
