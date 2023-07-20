@@ -30,7 +30,10 @@ public:
     PGOProfilerDecoder(const std::string &inPath, uint32_t hotnessThreshold)
         : inPath_(inPath), hotnessThreshold_(hotnessThreshold) {}
 
-    virtual ~PGOProfilerDecoder() = default;
+    virtual ~PGOProfilerDecoder()
+    {
+        Clear();
+    };
 
     NO_COPY_SEMANTIC(PGOProfilerDecoder);
     NO_MOVE_SEMANTIC(PGOProfilerDecoder);
