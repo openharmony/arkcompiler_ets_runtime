@@ -78,6 +78,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitTypedConditionJump(gate);
         case OpCode::INDEX_CHECK:
             return VisitIndexCheck(gate);
+        case OpCode::RANGE_GUARD:
         case OpCode::LOAD_ARRAY_LENGTH:
         case OpCode::LOAD_TYPED_ARRAY_LENGTH:
             return VisitLoadArrayLength(gate);

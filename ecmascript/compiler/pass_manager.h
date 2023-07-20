@@ -126,11 +126,12 @@ private:
 
 class PassOptions {
 public:
-    PassOptions(bool enableTypeLowering, bool enableEarlyElimination, bool enableLaterElimination,
+    PassOptions(bool enableTypeLowering, bool enableEarlyElimination, bool enableRangeGuard, bool enableLaterElimination,
                 bool enableValueNumbering, bool enableTypeInfer, bool enableOptInlining,
                 bool enableOptStaticMethod, bool enableOptPGOType, bool enableOptTrackField, bool enableOptLoopPeeling)
         : enableTypeLowering_(enableTypeLowering),
           enableEarlyElimination_(enableEarlyElimination),
+          enableRangeGuard_(enableRangeGuard),
           enableLaterElimination_(enableLaterElimination),
           enableValueNumbering_(enableValueNumbering),
           enableTypeInfer_(enableTypeInfer),
@@ -145,6 +146,7 @@ public:
 #define OPTION_LIST(V)           \
     V(TypeLowering, true)        \
     V(EarlyElimination, true)    \
+    V(RangeGuard, true)          \
     V(LaterElimination, true)    \
     V(ValueNumbering, false)     \
     V(TypeInfer, false)          \

@@ -214,7 +214,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(OverflowCheck, OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                  \
     V(Int32UnsignedUpperBoundCheck, INT32_UNSIGNED_UPPER_BOUND_CHECK, GateFlags::CHECKABLE, 1, 1, 2) \
     V(Int32DivWithCheck, INT32_DIV_WITH_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                        \
-    V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)
+    V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                       \
+    V(RangeGuard, RANGE_GUARD, GateFlags::NO_WRITE, 1, 1, 1)                                         \
 
 #define UNARY_GATE_META_DATA_CACHE_LIST(V)                                       \
     V(Zext, ZEXT, GateFlags::NONE_FLAG, 0, 0, 1)                                 \

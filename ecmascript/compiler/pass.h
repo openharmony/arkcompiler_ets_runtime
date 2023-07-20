@@ -30,6 +30,7 @@
 #include "ecmascript/compiler/ntype_hcr_lowering.h"
 #include "ecmascript/compiler/ntype_mcr_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
+#include "ecmascript/compiler/range_guard.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/compiler/state_split_linearizer.h"
@@ -485,6 +486,22 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         LaterElimination(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
+        return true;
+    }
+};
+
+class RangeGuardPass {
+public:
+    bool Run(PassData* data)
+    {
+        PassOptions *passOptions = data->GetPassOptions();
+        if (!passOptions->EnableTypeLowering() || !passOptions->EnableRangeGuard()) {
+            return false;
+        }
+        TimeScope timescope("RangeGuardPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        Chunk chunk(data->GetNativeAreaAllocator());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        RangeGuard(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, data->GetPassContext()).Run();
         return true;
     }
 };

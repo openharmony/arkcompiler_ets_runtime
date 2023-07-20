@@ -32,14 +32,26 @@ void NumberSpeculativeLowering::Run()
     std::vector<GateRef> gateList;
     acc_.GetAllGates(gateList);
     for (auto gate : gateList) {
-        if (acc_.GetOpCode(gate) != OpCode::INDEX_CHECK) {
-            VisitGate(gate);
-        } else {
-            checkedGates_.push_back(gate);
+        auto op = acc_.GetOpCode(gate);
+        switch (op) {
+            case OpCode::INDEX_CHECK: {
+                checkedGates_.push_back(gate);
+                break;
+            }
+            case OpCode::RANGE_GUARD: {
+                rangeGuardGates_.push_back(gate);
+                break;
+            }
+            default: {
+                VisitGate(gate);
+            }
         }
     }
     for (auto check : checkedGates_) {
         VisitIndexCheck(check);
+    }
+    for (auto rangeGuard : rangeGuardGates_) {
+        VisitRangeGuard(rangeGuard);
     }
 }
 
@@ -564,6 +576,13 @@ void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)
         acc_.SetMachineType(gate, MachineType::I32);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), index);
+}
+
+void NumberSpeculativeLowering::VisitRangeGuard(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef inputLength = acc_.GetValueIn(gate, 0);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), inputLength);
 }
 
 template<TypedBinOp Op>
