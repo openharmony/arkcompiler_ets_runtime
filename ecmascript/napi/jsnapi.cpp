@@ -2293,7 +2293,7 @@ Local<ArrayBufferRef> TypedArrayRef::GetArrayBuffer(const EcmaVM *vm)
         JSHandle<JSTaggedValue> func = env->Get##Type##Function();                                        \
         JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(buffer));                            \
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();             \
-        const int32_t argsLength = 3;                                                                     \
+        const uint32_t argsLength = 3;                                                                     \
         EcmaRuntimeCallInfo *info =                                                                       \
             ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, func, argsLength);   \
         RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                        \

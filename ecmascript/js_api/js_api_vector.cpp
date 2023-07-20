@@ -111,7 +111,7 @@ int32_t JSAPIVector::GetIndexFrom(JSThread *thread, const JSHandle<JSAPIVector> 
     }
 
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-    for (int32_t i = index; i < static_cast<int32_t>(length); i++) {
+    for (uint32_t i = index; i < length; i++) {
         value.Update(JSTaggedValue(elements->Get(i)));
         if (JSTaggedValue::StrictEqual(thread, obj, value)) {
             return i;
@@ -244,12 +244,12 @@ JSHandle<JSAPIVector> JSAPIVector::SubVector(JSThread *thread, const JSHandle<JS
                                      JSHandle<JSAPIVector>());
     }
 
-    int32_t newLength = toIndex - fromIndex;
+    uint32_t newLength = toIndex - fromIndex;
     JSHandle<JSAPIVector> subVector = thread->GetEcmaVM()->GetFactory()->NewJSAPIVector(newLength);
     TaggedArray *elements = TaggedArray::Cast(vector->GetElements().GetTaggedObject());
 
     subVector->SetLength(newLength);
-    for (int32_t i = 0; i < newLength; i++) {
+    for (uint32_t i = 0; i < newLength; i++) {
         subVector->Set(thread, i, elements->Get(fromIndex + i));
     }
 
@@ -294,7 +294,7 @@ JSTaggedValue JSAPIVector::ForEach(JSThread *thread, const JSHandle<JSTaggedValu
     uint32_t length = vector->GetSize();
     JSTaggedValue key = JSTaggedValue::Undefined();
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
-    const int32_t argsLength = NUM_MANDATORY_JSFUNC_ARGS;
+    const uint32_t argsLength = NUM_MANDATORY_JSFUNC_ARGS;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
 
     for (uint32_t k = 0; k < length; k++) {
@@ -322,7 +322,7 @@ JSTaggedValue JSAPIVector::ReplaceAllElements(JSThread *thread, const JSHandle<J
     uint32_t length = vector->GetSize();
     JSTaggedValue key = JSTaggedValue::Undefined();
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
-    const int32_t argsLength = NUM_MANDATORY_JSFUNC_ARGS;
+    const uint32_t argsLength = NUM_MANDATORY_JSFUNC_ARGS;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
 
     for (uint32_t k = 0; k < length; k++) {
