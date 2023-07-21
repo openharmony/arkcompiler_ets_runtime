@@ -34,11 +34,7 @@ public:
     static constexpr char NAME_SPACE_TAG = '@';
     static constexpr char POINT_STRING_TAG[] = ".";
     static constexpr char POINT_TAG = '.';
-#ifdef PANDA_TARGET_WINDOWS
-    static constexpr char SLASH_TAG = '\\';
-#else
     static constexpr char SLASH_TAG = '/';
-#endif
 
     static CString NormalizePath(const CString &fileName);
     static JSHandle<EcmaString> ResolveDirPath(JSThread *thread, CString fileName);
