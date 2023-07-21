@@ -640,6 +640,21 @@ public:
         return glueData_.allowCrossThreadExecution_;
     }
 
+    bool GetFrameDroppedBit()
+    {
+        return isFrameDropped_;
+    }
+
+    void SetFrameDroppedBit()
+    {
+        isFrameDropped_ = true;
+    }
+
+    void ResetFrameDroppedBit()
+    {
+        isFrameDropped_ = false;
+    }
+
     bool IsStartGlobalLeakCheck() const;
     bool EnableGlobalObjectLeakCheck() const;
     bool EnableGlobalPrimitiveLeakCheck() const;
@@ -904,6 +919,8 @@ private:
     std::string profileName_ {""};
 
     bool finalizationCheckState_ {false};
+
+    bool isFrameDropped_ {false};
 
     CVector<EcmaContext *> contexts_;
     EcmaContext *currentContext_ {nullptr};

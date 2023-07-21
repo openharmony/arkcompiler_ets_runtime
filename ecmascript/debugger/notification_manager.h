@@ -38,6 +38,8 @@ public:
     virtual void VmStart() = 0;
     virtual void VmDeath() = 0;
     virtual void NativeCalling(const void *nativeAddress) = 0;
+    virtual void MethodEntry(JSHandle<Method> method) = 0;
+    virtual void MethodExit(JSHandle<Method> method) = 0;
 };
 
 class NotificationManager {
@@ -100,6 +102,20 @@ public:
         }
     }
 
+    void MethodEntryEvent(JSThread *thread, Method *method) const
+    {
+        if (UNLIKELY(listener_ != nullptr)) {
+            JSHandle<Method> methodHandle(thread, method);
+            listener_->MethodEntry(methodHandle);
+        }
+    }
+    void MethodExitEvent(JSThread *thread, Method *method) const
+    {
+        if (UNLIKELY(listener_ != nullptr)) {
+            JSHandle<Method> methodHandle(thread, method);
+            listener_->MethodExit(methodHandle);
+        }
+    }
 private:
     RuntimeListener *listener_ {nullptr};
 };

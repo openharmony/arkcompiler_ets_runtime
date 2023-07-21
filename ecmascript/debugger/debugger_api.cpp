@@ -40,6 +40,7 @@
 #include "ecmascript/js_api/js_api_tree_set.h"
 #include "ecmascript/js_api/js_api_lightweightmap.h"
 #include "ecmascript/js_api/js_api_lightweightset.h"
+#include "ecmascript/frames.h"
 
 namespace panda::ecmascript::tooling {
 using panda::ecmascript::base::ALLOW_BINARY;
@@ -1133,5 +1134,14 @@ Local<JSValueRef> DebuggerApi::GetVectorValue(const EcmaVM *ecmaVm, Local<JSValu
     }
     AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
     return jsValueRef;
+}
+
+void DebuggerApi::DropLastFrame(const EcmaVM *ecmaVm)
+{
+    JSThread *thread = ecmaVm->GetJSThread();
+    auto *debuggerMgr = ecmaVm->GetJsDebuggerManager();
+    if (!thread->IsAsmInterpreter()) {
+        debuggerMgr->DropLastFrame();
+    }
 }
 }  // namespace panda::ecmascript::tooling

@@ -158,6 +158,8 @@ public:
                                              Global<MapRef> internalObjects);
     static Local<JSValueRef> GetVectorValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
                                             Global<MapRef> internalObjects);
+
+    static void DropLastFrame(const EcmaVM *ecmaVm);
 };
 }  // namespace panda::ecmascript::tooling
 
