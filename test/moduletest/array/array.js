@@ -143,3 +143,6 @@ print(arr21.at(-1));
 print(arr21.at(6));
 print(arr21.at('1.9'));
 print(arr21.at(true));
+const arr22 = [1, 2, 3, 4, 5];
+print(arr22.with(2, 6)); // [1, 2, 6, 4, 5]
+print(arr22); // [1, 2, 3, 4, 5]
