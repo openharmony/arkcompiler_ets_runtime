@@ -141,7 +141,7 @@ public:
 
         JSHandle<JSTaggedValue> compareFn(thread, fn);
         JSHandle<JSTaggedValue> thisArgHandle = thread->GlobalConstants()->GetHandledUndefined();
-        const int32_t argsLength = 2;
+        const uint32_t argsLength = 2;
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, compareFn, thisArgHandle, undefined, argsLength);
