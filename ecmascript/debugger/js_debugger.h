@@ -141,13 +141,6 @@ public:
         }
         hooks_->VmDeath();
     }
-    void PendingJobEntry() override
-    {
-        if (hooks_ == nullptr) {
-            return;
-        }
-        hooks_->PendingJobEntry();
-    }
     void NativeCalling(const void *nativeAddress) override
     {
         if (hooks_ == nullptr) {
