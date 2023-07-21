@@ -2411,8 +2411,6 @@ void SlowPathLowering::LowerStLexVar(GateRef gate)
 
 void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
 {
-    GateType type = acc_.GetGateType(gate);
-
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
@@ -2427,32 +2425,10 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
     Label isNotException(&builder_);
 
     GateRef result;
-    if (type.IsAnyType()) {
-        auto args = { proto, lexicalEnv, constpool,
-                      builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId), module };
-        result = LowerCallRuntime(gate, RTSTUB_ID(CreateClassWithBuffer), args, true);
-        builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
-    } else {
-        int index = tsManager_->GetHClassIndexByClassGateType(type);
-        ASSERT(index != -1);
-        GateRef ihcIndex = builder_.Int32(index);
-        GateRef ihclass = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, ihcIndex, ConstPoolType::CLASS_LITERAL);
-        GateRef constructorHclass;
-        if (enableOptStaticMethod_) {
-            int constructorIndex = tsManager_->GetConstructorHClassIndexByClassGateType(type);
-            ASSERT(index != -1);
-            GateRef constructorHcIndex = builder_.Int32(constructorIndex);
-            constructorHclass = builder_.GetObjectFromConstPool(glue_, gate, jsFunc,
-                constructorHcIndex, ConstPoolType::CLASS_LITERAL);
-        } else {
-            constructorHclass = builder_.Undefined();
-        }
-        auto args = { proto, lexicalEnv, constpool,
-                      builder_.ToTaggedInt(methodId),
-                      builder_.ToTaggedInt(literalId), ihclass, constructorHclass, module };
-        result = LowerCallRuntime(gate, RTSTUB_ID(CreateClassWithIHClass), args, true);
-        builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
-    }
+    auto args = { proto, lexicalEnv, constpool,
+                  builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId), module };
+    result = LowerCallRuntime(gate, RTSTUB_ID(CreateClassWithBuffer), args, true);
+    builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
 
     StateDepend successControl;
     StateDepend failControl;

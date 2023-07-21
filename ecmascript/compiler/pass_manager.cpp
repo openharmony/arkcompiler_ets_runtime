@@ -157,7 +157,8 @@ void PassManager::ProcessConstantPool(BytecodeInfoCollector *collector)
 {
     LOG_COMPILER(INFO) << collector->GetBytecodeInfo().GetSkippedMethodSize()
                        << " methods have been skipped";
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->ProcessSnapshotConstantPool(collector);
+    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->ProcessSnapshotConstantPool(collector,
+        passOptions_->EnableOptStaticMethod());
 }
 
 bool PassManager::IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const

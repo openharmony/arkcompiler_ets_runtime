@@ -947,23 +947,6 @@ DEF_RUNTIME_STUBS(CreateClassWithBuffer)
                                         static_cast<uint16_t>(literalId.GetInt()), module).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(CreateClassWithIHClass)
-{
-    RUNTIME_STUBS_HEADER(CreateClassWithIHClass);
-    JSHandle<JSTaggedValue> base = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> lexenv = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
-    JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
-    JSHandle<JSHClass> ihclass = GetHArg<JSHClass>(argv, argc, 5);  // 5: means the fifth parameter
-    JSHandle<JSTaggedValue> constructorHClass = GetHArg<JSTaggedValue>(argv, argc, 6);  // 6: means the fifth parameter
-    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 7);  // 7: means the sixth parameter
-    return RuntimeCreateClassWithIHClass(thread, base, lexenv, constpool,
-        static_cast<uint16_t>(methodId.GetInt()),
-        static_cast<uint16_t>(literalId.GetInt()),
-        ihclass, constructorHClass, module).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(SetClassConstructorLength)
 {
     RUNTIME_STUBS_HEADER(SetClassConstructorLength);

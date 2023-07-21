@@ -22,6 +22,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 #include "ecmascript/ts_types/ts_obj_layout_info.h"
+#include "ecmascript/ts_types/global_type_info.h"
 
 namespace panda::ecmascript {
 enum class PropertyType : uint8_t {
@@ -456,54 +457,29 @@ public:
 
     static const std::vector<BuiltinTypeId> &GetValidTypedArrayIds();
 
-    inline void AddElementToPGOGTMap(uint32_t methodOffset, uint32_t cpIdx, GlobalTSTypeRef gt)
+    inline void AddElementToIdGTMap(const GlobalTypeID &id, GlobalTSTypeRef gt,
+                                    const CString &recordName = "", bool isImportType = false)
     {
-        auto key = std::make_pair(methodOffset, cpIdx);
-        if (pgoGTInfo_.methodCpIdxGTMap.find(key) != pgoGTInfo_.methodCpIdxGTMap.end()) {
-            pgoGTInfo_.methodCpIdxGTMap[key] = gt;
+        auto it = idGTMap_.find(id);
+        if (it != idGTMap_.end()) {
+            it->second = gt;
         } else {
-            pgoGTInfo_.methodCpIdxGTMap.emplace(key, gt);
+            idGTMap_.emplace(id, gt);
         }
-    }
-
-    inline bool HasPGOGT(uint32_t methodOffset, uint32_t cpIdx)
-    {
-        auto key = std::make_pair(methodOffset, cpIdx);
-        return pgoGTInfo_.methodCpIdxGTMap.find(key) != pgoGTInfo_.methodCpIdxGTMap.end();
-    }
-
-    inline GlobalTSTypeRef GetPGOGT(uint32_t methodOffset, uint32_t cpIdx)
-    {
-        auto key = std::make_pair(methodOffset, cpIdx);
-        return pgoGTInfo_.methodCpIdxGTMap.at(key);
-    }
-
-    inline void AddElementToLiteralOffsetGTMap(const JSPandaFile *jsPandaFile, uint32_t offset,
-                                               const CString &recordName, GlobalTSTypeRef gt,
-                                               bool isImportType = false)
-    {
-        auto key = std::make_pair(jsPandaFile, offset);
-        if (literalOffsetGTMap_.find(key) != literalOffsetGTMap_.end()) {
-            literalOffsetGTMap_[key] = gt;
-        } else {
-            literalOffsetGTMap_.emplace(key, gt);
-        }
-        if (!isImportType) {
-            auto value = std::make_pair(recordName, offset);
+        if (!isImportType && !id.IsPGOType()) {
+            auto value = std::make_pair(recordName, id.GetTypeId());
             gtLiteralOffsetMap_.emplace(gt, value);
         }
     }
 
-    inline bool HasCreatedGT(const JSPandaFile *jsPandaFile, uint32_t offset) const
+    inline bool HasCreatedGT(const GlobalTypeID &id) const
     {
-        auto key = std::make_pair(jsPandaFile, offset);
-        return literalOffsetGTMap_.find(key) != literalOffsetGTMap_.end();
+        return idGTMap_.find(id) != idGTMap_.end();
     }
 
-    inline GlobalTSTypeRef GetGTFromOffset(const JSPandaFile *jsPandaFile, uint32_t offset) const
+    inline GlobalTSTypeRef GetGTByGlobalTypeID(const GlobalTypeID &id) const
     {
-        auto key = std::make_pair(jsPandaFile, offset);
-        return literalOffsetGTMap_.at(key);
+        return idGTMap_.at(id);
     }
 
     inline bool HasOffsetFromGT(GlobalTSTypeRef gt) const
@@ -712,7 +688,8 @@ public:
         return snapshotData_.GetSnapshotCPList();
     }
 
-    void PUBLIC_API ProcessSnapshotConstantPool(kungfu::BytecodeInfoCollector *bcInfoCollector);
+    void PUBLIC_API ProcessSnapshotConstantPool(kungfu::BytecodeInfoCollector *bcInfoCollector,
+                                                bool optStaticMethods);
 
     void PUBLIC_API ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &methodToEntryIndexMap);
 
@@ -743,6 +720,20 @@ public:
         return collectedGT_;
     }
 
+    inline void InsertLiteralGTMap(TypeLocation &loc, GlobalTSTypeRef gt)
+    {
+        literalGTMap_[loc] = gt;
+    }
+
+    inline GlobalTSTypeRef GetLiteralGT(TypeLocation &loc)
+    {
+        auto it = literalGTMap_.find(loc);
+        if (it != literalGTMap_.end()) {
+            return it->second;
+        }
+        return GlobalTSTypeRef::Default();
+    }
+
     inline void InsertPtToGtMap(ClassType pgoType, const kungfu::GateType &gateType)
     {
         ptToGtMap_.emplace(pgoType, gateType);
@@ -755,17 +746,6 @@ public:
             return it->second;
         }
         return kungfu::GateType::AnyType();
-    }
-
-    inline void InsertPGOGT(GlobalTSTypeRef gt)
-    {
-        pgoGTInfo_.pgoGT.insert(gt);
-    }
-
-    bool IsPGOGT(GlobalTSTypeRef gt) const
-    {
-        auto it = pgoGTInfo_.pgoGT.find(gt);
-        return it != pgoGTInfo_.pgoGT.end();
     }
 
     void PrintNumOfTypes() const;
@@ -822,11 +802,6 @@ private:
     NO_COPY_SEMANTIC(TSManager);
     NO_MOVE_SEMANTIC(TSManager);
 
-    struct PGOGTInfo {
-        std::set<GlobalTSTypeRef> pgoGT {};
-        std::map<std::pair<uint32_t, uint32_t>, GlobalTSTypeRef> methodCpIdxGTMap {};
-    };
-
     GlobalTSTypeRef AddTSTypeToTypeTable(const JSHandle<TSType> &type, int tableId) const;
 
     JSHandle<TaggedArray> GenerateExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName);
@@ -858,7 +833,7 @@ private:
     void CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
                             JSHandle<ConstantPool> snapshotConstantPool,
                             kungfu::BytecodeInfoCollector *bcInfoCollector,
-                            JSHandle<JSTaggedValue> ihclass);
+                            JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc);
 
     inline void SetBuiltinPandaFile(JSPandaFile *jsPandaFile)
     {
@@ -876,8 +851,12 @@ private:
     void GenerateSnapshotConstantPoolList(std::map<int32_t, uint32_t> &cpListIndexMap,
                                           const CMap<int32_t, JSTaggedValue> &oldCPValues);
 
+    void TryGetIhcAndChc(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> &ihc, JSHandle<JSTaggedValue> &chc,
+                         bool optStaticMethods = false);
+
     void FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
-                                      kungfu::BytecodeInfoCollector *bcInfoCollector);
+                                      kungfu::BytecodeInfoCollector *bcInfoCollector,
+                                      bool optStaticMethods);
 
     void AddHClassToSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
                                              kungfu::BytecodeInfoCollector *bcInfoCollector);
@@ -891,6 +870,7 @@ private:
     CMap<ClassType, const kungfu::GateType> ptToGtMap_ {};
     std::map<GlobalTSTypeRef, IHClassData> gtIhcMap_ {};
     std::map<GlobalTSTypeRef, IHClassData> gtConstructorhcMap_ {};
+    std::unordered_map<TypeLocation, GlobalTSTypeRef, HashTypeLocation> literalGTMap_ {};
     bool assertTypes_ {false};
     double typeThreshold_ {-1};
 
@@ -902,8 +882,7 @@ private:
     // for snapshot
     SnapshotData snapshotData_ {};
 
-    PGOGTInfo pgoGTInfo_ {};
-    std::map<std::pair<const JSPandaFile *, uint32_t>, GlobalTSTypeRef> literalOffsetGTMap_ {};
+    std::unordered_map<GlobalTypeID, GlobalTSTypeRef, HashGlobalTypeID> idGTMap_ {};
     std::map<GlobalTSTypeRef, std::pair<CString, uint32_t>> gtLiteralOffsetMap_ {};
     std::vector<uint32_t> builtinOffsets_ {};
     JSPandaFile *builtinPandaFile_ {nullptr};
