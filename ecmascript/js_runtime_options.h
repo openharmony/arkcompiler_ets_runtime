@@ -138,7 +138,6 @@ enum CommandValues {
     OPTION_COMPILER_NOCHECK,
     OPTION_FAST_AOT_COMPILE_MODE,
     OPTION_COMPILER_OPT_LOOP_PEELING,
-    OPTION_COMPILER_OPT_RANGE_GUARD,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -917,16 +916,6 @@ public:
         return enableEarlyElimination_;
     }
 
-    void SetEnableRangeGuard(bool value)
-    {
-        enableRangeGuard_ = value;
-    }
-
-    bool IsEnableRangeGuard() const
-    {
-        return enableRangeGuard_;
-    }
-
     void SetEnableLaterElimination(bool value)
     {
         enableLaterElimination_ = value;
@@ -1255,7 +1244,6 @@ private:
     bool mergeAbc_ {false};
     bool enableTypeLowering_ {true};
     bool enableEarlyElimination_ {true};
-    bool enableRangeGuard_ {true};
     bool enableLaterElimination_ {true};
     bool enableValueNumbering_ {true};
     bool enableOptInlining_ {true};

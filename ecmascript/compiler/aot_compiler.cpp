@@ -157,7 +157,6 @@ int Main(const int argc, const char **argv)
         size_t maxMethodsInModule = runtimeOptions.GetCompilerModuleMethods();
         bool isEnableTypeLowering = runtimeOptions.IsEnableTypeLowering();
         bool isEnableEarlyElimination = runtimeOptions.IsEnableEarlyElimination();
-        bool isEnableRangeGuard = runtimeOptions.IsEnableRangeGuard();
         bool isEnableLaterElimination = runtimeOptions.IsEnableLaterElimination();
         bool isEnableValueNumbering = runtimeOptions.IsEnableValueNumbering();
         bool isEnableOptInlining = runtimeOptions.IsEnableOptInlining();
@@ -168,7 +167,7 @@ int Main(const int argc, const char **argv)
         bool isEnableOptTrackField = runtimeOptions.IsEnableOptTrackField();
         bool isEnableOptLoopPeeling = runtimeOptions.IsEnableOptLoopPeeling();
 
-        PassOptions passOptions(isEnableTypeLowering, isEnableEarlyElimination, isEnableRangeGuard, isEnableLaterElimination,
+        PassOptions passOptions(isEnableTypeLowering, isEnableEarlyElimination, isEnableLaterElimination,
                                 isEnableValueNumbering, isEnableTypeInfer, isEnableOptInlining,
                                 isEnableOptStaticMethod, isEnableOptPGOType,
                                 isEnableOptTrackField, isEnableOptLoopPeeling);
