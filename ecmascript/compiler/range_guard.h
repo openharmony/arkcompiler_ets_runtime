@@ -20,42 +20,16 @@
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/graph_visitor.h"
 #include "ecmascript/compiler/pass_manager.h"
+#include "ecmascript/compiler/base/depend_chain_helper.h"
 #include "ecmascript/mem/chunk_containers.h"
 
 namespace panda::ecmascript::kungfu {
-class RangeGuard;
-
-class DependChains : public ChunkObject {
-public:
-    DependChains(Chunk* chunk) : chunk_(chunk) {}
-    ~DependChains() = default;
-
-    DependChains* UpdateNode(GateRef gate);
-    bool Equals(DependChains* that);
-    void Merge(DependChains* that);
-    void CopyFrom(DependChains *other)
-    {
-        head_ = other->head_;
-        size_ = other->size_;
-    }
-    bool FoundIndexChecked(RangeGuard* rangeGuard, GateRef input);
-private:
-    struct Node {
-        Node(GateRef gate, Node* next) : gate(gate), next(next) {}
-        GateRef gate;
-        Node *next;
-    };
-
-    Node *head_{nullptr};
-    size_t size_ {0};
-    Chunk* chunk_;
-};
-
+class DependChains;
 class RangeGuard : public GraphVisitor {
 public:
-    RangeGuard(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk, PassContext *ctx)
-        : GraphVisitor(circuit, chunk), circuit_(circuit), builder_(circuit, ctx->GetCompilerConfig()), enableLog_(enableLog),
-        methodName_(name), dependChains_(chunk) {}
+    RangeGuard(Circuit *circuit, Chunk* chunk)
+        : GraphVisitor(circuit, chunk), circuit_(circuit),
+        builder_(circuit), dependChains_(chunk) {}
 
     ~RangeGuard() = default;
 
@@ -65,15 +39,6 @@ public:
     bool CheckInputSource(GateRef lhs, GateRef rhs);
     bool CheckIndexCheckInput(GateRef lhs, GateRef rhs);
 private:
-    bool IsLogEnabled() const
-    {
-        return enableLog_;
-    }
-
-    const std::string& GetMethodName() const
-    {
-        return methodName_;
-    }
 
     DependChains* GetDependChain(GateRef dependIn)
     {
@@ -91,8 +56,6 @@ private:
 
     Circuit* circuit_;
     CircuitBuilder builder_;
-    bool enableLog_ {false};
-    std::string methodName_;
     ChunkVector<DependChains*> dependChains_;
 };
 }  // panda::ecmascript::kungfu

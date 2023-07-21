@@ -65,6 +65,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "assembler/x64/extended_assembler_x64.cpp",
     "assembler_module.cpp",
     "async_function_lowering.cpp",
+    "base/depend_chain_helper.cpp",
     "bc_call_signature.cpp",
     "builtins/builtins_call_signature.cpp",
     "builtins/builtins_string_stub_builder.cpp",

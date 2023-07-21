@@ -21,18 +21,6 @@ void RangeGuard::Run()
     GateRef entry = acc_.GetDependRoot();
     VisitDependEntry(entry);
     VisitGraph();
-
-    if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m"
-                           << "===================="
-                           << " After range guard "
-                           << "[" << GetMethodName() << "]"
-                           << "===================="
-                           << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
-    }
 }
 
 GateRef RangeGuard::VisitGate(GateRef gate)
@@ -180,70 +168,5 @@ bool RangeGuard::CheckInputSource(GateRef lhs, GateRef rhs)
         }
     }
     return true;
-}
-
-void DependChains::Merge(DependChains* that)
-{
-    // find common sub list
-    while (size_ > that->size_) {
-        head_ = head_->next;
-        size_--;
-    }
-
-    auto lhs = this->head_;
-    auto rhs = that->head_;
-    size_t rhsSize = that->size_;
-    while (rhsSize > size_) {
-        rhs = rhs->next;
-        rhsSize--;
-    }
-    while (lhs != rhs) {
-        ASSERT(lhs != nullptr);
-        lhs = lhs->next;
-        rhs = rhs->next;
-        size_--;
-    }
-    head_ = lhs;
-}
-
-bool DependChains::Equals(DependChains* that)
-{
-    if (that == nullptr) {
-        return false;
-    }
-    if (size_ != that->size_) {
-        return false;
-    }
-    auto lhs = this->head_;
-    auto rhs = that->head_;
-    while (lhs != rhs) {
-        if (lhs->gate != rhs->gate) {
-            return false;
-        }
-        lhs = lhs->next;
-        rhs = rhs->next;
-    }
-    return true;
-}
-
-bool DependChains::FoundIndexChecked(RangeGuard* rangeGuard, GateRef input)
-{
-    for (Node* node = head_; node != nullptr; node = node->next) {
-        if (rangeGuard->CheckIndexCheckInput(node->gate, input)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-DependChains* DependChains::UpdateNode(GateRef gate)
-{
-    // assign node->next to head
-    Node* node = chunk_->New<Node>(gate, head_);
-    DependChains* that = new (chunk_) DependChains(chunk_);
-    // assign head to node
-    that->head_ = node;
-    that->size_ = size_ + 1;
-    return that;
 }
 }  // namespace panda::ecmascript::kungfu
