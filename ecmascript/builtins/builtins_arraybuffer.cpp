@@ -87,7 +87,7 @@ JSTaggedValue BuiltinsArrayBuffer::GetByteLength(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(thread, ArrayBuffer, GetByteLength);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    
+
     // 1. Let O be the this value.
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     // 2. If Type(O) is not Object, throw a TypeError exception.

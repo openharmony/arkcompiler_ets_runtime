@@ -222,7 +222,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
         //     vi. Set k to k + 1.
         JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
         JSMutableHandle<JSTaggedValue> mapValue(thread, JSTaggedValue::Undefined());
-        const int32_t argsLength = 2;
+        const uint32_t argsLength = 2;
         uint32_t k = 0;
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         while (k < len) {
@@ -277,7 +277,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     //   e. Perform ? Set(targetObj, Pk, mappedValue, true).
     //   f. Set k to k + 1.
     JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
-    const int32_t argsLength = 2;
+    const uint32_t argsLength = 2;
     int64_t k = 0;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
@@ -521,7 +521,7 @@ JSTaggedValue BuiltinsTypedArray::Every(EcmaRuntimeCallInfo *argv)
     //     v. If testResult is false, return false.
     //   e. Increase k by 1.
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    const int32_t argsLength = 3;
+    const uint32_t argsLength = 3;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     uint32_t k = 0;
     while (k < len) {
@@ -708,7 +708,7 @@ JSTaggedValue BuiltinsTypedArray::ForEach(EcmaRuntimeCallInfo *argv)
     //     iv. ReturnIfAbrupt(funcResult).
     //   e. Increase k by 1.
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    const int32_t argsLength = 3;
+    const uint32_t argsLength = 3;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     uint32_t k = 0;
     while (k < len) {
@@ -936,7 +936,7 @@ JSTaggedValue BuiltinsTypedArray::Map(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> mapValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
-    const int32_t argsLength = 3;
+    const uint32_t argsLength = 3;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     for (uint32_t k = 0; k < len; k++) {
         key.Update(JSTaggedValue(k));
@@ -1513,7 +1513,7 @@ JSTaggedValue BuiltinsTypedArray::Subarray(EcmaRuntimeCallInfo *argv)
     // 21. Let argumentsList be «buffer, beginByteOffset, newLength».
     // 5. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     // 22. Return Construct(constructor, argumentsList).
-    const int32_t argsLength = 3;
+    const uint32_t argsLength = 3;
     JSTaggedType args[argsLength] = {
         buffer.GetRawData(),
         JSTaggedValue(beginByteOffset).GetRawData(),
