@@ -18,9 +18,10 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
-constexpr uint32_t uint_value_0 = 0;
-constexpr uint32_t uint_value_2 = 2;
-constexpr uint32_t uint_value_3 = 3;
+[[maybe_unused]] constexpr uint32_t uint_value_0 = 0;
+[[maybe_unused]] constexpr uint32_t uint_value_2 = 2;
+[[maybe_unused]] constexpr uint32_t uint_value_3 = 3;
+
 enum class StableArrayIndex {
     STABLE_ARRAY_INDEX_0,
     STABLE_ARRAY_INDEX_1,
