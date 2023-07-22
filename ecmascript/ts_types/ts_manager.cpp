@@ -1133,14 +1133,14 @@ JSHandle<ConstantPool> TSManager::GetSnapshotConstantPool(uint32_t cpListIndex)
     return JSHandle<ConstantPool>(thread_, snapshotCPList->Get(cpListIndex));
 }
 
-void TSManager::ProcessSnapshotConstantPool(kungfu::BytecodeInfoCollector *bcInfoCollector, bool optStaticMethods)
+void TSManager::ProcessSnapshotConstantPool(kungfu::BytecodeInfoCollector *bcInfoCollector)
 {
     const CMap<int32_t, JSTaggedValue> &oldCPValues = vm_->GetJSThread()->GetCurrentEcmaContext()->FindConstpools(
         bcInfoCollector->GetJSPandaFile()).value();
     std::map<int32_t, uint32_t> cpListIndexMap;
 
     GenerateSnapshotConstantPoolList(cpListIndexMap, oldCPValues);
-    FillSnapshotConstantPoolList(cpListIndexMap, bcInfoCollector, optStaticMethods);
+    FillSnapshotConstantPoolList(cpListIndexMap, bcInfoCollector);
     AddHClassToSnapshotConstantPoolList(cpListIndexMap, bcInfoCollector);
 }
 
@@ -1173,8 +1173,7 @@ void TSManager::GenerateSnapshotConstantPoolList(std::map<int32_t, uint32_t> &cp
     }
 }
 
-void TSManager::TryGetIhcAndChc(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> &ihc, JSHandle<JSTaggedValue> &chc,
-                                bool optStaticMethods)
+void TSManager::TryGetIhcAndChc(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> &ihc, JSHandle<JSTaggedValue> &chc)
 {
     if (gt.IsDefault()) {
         return;
@@ -1185,15 +1184,14 @@ void TSManager::TryGetIhcAndChc(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> &ihc
         ihc = JSHandle<JSTaggedValue>(thread_, JSTaggedValue(ihcData.GetIHC()));
     }
     auto chcIt = gtConstructorhcMap_.find(gt);
-    if (chcIt != gtConstructorhcMap_.end() && optStaticMethods) {
+    if (chcIt != gtConstructorhcMap_.end()) {
         IHClassData chcData = chcIt->second;
         chc = JSHandle<JSTaggedValue>(thread_, JSTaggedValue(chcData.GetIHC()));
     }
 }
 
 void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
-                                             kungfu::BytecodeInfoCollector *bcInfoCollector,
-                                             bool optStaticMethods)
+                                             kungfu::BytecodeInfoCollector *bcInfoCollector)
 {
     const JSPandaFile *jsPandaFile = bcInfoCollector->GetJSPandaFile();
 
@@ -1227,7 +1225,7 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
     });
 
     bcInfoCollector->IterateConstantPoolInfo(kungfu::ConstantPoolInfo::ItemType::CLASS_LITERAL,
-        [this, jsPandaFile, &cpListIndexMap, bcInfoCollector, optStaticMethods]
+        [this, jsPandaFile, &cpListIndexMap, bcInfoCollector]
         (const kungfu::ConstantPoolInfo::ItemData &data) {
         int32_t oldCPID = GetOldConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
         JSHandle<ConstantPool> oldCP(thread_,
@@ -1243,7 +1241,7 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
         JSHandle<JSTaggedValue> chc = thread_->GlobalConstants()->GetHandledUndefined();
         TypeLocation loc(jsPandaFile, data.outerMethodOffset, data.bcIndex);
         GlobalTSTypeRef gt = GetLiteralGT(loc);
-        TryGetIhcAndChc(gt, ihc, chc, optStaticMethods);
+        TryGetIhcAndChc(gt, ihc, chc);
         CollectLiteralInfo(arrayHandle, data.index, newCP, bcInfoCollector, ihc, chc);
         snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::LITERAL,
                                                std::make_pair(cpListIndex, data.index));

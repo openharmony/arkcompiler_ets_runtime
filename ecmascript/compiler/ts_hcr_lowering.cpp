@@ -590,7 +590,7 @@ void TSHCRLowering::LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode 
         return;
     }
 
-    ObjectAccessHelper accessHelper(tsManager_, accessMode, receiver, receiverType, key, value, enableOptStaticMethod_);
+    ObjectAccessHelper accessHelper(tsManager_, accessMode, receiver, receiverType, key, value);
     ChunkVector<ObjectAccessInfo> infos(circuit_->chunk());
     bool continuation = accessHelper.Compute(infos);
     if (!continuation) {

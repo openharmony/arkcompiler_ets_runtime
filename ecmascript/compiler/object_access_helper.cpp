@@ -68,9 +68,6 @@ bool ObjectAccessHelper::ComputeForClassOrObject(ObjectAccessInfo &info)
     GateType type = info.Type();
     int hclassIndex = -1;
     if (tsManager_->IsClassTypeKind(type)) {
-        if (!enableOptStaticMethod_) {
-            return false;
-        }
         hclassIndex = tsManager_->GetConstructorHClassIndexByClassGateType(type);
     } else if (tsManager_->IsObjectTypeKind(type)) {
         hclassIndex = tsManager_->GetHClassIndexByObjectType(type);
