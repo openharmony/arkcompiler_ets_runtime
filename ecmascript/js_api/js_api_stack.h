@@ -22,7 +22,7 @@
 namespace panda::ecmascript {
 class JSAPIStack : public JSObject {
 public:
-    static constexpr int DEFAULT_CAPACITY_LENGTH = 10;
+    static constexpr uint32_t DEFAULT_CAPACITY_LENGTH = 10;
     static JSAPIStack *Cast(TaggedObject *object)
     {
         ASSERT(JSTaggedValue(object).IsJSAPIStack());
@@ -48,7 +48,7 @@ public:
 
     int Search(const JSHandle<JSTaggedValue> &value);
 
-    inline int GetSize() const
+    inline uint32_t GetSize() const
     {
         return GetTop();
     }

@@ -55,9 +55,9 @@ JSHandle<JSAPILinkedList> JSAPILinkedList::Clone(JSThread *thread, const JSHandl
     JSHandle<TaggedDoubleList> srcDoubleList(thread, doubleListTaggedValue);
     JSHandle<TaggedArray> srcTaggedArray(thread, doubleListTaggedValue);
     ASSERT(!srcDoubleList->IsDictionaryMode());
-    int numberOfNodes = srcDoubleList->NumberOfNodes();
-    int numberOfDeletedNodes = srcDoubleList->NumberOfDeletedNodes();
-    int effectiveCapacity = TaggedDoubleList::ELEMENTS_START_INDEX +
+    uint32_t numberOfNodes = srcDoubleList->NumberOfNodes();
+    uint32_t numberOfDeletedNodes = srcDoubleList->NumberOfDeletedNodes();
+    uint32_t effectiveCapacity = TaggedDoubleList::ELEMENTS_START_INDEX +
                             (numberOfNodes + numberOfDeletedNodes + 1) * TaggedDoubleList::ENTRY_SIZE;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPILinkedList> newLinkedList = factory->NewJSAPILinkedList();

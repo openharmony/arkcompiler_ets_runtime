@@ -292,11 +292,11 @@ void RegExpParser::ParseAlternative(bool isBackward)
                                     icu::UnicodeSet set(atomValue, atomValue);
                                     set.closeOver(USET_CASE_INSENSITIVE);
                                     set.removeAllStrings();
-                                    int32_t size = set.size();
+                                    uint32_t size = set.size();
                                     RangeOpCode rangeOp;
                                     RangeSet rangeResult;
-                                    for (int32_t idx = 0; idx < size; idx++) {
-                                        int32_t uc = set.charAt(idx);
+                                    for (uint32_t idx = 0; idx < size; idx++) {
+                                        uint32_t uc = set.charAt(idx);
                                         RangeSet curRange(uc);
                                         rangeResult.Insert(curRange);
                                     }

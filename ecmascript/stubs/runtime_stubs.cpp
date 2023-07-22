@@ -2332,8 +2332,8 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
         }
     }
     JSHandle<TaggedArray> boundArgs(thread, boundFunc->GetBoundArguments());
-    const int32_t boundLength = static_cast<int32_t>(boundArgs->GetLength());
-    const int32_t argsLength = static_cast<int32_t>(info->GetArgsNumber()) + boundLength;
+    const uint32_t boundLength = boundArgs->GetLength();
+    const uint32_t argsLength = info->GetArgsNumber() + boundLength;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *runtimeInfo = EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(targetFunc),
         info->GetThis(), undefined, argsLength);
