@@ -773,6 +773,8 @@ public:
         return GetBuiltinsName(index);
     }
 
+    TSTypeKind PUBLIC_API GetTypeKind(const GlobalTSTypeRef &gt) const;
+
 #define TSTYPETABLE_ACCESSOR_LIST(V)       \
     V(Builtin, ModuleTableIdx::BUILTIN)    \
     V(Inferred, ModuleTableIdx::INFERRED)  \
@@ -811,8 +813,6 @@ private:
     GlobalTSTypeRef FindIteratorInstanceInInferTable(GlobalTSTypeRef kindGt, GlobalTSTypeRef elementGt) const;
 
     GlobalTSTypeRef PUBLIC_API GetPropType(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> propertyName) const;
-
-    TSTypeKind PUBLIC_API GetTypeKind(const GlobalTSTypeRef &gt) const;
 
     std::string GetClassTypeStr(GlobalTSTypeRef gt) const;
 

@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/object_access_helper.h"
 #include "ecmascript/compiler/pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -105,17 +106,17 @@ private:
     void LowerConditionJump(GateRef gate, bool flag);
     void LowerTypedNeg(GateRef gate);
     void LowerTypedNot(GateRef gate);
+
     void LowerTypedLdObjByName(GateRef gate);
-    void LowerTypedLdObjByNameForClassOrObject(GateRef gate, GateRef receiver, JSTaggedValue prop);
-    void LowerTypedLdObjByNameForClassInstance(GateRef gate, GateRef receiver, JSTaggedValue prop);
-    bool TryLowerTypedLdObjByNameForArray(GateRef gate, GateRef receiver, JSTaggedValue prop);
+    void LowerTypedStObjByName(GateRef gate, bool isThis);
+    using AccessMode = ObjectAccessHelper::AccessMode;
+    void LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode accessMode, JSTaggedValue key, GateRef value);
+    GateRef BuildNamedPropertyAccess(GateRef hir, ObjectAccessHelper accessHelper, PropertyLookupResult plr);
+    void BuildNamedPropertyAccessVerifier(GateRef gate, GateRef receiver, AccessMode mode, GateRef value);
+    bool TryLowerTypedLdObjByNameForArray(GateRef gate, GateType receiverType, JSTaggedValue key);
     void LowerTypedLdArrayLength(GateRef gate);
     void LowerTypedLdTypedArrayLength(GateRef gate);
-    void LowerTypedStObjByName(GateRef gate, bool isThis);
-    void LowerTypedStObjByNameForClassOrObject(GateRef gate, GateRef receiver, GateRef value,
-                                               JSTaggedValue prop);
-    void LowerTypedStObjByNameForClassInstance(GateRef gate, GateRef receiver, GateRef value,
-                                               JSTaggedValue prop, bool isThis);
+
     void LowerTypedLdObjByIndex(GateRef gate);
     void LowerTypedStObjByIndex(GateRef gate);
     void LowerTypedLdObjByValue(GateRef gate, bool isThis);
@@ -176,8 +177,11 @@ private:
     void DeleteConstDataIfNoUser(GateRef gate);
 
     void AddProfiling(GateRef gate);
-    void AddVTableLoadVerifer(GateRef gate, GateRef value);
-    void AddVTableStoreVerifer(GateRef gate, GateRef store, bool isThis);
+
+    bool Uncheck() const
+    {
+        return noCheck_;
+    }
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;

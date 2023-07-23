@@ -203,6 +203,7 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::PRIMITIVE_TYPE_CHECK ||
            GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK ||
+           GetOpCode(gate) == OpCode::OBJECT_TYPE_COMPARE ||
            GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::INDEX_CHECK ||
            GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP);
@@ -326,7 +327,7 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
             return static_cast<uint32_t>(gatePtr->GetOneParameterMetaData()->GetValue());
         case OpCode::TYPEDCALL:
         case OpCode::TYPEDFASTCALL:
-            return static_cast<uint32_t>(gatePtr->GetTypedCallMetaData()->GetValue()); 
+            return static_cast<uint32_t>(gatePtr->GetTypedCallMetaData()->GetValue());
         case OpCode::FRAME_STATE: {
             UInt32PairAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
             return accessor.GetFirstValue();
