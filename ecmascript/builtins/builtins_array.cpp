@@ -2966,4 +2966,60 @@ JSTaggedValue BuiltinsArray::At(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return element.GetTaggedValue();
 }
+
+JSTaggedValue BuiltinsArray::ToSorted(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), Array, ToSorted);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. If comparefn is not undefined and IsCallable(comparefn) is false, throw a TypeError exception.
+    JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
+    if (!callbackFnHandle->IsUndefined() && !callbackFnHandle->IsCallable()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Callable is false", JSTaggedValue::Exception());
+    }
+
+    // 2. Let obj be ToObject(this value).
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 3. Let len be ToLength(Get(obj, "length")).
+    int64_t len = ArrayHelper::GetArrayLength(thread, JSHandle<JSTaggedValue>(thisObjHandle));
+    // ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 4. Let A be ? ArrayCreate(len).
+    JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(len))).GetTaggedValue();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> newArrayHandle(thread, newArray);
+
+    /*
+     * 5. Let SortCompare be a new Abstract Closure with parameters (x, y) that captures comparefn and performs
+     * the following steps when called:
+     *    a. Return ? CompareArrayElements(x, y, comparefn).
+     * 6. Let sortedList be ? SortIndexedProperties(O, len, SortCompare, read-through-holes).
+     */
+    JSTaggedValue sortedList = ArrayHelper::SortIndexedProperties(thread, thisObjHandle, len, callbackFnHandle,
+                                                                  base::HolesType::READ_THROUGH_HOLES);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> sortedArray(thread, sortedList);
+
+    //7. Let j be 0.
+    int64_t j = 0;
+    /*
+     * 8. Repeat, while j < len,
+     *     a. Perform ! CreateDataPropertyOrThrow(A, ! ToString(𝔽(j)), sortedList[j]).
+     *     b. Set j to j + 1.
+     */
+    while (j < len) {
+        JSHandle<JSTaggedValue> item = JSArray::FastGetPropertyByValue(thread, sortedArray, j);
+        JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, j, item);
+        j = j + 1;
+    }
+    // 9. Return A.
+    return newArrayHandle.GetTaggedValue();
+}
+
 }  // namespace panda::ecmascript::builtins

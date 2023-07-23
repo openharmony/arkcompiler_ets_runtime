@@ -24,6 +24,7 @@
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript::base {
 bool ArrayHelper::IsConcatSpreadable(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
@@ -247,5 +248,58 @@ JSTaggedValue ArrayHelper::FlattenIntoArray(JSThread *thread, const JSHandle<JSO
     }
     // 7. Return targetIndex.
     return BuiltinsBase::GetTaggedDouble(tempArgs.start);
+}
+
+JSTaggedValue ArrayHelper::SortIndexedProperties(JSThread *thread, const JSHandle<JSObject> &thisObj,
+                                                 int64_t len, const JSHandle<JSTaggedValue> &callbackFnHandle,
+                                                 HolesType holes)
+{
+    // 1. Let items be a new empty List.
+    JSHandle<TaggedArray> items(thread->GetEcmaVM()->GetFactory()->NewTaggedArray(len));
+    // 2. Let k be 0.
+    int64_t k = 0;
+    /*
+    * 3. Repeat, while k < len,
+    *    a. Let Pk be ! ToString(𝔽(k)).
+    *    b. If holes is skip-holes, then
+    *        i. Let kRead be ? HasProperty(obj, Pk).
+    *    c. Else,
+    *        i. Assert: holes is read-through-holes.
+    *        ii. Let kRead be true.
+    *    d. If kRead is true, then
+    *        i. Let kValue be ? Get(obj, Pk).
+    *        ii. Append kValue to items.
+    *    e. Set k to k + 1.
+    */
+   bool kRead = false;
+   JSHandle<JSTaggedValue> thisObjVal(thisObj);
+   JSMutableHandle<JSTaggedValue> pk(thread, JSTaggedValue::Undefined());
+
+   while(k < len) {
+       if (holes == HolesType::SKIP_HOLES) {
+            pk.Update(JSTaggedValue(k));
+            kRead = JSTaggedValue::HasProperty(thread, thisObjVal, pk);
+       } else {
+           ASSERT(holes == HolesType::READ_THROUGH_HOLES);
+           kRead = true;
+       }
+       if (kRead) {
+           JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
+           items->Set(thread, k, kValue.GetTaggedValue());
+       }
+       k = k + 1;
+   }
+    JSHandle<JSArray> array(JSArray::CreateArrayFromList(thread, items));
+    JSHandle<JSObject> arrayObj = JSHandle<JSObject>::Cast(array);
+    /*
+     * 4. Sort items using an implementation-defined sequence of calls to SortCompare.
+     * If any such call returns an abrupt completion,
+     * stop before performing any further calls to SortCompare and return that Completion Record.
+     */
+    JSArray::Sort(thread, arrayObj, callbackFnHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> sortedList = JSHandle<JSTaggedValue>::Cast(arrayObj);
+    // 5. Return items.
+    return sortedList.GetTaggedValue();
 }
 }  // namespace panda::ecmascript::base
