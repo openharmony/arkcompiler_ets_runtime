@@ -29,3 +29,26 @@ const arr = []
 arr.length = 3
 var str3 = JSON.stringify(arr.join("0"));
 print(str3)
+
+// test circular reference
+var arr1 = [1];
+arr1.push(arr1);
+arr1.push(arr1);
+print(arr1.toString());
+print(arr1.toString());
+
+var arr2 = [1];
+var arr3 = [2];
+arr2[10] = arr3;
+arr3[10] = arr2;
+print(arr2.toString());
+print(arr2.toString());
+
+var arr4 = [1];
+var arr5 = [2];
+var arr6 = [3];
+arr4.push(arr5);
+arr5.push(arr6);
+arr6.push(arr4);
+print(arr4.toString());
+print(arr4.toString());

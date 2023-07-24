@@ -197,6 +197,16 @@
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, value)       \
+    do {                                                        \
+        if ((thread)->HasPendingException()) {                  \
+            auto ecmaContext = thread->GetCurrentEcmaContext(); \
+            ecmaContext->JoinStackPopFastPath(value);           \
+            return JSTaggedValue::Exception();                  \
+        }                                                       \
+    } while (false)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define RETURN_HANDLE_IF_ABRUPT_COMPLETION(type, thread)               \
     do {                                                               \
         if ((thread)->HasPendingException()) {                         \

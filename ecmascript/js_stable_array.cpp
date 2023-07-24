@@ -220,12 +220,14 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     int sep = ',';
     uint32_t sepLength = 1;
     JSHandle<EcmaString> sepStringHandle;
+    auto context = thread->GetCurrentEcmaContext();
+    JSHandle<JSTaggedValue> receiverValue = JSHandle<JSTaggedValue>::Cast(receiver);
     if (!sepHandle->IsUndefined()) {
         if (sepHandle->IsString()) {
             sepStringHandle = JSHandle<EcmaString>::Cast(sepHandle);
         } else {
             sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
         }
         if (EcmaStringAccessor(sepStringHandle).IsUtf8() && EcmaStringAccessor(sepStringHandle).GetLength() == 1) {
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -240,6 +242,7 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     }
     if (length == 0) {
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+        context->JoinStackPopFastPath(receiverValue);
         return globalConst->GetEmptyString();
     }
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
@@ -262,7 +265,7 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
             if (!element.IsString()) {
                 elementHandle.Update(element);
                 JSHandle<EcmaString> strElement = JSTaggedValue::ToString(thread, elementHandle);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
                 element = strElement.GetTaggedValue();
                 elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
             }
@@ -299,6 +302,7 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
     }
     ASSERT_PRINT(
         isOneByte == EcmaStringAccessor::CanBeCompressed(newString), "isOneByte does not match the real value!");
+    context->JoinStackPopFastPath(receiverValue);
     return JSTaggedValue(newString);
 }
 
