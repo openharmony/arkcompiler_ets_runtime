@@ -209,12 +209,12 @@ TypeInfo NumberSpeculativeRetype::GetOuputForPhi(GateRef gate, bool ignoreConsta
         if (inputInfo == TypeInfo::NONE) {
             continue;
         }
-        if (ignoreConstant && acc_.GetOpCode(input) == OpCode::CONSTANT) {
+        if (ignoreConstant && acc_.IsConstantNumber(input)) {
             hasConstantInput = true;
             continue;
         }
         // use less general input as phi output
-        if (tempType == TypeInfo::NONE || tempType == TypeInfo::TAGGED) {
+        if (tempType == TypeInfo::NONE) {
             tempType = inputInfo;
         } else if (tempType != inputInfo) {
             tempType = TypeInfo::TAGGED;
@@ -241,17 +241,24 @@ GateRef NumberSpeculativeRetype::VisitPhi(GateRef gate)
     }
     ASSERT(IsConvert());
     size_t valueNum = acc_.GetNumValueIn(gate);
-    auto state = acc_.GetState(gate);
-    auto dependSelector = acc_.GetDependSelectorFromMerge(state);
+    auto merge = acc_.GetState(gate);
+    auto dependSelector = acc_.GetDependSelectorFromMerge(merge);
     TypeInfo output = GetOutputTypeInfo(gate);
     for (size_t i = 0; i < valueNum; ++i) {
         GateRef input = acc_.GetValueIn(gate, i);
         if (output == TypeInfo::TAGGED || output == TypeInfo::NONE) {
             input = ConvertToTagged(input);
         } else {
+            auto state = acc_.GetState(merge, i);
             auto depend = acc_.GetDep(dependSelector, i);
             Environment env(state, depend, {}, circuit_, &builder_);
             input = ConvertTaggedToNJSValue(input, output);
+            if (builder_.GetState() != state) {
+                acc_.ReplaceStateIn(merge, builder_.GetState(), i);
+            }
+            if (builder_.GetDepend() != depend) {
+                acc_.ReplaceDependIn(dependSelector, builder_.GetDepend(), i);
+            }
         }
         acc_.ReplaceValueIn(gate, input, i);
     }
