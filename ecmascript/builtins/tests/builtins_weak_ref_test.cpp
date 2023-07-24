@@ -188,4 +188,38 @@ HWTEST_F_L0(BuiltinsWeakRefTest, Deref3)
     vm->SetEnableForceGC(true);
     ASSERT_TRUE(!result2.IsUndefined());
 }
+
+// symbol target
+HWTEST_F_L0(BuiltinsWeakRefTest, SymbolTarget)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSSymbol> symbolTarget = thread->GetEcmaVM()->GetFactory()->NewJSSymbol();
+    JSHandle<JSTaggedValue> target(symbolTarget);
+
+    JSHandle<JSFunction> weakRef(env->GetBuiltinsWeakRefFunction());
+
+    auto ecmaRuntimeCallInfo1 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, weakRef.GetTaggedValue(), 6); // 6 means 1 call arg
+    ecmaRuntimeCallInfo1->SetFunction(weakRef.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetCallArg(0, target.GetTaggedValue());
+
+    // constructor
+    [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result1 = BuiltinsWeakRef::WeakRefConstructor(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev1);
+    ASSERT_TRUE(result1.IsECMAObject());
+
+    JSHandle<JSWeakRef> jsWeakRef(thread, JSWeakRef::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData())));
+    auto ecmaRuntimeCallInfo2 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4); // 4 means 0 call arg
+    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo2->SetThis(jsWeakRef.GetTaggedValue());
+
+    // weakRef.Deref()
+    [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 = BuiltinsWeakRef::Deref(ecmaRuntimeCallInfo2);
+    TestHelper::TearDownFrame(thread, prev2);
+    ASSERT_EQ(result2, target.GetTaggedValue());
+}
 }  // namespace panda::test

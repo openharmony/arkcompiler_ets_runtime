@@ -75,19 +75,19 @@ JSTaggedValue BuiltinsFinalizationRegistry::Register(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "thisValue is not object or does not have an internalSlot internal slot",
                                     JSTaggedValue::Exception());
     }
-    // 3. If Type(target) is not Object, throw a TypeError exception.
-    if (!target->IsECMAObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "target is not object", JSTaggedValue::Exception());
+    // 3. If CanBeHeldWeakly(target) is false, throw a TypeError exception.
+    if (!JSTaggedValue::CanBeHeldWeakly(thread, target)) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "target invalid", JSTaggedValue::Exception());
     }
     // 4. If SameValue(target, heldValue) is true, throw a TypeError exception.
     if (JSTaggedValue::SameValue(target, heldValue)) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "target and heldValue should not be equal", JSTaggedValue::Exception());
     }
-    // 5. If Type(unregisterToken) is not Object, then
+    // 5. If CanBeHeldWeakly(unregisterToken) is false, then
     //     a. If unregisterToken is not undefined, throw a TypeError exception.
     //     b. Set unregisterToken to empty.
-    if (!unregisterToken->IsECMAObject() && !unregisterToken->IsUndefined()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "unregisterToken should be object", JSTaggedValue::Exception());
+    if (!JSTaggedValue::CanBeHeldWeakly(thread, unregisterToken) && !unregisterToken->IsUndefined()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "unregisterToken invalid", JSTaggedValue::Exception());
     }
     // 6. Let cell be the Record { [[WeakRefTarget]]: target,
     //                             [[HeldValue]]: heldValue, [[UnregisterToken]]: unregisterToken }.
@@ -112,9 +112,9 @@ JSTaggedValue BuiltinsFinalizationRegistry::Unregister(EcmaRuntimeCallInfo *argv
         THROW_TYPE_ERROR_AND_RETURN(thread, "thisValue is not object or does not have an internalSlot internal slot",
                                     JSTaggedValue::Exception());
     }
-    // 3. If Type(unregisterToken) is not Object, throw a TypeError exception.
-    if (!unregisterToken->IsECMAObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "unregisterToken should be object", JSTaggedValue::Exception());
+    // 3. If CanBeHeldWeakly(unregisterToken) is false, throw a TypeError exception.
+    if (!JSTaggedValue::CanBeHeldWeakly(thread, unregisterToken)) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "unregisterToken invalid", JSTaggedValue::Exception());
     }
     // 4. Let removed be false.
     // 5. For each Record { [[WeakRefTarget]], [[HeldValue]], [[UnregisterToken]] } cell of

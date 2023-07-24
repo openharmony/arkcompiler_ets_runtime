@@ -92,6 +92,7 @@ group("ark_js_moduletest") {
     "typearray",
     "typedarrayat",
     "watch",
+    "weakcollectionswithsymbol",
     "wrapperclassfunc",
     "yieldstar",
     "esmnestedimportcjs",
@@ -190,6 +191,7 @@ group("ark_asm_test") {
     "trycatch",
     "typedarrayat",
     "watch",
+    "weakcollectionswithsymbol",
     "wrapperclassfunc",
     "yieldstar",
     "regexp",
@@ -280,6 +282,7 @@ group("ark_asm_single_step_test") {
     "trycatch",
     "typedarrayat",
     "watch",
+    "weakcollectionswithsymbol",
     "yieldstar",
   ]
 
