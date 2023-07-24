@@ -98,19 +98,10 @@ public:
                                                          const JSHandle<JSTaggedValue> &lexenv);
 
     static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread,
-                                                       const JSHandle<JSTaggedValue> &base,
                                                        JSHandle<ClassInfoExtractor> &extractor,
                                                        const JSHandle<JSTaggedValue> &lexenv,
-                                                       const JSHandle<JSHClass> &ihclass);
-
-    static JSHandle<JSFunction> DefineClassWithIHClassAndConstructorHClass(JSThread *thread,
-        JSHandle<ClassInfoExtractor> &extractor, const JSHandle<JSTaggedValue> &lexenv,
-        const JSHandle<JSHClass> &ihclass, const JSHandle<JSHClass> &constructorHClass);
-
-    static JSHandle<JSFunction> DefineClassWithConstructorHClass(JSThread *thread,
-        JSHandle<ClassInfoExtractor> &extractor, const JSHandle<JSTaggedValue> &lexenv,
-        const JSHandle<JSHClass> &ihclass, const JSHandle<JSHClass> &constructorHClass,
-        const JSHandle<Method> &method);
+                                                       const JSHandle<JSHClass> &ihclass,
+                                                       const JSHandle<JSHClass> &constructorHClass);
 
 private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,

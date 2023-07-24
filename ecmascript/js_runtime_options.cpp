@@ -81,7 +81,6 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-later-elimination:     Enable LaterElimination for aot compiler. Default: 'true'\n"
     "--compiler-opt-value-numbering:       Enable ValueNumbering for aot compiler. Default: 'true'\n"
     "--compiler-opt-inlining:              Enable inlining function for aot compiler: Default: 'true'\n"
-    "--compiler-opt-static-method:         Enable static method optimize for aot compiler: Default: 'false'\n"
     "--compiler-opt-pgotype:               Enable pgo type for aot compiler: Default: 'true'\n"
     "--compiler-opt-track-field:           Enable track field for aot compiler: Default: 'false'\n"
     "--entry-point:                        Full name of entrypoint function. Default: '_GLOBAL::func_main_0'\n"
@@ -179,7 +178,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-opt-later-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_LATER_ELIMINATION},
         {"compiler-opt-value-numbering", required_argument, nullptr, OPTION_COMPILER_OPT_VALUE_NUMBERING},
         {"compiler-opt-inlining", required_argument, nullptr, OPTION_COMPILER_OPT_INLINING},
-        {"compiler-opt-static-method", required_argument, nullptr, OPTION_COMPILER_OPT_STATIC_METHOD},
         {"compiler-opt-pgotype", required_argument, nullptr, OPTION_COMPILER_OPT_PGOTYPE},
         {"compiler-opt-track-field", required_argument, nullptr, OPTION_COMPILER_OPT_TRACK_FIELD},
         {"entry-point", required_argument, nullptr, OPTION_ENTRY_POINT},
@@ -646,14 +644,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableOptInlining(argBool);
-                } else {
-                    return false;
-                }
-                break;
-            case OPTION_COMPILER_OPT_STATIC_METHOD:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetEnableOptStaticMethod(argBool);
                 } else {
                     return false;
                 }

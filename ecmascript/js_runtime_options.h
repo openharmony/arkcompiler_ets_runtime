@@ -118,7 +118,6 @@ enum CommandValues {
     OPTION_COMPILER_OPT_LATER_ELIMINATION,
     OPTION_COMPILER_OPT_VALUE_NUMBERING,
     OPTION_COMPILER_OPT_INLINING,
-    OPTION_COMPILER_OPT_STATIC_METHOD,
     OPTION_COMPILER_OPT_PGOTYPE,
     OPTION_COMPILER_OPT_TRACK_FIELD,
     OPTION_COMPILER_OPT_GLOBAL_TYPEINFER,
@@ -946,16 +945,6 @@ public:
         return enableOptInlining_;
     }
 
-    void SetEnableOptStaticMethod(bool value)
-    {
-        enableOptStaticMethod_ = value;
-    }
-
-    bool IsEnableOptStaticMethod() const
-    {
-        return enableOptStaticMethod_;
-    }
-
     void SetEnableOptPGOType(bool value)
     {
         enableOptPGOType_ = value;
@@ -1247,7 +1236,6 @@ private:
     bool enableLaterElimination_ {true};
     bool enableValueNumbering_ {true};
     bool enableOptInlining_ {true};
-    bool enableOptStaticMethod_ {false};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};
     bool enableOptTrackField_ {true};

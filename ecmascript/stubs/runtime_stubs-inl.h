@@ -838,16 +838,10 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
         cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
     } else {
         classLiteral->SetIsAOTUsed(true);
-        if (chc->IsUndefined()) {
-            JSHandle<JSHClass> ihclass(ihc);
-            cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor,
-                                                      lexenv, ihclass);
-        } else {
-            JSHandle<JSHClass> ihclass(ihc);
-            JSHandle<JSHClass> chclass(chc);
-            cls = ClassHelper::DefineClassWithIHClassAndConstructorHClass(thread, extractor,
-                                                                          lexenv, ihclass, chclass);
-        }
+        JSHandle<JSHClass> ihclass(ihc);
+        JSHandle<JSHClass> chclass(chc);
+        cls = ClassHelper::DefineClassWithIHClass(thread, extractor,
+                                                  lexenv, ihclass, chclass);
     }
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
