@@ -1231,6 +1231,12 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    auto context = thread->GetCurrentEcmaContext();
+    bool noCircular = context->JoinStackPushFastPath(thisHandle);
+    if (!noCircular) {
+        return factory->GetEmptyString().GetTaggedValue();
+    }
     if (thisHandle->IsStableJSArray(thread)) {
         return JSStableArray::Join(JSHandle<JSArray>::Cast(thisHandle), argv);
     }
@@ -1238,13 +1244,13 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     // 1. Let O be ToObject(this value).
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
     // 3. Let len be ToLength(Get(O, "length")).
     int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
     // 4. ReturnIfAbrupt(len).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
 
     // 5. If separator is undefined, let separator be the single-element String ",".
     // 6. Let sep be ToString(separator).
@@ -1257,7 +1263,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
 
     JSHandle<EcmaString> sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
     // 7. ReturnIfAbrupt(sep).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
     std::u16string sepStr = EcmaStringAccessor(sepStringHandle).ToU16String();
 
     // 8. If len is zero, return the empty String.
@@ -1281,10 +1287,10 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     for (int64_t k = 0; k < len; k++) {
         std::u16string nextStr;
         JSHandle<JSTaggedValue> element = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
         if (!element->IsUndefined() && !element->IsNull()) {
             JSHandle<EcmaString> nextStringHandle = JSTaggedValue::ToString(thread, element);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
             nextStr = EcmaStringAccessor(nextStringHandle).ToU16String();
         }
         if (k > 0) {
@@ -1300,7 +1306,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     auto *char16tData = const_cast<char16_t *>(constChar16tData);
     auto *uint16tData = reinterpret_cast<uint16_t *>(char16tData);
     uint32_t u16strSize = concatStr.size();
-    auto factory = thread->GetEcmaVM()->GetFactory();
+    context->JoinStackPopFastPath(thisHandle);
     return factory->NewFromUtf16Literal(uint16tData, u16strSize).GetTaggedValue();
 }
 

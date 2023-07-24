@@ -209,6 +209,8 @@ EcmaContext::~EcmaContext()
         delete propertiesCache_;
         propertiesCache_ = nullptr;
     }
+    // clear join stack
+    joinStack_.clear();
 }
 
 JSTaggedValue EcmaContext::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
@@ -666,6 +668,11 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
             rv(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
         }
     }
+
+    if (!joinStack_.empty()) {
+        rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&joinStack_.front())),
+            ObjectSlot(ToUintPtr(&joinStack_.back()) + JSTaggedValue::TaggedTypeSize()));
+    }
 }
 
 size_t EcmaContext::IterateHandle(const RootRangeVisitor &rangeVisitor)
@@ -770,4 +777,57 @@ void EcmaContext::DumpAOTInfo() const
 {
     aotFileManager_->DumpAOTInfo();
 }
+
+bool EcmaContext::JoinStackPushFastPath(JSHandle<JSTaggedValue> receiver)
+{
+    if (JSTaggedValue::SameValue(joinStack_[0], JSTaggedValue::Hole())) {
+        joinStack_[0] = receiver.GetTaggedValue();
+        return true;
+    }
+    return JoinStackPush(receiver);
+}
+
+bool EcmaContext::JoinStackPush(JSHandle<JSTaggedValue> receiver)
+{
+    uint32_t capacity = joinStack_.size();
+    JSTaggedValue receiverValue = receiver.GetTaggedValue();
+    for (size_t i = 0; i < capacity; ++i) {
+        if (JSTaggedValue::SameValue(joinStack_[i], JSTaggedValue::Hole())) {
+            joinStack_[i] = receiverValue;
+            return true;
+        }
+        if (JSTaggedValue::SameValue(joinStack_[i], receiverValue)) {
+            return false;
+        }
+    }
+    joinStack_.emplace_back(receiverValue);
+    return true;
+}
+
+void EcmaContext::JoinStackPopFastPath(JSHandle<JSTaggedValue> receiver)
+{
+    uint32_t length = joinStack_.size();
+    if (JSTaggedValue::SameValue(joinStack_[0], receiver.GetTaggedValue()) && length == MIN_JOIN_STACK_SIZE) {
+        joinStack_[0] = JSTaggedValue::Hole();
+    } else {
+        JoinStackPop(receiver);
+    }
+}
+
+void EcmaContext::JoinStackPop(JSHandle<JSTaggedValue> receiver)
+{
+    uint32_t length = joinStack_.size();
+    for (size_t i = 0; i < length; ++i) {
+        if (JSTaggedValue::SameValue(joinStack_[i], receiver.GetTaggedValue())) {
+            if (i == 0 && length > MIN_JOIN_STACK_SIZE) {
+                joinStack_ = {JSTaggedValue::Hole(), JSTaggedValue::Hole()};
+                break;
+            } else {
+                joinStack_[i] = JSTaggedValue::Hole();
+                break;
+            }
+        }
+    }
+}
+
 }  // namespace panda::ecmascript
