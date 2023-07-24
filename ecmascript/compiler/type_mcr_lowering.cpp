@@ -752,12 +752,10 @@ void TypeMCRLowering::LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id)
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef elementSize = GetElementSize(id);
     GateRef offset = builder_.PtrMul(index, elementSize);
-    GateRef byteOffset =
-        builder_.LoadConstOffset(VariableType::INT32(), receiver, JSTypedArray::BYTE_OFFSET_OFFSET);
 
     GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
     auto type = GetVariableType(id);
-    GateRef result = builder_.Load(type, data, builder_.PtrAdd(offset, byteOffset));
+    GateRef result = builder_.Load(type, data, offset);
     switch (id) {
         case BuiltinTypeId::INT8_ARRAY:
             result = builder_.SExtInt8ToInt32(result);
@@ -843,7 +841,6 @@ void TypeMCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id
 
     GateRef elementSize = GetElementSize(id);
     GateRef offset = builder_.PtrMul(index, elementSize);
-    GateRef byteOffset = builder_.LoadConstOffset(VariableType::INT32(), receiver, JSTypedArray::BYTE_OFFSET_OFFSET);
     switch (id) {
         case BuiltinTypeId::INT8_ARRAY:
         case BuiltinTypeId::UINT8_ARRAY:
@@ -862,7 +859,7 @@ void TypeMCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id
     GateRef arrbuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
     GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
 
-    builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), data, builder_.PtrAdd(offset, byteOffset), value);
+    builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), data, offset, value);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -875,8 +872,6 @@ void TypeMCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef elementSize = builder_.Int32(sizeof(uint8_t));
     GateRef offset = builder_.PtrMul(index, elementSize);
-    GateRef byteOffset =
-        builder_.LoadConstOffset(VariableType::INT32(), receiver, JSTypedArray::BYTE_OFFSET_OFFSET);
     GateRef value = acc_.GetValueIn(gate, 2);
 
     DEFVAlUE(result, (&builder_), VariableType::INT32(), value);
@@ -908,7 +903,7 @@ void TypeMCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
 
     GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
 
-    builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), data, builder_.PtrAdd(offset, byteOffset), value);
+    builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), data, offset, value);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
