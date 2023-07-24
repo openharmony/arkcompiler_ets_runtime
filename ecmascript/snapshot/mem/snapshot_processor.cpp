@@ -418,6 +418,7 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(BuiltinsArray::Flat),
     reinterpret_cast<uintptr_t>(BuiltinsArray::FlatMap),
     reinterpret_cast<uintptr_t>(BuiltinsArray::At),
+    reinterpret_cast<uintptr_t>(BuiltinsArray::ToSpliced),
     reinterpret_cast<uintptr_t>(BuiltinsTypedArray::TypedArrayBaseConstructor),
     reinterpret_cast<uintptr_t>(BuiltinsTypedArray::CopyWithin),
     reinterpret_cast<uintptr_t>(BuiltinsTypedArray::Entries),

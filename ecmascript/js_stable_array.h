@@ -54,6 +54,8 @@ public:
                                                        DataViewType targetType, uint32_t targetOffset,
                                                        uint32_t srcLength, JSHandle<TaggedArray> &elements);
     static JSTaggedValue At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ToSpliced(JSThread *thread, JSHandle<JSObject> &thisObjHandle, EcmaRuntimeCallInfo *argv,
+                                   int64_t argc, int64_t actualStart, int64_t actualSkipCount, int64_t newLen);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

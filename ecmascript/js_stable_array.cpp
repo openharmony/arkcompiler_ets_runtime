@@ -689,4 +689,38 @@ JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo 
     result = elements->Get(k);
     return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
+
+JSTaggedValue JSStableArray::ToSpliced(JSThread *thread, JSHandle<JSObject> &thisObjHandle, EcmaRuntimeCallInfo *argv,
+                                       int64_t argc, int64_t actualStart, int64_t actualSkipCount, int64_t newLen)
+{
+    JSMutableHandle<TaggedArray> thisArray(thread, thisObjHandle->GetElements());
+    // 1. Let A be ? ArrayCreate(newLen).
+    JSHandle<JSTaggedValue> newJsTaggedArray = 
+        JSArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(newLen)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> newArrayHandle(thread, newJsTaggedArray.GetTaggedValue());
+    JSMutableHandle<TaggedArray> newArray(thread, newArrayHandle->GetElements());
+
+    int64_t i = 0;
+    int64_t r = actualStart + actualSkipCount;
+    while (i < actualStart) {
+        JSTaggedValue value = thisArray->Get(i);
+        newArray->Set(thread, i, value);
+        i = i + 1;
+    }
+
+    for (int64_t pos = 2; pos < argc; ++pos) {
+        JSHandle<JSTaggedValue> element = base::BuiltinsBase::GetCallArg(argv, pos);
+        newArray->Set(thread, i, element.GetTaggedValue());
+        i = i + 1;
+    }
+
+    while (i < newLen) {
+        JSTaggedValue fromValue = thisArray->Get(r);
+        newArray->Set(thread, i, fromValue);
+        i = i + 1;
+        r = r + 1;
+    }
+    return newArrayHandle.GetTaggedValue();
+}
 }  // namespace panda::ecmascript
