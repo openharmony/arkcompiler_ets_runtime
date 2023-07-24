@@ -275,7 +275,11 @@ public:
                     JSMutableHandle<TaggedArray> properties(thread, JSTaggedValue::Undefined());
                     LiteralDataExtractor::ExtractObjectDatas(thread, jsPandaFile, id, elements,
                         properties, constpoolHandle, entry, needSetAotFlag, entryIndexes);
-                    JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties);
+                    JSTaggedValue ihcVal = JSTaggedValue::Undefined();
+                    if (needSetAotFlag) {
+                        ihcVal = entryIndexes->GetIhc();
+                    }
+                    JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties, ihcVal);
                     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
                     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
                     size_t elementsLen = elements->GetLength();
@@ -286,15 +290,6 @@ public:
                         }
                         valueHandle.Update(elements->Get(i + 1));
                         JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
-                    }
-                    if (needSetAotFlag) {
-                        JSTaggedValue ihcVal = entryIndexes->GetIhc();
-                        if (!ihcVal.IsUndefined()) {
-                            JSHClass *ihc = JSHClass::Cast(ihcVal.GetTaggedObject());
-                            JSHClass *oldHC = obj->GetJSHClass();
-                            ihc->SetPrototype(thread, oldHC->GetPrototype());
-                            obj->SetClass(ihc);
-                        }
                     }
 
                     PGOProfiler *profiler = thread->GetEcmaVM()->GetPGOProfiler();

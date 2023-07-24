@@ -20,3 +20,24 @@ let obj:{a:number, b:string}={
 }
 print(obj.a);
 print(obj.b);
+
+class A {
+    data: {
+        runs: number,
+        elapsed: number
+    };
+    constructor() {
+    }
+
+    Measure(): void {
+        var elapsed: number = 0;
+        this.data = {runs: 0, elapsed: 0}
+        elapsed = 11.1;
+
+        this.data.elapsed += elapsed;
+        print(this.data.elapsed)
+    }
+}
+
+let a = new A();
+a.Measure();
