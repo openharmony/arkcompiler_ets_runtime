@@ -143,3 +143,13 @@ print(arr21.at(-1));
 print(arr21.at(6));
 print(arr21.at('1.9'));
 print(arr21.at(true));
+
+const months = ["Mar", "Jan", "Feb", "Dec"];
+const sortedMonths = months.toSorted();
+print(sortedMonths); // ['Dec', 'Feb', 'Jan', 'Mar']
+print(months); // ['Mar', 'Jan', 'Feb', 'Dec']
+
+const values = [1, 10, 21, 2];
+const sortedValues = values.toSorted((a, b) => {return a- b});
+print(sortedValues); // [1, 2, 10, 21]
+print(values); // [1, 10, 21, 2]
