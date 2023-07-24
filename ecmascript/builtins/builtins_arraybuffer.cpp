@@ -507,7 +507,11 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForFloat(uint8_t *block, ui
         }
         if (!littleEndian) {
             uint64_t res = LittleEndianToBigEndian64Bit(unionValue.uValue);
-            return GetTaggedDouble(base::bit_cast<T>(res));
+            T d = base::bit_cast<T>(res);
+            if (JSTaggedValue::IsImpureNaN(d)) {
+                return GetTaggedDouble(base::bit_cast<T>(base::pureNaN));
+            }
+            return GetTaggedDouble(d);
         }
     }
 
