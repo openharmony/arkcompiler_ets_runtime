@@ -200,7 +200,7 @@ private:
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
     ArgumentAccessor argAcc_;
-    EcmaOpcode currentOp_;
+    EcmaOpcode currentOp_ {static_cast<EcmaOpcode>(0xff)};
     PGOTypeLogList pgoTypeLog_;
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeMap_;
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeHitTimeMap_;
