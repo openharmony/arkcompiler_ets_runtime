@@ -115,4 +115,57 @@ JSHandle<JSTaggedValue> JSMapIterator::CreateMapIterator(JSThread *thread, const
     JSHandle<JSTaggedValue> iter(factory->NewJSMapIterator(JSHandle<JSMap>(obj), kind));
     return iter;
 }
+
+JSTaggedValue JSMapIterator::MapIteratorToList(JSThread *thread, JSHandle<JSTaggedValue> &items,
+                                               JSHandle<JSTaggedValue> &method)
+{
+    JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
+    JSHandle<JSObject> newArrayHandle(thread, newArray);
+    JSHandle<JSTaggedValue> iterator = JSIterator::GetIterator(thread, items, method);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    JSHandle<JSMapIterator> iter(iterator);
+    JSHandle<JSTaggedValue> iteratedMap(thread, iter->GetIteratedMap());
+    if (iteratedMap->IsUndefined()) {
+        return newArrayHandle.GetTaggedValue();
+    }
+    IterationKind itemKind = iter->GetIterationKind();
+    JSHandle<LinkedHashMap> map(iteratedMap);
+    int totalElements = map->NumberOfElements() + map->NumberOfDeletedElements();
+    int index = static_cast<int>(iter->GetNextIndex());
+    int k = 0;
+
+    JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> indexHandle(thread, JSTaggedValue::Undefined());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> array(factory->NewTaggedArray(2));  // 2 means the length of array
+    while (index < totalElements) {
+        JSTaggedValue key = map->GetKey(index);
+        indexHandle.Update(JSTaggedValue(k));
+        if (!key.IsHole()) {
+            keyHandle.Update(key);
+            valueHandle.Update(map->GetValue(index));
+            if (itemKind == IterationKind::KEY) {
+                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, indexHandle, keyHandle);
+            } else if (itemKind == IterationKind::VALUE) {
+                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, indexHandle, valueHandle);
+            } else {
+                array->Set(thread, 0, keyHandle);
+                array->Set(thread, 1, valueHandle);
+                JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));
+                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, indexHandle, keyAndValue);
+            }
+            k++;
+        }
+        index++;
+    }
+
+    indexHandle.Update(JSTaggedValue(k));
+    JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(newArrayHandle), lengthKey, indexHandle, true);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return newArrayHandle.GetTaggedValue();
+}
 }  // namespace panda::ecmascript

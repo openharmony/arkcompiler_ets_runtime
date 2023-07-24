@@ -29,6 +29,7 @@
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/object_factory.h"
@@ -167,6 +168,11 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
     // 6. If usingIterator is not undefined, then
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     if (!usingIterator->IsUndefined()) {
+        // Fast path for MapIterator
+        if (!mapping && items->IsJSMapIterator()) {
+            return JSMapIterator::MapIteratorToList(thread, items, usingIterator);
+        }
+
         //   a. If IsConstructor(C) is true, then
         //     i. Let A be Construct(C).
         //   b. Else,
