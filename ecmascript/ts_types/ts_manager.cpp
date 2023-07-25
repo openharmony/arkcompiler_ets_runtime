@@ -1241,6 +1241,7 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
         JSHandle<JSTaggedValue> chc = thread_->GlobalConstants()->GetHandledUndefined();
         TypeLocation loc(jsPandaFile, data.outerMethodOffset, data.bcIndex);
         GlobalTSTypeRef gt = GetLiteralGT(loc);
+        ASSERT(gt.IsDefault() || IsUserDefinedClassTypeKind(gt));
         TryGetIhcAndChc(gt, ihc, chc);
         CollectLiteralInfo(arrayHandle, data.index, newCP, bcInfoCollector, ihc, chc);
         snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::LITERAL,
@@ -1265,6 +1266,7 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
         JSHandle<JSTaggedValue> chc = thread_->GlobalConstants()->GetHandledUndefined();
         TypeLocation loc(jsPandaFile, data.outerMethodOffset, data.bcIndex);
         GlobalTSTypeRef gt = GetLiteralGT(loc);
+        ASSERT(gt.IsDefault() || IsObjectTypeKind(gt));
         TryGetIhcAndChc(gt, ihc, chc);
         CollectLiteralInfo(properties, data.index, newCP, bcInfoCollector, ihc, chc);
         snapshotData_.AddIndexInfoToRecordInfo(SnapshotData::RecordType::LITERAL,

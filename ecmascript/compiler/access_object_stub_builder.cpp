@@ -129,8 +129,8 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
 GateRef AccessObjectStubBuilder::ResolvePropKey(GateRef glue, GateRef prop, const StringIdInfo &info)
 {
     if (jsFunc_ != Circuit::NullGate()) {
-        GateRef key = LoadObjectFromConstPool(jsFunc_, prop);
-        return key;
+        GateRef constpool = GetConstPoolFromFunction(jsFunc_);
+        return GetStringFromConstPool(glue, constpool, ChangeIntPtrToInt32(prop));
     }
     if (!info.IsValid()) {
         return prop;

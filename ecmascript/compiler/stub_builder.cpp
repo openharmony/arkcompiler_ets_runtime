@@ -4692,6 +4692,11 @@ GateRef StubBuilder::GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRe
     return ret;
 }
 
+GateRef StubBuilder::GetConstPoolFromFunction(GateRef jsFunc)
+{
+    return env_->GetBuilder()->GetConstPoolFromFunction(jsFunc);
+}
+
 GateRef StubBuilder::GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index)
 {
     GateRef module = Circuit::NullGate();

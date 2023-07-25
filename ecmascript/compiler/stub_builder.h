@@ -559,6 +559,7 @@ public:
     GateRef GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key);
 
     inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
+    GateRef GetConstPoolFromFunction(GateRef jsFunc);
     GateRef GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
