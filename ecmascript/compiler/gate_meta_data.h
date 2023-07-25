@@ -284,6 +284,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(ConvertHoleAsUndefined, CONVERT_HOLE_AS_UNDEFINED, GateFlags::NO_WRITE, 1, 1, 1)  \
     V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                     \
     V(FinishAllocate, FINISH_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                   \
+    V(LoadGetter, LOAD_GETTER, GateFlags::NONE_FLAG, 0, 1, 2)                           \
+    V(LoadSetter, LOAD_SETTER, GateFlags::NONE_FLAG, 0, 1, 2)                           \
     BINARY_GATE_META_DATA_CACHE_LIST(V)                                                 \
     UNARY_GATE_META_DATA_CACHE_LIST(V)
 
