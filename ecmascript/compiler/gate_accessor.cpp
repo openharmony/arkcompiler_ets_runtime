@@ -843,55 +843,7 @@ void GateAccessor::ReplaceHirAndDeleteIfException(GateRef hirGate,
 
 void GateAccessor::EliminateRedundantPhi()
 {
-    std::vector<GateRef> gateList;
-    GetAllGates(gateList);
-    std::queue<GateRef> workList;
-    std::set<GateRef> inList;
-    for (auto gate : gateList) {
-        if (IsValueSelector(gate)) {
-            workList.push(gate);
-            inList.insert(gate);
-        }
-    }
-
-    while (!workList.empty()) {
-        auto cur = workList.front();
-        workList.pop();
-        ASSERT(IsValueSelector(cur));
-        GateRef first = GetValueIn(cur, 0);
-        bool sameIns = true;
-        bool selfUse = first == cur;
-        auto valueNum = GetNumValueIn(cur);
-        for (size_t i = 1; i < valueNum; ++i) {
-            GateRef input = GetValueIn(cur, i);
-            if (input != first) {
-                sameIns = false;
-            }
-            if (input == cur) {
-                ASSERT(IsLoopHead(GetState(cur)));
-                selfUse = true;
-            }
-        }
-        if ((!sameIns) && (!selfUse)) {
-            inList.erase(cur);
-            continue;
-        }
-        auto use = Uses(cur);
-        for (auto it = use.begin(); it != use.end(); ++it) {
-            if (((*it) == cur) || (!IsValueSelector(*it)) || inList.count(*it)) {
-                // selfUse or notPhi or inListPhi
-                continue;
-            }
-            workList.push(*it);
-            inList.insert(*it);
-        }
-        UpdateAllUses(cur, first);
-    }
-    for (auto phi : inList) {
-        ASSERT(IsValueSelector(phi));
-        DeleteGate(phi);
-    }
-    return;
+    GraphEditor::EliminateRedundantPhi(circuit_);
 }
 
 UseIterator GateAccessor::DeleteGate(const UseIterator &useIt)
