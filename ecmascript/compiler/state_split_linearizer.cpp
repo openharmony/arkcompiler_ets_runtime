@@ -191,11 +191,6 @@ public:
                 ASSERT(replacement_.State() != Circuit::NullGate());
                 replacement_ = lowering.LowerConvert(replacement_, gate);
                 break;
-            case OpCode::CHECK_AND_CONVERT:
-                ASSERT(replacement_.State() != Circuit::NullGate());
-                ASSERT(frameState_ != Circuit::NullGate());
-                replacement_ = lowering.LowerCheckAndConvert(replacement_, gate, frameState_);
-                break;
             default:
                 break;
         }

@@ -62,6 +62,7 @@ GateRef LaterElimination::VisitGate(GateRef gate)
         case OpCode::INT32_DIV_WITH_CHECK:
         case OpCode::LEX_VAR_IS_HOLE_CHECK:
         case OpCode::COW_ARRAY_CHECK:
+        case OpCode::CHECK_AND_CONVERT:
             return TryEliminateGate(gate);
         case OpCode::DEPEND_SELECTOR:
             return TryEliminateDependSelector(gate);
@@ -158,11 +159,25 @@ bool LaterElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         }
     }
     auto opcode = acc_.GetOpCode(lhs);
-    if (opcode == OpCode::GET_GLOBAL_ENV_OBJ_HCLASS ||
-        opcode == OpCode::GET_GLOBAL_CONSTANT_VALUE) {
-        if (acc_.GetIndex(lhs) != acc_.GetIndex(rhs)) {
-            return false;
+    switch (opcode) {
+        case OpCode::GET_GLOBAL_ENV_OBJ_HCLASS:
+        case OpCode::GET_GLOBAL_CONSTANT_VALUE: {
+            if (acc_.GetIndex(lhs) != acc_.GetIndex(rhs)) {
+                return false;
+            }
+            break;
         }
+        case OpCode::CHECK_AND_CONVERT: {
+            if (acc_.GetSrcType(lhs) != acc_.GetSrcType(rhs)) {
+                return false;
+            }
+            if (acc_.GetDstType(lhs) != acc_.GetDstType(rhs)) {
+                return false;
+            }
+            break;
+        }
+        default:
+            break;
     }
     return true;
 }

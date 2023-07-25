@@ -92,6 +92,9 @@ void LCRLowering::Run()
             case OpCode::STORE_MEMORY:
                 LowerStoreMemory(gate);
                 break;
+            case OpCode::CHECK_AND_CONVERT:
+                LowerCheckAndConvert(gate);
+                break;
             default:
                 break;
         }
@@ -313,9 +316,10 @@ GateRef LCRLowering::ConvertTaggedNumberToFloat64(GateRef gate, Label *exit)
     return *result;
 }
 
-StateDepend LCRLowering::LowerCheckAndConvert(StateDepend stateDepend, GateRef gate, GateRef frameState)
+void LCRLowering::LowerCheckAndConvert(GateRef gate)
 {
-    Environment env(stateDepend.State(), stateDepend.Depend(), {}, circuit_, &builder_);
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
     ValueType srcType = acc_.GetSrcType(gate);
     Label exit(&builder_);
     switch (srcType) {
@@ -337,7 +341,6 @@ StateDepend LCRLowering::LowerCheckAndConvert(StateDepend stateDepend, GateRef g
         default:
             UNREACHABLE();
     }
-    return builder_.GetStateDepend();
 }
 
 void LCRLowering::LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState)
