@@ -71,7 +71,6 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress, isVmMode, isPrivate);
-    ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif
@@ -118,6 +117,15 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
+}
+
+void DFXJSNApi::DestroyProfiler([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
+#endif
 }
 
 bool DFXJSNApi::BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)

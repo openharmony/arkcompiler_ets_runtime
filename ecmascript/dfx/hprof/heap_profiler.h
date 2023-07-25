@@ -29,6 +29,38 @@ namespace panda::ecmascript {
 class HeapSnapshot;
 class EcmaVM;
 
+class EntryIdMap {
+public:
+    EntryIdMap() = default;
+    ~EntryIdMap() = default;
+    NO_COPY_SEMANTIC(EntryIdMap);
+    NO_MOVE_SEMANTIC(EntryIdMap);
+
+    static constexpr uint32_t SEQ_STEP = 2;
+    std::pair<bool, uint32_t> FindId(Address addr);
+    bool InsertId(Address addr, uint32_t id);
+    bool EraseId(Address addr);
+    bool Move(Address oldAddr, Address forwardAddr);
+    void RemoveDeadEntryId(HeapSnapshot *snapshot);
+    uint32_t GetNextId()
+    {
+        nextId_ += SEQ_STEP;
+        return nextId_ - SEQ_STEP;
+    }
+    uint32_t GetLastId()
+    {
+        return nextId_ - SEQ_STEP;
+    }
+    size_t GetIdCount()
+    {
+        return idMap_.size();
+    }
+
+private:
+    uint32_t nextId_ {3U};  // 1 Reversed for SyntheticRoot
+    CUnorderedMap<Address, uint32_t> idMap_ {};
+};
+
 class HeapProfiler : public HeapProfilerInterface {
 public:
     NO_MOVE_SEMANTIC(HeapProfiler);
@@ -37,6 +69,9 @@ public:
     ~HeapProfiler() override;
 
     enum class SampleType { ONE_SHOT, REAL_TIME };
+    
+    void AllocationEvent(TaggedObject *address, size_t size) override;
+    void MoveEvent(uintptr_t address, TaggedObject *forwardAddress, size_t size) override;
     /**
      * dump the specific snapshot in target format
      */
@@ -52,6 +87,14 @@ public:
     bool StartHeapSampling(uint64_t samplingInterval, int stackDepth = 128) override;
     void StopHeapSampling() override;
     const struct SamplingInfo *GetAllocationProfile() override;
+    size_t GetIdCount() override
+    {
+        return entryIdMap_->GetIdCount();
+    }
+    EntryIdMap *GetEntryIdMap() const
+    {
+        return const_cast<EntryIdMap *>(entryIdMap_);
+    }
     Chunk *GetChunk() const
     {
         return const_cast<Chunk *>(&chunk_);
@@ -76,9 +119,12 @@ private:
     const EcmaVM *vm_;
     CVector<HeapSnapshot *> hprofs_;
     HeapSnapshotJSONSerializer *jsonSerializer_ {nullptr};
+    bool isProfiling_ {false};
+    EntryIdMap* entryIdMap_;
     std::unique_ptr<HeapTracker> heapTracker_;
     Chunk chunk_;
     std::unique_ptr<HeapSampling> heapSampling_ {nullptr};
+    os::memory::Mutex mutex_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_HPROF_HEAP_PROFILER_H

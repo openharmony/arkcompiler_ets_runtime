@@ -24,19 +24,105 @@
 #include "ecmascript/mem/heap-inl.h"
 
 namespace panda::ecmascript {
+std::pair<bool, uint32_t> EntryIdMap::FindId(Address addr)
+{
+    auto it = idMap_.find(addr);
+    if (it == idMap_.end()) {
+        return std::make_pair(false, GetNextId()); // return nextId if entry not exits
+    } else {
+        return std::make_pair(true, it->second);
+    }
+}
+
+bool EntryIdMap::InsertId(Address addr, uint32_t id)
+{
+    auto it = idMap_.find(addr);
+    if (it == idMap_.end()) {
+        idMap_.emplace(addr, id);
+        return true;
+    }
+    idMap_[addr] = id;
+    return false;
+}
+
+bool EntryIdMap::EraseId(Address addr)
+{
+    auto it = idMap_.find(addr);
+    if (it == idMap_.end()) {
+        return false;
+    }
+    idMap_.erase(it);
+    return true;
+}
+
+bool EntryIdMap::Move(Address oldAddr, Address forwardAddr)
+{
+    if (oldAddr == forwardAddr) {
+        return true;
+    }
+    auto it = idMap_.find(oldAddr);
+    if (it != idMap_.end()) {
+        uint32_t id = it->second;
+        idMap_.erase(it);
+        idMap_[forwardAddr] = id;
+        return true;
+    }
+    return false;
+}
+
+void EntryIdMap::RemoveDeadEntryId(HeapSnapshot *snapshot)
+{
+    auto nodes = snapshot->GetNodes();
+    CUnorderedMap<Address, uint32_t> newIdMap;
+    for (auto node : *nodes) {
+        auto addr = node->GetAddress();
+        auto it = idMap_.find(addr);
+        if (it != idMap_.end()) {
+            newIdMap.emplace(addr, it->second);
+        }
+    }
+    idMap_ = newIdMap;
+}
+
 HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm), chunk_(vm->GetNativeAreaAllocator())
 {
+    isProfiling_ = false;
+    entryIdMap_ = GetChunk()->New<EntryIdMap>();
     jsonSerializer_ = GetChunk()->New<HeapSnapshotJSONSerializer>();
     if (UNLIKELY(jsonSerializer_ == nullptr)) {
         LOG_FULL(FATAL) << "alloc snapshot json serializer failed";
         UNREACHABLE();
     }
 }
+
 HeapProfiler::~HeapProfiler()
 {
     ClearSnapshot();
+    GetChunk()->Delete(entryIdMap_);
     GetChunk()->Delete(jsonSerializer_);
     jsonSerializer_ = nullptr;
+}
+
+void HeapProfiler::AllocationEvent(TaggedObject *address, size_t size)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (isProfiling_) {
+        // Id will be allocated later while add new node
+        if (heapTracker_ != nullptr) {
+            heapTracker_->AllocationEvent(address, size);
+        }
+    }
+}
+
+void HeapProfiler::MoveEvent(uintptr_t address, TaggedObject *forwardAddress, size_t size)
+{
+    os::memory::LockHolder lock(mutex_);
+    if (isProfiling_) {
+        entryIdMap_->Move(address, reinterpret_cast<Address>(forwardAddress));
+        if (heapTracker_ != nullptr) {
+            heapTracker_->MoveEvent(address, forwardAddress, size);
+        }
+    }
 }
 
 void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
@@ -53,21 +139,27 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
     ASSERT(heapClean);
     LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot start";
     size_t heapSize = vm_->GetHeap()->GetHeapObjectSize();
-    LOG_ECMA(ERROR) << "HeapProfiler DumpSnapshot heap size " << heapSize;
+    LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot heap size " << heapSize;
     int32_t heapCount = static_cast<int32_t>(vm_->GetHeap()->GetHeapObjectCount());
     if (progress != nullptr) {
         progress->ReportProgress(0, heapCount);
     }
     HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::ONE_SHOT, isVmMode, isPrivate);
+    ASSERT(snapshot != nullptr);
+    entryIdMap_->RemoveDeadEntryId(snapshot);
+    isProfiling_ = true;
     if (progress != nullptr) {
         progress->ReportProgress(heapCount, heapCount);
     }
-    ASSERT(snapshot != nullptr);
     if (!stream->Good()) {
         FileStream newStream(GenDumpFileName(dumpFormat));
-        return jsonSerializer_->Serialize(snapshot, &newStream);
+        auto serializerResult = jsonSerializer_->Serialize(snapshot, &newStream);
+        GetChunk()->Delete(snapshot);
+        return serializerResult;
     }
-    return jsonSerializer_->Serialize(snapshot, stream);
+    auto serializerResult = jsonSerializer_->Serialize(snapshot, stream);
+    GetChunk()->Delete(snapshot);
+    return serializerResult;
 }
 
 bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream *stream,
@@ -77,11 +169,10 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
     if (snapshot == nullptr) {
         return false;
     }
-
+    isProfiling_ = true;
     UpdateHeapObjects(snapshot);
     heapTracker_ = std::make_unique<HeapTracker>(snapshot, timeInterval, stream);
-    const_cast<EcmaVM *>(vm_)->StartHeapTracking(heapTracker_.get());
-
+    const_cast<EcmaVM *>(vm_)->StartHeapTracking();
     if (newThread) {
         heapTracker_->StartTracing();
     }
@@ -91,14 +182,13 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
 
 bool HeapProfiler::UpdateHeapTracking(Stream *stream)
 {
-    if (hprofs_.size() == 0) {
+    if (heapTracker_ == nullptr) {
         return false;
     }
-    HeapSnapshot *snapshot = hprofs_.at(0);
+    HeapSnapshot *snapshot = heapTracker_->GetHeapSnapshot();
     if (snapshot == nullptr) {
         return false;
     }
-
     snapshot->RecordSampleTime();
     UpdateHeapObjects(snapshot);
 
@@ -121,10 +211,7 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
         heapTracker_->StopTracing();
     }
 
-    if (hprofs_.size() == 0) {
-        return false;
-    }
-    HeapSnapshot *snapshot = hprofs_.at(0);
+    HeapSnapshot *snapshot = heapTracker_->GetHeapSnapshot();
     if (snapshot == nullptr) {
         return false;
     }
@@ -133,6 +220,7 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
         progress->ReportProgress(0, heapCount);
     }
     snapshot->FinishSnapshot();
+    isProfiling_ = false;
     if (progress != nullptr) {
         progress->ReportProgress(heapCount, heapCount);
     }
@@ -195,24 +283,26 @@ bool HeapProfiler::ForceFullGC(const EcmaVM *vm)
     return false;
 }
 
-HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMode, bool isPrivate, bool traceAllocation)
+HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMode,
+                                             bool isPrivate, bool traceAllocation)
 {
     LOG_ECMA(INFO) << "HeapProfiler::MakeHeapSnapshot";
     DISALLOW_GARBAGE_COLLECTION;
     const_cast<Heap *>(vm_->GetHeap())->Prepare();
     switch (sampleType) {
         case SampleType::ONE_SHOT: {
-            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation, GetChunk());
+            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation,
+                                                           entryIdMap_, GetChunk());
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
             }
             snapshot->BuildUp();
-            AddSnapshot(snapshot);
             return snapshot;
         }
         case SampleType::REAL_TIME: {
-            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation, GetChunk());
+            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation,
+                                                           entryIdMap_, GetChunk());
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
