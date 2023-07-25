@@ -2399,7 +2399,7 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
     size_t shift = Deoptimizier::ComputeShift(maxDepth);
     frameState = deoptFrameState;
     ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));
-    for (int32_t curDepth = maxDepth; curDepth >= 0; curDepth--) {
+    for (int32_t curDepth = static_cast<int32_t>(maxDepth); curDepth >= 0; curDepth--) {
         ASSERT(acc_.GetOpCode(frameState) == OpCode::FRAME_STATE);
         GateRef frameValues = acc_.GetValueIn(frameState, 1); // 1: frame values
         const size_t numValueIn = acc_.GetNumValueIn(frameValues);

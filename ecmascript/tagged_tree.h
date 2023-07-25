@@ -59,12 +59,12 @@ public:
 
     static void Remove(const JSThread *thread, const JSHandle<Derived> &tree, int entry);
 
-    inline int NumberOfElements() const
+    inline uint32_t NumberOfElements() const
     {
         return Get(NUMBER_OF_ELEMENTS_INDEX).GetInt();
     }
 
-    inline int NumberOfDeletedElements() const
+    inline uint32_t NumberOfDeletedElements() const
     {
         return Get(NUMBER_OF_HOLE_ENTRIES_INDEX).GetInt();
     }
@@ -109,7 +109,7 @@ public:
         return !key.IsHole();
     }
 
-    inline void SetNumberOfElements(const JSThread *thread, int num)
+    inline void SetNumberOfElements(const JSThread *thread, uint32_t num)
     {
         Set(thread, NUMBER_OF_ELEMENTS_INDEX, JSTaggedValue(num));
     }
