@@ -25,8 +25,7 @@ void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, Ga
 {
     switch (type) {
         case OperationType::CALL:
-        case OperationType::CALL_WIDE:
-            ProfileCall(glue, pc, profileTypeInfo, values[0], type);
+            ProfileCall(glue, values[0]);
             break;
         case OperationType::OPERATION_TYPE:
             ProfileOpType(glue, pc, func, profileTypeInfo, values[0]);
@@ -69,22 +68,32 @@ void ProfilerStubBuilder::ProfileOpType(GateRef glue, GateRef pc, GateRef func, 
     }
     Bind(&profiler);
     {
-        Label pushLabel(env);
+        Label uninitialize(env);
         Label compareLabel(env);
+        Label updateSlot(env);
+        Label updateProfile(env);
 
         GateRef slotId = ZExtInt8ToInt32(Load(VariableType::INT8(), pc, IntPtr(1)));
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
         DEFVARIABLE(curType, VariableType::INT32(), type);
-        Branch(TaggedIsInt(slotValue), &compareLabel, &pushLabel);
+        Branch(TaggedIsInt(slotValue), &compareLabel, &uninitialize);
         Bind(&compareLabel);
         {
             GateRef oldSlotValue = TaggedGetInt(slotValue);
             curType = Int32Or(oldSlotValue, type);
-            Branch(Int32Equal(oldSlotValue, *curType), &exit, &pushLabel);
+            Branch(Int32Equal(oldSlotValue, *curType), &exit, &updateSlot);
         }
-        Bind(&pushLabel);
+        Bind(&uninitialize);
+        {
+            Branch(TaggedIsUndefined(slotValue), &updateSlot, &updateProfile);
+        }
+        Bind(&updateSlot);
         {
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(*curType));
+            Jump(&updateProfile);
+        }
+        Bind(&updateProfile);
+        {
             GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
             GateRef firstPC =
                 Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
@@ -148,59 +157,28 @@ void ProfilerStubBuilder::ProfileObjLayout(GateRef glue, GateRef pc, GateRef fun
     env->SubCfgExit();
 }
 
-void ProfilerStubBuilder::ProfileCall(
-    GateRef glue, GateRef pc, GateRef profileTypeInfo, GateRef target, OperationType type)
+void ProfilerStubBuilder::ProfileCall(GateRef glue, GateRef target)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
 
     Label exit(env);
-    Label fastpath(env);
     Label slowpath(env);
+    Label fastpath(env);
 
-    DEFVARIABLE(inc, VariableType::INT32(), Int32(1));
-    Branch(TaggedIsUndefined(profileTypeInfo), &slowpath, &fastpath);
-    Bind(&fastpath);
+    Label targetIsFunction(env);
+    Branch(IsJSFunction(target), &targetIsFunction, &exit);
+    Bind(&targetIsFunction);
     {
-        Label initialLabel(env);
-        Label uninitialLabel(env);
-        GateRef slotId = Int32(panda::ecmascript::ProfileTypeInfo::INVALID_SLOT_INDEX);
-        if (type == OperationType::CALL_WIDE) {
-            GateRef currentInstHigh = ZExtInt8ToInt16(Load(VariableType::INT8(), pc, IntPtr(HIGH_WORD_OFFSET)));
-            GateRef currentInstHighLsl = Int16LSL(currentInstHigh, Int16(BITS_OF_WORD));
-            GateRef currentInstLow = ZExtInt8ToInt16(Load(VariableType::INT8(), pc, IntPtr(LOW_WORD_OFFSET)));
-            slotId = ZExtInt16ToInt32(Int16Add(currentInstHighLsl, currentInstLow));
-        } else {
-            slotId = ZExtInt8ToInt32(Load(VariableType::INT8(), pc, IntPtr(1)));
-        }
-        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-        Branch(TaggedIsInt(slotValue), &initialLabel, &uninitialLabel);
-        Bind(&initialLabel);
+        GateRef targetProfileInfo = GetProfileTypeInfo(target);
+        Label nonHotness(env);
+        Branch(TaggedIsUndefined(targetProfileInfo), &nonHotness, &exit);
+        Bind(&nonHotness);
         {
-            Label fastLabel(env);
-            GateRef oldInc = TaggedGetInt(slotValue);
-            Branch(Int32GreaterThan(oldInc, Int32(MAX_PROFILE_CALL_COUNT)), &exit, &fastLabel);
-            Bind(&fastLabel);
-            GateRef count = Int32Add(oldInc, *inc);
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(count));
-            inc = Int32(MIN_PROFILE_CALL_INTERVAL);
-            GateRef mod = Int32Mod(oldInc, *inc);
-            Branch(Int32Equal(mod, Int32(0)), &slowpath, &exit);
+            CallNGCRuntime(glue, RTSTUB_ID(ProfileCall), { glue, target, Int32(1)});
+            Jump(&exit);
         }
-        Bind(&uninitialLabel);
-        {
-            Label fastLabel(env);
-            Branch(TaggedIsUndefined(slotValue), &fastLabel, &slowpath);
-            Bind(&fastLabel);
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(*inc));
-            Jump(&slowpath);
-        }
-    }
-    Bind(&slowpath);
-    {
-        CallNGCRuntime(glue, RTSTUB_ID(ProfileCall), { glue, target, *inc});
-        Jump(&exit);
     }
     Bind(&exit);
     env->SubCfgExit();

@@ -1021,7 +1021,7 @@ bool PGORecordDetailInfos::AddLayout(PGOSampleType type, JSTaggedType hclass, PG
             return false;
         }
     } else {
-        LOG_ECMA(INFO) << "The current class did not find a definition";
+        LOG_ECMA(DEBUG) << "The current class did not find a definition";
         return false;
     }
     return true;
