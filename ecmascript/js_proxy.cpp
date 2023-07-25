@@ -132,7 +132,7 @@ bool JSProxy::SetPrototype(JSThread *thread, const JSHandle<JSProxy> &proxy, con
         return JSTaggedValue::SetPrototype(thread, targetHandle, proto);
     }
     JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler());
-    const int32_t argsLength = 2;  // 2: target and proto
+    const uint32_t argsLength = 2;  // 2: target and proto
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -297,7 +297,7 @@ bool JSProxy::GetOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, c
         return JSTaggedValue::GetOwnProperty(thread, targetHandle, key, desc);
     }
     JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler());
-    const int32_t argsLength = 2;  // 2: target and key
+    const uint32_t argsLength = 2;  // 2: target and key
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -396,7 +396,7 @@ bool JSProxy::DefineOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy
     // 9. Let descObj be FromPropertyDescriptor(Desc).
     JSHandle<JSTaggedValue> descObj = JSObject::FromPropertyDescriptor(thread, desc);
     JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler());
-    const int32_t argsLength = 3;  // 3: target, key and desc
+    const uint32_t argsLength = 3;  // 3: target, key and desc
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -484,7 +484,7 @@ bool JSProxy::HasProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
     // 9. Let booleanTrapResult be ToBoolean(Call(trap, handler, «target, P»)).
     JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler());
 
-    const int32_t argsLength = 2;  // 2: target and key
+    const uint32_t argsLength = 2;  // 2: target and key
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -545,7 +545,7 @@ OperationResult JSProxy::GetProperty(JSThread *thread, const JSHandle<JSProxy> &
     }
     // 9. Let trapResult be Call(trap, handler, «target, P, Receiver»).
     JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler());
-    const int32_t argsLength = 3;  // 3: «target, P, Receiver»
+    const uint32_t argsLength = 3;  // 3: «target, P, Receiver»
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(
@@ -616,7 +616,7 @@ bool JSProxy::SetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
 
     // 9. Let booleanTrapResult be ToBoolean(Call(trap, handler, «target, P, V, Receiver»))
     JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler());
-    const int32_t argsLength = 4;  // 4: «target, P, V, Receiver»
+    const uint32_t argsLength = 4;  // 4: «target, P, V, Receiver»
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -676,7 +676,7 @@ bool JSProxy::DeleteProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, c
     // 9. Let booleanTrapResult be ToBoolean(Call(trap, handler, «target, P»)).
     JSHandle<JSTaggedValue> newTgt(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler());
-    const int32_t argsLength = 2;  // 2: target and key
+    const uint32_t argsLength = 2;  // 2: target and key
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -954,7 +954,7 @@ JSTaggedValue JSProxy::ConstructInternal(EcmaRuntimeCallInfo *info)
 
     // step 8 ~ 9 Call(trap, handler, «target, argArray, newTarget »).
     JSHandle<JSTaggedValue> newTarget(info->GetNewTarget());
-    const int32_t argsLength = 3;  // 3: «target, argArray, newTarget »
+    const uint32_t argsLength = 3;  // 3: «target, argArray, newTarget »
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *runtimeInfo =
         EcmaInterpreter::NewRuntimeCallInfo(thread, method, handler, undefined, argsLength);
