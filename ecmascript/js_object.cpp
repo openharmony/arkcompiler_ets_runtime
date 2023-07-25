@@ -2102,7 +2102,8 @@ void JSObject::DefineGetter(JSThread *thread, const JSHandle<JSTaggedValue> &obj
     op.DefineGetter(value);
 }
 
-JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, const JSHandle<TaggedArray> &properties)
+JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, const JSHandle<TaggedArray> &properties,
+                                                        JSTaggedValue ihcVal)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     size_t length = properties->GetLength();
@@ -2115,10 +2116,17 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
     }
     if (propsLen <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES) {
         JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(properties, propsLen);
+        if (ihcVal.IsJSHClass()) {
+            JSHClass *ihc = JSHClass::Cast(ihcVal.GetTaggedObject());
+            JSHClass *oldHC = obj->GetJSHClass();
+            ihc->SetPrototype(thread, oldHC->GetPrototype());
+            obj->SetClass(ihc);
+        }
         ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
         for (size_t i = 0; i < propsLen; i++) {
             // 2: literal contains a pair of key-value
-            obj->SetPropertyInlinedProps(thread, i, properties->Get(i * 2 + 1));
+            auto value = obj->ConvertValueWithRep(i, properties->Get(i * 2 + 1));
+            obj->SetPropertyInlinedPropsWithRep(thread, i, value);
         }
         return obj;
     } else {

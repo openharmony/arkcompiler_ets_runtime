@@ -142,8 +142,8 @@ void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const Metho
         if (it == bcOffsetPGOOpTypeMap_.end()) {
             return;
         }
-        GlobalTSTypeRef gt = typeParser.CreatePGOGT(
-            TSTypeParser::PGOInfo { jsPandaFile, recordName, methodOffset, cpIdx, it->second, type });
+        GlobalTSTypeRef gt = typeParser.CreatePGOGT(TSTypeParser::PGOInfo {
+            jsPandaFile, recordName, methodOffset, cpIdx, it->second, type, decoder_, enableOptTrackField_ });
         if (TypeNeedFilter(gt)) {
             return;
         }
