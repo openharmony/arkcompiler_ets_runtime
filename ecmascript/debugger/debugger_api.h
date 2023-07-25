@@ -88,6 +88,10 @@ public:
                                           std::string &name);
     static int32_t GetRequestModuleIndex(const EcmaVM *ecmaVm, const JSTaggedValue moduleRequest,
                                          const JSHandle<JSTaggedValue> &currentModule);
+    static Local<JSValueRef> GetExportVariableValue(const EcmaVM *ecmaVm, const JSHandle<JSTaggedValue> &currentModule,
+                                                    std::string &name);
+    static bool SetExportVariableValue(const EcmaVM *ecmaVm, const JSHandle<JSTaggedValue> &currentModule,
+                                       std::string &name, Local<JSValueRef> value);
     static Local<JSValueRef> GetModuleValue(const EcmaVM *ecmaVm, const JSHandle<JSTaggedValue> &currentModule,
                                             std::string &name);
     static bool SetModuleValue(const EcmaVM *ecmaVm, const JSHandle<JSTaggedValue> &currentModule,
