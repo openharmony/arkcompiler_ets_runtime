@@ -1278,7 +1278,6 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     //   e. Let R be a String value produced by concatenating S and next.
     //   f. Increase k by 1.
     std::u16string concatStr;
-    std::u16string concatStrNew;
     for (int64_t k = 0; k < len; k++) {
         std::u16string nextStr;
         JSHandle<JSTaggedValue> element = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
@@ -1289,11 +1288,9 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
             nextStr = EcmaStringAccessor(nextStringHandle).ToU16String();
         }
         if (k > 0) {
-            concatStrNew = base::StringHelper::Append(concatStr, sepStr);
-            concatStr = base::StringHelper::Append(concatStrNew, nextStr);
-            continue;
+            concatStr.append(sepStr);
         }
-        concatStr = base::StringHelper::Append(concatStr, nextStr);
+        concatStr.append(nextStr);
     }
 
     // 14. Return R.
