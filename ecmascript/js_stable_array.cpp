@@ -639,7 +639,7 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
     uint32_t targetLength = targetArray->GetArrayLength();
     uint32_t targetByteOffset = targetArray->GetByteOffset();
     uint32_t targetElementSize = TypedArrayHelper::GetSizeFromType(targetType);
-    if (srcLength + targetOffset > targetLength) {
+    if (srcLength + static_cast<uint64_t>(targetOffset) > targetLength) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "The sum of length and targetOffset is greater than targetLength.",
                                      JSTaggedValue::Exception());
     }
