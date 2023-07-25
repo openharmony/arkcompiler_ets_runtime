@@ -808,7 +808,9 @@ GateRef NumberSpeculativeLowering::MonocularDouble(GateRef value)
 void NumberSpeculativeLowering::UpdateRange(GateRef gate, const RangeInfo& range)
 {
     auto id = acc_.GetId(gate);
-    rangeInfos_.resize(id + 1, RangeInfo::ANY());
+    if (id >= rangeInfos_.size()) {
+        rangeInfos_.resize(id + 1, RangeInfo::ANY());
+    }
     rangeInfos_[id] = range;
 }
 
