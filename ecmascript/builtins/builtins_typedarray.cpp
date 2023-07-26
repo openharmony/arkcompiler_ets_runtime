@@ -1648,8 +1648,8 @@ JSTaggedValue BuiltinsTypedArray::Includes(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::ToReversed(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, ToReversed);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, TypedArray, ToReversed);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
