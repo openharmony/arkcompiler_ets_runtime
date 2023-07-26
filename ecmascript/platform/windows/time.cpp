@@ -17,6 +17,7 @@
 
 #include <timezoneapi.h>
 #include <ctime>
+#include <windows.h>
 
 namespace panda::ecmascript {
 static constexpr uint16_t THOUSAND = 1000;
@@ -37,6 +38,29 @@ bool IsDst(int64_t timeMs)
     time_t tv = timeMs;
     struct tm nowtm;
     localtime_s(&nowtm, &tv);
-    return nowtm.tm_isdst;
+
+    int month = nowtm.tm_mon + 1;
+    int day = nowtm.tm_mday;
+    int hour = nowtm.tm_hour;
+
+    TIME_ZONE_INFORMATION tzi;
+    GetTimeZoneInformation(&tzi);
+
+    SYSTEMTIME stDSTStart = tzi.DaylightDate;
+    SYSTEMTIME stDSTEnd = tzi.StandardDate;
+
+    if (month > stDSTStart.wMonth && month < stDSTEnd.wMonth) {
+        return true;
+    } else if (month == stDSTStart.wMonth) {
+        if (day > stDSTStart.wDay || (day == stDSTStart.wDay && hour >= tzi.DaylightBias)) {
+            return true;
+        }
+    } else if (month == stDSTEnd.wMonth) {
+        if (day < stDSTEnd.wDay || (day == stDSTEnd.wDay && hour < tzi.DaylightBias)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 }  // namespace panda::ecmascript
