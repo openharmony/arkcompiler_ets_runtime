@@ -528,8 +528,13 @@ public:
     {
         return heapAliveSizeAfterGC_;
     }
+
+    bool IsInBackground() const
+    {
+        return inBackground_;
+    }
 private:
-    static constexpr int IDLE_TIME_LIMIT = 15;  // if idle time over 15ms we can do something
+    static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
     static constexpr int IDLE_MAINTAIN_TIME = 500;
     static constexpr int BACKGROUND_GROW_LIMIT = 2_MB;
@@ -683,6 +688,9 @@ private:
 
     // The tracker tracking heap object allocation and movement events.
     HeapTracker *tracker_ {nullptr};
+
+    // Application status
+    bool inBackground_ {false};
 
     IdleNotifyStatusCallback notifyIdleStatusCallback {nullptr};
 

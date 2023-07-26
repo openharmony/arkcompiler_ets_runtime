@@ -192,7 +192,7 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
         ASSERT_PRINT(status == true, "return result exception!");
     }
 
-    bool isOOMError = errorType == ErrorType::OOM_ERROR ? true : false;
+    bool isOOMError = errorType == ErrorType::OOM_ERROR;
     JSHandle<EcmaString> handleStack = BuildEcmaStackTrace(thread, isOOMError);
     JSHandle<JSTaggedValue> stackkey = globalConst->GetHandledStackString();
     PropertyDescriptor stackDesc(thread, JSHandle<JSTaggedValue>::Cast(handleStack), true, false, true);
