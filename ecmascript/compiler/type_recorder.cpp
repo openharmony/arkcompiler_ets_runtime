@@ -91,13 +91,32 @@ void TypeRecorder::CollectLiteralGT(TSManager *tsManager, TypeLocation &loc, Glo
     if (bcIdx < 0) {
         return;
     }
-    if (tsManager->IsUserDefinedClassTypeKind(gt) ||
-        tsManager->IsObjectTypeKind(gt)) {
-        if (bytecodes_->GetOpcode(pcOffsets_[bcIdx]) == EcmaOpcode::STA_V8) {
-            // bcIndex of literal marked in es2abc maybe in the next bc whose opcode should be sta.
-            loc.SetBcIdx(bcIdx - 1);
+
+    if (bytecodes_->GetOpcode(pcOffsets_[bcIdx]) == EcmaOpcode::STA_V8) {
+        // bcIndex of literal marked in es2abc maybe in the next bc whose opcode should be sta.
+        bcIdx--;
+        loc.SetBcIdx(bcIdx);
+    }
+
+    EcmaOpcode ecmaOpcode =  bytecodes_->GetOpcode(pcOffsets_[bcIdx]);
+
+    switch (ecmaOpcode) {
+        case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
+        case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8: {
+            if (tsManager->IsUserDefinedClassTypeKind(gt)) {
+                tsManager->InsertLiteralGTMap(loc, gt);
+            }
+            return;
         }
-        tsManager->InsertLiteralGTMap(loc, gt);
+        case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
+        case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
+            if (tsManager->IsObjectTypeKind(gt)) {
+                tsManager->InsertLiteralGTMap(loc, gt);
+            }
+            return;
+        }
+        default:
+            return;
     }
 }
 
