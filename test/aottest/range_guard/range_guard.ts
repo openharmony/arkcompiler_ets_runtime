@@ -30,5 +30,28 @@ function testcase2() {
     print(res)
 }
 
+function testcase3() {
+    let testArray: Int32Array = new Int32Array([1, 2, 3]);
+    let len: number = testArray.length;
+    let sum: number = 0;
+    for(let i = 0; i < len; i++) {
+        print(i + 1);
+        sum += testArray[i];
+    }
+}
+
+function testcase4() {
+    let testArray: Int32Array = new Int32Array([1, 2, 3]);
+    let len: number = testArray.length - 1;
+    let sum: number = 0;
+    for(let i = 0; i < len; i++) {
+        sum += testArray[i];
+        print(i + 1);
+    }
+}
+
 testcase1();  // 8
 testcase2();  // 8
+
+testcase3();  // 8
+testcase4();  // 8

@@ -61,10 +61,20 @@ bool DependChains::Equals(DependChains* that)
     return true;
 }
 
-bool DependChains::FoundIndexChecked(RangeGuard* rangeGuard, GateRef input)
+bool DependChains::FoundIndexCheckedForLength(RangeGuard* rangeGuard, GateRef input)
 {
     for (Node* node = head_; node != nullptr; node = node->next) {
-        if (rangeGuard->CheckIndexCheckInput(node->gate, input)) {
+        if (rangeGuard->CheckIndexCheckLengthInput(node->gate, input)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool DependChains::FoundIndexCheckedForIndex(RangeGuard* rangeGuard, GateRef input)
+{
+    for (Node* node = head_; node != nullptr; node = node->next) {
+        if (rangeGuard->CheckIndexCheckIndexInput(node->gate, input)) {
             return true;
         }
     }

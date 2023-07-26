@@ -87,10 +87,21 @@ GateRef RangeGuard::TraverseDependSelector(GateRef gate)
     return UpdateDependChain(gate, copy);
 }
 
-GateRef RangeGuard::TryApplyTypedArrayRangeGuard(DependChains* dependChain, GateRef gate, GateRef input)
+GateRef RangeGuard::TryApplyTypedArrayRangeGuardForLength(DependChains* dependChain, GateRef gate, GateRef input)
 {
     ASSERT(dependChain != nullptr);
-    if (dependChain->FoundIndexChecked(this, input)) {
+    if (dependChain->FoundIndexCheckedForLength(this, input)) {
+        Environment env(gate, circuit_, &builder_);
+        auto rangeGuardGate = builder_.RangeGuard(input);
+        return rangeGuardGate;
+    }
+    return Circuit::NullGate();
+}
+
+GateRef RangeGuard::TryApplyTypedArrayRangeGuardForIndex(DependChains* dependChain, GateRef gate, GateRef input)
+{
+    ASSERT(dependChain != nullptr);
+    if (dependChain->FoundIndexCheckedForIndex(this, input)) {
         Environment env(gate, circuit_, &builder_);
         auto rangeGuardGate = builder_.RangeGuard(input);
         return rangeGuardGate;
@@ -117,7 +128,9 @@ GateRef RangeGuard::TryApplyRangeGuardGate(GateRef gate)
         auto originalInputOpcode = acc_.GetOpCode(originalInput);
         auto rangeGuardGate = Circuit::NullGate();
         if (originalInputOpcode == OpCode::LOAD_TYPED_ARRAY_LENGTH) {
-            rangeGuardGate = TryApplyTypedArrayRangeGuard(dependChain, gate, originalInput);
+            rangeGuardGate = TryApplyTypedArrayRangeGuardForLength(dependChain, gate, originalInput);
+        } else if(originalInputOpcode != OpCode::CONSTANT) {
+            rangeGuardGate = TryApplyTypedArrayRangeGuardForIndex(dependChain, gate, originalInput);
         }
         if (rangeGuardGate != Circuit::NullGate()) {
             acc_.ReplaceValueIn(gate, rangeGuardGate, i);
@@ -144,29 +157,23 @@ GateRef RangeGuard::UpdateDependChain(GateRef gate, DependChains* dependChain)
     return gate;
 }
 
-bool RangeGuard::CheckIndexCheckInput(GateRef lhs, GateRef rhs)
+bool RangeGuard::CheckIndexCheckLengthInput(GateRef lhs, GateRef rhs)
 {
     auto lhsOpcode = acc_.GetOpCode(lhs);
     if (lhsOpcode == OpCode::INDEX_CHECK) {
-        auto indexCheckLengthInput = acc_.GetValueIn(lhs, 0);
-        return CheckInputSource(indexCheckLengthInput, rhs);
+        auto indexCheckLengthInput = acc_.GetValueIn(lhs, 0); // length
+        return indexCheckLengthInput == rhs;
     }
     return false;
 }
 
-bool RangeGuard::CheckInputSource(GateRef lhs, GateRef rhs)
+bool RangeGuard::CheckIndexCheckIndexInput(GateRef lhs, GateRef rhs)
 {
-    if (!acc_.MetaDataEqu(lhs, rhs)) {
-        if (acc_.GetOpCode(lhs) != acc_.GetOpCode(rhs)) {
-            return false;
-        }
+    auto lhsOpcode = acc_.GetOpCode(lhs);
+    if (lhsOpcode == OpCode::INDEX_CHECK) {
+        auto indexCheckIndexInput = acc_.GetValueIn(lhs, 1); // index
+        return indexCheckIndexInput == rhs;
     }
-    size_t valueCount = acc_.GetNumValueIn(lhs);
-    for (size_t i = 0; i < valueCount; i++) {
-        if (acc_.GetValueIn(lhs, i) != acc_.GetValueIn(rhs, i)) {
-            return false;
-        }
-    }
-    return true;
+    return false;
 }
 }  // namespace panda::ecmascript::kungfu
