@@ -866,7 +866,7 @@ class IrViewer {
             this.selectPoint_ = [];
             for (let i in nodes) {
               let n = nodes[i];
-              if (n.ir.op == "JS_BYTECODE") {
+              if (XTools.CONFIG.OpTypeJsBytecode.indexOf(n.ir.op) >= 0) {
                 if (n.ir.id == v || n.ir.bytecode.indexOf(v) >= 0 || (isRegExp(v) && n.ir.bytecode.match(v))) {
                   this.searchInput.result.push(i);
                 }

@@ -54,11 +54,7 @@ class LogParser {
     return true;
   }
   isBlock(l) {
-    const blockTypes = ["Build Basic Block",
-      "Computed Dom Trees",
-      "Inserted Phis",
-      "Bytecode2Gate"];
-    for (let bt of blockTypes) {
+    for (let bt of XTools.CONFIG.BlockTypes) {
       if (l.indexOf(bt) >= 0) {
         this.stat_ = this.initBlock_.blockType;
         this.procBlock_.blockStat = 0;

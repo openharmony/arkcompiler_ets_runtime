@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+const { XTools } = require("../engine/XTools");
 const { X2DFast } = require("../engine/graphics/X2DFast");
 
 const INTYPE = {
@@ -39,41 +40,38 @@ class IrToPicture {
   static NODEH = 20;
   static LINE_TYPE = ["state", "depend", "value", "framestate", "root"];
   static nodeType(ir) {
-    if (ir.op == "STATE_ENTRY") {
+    if (XTools.CONFIG.OpTypeControl.indexOf(ir.op) >= 0) {
       return "control";
     }
-    if (ir.in[INTYPE.state].length > 0 &&
-      ["VALUE_SELECTOR", "DEPEND_SELECTOR", "DEPEND_RELAY", "LOOP_EXIT_DEPEND", "LOOP_EXIT_VALUE", "STATE_SPLIT", "GET_EXCEPTION"].indexOf(ir.op) == -1) {
+    if (ir.in[INTYPE.state].length > 0 && XTools.CONFIG.OpNotControl.indexOf(ir.op) == -1) {
       return "control";
-
     }
-    if (ir.op == "DEPEND_ENTRY" || ir.in[INTYPE.depend].length > 0) {
+    if (XTools.CONFIG.OpTypeDepend.indexOf(ir.op) >= 0 || ir.in[INTYPE.depend].length > 0) {
       return "depend";
     }
-    if (ir.op == "ARG" || ir.op == "CONSTANT" || ir.op == "CONST_DATA" || ir.in[INTYPE.value].length > 0) {
+    if (XTools.CONFIG.OpTypeValue.indexOf(ir.op) >= 0 || ir.in[INTYPE.value].length > 0) {
       return "value";
     }
     return "other";
   }
   static nodeTypeMask(ir) {
     let mask = NODE_TYPE_MASK.NONE;
-    if (ir.op == "STATE_ENTRY") {
+    if (XTools.CONFIG.OpTypeControl.indexOf(ir.op) >= 0) {
       mask |= NODE_TYPE_MASK.CONTROL;
     }
-    if (ir.in[INTYPE.state].length > 0 &&
-      ["VALUE_SELECTOR", "DEPEND_SELECTOR", "DEPEND_RELAY", "LOOP_EXIT_DEPEND", "LOOP_EXIT_VALUE", "STATE_SPLIT", "GET_EXCEPTION"].indexOf(ir.op) == -1) {
+    if (ir.in[INTYPE.state].length > 0 && XTools.CONFIG.OpNotControl.indexOf(ir.op) == -1) {
       mask |= NODE_TYPE_MASK.CONTROL;
     }
-    if (ir.op == "DEPEND_ENTRY" || ir.in[INTYPE.depend].length > 0) {
+    if (XTools.CONFIG.OpTypeDepend.indexOf(ir.op) >= 0 || ir.in[INTYPE.depend].length > 0) {
       mask |= NODE_TYPE_MASK.DEPEND;
     }
-    if (ir.op == "ARG" || ir.op == "CONSTANT" || ir.op == "CONST_DATA" || ir.in[INTYPE.value].length > 0) {
+    if (XTools.CONFIG.OpTypeValue.indexOf(ir.op) >= 0 || ir.in[INTYPE.value].length > 0) {
       mask |= NODE_TYPE_MASK.VALUE;
     }
-    if (ir.op == "FRAME_STATE" || ir.in[INTYPE.framestate].length > 0) {
+    if (XTools.CONFIG.OpTypeFrameState.indexOf(ir.op) >= 0 || ir.in[INTYPE.framestate].length > 0) {
       mask |= NODE_TYPE_MASK.FRAMESTATE;
     }
-    if (ir.op == "CIRCUIT_ROOT" || ir.in[INTYPE.root].length > 0) {
+    if (XTools.CONFIG.OpTypeCircuitRoot.indexOf(ir.op) >= 0 || ir.in[INTYPE.root].length > 0) {
       mask |= NODE_TYPE_MASK.ROOT;
     }
     if (mask == NODE_TYPE_MASK.NONE) {
@@ -82,13 +80,13 @@ class IrToPicture {
     return mask;
   }
   static isLoopBack(l, nodes) {
-    if (nodes[l.toId].ir.op == "LOOP_BEGIN" && l.fromId == nodes[l.toId].ir.in[0][1]) {
+    if (XTools.CONFIG.OpTypeLoopBegin.indexOf(nodes[l.toId].ir.op) >= 0 && l.fromId == nodes[l.toId].ir.in[0][1]) {
       return true;
     }
-    if (nodes[l.toId].ir.op == "DEPEND_SELECTOR" && l.fromId == nodes[l.toId].ir.in[1][1]) {
+    if (XTools.CONFIG.OpTypeDependSelector.indexOf(nodes[l.toId].ir.op) >= 0 && l.fromId == nodes[l.toId].ir.in[1][1]) {
       return true;
     }
-    if (nodes[l.toId].ir.op == "VALUE_SELECTOR" && l.fromId == nodes[l.toId].ir.in[2][1]) {
+    if (XTools.CONFIG.OpTypeValueSelector.indexOf(nodes[l.toId].ir.op) >= 0 && l.fromId == nodes[l.toId].ir.in[2][1]) {
       return true;
     }
     return false;
@@ -101,7 +99,7 @@ class IrToPicture {
         if (this.nodeType(ir) != "control") continue;
       }
       let name = ir.id + "," + ir.op;
-      if (ir.op == "JS_BYTECODE") {
+      if (XTools.CONFIG.OpTypeJsBytecode.indexOf(ir.op) >= 0) {
         name = ir.id + "," + ir.bytecode;
       }
       nodes[ir.id] = {
@@ -223,7 +221,7 @@ class IrToPicture {
       }
       let testResult = [];
       this.deepTest(nodes[0], nodes, isBlock, testResult, 0);
-      if(testResult.length>0){
+      if (testResult.length > 0) {
         this.checkoutLoop(testResult);
       }
     }
