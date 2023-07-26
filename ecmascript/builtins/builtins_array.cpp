@@ -2984,15 +2984,12 @@ JSTaggedValue BuiltinsArray::At(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsArray::ToReversed(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Array, At);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Array, ToReversed);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (thisHandle->IsStableJSArray(thread)) {
-        return JSStableArray::ToReversed(JSHandle<JSArray>::Cast(thisHandle), argv);
-    }
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -3002,10 +2999,11 @@ JSTaggedValue BuiltinsArray::ToReversed(EcmaRuntimeCallInfo *argv)
     int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
     // ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
+    if (thisHandle->IsStableJSArray(thread)) {
+        return JSStableArray::ToReversed(thread, thisObjHandle, len);
+    }
     // 3. Let A be ? ArrayCreate(len).
     JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(len))).GetTaggedValue();
-
     // ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
@@ -3024,7 +3022,7 @@ JSTaggedValue BuiltinsArray::ToReversed(EcmaRuntimeCallInfo *argv)
         int64_t from = len - k - 1;
         fromKey.Update(JSTaggedValue(from));
         toKey.Update(JSTaggedValue(k));
-        JSHandle<JSTaggedValue> fromValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, from);
+        JSHandle<JSTaggedValue> fromValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, fromKey);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, fromValue);
         k++;

@@ -676,7 +676,7 @@ JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo 
     if (relativeIndex >= 0) {
         k = relativeIndex;
     } else {
-        k = thisLen + relativeIndex;
+        k = static_cast<int64_t>(thisLen) + relativeIndex;
     }
     if (k < 0 || k >= thisLen) {
         return JSTaggedValue::Undefined();
@@ -688,20 +688,18 @@ JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo 
     return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
 
-JSTaggedValue JSStableArray::ToReversed(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
+JSTaggedValue JSStableArray::ToReversed(JSThread *thread, JSHandle<JSObject> thisObjHandle, uint32_t len)
 {
-    JSThread *thread = argv->GetThread();
-    uint32_t len = receiver->GetArrayLength();
+    JSHandle<TaggedArray> srcArray(thread, thisObjHandle->GetElements());
     JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(len))).GetTaggedValue();
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
-    TaggedArray *srcElements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
-    TaggedArray *dstElements = TaggedArray::Cast(newArrayHandle->GetElements().GetTaggedObject());
+    JSHandle<TaggedArray> dstArray(thread, newArrayHandle->GetElements());
     uint32_t k = 0;
     while (k < len) {
         uint32_t start = len - k - 1;
-        JSTaggedValue value = srcElements->Get(start);
-        dstElements->Set(thread, k, value);
+        JSTaggedValue value = srcArray->Get(start);
+        dstArray->Set(thread, k, value);
         ++k;
     }
     return newArrayHandle.GetTaggedValue();
