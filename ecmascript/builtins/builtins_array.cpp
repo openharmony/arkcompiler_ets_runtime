@@ -2971,8 +2971,8 @@ JSTaggedValue BuiltinsArray::At(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsArray::ToSpliced(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Array, ToSpliced);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Array, ToSpliced);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     uint32_t argc = argv->GetArgsNumber();
     // 1. Let O be ? ToObject(this value).
@@ -3069,7 +3069,6 @@ JSTaggedValue BuiltinsArray::ToSpliced(EcmaRuntimeCallInfo *argv)
     *     c. Set i to i + 1.
     */
     JSMutableHandle<JSTaggedValue> pi(thread, JSTaggedValue::Undefined());
-
     for (int64_t pos = 2; pos < argc; ++pos) {
         pi.Update(JSTaggedValue(i));
         JSHandle<JSTaggedValue> element = GetCallArg(argv, pos);
