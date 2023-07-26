@@ -111,7 +111,7 @@ int32_t JSAPIVector::GetIndexFrom(JSThread *thread, const JSHandle<JSAPIVector> 
     }
 
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-    for (uint32_t i = index; i < length; i++) {
+    for (uint32_t i = static_cast<uint32_t>(index); i < length; i++) {
         value.Update(JSTaggedValue(elements->Get(i)));
         if (JSTaggedValue::StrictEqual(thread, obj, value)) {
             return i;
@@ -244,7 +244,7 @@ JSHandle<JSAPIVector> JSAPIVector::SubVector(JSThread *thread, const JSHandle<JS
                                      JSHandle<JSAPIVector>());
     }
 
-    uint32_t newLength = toIndex - fromIndex;
+    uint32_t newLength = static_cast<uint32_t>(toIndex - fromIndex);
     JSHandle<JSAPIVector> subVector = thread->GetEcmaVM()->GetFactory()->NewJSAPIVector(newLength);
     TaggedArray *elements = TaggedArray::Cast(vector->GetElements().GetTaggedObject());
 

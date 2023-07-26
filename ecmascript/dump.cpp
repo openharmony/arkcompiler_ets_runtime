@@ -1966,9 +1966,9 @@ void JSAPIDequeIterator::Dump(std::ostream &os) const
 
 void JSAPILightWeightMap::Dump(std::ostream &os) const
 {
-    int capacity = GetSize();
+    uint32_t capacity = GetSize();
     os << " - length: " << std::dec << capacity << "\n";
-    int i = 0;
+    uint32_t i = 0;
     TaggedArray *hashArray = TaggedArray::Cast(GetHashes().GetTaggedObject());
     TaggedArray *keyArray = TaggedArray::Cast(GetKeys().GetTaggedObject());
     TaggedArray *valueArray = TaggedArray::Cast(GetValues().GetTaggedObject());

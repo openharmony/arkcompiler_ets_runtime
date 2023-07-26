@@ -292,7 +292,7 @@ void RegExpParser::ParseAlternative(bool isBackward)
                                     icu::UnicodeSet set(atomValue, atomValue);
                                     set.closeOver(USET_CASE_INSENSITIVE);
                                     set.removeAllStrings();
-                                    uint32_t size = set.size();
+                                    uint32_t size = static_cast<uint32_t>(set.size());
                                     RangeOpCode rangeOp;
                                     RangeSet rangeResult;
                                     for (uint32_t idx = 0; idx < size; idx++) {

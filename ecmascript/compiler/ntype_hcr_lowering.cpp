@@ -81,7 +81,6 @@ void NTypeHCRLowering::Lower(GateRef gate)
 
 void NTypeHCRLowering::LowerThrowUndefinedIfHoleWithName(GateRef gate)
 {
-
     GateRef value = acc_.GetValueIn(gate, 1); // 1: the second parameter
     builder_.LexVarIsHoleCheck(value);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());

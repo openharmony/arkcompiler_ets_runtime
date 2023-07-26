@@ -30,7 +30,8 @@ public:
     NumberSpeculativeLowering(Circuit* circuit, Chunk* chunk, TSManager* tsManager,
         ChunkVector<TypeInfo>& typeInfos, ChunkVector<RangeInfo>& rangeInfos, bool noCheck)
         : circuit_(circuit), acc_(circuit), builder_(circuit), tsManager_(tsManager),
-          typeInfos_(typeInfos), rangeInfos_(rangeInfos), checkedGates_(chunk), rangeGuardGates_(chunk), noCheck_(noCheck) {}
+          typeInfos_(typeInfos), rangeInfos_(rangeInfos), checkedGates_(chunk),
+          rangeGuardGates_(chunk), noCheck_(noCheck) {}
     void Run();
 
 private:
