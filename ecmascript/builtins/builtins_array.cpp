@@ -2980,12 +2980,10 @@ JSTaggedValue BuiltinsArray::With(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-
     // 2. Let len be ? LengthOfArrayLike(O).
     int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
     // ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     // 3. Let relativeIndex be ? ToIntegerOrInfinity(relativeIndex).
     JSTaggedNumber index = JSTaggedValue::ToInteger(thread, GetCallArg(argv, 0));
     // ReturnIfAbrupt(index).
@@ -3012,10 +3010,9 @@ JSTaggedValue BuiltinsArray::With(EcmaRuntimeCallInfo *argv)
     // ReturnIfAbrupt(A).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
-
     if (thisObjVal->IsStableJSArray(thread)) {
         return JSStableArray::With(thread, thisObjHandle, newArrayHandle, len, actualIndex, value);
-     }
+    }
     // 8. Let k be 0.
     int64_t k = 0;
     /*

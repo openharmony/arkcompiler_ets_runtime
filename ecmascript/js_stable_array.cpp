@@ -690,9 +690,9 @@ JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo 
     return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
 
-JSTaggedValue JSStableArray::With(JSThread *thread, const JSHandle<JSObject> &thisObjHandle,
-                                  JSHandle<JSObject> &newArrayHandle, int64_t len, int64_t index,
-                                  JSHandle<JSTaggedValue> &value)
+JSTaggedValue JSStableArray::With(JSThread *thread, const JSHandle<JSObject> thisObjHandle,
+                                  JSHandle<JSObject> newArrayHandle, int64_t &len, int64_t &index,
+                                  JSHandle<JSTaggedValue> value)
 {
     JSMutableHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
     JSMutableHandle<TaggedArray> newArray(thread, newArrayHandle->GetElements());

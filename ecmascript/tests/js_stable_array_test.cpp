@@ -18,9 +18,12 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
-[[maybe_unused]] constexpr uint32_t uint_value_0 = 0;
-[[maybe_unused]] constexpr uint32_t uint_value_2 = 2;
-[[maybe_unused]] constexpr uint32_t uint_value_3 = 3;
+constexpr uint32_t array_length_4 = 4;
+constexpr int32_t int_value_0 = 0;
+constexpr int32_t int_value_1 = 1;
+constexpr int32_t int_value_2 = 2;
+constexpr int32_t int_value_3 = 3;
+constexpr int32_t int_value_666 = 666;
 
 enum class StableArrayIndex {
     STABLE_ARRAY_INDEX_0,
@@ -414,5 +417,53 @@ HWTEST_F_L0(JSStableArrayTest, At_NUMBER_INDEX)
     TestHelper::TearDownFrame(thread, prev);
 
     EXPECT_EQ(thisTagValue, JSTaggedValue::Undefined());
+}
+
+/**
+ * @tc.name: With
+ * @tc.desc: Create a source Array whose elements are Numbers, define the first arg a thread,
+ *           define the second arg as the source Array, define the third arg an number as the length of source Array
+ *           define the forth arg an number as the index, define the fifth args an number as the value
+ *           check whether the value returned through calling With function with the source Array
+ *           and the args is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSStableArrayTest, With)
+{
+    ObjectFactory *objFactory = thread->GetEcmaVM()->GetFactory();
+    int32_t lengthArr = array_length_4;
+    JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
+    for (int i = 0; i < lengthArr; i++) {
+        handleTagArr->Set(thread, i, JSTaggedValue(i));
+    }
+    JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
+
+    JSHandle<TaggedArray> newTagArr(objFactory->NewTaggedArray(lengthArr));
+    JSHandle<JSArray> newArr(JSArray::CreateArrayFromList(thread, newTagArr));
+    int64_t arrayLength = array_length_4;
+    int64_t index = static_cast<int64_t>(StableArrayIndex::STABLE_ARRAY_INDEX_2);
+    JSTaggedValue resultArr = JSStableArray::With(thread, JSHandle<JSObject>::Cast(handleArr),
+                                                  JSHandle<JSObject>::Cast(newArr), arrayLength, index,
+                                                  JSHandle<JSTaggedValue>(thread, JSTaggedValue(int_value_666)));
+    JSHandle<JSTaggedValue> destTaggedValue(thread, resultArr);
+    JSHandle<JSArray> destArr(destTaggedValue);
+    JSHandle<TaggedArray> destTaggedArr(thread, TaggedArray::Cast(destArr->GetElements().GetTaggedObject()));
+    EXPECT_EQ(handleTagArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_0)).GetNumber(), int_value_0);
+    EXPECT_EQ(handleTagArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_1)).GetNumber(), int_value_1);
+    EXPECT_EQ(handleTagArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_2)).GetNumber(), int_value_2);
+    EXPECT_EQ(handleTagArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_3)).GetNumber(), int_value_3);
+    EXPECT_EQ(destTaggedArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_0)).GetNumber(), int_value_0);
+    EXPECT_EQ(destTaggedArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_1)).GetNumber(), int_value_1);
+    EXPECT_EQ(destTaggedArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_2)).GetNumber(), int_value_666);
+    EXPECT_EQ(destTaggedArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_3)).GetNumber(), int_value_3);
 }
 }  // namespace panda::test
