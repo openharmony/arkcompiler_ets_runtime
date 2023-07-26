@@ -2970,8 +2970,8 @@ JSTaggedValue BuiltinsArray::At(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsArray::ToSorted(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Array, ToSorted);
     JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Array, ToSorted);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. If comparefn is not undefined and IsCallable(comparefn) is false, throw a TypeError exception.
