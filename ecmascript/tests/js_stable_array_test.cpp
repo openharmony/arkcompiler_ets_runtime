@@ -18,6 +18,17 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
+constexpr uint32_t array_length_4 = 4;
+constexpr int32_t int_value_0 = 0;
+constexpr int32_t int_value_1 = 1;
+constexpr int32_t int_value_2 = 2;
+constexpr int32_t int_value_3 = 3;
+enum class TypedArrayIndex {
+    TYPE_ARRAY_INDEX_0,
+    TYPE_ARRAY_INDEX_1,
+    TYPE_ARRAY_INDEX_2,
+    TYPE_ARRAY_INDEX_3,
+};
 
 namespace panda::test {
 class JSStableArrayTest : public testing::Test {
@@ -416,29 +427,25 @@ HWTEST_F_L0(JSStableArrayTest, At_NUMBER_INDEX)
 HWTEST_F_L0(JSStableArrayTest, ToReversed)
 {
     ObjectFactory *objFactory = thread->GetEcmaVM()->GetFactory();
-    int32_t lengthArr = 4;
+    int32_t lengthArr = array_length_4;
     JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
     for (int i = 0; i < lengthArr; i++) {
         handleTagArr->Set(thread, i, JSTaggedValue(i));
     }
     JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
-    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
-
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
-    JSHandle<JSTaggedValue> destTaggedValue(thread, JSStableArray::ToReversed(handleArr, ecmaRuntimeCallInfo));
+    JSTaggedValue resultArr =
+        JSStableArray::ToReversed(thread, JSHandle<JSObject>::Cast(handleArr), array_length_4);
+    JSHandle<JSTaggedValue> destTaggedValue(thread, resultArr);
     JSHandle<JSArray> destArr(destTaggedValue);
     JSHandle<TaggedArray> destTaggedArr(thread, TaggedArray::Cast(destArr->GetElements().GetTaggedObject()));
-    TestHelper::TearDownFrame(thread, prev);
 
-    EXPECT_EQ(handleTagArr->Get(0).GetNumber(), 0);
-    EXPECT_EQ(handleTagArr->Get(1).GetNumber(), 1);
-    EXPECT_EQ(handleTagArr->Get(2).GetNumber(), 2);
-    EXPECT_EQ(handleTagArr->Get(3).GetNumber(), 3);
-    EXPECT_EQ(destTaggedArr->Get(0).GetNumber(), 3);
-    EXPECT_EQ(destTaggedArr->Get(1).GetNumber(), 2);
-    EXPECT_EQ(destTaggedArr->Get(2).GetNumber(), 1);
-    EXPECT_EQ(destTaggedArr->Get(3).GetNumber(), 0);
+    EXPECT_EQ(handleTagArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_0)).GetNumber(), int_value_0);
+    EXPECT_EQ(handleTagArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_1)).GetNumber(), int_value_1);
+    EXPECT_EQ(handleTagArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_2)).GetNumber(), int_value_2);
+    EXPECT_EQ(handleTagArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_3)).GetNumber(), int_value_3);
+    EXPECT_EQ(destTaggedArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_0)).GetNumber(), int_value_3);
+    EXPECT_EQ(destTaggedArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_1)).GetNumber(), int_value_2);
+    EXPECT_EQ(destTaggedArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_2)).GetNumber(), int_value_1);
+    EXPECT_EQ(destTaggedArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_3)).GetNumber(), int_value_0);
 }
 }  // namespace panda::test

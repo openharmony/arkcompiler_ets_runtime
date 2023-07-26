@@ -35,20 +35,21 @@
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 using namespace panda::ecmascript::base;
-[[maybe_used]] constexpr int32_t int_value_0 = 0;
-[[maybe_used]] constexpr int32_t int_value_1 = 1;
-[[maybe_used]] constexpr int32_t int_value_2 = 2;
-[[maybe_used]] constexpr int32_t int_value_3 = 3;
-[[maybe_used]] constexpr int32_t int_value_4 = 4;
-[[maybe_used]] constexpr int32_t int_value_50 = 50;
-[[maybe_used]] constexpr int32_t int_value_200 = 200;
+constexpr int32_t int_value_0 = 0;
+constexpr int32_t int_value_1 = 1;
+constexpr int32_t int_value_2 = 2;
+constexpr int32_t int_value_3 = 3;
+constexpr int32_t int_value_4 = 4;
+constexpr int32_t int_value_50 = 50;
+constexpr int32_t int_value_200 = 200;
 
 enum class ArrayIndex {
     Array_INDEX_0,
     Array_INDEX_1,
     Array_INDEX_2,
     Array_INDEX_3,
-}
+};
+
 namespace panda::test {
 using Array = ecmascript::builtins::BuiltinsArray;
 class BuiltinsArrayTest : public testing::Test {
@@ -1729,10 +1730,10 @@ HWTEST_F_L0(BuiltinsArrayTest, ToReversed)
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj),
                                    lengthKeyHandle).GetValue()->GetInt(), int_value_0);
     JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(int_value_0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(int_value50)), true, true, true);
+    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(int_value_50)), true, true, true);
     JSArray::DefineOwnProperty(thread, obj, key0, desc0);
     JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(int_value_1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(int_value200)), true, true, true);
+    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(int_value_200)), true, true, true);
     JSArray::DefineOwnProperty(thread, obj, key1, desc1);
     JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(int_value_2));
     PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(int_value_3)), true, true, true);
@@ -1751,15 +1752,15 @@ HWTEST_F_L0(BuiltinsArrayTest, ToReversed)
     PropertyDescriptor descRes(thread);
     JSHandle<JSObject> valueHandle(thread, value);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(valueHandle),
-                                   lengthKeyHandle).GetValue()->GetInt(), ArrayIndex::Array_INDEX_3);
+                                   lengthKeyHandle).GetValue()->GetInt(), int_value_3);
     JSObject::GetOwnProperty(thread, valueHandle, key0, descRes);
     ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(int_value_3));
     JSObject::GetOwnProperty(thread, valueHandle, key1, descRes);
     ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(int_value_200));
     JSObject::GetOwnProperty(thread, valueHandle, key2, descRes);
     ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(int_value_50));
-    EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), 
-                                   lengthKeyHandle).GetValue()->GetInt(), ArrayIndex::Array_INDEX_3);
+    EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj),
+                                   lengthKeyHandle).GetValue()->GetInt(), int_value_3);
     JSObject::GetOwnProperty(thread, obj, key0, descRes);
     ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(int_value_50));
     JSObject::GetOwnProperty(thread, obj, key1, descRes);
