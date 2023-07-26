@@ -66,13 +66,17 @@ uintptr_t EcmaHandleScope::NewHandle(JSThread *thread, JSTaggedType value)
         }
     }
 #endif
-#if ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK
-    thread->CheckJSTaggedType(value);
-#endif
     auto result = context->handleScopeStorageNext_;
     if (result == context->handleScopeStorageEnd_) {
         result = reinterpret_cast<JSTaggedType *>(context->ExpandHandleStorage());
     }
+#if ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK
+    thread->CheckJSTaggedType(value);
+    if (result == nullptr) {
+        LOG_ECMA(ERROR) << "result is nullptr, New handle fail!";
+        return nullptr;
+    }
+#endif
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     context->handleScopeStorageNext_ = result + 1;
     *result = value;
