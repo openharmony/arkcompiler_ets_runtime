@@ -1286,7 +1286,7 @@ void TSHCRLowering::CheckFastCallThisCallTarget(GateRef gate, GateRef func, Glob
 }
 
 void TSHCRLowering::CheckCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
-                                                GateType funcType, bool isNoGC)
+    GateType funcType, bool isNoGC)
 {
     if (noCheck_) {
         return;
