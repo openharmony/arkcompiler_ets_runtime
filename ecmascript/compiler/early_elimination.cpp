@@ -250,8 +250,14 @@ bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
         case OpCode::STORE_MEMORY:
             ASSERT(acc_.GetMemoryType(rhs) == MemoryType::ELEMENT_TYPE);
             return acc_.GetOpCode(lhs) == OpCode::LOAD_ELEMENT;
-        case OpCode::STORE_ELEMENT:
-            return lop == OpCode::LOAD_ELEMENT;
+        case OpCode::STORE_ELEMENT: {
+            if(lop == OpCode::LOAD_ELEMENT) {
+                auto lopIsTypedArray = static_cast<uint8_t>(acc_.GetTypedLoadOp(lhs)) > 0;
+                auto ropIsTypedArray = static_cast<uint8_t>(acc_.GetTypedStoreOp(rhs)) > 0;
+                return lopIsTypedArray == ropIsTypedArray;
+            }
+            return false;
+        }
         case OpCode::STORE_PROPERTY:
         case OpCode::STORE_PROPERTY_NO_BARRIER: {
             if (lop == OpCode::LOAD_PROPERTY) {
