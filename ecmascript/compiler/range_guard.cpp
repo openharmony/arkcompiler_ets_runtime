@@ -137,7 +137,7 @@ GateRef RangeGuard::TryApplyRangeGuardGate(GateRef gate)
         }
     }
     dependChain = dependChain->UpdateNode(gate);
-    return UpdateDependChain(gate, dependChain); 
+    return UpdateDependChain(gate, dependChain);
 }
 
 GateRef RangeGuard::VisitDependEntry(GateRef gate)

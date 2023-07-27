@@ -48,7 +48,7 @@ JSTaggedValue JSAPILightWeightMapIterator::Next(EcmaRuntimeCallInfo *argv)
         return globalConst->GetUndefinedIterResult();
     }
     int32_t index = iter->GetNextIndex();
-    int32_t length = lightWeightMap->GetSize();
+    int32_t length = static_cast<int32_t>(lightWeightMap->GetSize());
     if (index >= length) {
         JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
         iter->SetIteratedLightWeightMap(thread, undefinedHandle);
