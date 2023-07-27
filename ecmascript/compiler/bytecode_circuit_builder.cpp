@@ -36,7 +36,7 @@ void BytecodeCircuitBuilder::BytecodeToCircuit()
 void BytecodeCircuitBuilder::BuildRegionInfo()
 {
     uint32_t size = pcOffsets_.size();
-    uint32_t end = size - 1;  // 1: end
+    uint32_t end = size - 2;  // 1: end
     BytecodeIterator iterator(this, 0, end);
 
     infoData_.resize(size);

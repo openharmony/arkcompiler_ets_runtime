@@ -1366,8 +1366,10 @@ void TSManager::ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &
         if (vm_->GetJSOptions().IsEnableCompilerLogSnapshot()) {
             LOG_COMPILER(INFO) << "[aot-snapshot] store AOT entry index of method (offset: " << methodOffset << ") ";
         }
-        uint32_t entryIndex = methodToEntryIndexMap.at(methodOffset);
-        newCP->SetObjectToCache(thread_, methodIndex, JSTaggedValue(entryIndex));
+        if (methodToEntryIndexMap.find(methodOffset) != methodToEntryIndexMap.end()) {
+            uint32_t entryIndex = methodToEntryIndexMap.at(methodOffset);
+            newCP->SetObjectToCache(thread_, methodIndex, JSTaggedValue(entryIndex));
+        }
     }
 
     auto &recordLiteralInfo = snapshotData_.GetRecordInfo(SnapshotData::RecordType::LITERAL);
