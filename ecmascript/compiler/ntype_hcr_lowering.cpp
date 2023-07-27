@@ -50,16 +50,20 @@ void NTypeHCRLowering::Lower(GateRef gate)
     switch (ecmaOpcode) {
         case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
         case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
-            LowerTypedCreateEmptyArray(gate);
+            LowerNTypedCreateEmptyArray(gate);
+            break;
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
+            LowerNTypedCreateArrayWithBuffer(gate);
             break;
         case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
         case EcmaOpcode::STOWNBYINDEX_IMM16_V8_IMM16:
         case EcmaOpcode::WIDE_STOWNBYINDEX_PREF_V8_IMM32:
-            LowerTypedStownByIndex(gate);
+            LowerNTypedStownByIndex(gate);
             break;
         case EcmaOpcode::STOWNBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
-            LowerTypedStOwnByName(gate);
+            LowerNTypedStOwnByName(gate);
             break;
         case EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16:
             LowerThrowUndefinedIfHoleWithName(gate);
@@ -133,7 +137,7 @@ void NTypeHCRLowering::LowerStLexVar(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void NTypeHCRLowering::LowerTypedCreateEmptyArray(GateRef gate)
+void NTypeHCRLowering::LowerNTypedCreateEmptyArray(GateRef gate)
 {
     // in the future, the type of the elements in the array will be obtained through pgo,
     // and the type will be used to determine whether to create a typed-array.
@@ -142,27 +146,65 @@ void NTypeHCRLowering::LowerTypedCreateEmptyArray(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
-void NTypeHCRLowering::LowerTypedStownByIndex(GateRef gate)
+void NTypeHCRLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
+{
+    // 1: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef index = acc_.GetValueIn(gate, 0);
+    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+    uint32_t cpIdx = static_cast<uint32_t>(acc_.GetConstantValue(index));
+    JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
+    JSTaggedValue arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
+        thread, constpoolHandle.GetTaggedValue(), cpIdx, recordName_);
+    JSHandle<JSArray> arrayHandle(thread, arr);
+    JSHandle<JSHClass> oldHClass(thread, arrayHandle->GetClass());
+    JSHandle<JSHClass> hclass = JSHClass::Clone(thread, oldHClass);
+
+    GateType gateType = acc_.GetGateType(gate);
+    panda_file::File::EntityId id = ConstantPool::GetIdFromCache(constpoolHandle.GetTaggedValue(), cpIdx);
+    JSHandle<TaggedArray> elements(thread, arrayHandle->GetElements());
+    tsManager_->AddArrayTSHClass(id, hclass);
+    tsManager_->AddArrayTSElements(id, elements);
+    gateType = tsManager_->TryNarrowUnionType(gateType);
+
+    int hclassIndex = -1;
+    int elementIndex = -1;
+    if (tsManager_->IsArrayTypeKind(gateType)) {
+        hclassIndex = tsManager_->GetHClassIndexByArrayType(gateType, id);
+        elementIndex = tsManager_->GetElementsIndexByArrayType(gateType, id);
+    }
+    if (hclassIndex == -1 || elementIndex == -1) { // slowpath
+        return;
+    }
+
+    AddProfiling(gate);
+    GateRef elementIndexGate = builder_.IntPtr(elementIndex);
+    GateRef array = builder_.CreateArrayWithBuffer(0, index, elementIndexGate);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
+}
+
+void NTypeHCRLowering::LowerNTypedStownByIndex(GateRef gate)
 {
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef value = acc_.GetValueIn(gate, 2);
-    if (acc_.GetOpCode(receiver) != OpCode::CREATE_ARRAY) {
+    if (acc_.GetOpCode(receiver) != OpCode::CREATE_ARRAY &&
+        acc_.GetOpCode(receiver) != OpCode::CREATE_ARRAY_WITH_BUFFER) {
         return;
     }
 
     AddProfiling(gate);
-    uint32_t arraySize = acc_.GetArraySize(receiver);
     uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
+    uint32_t arraySize = acc_.GetArraySize(receiver);
     acc_.SetArraySize(receiver, std::max(arraySize, indexValue + 1));
     index = builder_.Int32(indexValue);
     builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, index, value);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
-void NTypeHCRLowering::LowerTypedStOwnByName(GateRef gate)
+void NTypeHCRLowering::LowerNTypedStOwnByName(GateRef gate)
 {
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
@@ -184,7 +226,7 @@ void NTypeHCRLowering::LowerTypedStOwnByName(GateRef gate)
     if (hclassIndex == -1) { // slowpath
         return;
     }
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
+    JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
 
     PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread, hclass, propKey);
     if (!plr.IsFound() || !plr.IsLocal() || plr.IsAccessor() || !plr.IsWritable()) {  // slowpath

@@ -316,6 +316,13 @@ public:
         return val;
     }
 
+    static panda_file::File::EntityId GetIdFromCache(JSTaggedValue constpool, uint32_t index)
+    {
+        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+        panda_file::File::EntityId id = taggedPool->GetEntityId(index);
+        return id;
+    }
+
     template <ConstPoolType type>
     static JSTaggedValue GetLiteralFromCache(JSThread *thread, JSTaggedValue constpool,
                                              uint32_t index, JSTaggedValue module)

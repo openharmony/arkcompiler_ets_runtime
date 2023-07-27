@@ -108,7 +108,7 @@ void PGOTypeInfer::CheckAndInsert(CollectedType &types, GateType type)
         if (hclassIndex == -1) {
             return;
         }
-        JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
+        JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
         if (hclass->HasTSSubtyping()) {
             GlobalTSTypeRef instanceGT = type.GetGTRef();
             type = GateType(tsManager_->GetClassType(instanceGT));

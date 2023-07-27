@@ -46,6 +46,9 @@ void NTypeMCRLowering::Lower(GateRef gate)
         case OpCode::CREATE_ARRAY:
             LowerCreateArray(gate, glue);
             break;
+        case OpCode::CREATE_ARRAY_WITH_BUFFER:
+            LowerCreateArrayWithBuffer(gate);
+            break;
         default:
             break;
     }
@@ -63,33 +66,10 @@ void NTypeMCRLowering::LowerCreateArray(GateRef gate, GateRef glue)
 
 void NTypeMCRLowering::LowerCreateEmptyArray(GateRef gate)
 {
-    JSHandle<JSFunction> arrayFunc(tsManager_->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
-    JSTaggedValue protoOrHClass = arrayFunc->GetProtoOrHClass();
-    JSHClass *arrayHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
-    size_t arraySize = arrayHC->GetObjectSize();
-    size_t lengthAccessorOffset = arrayHC->GetInlinedPropertiesOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX);
+    GateRef length = builder_.Int32(0);
+    GateRef elements = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
 
-    GateRef obj = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-    GateRef globalEnv = builder_.GetGlobalEnv();
-    GateRef accessor = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    GateRef hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef size = builder_.IntPtr(arrayHC->GetObjectSize());
-
-    builder_.StartAllocate();
-    GateRef array = builder_.HeapAlloc(size, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
-    // initialization
-    for (size_t offset = JSArray::SIZE; offset < arraySize; offset += JSTaggedValue::TaggedTypeSize()) {
-        builder_.StoreConstOffset(VariableType::INT64(), array, offset, builder_.Undefined());
-    }
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, 0, hclass);
-    builder_.StoreConstOffset(VariableType::INT64(), array, ECMAObject::HASH_OFFSET,
-                              builder_.Int64(JSTaggedValue(0).GetRawData()));
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::PROPERTIES_OFFSET, obj);
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::ELEMENTS_OFFSET, obj);
-    builder_.StoreConstOffset(VariableType::JS_ANY(), array, JSArray::LENGTH_OFFSET,
-                              builder_.Int32ToTaggedInt(builder_.Int32(0)));
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, lengthAccessorOffset, accessor);
-    builder_.FinishAllocate();
+    auto array = NewJSArrayLiteral(elements, length);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
@@ -104,13 +84,53 @@ void NTypeMCRLowering::LowerCreateArrayWithOwn(GateRef gate, GateRef glue)
         elements = LowerCallRuntime(glue, gate, RTSTUB_ID(NewTaggedArray), { builder_.Int32ToTaggedInt(length) }, true);
     }
 
+    auto array = NewJSArrayLiteral(elements, length);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
+}
+
+void NTypeMCRLowering::LowerCreateArrayWithBuffer(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+    GateRef index = acc_.GetValueIn(gate, 0);
+    GateRef aotElmIndex = acc_.GetValueIn(gate, 1);
+    auto elementIndex = acc_.GetConstantValue(aotElmIndex);
+    uint32_t elementLength = static_cast<uint32_t>(acc_.GetArraySize(gate));
+    uint32_t constPoolIndex = static_cast<uint32_t>(acc_.GetConstantValue(index));
+    ArgumentAccessor argAcc(circuit_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
+    GateRef elements = LoadFromConstPool(jsFunc, elementIndex);
+    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+    JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
+    JSTaggedValue arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
+        thread, constpoolHandle.GetTaggedValue(), constPoolIndex, recordName_);
+    JSHandle<JSArray> arrayHandle(thread, arr);
+    TaggedArray *arrayLiteral = TaggedArray::Cast(arrayHandle->GetElements());
+    uint32_t literialLength = arrayLiteral->GetLength();
+    uint32_t arrayLength = std::max(literialLength, elementLength);
+    GateRef length = builder_.IntPtr(arrayLength);
+
+    auto array = NewJSArrayLiteral(elements, length);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
+}
+
+GateRef NTypeMCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index)
+{
+    GateRef constPool = builder_.GetConstPool(jsFunc);
+    return builder_.LoadFromTaggedArray(constPool, index);
+}
+
+GateRef NTypeMCRLowering::NewJSArrayLiteral(GateRef elements, GateRef length)
+{
     JSHandle<JSFunction> arrayFunc(tsManager_->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
     JSTaggedValue protoOrHClass = arrayFunc->GetProtoOrHClass();
     JSHClass *arrayHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
     size_t arraySize = arrayHC->GetObjectSize();
     size_t lengthAccessorOffset = arrayHC->GetInlinedPropertiesOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX);
 
-    GateRef obj = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
     GateRef globalEnv = builder_.GetGlobalEnv();
     GateRef accessor = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_LENGTH_ACCESSOR);
     GateRef hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
@@ -125,12 +145,12 @@ void NTypeMCRLowering::LowerCreateArrayWithOwn(GateRef gate, GateRef glue)
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, 0, hclass);
     builder_.StoreConstOffset(VariableType::INT64(), array, ECMAObject::HASH_OFFSET,
                               builder_.Int64(JSTaggedValue(0).GetRawData()));
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::PROPERTIES_OFFSET, obj);
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::PROPERTIES_OFFSET, emptyArray);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::ELEMENTS_OFFSET, elements);
     builder_.StoreConstOffset(VariableType::JS_ANY(), array, JSArray::LENGTH_OFFSET, builder_.Int32ToTaggedInt(length));
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, lengthAccessorOffset, accessor);
     builder_.FinishAllocate();
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
+    return array;
 }
 
 GateRef NTypeMCRLowering::NewTaggedArray(size_t length)

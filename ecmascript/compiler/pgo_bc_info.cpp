@@ -72,6 +72,12 @@ void PGOBCInfo::Record(const BytecodeInstruction &bcIns, int32_t bcIndex,
             Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, cpIndex}, Type::OBJ_LITERAL);
             break;
         }
+        case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
+        case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM16_ID16: {
+            auto cpIndex = bcIns.GetId().AsRawValue();
+            Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, cpIndex}, Type::ARRAY_LITERAL);
+            break;
+        }
         default:
             break;
     }
