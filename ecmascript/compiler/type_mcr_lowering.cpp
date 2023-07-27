@@ -123,6 +123,9 @@ void TypeMCRLowering::LowerType(GateRef gate)
         case OpCode::LOAD_SETTER:
             LowerLoadSetter(gate);
             break;
+        case OpCode::INLINE_ACCESSOR_CHECK:
+            LowerInlineAccessorCheck(gate);
+            break;
         default:
             break;
     }
@@ -1271,5 +1274,56 @@ void TypeMCRLowering::LowerLoadSetter(GateRef gate)
     GateRef setter = builder_.Load(VariableType::JS_ANY(),
         accessor, builder_.IntPtr(AccessorData::SETTER_OFFSET));
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), setter);
+}
+
+// subtyping check and hclss check
+void TypeMCRLowering::LowerInlineAccessorCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef frameState = acc_.GetFrameState(gate);
+    builder_.HeapObjectCheck(receiver, frameState);
+
+    GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
+    ArgumentAccessor argAcc(circuit_);
+    GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
+    JSTaggedValue aotHC = tsManager_->GetValueFromCache(acc_.TryGetValue(aotHCIndex));
+    ASSERT(aotHC.IsJSHClass());
+
+    int32_t level = JSHClass::Cast(aotHC.GetTaggedObject())->GetLevel();
+    ASSERT(level >= 0);
+
+    GateRef receiverHClass = builder_.LoadConstOffset(
+        VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+    GateRef supers = LoadSupers(receiverHClass);
+
+    auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
+    GateRef aotHCGate = LoadFromConstPool(jsFunc, hclassIndex);
+    GateRef hclassCompare = builder_.Equal(aotHCGate, receiverHClass);
+    if (LIKELY(static_cast<uint32_t>(level) < SubtypingOperator::DEFAULT_SUPERS_CAPACITY)) {
+        GateRef subtypingCompare = builder_.Equal(aotHCGate, GetValueFromSupers(supers, level));
+        GateRef compare = builder_.BoolAnd(hclassCompare, subtypingCompare);
+        builder_.DeoptCheck(compare, frameState, DeoptType::INCONSISTENTHCLASS);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+        return;
+    }
+
+    Label levelValid(&builder_);
+    Label exit(&builder_);
+    DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
+    GateRef levelGate = builder_.Int32(level);
+    GateRef length = GetLengthFromSupers(supers);
+
+    builder_.Branch(builder_.Int32LessThan(levelGate, length), &levelValid, &exit);
+    builder_.Bind(&levelValid);
+    {
+        check = builder_.Equal(aotHCGate, GetValueFromSupers(supers, level));
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+
+    GateRef compare = builder_.BoolAnd(hclassCompare, *check);
+    builder_.DeoptCheck(compare, frameState, DeoptType::INCONSISTENTHCLASS);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 }  // namespace panda::ecmascript::kungfu

@@ -564,6 +564,8 @@ public:
 
     void PUBLIC_API SetCurConstantPool(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
 
+    int32_t PUBLIC_API GetConstantPoolIDByMethodOffset(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
+
     JSHandle<JSTaggedValue> PUBLIC_API GetConstantPool() const
     {
         return JSHandle<JSTaggedValue>(uintptr_t(&curCP_));
@@ -922,9 +924,6 @@ private:
     {
         builtinsRecordName_ = builtinsRecordName;
     }
-
-    // for snapshot
-    int32_t GetOldConstantPoolIDByMethodOffset(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
 
     void GenerateSnapshotConstantPoolList(std::map<int32_t, uint32_t> &cpListIndexMap,
                                           const CMap<int32_t, JSTaggedValue> &oldCPValues);

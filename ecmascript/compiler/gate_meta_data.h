@@ -331,7 +331,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                                                 \
     V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)                                        \
     V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                                          \
-    V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)
+    V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                        \
+    V(InlineAccessorCheck, INLINE_ACCESSOR_CHECK, GateFlags::CHECKABLE, 1, 1, 2)
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                                               \
     V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                                        \
