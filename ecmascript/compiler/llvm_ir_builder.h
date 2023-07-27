@@ -213,6 +213,60 @@ public:
 
     static constexpr int kDeoptEntryOffset = 0;
 
+    LLVMTypeRef GetVoidT() const
+    {
+        return voidT_;
+    }
+
+    LLVMTypeRef GetInt1T() const
+    {
+        return int1T_;
+    }
+
+    LLVMTypeRef GetInt8T() const
+    {
+        return int8T_;
+    }
+
+    LLVMTypeRef GetInt16T() const
+    {
+        return int16T_;
+    }
+
+    LLVMTypeRef GetInt32T() const
+    {
+        return int32T_;
+    }
+
+    LLVMTypeRef GetInt64T() const
+    {
+        return int64T_;
+    }
+
+    LLVMTypeRef GetFloatT() const
+    {
+        return floatT_;
+    }
+
+    LLVMTypeRef GetDoubleT() const
+    {
+        return doubleT_;
+    }
+
+    LLVMTypeRef GetTaggedPtrT() const
+    {
+        return taggedPtrT_;
+    }
+
+    LLVMTypeRef GetTaggedHPtrT() const
+    {
+        return taggedHPtrT_;
+    }
+
+    LLVMTypeRef GetRawPtrT() const
+    {
+        return rawPtrT_;
+    }
 private:
     LLVMValueRef AddAndGetFunc(const CallSignature *stubDescriptor);
     void InitialLLVMFuncTypeAndFuncByModuleCSigns();
@@ -229,6 +283,19 @@ private:
     LLVMMetadataRef dUnitMD_ {nullptr};
     LLVMDIBuilderRef dBuilder_ {nullptr};
     DebugInfo* debugInfo_ {nullptr};
+
+    LLVMTypeRef voidT_ {nullptr};
+    LLVMTypeRef int1T_ {nullptr};
+    LLVMTypeRef int8T_ {nullptr};
+    LLVMTypeRef int16T_ {nullptr};
+    LLVMTypeRef int32T_ {nullptr};
+    LLVMTypeRef int64T_ {nullptr};
+    LLVMTypeRef floatT_ {nullptr};
+    LLVMTypeRef doubleT_ {nullptr};
+    LLVMTypeRef taggedHPtrT_ {nullptr};
+    LLVMTypeRef taggedPtrT_ {nullptr};
+    LLVMTypeRef rawPtrT_ {nullptr};
+
     std::string tripleStr_;
     bool is64Bit_ {false};
     Triple triple_;
@@ -310,7 +377,7 @@ private:
         OPCODES(DECLAREHANDLEOPCODE)
     #undef DECLAREHANDLEOPCODE
 
-    bool isPrologue(int bbId) const
+    bool IsPrologue(int bbId) const
     {
         return bbId == 0;
     }
@@ -333,19 +400,12 @@ private:
     void InitializeHandlers();
     std::string LLVMValueToString(LLVMValueRef val) const;
 
-    LLVMTypeRef GetIntPtr() const
-    {
-        if (compCfg_->Is32Bit()) {
-            return LLVMInt32TypeInContext(context_);
-        }
-        return LLVMInt64TypeInContext(context_);
-    }
     LLVMTypeRef ConvertLLVMTypeFromGate(GateRef gate) const;
     int64_t GetBitWidthFromMachineType(MachineType machineType) const;
-    LLVMValueRef PointerAdd(LLVMValueRef baseAddr, LLVMValueRef offset, LLVMTypeRef rep);
-    LLVMValueRef VectorAdd(LLVMValueRef e1Value, LLVMValueRef e2Value, LLVMTypeRef rep);
-    LLVMValueRef CanonicalizeToInt(LLVMValueRef value);
-    LLVMValueRef CanonicalizeToPtr(LLVMValueRef value);
+    LLVMValueRef PointerAdd(LLVMValueRef baseAddr, LLVMValueRef offsetInByte, LLVMTypeRef rep);
+    LLVMValueRef CanonicalizeToInt(LLVMValueRef value) const;
+    LLVMValueRef CanonicalizeToPtr(LLVMValueRef value) const;
+    LLVMValueRef CanonicalizeToPtr(LLVMValueRef value, LLVMTypeRef ptrType) const;
     LLVMValueRef GetCurrentFrameType(LLVMValueRef currentSpFrameAddr);
     void SetFunctionCallConv();
 
@@ -366,6 +426,61 @@ private:
     void SetCallConvAttr(const CallSignature *calleeDescriptor, LLVMValueRef call);
     bool IsHeapPointerType(LLVMTypeRef valueType);
 
+    LLVMTypeRef GetVoidT() const
+    {
+        return llvmModule_->GetVoidT();
+    }
+
+    LLVMTypeRef GetInt1T() const
+    {
+        return llvmModule_->GetInt1T();
+    }
+
+    LLVMTypeRef GetInt8T() const
+    {
+        return llvmModule_->GetInt8T();
+    }
+
+    LLVMTypeRef GetInt16T() const
+    {
+        return llvmModule_->GetInt16T();
+    }
+
+    LLVMTypeRef GetInt32T() const
+    {
+        return llvmModule_->GetInt32T();
+    }
+
+    LLVMTypeRef GetInt64T() const
+    {
+        return llvmModule_->GetInt64T();
+    }
+
+    LLVMTypeRef GetFloatT() const
+    {
+        return llvmModule_->GetFloatT();
+    }
+
+    LLVMTypeRef GetDoubleT() const
+    {
+        return llvmModule_->GetDoubleT();
+    }
+
+    LLVMTypeRef GetTaggedPtrT() const
+    {
+        return llvmModule_->GetTaggedPtrT();
+    }
+
+    LLVMTypeRef GetTaggedHPtrT() const
+    {
+        return llvmModule_->GetTaggedHPtrT();
+    }
+
+    LLVMTypeRef GetRawPtrT() const
+    {
+        return llvmModule_->GetRawPtrT();
+    }
+
 private:
     enum class CallInputs : size_t {
         DEPEND = 0,
@@ -383,6 +498,9 @@ private:
         return llvmModule_ == nullptr ? nullptr : llvmModule_->GetDIBuilder();
     }
 
+    unsigned GetPtrAddressSpace(LLVMValueRef v) const;
+    bool IsLInteger(LLVMValueRef v) const;
+    bool IsLPointer(LLVMValueRef v) const;
     LLVMRealPredicate ConvertLLVMPredicateFromFCMP(FCmpCondition cond);
     LLVMIntPredicate ConvertLLVMPredicateFromICMP(ICmpCondition cond);
     LLVMValueRef GetGlue(const std::vector<GateRef> &inList);
