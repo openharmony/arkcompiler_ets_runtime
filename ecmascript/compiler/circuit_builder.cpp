@@ -630,32 +630,6 @@ GateRef CircuitBuilder::ValueCheckNegOverflow(GateRef value)
     return ret;
 }
 
-GateRef CircuitBuilder::NegativeIndexCheck(GateRef index)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->NegativeIndexCheck(),
-    MachineType::I1, {currentControl, currentDepend, index, frameState}, GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
-GateRef CircuitBuilder::LargeIndexCheck(GateRef index, GateRef length)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->LargeIndexCheck(),
-        MachineType::I1, {currentControl, currentDepend, index, length, frameState}, GateType::IntType());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
 GateRef CircuitBuilder::OverflowCheck(GateRef value)
 {
     auto currentLabel = env_->GetCurrentLabel();

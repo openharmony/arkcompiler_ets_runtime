@@ -71,12 +71,6 @@ void LCRLowering::Run()
             case OpCode::VALUE_CHECK_NEG_OVERFLOW:
                 LowerValueCheckNegOverflow(gate);
                 break;
-            case OpCode::NEGATIVE_INDEX_CHECK:
-                LowerNegativeIndexCheck(gate);
-                break;
-            case OpCode::LARGE_INDEX_CHECK:
-                LowerLargeIndexCheck(gate);
-                break;
             case OpCode::OVERFLOW_CHECK:
                 LowerOverflowCheck(gate);
                 break;
@@ -594,27 +588,6 @@ void LCRLowering::LowerValueCheckNegOverflow(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef valueNotZero = builder_.NotEqual(value, builder_.Int32(0));
     builder_.DeoptCheck(valueNotZero, frameState, DeoptType::NOTNEGOV);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
-void LCRLowering::LowerNegativeIndexCheck(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef frameState = acc_.GetFrameState(gate);
-    GateRef index = acc_.GetValueIn(gate, 0);
-    GateRef condition = builder_.Int32LessThanOrEqual(builder_.Int32(0), index);
-    builder_.DeoptCheck(condition, frameState, DeoptType::NEGTIVEINDEX);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
-void LCRLowering::LowerLargeIndexCheck(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef frameState = acc_.GetFrameState(gate);
-    GateRef index = acc_.GetValueIn(gate, 0);
-    GateRef length = acc_.GetValueIn(gate, 1);
-    GateRef condition = builder_.Int32LessThan(index, length);
-    builder_.DeoptCheck(condition, frameState, DeoptType::LARGEINDEX);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
