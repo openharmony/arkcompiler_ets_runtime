@@ -102,7 +102,7 @@ class TSInlineLowering {
 public:
     static constexpr size_t MAX_INLINE_CALL_ALLOWED = 5;
     TSInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string& name,
-                     NativeAreaAllocator* nativeAreaAllocator, PassOptions *options)
+                     NativeAreaAllocator* nativeAreaAllocator, PassOptions *options, uint32_t methodOffset)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -118,7 +118,8 @@ public:
           noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
           chunk_(circuit->chunk()),
           inlinedCallMap_(circuit->chunk()),
-          argAcc_(circuit) {}
+          argAcc_(circuit),
+          initMethodOffset_(methodOffset) {}
 
     ~TSInlineLowering() = default;
 
@@ -148,6 +149,11 @@ private:
     void UpdateInlineCounts(GateRef frameArgs, size_t inlineCallCounts)
     {
         inlinedCallMap_[frameArgs] = ++inlineCallCounts;
+    }
+
+    bool EnableFastAccessor() const
+    {
+        return isFastAccessor_ && !traceInline_;
     }
 
     void CandidateInlineCall(GateRef gate, ChunkQueue<CallGateInfo> &workList);
@@ -185,6 +191,8 @@ private:
     GateRef GetCallSetterValue(GateRef gate);
     GlobalTSTypeRef GetAccessorFuncGT(GateRef receiver, GateRef constData);
     GateRef GetFrameState(CallGateInfo &info);
+    void SetInitCallTargetAndConstPoolId(CallGateInfo &info);
+    void AnalyseFastAccessor(CallGateInfo &info, std::vector<const uint8_t*> pcOffsets, uint32_t inlineMethodOffset);
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
@@ -204,6 +212,10 @@ private:
     ChunkMap<GateRef, size_t> inlinedCallMap_;
     size_t lastCallId_ {0};
     ArgumentAccessor argAcc_;
+    uint32_t initMethodOffset_ {0};
+    int32_t initConstantPoolId_ {0};
+    GateRef initCallTarget_ {Circuit::NullGate()};
+    bool isFastAccessor_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_INLINE_LOWERING_H

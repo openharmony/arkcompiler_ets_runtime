@@ -1201,11 +1201,11 @@ std::string TSManager::GetPrimitiveStr(const GlobalTSTypeRef &gt) const
 
 void TSManager::SetCurConstantPool(const JSPandaFile *jsPandaFile, uint32_t methodOffset)
 {
-    curCPID_ = GetOldConstantPoolIDByMethodOffset(jsPandaFile, methodOffset);
+    curCPID_ = GetConstantPoolIDByMethodOffset(jsPandaFile, methodOffset);
     curCP_ = vm_->GetJSThread()->GetCurrentEcmaContext()->FindConstpool(jsPandaFile, curCPID_);
 }
 
-int32_t TSManager::GetOldConstantPoolIDByMethodOffset(const JSPandaFile *jsPandaFile, uint32_t methodOffset)
+int32_t TSManager::GetConstantPoolIDByMethodOffset(const JSPandaFile *jsPandaFile, uint32_t methodOffset)
 {
     panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(),
                                             panda_file::File::EntityId(methodOffset));
@@ -1282,7 +1282,7 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
 
     bcInfoCollector->IterateConstantPoolInfo(kungfu::ConstantPoolInfo::ItemType::STRING,
         [this, jsPandaFile, &cpListIndexMap] (const kungfu::ConstantPoolInfo::ItemData &data) {
-        int32_t oldCPID = GetOldConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
+        int32_t oldCPID = GetConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
         JSTaggedValue oldCP = vm_->GetJSThread()->GetCurrentEcmaContext()->FindConstpool(jsPandaFile, oldCPID);
 
         JSTaggedValue str = ConstantPool::GetStringFromCache(thread_, oldCP, data.index);
@@ -1294,7 +1294,7 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
 
     bcInfoCollector->IterateConstantPoolInfo(kungfu::ConstantPoolInfo::ItemType::METHOD,
         [this, jsPandaFile, &cpListIndexMap, bcInfoCollector] (const kungfu::ConstantPoolInfo::ItemData &data) {
-        int32_t oldCPID = GetOldConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
+        int32_t oldCPID = GetConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
         JSHandle<ConstantPool> oldCP(thread_,
             vm_->GetJSThread()->GetCurrentEcmaContext()->FindConstpool(jsPandaFile, oldCPID));
 
@@ -1312,7 +1312,7 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
     bcInfoCollector->IterateConstantPoolInfo(kungfu::ConstantPoolInfo::ItemType::CLASS_LITERAL,
         [this, jsPandaFile, &cpListIndexMap, bcInfoCollector]
         (const kungfu::ConstantPoolInfo::ItemData &data) {
-        int32_t oldCPID = GetOldConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
+        int32_t oldCPID = GetConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
         JSHandle<ConstantPool> oldCP(thread_,
             vm_->GetJSThread()->GetCurrentEcmaContext()->FindConstpool(jsPandaFile, oldCPID));
 
@@ -1335,7 +1335,7 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
 
     bcInfoCollector->IterateConstantPoolInfo(kungfu::ConstantPoolInfo::ItemType::OBJECT_LITERAL,
         [this, jsPandaFile, &cpListIndexMap, bcInfoCollector] (const kungfu::ConstantPoolInfo::ItemData &data) {
-        int32_t oldCPID = GetOldConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
+        int32_t oldCPID = GetConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
         JSHandle<ConstantPool> oldCP(thread_,
             vm_->GetJSThread()->GetCurrentEcmaContext()->FindConstpool(jsPandaFile, oldCPID));
 
@@ -1360,7 +1360,7 @@ void TSManager::FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &
 
     bcInfoCollector->IterateConstantPoolInfo(kungfu::ConstantPoolInfo::ItemType::ARRAY_LITERAL,
         [this, jsPandaFile, &cpListIndexMap, bcInfoCollector] (const kungfu::ConstantPoolInfo::ItemData &data) {
-        int32_t oldCPID = GetOldConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
+        int32_t oldCPID = GetConstantPoolIDByMethodOffset(jsPandaFile, data.outerMethodOffset);
         JSHandle<ConstantPool> oldCP(thread_,
             vm_->GetJSThread()->GetCurrentEcmaContext()->FindConstpool(jsPandaFile, oldCPID));
 

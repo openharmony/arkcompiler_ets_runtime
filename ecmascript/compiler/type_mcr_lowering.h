@@ -172,6 +172,7 @@ private:
     void SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &funcIndex);
     void LowerLoadGetter(GateRef gate);
     void LowerLoadSetter(GateRef gate);
+    void LowerInlineAccessorCheck(GateRef gate);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
