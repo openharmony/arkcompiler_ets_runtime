@@ -433,24 +433,15 @@ GateRef TypeMCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
 void TypeMCRLowering::LowerIndexCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    auto type = acc_.GetParamGateType(gate);
-    auto deoptType = DeoptType::NOTCHECK;
-
-    if (tsManager_->IsArrayTypeKind(type) ||
-        tsManager_->IsIntTypedArrayType(type) ||
-        tsManager_->IsDoubleTypedArrayType(type)) {
-        deoptType = DeoptType::NOTARRAYIDX;
-    }
+    auto deoptType = DeoptType::NOTARRAYIDX;
 
     GateRef frameState = GetFrameState(gate);
     GateRef length = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     ASSERT(acc_.GetGateType(length).IsNJSValueType());
-    GateRef nonNegativeCheck = builder_.Int32LessThanOrEqual(builder_.Int32(0), index);
+    // UnsignedLessThan can check both lower and upper bounds
     GateRef lengthCheck = builder_.Int32UnsignedLessThan(index, length);
-    GateRef check = builder_.BoolAnd(nonNegativeCheck, lengthCheck);
-    builder_.DeoptCheck(check, frameState, deoptType);
-
+    builder_.DeoptCheck(lengthCheck, frameState, deoptType);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), index);
 }
 

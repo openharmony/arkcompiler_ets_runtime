@@ -34,10 +34,6 @@ void NumberSpeculativeLowering::Run()
     for (auto gate : gateList) {
         auto op = acc_.GetOpCode(gate);
         switch (op) {
-            case OpCode::INDEX_CHECK: {
-                checkedGates_.push_back(gate);
-                break;
-            }
             case OpCode::RANGE_GUARD: {
                 rangeGuardGates_.push_back(gate);
                 break;
@@ -46,9 +42,6 @@ void NumberSpeculativeLowering::Run()
                 VisitGate(gate);
             }
         }
-    }
-    for (auto check : checkedGates_) {
-        VisitIndexCheck(check);
     }
     for (auto rangeGuard : rangeGuardGates_) {
         VisitRangeGuard(rangeGuard);
@@ -551,31 +544,6 @@ void NumberSpeculativeLowering::VisitLoadProperty(GateRef gate)
         acc_.SetGateType(gate, GateType::NJSValue());
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
     }
-}
-
-void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)
-{
-    auto type = acc_.GetParamGateType(gate);
-    if (!tsManager_->IsArrayTypeKind(type)) {
-        // return checked index value
-        acc_.SetGateType(gate, GateType::NJSValue());
-        acc_.SetMachineType(gate, MachineType::I32);
-        return;
-    }
-    Environment env(gate, circuit_, &builder_);
-    GateRef index = acc_.GetValueIn(gate, 1);
-    if (!noCheck_) {
-        GateRef length = acc_.GetValueIn(gate, 0);
-        RangeInfo indexRange = GetRange(index);
-        if (indexRange.GetMin() < 0) {
-            builder_.NegativeIndexCheck(index);
-        }
-        builder_.LargeIndexCheck(index, length);
-        // return checked index value
-        acc_.SetGateType(gate, GateType::NJSValue());
-        acc_.SetMachineType(gate, MachineType::I32);
-    }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), index);
 }
 
 void NumberSpeculativeLowering::VisitRangeGuard(GateRef gate)

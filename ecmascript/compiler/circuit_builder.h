@@ -283,8 +283,6 @@ public:
     GateRef Int32CheckRightIsZero(GateRef right);
     GateRef Float64CheckRightIsZero(GateRef right);
     GateRef ValueCheckNegOverflow(GateRef value);
-    GateRef NegativeIndexCheck(GateRef index);
-    GateRef LargeIndexCheck(GateRef index, GateRef length);
     GateRef OverflowCheck(GateRef value);
     GateRef LexVarIsHoleCheck(GateRef value);
     GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);

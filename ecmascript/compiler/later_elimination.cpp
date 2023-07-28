@@ -54,8 +54,6 @@ GateRef LaterElimination::VisitGate(GateRef gate)
         case OpCode::HEAP_OBJECT_CHECK:
         case OpCode::INT32_UNSIGNED_UPPER_BOUND_CHECK:
         case OpCode::OVERFLOW_CHECK:
-        case OpCode::LARGE_INDEX_CHECK:
-        case OpCode::NEGATIVE_INDEX_CHECK:
         case OpCode::VALUE_CHECK_NEG_OVERFLOW:
         case OpCode::FLOAT64_CHECK_RIGHT_IS_ZERO:
         case OpCode::INT32_CHECK_RIGHT_IS_ZERO:

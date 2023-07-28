@@ -860,14 +860,9 @@ GateRef NumberSpeculativeRetype::VisitIndexCheck(GateRef gate)
         Environment env(gate, circuit_, &builder_);
         GateRef receiver = acc_.GetValueIn(gate, 0);
         GateRef index = acc_.GetValueIn(gate, 1);
-        GateType gateType = acc_.GetParamGateType(gate);
         GateType receiverType = acc_.GetGateType(receiver);
         GateType indexType = acc_.GetGateType(index);
-        if (tsManager_->IsArrayTypeKind(gateType)) {
-            // IndexCheck receive length at first value input.
-            ASSERT(receiverType.IsNumberType());
-            acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(receiver, receiverType), 0);
-        }
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(receiver, receiverType), 0);
         acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(index, indexType), 1);
 
         acc_.ReplaceStateIn(gate, builder_.GetState());
