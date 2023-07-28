@@ -141,7 +141,6 @@ JSTaggedValue JSMapIterator::MapIteratorToList(JSThread *thread, JSHandle<JSTagg
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> indexHandle(thread, JSTaggedValue::Undefined());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> array(factory->NewTaggedArray(2));  // 2 means the length of array
     while (index < totalElements) {
         JSTaggedValue key = map->GetKey(index);
         indexHandle.Update(JSTaggedValue(k));
@@ -153,6 +152,7 @@ JSTaggedValue JSMapIterator::MapIteratorToList(JSThread *thread, JSHandle<JSTagg
             } else if (itemKind == IterationKind::VALUE) {
                 JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, indexHandle, valueHandle);
             } else {
+                JSHandle<TaggedArray> array(factory->NewTaggedArray(2));  // 2 means the length of array
                 array->Set(thread, 0, keyHandle);
                 array->Set(thread, 1, valueHandle);
                 JSHandle<JSTaggedValue> keyAndValue(JSArray::CreateArrayFromList(thread, array));
