@@ -89,6 +89,23 @@ enum class TypedJumpOp : uint8_t {
     TYPED_JNEZ,
 };
 
+enum class BranchKind : uint8_t {
+    NORMAL_BRANCH = 0,
+    TRUE_BRANCH,
+    FALSE_BRANCH,
+    STRONG_TRUE_BRANCH,
+    STRONG_FALSE_BRANCH,
+};
+
+class BranchWeight {
+public:
+    static constexpr uint32_t ZERO_WEIGHT = 0;
+    static constexpr uint32_t ONE_WEIGHT = 1;
+    static constexpr uint32_t WEAK_WEIGHT = 10;
+    static constexpr uint32_t STRONG_WEIGHT = 1000;
+    static constexpr uint32_t DEOPT_WEIGHT = 2000;
+};
+
 #define GATE_META_DATA_DEOPT_REASON(V)        \
     V(NotInt, NOTINT)                         \
     V(NotDouble, NOTDOUBLE)                   \
@@ -250,7 +267,6 @@ std::string MachineTypeToStr(MachineType machineType);
     V(ReturnVoid, RETURN_VOID, GateFlags::HAS_ROOT, 1, 1, 0)                                    \
     V(Throw, THROW, GateFlags::CONTROL, 1, 1, 1)                                                \
     V(OrdinaryBlock, ORDINARY_BLOCK, GateFlags::CONTROL, 1, 0, 0)                               \
-    V(IfBranch, IF_BRANCH, GateFlags::CONTROL, 1, 0, 1)                                         \
     V(IfTrue, IF_TRUE, GateFlags::CONTROL, 1, 0, 0)                                             \
     V(IfFalse, IF_FALSE, GateFlags::CONTROL, 1, 0, 0)                                           \
     V(LoopBegin, LOOP_BEGIN, GateFlags::CONTROL, 2, 0, 0)                                       \
@@ -339,6 +355,7 @@ std::string MachineTypeToStr(MachineType machineType);
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                                               \
     V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                                        \
     V(Fcmp, FCMP, GateFlags::NONE_FLAG, 0, 0, 2)                                        \
+    V(IfBranch, IF_BRANCH, GateFlags::CONTROL, 1, 0, 1)                                 \
     V(Alloca, ALLOCA, GateFlags::NONE_FLAG, 0, 0, 0)                                    \
     V(SwitchBranch, SWITCH_BRANCH, GateFlags::CONTROL, 1, 0, 1)                         \
     V(SwitchCase, SWITCH_CASE, GateFlags::CONTROL, 1, 0, 0)                             \
@@ -946,10 +963,40 @@ private:
     uint64_t bitField_;
 };
 
+class BranchAccessor {
+public:
+    // type bits shift
+    static constexpr int OPRAND_TYPE_BITS = 32;
+    explicit BranchAccessor(uint64_t value) : bitField_(value) {}
+
+    int32_t GetTrueWeight() const
+    {
+        return TrueWeightBits::Get(bitField_);
+    }
+
+    int32_t GetFalseWeight() const
+    {
+        return FalseWeightBits::Get(bitField_);
+    }
+
+    static uint64_t ToValue(uint32_t trueWeight, uint32_t falseWeight)
+    {
+        return TrueWeightBits::Encode(trueWeight)
+            | FalseWeightBits::Encode(falseWeight);
+    }
+private:
+    using TrueWeightBits = panda::BitField<uint32_t, 0, OPRAND_TYPE_BITS>;
+    using FalseWeightBits = TrueWeightBits::NextField<uint32_t, OPRAND_TYPE_BITS>;
+
+    uint64_t bitField_;
+};
+
 class TypedJumpAccessor {
 public:
     // type bits shift
     static constexpr int OPRAND_TYPE_BITS = 32;
+    static constexpr int JUMP_OP_BITS = 8;
+    static constexpr int BRANCH_KIND_BITS = 8;
     explicit TypedJumpAccessor(uint64_t value) : bitField_(value) {}
 
     GateType GetTypeValue() const
@@ -962,15 +1009,22 @@ public:
         return TypedJumpOpBits::Get(bitField_);
     }
 
-    static uint64_t ToValue(GateType typeValue, TypedJumpOp jumpOp)
+    BranchKind GetBranchKind() const
+    {
+        return BranchKindBits::Get(bitField_);
+    }
+
+    static uint64_t ToValue(GateType typeValue, TypedJumpOp jumpOp, BranchKind branchKind)
     {
         return TypedValueBits::Encode(typeValue.Value())
-            | TypedJumpOpBits::Encode(jumpOp);
+            | TypedJumpOpBits::Encode(jumpOp)
+            | BranchKindBits::Encode(branchKind);
     }
 
 private:
     using TypedValueBits = panda::BitField<uint32_t, 0, OPRAND_TYPE_BITS>;
-    using TypedJumpOpBits = TypedValueBits::NextField<TypedJumpOp, OPRAND_TYPE_BITS>;
+    using TypedJumpOpBits = TypedValueBits::NextField<TypedJumpOp, JUMP_OP_BITS>;
+    using BranchKindBits = TypedJumpOpBits::NextField<BranchKind, BRANCH_KIND_BITS>;
 
     uint64_t bitField_;
 };

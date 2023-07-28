@@ -30,6 +30,8 @@ enum class OperationType : uint8_t {
     STORE_LAYOUT,
     LOAD_LAYOUT,
     INDEX,
+    TRUE_BRANCH,
+    FALSE_BRANCH,
 };
 
 #define COMBINE_TYPE_CALL_BACK(curType, type) \
@@ -102,6 +104,13 @@ public:
     {
         if (callback_) {
             callback_({ object }, OperationType::INDEX);
+        }
+    }
+
+    inline void ProfileBranch(bool isTrue) const
+    {
+        if (callback_) {
+            callback_({}, isTrue ? OperationType::TRUE_BRANCH : OperationType::FALSE_BRANCH);
         }
     }
 

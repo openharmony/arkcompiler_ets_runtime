@@ -318,7 +318,7 @@ public:
     GateRef CheckTaggedNumberAndConvertToFloat64(GateRef gate);
     GateRef CheckTaggedNumberAndConvertToBool(GateRef gate);
     GateRef CheckTaggedBooleanAndConvertToBool(GateRef gate);
-    GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, GateType typeVal,
+    GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, BranchKind branchKind, GateType typeVal,
                                const std::vector<GateRef>& inList);
     GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);
     GateRef TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget, GateRef frameState);
@@ -344,7 +344,8 @@ public:
     GateRef ExceptionConstant();
     GateRef RelocatableData(uint64_t val);
     GateRef Alloca(size_t size);
-    GateRef Branch(GateRef state, GateRef condition);
+    GateRef Branch(GateRef state, GateRef condition,
+        uint32_t leftWeight = 1, uint32_t rightWeight = 1);  // 1: default branch weight
     GateRef SwitchBranch(GateRef state, GateRef index, int caseCounts);
     GateRef Return(GateRef state, GateRef depend, GateRef value);
     GateRef ReturnVoid(GateRef state, GateRef depend);
@@ -530,7 +531,7 @@ public:
     template<TypedUnOp Op>
     inline GateRef TypedUnaryOp(GateRef x, GateType xType, GateType gateType);
     template<TypedJumpOp Op>
-    inline GateRef TypedConditionJump(GateRef x, GateType xType);
+    inline GateRef TypedConditionJump(GateRef x, GateType xType, BranchKind branchKind);
     inline GateRef PrimitiveToNumber(GateRef x, VariableType type);
 
     // middle ir: object operations
@@ -655,7 +656,8 @@ public:
     inline void Bind(Label *label);
     inline void Bind(Label *label, bool justSlowPath);
     void Jump(Label *label);
-    void Branch(GateRef condition, Label *trueLabel, Label *falseLabel);
+    void Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
+        uint32_t trueWeight = 1, uint32_t falseWeight = 1);   // 1: default branch weight
     void Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);

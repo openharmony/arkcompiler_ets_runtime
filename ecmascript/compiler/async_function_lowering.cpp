@@ -83,7 +83,7 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
     while (true) {
         if (stateInGate == GetEntryBBStateOut()) {  // from state entry
             GateRef condition = builder_.Equal(offsetConstantGate, restoreOffsetGate);
-            GateRef ifBranch = circuit_->NewGate(circuit_->IfBranch(), { ifFalseCondition, condition });
+            GateRef ifBranch = circuit_->NewGate(circuit_->IfBranch(0), { ifFalseCondition, condition });
             GateRef ifTrue = circuit_->NewGate(circuit_->IfTrue(), {ifBranch});
             GateRef ifFalse = circuit_->NewGate(circuit_->IfFalse(), {ifBranch});
             GateRef ifTrueDepend = builder_.DependRelay(ifTrue, restoreOffsetGate);
@@ -124,7 +124,7 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
                                                             GateType::NJSValue());
 
                 GateRef condition = builder_.Equal(offsetConstantGate, bcOffsetPhiGate);
-                GateRef ifBranch = circuit_->NewGate(circuit_->IfBranch(), {stateInGate, condition});
+                GateRef ifBranch = circuit_->NewGate(circuit_->IfBranch(0), {stateInGate, condition});
                 GateRef ifTrue = circuit_->NewGate(circuit_->IfTrue(), {ifBranch});
                 GateRef ifFalse = circuit_->NewGate(circuit_->IfFalse(), {ifBranch});
 

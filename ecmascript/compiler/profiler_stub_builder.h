@@ -37,6 +37,8 @@ public:
     void ProfileCreateObject(GateRef glue, GateRef pc, GateRef func, GateRef newObj);
     void ProfileObjLayout(GateRef glue, GateRef pc, GateRef func, GateRef object, GateRef store);
     void ProfileObjIndex(GateRef glue, GateRef pc, GateRef func, GateRef object);
+    void ProfileBranch(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, bool isTrue);
+    GateRef GetBranchTypeFromWeight(GateRef trueWeight, GateRef falseWeight);
 
     void ProfileObjLayoutOrIndex(GateRef glue, GateRef receiver, GateRef key, GateRef isStore,
         ProfileOperation callback);

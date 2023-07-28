@@ -811,7 +811,8 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler16/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify(checksum));
-    std::string types[17] = { "1", "1", "1", "5", "4", "4", "4", "4", "4", "4", "5", "4", "4", "1", "4", "5", "1" };
+    std::string types[17] =
+        { "6145", "1", "6145", "5", "4", "4", "4", "4", "4", "4", "5", "4", "4", "1", "4", "5", "1" };
     int index = 0;
     auto methodLiterals = jsPandaFile->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {

@@ -24,6 +24,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/debug_info.h"
 #include "ecmascript/compiler/gate.h"
+#include "ecmascript/compiler/gate_meta_data.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/frames.h"
@@ -1313,6 +1314,18 @@ void LLVMIRBuilder::VisitBranch(GateRef gate, GateRef cmp, int btrue, int bfalse
     LLVMBasicBlockRef llvmFalseBB = falseBB->GetImpl<BasicBlockImpl>()->lBB_;
     LLVMValueRef result = LLVMBuildCondBr(builder_, cond, llvmTrueBB, llvmFalseBB);
     EndCurrentBlock();
+
+    if (acc_.HasBranchWeight(gate)) {
+        auto trueWeight = acc_.GetTrueWeight(gate);
+        auto falseWeight = acc_.GetFalseWeight(gate);
+        LLVMMetadataRef branch_weights = LLVMMDStringInContext2(context_, "branch_weights", 14);
+        LLVMMetadataRef weight1 = LLVMValueAsMetadata(LLVMConstInt(LLVMIntType(32), trueWeight, 0));
+        LLVMMetadataRef weight2 = LLVMValueAsMetadata(LLVMConstInt(LLVMIntType(32), falseWeight, 0));
+        LLVMMetadataRef mds[] = {branch_weights, weight1, weight2};
+        LLVMMetadataRef metadata = LLVMMDNodeInContext2(context_, mds, 3);
+        LLVMValueRef metadata_value = LLVMMetadataAsValue(context_, metadata);
+        LLVMSetMetadata(result, LLVMGetMDKindID("prof", 4), metadata_value);
+    }
     gate2LValue_[gate] = result;
 }
 
@@ -2163,6 +2176,15 @@ void LLVMIRBuilder::HandleDeoptCheck(GateRef gate)
     GateRef cmp = acc_.GetValueIn(gate, 0); // 0: cond
     LLVMValueRef cond = gate2LValue_[cmp];
     LLVMValueRef result = LLVMBuildCondBr(builder_, cond, llvmTrueBB, llvmFalseBB);
+
+    LLVMMetadataRef branch_weights = LLVMMDStringInContext2(context_, "branch_weights", 14);
+    LLVMMetadataRef weight1 = LLVMValueAsMetadata(LLVMConstInt(LLVMIntType(32), BranchWeight::DEOPT_WEIGHT, 0));
+    LLVMMetadataRef weight2 = LLVMValueAsMetadata(LLVMConstInt(LLVMIntType(32), BranchWeight::ONE_WEIGHT, 0));
+    LLVMMetadataRef mds[] = {branch_weights, weight1, weight2};
+    LLVMMetadataRef metadata = LLVMMDNodeInContext2(context_, mds, 3);  // 3: size of mds
+    LLVMValueRef metadata_value = LLVMMetadataAsValue(context_, metadata);
+    LLVMSetMetadata(result, LLVMGetMDKindID("prof", 4), metadata_value);    // 4: length of "prof"
+
     EndCurrentBlock();
 
     LLVMPositionBuilderAtEnd(builder_, llvmFalseBB);

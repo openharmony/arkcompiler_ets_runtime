@@ -97,6 +97,30 @@ size_t GateAccessor::GetOffset(GateRef gate) const
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }
 
+uint32_t GateAccessor::GetTrueWeight(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::IF_BRANCH);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    auto accessor = BranchAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetTrueWeight();
+}
+
+uint32_t GateAccessor::GetFalseWeight(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::IF_BRANCH);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    auto accessor = BranchAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetFalseWeight();
+}
+
+bool GateAccessor::HasBranchWeight(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::IF_BRANCH);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    auto accessor = BranchAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return (accessor.GetTrueWeight() != 0) || (accessor.GetFalseWeight() != 0);
+}
+
 size_t GateAccessor::GetIndex(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::GET_GLOBAL_ENV_OBJ_HCLASS ||
@@ -380,6 +404,9 @@ PGOSampleType GateAccessor::TryGetPGOType(GateRef gate) const
     OpCode op = GetOpCode(gate);
     if (op == OpCode::JS_BYTECODE) {
         return gatePtr->GetJSBytecodeMetaData()->GetType();
+    }
+    if (op == OpCode::TYPED_BINARY_OP) {
+        return GetTypedBinaryType(gate);
     }
     return PGOSampleType::NoneType();
 }

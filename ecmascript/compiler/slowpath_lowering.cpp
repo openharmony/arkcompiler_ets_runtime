@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/slowpath_lowering.h"
+#include "ecmascript/compiler/gate_meta_data.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/message_string.h"
@@ -3149,11 +3150,13 @@ void SlowPathLowering::LowerCheckSafePointAndStackOverflow(GateRef gate)
         builder_.IntPtr(JSThread::GlueData::GetStackLimitOffset(builder_.GetCompilationConfig()->Is32Bit()));
     GateRef stackLimit = builder_.Load(VariableType::INT64(), glue_, stackLimitOffset);
     GateRef spValue = builder_.ReadSp();
-    builder_.Branch(builder_.Int64LessThanOrEqual(spValue, stackLimit), &checkStackOverflow, &dispatch);
+    builder_.Branch(builder_.Int64LessThanOrEqual(spValue, stackLimit), &checkStackOverflow, &dispatch,
+        BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT);
     builder_.Bind(&checkStackOverflow);
     {
         GateRef res = LowerCallRuntime(glue_, RTSTUB_ID(CheckSafePointAndStackOverflow), {}, true);
-        builder_.Branch(builder_.TaggedIsUndefined(res), &dispatch, &stackOverflow);
+        builder_.Branch(builder_.TaggedIsUndefined(res), &dispatch, &stackOverflow,
+            BranchWeight::DEOPT_WEIGHT, BranchWeight::ONE_WEIGHT);
         builder_.Bind(&stackOverflow);
         {
             builder_.Return(res);

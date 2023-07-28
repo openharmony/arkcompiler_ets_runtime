@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/type_mcr_lowering.h"
 #include "ecmascript/compiler/builtins_lowering.h"
+#include "ecmascript/compiler/gate_meta_data.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"
@@ -412,7 +413,8 @@ GateRef TypeMCRLowering::BuildCompareSubTyping(GateRef gate, GateRef frameState,
     GateRef levelGate = builder_.Int32(level);
     GateRef length = GetLengthFromSupers(supers);
 
-    builder_.Branch(builder_.Int32LessThan(levelGate, length), levelValid, exit);
+    builder_.Branch(builder_.Int32LessThan(levelGate, length), levelValid, exit,
+        BranchWeight::DEOPT_WEIGHT, BranchWeight::ONE_WEIGHT);
     builder_.Bind(levelValid);
     {
         check = builder_.Equal(aotHCGate, GetValueFromSupers(supers, level));

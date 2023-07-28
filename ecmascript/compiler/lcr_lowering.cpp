@@ -14,6 +14,7 @@
  */
 #include "ecmascript/compiler/lcr_lowering.h"
 #include "ecmascript/compiler/bytecodes.h"
+#include "ecmascript/compiler/gate_meta_data.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"
@@ -114,7 +115,7 @@ void LCRLowering::LowerConvertHoleAsUndefined(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), receiver);
 
-    builder_.Branch(builder_.TaggedIsHole(*result), &returnUndefined, &exit);
+    builder_.Branch(builder_.TaggedIsHole(*result), &returnUndefined, &exit, 1, BranchWeight::DEOPT_WEIGHT);
     builder_.Bind(&returnUndefined);
     {
         result = builder_.UndefineConstant();
