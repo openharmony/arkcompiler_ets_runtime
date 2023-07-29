@@ -256,7 +256,7 @@ public:
     GateRef ArrayGuardianCheck(GateRef frameState);
     GateRef TypedArrayCheck(GateType type, GateRef gate);
     GateRef LoadTypedArrayLength(GateType type, GateRef gate);
-    GateRef RangeGuard(GateRef gate);
+    GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassIndex);
     GateRef ObjectTypeCompare(GateType type, GateRef gate, GateRef hclassIndex);
