@@ -78,7 +78,6 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitTypedConditionJump(gate);
         case OpCode::INDEX_CHECK:
             return VisitIndexCheck(gate);
-        case OpCode::RANGE_GUARD:
         case OpCode::LOAD_ARRAY_LENGTH:
         case OpCode::LOAD_TYPED_ARRAY_LENGTH:
             return VisitLoadArrayLength(gate);
@@ -108,7 +107,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::OBJECT_TYPE_CHECK:
             return VisitWithConstantValue(gate, PROPERTY_LOOKUP_RESULT_INDEX);
         case OpCode::LOOP_EXIT_VALUE:
-            return VisitLoopExitValue(gate);
+        case OpCode::RANGE_GUARD:
+            return VisitIntermediateValue(gate);
         case OpCode::JS_BYTECODE:
         case OpCode::PRIMITIVE_TYPE_CHECK:
         case OpCode::STABLE_ARRAY_CHECK:
@@ -186,7 +186,7 @@ GateRef NumberSpeculativeRetype::VisitConstant(GateRef gate)
     return Circuit::NullGate();
 }
 
-GateRef NumberSpeculativeRetype::VisitLoopExitValue(GateRef gate)
+GateRef NumberSpeculativeRetype::VisitIntermediateValue(GateRef gate)
 {
     GateRef value = acc_.GetValueIn(gate, 0);
     TypeInfo valueInfo = GetOutputTypeInfo(value);
