@@ -91,6 +91,9 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
 
 bool HeapProfiler::UpdateHeapTracking(Stream *stream)
 {
+    if (hprofs_.size() == 0) {
+        return false;
+    }
     HeapSnapshot *snapshot = hprofs_.at(0);
     if (snapshot == nullptr) {
         return false;
@@ -118,6 +121,9 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
         heapTracker_->StopTracing();
     }
 
+    if (hprofs_.size() == 0) {
+        return false;
+    }
     HeapSnapshot *snapshot = hprofs_.at(0);
     if (snapshot == nullptr) {
         return false;
