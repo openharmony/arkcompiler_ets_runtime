@@ -282,3 +282,5 @@ arr1.forEach((item)=>{
 print(temp1)
 let str1 = 'SC52BAHL01031234567890123456USD'
 print(str1.replace(/[^A-Z0-9]+/gi, ''))
+
+let reg50 = /^[ABCEGHJKLMNPRSTVXY]\d[ABCEGHJ-NPRSTV-Z][\s-]?\d[ABCEGHJ-NPRSTV-Z]\d$/i
