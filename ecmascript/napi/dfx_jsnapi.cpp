@@ -25,6 +25,7 @@
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
@@ -82,6 +83,9 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate)
 {
+#if defined(SUPPORT_ENABLE_ASM_INTERP)
+    ecmascript::PGOProfilerManager::GetInstance()->AsynSave();
+#endif
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
