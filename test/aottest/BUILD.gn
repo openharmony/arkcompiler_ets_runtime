@@ -152,6 +152,7 @@ group("ark_aot_ts_test") {
     "optimization",
     "optimized_call",
     "or",
+    "pgo_call",
     "poplexenv",
     "proxy",
     "resumegenerator",

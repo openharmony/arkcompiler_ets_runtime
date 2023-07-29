@@ -476,6 +476,17 @@ public:
         }
     }
 
+    void AddCallTargetType(uint32_t offset, PGOSampleType type)
+    {
+        auto result = scalarOpTypeInfos_.find(ScalarOpTypeInfo(offset, type));
+        if (result != scalarOpTypeInfos_.end()) {
+            auto combineType = result->GetType().CombineCallTargetType(type);
+            const_cast<ScalarOpTypeInfo &>(*result).SetType(combineType);
+        } else {
+            scalarOpTypeInfos_.emplace(offset, type);
+        }
+    }
+
     void AddObjectInfo(uint32_t offset, const PGOObjectInfo &info)
     {
         auto result = rwScalarOpTypeInfos_.find(RWScalarOpTypeInfo(offset));
@@ -797,6 +808,7 @@ public:
 
     bool AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode, int32_t incCount);
     bool AddType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
+    bool AddCallTargetType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
     bool AddDefine(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
@@ -992,6 +1004,7 @@ public:
     // If it is a new method, return true.
     bool AddMethod(const CString &recordName, Method *jsMethod, SampleMode mode, int32_t incCount);
     bool AddType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type);
+    bool AddCallTargetType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(const CString &recordName, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
     bool AddDefine(
         const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);

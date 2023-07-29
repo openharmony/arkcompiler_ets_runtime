@@ -25,9 +25,10 @@ public:
     enum Type {
         OBJ_LITERAL = 0,
         ARRAY_LITERAL,
+        CALL_TARGET,
         TYPE_NUM,
         TYPE_FIRST = OBJ_LITERAL,
-        TYPE_LAST = ARRAY_LITERAL,
+        TYPE_LAST = CALL_TARGET,
     };
 
     struct InfoDetail {

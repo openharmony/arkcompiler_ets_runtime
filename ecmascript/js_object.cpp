@@ -800,7 +800,7 @@ bool JSObject::CallSetter(JSThread *thread, const AccessorData &accessor, const 
     JSHandle<JSTaggedValue> func(thread, setter);
     if (thread->IsPGOProfilerEnable()) {
         auto profiler = thread->GetEcmaVM()->GetPGOProfiler();
-        profiler->ProfileCall(func.GetTaggedType());
+        profiler->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
     }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, receiver, undefined, 1);
@@ -826,7 +826,7 @@ JSTaggedValue JSObject::CallGetter(JSThread *thread, const AccessorData *accesso
     JSHandle<JSTaggedValue> func(thread, getter);
     if (thread->IsPGOProfilerEnable()) {
         auto profiler = thread->GetEcmaVM()->GetPGOProfiler();
-        profiler->ProfileCall(func.GetTaggedType());
+        profiler->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
     }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, receiver, undefined, 0);

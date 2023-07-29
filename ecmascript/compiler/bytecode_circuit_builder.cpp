@@ -1456,6 +1456,15 @@ void BytecodeCircuitBuilder::BuildCircuit()
                     gateAcc_.NewIn(gate, inIdx, defVreg);
                 } else {
                     GateRef defAcc = ResolveDef(bb, bcIndex, 0, true);
+                    if (!Bytecodes::IsCallOp(bytecodeInfo.GetOpcode())) {
+                        gateAcc_.NewIn(gate, inIdx, defAcc);
+                        continue;
+                    }
+                    auto oldGt = gateAcc_.GetGateType(defAcc).GetGTRef();
+                    GateType callTargetType = typeRecorder_.GetCallTargetType(bcIndex);
+                    if (!tsManager_->MethodOffsetIsVaild(oldGt) && !callTargetType.IsAnyType()) {
+                        gateAcc_.SetGateType(defAcc, callTargetType);
+                    }
                     gateAcc_.NewIn(gate, inIdx, defAcc);
                 }
             }

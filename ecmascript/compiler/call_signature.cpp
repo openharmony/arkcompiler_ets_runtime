@@ -1411,13 +1411,15 @@ DEF_CALL_SIGNATURE(Comment)
 
 DEF_CALL_SIGNATURE(ProfileCall)
 {
-    // 2 : 2 input parameters
-    CallSignature callProfilerInstruction("ProfileCall", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    // 4 : 4 input parameters
+    CallSignature callProfilerInstruction("ProfileCall", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = callProfilerInstruction;
-    // 2 : 2 input parameters
-    std::array<VariableType, 2> params = {
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
+        VariableType::JS_ANY(),
+        VariableType::INT32(),
     };
     callSign->SetVariadicArgs(true);
     callSign->SetParameters(params.data());
