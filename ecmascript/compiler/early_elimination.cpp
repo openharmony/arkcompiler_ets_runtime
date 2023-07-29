@@ -93,6 +93,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::TYPED_BINARY_OP:
         case OpCode::TYPED_UNARY_OP:
         case OpCode::JSINLINETARGET_TYPE_CHECK:
+        case OpCode::INLINE_ACCESSOR_CHECK:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
             return TryEliminateFrameState(gate);
