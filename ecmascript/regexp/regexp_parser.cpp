@@ -1267,11 +1267,19 @@ bool RegExpParser::ParseClassRanges(RangeSet *result)
             }
             needInter = NeedIntersection(c2);
             result->Insert(c1, c2);
+            if (IsIgnoreCase() && needInter) {
+                ProcessIntersection(result);
+            }
         } else {
             result->Insert(s1);
-        }
-        if (IsIgnoreCase() && needInter) {
-            ProcessIntersection(result);
+            if (!(IsIgnoreCase() && needInter)) {
+                continue;
+            }
+            if (c1 <= 'z' && c1 >= 'a') {
+                result->Insert(RangeSet(c1 - 'a' + 'A'));
+            } else {
+                result->Insert(RangeSet(c1 - 'A' + 'a'));
+            }
         }
     }
     Advance();
