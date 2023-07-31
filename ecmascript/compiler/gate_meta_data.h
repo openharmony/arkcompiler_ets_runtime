@@ -211,9 +211,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(OverflowCheck, OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                  \
     V(Int32UnsignedUpperBoundCheck, INT32_UNSIGNED_UPPER_BOUND_CHECK, GateFlags::CHECKABLE, 1, 1, 2) \
     V(Int32DivWithCheck, INT32_DIV_WITH_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                        \
-    V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                       \
-    V(RangeGuard, RANGE_GUARD, GateFlags::NO_WRITE, 1, 1, 1)                                         \
-
+    V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)
+    
 #define UNARY_GATE_META_DATA_CACHE_LIST(V)                                       \
     V(Zext, ZEXT, GateFlags::NONE_FLAG, 0, 0, 1)                                 \
     V(Sext, SEXT, GateFlags::NONE_FLAG, 0, 0, 1)                                 \
@@ -349,7 +348,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(GetGlobalConstantValue, GET_GLOBAL_CONSTANT_VALUE, GateFlags::NO_WRITE, 0, 1, 0)  \
     V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, 2)                     \
     V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 0)                         \
-    V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 2)
+    V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 2)   \
+    V(RangeGuard, RANGE_GUARD, GateFlags::NO_WRITE, 1, 1, 1)
 
 #define GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     V(Arg, ARG, GateFlags::HAS_ROOT, 0, 0, 0)             \

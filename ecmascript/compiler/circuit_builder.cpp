@@ -246,12 +246,13 @@ GateRef CircuitBuilder::LoadTypedArrayLength(GateType type, GateRef gate)
     return ret;
 }
 
-GateRef CircuitBuilder::RangeGuard(GateRef gate)
+GateRef CircuitBuilder::RangeGuard(GateRef gate, uint32_t left, uint32_t right)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    GateRef ret = GetCircuit()->NewGate(circuit_->RangeGuard(),
+    UInt32PairAccessor accessor(left, right);
+    GateRef ret = GetCircuit()->NewGate(circuit_->RangeGuard(accessor.ToValue()),
         MachineType::I64, {currentControl, currentDepend, gate}, GateType::IntType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);

@@ -261,6 +261,22 @@ GateType GateAccessor::GetRightType(GateRef gate) const
     return accessor.GetRightType();
 }
 
+uint32_t GateAccessor::GetFirstValue(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::RANGE_GUARD);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    UInt32PairAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetFirstValue();
+}
+
+uint32_t GateAccessor::GetSecondValue(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::RANGE_GUARD);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    UInt32PairAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetSecondValue();
+}
+
 size_t GateAccessor::GetVirtualRegisterIndex(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::SAVE_REGISTER ||

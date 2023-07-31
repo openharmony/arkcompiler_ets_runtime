@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/base/depend_chain_helper.h"
 #include "ecmascript/mem/chunk_containers.h"
+#include "ecmascript/compiler/number_gate_info.h"
 
 namespace panda::ecmascript::kungfu {
 class DependChains;
@@ -59,6 +60,8 @@ private:
     Circuit* circuit_;
     CircuitBuilder builder_;
     ChunkVector<DependChains*> dependChains_;
+
+    friend class RangeInfo;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_RANGE_GUARD_H
