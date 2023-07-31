@@ -296,7 +296,7 @@ void RegExpParser::ParseAlternative(bool isBackward)
                                     RangeOpCode rangeOp;
                                     RangeSet rangeResult;
                                     for (uint32_t idx = 0; idx < size; idx++) {
-                                        uint32_t uc = set.charAt(idx);
+                                        int32_t uc = set.charAt(idx);
                                         RangeSet curRange(uc);
                                         rangeResult.Insert(curRange);
                                     }

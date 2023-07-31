@@ -169,7 +169,7 @@ int Main(const int argc, const char **argv)
         PassOptions passOptions(isEnableTypeLowering, isEnableEarlyElimination, isEnableLaterElimination,
                                 isEnableValueNumbering, isEnableTypeInfer, isEnableOptInlining,
                                 isEnableOptPGOType, isEnableOptTrackField, isEnableOptLoopPeeling);
-                                
+
         uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
         AOTInitialize(vm);
 
