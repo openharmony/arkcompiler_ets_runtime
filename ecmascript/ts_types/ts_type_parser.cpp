@@ -854,6 +854,9 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, PGO
     }
 
     JSHandle<JSHClass> oldHClass(thread_, objHandle->GetClass());
+    if (oldHClass->IsDictionaryMode()) {
+        return thread_->GlobalConstants()->GetHandledUndefined();
+    }
     JSHandle<JSHClass> hclass = JSHClass::Clone(thread_, oldHClass);
     ObjectFactory *factory = vm_->GetFactory();
     JSHandle<LayoutInfo> newLayout = factory->CopyLayoutInfo(JSHandle<LayoutInfo>(thread_, hclass->GetLayout()));

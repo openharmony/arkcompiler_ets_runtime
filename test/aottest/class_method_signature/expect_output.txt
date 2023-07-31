@@ -11,6 +11,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+bar
+bar2
+constructor,bar,bar2
+foo
+bar
+bar2
+constructor,foo,bar,bar2
+bar
+bar2
+constructor,bar,bar2
+foo
+bar
+bar2
+constructor,bar,foo,bar2
 test one signature but no body
 D
 test multi-signatures but one body
