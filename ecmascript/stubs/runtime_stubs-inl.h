@@ -364,10 +364,7 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncGeneratorResolve(JSThread *thread, JSHan
 
     ASSERT(flag.IsBoolean());
     bool done = flag.IsTrue();
-    if (asyncGeneratorObjHandle->GetAsyncGeneratorState() == JSAsyncGeneratorState::COMPLETED &&
-        TaggedQueue::Cast(asyncGeneratorObjHandle->GetAsyncGeneratorQueue().GetTaggedObject())->Empty()) {
-        return JSTaggedValue::Undefined();
-    }
+
     return JSAsyncGeneratorObject::AsyncGeneratorResolve(thread, asyncGeneratorObjHandle, valueHandle, done);
 }
 
