@@ -56,6 +56,9 @@ bool NameDictionary::IsMatch(const uint8_t* str, int size, const JSTaggedValue &
 
     Span<const uint8_t> data1(EcmaStringAccessor(keyString).GetDataUtf8(), keyString->GetLength());
     Span<const uint8_t> data2(str, size);
+    if (data1.Size() != data2.Size()) {
+        return false;
+    }
     return EcmaString::StringsAreEquals(data1, data2);
 }
 
