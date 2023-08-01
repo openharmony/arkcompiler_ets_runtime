@@ -626,7 +626,8 @@ void BytecodeInfoCollector::CollectRecordReferenceREL()
 {
     auto &recordNames = bytecodeInfo_.GetRecordNames();
     for (auto &record : recordNames) {
-        if (jsPandaFile_->HasTSTypes(record) && jsPandaFile_->IsModule(vm_->GetJSThread(), record)) {
+        JSRecordInfo info = jsPandaFile_->FindRecordInfo(record);
+        if (jsPandaFile_->HasTSTypes(info)|| jsPandaFile_->IsModule(info)) {
             CollectRecordImportInfo(record);
             CollectRecordExportInfo(record);
         }
