@@ -331,7 +331,8 @@ void NumberSpeculativeLowering::VisitNumberDiv(GateRef gate)
         result = builder_.Int32DivWithCheck(left, right);
         acc_.SetMachineType(gate, MachineType::I32);
     } else {
-        result = builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, left, right);
+        result = builder_.BinaryArithmetic(circuit_->Fdiv(),
+            MachineType::F64, left, right, GateType::NJSValue());
         acc_.SetMachineType(gate, MachineType::F64);
     }
     acc_.SetGateType(gate, GateType::NJSValue());
@@ -578,7 +579,8 @@ GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
             res = builder_.MulWithOverflow(left, right);
             break;
         case TypedBinOp::TYPED_MOD: {
-            return builder_.BinaryArithmetic(circuit_->Smod(), MachineType::I32, left, right);
+            return builder_.BinaryArithmetic(circuit_->Smod(),
+                MachineType::I32, left, right, GateType::NJSValue());
             break;
         }
         default:
