@@ -65,21 +65,14 @@ void PGOBCInfo::Record(const BytecodeInstruction &bcIns, int32_t bcIndex,
     BytecodeInstruction::Opcode opcode = static_cast<BytecodeInstruction::Opcode>(bcIns.GetOpcode());
     uint32_t methodOffset = method->GetMethodId().GetOffset();
     uint32_t bcOffset = bcIns.GetAddress() - method->GetBytecodeArray();
-    switch (opcode) {
-        case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
-        case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
-            auto cpIndex = bcIns.GetId().AsRawValue();
-            Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, cpIndex}, Type::OBJ_LITERAL);
-            break;
-        }
-        case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
-        case BytecodeInstruction::Opcode::CREATEARRAYWITHBUFFER_IMM16_ID16: {
-            auto cpIndex = bcIns.GetId().AsRawValue();
-            Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, cpIndex}, Type::ARRAY_LITERAL);
-            break;
-        }
-        default:
-            break;
+    if (Bytecodes::IsCreateObjectWithBufferOp(opcode)) {
+        auto cpIndex = bcIns.GetId().AsRawValue();
+        Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, cpIndex}, Type::OBJ_LITERAL);
+    } else if (Bytecodes::IsCreateArrayWithBufferOp(opcode)) {
+        auto cpIndex = bcIns.GetId().AsRawValue();
+        Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, cpIndex}, Type::ARRAY_LITERAL);
+    } else if (Bytecodes::IsCallOp(opcode)) {
+        Record(InfoDetail {recordName, methodOffset, bcIndex, bcOffset, 0}, Type::CALL_TARGET);
     }
 }
 }  // namespace panda::ecmascript

@@ -25,7 +25,7 @@ void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, Ga
 {
     switch (type) {
         case OperationType::CALL:
-            ProfileCall(glue, values[0]);
+            ProfileCall(glue, pc, func, values[0]);
             break;
         case OperationType::OPERATION_TYPE:
             ProfileOpType(glue, pc, func, profileTypeInfo, values[0]);
@@ -157,7 +157,7 @@ void ProfilerStubBuilder::ProfileObjLayout(GateRef glue, GateRef pc, GateRef fun
     env->SubCfgExit();
 }
 
-void ProfilerStubBuilder::ProfileCall(GateRef glue, GateRef target)
+void ProfilerStubBuilder::ProfileCall(GateRef glue, GateRef pc, GateRef func, GateRef target)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -176,7 +176,11 @@ void ProfilerStubBuilder::ProfileCall(GateRef glue, GateRef target)
         Branch(TaggedIsUndefined(targetProfileInfo), &nonHotness, &exit);
         Bind(&nonHotness);
         {
-            CallNGCRuntime(glue, RTSTUB_ID(ProfileCall), { glue, target, Int32(1)});
+            GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
+            GateRef firstPC =
+                Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+            GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
+            CallNGCRuntime(glue, RTSTUB_ID(ProfileCall), { glue, func, target, offset, Int32(1)});
             Jump(&exit);
         }
     }
