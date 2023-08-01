@@ -26,3 +26,18 @@ print(o);
 
 var a:Array<number> = new Array(10);
 print(a.length);
+
+class TClass {
+    dd: number;
+
+    div(v1: number[]): number {
+        return 1.0 / v1[0];
+    }
+    constructor(p1: number[]) {
+        let d = this.div(p1);
+        this.dd = d / 1.0;
+    }
+}
+
+let p1: number[] = [-10, 10, -10];
+new TClass(p1);

@@ -625,7 +625,8 @@ void LCRLowering::LowerInt32DivWithCheck(GateRef gate)
     GateRef condition = builder_.BoolOr(rightGreaterZero, builder_.BoolAnd(rightLessZero, leftNotZero));
     builder_.DeoptCheck(condition, frameState, DeoptType::DIVZERO);
     result = builder_.BinaryArithmetic(circuit_->Sdiv(), MachineType::I32, left, right, GateType::NJSValue());
-    GateRef truncated = builder_.BinaryArithmetic(circuit_->Mul(), MachineType::I32, result, right);
+    GateRef truncated = builder_.BinaryArithmetic(circuit_->Mul(),
+        MachineType::I32, result, right, GateType::NJSValue());
     GateRef overCheck = builder_.Int32Equal(truncated, left);
     builder_.DeoptCheck(overCheck, frameState, DeoptType::NOTINT);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
