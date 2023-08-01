@@ -42,6 +42,7 @@ void PGOProfiler::ProfileCall(JSTaggedType value, SampleMode mode, int32_t incCo
         if (methodCount_ >= MERGED_EVERY_COUNT && interval > MERGED_MIN_INTERVAL) {
             LOG_ECMA(DEBUG) << "Sample: post task to save profiler";
             PGOProfilerManager::GetInstance()->Merge(this);
+            PGOProfilerManager::GetInstance()->AsynSave();
             SetSaveTimestamp(std::chrono::system_clock::now());
             methodCount_ = 0;
         }
