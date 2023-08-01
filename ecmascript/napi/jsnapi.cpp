@@ -167,6 +167,7 @@ using ecmascript::JSIterator;
 using ecmascript::JSGeneratorFunction;
 using ecmascript::JSGeneratorObject;
 using ecmascript::GeneratorContext;
+using ecmascript::JSProxy;
 #ifdef ARK_SUPPORT_INTL
 using ecmascript::JSCollator;
 using ecmascript::JSDateTimeFormat;
@@ -2506,6 +2507,26 @@ double DateRef::GetTime()
         LOG_ECMA(ERROR) << "Not a Date Object";
     }
     return date->GetTime().GetDouble();
+}
+
+Local<JSValueRef> ProxyRef::GetHandler(const EcmaVM *vm)
+{
+    JSHandle<JSProxy> jsProxy(JSNApiHelper::ToJSHandle(this));
+    JSThread *thread = vm->GetJSThread();
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, jsProxy->GetHandler()));
+}
+
+Local<JSValueRef> ProxyRef::GetTarget(const EcmaVM *vm)
+{
+    JSHandle<JSProxy> jsProxy(JSNApiHelper::ToJSHandle(this));
+    JSThread *thread = vm->GetJSThread();
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, jsProxy->GetTarget()));
+}
+
+bool ProxyRef::IsRevoked()
+{
+    JSHandle<JSProxy> jsProxy(JSNApiHelper::ToJSHandle(this));
+    return jsProxy->GetIsRevoked();
 }
 
 Local<JSValueRef> MapRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
