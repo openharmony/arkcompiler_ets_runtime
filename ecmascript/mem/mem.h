@@ -60,7 +60,7 @@ static constexpr size_t DEFAULT_MARK_STACK_SIZE = 4_KB;
 static constexpr double MIN_OBJECT_SURVIVAL_RATE = 0.75;
 static constexpr double GROW_OBJECT_SURVIVAL_RATE = 0.8;
 static constexpr double SHRINK_OBJECT_SURVIVAL_RATE = 0.2;
-
+static constexpr double LOW_ALLOCATION_SPEED_PER_MS = 1000;
 // Objects which are larger than half of the region size are huge objects.
 // Regular objects will be allocated on regular regions and migrated on spaces.
 // They will never be moved to huge object space. So we take half of a regular
