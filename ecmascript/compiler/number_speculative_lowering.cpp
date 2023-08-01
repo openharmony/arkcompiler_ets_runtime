@@ -355,7 +355,9 @@ void NumberSpeculativeLowering::VisitNumberMod(GateRef gate)
     }
     GateRef result = Circuit::NullGate();
     if (gateType.IsIntType()) {
-        builder_.Int32CheckRightIsZero(right);
+        if(GetRange(right).MaybeZero()) {
+            builder_.Int32CheckRightIsZero(right);
+        }
         result = CalculateInts<Op>(left, right);
         UpdateRange(result, GetRange(gate));
         acc_.SetMachineType(gate, MachineType::I32);
@@ -576,6 +578,9 @@ GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
             break;
         }
         case TypedBinOp::TYPED_MUL:
+            if(!leftRange.MaybeMulOverflowOrUnderflow(rightRange)) {
+                return builder_.Int32Mul(left, right);
+            }
             res = builder_.MulWithOverflow(left, right);
             break;
         case TypedBinOp::TYPED_MOD: {

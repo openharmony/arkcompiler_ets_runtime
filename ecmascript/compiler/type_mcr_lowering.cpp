@@ -34,7 +34,7 @@ void TypeMCRLowering::RunTypeMCRLowering()
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";
         LOG_COMPILER(INFO) << "\033[34m" << "=================="
-                           << " after TypeMCRlowering "
+                           << " After TypeMCRlowering "
                            << "[" << GetMethodName() << "] "
                            << "==================" << "\033[0m";
         circuit_->PrintAllGatesWithBytecode();
