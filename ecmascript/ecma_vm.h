@@ -83,7 +83,7 @@ class EcmaStringTable;
 
 using NativePtrGetter = void* (*)(void* info);
 
-using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath)>;
+using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)>;
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 class EcmaVM {
 public:

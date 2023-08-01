@@ -836,7 +836,8 @@ void JSNApi::SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data)
     vm->GetJSThread()->GetCurrentEcmaContext()->SetData(data);
 }
 
-void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm, std::function<std::vector<uint8_t>(std::string dirPath)> cb)
+void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
+    std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)> cb)
 {
     vm->SetResolveBufferCallback(cb);
 }
