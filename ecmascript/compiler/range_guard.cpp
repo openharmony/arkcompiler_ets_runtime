@@ -87,23 +87,25 @@ GateRef RangeGuard::TraverseDependSelector(GateRef gate)
     return UpdateDependChain(gate, copy);
 }
 
-GateRef RangeGuard::TryApplyTypedArrayRangeGuardForLength(DependChains* dependChain, GateRef gate, GateRef input)
+GateRef RangeGuard::TryApplyRangeGuardForLength(DependChains* dependChain, GateRef gate, GateRef input)
 {
     ASSERT(dependChain != nullptr);
-    if (dependChain->FoundIndexCheckedForLength(this, input)) {
+    uint32_t length = dependChain->FoundIndexCheckedForLength(this, input);
+    if (length) { // when length not equal to 0, then Found the IndexCheck Success
         Environment env(gate, circuit_, &builder_);
-        auto rangeGuardGate = builder_.RangeGuard(input, 1, RangeInfo::TYPED_ARRAY_ONHEAP_MAX); // If the IndexCheck before the TypeArrayLength used, the TypeArrayLength must start by 1.
+        auto rangeGuardGate = builder_.RangeGuard(input, 1, length); // If the IndexCheck before the ArrayLength used, the ArrayLength must start by 1.
         return rangeGuardGate;
     }
     return Circuit::NullGate();
 }
 
-GateRef RangeGuard::TryApplyTypedArrayRangeGuardForIndex(DependChains* dependChain, GateRef gate, GateRef input)
+GateRef RangeGuard::TryApplyRangeGuardForIndex(DependChains* dependChain, GateRef gate, GateRef input)
 {
     ASSERT(dependChain != nullptr);
-    if (dependChain->FoundIndexCheckedForIndex(this, input)) {
+    uint32_t length = dependChain->FoundIndexCheckedForIndex(this, input);
+    if (length) { // when length not equal to 0, then Found the IndexCheck Success
         Environment env(gate, circuit_, &builder_);
-        auto rangeGuardGate = builder_.RangeGuard(input, 0, RangeInfo::TYPED_ARRAY_ONHEAP_MAX); // If the IndexCheck used in the TypeArray, the index must in the TypeArray range.
+        auto rangeGuardGate = builder_.RangeGuard(input, 0, length); // If the IndexCheck used in the Array, the index must in the Array range.
         return rangeGuardGate;
     }
     return Circuit::NullGate();
@@ -127,10 +129,10 @@ GateRef RangeGuard::TryApplyRangeGuardGate(GateRef gate)
         auto originalInput = acc_.GetValueIn(gate, i);
         auto originalInputOpcode = acc_.GetOpCode(originalInput);
         auto rangeGuardGate = Circuit::NullGate();
-        if (originalInputOpcode == OpCode::LOAD_TYPED_ARRAY_LENGTH) {
-            rangeGuardGate = TryApplyTypedArrayRangeGuardForLength(dependChain, gate, originalInput);
-        } else if(originalInputOpcode != OpCode::CONSTANT) {
-            rangeGuardGate = TryApplyTypedArrayRangeGuardForIndex(dependChain, gate, originalInput);
+        if (originalInputOpcode == OpCode::LOAD_TYPED_ARRAY_LENGTH || originalInputOpcode == OpCode::LOAD_ARRAY_LENGTH) {
+            rangeGuardGate = TryApplyRangeGuardForLength(dependChain, gate, originalInput);
+        } else if(originalInputOpcode != OpCode::CONSTANT && rangeGuardGate == Circuit::NullGate()) {
+            rangeGuardGate = TryApplyRangeGuardForIndex(dependChain, gate, originalInput);
         }
         if (rangeGuardGate != Circuit::NullGate()) {
             acc_.ReplaceValueIn(gate, rangeGuardGate, i);
@@ -157,27 +159,34 @@ GateRef RangeGuard::UpdateDependChain(GateRef gate, DependChains* dependChain)
     return gate;
 }
 
-bool RangeGuard::CheckIndexCheckLengthInput(GateRef lhs, GateRef rhs)
+uint32_t RangeGuard::CheckIndexCheckLengthInput(GateRef lhs, GateRef rhs)
 {
     auto lhsOpcode = acc_.GetOpCode(lhs);
     if (lhsOpcode == OpCode::INDEX_CHECK) {
         auto indexCheckLengthInput = acc_.GetValueIn(lhs, 0); // length
-        return indexCheckLengthInput == rhs;
+        auto indexCheckLengthInputOpcode = acc_.GetOpCode(indexCheckLengthInput);
+        if(indexCheckLengthInput == rhs && indexCheckLengthInputOpcode == OpCode::LOAD_TYPED_ARRAY_LENGTH) {
+            return RangeInfo::TYPED_ARRAY_ONHEAP_MAX;
+        } else if(indexCheckLengthInput == rhs && indexCheckLengthInputOpcode == OpCode::LOAD_ARRAY_LENGTH) {
+            return INT32_MAX;
+        }
     }
-    return false;
+    return 0;
 }
 
-bool RangeGuard::CheckIndexCheckIndexInput(GateRef lhs, GateRef rhs)
+uint32_t RangeGuard::CheckIndexCheckIndexInput(GateRef lhs, GateRef rhs)
 {
     auto lhsOpcode = acc_.GetOpCode(lhs);
     if (lhsOpcode == OpCode::INDEX_CHECK) {
         auto indexCheckLengthInput = acc_.GetValueIn(lhs, 0); // length
         auto indexCheckIndexInput = acc_.GetValueIn(lhs, 1); // index
         auto indexCheckLengthInputOpcode = acc_.GetOpCode(indexCheckLengthInput);
-        if(indexCheckIndexInput == rhs && indexCheckLengthInputOpcode == OpCode::LOAD_TYPED_ARRAY_LENGTH) { // TYPED_ARRAY 
+        if(indexCheckIndexInput == rhs && indexCheckLengthInputOpcode == OpCode::LOAD_TYPED_ARRAY_LENGTH) { // TYPED_ARRAY
             return RangeInfo::TYPED_ARRAY_ONHEAP_MAX;
+        } else if(indexCheckIndexInput == rhs && indexCheckLengthInputOpcode == OpCode::LOAD_ARRAY_LENGTH) { // ARRAY
+            return INT32_MAX;
         }
     }
-    return false;
+    return 0;
 }
 }  // namespace panda::ecmascript::kungfu

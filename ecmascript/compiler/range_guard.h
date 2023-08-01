@@ -38,8 +38,8 @@ public:
 
     GateRef VisitGate(GateRef gate) override;
     bool CheckInputSource(GateRef lhs, GateRef rhs);
-    bool CheckIndexCheckLengthInput(GateRef lhs, GateRef rhs);
-    bool CheckIndexCheckIndexInput(GateRef lhs, GateRef rhs);
+    uint32_t CheckIndexCheckLengthInput(GateRef lhs, GateRef rhs);
+    uint32_t CheckIndexCheckIndexInput(GateRef lhs, GateRef rhs);
 private:
 
     DependChains* GetDependChain(GateRef dependIn)
@@ -51,8 +51,8 @@ private:
 
     GateRef VisitDependEntry(GateRef gate);
     GateRef UpdateDependChain(GateRef gate, DependChains* dependInfo);
-    GateRef TryApplyTypedArrayRangeGuardForLength(DependChains* dependInfo, GateRef gate, GateRef input);
-    GateRef TryApplyTypedArrayRangeGuardForIndex(DependChains* dependInfo, GateRef gate, GateRef input);
+    GateRef TryApplyRangeGuardForLength(DependChains* dependInfo, GateRef gate, GateRef input);
+    GateRef TryApplyRangeGuardForIndex(DependChains* dependInfo, GateRef gate, GateRef input);
     GateRef TryApplyRangeGuardGate(GateRef gate);
     GateRef TraverseOthers(GateRef gate);
     GateRef TraverseDependSelector(GateRef gate);

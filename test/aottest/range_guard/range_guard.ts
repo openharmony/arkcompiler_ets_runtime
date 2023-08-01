@@ -50,8 +50,29 @@ function testcase4() {
     }
 }
 
+function testcase5() {
+    let testArray: number[] = [1, 2, 3];
+    let a: number = testArray[0];
+    let res: number = 5 + testArray.length;
+    print(res);
+}
+
+function testcase6() {
+    let testArray: number[] = [1, 2, 3];
+    let len: number = testArray.length - 1;
+    let sum: number = 0;
+    let i: number = 0;
+    for(let i = 0; i < len; i++) {
+        sum += testArray[i];
+        print(i + 1);
+    }
+}
+
 testcase1();  // 8
 testcase2();  // 8
 
-testcase3();  // 8
-testcase4();  // 8
+testcase3();
+testcase4();
+
+testcase5(); 
+testcase6();
