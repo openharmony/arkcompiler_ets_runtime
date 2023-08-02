@@ -309,17 +309,13 @@ enum class PGOObjKind {
     LOCAL,
     PROTOTYPE,
     CONSTRUCTOR,
+    ELEMENT,
 };
 
 class PGOObjectInfo {
 public:
     PGOObjectInfo() : type_(ClassType()), objKind_(PGOObjKind::LOCAL) {}
-    PGOObjectInfo(ClassType type, PGOObjKind kind) : type_(type), objKind_(PGOObjKind::LOCAL)
-    {
-        if (kind == PGOObjKind::CONSTRUCTOR) {
-            objKind_ = kind;
-        }
-    }
+    PGOObjectInfo(ClassType type, PGOObjKind kind) : type_(type), objKind_(kind) {}
 
     std::string GetInfoString() const
     {
@@ -327,6 +323,10 @@ public:
         result += "(";
         if (objKind_ == PGOObjKind::CONSTRUCTOR) {
             result += "c";
+        } else if (objKind_ == PGOObjKind::PROTOTYPE) {
+            result += "p";
+        } else if (objKind_ == PGOObjKind::ELEMENT) {
+            result += "e";
         } else {
             result += "l";
         }

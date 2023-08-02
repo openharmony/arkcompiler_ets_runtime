@@ -89,6 +89,8 @@ bool EcmaContext::Initialize()
         JSType::GLOBAL_ENV);
     thread_->SetGlobalConst(&globalConst_);
     globalConst_.Init(thread_, *hClassHandle);
+    auto arrayHClassIndexMaps = Elements::InitializeHClassMap();
+    thread_->SetArrayHClassIndexMap(arrayHClassIndexMaps);
 
     JSHandle<GlobalEnv> globalEnv = factory_->NewGlobalEnv(*globalEnvClass);
     globalEnv->Init(thread_);

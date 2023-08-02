@@ -289,7 +289,7 @@ void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, Regi
     if (isEmptyArray) {
         Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), propertiesOffset, obj);
         Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), elementsOffset, obj);
-        Store(VariableType::JS_ANY(), glue_, result->ReadVariable(), lengthOffset, IntToTaggedInt(Int32(0)));
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, Int32(0));
     } else {
         auto newProperties = Load(VariableType::JS_POINTER(), obj, propertiesOffset);
         Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), propertiesOffset, newProperties);
@@ -297,8 +297,8 @@ void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, Regi
         auto newElements = Load(VariableType::JS_POINTER(), obj, elementsOffset);
         Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), elementsOffset, newElements);
 
-        GateRef arrayLength = Load(VariableType::JS_ANY(), obj, lengthOffset);
-        Store(VariableType::JS_ANY(), glue_, result->ReadVariable(), lengthOffset, arrayLength);
+        GateRef arrayLength = Load(VariableType::INT32(), obj, lengthOffset);
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, arrayLength);
     }
 
     auto accessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
@@ -499,7 +499,7 @@ GateRef NewObjectStubBuilder::NewThisObjectChecked(GateRef glue, GateRef ctor)
     return ret;
 }
 
-GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue)
+GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -517,14 +517,20 @@ GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue)
 
     SetParameters(glue, size);
     NewJSArrayLiteral(&result, &exit, RegionSpaceFlag::IN_YOUNG_SPACE, emptyArray, hclass, true);
-
     Bind(&exit);
     auto ret = *result;
+    if (!callback.IsEmpty()) {
+        auto noneHClass =
+            GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
+        StoreHClass(glue, ret, noneHClass);
+        callback.ProfileCreateObject(ret);
+    }
     env->SubCfgExit();
     return ret;
 }
 
-GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc)
+GateRef NewObjectStubBuilder::CreateArrayWithBuffer(
+    GateRef glue, GateRef index, GateRef jsFunc, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -545,6 +551,7 @@ GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue, GateRef index,
 
     Bind(&exit);
     auto ret = *result;
+    callback.ProfileCreateObject(ret);
     env->SubCfgExit();
     return ret;
 }

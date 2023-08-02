@@ -165,6 +165,7 @@ GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, 
     {
         result = CallRuntime(glue, RTSTUB_ID(LoadICByValue),
             { profileTypeInfo, receiver, key, IntToTaggedInt(slotId) });
+        callback.ProfileObjLayoutByLoad(receiver);
         Jump(&exit);
     }
     Bind(&exit);
@@ -225,6 +226,7 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
     {
         result = CallRuntime(glue, RTSTUB_ID(StoreICByValue),
             { profileTypeInfo, receiver, key, value, IntToTaggedInt(slotId) });
+        callback.ProfileObjLayoutByStore(receiver);
         Jump(&exit);
     }
     Bind(&exit);

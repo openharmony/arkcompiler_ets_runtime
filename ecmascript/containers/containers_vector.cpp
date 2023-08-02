@@ -684,7 +684,7 @@ JSTaggedValue ContainersVector::CopyToArray(EcmaRuntimeCallInfo *argv)
         JSHandle<TaggedArray> newArrayElement = factory->NewAndCopyTaggedArray(vectorElements,
                                                                                vectorLength, vectorLength);
         array->SetElements(thread, newArrayElement);
-        array->SetLength(thread, JSTaggedValue(vectorLength));
+        array->SetLength(vectorLength);
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSTaggedValue::True();

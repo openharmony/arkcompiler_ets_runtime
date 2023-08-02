@@ -16,10 +16,16 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 
 namespace panda::ecmascript {
+void PGOHClassLayoutDesc::UpdateElementKind(const ElementsKind kind)
+{
+    kind_ = kind;
+}
+
 void PGOHClassLayoutDesc::UpdateKeyAndDesc(const CString &key, const PGOHandler &handler, PGOObjKind kind)
 {
     switch (kind) {
         case PGOObjKind::LOCAL:
+        case PGOObjKind::ELEMENT:
             UpdateKeyAndDesc(key, handler, layoutDesc_);
             break;
         case PGOObjKind::PROTOTYPE:

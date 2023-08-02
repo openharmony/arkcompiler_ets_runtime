@@ -76,10 +76,10 @@ public:
         }
     }
 
-    inline void ProfileCreateObject(GateRef originObj, GateRef newObj) const
+    inline void ProfileCreateObject(GateRef newObj) const
     {
         if (callback_) {
-            callback_({ originObj, newObj }, OperationType::CREATE_OBJECT);
+            callback_({ newObj }, OperationType::CREATE_OBJECT);
         }
     }
 

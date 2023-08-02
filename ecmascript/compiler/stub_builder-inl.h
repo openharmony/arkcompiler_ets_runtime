@@ -32,6 +32,7 @@
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/mem/slots.h"
@@ -632,6 +633,11 @@ inline GateRef StubBuilder::TaggedIsHeapObject(GateRef x)
 inline GateRef StubBuilder::TaggedIsGeneratorObject(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsGeneratorObject(x);
+}
+
+inline GateRef StubBuilder::TaggedIsJSArray(GateRef x)
+{
+    return env_->GetBuilder()->TaggedIsJSArray(x);
 }
 
 inline GateRef StubBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
@@ -1663,6 +1669,14 @@ inline GateRef StubBuilder::GetInlinedPropertiesFromHClass(GateRef hClass)
     return Int32Sub(objectSizeInWords, inlinedPropsStart);
 }
 
+inline GateRef StubBuilder::GetElementsKindFromHClass(GateRef hClass)
+{
+    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    return Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::ElementsKindBits::START_BIT)),
+        Int32((1LLU << JSHClass::ElementsKindBits::SIZE) - 1));
+}
+
 inline GateRef StubBuilder::GetObjectSizeFromHClass(GateRef hClass)
 {
     return env_->GetBuilder()->GetObjectSizeFromHClass(hClass);
@@ -2419,6 +2433,19 @@ inline GateRef StubBuilder::GetProfileTypeInfo(GateRef jsFunc)
 inline GateRef StubBuilder::LoadObjectFromConstPool(GateRef jsFunc, GateRef index)
 {
     return env_->GetBuilder()->LoadObjectFromConstPool(jsFunc, index);
+}
+
+inline GateRef StubBuilder::LoadPfHeaderFromConstPool(GateRef jsFunc)
+{
+    GateRef method = Load(VariableType::JS_ANY(), jsFunc, IntPtr(JSFunctionBase::METHOD_OFFSET));
+    GateRef constPool = Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
+    auto length = GetLengthOfTaggedArray(constPool);
+    auto index = Int32Sub(length, Int32(ConstantPool::JS_PANDA_FILE_INDEX));
+    auto jsPandaFile = GetValueFromTaggedArray(constPool, index);
+    auto jsPfAddr = ChangeInt64ToIntPtr(ChangeTaggedPointerToInt64(jsPandaFile));
+    auto pfAddr = Load(VariableType::NATIVE_POINTER(), jsPfAddr, Int32(JSPandaFile::PF_OFFSET));
+    auto pfHeader = Load(VariableType::NATIVE_POINTER(), pfAddr, Int32(0));
+    return pfHeader;
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

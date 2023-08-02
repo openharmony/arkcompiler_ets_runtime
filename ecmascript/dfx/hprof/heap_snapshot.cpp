@@ -300,7 +300,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::JS_ARRAY: {
             JSArray *jsArray = JSArray::Cast(entry);
             CString jsArrayName("JSArray[");
-            jsArrayName.append(ToCString(jsArray->GetLength().GetInt()));
+            jsArrayName.append(ToCString(jsArray->GetLength()));
             jsArrayName.append("]");
             return GetString(jsArrayName);
         }

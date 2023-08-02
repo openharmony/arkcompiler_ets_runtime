@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_NEW_OBJECT_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_NEW_OBJECT_STUB_BUILDER_H
 
+#include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
@@ -56,8 +57,8 @@ public:
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end);
     GateRef FastNewThisObject(GateRef glue, GateRef ctor);
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);
-    GateRef CreateEmptyArray(GateRef glue);
-    GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc);
+    GateRef CreateEmptyArray(GateRef glue, ProfileOperation callback);
+    GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc, ProfileOperation callback);
     void NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
 
 private:

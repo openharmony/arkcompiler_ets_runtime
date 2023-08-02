@@ -147,7 +147,7 @@ GateRef NTypeMCRLowering::NewJSArrayLiteral(GateRef elements, GateRef length)
                               builder_.Int64(JSTaggedValue(0).GetRawData()));
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::PROPERTIES_OFFSET, emptyArray);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::ELEMENTS_OFFSET, elements);
-    builder_.StoreConstOffset(VariableType::JS_ANY(), array, JSArray::LENGTH_OFFSET, builder_.Int32ToTaggedInt(length));
+    builder_.StoreConstOffset(VariableType::INT32(), array, JSArray::LENGTH_OFFSET, length);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, lengthAccessorOffset, accessor);
     builder_.FinishAllocate();
     return array;

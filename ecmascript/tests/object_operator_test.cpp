@@ -876,7 +876,6 @@ HWTEST_F_L0(ObjectOperatorTest, Property_Add_002)
     TaggedArray *resultArray = TaggedArray::Cast(handleObject1->GetElements().GetTaggedObject());
     EXPECT_EQ(resultArray->Get(elementIndex).GetInt(), 3);
     EXPECT_EQ(resultArray->GetLength(), 7U);
-    EXPECT_EQ(handleObject1->GetJSHClass()->GetElementRepresentation(), Representation::NONE);
     // object is not DictionaryMode and not DefaultAttr
     JSHandle<JSObject> handleObject2 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
     for (int i = 0; i< 4; i++) {
