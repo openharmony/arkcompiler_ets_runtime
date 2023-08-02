@@ -395,7 +395,7 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
         }
     }
 
-    if (profiler->GetBuildNapiStack()) {
+    if (profiler->GetBuildNapiStack() || thread->GetGcState()) {
         if (profiler->generator_->SemPost(0) != 0) {
             LOG_ECMA(ERROR) << "sem_[0] post failed";
         }
