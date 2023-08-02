@@ -793,6 +793,7 @@ if (is_ohos && is_standard_system && enable_hitrace) {
 ecma_debugger_source = [
   "ecmascript/debugger/debugger_api.cpp",
   "ecmascript/debugger/js_debugger.cpp",
+  "ecmascript/debugger/dropframe_manager.cpp",
   "ecmascript/debugger/hot_reload_manager.cpp",
 ]
 
