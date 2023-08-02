@@ -21,32 +21,43 @@
 namespace panda::ecmascript {
 
 EcmaString *EcmaString::Concat(const EcmaVM *vm,
-    const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right)
+    const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, MemSpaceType type)
 {
     // allocator may trig gc and move src, need to hold it
     EcmaString *strLeft = *left;
     EcmaString *strRight = *right;
     uint32_t leftLength = strLeft->GetLength();
-    if (leftLength == 0) {
-        return strRight;
-    }
+    bool compressed = (strLeft->IsUtf8() && strRight->IsUtf8());
     uint32_t rightLength = strRight->GetLength();
-    if (rightLength == 0) {
-        return strLeft;
-    }
-
     uint32_t newLength = leftLength + rightLength;
     if (newLength == 0) {
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
     }
 
-    bool compressed = (strLeft->IsUtf8() && strRight->IsUtf8());
+    if (leftLength == 0) {
+        if (type == MemSpaceType::OLD_SPACE) {
+            Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*right));
+            if (objectRegion->InYoungSpace()) {
+                return CopyStringToOldSpace(vm, right, rightLength, compressed);
+            }
+        }
+        return strRight;
+    }
+    if (rightLength == 0) {
+        if (type == MemSpaceType::OLD_SPACE) {
+            Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*left));
+            if (objectRegion->InYoungSpace()) {
+                return CopyStringToOldSpace(vm, left, leftLength, compressed);
+            }
+        }
+        return strLeft;
+    }
 
     // if the result string is small, make a LineString
     if (newLength < TreeEcmaString::MIN_TREE_ECMASTRING_LENGTH) {
         ASSERT(strLeft->IsLineOrConstantString());
         ASSERT(strRight->IsLineOrConstantString());
-        auto newString = CreateLineString(vm, newLength, compressed);
+        auto newString = CreateLineStringWithSpaceType(vm, newLength, compressed, type);
         // retrieve strings after gc
         strLeft = *left;
         strRight = *right;
@@ -81,6 +92,38 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
         return newString;
     }
     return CreateTreeString(vm, left, right, newLength, compressed);
+}
+
+/* static */
+EcmaString *EcmaString::CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<EcmaString> &original,
+    uint32_t length, bool compressed)
+{
+    EcmaString *strOrigin = *original;
+    ASSERT(strOrigin->IsLineOrConstantString());
+    EcmaString *newString = nullptr;
+    if (strOrigin->IsLineString()) {
+        newString = CreateLineStringWithSpaceType(vm, length, compressed, MemSpaceType::OLD_SPACE);
+    } else if (strOrigin->IsConstantString()){
+        return CreateConstantString(vm, strOrigin->GetDataUtf8(), length, MemSpaceType::OLD_SPACE);
+    }
+    strOrigin = *original;
+    if (compressed) {
+        // copy
+        Span<uint8_t> sp(newString->GetDataUtf8Writable(), length);
+        Span<const uint8_t> srcSp(strOrigin->GetDataUtf8(), length);
+        EcmaString::MemCopyChars(sp, length, srcSp, length);
+    } else {
+        // copy left part
+        Span<uint16_t> sp(newString->GetDataUtf16Writable(), length);
+        if (strOrigin->IsUtf8()) {
+            EcmaString::CopyChars(sp.data(), strOrigin->GetDataUtf8(), length);
+        } else {
+            Span<const uint16_t> srcSp(strOrigin->GetDataUtf16(), length);
+            EcmaString::MemCopyChars(sp, length << 1U, srcSp, length << 1U);
+        }
+    }
+    ASSERT_PRINT(compressed == CanBeCompressed(newString), "compressed does not match the real value!");
+    return newString;
 }
 
 /* static */
