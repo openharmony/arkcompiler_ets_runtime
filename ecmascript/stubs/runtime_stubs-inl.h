@@ -430,6 +430,17 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
         return JSTaggedValue(dstLen + strLen);
     }
 
+    if (index.GetInt() == 0 && src->IsStableJSArray(thread)) {
+        JSHandle<TaggedArray> srcElements(thread, JSHandle<JSObject>::Cast(src)->GetElements());
+        uint32_t length = JSHandle<JSArray>::Cast(src)->GetArrayLength();
+        JSHandle<TaggedArray> dstElements = factory->NewTaggedArray(length);
+        JSHandle<JSArray> dstArray = JSHandle<JSArray>::Cast(dst);
+        dstArray->SetElements(thread, dstElements);
+        dstArray->SetArrayLength(thread, length);
+        TaggedArray::CopyTaggedArrayElement(thread, srcElements, dstElements, length);
+        return JSTaggedValue(length);
+    }
+
     JSHandle<JSTaggedValue> iter;
     auto globalConst = thread->GlobalConstants();
     if (src->IsJSArrayIterator() || src->IsJSMapIterator() || src->IsJSSetIterator() ||
