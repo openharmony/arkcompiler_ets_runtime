@@ -264,7 +264,7 @@ public:
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
 
     void CheckAndTriggerOldGC(size_t size = 0);
-
+    TriggerGCType SelectGCType() const;
     /*
      * Parallel GC related configurations and utilities.
      */
@@ -543,7 +543,6 @@ private:
     void AdjustOldSpaceLimit();
     // record lastRegion for each space, which will be used in ReclaimRegions()
     void PrepareRecordRegionsForReclaim();
-    TriggerGCType SelectGCType() const;
     void IncreaseTaskCount();
     void ReduceTaskCount();
     void WaitClearTaskFinished();
