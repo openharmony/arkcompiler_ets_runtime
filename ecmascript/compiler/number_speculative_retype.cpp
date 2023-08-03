@@ -460,7 +460,7 @@ GateRef NumberSpeculativeRetype::VisitIsTrueOrFalse(GateRef gate)
         ResizeAndSetTypeInfo(input, TypeInfo::INT1);
         acc_.ReplaceValueIn(gate, input, 0);
         acc_.ReplaceStateIn(gate, builder_.GetState());
-        acc_.ReplaceDependIn(gate, builder_.GetDepend());      
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
     }
     return Circuit::NullGate();
 }
@@ -718,7 +718,7 @@ GateRef NumberSpeculativeRetype::TryConvertConstant(GateRef gate, bool needInt32
             return Circuit::NullGate();
         }
     }
-    
+
     JSTaggedValue value(acc_.GetConstantValue(gate));
     if(value.IsInt()) {
         int32_t rawValue = value.GetInt();

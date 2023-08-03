@@ -632,7 +632,8 @@ void LCRLowering::LowerInt32DivWithCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
-void LCRLowering::LowerStoreMemory(GateRef gate){
+void LCRLowering::LowerStoreMemory(GateRef gate)
+{
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);

@@ -1040,9 +1040,8 @@ GateRef CircuitBuilder::StoreMemory(MemoryType Op, VariableType type, GateRef re
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret =
-        GetCircuit()->NewGate(GetCircuit()->StoreMemory(opIdx), type.GetMachineType(),
-                            {currentControl, currentDepend, receiver, index, value}, type.GetGateType());
+    auto ret = GetCircuit()->NewGate(GetCircuit()->StoreMemory(opIdx), type.GetMachineType(),
+        {currentControl, currentDepend, receiver, index, value}, type.GetGateType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
