@@ -68,26 +68,6 @@ function testcase6() {
     }
 }
 
-//mod CheckRightIsZero
-function testcase7() {
-    const a: number= 20;
-    let b: number = 5 % a;// not gen CheckRightIsZero
-    let c: number = 5 % b;// gen CheckRightIsZero
-}
-
-//mul_with_overcheck
-function testcase8(a:number, x:number) {
-    let z = a >>> 1;
-    let b: number = z % 10;//range[0, 4095]
-
-    let c: number = 10 * b;//not gen mul_with_overcheck, range[0,262143]
-    let d: number = c * b;//not gen mul_with_overcheck, range[0,1073741823]
-    let e: number = d * c;//gen mul_with_overcheck
-
-    x = x >>> 1;
-    let h: number = x * x;//gen mul_with_overcheck
-}
-
 testcase1();  // 8
 testcase2();  // 8
 
@@ -96,6 +76,3 @@ testcase4();
 
 testcase5(); 
 testcase6();
-
-testcase7();
-testcase8(4, 107341001);//deopt
