@@ -308,7 +308,7 @@ void TypeMCRLowering::LowerLoadTypedArrayLength(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef length = builder_.LoadConstOffset(VariableType::INT32(), receiver,JSTypedArray::ARRAY_LENGTH_OFFSET);
+    GateRef length = builder_.LoadConstOffset(VariableType::INT32(), receiver, JSTypedArray::ARRAY_LENGTH_OFFSET);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), length);
 }
 
@@ -856,7 +856,8 @@ void TypeMCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id
         default:
             break;
     }
-    GateRef arrbuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
+    GateRef arrbuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver,
+        JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
     GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
 
     builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), data, offset, value);
@@ -899,7 +900,8 @@ void TypeMCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
     builder_.Bind(&exit);
     value = builder_.TruncInt32ToInt8(*result);
 
-    GateRef arrbuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
+    GateRef arrbuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver,
+        JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
 
     GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
 
@@ -1120,7 +1122,8 @@ void TypeMCRLowering::LowerTypedNewAllocateThis(GateRef gate, GateRef glue)
     {
         // add typecheck to detect protoOrHclass is equal with ihclass,
         // if pass typecheck: 1.no need to check whether hclass is valid 2.no need to check return result
-        GateRef protoOrHclass = builder_.LoadConstOffset(VariableType::JS_ANY(), ctor, JSFunction::PROTO_OR_DYNCLASS_OFFSET);
+        GateRef protoOrHclass = builder_.LoadConstOffset(VariableType::JS_ANY(), ctor,
+            JSFunction::PROTO_OR_DYNCLASS_OFFSET);
         GateRef ihclassIndex = acc_.GetValueIn(gate, 1);
         GateRef ihclass = GetObjectFromConstPool(jsFunc, ihclassIndex);
         GateRef check = builder_.Equal(protoOrHclass, ihclass);
@@ -1147,7 +1150,8 @@ void TypeMCRLowering::LowerTypedSuperAllocateThis(GateRef gate, GateRef glue)
     builder_.Branch(isBase, &allocate, &exit);
     builder_.Bind(&allocate);
     {
-        GateRef protoOrHclass = builder_.LoadConstOffset(VariableType::JS_ANY(), newTarget, JSFunction::PROTO_OR_DYNCLASS_OFFSET);
+        GateRef protoOrHclass = builder_.LoadConstOffset(VariableType::JS_ANY(), newTarget,
+            JSFunction::PROTO_OR_DYNCLASS_OFFSET);
         GateRef check = builder_.IsJSHClass(protoOrHclass);
         GateRef frameState = GetFrameState(gate);
         builder_.DeoptCheck(check, frameState, DeoptType::NOTNEWOBJ);
@@ -1207,8 +1211,8 @@ GateRef TypeMCRLowering::GetValueFromSupers(GateRef supers, size_t index)
     return builder_.LoadObjectFromWeakRef(val);
 }
 
-GateRef TypeMCRLowering::CallAccessor(GateRef glue, GateRef gate, GateRef function, GateRef receiver, AccessorMode mode,
-                                      GateRef value)
+GateRef TypeMCRLowering::CallAccessor(GateRef glue, GateRef gate, GateRef function, GateRef receiver,
+    AccessorMode mode, GateRef value)
 {
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCall));
     GateRef target = builder_.IntPtr(RTSTUB_ID(JSCall));

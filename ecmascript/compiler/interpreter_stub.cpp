@@ -128,7 +128,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
             Int8(VmThreadControl::VM_NEED_SUSPENSION))), &callRuntime, &dispatch);                             \
         Bind(&callRuntime);                                                                                    \
         {                                                                                                      \
-            if (!callback.IsEmpty()) {                                                                         \
+            if (!(callback).IsEmpty()) {                                                                       \
                 varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { func });     \
             } else {                                                                                           \
                 varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { func });             \
