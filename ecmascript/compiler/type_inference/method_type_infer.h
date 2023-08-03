@@ -84,6 +84,7 @@ private:
     bool InferAdd2(GateRef gate);
     bool InferSub2(GateRef gate);
     bool InferMul2(GateRef gate);
+    bool InferMod2(GateRef gate);
     bool InferDiv2(GateRef gate);
     bool InferIncDec(GateRef gate);
     bool InferToNumberic(GateRef gate);
