@@ -1406,9 +1406,12 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
             CString msg = "the requested module '" +
                           ConvertToString(ee->GetModuleRequest()) +
                           "' does not provide an export named '" +
-                          ConvertToString(exportName.GetTaggedValue()) +
-                          "' which exported by '" +
-                          ConvertToString(module->GetEcmaModuleRecordName()) + "'";
+                          ConvertToString(exportName.GetTaggedValue());
+            if (!module->GetEcmaModuleRecordName().IsUndefined()) {
+                msg += "' which exported by '" + ConvertToString(module->GetEcmaModuleRecordName()) + "'";
+            } else {
+                msg += "' which exported by '" + ConvertToString(module->GetEcmaModuleFilename()) + "'";
+            }
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
     }
