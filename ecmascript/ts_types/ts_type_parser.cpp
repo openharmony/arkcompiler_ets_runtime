@@ -54,8 +54,9 @@ GlobalTSTypeRef TSTypeParser::CreateGT(const JSPandaFile *jsPandaFile, const CSt
         return EncodeParaType(typeId);
     }
 
-    if (tsManager_->HasCreatedGT(jsPandaFile, typeId)) {
-        return tsManager_->GetGTFromOffset(jsPandaFile, typeId);
+    GlobalTypeID gId(jsPandaFile, typeId);
+    if (tsManager_->HasCreatedGT(gId)) {
+        return tsManager_->GetGTByGlobalTypeID(gId);
     }
     return ParseType(jsPandaFile, recordName, typeId);
 }
@@ -784,65 +785,78 @@ GlobalTSTypeRef TSTypeParser::TryReplaceTypePara(GlobalTSTypeRef gt, const std::
     return gt;
 }
 
-GlobalTSTypeRef TSTypeParser::CreatePGOGT(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                          uint32_t methodOffset, uint32_t cpIdx, kungfu::PGOBCInfo::Type type)
+GlobalTSTypeRef TSTypeParser::CreatePGOGT(PGOInfo info)
 {
-    if (tsManager_->HasPGOGT(methodOffset, cpIdx)) {
-        return tsManager_->GetPGOGT(methodOffset, cpIdx);
+    GlobalTypeID gId(info.jsPandaFile, info.pgoType);
+    if (tsManager_->HasCreatedGT(gId)) {
+        return tsManager_->GetGTByGlobalTypeID(gId);
     }
-    return ParsePGOType(jsPandaFile, recordName, methodOffset, cpIdx, type);
+    return ParsePGOType(info);
 }
 
-GlobalTSTypeRef TSTypeParser::ParsePGOType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                           uint32_t methodOffset, uint32_t cpIdx, kungfu::PGOBCInfo::Type type)
+GlobalTSTypeRef TSTypeParser::ParsePGOType(PGOInfo &info)
 {
-    uint32_t moduleId = tableGenerator_.TryGetModuleId(recordName);
+    uint32_t moduleId = tableGenerator_.TryGetModuleId(info.recordName);
     if (UNLIKELY(!GlobalTSTypeRef::IsValidModuleId(moduleId))) {
         LOG_COMPILER(DEBUG) << "The maximum number of TSTypeTables is reached. All TSTypes in the record "
-                            << recordName << " will not be parsed and will be treated as any.";
-        return GetAndStorePGOGT(methodOffset, cpIdx);
+                            << info.recordName << " will not be parsed and will be treated as any.";
+        return GetAndStoreGT(info.jsPandaFile, info.pgoType);
     }
 
-    JSHandle<TSTypeTable> table = tableGenerator_.GetOrGenerateTSTypeTable(jsPandaFile, recordName, moduleId);
+    JSHandle<TSTypeTable> table = tableGenerator_.GetOrGenerateTSTypeTable(info.jsPandaFile, info.recordName,
+                                                                           moduleId);
     uint32_t localId = tableGenerator_.TryGetLocalId(table);
     if (UNLIKELY(!GlobalTSTypeRef::IsValidLocalId(localId))) {
         LOG_COMPILER(DEBUG) << "The maximum number of TSTypes in TSTypeTable " << moduleId << " is reached. "
-                            << "The objLiteral with constantpool index " << cpIdx << " in the record " << recordName
-                            << " will not be parsed and will be treated as any.";
-        return GetAndStorePGOGT(methodOffset, cpIdx);
+                            << "The objLiteral with constantpool index " << info.cpIdx << " in the record "
+                            << info.recordName << " will not be parsed and will be treated as any.";
+        return GetAndStoreGT(info.jsPandaFile, info.pgoType);
     }
 
     table->SetNumberOfTypes(thread_, localId);
-    GlobalTSTypeRef gt = GetAndStorePGOGT(methodOffset, cpIdx, moduleId, localId);
-    JSHandle<JSTaggedValue> parseType = ParseNonImportPGOType(gt, recordName, cpIdx, type);
+    GlobalTSTypeRef gt = GetAndStoreGT(info.jsPandaFile, info.pgoType, moduleId, localId);
+    JSHandle<JSTaggedValue> parseType = ParseNonImportPGOType(gt, info);
     if (UNLIKELY(parseType->IsUndefined())) {
-        return GetAndStorePGOGT(methodOffset, cpIdx);
+        return GetAndStoreGT(info.jsPandaFile, info.pgoType);
     }
     SetTSType(table, parseType, gt);
-    tsManager_->InsertPGOGT(gt);
     return gt;
 }
 
-JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportPGOType(GlobalTSTypeRef gt, const CString &recordName,
-    uint32_t cpIdx, kungfu::PGOBCInfo::Type type)
+JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportPGOType(GlobalTSTypeRef gt, PGOInfo &info)
 {
-    switch (type) {
+    switch (info.type) {
         case kungfu::PGOBCInfo::Type::OBJ_LITERAL: {
-            return JSHandle<JSTaggedValue>(ParseObjectPGOType(gt, recordName, cpIdx));
+            return ParseObjectPGOType(gt, info);
         }
         default:
-            LOG_COMPILER(DEBUG) << "Do not support parse extend types with kind " << static_cast<uint32_t>(type);
+            LOG_COMPILER(DEBUG) << "Do not support parse extend types with kind " << static_cast<uint32_t>(info.type);
             return thread_->GlobalConstants()->GetHandledUndefined();
     }
 }
 
-JSHandle<TSObjectType> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, const CString &recordName, uint32_t cpIdx)
+JSHandle<JSTaggedValue> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, PGOInfo &info)
 {
     JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
     JSTaggedValue obj = ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
-        thread_, constpoolHandle.GetTaggedValue(), cpIdx, recordName);
+        thread_, constpoolHandle.GetTaggedValue(), info.cpIdx, info.recordName);
     JSHandle<JSObject> objHandle(thread_, obj);
+
+    if (info.enableOptTrackField) {
+        ASSERT(info.pgoType.IsClassType());
+        PGOHClassLayoutDesc *desc;
+        if (info.decoder->GetHClassLayoutDesc(info.pgoType, &desc)) {
+            if (!VerifyObjIhcPGOType(objHandle, *desc)) {
+                LOG_COMPILER(DEBUG) << "Verify ihc type failed";
+                return thread_->GlobalConstants()->GetHandledUndefined();
+            }
+        }
+    }
+
     JSHandle<JSHClass> oldHClass(thread_, objHandle->GetClass());
+    if (oldHClass->IsDictionaryMode()) {
+        return thread_->GlobalConstants()->GetHandledUndefined();
+    }
     JSHandle<JSHClass> hclass = JSHClass::Clone(thread_, oldHClass);
     ObjectFactory *factory = vm_->GetFactory();
     JSHandle<LayoutInfo> newLayout = factory->CopyLayoutInfo(JSHandle<LayoutInfo>(thread_, hclass->GetLayout()));
@@ -851,7 +865,46 @@ JSHandle<TSObjectType> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, cons
     hclass->SetTS(true);
     JSHandle<TSObjectType> objectType = factory_->NewTSObjectType(0);
     tsManager_->AddInstanceTSHClass(gt, hclass);
-    return objectType;
+    return JSHandle<JSTaggedValue>(objectType);
+}
+
+bool TSTypeParser::VerifyObjIhcPGOType(JSHandle<JSObject> obj, const PGOHClassLayoutDesc &desc)
+{
+    auto hclass = obj->GetClass();
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    int element = layoutInfo->NumberOfElements();
+    for (int i = 0; i < element; i++) {
+        auto key = layoutInfo->GetKey(i);
+        if (!key.IsString()) {
+            continue;
+        }
+
+        auto attr = layoutInfo->GetAttr(i);
+        if (!attr.IsInlinedProps()) {
+            continue;
+        }
+        JSTaggedValue value = obj->GetPropertyInlinedProps(i);
+
+        auto keyString = EcmaStringAccessor(key).ToCString();
+        PGOHandler newHandler;
+        if (!desc.FindDescWithKey(keyString, newHandler)) {
+            continue;
+        }
+        PropertyAttributes newAttr;
+        if (!newHandler.SetAttribute(newAttr)) {
+            continue;
+        }
+        if (newAttr.IsDoubleRep()) {
+            if (!value.IsNumber()) {
+                return false;
+            }
+        } else if (newAttr.IsIntRep()) {
+            if (!value.IsInt()) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 static uint32_t CalculateNextNumIndex(const TypeLiteralExtractor *typeLiteralExtractor,

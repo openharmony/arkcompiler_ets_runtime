@@ -139,8 +139,8 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<StateSplitLinearizerPass>();
         pipeline.RunPass<NTypeMCRLoweringPass>();
         pipeline.RunPass<TypeMCRLoweringPass>();
-        pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<LaterEliminationPass>();
+        pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<LCRLoweringPass>();
         pipeline.RunPass<SlowPathLoweringPass>();
         pipeline.RunPass<VerifierPass>();
@@ -181,9 +181,8 @@ void PassManager::ResolveModule(const JSPandaFile *jsPandaFile, const std::strin
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     [[maybe_unused]] EcmaHandleScope scope(thread);
     for (auto info: recordInfo) {
-        auto recordName = info.first;
-        if (jsPandaFile->IsModule(thread, recordName)) {
-            ASSERT(!thread->HasPendingException());
+        if (jsPandaFile->IsModule(info.second)) {
+            auto recordName = info.first;
             JSHandle<JSTaggedValue> moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(fileName.c_str(),
                 recordName);
             SourceTextModule::Instantiate(thread, moduleRecord);

@@ -205,7 +205,7 @@ JSTaggedValue BuiltinsSet::ForEach(EcmaRuntimeCallInfo *argv)
 
     // 6.Let entries be the List that is the value of S’s [[SetData]] internal slot.
     JSMutableHandle<LinkedHashSet> hashSet(thread, set->GetLinkedSet());
-    const int32_t argsLength = 3;
+    const uint32_t argsLength = 3;
     int index = 0;
     int totalElements = hashSet->NumberOfElements() + hashSet->NumberOfDeletedElements();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
@@ -254,7 +254,7 @@ JSTaggedValue BuiltinsSet::GetSize(EcmaRuntimeCallInfo *argv)
     }
     JSSet *jsSet = JSSet::Cast(*JSTaggedValue::ToObject(thread, self));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int count = jsSet->GetSize();
+    uint32_t count = jsSet->GetSize();
     return JSTaggedValue(count);
 }
 

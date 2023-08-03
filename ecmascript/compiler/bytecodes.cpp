@@ -232,7 +232,6 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
             kind = BytecodeKind::SUSPEND;
             break;
         case EcmaOpcode::RESUMEGENERATOR:
-        case EcmaOpcode::CREATEOBJECTWITHEXCLUDEDKEYS_IMM8_V8_V8:
             kind = BytecodeKind::RESUME;
             break;
         case EcmaOpcode::DEBUGGER:

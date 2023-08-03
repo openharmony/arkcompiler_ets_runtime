@@ -528,7 +528,7 @@ JSTaggedValue ContainersPlainArray::GetSize(EcmaRuntimeCallInfo *argv)
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
-    int32_t length = JSHandle<JSAPIPlainArray>::Cast(self)->GetSize();
+    uint32_t length = JSHandle<JSAPIPlainArray>::Cast(self)->GetSize();
     return JSTaggedValue(length);
 }
 } // namespace panda::ecmascript::containers

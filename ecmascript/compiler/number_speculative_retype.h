@@ -28,9 +28,9 @@
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeRetype : public GraphVisitor {
 public:
-    NumberSpeculativeRetype(Circuit *circuit, Chunk* chunk, TSManager* tsManager, ChunkVector<TypeInfo>& typeInfos)
+    NumberSpeculativeRetype(Circuit *circuit, Chunk* chunk, ChunkVector<TypeInfo>& typeInfos)
         : GraphVisitor(circuit, chunk), acc_(circuit), builder_(circuit),
-          tsManager_(tsManager), typeInfos_(typeInfos) {}
+          typeInfos_(typeInfos) {}
     void Run();
     GateRef VisitGate(GateRef gate);
 
@@ -85,7 +85,7 @@ private:
     GateRef VisitFrameState(GateRef gate);
     GateRef VisitIsTrueOrFalse(GateRef gate);
     GateRef VisitWithConstantValue(GateRef gate, size_t ignoreIndex);
-    GateRef VisitLoopExitValue(GateRef gate);
+    GateRef VisitIntermediateValue(GateRef gate);
 
     void ConvertForBinaryOp(GateRef gate);
     void ConvertForCompareOp(GateRef gate);
@@ -128,7 +128,6 @@ private:
     static constexpr size_t PROPERTY_LOOKUP_RESULT_INDEX = 1;
     GateAccessor acc_;
     CircuitBuilder builder_;
-    TSManager* tsManager_ {nullptr};
     ChunkVector<TypeInfo>& typeInfos_;
     State state_ {0};
 };

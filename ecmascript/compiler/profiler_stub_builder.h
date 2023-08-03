@@ -31,7 +31,7 @@ public:
 
     void PGOProfiler(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo,
         const std::vector<GateRef> &values, OperationType type);
-    void ProfileCall(GateRef glue, GateRef pc, GateRef profileTypeInfo, GateRef target, OperationType type);
+    void ProfileCall(GateRef glue, GateRef pc, GateRef func, GateRef target);
     void ProfileOpType(GateRef glue, GateRef pc, GateRef func, GateRef profileTypeInfo, GateRef type);
     void ProfileDefineClass(GateRef glue, GateRef pc, GateRef func, GateRef constructor);
     void ProfileCreateObject(GateRef glue, GateRef pc, GateRef func, GateRef originObj, GateRef newObj);

@@ -2293,7 +2293,7 @@ Local<ArrayBufferRef> TypedArrayRef::GetArrayBuffer(const EcmaVM *vm)
         JSHandle<JSTaggedValue> func = env->Get##Type##Function();                                        \
         JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(buffer));                            \
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();             \
-        const int32_t argsLength = 3;                                                                     \
+        const uint32_t argsLength = 3;                                                                     \
         EcmaRuntimeCallInfo *info =                                                                       \
             ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, func, argsLength);   \
         RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));                                        \
@@ -2551,7 +2551,8 @@ int32_t MapRef::GetTotalElements()
 {
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(map, FATAL);
-    return map->GetSize() + LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject())->NumberOfDeletedElements();
+    return static_cast<int>((map->GetSize())) +
+        LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject())->NumberOfDeletedElements();
 }
 
 Local<JSValueRef> MapRef::GetKey(const EcmaVM *vm, int entry)
@@ -2617,7 +2618,8 @@ int32_t SetRef::GetTotalElements()
 {
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(set, FATAL);
-    return set->GetSize() + LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject())->NumberOfDeletedElements();
+    return static_cast<int>(set->GetSize()) +
+        LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject())->NumberOfDeletedElements();
 }
 
 Local<JSValueRef> SetRef::GetValue(const EcmaVM *vm, int entry)
@@ -3065,6 +3067,12 @@ bool JSValueRef::IsArray(const EcmaVM *vm)
     CHECK_HAS_PENDING_EXCEPTION(vm, false);
     JSThread *thread = vm->GetJSThread();
     return JSNApiHelper::ToJSTaggedValue(this).IsArray(thread);
+}
+
+bool JSValueRef::IsJSArray(const EcmaVM *vm)
+{
+    CHECK_HAS_PENDING_EXCEPTION(vm, false);
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSArray();
 }
 
 bool JSValueRef::IsConstructor()
@@ -3574,7 +3582,13 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
     notificationMgr->LoadModuleEvent(moduleName, recordName);
 
     // check ESM or CJS
-    if (!jsPandaFile->IsModule(thread, recordName)) {
+    ecmascript::JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
+    if (!hasRecord) {
+        LOG_ECMA(ERROR) << "cannot find record '" << recordName << "', please check the request path.";
+        return false;
+    }
+    if (!jsPandaFile->IsModule(recordInfo)) {
         LOG_ECMA(DEBUG) << "Current function is not from ES Module's file.";
         return true;
     }

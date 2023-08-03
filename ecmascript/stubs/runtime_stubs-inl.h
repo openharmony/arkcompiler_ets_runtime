@@ -243,7 +243,7 @@ JSTaggedValue RuntimeStubs::RuntimeSuperCallSpread(JSThread *thread, const JSHan
     ASSERT(superFunc->IsJSFunction());
 
     JSHandle<TaggedArray> argv(thread, RuntimeGetCallSpreadArgs(thread, array));
-    const int32_t argsLength = static_cast<int32_t>(argv->GetLength());
+    const uint32_t argsLength = argv->GetLength();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread, superFunc, undefined, newTarget, argsLength);
@@ -817,60 +817,35 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     auto methodObj = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
+    JSHandle<JSFunction> cls;
+    JSMutableHandle<JSTaggedValue> ihc(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> chc(thread, JSTaggedValue::Undefined());
+
+    JSTaggedValue val = constpoolHandle->GetObjectFromCache(literalId);
+    if (val.IsAOTLiteralInfo()) {
+        JSHandle<AOTLiteralInfo> aotLiteralInfo(thread, val);
+        ihc.Update(aotLiteralInfo->GetIhc());
+        chc.Update(aotLiteralInfo->GetChc());
+    }
     auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry);
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
-
     ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
-    JSHandle<JSFunction> cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
 
-    RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return cls.GetTaggedValue();
-}
-
-JSTaggedValue RuntimeStubs::RuntimeCreateClassWithIHClass(JSThread *thread,
-                                                          const JSHandle<JSTaggedValue> &base,
-                                                          const JSHandle<JSTaggedValue> &lexenv,
-                                                          const JSHandle<JSTaggedValue> &constpool,
-                                                          const uint16_t methodId, uint16_t literalId,
-                                                          const JSHandle<JSHClass> &ihclass,
-                                                          const JSHandle<JSTaggedValue> &constructorHClass,
-                                                          const JSHandle<JSTaggedValue> &module)
-{
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
-
-    // For class constructor.
-    auto methodObj = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), methodId);
-    JSHandle<JSTaggedValue> method(thread, methodObj);
-    JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
-    auto literalObj = ConstantPool::GetClassLiteralFromCache(thread, constpoolHandle, literalId, entry);
-    JSHandle<ClassLiteral> classLiteral(thread, literalObj);
-    if (classLiteral->GetIsAOTUsed()) {
-        // the prototype of IHClass can only use once
-        return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool, methodId, literalId, module);
+    if ((ihc->IsUndefined() && chc->IsUndefined()) ||
+        (classLiteral->GetIsAOTUsed())) {
+        cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
     } else {
         classLiteral->SetIsAOTUsed(true);
-    }
-    JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray());
-    JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
-
-    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle);
-    JSHandle<JSFunction> cls;
-    if (constructorHClass->IsUndefined()) {
-        cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor,
-            lexenv, ihclass);
-    } else {
-        cls = ClassHelper::DefineClassWithIHClassAndConstructorHClass(thread, extractor,
-            lexenv, ihclass, JSHandle<JSHClass>(constructorHClass));
+        JSHandle<JSHClass> ihclass(ihc);
+        JSHandle<JSHClass> chclass(chc);
+        cls = ClassHelper::DefineClassWithIHClass(thread, extractor,
+                                                  lexenv, ihclass, chclass);
     }
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     return cls.GetTaggedValue();
 }
 
@@ -2381,7 +2356,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructProxy(JSThread *thread, JSHandle<
     }
 
     // step 8 ~ 9 Call(trap, handler, «target, argArray, newTarget »).
-    const int32_t argsLength = 3;  // 3: «target, argArray, newTarget »
+    const uint32_t argsLength = 3;  // 3: «target, argArray, newTarget »
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, method, handler, undefined, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

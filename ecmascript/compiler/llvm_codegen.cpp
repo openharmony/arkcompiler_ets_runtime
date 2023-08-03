@@ -149,9 +149,13 @@ uint8_t *CodeInfo::AllocaCodeSection(uintptr_t size, const char *sectionName)
 {
     uint8_t *addr = nullptr;
     auto curSec = ElfSection(sectionName);
-    if (curSec.isValidAOTSec() && !alreadyPageAlign_) {
-        addr = AllocaInReqSecBuffer(size, AOTFileInfo::TEXT_SEC_ALIGN);
-        alreadyPageAlign_ = true;
+    if (curSec.isValidAOTSec()) {
+        if (!alreadyPageAlign_) {
+            addr = AllocaInReqSecBuffer(size, AOTFileInfo::PAGE_ALIGN);
+            alreadyPageAlign_ = true;
+        } else {
+            addr = AllocaInReqSecBuffer(size, AOTFileInfo::TEXT_SEC_ALIGN);
+        }
     } else {
         addr = AllocaInReqSecBuffer(size);
     }
@@ -170,8 +174,8 @@ uint8_t *CodeInfo::AllocaDataSection(uintptr_t size, const char *sectionName)
     if (curSec.InRodataSection()) {
         size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
         if (!alreadyPageAlign_) {
-            addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size, AOTFileInfo::TEXT_SEC_ALIGN)
-                                               : AllocaInNotReqSecBuffer(size, AOTFileInfo::TEXT_SEC_ALIGN);
+            addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size, AOTFileInfo::PAGE_ALIGN)
+                                               : AllocaInNotReqSecBuffer(size, AOTFileInfo::PAGE_ALIGN);
             alreadyPageAlign_ = true;
         } else {
             addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size, AOTFileInfo::DATA_SEC_ALIGN)

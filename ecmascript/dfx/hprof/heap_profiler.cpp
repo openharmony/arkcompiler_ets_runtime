@@ -54,7 +54,7 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
     LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot start";
     size_t heapSize = vm_->GetHeap()->GetHeapObjectSize();
     LOG_ECMA(ERROR) << "HeapProfiler DumpSnapshot heap size " << heapSize;
-    int32_t heapCount = vm_->GetHeap()->GetHeapObjectCount();
+    int32_t heapCount = static_cast<int32_t>(vm_->GetHeap()->GetHeapObjectCount());
     if (progress != nullptr) {
         progress->ReportProgress(0, heapCount);
     }
@@ -91,6 +91,9 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
 
 bool HeapProfiler::UpdateHeapTracking(Stream *stream)
 {
+    if (hprofs_.size() == 0) {
+        return false;
+    }
     HeapSnapshot *snapshot = hprofs_.at(0);
     if (snapshot == nullptr) {
         return false;
@@ -111,13 +114,16 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
     if (heapTracker_ == nullptr) {
         return false;
     }
-    int32_t heapCount = vm_->GetHeap()->GetHeapObjectCount();
+    int32_t heapCount = static_cast<int32_t>(vm_->GetHeap()->GetHeapObjectCount());
 
     const_cast<EcmaVM *>(vm_)->StopHeapTracking();
     if (newThread) {
         heapTracker_->StopTracing();
     }
 
+    if (hprofs_.size() == 0) {
+        return false;
+    }
     HeapSnapshot *snapshot = hprofs_.at(0);
     if (snapshot == nullptr) {
         return false;

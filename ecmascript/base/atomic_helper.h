@@ -19,7 +19,7 @@
 #include "ecmascript/js_dataview.h"
 
 namespace panda::ecmascript::base {
-enum class BytesSize : int32_t {ONEBYTES = 1, TWOBYTES = 2, FOURBYTES = 4, EIGHTBYTES = 8};
+enum class BytesSize : uint32_t {ONEBYTES = 1, TWOBYTES = 2, FOURBYTES = 4, EIGHTBYTES = 8};
 
 class AtomicHelper final {
 public:
@@ -101,4 +101,4 @@ public:
 };
 }  // namespace panda::ecmascript::base
 
-#endif  // ECMASCRIPT_BASE_ATOMIC_HELPER_H
+#endif  // ECMASCRIPT_BASE_ATOMIC_HELPER_H

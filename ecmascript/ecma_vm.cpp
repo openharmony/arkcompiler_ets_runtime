@@ -442,7 +442,7 @@ void EcmaVM::RemoveFromDeregisterModuleList(CString module)
 
 bool EcmaVM::ContainInDeregisterModuleList(CString module)
 {
-    return (std::find(deregisterModuleList_.begin(), deregisterModuleList_.end(), module) 
+    return (std::find(deregisterModuleList_.begin(), deregisterModuleList_.end(), module)
         != deregisterModuleList_.end());
 }
 

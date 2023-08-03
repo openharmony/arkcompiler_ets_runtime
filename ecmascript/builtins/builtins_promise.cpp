@@ -73,7 +73,7 @@ JSTaggedValue BuiltinsPromise::PromiseConstructor(EcmaRuntimeCallInfo *argv)
     auto resolveFunc = resolvingFunction->GetResolveFunction();
     auto rejectFunc = resolvingFunction->GetRejectFunction();
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    const int32_t argsLength = 2; // 2: «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»
+    const uint32_t argsLength = 2; // 2: «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, executor, undefined, undefined, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(resolveFunc, rejectFunc);

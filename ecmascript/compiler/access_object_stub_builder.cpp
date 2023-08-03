@@ -34,11 +34,11 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     GateRef value = 0;
     ICStubBuilder builder(this);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
-    builder.LoadICByName(&result, &tryFastPath, &slowPath, &exit);
+    builder.LoadICByName(&result, &tryFastPath, &slowPath, &exit, callback);
     Bind(&tryFastPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        result = GetPropertyByName(glue, receiver, propKey);
+        result = GetPropertyByName(glue, receiver, propKey, callback);
         Label notHole(env);
         Branch(TaggedIsHole(*result), &slowPath, &notHole);
         Bind(&notHole);
@@ -75,7 +75,7 @@ GateRef AccessObjectStubBuilder::DeprecatedLoadObjByName(GateRef glue, GateRef r
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        result = GetPropertyByName(glue, receiver, propKey);
+        result = GetPropertyByName(glue, receiver, propKey, ProfileOperation());
         Branch(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
@@ -129,8 +129,8 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
 GateRef AccessObjectStubBuilder::ResolvePropKey(GateRef glue, GateRef prop, const StringIdInfo &info)
 {
     if (jsFunc_ != Circuit::NullGate()) {
-        GateRef key = LoadObjectFromConstPool(jsFunc_, prop);
-        return key;
+        GateRef constpool = GetConstPoolFromFunction(jsFunc_);
+        return GetStringFromConstPool(glue, constpool, ChangeIntPtrToInt32(prop));
     }
     if (!info.IsValid()) {
         return prop;
@@ -142,7 +142,7 @@ GateRef AccessObjectStubBuilder::ResolvePropKey(GateRef glue, GateRef prop, cons
 }
 
 GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, GateRef key, GateRef profileTypeInfo,
-                                                GateRef slotId)
+                                                GateRef slotId, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -155,10 +155,10 @@ GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, 
     GateRef value = 0;
     ICStubBuilder builder(this);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, key);
-    builder.LoadICByValue(&result, &tryFastPath, &slowPath, &exit);
+    builder.LoadICByValue(&result, &tryFastPath, &slowPath, &exit, callback);
     Bind(&tryFastPath);
     {
-        result = GetPropertyByValue(glue, receiver, key);
+        result = GetPropertyByValue(glue, receiver, key, callback);
         Branch(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
@@ -187,7 +187,7 @@ GateRef AccessObjectStubBuilder::DeprecatedLoadObjByValue(GateRef glue, GateRef 
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        result = GetPropertyByValue(glue, receiver, key);
+        result = GetPropertyByValue(glue, receiver, key, ProfileOperation());
         Branch(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
@@ -234,7 +234,8 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
 }
 
 GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
-                                                     GateRef profileTypeInfo, GateRef slotId)
+                                                     GateRef profileTypeInfo, GateRef slotId,
+                                                     ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -264,7 +265,7 @@ GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop,
         Bind(&notFoundInRecord);
         {
             GateRef globalObject = GetGlobalObject(glue);
-            result = GetGlobalOwnProperty(glue, globalObject, propKey);
+            result = GetGlobalOwnProperty(glue, globalObject, propKey, callback);
             Branch(TaggedIsHole(*result), &slowPath, &exit);
         }
     }
@@ -283,7 +284,8 @@ GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop,
 }
 
 GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
-                                                      GateRef value, GateRef profileTypeInfo, GateRef slotId)
+                                                      GateRef value, GateRef profileTypeInfo, GateRef slotId,
+                                                      ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -312,7 +314,7 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop
         Bind(&notFoundInRecord);
         {
             GateRef globalObject = GetGlobalObject(glue);
-            result = GetGlobalOwnProperty(glue, globalObject, propKey);
+            result = GetGlobalOwnProperty(glue, globalObject, propKey, callback);
             Label isFoundInGlobal(env);
             Label notFoundInGlobal(env);
             Branch(TaggedIsHole(*result), &notFoundInGlobal, &isFoundInGlobal);
@@ -345,7 +347,7 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop
 }
 
 GateRef AccessObjectStubBuilder::LoadGlobalVar(GateRef glue, GateRef prop, const StringIdInfo &info,
-                                               GateRef profileTypeInfo, GateRef slotId)
+                                               GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -364,7 +366,7 @@ GateRef AccessObjectStubBuilder::LoadGlobalVar(GateRef glue, GateRef prop, const
     {
         GateRef globalObject = GetGlobalObject(glue);
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        result = GetGlobalOwnProperty(glue, globalObject, propKey);
+        result = GetGlobalOwnProperty(glue, globalObject, propKey, callback);
         Branch(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);

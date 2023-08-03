@@ -323,10 +323,10 @@ JSTaggedValue ContainersList::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
     JSHandle<JSAPIList> list = JSHandle<JSAPIList>::Cast(thisHandle);
     JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
-    int length = list->Length();
+    uint32_t length = list->Length();
 
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    int index = 0;
+    uint32_t index = 0;
     const uint32_t argsLength = 3; // 3: «kValue, k, O»
     int valueNode = TaggedSingleList::ELEMENTS_START_INDEX;
     while (index < length) {

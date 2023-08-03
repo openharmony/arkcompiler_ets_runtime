@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/compiler/type_inference/method_type_infer.h"
-
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/ts_types/ts_type_accessor.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
@@ -206,10 +205,6 @@ bool MethodTypeInfer::Infer(GateRef gate)
     switch (bytecodeInfo.GetOpcode()) {
         case EcmaOpcode::LDNAN:
         case EcmaOpcode::LDINFINITY:
-        case EcmaOpcode::MOD2_IMM8_V8:
-        case EcmaOpcode::AND2_IMM8_V8:
-        case EcmaOpcode::OR2_IMM8_V8:
-        case EcmaOpcode::XOR2_IMM8_V8:
         case EcmaOpcode::TONUMBER_IMM8:
         case EcmaOpcode::NEG_IMM8:
         case EcmaOpcode::EXP_IMM8_V8:
@@ -219,6 +214,9 @@ bool MethodTypeInfer::Infer(GateRef gate)
         case EcmaOpcode::ASHR2_IMM8_V8:
         case EcmaOpcode::SHR2_IMM8_V8:
         case EcmaOpcode::NOT_IMM8:
+        case EcmaOpcode::AND2_IMM8_V8:
+        case EcmaOpcode::OR2_IMM8_V8:
+        case EcmaOpcode::XOR2_IMM8_V8:
             return SetIntType(gate);
         case EcmaOpcode::LDBIGINT_ID16:
             return SetBigIntType(gate);
@@ -261,6 +259,8 @@ bool MethodTypeInfer::Infer(GateRef gate)
             return InferSub2(gate);
         case EcmaOpcode::MUL2_IMM8_V8:
             return InferMul2(gate);
+        case EcmaOpcode::MOD2_IMM8_V8:
+            return InferMod2(gate);
         case EcmaOpcode::DIV2_IMM8_V8:
             return InferDiv2(gate);
         case EcmaOpcode::INC_IMM8:
@@ -538,6 +538,31 @@ bool MethodTypeInfer::InferSub2(GateRef gate)
  * double * double = double
  */
 bool MethodTypeInfer::InferMul2(GateRef gate)
+{
+    // 2: number of value inputs
+    ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);
+    auto firInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 0));
+    auto secInType = gateAccessor_.GetGateType(gateAccessor_.GetValueIn(gate, 1));
+    if ((firInType.IsNumberType() && secInType.IsDoubleType()) ||
+        (firInType.IsDoubleType() && secInType.IsNumberType())) {
+        return UpdateType(gate, GateType::DoubleType());
+    }
+    if ((firInType.IsIntType() && secInType.IsIntType())) {
+        return UpdateType(gate, GateType::IntType());
+    }
+    return UpdateType(gate, GateType::NumberType());
+}
+
+/*
+ * Type Infer rule(satisfy commutative law):
+ * number % number = number
+ * int    % number = number
+ * double % number = double
+ * int    % int    = int
+ * int    % double = double
+ * double % double = double
+ */
+bool MethodTypeInfer::InferMod2(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(gateAccessor_.GetNumValueIn(gate) == 2);

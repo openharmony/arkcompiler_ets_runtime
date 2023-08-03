@@ -108,7 +108,7 @@ void PGOTypeInfer::CheckAndInsert(CollectedType &types, GateType type)
         if (hclassIndex == -1) {
             return;
         }
-        JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
+        JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
         if (hclass->HasTSSubtyping()) {
             GlobalTSTypeRef instanceGT = type.GetGTRef();
             type = GateType(tsManager_->GetClassType(instanceGT));
@@ -130,6 +130,17 @@ void PGOTypeInfer::CollectGateType(CollectedType &types, GateType tsType, PGORWO
             pgoType = GateType(tsManager_->CreateClassInstanceType(pgoType));
         }
         CheckAndInsert(types, pgoType);
+    }
+
+    // for static TS uinon type
+    if (tsManager_->IsUnionTypeKind(tsType)) {
+        JSHandle<TSUnionType> unionType(tsManager_->GetTSType(tsType.GetGTRef()));
+        TaggedArray *components = TaggedArray::Cast(unionType->GetComponents().GetTaggedObject());
+        uint32_t length = components->GetLength();
+        for (uint32_t i = 0; i < length; ++i) {
+            GlobalTSTypeRef gt(components->Get(i).GetInt());
+            CheckAndInsert(types, GateType(gt));
+        }
     }
 }
 

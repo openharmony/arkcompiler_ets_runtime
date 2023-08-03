@@ -89,8 +89,10 @@ private:
         const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, uint32_t length, bool compressed);
     static EcmaString *CreateConstantString(const EcmaVM *vm, const uint8_t *utf8Data,
         size_t length, bool compressed, MemSpaceType type = MemSpaceType::SEMI_SPACE, uint32_t idOffset = 0);
-    static EcmaString *Concat(const EcmaVM *vm,
-        const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right);
+    static EcmaString *Concat(const EcmaVM *vm, const JSHandle<EcmaString> &left,
+        const JSHandle<EcmaString> &right, MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    static EcmaString *CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<EcmaString> &original,
+        uint32_t length, bool compressed);
     static EcmaString *FastSubString(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
     // require src is LineString
@@ -759,10 +761,16 @@ public:
         return EcmaString::CreateFromUtf16(vm, utf16Data, utf16Len, canBeCompress, type);
     }
 
-    static EcmaString *Concat(const EcmaVM *vm,
-        const JSHandle<EcmaString> &str1Handle, const JSHandle<EcmaString> &str2Handle)
+    static EcmaString *Concat(const EcmaVM *vm, const JSHandle<EcmaString> &str1Handle,
+        const JSHandle<EcmaString> &str2Handle, MemSpaceType type = MemSpaceType::SEMI_SPACE)
     {
-        return EcmaString::Concat(vm, str1Handle, str2Handle);
+        return EcmaString::Concat(vm, str1Handle, str2Handle, type);
+    }
+
+    static EcmaString *CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<EcmaString> &original,
+        uint32_t length, bool compressed)
+    {
+        return EcmaString::CopyStringToOldSpace(vm, original, length, compressed);
     }
 
     // can change src data structure

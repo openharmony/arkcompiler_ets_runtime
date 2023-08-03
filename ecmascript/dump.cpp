@@ -1663,8 +1663,8 @@ void TaggedTreeMap::Dump(std::ostream &os) const
     node.DumpTaggedValue(os);
     os << std::right << "}" << "\n";
 
-    int capacity = NumberOfElements() + NumberOfDeletedElements();
-    for (int index = 0; index < capacity; index++) {
+    uint32_t capacity = NumberOfElements() + NumberOfDeletedElements();
+    for (uint32_t index = 0; index < capacity; index++) {
         if (GetKey(index).IsHole()) {
             os << std::left << std::setw(DUMP_ELEMENT_OFFSET) << "[entry] " << index << ": ";
             GetKey(index).DumpTaggedValue(os);
@@ -1740,8 +1740,8 @@ void TaggedTreeSet::Dump(std::ostream &os) const
     node.DumpTaggedValue(os);
     os << std::right << "}" << "\n";
 
-    int capacity = NumberOfElements() + NumberOfDeletedElements();
-    for (int index = 0; index < capacity; index++) {
+    uint32_t capacity = NumberOfElements() + NumberOfDeletedElements();
+    for (uint32_t index = 0; index < capacity; index++) {
         if (GetKey(index).IsHole()) {
             os << std::left << std::setw(DUMP_ELEMENT_OFFSET) << "[entry] " << index << ": ";
             GetKey(index).DumpTaggedValue(os);
@@ -1966,9 +1966,9 @@ void JSAPIDequeIterator::Dump(std::ostream &os) const
 
 void JSAPILightWeightMap::Dump(std::ostream &os) const
 {
-    int capacity = GetSize();
+    uint32_t capacity = GetSize();
     os << " - length: " << std::dec << capacity << "\n";
-    int i = 0;
+    uint32_t i = 0;
     TaggedArray *hashArray = TaggedArray::Cast(GetHashes().GetTaggedObject());
     TaggedArray *keyArray = TaggedArray::Cast(GetKeys().GetTaggedObject());
     TaggedArray *valueArray = TaggedArray::Cast(GetValues().GetTaggedObject());
@@ -4248,9 +4248,9 @@ void LinkedHashMap::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue
 void TaggedTreeMap::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
-    int capacity = NumberOfElements() + NumberOfDeletedElements();
+    uint32_t capacity = NumberOfElements() + NumberOfDeletedElements();
     vec.reserve(vec.size() + capacity);
-    for (int index = 0; index < capacity; index++) {
+    for (uint32_t index = 0; index < capacity; index++) {
         JSTaggedValue key(GetKey(index));
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             JSTaggedValue val = GetValue(index);
@@ -4264,9 +4264,9 @@ void TaggedTreeMap::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue
 void TaggedTreeSet::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
-    int capacity = NumberOfElements() + NumberOfDeletedElements();
+    uint32_t capacity = NumberOfElements() + NumberOfDeletedElements();
     vec.reserve(vec.size() + capacity);
-    for (int index = 0; index < capacity; index++) {
+    for (uint32_t index = 0; index < capacity; index++) {
         JSTaggedValue key(GetKey(index));
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             CString str;

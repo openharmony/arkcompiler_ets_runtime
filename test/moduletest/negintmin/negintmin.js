@@ -19,3 +19,7 @@ let intmin = negone - intmax;
 let negintmin = -intmin;
 print(intmin);
 print(negintmin);
+
+let doublezero = 0 * 0.1;
+print(1 / doublezero);
+print(1 / -doublezero);

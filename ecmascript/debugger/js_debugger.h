@@ -141,13 +141,6 @@ public:
         }
         hooks_->VmDeath();
     }
-    void PendingJobEntry() override
-    {
-        if (hooks_ == nullptr) {
-            return;
-        }
-        hooks_->PendingJobEntry();
-    }
     void NativeCalling(const void *nativeAddress) override
     {
         if (hooks_ == nullptr) {
@@ -155,6 +148,8 @@ public:
         }
         hooks_->NativeCalling(nativeAddress);
     }
+    void MethodEntry(JSHandle<Method> method) override;
+    void MethodExit(JSHandle<Method> method) override;
 private:
     std::unique_ptr<PtMethod> FindMethod(const JSPtLocation &location) const;
     std::optional<JSBreakpoint> FindBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const;

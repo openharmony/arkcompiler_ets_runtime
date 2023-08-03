@@ -585,11 +585,6 @@ private:
         return (IsFirstBasicBlock(bbId) && bcIndex == 0 && reg == GetNumberVRegs());
     }
 
-    inline bool HasValidType(GateType type)
-    {
-        return HasTypes() && !type.IsAnyType() && !tsManager_->IsPGOGT(type.GetGTRef());
-    }
-
     TSManager *tsManager_;
     Circuit *circuit_;
     std::vector<std::vector<GateRef>> byteCodeToJSGates_;

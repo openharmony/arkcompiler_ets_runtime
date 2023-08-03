@@ -24,6 +24,7 @@ group("aot_type_test") {
     "int16Array",
     "uint16Array",
     "int32Array",
+    "polyaccess",
     "uint32Array",
     "typeadd",
     "typediv",

@@ -41,7 +41,7 @@ void AsyncFunctionLowering::ProcessJumpTable()
     GateRef ifBranchCondition = builder_.Branch(stateEntry_, isEqual);
     GateRef ifTrueCondition = builder_.IfTrue(ifBranchCondition);
     GateRef ifFalseCondition = builder_.IfFalse(ifBranchCondition);
-    if (accessor_.GetOpCode(*firstUse) == OpCode::STATE_SPLIT) {
+    while (accessor_.GetOpCode(*firstUse) == OpCode::STATE_SPLIT) {
         firstUse++;
     }
     accessor_.ReplaceStateIn(*firstUse, ifTrueCondition);
@@ -81,8 +81,7 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
     GateRef loopBeginStateIn = Circuit::NullGate();
     GateRef prevBcOffsetPhiGate = Circuit::NullGate();
     while (true) {
-        auto opcode = accessor_.GetOpCode(stateInGate);
-        if (opcode == OpCode::STATE_ENTRY) {
+        if (stateInGate == GetEntryBBStateOut()) {  // from state entry
             GateRef condition = builder_.Equal(offsetConstantGate, restoreOffsetGate);
             GateRef ifBranch = circuit_->NewGate(circuit_->IfBranch(), { ifFalseCondition, condition });
             GateRef ifTrue = circuit_->NewGate(circuit_->IfTrue(), {ifBranch});
@@ -110,7 +109,7 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
             }
             firstState = ifBranch;
         }
-
+        auto opcode = accessor_.GetOpCode(stateInGate);
         if (opcode == OpCode::LOOP_BEGIN) {
             bool resumeInLoopBody = false;
             CheckResumeInLoopBody(stateInGate, resumeInLoopBody);
@@ -158,7 +157,7 @@ void AsyncFunctionLowering::RebuildGeneratorCfg(GateRef resumeGate, GateRef rest
             UpdateValueSelector(prevLoopBeginGate, loopBeginStateIn, prevBcOffsetPhiGate);
             break;
         }
-        if (accessor_.GetOpCode(stateInGate) == OpCode::STATE_ENTRY) {
+        if (stateInGate == GetEntryBBStateOut()) {
             break;
         }
         stateInGate = accessor_.GetState(stateInGate);
@@ -192,9 +191,16 @@ void AsyncFunctionLowering::UpdateValueSelector(GateRef prevLoopBeginGate,
         if (accessor_.GetOpCode(use) == OpCode::VALUE_SELECTOR && use != prevBcOffsetPhiGate) {
             auto machineType = accessor_.GetMachineType(use);
             auto gateType = accessor_.GetGateType(use);
-            GateRef undefinedGate =
+            GateRef undefinedGate = Circuit::NullGate();
+            if (gateType.IsNumberType()) {
+                undefinedGate =
+                circuit_->NewGate(circuit_->GetMetaBuilder()->Constant(JSTaggedValue::VALUE_ZERO),
+                                  machineType, GateType::IntType());
+            } else {
+                undefinedGate =
                 circuit_->NewGate(circuit_->GetMetaBuilder()->Constant(JSTaggedValue::VALUE_UNDEFINED),
                                   machineType, gateType);
+            }
             auto firstValueGate = accessor_.GetValueIn(use, 0);
             auto newValueSelector = circuit_->NewGate(circuit_->ValueSelector(2), machineType, // 2: valuesIn
                                                       {newGate, undefinedGate, firstValueGate},
@@ -278,6 +284,28 @@ GateRef AsyncFunctionLowering::GetDependPhiFromLoopBegin(GateRef gate) const
     }
     LOG_COMPILER(FATAL) << "Can not find depend-selector from loopbegin";
     return Circuit::NullGate();
+}
+
+GateRef AsyncFunctionLowering::GetEntryBBStateOut() const
+{
+    auto bb = bcBuilder_->GetBasicBlockById(1);   // 1 : First Block Id
+    auto state = bb.stateCurrent;
+    if (accessor_.IsCFGMerge(state)) {
+        return accessor_.GetState(state);
+    } else {
+        return state;
+    }
+}
+
+GateRef AsyncFunctionLowering::GetEntryBBDependOut() const
+{
+    auto bb = bcBuilder_->GetBasicBlockById(1);   // 1 : First Block Id
+    auto depend = bb.dependCurrent;
+    if (accessor_.IsDependSelector(depend)) {
+        return accessor_.GetDep(depend);
+    } else {
+        return depend;
+    }
 }
 }  // panda::ecmascript::kungfu
 

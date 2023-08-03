@@ -57,7 +57,7 @@ HWTEST_F_L0(ThrowOOMErrorTest, ThrowNonMovableOOMError)
 {
     static constexpr size_t SIZE = 100_KB / 8;
     [[maybe_unused]] ecmascript::EcmaHandleScope scope(thread);
-    for (int i = 0; i < 82; i++) {
+    for (int i = 0; i < 130; i++) {
         [[maybe_unused]] JSHandle<TaggedArray> array =
             thread->GetEcmaVM()->GetFactory()->NewTaggedArray(SIZE, JSTaggedValue::Hole(), MemSpaceType::NON_MOVABLE);
     }

@@ -19,16 +19,15 @@
 #include "ecmascript/compiler/number_speculative_lowering.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/number_speculative_retype.h"
+#include "ecmascript/compiler/range_guard.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeRunner {
 public:
-    NumberSpeculativeRunner(Circuit *circuit, TSManager* tsManager,
-                            bool enableLog, const std::string& name, Chunk* chunk, PassContext *ctx)
-        : circuit_(circuit), acc_(circuit), tsManager_(tsManager), enableLog_(enableLog),
-          methodName_(name), chunk_(chunk), typeInfos_(chunk), rangeInfos_(chunk),
-          noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()) {}
+    NumberSpeculativeRunner(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
+        : circuit_(circuit), acc_(circuit), enableLog_(enableLog), methodName_(name), 
+          chunk_(chunk), typeInfos_(chunk), rangeInfos_(chunk) {}
 
     ~NumberSpeculativeRunner() = default;
     void Run();
@@ -45,13 +44,11 @@ private:
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
-    TSManager* tsManager_ {nullptr};
     bool enableLog_ {false};
     std::string methodName_;
     Chunk *chunk_ {nullptr};
     ChunkVector<TypeInfo> typeInfos_;
     ChunkVector<RangeInfo> rangeInfos_;
-    bool noCheck_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NUMBER_SPECULATIVE_RUNNER_H

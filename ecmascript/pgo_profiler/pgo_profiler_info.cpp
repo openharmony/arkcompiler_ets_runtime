@@ -649,6 +649,14 @@ bool PGOMethodInfoMap::AddType(Chunk *chunk, PGOMethodId methodId, int32_t offse
     return true;
 }
 
+bool PGOMethodInfoMap::AddCallTargetType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type)
+{
+    auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
+    ASSERT(typeInfoSet != nullptr);
+    typeInfoSet->AddCallTargetType(offset, type);
+    return true;
+}
+
 bool PGOMethodInfoMap::AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info)
 {
     auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
@@ -985,6 +993,14 @@ bool PGORecordDetailInfos::AddType(const CString &recordName, PGOMethodId method
     return curMethodInfos->AddType(chunk_.get(), methodId, offset, type);
 }
 
+bool PGORecordDetailInfos::AddCallTargetType(const CString &recordName, PGOMethodId methodId, int32_t offset,
+                                             PGOSampleType type)
+{
+    auto curMethodInfos = GetMethodInfoMap(recordName);
+    ASSERT(curMethodInfos != nullptr);
+    return curMethodInfos->AddCallTargetType(chunk_.get(), methodId, offset, type);
+}
+
 bool PGORecordDetailInfos::AddObjectInfo(
     const CString &recordName, EntityId methodId, int32_t offset, const PGOObjectInfo &info)
 {
@@ -1021,7 +1037,7 @@ bool PGORecordDetailInfos::AddLayout(PGOSampleType type, JSTaggedType hclass, PG
             return false;
         }
     } else {
-        LOG_ECMA(INFO) << "The current class did not find a definition";
+        LOG_ECMA(DEBUG) << "The current class did not find a definition";
         return false;
     }
     return true;

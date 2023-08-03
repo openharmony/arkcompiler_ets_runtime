@@ -28,6 +28,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -797,6 +798,10 @@ bool JSObject::CallSetter(JSThread *thread, const AccessorData &accessor, const 
     }
 
     JSHandle<JSTaggedValue> func(thread, setter);
+    if (thread->IsPGOProfilerEnable()) {
+        auto profiler = thread->GetEcmaVM()->GetPGOProfiler();
+        profiler->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, receiver, undefined, 1);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -819,6 +824,10 @@ JSTaggedValue JSObject::CallGetter(JSThread *thread, const AccessorData *accesso
     }
 
     JSHandle<JSTaggedValue> func(thread, getter);
+    if (thread->IsPGOProfilerEnable()) {
+        auto profiler = thread->GetEcmaVM()->GetPGOProfiler();
+        profiler->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, receiver, undefined, 0);
     JSTaggedValue res = JSFunction::Call(info);
@@ -2102,7 +2111,8 @@ void JSObject::DefineGetter(JSThread *thread, const JSHandle<JSTaggedValue> &obj
     op.DefineGetter(value);
 }
 
-JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, const JSHandle<TaggedArray> &properties)
+JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, const JSHandle<TaggedArray> &properties,
+                                                        JSTaggedValue ihcVal)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     size_t length = properties->GetLength();
@@ -2115,10 +2125,17 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
     }
     if (propsLen <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES) {
         JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(properties, propsLen);
+        if (ihcVal.IsJSHClass()) {
+            JSHClass *ihc = JSHClass::Cast(ihcVal.GetTaggedObject());
+            JSHClass *oldHC = obj->GetJSHClass();
+            ihc->SetPrototype(thread, oldHC->GetPrototype());
+            obj->SetClass(ihc);
+        }
         ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
         for (size_t i = 0; i < propsLen; i++) {
             // 2: literal contains a pair of key-value
-            obj->SetPropertyInlinedProps(thread, i, properties->Get(i * 2 + 1));
+            auto value = obj->ConvertValueWithRep(i, properties->Get(i * 2 + 1));
+            obj->SetPropertyInlinedPropsWithRep(thread, i, value);
         }
         return obj;
     } else {

@@ -161,8 +161,8 @@ void HeapSnapshot::PushHeapStat(Stream* stream)
         TimeStamp& timeStamp = timeStamps_[timeIndex];
         sequenceId = timeStamp.GetLastSequenceId();
         timeStampUs = timeStamp.GetTimeStamp();
-        int32_t nodesSize = 0;
-        int32_t nodesCount = 0;
+        uint32_t nodesSize = 0;
+        uint32_t nodesCount = 0;
         while (iter != nodes_.end() && (*iter)->GetId() <= static_cast<uint32_t>(sequenceId)) {
             nodesCount++;
             nodesSize += (*iter)->GetSelfSize();

@@ -413,10 +413,10 @@ void RuntimeStubs::Comment(uintptr_t argStr)
     LOG_ECMA(DEBUG) << str;
 }
 
-void RuntimeStubs::ProfileCall(uintptr_t argGlue, uintptr_t target, uint32_t incCount)
+void RuntimeStubs::ProfileCall(uintptr_t argGlue, uintptr_t func, uintptr_t target, int32_t pcOffset, uint32_t incCount)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(target, SampleMode::CALL_MODE, incCount);
+    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(func, target, pcOffset, SampleMode::CALL_MODE, incCount);
 }
 
 void RuntimeStubs::ProfileOpType(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type)
@@ -947,23 +947,6 @@ DEF_RUNTIME_STUBS(CreateClassWithBuffer)
                                         static_cast<uint16_t>(literalId.GetInt()), module).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(CreateClassWithIHClass)
-{
-    RUNTIME_STUBS_HEADER(CreateClassWithIHClass);
-    JSHandle<JSTaggedValue> base = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> lexenv = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue methodId = GetArg(argv, argc, 3);  // 3: means the third parameter
-    JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
-    JSHandle<JSHClass> ihclass = GetHArg<JSHClass>(argv, argc, 5);  // 5: means the fifth parameter
-    JSHandle<JSTaggedValue> constructorHClass = GetHArg<JSTaggedValue>(argv, argc, 6);  // 6: means the fifth parameter
-    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 7);  // 7: means the sixth parameter
-    return RuntimeCreateClassWithIHClass(thread, base, lexenv, constpool,
-        static_cast<uint16_t>(methodId.GetInt()),
-        static_cast<uint16_t>(literalId.GetInt()),
-        ihclass, constructorHClass, module).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(SetClassConstructorLength)
 {
     RUNTIME_STUBS_HEADER(SetClassConstructorLength);
@@ -995,7 +978,8 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounterWithProf)
     JSHandle<Method> method(thread, thisFunc->GetMethod());
     auto profileTypeInfo = method->GetProfileTypeInfo();
     if (profileTypeInfo.IsUndefined()) {
-        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(thisFunc.GetTaggedType(), SampleMode::HOTNESS_MODE);
+        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(
+            JSTaggedValue::VALUE_UNDEFINED, thisFunc.GetTaggedType(), -1, SampleMode::HOTNESS_MODE);
         uint32_t slotSize = method->GetSlotSize();
         auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
         return res.GetRawData();
@@ -2328,12 +2312,13 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
         ASSERT(callTarget != nullptr);
         Method *method = callTarget->GetCallTarget();
         if (!method->IsNativeWithCallField()) {
-            thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(targetFunc.GetTaggedType());
+            thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(
+                JSTaggedValue::VALUE_UNDEFINED, targetFunc.GetTaggedType());
         }
     }
     JSHandle<TaggedArray> boundArgs(thread, boundFunc->GetBoundArguments());
-    const int32_t boundLength = static_cast<int32_t>(boundArgs->GetLength());
-    const int32_t argsLength = static_cast<int32_t>(info->GetArgsNumber()) + boundLength;
+    const uint32_t boundLength = boundArgs->GetLength();
+    const uint32_t argsLength = info->GetArgsNumber() + boundLength;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *runtimeInfo = EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(targetFunc),
         info->GetThis(), undefined, argsLength);

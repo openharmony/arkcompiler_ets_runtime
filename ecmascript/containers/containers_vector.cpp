@@ -509,7 +509,7 @@ JSTaggedValue ContainersVector::GetSize(EcmaRuntimeCallInfo *argv)
         }
     }
 
-    int32_t length = JSHandle<JSAPIVector>::Cast(self)->GetSize();
+    uint32_t length = JSHandle<JSAPIVector>::Cast(self)->GetSize();
     return JSTaggedValue(length);
 }
 
@@ -710,7 +710,7 @@ JSTaggedValue ContainersVector::ConvertToArray(EcmaRuntimeCallInfo *argv)
     auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSArray> array = factory->NewJSArray();
 
-    int32_t length = vector->GetSize();
+    uint32_t length = vector->GetSize();
     array->SetArrayLength(thread, length);
 
     JSHandle<TaggedArray> srcElements(thread, vector->GetElements());

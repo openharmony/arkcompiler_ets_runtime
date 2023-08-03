@@ -292,10 +292,10 @@ void RegExpParser::ParseAlternative(bool isBackward)
                                     icu::UnicodeSet set(atomValue, atomValue);
                                     set.closeOver(USET_CASE_INSENSITIVE);
                                     set.removeAllStrings();
-                                    int32_t size = set.size();
+                                    uint32_t size = static_cast<uint32_t>(set.size());
                                     RangeOpCode rangeOp;
                                     RangeSet rangeResult;
-                                    for (int32_t idx = 0; idx < size; idx++) {
+                                    for (uint32_t idx = 0; idx < size; idx++) {
                                         int32_t uc = set.charAt(idx);
                                         RangeSet curRange(uc);
                                         rangeResult.Insert(curRange);
@@ -1267,11 +1267,19 @@ bool RegExpParser::ParseClassRanges(RangeSet *result)
             }
             needInter = NeedIntersection(c2);
             result->Insert(c1, c2);
+            if (IsIgnoreCase() && needInter) {
+                ProcessIntersection(result);
+            }
         } else {
             result->Insert(s1);
-        }
-        if (IsIgnoreCase() && needInter) {
-            ProcessIntersection(result);
+            if (!(IsIgnoreCase() && needInter)) {
+                continue;
+            }
+            if (c1 <= 'z' && c1 >= 'a') {
+                result->Insert(RangeSet(c1 - 'a' + 'A'));
+            } else {
+                result->Insert(RangeSet(c1 - 'A' + 'a'));
+            }
         }
     }
     Advance();

@@ -105,6 +105,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     std::string_view entryPoint, const void *buffer, size_t size, bool needUpdate)
 {
     if (buffer == nullptr || size == 0) {
+        LOG_FULL(ERROR) << "Input buffer is empty";
         return nullptr;
     }
     {
@@ -153,6 +154,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread 
     std::string_view entryPoint, uint8_t *buffer, size_t size, bool needUpdate)
 {
     if (buffer == nullptr || size == 0) {
+        LOG_FULL(ERROR) << "Input buffer is empty";
         return nullptr;
     }
     {

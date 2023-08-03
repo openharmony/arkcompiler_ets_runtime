@@ -27,10 +27,10 @@
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeLowering {
 public:
-    NumberSpeculativeLowering(Circuit* circuit, Chunk* chunk, TSManager* tsManager,
-        ChunkVector<TypeInfo>& typeInfos, ChunkVector<RangeInfo>& rangeInfos, bool noCheck)
-        : circuit_(circuit), acc_(circuit), builder_(circuit), tsManager_(tsManager),
-          typeInfos_(typeInfos), rangeInfos_(rangeInfos), checkedGates_(chunk), noCheck_(noCheck) {}
+    NumberSpeculativeLowering(Circuit* circuit, Chunk* chunk, ChunkVector<TypeInfo>& typeInfos,
+        ChunkVector<RangeInfo>& rangeInfos)
+        : circuit_(circuit), acc_(circuit), builder_(circuit), typeInfos_(typeInfos), 
+          rangeInfos_(rangeInfos), rangeGuardGates_(chunk) {}
     void Run();
 
 private:
@@ -44,7 +44,7 @@ private:
     void VisitPhi(GateRef gate);
     void VisitUndefinedStrictEq(GateRef gate);
     void VisitCallBuiltins(GateRef gate);
-    void VisitIndexCheck(GateRef gate);
+    void VisitRangeGuard(GateRef gate);
     void VisitLoadArrayLength(GateRef gate);
     void VisitLoadElement(GateRef gate);
     void VisitLoadProperty(GateRef gate);
@@ -96,11 +96,9 @@ private:
     Circuit* circuit_;
     GateAccessor acc_;
     CircuitBuilder builder_;
-    TSManager* tsManager_ {nullptr};
     ChunkVector<TypeInfo>& typeInfos_;
     ChunkVector<RangeInfo>& rangeInfos_;
-    ChunkVector<GateRef> checkedGates_;
-    bool noCheck_;
+    ChunkVector<GateRef> rangeGuardGates_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NUMBER_SPECULATIVE_LOWERING_H

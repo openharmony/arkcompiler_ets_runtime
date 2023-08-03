@@ -18,13 +18,13 @@ declare function AssertType(value:any, type:string):void;
     let x:number = 123;
     let y:number = 2;
     let andRes = x & y;
-    AssertType(andRes, "number");
+    AssertType(andRes, "int");
 
     let orRes = x | y;
-    AssertType(orRes, "number");
+    AssertType(orRes, "int");
 
     let xorRes = x ^ y;
-    AssertType(xorRes, "number");
+    AssertType(xorRes, "int");
 
     let shlRes = x << y;
     AssertType(shlRes, "int");

@@ -75,6 +75,12 @@ public:
         firstFrame_ = top_;
     }
 
+    void ReviseValueByIndex(JSTaggedType value, size_t index)
+    {
+        ASSERT(index < static_cast<size_t>(start_ - top_));
+        *(top_ + index) = value;
+    }
+
 private:
     JSThread *thread_ {nullptr};
     JSTaggedType *start_ {nullptr};
@@ -378,6 +384,29 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
         JSTaggedValue value = GetDeoptValue(curDepth, virtualIndex);
         frameWriter->PushValue(value.GetRawData());
         virtualIndex--;
+    }
+    // revise correct a0 - aN virtual regs , for example: ldobjbyname key; sta a2; update value to a2
+    //         +--------------------------+            ^
+    //         |       aN                 |            |
+    //         +--------------------------+            |
+    //         |       ...                |            |
+    //         +--------------------------+            |
+    //         |       a2(this)           |            |
+    //         +--------------------------+   revise correct vreg
+    //         |       a1(newtarget)      |            |
+    //         +--------------------------+            |
+    //         |       a0(func)           |            |
+    //         |--------------------------|            v
+    //         |       v0 - vN            |
+    //  sp --> |--------------------------|
+    int32_t vregsAndArgsNum = declaredNumArgs + callFieldNumVregs +
+        static_cast<int32_t>(method->GetNumRevervedArgs());
+    for (int32_t i = callFieldNumVregs; i < vregsAndArgsNum; i++) {
+        JSTaggedValue value = JSTaggedValue::Undefined();
+        if (HasDeoptValue(curDepth, i)) {
+            value = GetDeoptValue(curDepth, i);
+            frameWriter->ReviseValueByIndex(value.GetRawData(), i);
+        }
     }
     return true;
 }

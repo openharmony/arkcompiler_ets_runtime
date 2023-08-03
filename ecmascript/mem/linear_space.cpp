@@ -249,6 +249,10 @@ bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC)
         if (initialCapacity_ <= minimumCapacity_) {
             return false;
         }
+        double speed = heap_->GetMemController()->GetNewSpaceAllocationThroughputPerMS();
+        if (speed > LOW_ALLOCATION_SPEED_PER_MS) {
+            return false;
+        }
         size_t newCapacity = initialCapacity_ / GROWING_FACTOR;
         SetInitialCapacity(std::max(newCapacity, minimumCapacity_));
         return true;

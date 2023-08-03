@@ -71,12 +71,6 @@ void LCRLowering::Run()
             case OpCode::VALUE_CHECK_NEG_OVERFLOW:
                 LowerValueCheckNegOverflow(gate);
                 break;
-            case OpCode::NEGATIVE_INDEX_CHECK:
-                LowerNegativeIndexCheck(gate);
-                break;
-            case OpCode::LARGE_INDEX_CHECK:
-                LowerLargeIndexCheck(gate);
-                break;
             case OpCode::OVERFLOW_CHECK:
                 LowerOverflowCheck(gate);
                 break;
@@ -88,6 +82,12 @@ void LCRLowering::Run()
                 break;
             case OpCode::LEX_VAR_IS_HOLE_CHECK:
                 LowerLexVarIsHoleCheck(gate);
+                break;
+            case OpCode::STORE_MEMORY:
+                LowerStoreMemory(gate);
+                break;
+            case OpCode::CHECK_AND_CONVERT:
+                LowerCheckAndConvert(gate);
                 break;
             default:
                 break;
@@ -310,9 +310,10 @@ GateRef LCRLowering::ConvertTaggedNumberToFloat64(GateRef gate, Label *exit)
     return *result;
 }
 
-StateDepend LCRLowering::LowerCheckAndConvert(StateDepend stateDepend, GateRef gate, GateRef frameState)
+void LCRLowering::LowerCheckAndConvert(GateRef gate)
 {
-    Environment env(stateDepend.State(), stateDepend.Depend(), {}, circuit_, &builder_);
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
     ValueType srcType = acc_.GetSrcType(gate);
     Label exit(&builder_);
     switch (srcType) {
@@ -334,7 +335,6 @@ StateDepend LCRLowering::LowerCheckAndConvert(StateDepend stateDepend, GateRef g
         default:
             UNREACHABLE();
     }
-    return builder_.GetStateDepend();
 }
 
 void LCRLowering::LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState)
@@ -591,27 +591,6 @@ void LCRLowering::LowerValueCheckNegOverflow(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void LCRLowering::LowerNegativeIndexCheck(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef frameState = acc_.GetFrameState(gate);
-    GateRef index = acc_.GetValueIn(gate, 0);
-    GateRef condition = builder_.Int32LessThanOrEqual(builder_.Int32(0), index);
-    builder_.DeoptCheck(condition, frameState, DeoptType::NEGTIVEINDEX);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
-void LCRLowering::LowerLargeIndexCheck(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef frameState = acc_.GetFrameState(gate);
-    GateRef index = acc_.GetValueIn(gate, 0);
-    GateRef length = acc_.GetValueIn(gate, 1);
-    GateRef condition = builder_.Int32LessThan(index, length);
-    builder_.DeoptCheck(condition, frameState, DeoptType::LARGEINDEX);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
 void LCRLowering::LowerOverflowCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -646,10 +625,20 @@ void LCRLowering::LowerInt32DivWithCheck(GateRef gate)
     GateRef condition = builder_.BoolOr(rightGreaterZero, builder_.BoolAnd(rightLessZero, leftNotZero));
     builder_.DeoptCheck(condition, frameState, DeoptType::DIVZERO);
     result = builder_.BinaryArithmetic(circuit_->Sdiv(), MachineType::I32, left, right, GateType::NJSValue());
-    GateRef truncated = builder_.BinaryArithmetic(circuit_->Mul(), MachineType::I32, result, right);
+    GateRef truncated = builder_.BinaryArithmetic(circuit_->Mul(),
+        MachineType::I32, result, right, GateType::NJSValue());
     GateRef overCheck = builder_.Int32Equal(truncated, left);
     builder_.DeoptCheck(overCheck, frameState, DeoptType::NOTINT);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void LCRLowering::LowerStoreMemory(GateRef gate){
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef index = acc_.GetValueIn(gate, 1);
+    GateRef value = acc_.GetValueIn(gate, 2);
+    builder_.Store(VariableType::VOID(), glue_, receiver, index, value);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void LCRLowering::InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue,

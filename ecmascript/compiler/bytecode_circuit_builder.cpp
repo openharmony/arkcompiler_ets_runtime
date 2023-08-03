@@ -36,7 +36,7 @@ void BytecodeCircuitBuilder::BytecodeToCircuit()
 void BytecodeCircuitBuilder::BuildRegionInfo()
 {
     uint32_t size = pcOffsets_.size();
-    uint32_t end = size - 1;  // 1: end
+    uint32_t end = size - 2;  // 1: end
     BytecodeIterator iterator(this, 0, end);
 
     infoData_.resize(size);
@@ -1420,9 +1420,7 @@ void BytecodeCircuitBuilder::BuildCircuit()
             }
 
             auto type = typeRecorder_.GetType(bcIndex);
-            if (HasValidType(type)) {
-                gateAcc_.SetGateType(gate, type);
-            }
+            gateAcc_.SetGateType(gate, type);
             auto pgoType = typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(gate), type);
             gateAcc_.TrySetPGOType(gate, pgoType);
 
@@ -1458,6 +1456,15 @@ void BytecodeCircuitBuilder::BuildCircuit()
                     gateAcc_.NewIn(gate, inIdx, defVreg);
                 } else {
                     GateRef defAcc = ResolveDef(bb, bcIndex, 0, true);
+                    if (!Bytecodes::IsCallOp(bytecodeInfo.GetOpcode())) {
+                        gateAcc_.NewIn(gate, inIdx, defAcc);
+                        continue;
+                    }
+                    auto oldGt = gateAcc_.GetGateType(defAcc).GetGTRef();
+                    GateType callTargetType = typeRecorder_.GetCallTargetType(bcIndex);
+                    if (!tsManager_->MethodOffsetIsVaild(oldGt) && !callTargetType.IsAnyType()) {
+                        gateAcc_.SetGateType(defAcc, callTargetType);
+                    }
                     gateAcc_.NewIn(gate, inIdx, defAcc);
                 }
             }

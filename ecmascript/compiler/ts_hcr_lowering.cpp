@@ -44,6 +44,7 @@ bool TSHCRLowering::RunTSHCRLowering()
             success = false;
         }
     }
+    acc_.EliminateRedundantPhi();
 
     if (IsTypeLogEnabled()) {
         pgoTypeLog_.PrintPGOTypeLog();
@@ -533,31 +534,6 @@ void TSHCRLowering::LowerTypedNot(GateRef gate)
     }
 }
 
-void TSHCRLowering::LowerTypedLdArrayLength(GateRef gate)
-{
-    AddProfiling(gate);
-    GateRef array = acc_.GetValueIn(gate, 2);
-    if (!noCheck_) {
-        builder_.StableArrayCheck(array);
-    }
-
-    GateRef result = builder_.LoadArrayLength(array);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
-}
-
-void TSHCRLowering::LowerTypedLdTypedArrayLength(GateRef gate)
-{
-    AddProfiling(gate);
-    GateRef array = acc_.GetValueIn(gate, 2);
-    GateType arrayType = acc_.GetGateType(array);
-    arrayType = tsManager_->TryNarrowUnionType(arrayType);
-    if (!noCheck_) {
-        builder_.TypedArrayCheck(arrayType, array);
-    }
-    GateRef result = builder_.LoadTypedArrayLength(arrayType, array);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
-}
-
 void TSHCRLowering::DeleteConstDataIfNoUser(GateRef gate)
 {
     auto uses = acc_.Uses(gate);
@@ -567,205 +543,26 @@ void TSHCRLowering::DeleteConstDataIfNoUser(GateRef gate)
     }
 }
 
-void TSHCRLowering::LowerTypedLdObjByNameForClassOrObject(GateRef gate, GateRef receiver, JSTaggedValue prop)
-{
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-
-    int hclassIndex = -1;
-    if (tsManager_->IsClassTypeKind(receiverType)) {
-        if (!enableOptStaticMethod_) {
-            return;
-        }
-        hclassIndex = tsManager_->GetConstructorHClassIndexByClassGateType(receiverType);
-    } else if (tsManager_->IsObjectTypeKind(receiverType)) {
-        hclassIndex = tsManager_->GetHClassIndexByObjectType(receiverType);
-    }
-    if (hclassIndex == -1) { // slowpath
-        return;
-    }
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
-
-    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread_, hclass, prop);
-    if (!plr.IsFound() || !plr.IsLocal() || plr.IsAccessor()) {  // slowpath
-        return;
-    }
-    AddProfiling(gate);
-    if (!noCheck_) {
-        GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-        builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
-    }
-
-    GateRef pfrGate = builder_.Int32(plr.GetData());
-    GateRef result = builder_.LoadProperty(receiver, pfrGate, false);
-
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
-}
-
-void TSHCRLowering::LowerTypedLdObjByNameForClassInstance(GateRef gate, GateRef receiver, JSTaggedValue prop)
-{
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-
-    int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
-    if (hclassIndex == -1) { // slowpath
-        return;
-    }
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
-    if (!hclass->HasTSSubtyping()) {  // slowpath
-        return;
-    }
-
-    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread_, hclass, prop);
-    if (!plr.IsFound()) {  // slowpath
-        return;
-    }
-
-    AddProfiling(gate);
-
-    if (!noCheck_) {
-        GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-        builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
-    }
-
-    GateRef pfrGate = builder_.Int32(plr.GetData());
-    GateRef result = Circuit::NullGate();
-    if (LIKELY(!plr.IsAccessor())) {
-        result = builder_.LoadProperty(receiver, pfrGate, plr.IsVtable());
-        if (UNLIKELY(IsVerifyVTbale())) {
-            AddVTableLoadVerifer(gate, result);
-        }
-    } else {
-        result = builder_.CallGetter(gate, receiver, pfrGate);
-    }
-
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
-}
-
-bool TSHCRLowering::TryLowerTypedLdObjByNameForArray(GateRef gate, GateRef receiver, JSTaggedValue prop)
-{
-    GateType receiverType = acc_.GetGateType(receiver);
-
-    EcmaString *propString = EcmaString::Cast(prop.GetTaggedObject());
-    EcmaString *lengthString = EcmaString::Cast(thread_->GlobalConstants()->GetLengthString().GetTaggedObject());
-    if (propString == lengthString) {
-        if (tsManager_->IsArrayTypeKind(receiverType)) {
-            LowerTypedLdArrayLength(gate);
-            return true;
-        } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
-            LowerTypedLdTypedArrayLength(gate);
-            return true;
-        }
-    }
-    return false;
-}
-
 void TSHCRLowering::LowerTypedLdObjByName(GateRef gate)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
-    uint16_t propIndex = acc_.GetConstantValue(constData);
-    auto prop = tsManager_->GetStringFromConstantPool(propIndex);
+    uint16_t keyIndex = acc_.GetConstantValue(constData);
+    JSTaggedValue key = tsManager_->GetStringFromConstantPool(keyIndex);
 
     // 3: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef receiver = acc_.GetValueIn(gate, 2); // 2: acc or this object
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    if (TryLowerTypedLdObjByNameForArray(gate, receiver, prop)) {
-        DeleteConstDataIfNoUser(constData);
-        return;
-    }
-
-    if (tsManager_->IsClassInstanceTypeKind(receiverType)) {
-        LowerTypedLdObjByNameForClassInstance(gate, receiver, prop);
-    } else if (tsManager_->IsClassTypeKind(receiverType) ||
-               tsManager_->IsObjectTypeKind(receiverType)) {
-        LowerTypedLdObjByNameForClassOrObject(gate, receiver, prop);
-    }
+    LowerNamedAccess(gate, receiver, AccessMode::LOAD, key, Circuit::NullGate());
     DeleteConstDataIfNoUser(constData);
-}
-
-void TSHCRLowering::LowerTypedStObjByNameForClassOrObject(GateRef gate, GateRef receiver, GateRef value,
-                                                          JSTaggedValue prop)
-{
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-
-    int hclassIndex = -1;
-    if (tsManager_->IsClassTypeKind(receiverType)) {
-        if (!enableOptStaticMethod_) {
-            return;
-        }
-        hclassIndex = tsManager_->GetConstructorHClassIndexByClassGateType(receiverType);
-    } else if (tsManager_->IsObjectTypeKind(receiverType)) {
-        hclassIndex = tsManager_->GetHClassIndexByObjectType(receiverType);
-    }
-    if (hclassIndex == -1) { // slowpath
-        return;
-    }
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
-
-    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread_, hclass, prop);
-    if (!plr.IsFound() || !plr.IsLocal() || plr.IsAccessor() || !plr.IsWritable()) {  // slowpath
-        return;
-    }
-    AddProfiling(gate);
-    if (!noCheck_) {
-        GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-        builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
-    }
-
-    GateRef pfrGate = builder_.Int32(plr.GetData());
-    builder_.StoreProperty(receiver, pfrGate, value);
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
-}
-
-void TSHCRLowering::LowerTypedStObjByNameForClassInstance(GateRef gate, GateRef receiver, GateRef value,
-                                                          JSTaggedValue prop, bool isThis)
-{
-    GateType receiverType = acc_.GetGateType(receiver);
-    receiverType = tsManager_->TryNarrowUnionType(receiverType);
-
-    int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(receiverType);
-    if (hclassIndex == -1) { // slowpath
-        return;
-    }
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
-    if (!hclass->HasTSSubtyping()) {  // slowpath
-        return;
-    }
-
-    PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread_, hclass, prop);
-    if (!plr.IsFound() || plr.IsFunction()) {  // slowpath
-        return;
-    }
-
-    AddProfiling(gate);
-    if (!noCheck_) {
-        GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-        builder_.ObjectTypeCheck(receiverType, receiver, hclassIndexGate);
-    }
-
-    GateRef pfrGate = builder_.Int32(plr.GetData());
-    if (LIKELY(plr.IsLocal())) {
-        GateRef store = builder_.StoreProperty(receiver, pfrGate, value);
-        if (UNLIKELY(IsVerifyVTbale())) {
-            AddVTableStoreVerifer(gate, store, isThis);
-        }
-    } else {
-        builder_.CallSetter(gate, receiver, pfrGate, value);
-    }
-
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
 }
 
 void TSHCRLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto constData = acc_.GetValueIn(gate, 1); // 1: valueIn 1
-    uint16_t propIndex = acc_.GetConstantValue(constData);
-    auto prop = tsManager_->GetStringFromConstantPool(propIndex);
+    uint16_t keyIndex = acc_.GetConstantValue(constData);
+    JSTaggedValue key = tsManager_->GetStringFromConstantPool(keyIndex);
 
     GateRef receiver = Circuit::NullGate();
     GateRef value = Circuit::NullGate();
@@ -780,15 +577,179 @@ void TSHCRLowering::LowerTypedStObjByName(GateRef gate, bool isThis)
         receiver = acc_.GetValueIn(gate, 2); // 2: receiver
         value = acc_.GetValueIn(gate, 3); // 3: acc
     }
+    LowerNamedAccess(gate, receiver, AccessMode::STORE, key, value);
+    DeleteConstDataIfNoUser(constData);
+}
+
+void TSHCRLowering::LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode accessMode, JSTaggedValue key,
+                                     GateRef value)
+{
+    DISALLOW_GARBAGE_COLLECTION;
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    if (tsManager_->IsClassInstanceTypeKind(receiverType)) {
-        LowerTypedStObjByNameForClassInstance(gate, receiver, value, prop, isThis);
-    } else if (tsManager_->IsClassTypeKind(receiverType) ||
-               tsManager_->IsObjectTypeKind(receiverType)) {
-        LowerTypedStObjByNameForClassOrObject(gate, receiver, value, prop);
+    if (accessMode == AccessMode::LOAD && TryLowerTypedLdObjByNameForArray(gate, receiverType, key)) {
+        return;
     }
-    DeleteConstDataIfNoUser(constData);
+
+    ObjectAccessHelper accessHelper(tsManager_, accessMode, receiver, receiverType, key, value);
+    ChunkVector<ObjectAccessInfo> infos(circuit_->chunk());
+    bool continuation = accessHelper.Compute(infos);
+    if (!continuation) {
+        return;  // slowpath
+    }
+
+    ASSERT(!infos.empty());
+    AddProfiling(gate);
+
+    // monomorphic
+    if (infos.size() == 1) {
+        int hclassIndex = infos[0].HClassIndex();
+        PropertyLookupResult plr = infos[0].Plr();
+        if (!Uncheck()) {
+            GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
+            builder_.ObjectTypeCheck(infos[0].Type(), receiver, hclassIndexGate);
+        }
+
+        GateRef result = BuildNamedPropertyAccess(gate, accessHelper, plr);
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        return;
+    }
+
+    // polymorphic
+    size_t size = infos.size();
+    GateRef fallthroughState = builder_.GetState();
+    GateRef fallthroughDepend = builder_.GetDepend();
+    std::vector<GateRef> values(size + 1, Circuit::NullGate());   // +1: state for value selector
+    std::vector<GateRef> depends(size + 1, Circuit::NullGate());  // +1: state for depend selector
+    std::vector<GateRef> states(size, Circuit::NullGate());
+    for (size_t i = 0; i < size; ++i) {
+        GateType type = infos[i].Type();
+        int hclassIndex = infos[i].HClassIndex();
+        PropertyLookupResult plr = infos[i].Plr();
+        GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
+
+        builder_.SetState(fallthroughState);
+        builder_.SetDepend(fallthroughDepend);
+        if (i == size - 1) {
+            builder_.ObjectTypeCheck(type, receiver, hclassIndexGate);
+            fallthroughState = Circuit::NullGate();
+            fallthroughDepend = Circuit::NullGate();
+        } else {
+            GateRef compare = builder_.ObjectTypeCompare(type, receiver, hclassIndexGate);
+            GateRef branch = builder_.Branch(builder_.GetState(), compare);
+            GateRef ifTrue = builder_.IfTrue(branch);
+            GateRef ifFalse = builder_.IfFalse(branch);
+            GateRef tDepend = builder_.DependRelay(ifTrue, builder_.GetDepend());
+            fallthroughState = ifFalse;
+            fallthroughDepend = builder_.DependRelay(ifFalse, builder_.GetDepend());
+            builder_.SetState(ifTrue);
+            builder_.SetDepend(tDepend);
+        }
+
+        values[i + 1] = BuildNamedPropertyAccess(gate, accessHelper, plr);
+        depends[i + 1] = builder_.GetDepend();
+        states[i] = builder_.GetState();
+    }
+    ASSERT(fallthroughState == Circuit::NullGate());
+    ASSERT(fallthroughDepend == Circuit::NullGate());
+    GateRef mergeState = circuit_->NewGate(circuit_->Merge(size), states);
+    depends[0] = mergeState;
+    values[0] = mergeState;
+    GateRef dependSelector = circuit_->NewGate(circuit_->DependSelector(size), depends);
+    GateRef result = accessHelper.IsLoading() ?
+        circuit_->NewGate(circuit_->ValueSelector(size), MachineType::I64, size + 1, values.data(), GateType::AnyType())
+        : Circuit::NullGate();
+    acc_.ReplaceHirAndDeleteIfException(gate, StateDepend(mergeState, dependSelector), result);
+}
+
+GateRef TSHCRLowering::BuildNamedPropertyAccess(GateRef hir, ObjectAccessHelper accessHelper, PropertyLookupResult plr)
+{
+    GateRef receiver = accessHelper.GetReceiver();
+    GateRef plrGate = builder_.Int32(plr.GetData());
+    GateRef result = Circuit::NullGate();
+
+    AccessMode mode = accessHelper.GetAccessMode();
+    switch (mode) {
+        case AccessMode::LOAD: {
+            if (LIKELY(!plr.IsAccessor())) {
+                result = builder_.LoadProperty(receiver, plrGate, plr.IsFunction());
+                if (UNLIKELY(IsVerifyVTbale())) {
+                    BuildNamedPropertyAccessVerifier(hir, receiver, mode, result);
+                }
+            } else {
+                result = builder_.CallGetter(hir, receiver, plrGate);
+            }
+        }
+            break;
+        case AccessMode::STORE: {
+            GateRef value = accessHelper.GetValue();
+            if (LIKELY(plr.IsLocal())) {
+                builder_.StoreProperty(receiver, plrGate, value);
+                if (UNLIKELY(IsVerifyVTbale())) {
+                    BuildNamedPropertyAccessVerifier(hir, receiver, mode, value);
+                }
+            } else {
+                builder_.CallSetter(hir, receiver, plrGate, value);
+            }
+        }
+            break;
+        default:
+            break;
+    }
+
+    return result;
+}
+
+void TSHCRLowering::BuildNamedPropertyAccessVerifier(GateRef gate, GateRef receiver, AccessMode mode, GateRef value)
+{
+    GateRef constData = acc_.GetValueIn(gate, 1);
+    uint16_t keyIndex = acc_.GetConstantValue(constData);
+    GateRef func = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef constPool = builder_.GetConstPool(func);
+    GateRef key =  builder_.GetValueFromTaggedArray(constPool, builder_.Int32(keyIndex));
+    int stubId = mode == AccessMode::LOAD ? RTSTUB_ID(VerifyVTableLoading) : RTSTUB_ID(VerifyVTableStoring);
+    builder_.CallRuntime(glue_, stubId, builder_.GetDepend(), { receiver, key, value }, gate);
+}
+
+bool TSHCRLowering::TryLowerTypedLdObjByNameForArray(GateRef gate, GateType receiverType, JSTaggedValue key)
+{
+    EcmaString *propString = EcmaString::Cast(key.GetTaggedObject());
+    EcmaString *lengthString = EcmaString::Cast(thread_->GlobalConstants()->GetLengthString().GetTaggedObject());
+    if (propString == lengthString) {
+        if (tsManager_->IsArrayTypeKind(receiverType)) {
+            LowerTypedLdArrayLength(gate);
+            return true;
+        } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
+            LowerTypedLdTypedArrayLength(gate);
+            return true;
+        }
+    }
+    return false;
+}
+
+void TSHCRLowering::LowerTypedLdArrayLength(GateRef gate)
+{
+    AddProfiling(gate);
+    GateRef array = acc_.GetValueIn(gate, 2);
+    if (!Uncheck()) {
+        builder_.StableArrayCheck(array);
+    }
+
+    GateRef result = builder_.LoadArrayLength(array);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+}
+
+void TSHCRLowering::LowerTypedLdTypedArrayLength(GateRef gate)
+{
+    AddProfiling(gate);
+    GateRef array = acc_.GetValueIn(gate, 2);
+    GateType arrayType = acc_.GetGateType(array);
+    arrayType = tsManager_->TryNarrowUnionType(arrayType);
+    if (!Uncheck()) {
+        builder_.TypedArrayCheck(arrayType, array);
+    }
+    GateRef result = builder_.LoadTypedArrayLength(arrayType, array);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
 void TSHCRLowering::LowerTypedLdObjByIndex(GateRef gate)
@@ -828,7 +789,7 @@ void TSHCRLowering::LowerTypedStObjByIndex(GateRef gate)
     AddProfiling(gate);
 
     if (tsManager_->IsBuiltinInstanceType(BuiltinTypeId::FLOAT32_ARRAY, receiverType)) {
-        if (!noCheck_) {
+        if (!Uncheck()) {
             builder_.TypedArrayCheck(receiverType, receiver);
         }
     } else {
@@ -839,7 +800,7 @@ void TSHCRLowering::LowerTypedStObjByIndex(GateRef gate)
     uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
     index = builder_.Int32(indexValue);
     auto length = builder_.LoadTypedArrayLength(receiverType, receiver);
-    if (!noCheck_) {
+    if (!Uncheck()) {
         builder_.IndexCheck(receiverType, length, index);
     }
 
@@ -890,7 +851,7 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
 
 GateRef TSHCRLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey)
 {
-    if (!noCheck_) {
+    if (!Uncheck()) {
         GateType receiverType = acc_.GetGateType(receiver);
         receiverType = tsManager_->TryNarrowUnionType(receiverType);
         builder_.StableArrayCheck(receiver);
@@ -904,7 +865,7 @@ GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
 {
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    if (!noCheck_) {
+    if (!Uncheck()) {
         builder_.TypedArrayCheck(receiverType, receiver);
         GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
         propKey = builder_.IndexCheck(receiverType, length, propKey);
@@ -937,12 +898,13 @@ GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
 
 void TSHCRLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value)
 {
-    if (!noCheck_) {
+    if (!Uncheck()) {
         GateType receiverType = acc_.GetGateType(receiver);
         receiverType = tsManager_->TryNarrowUnionType(receiverType);
         builder_.StableArrayCheck(receiver);
         GateRef length = builder_.LoadArrayLength(receiver);
         builder_.IndexCheck(receiverType, length, propKey);
+        builder_.COWArrayCheck(receiver);
     }
     builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, propKey, value);
 }
@@ -952,7 +914,7 @@ void TSHCRLowering::StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, Ga
 {
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    if (!noCheck_) {
+    if (!Uncheck()) {
         builder_.TypedArrayCheck(receiverType, receiver);
         GateRef length = builder_.LoadTypedArrayLength(receiverType, receiver);
         propKey = builder_.IndexCheck(receiverType, length, propKey);
@@ -1095,7 +1057,7 @@ void TSHCRLowering::LowerTypedSuperCall(GateRef gate)
 
 void TSHCRLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, GateRef a0, BuiltinsStubCSigns::ID id)
 {
-    if (!noCheck_) {
+    if (!Uncheck()) {
         builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), a0);
     }
     GateRef result = builder_.TypedCallBuiltin(gate, a0, id);
@@ -1128,7 +1090,7 @@ BuiltinsStubCSigns::ID TSHCRLowering::GetBuiltinId(BuiltinTypeId id, GateRef fun
 void TSHCRLowering::CheckCallTargetFromDefineFuncAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
     GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall, bool isNoGC)
 {
-    if (!noCheck_) {
+    if (!Uncheck()) {
         builder_.JSCallTargetFromDefineFuncCheck(funcType, func, gate);
     }
     if (tsManager_->CanFastCall(funcGt)) {
@@ -1177,13 +1139,13 @@ void TSHCRLowering::CheckCallTargetAndLowerCall(GateRef gate, GateRef func, Glob
             return;
         }
         if (tsManager_->CanFastCall(funcGt)) {
-            if (!noCheck_) {
+            if (!Uncheck()) {
                 builder_.JSCallTargetTypeCheck<TypedCallTargetCheckOp::JSCALL_FAST>(funcType,
                     func, builder_.IntPtr(methodIndex), gate);
             }
             LowerFastCall(gate, func, argsFastCall, isNoGC);
         } else {
-            if (!noCheck_) {
+            if (!Uncheck()) {
                 builder_.JSCallTargetTypeCheck<TypedCallTargetCheckOp::JSCALL>(funcType,
                     func, builder_.IntPtr(methodIndex), gate);
             }
@@ -1324,7 +1286,7 @@ void TSHCRLowering::CheckFastCallThisCallTarget(GateRef gate, GateRef func, Glob
 }
 
 void TSHCRLowering::CheckCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
-                                                GateType funcType, bool isNoGC)
+    GateType funcType, bool isNoGC)
 {
     if (noCheck_) {
         return;
@@ -1528,33 +1490,5 @@ void TSHCRLowering::AddHitBytecodeCount()
     } else {
         bytecodeHitTimeMap_[currentOp_] = 1;
     }
-}
-
-void TSHCRLowering::AddVTableLoadVerifer(GateRef gate, GateRef value)
-{
-    GateRef receiver = acc_.GetValueIn(gate, 2);  // 2: receiver
-    GateRef key = acc_.GetValueIn(gate, 1);       // 1: key
-
-    GateRef verifier = builder_.CallRuntime(glue_, RTSTUB_ID(VerifyVTableLoading), acc_.GetDep(gate),
-                                            { receiver, key, value }, gate);
-    acc_.SetDep(gate, verifier);
-}
-
-void TSHCRLowering::AddVTableStoreVerifer(GateRef gate, GateRef store, bool isThis)
-{
-    GateRef key = acc_.GetValueIn(gate, 1);
-    GateRef receiver = Circuit::NullGate();
-    GateRef value = Circuit::NullGate();
-    if (isThis) {
-        receiver = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
-        value = acc_.GetValueIn(gate, 2);  // 2: acc
-    } else {
-        receiver = acc_.GetValueIn(gate, 2);  // 2: receiver
-        value = acc_.GetValueIn(gate, 3);     // 3: acc
-    }
-
-    GateRef verifier = builder_.CallRuntime(glue_, RTSTUB_ID(VerifyVTableStoring), store,
-                                            { receiver, key, value }, gate);
-    acc_.SetDep(gate, verifier);
 }
 }  // namespace panda::ecmascript

@@ -222,12 +222,12 @@ public:
         return OneParameterMetaData::Cast(meta_);
     }
 
-    const TypedBinaryMegaData* GetTypedBinaryMegaData() const
+    const TypedBinaryMetaData* GetTypedBinaryMetaData() const
     {
-        return TypedBinaryMegaData::Cast(meta_);
+        return TypedBinaryMetaData::Cast(meta_);
     }
 
-    const TypedCallTargetCheckMetaData* GetTypedCallTargetCheckMegaData() const
+    const TypedCallTargetCheckMetaData* GetTypedCallTargetCheckMetaData() const
     {
         return TypedCallTargetCheckMetaData::Cast(meta_);
     }

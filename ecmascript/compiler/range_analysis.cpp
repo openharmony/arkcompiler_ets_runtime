@@ -61,6 +61,8 @@ GateRef RangeAnalysis::VisitGate(GateRef gate)
             return VisitLoadArrayLength(gate);
         case OpCode::LOAD_TYPED_ARRAY_LENGTH:
             return VisitLoadTypedArrayLength(gate);
+        case OpCode::RANGE_GUARD:
+            return VisitRangeGuard(gate);
         default:
             return VisitOthers(gate);
     }
@@ -137,6 +139,12 @@ GateRef RangeAnalysis::VisitTypedBinaryOp(GateRef gate)
         case TypedBinOp::TYPED_SUB:
             range = GetRangeOfCalculate<TypedBinOp::TYPED_SUB>(gate);
             break;
+        case TypedBinOp::TYPED_MOD:
+            range = GetRangeOfCalculate<TypedBinOp::TYPED_MOD>(gate);
+            break;
+        case TypedBinOp::TYPED_MUL:
+            range = GetRangeOfCalculate<TypedBinOp::TYPED_MUL>(gate);
+            break;
         case TypedBinOp::TYPED_SHR:
             range = GetRangeOfShift<TypedBinOp::TYPED_SHR>(gate);
             break;
@@ -169,10 +177,16 @@ GateRef RangeAnalysis::VisitLoadTypedArrayLength(GateRef gate)
     return UpdateRange(gate, RangeInfo(0, RangeInfo::TYPED_ARRAY_ONHEAP_MAX));
 }
 
+GateRef RangeAnalysis::VisitRangeGuard(GateRef gate)
+{ 
+    auto left = acc_.GetFirstValue(gate);
+    auto right = acc_.GetSecondValue(gate);
+    return UpdateRange(gate, RangeInfo(left, right));
+}
+
 template<TypedBinOp Op>
 RangeInfo RangeAnalysis::GetRangeOfCalculate(GateRef gate)
 {
-    ASSERT((Op == TypedBinOp::TYPED_ADD) || (Op == TypedBinOp::TYPED_SUB));
     auto left = GetRange(acc_.GetValueIn(gate, 0));
     auto right = GetRange(acc_.GetValueIn(gate, 1));
     if (left.IsNone() || right.IsNone()) {
@@ -183,6 +197,10 @@ RangeInfo RangeAnalysis::GetRangeOfCalculate(GateRef gate)
             return left + right;
         case TypedBinOp::TYPED_SUB:
             return left - right;
+        case TypedBinOp::TYPED_MOD:
+            return left % right;
+        case TypedBinOp::TYPED_MUL:
+            return left * right;
         default:
             return RangeInfo::ANY();
     }
@@ -311,6 +329,12 @@ void RangeAnalysis::PrintRangeInfo() const
                         break;
                     case TypedBinOp::TYPED_ASHR:
                         log += " ashr";
+                        break;
+                    case TypedBinOp::TYPED_MOD:
+                        log += " mod";
+                        break;
+                    case TypedBinOp::TYPED_MUL:
+                        log += " mul";
                         break;
                     default:
                         log += " other";
