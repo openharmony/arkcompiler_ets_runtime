@@ -467,18 +467,19 @@ void TSInlineLowering::LowerToInlineCall(CallGateInfo &info, const std::vector<G
     RemoveRoot();
 }
 
-void TSInlineLowering::InlineFuncCheck(GateRef gate)
+void TSInlineLowering::InlineFuncCheck(const CallGateInfo &info)
 {
+    GateRef gate = info.GetCallGate();
     GateRef callState = acc_.GetState(gate);
     GateRef callDepend = acc_.GetDep(gate);
     ASSERT(acc_.HasFrameState(gate));
     GateRef frameState = acc_.GetFrameState(gate);
     size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
     GateRef inlineFunc =  acc_.GetValueIn(gate, funcIndex);
-    auto type = acc_.GetGateType(inlineFunc);
-    GlobalTSTypeRef funcGt = type.GetGTRef();
+    // Do not load from inlineFunc beacause type in inlineFunc could be modified by others
+    GlobalTSTypeRef funcGt = info.GetFuncGT();
     auto methodOffset = tsManager_->GetFuncMethodOffset(funcGt);
-    GateRef ret = circuit_->NewGate(circuit_->JSInlineTargetTypeCheck(static_cast<size_t>(type.Value())),
+    GateRef ret = circuit_->NewGate(circuit_->JSInlineTargetTypeCheck(info.GetType()),
         MachineType::I1, {callState, callDepend, inlineFunc, builder_.IntPtr(methodOffset), frameState},
         GateType::NJSValue());
     acc_.ReplaceStateIn(gate, ret);
@@ -502,11 +503,11 @@ void TSInlineLowering::InlineAccessorCheck(GateRef gate, GateRef receiver)
 
 void TSInlineLowering::InlineCheck(CallGateInfo &info)
 {
-    GateRef gate = info.GetCallGate();
     if (info.IsNormalCall()) {
-        InlineFuncCheck(info.GetCallGate());
+        InlineFuncCheck(info);
     } else {
         ASSERT(info.IsCallAccessor());
+        GateRef gate = info.GetCallGate();
         GateRef receiver = GetAccessorReceiver(gate);
         InlineAccessorCheck(gate, receiver);
     }
@@ -633,7 +634,7 @@ void TSInlineLowering::CandidateAccessor(GateRef gate, ChunkQueue<CallGateInfo> 
     if (IsAccessor(receiver, constData)) {
         GlobalTSTypeRef gt = GetAccessorFuncGT(receiver, constData);
         if (!gt.IsDefault()) {
-            workList.push(CallGateInfo(gate, kind, gt));
+            workList.push(CallGateInfo(gate, kind, gt, 0));
             lastCallId_ = acc_.GetId(gate);
         }
     }
@@ -645,7 +646,7 @@ void TSInlineLowering::CandidateNormalCall(GateRef gate, ChunkQueue<CallGateInfo
     auto funcType = acc_.GetGateType(acc_.GetValueIn(gate, funcIndex));
     if (tsManager_->IsFunctionTypeKind(funcType)) {
         GlobalTSTypeRef gt = funcType.GetGTRef();
-        workList.push(CallGateInfo(gate, kind, gt));
+        workList.push(CallGateInfo(gate, kind, gt, funcType.Value()));
         lastCallId_ = acc_.GetId(gate);
     }
 }
