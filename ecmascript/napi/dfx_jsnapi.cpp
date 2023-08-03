@@ -52,11 +52,11 @@ using ecmascript::CMap;
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] const std::string &path, [[maybe_unused]] bool isVmMode,
-                                 [[maybe_unused]] bool isPrivate)
+                                 [[maybe_unused]] bool isPrivate, [[maybe_unused]] bool captureNumericValue)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     FileStream stream(path);
-    DumpHeapSnapshot(vm, dumpFormat, &stream, nullptr, isVmMode, isPrivate);
+    DumpHeapSnapshot(vm, dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif
@@ -64,13 +64,15 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] Stream *stream, [[maybe_unused]] Progress *progress,
-                                 [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate)
+                                 [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
+                                 [[maybe_unused]] bool captureNumericValue)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::base::BlockHookScope blockScope;
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
-    heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress, isVmMode, isPrivate);
+    heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress,
+                                  isVmMode, isPrivate, captureNumericValue);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif
@@ -79,7 +81,8 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 [[maybe_unused]] static uint8_t killCount = 0;
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
-                                 [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate)
+                                 [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
+                                 [[maybe_unused]] bool captureNumericValue)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
@@ -112,7 +115,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
         return;
     }
     FileDescriptorStream stream(fd);
-    DumpHeapSnapshot(vm, dumpFormat, &stream, nullptr, isVmMode, isPrivate);
+    DumpHeapSnapshot(vm, dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";

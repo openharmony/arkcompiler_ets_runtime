@@ -41,7 +41,7 @@ public:
     virtual void AllocationEvent(TaggedObject *address, size_t size) = 0;
     virtual void MoveEvent(uintptr_t address, TaggedObject *forwardAddress, size_t size)= 0;
     virtual bool DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress = nullptr,
-                                  bool isVmMode = true, bool isPrivate = false) = 0;
+                                  bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false) = 0;
 
     virtual bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,
                                    bool traceAllocation = false, bool newThread = true) = 0;
