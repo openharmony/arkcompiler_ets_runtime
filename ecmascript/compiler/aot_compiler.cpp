@@ -155,6 +155,7 @@ int Main(const int argc, const char **argv)
         bool compilerLogTime = runtimeOptions.IsEnableCompilerLogTime();
         size_t maxAotMethodSize = runtimeOptions.GetMaxAotMethodSize();
         size_t maxMethodsInModule = runtimeOptions.GetCompilerModuleMethods();
+        bool isEnableArrayBoundsCheckElimination = runtimeOptions.IsEnableArrayBoundsCheckElimination();
         bool isEnableTypeLowering = runtimeOptions.IsEnableTypeLowering();
         bool isEnableEarlyElimination = runtimeOptions.IsEnableEarlyElimination();
         bool isEnableLaterElimination = runtimeOptions.IsEnableLaterElimination();
@@ -166,9 +167,9 @@ int Main(const int argc, const char **argv)
         bool isEnableOptTrackField = runtimeOptions.IsEnableOptTrackField();
         bool isEnableOptLoopPeeling = runtimeOptions.IsEnableOptLoopPeeling();
 
-        PassOptions passOptions(isEnableTypeLowering, isEnableEarlyElimination, isEnableLaterElimination,
-                                isEnableValueNumbering, isEnableTypeInfer, isEnableOptInlining,
-                                isEnableOptPGOType, isEnableOptTrackField, isEnableOptLoopPeeling);
+        PassOptions passOptions(isEnableArrayBoundsCheckElimination, isEnableTypeLowering, isEnableEarlyElimination,
+                                isEnableLaterElimination, isEnableValueNumbering, isEnableTypeInfer,
+                                isEnableOptInlining, isEnableOptPGOType, isEnableOptTrackField, isEnableOptLoopPeeling);
 
         uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
         AOTInitialize(vm);
