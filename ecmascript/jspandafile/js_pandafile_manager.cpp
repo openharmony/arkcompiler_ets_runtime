@@ -76,12 +76,14 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             LOG_ECMA(ERROR) << "resolveBufferCallback is nullptr";
             return nullptr;
         }
-        std::vector<uint8_t> data = resolveBufferCallback(ModulePathHelper::ParseHapPath(filename));
-        if (data.empty()) {
+        uint8_t *data = nullptr;
+        size_t dataSize = 0;
+        bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(filename), &data, &dataSize);
+        if (!getBuffer) {
             LOG_ECMA(ERROR) << "resolveBufferCallback get buffer failed";
             return nullptr;
         }
-        pf = panda_file::OpenPandaFileFromMemory(data.data(), data.size());
+        pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
     } else {
         pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_WRITE);
     }
