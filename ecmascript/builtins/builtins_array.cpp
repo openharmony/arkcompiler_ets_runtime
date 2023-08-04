@@ -1672,6 +1672,10 @@ JSTaggedValue BuiltinsArray::Reduce(EcmaRuntimeCallInfo *argv)
         }
     }
 
+    if (thisObjVal->IsStableJSArray(thread)) {
+        JSStableArray::Reduce(thread, thisObjHandle, callbackFnHandle, accumulator, k, len);
+    }
+
     // 10. Repeat, while k < len
     //   a. Let Pk be ToString(k).
     //   b. Let kPresent be HasProperty(O, Pk).

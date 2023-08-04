@@ -693,4 +693,39 @@ JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo 
     result = elements->Get(k);
     return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
+
+JSTaggedValue JSStableArray::Reduce(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                    JSHandle<JSTaggedValue> callbackFnHandle,
+                                    JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    JSMutableHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    JSTaggedValue callResult = JSTaggedValue::Undefined();
+    while (k < len) {
+        array.Update(thisObjHandle->GetElements());
+        JSTaggedValue kValue(array->Get(k));
+        if (!kValue.IsHole()) {
+            JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
+            const uint32_t argsLength = 4; // 4: «accumulator, kValue, k, O»
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, undefined, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            info->SetCallArg(accumulator.GetTaggedValue(), kValue, JSTaggedValue(k),
+                             thisObjVal.GetTaggedValue());
+            callResult = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (array->GetLength() < len) {
+                len = array->GetLength();
+            }
+            accumulator.Update(callResult);
+        }
+        k++;
+        if (!thisObjVal->IsStableJSArray(thread)) {
+            break;
+        }
+    }
+    return base::BuiltinsBase::GetTaggedDouble(true);
+}
+
 }  // namespace panda::ecmascript
