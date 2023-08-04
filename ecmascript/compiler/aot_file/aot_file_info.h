@@ -150,7 +150,7 @@ public:
         des.SetArkStackMapSize(size);
     }
 
-    size_t GetCodeUnitsNum()
+    size_t GetCodeUnitsNum() const
     {
         return des_.size();
     }

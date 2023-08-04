@@ -515,6 +515,7 @@ public:
     bool IsTreeString() const;
     bool IsStringOrSymbol() const;
     bool IsTaggedArray() const;
+    bool IsDictionary() const;
     bool IsByteArray() const;
     bool IsConstantPool() const;
     bool IsAOTLiteralInfo() const;
