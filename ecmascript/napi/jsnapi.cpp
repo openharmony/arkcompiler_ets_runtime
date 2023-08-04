@@ -690,6 +690,11 @@ bool JSNApi::HasPendingException(const EcmaVM *vm)
     return vm->GetJSThread()->HasPendingException();
 }
 
+bool JSNApi::HasPendingJob(const EcmaVM *vm)
+{
+    return vm->GetJSThread()->GetCurrentEcmaContext()->HasPendingJob();
+}
+
 void JSNApi::EnableUserUncaughtErrorHandler(EcmaVM *vm)
 {
     return vm->GetJSThread()->GetCurrentEcmaContext()->EnableUserUncaughtErrorHandler();
@@ -3681,4 +3686,13 @@ void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
     vm->SetResolveBufferCallback(hostVM->GetResolveBufferCallback());
 }
 
+bool JSNApi::IsProfiling(EcmaVM *vm)
+{
+    return vm->GetProfilerState();
+}
+
+void JSNApi::SetProfilerState(const EcmaVM *vm, bool value)
+{
+    const_cast<EcmaVM*>(vm)->SetProfilerState(value);
+}
 }  // namespace panda

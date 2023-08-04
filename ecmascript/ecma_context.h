@@ -101,6 +101,8 @@ public:
 
     bool Initialize();
 
+    bool HasPendingJob();
+
     bool ExecutePromisePendingJob();
 
     static EcmaContext *ConstCast(const EcmaContext *context)

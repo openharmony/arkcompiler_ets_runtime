@@ -561,6 +561,14 @@ void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
     LOG_NO_TAG(ERROR) << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
 }
 
+bool EcmaContext::HasPendingJob()
+{
+    if (isProcessingPendingJob_) {
+        return true;
+    }
+    return job::MicroJobQueue::HasPendingJob(thread_, GetMicroJobQueue());
+}
+
 bool EcmaContext::ExecutePromisePendingJob()
 {
     if (isProcessingPendingJob_) {

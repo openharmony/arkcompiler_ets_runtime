@@ -446,6 +446,16 @@ public:
         return callDepth_ == 0;
     }
 
+    void SetProfilerState(bool state)
+    {
+        isProfiling_ = state;
+    }
+
+    bool GetProfilerState()
+    {
+        return isProfiling_;
+    }
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -523,6 +533,8 @@ private:
     PGOProfiler *pgoProfiler_ {nullptr};
     // c++ call js
     size_t callDepth_ {0};
+
+    bool isProfiling_ {false};
 
     friend class Snapshot;
     friend class SnapshotProcessor;
