@@ -1088,8 +1088,6 @@ bool JSDeserializer::ReadDouble(double *value)
 JSDeserializer::~JSDeserializer()
 {
     referenceMap_.clear();
-    free(begin_);
-    begin_ = nullptr;
 }
 
 JSHandle<JSTaggedValue> JSDeserializer::Deserialize()
