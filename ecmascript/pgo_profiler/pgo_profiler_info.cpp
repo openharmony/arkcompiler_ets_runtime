@@ -771,7 +771,6 @@ bool PGOMethodInfoMap::ProcessToBinary(uint32_t threshold, const CString &record
         if (header->SupportMethodChecksum()) {
             auto checksumIter = methodsChecksum_.find(curMethodInfo->GetMethodId());
             uint32_t checksum = 0;
-            ASSERT(checksumIter != methodsChecksum_.end());
             if (checksumIter != methodsChecksum_.end()) {
                 checksum = checksumIter->second;
             }

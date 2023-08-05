@@ -124,6 +124,11 @@ public:
         return *recordDetailInfos_;
     }
 
+    std::shared_ptr<PGORecordDetailInfos> GetRecordDetailInfosPtr() const
+    {
+        return recordDetailInfos_;
+    }
+
     PGORecordSimpleInfos &GetRecordSimpleInfos() const
     {
         return *recordSimpleInfos_;
@@ -147,7 +152,7 @@ private:
     uint32_t hotnessThreshold_ {0};
     PGOProfilerHeader *header_ {nullptr};
     PGOPandaFileInfos pandaFileInfos_;
-    std::unique_ptr<PGORecordDetailInfos> recordDetailInfos_;
+    std::shared_ptr<PGORecordDetailInfos> recordDetailInfos_;
     std::unique_ptr<PGORecordSimpleInfos> recordSimpleInfos_;
     MemMap fileMapAddr_;
 };

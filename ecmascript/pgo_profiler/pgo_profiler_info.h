@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_PGO_PROFILER_INFO_H
 #define ECMASCRIPT_PGO_PROFILER_INFO_H
 
+#include <cstdint>
 #include <memory>
 #include <sstream>
 #include <unordered_map>
@@ -326,6 +327,7 @@ public:
     static constexpr int METHOD_COUNT_INDEX = 1;
     static constexpr int METHOD_MODE_INDEX = 2;
     static constexpr int METHOD_NAME_INDEX = 3;
+    static constexpr uint32_t METHOD_MAX_HIT_COUNT = 10000U;
 
     explicit PGOMethodInfo(PGOMethodId id) : id_(id) {}
 
@@ -383,7 +385,7 @@ public:
             LOG_ECMA(ERROR) << "The method id must same for merging";
             return;
         }
-        count_ += info->GetCount();
+        count_ = std::min(count_ + info->GetCount(), METHOD_MAX_HIT_COUNT);
         SetSampleMode(info->GetSampleMode());
     }
 

@@ -24,10 +24,11 @@ namespace {
     constexpr int32_t PGO_SAVING_SIGNAL = 50;
 } // namespace
 
-bool PGOProfilerManager::MergeApFiles(const std::string &inFiles, const std::string &outPath, uint32_t hotnessThreshold)
+bool PGOProfilerManager::MergeApFiles(const std::string &inFiles, const std::string &outPath, uint32_t hotnessThreshold,
+                                      ApGenMode mode)
 {
     arg_list_t pandaFileNames = base::StringHelper::SplitString(inFiles, GetFileDelimiter());
-    PGOProfilerEncoder merger(outPath, hotnessThreshold);
+    PGOProfilerEncoder merger(outPath, hotnessThreshold, mode);
     if (!merger.InitializeData()) {
         LOG_ECMA(ERROR) << "PGO Profiler encoder initialized failed. outPath: " << outPath
                         << " ,hotnessThreshold: " << hotnessThreshold;
@@ -106,7 +107,7 @@ void PGOProfilerManager::RegisterSavingSignal()
         return;
     }
     if (!encoder_->IsInitialized()) {
-        LOG_ECMA(ERROR) << "Can not register pgo saving signal, because encoder is initialized.";
+        LOG_ECMA(DEBUG) << "Can not register pgo saving signal, because encoder is initialized.";
         return;
     }
     signal(PGO_SAVING_SIGNAL, SavingSignalHandler);

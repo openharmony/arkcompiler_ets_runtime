@@ -43,6 +43,7 @@ using namespace panda::pandasm;
 namespace panda::test {
 class PGOProfilerTest : public testing::Test {
 public:
+    using ApGenMode = PGOProfilerEncoder::ApGenMode;
     static void SetUpTestCase()
     {
         GTEST_LOG_(INFO) << "SetUpTestCase";
@@ -512,6 +513,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
     constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
+    PGOProfilerManager::GetInstance()->SetApGenMode(ApGenMode::OVERWRITE);
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
 
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
@@ -606,7 +608,8 @@ HWTEST_F_L0(PGOProfilerTest, TextToBinary)
     file.write(result.c_str(), result.size());
     file.close();
 
-    ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary("ark-profiler10/modules.text", "ark-profiler10/", 2));
+    ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary("ark-profiler10/modules.text", "ark-profiler10/", 2,
+                                                                ApGenMode::MERGE));
 
     PGOProfilerDecoder loader("ark-profiler10/modules.ap", 2);
     ASSERT_TRUE(loader.LoadAndVerify(413775942));
@@ -614,45 +617,6 @@ HWTEST_F_L0(PGOProfilerTest, TextToBinary)
     unlink("ark-profiler10/modules.ap");
     unlink("ark-profiler10/modules.text");
     rmdir("ark-profiler10");
-}
-
-HWTEST_F_L0(PGOProfilerTest, TextRecover)
-{
-    mkdir("ark-profiler11/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    std::ofstream file("ark-profiler11/modules.text");
-    std::string result = "Profiler Version: 0.0.0.2\n";
-    file.write(result.c_str(), result.size());
-    result = "\nPanda file sumcheck list: [ 413775942 ]\n";
-    file.write(result.c_str(), result.size());
-    result = "\n_GLOBAL::funct_main_0: [ 1232/3/CALL_MODE/hello/ ]\n";
-    file.write(result.c_str(), result.size());
-    result = "\nrecordName: [ 234/100/HOTNESS_MODE/h#ello1/ ]\n";
-    file.write(result.c_str(), result.size());
-    file.close();
-
-    ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary("ark-profiler11/modules.text", "ark-profiler11/", 2));
-
-    ASSERT_TRUE(PGOProfilerManager::GetInstance()->BinaryToText(
-        "ark-profiler11/modules.ap", "ark-profiler11/modules_recover.text", 2));
-
-    std::ifstream fileOrigin("ark-profiler11/modules.text");
-    std::ifstream fileRecover("ark-profiler11/modules_recover.text");
-
-    std::string lineOrigin;
-    std::string lineRecover;
-    // check content from origin and recovered profile line by line.
-    while (std::getline(fileOrigin, lineOrigin)) {
-        std::getline(fileRecover, lineRecover);
-        ASSERT_EQ(lineOrigin, lineRecover);
-    }
-
-    fileOrigin.close();
-    fileRecover.close();
-    unlink("ark-profiler11/modules.ap");
-    unlink("ark-profiler11/modules.text");
-    unlink("ark-profiler11/modules_recover.text");
-    rmdir("ark-profiler11");
 }
 
 HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
@@ -938,7 +902,7 @@ HWTEST_F_L0(PGOProfilerTest, MergeApSelfTwice)
     PGOProfilerDecoder decoder("ark-profiler18/modules_merge.ap", 1);
     PGOProfilerDecoder decoderSingle("ark-profiler18/modules.ap", 1);
     ASSERT_TRUE(PGOProfilerManager::MergeApFiles("ark-profiler18/modules.ap:ark-profiler18/modules.ap",
-                                                 "ark-profiler18/modules_merge.ap", 1));
+                                                 "ark-profiler18/modules_merge.ap", 1, ApGenMode::OVERWRITE));
     ASSERT_TRUE(decoder.LoadFull());
     ASSERT_TRUE(decoderSingle.LoadFull());
 

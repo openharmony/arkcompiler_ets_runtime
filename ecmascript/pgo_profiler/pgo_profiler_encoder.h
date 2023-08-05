@@ -20,10 +20,13 @@
 #include "macros.h"
 
 namespace panda::ecmascript {
+class PGOProfilerDecoder;
 class PGOProfilerEncoder {
 public:
-    PGOProfilerEncoder(const std::string &outDir, uint32_t hotnessThreshold)
-        : outDir_(outDir), hotnessThreshold_(hotnessThreshold) {}
+    enum ApGenMode { OVERWRITE, MERGE };
+
+    PGOProfilerEncoder(const std::string &outDir, uint32_t hotnessThreshold, ApGenMode mode)
+        : outDir_(outDir), hotnessThreshold_(hotnessThreshold), mode_(mode) {}
 
     NO_COPY_SEMANTIC(PGOProfilerEncoder);
     NO_MOVE_SEMANTIC(PGOProfilerEncoder);
@@ -46,6 +49,10 @@ public:
                                 const std::string &incoming) const;
     void TerminateSaveTask();
     void PostSaveTask();
+    void SetApGenMode(ApGenMode mode)
+    {
+        mode_ = mode;
+    }
 
     bool PUBLIC_API Save();
 
@@ -53,7 +60,10 @@ public:
 
 private:
     void StartSaveTask(const SaveTask *task);
-    bool SaveProfiler(const SaveTask *task = nullptr);
+    bool InternalSave(const SaveTask *task = nullptr);
+    bool SaveAndRename(const SaveTask *task = nullptr);
+    void MergeWithExistProfile(PGOProfilerEncoder &encoder, PGOProfilerDecoder &decoder,
+                               const SaveTask *task = nullptr);
 
     bool isInitialized_ {false};
     std::string outDir_;
@@ -61,8 +71,9 @@ private:
     std::string realOutPath_;
     PGOProfilerHeader *header_ {nullptr};
     std::unique_ptr<PGOPandaFileInfos> pandaFileInfos_;
-    std::unique_ptr<PGORecordDetailInfos> globalRecordInfos_;
+    std::shared_ptr<PGORecordDetailInfos> globalRecordInfos_;
     os::memory::Mutex mutex_;
+    ApGenMode mode_ {OVERWRITE};
     friend SaveTask;
 };
 
