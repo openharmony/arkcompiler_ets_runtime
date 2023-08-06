@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_PGO_PROFILER_MANAGER_H
 #define ECMASCRIPT_PGO_PROFILER_MANAGER_H
 
+#include <atomic>
+#include <csignal>
 #include <memory>
 
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
@@ -30,6 +32,8 @@ public:
         static PGOProfilerManager instance;
         return &instance;
     }
+
+    static void SavingSignalHandler(int signo);
 
     PGOProfilerManager() = default;
     ~PGOProfilerManager() = default;
@@ -98,6 +102,8 @@ public:
         }
     }
 
+    void RegisterSavingSignal();
+
     void AsynSave()
     {
         if (encoder_) {
@@ -140,10 +146,14 @@ private:
         if (!encoder_) {
             return false;
         }
+        if (!enableSignalSaving_) {
+            RegisterSavingSignal();
+        }
         return encoder_->InitializeData();
     }
 
     std::unique_ptr<PGOProfilerEncoder> encoder_;
+    std::atomic_bool enableSignalSaving_ { false };
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PGO_PROFILER_MANAGER_H

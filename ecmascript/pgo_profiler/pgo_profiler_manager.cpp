@@ -15,9 +15,15 @@
 
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
+#include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/mem/mem.h"
 #include "ecmascript/platform/file.h"
 namespace panda::ecmascript {
+namespace {
+    constexpr int32_t PGO_SAVING_SIGNAL = 50;
+} // namespace
+
 bool PGOProfilerManager::MergeApFiles(const std::string &inFiles, const std::string &outPath, uint32_t hotnessThreshold)
 {
     arg_list_t pandaFileNames = base::StringHelper::SplitString(inFiles, GetFileDelimiter());
@@ -90,5 +96,28 @@ bool PGOProfilerManager::MergeApFiles(uint32_t checksum, PGOProfilerDecoder &mer
         return false;
     }
     return true;
+}
+
+void PGOProfilerManager::RegisterSavingSignal()
+{
+    LOG_ECMA(INFO) << "Register Pgo Saving Signal";
+    if (encoder_ == nullptr) {
+        LOG_ECMA(ERROR) << "Can not register pgo saving signal, because encoder is null.";
+        return;
+    }
+    if (!encoder_->IsInitialized()) {
+        LOG_ECMA(ERROR) << "Can not register pgo saving signal, because encoder is initialized.";
+        return;
+    }
+    signal(PGO_SAVING_SIGNAL, SavingSignalHandler);
+    enableSignalSaving_ = true;
+}
+
+void PGOProfilerManager::SavingSignalHandler(int signo)
+{
+    if (signo != PGO_SAVING_SIGNAL) {
+        return;
+    }
+    PGOProfilerManager::GetInstance()->AsynSave();
 }
 } // namespace panda::ecmascript
