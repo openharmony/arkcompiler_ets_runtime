@@ -2995,11 +2995,9 @@ JSTaggedValue BuiltinsArray::ToSpliced(EcmaRuntimeCallInfo *argv)
         // ReturnIfAbrupt(relativeStart).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         double relativeStart = argStart.GetNumber();
-        /*
-        * 4. If relativeStart = -∞, let k be 0.
-        * 5. Else if relativeStart < 0, let k be max(len + relativeStart, 0).
-        * 6. Else, let k be min(relativeStart, len).
-        */
+        // 4. If relativeStart = -∞, let k be 0.
+        // 5. Else if relativeStart < 0, let k be max(len + relativeStart, 0).
+        // 6. Else, let k be min(relativeStart, len).
         if (relativeStart < 0) {
             double tempStart = relativeStart + len;
             actualStart = tempStart > 0 ? tempStart : 0;
@@ -3008,17 +3006,14 @@ JSTaggedValue BuiltinsArray::ToSpliced(EcmaRuntimeCallInfo *argv)
         }
         actualSkipCount = len - actualStart;
     }
-
-    /*
-    * 7. Let insertCount be the number of elements in items.
-    * 8. If start is not present, then
-    *     a. Let actualSkipCount be 0.
-    * 9. Else if skipCount is not present, then
-    *     a. Let actualSkipCount be len - actualStart.
-    * 10. Else,
-    *     a. Let sc be ? ToIntegerOrInfinity(skipCount).
-    *     b. Let actualSkipCount be the result of clamping sc between 0 and len - actualStart.
-    */
+    // 7. Let insertCount be the number of elements in items.
+    // 8. If start is not present, then
+    //     a. Let actualSkipCount be 0.
+    // 9. Else if skipCount is not present, then
+    //     a. Let actualSkipCount be len - actualStart.
+    // 10. Else,
+    //     a. Let sc be ? ToIntegerOrInfinity(skipCount).
+    //     b. Let actualSkipCount be the result of clamping sc between 0 and len - actualStart.
     if (argc > 1) {
         insertCount = argc - 2;
         JSTaggedNumber argSkipCount = JSTaggedValue::ToInteger(thread, GetCallArg(argv, 1));
@@ -3048,42 +3043,38 @@ JSTaggedValue BuiltinsArray::ToSpliced(EcmaRuntimeCallInfo *argv)
     int64_t i = 0;
     // 15. Let r be actualStart + actualSkipCount.
     int64_t r = actualStart + actualSkipCount;
-    /*
-     * 16. Repeat, while i < actualStart,
-     *     a. Let Pi be ! ToString(𝔽(i)).
-     *     b. Let iValue be ? Get(O, Pi).
-     *     c. Perform ! CreateDataPropertyOrThrow(A, Pi, iValue).
-     *     d. Set i to i + 1.
-     */
+    // 16. Repeat, while i < actualStart,
+    //     a. Let Pi be ! ToString(𝔽(i)).
+    //     b. Let iValue be ? Get(O, Pi).
+    //     c. Perform ! CreateDataPropertyOrThrow(A, Pi, iValue).
+    //     d. Set i to i + 1.
     while (i < actualStart) {
         JSHandle<JSTaggedValue> iValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, i);
         // ReturnIfAbrupt(iValue).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, i, iValue);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         i = i + 1;
     }
-    /*
-    * 17. For each element E of items, do
-    *     a. Let Pi be ! ToString(𝔽(i)).
-    *     b. Perform ! CreateDataPropertyOrThrow(A, Pi, E).
-    *     c. Set i to i + 1.
-    */
+    // 17. For each element E of items, do
+    //     a. Let Pi be ! ToString(𝔽(i)).
+    //     b. Perform ! CreateDataPropertyOrThrow(A, Pi, E).
+    //     c. Set i to i + 1.
     JSMutableHandle<JSTaggedValue> pi(thread, JSTaggedValue::Undefined());
     for (int64_t pos = 2; pos < argc; ++pos) {
         pi.Update(JSTaggedValue(i));
         JSHandle<JSTaggedValue> element = GetCallArg(argv, pos);
         JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, pi, element);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         i = i + 1;
     }
-    /*
-    * 18. Repeat, while i < newLen,
-    *     a. Let Pi be ! ToString(𝔽(i)).
-    *     b. Let from be ! ToString(𝔽(r)).
-    *     c. Let fromValue be ? Get(O, from).
-    *     d. Perform ! CreateDataPropertyOrThrow(A, Pi, fromValue).
-    *     e. Set i to i + 1.
-    *     f. Set r to r + 1.
-    */
+    // 18. Repeat, while i < newLen,
+    //     a. Let Pi be ! ToString(𝔽(i)).
+    //     b. Let from be ! ToString(𝔽(r)).
+    //     c. Let fromValue be ? Get(O, from).
+    //     d. Perform ! CreateDataPropertyOrThrow(A, Pi, fromValue).
+    //     e. Set i to i + 1.
+    //     f. Set r to r + 1.
     JSMutableHandle<JSTaggedValue> from(thread, JSTaggedValue::Undefined());
     while (i < newLen) {
         pi.Update(JSTaggedValue(i));
