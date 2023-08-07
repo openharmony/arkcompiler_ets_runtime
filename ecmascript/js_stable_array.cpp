@@ -703,7 +703,7 @@ JSTaggedValue JSStableArray::With(JSThread *thread, const JSHandle<JSObject> thi
         } else {
             newArray->Set(thread, k, array->Get(k));
         }
-        k = k + 1;
+        ++k;
     }
     return newArrayHandle.GetTaggedValue();
 }
