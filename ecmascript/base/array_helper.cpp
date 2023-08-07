@@ -287,7 +287,7 @@ JSTaggedValue ArrayHelper::SortIndexedProperties(JSThread *thread, const JSHandl
            JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, k);
            items->Set(thread, k, kValue.GetTaggedValue());
        }
-       k = k + 1;
+       ++k;
    }
     JSHandle<JSArray> array(JSArray::CreateArrayFromList(thread, items));
     JSHandle<JSObject> arrayObj = JSHandle<JSObject>::Cast(array);
