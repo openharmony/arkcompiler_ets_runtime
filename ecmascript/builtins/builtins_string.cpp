@@ -927,8 +927,12 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     auto thisLen = EcmaStringAccessor(thisString).GetLength();
     JSHandle<EcmaString> suffixString(thread,
         EcmaStringAccessor::FastSubString(ecmaVm, thisString, tailPos, thisLen - tailPos));
-    JSHandle<EcmaString> tempString(thread, EcmaStringAccessor::Concat(ecmaVm, prefixString, realReplaceStr));
-    return JSTaggedValue(EcmaStringAccessor::Concat(ecmaVm, tempString, suffixString));
+    EcmaString *tempStr = EcmaStringAccessor::Concat(ecmaVm, prefixString, realReplaceStr);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<EcmaString> tempString(thread, tempStr);
+    EcmaString *resultStr = EcmaStringAccessor::Concat(ecmaVm, tempString, suffixString);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return JSTaggedValue(resultStr);
 }
 
 JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)

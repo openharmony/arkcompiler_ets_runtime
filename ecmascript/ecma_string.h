@@ -43,12 +43,19 @@ class LineEcmaString;
 class ConstantString;
 class TreeEcmaString;
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ECMA_STRING_CHECK_LENGTH_AND_TRHOW(vm, length)                                        \
+    if ((length) >= MAX_STRING_LENGTH) {                                                      \
+        THROW_RANGE_ERROR_AND_RETURN((vm)->GetJSThread(), "Invalid string length", nullptr);  \
+    }
+
 class EcmaString : public TaggedObject {
 public:
     CAST_CHECK(EcmaString, IsString);
 
     static constexpr uint32_t STRING_COMPRESSED_BIT = 0x1;
     static constexpr uint32_t STRING_INTERN_BIT = 0x2;
+    static constexpr size_t MAX_STRING_LENGTH = 0x40000000U; // 30 bits for string length, 2 bits for special meaning
 
     static constexpr size_t MIX_LENGTH_OFFSET = TaggedObjectSize();
     // In last bit of mix_length we store if this string is compressed or not.
@@ -130,7 +137,7 @@ private:
 
     void SetLength(uint32_t length, bool compressed = false)
     {
-        ASSERT(length < 0x40000000U);
+        ASSERT(length < MAX_STRING_LENGTH);
         // Use 0u for compressed/utf8 expression
         SetMixLength((length << 2U) | (compressed ? STRING_COMPRESSED : STRING_UNCOMPRESSED));
     }

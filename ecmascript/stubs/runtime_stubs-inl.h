@@ -1466,8 +1466,10 @@ JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTagge
                                            const JSHandle<JSTaggedValue> &right)
 {
     if (left->IsString() && right->IsString()) {
-        return JSTaggedValue(EcmaStringAccessor::Concat(
-            thread->GetEcmaVM(), JSHandle<EcmaString>(left), JSHandle<EcmaString>(right)));
+        EcmaString *resultStr = EcmaStringAccessor::Concat(
+            thread->GetEcmaVM(), JSHandle<EcmaString>(left), JSHandle<EcmaString>(right));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return JSTaggedValue(resultStr);
     }
     JSHandle<JSTaggedValue> primitiveA0(thread, JSTaggedValue::ToPrimitive(thread, left));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1479,7 +1481,9 @@ JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTagge
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSHandle<EcmaString> stringA1 = JSTaggedValue::ToString(thread, primitiveA1);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        return JSTaggedValue(EcmaStringAccessor::Concat(thread->GetEcmaVM(), stringA0, stringA1));
+        EcmaString *resultStr = EcmaStringAccessor::Concat(thread->GetEcmaVM(), stringA0, stringA1);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return JSTaggedValue(resultStr);
     }
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, primitiveA0);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
