@@ -3010,11 +3010,11 @@ JSTaggedValue BuiltinsArray::ToReversed(EcmaRuntimeCallInfo *argv)
 
     // 4. Let k be 0.
     // 5. Repeat, while k < len,
-    //    a. Let from be ! ToString(𝔽(len - k - 1)).
-    //    b. Let Pk be ! ToString(𝔽(k)).
-    //    c. Let fromValue be ? Get(O, from).
-    //    d. Perform ! CreateDataPropertyOrThrow(A, Pk, fromValue).
-    //    e. Set k to k + 1.
+    //     a. Let from be ! ToString(𝔽(len - k - 1)).
+    //     b. Let Pk be ! ToString(𝔽(k)).
+    //     c. Let fromValue be ? Get(O, from).
+    //     d. Perform ! CreateDataPropertyOrThrow(A, Pk, fromValue).
+    //     e. Set k to k + 1.
     JSMutableHandle<JSTaggedValue> fromKey(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> toKey(thread, JSTaggedValue::Undefined());
     int64_t k = 0;
@@ -3025,6 +3025,7 @@ JSTaggedValue BuiltinsArray::ToReversed(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> fromValue = JSArray::FastGetPropertyByValue(thread, thisObjVal, fromKey);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, fromValue);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
     }
     // 6. Return A.
