@@ -23,10 +23,6 @@ function bar(a: number): number {
     return a / 2;
 }
 
-function del(a: number): number {
-    return a - 2;
-}
-
 function mol(): string {
     return "a";
 }
@@ -48,7 +44,7 @@ for (let i = 0; i < 2; i++) {
 }
 
 for (let i = 0; i < 2; i++) {
-    callFoo2(del, i);
+    callFoo2(foo, i);
 }
 
 for (let i = 0; i < 2; i++) {
