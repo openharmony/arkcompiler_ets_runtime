@@ -196,7 +196,17 @@ void LCRLowering::LowerHClassStableArrayCheck(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef hclass = acc_.GetValueIn(gate, 0);
 
-    GateRef check = builder_.IsIsStableElementsByHClass(hclass);
+    GateRef check = Circuit::NullGate();
+    GateRef stableCheck = builder_.IsIsStableElementsByHClass(hclass);
+    ArrayMetaDataAccessor accessor = acc_.GetArrayMetaDataAccessor(gate);
+    ElementsKind kind = accessor.GetElementsKind();
+    if (accessor.IsLoadElement() && !Elements::IsHole(kind)) {
+        GateRef elementsKindCheck = builder_.Equal(builder_.Int32(static_cast<int32_t>(kind)),
+                                                   builder_.GetElementsKindByHClass(hclass));
+        check = builder_.BoolAnd(stableCheck, elementsKindCheck);
+    } else {
+        check = stableCheck;
+    }
     builder_.DeoptCheck(check, frameState, DeoptType::NOTSARRAY);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());

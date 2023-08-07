@@ -250,9 +250,9 @@ public:
     static constexpr uint32_t GATE_TWO_VALUESIN = 2;
     // low level interface
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
-    GateRef StableArrayCheck(GateRef gate);
+    GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef COWArrayCheck(GateRef gate);
-    GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState);
+    GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState, ArrayMetaDataAccessor accessor);
     GateRef ArrayGuardianCheck(GateRef frameState);
     GateRef TypedArrayCheck(GateType type, GateRef gate);
     GateRef LoadTypedArrayLength(GateType type, GateRef gate);
@@ -570,6 +570,7 @@ public:
     inline GateRef IsJsType(GateRef object, JSType type);
     inline GateRef GetObjectType(GateRef hClass);
     inline GateRef IsDictionaryModeByHClass(GateRef hClass);
+    inline GateRef GetElementsKindByHClass(GateRef hClass);
     inline GateRef IsIsStableElementsByHClass(GateRef hClass);
     inline GateRef IsStableElements(GateRef hClass);
     inline GateRef IsStableArguments(GateRef hClass);
