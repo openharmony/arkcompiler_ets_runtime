@@ -2995,12 +2995,10 @@ JSTaggedValue BuiltinsArray::ToSorted(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
 
-    /*
-     * 5. Let SortCompare be a new Abstract Closure with parameters (x, y) that captures comparefn and performs
-     * the following steps when called:
-     *    a. Return ? CompareArrayElements(x, y, comparefn).
-     * 6. Let sortedList be ? SortIndexedProperties(O, len, SortCompare, read-through-holes).
-     */
+    // 5. Let SortCompare be a new Abstract Closure with parameters (x, y) that captures comparefn and performs
+    // the following steps when called:
+    //    a. Return ? CompareArrayElements(x, y, comparefn).
+    // 6. Let sortedList be ? SortIndexedProperties(O, len, SortCompare, read-through-holes).
     JSTaggedValue sortedList = ArrayHelper::SortIndexedProperties(thread, thisObjHandle, len, callbackFnHandle,
                                                                   base::HolesType::READ_THROUGH_HOLES);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -3008,18 +3006,17 @@ JSTaggedValue BuiltinsArray::ToSorted(EcmaRuntimeCallInfo *argv)
 
     //7. Let j be 0.
     int64_t j = 0;
-    /*
-     * 8. Repeat, while j < len,
-     *     a. Perform ! CreateDataPropertyOrThrow(A, ! ToString(𝔽(j)), sortedList[j]).
-     *     b. Set j to j + 1.
-     */
+    // 8. Repeat, while j < len,
+    //     a. Perform ! CreateDataPropertyOrThrow(A, ! ToString(𝔽(j)), sortedList[j]).
+    //     b. Set j to j + 1.
     while (j < len) {
         JSHandle<JSTaggedValue> item = JSArray::FastGetPropertyByValue(thread, sortedArray, j);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, j, item);
-        j = j + 1;
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ++j;
     }
     // 9. Return A.
     return newArrayHandle.GetTaggedValue();
 }
-
 }  // namespace panda::ecmascript::builtins
