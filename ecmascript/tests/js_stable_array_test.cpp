@@ -18,11 +18,12 @@
 
 using namespace panda;
 using namespace panda::ecmascript;
-constexpr uint32_t array_length_4 = 4;
-constexpr int32_t int_value_0 = 0;
-constexpr int32_t int_value_1 = 1;
-constexpr int32_t int_value_2 = 2;
-constexpr int32_t int_value_3 = 3;
+constexpr uint32_t ARRAY_LENGTH_4 = 4;
+constexpr int32_t INT_VALUE_0 = 0;
+constexpr int32_t INT_VALUE_1 = 1;
+constexpr int32_t INT_VALUE_2 = 2;
+constexpr int32_t INT_VALUE_3 = 3;
+
 enum class TypedArrayIndex {
     TYPE_ARRAY_INDEX_0,
     TYPE_ARRAY_INDEX_1,
@@ -427,25 +428,25 @@ HWTEST_F_L0(JSStableArrayTest, At_NUMBER_INDEX)
 HWTEST_F_L0(JSStableArrayTest, ToReversed)
 {
     ObjectFactory *objFactory = thread->GetEcmaVM()->GetFactory();
-    int32_t lengthArr = array_length_4;
+    int32_t lengthArr = ARRAY_LENGTH_4;
     JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
     for (int i = 0; i < lengthArr; i++) {
         handleTagArr->Set(thread, i, JSTaggedValue(i));
     }
     JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
     JSTaggedValue resultArr =
-        JSStableArray::ToReversed(thread, JSHandle<JSObject>::Cast(handleArr), array_length_4);
+        JSStableArray::ToReversed(thread, JSHandle<JSObject>::Cast(handleArr), ARRAY_LENGTH_4);
     JSHandle<JSTaggedValue> destTaggedValue(thread, resultArr);
     JSHandle<JSArray> destArr(destTaggedValue);
     JSHandle<TaggedArray> destTaggedArr(thread, TaggedArray::Cast(destArr->GetElements().GetTaggedObject()));
 
-    EXPECT_EQ(handleTagArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_0)).GetNumber(), int_value_0);
-    EXPECT_EQ(handleTagArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_1)).GetNumber(), int_value_1);
-    EXPECT_EQ(handleTagArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_2)).GetNumber(), int_value_2);
-    EXPECT_EQ(handleTagArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_3)).GetNumber(), int_value_3);
-    EXPECT_EQ(destTaggedArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_0)).GetNumber(), int_value_3);
-    EXPECT_EQ(destTaggedArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_1)).GetNumber(), int_value_2);
-    EXPECT_EQ(destTaggedArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_2)).GetNumber(), int_value_1);
-    EXPECT_EQ(destTaggedArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_3)).GetNumber(), int_value_0);
+    EXPECT_EQ(handleTagArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_0)).GetNumber(), INT_VALUE_0);
+    EXPECT_EQ(handleTagArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_1)).GetNumber(), INT_VALUE_1);
+    EXPECT_EQ(handleTagArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_2)).GetNumber(), INT_VALUE_2);
+    EXPECT_EQ(handleTagArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_3)).GetNumber(), INT_VALUE_3);
+    EXPECT_EQ(destTaggedArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_0)).GetNumber(), INT_VALUE_3);
+    EXPECT_EQ(destTaggedArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_1)).GetNumber(), INT_VALUE_2);
+    EXPECT_EQ(destTaggedArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_2)).GetNumber(), INT_VALUE_1);
+    EXPECT_EQ(destTaggedArr->Get(static_cast<uint32_t>(TypedArrayIndex::TYPE_ARRAY_INDEX_3)).GetNumber(), INT_VALUE_0);
 }
 }  // namespace panda::test
