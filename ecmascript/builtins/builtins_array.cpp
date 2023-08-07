@@ -3031,7 +3031,7 @@ JSTaggedValue BuiltinsArray::With(EcmaRuntimeCallInfo *argv)
         }
         JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, fromKey, fromValue);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        k = k + 1;
+        ++k;
     }
     // 10. Return A.
     return newArrayHandle.GetTaggedValue();
