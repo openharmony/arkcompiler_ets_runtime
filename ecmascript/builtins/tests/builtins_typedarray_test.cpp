@@ -44,8 +44,8 @@ namespace panda::test {
 using Array = ecmascript::builtins::BuiltinsArray;
 using TypedArray = ecmascript::builtins::BuiltinsTypedArray;
 using TypedArrayHelper = ecmascript::base::TypedArrayHelper;
-constexpr uint32_t ecma_runtime_call_info_4 = 4;
-constexpr uint32_t ecma_runtime_call_info_6 = 6;
+constexpr uint32_t ECMA_RUNTIME_CALL_INFO_4 = 4;
+constexpr uint32_t ECMA_RUNTIME_CALL_INFO_6 = 6;
 
 enum class TypeArrayIndex {
     TYPED_ARRAY_INDEX_0,
@@ -377,7 +377,7 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, ToReversed)
     [[maybe_unused]] JSHandle<JSTaggedValue> obj =
         JSHandle<JSTaggedValue>(thread, CreateTypedArrayFromList(thread, array));
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
-                                                                      ecma_runtime_call_info_4);
+                                                                      ECMA_RUNTIME_CALL_INFO_4);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
 
@@ -387,7 +387,7 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, ToReversed)
 
     auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread,
                                                                       JSTaggedValue::Undefined(),
-                                                                      ecma_runtime_call_info_6);
+                                                                      ECMA_RUNTIME_CALL_INFO_6);
     ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo2->SetThis(obj.GetTaggedValue());
     ecmaRuntimeCallInfo2->SetCallArg(static_cast<uint32_t>(TypeArrayIndex::TYPED_ARRAY_INDEX_0),
@@ -399,7 +399,7 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, ToReversed)
 
     auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread,
                                                                       JSTaggedValue::Undefined(),
-                                                                      ecma_runtime_call_info_6);
+                                                                      ECMA_RUNTIME_CALL_INFO_6);
     ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo3->SetThis(obj.GetTaggedValue());
     ecmaRuntimeCallInfo3->SetCallArg(static_cast<uint32_t>(TypeArrayIndex::TYPED_ARRAY_INDEX_0),
@@ -411,7 +411,7 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, ToReversed)
 
     auto ecmaRuntimeCallInfo4 = TestHelper::CreateEcmaRuntimeCallInfo(thread,
                                                                       JSTaggedValue::Undefined(),
-                                                                      ecma_runtime_call_info_6);
+                                                                      ECMA_RUNTIME_CALL_INFO_6);
     ecmaRuntimeCallInfo4->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo4->SetThis(result);
     ecmaRuntimeCallInfo4->SetCallArg(static_cast<uint32_t>(TypeArrayIndex::TYPED_ARRAY_INDEX_0),
@@ -424,7 +424,7 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, ToReversed)
 
     auto ecmaRuntimeCallInfo5 = TestHelper::CreateEcmaRuntimeCallInfo(thread,
                                                                       JSTaggedValue::Undefined(),
-                                                                      ecma_runtime_call_info_6);
+                                                                      ECMA_RUNTIME_CALL_INFO_6);
     ecmaRuntimeCallInfo5->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo5->SetThis(result);
     ecmaRuntimeCallInfo5->SetCallArg(static_cast<uint32_t>(TypeArrayIndex::TYPED_ARRAY_INDEX_0),
