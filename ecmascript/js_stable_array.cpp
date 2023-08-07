@@ -706,18 +706,18 @@ JSTaggedValue JSStableArray::ToSpliced(JSThread *thread, JSHandle<JSObject> &thi
     while (i < actualStart) {
         JSTaggedValue value = thisArray->Get(i);
         newArray->Set(thread, i, value);
-        i = i + 1;
+        ++i;
     }
     for (int64_t pos = 2; pos < argc; ++pos) {
         JSHandle<JSTaggedValue> element = base::BuiltinsBase::GetCallArg(argv, pos);
         newArray->Set(thread, i, element.GetTaggedValue());
-        i = i + 1;
+        ++i;
     }
     while (i < newLen) {
         JSTaggedValue fromValue = thisArray->Get(r);
         newArray->Set(thread, i, fromValue);
-        i = i + 1;
-        r = r + 1;
+        ++i;
+        ++r;
     }
     return newArrayHandle.GetTaggedValue();
 }
