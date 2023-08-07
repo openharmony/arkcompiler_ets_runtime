@@ -1672,14 +1672,13 @@ JSTaggedValue BuiltinsTypedArray::ToReversed(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 5. Let k be 0.
     uint32_t k = 0;
-    /*
-     * 6. Repeat, while k < length,
-     *  a. Let from be ! ToString(𝔽(length - k - 1)).
-     *  b. Let Pk be ! ToString(𝔽(k)).
-     *  c. Let fromValue be ! Get(O, from).
-     *  d. Perform ! Set(A, Pk, fromValue, true).
-     *  e. Set k to k + 1.
-    */
+
+    // 6. Repeat, while k < length,
+    //     a. Let from be ! ToString(𝔽(length - k - 1)).
+    //     b. Let Pk be ! ToString(𝔽(k)).
+    //     c. Let fromValue be ! Get(O, from).
+    //     d. Perform ! Set(A, Pk, fromValue, true).
+    //     e. Set k to k + 1.
     while (k < len) {
         uint32_t from = len - k - 1;
         JSHandle<JSTaggedValue> fromValue = JSTypedArray::GetProperty(thread, thisHandle, from).GetValue();
