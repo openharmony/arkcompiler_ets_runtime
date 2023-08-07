@@ -3054,7 +3054,7 @@ JSTaggedValue BuiltinsArray::ToSpliced(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, i, iValue);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        i = i + 1;
+        ++i;
     }
     // 17. For each element E of items, do
     //     a. Let Pi be ! ToString(𝔽(i)).
@@ -3066,7 +3066,7 @@ JSTaggedValue BuiltinsArray::ToSpliced(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> element = GetCallArg(argv, pos);
         JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, pi, element);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        i = i + 1;
+        ++i;
     }
     // 18. Repeat, while i < newLen,
     //     a. Let Pi be ! ToString(𝔽(i)).
@@ -3083,8 +3083,8 @@ JSTaggedValue BuiltinsArray::ToSpliced(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, pi, fromValue);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        i = i + 1;
-        r = r + 1;
+        ++i;
+        ++r;
     }
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
     JSHandle<JSTaggedValue> newLenHandle(thread, JSTaggedValue(newLen));
