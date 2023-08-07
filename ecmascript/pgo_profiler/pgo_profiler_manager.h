@@ -27,6 +27,7 @@
 namespace panda::ecmascript {
 class PGOProfilerManager {
 public:
+    using ApGenMode = PGOProfilerEncoder::ApGenMode;
     static PGOProfilerManager *GetInstance()
     {
         static PGOProfilerManager instance;
@@ -43,7 +44,8 @@ public:
 
     void Initialize(const std::string &outDir, uint32_t hotnessThreshold)
     {
-        encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold);
+        // For FA jsvm, merge with existed output file
+        encoder_ = std::make_unique<PGOProfilerEncoder>(outDir, hotnessThreshold, ApGenMode::MERGE);
     }
 
     void Destroy()
@@ -94,6 +96,13 @@ public:
         }
     }
 
+    void SetApGenMode(ApGenMode mode)
+    {
+        if (encoder_) {
+            encoder_->SetApGenMode(mode);
+        }
+    }
+
     void Merge(PGOProfiler *profiler)
     {
         if (encoder_ && profiler->isEnable_) {
@@ -111,9 +120,10 @@ public:
         }
     }
 
-    bool PUBLIC_API TextToBinary(const std::string &inPath, const std::string &outPath, uint32_t hotnessThreshold)
+    bool PUBLIC_API TextToBinary(const std::string &inPath, const std::string &outPath, uint32_t hotnessThreshold,
+                                 ApGenMode mode)
     {
-        PGOProfilerEncoder encoder(outPath, hotnessThreshold);
+        PGOProfilerEncoder encoder(outPath, hotnessThreshold, mode);
         if (!encoder.InitializeData()) {
             LOG_ECMA(ERROR) << "PGO Profiler encoder initialized failed";
             return false;
@@ -137,7 +147,8 @@ public:
         return ret;
     }
 
-    static bool MergeApFiles(const std::string &inFiles, const std::string &outPath, uint32_t hotnessThreshold);
+    static bool MergeApFiles(const std::string &inFiles, const std::string &outPath, uint32_t hotnessThreshold,
+                             ApGenMode mode);
     static bool MergeApFiles(uint32_t checksum, PGOProfilerDecoder &merger);
 
 private:
