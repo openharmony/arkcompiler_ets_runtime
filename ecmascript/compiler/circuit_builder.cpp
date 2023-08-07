@@ -127,6 +127,11 @@ GateRef CircuitBuilder::DependRelay(GateRef state, GateRef depend)
     return circuit_->NewGate(circuit_->DependRelay(), { state, depend });
 }
 
+GateRef CircuitBuilder::ReadSp()
+{
+    return circuit_->NewGate(circuit_->ReadSp(), MachineType::I64, GateType::NJSValue());
+}
+
 GateRef CircuitBuilder::Arguments(size_t index)
 {
     auto argListOfCircuit = circuit_->GetArgRoot();
