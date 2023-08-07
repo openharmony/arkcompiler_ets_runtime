@@ -1197,7 +1197,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
     JSHandle<JSHClass> hclass(thread, obj->GetJSHClass());
     JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto);
     JSHClass::NotifyHclassChanged(thread, hclass, newClass);
-    obj->SetClass(newClass);
+    obj->SynchronizedSetClass(*newClass);
     thread->NotifyStableArrayElementsGuardians(obj);
     return true;
 }
@@ -1250,7 +1250,7 @@ bool JSObject::PreventExtensions(JSThread *thread, const JSHandle<JSObject> &obj
     if (obj->IsExtensible()) {
         JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
         JSHandle<JSHClass> newHclass = JSHClass::TransitionExtension(thread, jshclass);
-        obj->SetClass(newHclass);
+        obj->SynchronizedSetClass(*newHclass);
     }
 
     return true;

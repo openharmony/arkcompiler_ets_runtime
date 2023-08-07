@@ -2285,7 +2285,7 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
         FunctionKind kind = function->GetCallTarget()->GetFunctionKind();
         // instead of hclass by non_optimized hclass when method ClearAOTFlags
         JSHandle<JSHClass> newHClass = factory->GetNonOptimizedHclass(hclass, kind);
-        function->SetClass(newHClass);
+        function->SynchronizedSetClass(*newHClass);
     }
     context->SetMethod(thread, function.GetTaggedValue());
     context->SetThis(thread, frameHandler.GetThis());

@@ -534,7 +534,7 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
             JSHandle<JSHClass> oldHclass(thread_, jsFunc->GetClass());
             // instead of hclass by non_optimized hclass when method ClearAOTFlags
             JSHandle<JSHClass> newHClass = factory->GetNonOptimizedHclass(oldHclass, kind);
-            jsFunc->SetClass(newHClass);
+            jsFunc->SynchronizedSetClass(*newHClass);
         }
     }
 }
