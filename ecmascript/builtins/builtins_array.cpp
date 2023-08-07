@@ -2991,11 +2991,9 @@ JSTaggedValue BuiltinsArray::With(EcmaRuntimeCallInfo *argv)
     int64_t relativeIndex = index.GetNumber();
     int64_t actualIndex = 0;
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 1);
-    /*
-     * 4. If relativeIndex ≥ 0, let actualIndex be relativeIndex.
-     * 5. Else, let actualIndex be len + relativeIndex.
-     * 6. If actualIndex ≥ len or actualIndex < 0, throw a RangeError exception.
-     */
+    // 4. If relativeIndex ≥ 0, let actualIndex be relativeIndex.
+    // 5. Else, let actualIndex be len + relativeIndex.
+    // 6. If actualIndex ≥ len or actualIndex < 0, throw a RangeError exception.
     if (relativeIndex >= 0) {
         actualIndex = relativeIndex;
     } else {
@@ -3015,14 +3013,12 @@ JSTaggedValue BuiltinsArray::With(EcmaRuntimeCallInfo *argv)
     }
     // 8. Let k be 0.
     int64_t k = 0;
-    /*
-     * 9. Repeat, while k < len,
-     *     a. Let Pk be ! ToString(𝔽(k)).
-     *     b. If k is actualIndex, let fromValue be value.
-     *     c. Else, let fromValue be ? Get(O, Pk).
-     *     d. Perform ! CreateDataPropertyOrThrow(A, Pk, fromValue).
-     *     e. Set k to k + 1.
-     */
+    // 9. Repeat, while k < len,
+    //     a. Let Pk be ! ToString(𝔽(k)).
+    //     b. If k is actualIndex, let fromValue be value.
+    //     c. Else, let fromValue be ? Get(O, Pk).
+    //     d. Perform ! CreateDataPropertyOrThrow(A, Pk, fromValue).
+    //     e. Set k to k + 1.
     JSMutableHandle<JSTaggedValue> fromKey(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> fromValue;
     while (k < len) {

@@ -35,13 +35,13 @@
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
 using namespace panda::ecmascript::base;
-constexpr int32_t int_value_0 = 0;
-constexpr int32_t int_value_1 = 1;
-constexpr int32_t int_value_2 = 2;
-constexpr int32_t int_value_3 = 3;
-constexpr uint32_t runtime_call_info_para_0 = 0;
-constexpr uint32_t runtime_call_info_para_1 = 1;
-constexpr uint32_t runtime_call_info_para_num_8 = 8;
+constexpr int32_t INT_VALUE_0 = 0;
+constexpr int32_t INT_VALUE_1 = 1;
+constexpr int32_t INT_VALUE_2 = 2;
+constexpr int32_t INT_VALUE_3 = 3;
+constexpr uint32_t RUNTIME_CALL_INFO_PARA_0 = 0;
+constexpr uint32_t RUNTIME_CALL_INFO_PARA_1 = 1;
+constexpr uint32_t RUNTIME_CALL_INFO_PARA_NUM_8 = 8;
 
 enum class ArrayIndex {
     ARRAY_INDEX_0,
@@ -1725,29 +1725,29 @@ HWTEST_F_L0(BuiltinsArrayTest, With)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSArray *arr =
-        JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(int_value_0)).GetTaggedValue().GetTaggedObject());
+        JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_0)).GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj),
-                                   lengthKeyHandle).GetValue()->GetInt(), int_value_0);
+                                   lengthKeyHandle).GetValue()->GetInt(), INT_VALUE_0);
 
     JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(static_cast<uint32_t>(ArrayIndex::ARRAY_INDEX_0)));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(int_value_0)), true, true, true);
+    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_0)), true, true, true);
     JSArray::DefineOwnProperty(thread, obj, key0, desc0);
     JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(static_cast<uint32_t>(ArrayIndex::ARRAY_INDEX_1)));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(int_value_1)), true, true, true);
+    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_1)), true, true, true);
     JSArray::DefineOwnProperty(thread, obj, key1, desc1);
     JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(static_cast<uint32_t>(ArrayIndex::ARRAY_INDEX_2)));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(int_value_2)), true, true, true);
+    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_2)), true, true, true);
     JSArray::DefineOwnProperty(thread, obj, key2, desc2);
 
     auto ecmaRuntimeCallInfo1 =
-        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), runtime_call_info_para_num_8);
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), RUNTIME_CALL_INFO_PARA_NUM_8);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
-    ecmaRuntimeCallInfo1->SetCallArg(runtime_call_info_para_0,
+    ecmaRuntimeCallInfo1->SetCallArg(RUNTIME_CALL_INFO_PARA_0,
         JSTaggedValue(static_cast<uint32_t>((ArrayIndex::ARRAY_INDEX_1))));
-    ecmaRuntimeCallInfo1->SetCallArg(runtime_call_info_para_1, JSTaggedValue(int_value_3));
+    ecmaRuntimeCallInfo1->SetCallArg(RUNTIME_CALL_INFO_PARA_1, JSTaggedValue(INT_VALUE_3));
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     JSTaggedValue result = Array::With(ecmaRuntimeCallInfo1);
@@ -1756,8 +1756,8 @@ HWTEST_F_L0(BuiltinsArrayTest, With)
     EXPECT_TRUE(result.IsECMAObject());
     JSHandle<JSTaggedValue> resultArr =
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result.GetRawData())));
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key0).GetValue()->GetInt(), int_value_0);
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key1).GetValue()->GetInt(), int_value_3);
-    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key2).GetValue()->GetInt(), int_value_2);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key0).GetValue()->GetInt(), INT_VALUE_0);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key1).GetValue()->GetInt(), INT_VALUE_3);
+    EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key2).GetValue()->GetInt(), INT_VALUE_2);
 }
 }  // namespace panda::test
