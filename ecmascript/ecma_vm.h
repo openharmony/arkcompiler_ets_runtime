@@ -58,6 +58,7 @@ class SnapshotProcessor;
 class PGOProfiler;
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 class HeapProfilerInterface;
+class HeapProfiler;
 #endif
 namespace job {
 class MicroJobQueue;
@@ -197,10 +198,6 @@ public:
         return heap_;
     }
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER) const;
-
-    void StartHeapTracking(HeapTracker *tracker);
-
-    void StopHeapTracking();
 
     NativeAreaAllocator *GetNativeAreaAllocator() const
     {
@@ -348,7 +345,10 @@ public:
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     void DeleteHeapProfile();
+    HeapProfilerInterface *GetHeapProfile();
     HeapProfilerInterface *GetOrNewHeapProfile();
+    void StartHeapTracking();
+    void StopHeapTracking();
 #endif
 
     bool EnableReportModuleResolvingFailure() const

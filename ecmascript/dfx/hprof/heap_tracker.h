@@ -83,6 +83,11 @@ public:
         sample_.Stop();
     }
 
+    HeapSnapshot* GetHeapSnapshot() const
+    {
+        return snapshot_;
+    }
+
     void AllocationEvent(TaggedObject *address, size_t size);
     void MoveEvent(uintptr_t address, TaggedObject *forwardAddress, size_t size);
 

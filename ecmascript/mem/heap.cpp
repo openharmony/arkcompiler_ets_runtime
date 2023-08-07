@@ -37,7 +37,10 @@
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_call_id.h"
-
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
+#include "ecmascript/dfx/hprof/heap_profiler_interface.h"
+#include "ecmascript/dfx/hprof/heap_profiler.h"
+#endif
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -574,6 +577,29 @@ void Heap::AdjustOldSpaceLimit()
     globalSpaceNativeLimit_ = globalSpaceAllocLimit_;
     OPTIONAL_LOG(ecmaVm_, INFO) << "AdjustOldSpaceLimit oldSpaceAllocLimit_: " << oldSpaceAllocLimit
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_;
+}
+
+void Heap::OnAllocateEvent([[maybe_unused]] TaggedObject* address, [[maybe_unused]] size_t size)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
+    if (profiler != nullptr) {
+        BlockHookScope blockScope;
+        profiler->AllocationEvent(address, size);
+    }
+#endif
+}
+
+void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
+                       [[maybe_unused]] size_t size)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
+    if (profiler != nullptr) {
+        BlockHookScope blockScope;
+        profiler->MoveEvent(address, forwardAddress, size);
+    }
+#endif
 }
 
 void Heap::AddToKeptObjects(JSHandle<JSTaggedValue> value) const

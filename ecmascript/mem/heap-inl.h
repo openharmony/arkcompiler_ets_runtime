@@ -302,27 +302,6 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
     return object;
 }
 
-void Heap::OnAllocateEvent([[maybe_unused]] TaggedObject* address, [[maybe_unused]] size_t size)
-{
-#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
-    if (tracker_ != nullptr) {
-        BlockHookScope blockScope;
-        tracker_->AllocationEvent(address, size);
-    }
-#endif
-}
-
-void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
-    [[maybe_unused]] size_t size)
-{
-#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
-    if (tracker_ != nullptr) {
-        BlockHookScope blockScope;
-        tracker_->MoveEvent(address, forwardAddress, size);
-    }
-#endif
-}
-
 void Heap::SwapNewSpace()
 {
     activeSemiSpace_->Stop();

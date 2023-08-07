@@ -55,6 +55,7 @@ public:
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, Stream *stream, Progress *progress = nullptr,
                                  bool isVmMode = true, bool isPrivate = false);
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false);
+    static void DestroyProfiler(const EcmaVM *vm);
 
     static bool BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
     static bool BuildJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr);

@@ -22,6 +22,7 @@
 
 namespace panda::ecmascript {
 class EcmaVM;
+class TaggedObject;
 class Progress;
 class Stream;
 struct SamplingInfo;
@@ -36,6 +37,9 @@ public:
     HeapProfilerInterface() = default;
     virtual ~HeapProfilerInterface() = default;
 
+    virtual size_t GetIdCount() = 0;
+    virtual void AllocationEvent(TaggedObject *address, size_t size) = 0;
+    virtual void MoveEvent(uintptr_t address, TaggedObject *forwardAddress, size_t size)= 0;
     virtual bool DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress = nullptr,
                                   bool isVmMode = true, bool isPrivate = false) = 0;
 
