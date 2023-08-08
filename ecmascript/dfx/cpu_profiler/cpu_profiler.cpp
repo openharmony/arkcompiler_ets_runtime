@@ -77,7 +77,7 @@ void CpuProfiler::StartCpuProfilerForInfo()
     vm_->GetJSThread()->SetIsProfiling(true);
     JSPandaFileManager *pandaFileManager = JSPandaFileManager::GetInstance();
     pandaFileManager->EnumerateJSPandaFiles([&](const JSPandaFile *file) -> bool {
-        pandaFileManager->GetJSPtExtractorAndExtract(file);
+        pandaFileManager->CpuProfilerGetJSPtExtractor(file);
         return true;
     });
 
@@ -137,7 +137,7 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
     vm_->GetJSThread()->SetIsProfiling(true);
     JSPandaFileManager *pandaFileManager = JSPandaFileManager::GetInstance();
     pandaFileManager->EnumerateJSPandaFiles([&](const JSPandaFile *file) -> bool {
-        pandaFileManager->GetJSPtExtractorAndExtract(file);
+        pandaFileManager->CpuProfilerGetJSPtExtractor(file);
         return true;
     });
 

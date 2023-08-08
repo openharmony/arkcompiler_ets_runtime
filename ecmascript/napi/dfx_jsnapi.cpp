@@ -340,9 +340,11 @@ bool DFXJSNApi::CpuProfilerSamplingAnyTime([[maybe_unused]] const EcmaVM *vm)
         } else {
             LOG_ECMA(INFO) << "Stop CpuProfiler Any Time Worker Thread, killCount = " << killCount;
             const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
-                if (workerVm->GetJSThread()->GetIsProfiling()) {
+                auto *thread = workerVm->GetAssociatedJSThread();
+                if (thread->GetIsProfiling()) {
                     DFXJSNApi::StopCpuProfilerForFile(workerVm);
                 }
+                thread->SetNeedProfiling(false);
             });
         }
     }
