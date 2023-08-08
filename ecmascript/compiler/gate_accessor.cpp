@@ -105,20 +105,21 @@ size_t GateAccessor::GetIndex(GateRef gate) const
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }
 
-size_t GateAccessor::GetArraySize(GateRef gate) const
+uint32_t GateAccessor::GetArraySize(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY ||
-           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetOneParameterMetaData()->GetValue();
+    auto array = gatePtr->GetOneParameterMetaData()->GetValue();
+    return ArrayMetaDataAccessor(array).GetArrayLength();
 }
 
-void GateAccessor::SetArraySize(GateRef gate, size_t size)
+void GateAccessor::SetArraySize(GateRef gate, uint32_t size)
 {
-    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY ||
-           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    const_cast<OneParameterMetaData *>(gatePtr->GetOneParameterMetaData())->SetValue(size);
+    ArrayMetaDataAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    accessor.SetArrayLength(size);
+    const_cast<OneParameterMetaData *>(gatePtr->GetOneParameterMetaData())->SetValue(accessor.ToValue());
 }
 
 TypedUnaryAccessor GateAccessor::GetTypedUnAccessor(GateRef gate) const
@@ -138,7 +139,9 @@ TypedJumpAccessor GateAccessor::GetTypedJumpAccessor(GateRef gate) const
 ArrayMetaDataAccessor GateAccessor::GetArrayMetaDataAccessor(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::STABLE_ARRAY_CHECK ||
-           GetOpCode(gate) == OpCode::HCLASS_STABLE_ARRAY_CHECK);
+           GetOpCode(gate) == OpCode::HCLASS_STABLE_ARRAY_CHECK ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return ArrayMetaDataAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }

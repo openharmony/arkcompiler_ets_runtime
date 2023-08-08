@@ -1539,26 +1539,28 @@ GateRef CircuitBuilder::ComputeTaggedArraySize(GateRef length)
         PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), length));
 }
 
-GateRef CircuitBuilder::CreateArray(size_t arraySize)
+GateRef CircuitBuilder::CreateArray(ElementsKind kind, uint32_t arraySize)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArray(arraySize), MachineType::I64,
+    ArrayMetaDataAccessor accessor(kind, ArrayMetaDataAccessor::Mode::CREATE, arraySize);
+    GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArray(accessor.ToValue()), MachineType::I64,
                                             { currentControl, currentDepend }, GateType::TaggedValue());
     currentLabel->SetControl(newGate);
     currentLabel->SetDepend(newGate);
     return newGate;
 }
 
-GateRef CircuitBuilder::CreateArrayWithBuffer(size_t arraySize, GateRef constPoolIndex,
-                                              GateRef elementIndex)
+GateRef CircuitBuilder::CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAccessor::Mode mode,
+                                              GateRef constPoolIndex, GateRef elementIndex)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArrayWithBuffer(arraySize),
+    ArrayMetaDataAccessor accessor(kind, mode);
+    GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArrayWithBuffer(accessor.ToValue()),
                                             MachineType::I64,
                                             { currentControl, currentDepend, constPoolIndex,
                                               elementIndex, frameState },

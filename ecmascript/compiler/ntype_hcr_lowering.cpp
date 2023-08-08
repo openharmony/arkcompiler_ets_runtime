@@ -52,6 +52,10 @@ void NTypeHCRLowering::Lower(GateRef gate)
         case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
             LowerNTypedCreateEmptyArray(gate);
             break;
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
+            LowerNTypedCreateArrayWithBuffer(gate);
+            break;
         case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
         case EcmaOpcode::STOWNBYINDEX_IMM16_V8_IMM16:
         case EcmaOpcode::WIDE_STOWNBYINDEX_PREF_V8_IMM32:
@@ -138,7 +142,12 @@ void NTypeHCRLowering::LowerNTypedCreateEmptyArray(GateRef gate)
     // in the future, the type of the elements in the array will be obtained through pgo,
     // and the type will be used to determine whether to create a typed-array.
     AddProfiling(gate);
-    GateRef array = builder_.CreateArray(0);
+    auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+    uint64_t bcAbsoluteOffset = GetBcAbsoluteOffset(gate);
+    ElementsKind kind = acc_.TryGetElementsKind(gate);
+    auto hclassIdx = thread->GetArrayHClassIndexMap().at(kind);
+    tsManager_->AddArrayTSConstantIndex(bcAbsoluteOffset, JSTaggedValue(static_cast<int64_t>(hclassIdx)));
+    GateRef array = builder_.CreateArray(kind, 0);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
@@ -148,19 +157,21 @@ void NTypeHCRLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef index = acc_.GetValueIn(gate, 0);
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+    uint64_t bcAbsoluteOffset = GetBcAbsoluteOffset(gate);
     uint32_t cpIdx = static_cast<uint32_t>(acc_.GetConstantValue(index));
     JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
     JSTaggedValue arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
         thread, constpoolHandle.GetTaggedValue(), cpIdx, recordName_);
     JSHandle<JSArray> arrayHandle(thread, arr);
-    JSHandle<JSHClass> oldHClass(thread, arrayHandle->GetClass());
-    JSHandle<JSHClass> hclass = JSHClass::Clone(thread, oldHClass);
 
+    ElementsKind kind = acc_.TryGetElementsKind(gate);
+    auto hclassIdx = thread->GetArrayHClassIndexMap().at(kind);
     GateType gateType = acc_.GetGateType(gate);
     panda_file::File::EntityId id = ConstantPool::GetIdFromCache(constpoolHandle.GetTaggedValue(), cpIdx);
-    JSHandle<TaggedArray> elements(thread, arrayHandle->GetElements());
-    tsManager_->AddArrayTSHClass(id, hclass);
-    tsManager_->AddArrayTSElements(id, elements);
+    tsManager_->AddArrayTSConstantIndex(bcAbsoluteOffset, JSTaggedValue(static_cast<int64_t>(hclassIdx)));
+    tsManager_->AddArrayTSHClass(id, arrayHandle->GetClass());
+    tsManager_->AddArrayTSElements(id, arrayHandle->GetElements());
+    tsManager_->AddArrayTSElementsKind(id, JSTaggedValue(static_cast<int64_t>(kind)));
     gateType = tsManager_->TryNarrowUnionType(gateType);
 
     int hclassIndex = -1;
@@ -175,7 +186,7 @@ void NTypeHCRLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
 
     AddProfiling(gate);
     GateRef elementIndexGate = builder_.IntPtr(elementIndex);
-    GateRef array = builder_.CreateArrayWithBuffer(0, index, elementIndexGate);
+    GateRef array = builder_.CreateArrayWithBuffer(kind, ArrayMetaDataAccessor::Mode::CREATE, index, elementIndexGate);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
@@ -193,8 +204,13 @@ void NTypeHCRLowering::LowerNTypedStownByIndex(GateRef gate)
 
     AddProfiling(gate);
     uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
-    uint32_t arraySize = acc_.GetArraySize(receiver);
-    acc_.SetArraySize(receiver, std::max(arraySize, indexValue + 1));
+    if (acc_.GetOpCode(receiver) == OpCode::CREATE_ARRAY) {
+        uint32_t arraySize = acc_.GetArraySize(receiver);
+        if (indexValue > arraySize) {
+            acc_.TrySetElementsKind(receiver, ElementsKind::HOLE);
+        }
+        acc_.SetArraySize(receiver, std::max(arraySize, indexValue + 1));
+    }
     index = builder_.Int32(indexValue);
     builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, index, value);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
@@ -234,6 +250,15 @@ void NTypeHCRLowering::LowerNTypedStOwnByName(GateRef gate)
     builder_.StoreProperty(receiver, pfrGate, value);
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+}
+
+uint64_t NTypeHCRLowering::GetBcAbsoluteOffset(GateRef gate) const
+{
+    uint64_t pcOffset = acc_.TryGetPcOffset(gate);
+    uint64_t pfOffset = reinterpret_cast<uint64_t>(jsPandaFile_->GetHeader());
+    uint64_t methodOffset = reinterpret_cast<uint64_t>(methodLiteral_->GetBytecodeArray());
+    uint64_t bcAbsoluteOffset = methodOffset - pfOffset + pcOffset;
+    return bcAbsoluteOffset;
 }
 
 void NTypeHCRLowering::AddProfiling(GateRef gate)

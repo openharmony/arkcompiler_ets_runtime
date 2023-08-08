@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/elements.h"
 #include "ecmascript/js_hclass-inl.h"
 
 #include <algorithm>

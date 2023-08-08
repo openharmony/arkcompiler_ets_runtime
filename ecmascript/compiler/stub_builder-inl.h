@@ -2444,5 +2444,47 @@ inline GateRef StubBuilder::LoadPfHeaderFromConstPool(GateRef jsFunc)
     auto pfHeader = Load(VariableType::NATIVE_POINTER(), pfAddr, Int32(0));
     return pfHeader;
 }
+
+inline GateRef StubBuilder::LoadHCIndexFromConstPool(GateRef jsFunc, GateRef traceId)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+
+    GateRef method = Load(VariableType::JS_ANY(), jsFunc, IntPtr(JSFunctionBase::METHOD_OFFSET));
+    GateRef constPool = Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
+    auto length = GetLengthOfTaggedArray(constPool);
+    // 1: constantIndexInfo at the end of the constpool
+    auto index = Int32Sub(length, Int32(1));
+    auto constantIndexInfo = GetValueFromTaggedArray(constPool, index);
+    auto indexInfoLength = GetLengthOfTaggedArray(constantIndexInfo);
+    DEFVARIABLE(bcOffset, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(constantIndex, VariableType::INT32(),
+        Int32(static_cast<int32_t>(ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX)));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    Label matchSuccess(env);
+    Label afterUpdate(env);
+    Branch(Int32LessThan(*i, indexInfoLength), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    bcOffset = GetInt32OfTInt(GetValueFromTaggedArray(constantIndexInfo, Int32(*i)));
+    Branch(Int32Equal(*bcOffset, traceId), &matchSuccess, &afterUpdate);
+    Bind(&matchSuccess);
+    constantIndex = GetInt32OfTInt(GetValueFromTaggedArray(constantIndexInfo, Int32(*i + 1)));
+    Jump(&afterUpdate);
+    Bind(&afterUpdate);
+    i = Int32Add(*i, Int32(2)); // 2 : skip traceId and constantIndex
+    Branch(Int32LessThan(*i, indexInfoLength), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&afterLoop);
+    auto ret = *constantIndex;
+
+    env->SubCfgExit();
+    return ret;
+}
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

@@ -69,13 +69,13 @@ void NTypeMCRLowering::LowerCreateEmptyArray(GateRef gate)
     GateRef length = builder_.Int32(0);
     GateRef elements = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
 
-    auto array = NewJSArrayLiteral(elements, length);
+    auto array = NewJSArrayLiteral(gate, elements, length);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
 void NTypeMCRLowering::LowerCreateArrayWithOwn(GateRef gate, GateRef glue)
 {
-    size_t elementsLength = acc_.GetArraySize(gate);
+    uint32_t elementsLength = acc_.GetArraySize(gate);
     GateRef length = builder_.IntPtr(elementsLength);
     GateRef elements = Circuit::NullGate();
     if (elementsLength < MAX_TAGGED_ARRAY_LENGTH) {
@@ -84,7 +84,7 @@ void NTypeMCRLowering::LowerCreateArrayWithOwn(GateRef gate, GateRef glue)
         elements = LowerCallRuntime(glue, gate, RTSTUB_ID(NewTaggedArray), { builder_.Int32ToTaggedInt(length) }, true);
     }
 
-    auto array = NewJSArrayLiteral(elements, length);
+    auto array = NewJSArrayLiteral(gate, elements, length);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
@@ -96,7 +96,6 @@ void NTypeMCRLowering::LowerCreateArrayWithBuffer(GateRef gate)
     GateRef index = acc_.GetValueIn(gate, 0);
     GateRef aotElmIndex = acc_.GetValueIn(gate, 1);
     auto elementIndex = acc_.GetConstantValue(aotElmIndex);
-    uint32_t elementLength = static_cast<uint32_t>(acc_.GetArraySize(gate));
     uint32_t constPoolIndex = static_cast<uint32_t>(acc_.GetConstantValue(index));
     ArgumentAccessor argAcc(circuit_);
     GateRef frameState = GetFrameState(gate);
@@ -109,10 +108,9 @@ void NTypeMCRLowering::LowerCreateArrayWithBuffer(GateRef gate)
     JSHandle<JSArray> arrayHandle(thread, arr);
     TaggedArray *arrayLiteral = TaggedArray::Cast(arrayHandle->GetElements());
     uint32_t literialLength = arrayLiteral->GetLength();
-    uint32_t arrayLength = std::max(literialLength, elementLength);
-    GateRef length = builder_.IntPtr(arrayLength);
+    GateRef length = builder_.IntPtr(literialLength);
 
-    auto array = NewJSArrayLiteral(elements, length);
+    auto array = NewJSArrayLiteral(gate, elements, length);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
@@ -122,8 +120,19 @@ GateRef NTypeMCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index)
     return builder_.LoadFromTaggedArray(constPool, index);
 }
 
-GateRef NTypeMCRLowering::NewJSArrayLiteral(GateRef elements, GateRef length)
+GateRef NTypeMCRLowering::NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length)
 {
+    ElementsKind kind = acc_.GetArrayMetaDataAccessor(gate).GetElementsKind();
+    GateRef hclass = Circuit::NullGate();
+    if (!Elements::IsGeneric(kind)) {
+        auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+        auto hclassIndex = thread->GetArrayHClassIndexMap().at(kind);
+        hclass = builder_.GetGlobalConstantValue(hclassIndex);
+    } else {
+        GateRef globalEnv = builder_.GetGlobalEnv();
+        hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    }
+
     JSHandle<JSFunction> arrayFunc(tsManager_->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
     JSTaggedValue protoOrHClass = arrayFunc->GetProtoOrHClass();
     JSHClass *arrayHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
@@ -131,9 +140,7 @@ GateRef NTypeMCRLowering::NewJSArrayLiteral(GateRef elements, GateRef length)
     size_t lengthAccessorOffset = arrayHC->GetInlinedPropertiesOffset(JSArray::LENGTH_INLINE_PROPERTY_INDEX);
 
     GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-    GateRef globalEnv = builder_.GetGlobalEnv();
     GateRef accessor = builder_.GetGlobalConstantValue(ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    GateRef hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
     GateRef size = builder_.IntPtr(arrayHC->GetObjectSize());
 
     builder_.StartAllocate();

@@ -69,6 +69,7 @@ private:
     void InferStObjByName(GateRef gate, bool isThis);
     void InferStOwnByName(GateRef gate);
     void InferAccessObjByValue(GateRef gate);
+    void InferCreateArray(GateRef gate);
 
     void UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedValue prop);
     void CollectGateType(CollectedType &types, GateType tsType, PGORWOpType pgoTypes);

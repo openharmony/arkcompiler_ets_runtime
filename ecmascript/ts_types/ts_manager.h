@@ -343,9 +343,13 @@ public:
         return CString(fileName);
     }
 
-    void AddArrayTSElements(panda_file::File::EntityId id, JSHandle<TaggedArray> &elements);
+    void AddArrayTSElements(panda_file::File::EntityId id, JSTaggedValue elements);
 
-    void AddArrayTSHClass(panda_file::File::EntityId id, JSHandle<JSHClass> &ihclass);
+    void AddArrayTSElementsKind(panda_file::File::EntityId id, JSTaggedValue kind);
+
+    void AddArrayTSConstantIndex(uint64_t bcAbsoluteOffset, JSTaggedValue index);
+
+    void AddArrayTSHClass(panda_file::File::EntityId id, JSHClass *hclass);
 
     void AddInstanceTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &ihclass);
 
@@ -362,7 +366,10 @@ public:
     std::string PUBLIC_API GetTypeStr(kungfu::GateType gateType) const;
 
     int PUBLIC_API GetElementsIndexByArrayType(const kungfu::GateType &gateType,
-                                              const panda_file::File::EntityId id);
+                                               const panda_file::File::EntityId id);
+
+    int PUBLIC_API GetElementsKindIndexByArrayType(const kungfu::GateType &gateType,
+                                                   const panda_file::File::EntityId id);
 
     int PUBLIC_API GetHClassIndexByArrayType(const kungfu::GateType &gateType,
                                              const panda_file::File::EntityId id);
@@ -625,6 +632,54 @@ public:
         std::unordered_map<int32_t, uint32_t> cpIndexMap_ {};
     };
 
+    class ElementKindData {
+    public:
+        explicit ElementKindData(JSTaggedType kind) : kind_(kind) {}
+
+        void Iterate(const RootVisitor &v)
+        {
+            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&kind_)));
+        }
+
+        std::unordered_map<int32_t, uint32_t>& GetCPIndexMap()
+        {
+            return cpIndexMap_;
+        }
+
+        JSTaggedType GetElmKind() const
+        {
+            return kind_;
+        }
+
+    private:
+        JSTaggedType kind_ {0};
+        std::unordered_map<int32_t, uint32_t> cpIndexMap_ {};
+    };
+
+    class ConstantIndexData {
+    public:
+        explicit ConstantIndexData(JSTaggedType index) : index_(index) {}
+
+        void Iterate(const RootVisitor &v)
+        {
+            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&index_)));
+        }
+
+        std::unordered_map<int32_t, uint32_t>& GetCPIndexMap()
+        {
+            return cpIndexMap_;
+        }
+
+        JSTaggedType GetIndex() const
+        {
+            return index_;
+        }
+
+    private:
+        JSTaggedType index_ {0};
+        std::unordered_map<int32_t, uint32_t> cpIndexMap_ {};
+    };
+
     class IHClassData {
     public:
         explicit IHClassData(JSTaggedType ihc) : ihc_(ihc) {}
@@ -649,6 +704,7 @@ public:
         std::unordered_map<int32_t, uint32_t> cpIndexMap_ {};
     };
 
+    // for jsarray
     class JSArrayData {
     public:
         explicit JSArrayData() {}
@@ -656,6 +712,12 @@ public:
         void Iterate(const RootVisitor &v)
         {
             for (auto iter : idElmMap_) {
+                iter.second.Iterate(v);
+            }
+            for (auto iter : idElmKindMap_) {
+                iter.second.Iterate(v);
+            }
+            for (auto iter : offConstIndexMap_) {
                 iter.second.Iterate(v);
             }
             for (auto iter : idIhcMap_) {
@@ -668,6 +730,16 @@ public:
             return idElmMap_;
         }
 
+        std::map<panda_file::File::EntityId, ElementKindData>& GetElmKindMap()
+        {
+            return idElmKindMap_;
+        }
+
+        std::map<uint64_t, ConstantIndexData>& GetOffConstIndexMap()
+        {
+            return offConstIndexMap_;
+        }
+
         std::map<panda_file::File::EntityId, IHClassData>& GetIhcMap()
         {
             return idIhcMap_;
@@ -678,6 +750,16 @@ public:
             idElmMap_.insert({id, data});
         }
 
+        void AddElmKindMap(panda_file::File::EntityId id, ElementKindData data)
+        {
+            idElmKindMap_.insert({id, data});
+        }
+
+        void AddOffConstIndexMap(uint64_t bcAbsoluteOffset, ConstantIndexData data)
+        {
+            offConstIndexMap_.insert({bcAbsoluteOffset, data});
+        }
+
         void AddIhcMap(panda_file::File::EntityId id, IHClassData data)
         {
             idIhcMap_.insert({id, data});
@@ -685,6 +767,8 @@ public:
 
     private:
         std::map<panda_file::File::EntityId, ElementData> idElmMap_ {};
+        std::map<panda_file::File::EntityId, ElementKindData> idElmKindMap_ {};
+        std::map<uint64_t, ConstantIndexData> offConstIndexMap_ {};
         std::map<panda_file::File::EntityId, IHClassData> idIhcMap_ {};
     };
 
@@ -832,6 +916,8 @@ public:
 
     int GetElementsIndex(panda_file::File::EntityId id);
 
+    int GetElementsKindIndex(panda_file::File::EntityId id);
+
     int GetHClassIndex(panda_file::File::EntityId id);
 
     int GetHClassIndex(GlobalTSTypeRef classGT, bool isConstructor = false);
@@ -904,6 +990,8 @@ private:
 
     uint32_t RecordElmToVecAndIndexMap(ElementData &elmData);
 
+    uint32_t RecordElmKindToVecAndIndexMap(ElementKindData &elmKindData);
+
     uint32_t RecordIhcToVecAndIndexMap(IHClassData &ihcData);
 
     uint32_t GetBuiltinIndex(GlobalTSTypeRef builtinGT) const;
@@ -924,6 +1012,9 @@ private:
     {
         builtinsRecordName_ = builtinsRecordName;
     }
+
+    // for jsarray
+    void TryGetElmsKind(panda_file::File::EntityId id, JSHandle<JSTaggedValue> &ekd);
 
     void GenerateSnapshotConstantPoolList(std::map<int32_t, uint32_t> &cpListIndexMap,
                                           const CMap<int32_t, JSTaggedValue> &oldCPValues);

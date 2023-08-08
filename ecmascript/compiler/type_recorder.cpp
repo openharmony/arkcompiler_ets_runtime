@@ -267,6 +267,16 @@ GateType TypeRecorder::UpdateType(const int32_t offset, const GateType &type) co
     return type;
 }
 
+ElementsKind TypeRecorder::GetElementsKind(PGOSampleType type) const
+{
+    PGOHClassLayoutDesc *desc;
+    if (type.IsClassType() && decoder_->GetHClassLayoutDesc(type, &desc)) {
+        auto elementsKind = desc->GetElementsKind();
+        return elementsKind;
+    }
+    return ElementsKind::GENERIC;
+}
+
 PGOSampleType TypeRecorder::GetOrUpdatePGOType(TSManager *tsManager, int32_t offset, const GateType &type) const
 {
     if (bcOffsetPGOOpTypeMap_.find(offset) != bcOffsetPGOOpTypeMap_.end()) {

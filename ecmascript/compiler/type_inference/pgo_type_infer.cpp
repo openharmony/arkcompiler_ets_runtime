@@ -100,6 +100,12 @@ void PGOTypeInfer::RunTypeInfer(GateRef gate)
         case EcmaOpcode::STTHISBYVALUE_IMM16_V8:
             InferAccessObjByValue(gate);
             break;
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
+            InferCreateArray(gate);
+            break;
         default:
             break;
     }
@@ -325,6 +331,20 @@ void PGOTypeInfer::InferStOwnByName(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 1);
 
     UpdateTypeForRWOp(gate, receiver, prop);
+}
+
+void PGOTypeInfer::InferCreateArray(GateRef gate)
+{
+    if (!builder_->ShouldPGOTypeInfer(gate)) {
+        return;
+    }
+
+    ElementsKind kind = builder_->GetArrayElementsKind(gate);
+    if (Elements::IsGeneric(kind)) {
+        return;
+    }
+
+    acc_.TrySetElementsKind(gate, kind);
 }
 
 void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedValue prop)

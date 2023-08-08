@@ -429,6 +429,13 @@ public:
         return typeRecorder_.GetElementsKind(GetPcOffsetByGate(gate));
     }
 
+    ElementsKind GetArrayElementsKind(GateRef gate) const
+    {
+        auto type = typeRecorder_.GetType(GetBcIndexByGate(gate));
+        auto pgoType = typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(gate), type);
+        return typeRecorder_.GetElementsKind(pgoType);
+    }
+
     bool ShouldPGOTypeInfer(GateRef gate) const
     {
         return jsGatesToByteCode_.find(gate) != jsGatesToByteCode_.end();

@@ -57,8 +57,12 @@ public:
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end);
     GateRef FastNewThisObject(GateRef glue, GateRef ctor);
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);
-    GateRef CreateEmptyArray(GateRef glue, ProfileOperation callback);
-    GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc, ProfileOperation callback);
+    GateRef CreateEmptyArray(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo,
+                             ProfileOperation callback);
+    GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc,
+                                  GateRef pc, GateRef profileTypeInfo, ProfileOperation callback);
+    void LoadArrayHClass(Variable *hclass, Label *exit, GateRef glue,
+        GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef arrayLiteral = Circuit::NullGate());
     void NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
 
 private:

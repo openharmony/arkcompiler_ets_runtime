@@ -23,6 +23,7 @@
 #include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/typed_array_stub_builder.h"
+#include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_object.h"

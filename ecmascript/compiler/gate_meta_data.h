@@ -694,8 +694,7 @@ public:
 
     ElementsKind GetElementsKind() const
     {
-        // Need return elementsKind_, close feature temporarily, wait for CreateArray
-        return ElementsKind::GENERIC;
+        return elementsKind_;
     }
 
 private:
