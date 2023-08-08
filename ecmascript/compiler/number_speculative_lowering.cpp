@@ -80,6 +80,10 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitLoadElement(gate);
             break;
         }
+        case OpCode::INDEX_CHECK: {
+            VisitIndexCheck(gate);
+            break;
+        }
         case OpCode::LOAD_ARRAY_LENGTH:
         case OpCode::LOAD_TYPED_ARRAY_LENGTH: {
             VisitLoadArrayLength(gate);
@@ -492,6 +496,12 @@ void NumberSpeculativeLowering::VisitPhi(GateRef gate)
         default:
             break;
     }
+}
+
+void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)
+{
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.SetMachineType(gate, MachineType::I32);
 }
 
 void NumberSpeculativeLowering::VisitLoadArrayLength(GateRef gate)
