@@ -25,6 +25,7 @@ enum class TypeInfo {
     NONE,
     INT1,
     INT32,
+    UINT32,
     FLOAT64,
     TAGGED,
 };

@@ -269,6 +269,9 @@ void TypeMCRLowering::SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t
         case BuiltinTypeId::INT32_ARRAY:
             funcIndex = GlobalEnv::INT32_ARRAY_FUNCTION_INDEX;
             break;
+        case BuiltinTypeId::UINT32_ARRAY:
+            funcIndex = GlobalEnv::UINT32_ARRAY_FUNCTION_INDEX;
+            break;
         case BuiltinTypeId::FLOAT32_ARRAY:
             funcIndex = GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX;
             break;
@@ -703,6 +706,9 @@ void TypeMCRLowering::LowerLoadElement(GateRef gate)
         case TypedLoadOp::INT32ARRAY_LOAD_ELEMENT:
             LowerTypedArrayLoadElement(gate, BuiltinTypeId::INT32_ARRAY);
             break;
+        case TypedLoadOp::UINT32ARRAY_LOAD_ELEMENT:
+            LowerTypedArrayLoadElement(gate, BuiltinTypeId::UINT32_ARRAY);
+            break;
         case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
             LowerTypedArrayLoadElement(gate, BuiltinTypeId::FLOAT32_ARRAY);
             break;
@@ -804,6 +810,9 @@ void TypeMCRLowering::LowerStoreElement(GateRef gate, GateRef glue)
             break;
         case TypedStoreOp::INT32ARRAY_STORE_ELEMENT:
             LowerTypedArrayStoreElement(gate, BuiltinTypeId::INT32_ARRAY);
+            break;
+        case TypedStoreOp::UINT32ARRAY_STORE_ELEMENT:
+            LowerTypedArrayStoreElement(gate, BuiltinTypeId::UINT32_ARRAY);
             break;
         case TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT:
             LowerTypedArrayStoreElement(gate, BuiltinTypeId::FLOAT32_ARRAY);
