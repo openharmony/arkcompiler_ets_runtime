@@ -352,6 +352,7 @@ public:
     GateRef SwitchCase(GateRef switchBranch, int64_t value);
     GateRef DefaultCase(GateRef switchBranch);
     GateRef DependRelay(GateRef state, GateRef depend);
+    GateRef ReadSp();
     GateRef BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
         GateRef left, GateRef right, GateType gateType = GateType::Empty());
     GateRef BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right);

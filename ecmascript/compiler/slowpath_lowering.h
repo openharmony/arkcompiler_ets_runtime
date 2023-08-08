@@ -299,7 +299,7 @@ private:
     void LowerConstruct(GateRef gate);
     void LowerTypedCall(GateRef gate);
     void LowerTypedFastCall(GateRef gate);
-    void LowerUpdateHotness(GateRef gate);
+    void LowerCheckSafePointAndStackOver(GateRef gate);
     void LowerNotifyConcurrentResult(GateRef gate);
     void LowerGetEnv(GateRef gate);
     void DeleteLoopExit(GateRef gate);

@@ -356,7 +356,8 @@ private:
     V(SubWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \
     V(MulWithOverflow, (GateRef gate, GateRef e1, GateRef e2))                            \
     V(ExtractValue, (GateRef gate, GateRef e1, GateRef e2))                               \
-    V(Sqrt, (GateRef gate, GateRef e1))
+    V(Sqrt, (GateRef gate, GateRef e1))                                                   \
+    V(ReadSp, (GateRef gate))
 
 // runtime/common stub ID, opcodeOffset for bc stub
 using StubIdType = std::variant<RuntimeStubCSigns::ID, CommonStubCSigns::ID, LLVMValueRef>;

@@ -230,58 +230,59 @@ std::string MachineTypeToStr(MachineType machineType);
     V(UnsignedFloatToInt, UNSIGNED_FLOAT_TO_INT, GateFlags::NONE_FLAG, 0, 0, 1)  \
     V(Bitcast, BITCAST, GateFlags::NONE_FLAG, 0, 0, 1)
 
-#define IMMUTABLE_META_DATA_CACHE_LIST(V)                                               \
-    V(CircuitRoot, CIRCUIT_ROOT, GateFlags::NONE_FLAG, 0, 0, 0)                         \
-    V(StateEntry, STATE_ENTRY, GateFlags::ROOT, 0, 0, 0)                                \
-    V(DependEntry, DEPEND_ENTRY, GateFlags::ROOT, 0, 0, 0)                              \
-    V(ReturnList, RETURN_LIST, GateFlags::ROOT, 0, 0, 0)                                \
-    V(ArgList, ARG_LIST, GateFlags::ROOT, 0, 0, 0)                                      \
-    V(Return, RETURN, GateFlags::HAS_ROOT, 1, 1, 1)                                     \
-    V(ReturnVoid, RETURN_VOID, GateFlags::HAS_ROOT, 1, 1, 0)                            \
-    V(Throw, THROW, GateFlags::CONTROL, 1, 1, 1)                                        \
-    V(OrdinaryBlock, ORDINARY_BLOCK, GateFlags::CONTROL, 1, 0, 0)                       \
-    V(IfBranch, IF_BRANCH, GateFlags::CONTROL, 1, 0, 1)                                 \
-    V(IfTrue, IF_TRUE, GateFlags::CONTROL, 1, 0, 0)                                     \
-    V(IfFalse, IF_FALSE, GateFlags::CONTROL, 1, 0, 0)                                   \
-    V(LoopBegin, LOOP_BEGIN, GateFlags::CONTROL, 2, 0, 0)                               \
-    V(LoopBack, LOOP_BACK, GateFlags::CONTROL, 1, 0, 0)                                 \
-    V(LoopExit, LOOP_EXIT, GateFlags::CONTROL, 1, 0, 0)                                 \
-    V(LoopExitDepend, LOOP_EXIT_DEPEND, GateFlags::FIXED, 1, 1, 0)                      \
-    V(LoopExitValue, LOOP_EXIT_VALUE, GateFlags::FIXED, 1, 0, 1)                        \
-    V(DependRelay, DEPEND_RELAY, GateFlags::FIXED, 1, 1, 0)                             \
-    V(IfSuccess, IF_SUCCESS, GateFlags::CONTROL, 1, 0, 0)                               \
-    V(IfException, IF_EXCEPTION, GateFlags::CONTROL, 1, 1, 0)                           \
-    V(GetException, GET_EXCEPTION, GateFlags::NONE_FLAG, 1, 1, 0)                       \
-    V(GetConstPool, GET_CONSTPOOL, GateFlags::NO_WRITE, 0, 1, 1)                        \
-    V(GetGlobalEnv, GET_GLOBAL_ENV, GateFlags::NO_WRITE, 0, 1, 0)                       \
-    V(StateSplit, STATE_SPLIT, GateFlags::CHECKABLE, 1, 1, 0)                           \
-    V(Load, LOAD, GateFlags::NO_WRITE, 0, 1, 1)                                         \
-    V(Store, STORE, GateFlags::NONE_FLAG, 0, 1, 2)                                      \
-    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, 3)                  \
-    V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                \
-    V(StableArrayCheck, STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)              \
-    V(COWArrayCheck, COW_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                    \
-    V(ArrayGuardianCheck, ARRAY_GUARDIAN_CHECK, GateFlags::CHECKABLE, 1, 1, 0)          \
-    V(HClassStableArrayCheck, HCLASS_STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1) \
-    V(DeoptCheck, DEOPT_CHECK, GateFlags::NO_WRITE, 1, 1, 3)                            \
-    V(StoreProperty, STORE_PROPERTY, GateFlags::NONE_FLAG, 1, 1, 3)                     \
-    V(StorePropertyNoBarrier, STORE_PROPERTY_NO_BARRIER, GateFlags::NONE_FLAG, 1, 1, 3) \
-    V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)                               \
-    V(DefaultCase, DEFAULT_CASE, GateFlags::CONTROL, 1, 0, 0)                           \
-    V(LoadArrayLength, LOAD_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                 \
-    V(TypedNewAllocateThis, TYPED_NEW_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)     \
-    V(TypedSuperAllocateThis, TYPED_SUPER_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2) \
-    V(GetSuperConstructor, GET_SUPER_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)         \
-    V(UpdateHotness, UPDATE_HOTNESS, GateFlags::NO_WRITE, 1, 1, 0)                      \
-    V(Dead, DEAD, GateFlags::NONE_FLAG, 0, 0, 0)                                        \
-    V(FrameArgs, FRAME_ARGS, GateFlags::NONE_FLAG, 0, 0, 4)                             \
-    V(GetEnv, GET_ENV, GateFlags::NONE_FLAG, 0, 0, 1)                                   \
-    V(ConvertHoleAsUndefined, CONVERT_HOLE_AS_UNDEFINED, GateFlags::NO_WRITE, 1, 1, 1)  \
-    V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                     \
-    V(FinishAllocate, FINISH_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                   \
-    V(LoadGetter, LOAD_GETTER, GateFlags::NONE_FLAG, 0, 1, 2)                           \
-    V(LoadSetter, LOAD_SETTER, GateFlags::NONE_FLAG, 0, 1, 2)                           \
-    BINARY_GATE_META_DATA_CACHE_LIST(V)                                                 \
+#define IMMUTABLE_META_DATA_CACHE_LIST(V)                                                       \
+    V(CircuitRoot, CIRCUIT_ROOT, GateFlags::NONE_FLAG, 0, 0, 0)                                 \
+    V(StateEntry, STATE_ENTRY, GateFlags::ROOT, 0, 0, 0)                                        \
+    V(DependEntry, DEPEND_ENTRY, GateFlags::ROOT, 0, 0, 0)                                      \
+    V(ReturnList, RETURN_LIST, GateFlags::ROOT, 0, 0, 0)                                        \
+    V(ArgList, ARG_LIST, GateFlags::ROOT, 0, 0, 0)                                              \
+    V(Return, RETURN, GateFlags::HAS_ROOT, 1, 1, 1)                                             \
+    V(ReturnVoid, RETURN_VOID, GateFlags::HAS_ROOT, 1, 1, 0)                                    \
+    V(Throw, THROW, GateFlags::CONTROL, 1, 1, 1)                                                \
+    V(OrdinaryBlock, ORDINARY_BLOCK, GateFlags::CONTROL, 1, 0, 0)                               \
+    V(IfBranch, IF_BRANCH, GateFlags::CONTROL, 1, 0, 1)                                         \
+    V(IfTrue, IF_TRUE, GateFlags::CONTROL, 1, 0, 0)                                             \
+    V(IfFalse, IF_FALSE, GateFlags::CONTROL, 1, 0, 0)                                           \
+    V(LoopBegin, LOOP_BEGIN, GateFlags::CONTROL, 2, 0, 0)                                       \
+    V(LoopBack, LOOP_BACK, GateFlags::CONTROL, 1, 0, 0)                                         \
+    V(LoopExit, LOOP_EXIT, GateFlags::CONTROL, 1, 0, 0)                                         \
+    V(LoopExitDepend, LOOP_EXIT_DEPEND, GateFlags::FIXED, 1, 1, 0)                              \
+    V(LoopExitValue, LOOP_EXIT_VALUE, GateFlags::FIXED, 1, 0, 1)                                \
+    V(DependRelay, DEPEND_RELAY, GateFlags::FIXED, 1, 1, 0)                                     \
+    V(IfSuccess, IF_SUCCESS, GateFlags::CONTROL, 1, 0, 0)                                       \
+    V(IfException, IF_EXCEPTION, GateFlags::CONTROL, 1, 1, 0)                                   \
+    V(GetException, GET_EXCEPTION, GateFlags::NONE_FLAG, 1, 1, 0)                               \
+    V(GetConstPool, GET_CONSTPOOL, GateFlags::NO_WRITE, 0, 1, 1)                                \
+    V(GetGlobalEnv, GET_GLOBAL_ENV, GateFlags::NO_WRITE, 0, 1, 0)                               \
+    V(StateSplit, STATE_SPLIT, GateFlags::CHECKABLE, 1, 1, 0)                                   \
+    V(Load, LOAD, GateFlags::NO_WRITE, 0, 1, 1)                                                 \
+    V(Store, STORE, GateFlags::NONE_FLAG, 0, 1, 2)                                              \
+    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, 3)                          \
+    V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                        \
+    V(StableArrayCheck, STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                      \
+    V(COWArrayCheck, COW_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                            \
+    V(ArrayGuardianCheck, ARRAY_GUARDIAN_CHECK, GateFlags::CHECKABLE, 1, 1, 0)                  \
+    V(HClassStableArrayCheck, HCLASS_STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)         \
+    V(DeoptCheck, DEOPT_CHECK, GateFlags::NO_WRITE, 1, 1, 3)                                    \
+    V(StoreProperty, STORE_PROPERTY, GateFlags::NONE_FLAG, 1, 1, 3)                             \
+    V(StorePropertyNoBarrier, STORE_PROPERTY_NO_BARRIER, GateFlags::NONE_FLAG, 1, 1, 3)         \
+    V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
+    V(DefaultCase, DEFAULT_CASE, GateFlags::CONTROL, 1, 0, 0)                                   \
+    V(LoadArrayLength, LOAD_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                         \
+    V(TypedNewAllocateThis, TYPED_NEW_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)             \
+    V(TypedSuperAllocateThis, TYPED_SUPER_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)         \
+    V(GetSuperConstructor, GET_SUPER_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)                 \
+    V(CheckSafePointAndStackOver, CHECK_SAFEPOINT_AND_STACKOVER, GateFlags::NO_WRITE, 1, 1, 0)  \
+    V(Dead, DEAD, GateFlags::NONE_FLAG, 0, 0, 0)                                                \
+    V(FrameArgs, FRAME_ARGS, GateFlags::NONE_FLAG, 0, 0, 4)                                     \
+    V(GetEnv, GET_ENV, GateFlags::NONE_FLAG, 0, 0, 1)                                           \
+    V(ConvertHoleAsUndefined, CONVERT_HOLE_AS_UNDEFINED, GateFlags::NO_WRITE, 1, 1, 1)          \
+    V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                             \
+    V(FinishAllocate, FINISH_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                           \
+    V(LoadGetter, LOAD_GETTER, GateFlags::NONE_FLAG, 0, 1, 2)                                   \
+    V(LoadSetter, LOAD_SETTER, GateFlags::NONE_FLAG, 0, 1, 2)                                   \
+    V(ReadSp, READSP, GateFlags::NONE_FLAG, 0, 0, 0)                                            \
+    BINARY_GATE_META_DATA_CACHE_LIST(V)                                                         \
     UNARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                             \
