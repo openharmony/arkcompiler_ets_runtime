@@ -371,6 +371,11 @@ GateRef CircuitBuilder::ConvertInt32ToFloat64(GateRef gate)
     return Convert(gate, ValueType::INT32, ValueType::FLOAT64);
 }
 
+GateRef CircuitBuilder::ConvertUInt32ToFloat64(GateRef gate)
+{
+    return Convert(gate, ValueType::UINT32, ValueType::FLOAT64);
+}
+
 GateRef CircuitBuilder::ConvertFloat64ToInt32(GateRef gate)
 {
     return Convert(gate, ValueType::FLOAT64, ValueType::INT32);
@@ -391,9 +396,19 @@ GateRef CircuitBuilder::ConvertInt32ToTaggedInt(GateRef gate)
     return Convert(gate, ValueType::INT32, ValueType::TAGGED_INT);
 }
 
+GateRef CircuitBuilder::ConvertUInt32ToTaggedNumber(GateRef gate)
+{
+    return Convert(gate, ValueType::UINT32, ValueType::TAGGED_NUMBER);
+}
+
 GateRef CircuitBuilder::ConvertInt32ToBool(GateRef gate)
 {
     return Convert(gate, ValueType::INT32, ValueType::BOOL);
+}
+
+GateRef CircuitBuilder::ConvertUInt32ToBool(GateRef gate)
+{
+    return Convert(gate, ValueType::UINT32, ValueType::BOOL);
 }
 
 GateRef CircuitBuilder::ConvertFloat64ToBool(GateRef gate)
@@ -414,6 +429,11 @@ GateRef CircuitBuilder::CheckTaggedNumberAndConvertToBool(GateRef gate)
 GateRef CircuitBuilder::ConvertFloat64ToTaggedDouble(GateRef gate)
 {
     return Convert(gate, ValueType::FLOAT64, ValueType::TAGGED_DOUBLE);
+}
+
+GateRef CircuitBuilder::CheckUInt32AndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::UINT32, ValueType::INT32);
 }
 
 GateRef CircuitBuilder::CheckTaggedIntAndConvertToInt32(GateRef gate)

@@ -66,6 +66,13 @@ GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, Representation rep)
     return old == type ? Circuit::NullGate() : gate;
 }
 
+GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, TypeInfo type)
+{
+    TypeInfo old = GetOutputTypeInfo(gate);
+    SetOutputTypeInfo(gate, type);
+    return old == type ? Circuit::NullGate() : gate;
+}
+
 GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
 {
     OpCode op = acc_.GetOpCode(gate);
@@ -397,7 +404,7 @@ GateRef NumberSpeculativeRetype::VisitNumberShiftAndLogical(GateRef gate)
                 rightType = GateType::NumberType();
             }
         }
-        ConvertForIntOperator(gate, leftType, rightType);
+        ConvertForShiftAndLogicalOperator(gate, leftType, rightType);
     }
     return Circuit::NullGate();
 }
@@ -602,6 +609,8 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToBool(GateRef gate, GateType ga
             return gate;
         case TypeInfo::INT32:
             return builder_.ConvertInt32ToBool(gate);
+        case TypeInfo::UINT32:
+            return builder_.ConvertUInt32ToBool(gate);
         case TypeInfo::FLOAT64:
             return builder_.ConvertFloat64ToBool(gate);
         case TypeInfo::TAGGED: {
@@ -687,6 +696,20 @@ void NumberSpeculativeRetype::ConvertForIntOperator(GateRef gate, GateType leftT
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
 }
 
+void NumberSpeculativeRetype::ConvertForShiftAndLogicalOperator(GateRef gate, GateType leftType, GateType rightType)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateRef cLeft = CheckAndConvertToInt32(left, leftType, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL);
+    GateRef cRight = CheckAndConvertToInt32(right, rightType, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL);
+
+    acc_.ReplaceValueIn(gate, cLeft, 0);
+    acc_.ReplaceValueIn(gate, cRight, 1);
+
+    acc_.ReplaceStateIn(gate, builder_.GetState());
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
+}
+
 void NumberSpeculativeRetype::ConvertForDoubleOperator(GateRef gate, GateType leftType, GateType rightType)
 {
     GateRef left = acc_.GetValueIn(gate, 0);
@@ -731,7 +754,8 @@ GateRef NumberSpeculativeRetype::TryConvertConstant(GateRef gate, bool needInt32
     return Circuit::NullGate();
 }
 
-GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support)
+GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support,
+                                                        OpType type)
 {
     auto result = TryConvertConstant(gate, true);
     if (result != Circuit::NullGate()) {
@@ -746,6 +770,14 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
             break;
         case TypeInfo::INT32:
             return gate;
+        case TypeInfo::UINT32: {
+            if (type != OpType::SHIFT_AND_LOGICAL) {
+                result = builder_.CheckUInt32AndConvertToInt32(gate);
+            } else {
+                result = gate;
+            }
+            break;
+        }
         case TypeInfo::FLOAT64:
             result = builder_.ConvertFloat64ToInt32(gate);
             break;
@@ -785,6 +817,9 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
         case TypeInfo::INT32:
             result = builder_.ConvertInt32ToFloat64(gate);
             break;
+        case TypeInfo::UINT32:
+            result = builder_.ConvertUInt32ToFloat64(gate);
+            break;
         case TypeInfo::FLOAT64:
             return gate;
         case TypeInfo::TAGGED: {
@@ -815,6 +850,8 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToTagged(GateRef gate, GateType 
             return builder_.ConvertBoolToTaggedBoolean(gate);
         case TypeInfo::INT32:
             return builder_.ConvertInt32ToTaggedInt(gate);
+        case TypeInfo::UINT32:
+            return builder_.ConvertUInt32ToTaggedNumber(gate);
         case TypeInfo::FLOAT64:
             return builder_.ConvertFloat64ToTaggedDouble(gate);
         case TypeInfo::TAGGED: {
@@ -837,6 +874,8 @@ GateRef NumberSpeculativeRetype::ConvertToTagged(GateRef gate)
             return builder_.ConvertBoolToTaggedBoolean(gate);
         case TypeInfo::INT32:
             return builder_.ConvertInt32ToTaggedInt(gate);
+        case TypeInfo::UINT32:
+            return builder_.ConvertUInt32ToTaggedNumber(gate);
         case TypeInfo::FLOAT64:
             return builder_.ConvertFloat64ToTaggedDouble(gate);
         case TypeInfo::NONE:
@@ -893,6 +932,8 @@ GateRef NumberSpeculativeRetype::VisitLoadElement(GateRef gate)
             case TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT:
             case TypedLoadOp::INT32ARRAY_LOAD_ELEMENT:
                 return SetOutputType(gate, GateType::IntType());
+            case TypedLoadOp::UINT32ARRAY_LOAD_ELEMENT:
+                return SetOutputType(gate, TypeInfo::UINT32);
             case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
             case TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT:
                 return SetOutputType(gate, GateType::DoubleType());
@@ -933,6 +974,7 @@ GateRef NumberSpeculativeRetype::VisitStoreElement(GateRef gate)
             case TypedStoreOp::INT16ARRAY_STORE_ELEMENT:
             case TypedStoreOp::UINT16ARRAY_STORE_ELEMENT:
             case TypedStoreOp::INT32ARRAY_STORE_ELEMENT:
+            case TypedStoreOp::UINT32ARRAY_STORE_ELEMENT:
                 acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value, GateType::NumberType()), 2);   // 2: value idx
                 break;
             case TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT:

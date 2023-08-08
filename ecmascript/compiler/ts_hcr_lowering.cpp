@@ -884,6 +884,8 @@ GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
             return builder_.LoadElement<TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT>(receiver, propKey);
         case BuiltinTypeId::INT32_ARRAY:
             return builder_.LoadElement<TypedLoadOp::INT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
+        case BuiltinTypeId::UINT32_ARRAY:
+            return builder_.LoadElement<TypedLoadOp::UINT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
         case BuiltinTypeId::FLOAT32_ARRAY:
             return builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
         case BuiltinTypeId::FLOAT64_ARRAY:
@@ -939,6 +941,9 @@ void TSHCRLowering::StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, Ga
             break;
         case BuiltinTypeId::INT32_ARRAY:
             builder_.StoreElement<TypedStoreOp::INT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            break;
+        case BuiltinTypeId::UINT32_ARRAY:
+            builder_.StoreElement<TypedStoreOp::UINT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
             break;
         case BuiltinTypeId::FLOAT32_ARRAY:
             builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);

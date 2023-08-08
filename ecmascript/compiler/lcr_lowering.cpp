@@ -224,6 +224,16 @@ StateDepend LCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
                 result = builder_.NotEqual(value, builder_.Int32(0));
             }
             break;
+        case ValueType::UINT32:
+            if (dstType == ValueType::TAGGED_NUMBER) {
+                result = ConvertUInt32ToTaggedNumber(value, &exit);
+            } else if (dstType == ValueType::FLOAT64) {
+                result = ConvertUInt32ToFloat64(value);
+            } else {
+                ASSERT(dstType == ValueType::BOOL);
+                result = builder_.NotEqual(value,builder_.Int32(0));
+            }
+            break;
         case ValueType::FLOAT64:
             if (dstType == ValueType::TAGGED_DOUBLE) {
                 result = ConvertFloat64ToTaggedDouble(value);
@@ -317,6 +327,9 @@ void LCRLowering::LowerCheckAndConvert(GateRef gate)
     ValueType srcType = acc_.GetSrcType(gate);
     Label exit(&builder_);
     switch (srcType) {
+        case ValueType::UINT32:
+            LowerCheckUInt32AndConvert(gate, frameState);
+            break;
         case ValueType::TAGGED_INT:
             LowerCheckTaggedIntAndConvert(gate, frameState);
             break;
@@ -335,6 +348,15 @@ void LCRLowering::LowerCheckAndConvert(GateRef gate)
         default:
             UNREACHABLE();
     }
+}
+
+void LCRLowering::LowerCheckUInt32AndConvert(GateRef gate, GateRef frameState)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef upperBound = builder_.Int32(INT32_MAX);
+    GateRef check = builder_.Int32UnsignedLessThanOrEqual(value, upperBound);
+    builder_.DeoptCheck(check, frameState, DeoptType::INT32OVERFLOW);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), value);
 }
 
 void LCRLowering::LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState)
@@ -431,9 +453,31 @@ GateRef LCRLowering::ConvertInt32ToFloat64(GateRef gate)
     return builder_.ChangeInt32ToFloat64(gate);
 }
 
+GateRef LCRLowering::ConvertUInt32ToFloat64(GateRef gate)
+{
+    return builder_.ChangeUInt32ToFloat64(gate);
+}
+
 GateRef LCRLowering::ConvertInt32ToTaggedInt(GateRef gate)
 {
     return builder_.Int32ToTaggedPtr(gate);
+}
+
+GateRef LCRLowering::ConvertUInt32ToTaggedNumber(GateRef gate, Label *exit)
+{
+    Label isOverFlow(&builder_);
+    Label notOverFlow(&builder_);
+    GateRef upperBound = builder_.Int32(INT32_MAX);
+    DEFVAlUE(taggedVal, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+    builder_.Branch(builder_.Int32UnsignedLessThanOrEqual(gate, upperBound), &notOverFlow, &isOverFlow);
+    builder_.Bind(&notOverFlow);
+    taggedVal = builder_.Int32ToTaggedPtr(gate);
+    builder_.Jump(exit);
+    builder_.Bind(&isOverFlow);
+    taggedVal = builder_.DoubleToTaggedDoublePtr(builder_.ChangeUInt32ToFloat64(gate));
+    builder_.Jump(exit);
+    builder_.Bind(exit);
+    return *taggedVal;
 }
 
 GateRef LCRLowering::ConvertFloat64ToInt32(GateRef gate, Label *exit)

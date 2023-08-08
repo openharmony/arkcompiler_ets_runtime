@@ -873,6 +873,7 @@ const std::vector<BuiltinTypeId> &TSManager::GetValidTypedArrayIds()
         BuiltinTypeId::INT16_ARRAY,
         BuiltinTypeId::UINT16_ARRAY,
         BuiltinTypeId::INT32_ARRAY,
+        BuiltinTypeId::UINT32_ARRAY,
         BuiltinTypeId::FLOAT32_ARRAY,
         BuiltinTypeId::FLOAT64_ARRAY
     };

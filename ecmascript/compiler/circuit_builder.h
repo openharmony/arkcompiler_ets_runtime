@@ -303,9 +303,13 @@ public:
     GateRef ConvertInt32ToFloat64(GateRef gate);
     GateRef ConvertBoolToInt32(GateRef gate, ConvertSupport support);
     GateRef ConvertBoolToFloat64(GateRef gate, ConvertSupport support);
+    GateRef ConvertUInt32ToBool(GateRef gate);
+    GateRef ConvertUInt32ToTaggedNumber(GateRef gate);
+    GateRef ConvertUInt32ToFloat64(GateRef gate);
     GateRef CheckAndConvert(
         GateRef gate, ValueType src, ValueType dst, ConvertSupport support = ConvertSupport::ENABLE);
     GateRef ConvertHoleAsUndefined(GateRef receiver);
+    GateRef CheckUInt32AndConvertToInt32(GateRef gate);
     GateRef CheckTaggedIntAndConvertToInt32(GateRef gate);
     GateRef CheckTaggedDoubleAndConvertToInt32(GateRef gate);
     GateRef CheckTaggedNumberAndConvertToInt32(GateRef gate);

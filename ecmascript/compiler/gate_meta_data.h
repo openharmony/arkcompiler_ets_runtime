@@ -110,7 +110,8 @@ enum class TypedJumpOp : uint8_t {
     V(InlineFail, INLINEFAIL)                 \
     V(NotJSFastCallTarget, NOTJSFASTCALLTGT)  \
     V(LexVarIsHole, LEXVARISHOLE)             \
-    V(ModZero, MODZERO)
+    V(ModZero, MODZERO)                       \
+    V(Int32Overflow, INT32OVERFLOW)
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,
