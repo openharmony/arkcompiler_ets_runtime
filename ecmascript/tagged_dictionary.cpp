@@ -185,6 +185,10 @@ int NumberDictionary::Hash(const JSTaggedValue &key)
         int keyValue = key.GetInt();
         return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
     }
+    if (key.IsDouble()) {
+        int32_t keyValue = static_cast<int32_t>(static_cast<uint32_t>(key.GetDouble()));
+        return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t)); 
+    }
     // key must be object
     LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
@@ -199,6 +203,17 @@ bool NumberDictionary::IsMatch(const JSTaggedValue &key, const JSTaggedValue &ot
     if (key.IsInt()) {
         if (other.IsInt()) {
             return key.GetInt() == other.GetInt();
+        }
+        return false;
+    }
+
+    if (key.IsDouble()) {
+        if (other.IsInt()) {
+            int32_t keyValue = static_cast<int32_t>(static_cast<uint32_t>(key.GetDouble()));
+            return keyValue == other.GetInt();
+        }
+        if (other.IsDouble()) {
+            return key.GetDouble() == other.GetDouble();
         }
         return false;
     }
