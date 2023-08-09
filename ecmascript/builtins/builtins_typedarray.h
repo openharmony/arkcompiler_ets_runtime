@@ -109,6 +109,10 @@ public:
     static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv);
     // 23.2.3.1
     static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
+    // 23.2.3.33
+    static JSTaggedValue ToSorted(EcmaRuntimeCallInfo *argv);
+    // 23.2.3.36
+    static JSTaggedValue With(EcmaRuntimeCallInfo *argv);
     static const uint32_t MAX_ARRAY_INDEX = std::numeric_limits<uint32_t>::max();
 };
 }  // namespace panda::ecmascript::builtins

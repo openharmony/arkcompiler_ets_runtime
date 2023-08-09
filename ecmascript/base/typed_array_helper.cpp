@@ -546,6 +546,20 @@ JSHandle<JSObject> TypedArrayHelper::TypedArrayCreate(JSThread *thread, const JS
     return newTypedArray;
 }
 
+// 23.2.4.3 TypedArrayCreateSameType ( exemplar, argumentList )
+JSHandle<JSObject> TypedArrayHelper::TypedArrayCreateSameType(JSThread *thread, const JSHandle<JSTypedArray> &obj,
+                                                             uint32_t argc, const JSTaggedType argv[])
+{
+    // 1. Assert: exemplar is an Object that has [[TypedArrayName]] and [[ContentType]] internal slots.
+    // 2. Let constructor be the intrinsic object associated with the constructor name exemplar.[[TypedArrayName]]
+    //    in Table 70.
+    JSHandle<JSTaggedValue> constructor = TypedArrayHelper::GetConstructor(thread, JSHandle<JSTaggedValue>(obj));
+    // 3. Let result be ? TypedArrayCreate(constructor, argumentList).
+    JSHandle<JSObject> result = TypedArrayHelper::TypedArrayCreate(thread, constructor, argc, argv);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
+    return result;
+}
+
 // es11 22.2.3.5.1 Runtime Semantics: ValidateTypedArray ( O )
 JSTaggedValue TypedArrayHelper::ValidateTypedArray(JSThread *thread, const JSHandle<JSTaggedValue> &value)
 {

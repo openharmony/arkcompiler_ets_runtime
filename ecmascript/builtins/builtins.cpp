@@ -2207,10 +2207,12 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHand
     SetFunction(env, typedArrFuncPrototype, "slice", BuiltinsTypedArray::Slice, FunctionLength::TWO);
     SetFunction(env, typedArrFuncPrototype, "some", BuiltinsTypedArray::Some, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "sort", BuiltinsTypedArray::Sort, FunctionLength::ONE);
+    SetFunction(env, typedArrFuncPrototype, "toSorted", BuiltinsTypedArray::ToSorted, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "subarray", BuiltinsTypedArray::Subarray, FunctionLength::TWO);
     SetFunction(env, typedArrFuncPrototype, thread_->GlobalConstants()->GetHandledToLocaleStringString(),
                 BuiltinsTypedArray::ToLocaleString, FunctionLength::ZERO);
     SetFunction(env, typedArrFuncPrototype, "values", BuiltinsTypedArray::Values, FunctionLength::ZERO);
+    SetFunction(env, typedArrFuncPrototype, "with", BuiltinsTypedArray::With, FunctionLength::TWO);
     SetFunction(env, typedArrFuncPrototype, "includes", BuiltinsTypedArray::Includes, FunctionLength::ONE);
 
     JSHandle<JSTaggedValue> bufferGetter =

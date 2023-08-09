@@ -766,8 +766,10 @@ namespace panda::ecmascript {
     V(TypedArray, Set)                        \
     V(TypedArray, Slice)                      \
     V(TypedArray, Sort)                       \
+    V(TypedArray, ToSorted)                   \
     V(TypedArray, Subarray)                   \
     V(TypedArray, Values)                     \
+    V(TypedArray, With)                       \
     V(TypedArray, ToStringTag)                \
     V(TypedArray, At)                         \
     V(WeakMap, Constructor)                   \
