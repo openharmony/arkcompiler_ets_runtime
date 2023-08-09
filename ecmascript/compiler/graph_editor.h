@@ -31,11 +31,13 @@ public:
     ~GraphEditor() = default;
 
     static void RemoveDeadState(Circuit* circuit, GateRef gate);
+    static void EliminateRedundantPhi(Circuit* circuit);
 private:
     void ReplaceGate(GateRef gate);
     void RemoveGate();
     void PropagateGate(const Edge& edge);
     void PropagateMerge(const Edge& edge);
+    void EliminatePhi();
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;

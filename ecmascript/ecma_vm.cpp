@@ -442,7 +442,7 @@ void EcmaVM::RemoveFromDeregisterModuleList(CString module)
 
 bool EcmaVM::ContainInDeregisterModuleList(CString module)
 {
-    return (std::find(deregisterModuleList_.begin(), deregisterModuleList_.end(), module) 
+    return (std::find(deregisterModuleList_.begin(), deregisterModuleList_.end(), module)
         != deregisterModuleList_.end());
 }
 
@@ -461,16 +461,6 @@ void EcmaVM::ClearBufferData()
 void EcmaVM::CollectGarbage(TriggerGCType gcType, GCReason reason) const
 {
     heap_->CollectGarbage(gcType, reason);
-}
-
-void EcmaVM::StartHeapTracking(HeapTracker *tracker)
-{
-    heap_->StartHeapTracking(tracker);
-}
-
-void EcmaVM::StopHeapTracking()
-{
-    heap_->StopHeapTracking();
 }
 
 void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
@@ -492,6 +482,14 @@ void EcmaVM::DeleteHeapProfile()
     heapProfile_ = nullptr;
 }
 
+HeapProfilerInterface *EcmaVM::GetHeapProfile()
+{
+    if (heapProfile_ != nullptr) {
+        return heapProfile_;
+    }
+    return nullptr;
+}
+
 HeapProfilerInterface *EcmaVM::GetOrNewHeapProfile()
 {
     if (heapProfile_ != nullptr) {
@@ -500,6 +498,16 @@ HeapProfilerInterface *EcmaVM::GetOrNewHeapProfile()
     heapProfile_ = const_cast<NativeAreaAllocator *>(GetNativeAreaAllocator())->New<HeapProfiler>(this);
     ASSERT(heapProfile_ != nullptr);
     return heapProfile_;
+}
+
+void EcmaVM::StartHeapTracking()
+{
+    heap_->StartHeapTracking();
+}
+
+void EcmaVM::StopHeapTracking()
+{
+    heap_->StopHeapTracking();
 }
 #endif
 

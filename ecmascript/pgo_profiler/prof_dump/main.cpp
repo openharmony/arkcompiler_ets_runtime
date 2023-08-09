@@ -24,6 +24,7 @@
 namespace panda::ecmascript {
 static const std::string VERSION = "0.0.0.1";
 static const int MIN_PARAM_COUNT = 3;
+using ApGenMode = PGOProfilerEncoder::ApGenMode;
 
 class Option {
 public:
@@ -157,8 +158,8 @@ int Main(const int argc, const char **argv)
             break;
         }
         case Option::Mode::TO_BINARY: {
-            if (PGOProfilerManager::GetInstance()->TextToBinary(option.GetProfInPath(),
-                option.GetProfOutPath(), option.GetHotnessThreshold())) {
+            if (PGOProfilerManager::GetInstance()->TextToBinary(option.GetProfInPath(), option.GetProfOutPath(),
+                                                                option.GetHotnessThreshold(), ApGenMode::OVERWRITE)) {
                 LOG_NO_TAG(ERROR) << "profiler dump to binary success!";
             } else {
                 LOG_NO_TAG(ERROR) << "profiler dump to binary failed!";
@@ -166,8 +167,9 @@ int Main(const int argc, const char **argv)
             break;
         }
         case Option::Mode::MERGE: {
+            // For CLI tools, do not merge with existed output file
             if (PGOProfilerManager::MergeApFiles(option.GetProfInPath(), option.GetProfOutPath(),
-                                                 option.GetHotnessThreshold())) {
+                                                 option.GetHotnessThreshold(), ApGenMode::OVERWRITE)) {
                 LOG_NO_TAG(ERROR) << "profiler merge success!";
             }
             break;

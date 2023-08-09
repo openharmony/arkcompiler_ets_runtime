@@ -26,10 +26,11 @@ namespace panda::ecmascript::kungfu {
 class NTypeHCRLowering {
 public:
     NTypeHCRLowering(Circuit *circuit, PassContext *ctx, TSManager *tsManager,
-                    bool enableLog, const std::string& name)
+                     const CString &recordName, bool enableLog, const std::string& name)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
+          recordName_(recordName),
           tsManager_(tsManager),
           enableLog_(enableLog),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
@@ -42,9 +43,10 @@ public:
     void RunNTypeHCRLowering();
 private:
     void Lower(GateRef gate);
-    void LowerTypedCreateEmptyArray(GateRef gate);
-    void LowerTypedStownByIndex(GateRef gate);
-    void LowerTypedStOwnByName(GateRef gate);
+    void LowerNTypedCreateEmptyArray(GateRef gate);
+    void LowerNTypedCreateArrayWithBuffer(GateRef gate);
+    void LowerNTypedStownByIndex(GateRef gate);
+    void LowerNTypedStOwnByName(GateRef gate);
     void LowerLdLexVar(GateRef gate);
     void LowerStLexVar(GateRef gate);
     void LowerThrowUndefinedIfHoleWithName(GateRef gate);
@@ -73,7 +75,8 @@ private:
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
-    [[maybe_unused]] TSManager *tsManager_ {nullptr};
+    const CString &recordName_;
+    TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
     bool profiling_ {false};
     bool traceBc_ {false};

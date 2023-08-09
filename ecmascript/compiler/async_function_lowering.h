@@ -29,9 +29,8 @@ public:
     AsyncFunctionLowering(BytecodeCircuitBuilder *bcBuilder, Circuit *circuit, CompilationConfig *cmpCfg,
                           bool enableLog, const std::string& name)
         : bcBuilder_(bcBuilder), circuit_(circuit), builder_(circuit, cmpCfg), enableLog_(enableLog),
-          stateEntry_(circuit->GetStateRoot()),
-          dependEntry_(circuit->GetDependRoot()),
-          accessor_(circuit), argAccessor_(circuit), methodName_(name)
+          accessor_(circuit), argAccessor_(circuit), stateEntry_(GetEntryBBStateOut()),
+          dependEntry_(GetEntryBBDependOut()), methodName_(name)
     {
     }
 
@@ -66,14 +65,18 @@ private:
 
     GateRef GetDependPhiFromLoopBegin(GateRef loopbegin) const;
 
+    GateRef GetEntryBBStateOut() const;
+
+    GateRef GetEntryBBDependOut() const;
+
     BytecodeCircuitBuilder *bcBuilder_;
     Circuit *circuit_;
     CircuitBuilder builder_;
     bool enableLog_ {false};
-    GateRef stateEntry_ {Circuit::NullGate()};
-    GateRef dependEntry_ {Circuit::NullGate()};
     GateAccessor accessor_;
     ArgumentAccessor argAccessor_;
+    GateRef stateEntry_ {Circuit::NullGate()};
+    GateRef dependEntry_ {Circuit::NullGate()};
     std::string methodName_;
 };
 }  // panda::ecmascript::kungfu

@@ -139,8 +139,8 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<StateSplitLinearizerPass>();
         pipeline.RunPass<NTypeMCRLoweringPass>();
         pipeline.RunPass<TypeMCRLoweringPass>();
-        pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<LaterEliminationPass>();
+        pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<LCRLoweringPass>();
         pipeline.RunPass<SlowPathLoweringPass>();
         pipeline.RunPass<VerifierPass>();
@@ -156,8 +156,7 @@ void PassManager::ProcessConstantPool(BytecodeInfoCollector *collector)
 {
     LOG_COMPILER(INFO) << collector->GetBytecodeInfo().GetSkippedMethodSize()
                        << " methods have been skipped";
-    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->ProcessSnapshotConstantPool(collector,
-        passOptions_->EnableOptStaticMethod());
+    vm_->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->ProcessSnapshotConstantPool(collector);
 }
 
 bool PassManager::IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const
@@ -182,9 +181,8 @@ void PassManager::ResolveModule(const JSPandaFile *jsPandaFile, const std::strin
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     [[maybe_unused]] EcmaHandleScope scope(thread);
     for (auto info: recordInfo) {
-        auto recordName = info.first;
-        if (jsPandaFile->IsModule(thread, recordName)) {
-            ASSERT(!thread->HasPendingException());
+        if (jsPandaFile->IsModule(info.second)) {
+            auto recordName = info.first;
             JSHandle<JSTaggedValue> moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(fileName.c_str(),
                 recordName);
             SourceTextModule::Instantiate(thread, moduleRecord);

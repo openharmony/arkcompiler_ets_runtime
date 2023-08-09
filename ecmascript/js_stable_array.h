@@ -56,6 +56,9 @@ public:
     static JSTaggedValue At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ToSpliced(JSThread *thread, JSHandle<JSObject> &thisObjHandle, EcmaRuntimeCallInfo *argv,
                                    int64_t argc, int64_t actualStart, int64_t actualSkipCount, int64_t newLen);
+    static JSTaggedValue Reduce(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                JSHandle<JSTaggedValue> callbackFnHandle,
+                                JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

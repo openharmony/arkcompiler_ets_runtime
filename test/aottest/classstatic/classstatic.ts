@@ -287,3 +287,40 @@ function renderScene(){
 renderScene();
 let sh = new Shape();
 sh.func1(1, 2);
+
+class Node{
+    public map : string;
+    public nodeType : number;
+    public parentNode : Node;
+    public childNode : Node;
+
+    constructor(radius: number) {
+        this.map = "hh";
+        this.nodeType = 1;
+        this.parentNode = null;
+        this.childNode = null;
+    }
+
+    public lookup(names: string) : void {
+        var el = this;
+        while (el) {
+            var map = el.map;
+            if (map == names) {
+                print(map)
+            }
+            el = el.nodeType == 1 ? el.childNode : el.parentNode;
+            const tmp = Node.Constant;
+            print(el);
+        }
+    }
+
+    static Constant = 1;
+    static Curve = 2;
+    static TwoC = 3;
+}
+Object.defineProperty(Node, "property1", {
+    value: 32,
+    writable: false
+});
+let obj = new Node();
+obj.lookup("hh");

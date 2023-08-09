@@ -17,6 +17,7 @@
 #define ECMASCRIPT_TS_TYPES_TS_TYPE_PARSER_H
 
 #include "ecmascript/jspandafile/type_literal_extractor.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/ts_types/ts_type_table_generator.h"
 
 namespace panda::ecmascript {
@@ -39,6 +40,8 @@ public:
         uint32_t cpIdx;
         PGOSampleType pgoType;
         kungfu::PGOBCInfo::Type type;
+        PGOProfilerDecoder *decoder;
+        bool enableOptTrackField;
     };
 
     explicit TSTypeParser(TSManager *tsManager);
@@ -173,7 +176,9 @@ private:
 
     JSHandle<JSTaggedValue> ParseNonImportPGOType(GlobalTSTypeRef gt, PGOInfo &info);
 
-    JSHandle<TSObjectType> ParseObjectPGOType(GlobalTSTypeRef gt, PGOInfo &info);
+    JSHandle<JSTaggedValue> ParseObjectPGOType(GlobalTSTypeRef gt, PGOInfo &info);
+
+    bool VerifyObjIhcPGOType(JSHandle<JSObject> obj, const PGOHClassLayoutDesc &desc);
 
     void FillPropTypes(const JSPandaFile *jsPandaFile,
                        const CString &recordName,

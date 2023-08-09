@@ -28,7 +28,7 @@ class TSHCRLowering {
 public:
     TSHCRLowering(Circuit *circuit, PassContext *ctx,
                    bool enableLog, bool enableTypeLog,
-                   bool enableOptStaticMethod, const std::string& name)
+                   const std::string& name)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -36,7 +36,6 @@ public:
           tsManager_(ctx->GetTSManager()),
           enableLog_(enableLog),
           enableTypeLog_(enableTypeLog),
-          enableOptStaticMethod_(enableOptStaticMethod),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
           verifyVTable_(ctx->GetCompilerConfig()->IsVerifyVTbale()),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
@@ -60,11 +59,6 @@ private:
     bool IsTypeLogEnabled() const
     {
         return enableTypeLog_;
-    }
-
-    bool EnableOptStaticMethod() const
-    {
-        return enableOptStaticMethod_;
     }
 
     bool IsProfiling() const
@@ -190,7 +184,6 @@ private:
     TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
     bool enableTypeLog_ {false};
-    bool enableOptStaticMethod_ {false};
     bool profiling_ {false};
     bool verifyVTable_ {false};
     bool traceBc_ {false};
@@ -200,7 +193,7 @@ private:
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
     ArgumentAccessor argAcc_;
-    EcmaOpcode currentOp_;
+    EcmaOpcode currentOp_ {static_cast<EcmaOpcode>(0xff)};
     PGOTypeLogList pgoTypeLog_;
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeMap_;
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeHitTimeMap_;

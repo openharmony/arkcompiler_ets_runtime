@@ -1,0 +1,21 @@
+{
+  "name": "wp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "icon": "images/icon.png",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dist": "npx webpack -c webpack.dist.config.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "webpack": "^5.64.4",
+    "webpack-cli": "^4.9.1"
+  },
+  "dependencies": {
+    "vsce": "^2.11.0"
+  }
+}

@@ -554,9 +554,9 @@ JSTaggedValue ContainersLinkedList::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
     JSHandle<JSAPILinkedList> linkedList = JSHandle<JSAPILinkedList>::Cast(thisHandle);
     JSHandle<TaggedDoubleList> doubleList(thread, linkedList->GetDoubleList());
-    int length = linkedList->Length();
+    uint32_t length = linkedList->Length();
 
-    int index = 0;
+    uint32_t index = 0;
     const uint32_t argsLength = 3; // 3: «kValue, k, O»
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     int valueNode = TaggedDoubleList::ELEMENTS_START_INDEX;

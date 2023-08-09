@@ -256,7 +256,7 @@ public:
     GateRef ArrayGuardianCheck(GateRef frameState);
     GateRef TypedArrayCheck(GateType type, GateRef gate);
     GateRef LoadTypedArrayLength(GateType type, GateRef gate);
-    GateRef RangeGuard(GateRef gate);
+    GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
     GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassIndex);
     GateRef ObjectTypeCompare(GateType type, GateRef gate, GateRef hclassIndex);
@@ -283,8 +283,6 @@ public:
     GateRef Int32CheckRightIsZero(GateRef right);
     GateRef Float64CheckRightIsZero(GateRef right);
     GateRef ValueCheckNegOverflow(GateRef value);
-    GateRef NegativeIndexCheck(GateRef index);
-    GateRef LargeIndexCheck(GateRef index, GateRef length);
     GateRef OverflowCheck(GateRef value);
     GateRef LexVarIsHoleCheck(GateRef value);
     GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);
@@ -305,9 +303,13 @@ public:
     GateRef ConvertInt32ToFloat64(GateRef gate);
     GateRef ConvertBoolToInt32(GateRef gate, ConvertSupport support);
     GateRef ConvertBoolToFloat64(GateRef gate, ConvertSupport support);
+    GateRef ConvertUInt32ToBool(GateRef gate);
+    GateRef ConvertUInt32ToTaggedNumber(GateRef gate);
+    GateRef ConvertUInt32ToFloat64(GateRef gate);
     GateRef CheckAndConvert(
         GateRef gate, ValueType src, ValueType dst, ConvertSupport support = ConvertSupport::ENABLE);
     GateRef ConvertHoleAsUndefined(GateRef receiver);
+    GateRef CheckUInt32AndConvertToInt32(GateRef gate);
     GateRef CheckTaggedIntAndConvertToInt32(GateRef gate);
     GateRef CheckTaggedDoubleAndConvertToInt32(GateRef gate);
     GateRef CheckTaggedNumberAndConvertToInt32(GateRef gate);
@@ -354,6 +356,7 @@ public:
     GateRef SwitchCase(GateRef switchBranch, int64_t value);
     GateRef DefaultCase(GateRef switchBranch);
     GateRef DependRelay(GateRef state, GateRef depend);
+    GateRef ReadSp();
     GateRef BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
         GateRef left, GateRef right, GateType gateType = GateType::Empty());
     GateRef BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right);
@@ -616,6 +619,7 @@ public:
     GateRef FinishAllocate();
     GateRef HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag);
     GateRef CreateArray(size_t arraySize);
+    GateRef CreateArrayWithBuffer(size_t arraySize, GateRef constPoolIndex, GateRef elementIndex);
 
     void SetEnvironment(Environment *env)
     {

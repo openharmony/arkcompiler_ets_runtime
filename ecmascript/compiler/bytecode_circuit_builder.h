@@ -317,7 +317,7 @@ public:
         return jsGatesToByteCode_.at(gate);
     }
 
-    bool NeedUpdateHotness() const
+    bool NeedCheckSafePointAndStackOver() const
     {
         return !isInline_ && !method_->IsNoGC();
     }

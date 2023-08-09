@@ -75,10 +75,12 @@ public:
 private:
     // 24.2.1.1 GetViewValue ( view, requestIndex, isLittleEndian, type )
     static JSTaggedValue GetViewValue(JSThread *thread, const JSHandle<JSTaggedValue> &view,
-                                      const JSHandle<JSTaggedValue> &requestIndex, JSTaggedValue littleEndian,
+                                      const JSHandle<JSTaggedValue> &requestIndex,
+                                      const JSHandle<JSTaggedValue> &littleEndian,
                                       DataViewType type);
     static JSTaggedValue SetViewValue(JSThread *thread, const JSHandle<JSTaggedValue> &view,
-                                      const JSHandle<JSTaggedValue> &requestIndex, JSTaggedValue littleEndian,
+                                      const JSHandle<JSTaggedValue> &requestIndex,
+                                      const JSHandle<JSTaggedValue> &littleEndian,
                                       DataViewType type, const JSHandle<JSTaggedValue> &value);
 
     static JSTaggedValue GetTypedValue(EcmaRuntimeCallInfo *argv, DataViewType type);

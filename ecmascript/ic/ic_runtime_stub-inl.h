@@ -283,7 +283,7 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
         handlerInfo = static_cast<uint32_t>(transitionHandler->GetHandlerInfo().GetInt());
     }
 
-    receiver->SetClass(newHClass);
+    receiver->SynchronizedSetClass(newHClass);
     ASSERT(HandlerBase::IsField(handlerInfo));
 
     if (!HandlerBase::IsInlinedProps(handlerInfo)) {

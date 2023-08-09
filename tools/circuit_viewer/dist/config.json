@@ -1,0 +1,65 @@
+{
+    "MTypeField": [
+        "bitfield",
+        "type",
+        "stamp",
+        "mark"
+    ],
+    "NodeColor": {
+        "control": "0xffffbf7f",
+        "depend": "0xffc0c0ff",
+        "value": "0xffc0ffc0",
+        "other": "0xffc0c0c0"
+    },
+    "LineColor": {
+        "state": "0xffffaf5f",
+        "depend": "0xff0000ff",
+        "value": "0xff00ff00",
+        "framestate": "0xff303030",
+        "root": "0xff303030"
+    },
+    "OpNotControl": [
+        "VALUE_SELECTOR",
+        "DEPEND_SELECTOR",
+        "DEPEND_RELAY",
+        "LOOP_EXIT_DEPEND",
+        "LOOP_EXIT_VALUE",
+        "STATE_SPLIT",
+        "GET_EXCEPTION"
+    ],
+    "OpTypeControl": [
+        "STATE_ENTRY"
+    ],
+    "OpTypeDepend": [
+        "DEPEND_ENTRY"
+    ],
+    "OpTypeValue": [
+        "ARG",
+        "CONSTANT",
+        "CONST_DATA"
+    ],
+    "OpTypeFrameState": [
+        "FRAME_STATE"
+    ],
+    "OpTypeCircuitRoot": [
+        "CIRCUIT_ROOT"
+    ],
+    "OpTypeLoopBegin": [
+        "LOOP_BEGIN"
+    ],
+    "OpTypeDependSelector": [
+        "DEPEND_SELECTOR"
+    ],
+    "OpTypeValueSelector": [
+        "VALUE_SELECTOR"
+    ],
+    "OpTypeJsBytecode": [
+        "JS_BYTECODE"
+    ],
+    "BlockTypes": [
+        "Build Basic Block",
+        "Computed Dom Trees",
+        "Inserted Phis",
+        "Bytecode2Gate"
+    ]
+}

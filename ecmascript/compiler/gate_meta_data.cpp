@@ -230,7 +230,6 @@ bool GateMetaData::IsVirtualState() const
     switch (opcode_) {
         case OpCode::GET_EXCEPTION:
         case OpCode::STATE_SPLIT:
-        case OpCode::CHECK_AND_CONVERT:
             return true;
         default:
             return false;

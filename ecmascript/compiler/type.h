@@ -277,6 +277,7 @@ private:
 enum class ValueType : uint8_t {
     BOOL,
     INT32,
+    UINT32,
     FLOAT64,
     TAGGED_BOOLEAN,
     TAGGED_INT,

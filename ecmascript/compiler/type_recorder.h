@@ -42,6 +42,7 @@ public:
     PGORWOpType GetRwOpType(int32_t offset) const;
     GateType GetArgType(const uint32_t argIndex) const;
     GateType UpdateType(const int32_t offset, const GateType &type) const;
+    GateType GetCallTargetType(int32_t offset) const;
 
     static constexpr int METHOD_ANNOTATION_THIS_TYPE_OFFSET = -2;
 
@@ -75,6 +76,7 @@ private:
     void CollectLiteralGT(TSManager *tsManager, TypeLocation &tLoc, GlobalTSTypeRef gt);
 
     std::unordered_map<int32_t, GateType> bcOffsetGtMap_ {};
+    std::unordered_map<int32_t, GateType> bcOffsetCallTargetGtMap_ {};
     std::unordered_map<int32_t, PGOSampleType> bcOffsetPGOOpTypeMap_ {};
     std::unordered_map<int32_t, PGORWOpType> bcOffsetPGORwTypeMap_ {};
     std::vector<GateType> argTypes_;

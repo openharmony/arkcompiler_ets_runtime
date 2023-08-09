@@ -67,7 +67,7 @@ void BytecodeInfoCollector::ProcessClasses()
     MethodLiteral *methods = jsPandaFile_->GetMethodLiterals();
     const panda_file::File *pf = jsPandaFile_->GetPandaFile();
     size_t methodIdx = 0;
-    std::map<const uint8_t *, std::pair<size_t, uint32_t>> processedInsns;
+    std::map<uint32_t, std::pair<size_t, uint32_t>> processedMethod;
     Span<const uint32_t> classIndexes = jsPandaFile_->GetClasses();
 
     auto &recordNames = bytecodeInfo_.GetRecordNames();
@@ -82,7 +82,7 @@ void BytecodeInfoCollector::ProcessClasses()
         panda_file::ClassDataAccessor cda(*pf, classId);
         CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
         const CString recordName = JSPandaFile::ParseEntryPoint(desc);
-        cda.EnumerateMethods([this, methods, &methodIdx, pf, &processedInsns,
+        cda.EnumerateMethods([this, methods, &methodIdx, pf, &processedMethod,
             &recordNames, &methodPcInfos, &recordName,
             &methodIndexes, &classConstructIndexes] (panda_file::MethodDataAccessor &mda) {
             auto methodId = mda.GetMethodId();
@@ -114,19 +114,19 @@ void BytecodeInfoCollector::ProcessClasses()
             panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
             uint32_t codeSize = codeDataAccessor.GetCodeSize();
             const uint8_t *insns = codeDataAccessor.GetInstructions();
-            auto it = processedInsns.find(insns);
-            if (it == processedInsns.end()) {
+            auto it = processedMethod.find(methodOffset);
+            if (it == processedMethod.end()) {
                 std::vector<std::string> classNameVec;
                 CollectMethodPcsFromBC(codeSize, insns, methodLiteral, classNameVec,
                     recordName, methodOffset, classConstructIndexes);
-                processedInsns[insns] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
+                processedMethod[methodOffset] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
                 // collect className and literal offset for type infer
                 if (EnableCollectLiteralInfo()) {
                     CollectClassLiteralInfo(methodLiteral, classNameVec);
                 }
             }
 
-            SetMethodPcInfoIndex(methodOffset, processedInsns[insns]);
+            SetMethodPcInfoIndex(methodOffset, processedMethod[methodOffset]);
             jsPandaFile_->SetMethodLiteralToMap(methodLiteral);
             pfDecoder_.MatchAndMarkMethod(recordName, name.c_str(), methodId);
         });
@@ -262,6 +262,7 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
         pcOffsets.emplace_back(curPc);
         bcIndex++;
     }
+    pcOffsets.emplace_back(bcInsLast.GetAddress());
     bytecodeInfo_.SetMethodOffsetToFastCallInfo(methodOffset, canFastCall, noGC);
     method->SetIsFastCall(canFastCall);
     method->SetNoGCBit(noGC);
@@ -625,7 +626,8 @@ void BytecodeInfoCollector::CollectRecordReferenceREL()
 {
     auto &recordNames = bytecodeInfo_.GetRecordNames();
     for (auto &record : recordNames) {
-        if (jsPandaFile_->HasTSTypes(record) && jsPandaFile_->IsModule(vm_->GetJSThread(), record)) {
+        JSRecordInfo info = jsPandaFile_->FindRecordInfo(record);
+        if (jsPandaFile_->HasTSTypes(info)|| jsPandaFile_->IsModule(info)) {
             CollectRecordImportInfo(record);
             CollectRecordExportInfo(record);
         }

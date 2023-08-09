@@ -26,3 +26,5 @@ func1
 intersect
 func1
 2
+hh
+null

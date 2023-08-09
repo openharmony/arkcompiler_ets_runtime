@@ -44,6 +44,7 @@ bool TSHCRLowering::RunTSHCRLowering()
             success = false;
         }
     }
+    acc_.EliminateRedundantPhi();
 
     if (IsTypeLogEnabled()) {
         pgoTypeLog_.PrintPGOTypeLog();
@@ -590,7 +591,7 @@ void TSHCRLowering::LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode 
         return;
     }
 
-    ObjectAccessHelper accessHelper(tsManager_, accessMode, receiver, receiverType, key, value, enableOptStaticMethod_);
+    ObjectAccessHelper accessHelper(tsManager_, accessMode, receiver, receiverType, key, value);
     ChunkVector<ObjectAccessInfo> infos(circuit_->chunk());
     bool continuation = accessHelper.Compute(infos);
     if (!continuation) {
@@ -883,6 +884,8 @@ GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
             return builder_.LoadElement<TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT>(receiver, propKey);
         case BuiltinTypeId::INT32_ARRAY:
             return builder_.LoadElement<TypedLoadOp::INT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
+        case BuiltinTypeId::UINT32_ARRAY:
+            return builder_.LoadElement<TypedLoadOp::UINT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
         case BuiltinTypeId::FLOAT32_ARRAY:
             return builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
         case BuiltinTypeId::FLOAT64_ARRAY:
@@ -938,6 +941,9 @@ void TSHCRLowering::StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, Ga
             break;
         case BuiltinTypeId::INT32_ARRAY:
             builder_.StoreElement<TypedStoreOp::INT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            break;
+        case BuiltinTypeId::UINT32_ARRAY:
+            builder_.StoreElement<TypedStoreOp::UINT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
             break;
         case BuiltinTypeId::FLOAT32_ARRAY:
             builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
@@ -1285,7 +1291,7 @@ void TSHCRLowering::CheckFastCallThisCallTarget(GateRef gate, GateRef func, Glob
 }
 
 void TSHCRLowering::CheckCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
-                                                GateType funcType, bool isNoGC)
+    GateType funcType, bool isNoGC)
 {
     if (noCheck_) {
         return;

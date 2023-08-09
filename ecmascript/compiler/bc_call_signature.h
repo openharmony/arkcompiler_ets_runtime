@@ -453,7 +453,13 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleCallthis3Imm8V8V8V8V8, V)              \
     APPEND_SUFFIX(HandleNewobjrangeImm8Imm8V8, V)              \
     APPEND_SUFFIX(HandleNewobjrangeImm16Imm8V8, V)             \
-    APPEND_SUFFIX(HandleWideNewobjrangePrefImm16V8, V)
+    APPEND_SUFFIX(HandleWideNewobjrangePrefImm16V8, V)         \
+    APPEND_SUFFIX(HandleInstanceofImm8V8, V)                   \
+    APPEND_SUFFIX(HandleTryldglobalbynameImm8Id16, V)          \
+    APPEND_SUFFIX(HandleTryldglobalbynameImm16Id16, V)         \
+    APPEND_SUFFIX(HandleTrystglobalbynameImm8Id16, V)          \
+    APPEND_SUFFIX(HandleTrystglobalbynameImm16Id16, V)         \
+    APPEND_SUFFIX(HandleLdglobalvarImm16Id16, V)
 
 #define ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(V)               \
     APPEND_SUFFIX(HandleDefineclasswithbufferImm8Id16Id16Imm16V8, V)  \

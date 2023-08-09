@@ -32,6 +32,8 @@ public:
 
     static JSTaggedValue Next(EcmaRuntimeCallInfo *argv);
     void Update(const JSThread *thread);
+    static JSTaggedValue MapIteratorToList(JSThread *thread, JSHandle<JSTaggedValue> &items,
+                                           JSHandle<JSTaggedValue> &method);
 
     static constexpr size_t ITERATED_MAP_OFFSET = JSObject::SIZE;
     ACCESSORS(IteratedMap, ITERATED_MAP_OFFSET, NEXT_INDEX_OFFSET);

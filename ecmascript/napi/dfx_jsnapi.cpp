@@ -71,7 +71,6 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress, isVmMode, isPrivate);
-    ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif
@@ -118,6 +117,15 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
+}
+
+void DFXJSNApi::DestroyProfiler([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
+#endif
 }
 
 bool DFXJSNApi::BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
@@ -332,9 +340,11 @@ bool DFXJSNApi::CpuProfilerSamplingAnyTime([[maybe_unused]] const EcmaVM *vm)
         } else {
             LOG_ECMA(INFO) << "Stop CpuProfiler Any Time Worker Thread, killCount = " << killCount;
             const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
-                if (workerVm->GetJSThread()->GetIsProfiling()) {
+                auto *thread = workerVm->GetAssociatedJSThread();
+                if (thread->GetIsProfiling()) {
                     DFXJSNApi::StopCpuProfilerForFile(workerVm);
                 }
+                thread->SetNeedProfiling(false);
             });
         }
     }
@@ -493,7 +503,7 @@ bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::ve
     if (hostVm->GetAssociatedJSThread()->GetThreadId() == tid) {
         vm = const_cast<EcmaVM*>(hostVm);
     } else {
-        vm = hostVm->GetWorkerVm(tid);
+        vm = const_cast<EcmaVM*>(hostVm)->GetWorkerVm(tid);
         if (vm == nullptr) {
             return false;
         }
@@ -558,5 +568,10 @@ bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, int32_t 
         debugOption.isDebugMode = true;
         return JSNApi::StartDebugger(vm, debugOption, instanceId, debuggerPostTask);
     }
+}
+
+EcmaVM *DFXJSNApi::GetWorkerVm(EcmaVM *hostVm, uint32_t tid)
+{
+    return hostVm->GetWorkerVm(tid);
 }
 } // namespace panda

@@ -64,15 +64,14 @@ public:
     };
 
     explicit ObjectAccessHelper(TSManager *tsManager, AccessMode mode, GateRef receiver, GateType type,
-                                JSTaggedValue key, GateRef value, bool enableOptStaticMethod)
+                                JSTaggedValue key, GateRef value)
         : tsManager_(tsManager),
           thread_(tsManager_->GetThread()),
           mode_(mode),
           receiver_(receiver),
           type_(type),
           key_(key),
-          value_(value),
-          enableOptStaticMethod_(enableOptStaticMethod) {}
+          value_(value) {}
 
     ~ObjectAccessHelper() = default;
 
@@ -110,7 +109,6 @@ private:
     GateType type_ {GateType::AnyType()};
     JSTaggedValue key_ {JSTaggedValue::Hole()};
     GateRef value_ {Circuit::NullGate()};
-    bool enableOptStaticMethod_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_OBJECT_ACCESS_HELPER_H

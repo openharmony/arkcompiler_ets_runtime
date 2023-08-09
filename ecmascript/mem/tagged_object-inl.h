@@ -48,14 +48,13 @@ inline JSHClass *TaggedObject::GetClass() const
 
 inline void TaggedObject::SynchronizedSetClass(JSHClass *hclass)
 {
-    reinterpret_cast<std::atomic<MarkWordType> *>(this)->store(reinterpret_cast<MarkWordType>(hclass),
-                                                               std::memory_order_release);
+    Barriers::SynchronizedSetClass(this, JSTaggedValue(hclass).GetRawData());
 }
 
 inline JSHClass *TaggedObject::SynchronizedGetClass() const
 {
     return reinterpret_cast<JSHClass *>(
-        reinterpret_cast<std::atomic<MarkWordType> *>(ToUintPtr(this))->load(std::memory_order_acquire));
+        reinterpret_cast<volatile std::atomic<MarkWordType> *>(ToUintPtr(this))->load(std::memory_order_acquire));
 }
 
 inline JSThread *TaggedObject::GetJSThread() const

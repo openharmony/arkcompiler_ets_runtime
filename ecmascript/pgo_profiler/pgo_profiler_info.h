@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_PGO_PROFILER_INFO_H
 #define ECMASCRIPT_PGO_PROFILER_INFO_H
 
+#include <cstdint>
 #include <memory>
 #include <sstream>
 #include <unordered_map>
@@ -326,6 +327,7 @@ public:
     static constexpr int METHOD_COUNT_INDEX = 1;
     static constexpr int METHOD_MODE_INDEX = 2;
     static constexpr int METHOD_NAME_INDEX = 3;
+    static constexpr uint32_t METHOD_MAX_HIT_COUNT = 10000U;
 
     explicit PGOMethodInfo(PGOMethodId id) : id_(id) {}
 
@@ -383,7 +385,7 @@ public:
             LOG_ECMA(ERROR) << "The method id must same for merging";
             return;
         }
-        count_ += info->GetCount();
+        count_ = std::min(count_ + info->GetCount(), METHOD_MAX_HIT_COUNT);
         SetSampleMode(info->GetSampleMode());
     }
 
@@ -470,6 +472,17 @@ public:
         auto result = scalarOpTypeInfos_.find(ScalarOpTypeInfo(offset, type));
         if (result != scalarOpTypeInfos_.end()) {
             auto combineType = result->GetType().CombineType(type);
+            const_cast<ScalarOpTypeInfo &>(*result).SetType(combineType);
+        } else {
+            scalarOpTypeInfos_.emplace(offset, type);
+        }
+    }
+
+    void AddCallTargetType(uint32_t offset, PGOSampleType type)
+    {
+        auto result = scalarOpTypeInfos_.find(ScalarOpTypeInfo(offset, type));
+        if (result != scalarOpTypeInfos_.end()) {
+            auto combineType = result->GetType().CombineCallTargetType(type);
             const_cast<ScalarOpTypeInfo &>(*result).SetType(combineType);
         } else {
             scalarOpTypeInfos_.emplace(offset, type);
@@ -797,6 +810,7 @@ public:
 
     bool AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode, int32_t incCount);
     bool AddType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
+    bool AddCallTargetType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
     bool AddDefine(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
@@ -992,6 +1006,7 @@ public:
     // If it is a new method, return true.
     bool AddMethod(const CString &recordName, Method *jsMethod, SampleMode mode, int32_t incCount);
     bool AddType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type);
+    bool AddCallTargetType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(const CString &recordName, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
     bool AddDefine(
         const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);

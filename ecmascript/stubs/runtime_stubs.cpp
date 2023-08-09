@@ -413,10 +413,10 @@ void RuntimeStubs::Comment(uintptr_t argStr)
     LOG_ECMA(DEBUG) << str;
 }
 
-void RuntimeStubs::ProfileCall(uintptr_t argGlue, uintptr_t target, uint32_t incCount)
+void RuntimeStubs::ProfileCall(uintptr_t argGlue, uintptr_t func, uintptr_t target, int32_t pcOffset, uint32_t incCount)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(target, SampleMode::CALL_MODE, incCount);
+    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(func, target, pcOffset, SampleMode::CALL_MODE, incCount);
 }
 
 void RuntimeStubs::ProfileOpType(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type)
@@ -978,7 +978,8 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounterWithProf)
     JSHandle<Method> method(thread, thisFunc->GetMethod());
     auto profileTypeInfo = method->GetProfileTypeInfo();
     if (profileTypeInfo.IsUndefined()) {
-        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(thisFunc.GetTaggedType(), SampleMode::HOTNESS_MODE);
+        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(
+            JSTaggedValue::VALUE_UNDEFINED, thisFunc.GetTaggedType(), -1, SampleMode::HOTNESS_MODE);
         uint32_t slotSize = method->GetSlotSize();
         auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
         return res.GetRawData();
@@ -2284,7 +2285,7 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
         FunctionKind kind = function->GetCallTarget()->GetFunctionKind();
         // instead of hclass by non_optimized hclass when method ClearAOTFlags
         JSHandle<JSHClass> newHClass = factory->GetNonOptimizedHclass(hclass, kind);
-        function->SetClass(newHClass);
+        function->SynchronizedSetClass(*newHClass);
     }
     context->SetMethod(thread, function.GetTaggedValue());
     context->SetThis(thread, frameHandler.GetThis());
@@ -2311,7 +2312,8 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
         ASSERT(callTarget != nullptr);
         Method *method = callTarget->GetCallTarget();
         if (!method->IsNativeWithCallField()) {
-            thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(targetFunc.GetTaggedType());
+            thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(
+                JSTaggedValue::VALUE_UNDEFINED, targetFunc.GetTaggedType());
         }
     }
     JSHandle<TaggedArray> boundArgs(thread, boundFunc->GetBoundArguments());

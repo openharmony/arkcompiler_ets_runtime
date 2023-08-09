@@ -649,6 +649,14 @@ bool PGOMethodInfoMap::AddType(Chunk *chunk, PGOMethodId methodId, int32_t offse
     return true;
 }
 
+bool PGOMethodInfoMap::AddCallTargetType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type)
+{
+    auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
+    ASSERT(typeInfoSet != nullptr);
+    typeInfoSet->AddCallTargetType(offset, type);
+    return true;
+}
+
 bool PGOMethodInfoMap::AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info)
 {
     auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
@@ -763,7 +771,6 @@ bool PGOMethodInfoMap::ProcessToBinary(uint32_t threshold, const CString &record
         if (header->SupportMethodChecksum()) {
             auto checksumIter = methodsChecksum_.find(curMethodInfo->GetMethodId());
             uint32_t checksum = 0;
-            ASSERT(checksumIter != methodsChecksum_.end());
             if (checksumIter != methodsChecksum_.end()) {
                 checksum = checksumIter->second;
             }
@@ -985,6 +992,14 @@ bool PGORecordDetailInfos::AddType(const CString &recordName, PGOMethodId method
     return curMethodInfos->AddType(chunk_.get(), methodId, offset, type);
 }
 
+bool PGORecordDetailInfos::AddCallTargetType(const CString &recordName, PGOMethodId methodId, int32_t offset,
+                                             PGOSampleType type)
+{
+    auto curMethodInfos = GetMethodInfoMap(recordName);
+    ASSERT(curMethodInfos != nullptr);
+    return curMethodInfos->AddCallTargetType(chunk_.get(), methodId, offset, type);
+}
+
 bool PGORecordDetailInfos::AddObjectInfo(
     const CString &recordName, EntityId methodId, int32_t offset, const PGOObjectInfo &info)
 {
@@ -1021,7 +1036,7 @@ bool PGORecordDetailInfos::AddLayout(PGOSampleType type, JSTaggedType hclass, PG
             return false;
         }
     } else {
-        LOG_ECMA(INFO) << "The current class did not find a definition";
+        LOG_ECMA(DEBUG) << "The current class did not find a definition";
         return false;
     }
     return true;

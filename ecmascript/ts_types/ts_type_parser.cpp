@@ -827,7 +827,7 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportPGOType(GlobalTSTypeRef gt, 
 {
     switch (info.type) {
         case kungfu::PGOBCInfo::Type::OBJ_LITERAL: {
-            return JSHandle<JSTaggedValue>(ParseObjectPGOType(gt, info));
+            return ParseObjectPGOType(gt, info);
         }
         default:
             LOG_COMPILER(DEBUG) << "Do not support parse extend types with kind " << static_cast<uint32_t>(info.type);
@@ -835,13 +835,28 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportPGOType(GlobalTSTypeRef gt, 
     }
 }
 
-JSHandle<TSObjectType> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, PGOInfo &info)
+JSHandle<JSTaggedValue> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, PGOInfo &info)
 {
     JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
     JSTaggedValue obj = ConstantPool::GetLiteralFromCache<ConstPoolType::OBJECT_LITERAL>(
         thread_, constpoolHandle.GetTaggedValue(), info.cpIdx, info.recordName);
     JSHandle<JSObject> objHandle(thread_, obj);
+
+    if (info.enableOptTrackField) {
+        ASSERT(info.pgoType.IsClassType());
+        PGOHClassLayoutDesc *desc;
+        if (info.decoder->GetHClassLayoutDesc(info.pgoType, &desc)) {
+            if (!VerifyObjIhcPGOType(objHandle, *desc)) {
+                LOG_COMPILER(DEBUG) << "Verify ihc type failed";
+                return thread_->GlobalConstants()->GetHandledUndefined();
+            }
+        }
+    }
+
     JSHandle<JSHClass> oldHClass(thread_, objHandle->GetClass());
+    if (oldHClass->IsDictionaryMode()) {
+        return thread_->GlobalConstants()->GetHandledUndefined();
+    }
     JSHandle<JSHClass> hclass = JSHClass::Clone(thread_, oldHClass);
     ObjectFactory *factory = vm_->GetFactory();
     JSHandle<LayoutInfo> newLayout = factory->CopyLayoutInfo(JSHandle<LayoutInfo>(thread_, hclass->GetLayout()));
@@ -850,7 +865,46 @@ JSHandle<TSObjectType> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, PGOI
     hclass->SetTS(true);
     JSHandle<TSObjectType> objectType = factory_->NewTSObjectType(0);
     tsManager_->AddInstanceTSHClass(gt, hclass);
-    return objectType;
+    return JSHandle<JSTaggedValue>(objectType);
+}
+
+bool TSTypeParser::VerifyObjIhcPGOType(JSHandle<JSObject> obj, const PGOHClassLayoutDesc &desc)
+{
+    auto hclass = obj->GetClass();
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    int element = layoutInfo->NumberOfElements();
+    for (int i = 0; i < element; i++) {
+        auto key = layoutInfo->GetKey(i);
+        if (!key.IsString()) {
+            continue;
+        }
+
+        auto attr = layoutInfo->GetAttr(i);
+        if (!attr.IsInlinedProps()) {
+            continue;
+        }
+        JSTaggedValue value = obj->GetPropertyInlinedProps(i);
+
+        auto keyString = EcmaStringAccessor(key).ToCString();
+        PGOHandler newHandler;
+        if (!desc.FindDescWithKey(keyString, newHandler)) {
+            continue;
+        }
+        PropertyAttributes newAttr;
+        if (!newHandler.SetAttribute(newAttr)) {
+            continue;
+        }
+        if (newAttr.IsDoubleRep()) {
+            if (!value.IsNumber()) {
+                return false;
+            }
+        } else if (newAttr.IsIntRep()) {
+            if (!value.IsInt()) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 static uint32_t CalculateNextNumIndex(const TypeLiteralExtractor *typeLiteralExtractor,

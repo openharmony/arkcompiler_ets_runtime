@@ -15,7 +15,7 @@
 
 declare function print(arg:any):string;
 {
-    let typedArray : Uint32Array = new Uint32Array([1, 2, 4294967290, 5, 5, 5, 6, 6]);
+    let typedArray : Uint32Array = new Uint32Array([1, 2, 4294967290, 5, 5, 5, 6, 6, 4294967295]);
     print(typedArray[2]);
     typedArray[0] = typedArray[2] + typedArray[4]; //upper bound
     print(typedArray[0]);
@@ -29,4 +29,28 @@ declare function print(arg:any):string;
     print(s);
     s = typedArray[3] - typedArray[7];
     print(s);
+
+    // and
+    print(typedArray[8] & 1);
+    print(typedArray[8] & -1);
+
+    // or
+    print(typedArray[8] | 1);
+    print(typedArray[8] | -1);
+
+    // ashr
+    print(typedArray[8] >>> 1);
+    print(typedArray[8] >>> -1);
+
+    // shr
+    print(typedArray[8] >> 1);
+    print(typedArray[8] >> -1);
+
+    // shl
+    print(typedArray[8] << 1);
+    print(typedArray[8] << -1);
+
+    // xor
+    print(typedArray[8] ^ 1);
+    print(typedArray[8] ^ -1);
 }

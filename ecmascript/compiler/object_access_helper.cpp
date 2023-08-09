@@ -48,7 +48,7 @@ bool ObjectAccessHelper::ComputeForClassInstance(ObjectAccessInfo &info)
         return false;
     }
 
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
+    JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
     if (!hclass->HasTSSubtyping()) {
         return false;
     }
@@ -68,9 +68,6 @@ bool ObjectAccessHelper::ComputeForClassOrObject(ObjectAccessInfo &info)
     GateType type = info.Type();
     int hclassIndex = -1;
     if (tsManager_->IsClassTypeKind(type)) {
-        if (!enableOptStaticMethod_) {
-            return false;
-        }
         hclassIndex = tsManager_->GetConstructorHClassIndexByClassGateType(type);
     } else if (tsManager_->IsObjectTypeKind(type)) {
         hclassIndex = tsManager_->GetHClassIndexByObjectType(type);
@@ -80,7 +77,7 @@ bool ObjectAccessHelper::ComputeForClassOrObject(ObjectAccessInfo &info)
         return false;
     }
 
-    JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
+    JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
     PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread_, hclass, key_);
     info.Set(hclassIndex, plr);
 
