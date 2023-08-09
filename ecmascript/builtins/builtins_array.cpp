@@ -2981,6 +2981,7 @@ JSTaggedValue BuiltinsArray::At(EcmaRuntimeCallInfo *argv)
 }
 
 // 23.1.3.39 Array.prototype.with ( index, value )
+// NOLINTNEXTLINE(readability-function-size)
 JSTaggedValue BuiltinsArray::With(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
