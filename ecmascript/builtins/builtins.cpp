@@ -2099,6 +2099,8 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     SetFunction(env, arrFuncPrototype, "filter", BuiltinsArray::Filter, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "find", BuiltinsArray::Find, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "findIndex", BuiltinsArray::FindIndex, FunctionLength::ONE);
+    SetFunction(env, arrFuncPrototype, "findLast", BuiltinsArray::FindLast, FunctionLength::ONE);
+    SetFunction(env, arrFuncPrototype, "findLastIndex", BuiltinsArray::FindLastIndex, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "forEach", BuiltinsArray::ForEach, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "indexOf", BuiltinsArray::IndexOf, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "join", BuiltinsArray::Join, FunctionLength::ONE);
@@ -2195,6 +2197,8 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHand
     SetFunction(env, typedArrFuncPrototype, "filter", BuiltinsTypedArray::Filter, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "find", BuiltinsTypedArray::Find, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "findIndex", BuiltinsTypedArray::FindIndex, FunctionLength::ONE);
+    SetFunction(env, typedArrFuncPrototype, "findLast", BuiltinsTypedArray::FindLast, FunctionLength::ONE);
+    SetFunction(env, typedArrFuncPrototype, "findLastIndex", BuiltinsTypedArray::FindLastIndex, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "forEach", BuiltinsTypedArray::ForEach, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "indexOf", BuiltinsTypedArray::IndexOf, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "join", BuiltinsTypedArray::Join, FunctionLength::ONE);

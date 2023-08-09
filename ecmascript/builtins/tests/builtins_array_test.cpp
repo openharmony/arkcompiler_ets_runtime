@@ -146,6 +146,30 @@ public:
             return GetTaggedBoolean(false);
         }
 
+        static JSTaggedValue TestFindLastFunc(EcmaRuntimeCallInfo *argv)
+        {
+            uint32_t argc = argv->GetArgsNumber();
+            if (argc > 0) {
+                // 20 : test case
+                if (GetCallArg(argv, 0)->GetInt() > 20) {
+                    return GetTaggedBoolean(true);
+                }
+            }
+            return GetTaggedBoolean(false);
+        }
+
+        static JSTaggedValue TestFindLastIndexFunc(EcmaRuntimeCallInfo *argv)
+        {
+            uint32_t argc = argv->GetArgsNumber();
+            if (argc > 0) {
+                // 20 : test case
+                if (GetCallArg(argv, 0)->GetInt() > 20) {
+                    return GetTaggedBoolean(true);
+                }
+            }
+            return GetTaggedBoolean(false);
+        }
+
         static JSTaggedValue TestReduceFunc(EcmaRuntimeCallInfo *argv)
         {
             int accumulator = GetCallArg(argv, 0)->GetInt();
@@ -1749,5 +1773,85 @@ HWTEST_F_L0(BuiltinsArrayTest, ToSpliced)
     EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key0).GetValue()->GetInt(), INT_VALUE_0);
     EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key1).GetValue()->GetInt(), INT_VALUE_666);
     EXPECT_EQ(JSArray::GetProperty(thread, resultArr, key2).GetValue()->GetInt(), INT_VALUE_2);
+}
+
+HWTEST_F_L0(BuiltinsArrayTest, FindLast)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
+    JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
+    // arr [50, 40, 2]
+    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
+    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(50)), true, true, true);
+    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
+    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(40)), true, true, true);
+    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
+    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
+    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
+    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+    JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestFindLastFunc));
+
+    auto ecmaRuntimeCallInfo1 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8 means 2 call args
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, func.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(1, jsArray.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result = Array::FindLast(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_EQ(result.GetRawData(), JSTaggedValue(40).GetRawData());
+}
+
+HWTEST_F_L0(BuiltinsArrayTest, FindLastIndex)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
+    JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
+
+    // arr [50, 40, 30]
+    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
+    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(50)), true, true, true);
+    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
+
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
+    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(40)), true, true, true);
+    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
+
+    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
+    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(30)), true, true, true);
+    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
+
+    JSHandle<JSArray> jsArray(JSArray::ArrayCreate(thread, JSTaggedNumber(0)));
+    JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestFindLastIndexFunc));
+
+    auto ecmaRuntimeCallInfo1 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8 means 2 call args
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, func.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(1, jsArray.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result = Array::FindLastIndex(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_EQ(result.GetRawData(), JSTaggedValue(static_cast<double>(2)).GetRawData());
 }
 }  // namespace panda::test

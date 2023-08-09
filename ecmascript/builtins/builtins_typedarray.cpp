@@ -1805,4 +1805,26 @@ JSTaggedValue BuiltinsTypedArray::Includes(EcmaRuntimeCallInfo *argv)
     }
     return BuiltinsArray::Includes(argv);
 }
+
+// 23.2.3.13
+JSTaggedValue BuiltinsTypedArray::FindLast(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, FindLast);
+    if (!GetThis(argv)->IsTypedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
+    }
+    return BuiltinsArray::FindLast(argv);
+}
+
+// 23.2.3.14
+JSTaggedValue BuiltinsTypedArray::FindLastIndex(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, FindLastIndex);
+    if (!GetThis(argv)->IsTypedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
+    }
+    return BuiltinsArray::FindLastIndex(argv);
+}
 }  // namespace panda::ecmascript::builtins

@@ -245,6 +245,8 @@ namespace panda::ecmascript {
     V(Array, Filter)                          \
     V(Array, Find)                            \
     V(Array, FindIndex)                       \
+    V(Array, FindLast)                        \
+    V(Array, FindLastIndex)                   \
     V(Array, ForEach)                         \
     V(Array, IndexOf)                         \
     V(Array, Join)                            \
@@ -740,6 +742,8 @@ namespace panda::ecmascript {
     V(TypedArray, Fill)                       \
     V(TypedArray, Find)                       \
     V(TypedArray, FindIndex)                  \
+    V(TypedArray, FindLast)                   \
+    V(TypedArray, FindLastIndex)              \
     V(TypedArray, IndexOf)                    \
     V(TypedArray, LastIndexOf)                \
     V(TypedArray, Reduce)                     \
