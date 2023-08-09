@@ -741,10 +741,22 @@ void DebuggerApi::GetImportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &mod
         if (resolvedBinding.IsHole()) {
             continue;
         }
+        Local<JSValueRef> value;
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
         JSHandle<JSTaggedValue> importModule(thread, binding->GetModule());
-        std::string importName = EcmaStringAccessor(key).ToStdString();
-        Local<JSValueRef> value = GetModuleValue(ecmaVm, importModule, importName);
+        ModuleTypes moduleType = SourceTextModule::Cast(importModule->GetTaggedObject())->GetTypes();
+        if (moduleType == ModuleTypes::CJS_MODULE) {
+            JSTaggedValue moduleValue = thread->GetCurrentEcmaContext()->GetModuleManager()->GetCJSModuleValue(
+                thread, currentModule.GetTaggedValue(), importModule.GetTaggedValue(), binding);
+            value = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, moduleValue));
+        } else if (SourceTextModule::IsNativeModule(moduleType)) {
+            JSTaggedValue moduleValue = thread->GetCurrentEcmaContext()->GetModuleManager()->GetNativeModuleValue(
+                thread, currentModule.GetTaggedValue(), importModule.GetTaggedValue(), binding);
+            value = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, moduleValue));
+        } else {
+            std::string importName = EcmaStringAccessor(key).ToStdString();
+            value = GetModuleValue(ecmaVm, importModule, importName);
+        }
         Local<JSValueRef> variableName = JSNApiHelper::ToLocal<JSValueRef>(name);
         PropertyAttribute descriptor(value, true, true, true);
         moduleObj->DefineProperty(ecmaVm, variableName, descriptor);
