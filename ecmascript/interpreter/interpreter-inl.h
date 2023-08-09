@@ -7407,10 +7407,14 @@ JSTaggedType *EcmaInterpreter::GetInterpreterFrameEnd(JSThread *thread, JSTagged
     } else {
         if (FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_FRAME ||
             FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_FAST_NEW_FRAME) {
-            newSp = sp - InterpretedFrame::NumOfMembers();  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp = sp - InterpretedFrame::NumOfMembers();
+        } else if (FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_BUILTIN_FRAME) {
+            // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp = sp - InterpretedBuiltinFrame::NumOfMembers();
         } else {
-            newSp =
-                sp - InterpretedEntryFrame::NumOfMembers();  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp = sp - InterpretedEntryFrame::NumOfMembers();
         }
     }
     return newSp;
