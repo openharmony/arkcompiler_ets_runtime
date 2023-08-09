@@ -172,8 +172,10 @@ GateRef RangeAnalysis::VisitLoadTypedArrayLength(GateRef gate)
 }
 
 GateRef RangeAnalysis::VisitRangeGuard(GateRef gate)
-{
-    return UpdateRange(gate, RangeInfo(1, RangeInfo::TYPED_ARRAY_ONHEAP_MAX));
+{ 
+    auto left = acc_.GetFirstValue(gate);
+    auto right = acc_.GetSecondValue(gate);
+    return UpdateRange(gate, RangeInfo(left, right));
 }
 
 template<TypedBinOp Op>

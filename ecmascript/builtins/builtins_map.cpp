@@ -180,7 +180,7 @@ JSTaggedValue BuiltinsMap::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 1);
 
     JSMutableHandle<LinkedHashMap> hashMap(thread, map->GetLinkedMap());
-    const int32_t argsLength = 3;
+    const uint32_t argsLength = 3;
     int index = 0;
     int totalElements = hashMap->NumberOfElements() + hashMap->NumberOfDeletedElements();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
@@ -314,7 +314,7 @@ JSTaggedValue BuiltinsMap::AddEntriesFromIterable(JSThread *thread, const JSHand
         if (thread->HasPendingException()) {
             return JSIterator::IteratorCloseAndReturn(thread, iter);
         }
-        const int32_t argsLength = 2;  // 2: key and value pair
+        const uint32_t argsLength = 2;  // 2: key and value pair
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, adder, JSHandle<JSTaggedValue>(target), undefined, argsLength);

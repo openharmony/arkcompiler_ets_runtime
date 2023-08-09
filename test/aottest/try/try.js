@@ -13,9 +13,24 @@
  * limitations under the License.
  */
 
-try {
-  const a = {};
-} catch (err) {
-  for (let i = 0; i < 5; i++) {}
+function foo() {
+    try {
+        const a = {};
+    } catch (err) {
+        for (let i = 0; i < 5; i++) {}
+    }
 }
+
+function bar(a) {
+    try {
+        let i = 0;
+        do {
+            a = -5.0;
+            i++;
+        } while (i < 3)
+    } catch (e) {
+        try { a.x } catch (e2) {}
+    }
+}
+
 print("compiler succ")

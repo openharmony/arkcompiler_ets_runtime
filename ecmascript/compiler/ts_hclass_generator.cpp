@@ -220,7 +220,7 @@ JSHandle<JSHClass> TSHClassGenerator::CreatePHClass(const JSThread *thread,
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         JSHandle<JSTaggedValue> ctor = globalConst->GetHandledConstructorString();
         CVector<std::pair<JSHandle<JSTaggedValue>, GlobalTSTypeRef>> sortedPrototype {{ctor, GlobalTSTypeRef()}};
-        CVector<std::pair<JSHandle<JSTaggedValue>, GlobalTSTypeRef>> signatureVec {};
+        CUnorderedMap<std::string, uint32_t> keysMap;
         for (uint32_t index = 0; index < numOfProps; ++index) {
             JSHandle<JSTaggedValue> key(thread, tsLayout->GetKey(index));
             auto value = GlobalTSTypeRef(tsLayout->GetTypeId(index).GetInt());
@@ -231,16 +231,18 @@ JSHandle<JSHClass> TSHClassGenerator::CreatePHClass(const JSThread *thread,
             bool isAbs = tsManager->IsAbstractMethod(value);
             if (!isSame && !isAbs) {
                 bool isSign = tsManager->IsMethodSignature(value);
-                if (LIKELY(!isSign)) {
-                    sortedPrototype.emplace_back(std::make_pair(key, value));
-                } else {
-                    signatureVec.emplace_back(std::make_pair(key, value));
+                if (isSign) {
+                    continue;
                 }
+                std::string keyStr = EcmaStringAccessor(key.GetTaggedValue()).ToStdString();
+                auto it = keysMap.find(keyStr);
+                if (it != keysMap.end()) {
+                    sortedPrototype[it->second] = std::make_pair(key, value);
+                    continue;
+                }
+                keysMap[keyStr] = sortedPrototype.size();
+                sortedPrototype.emplace_back(std::make_pair(key, value));
             }
-        }
-
-        if (!signatureVec.empty()) {
-            sortedPrototype.insert(sortedPrototype.end(), signatureVec.begin(), signatureVec.end());
         }
 
         uint32_t keysLen = sortedPrototype.size();

@@ -246,7 +246,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
     JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
     JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()));
     if (newClass != nullptr) {
-        obj->SetClass(newClass);
+        obj->SynchronizedSetClass(newClass);
 #if ECMASCRIPT_ENABLE_IC
         JSHClass::NotifyHclassChanged(thread, jshclass, JSHandle<JSHClass>(thread, newClass), key.GetTaggedValue());
 #endif
@@ -280,7 +280,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
 #if ECMASCRIPT_ENABLE_IC
     JSHClass::NotifyHclassChanged(thread, jshclass, newJsHClass, key.GetTaggedValue());
 #endif
-    obj->SetClass(*newJsHClass);
+    obj->SynchronizedSetClass(*newJsHClass);
 
     // Maintaining subtyping is no longer required when transition succeeds.
     if (jshclass->HasTSSubtyping()) {
@@ -407,7 +407,7 @@ void JSHClass::ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JST
         // After the hclass is updated, check whether the proto chain status of ic is updated.
         NotifyHclassChanged(thread, hclass, newProtoClass);
 #endif
-        JSObject::Cast(proto->GetTaggedObject())->SetClass(*newProtoClass);
+        JSObject::Cast(proto->GetTaggedObject())->SynchronizedSetClass(*newProtoClass);
         newProtoClass->SetIsPrototype(true);
     }
 }
@@ -429,7 +429,7 @@ void JSHClass::TransitionToDictionary(const JSThread *thread, const JSHandle<JSO
 #if ECMASCRIPT_ENABLE_IC
         JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, obj->GetJSHClass()), newJsHClass);
 #endif
-        obj->SetClass(newJsHClass);
+        obj->SynchronizedSetClass(*newJsHClass);
     }
 }
 
@@ -457,7 +457,7 @@ void JSHClass::TransitionForRepChange(const JSThread *thread, const JSHandle<JSO
     JSHClass::NotifyHclassChanged(thread, oldHClass, newHClass, key.GetTaggedValue());
 #endif
 
-    receiver->SetClass(newHClass);
+    receiver->SynchronizedSetClass(*newHClass);
     // 4. Maybe Transition And Maintain subtypeing check
 }
 
@@ -643,7 +643,10 @@ void JSHClass::RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &ol
     ASSERT(newHclass->IsPrototype());
     bool onceRegistered = UnregisterOnProtoChain(thread, oldHclass);
 
-    newHclass->SetProtoChangeDetails(thread, oldHclass->GetProtoChangeDetails());
+    // oldHclass is already marked. Only update newHclass.protoChangeDetails if it doesn't exist for further use.
+    if (!newHclass->GetProtoChangeDetails().IsProtoChangeDetails()) {
+        newHclass->SetProtoChangeDetails(thread, oldHclass->GetProtoChangeDetails());
+    }
     oldHclass->SetProtoChangeDetails(thread, JSTaggedValue::Undefined());
     if (onceRegistered) {
         if (newHclass->GetProtoChangeDetails().IsProtoChangeDetails()) {

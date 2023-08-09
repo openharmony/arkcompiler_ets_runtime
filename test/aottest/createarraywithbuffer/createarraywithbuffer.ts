@@ -65,3 +65,15 @@ let index = new Index;
 for (let i = 0; i < 3; i++) {
     index.run();
 }
+
+let x = 1.2;
+let y = 9;
+let T:number[] = [0, 1, 1.2, x];
+x = 1;
+let Ta:number[] = [,, 4.2, x];
+let Tb:number[] = [1, y, 1.2, x];
+let Tc:number[] = [-2, -9, 8.3, x];
+
+let z = {test: 1.8}
+
+let Td:number[] = [8848, "aotTest", z, x];

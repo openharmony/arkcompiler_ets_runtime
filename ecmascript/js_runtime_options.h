@@ -118,7 +118,6 @@ enum CommandValues {
     OPTION_COMPILER_OPT_LATER_ELIMINATION,
     OPTION_COMPILER_OPT_VALUE_NUMBERING,
     OPTION_COMPILER_OPT_INLINING,
-    OPTION_COMPILER_OPT_STATIC_METHOD,
     OPTION_COMPILER_OPT_PGOTYPE,
     OPTION_COMPILER_OPT_TRACK_FIELD,
     OPTION_COMPILER_OPT_GLOBAL_TYPEINFER,
@@ -138,7 +137,6 @@ enum CommandValues {
     OPTION_COMPILER_NOCHECK,
     OPTION_FAST_AOT_COMPILE_MODE,
     OPTION_COMPILER_OPT_LOOP_PEELING,
-    OPTION_COMPILER_OPT_RANGE_GUARD,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -917,16 +915,6 @@ public:
         return enableEarlyElimination_;
     }
 
-    void SetEnableRangeGuard(bool value)
-    {
-        enableRangeGuard_ = value;
-    }
-
-    bool IsEnableRangeGuard() const
-    {
-        return enableRangeGuard_;
-    }
-
     void SetEnableLaterElimination(bool value)
     {
         enableLaterElimination_ = value;
@@ -955,16 +943,6 @@ public:
     bool IsEnableOptInlining() const
     {
         return enableOptInlining_;
-    }
-
-    void SetEnableOptStaticMethod(bool value)
-    {
-        enableOptStaticMethod_ = value;
-    }
-
-    bool IsEnableOptStaticMethod() const
-    {
-        return enableOptStaticMethod_;
     }
 
     void SetEnableOptPGOType(bool value)
@@ -1255,11 +1233,9 @@ private:
     bool mergeAbc_ {false};
     bool enableTypeLowering_ {true};
     bool enableEarlyElimination_ {true};
-    bool enableRangeGuard_ {true};
     bool enableLaterElimination_ {true};
     bool enableValueNumbering_ {true};
     bool enableOptInlining_ {true};
-    bool enableOptStaticMethod_ {false};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};
     bool enableOptTrackField_ {true};

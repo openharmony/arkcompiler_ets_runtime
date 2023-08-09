@@ -408,6 +408,7 @@ public:
         uint32_t index {0};
         uint32_t outerMethodOffset {0};
         CString *recordName {nullptr};
+        uint32_t bcIndex {0};
     };
 
     // key:constantpool index, value:ItemData
@@ -421,7 +422,7 @@ public:
         return items_[type];
     }
 
-    void AddIndexToCPItem(ItemType type, uint32_t index, uint32_t methodOffset);
+    void AddIndexToCPItem(ItemType type, uint32_t index, uint32_t methodOffset, uint32_t bcIndex);
 private:
     std::vector<Item> items_;
 };
@@ -505,9 +506,9 @@ public:
         return skippedMethods_.size();
     }
 
-    void AddIndexToCPInfo(ConstantPoolInfo::ItemType type, uint32_t index, uint32_t methodOffset)
+    void AddIndexToCPInfo(ConstantPoolInfo::ItemType type, uint32_t index, uint32_t methodOffset, uint32_t bcIndex)
     {
-        cpInfo_.AddIndexToCPItem(type, index, methodOffset);
+        cpInfo_.AddIndexToCPItem(type, index, methodOffset, bcIndex);
     }
 
     template <class Callback>
@@ -761,9 +762,9 @@ private:
     }
 
     void AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType type,
-                                      uint32_t index, uint32_t methodOffset)
+                                      uint32_t index, uint32_t methodOffset, uint32_t bcIndex)
     {
-        bytecodeInfo_.AddIndexToCPInfo(type, index, methodOffset);
+        bytecodeInfo_.AddIndexToCPInfo(type, index, methodOffset, bcIndex);
     }
 
     inline std::string GetClassName(const EntityId entityId)
@@ -795,7 +796,8 @@ private:
                                  bool *canFastCall);
     void CollectModuleInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
                                  const CString &recordName);
-    void CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);
+    void CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
+                                            uint32_t bcIndex);
     void IterateLiteral(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
     void StoreClassTypeOffset(const uint32_t typeOffset, std::vector<uint32_t> &classOffsetVector);
     void CollectClassLiteralInfo(const MethodLiteral *method, const std::vector<std::string> &classNameVec);

@@ -86,8 +86,11 @@ void EcmaStringTable::InternString(EcmaString *string)
     if (EcmaStringAccessor(string).IsInternString()) {
         return;
     }
+    // Strings in string table should not be in the young space.
+    ASSERT(!Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InYoungSpace());
     ASSERT(EcmaStringAccessor(string).IsLineOrConstantString());
-    table_.emplace(EcmaStringAccessor(string).GetHashcode(), string);
+    auto hashcode = EcmaStringAccessor(string).GetHashcode();
+    table_.emplace(hashcode, string);
     EcmaStringAccessor(string).SetInternString();
 }
 
@@ -105,8 +108,9 @@ EcmaString *EcmaStringTable::GetOrInternString(const JSHandle<EcmaString> &first
     if (concatString != nullptr) {
         return concatString;
     }
-    JSHandle<EcmaString> concatHandle(vm_->GetJSThread(), EcmaStringAccessor::Concat(vm_, firstFlat, secondFlat));
-    concatString = EcmaStringAccessor::Flatten(vm_, concatHandle);
+    JSHandle<EcmaString> concatHandle(vm_->GetJSThread(),
+        EcmaStringAccessor::Concat(vm_, firstFlat, secondFlat, MemSpaceType::OLD_SPACE));
+    concatString = EcmaStringAccessor::FlattenNoGC(vm_, *concatHandle);
     InternString(concatString);
     return concatString;
 }
@@ -118,7 +122,7 @@ EcmaString *EcmaStringTable::GetOrInternString(const uint8_t *utf8Data, uint32_t
         return result;
     }
 
-    result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress);
+    result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, MemSpaceType::OLD_SPACE);
     InternString(result);
     return result;
 }
@@ -146,7 +150,7 @@ EcmaString *EcmaStringTable::GetOrInternString(const uint16_t *utf16Data, uint32
         return result;
     }
 
-    result = EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress);
+    result = EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress, MemSpaceType::OLD_SPACE);
     InternString(result);
     return result;
 }
@@ -158,13 +162,22 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaString *string)
     }
     JSHandle<EcmaString> strHandle(vm_->GetJSThread(), string);
     // may gc
-    auto strFlat = EcmaStringAccessor::Flatten(vm_, strHandle);
+    auto strFlat = EcmaStringAccessor::FlattenNoGC(vm_, *strHandle);
     if (EcmaStringAccessor(strFlat).IsInternString()) {
         return strFlat;
     }
     EcmaString *result = GetString(strFlat);
     if (result != nullptr) {
         return result;
+    }
+
+    if (EcmaStringAccessor(strFlat).IsLineOrConstantString()) {
+        Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(strFlat));
+        if (objectRegion->InYoungSpace()) {
+            JSHandle<EcmaString> resultHandle(vm_->GetJSThread(), strFlat);
+            strFlat = EcmaStringAccessor::CopyStringToOldSpace(vm_,
+                resultHandle, EcmaStringAccessor(strFlat).GetLength(), EcmaStringAccessor(strFlat).IsUtf8());
+        }
     }
     InternString(strFlat);
     return strFlat;
@@ -178,6 +191,7 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(const uint8_t *utf8D
     if (result != nullptr) {
         return result;
     }
+    type = type == MemSpaceType::NON_MOVABLE ? MemSpaceType::NON_MOVABLE : MemSpaceType::OLD_SPACE;
     if (canBeCompress) {
         // Constant string will be created in this branch.
         result = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, type, isConstantString,
@@ -196,7 +210,7 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(const uint16_t *utf1
     if (result != nullptr) {
         return result;
     }
-
+    type = type == MemSpaceType::NON_MOVABLE ? MemSpaceType::NON_MOVABLE : MemSpaceType::OLD_SPACE;
     result = EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress, type);
     InternString(result);
     return result;
@@ -205,8 +219,10 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(const uint16_t *utf1
 void EcmaStringTable::SweepWeakReference(const WeakRootVisitor &visitor)
 {
     for (auto it = table_.begin(); it != table_.end();) {
+        // Strings in string table should not be in the young space. Only old gc will sweep string table.
         auto *object = it->second;
         auto fwd = visitor(object);
+        ASSERT(!Region::ObjectAddressToRange(object)->InYoungSpace());
         if (fwd == nullptr) {
             LOG_ECMA(VERBOSE) << "StringTable: delete string " << std::hex << object;
             table_.erase(it++);

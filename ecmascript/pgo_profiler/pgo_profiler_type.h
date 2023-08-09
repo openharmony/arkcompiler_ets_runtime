@@ -207,6 +207,18 @@ public:
         return *this;
     }
 
+    PGOSampleType CombineCallTargetType(PGOSampleType type)
+    {
+        ASSERT(type_.index() == 1);
+        int32_t oldMethodId = GetClassType().GetClassType();
+        int32_t newMethodId = type.GetClassType().GetClassType();
+        // If we have recorded a valid method if before, invalidate it.
+        if ((oldMethodId != newMethodId) && (oldMethodId != 0)) {
+            type_ = ClassType(0);
+        }
+        return *this;
+    }
+
     void SetType(PGOSampleType type)
     {
         type_ = type.type_;

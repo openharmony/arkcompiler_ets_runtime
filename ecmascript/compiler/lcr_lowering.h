@@ -36,7 +36,6 @@ public:
         return enableLog_;
     }
     void Run();
-    StateDepend LowerCheckAndConvert(StateDepend stateDepend, GateRef gate, GateRef frameState);
     StateDepend LowerConvert(StateDepend stateDepend, GateRef gate);
 private:
     const std::string& GetMethodName() const
@@ -52,6 +51,8 @@ private:
     void LowerLoadConstOffset(GateRef gate);
     void LowerStoreConstOffset(GateRef gate);
     void LowerConvertHoleAsUndefined(GateRef gate);
+    void LowerCheckAndConvert(GateRef gate);
+    void LowerCheckUInt32AndConvert(GateRef gate, GateRef frameState);
     void LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState);
     void LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState, Label *exit);
     void LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState, Label *exit);
@@ -64,8 +65,6 @@ private:
     void LowerInt32CheckRightIsZero(GateRef gate);
     void LowerFloat64CheckRightIsZero(GateRef gate);
     void LowerValueCheckNegOverflow(GateRef gate);
-    void LowerNegativeIndexCheck(GateRef gate);
-    void LowerLargeIndexCheck(GateRef gate);
     void LowerOverflowCheck(GateRef gate);
     void LowerInt32UnsignedUpperBoundCheck(GateRef gate);
     void LowerInt32DivWithCheck(GateRef gate);
@@ -74,7 +73,9 @@ private:
 
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
     GateRef ConvertInt32ToFloat64(GateRef gate);
+    GateRef ConvertUInt32ToFloat64(GateRef gate);
     GateRef ConvertInt32ToTaggedInt(GateRef gate);
+    GateRef ConvertUInt32ToTaggedNumber(GateRef gate, Label *exit);
     GateRef ConvertFloat64ToBool(GateRef gate);
     GateRef ConvertFloat64ToInt32(GateRef gate, Label *exit);
     GateRef ConvertFloat64ToTaggedDouble(GateRef gate);

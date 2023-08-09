@@ -47,7 +47,7 @@ public:
     static constexpr uint32_t OCTAL_VALUE = 8;
     static constexpr uint32_t OCTAL_VALUE_RANGE = 32;
     static constexpr uint32_t HEX_VALUE = 16;
-    static constexpr int32_t DECIMAL_DIGITS_ADVANCE = 10;
+    static constexpr uint32_t DECIMAL_DIGITS_ADVANCE = 10;
     static constexpr uint32_t FLAGS_OFFSET = 12;
     static constexpr uint32_t OP_START_OFFSET = 16;
     static constexpr uint32_t UNICODE_HEX_VALUE = 4;

@@ -126,17 +126,15 @@ private:
 
 class PassOptions {
 public:
-    PassOptions(bool enableTypeLowering, bool enableEarlyElimination, bool enableRangeGuard, bool enableLaterElimination,
+    PassOptions(bool enableTypeLowering, bool enableEarlyElimination, bool enableLaterElimination,
                 bool enableValueNumbering, bool enableTypeInfer, bool enableOptInlining,
-                bool enableOptStaticMethod, bool enableOptPGOType, bool enableOptTrackField, bool enableOptLoopPeeling)
+                bool enableOptPGOType, bool enableOptTrackField, bool enableOptLoopPeeling)
         : enableTypeLowering_(enableTypeLowering),
           enableEarlyElimination_(enableEarlyElimination),
-          enableRangeGuard_(enableRangeGuard),
           enableLaterElimination_(enableLaterElimination),
           enableValueNumbering_(enableValueNumbering),
           enableTypeInfer_(enableTypeInfer),
           enableOptInlining_(enableOptInlining),
-          enableOptStaticMethod_(enableOptStaticMethod),
           enableOptPGOType_(enableOptPGOType),
           enableOptTrackField_(enableOptTrackField),
           enableOptLoopPeeling_(enableOptLoopPeeling)
@@ -146,12 +144,10 @@ public:
 #define OPTION_LIST(V)           \
     V(TypeLowering, true)        \
     V(EarlyElimination, true)    \
-    V(RangeGuard, true)          \
     V(LaterElimination, true)    \
     V(ValueNumbering, false)     \
     V(TypeInfer, false)          \
     V(OptInlining, false)        \
-    V(OptStaticMethod, false)    \
     V(OptNoGCCall, false)        \
     V(OptPGOType, false)         \
     V(NoCheck, false)            \

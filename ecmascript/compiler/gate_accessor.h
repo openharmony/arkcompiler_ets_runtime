@@ -488,6 +488,8 @@ public:
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
     GateType GetLeftType(GateRef gate) const;
     GateType GetRightType(GateRef gate) const;
+    uint32_t GetFirstValue(GateRef gate) const;
+    uint32_t GetSecondValue(GateRef gate) const;
     GateRef GetGlueFromArgList() const;
     void GetArgsOuts(std::vector<GateRef>& outs) const;
     void GetReturnOuts(std::vector<GateRef>& outs) const;

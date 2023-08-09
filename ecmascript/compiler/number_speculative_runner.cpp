@@ -21,9 +21,24 @@
 namespace panda::ecmascript::kungfu {
 void NumberSpeculativeRunner::Run()
 {
+    RangeGuard rangeGuard(circuit_, chunk_);
+    rangeGuard.Run();
+
+    if (IsLogEnabled()) {
+        LOG_COMPILER(INFO) << "";
+        LOG_COMPILER(INFO) << "\033[34m"
+                           << "===================="
+                           << " After range guard "
+                           << "[" << GetMethodName() << "]"
+                           << "===================="
+                           << "\033[0m";
+        circuit_->PrintAllGatesWithBytecode();
+        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+    }
+
     auto maxId = circuit_->GetMaxGateId();
     typeInfos_.resize(maxId + 1, TypeInfo::NONE);
-    NumberSpeculativeRetype retype(circuit_, chunk_, tsManager_, typeInfos_);
+    NumberSpeculativeRetype retype(circuit_, chunk_, typeInfos_);
     retype.Run();
 
     if (IsLogEnabled()) {
@@ -54,7 +69,7 @@ void NumberSpeculativeRunner::Run()
         LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
     }
 
-    NumberSpeculativeLowering lowering(circuit_, chunk_, tsManager_, typeInfos_, rangeInfos_, noCheck_);
+    NumberSpeculativeLowering lowering(circuit_, chunk_, typeInfos_, rangeInfos_);
     lowering.Run();
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";

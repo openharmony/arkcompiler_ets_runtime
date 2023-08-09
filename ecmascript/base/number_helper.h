@@ -46,6 +46,7 @@ static constexpr double MAX_VALUE = std::numeric_limits<double>::max();
 static constexpr double MIN_VALUE = std::numeric_limits<double>::min();
 static constexpr double POSITIVE_INFINITY = std::numeric_limits<double>::infinity();
 static constexpr double NAN_VALUE = std::numeric_limits<double>::quiet_NaN();
+static constexpr uint64_t MAX_UINT64_VALUE = std::numeric_limits<uint64_t>::max();
 
 // Helper defines for double
 static constexpr int DOUBLE_MAX_PRECISION = 17;

@@ -107,14 +107,16 @@ size_t GateAccessor::GetIndex(GateRef gate) const
 
 size_t GateAccessor::GetArraySize(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }
 
 void GateAccessor::SetArraySize(GateRef gate, size_t size)
 {
-    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     const_cast<OneParameterMetaData *>(gatePtr->GetOneParameterMetaData())->SetValue(size);
 }
@@ -203,9 +205,11 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::PRIMITIVE_TYPE_CHECK ||
            GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK ||
+           GetOpCode(gate) == OpCode::OBJECT_TYPE_COMPARE ||
            GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::INDEX_CHECK ||
-           GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP);
+           GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();
@@ -255,6 +259,22 @@ GateType GateAccessor::GetRightType(GateRef gate) const
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GatePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetRightType();
+}
+
+uint32_t GateAccessor::GetFirstValue(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::RANGE_GUARD);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    UInt32PairAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetFirstValue();
+}
+
+uint32_t GateAccessor::GetSecondValue(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::RANGE_GUARD);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    UInt32PairAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetSecondValue();
 }
 
 size_t GateAccessor::GetVirtualRegisterIndex(GateRef gate) const
@@ -326,7 +346,7 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
             return static_cast<uint32_t>(gatePtr->GetOneParameterMetaData()->GetValue());
         case OpCode::TYPEDCALL:
         case OpCode::TYPEDFASTCALL:
-            return static_cast<uint32_t>(gatePtr->GetTypedCallMetaData()->GetValue()); 
+            return static_cast<uint32_t>(gatePtr->GetTypedCallMetaData()->GetValue());
         case OpCode::FRAME_STATE: {
             UInt32PairAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
             return accessor.GetFirstValue();
@@ -842,55 +862,7 @@ void GateAccessor::ReplaceHirAndDeleteIfException(GateRef hirGate,
 
 void GateAccessor::EliminateRedundantPhi()
 {
-    std::vector<GateRef> gateList;
-    GetAllGates(gateList);
-    std::queue<GateRef> workList;
-    std::set<GateRef> inList;
-    for (auto gate : gateList) {
-        if (IsValueSelector(gate)) {
-            workList.push(gate);
-            inList.insert(gate);
-        }
-    }
-
-    while (!workList.empty()) {
-        auto cur = workList.front();
-        workList.pop();
-        ASSERT(IsValueSelector(cur));
-        GateRef first = GetValueIn(cur, 0);
-        bool sameIns = true;
-        bool selfUse = first == cur;
-        auto valueNum = GetNumValueIn(cur);
-        for (size_t i = 1; i < valueNum; ++i) {
-            GateRef input = GetValueIn(cur, i);
-            if (input != first) {
-                sameIns = false;
-            }
-            if (input == cur) {
-                ASSERT(IsLoopHead(GetState(cur)));
-                selfUse = true;
-            }
-        }
-        if ((!sameIns) && (!selfUse)) {
-            inList.erase(cur);
-            continue;
-        }
-        auto use = Uses(cur);
-        for (auto it = use.begin(); it != use.end(); ++it) {
-            if (((*it) == cur) || (!IsValueSelector(*it)) || inList.count(*it)) {
-                // selfUse or notPhi or inListPhi
-                continue;
-            }
-            workList.push(*it);
-            inList.insert(*it);
-        }
-        UpdateAllUses(cur, first);
-    }
-    for (auto phi : inList) {
-        ASSERT(IsValueSelector(phi));
-        DeleteGate(phi);
-    }
-    return;
+    GraphEditor::EliminateRedundantPhi(circuit_);
 }
 
 UseIterator GateAccessor::DeleteGate(const UseIterator &useIt)

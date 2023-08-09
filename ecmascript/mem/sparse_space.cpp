@@ -426,11 +426,22 @@ void OldSpace::SelectCSet()
     }
     CheckRegionSize();
     // 1、Select region which alive object larger than limit
-    EnumerateRegions([this](Region *region) {
-        if (region->BelowCompressThreasholdAlive() || !region->MostObjectAlive()) {
-            collectRegionSet_.emplace_back(region);
-        }
-    });
+    int64_t evacuateSizeLimit = 0;
+    if (!heap_->IsInBackground()) {
+        evacuateSizeLimit = PARTIAL_GC_MAX_EVACUATION_SIZE_FOREGROUND;
+        EnumerateRegions([this](Region *region) {
+            if (!region->MostObjectAlive()) {
+                collectRegionSet_.emplace_back(region);
+            }
+        });
+    } else {
+        evacuateSizeLimit = PARTIAL_GC_MAX_EVACUATION_SIZE_BACKGROUND;
+        EnumerateRegions([this](Region *region) {
+            if (region->BelowCompressThreasholdAlive() || !region->MostObjectAlive()) {
+                collectRegionSet_.emplace_back(region);
+            }
+        });
+    }
     if (collectRegionSet_.size() < PARTIAL_GC_MIN_COLLECT_REGION_SIZE) {
         LOG_ECMA_MEM(DEBUG) << "Select CSet failure: number is too few";
         collectRegionSet_.clear();
@@ -438,13 +449,13 @@ void OldSpace::SelectCSet()
     }
     // sort
     std::sort(collectRegionSet_.begin(), collectRegionSet_.end(), [](Region *first, Region *second) {
-        return first->GetGCAliveSize() < second->GetGCAliveSize();
+        return first->AliveObject() < second->AliveObject();
     });
 
     // Limit cset size
     unsigned long selectedRegionNumber = 0;
     int64_t expectFreeSize = static_cast<int64_t>(heap_->GetCommittedSize() - heap_->GetHeapAliveSizeAfterGC());
-    int64_t evacuateSize = std::min(PARTIAL_GC_MAX_EVACUATION_SIZE, expectFreeSize);
+    int64_t evacuateSize = std::min(evacuateSizeLimit, expectFreeSize);
     EnumerateCollectRegionSet([&](Region *current) {
         if (evacuateSize > 0) {
             selectedRegionNumber++;

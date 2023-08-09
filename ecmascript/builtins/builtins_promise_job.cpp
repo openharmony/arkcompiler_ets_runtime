@@ -33,6 +33,7 @@
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::builtins {
+using JSRecordInfo = ecmascript::JSPandaFile::JSRecordInfo;
 
 JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
 {
@@ -52,7 +53,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
     // 3. Let handler be reaction.[[Handler]].
     JSHandle<JSTaggedValue> handler(thread, reaction->GetHandler());
     JSHandle<JSTaggedValue> call(thread, capability->GetResolve());
-    const int32_t argsLength = 1;
+    const uint32_t argsLength = 1;
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *runtimeInfo =
         EcmaInterpreter::NewRuntimeCallInfo(thread, call, undefined, undefined, argsLength);
@@ -104,7 +105,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseResolveThenableJob(EcmaRuntimeCallInfo 
     JSHandle<JSTaggedValue> then = GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
 
     // 2. Let thenCallResult be Call(then, thenable, «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»).
-    const int32_t argsLength = 2; // 2: «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»
+    const uint32_t argsLength = 2; // 2: «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, then, thenable, undefined, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -200,11 +201,16 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     }
 
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
-    bool isModule = jsPandaFile->IsModule(thread, entryPoint);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
+    if (!hasRecord) {
+        LOG_FULL(ERROR) << "cannot find record '" << entryPoint <<"' in basefileName " << fileNameStr << ".";
+        CString msg = "cannot find record '" + entryPoint + "', please check the request path.";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), CatchException(thread, reject));
+    }
     JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
     // only support importing es module, or return a default object.
-    if (!isModule) {
+    if (!jsPandaFile->IsModule(recordInfo)) {
         moduleNamespace.Update(vm->GetGlobalEnv()->GetExportOfScript());
     } else {
         // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).

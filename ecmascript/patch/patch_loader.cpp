@@ -220,10 +220,13 @@ void PatchLoader::ReplaceMethod(JSThread *thread,
                                 MethodLiteral *srcMethodLiteral,
                                 JSTaggedValue srcConstpool)
 {
+    // Update destmethod exclude ExtraLiteralInfo(FunctionKind). Method FunctionKind will be set after
+    // building class inheritance relationship or defining gettersetter by value.
+    //
+    // HotReload of class inheritance will be affected.
     destMethod->SetCallField(srcMethodLiteral->GetCallField());
     destMethod->SetLiteralInfo(srcMethodLiteral->GetLiteralInfo());
     destMethod->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(srcMethodLiteral));
-    destMethod->SetExtraLiteralInfo(srcMethodLiteral->GetExtraLiteralInfo());
     destMethod->SetNativePointerOrBytecodeArray(const_cast<void *>(srcMethodLiteral->GetNativePointer()));
     destMethod->SetConstantPool(thread, srcConstpool);
     destMethod->SetProfileTypeInfo(thread, JSTaggedValue::Undefined());

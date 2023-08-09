@@ -347,7 +347,8 @@ JSTaggedValue BuiltinsDataView::SetBigUint64(EcmaRuntimeCallInfo *argv)
 
 // 24.2.1.1
 JSTaggedValue BuiltinsDataView::GetViewValue(JSThread *thread, const JSHandle<JSTaggedValue> &view,
-                                             const JSHandle<JSTaggedValue> &requestIndex, JSTaggedValue littleEndian,
+                                             const JSHandle<JSTaggedValue> &requestIndex,
+                                             const JSHandle<JSTaggedValue> &littleEndian,
                                              DataViewType type)
 {
     BUILTINS_API_TRACE(thread, DataView, GetViewValue);
@@ -371,10 +372,10 @@ JSTaggedValue BuiltinsDataView::GetViewValue(JSThread *thread, const JSHandle<JS
     uint32_t index = static_cast<uint32_t>(indexInt);
     // 7. Let isLittleEndian be ToBoolean(isLittleEndian).
     bool isLittleEndian = false;
-    if (littleEndian.IsUndefined()) {
+    if (littleEndian->IsUndefined()) {
         isLittleEndian = false;
     } else {
-        isLittleEndian = littleEndian.ToBoolean();
+        isLittleEndian = littleEndian->ToBoolean();
     }
     // 8. Let buffer be the value of view’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSDataView> dataView(view);
@@ -401,7 +402,8 @@ JSTaggedValue BuiltinsDataView::GetViewValue(JSThread *thread, const JSHandle<JS
 
 // 24.2.1.2
 JSTaggedValue BuiltinsDataView::SetViewValue(JSThread *thread, const JSHandle<JSTaggedValue> &view,
-                                             const JSHandle<JSTaggedValue> &requestIndex, JSTaggedValue littleEndian,
+                                             const JSHandle<JSTaggedValue> &requestIndex,
+                                             const JSHandle<JSTaggedValue> &littleEndian,
                                              DataViewType type, const JSHandle<JSTaggedValue> &value)
 {
     // 1. If Type(view) is not Object, throw a TypeError exception.
@@ -426,10 +428,10 @@ JSTaggedValue BuiltinsDataView::SetViewValue(JSThread *thread, const JSHandle<JS
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 7. Let isLittleEndian be ToBoolean(isLittleEndian).
     bool isLittleEndian = false;
-    if (littleEndian.IsUndefined()) {
+    if (littleEndian->IsUndefined()) {
         isLittleEndian = false;
     } else {
-        isLittleEndian = littleEndian.ToBoolean();
+        isLittleEndian = littleEndian->ToBoolean();
     }
     // 8. Let buffer be the value of view’s [[ViewedArrayBuffer]] internal slot.
     JSHandle<JSDataView> dataView(view);
@@ -461,11 +463,12 @@ JSTaggedValue BuiltinsDataView::GetTypedValue(EcmaRuntimeCallInfo *argv, DataVie
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSTaggedValue> offsetHandle = GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> trueHandle(thread, JSTaggedValue::True());
     if (type == DataViewType::UINT8 || type == DataViewType::INT8) {
-        return GetViewValue(thread, thisHandle, offsetHandle, JSTaggedValue::True(), type);
+        return GetViewValue(thread, thisHandle, offsetHandle, trueHandle, type);
     }
     JSHandle<JSTaggedValue> littleEndianHandle = GetCallArg(argv, 1);
-    return GetViewValue(thread, thisHandle, offsetHandle, littleEndianHandle.GetTaggedValue(), type);
+    return GetViewValue(thread, thisHandle, offsetHandle, littleEndianHandle, type);
 }
 
 JSTaggedValue BuiltinsDataView::SetTypedValue(EcmaRuntimeCallInfo *argv, DataViewType type)
@@ -476,10 +479,11 @@ JSTaggedValue BuiltinsDataView::SetTypedValue(EcmaRuntimeCallInfo *argv, DataVie
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSTaggedValue> offsetHandle = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 1);
+    JSHandle<JSTaggedValue> trueHandle(thread, JSTaggedValue::True());
     if (type == DataViewType::UINT8 || type == DataViewType::INT8) {
-        return SetViewValue(thread, thisHandle, offsetHandle, JSTaggedValue::True(), type, value);
+        return SetViewValue(thread, thisHandle, offsetHandle, trueHandle, type, value);
     }
     JSHandle<JSTaggedValue> littleEndianHandle = GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
-    return SetViewValue(thread, thisHandle, offsetHandle, littleEndianHandle.GetTaggedValue(), type, value);
+    return SetViewValue(thread, thisHandle, offsetHandle, littleEndianHandle, type, value);
 }
 }  // namespace panda::ecmascript::builtins

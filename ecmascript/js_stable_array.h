@@ -57,6 +57,9 @@ public:
     static JSTaggedValue With(JSThread *thread, const JSHandle<JSObject> thisObjHandle,
                               JSHandle<JSObject> newArrayHandle, int64_t &len, int64_t &index,
                               JSHandle<JSTaggedValue> value);
+    static JSTaggedValue Reduce(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                JSHandle<JSTaggedValue> callbackFnHandle,
+                                JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

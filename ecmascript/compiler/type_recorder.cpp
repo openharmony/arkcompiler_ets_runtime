@@ -44,30 +44,32 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
 {
     TSTypeParser typeParser(tsManager);
     panda_file::File::EntityId fieldId = methodLiteral->GetMethodId();
-    uint32_t methodId = fieldId.GetOffset();
-    TypeAnnotationExtractor annoExtractor(jsPandaFile, methodId);
+    uint32_t methodOffset = fieldId.GetOffset();
+    TypeAnnotationExtractor annoExtractor(jsPandaFile, methodOffset);
     GlobalTSTypeRef funcGT = typeParser.CreateGT(jsPandaFile, recordName, annoExtractor.GetMethodTypeOffset());
     GlobalTSTypeRef thisGT;
     annoExtractor.EnumerateInstsAndTypes([this, &typeParser, &jsPandaFile, &recordName,
-        &thisGT](const int32_t bcOffset, const uint32_t typeId) {
+        &thisGT, tsManager, methodOffset](const int32_t bcIdx, const uint32_t typeId) {
         GlobalTSTypeRef gt = typeParser.CreateGT(jsPandaFile, recordName, typeId);
         if (TypeNeedFilter(gt)) {
             return;
         }
+        TypeLocation loc(jsPandaFile, methodOffset, bcIdx);
+        CollectLiteralGT(tsManager, loc, gt);
 
         // The type of a function is recorded as (-1, funcTypeId). If the function is a member of a class,
         // the type of the class or its instance is is recorded as (-2, classTypeId). If it is a static
         // member, the type id refers to the type of the class; otherwise, it links to the type of the
         // instances of the class.
-        if (bcOffset == METHOD_ANNOTATION_THIS_TYPE_OFFSET) {
+        if (bcIdx == METHOD_ANNOTATION_THIS_TYPE_OFFSET) {
             thisGT = gt;
             return;
         }
         auto type = GateType(gt);
-        bcOffsetGtMap_.emplace(bcOffset, type);
+        bcOffsetGtMap_.emplace(bcIdx, type);
     });
     const auto &methodList = typeParser.GetMethodList();
-    auto methodIter = methodList.find(methodId);
+    auto methodIter = methodList.find(methodOffset);
     if (methodIter != methodList.end()) {
         const auto &methodInfo = methodIter->second;
         const auto &bcTypes = methodInfo.GetBCAndTypes();
@@ -81,6 +83,41 @@ void TypeRecorder::LoadTypes(const JSPandaFile *jsPandaFile, const MethodLiteral
         }
     }
     LoadArgTypes(tsManager, funcGT, thisGT);
+}
+
+void TypeRecorder::CollectLiteralGT(TSManager *tsManager, TypeLocation &loc, GlobalTSTypeRef gt)
+{
+    int32_t bcIdx = loc.GetBcIdx();
+    if (bcIdx < 0) {
+        return;
+    }
+
+    if (bytecodes_->GetOpcode(pcOffsets_[bcIdx]) == EcmaOpcode::STA_V8) {
+        // bcIndex of literal marked in es2abc maybe in the next bc whose opcode should be sta.
+        bcIdx--;
+        loc.SetBcIdx(bcIdx);
+    }
+
+    EcmaOpcode ecmaOpcode =  bytecodes_->GetOpcode(pcOffsets_[bcIdx]);
+
+    switch (ecmaOpcode) {
+        case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
+        case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8: {
+            if (tsManager->IsUserDefinedClassTypeKind(gt)) {
+                tsManager->InsertLiteralGTMap(loc, gt);
+            }
+            return;
+        }
+        case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
+        case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
+            if (tsManager->IsObjectTypeKind(gt)) {
+                tsManager->InsertLiteralGTMap(loc, gt);
+            }
+            return;
+        }
+        default:
+            return;
+    }
 }
 
 bool TypeRecorder::CheckTypeMarkForDefineFunc(uint32_t checkBc) const
@@ -114,12 +151,41 @@ void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const Metho
     TSTypeParser typeParser(tsManager);
     uint32_t methodOffset = methodLiteral->GetMethodId().GetOffset();
     PGOBCInfo *bcInfo = tsManager->GetBytecodeInfoCollector()->GetPGOBCInfo();
-    bcInfo->IterateInfoAndType(methodOffset, [this, &typeParser, methodOffset, &recordName, &jsPandaFile]
-        (const PGOBCInfo::Type type, const uint32_t bcIdx, const uint32_t cpIdx) {
-        GlobalTSTypeRef gt = typeParser.CreatePGOGT(jsPandaFile, recordName, methodOffset, cpIdx, type);
+    bcInfo->IterateInfoAndType(methodOffset, [this, &typeParser, methodOffset, &recordName, &jsPandaFile, tsManager]
+        (const PGOBCInfo::Type type, const uint32_t bcIdx, const uint32_t bcOffset, const uint32_t cpIdx) {
+        auto it = bcOffsetPGOOpTypeMap_.find(bcOffset);
+        if (it == bcOffsetPGOOpTypeMap_.end()) {
+            return;
+        }
+
+        EcmaOpcode ecmaOpcode = bytecodes_->GetOpcode(pcOffsets_[bcIdx]);
+        if (jsPandaFile->HasTSTypes(recordName) && Bytecodes::IsCallOp(ecmaOpcode)) {
+            int32_t callTargetMethodOffset = it->second.GetClassType().GetClassType();
+            if (callTargetMethodOffset == 0) {
+                return;
+            }
+            TypeAnnotationExtractor annoExtractor(jsPandaFile, callTargetMethodOffset);
+            GlobalTSTypeRef funcGT =
+                typeParser.CreateGT(jsPandaFile, recordName, annoExtractor.GetMethodTypeOffset());
+            if (funcGT.IsDefault()) {
+                return;
+            }
+            GateType callTargetType = GateType(funcGT);
+            bcOffsetCallTargetGtMap_.emplace(bcIdx, callTargetType);
+            return;
+        }
+
+        TypeLocation loc(jsPandaFile, methodOffset, bcIdx);
+        if (!tsManager->GetLiteralGT(loc).IsDefault()) {
+            return;
+        }
+
+        GlobalTSTypeRef gt = typeParser.CreatePGOGT(TSTypeParser::PGOInfo {
+            jsPandaFile, recordName, methodOffset, cpIdx, it->second, type, decoder_, enableOptTrackField_ });
         if (TypeNeedFilter(gt)) {
             return;
         }
+        CollectLiteralGT(tsManager, loc, gt);
         GateType gateType = GateType(gt);
         bcOffsetGtMap_.emplace(bcIdx, gateType);
     });
@@ -217,6 +283,14 @@ PGOSampleType TypeRecorder::GetOrUpdatePGOType(TSManager *tsManager, int32_t off
     }
 
     return PGOSampleType::NoneType();
+}
+
+GateType TypeRecorder::GetCallTargetType(int32_t offset) const
+{
+    if (bcOffsetCallTargetGtMap_.find(offset) != bcOffsetCallTargetGtMap_.end()) {
+        return bcOffsetCallTargetGtMap_.at(offset);
+    }
+    return GateType::AnyType();
 }
 
 PGORWOpType TypeRecorder::GetRwOpType(int32_t offset) const

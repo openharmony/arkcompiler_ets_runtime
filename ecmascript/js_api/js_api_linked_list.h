@@ -23,7 +23,7 @@
 namespace panda::ecmascript {
 class JSAPILinkedList : public JSObject {
 public:
-    static constexpr int DEFAULT_CAPACITY_LENGTH = 10;
+    static constexpr uint32_t DEFAULT_CAPACITY_LENGTH = 10;
     static JSAPILinkedList *Cast(TaggedObject *object)
     {
         ASSERT(JSTaggedValue(object).IsJSAPILinkedList());
@@ -61,7 +61,7 @@ public:
     JSTaggedValue Remove(JSThread *thread, const JSTaggedValue &element);
     JSTaggedValue GetIndexOf(const JSTaggedValue &element);
     JSTaggedValue GetLastIndexOf(const JSTaggedValue &element);
-    inline int Length()
+    inline uint32_t Length()
     {
         return TaggedDoubleList::Cast(GetDoubleList().GetTaggedObject())->Length();
     }

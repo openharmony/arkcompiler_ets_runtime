@@ -279,13 +279,17 @@ private:
 class Deserializer {
 public:
     Deserializer(JSThread *thread, SerializationData *data, void *hint)
-        : valueDeserializer_(thread, data->GetData(), data->GetSize(), hint) {}
-    ~Deserializer() = default;
+        : valueDeserializer_(thread, data->GetData(), data->GetSize(), hint), data_(data) {}
+    ~Deserializer()
+    {
+        data_.reset(nullptr);
+    }
 
     JSHandle<JSTaggedValue> ReadValue();
 
 private:
     ecmascript::JSDeserializer valueDeserializer_;
+    std::unique_ptr<SerializationData> data_;
 
     NO_COPY_SEMANTIC(Deserializer);
 };

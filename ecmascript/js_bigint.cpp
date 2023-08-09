@@ -591,6 +591,8 @@ void BigInt::BigIntToInt64(JSThread *thread, JSHandle<JSTaggedValue> bigint, int
     RETURN_IF_ABRUPT_COMPLETION(thread);
     if (Equal(bigInt64.GetTaggedValue(), bigint.GetTaggedValue())) {
         *lossless = true;
+    } else {
+        *lossless = false;
     }
     *cValue = bigInt64->ToInt64();
 }
@@ -603,6 +605,8 @@ void BigInt::BigIntToUint64(JSThread *thread, JSHandle<JSTaggedValue> bigint, ui
     RETURN_IF_ABRUPT_COMPLETION(thread);
     if (Equal(bigUint64.GetTaggedValue(), bigint.GetTaggedValue())) {
         *lossless = true;
+    } else {
+        *lossless = false;
     }
     *cValue = bigUint64->ToUint64();
 }

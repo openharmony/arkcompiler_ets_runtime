@@ -282,7 +282,9 @@ HWTEST_F_L0(HeapTrackerTest, HeapSnapshotBuildUp)
     bool isVmMode = true;
     bool isPrivate = false;
     bool traceAllocation = false;
-    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, traceAllocation, instance->GetChunk());
+    HeapProfiler heapProfiler(instance);
+    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, traceAllocation,
+                              heapProfiler.GetEntryIdMap(), instance->GetChunk());
     EXPECT_TRUE(heapSnapshot.BuildUp());
 }
 
@@ -291,7 +293,9 @@ HWTEST_F_L0(HeapTrackerTest, HeapSnapshotUpdateNode)
     bool isVmMode = true;
     bool isPrivate = false;
     bool traceAllocation = false;
-    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, traceAllocation, instance->GetChunk());
+    HeapProfiler heapProfiler(instance);
+    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, traceAllocation,
+                              heapProfiler.GetEntryIdMap(), instance->GetChunk());
     size_t beginNode = heapSnapshot.GetNodeCount();
     heapSnapshot.UpdateNodes();
     size_t endNode = heapSnapshot.GetNodeCount();
@@ -511,7 +515,9 @@ HWTEST_F_L0(HeapTrackerTest, FormatString)
     bool isVmMode = true;
     bool isPrivate = false;
     bool traceAllocation = false;
-    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, traceAllocation, instance->GetChunk());
+    HeapProfiler heapProfiler(instance);
+    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, traceAllocation,
+                              heapProfiler.GetEntryIdMap(), instance->GetChunk());
 
     StringHashMap stringHashMap(instance);
     CString ret = "H\"e\rl\nl\\o\t W\fo\31rld!";

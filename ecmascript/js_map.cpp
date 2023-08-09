@@ -66,13 +66,13 @@ uint32_t JSMap::GetSize() const
     return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->NumberOfElements();
 }
 
-JSTaggedValue JSMap::GetKey(int entry) const
+JSTaggedValue JSMap::GetKey(uint32_t entry) const
 {
     ASSERT_PRINT(entry >= 0 && entry < GetSize(), "entry must be non-negative integer less than capacity");
     return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->GetKey(entry);
 }
 
-JSTaggedValue JSMap::GetValue(int entry) const
+JSTaggedValue JSMap::GetValue(uint32_t entry) const
 {
     ASSERT_PRINT(entry >= 0 && entry < GetSize(), "entry must be non-negative integer less than capacity");
     return LinkedHashMap::Cast(GetLinkedMap().GetTaggedObject())->GetValue(entry);

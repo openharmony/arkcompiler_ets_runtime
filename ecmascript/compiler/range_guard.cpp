@@ -21,18 +21,6 @@ void RangeGuard::Run()
     GateRef entry = acc_.GetDependRoot();
     VisitDependEntry(entry);
     VisitGraph();
-
-    if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m"
-                           << "===================="
-                           << " After range guard "
-                           << "[" << GetMethodName() << "]"
-                           << "===================="
-                           << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
-    }
 }
 
 GateRef RangeGuard::VisitGate(GateRef gate)
@@ -99,12 +87,25 @@ GateRef RangeGuard::TraverseDependSelector(GateRef gate)
     return UpdateDependChain(gate, copy);
 }
 
-GateRef RangeGuard::TryApplyTypedArrayRangeGuard(DependChains* dependChain, GateRef gate, GateRef input)
+GateRef RangeGuard::TryApplyRangeGuardForLength(DependChains* dependChain, GateRef gate, GateRef input)
 {
     ASSERT(dependChain != nullptr);
-    if (dependChain->FoundIndexChecked(this, input)) {
+    uint32_t length = dependChain->FoundIndexCheckedForLength(this, input);
+    if (length) { // when length not equal to 0, then Found the IndexCheck Success
         Environment env(gate, circuit_, &builder_);
-        auto rangeGuardGate = builder_.RangeGuard(input);
+        auto rangeGuardGate = builder_.RangeGuard(input, 1, length); // If the IndexCheck before the ArrayLength used, the ArrayLength must start by 1.
+        return rangeGuardGate;
+    }
+    return Circuit::NullGate();
+}
+
+GateRef RangeGuard::TryApplyRangeGuardForIndex(DependChains* dependChain, GateRef gate, GateRef input)
+{
+    ASSERT(dependChain != nullptr);
+    uint32_t length = dependChain->FoundIndexCheckedForIndex(this, input);
+    if (length) { // when length not equal to 0, then Found the IndexCheck Success
+        Environment env(gate, circuit_, &builder_);
+        auto rangeGuardGate = builder_.RangeGuard(input, 0, length); // If the IndexCheck used in the Array, the index must in the Array range.
         return rangeGuardGate;
     }
     return Circuit::NullGate();
@@ -128,15 +129,17 @@ GateRef RangeGuard::TryApplyRangeGuardGate(GateRef gate)
         auto originalInput = acc_.GetValueIn(gate, i);
         auto originalInputOpcode = acc_.GetOpCode(originalInput);
         auto rangeGuardGate = Circuit::NullGate();
-        if (originalInputOpcode == OpCode::LOAD_TYPED_ARRAY_LENGTH) {
-            rangeGuardGate = TryApplyTypedArrayRangeGuard(dependChain, gate, originalInput);
+        if (originalInputOpcode == OpCode::LOAD_TYPED_ARRAY_LENGTH || originalInputOpcode == OpCode::LOAD_ARRAY_LENGTH) {
+            rangeGuardGate = TryApplyRangeGuardForLength(dependChain, gate, originalInput);
+        } else if(originalInputOpcode != OpCode::CONSTANT && rangeGuardGate == Circuit::NullGate()) {
+            rangeGuardGate = TryApplyRangeGuardForIndex(dependChain, gate, originalInput);
         }
         if (rangeGuardGate != Circuit::NullGate()) {
             acc_.ReplaceValueIn(gate, rangeGuardGate, i);
         }
     }
     dependChain = dependChain->UpdateNode(gate);
-    return UpdateDependChain(gate, dependChain); 
+    return UpdateDependChain(gate, dependChain);
 }
 
 GateRef RangeGuard::VisitDependEntry(GateRef gate)
@@ -156,94 +159,34 @@ GateRef RangeGuard::UpdateDependChain(GateRef gate, DependChains* dependChain)
     return gate;
 }
 
-bool RangeGuard::CheckIndexCheckInput(GateRef lhs, GateRef rhs)
+uint32_t RangeGuard::CheckIndexCheckLengthInput(GateRef lhs, GateRef rhs)
 {
     auto lhsOpcode = acc_.GetOpCode(lhs);
     if (lhsOpcode == OpCode::INDEX_CHECK) {
-        auto indexCheckLengthInput = acc_.GetValueIn(lhs, 0);
-        return CheckInputSource(indexCheckLengthInput, rhs);
-    }
-    return false;
-}
-
-bool RangeGuard::CheckInputSource(GateRef lhs, GateRef rhs)
-{
-    if (!acc_.MetaDataEqu(lhs, rhs)) {
-        if (acc_.GetOpCode(lhs) != acc_.GetOpCode(rhs)) {
-            return false;
+        auto indexCheckLengthInput = acc_.GetValueIn(lhs, 0); // length
+        auto indexCheckLengthInputOpcode = acc_.GetOpCode(indexCheckLengthInput);
+        if(indexCheckLengthInput == rhs && indexCheckLengthInputOpcode == OpCode::LOAD_TYPED_ARRAY_LENGTH) {
+            return RangeInfo::TYPED_ARRAY_ONHEAP_MAX;
+        } else if(indexCheckLengthInput == rhs && indexCheckLengthInputOpcode == OpCode::LOAD_ARRAY_LENGTH) {
+            return INT32_MAX;
         }
     }
-    size_t valueCount = acc_.GetNumValueIn(lhs);
-    for (size_t i = 0; i < valueCount; i++) {
-        if (acc_.GetValueIn(lhs, i) != acc_.GetValueIn(rhs, i)) {
-            return false;
+    return 0;
+}
+
+uint32_t RangeGuard::CheckIndexCheckIndexInput(GateRef lhs, GateRef rhs)
+{
+    auto lhsOpcode = acc_.GetOpCode(lhs);
+    if (lhsOpcode == OpCode::INDEX_CHECK) {
+        auto indexCheckLengthInput = acc_.GetValueIn(lhs, 0); // length
+        auto indexCheckIndexInput = acc_.GetValueIn(lhs, 1); // index
+        auto indexCheckLengthInputOpcode = acc_.GetOpCode(indexCheckLengthInput);
+        if(indexCheckIndexInput == rhs && indexCheckLengthInputOpcode == OpCode::LOAD_TYPED_ARRAY_LENGTH) { // TYPED_ARRAY
+            return RangeInfo::TYPED_ARRAY_ONHEAP_MAX;
+        } else if(indexCheckIndexInput == rhs && indexCheckLengthInputOpcode == OpCode::LOAD_ARRAY_LENGTH) { // ARRAY
+            return INT32_MAX;
         }
     }
-    return true;
-}
-
-void DependChains::Merge(DependChains* that)
-{
-    // find common sub list
-    while (size_ > that->size_) {
-        head_ = head_->next;
-        size_--;
-    }
-
-    auto lhs = this->head_;
-    auto rhs = that->head_;
-    size_t rhsSize = that->size_;
-    while (rhsSize > size_) {
-        rhs = rhs->next;
-        rhsSize--;
-    }
-    while (lhs != rhs) {
-        ASSERT(lhs != nullptr);
-        lhs = lhs->next;
-        rhs = rhs->next;
-        size_--;
-    }
-    head_ = lhs;
-}
-
-bool DependChains::Equals(DependChains* that)
-{
-    if (that == nullptr) {
-        return false;
-    }
-    if (size_ != that->size_) {
-        return false;
-    }
-    auto lhs = this->head_;
-    auto rhs = that->head_;
-    while (lhs != rhs) {
-        if (lhs->gate != rhs->gate) {
-            return false;
-        }
-        lhs = lhs->next;
-        rhs = rhs->next;
-    }
-    return true;
-}
-
-bool DependChains::FoundIndexChecked(RangeGuard* rangeGuard, GateRef input)
-{
-    for (Node* node = head_; node != nullptr; node = node->next) {
-        if (rangeGuard->CheckIndexCheckInput(node->gate, input)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-DependChains* DependChains::UpdateNode(GateRef gate)
-{
-    // assign node->next to head
-    Node* node = chunk_->New<Node>(gate, head_);
-    DependChains* that = new (chunk_) DependChains(chunk_);
-    // assign head to node
-    that->head_ = node;
-    that->size_ = size_ + 1;
-    return that;
+    return 0;
 }
 }  // namespace panda::ecmascript::kungfu

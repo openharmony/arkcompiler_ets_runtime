@@ -34,10 +34,6 @@ void NumberSpeculativeLowering::Run()
     for (auto gate : gateList) {
         auto op = acc_.GetOpCode(gate);
         switch (op) {
-            case OpCode::INDEX_CHECK: {
-                checkedGates_.push_back(gate);
-                break;
-            }
             case OpCode::RANGE_GUARD: {
                 rangeGuardGates_.push_back(gate);
                 break;
@@ -46,9 +42,6 @@ void NumberSpeculativeLowering::Run()
                 VisitGate(gate);
             }
         }
-    }
-    for (auto check : checkedGates_) {
-        VisitIndexCheck(check);
     }
     for (auto rangeGuard : rangeGuardGates_) {
         VisitRangeGuard(rangeGuard);
@@ -338,7 +331,8 @@ void NumberSpeculativeLowering::VisitNumberDiv(GateRef gate)
         result = builder_.Int32DivWithCheck(left, right);
         acc_.SetMachineType(gate, MachineType::I32);
     } else {
-        result = builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, left, right);
+        result = builder_.BinaryArithmetic(circuit_->Fdiv(),
+            MachineType::F64, left, right, GateType::NJSValue());
         acc_.SetMachineType(gate, MachineType::F64);
     }
     acc_.SetGateType(gate, GateType::NJSValue());
@@ -553,31 +547,6 @@ void NumberSpeculativeLowering::VisitLoadProperty(GateRef gate)
     }
 }
 
-void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)
-{
-    auto type = acc_.GetParamGateType(gate);
-    if (!tsManager_->IsArrayTypeKind(type)) {
-        // return checked index value
-        acc_.SetGateType(gate, GateType::NJSValue());
-        acc_.SetMachineType(gate, MachineType::I32);
-        return;
-    }
-    Environment env(gate, circuit_, &builder_);
-    GateRef index = acc_.GetValueIn(gate, 1);
-    if (!noCheck_) {
-        GateRef length = acc_.GetValueIn(gate, 0);
-        RangeInfo indexRange = GetRange(index);
-        if (indexRange.GetMin() < 0) {
-            builder_.NegativeIndexCheck(index);
-        }
-        builder_.LargeIndexCheck(index, length);
-        // return checked index value
-        acc_.SetGateType(gate, GateType::NJSValue());
-        acc_.SetMachineType(gate, MachineType::I32);
-    }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), index);
-}
-
 void NumberSpeculativeLowering::VisitRangeGuard(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -610,7 +579,8 @@ GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
             res = builder_.MulWithOverflow(left, right);
             break;
         case TypedBinOp::TYPED_MOD: {
-            return builder_.BinaryArithmetic(circuit_->Smod(), MachineType::I32, left, right);
+            return builder_.BinaryArithmetic(circuit_->Smod(),
+                MachineType::I32, left, right, GateType::NJSValue());
             break;
         }
         default:
@@ -808,7 +778,9 @@ GateRef NumberSpeculativeLowering::MonocularDouble(GateRef value)
 void NumberSpeculativeLowering::UpdateRange(GateRef gate, const RangeInfo& range)
 {
     auto id = acc_.GetId(gate);
-    rangeInfos_.resize(id + 1, RangeInfo::ANY());
+    if (id >= rangeInfos_.size()) {
+        rangeInfos_.resize(id + 1, RangeInfo::ANY());
+    }
     rangeInfos_[id] = range;
 }
 
