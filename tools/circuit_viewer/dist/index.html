@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Circuit Viewer</title>
+    <style>
+        html,
+        body {
+            height: 100%;
+        }
+
+        #visual_area {
+            background-color: #ffffff;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            left: 0px;
+        }
+
+        #canvas_textarea {
+            border: 1px solid groove;
+            position: absolute;
+            margin-left: 8px;
+            margin-right: 8px;
+            width: 258px;
+            height: 32px;
+            border-style: none;
+            outline: none;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            display: none;
+            color: #ffffff;
+            padding-left: 8px;
+            padding-right: 8px;
+            caret-color: #ffffff;
+            font-size: 14px;
+            resize: none;
+            line-height: 30px;
+        }
+    </style>
+</head>
+
+<body style="margin:0">
+    <canvas id="visual_area"></canvas>
+    <textarea id="canvas_textarea"></textarea>
+    <script src="./main.js"></script>
+</body>
+
+</html>

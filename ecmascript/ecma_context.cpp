@@ -32,6 +32,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
@@ -208,6 +209,8 @@ EcmaContext::~EcmaContext()
         delete propertiesCache_;
         propertiesCache_ = nullptr;
     }
+    // clear join stack
+    joinStack_.clear();
 }
 
 JSTaggedValue EcmaContext::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
@@ -249,34 +252,40 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
-    if (jsPandaFile->IsModule(thread_, entryPoint.data())) {
+    CString entry = entryPoint.data();
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
+    if (!hasRecord) {
+        CString msg = "cannot find record '" + entry + "', please check the request path.";
+        LOG_FULL(ERROR) << msg;
+        THROW_REFERENCE_ERROR_AND_RETURN(thread_, msg.c_str(), Unexpected(false));
+    }
+    if (jsPandaFile->IsModule(recordInfo)) {
         global = undefined;
         CString moduleName = jsPandaFile->GetJSPandaFileDesc();
         if (!jsPandaFile->IsBundlePack()) {
-            moduleName = entryPoint.data();
+            moduleName = entry;
         }
         JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
         func->SetModule(thread_, module);
     } else {
         // if it is Cjs at present, the module slot of the function is not used. We borrow it to store the recordName,
         // which can avoid the problem of larger memory caused by the new slot
-        JSHandle<EcmaString> recordName = factory_->NewFromUtf8(entryPoint.data());
+        JSHandle<EcmaString> recordName = factory_->NewFromUtf8(entry);
         func->SetModule(thread_, recordName);
     }
     vm_->CheckStartCpuProfiler();
 
     JSTaggedValue result;
-    if (jsPandaFile->IsCjs(thread_, entryPoint.data())) {
-        if (!thread_->HasPendingException()) {
-            CJSExecution(func, global, jsPandaFile, entryPoint);
-        }
+    if (jsPandaFile->IsCjs(recordInfo)) {
+        CJSExecution(func, global, jsPandaFile, entryPoint);
     } else {
-        if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
+        if (aotFileManager_->IsLoadMain(jsPandaFile, entry)) {
             EcmaRuntimeStatScope runtimeStatScope(vm_);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
         } else {
             if (thread_->IsPGOProfilerEnable()) {
-                vm_->GetPGOProfiler()->ProfileCall(func.GetTaggedType());
+                vm_->GetPGOProfiler()->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
             }
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
@@ -305,11 +314,12 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
     JSMutableHandle<JSTaggedValue> filename(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> dirname(thread_, JSTaggedValue::Undefined());
     if (jsPandaFile->IsBundlePack()) {
-        PathHelper::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
+        ModulePathHelper::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
     } else {
         filename.Update(func->GetModule());
         ASSERT(filename->IsString());
-        dirname.Update(PathHelper::ResolveDirPath(thread_, filename));
+        CString fullName = ConvertToString(filename.GetTaggedValue());
+        dirname.Update(PathHelper::ResolveDirPath(thread_, fullName));
     }
     CJSInfo cjsInfo(module, require, exports, filename, dirname);
     RequireManager::InitializeCommonJS(thread_, cjsInfo);
@@ -509,7 +519,7 @@ void EcmaContext::HandleUncaughtException(JSTaggedValue exception)
     // if caught exceptionHandle type is JSError
     thread_->ClearException();
     if (exceptionHandle->IsJSError()) {
-        PrintJSErrorInfo(exceptionHandle);
+        PrintJSErrorInfo(thread_, exceptionHandle);
         return;
     }
     JSHandle<EcmaString> result = JSTaggedValue::ToString(thread_, exceptionHandle);
@@ -517,14 +527,33 @@ void EcmaContext::HandleUncaughtException(JSTaggedValue exception)
     LOG_NO_TAG(ERROR) << string;
 }
 
-void EcmaContext::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo)
+// static
+void EcmaContext::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> &exceptionInfo)
 {
-    JSHandle<JSTaggedValue> nameKey = thread_->GlobalConstants()->GetHandledNameString();
-    JSHandle<EcmaString> name(JSObject::GetProperty(thread_, exceptionInfo, nameKey).GetValue());
-    JSHandle<JSTaggedValue> msgKey = thread_->GlobalConstants()->GetHandledMessageString();
-    JSHandle<EcmaString> msg(JSObject::GetProperty(thread_, exceptionInfo, msgKey).GetValue());
-    JSHandle<JSTaggedValue> stackKey = thread_->GlobalConstants()->GetHandledStackString();
-    JSHandle<EcmaString> stack(JSObject::GetProperty(thread_, exceptionInfo, stackKey).GetValue());
+    JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
+    JSHandle<JSTaggedValue> nameValue = JSObject::GetProperty(thread, exceptionInfo, nameKey).GetValue();
+    JSHandle<EcmaString> name = JSTaggedValue::ToString(thread, nameValue);
+    // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
+    if (thread->HasPendingException()) {
+        thread->ClearException();
+        name = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
+    }
+    JSHandle<JSTaggedValue> msgKey = thread->GlobalConstants()->GetHandledMessageString();
+    JSHandle<JSTaggedValue> msgValue = JSObject::GetProperty(thread, exceptionInfo, msgKey).GetValue();
+    JSHandle<EcmaString> msg = JSTaggedValue::ToString(thread, msgValue);
+    // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
+    if (thread->HasPendingException()) {
+        thread->ClearException();
+        msg = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
+    }
+    JSHandle<JSTaggedValue> stackKey = thread->GlobalConstants()->GetHandledStackString();
+    JSHandle<JSTaggedValue> stackValue = JSObject::GetProperty(thread, exceptionInfo, stackKey).GetValue();
+    JSHandle<EcmaString> stack = JSTaggedValue::ToString(thread, stackValue);
+    // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
+    if (thread->HasPendingException()) {
+        thread->ClearException();
+        stack = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
+    }
 
     CString nameBuffer = ConvertToString(*name);
     CString msgBuffer = ConvertToString(*msg);
@@ -645,6 +674,11 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
             rv(ecmascript::Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
         }
     }
+
+    if (!joinStack_.empty()) {
+        rv(Root::ROOT_VM, ObjectSlot(ToUintPtr(&joinStack_.front())),
+            ObjectSlot(ToUintPtr(&joinStack_.back()) + JSTaggedValue::TaggedTypeSize()));
+    }
 }
 
 size_t EcmaContext::IterateHandle(const RootRangeVisitor &rangeVisitor)
@@ -749,4 +783,57 @@ void EcmaContext::DumpAOTInfo() const
 {
     aotFileManager_->DumpAOTInfo();
 }
+
+bool EcmaContext::JoinStackPushFastPath(JSHandle<JSTaggedValue> receiver)
+{
+    if (JSTaggedValue::SameValue(joinStack_[0], JSTaggedValue::Hole())) {
+        joinStack_[0] = receiver.GetTaggedValue();
+        return true;
+    }
+    return JoinStackPush(receiver);
+}
+
+bool EcmaContext::JoinStackPush(JSHandle<JSTaggedValue> receiver)
+{
+    uint32_t capacity = joinStack_.size();
+    JSTaggedValue receiverValue = receiver.GetTaggedValue();
+    for (size_t i = 0; i < capacity; ++i) {
+        if (JSTaggedValue::SameValue(joinStack_[i], JSTaggedValue::Hole())) {
+            joinStack_[i] = receiverValue;
+            return true;
+        }
+        if (JSTaggedValue::SameValue(joinStack_[i], receiverValue)) {
+            return false;
+        }
+    }
+    joinStack_.emplace_back(receiverValue);
+    return true;
+}
+
+void EcmaContext::JoinStackPopFastPath(JSHandle<JSTaggedValue> receiver)
+{
+    uint32_t length = joinStack_.size();
+    if (JSTaggedValue::SameValue(joinStack_[0], receiver.GetTaggedValue()) && length == MIN_JOIN_STACK_SIZE) {
+        joinStack_[0] = JSTaggedValue::Hole();
+    } else {
+        JoinStackPop(receiver);
+    }
+}
+
+void EcmaContext::JoinStackPop(JSHandle<JSTaggedValue> receiver)
+{
+    uint32_t length = joinStack_.size();
+    for (size_t i = 0; i < length; ++i) {
+        if (JSTaggedValue::SameValue(joinStack_[i], receiver.GetTaggedValue())) {
+            if (i == 0 && length > MIN_JOIN_STACK_SIZE) {
+                joinStack_ = {JSTaggedValue::Hole(), JSTaggedValue::Hole()};
+                break;
+            } else {
+                joinStack_[i] = JSTaggedValue::Hole();
+                break;
+            }
+        }
+    }
+}
+
 }  // namespace panda::ecmascript

@@ -28,9 +28,9 @@
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeRetype : public GraphVisitor {
 public:
-    NumberSpeculativeRetype(Circuit *circuit, Chunk* chunk, TSManager* tsManager, ChunkVector<TypeInfo>& typeInfos)
+    NumberSpeculativeRetype(Circuit *circuit, Chunk* chunk, ChunkVector<TypeInfo>& typeInfos)
         : GraphVisitor(circuit, chunk), acc_(circuit), builder_(circuit),
-          tsManager_(tsManager), typeInfos_(typeInfos) {}
+          typeInfos_(typeInfos) {}
     void Run();
     GateRef VisitGate(GateRef gate);
 
@@ -38,6 +38,11 @@ private:
     enum class State {
         Retype,
         Convert,
+    };
+
+    enum class OpType {
+        NORMAL,
+        SHIFT_AND_LOGICAL,
     };
 
     bool IsRetype() const
@@ -53,6 +58,7 @@ private:
     GateRef SetOutputType(GateRef gate, PGOSampleType type);
     GateRef SetOutputType(GateRef gate, GateType type);
     GateRef SetOutputType(GateRef gate, Representation rep);
+    GateRef SetOutputType(GateRef gate, TypeInfo type);
     GateRef VisitPhi(GateRef gate);
     GateRef VisitConstant(GateRef gate);
     GateRef VisitTypedBinaryOp(GateRef gate);
@@ -85,15 +91,17 @@ private:
     GateRef VisitFrameState(GateRef gate);
     GateRef VisitIsTrueOrFalse(GateRef gate);
     GateRef VisitWithConstantValue(GateRef gate, size_t ignoreIndex);
-    GateRef VisitLoopExitValue(GateRef gate);
+    GateRef VisitIntermediateValue(GateRef gate);
 
     void ConvertForBinaryOp(GateRef gate);
     void ConvertForCompareOp(GateRef gate);
     void ConvertForIntOperator(GateRef gate, GateType leftType, GateType rightType);
+    void ConvertForShiftAndLogicalOperator(GateRef gate, GateType leftType, GateType rightType);
     void ConvertForDoubleOperator(GateRef gate, GateType leftType, GateType rightType);
 
-    GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType);
-    GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType);
+    GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE,
+                                   OpType type = OpType::NORMAL);
+    GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE);
     GateRef CheckAndConvertToTagged(GateRef gate, GateType gateType);
     GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);
     GateRef ConvertToTagged(GateRef gate);
@@ -128,7 +136,6 @@ private:
     static constexpr size_t PROPERTY_LOOKUP_RESULT_INDEX = 1;
     GateAccessor acc_;
     CircuitBuilder builder_;
-    TSManager* tsManager_ {nullptr};
     ChunkVector<TypeInfo>& typeInfos_;
     State state_ {0};
 };

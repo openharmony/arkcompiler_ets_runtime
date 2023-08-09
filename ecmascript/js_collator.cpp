@@ -159,8 +159,10 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     }
     ResolvedLocale r =
         JSLocale::ResolveLocale(thread, availableLocales, requestedLocales, matcher, relevantExtensionKeys);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSCollator, thread);
     icu::Locale icuLocale = r.localeData;
     JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSCollator, thread);
     collator->SetLocale(thread, localeStr.GetTaggedValue());
     ASSERT_PRINT(!icuLocale.isBogus(), "icuLocale is bogus");
 
@@ -415,6 +417,7 @@ JSHandle<JSObject> JSCollator::ResolvedOptions(JSThread *thread, const JSHandle<
     JSHandle<JSTaggedValue> property = globalConst->GetHandledLocaleString();
     JSHandle<JSTaggedValue> locale(thread, collator->GetLocale());
     JSObject::CreateDataPropertyOrThrow(thread, options, property, locale);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread);
 
     // [[Usage]]
     UsageOption usageOption = collator->GetUsage();

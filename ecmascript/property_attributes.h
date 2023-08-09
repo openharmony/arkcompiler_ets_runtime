@@ -77,9 +77,9 @@ public:
     using ConfigurableField = EnumerableField::NextFlag;
     using IsAccessorField = ConfigurableField::NextFlag;  // 4
 
-    // fast mode
     using IsInlinedPropsField = PropertyMetaDataField::NextFlag;                        // 5
     using RepresentationField = IsInlinedPropsField::NextField<Representation, REPRESENTATION_NUM>; // 2: 2 bits, 6-8
+    // fast mode
     using OffsetField = RepresentationField::NextField<uint32_t, OFFSET_BITFIELD_NUM>;  // 18
     using TrackTypeField = OffsetField::NextField<TrackType, TRACK_TYPE_NUM>;           // 3: 3 bits
 
@@ -89,8 +89,8 @@ public:
     using IsConstPropsField = SortedIndexField::NextFlag;                               // 31
     using IsNotHoleField = IsConstPropsField::NextFlag;                                 // 32
     // dictionary mode, include global
-    using PropertyBoxTypeField = PropertyMetaDataField::NextField<PropertyBoxType, 2>;             // 2: 2 bits, 5-6
-    using DictionaryOrderField = PropertyBoxTypeField::NextField<uint32_t, DICTIONARY_ORDER_NUM>;  // 26
+    using PropertyBoxTypeField = RepresentationField::NextField<PropertyBoxType, 2>;             // 2: 2 bits, 9-10
+    using DictionaryOrderField = PropertyBoxTypeField::NextField<uint32_t, DICTIONARY_ORDER_NUM>;  // 30
 
     static constexpr uint32_t BIT_SIZE = 28;
     static constexpr int INITIAL_PROPERTY_INDEX = 0;

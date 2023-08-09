@@ -22,15 +22,16 @@ namespace panda::ecmascript {
 
 HeapSnapshotJSONSerializer::~HeapSnapshotJSONSerializer()
 {
-    if (!writer_) {
+    if (writer_) {
         delete writer_;
+        writer_ = nullptr;
     }
 }
 
 bool HeapSnapshotJSONSerializer::Serialize(HeapSnapshot *snapshot, Stream *stream)
 {
     // Serialize Node/Edge/String-Table
-    LOG_ECMA(ERROR) << "HeapSnapshotJSONSerializer::Serialize begin";
+    LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::Serialize begin";
     snapshot_ = snapshot;
     ASSERT(snapshot_->GetNodes() != nullptr && snapshot_->GetEdges() != nullptr &&
            snapshot_->GetEcmaStringTable() != nullptr);
@@ -47,7 +48,7 @@ bool HeapSnapshotJSONSerializer::Serialize(HeapSnapshot *snapshot, Stream *strea
     SerializerSnapshotClosure();   // 9.
     writer_->End();
 
-    LOG_ECMA(ERROR) << "HeapSnapshotJSONSerializer::Serialize exit";
+    LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::Serialize exit";
     return true;
 }
 

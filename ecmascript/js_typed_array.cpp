@@ -344,7 +344,7 @@ JSHandle<TaggedArray> JSTypedArray::OwnEnumPropertyKeys(JSThread *thread, const 
     //   a. Add ToString(i) as the last element of keys.
     uint32_t copyLength = 0;
     for (uint32_t k = 0; k < bufferKeysLen; k++) {
-        auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(k));
+        auto key = base::NumberHelper::IntToEcmaString(thread, k);
         nameList->Set(thread, copyLength, key);
         copyLength++;
     }

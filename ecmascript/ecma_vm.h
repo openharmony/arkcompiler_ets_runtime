@@ -58,6 +58,7 @@ class SnapshotProcessor;
 class PGOProfiler;
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 class HeapProfilerInterface;
+class HeapProfiler;
 #endif
 namespace job {
 class MicroJobQueue;
@@ -83,7 +84,7 @@ class EcmaStringTable;
 
 using NativePtrGetter = void* (*)(void* info);
 
-using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath)>;
+using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)>;
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 class EcmaVM {
 public:
@@ -198,10 +199,6 @@ public:
     }
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER) const;
 
-    void StartHeapTracking(HeapTracker *tracker);
-
-    void StopHeapTracking();
-
     NativeAreaAllocator *GetNativeAreaAllocator() const
     {
         return nativeAreaAllocator_.get();
@@ -289,8 +286,9 @@ public:
         }
     }
 
-    EcmaVM *GetWorkerVm(uint32_t tid) const
+    EcmaVM *GetWorkerVm(uint32_t tid)
     {
+        os::memory::LockHolder lock(mutex_);
         EcmaVM *workerVm = nullptr;
         if (!workerList_.empty()) {
             auto iter = workerList_.find(tid);
@@ -347,7 +345,10 @@ public:
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     void DeleteHeapProfile();
+    HeapProfilerInterface *GetHeapProfile();
     HeapProfilerInterface *GetOrNewHeapProfile();
+    void StartHeapTracking();
+    void StopHeapTracking();
 #endif
 
     bool EnableReportModuleResolvingFailure() const
@@ -428,6 +429,23 @@ public:
         ASSERT(stringTable_ != nullptr);
         return stringTable_;
     }
+
+    void IncreaseCallDepth()
+    {
+        callDepth_++;
+    }
+
+    void DecreaseCallDepth()
+    {
+        ASSERT(callDepth_ > 0);
+        callDepth_--;
+    }
+
+    bool IsTopLevelCallDepth()
+    {
+        return callDepth_ == 0;
+    }
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -503,6 +521,8 @@ private:
 
     // PGO Profiler
     PGOProfiler *pgoProfiler_ {nullptr};
+    // c++ call js
+    size_t callDepth_ {0};
 
     friend class Snapshot;
     friend class SnapshotProcessor;

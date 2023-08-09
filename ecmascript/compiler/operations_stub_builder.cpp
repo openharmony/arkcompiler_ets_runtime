@@ -394,8 +394,8 @@ GateRef OperationsStubBuilder::Greater(GateRef glue, GateRef left, GateRef right
                 }
                 Bind(&rightIsInt1);
                 {
-                    int32_t type = Int32(PGOSampleType::IntType());
-                    callback.ProfileOpType(Int32(type));
+                    GateRef type = Int32(PGOSampleType::IntType());
+                    callback.ProfileOpType(type);
                     doubleRight = ChangeInt32ToFloat64(TaggedGetInt(right));
                     Jump(&exit2);
                 }
@@ -1345,7 +1345,7 @@ GateRef OperationsStubBuilder::Neg(GateRef glue, GateRef value, ProfileOperation
         {
             callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
             GateRef valueDouble = GetDoubleOfTDouble(value);
-            result = DoubleToTaggedDoublePtr(DoubleSub(Double(0), valueDouble));
+            result = DoubleToTaggedDoublePtr(DoubleMul(Double(-1), valueDouble));
             Jump(&exit);
         }
         Bind(&valueNotDouble);

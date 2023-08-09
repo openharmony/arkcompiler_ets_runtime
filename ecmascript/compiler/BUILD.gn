@@ -65,6 +65,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "assembler/x64/extended_assembler_x64.cpp",
     "assembler_module.cpp",
     "async_function_lowering.cpp",
+    "base/depend_chain_helper.cpp",
     "bc_call_signature.cpp",
     "builtins/builtins_call_signature.cpp",
     "builtins/builtins_string_stub_builder.cpp",
@@ -104,10 +105,12 @@ ohos_source_set("libark_jsoptimizer_set") {
     "number_speculative_lowering.cpp",
     "number_speculative_retype.cpp",
     "number_speculative_runner.cpp",
+    "object_access_helper.cpp",
     "operations_stub_builder.cpp",
     "pass_manager.cpp",
     "profiler_stub_builder.cpp",
     "range_analysis.cpp",
+    "range_guard.cpp",
     "rt_call_signature.cpp",
     "scheduler.cpp",
     "slowpath_lowering.cpp",
@@ -230,6 +233,10 @@ ohos_source_set("libark_jsoptimizer_set") {
     "LLVMBitWriter",
   ]
 
+  if (!is_mac && !is_ios) {
+    libs += [ "LLVMParts" ]
+  }
+
   # Only support compiling aarch64 target at device-side(arm64 platform).
   # So these os-related libs of arm and x86 are not needed on arm64 platform.
   if (is_mac || current_cpu != "arm64") {
@@ -324,29 +331,6 @@ ohos_shared_library("libark_jsoptimizer") {
   }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
-}
-
-ohos_shared_library("libark_jsoptimizer_test") {
-  stack_protector_ret = false
-  deps = [
-    ":libark_jsoptimizer_set",
-    "$ark_root/libpandafile:libarkfile_static",
-    "$js_root:libark_jsruntime_test_set",
-  ]
-
-  ldflags = []
-  if (enable_coverage) {
-    ldflags += [ "--coverage" ]
-    cflags_cc = [ "--coverage" ]
-  }
-
-  if (!ark_standalone_build) {
-    ldflags += [ "-Wl,--lto-O0" ]
-  }
-  install_enable = false
-
-  output_extension = "so"
-  subsystem_name = "test"
 }
 
 ohos_executable("ark_stub_compiler") {

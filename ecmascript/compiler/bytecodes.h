@@ -49,6 +49,7 @@ enum BytecodeFlags : uint32_t {
     READ_FUNC = 1 << 9,
     READ_NEWTARGET = 1 << 10,
     READ_ARGC = 1 << 11,
+    NO_GC = 1 << 12,
 };
 
 enum BytecodeKind : uint32_t {
@@ -70,7 +71,7 @@ class BytecodeMetaData {
 public:
     static constexpr uint32_t MAX_OPCODE_SIZE = 16;
     static constexpr uint32_t MAX_SIZE_BITS = 4;
-    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 12;
+    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 13;
     static constexpr uint32_t BYTECODE_KIND_SIZE = 4;
 
     using OpcodeField = panda::BitField<EcmaOpcode, 0, MAX_OPCODE_SIZE>;
@@ -111,6 +112,11 @@ public:
     bool HasEnvOut() const
     {
         return HasFlag(BytecodeFlags::WRITE_ENV);
+    }
+
+    bool IsNoGC() const
+    {
+        return HasFlag(BytecodeFlags::NO_GC);
     }
 
     bool IsMov() const
@@ -306,6 +312,49 @@ public:
             }
         }
         return bytecodes_[primary];
+    }
+
+    static bool IsCallOp(EcmaOpcode opcode)
+    {
+        switch (opcode) {
+            case EcmaOpcode::CALLARG0_IMM8:
+            case EcmaOpcode::CALLARG1_IMM8_V8:
+            case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
+            case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
+            case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
+            case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
+            case EcmaOpcode::CALLTHIS0_IMM8_V8:
+            case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+            case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+            case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+            case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static bool IsCreateObjectWithBufferOp(EcmaOpcode opcode)
+    {
+        switch (opcode) {
+            case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
+            case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    static bool IsCreateArrayWithBufferOp(EcmaOpcode opcode)
+    {
+        switch (opcode) {
+            case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
+            case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
+                return true;
+            default:
+                return false;
+        }
     }
 
 private:

@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <memory>
 
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/aot_file/binary_buffer_parser.h"
 #include "ecmascript/compiler/binary_section.h"
 
@@ -30,8 +31,31 @@ public:
         uint32_t rodataSize {0};
         uint32_t textSize {0};
         uint32_t stackMapSize {0};
+        uint32_t rodataAfterText {0};
     };
     static std::string GetSecName(ElfSecName idx);
+
+    void UpdateRODataInfo(uint64_t &addr, uint32_t &size, ElfSecName sec) const
+    {
+        if (sectionsInfo_.find(sec) == sectionsInfo_.end()) {
+            return;
+        }
+        uint64_t curSectionAddr = GetSecAddr(sec);
+        addr = curSectionAddr < addr ? curSectionAddr : addr;
+        size += GetSecSize(sec);
+    }
+
+    std::tuple<uint64_t, uint32_t> GetMergedRODataAddrAndSize() const
+    {
+        uint64_t addr = base::MAX_UINT64_VALUE;
+        uint32_t size = 0;
+        UpdateRODataInfo(addr, size, ElfSecName::RODATA);
+        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST4);
+        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST8);
+        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST16);
+        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST32);
+        return std::make_tuple(addr, size);
+    }
 
     void SetArkStackMapPtr(std::shared_ptr<uint8_t> ptr)
     {

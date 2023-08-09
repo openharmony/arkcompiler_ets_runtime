@@ -112,12 +112,11 @@ class SlowPathLowering {
 public:
     SlowPathLowering(Circuit *circuit, CompilationConfig *cmpCfg,
                      TSManager *tsManager, const MethodLiteral *methodLiteral,
-                     bool enableLog, bool enableOptStaticMethod, const std::string& name)
+                     bool enableLog, const std::string& name)
         : tsManager_(tsManager), methodLiteral_(methodLiteral),
           circuit_(circuit), acc_(circuit),
           argAcc_(circuit), builder_(circuit, cmpCfg),
-          enableLog_(enableLog), enableOptStaticMethod_(enableOptStaticMethod),
-          methodName_(name), glue_(acc_.GetGlueFromArgList())
+          enableLog_(enableLog), methodName_(name), glue_(acc_.GetGlueFromArgList())
     {
         traceBc_ = cmpCfg->IsTraceBC();
         profiling_ = cmpCfg->IsProfiling();
@@ -129,11 +128,6 @@ public:
     bool IsLogEnabled() const
     {
         return enableLog_;
-    }
-
-    bool EnableOptStaticMethod() const
-    {
-        return enableOptStaticMethod_;
     }
 
     bool IsTraceBC() const
@@ -305,7 +299,7 @@ private:
     void LowerConstruct(GateRef gate);
     void LowerTypedCall(GateRef gate);
     void LowerTypedFastCall(GateRef gate);
-    void LowerUpdateHotness(GateRef gate);
+    void LowerCheckSafePointAndStackOver(GateRef gate);
     void LowerNotifyConcurrentResult(GateRef gate);
     void LowerGetEnv(GateRef gate);
     void DeleteLoopExit(GateRef gate);
@@ -319,7 +313,6 @@ private:
     ArgumentAccessor argAcc_;
     CircuitBuilder builder_;
     bool enableLog_ {false};
-    bool enableOptStaticMethod_ {false};
     bool traceBc_ {false};
     bool profiling_ {false};
     bool stressDeopt_ {false};

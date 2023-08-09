@@ -22,7 +22,7 @@
 namespace panda::ecmascript {
 class JSAPIQueue : public JSObject {
 public:
-    static constexpr int DEFAULT_CAPACITY_LENGTH = 8;
+    static constexpr uint32_t DEFAULT_CAPACITY_LENGTH = 8;
     static JSAPIQueue *Cast(TaggedObject *object)
     {
         ASSERT(JSTaggedValue(object).IsJSAPIQueue());

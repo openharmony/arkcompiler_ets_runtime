@@ -23,13 +23,13 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
 
 namespace panda::ecmascript {
 
-using PathHelper = base::PathHelper;
 void CjsModule::InitializeModule(JSThread *thread, JSHandle<CjsModule> &module,
                                  JSHandle<JSTaggedValue> &filename, JSHandle<JSTaggedValue> &dirname)
 {
@@ -104,7 +104,7 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
 
     JSMutableHandle<JSTaggedValue> filename(thread, JSTaggedValue::Undefined());
     if (jsPandaFile->IsBundlePack()) {
-        PathHelper::ResolveCurrentPath(thread, parent, dirname, jsPandaFile);
+        ModulePathHelper::ResolveCurrentPath(thread, parent, dirname, jsPandaFile);
         filename.Update(ResolveFilenameFromNative(thread, dirname.GetTaggedValue(),
                                                   request.GetTaggedValue()));
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
@@ -112,8 +112,8 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     } else {
         CString currentEntryPoint = ConvertToString(entrypointVal.GetTaggedValue());
         CString requestStr = ConvertToString(request.GetTaggedValue());
-        requestEntryPoint = PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile, mergedFilename,
-                                                                currentEntryPoint, requestStr);
+        requestEntryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, jsPandaFile, mergedFilename,
+                                                                      currentEntryPoint, requestStr);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         filename.Update(factory->NewFromUtf8(requestEntryPoint));
     }
@@ -127,11 +127,19 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     // Don't get required exports from cache, execute required JSPandaFile.
     // module = new Module(), which belongs to required JSPandaFile.
     JSHandle<CjsModule> module = factory->NewCjsModule();
-    dirname.Update(PathHelper::ResolveDirPath(thread, filename));
+    CString fullName = ConvertToString(filename.GetTaggedValue());
+    dirname.Update(PathHelper::ResolveDirPath(thread, fullName));
     InitializeModule(thread, module, filename, dirname);
     PutIntoCache(thread, module, filename);
 
-    if (jsPandaFile->IsJson(thread, requestEntryPoint)) {
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(requestEntryPoint, recordInfo);
+    if (!hasRecord) {
+        CString msg = "cannot find record '" + requestEntryPoint + "', please check the request path.";
+        LOG_FULL(ERROR) << msg;
+        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+    }
+    if (jsPandaFile->IsJson(recordInfo)) {
         JSHandle<JSTaggedValue> result = JSHandle<JSTaggedValue>(thread,
             ModuleDataExtractor::JsonParse(thread, jsPandaFile, requestEntryPoint));
         // Set module.exports ---> exports

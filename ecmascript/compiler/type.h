@@ -277,11 +277,18 @@ private:
 enum class ValueType : uint8_t {
     BOOL,
     INT32,
+    UINT32,
     FLOAT64,
     TAGGED_BOOLEAN,
     TAGGED_INT,
     TAGGED_DOUBLE,
     TAGGED_NUMBER,
+};
+
+enum class ConvertSupport : uint8_t {
+    ENABLE,
+    // Not support conversion from srcType to dstType. It is necessary to use 'deopt' to ensure semantic correctness.
+    DISABLE
 };
 
 class Type {

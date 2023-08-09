@@ -85,6 +85,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::LOAD_TYPED_ARRAY_LENGTH:
         case OpCode::TYPED_ARRAY_CHECK:
         case OpCode::OBJECT_TYPE_CHECK:
+        case OpCode::OBJECT_TYPE_COMPARE:
         case OpCode::STABLE_ARRAY_CHECK:
         case OpCode::INDEX_CHECK:
         case OpCode::TYPED_CALL_CHECK:
@@ -92,6 +93,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::TYPED_BINARY_OP:
         case OpCode::TYPED_UNARY_OP:
         case OpCode::JSINLINETARGET_TYPE_CHECK:
+        case OpCode::INLINE_ACCESSOR_CHECK:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
             return TryEliminateFrameState(gate);
@@ -234,6 +236,7 @@ DependInfoNode* EarlyElimination::UpdateWrite(GateRef gate, DependInfoNode* depe
         case OpCode::STORE_PROPERTY_NO_BARRIER:
         case OpCode::STORE_CONST_OFFSET:
         case OpCode::STORE_ELEMENT:
+        case OpCode::STORE_MEMORY:
             return dependInfo->UpdateStoreProperty(this, gate);
         default:
             return new (chunk_) DependInfoNode(chunk_);
@@ -242,26 +245,43 @@ DependInfoNode* EarlyElimination::UpdateWrite(GateRef gate, DependInfoNode* depe
 
 bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
 {
-    if (acc_.GetOpCode(rhs) == OpCode::STORE_ELEMENT) {
-        return acc_.GetOpCode(lhs) == OpCode::LOAD_ELEMENT;
-    }
+    auto rop = acc_.GetOpCode(rhs);
     auto lop = acc_.GetOpCode(lhs);
-    ASSERT(acc_.GetOpCode(rhs) == OpCode::STORE_PROPERTY ||
-           acc_.GetOpCode(rhs) == OpCode::STORE_PROPERTY_NO_BARRIER ||
-           acc_.GetOpCode(rhs) == OpCode::STORE_CONST_OFFSET);
-    if (lop == OpCode::LOAD_PROPERTY) {
-        auto loff = acc_.GetValueIn(lhs, 1);
-        auto roff = acc_.GetValueIn(rhs, 1);
-        ASSERT(acc_.GetOpCode(loff) == OpCode::CONSTANT);
-        ASSERT(acc_.GetOpCode(roff) == OpCode::CONSTANT);
-        return loff == roff;
-    } else if (lop == OpCode::LOAD_CONST_OFFSET) {
-        auto loff = acc_.GetOffset(lhs);
-        auto roff = acc_.GetOffset(rhs);
-        return loff == roff;
-    } else {
-        return false;
+    switch (rop) {
+        case OpCode::STORE_MEMORY:
+            ASSERT(acc_.GetMemoryType(rhs) == MemoryType::ELEMENT_TYPE);
+            return acc_.GetOpCode(lhs) == OpCode::LOAD_ELEMENT;
+        case OpCode::STORE_ELEMENT: {
+            if(lop == OpCode::LOAD_ELEMENT) {
+                auto lopIsTypedArray = static_cast<uint8_t>(acc_.GetTypedLoadOp(lhs)) > 0;
+                auto ropIsTypedArray = static_cast<uint8_t>(acc_.GetTypedStoreOp(rhs)) > 0;
+                return lopIsTypedArray == ropIsTypedArray;
+            }
+            return false;
+        }
+        case OpCode::STORE_PROPERTY:
+        case OpCode::STORE_PROPERTY_NO_BARRIER: {
+            if (lop == OpCode::LOAD_PROPERTY) {
+                auto loff = acc_.GetValueIn(lhs, 1);
+                auto roff = acc_.GetValueIn(rhs, 1);
+                ASSERT(acc_.GetOpCode(loff) == OpCode::CONSTANT);
+                ASSERT(acc_.GetOpCode(roff) == OpCode::CONSTANT);
+                return loff == roff;
+            }
+            break;
+        }
+        case OpCode::STORE_CONST_OFFSET: {
+            if (lop == OpCode::LOAD_CONST_OFFSET) {
+                auto loff = acc_.GetOffset(lhs);
+                auto roff = acc_.GetOffset(rhs);
+                return loff == roff;
+            }
+            break;
+        }
+        default:
+            break;
     }
+    return false;
 }
 
 bool EarlyElimination::CompareOrder(GateRef lhs, GateRef rhs)
@@ -310,6 +330,7 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         }
         case OpCode::TYPED_ARRAY_CHECK:
         case OpCode::OBJECT_TYPE_CHECK:
+        case OpCode::OBJECT_TYPE_COMPARE:
         case OpCode::INDEX_CHECK: {
             if (acc_.GetParamGateType(lhs) != acc_.GetParamGateType(rhs)) {
                 return false;
@@ -454,6 +475,18 @@ GateRef DependInfoNode::LookupCheckedNode(EarlyElimination* elimination, GateRef
         }
     }
     return gate;
+}
+
+void DependInfoNode::GetGates(std::vector<GateRef>& gates) const
+{
+    ChunkStack<GateRef> st(chunk_);
+    for (Node* node = head_; node != nullptr; node = node->next) {
+        st.push(node->gate);
+    }
+    while (!st.empty()) {
+        gates.emplace_back(st.top());
+        st.pop();
+    }
 }
 
 GateRef DependInfoNode::LookupNode(EarlyElimination* elimination, GateRef gate)

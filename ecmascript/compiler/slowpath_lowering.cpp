@@ -63,8 +63,8 @@ void SlowPathLowering::CallRuntimeLowering()
             case OpCode::TYPEDFASTCALL:
                 LowerTypedFastCall(gate);
                 break;
-            case OpCode::UPDATE_HOTNESS:
-                LowerUpdateHotness(gate);
+            case OpCode::CHECK_SAFEPOINT_AND_STACKOVER:
+                LowerCheckSafePointAndStackOver(gate);
                 break;
             case OpCode::GET_ENV:
                 LowerGetEnv(gate);
@@ -2411,8 +2411,6 @@ void SlowPathLowering::LowerStLexVar(GateRef gate)
 
 void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
 {
-    GateType type = acc_.GetGateType(gate);
-
     // 5: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 5);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
@@ -2427,32 +2425,10 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
     Label isNotException(&builder_);
 
     GateRef result;
-    if (type.IsAnyType()) {
-        auto args = { proto, lexicalEnv, constpool,
-                      builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId), module };
-        result = LowerCallRuntime(gate, RTSTUB_ID(CreateClassWithBuffer), args, true);
-        builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
-    } else {
-        int index = tsManager_->GetHClassIndexByClassGateType(type);
-        ASSERT(index != -1);
-        GateRef ihcIndex = builder_.Int32(index);
-        GateRef ihclass = builder_.GetObjectFromConstPool(glue_, gate, jsFunc, ihcIndex, ConstPoolType::CLASS_LITERAL);
-        GateRef constructorHclass;
-        if (enableOptStaticMethod_) {
-            int constructorIndex = tsManager_->GetConstructorHClassIndexByClassGateType(type);
-            ASSERT(index != -1);
-            GateRef constructorHcIndex = builder_.Int32(constructorIndex);
-            constructorHclass = builder_.GetObjectFromConstPool(glue_, gate, jsFunc,
-                constructorHcIndex, ConstPoolType::CLASS_LITERAL);
-        } else {
-            constructorHclass = builder_.Undefined();
-        }
-        auto args = { proto, lexicalEnv, constpool,
-                      builder_.ToTaggedInt(methodId),
-                      builder_.ToTaggedInt(literalId), ihclass, constructorHclass, module };
-        result = LowerCallRuntime(gate, RTSTUB_ID(CreateClassWithIHClass), args, true);
-        builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
-    }
+    auto args = { proto, lexicalEnv, constpool,
+                  builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId), module };
+    result = LowerCallRuntime(gate, RTSTUB_ID(CreateClassWithBuffer), args, true);
+    builder_.Branch(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
 
     StateDepend successControl;
     StateDepend failControl;
@@ -3163,19 +3139,33 @@ void SlowPathLowering::LowerTypedFastCall(GateRef gate)
     ReplaceHirWithPendingException(gate, state, result, result);
 }
 
-void SlowPathLowering::LowerUpdateHotness(GateRef gate)
+void SlowPathLowering::LowerCheckSafePointAndStackOver(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    GateRef interruptsFlag = builder_.Load(VariableType::INT8(), glue_,
-        builder_.IntPtr(JSThread::GlueData::GetInterruptVectorOffset(builder_.GetCompilationConfig()->Is32Bit())));
     Label slowPath(&builder_);
     Label dispatch(&builder_);
+    Label checkStackOver(&builder_);
+    Label stackOverflow(&builder_);
+    GateRef stackLimit = builder_.Load(VariableType::INT64(), glue_,
+        builder_.IntPtr(JSThread::GlueData::GetStackLimitOffset(builder_.GetCompilationConfig()->Is32Bit())));
+    GateRef interruptsFlag = builder_.Load(VariableType::INT8(), glue_,
+        builder_.IntPtr(JSThread::GlueData::GetInterruptVectorOffset(builder_.GetCompilationConfig()->Is32Bit())));
+    GateRef spValue = builder_.ReadSp();
     builder_.Branch(builder_.Int8Equal(interruptsFlag,
-        builder_.Int8(VmThreadControl::VM_NEED_SUSPENSION)), &slowPath, &dispatch);
+        builder_.Int8(VmThreadControl::VM_NEED_SUSPENSION)), &slowPath, &checkStackOver);
     builder_.Bind(&slowPath);
     {
-        LowerCallRuntime(glue_, RTSTUB_ID(CheckSafePoint), { }, true);
-        builder_.Jump(&dispatch);
+        LowerCallRuntime(glue_, RTSTUB_ID(CheckSafePoint), {}, true);
+        builder_.Jump(&checkStackOver);
+    }
+    builder_.Bind(&checkStackOver);
+    {
+        builder_.Branch(builder_.Int64LessThanOrEqual(spValue, stackLimit), &stackOverflow, &dispatch);
+        builder_.Bind(&stackOverflow);
+        {
+            GateRef res = LowerCallRuntime(glue_, RTSTUB_ID(ThrowStackOverflowException), {}, true);
+            builder_.Return(res);
+        }
     }
     builder_.Bind(&dispatch);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());

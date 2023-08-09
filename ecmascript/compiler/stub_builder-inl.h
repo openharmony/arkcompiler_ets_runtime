@@ -551,6 +551,12 @@ inline GateRef StubBuilder::BinaryOp(GateRef x, GateRef y)
     return env_->GetBuilder()->BinaryOp<Op, Type>(x, y);
 }
 
+template<OpCode Op, MachineType Type>
+inline GateRef StubBuilder::BinaryOpWithOverflow(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->BinaryOpWithOverflow<Op, Type>(x, y);
+}
+
 inline GateRef StubBuilder::TaggedIsInt(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsInt(x);

@@ -417,6 +417,7 @@ public:
     bool IsSymbol();
     bool IsObject();
     bool IsArray(const EcmaVM *vm);
+    bool IsJSArray(const EcmaVM *vm);
     bool IsConstructor();
     bool IsFunction();
     bool IsProxy();
@@ -553,7 +554,7 @@ public:
     static Local<StringRef> NewFromUtf8(const EcmaVM *vm, const char *utf8, int length = -1);
     static Local<StringRef> NewFromUtf16(const EcmaVM *vm, const char16_t *utf16, int length = -1);
     std::string ToString();
-    int32_t Length();
+    uint32_t Length();
     int32_t Utf8Length(const EcmaVM *vm);
     int WriteUtf8(char *buffer, int length, bool isWriteBuffer = false);
     int WriteUtf16(char16_t *buffer, int length);
@@ -745,7 +746,7 @@ public:
         void *data, bool callNapi = false, size_t nativeBindingsize = 0);
 
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
-        int32_t length, bool isNapi = false);
+        int32_t length);
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);
 
     Local<JSValueRef> GetFunctionPrototype(const EcmaVM *vm);
@@ -761,7 +762,7 @@ public:
 class PUBLIC_API ArrayRef : public ObjectRef {
 public:
     static Local<ArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
-    int32_t Length(const EcmaVM *vm);
+    uint32_t Length(const EcmaVM *vm);
     static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
     static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
 };
@@ -1351,7 +1352,8 @@ public:
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
     static void DeleteSerializationData(void *data);
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
-    static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<std::vector<uint8_t>(std::string dirPath)> cb);
+    static void SetHostResolveBufferTracker(EcmaVM *vm,
+        std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)> cb);
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
@@ -1486,6 +1488,15 @@ private:
     JSTaggedType *stackArgs_ {nullptr};
     void *data_ {nullptr};
     friend class FunctionRef;
+};
+
+class PUBLIC_API FunctionCallScope {
+public:
+    FunctionCallScope(EcmaVM *vm);
+    ~FunctionCallScope();
+
+private:
+    EcmaVM *vm_;
 };
 
 template<typename T>

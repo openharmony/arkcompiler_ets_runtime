@@ -141,7 +141,7 @@ JSHandle<Derived> TaggedTree<Derived>::AdjustTaggedTree(const JSThread *thread, 
         return newTree;
     }
 
-    int elements = tree->NumberOfElements();
+    uint32_t elements = tree->NumberOfElements();
     newTree.Update(factory->NewTaggedArray(len).GetTaggedValue());
     newTree->SetNumberOfElements(thread, elements);
     newTree->SetNumberOfDeletedElements(thread, 0);
@@ -393,7 +393,7 @@ JSHandle<Derived> TaggedTree<Derived>::Insert(JSThread *thread, JSHandle<Derived
         parentKey.Update(newTree->GetKey(parentIndex));
     }
 
-    int entry = newTree->NumberOfElements() + newTree->NumberOfDeletedElements();
+    uint32_t entry = newTree->NumberOfElements() + newTree->NumberOfDeletedElements();
     if (res != ComparisonResult::LESS) {
         newTree->InsertRightEntry(thread, parentIndex, entry, key.GetTaggedValue(), value.GetTaggedValue());
     } else {
@@ -407,9 +407,9 @@ JSHandle<Derived> TaggedTree<Derived>::Insert(JSThread *thread, JSHandle<Derived
 template<typename Derived>
 JSHandle<Derived> TaggedTree<Derived>::GrowCapacity(const JSThread *thread, JSHandle<Derived> &tree)
 {
-    int nof = tree->NumberOfElements() + tree->NumberOfDeletedElements();
+    uint32_t nof = tree->NumberOfElements() + tree->NumberOfDeletedElements();
     int oldCapacity = tree->Capacity();
-    if (nof + 1 <= oldCapacity) {
+    if (static_cast<int>(nof + 1) <= oldCapacity) {
         return tree;
     }
 
@@ -470,7 +470,7 @@ template<typename Derived>
 JSHandle<Derived> TaggedTree<Derived>::Shrink(const JSThread *thread, const JSHandle<Derived> &tree)
 {
     int oldCapacity = static_cast<int>(tree->Capacity());
-    if (tree->NumberOfElements() >= (oldCapacity + 1) / 4) { // 4: quarter
+    if (static_cast<int>(tree->NumberOfElements()) >= (oldCapacity + 1) / 4) { // 4: quarter
         return tree;
     }
     uint32_t newCapacity = static_cast<uint32_t>(oldCapacity - 1) >> 1;

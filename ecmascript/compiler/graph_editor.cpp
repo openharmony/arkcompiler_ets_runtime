@@ -26,6 +26,12 @@ void GraphEditor::RemoveDeadState(Circuit* circuit, GateRef gate)
     editor.RemoveGate();
 }
 
+void GraphEditor::EliminateRedundantPhi(Circuit* circuit)
+{
+    GraphEditor editor(circuit);
+    editor.EliminatePhi();
+}
+
 void GraphEditor::ReplaceGate(GateRef gate)
 {
     auto uses = acc_.Uses(gate);
@@ -106,6 +112,59 @@ void GraphEditor::PropagateMerge(const Edge& edge)
             }
         }
         acc_.DecreaseIn(gate, edge.GetIndex());
+    }
+}
+
+void GraphEditor::EliminatePhi()
+{
+    std::vector<GateRef> gateList;
+    acc_.GetAllGates(gateList);
+    std::queue<GateRef> workList;
+    std::set<GateRef> inList;
+    for (auto gate : gateList) {
+        if (acc_.IsValueSelector(gate)) {
+            workList.push(gate);
+            inList.insert(gate);
+        }
+    }
+
+    while (!workList.empty()) {
+        auto cur = workList.front();
+        workList.pop();
+        ASSERT(acc_.IsValueSelector(cur));
+        GateRef first = acc_.GetValueIn(cur, 0);
+        auto use = acc_.Uses(cur);
+        bool sameIns = true;
+        bool selfUse = first == cur;
+        bool noUses = use.begin() == use.end();
+        auto valueNum = acc_.GetNumValueIn(cur);
+        for (size_t i = 1; i < valueNum; ++i) {
+            GateRef input = acc_.GetValueIn(cur, i);
+            if (input != first) {
+                sameIns = false;
+            }
+            if (input == cur) {
+                ASSERT(acc_.IsLoopHead(acc_.GetState(cur)));
+                selfUse = true;
+            }
+        }
+        if ((!sameIns) && (!selfUse) && (!noUses)) {
+            inList.erase(cur);
+            continue;
+        }
+        for (auto it = use.begin(); it != use.end(); ++it) {
+            if (((*it) == cur) || (!acc_.IsValueSelector(*it)) || inList.count(*it)) {
+                // selfUse or notPhi or inListPhi
+                continue;
+            }
+            workList.push(*it);
+            inList.insert(*it);
+        }
+        acc_.UpdateAllUses(cur, first);
+    }
+    for (auto phi : inList) {
+        ASSERT(acc_.IsValueSelector(phi));
+        acc_.DeleteGate(phi);
     }
 }
 }  // namespace panda::ecmascript::kungfu

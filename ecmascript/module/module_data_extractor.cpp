@@ -28,6 +28,7 @@
 namespace panda::ecmascript {
 using StringData = panda_file::StringData;
 using BuiltinsJson = builtins::BuiltinsJson;
+using JSRecordInfo = ecmascript::JSPandaFile::JSRecordInfo;
 
 JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                          const CString &descriptor, const CString &moduleFilename)
@@ -153,7 +154,15 @@ JSTaggedValue ModuleDataExtractor::JsonParse(JSThread *thread, const JSPandaFile
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(
             thread, undefined, undefined, undefined, 1); // 1 : argument numbers
-    CString value = jsPandaFile->GetJsonStringId(thread, entryPoint);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
+    if (!hasRecord) {
+        CString msg = "cannot find record '" + entryPoint + "', please check the request path.";
+        LOG_FULL(ERROR) << msg;
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), JSTaggedValue::Exception());
+    }
+    CString value = jsPandaFile->GetJsonStringId(recordInfo);
     JSHandle<JSTaggedValue> arg0(thread->GetEcmaVM()->GetFactory()->NewFromASCII(value));
     info->SetCallArg(arg0.GetTaggedValue());
     return BuiltinsJson::Parse(info);

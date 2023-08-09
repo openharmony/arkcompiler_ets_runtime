@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "ecmascript/builtins/builtins_list_format.h"
 
 #include "ecmascript/intl/locale_helper.h"
@@ -130,6 +130,7 @@ JSTaggedValue BuiltinsListFormat::FormatToParts(EcmaRuntimeCallInfo *argv)
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(listArray);
 
     JSHandle<JSArray> result = JSListFormat::FormatListToParts(thread, listFormat, array);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return result.GetTaggedValue();
 }
 

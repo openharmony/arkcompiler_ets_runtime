@@ -218,7 +218,7 @@ public:
 
     JSHandle<job::MicroJobQueue> GetMicroJobQueue() const;
 
-    void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo);
+    static void PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValue> &exceptionInfo);
     void Iterate(const RootVisitor &v, const RootRangeVisitor &rv);
     static void MountContext(JSThread *thread);
     static void UnmountContext(JSThread *thread);
@@ -389,6 +389,11 @@ public:
         return &globalConst_;
     }
 
+    bool JoinStackPushFastPath(JSHandle<JSTaggedValue> receiver);
+    bool JoinStackPush(JSHandle<JSTaggedValue> receiver);
+    void JoinStackPopFastPath(JSHandle<JSTaggedValue> receiver);
+    void JoinStackPop(JSHandle<JSTaggedValue> receiver);
+
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
@@ -466,6 +471,9 @@ private:
     uint64_t stackLimit_ {0};
     PropertiesCache *propertiesCache_ {nullptr};
     GlobalEnvConstants globalConst_;
+    // Join Stack
+    static constexpr uint32_t MIN_JOIN_STACK_SIZE = 2;
+    CVector<JSTaggedValue> joinStack_ {JSTaggedValue::Hole(), JSTaggedValue::Hole()};
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

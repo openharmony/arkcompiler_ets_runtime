@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_PGO_PROFILER_INFO_H
 #define ECMASCRIPT_PGO_PROFILER_INFO_H
 
+#include <cstdint>
 #include <memory>
 #include <sstream>
 #include <unordered_map>
@@ -64,7 +65,7 @@ using PGOMethodId = EntityId;
   |--------HEADER_SIZE(4)
   |------------{ headerSize, from MAGIC to SECTION_NUMBER }
   |--------ENDIAN_TAG(4)
-  |------------{ ENDIAN_TAG }  
+  |------------{ ENDIAN_TAG }
   |--------SECTION_NUMBER(4)
   |------------{ 3 }
   |--------PANDA_FILE_INFO_SECTION_INFO(12)
@@ -101,10 +102,11 @@ public:
     static constexpr VersionType METHOD_CHECKSUM_MINI_VERSION = {0, 0, 0, 4};
     static constexpr VersionType USE_HCLASS_TYPE_MINI_VERSION = {0, 0, 0, 5};
     static constexpr VersionType FILE_CONSISTENCY_MINI_VERSION = {0, 0, 0, 6};
+    static constexpr VersionType TRACK_FIELD_MINI_VERSION = {0, 0, 0, 7};
     static constexpr VersionType FILE_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType HEADER_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType ELASTIC_HEADER_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
-    static constexpr VersionType LAST_VERSION = {0, 0, 0, 6};
+    static constexpr VersionType LAST_VERSION = {0, 0, 0, 7};
     static constexpr size_t SECTION_SIZE = 3;
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
@@ -220,6 +222,11 @@ public:
         return CompatibleVerify(HEADER_SIZE_MINI_VERSION);
     }
 
+    bool SupportTrackField() const
+    {
+        return CompatibleVerify(TRACK_FIELD_MINI_VERSION);
+    }
+
     NO_COPY_SEMANTIC(PGOProfilerHeader);
     NO_MOVE_SEMANTIC(PGOProfilerHeader);
 
@@ -320,6 +327,7 @@ public:
     static constexpr int METHOD_COUNT_INDEX = 1;
     static constexpr int METHOD_MODE_INDEX = 2;
     static constexpr int METHOD_NAME_INDEX = 3;
+    static constexpr uint32_t METHOD_MAX_HIT_COUNT = 10000U;
 
     explicit PGOMethodInfo(PGOMethodId id) : id_(id) {}
 
@@ -377,7 +385,7 @@ public:
             LOG_ECMA(ERROR) << "The method id must same for merging";
             return;
         }
-        count_ += info->GetCount();
+        count_ = std::min(count_ + info->GetCount(), METHOD_MAX_HIT_COUNT);
         SetSampleMode(info->GetSampleMode());
     }
 
@@ -464,6 +472,17 @@ public:
         auto result = scalarOpTypeInfos_.find(ScalarOpTypeInfo(offset, type));
         if (result != scalarOpTypeInfos_.end()) {
             auto combineType = result->GetType().CombineType(type);
+            const_cast<ScalarOpTypeInfo &>(*result).SetType(combineType);
+        } else {
+            scalarOpTypeInfos_.emplace(offset, type);
+        }
+    }
+
+    void AddCallTargetType(uint32_t offset, PGOSampleType type)
+    {
+        auto result = scalarOpTypeInfos_.find(ScalarOpTypeInfo(offset, type));
+        if (result != scalarOpTypeInfos_.end()) {
+            auto combineType = result->GetType().CombineCallTargetType(type);
             const_cast<ScalarOpTypeInfo &>(*result).SetType(combineType);
         } else {
             scalarOpTypeInfos_.emplace(offset, type);
@@ -791,6 +810,7 @@ public:
 
     bool AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode, int32_t incCount);
     bool AddType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
+    bool AddCallTargetType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
     bool AddDefine(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
@@ -986,6 +1006,7 @@ public:
     // If it is a new method, return true.
     bool AddMethod(const CString &recordName, Method *jsMethod, SampleMode mode, int32_t incCount);
     bool AddType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type);
+    bool AddCallTargetType(const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(const CString &recordName, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
     bool AddDefine(
         const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);

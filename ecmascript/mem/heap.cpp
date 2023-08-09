@@ -37,7 +37,10 @@
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_call_id.h"
-
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
+#include "ecmascript/dfx/hprof/heap_profiler_interface.h"
+#include "ecmascript/dfx/hprof/heap_profiler.h"
+#endif
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -576,6 +579,29 @@ void Heap::AdjustOldSpaceLimit()
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_;
 }
 
+void Heap::OnAllocateEvent([[maybe_unused]] TaggedObject* address, [[maybe_unused]] size_t size)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
+    if (profiler != nullptr) {
+        BlockHookScope blockScope;
+        profiler->AllocationEvent(address, size);
+    }
+#endif
+}
+
+void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
+                       [[maybe_unused]] size_t size)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
+    if (profiler != nullptr) {
+        BlockHookScope blockScope;
+        profiler->MoveEvent(address, forwardAddress, size);
+    }
+#endif
+}
+
 void Heap::AddToKeptObjects(JSHandle<JSTaggedValue> value) const
 {
     JSHandle<GlobalEnv> env = ecmaVm_->GetGlobalEnv();
@@ -928,8 +954,8 @@ void Heap::PrepareRecordRegionsForReclaim()
 void Heap::TriggerConcurrentMarking()
 {
     if (idleTask_ == IdleTaskType::YOUNG_GC && IsFullMark()) {
-        SetMarkType(MarkType::MARK_YOUNG);
-        return;
+        ClearIdleTask();
+        DisableNotifyIdle();
     }
     if (concurrentMarker_->IsEnabled() && !fullGCRequested_ && ConcurrentMarker::TryIncreaseTaskCounts()) {
         concurrentMarker_->Mark();
@@ -982,6 +1008,7 @@ void Heap::IncreaseTaskCount()
 
 void Heap::ChangeGCParams(bool inBackground)
 {
+    inBackground_ = inBackground;
     if (inBackground) {
         LOG_GC(INFO) << "app is inBackground";
         if (GetHeapObjectSize() - heapAliveSizeAfterGC_ > BACKGROUND_GROW_LIMIT) {
@@ -1028,7 +1055,7 @@ void Heap::TriggerIdleCollection(int idleMicroSec)
         return;
     }
 
-    if (idleMicroSec < idlePredictDuration_ && idlePredictDuration_ < IDLE_TIME_LIMIT) {
+    if (idleMicroSec < idlePredictDuration_ && idleMicroSec < IDLE_TIME_LIMIT) {
         return;
     }
 

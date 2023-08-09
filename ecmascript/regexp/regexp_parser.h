@@ -47,7 +47,7 @@ public:
     static constexpr uint32_t OCTAL_VALUE = 8;
     static constexpr uint32_t OCTAL_VALUE_RANGE = 32;
     static constexpr uint32_t HEX_VALUE = 16;
-    static constexpr int32_t DECIMAL_DIGITS_ADVANCE = 10;
+    static constexpr uint32_t DECIMAL_DIGITS_ADVANCE = 10;
     static constexpr uint32_t FLAGS_OFFSET = 12;
     static constexpr uint32_t OP_START_OFFSET = 16;
     static constexpr uint32_t UNICODE_HEX_VALUE = 4;
@@ -195,12 +195,14 @@ public:
     {
         RangeSet cr;
         RangeSet cr1;
-        uint32_t pt[2]; // 2: Range values for a and z + 1
         const uint32_t MINLOWERCHAR = 'a';
         const uint32_t MAXLOWERCHAR = 'z' + 1;
-        pt[0] = MINLOWERCHAR;
-        pt[1] = MAXLOWERCHAR;
-        cr.Insert(pt[0], pt[1]);
+        const uint32_t MINUPPERCHAR = 'A';
+        const uint32_t MAXUPPERCHAR = 'Z' + 1;
+        // Range values for a and z + 1
+        cr.Insert(MINLOWERCHAR, MAXLOWERCHAR);
+        // Range values for A and Z + 1
+        cr.Insert(MINUPPERCHAR, MAXUPPERCHAR);
         result->Inter(cr1, cr);
         result->Insert(cr1);
     }

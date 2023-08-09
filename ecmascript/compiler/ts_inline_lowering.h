@@ -25,6 +25,13 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 
 namespace panda::ecmascript::kungfu {
+enum CallKind : uint8_t {
+    CALL,
+    CALL_THIS,
+    CALL_SETTER,
+    CALL_GETTER,
+    INVALID
+};
 class CircuitRootScope {
 public:
     explicit CircuitRootScope(Circuit *circuit)
@@ -42,11 +49,67 @@ private:
     GateRef root_ { 0 };
 };
 
+class CallGateInfo {
+public:
+    explicit CallGateInfo(GateRef call, CallKind kind, GlobalTSTypeRef gt, uint32_t type)
+        : call_(call), kind_(kind), gt_(gt), type_(type)
+    {
+    }
+
+    ~CallGateInfo() = default;
+
+    GateRef GetCallGate() const
+    {
+        return call_;
+    }
+
+    bool IsCallThis() const
+    {
+        return kind_ == CallKind::CALL_THIS;
+    }
+
+    bool IsNormalCall() const
+    {
+        return kind_ == CallKind::CALL || kind_ == CallKind::CALL_THIS;
+    }
+
+    bool IsCallAccessor() const
+    {
+        return kind_ == CallKind::CALL_SETTER || kind_ == CallKind::CALL_GETTER;
+    }
+
+    bool IsCallGetter() const
+    {
+        return kind_ == CallKind::CALL_GETTER;
+    }
+    
+    bool IsCallSetter() const
+    {
+        return kind_ == CallKind::CALL_SETTER;
+    }
+
+    GlobalTSTypeRef GetFuncGT() const
+    {
+        return gt_;
+    }
+
+    uint32_t GetType() const
+    {
+        return type_;
+    }
+
+private:
+    GateRef call_ {Circuit::NullGate()};
+    CallKind kind_ {CallKind::INVALID};
+    GlobalTSTypeRef gt_;
+    uint32_t type_;
+};
+
 class TSInlineLowering {
 public:
     static constexpr size_t MAX_INLINE_CALL_ALLOWED = 5;
     TSInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string& name,
-                     NativeAreaAllocator* nativeAreaAllocator, PassOptions *options)
+                     NativeAreaAllocator* nativeAreaAllocator, PassOptions *options, uint32_t methodOffset)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -59,7 +122,11 @@ public:
           traceInline_(ctx->GetEcmaVM()->GetJSOptions().GetTraceInline()),
           maxInlineBytecodesCount_(ctx->GetEcmaVM()->GetJSOptions().GetMaxInlineBytecodes()),
           nativeAreaAllocator_(nativeAreaAllocator),
-          noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()) {}
+          noCheck_(ctx->GetEcmaVM()->GetJSOptions().IsCompilerNoCheck()),
+          chunk_(circuit->chunk()),
+          inlinedCallMap_(circuit->chunk()),
+          argAcc_(circuit),
+          initMethodOffset_(methodOffset) {}
 
     ~TSInlineLowering() = default;
 
@@ -76,26 +143,63 @@ private:
         return methodName_;
     }
 
-    void TryInline(GateRef gate);
-    void TryInline(GateRef gate, bool isCallThis);
+    bool IsSmallMethod(size_t bcSize) const
+    {
+        return bcSize <= maxInlineBytecodesCount_;
+    }
+
+    bool IsInlineCountsOverflow(size_t inlineCount) const
+    {
+        return inlineCount >= MAX_INLINE_CALL_ALLOWED;
+    }
+
+    void UpdateInlineCounts(GateRef frameArgs, size_t inlineCallCounts)
+    {
+        inlinedCallMap_[frameArgs] = ++inlineCallCounts;
+    }
+
+    bool EnableFastAccessor() const
+    {
+        return isFastAccessor_ && !traceInline_;
+    }
+
+    void CandidateInlineCall(GateRef gate, ChunkQueue<CallGateInfo> &workList);
+    void TryInline(CallGateInfo &info, ChunkQueue<CallGateInfo> &workList);
     bool FilterInlinedMethod(MethodLiteral* method, std::vector<const uint8_t*> pcOffsets);
     bool FilterCallInTryCatch(GateRef gate);
-    void InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method, GateRef gate);
-    void ReplaceCallInput(GateRef gate, bool isCallThis, GateRef glue, MethodLiteral *method);
-
+    void InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPCInfo, MethodLiteral* method, CallGateInfo &info);
+    void ReplaceCallInput(CallGateInfo &info, GateRef glue, MethodLiteral *method);
     void ReplaceEntryGate(GateRef callGate, GateRef callerFunc, GateRef inlineFunc, GateRef glue);
     void ReplaceReturnGate(GateRef callGate);
-
     void ReplaceHirAndDeleteState(GateRef gate, GateRef state, GateRef depend, GateRef value);
-
     GateRef MergeAllReturn(const std::vector<GateRef> &returnVector, GateRef &state, GateRef &depend);
-    bool CheckParameter(GateRef gate, bool isCallThis, MethodLiteral* method);
-
-    void LowerToInlineCall(GateRef gate, const std::vector<GateRef> &args, MethodLiteral* method);
+    bool CheckParameter(GateRef gate, CallGateInfo &info, MethodLiteral* method);
+    void LowerToInlineCall(CallGateInfo &info, const std::vector<GateRef> &args, MethodLiteral* method);
     void RemoveRoot();
-    void BuildFrameStateChain(GateRef gate, BytecodeCircuitBuilder &builder);
+    void BuildFrameStateChain(CallGateInfo &info, BytecodeCircuitBuilder &builder);
     GateRef TraceInlineFunction(GateRef glue, GateRef depend, std::vector<GateRef> &args, GateRef callGate);
-    void InlineFuncCheck(GateRef gate);
+    void InlineFuncCheck(const CallGateInfo &info);
+    void SupplementType(GateRef callGate, GateRef targetGate);
+    void UpdateWorkList(ChunkQueue<CallGateInfo> &workList);
+    size_t GetOrInitialInlineCounts(GateRef frameArgs);
+    bool IsRecursiveFunc(CallGateInfo &info, size_t calleeMethodOffset);
+    bool IsAccessor(GateRef receiver, GateRef constData);
+    GlobalTSTypeRef GetAccessorFuncType(GateRef receiver, GateRef constData);
+    void CandidateAccessor(GateRef gate, ChunkQueue<CallGateInfo> &workList, CallKind kind);
+    void CandidateNormalCall(GateRef gate, ChunkQueue<CallGateInfo> &workList, CallKind kind);
+    void InlineAccessorCheck(GateRef gate, GateRef receiver);
+    void InlineCheck(CallGateInfo &info);
+    GateRef GetAccessorReceiver(GateRef gate);
+    GateRef GetFrameArgs(CallGateInfo &info);
+    void ReplaceAccessorInput(CallGateInfo &info, GateRef glue, MethodLiteral *method);
+    void ReplaceInput(CallGateInfo &info, GateRef glue, MethodLiteral *method);
+    GateRef BuildAccessor(CallGateInfo &info);
+    uint32_t GetPlrData(GateRef receiver, GateRef constData);
+    GateRef GetCallSetterValue(GateRef gate);
+    GlobalTSTypeRef GetAccessorFuncGT(GateRef receiver, GateRef constData);
+    GateRef GetFrameState(CallGateInfo &info);
+    void SetInitCallTargetAndConstPoolId(CallGateInfo &info);
+    void AnalyseFastAccessor(CallGateInfo &info, std::vector<const uint8_t*> pcOffsets, uint32_t inlineMethodOffset);
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
@@ -105,13 +209,20 @@ private:
     PassOptions *passOptions_ {nullptr};
     bool enableLog_ {false};
     std::string methodName_;
-    size_t inlinedCall_ { 0 };
     bool enableTypeLowering_ {false};
     bool inlineSuccess_ {false};
     bool traceInline_ {false};
     size_t maxInlineBytecodesCount_ {0};
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
     bool noCheck_ {false};
+    Chunk* chunk_ {nullptr};
+    ChunkMap<GateRef, size_t> inlinedCallMap_;
+    size_t lastCallId_ {0};
+    ArgumentAccessor argAcc_;
+    uint32_t initMethodOffset_ {0};
+    int32_t initConstantPoolId_ {0};
+    GateRef initCallTarget_ {Circuit::NullGate()};
+    bool isFastAccessor_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_INLINE_LOWERING_H

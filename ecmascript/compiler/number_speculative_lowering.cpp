@@ -32,14 +32,19 @@ void NumberSpeculativeLowering::Run()
     std::vector<GateRef> gateList;
     acc_.GetAllGates(gateList);
     for (auto gate : gateList) {
-        if (acc_.GetOpCode(gate) != OpCode::INDEX_CHECK) {
-            VisitGate(gate);
-        } else {
-            checkedGates_.push_back(gate);
+        auto op = acc_.GetOpCode(gate);
+        switch (op) {
+            case OpCode::RANGE_GUARD: {
+                rangeGuardGates_.push_back(gate);
+                break;
+            }
+            default: {
+                VisitGate(gate);
+            }
         }
     }
-    for (auto check : checkedGates_) {
-        VisitIndexCheck(check);
+    for (auto rangeGuard : rangeGuardGates_) {
+        VisitRangeGuard(rangeGuard);
     }
 }
 
@@ -326,8 +331,8 @@ void NumberSpeculativeLowering::VisitNumberDiv(GateRef gate)
         result = builder_.Int32DivWithCheck(left, right);
         acc_.SetMachineType(gate, MachineType::I32);
     } else {
-        builder_.Float64CheckRightIsZero(right);
-        result = builder_.BinaryArithmetic(circuit_->Fdiv(), MachineType::F64, left, right);
+        result = builder_.BinaryArithmetic(circuit_->Fdiv(),
+            MachineType::F64, left, right, GateType::NJSValue());
         acc_.SetMachineType(gate, MachineType::F64);
     }
     acc_.SetGateType(gate, GateType::NJSValue());
@@ -499,12 +504,15 @@ void NumberSpeculativeLowering::VisitLoadElement(GateRef gate)
 {
     auto op = acc_.GetTypedLoadOp(gate);
     switch (op) {
+        case TypedLoadOp::INT8ARRAY_LOAD_ELEMENT:
+        case TypedLoadOp::UINT8ARRAY_LOAD_ELEMENT:
+        case TypedLoadOp::UINT8CLAMPEDARRAY_LOAD_ELEMENT:
+        case TypedLoadOp::INT16ARRAY_LOAD_ELEMENT:
+        case TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT:
         case TypedLoadOp::INT32ARRAY_LOAD_ELEMENT:
             acc_.SetMachineType(gate, MachineType::I32);
             break;
         case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
-            acc_.SetMachineType(gate, MachineType::F64);
-            break;
         case TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT:
             acc_.SetMachineType(gate, MachineType::F64);
             break;
@@ -539,29 +547,11 @@ void NumberSpeculativeLowering::VisitLoadProperty(GateRef gate)
     }
 }
 
-void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)
+void NumberSpeculativeLowering::VisitRangeGuard(GateRef gate)
 {
-    auto type = acc_.GetParamGateType(gate);
-    if (!tsManager_->IsArrayTypeKind(type)) {
-        // return checked index value
-        acc_.SetGateType(gate, GateType::NJSValue());
-        acc_.SetMachineType(gate, MachineType::I32);
-        return;
-    }
     Environment env(gate, circuit_, &builder_);
-    GateRef index = acc_.GetValueIn(gate, 1);
-    if (!noCheck_) {
-        GateRef length = acc_.GetValueIn(gate, 0);
-        RangeInfo indexRange = GetRange(index);
-        if (indexRange.GetMin() < 0) {
-            builder_.NegativeIndexCheck(index);
-        }
-        builder_.LargeIndexCheck(index, length);
-        // return checked index value
-        acc_.SetGateType(gate, GateType::NJSValue());
-        acc_.SetMachineType(gate, MachineType::I32);
-    }
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), index);
+    GateRef inputLength = acc_.GetValueIn(gate, 0);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), inputLength);
 }
 
 template<TypedBinOp Op>
@@ -589,7 +579,8 @@ GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
             res = builder_.MulWithOverflow(left, right);
             break;
         case TypedBinOp::TYPED_MOD: {
-            return builder_.BinaryArithmetic(circuit_->Smod(), MachineType::I32, left, right);
+            return builder_.BinaryArithmetic(circuit_->Smod(),
+                MachineType::I32, left, right, GateType::NJSValue());
             break;
         }
         default:
@@ -776,7 +767,7 @@ GateRef NumberSpeculativeLowering::MonocularDouble(GateRef value)
             res = builder_.DoubleSub(value, builder_.Double(1));
             break;
         case TypedUnOp::TYPED_NEG:
-            res = builder_.DoubleSub(builder_.Double(0), value);
+            res = builder_.DoubleMul(builder_.Double(-1), value);
             break;
         default:
             break;
@@ -787,7 +778,9 @@ GateRef NumberSpeculativeLowering::MonocularDouble(GateRef value)
 void NumberSpeculativeLowering::UpdateRange(GateRef gate, const RangeInfo& range)
 {
     auto id = acc_.GetId(gate);
-    rangeInfos_.resize(id + 1, RangeInfo::ANY());
+    if (id >= rangeInfos_.size()) {
+        rangeInfos_.resize(id + 1, RangeInfo::ANY());
+    }
     rangeInfos_[id] = range;
 }
 

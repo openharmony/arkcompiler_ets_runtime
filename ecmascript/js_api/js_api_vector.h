@@ -103,13 +103,13 @@ public:
                             const JSHandle<JSTaggedValue> &key,
                             const JSHandle<JSTaggedValue> &value);
 
-    inline int32_t GetSize() const
+    inline uint32_t GetSize() const
     {
         return GetLength();
     }
 
     static constexpr size_t ELEMENT_COUNT_OFFSET = JSObject::SIZE;
-    ACCESSORS_PRIMITIVE_FIELD(Length, int32_t, ELEMENT_COUNT_OFFSET, ENDL_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, ELEMENT_COUNT_OFFSET, ENDL_OFFSET)
     DEFINE_ALIGN_SIZE(ENDL_OFFSET);
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, ELEMENT_COUNT_OFFSET, ELEMENT_COUNT_OFFSET)

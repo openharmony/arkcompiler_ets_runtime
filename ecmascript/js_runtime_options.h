@@ -118,7 +118,6 @@ enum CommandValues {
     OPTION_COMPILER_OPT_LATER_ELIMINATION,
     OPTION_COMPILER_OPT_VALUE_NUMBERING,
     OPTION_COMPILER_OPT_INLINING,
-    OPTION_COMPILER_OPT_STATIC_METHOD,
     OPTION_COMPILER_OPT_PGOTYPE,
     OPTION_COMPILER_OPT_TRACK_FIELD,
     OPTION_COMPILER_OPT_GLOBAL_TYPEINFER,
@@ -136,7 +135,8 @@ enum CommandValues {
     OPTION_HAP_ABC_OFFSET,
     OPTION_HAP_ABC_SIZE,
     OPTION_COMPILER_NOCHECK,
-    OPTION_FAST_AOT_COMPILE_MODE
+    OPTION_FAST_AOT_COMPILE_MODE,
+    OPTION_COMPILER_OPT_LOOP_PEELING,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -945,16 +945,6 @@ public:
         return enableOptInlining_;
     }
 
-    void SetEnableOptStaticMethod(bool value)
-    {
-        enableOptStaticMethod_ = value;
-    }
-
-    bool IsEnableOptStaticMethod() const
-    {
-        return enableOptStaticMethod_;
-    }
-
     void SetEnableOptPGOType(bool value)
     {
         enableOptPGOType_ = value;
@@ -1169,6 +1159,16 @@ public:
         return fastAOTCompileMode_;
     }
 
+    void SetEnableOptLoopPeeling(bool value)
+    {
+        enableOptLoopPeeling_ = value;
+    }
+
+    bool IsEnableOptLoopPeeling() const
+    {
+        return enableOptLoopPeeling_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1235,8 +1235,7 @@ private:
     bool enableEarlyElimination_ {true};
     bool enableLaterElimination_ {true};
     bool enableValueNumbering_ {true};
-    bool enableOptInlining_ {false};
-    bool enableOptStaticMethod_ {false};
+    bool enableOptInlining_ {true};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};
     bool enableOptTrackField_ {true};
@@ -1263,6 +1262,7 @@ private:
     uint32_t hapAbcSize_ {0};
     bool compilerNoCheck_ {false};
     bool fastAOTCompileMode_ {true};
+    bool enableOptLoopPeeling_ {false};
 };
 }  // namespace panda::ecmascript
 

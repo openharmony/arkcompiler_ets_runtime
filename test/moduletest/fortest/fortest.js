@@ -35,3 +35,17 @@ while (i > 0) {
     i--;
 }
 
+function F0() {
+}
+const v5 = new F0();
+for (let index = 0; index < 32; index++) {
+    function F17() {
+        this.__proto__ = v5;
+    }
+    const v28 = new F17();
+    const v29 = "p" + index;
+    v5[v29] = index;
+}
+for (let k in v5) {
+    print(k, v5[k]);
+}

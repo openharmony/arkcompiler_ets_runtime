@@ -73,7 +73,7 @@ JSTaggedValue BuiltinsPromise::PromiseConstructor(EcmaRuntimeCallInfo *argv)
     auto resolveFunc = resolvingFunction->GetResolveFunction();
     auto rejectFunc = resolvingFunction->GetRejectFunction();
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    const int32_t argsLength = 2; // 2: «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»
+    const uint32_t argsLength = 2; // 2: «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, executor, undefined, undefined, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(resolveFunc, rejectFunc);
@@ -152,6 +152,7 @@ JSTaggedValue BuiltinsPromise::All(EcmaRuntimeCallInfo *argv)
         if (!itRecord->GetDone()) {
             JSHandle<JSTaggedValue> closeVal =
                 JSIterator::IteratorClose(thread, itor, JSHandle<JSTaggedValue>::Cast(result));
+            RETURN_REJECT_PROMISE_IF_ABRUPT(thread, result, capa);
             if (closeVal.GetTaggedValue().IsRecord()) {
                 result = JSHandle<CompletionRecord>::Cast(closeVal);
                 RETURN_REJECT_PROMISE_IF_ABRUPT(thread, result, capa);
@@ -220,6 +221,7 @@ JSTaggedValue BuiltinsPromise::Race(EcmaRuntimeCallInfo *argv)
         if (!iteratorRecord->GetDone()) {
             JSHandle<JSTaggedValue> value =
                 JSIterator::IteratorClose(thread, iterator, JSHandle<JSTaggedValue>::Cast(result));
+            RETURN_REJECT_PROMISE_IF_ABRUPT(thread, result, promiseCapability);
             if (value.GetTaggedValue().IsCompletionRecord()) {
                 result = JSHandle<CompletionRecord>(value);
                 RETURN_REJECT_PROMISE_IF_ABRUPT(thread, result, promiseCapability);
@@ -694,6 +696,7 @@ JSTaggedValue BuiltinsPromise::Any(EcmaRuntimeCallInfo *argv)
         if (!iteratorRecord->GetDone()) {
             JSHandle<JSTaggedValue> resultHandle = JSHandle<JSTaggedValue>::Cast(result);
             JSHandle<JSTaggedValue> closeVal = JSIterator::IteratorClose(thread, iterator, resultHandle);
+            RETURN_REJECT_PROMISE_IF_ABRUPT(thread, result, promiseCapability);
             if (closeVal.GetTaggedValue().IsCompletionRecord()) {
                 result = JSHandle<CompletionRecord>(closeVal);
                 RETURN_REJECT_PROMISE_IF_ABRUPT(thread, result, promiseCapability);
@@ -877,6 +880,7 @@ JSTaggedValue BuiltinsPromise::AllSettled(EcmaRuntimeCallInfo *argv)
         if (!iteratorRecord->GetDone()) {
             JSHandle<JSTaggedValue> resultHandle = JSHandle<JSTaggedValue>::Cast(result);
             JSHandle<JSTaggedValue> closeVal = JSIterator::IteratorClose(thread, iterator, resultHandle);
+            RETURN_REJECT_PROMISE_IF_ABRUPT(thread, result, promiseCapability);
             if (closeVal.GetTaggedValue().IsCompletionRecord()) {
                 result = JSHandle<CompletionRecord>(closeVal);
                 RETURN_REJECT_PROMISE_IF_ABRUPT(thread, result, promiseCapability);

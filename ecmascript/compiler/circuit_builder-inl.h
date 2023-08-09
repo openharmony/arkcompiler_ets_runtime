@@ -232,6 +232,20 @@ GateRef CircuitBuilder::BinaryOp(GateRef x, GateRef y)
     return Circuit::NullGate();
 }
 
+template<OpCode Op, MachineType Type>
+GateRef CircuitBuilder::BinaryOpWithOverflow(GateRef x, GateRef y)
+{
+    if (Op == OpCode::ADD) {
+        return BinaryArithmetic(circuit_->AddWithOverflow(), Type, x, y);
+    } else if (Op == OpCode::SUB) {
+        return BinaryArithmetic(circuit_->SubWithOverflow(), Type, x, y);
+    } else if (Op == OpCode::MUL) {
+        return BinaryArithmetic(circuit_->MulWithOverflow(), Type, x, y);
+    }
+    UNREACHABLE();
+    return Circuit::NullGate();
+}
+
 GateRef CircuitBuilder::IntPtrLSR(GateRef x, GateRef y)
 {
     auto ptrSize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
@@ -493,6 +507,16 @@ GateRef CircuitBuilder::BooleanToTaggedBooleanPtr(GateRef x)
     return Int64ToTaggedPtr(Int64Or(val, Int64(JSTaggedValue::TAG_BOOLEAN_MASK)));
 }
 
+GateRef CircuitBuilder::BooleanToInt32(GateRef x)
+{
+    return ZExtInt1ToInt32(x);
+}
+
+GateRef CircuitBuilder::BooleanToFloat64(GateRef x)
+{
+    return ChangeInt32ToFloat64(ZExtInt1ToInt32(x));
+}
+
 GateRef CircuitBuilder::Float32ToTaggedDoublePtr(GateRef x)
 {
     GateRef val = ExtFloat32ToDouble(x);
@@ -599,6 +623,15 @@ inline GateRef CircuitBuilder::IsJSFunctionWithBit(GateRef obj)
     GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
     GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
     return NotEqual(Int32And(bitfield, Int32(1LU << JSHClass::IsJSFunctionBit::START_BIT)), Int32(0));
+}
+
+inline GateRef CircuitBuilder::IsOptimizedAndNotFastCall(GateRef obj)
+{
+    GateRef hClass = LoadHClass(obj);
+    GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    GateRef optimizedFastCallBitsInBitfield = Int32And(bitfield, Int32(JSHClass::OPTIMIZED_FASTCALL_BITS));
+    return Equal(optimizedFastCallBitsInBitfield, Int32(JSHClass::OPTIMIZED_BIT));
 }
 
 inline GateRef CircuitBuilder::IsOptimized(GateRef obj)
@@ -857,6 +890,50 @@ GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, GateType xType, Gate
     return numberBinaryOp;
 }
 
+template<TypedCallTargetCheckOp Op>
+GateRef CircuitBuilder::JSNoGCCallThisTargetTypeCheck(GateType type, GateRef func, GateRef methodId, GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.GetFrameState(gate);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(CircuitBuilder::GATE_TWO_VALUESIN,
+        static_cast<size_t>(type.Value()), Op), MachineType::I1,
+        {currentControl, currentDepend, func, methodId, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+template<TypedCallTargetCheckOp Op>
+GateRef CircuitBuilder::JSCallTargetTypeCheck(GateType type, GateRef func, GateRef methodIndex, GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.GetFrameState(gate);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(CircuitBuilder::GATE_TWO_VALUESIN,
+        static_cast<size_t>(type.Value()), Op), MachineType::I1,
+        {currentControl, currentDepend, func, methodIndex, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+template<TypedCallTargetCheckOp Op>
+GateRef CircuitBuilder::JSCallThisTargetTypeCheck(GateType type, GateRef func, GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.GetFrameState(gate);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypedCallTargetCheckOp(1, static_cast<size_t>(type.Value()), Op),
+        MachineType::I1, {currentControl, currentDepend, func, frameState}, GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 template<TypedUnOp Op>
 GateRef CircuitBuilder::TypedUnaryOp(GateRef x, GateType xType, GateType gateType)
 {
@@ -971,6 +1048,18 @@ GateRef CircuitBuilder::LogicOr(GateRef x, GateRef y)
     auto ret = *result;
     SubCfgExit();
     return ret;
+}
+
+GateRef CircuitBuilder::LoadFromTaggedArray(GateRef array, size_t index)
+{
+    auto dataOffset = TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize();
+    return LoadConstOffset(VariableType::JS_ANY(), array, dataOffset);
+}
+
+GateRef CircuitBuilder::StoreToTaggedArray(GateRef array, size_t index, GateRef value)
+{
+    auto dataOffset = TaggedArray::DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize();
+    return StoreConstOffset(VariableType::JS_ANY(), array, dataOffset, value);
 }
 
 int CircuitBuilder::NextVariableId()

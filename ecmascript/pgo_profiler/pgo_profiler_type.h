@@ -207,6 +207,18 @@ public:
         return *this;
     }
 
+    PGOSampleType CombineCallTargetType(PGOSampleType type)
+    {
+        ASSERT(type_.index() == 1);
+        int32_t oldMethodId = GetClassType().GetClassType();
+        int32_t newMethodId = type.GetClassType().GetClassType();
+        // If we have recorded a valid method if before, invalidate it.
+        if ((oldMethodId != newMethodId) && (oldMethodId != 0)) {
+            type_ = ClassType(0);
+        }
+        return *this;
+    }
+
     void SetType(PGOSampleType type)
     {
         type_ = type.type_;
@@ -358,7 +370,7 @@ public:
 
     void Merge(const PGORWOpType &type)
     {
-        for (int i = 0; i < type.count_; i++) {
+        for (uint32_t i = 0; i < type.count_; i++) {
             AddObjectInfo(type.infos_[i]);
         }
     }
@@ -368,13 +380,13 @@ public:
         if (info.IsNone()) {
             return;
         }
-        int32_t count = 0;
+        uint32_t count = 0;
         for (; count < count_; count++) {
             if (infos_[count] == info) {
                 return;
             }
         }
-        if (count < POLY_CASE_NUM) {
+        if (count < static_cast<uint32_t>(POLY_CASE_NUM)) {
             infos_[count] = info;
             count_++;
         } else {
@@ -382,20 +394,20 @@ public:
         }
     }
 
-    PGOObjectInfo GetObjectInfo(int32_t index) const
+    PGOObjectInfo GetObjectInfo(uint32_t index) const
     {
         ASSERT(index < count_);
         return infos_[index];
     }
 
-    int32_t GetCount() const
+    uint32_t GetCount() const
     {
         return count_;
     }
 
 private:
     static constexpr int POLY_CASE_NUM = 4;
-    int count_ = 0;
+    uint32_t count_ = 0;
     PGOObjectInfo infos_[POLY_CASE_NUM];
 };
 } // namespace panda::ecmascript

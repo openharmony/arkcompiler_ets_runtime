@@ -27,3 +27,5 @@ BigUint64Array test success !!!
 test successful !!!
 test successful !!!
 false
+test successful !!!
+test successful !!!

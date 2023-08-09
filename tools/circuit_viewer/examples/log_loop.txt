@@ -1,0 +1,1797 @@
+[gc] Ark Auto adapter memory pool capacity:4185873408
+[compiler] AOT compile: a.abc
+[ecmascript] When the file is empty. Enter full compiler mode.
+[compiler] Total number of methods in file: a.abc is: 1
+[compiler] aot method [func_main_0@a.abc] log:
+[compiler] record: _GLOBAL has no types
+[compiler] ======================== Build Basic Block ========================
+[compiler] B0:                               ;preds=
+[compiler]      BytecodePC: [0, 3)
+[compiler]      Succes: 1,
+[compiler]      Trys:
+[compiler]      Dom:
+[compiler]      Dom Frontiers:
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 0: LDAI_IMM32, In=[], Out=[acc,] >
+[compiler]              < 1: STA_V8, In=[acc,], Out=[0,] >
+[compiler]              < 2: LDAI_IMM32, In=[], Out=[acc,] >
+[compiler]              < 3: STA_V8, In=[acc,], Out=[1,] >
+[compiler]
+[compiler] B1:                               ;preds= 0, 2,
+[compiler]      BytecodePC: [4, 7)
+[compiler]      Succes: 2, 3,
+[compiler]      Trys:
+[compiler]      Dom:
+[compiler]      Dom Frontiers:
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 4: LDA_V8, In=[0,], Out=[acc,] >
+[compiler]              < 5: LESS_IMM8_V8, In=[acc,1,], Out=[acc,] >
+[compiler]              < 6: ISFALSE, In=[acc,], Out=[acc,] >
+[compiler]              < 7: JNEZ_IMM8, In=[acc,], Out=[] >
+[compiler]
+[compiler] B2:                               ;preds= 1,
+[compiler]      BytecodePC: [8, 16)
+[compiler]      Succes: 1,
+[compiler]      Trys:
+[compiler]      Dom:
+[compiler]      Dom Frontiers:
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 8: TRYLDGLOBALBYNAME_IMM8_ID16, In=[], Out=[acc,] >
+[compiler]              < 9: CALLARG1_IMM8_V8, In=[acc,1,], Out=[acc,] >
+[compiler]              < 10: LDA_V8, In=[1,], Out=[acc,] >
+[compiler]              < 11: INC_IMM8, In=[acc,], Out=[acc,] >
+[compiler]              < 12: STA_V8, In=[acc,], Out=[2,] >
+[compiler]              < 13: LDA_V8, In=[1,], Out=[acc,] >
+[compiler]              < 14: TONUMERIC_IMM8, In=[acc,], Out=[acc,] >
+[compiler]              < 15: MOV_V4_V4, In=[2,], Out=[1,] >
+[compiler]              < 16: JMP_IMM8, In=[], Out=[] >
+[compiler]
+[compiler] B3:                               ;preds= 1,
+[compiler]      BytecodePC: [17, 18)
+[compiler]      Succes:
+[compiler]      Trys:
+[compiler]      Dom:
+[compiler]      Dom Frontiers:
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 17: LDUNDEFINED, In=[], Out=[acc,] >
+[compiler]              < 18: RETURNUNDEFINED, In=[acc,], Out=[] >
+[compiler]
+[compiler] ======================== Computed Dom Trees ========================
+[compiler] B0:                               ;preds=
+[compiler]      BytecodePC: [0, 3)
+[compiler]      Succes: 1,
+[compiler]      Trys:
+[compiler]      Dom:
+[compiler]      Dom Frontiers:
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 0: LDAI_IMM32, In=[], Out=[acc,] >
+[compiler]              < 1: STA_V8, In=[acc,], Out=[0,] >
+[compiler]              < 2: LDAI_IMM32, In=[], Out=[acc,] >
+[compiler]              < 3: STA_V8, In=[acc,], Out=[1,] >
+[compiler]
+[compiler] B1:                               ;preds= 0, 2,
+[compiler]      BytecodePC: [4, 7)
+[compiler]      Succes: 2, 3,
+[compiler]      Trys:
+[compiler]      Dom:
+[compiler]      Dom Frontiers:
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 4: LDA_V8, In=[0,], Out=[acc,] >
+[compiler]              < 5: LESS_IMM8_V8, In=[acc,1,], Out=[acc,] >
+[compiler]              < 6: ISFALSE, In=[acc,], Out=[acc,] >
+[compiler]              < 7: JNEZ_IMM8, In=[acc,], Out=[] >
+[compiler]
+[compiler] B2:                               ;preds= 1,
+[compiler]      BytecodePC: [8, 16)
+[compiler]      Succes: 1,
+[compiler]      Trys:
+[compiler]      Dom:
+[compiler]      Dom Frontiers:
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 8: TRYLDGLOBALBYNAME_IMM8_ID16, In=[], Out=[acc,] >
+[compiler]              < 9: CALLARG1_IMM8_V8, In=[acc,1,], Out=[acc,] >
+[compiler]              < 10: LDA_V8, In=[1,], Out=[acc,] >
+[compiler]              < 11: INC_IMM8, In=[acc,], Out=[acc,] >
+[compiler]              < 12: STA_V8, In=[acc,], Out=[2,] >
+[compiler]              < 13: LDA_V8, In=[1,], Out=[acc,] >
+[compiler]              < 14: TONUMERIC_IMM8, In=[acc,], Out=[acc,] >
+[compiler]              < 15: MOV_V4_V4, In=[2,], Out=[1,] >
+[compiler]              < 16: JMP_IMM8, In=[], Out=[] >
+[compiler]
+[compiler] B3:                               ;preds= 1,
+[compiler]      BytecodePC: [17, 18)
+[compiler]      Succes:
+[compiler]      Trys:
+[compiler]      Dom:
+[compiler]      Dom Frontiers:
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 17: LDUNDEFINED, In=[], Out=[acc,] >
+[compiler]              < 18: RETURNUNDEFINED, In=[acc,], Out=[] >
+[compiler]
+[compiler] ======================== Inserted Phis ========================
+[compiler] B0:                               ;preds=
+[compiler]      BytecodePC: [0, 3)
+[compiler]      Succes: 1,
+[compiler]      Trys:
+[compiler]      Dom: B1,
+[compiler]      IDom B0
+[compiler]      Dom Frontiers:
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 0: LDAI_IMM32, In=[], Out=[acc,] >
+[compiler]              < 1: STA_V8, In=[acc,], Out=[0,] >
+[compiler]              < 2: LDAI_IMM32, In=[], Out=[acc,] >
+[compiler]              < 3: STA_V8, In=[acc,], Out=[1,] >
+[compiler]
+[compiler] B1:                               ;preds= 0, 2,
+[compiler]      BytecodePC: [4, 7)
+[compiler]      Succes: 2, 3,
+[compiler]      Trys:
+[compiler]      Dom: B2, B3,
+[compiler]      IDom B0
+[compiler]      Dom Frontiers: 1 ,
+[compiler]      Phi: 1 , 2 ,
+[compiler]      Bytecode[] =
+[compiler]              < 4: LDA_V8, In=[0,], Out=[acc,] >
+[compiler]              < 5: LESS_IMM8_V8, In=[acc,1,], Out=[acc,] >
+[compiler]              < 6: ISFALSE, In=[acc,], Out=[acc,] >
+[compiler]              < 7: JNEZ_IMM8, In=[acc,], Out=[] >
+[compiler]
+[compiler] B2:                               ;preds= 1,
+[compiler]      BytecodePC: [8, 16)
+[compiler]      Succes: 1,
+[compiler]      Trys:
+[compiler]      Dom:
+[compiler]      IDom B1
+[compiler]      Dom Frontiers: 1 ,
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 8: TRYLDGLOBALBYNAME_IMM8_ID16, In=[], Out=[acc,] >
+[compiler]              < 9: CALLARG1_IMM8_V8, In=[acc,1,], Out=[acc,] >
+[compiler]              < 10: LDA_V8, In=[1,], Out=[acc,] >
+[compiler]              < 11: INC_IMM8, In=[acc,], Out=[acc,] >
+[compiler]              < 12: STA_V8, In=[acc,], Out=[2,] >
+[compiler]              < 13: LDA_V8, In=[1,], Out=[acc,] >
+[compiler]              < 14: TONUMERIC_IMM8, In=[acc,], Out=[acc,] >
+[compiler]              < 15: MOV_V4_V4, In=[2,], Out=[1,] >
+[compiler]              < 16: JMP_IMM8, In=[], Out=[] >
+[compiler]
+[compiler] B3:                               ;preds= 1,
+[compiler]      BytecodePC: [17, 18)
+[compiler]      Succes:
+[compiler]      Trys:
+[compiler]      Dom:
+[compiler]      IDom B1
+[compiler]      Dom Frontiers:
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 17: LDUNDEFINED, In=[], Out=[acc,] >
+[compiler]              < 18: RETURNUNDEFINED, In=[acc,], Out=[] >
+[compiler]
+[compiler] loopHead: 1
+[compiler] LoopBody: 1 , 2 ,
+[compiler] LoopExits: 3 ,
+[compiler] ("id"=41, "op"="FRAME_STATE", "MType"="NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), ", in=[[], [], [11, 38, 39, 39, 39, 39, 39, 11, 40], [10], []], out=[42])
+[compiler] ("id"=44, "op"="FRAME_STATE", "MType"="NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), ", in=[[], [], [11, 38, 39, 39, 39, 39, 39, 16, 43], [10], []], out=[45])
+[compiler] ("id"=47, "op"="FRAME_STATE", "MType"="NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), ", in=[[], [], [11, 38, 39, 39, 39, 39, 39, 27, 46], [10], []], out=[48])
+[compiler] ("id"=50, "op"="FRAME_STATE", "MType"="NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), ", in=[[], [], [11, 38, 39, 39, 39, 39, 39, 38, 49], [10], []], out=[51])
+[compiler] ("id"=53, "op"="FRAME_STATE", "MType"="NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), ", in=[[], [], [11, 39, 29, 39, 39, 39, 39, 38, 52], [10], []], out=[54])
+[compiler] ======================== Bytecode2Gate ========================
+[compiler] B0:                               ;preds=
+[compiler]      BytecodePC: [0, 3)
+[compiler]      Succes: 1,
+[compiler]      Trys:
+[compiler]      Dom: B1,
+[compiler]      IDom B0
+[compiler]      Dom Frontiers:
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 0: LDAI_IMM32, In=[], Out=[acc,] >
+[compiler] ("id"=11, "op"="CONSTANT", "MType"="I64, bitfield=18446462598732840970, type=-GT(M=0, L=8), ", in=[[], [], [], [], []], out=[53, 50, 47, 44, 41, 41, 16])
+[compiler]              < 1: STA_V8, In=[acc,], Out=[0,] >
+[compiler]              < 2: LDAI_IMM32, In=[], Out=[acc,] >
+[compiler] ("id"=12, "op"="CONSTANT", "MType"="I64, bitfield=18446462598732840960, type=-GT(M=0, L=8), ", in=[[], [], [], [], []], out=[38])
+[compiler]              < 3: STA_V8, In=[acc,], Out=[1,] >
+[compiler]
+[compiler] B1:                               ;preds= 0, 2,
+[compiler]      BytecodePC: [4, 7)
+[compiler]      Succes: 2, 3,
+[compiler]      Trys:
+[compiler]      Dom: B2, B3,
+[compiler]      IDom B0
+[compiler]      Dom Frontiers: 1 ,
+[compiler]      Phi: 1 , 2 ,
+[compiler]      Bytecode[] =
+[compiler]              < 4: LDA_V8, In=[0,], Out=[acc,] >
+[compiler]              < 5: LESS_IMM8_V8, In=[acc,1,], Out=[acc,] >
+[compiler] ("id"=16, "op"="JS_BYTECODE", "MType"="I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), ", in=[[14], [42], [38, 11], [], []], out=[45, 45, 44, 17, 17])
+[compiler]              < 6: ISFALSE, In=[acc,], Out=[acc,] >
+[compiler] ("id"=17, "op"="JS_BYTECODE", "MType"="I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), ", in=[[16], [45], [16], [], []], out=[18, 18, 18])
+[compiler]              < 7: JNEZ_IMM8, In=[acc,], Out=[] >
+[compiler] ("id"=18, "op"="JS_BYTECODE", "MType"="NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), ", in=[[17], [17], [17], [], []], out=[22, 21, 20, 19])
+[compiler]
+[compiler] B2:                               ;preds= 1,
+[compiler]      BytecodePC: [8, 16)
+[compiler]      Succes: 1,
+[compiler]      Trys:
+[compiler]      Dom:
+[compiler]      IDom B1
+[compiler]      Dom Frontiers: 1 ,
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 8: TRYLDGLOBALBYNAME_IMM8_ID16, In=[], Out=[acc,] >
+[compiler] ("id"=27, "op"="JS_BYTECODE", "MType"="I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), ", in=[[21], [22], [25, 26], [10], []], out=[48, 48, 47, 28, 28])
+[compiler]              < 9: CALLARG1_IMM8_V8, In=[acc,1,], Out=[acc,] >
+[compiler] ("id"=28, "op"="JS_BYTECODE", "MType"="I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), ", in=[[27], [48], [38, 27], [], []], out=[51, 51, 29])
+[compiler]              < 10: LDA_V8, In=[1,], Out=[acc,] >
+[compiler]              < 11: INC_IMM8, In=[acc,], Out=[acc,] >
+[compiler] ("id"=29, "op"="JS_BYTECODE", "MType"="I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), ", in=[[28], [51], [38], [], []], out=[54, 54, 53, 38, 30])
+[compiler]              < 12: STA_V8, In=[acc,], Out=[2,] >
+[compiler]              < 13: LDA_V8, In=[1,], Out=[acc,] >
+[compiler]              < 14: TONUMERIC_IMM8, In=[acc,], Out=[acc,] >
+[compiler] ("id"=30, "op"="JS_BYTECODE", "MType"="I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), ", in=[[29], [54], [38], [], []], out=[32, 32])
+[compiler]              < 15: MOV_V4_V4, In=[2,], Out=[1,] >
+[compiler]              < 16: JMP_IMM8, In=[], Out=[] >
+[compiler]
+[compiler] B3:                               ;preds= 1,
+[compiler]      BytecodePC: [17, 18)
+[compiler]      Succes:
+[compiler]      Trys:
+[compiler]      Dom:
+[compiler]      IDom B1
+[compiler]      Dom Frontiers:
+[compiler]      Phi:
+[compiler]      Bytecode[] =
+[compiler]              < 17: LDUNDEFINED, In=[], Out=[acc,] >
+[compiler] ("id"=33, "op"="CONSTANT", "MType"="I64, bitfield=2, type=-GT(M=0, L=7), ", in=[[], [], [], [], []], out=[])
+[compiler]              < 18: RETURNUNDEFINED, In=[acc,], Out=[] >
+[compiler] ("id"=37, "op"="RETURN", "MType"="NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), ", in=[[35], [35], [36], [], [3]], out=[])
+[compiler]
+[compiler] ============= After bytecode2circuit lowering [func_main_0@a.abc] =============
+[compiler] {"id":0, "op":"CIRCUIT_ROOT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[4, 3, 2, 1]},
+[compiler] {"id":1, "op":"STATE_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [0]], "out":[14]},
+[compiler] {"id":2, "op":"DEPEND_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [0]], "out":[15]},
+[compiler] {"id":3, "op":"RETURN_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [0]], "out":[37]},
+[compiler] {"id":4, "op":"ARG_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [0]], "out":[9, 8, 7, 6, 5]},
+[compiler] {"id":5, "op":"ARG", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[]},
+[compiler] {"id":6, "op":"ARG", "MType":"I64, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":7, "op":"ARG", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[35, 32, 26, 10]},
+[compiler] {"id":8, "op":"ARG", "MType":"I64, bitfield=3, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":9, "op":"ARG", "MType":"I64, bitfield=4, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":10, "op":"FRAME_ARGS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [7, 8, 9, 6], [], []], "out":[53, 50, 47, 44, 41, 27]},
+[compiler] {"id":11, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840970, type=-GT(M=0, L=8), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[53, 50, 47, 44, 41, 41, 16]},
+[compiler] {"id":12, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840960, type=-GT(M=0, L=8), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[38]},
+[compiler] {"id":13, "op":"LOOP_BACK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[32], [], [], [], []], "out":[14]},
+[compiler] {"id":14, "op":"LOOP_BEGIN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[1, 13], [], [], [], []], "out":[42, 38, 23, 16, 15]},
+[compiler] {"id":15, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[14], [2, 32], [], [], []], "out":[42]},
+[compiler] {"id":16, "op":"JS_BYTECODE", "bytecode":"LESS_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[14], [42], [38, 11], [], []], "out":[45, 45, 44, 17, 17]},
+[compiler] {"id":17, "op":"JS_BYTECODE", "bytecode":"ISFALSE", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[16], [45], [16], [], []], "out":[18, 18, 18]},
+[compiler] {"id":18, "op":"JS_BYTECODE", "bytecode":"JNEZ_IMM8", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[17], [17], [17], [], []], "out":[22, 21, 20, 19]},
+[compiler] {"id":19, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[18], [], [], [], []], "out":[23, 20]},
+[compiler] {"id":20, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[19], [18], [], [], []], "out":[24]},
+[compiler] {"id":21, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[18], [], [], [], []], "out":[27, 22]},
+[compiler] {"id":22, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[21], [18], [], [], []], "out":[27]},
+[compiler] {"id":23, "op":"LOOP_EXIT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[19], [], [], [], [14]], "out":[35, 24]},
+[compiler] {"id":24, "op":"LOOP_EXIT_DEPEND", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[23], [20], [], [], []], "out":[35]},
+[compiler] {"id":25, "op":"CONSTANT", "MType":"I16, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[27]},
+[compiler] {"id":26, "op":"CONST_DATA", "MType":"ARCH, bitfield=0, type=-GT(M=0, L=4), stamp=0, mark=0, ","in":[[], [], [7], [], []], "out":[27]},
+[compiler] {"id":27, "op":"JS_BYTECODE", "bytecode":"TRYLDGLOBALBYNAME_IMM8_ID16", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[21], [22], [25, 26], [10], []], "out":[48, 48, 47, 28, 28]},
+[compiler] {"id":28, "op":"JS_BYTECODE", "bytecode":"CALLARG1_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[27], [48], [38, 27], [], []], "out":[51, 51, 29]},
+[compiler] {"id":29, "op":"JS_BYTECODE", "bytecode":"INC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[28], [51], [38], [], []], "out":[54, 54, 53, 38, 30]},
+[compiler] {"id":30, "op":"JS_BYTECODE", "bytecode":"TONUMERIC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[29], [54], [38], [], []], "out":[32, 32]},
+[compiler] {"id":31, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551589, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[32]},
+[compiler] {"id":32, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[30], [30], [31, 7], [], []], "out":[15, 13]},
+[compiler] {"id":33, "op":"CONSTANT", "MType":"I64, bitfield=2, type=-GT(M=0, L=7), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":34, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551572, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[35]},
+[compiler] {"id":35, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[23], [24], [34, 7], [], []], "out":[37, 37]},
+[compiler] {"id":36, "op":"CONSTANT", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[37]},
+[compiler] {"id":37, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[35], [35], [36], [], [3]], "out":[]},
+[compiler] {"id":38, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[14], [], [12, 29], [], []], "out":[53, 50, 50, 47, 44, 41, 30, 29, 28, 16]},
+[compiler] {"id":39, "op":"CONSTANT", "MType":"I64, bitfield=18, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[53, 53, 53, 53, 53, 50, 50, 50, 50, 50, 47, 47, 47, 47, 47, 44, 44, 44, 44, 44, 41, 41, 41, 41, 41]},
+[compiler] {"id":40, "op":"CONSTANT", "MType":"I64, bitfield=16, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[41]},
+[compiler] {"id":41, "op":"FRAME_STATE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [11, 38, 39, 39, 39, 39, 39, 11, 40], [10], []], "out":[42]},
+[compiler] {"id":42, "op":"STATE_SPLIT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[14], [15], [], [41], []], "out":[16]},
+[compiler] {"id":43, "op":"CONSTANT", "MType":"I64, bitfield=19, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[44]},
+[compiler] {"id":44, "op":"FRAME_STATE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [11, 38, 39, 39, 39, 39, 39, 16, 43], [10], []], "out":[45]},
+[compiler] {"id":45, "op":"STATE_SPLIT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[16], [16], [], [44], []], "out":[17]},
+[compiler] {"id":46, "op":"CONSTANT", "MType":"I64, bitfield=26, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[47]},
+[compiler] {"id":47, "op":"FRAME_STATE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [11, 38, 39, 39, 39, 39, 39, 27, 46], [10], []], "out":[48]},
+[compiler] {"id":48, "op":"STATE_SPLIT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[27], [27], [], [47], []], "out":[28]},
+[compiler] {"id":49, "op":"CONSTANT", "MType":"I64, bitfield=31, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[50]},
+[compiler] {"id":50, "op":"FRAME_STATE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [11, 38, 39, 39, 39, 39, 39, 38, 49], [10], []], "out":[51]},
+[compiler] {"id":51, "op":"STATE_SPLIT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[28], [28], [], [50], []], "out":[29]},
+[compiler] {"id":52, "op":"CONSTANT", "MType":"I64, bitfield=37, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[53]},
+[compiler] {"id":53, "op":"FRAME_STATE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [11, 39, 29, 39, 39, 39, 39, 38, 52], [10], []], "out":[54]},
+[compiler] {"id":54, "op":"STATE_SPLIT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[29], [29], [], [53], []], "out":[30]},
+[compiler] =========================== End ===========================
+[compiler]
+[compiler] ==================== After ts type lowering [func_main_0@a.abc]====================
+[compiler] {"id":0, "op":"CIRCUIT_ROOT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[4, 3, 2, 1]},
+[compiler] {"id":1, "op":"STATE_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [0]], "out":[14]},
+[compiler] {"id":2, "op":"DEPEND_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [0]], "out":[15]},
+[compiler] {"id":3, "op":"RETURN_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [0]], "out":[37]},
+[compiler] {"id":4, "op":"ARG_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [0]], "out":[9, 8, 7, 6, 5]},
+[compiler] {"id":5, "op":"ARG", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[]},
+[compiler] {"id":6, "op":"ARG", "MType":"I64, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":7, "op":"ARG", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[35, 32, 26, 10]},
+[compiler] {"id":8, "op":"ARG", "MType":"I64, bitfield=3, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":9, "op":"ARG", "MType":"I64, bitfield=4, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":10, "op":"FRAME_ARGS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [7, 8, 9, 6], [], []], "out":[27]},
+[compiler] {"id":11, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840970, type=-GT(M=0, L=8), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[16]},
+[compiler] {"id":12, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840960, type=-GT(M=0, L=8), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[38]},
+[compiler] {"id":13, "op":"LOOP_BACK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[32], [], [], [], []], "out":[14]},
+[compiler] {"id":14, "op":"LOOP_BEGIN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[1, 13], [], [], [], []], "out":[38, 23, 16, 15]},
+[compiler] {"id":15, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[14], [2, 32], [], [], []], "out":[16]},
+[compiler] {"id":16, "op":"JS_BYTECODE", "bytecode":"LESS_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[14], [15], [38, 11], [], []], "out":[17, 17, 17]},
+[compiler] {"id":17, "op":"JS_BYTECODE", "bytecode":"ISFALSE", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[16], [16], [16], [], []], "out":[18, 18, 18]},
+[compiler] {"id":18, "op":"JS_BYTECODE", "bytecode":"JNEZ_IMM8", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[17], [17], [17], [], []], "out":[22, 21, 20, 19]},
+[compiler] {"id":19, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[18], [], [], [], []], "out":[23, 20]},
+[compiler] {"id":20, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[19], [18], [], [], []], "out":[24]},
+[compiler] {"id":21, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[18], [], [], [], []], "out":[27, 22]},
+[compiler] {"id":22, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[21], [18], [], [], []], "out":[27]},
+[compiler] {"id":23, "op":"LOOP_EXIT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[19], [], [], [], [14]], "out":[35, 24]},
+[compiler] {"id":24, "op":"LOOP_EXIT_DEPEND", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[23], [20], [], [], []], "out":[35]},
+[compiler] {"id":25, "op":"CONSTANT", "MType":"I16, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[27]},
+[compiler] {"id":26, "op":"CONST_DATA", "MType":"ARCH, bitfield=0, type=-GT(M=0, L=4), stamp=0, mark=0, ","in":[[], [], [7], [], []], "out":[27]},
+[compiler] {"id":27, "op":"JS_BYTECODE", "bytecode":"TRYLDGLOBALBYNAME_IMM8_ID16", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[21], [22], [25, 26], [10], []], "out":[28, 28, 28]},
+[compiler] {"id":28, "op":"JS_BYTECODE", "bytecode":"CALLARG1_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[27], [27], [38, 27], [], []], "out":[29, 29]},
+[compiler] {"id":29, "op":"JS_BYTECODE", "bytecode":"INC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[28], [28], [38], [], []], "out":[30, 38, 30]},
+[compiler] {"id":30, "op":"JS_BYTECODE", "bytecode":"TONUMERIC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[29], [29], [38], [], []], "out":[32, 32]},
+[compiler] {"id":31, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551589, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[32]},
+[compiler] {"id":32, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[30], [30], [31, 7], [], []], "out":[15, 13]},
+[compiler] {"id":33, "op":"CONSTANT", "MType":"I64, bitfield=2, type=-GT(M=0, L=7), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":34, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551572, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[35]},
+[compiler] {"id":35, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[23], [24], [34, 7], [], []], "out":[37, 37]},
+[compiler] {"id":36, "op":"CONSTANT", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[37]},
+[compiler] {"id":37, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[35], [35], [36], [], [3]], "out":[]},
+[compiler] {"id":38, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[14], [], [12, 29], [], []], "out":[30, 29, 28, 16]},
+[compiler] {"id":39, "op":"CONSTANT", "MType":"I64, bitfield=18, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":40, "op":"CONSTANT", "MType":"I64, bitfield=16, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":43, "op":"CONSTANT", "MType":"I64, bitfield=19, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":46, "op":"CONSTANT", "MType":"I64, bitfield=26, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":49, "op":"CONSTANT", "MType":"I64, bitfield=31, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":52, "op":"CONSTANT", "MType":"I64, bitfield=37, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] ========================= End ==========================
+[compiler]
+[compiler] ==================== After early eliminating [func_main_0@a.abc]====================
+[compiler] {"id":0, "op":"CIRCUIT_ROOT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [], [], []], "out":[4, 3, 2, 1]},
+[compiler] {"id":1, "op":"STATE_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [], [], [0]], "out":[14]},
+[compiler] {"id":2, "op":"DEPEND_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [], [], [0]], "out":[15]},
+[compiler] {"id":3, "op":"RETURN_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [], [], [0]], "out":[37]},
+[compiler] {"id":4, "op":"ARG_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [], [], [0]], "out":[9, 8, 7, 6, 5]},
+[compiler] {"id":5, "op":"ARG", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[]},
+[compiler] {"id":6, "op":"ARG", "MType":"I64, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":7, "op":"ARG", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [], [], [4]], "out":[35, 32, 26, 10]},
+[compiler] {"id":8, "op":"ARG", "MType":"I64, bitfield=3, type=TAGGED_VALUE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":9, "op":"ARG", "MType":"I64, bitfield=4, type=TAGGED_VALUE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":10, "op":"FRAME_ARGS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [7, 8, 9, 6], [], []], "out":[27]},
+[compiler] {"id":11, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840970, type=-GT(M=0, L=8), stamp=2, mark=3, ","in":[[], [], [], [], []], "out":[16]},
+[compiler] {"id":12, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840960, type=-GT(M=0, L=8), stamp=2, mark=3, ","in":[[], [], [], [], []], "out":[38]},
+[compiler] {"id":13, "op":"LOOP_BACK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[32], [], [], [], []], "out":[14]},
+[compiler] {"id":14, "op":"LOOP_BEGIN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[1, 13], [], [], [], []], "out":[38, 23, 16, 15]},
+[compiler] {"id":15, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[14], [2, 32], [], [], []], "out":[16]},
+[compiler] {"id":16, "op":"JS_BYTECODE", "bytecode":"LESS_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[14], [15], [38, 11], [], []], "out":[17, 17, 17]},
+[compiler] {"id":17, "op":"JS_BYTECODE", "bytecode":"ISFALSE", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[16], [16], [16], [], []], "out":[18, 18, 18]},
+[compiler] {"id":18, "op":"JS_BYTECODE", "bytecode":"JNEZ_IMM8", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[17], [17], [17], [], []], "out":[22, 21, 20, 19]},
+[compiler] {"id":19, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[18], [], [], [], []], "out":[23, 20]},
+[compiler] {"id":20, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[19], [18], [], [], []], "out":[24]},
+[compiler] {"id":21, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[18], [], [], [], []], "out":[27, 22]},
+[compiler] {"id":22, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[21], [18], [], [], []], "out":[27]},
+[compiler] {"id":23, "op":"LOOP_EXIT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[19], [], [], [], [14]], "out":[35, 24]},
+[compiler] {"id":24, "op":"LOOP_EXIT_DEPEND", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[23], [20], [], [], []], "out":[35]},
+[compiler] {"id":25, "op":"CONSTANT", "MType":"I16, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [], [], []], "out":[27]},
+[compiler] {"id":26, "op":"CONST_DATA", "MType":"ARCH, bitfield=0, type=-GT(M=0, L=4), stamp=2, mark=3, ","in":[[], [], [7], [], []], "out":[27]},
+[compiler] {"id":27, "op":"JS_BYTECODE", "bytecode":"TRYLDGLOBALBYNAME_IMM8_ID16", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[21], [22], [25, 26], [10], []], "out":[28, 28, 28]},
+[compiler] {"id":28, "op":"JS_BYTECODE", "bytecode":"CALLARG1_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[27], [27], [38, 27], [], []], "out":[29, 29]},
+[compiler] {"id":29, "op":"JS_BYTECODE", "bytecode":"INC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[28], [28], [38], [], []], "out":[30, 38, 30]},
+[compiler] {"id":30, "op":"JS_BYTECODE", "bytecode":"TONUMERIC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[29], [29], [38], [], []], "out":[32, 32]},
+[compiler] {"id":31, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551589, type=NJS_VALUE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [], [], []], "out":[32]},
+[compiler] {"id":32, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[30], [30], [31, 7], [], []], "out":[15, 13]},
+[compiler] {"id":33, "op":"CONSTANT", "MType":"I64, bitfield=2, type=-GT(M=0, L=7), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":34, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551572, type=NJS_VALUE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [], [], []], "out":[35]},
+[compiler] {"id":35, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[23], [24], [34, 7], [], []], "out":[37, 37]},
+[compiler] {"id":36, "op":"CONSTANT", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[], [], [], [], []], "out":[37]},
+[compiler] {"id":37, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=2, mark=3, ","in":[[35], [35], [36], [], [3]], "out":[]},
+[compiler] {"id":38, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=2, mark=3, ","in":[[14], [], [12, 29], [], []], "out":[30, 29, 28, 16]},
+[compiler] {"id":39, "op":"CONSTANT", "MType":"I64, bitfield=18, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":40, "op":"CONSTANT", "MType":"I64, bitfield=16, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":43, "op":"CONSTANT", "MType":"I64, bitfield=19, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":46, "op":"CONSTANT", "MType":"I64, bitfield=26, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":49, "op":"CONSTANT", "MType":"I64, bitfield=31, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":52, "op":"CONSTANT", "MType":"I64, bitfield=37, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] ========================= End ==========================
+[compiler]
+[compiler] ==================== After number speculative retype [func_main_0@a.abc]====================
+[compiler] {"id":0, "op":"CIRCUIT_ROOT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[4, 3, 2, 1]},
+[compiler] {"id":1, "op":"STATE_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [0]], "out":[14]},
+[compiler] {"id":2, "op":"DEPEND_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [0]], "out":[15]},
+[compiler] {"id":3, "op":"RETURN_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [0]], "out":[37]},
+[compiler] {"id":4, "op":"ARG_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [0]], "out":[9, 8, 7, 6, 5]},
+[compiler] {"id":5, "op":"ARG", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[]},
+[compiler] {"id":6, "op":"ARG", "MType":"I64, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":7, "op":"ARG", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [4]], "out":[35, 32, 10, 26]},
+[compiler] {"id":8, "op":"ARG", "MType":"I64, bitfield=3, type=TAGGED_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":9, "op":"ARG", "MType":"I64, bitfield=4, type=TAGGED_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":10, "op":"FRAME_ARGS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [7, 8, 9, 6], [], []], "out":[27]},
+[compiler] {"id":11, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840970, type=-GT(M=0, L=8), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[56]},
+[compiler] {"id":12, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840960, type=-GT(M=0, L=8), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[55]},
+[compiler] {"id":13, "op":"LOOP_BACK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[32], [], [], [], []], "out":[14]},
+[compiler] {"id":14, "op":"LOOP_BEGIN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[1, 13], [], [], [], []], "out":[38, 23, 16, 15]},
+[compiler] {"id":15, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[14], [2, 32], [], [], []], "out":[16]},
+[compiler] {"id":16, "op":"JS_BYTECODE", "bytecode":"LESS_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[14], [15], [38, 56], [], []], "out":[17, 17, 17]},
+[compiler] {"id":17, "op":"JS_BYTECODE", "bytecode":"ISFALSE", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[16], [16], [16], [], []], "out":[18, 18, 18]},
+[compiler] {"id":18, "op":"JS_BYTECODE", "bytecode":"JNEZ_IMM8", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[17], [17], [17], [], []], "out":[22, 21, 20, 19]},
+[compiler] {"id":19, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[18], [], [], [], []], "out":[23, 20]},
+[compiler] {"id":20, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[19], [18], [], [], []], "out":[24]},
+[compiler] {"id":21, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[18], [], [], [], []], "out":[27, 22]},
+[compiler] {"id":22, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[21], [18], [], [], []], "out":[27]},
+[compiler] {"id":23, "op":"LOOP_EXIT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[19], [], [], [], [14]], "out":[35, 24]},
+[compiler] {"id":24, "op":"LOOP_EXIT_DEPEND", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[23], [20], [], [], []], "out":[35]},
+[compiler] {"id":25, "op":"CONSTANT", "MType":"I16, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[27]},
+[compiler] {"id":26, "op":"CONST_DATA", "MType":"ARCH, bitfield=0, type=-GT(M=0, L=4), stamp=4, mark=3, ","in":[[], [], [7], [], []], "out":[27]},
+[compiler] {"id":27, "op":"JS_BYTECODE", "bytecode":"TRYLDGLOBALBYNAME_IMM8_ID16", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[21], [22], [25, 26], [10], []], "out":[28, 28, 28]},
+[compiler] {"id":28, "op":"JS_BYTECODE", "bytecode":"CALLARG1_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[27], [27], [38, 27], [], []], "out":[29, 29]},
+[compiler] {"id":29, "op":"JS_BYTECODE", "bytecode":"INC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[28], [28], [38], [], []], "out":[38, 30, 30]},
+[compiler] {"id":30, "op":"JS_BYTECODE", "bytecode":"TONUMERIC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[29], [29], [38], [], []], "out":[32, 32]},
+[compiler] {"id":31, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551589, type=NJS_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[32]},
+[compiler] {"id":32, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[30], [30], [31, 7], [], []], "out":[15, 13]},
+[compiler] {"id":33, "op":"CONSTANT", "MType":"I64, bitfield=2, type=-GT(M=0, L=7), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":34, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551572, type=NJS_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[35]},
+[compiler] {"id":35, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[23], [24], [34, 7], [], []], "out":[37, 37]},
+[compiler] {"id":36, "op":"CONSTANT", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[37]},
+[compiler] {"id":37, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[35], [35], [36], [], [3]], "out":[]},
+[compiler] {"id":38, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[14], [], [55, 29], [], []], "out":[16, 30, 29, 28]},
+[compiler] {"id":39, "op":"CONSTANT", "MType":"I64, bitfield=18, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":40, "op":"CONSTANT", "MType":"I64, bitfield=16, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":43, "op":"CONSTANT", "MType":"I64, bitfield=19, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":46, "op":"CONSTANT", "MType":"I64, bitfield=26, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":49, "op":"CONSTANT", "MType":"I64, bitfield=31, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":52, "op":"CONSTANT", "MType":"I64, bitfield=37, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":55, "op":"CONVERT", "MType":"I64, bitfield=1025, type=-GT(M=0, L=8), stamp=0, mark=0, ","in":[[], [], [12], [], []], "out":[38]},
+[compiler] {"id":56, "op":"CONVERT", "MType":"I64, bitfield=1025, type=-GT(M=0, L=8), stamp=0, mark=0, ","in":[[], [], [11], [], []], "out":[16]},
+[compiler] ========================= End ==========================
+[compiler]
+[compiler] ==================== After number speculative runner [func_main_0@a.abc]====================
+[compiler] {"id":0, "op":"CIRCUIT_ROOT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[4, 3, 2, 1]},
+[compiler] {"id":1, "op":"STATE_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [0]], "out":[14]},
+[compiler] {"id":2, "op":"DEPEND_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [0]], "out":[15]},
+[compiler] {"id":3, "op":"RETURN_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [0]], "out":[37]},
+[compiler] {"id":4, "op":"ARG_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [0]], "out":[9, 8, 7, 6, 5]},
+[compiler] {"id":5, "op":"ARG", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[]},
+[compiler] {"id":6, "op":"ARG", "MType":"I64, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":7, "op":"ARG", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [4]], "out":[35, 32, 10, 26]},
+[compiler] {"id":8, "op":"ARG", "MType":"I64, bitfield=3, type=TAGGED_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":9, "op":"ARG", "MType":"I64, bitfield=4, type=TAGGED_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":10, "op":"FRAME_ARGS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [7, 8, 9, 6], [], []], "out":[27]},
+[compiler] {"id":11, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840970, type=-GT(M=0, L=8), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":12, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840960, type=-GT(M=0, L=8), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":13, "op":"LOOP_BACK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[32], [], [], [], []], "out":[14]},
+[compiler] {"id":14, "op":"LOOP_BEGIN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[1, 13], [], [], [], []], "out":[38, 23, 16, 15]},
+[compiler] {"id":15, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[14], [2, 32], [], [], []], "out":[16]},
+[compiler] {"id":16, "op":"JS_BYTECODE", "bytecode":"LESS_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[14], [15], [38, 56], [], []], "out":[17, 17, 17]},
+[compiler] {"id":17, "op":"JS_BYTECODE", "bytecode":"ISFALSE", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[16], [16], [16], [], []], "out":[18, 18, 18]},
+[compiler] {"id":18, "op":"JS_BYTECODE", "bytecode":"JNEZ_IMM8", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[17], [17], [17], [], []], "out":[22, 21, 20, 19]},
+[compiler] {"id":19, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[18], [], [], [], []], "out":[23, 20]},
+[compiler] {"id":20, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[19], [18], [], [], []], "out":[24]},
+[compiler] {"id":21, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[18], [], [], [], []], "out":[27, 22]},
+[compiler] {"id":22, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[21], [18], [], [], []], "out":[27]},
+[compiler] {"id":23, "op":"LOOP_EXIT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[19], [], [], [], [14]], "out":[35, 24]},
+[compiler] {"id":24, "op":"LOOP_EXIT_DEPEND", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[23], [20], [], [], []], "out":[35]},
+[compiler] {"id":25, "op":"CONSTANT", "MType":"I16, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[27]},
+[compiler] {"id":26, "op":"CONST_DATA", "MType":"ARCH, bitfield=0, type=-GT(M=0, L=4), stamp=4, mark=3, ","in":[[], [], [7], [], []], "out":[27]},
+[compiler] {"id":27, "op":"JS_BYTECODE", "bytecode":"TRYLDGLOBALBYNAME_IMM8_ID16", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[21], [22], [25, 26], [10], []], "out":[28, 28, 28]},
+[compiler] {"id":28, "op":"JS_BYTECODE", "bytecode":"CALLARG1_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[27], [27], [38, 27], [], []], "out":[29, 29]},
+[compiler] {"id":29, "op":"JS_BYTECODE", "bytecode":"INC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[28], [28], [38], [], []], "out":[38, 30, 30]},
+[compiler] {"id":30, "op":"JS_BYTECODE", "bytecode":"TONUMERIC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[29], [29], [38], [], []], "out":[32, 32]},
+[compiler] {"id":31, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551589, type=NJS_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[32]},
+[compiler] {"id":32, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[30], [30], [31, 7], [], []], "out":[15, 13]},
+[compiler] {"id":33, "op":"CONSTANT", "MType":"I64, bitfield=2, type=-GT(M=0, L=7), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":34, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551572, type=NJS_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[35]},
+[compiler] {"id":35, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[23], [24], [34, 7], [], []], "out":[37, 37]},
+[compiler] {"id":36, "op":"CONSTANT", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[37]},
+[compiler] {"id":37, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=4, mark=3, ","in":[[35], [35], [36], [], [3]], "out":[]},
+[compiler] {"id":38, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=4, mark=3, ","in":[[14], [], [55, 29], [], []], "out":[16, 30, 29, 28]},
+[compiler] {"id":39, "op":"CONSTANT", "MType":"I64, bitfield=18, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":40, "op":"CONSTANT", "MType":"I64, bitfield=16, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":43, "op":"CONSTANT", "MType":"I64, bitfield=19, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":46, "op":"CONSTANT", "MType":"I64, bitfield=26, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":49, "op":"CONSTANT", "MType":"I64, bitfield=31, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":52, "op":"CONSTANT", "MType":"I64, bitfield=37, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":55, "op":"CONVERT", "MType":"I64, bitfield=1025, type=-GT(M=0, L=8), stamp=0, mark=0, ","in":[[], [], [58], [], []], "out":[38]},
+[compiler] {"id":56, "op":"CONVERT", "MType":"I64, bitfield=1025, type=-GT(M=0, L=8), stamp=0, mark=0, ","in":[[], [], [57], [], []], "out":[16]},
+[compiler] {"id":57, "op":"CONSTANT", "MType":"I32, bitfield=10, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[56]},
+[compiler] {"id":58, "op":"CONSTANT", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[55]},
+[compiler] ========================= End ==========================
+[compiler]
+[compiler] ==================== After late elimination [func_main_0@a.abc]====================
+[compiler] {"id":0, "op":"CIRCUIT_ROOT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[4, 3, 2, 1]},
+[compiler] {"id":1, "op":"STATE_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [0]], "out":[14]},
+[compiler] {"id":2, "op":"DEPEND_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [0]], "out":[15]},
+[compiler] {"id":3, "op":"RETURN_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [0]], "out":[37]},
+[compiler] {"id":4, "op":"ARG_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [0]], "out":[9, 8, 7, 6, 5]},
+[compiler] {"id":5, "op":"ARG", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[]},
+[compiler] {"id":6, "op":"ARG", "MType":"I64, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":7, "op":"ARG", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [4]], "out":[35, 32, 10, 26]},
+[compiler] {"id":8, "op":"ARG", "MType":"I64, bitfield=3, type=TAGGED_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":9, "op":"ARG", "MType":"I64, bitfield=4, type=TAGGED_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":10, "op":"FRAME_ARGS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [7, 8, 9, 6], [], []], "out":[27]},
+[compiler] {"id":11, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840970, type=-GT(M=0, L=8), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":12, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840960, type=-GT(M=0, L=8), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":13, "op":"LOOP_BACK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[32], [], [], [], []], "out":[14]},
+[compiler] {"id":14, "op":"LOOP_BEGIN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[1, 13], [], [], [], []], "out":[38, 23, 16, 15]},
+[compiler] {"id":15, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[14], [2, 32], [], [], []], "out":[16]},
+[compiler] {"id":16, "op":"JS_BYTECODE", "bytecode":"LESS_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[14], [15], [38, 56], [], []], "out":[17, 17, 17]},
+[compiler] {"id":17, "op":"JS_BYTECODE", "bytecode":"ISFALSE", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[16], [16], [16], [], []], "out":[18, 18, 18]},
+[compiler] {"id":18, "op":"JS_BYTECODE", "bytecode":"JNEZ_IMM8", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[17], [17], [17], [], []], "out":[22, 21, 20, 19]},
+[compiler] {"id":19, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[18], [], [], [], []], "out":[23, 20]},
+[compiler] {"id":20, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[19], [18], [], [], []], "out":[24]},
+[compiler] {"id":21, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[18], [], [], [], []], "out":[27, 22]},
+[compiler] {"id":22, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[21], [18], [], [], []], "out":[27]},
+[compiler] {"id":23, "op":"LOOP_EXIT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[19], [], [], [], [14]], "out":[35, 24]},
+[compiler] {"id":24, "op":"LOOP_EXIT_DEPEND", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[23], [20], [], [], []], "out":[35]},
+[compiler] {"id":25, "op":"CONSTANT", "MType":"I16, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[27]},
+[compiler] {"id":26, "op":"CONST_DATA", "MType":"ARCH, bitfield=0, type=-GT(M=0, L=4), stamp=5, mark=3, ","in":[[], [], [7], [], []], "out":[27]},
+[compiler] {"id":27, "op":"JS_BYTECODE", "bytecode":"TRYLDGLOBALBYNAME_IMM8_ID16", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[21], [22], [25, 26], [10], []], "out":[28, 28, 28]},
+[compiler] {"id":28, "op":"JS_BYTECODE", "bytecode":"CALLARG1_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[27], [27], [38, 27], [], []], "out":[29, 29]},
+[compiler] {"id":29, "op":"JS_BYTECODE", "bytecode":"INC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[28], [28], [38], [], []], "out":[38, 30, 30]},
+[compiler] {"id":30, "op":"JS_BYTECODE", "bytecode":"TONUMERIC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[29], [29], [38], [], []], "out":[32, 32]},
+[compiler] {"id":31, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551589, type=NJS_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[32]},
+[compiler] {"id":32, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[30], [30], [31, 7], [], []], "out":[15, 13]},
+[compiler] {"id":33, "op":"CONSTANT", "MType":"I64, bitfield=2, type=-GT(M=0, L=7), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":34, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551572, type=NJS_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[35]},
+[compiler] {"id":35, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[23], [24], [34, 7], [], []], "out":[37, 37]},
+[compiler] {"id":36, "op":"CONSTANT", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[37]},
+[compiler] {"id":37, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[35], [35], [36], [], [3]], "out":[]},
+[compiler] {"id":38, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[14], [], [55, 29], [], []], "out":[16, 30, 29, 28]},
+[compiler] {"id":39, "op":"CONSTANT", "MType":"I64, bitfield=18, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":40, "op":"CONSTANT", "MType":"I64, bitfield=16, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":43, "op":"CONSTANT", "MType":"I64, bitfield=19, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":46, "op":"CONSTANT", "MType":"I64, bitfield=26, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":49, "op":"CONSTANT", "MType":"I64, bitfield=31, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":52, "op":"CONSTANT", "MType":"I64, bitfield=37, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":55, "op":"CONVERT", "MType":"I64, bitfield=1025, type=-GT(M=0, L=8), stamp=5, mark=3, ","in":[[], [], [58], [], []], "out":[38]},
+[compiler] {"id":56, "op":"CONVERT", "MType":"I64, bitfield=1025, type=-GT(M=0, L=8), stamp=5, mark=3, ","in":[[], [], [57], [], []], "out":[16]},
+[compiler] {"id":57, "op":"CONSTANT", "MType":"I32, bitfield=10, type=NJS_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[56]},
+[compiler] {"id":58, "op":"CONSTANT", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[55]},
+[compiler] ========================= End ==========================
+[compiler]
+[compiler] ================== after type lowering [func_main_0@a.abc] ==================
+[compiler] {"id":0, "op":"CIRCUIT_ROOT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[4, 3, 2, 1]},
+[compiler] {"id":1, "op":"STATE_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [0]], "out":[14]},
+[compiler] {"id":2, "op":"DEPEND_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [0]], "out":[15]},
+[compiler] {"id":3, "op":"RETURN_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [0]], "out":[37]},
+[compiler] {"id":4, "op":"ARG_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [0]], "out":[9, 8, 7, 6, 5]},
+[compiler] {"id":5, "op":"ARG", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[]},
+[compiler] {"id":6, "op":"ARG", "MType":"I64, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":7, "op":"ARG", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [4]], "out":[35, 32, 10, 26]},
+[compiler] {"id":8, "op":"ARG", "MType":"I64, bitfield=3, type=TAGGED_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":9, "op":"ARG", "MType":"I64, bitfield=4, type=TAGGED_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":10, "op":"FRAME_ARGS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [7, 8, 9, 6], [], []], "out":[27]},
+[compiler] {"id":11, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840970, type=-GT(M=0, L=8), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":12, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840960, type=-GT(M=0, L=8), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":13, "op":"LOOP_BACK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[32], [], [], [], []], "out":[14]},
+[compiler] {"id":14, "op":"LOOP_BEGIN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[1, 13], [], [], [], []], "out":[38, 23, 16, 15]},
+[compiler] {"id":15, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[14], [2, 32], [], [], []], "out":[16]},
+[compiler] {"id":16, "op":"JS_BYTECODE", "bytecode":"LESS_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[14], [15], [38, 65], [], []], "out":[17, 17, 17]},
+[compiler] {"id":17, "op":"JS_BYTECODE", "bytecode":"ISFALSE", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[16], [16], [16], [], []], "out":[18, 18, 18]},
+[compiler] {"id":18, "op":"JS_BYTECODE", "bytecode":"JNEZ_IMM8", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[17], [17], [17], [], []], "out":[22, 21, 20, 19]},
+[compiler] {"id":19, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[18], [], [], [], []], "out":[23, 20]},
+[compiler] {"id":20, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[19], [18], [], [], []], "out":[24]},
+[compiler] {"id":21, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[18], [], [], [], []], "out":[27, 22]},
+[compiler] {"id":22, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[21], [18], [], [], []], "out":[27]},
+[compiler] {"id":23, "op":"LOOP_EXIT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[19], [], [], [], [14]], "out":[35, 24]},
+[compiler] {"id":24, "op":"LOOP_EXIT_DEPEND", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[23], [20], [], [], []], "out":[35]},
+[compiler] {"id":25, "op":"CONSTANT", "MType":"I16, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[27]},
+[compiler] {"id":26, "op":"CONST_DATA", "MType":"ARCH, bitfield=0, type=-GT(M=0, L=4), stamp=5, mark=3, ","in":[[], [], [7], [], []], "out":[27]},
+[compiler] {"id":27, "op":"JS_BYTECODE", "bytecode":"TRYLDGLOBALBYNAME_IMM8_ID16", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[21], [22], [25, 26], [10], []], "out":[28, 28, 28]},
+[compiler] {"id":28, "op":"JS_BYTECODE", "bytecode":"CALLARG1_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[27], [27], [38, 27], [], []], "out":[29, 29]},
+[compiler] {"id":29, "op":"JS_BYTECODE", "bytecode":"INC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[28], [28], [38], [], []], "out":[38, 30, 30]},
+[compiler] {"id":30, "op":"JS_BYTECODE", "bytecode":"TONUMERIC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[29], [29], [38], [], []], "out":[32, 32]},
+[compiler] {"id":31, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551589, type=NJS_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[32]},
+[compiler] {"id":32, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[30], [30], [31, 7], [], []], "out":[15, 13]},
+[compiler] {"id":33, "op":"CONSTANT", "MType":"I64, bitfield=2, type=-GT(M=0, L=7), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":34, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551572, type=NJS_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[35]},
+[compiler] {"id":35, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[23], [24], [34, 7], [], []], "out":[37, 37]},
+[compiler] {"id":36, "op":"CONSTANT", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[37]},
+[compiler] {"id":37, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=5, mark=3, ","in":[[35], [35], [36], [], [3]], "out":[]},
+[compiler] {"id":38, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[14], [], [62, 29], [], []], "out":[16, 30, 29, 28]},
+[compiler] {"id":39, "op":"CONSTANT", "MType":"I64, bitfield=18, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":40, "op":"CONSTANT", "MType":"I64, bitfield=16, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":43, "op":"CONSTANT", "MType":"I64, bitfield=19, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":46, "op":"CONSTANT", "MType":"I64, bitfield=26, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":49, "op":"CONSTANT", "MType":"I64, bitfield=31, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":52, "op":"CONSTANT", "MType":"I64, bitfield=37, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":57, "op":"CONSTANT", "MType":"I32, bitfield=10, type=NJS_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[63]},
+[compiler] {"id":58, "op":"CONSTANT", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=5, mark=3, ","in":[[], [], [], [], []], "out":[59]},
+[compiler] {"id":59, "op":"SEXT", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [58], [], []], "out":[61]},
+[compiler] {"id":60, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840960, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[64, 61]},
+[compiler] {"id":61, "op":"OR", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [59, 60], [], []], "out":[62]},
+[compiler] {"id":62, "op":"INT64_TO_TAGGED", "MType":"I64, bitfield=0, type=-GT(M=0, L=8), stamp=0, mark=0, ","in":[[], [], [61], [], []], "out":[38]},
+[compiler] {"id":63, "op":"SEXT", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [57], [], []], "out":[64]},
+[compiler] {"id":64, "op":"OR", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [63, 60], [], []], "out":[65]},
+[compiler] {"id":65, "op":"INT64_TO_TAGGED", "MType":"I64, bitfield=0, type=-GT(M=0, L=8), stamp=0, mark=0, ","in":[[], [], [64], [], []], "out":[16]},
+[compiler] =========================== End =========================
+[compiler]
+[compiler] ==================== After late elimination [func_main_0@a.abc]====================
+[compiler] {"id":0, "op":"CIRCUIT_ROOT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[4, 3, 2, 1]},
+[compiler] {"id":1, "op":"STATE_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [0]], "out":[14]},
+[compiler] {"id":2, "op":"DEPEND_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [0]], "out":[15]},
+[compiler] {"id":3, "op":"RETURN_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [0]], "out":[37]},
+[compiler] {"id":4, "op":"ARG_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [0]], "out":[9, 8, 7, 6, 5]},
+[compiler] {"id":5, "op":"ARG", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[]},
+[compiler] {"id":6, "op":"ARG", "MType":"I64, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":7, "op":"ARG", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [4]], "out":[35, 32, 10, 26]},
+[compiler] {"id":8, "op":"ARG", "MType":"I64, bitfield=3, type=TAGGED_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":9, "op":"ARG", "MType":"I64, bitfield=4, type=TAGGED_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":10, "op":"FRAME_ARGS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [7, 8, 9, 6], [], []], "out":[27]},
+[compiler] {"id":11, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840970, type=-GT(M=0, L=8), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":12, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840960, type=-GT(M=0, L=8), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":13, "op":"LOOP_BACK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[32], [], [], [], []], "out":[14]},
+[compiler] {"id":14, "op":"LOOP_BEGIN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[1, 13], [], [], [], []], "out":[38, 23, 16, 15]},
+[compiler] {"id":15, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[14], [2, 32], [], [], []], "out":[16]},
+[compiler] {"id":16, "op":"JS_BYTECODE", "bytecode":"LESS_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[14], [15], [38, 65], [], []], "out":[17, 17, 17]},
+[compiler] {"id":17, "op":"JS_BYTECODE", "bytecode":"ISFALSE", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[16], [16], [16], [], []], "out":[18, 18, 18]},
+[compiler] {"id":18, "op":"JS_BYTECODE", "bytecode":"JNEZ_IMM8", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[17], [17], [17], [], []], "out":[22, 21, 20, 19]},
+[compiler] {"id":19, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[18], [], [], [], []], "out":[23, 20]},
+[compiler] {"id":20, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[19], [18], [], [], []], "out":[24]},
+[compiler] {"id":21, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[18], [], [], [], []], "out":[27, 22]},
+[compiler] {"id":22, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[21], [18], [], [], []], "out":[27]},
+[compiler] {"id":23, "op":"LOOP_EXIT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[19], [], [], [], [14]], "out":[35, 24]},
+[compiler] {"id":24, "op":"LOOP_EXIT_DEPEND", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[23], [20], [], [], []], "out":[35]},
+[compiler] {"id":25, "op":"CONSTANT", "MType":"I16, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[27]},
+[compiler] {"id":26, "op":"CONST_DATA", "MType":"ARCH, bitfield=0, type=-GT(M=0, L=4), stamp=6, mark=3, ","in":[[], [], [7], [], []], "out":[27]},
+[compiler] {"id":27, "op":"JS_BYTECODE", "bytecode":"TRYLDGLOBALBYNAME_IMM8_ID16", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[21], [22], [25, 26], [10], []], "out":[28, 28, 28]},
+[compiler] {"id":28, "op":"JS_BYTECODE", "bytecode":"CALLARG1_IMM8_V8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[27], [27], [38, 27], [], []], "out":[29, 29]},
+[compiler] {"id":29, "op":"JS_BYTECODE", "bytecode":"INC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[28], [28], [38], [], []], "out":[38, 30, 30]},
+[compiler] {"id":30, "op":"JS_BYTECODE", "bytecode":"TONUMERIC_IMM8", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[29], [29], [38], [], []], "out":[32, 32]},
+[compiler] {"id":31, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551589, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[32]},
+[compiler] {"id":32, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[30], [30], [31, 7], [], []], "out":[15, 13]},
+[compiler] {"id":33, "op":"CONSTANT", "MType":"I64, bitfield=2, type=-GT(M=0, L=7), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":34, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551572, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[35]},
+[compiler] {"id":35, "op":"UPDATE_HOTNESS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[23], [24], [34, 7], [], []], "out":[37, 37]},
+[compiler] {"id":36, "op":"CONSTANT", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[37]},
+[compiler] {"id":37, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[35], [35], [36], [], [3]], "out":[]},
+[compiler] {"id":38, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[14], [], [62, 29], [], []], "out":[16, 30, 29, 28]},
+[compiler] {"id":39, "op":"CONSTANT", "MType":"I64, bitfield=18, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":40, "op":"CONSTANT", "MType":"I64, bitfield=16, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":43, "op":"CONSTANT", "MType":"I64, bitfield=19, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":46, "op":"CONSTANT", "MType":"I64, bitfield=26, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":49, "op":"CONSTANT", "MType":"I64, bitfield=31, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":52, "op":"CONSTANT", "MType":"I64, bitfield=37, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":57, "op":"CONSTANT", "MType":"I32, bitfield=10, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[63]},
+[compiler] {"id":58, "op":"CONSTANT", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[59]},
+[compiler] {"id":59, "op":"SEXT", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [58], [], []], "out":[61]},
+[compiler] {"id":60, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840960, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[64, 61]},
+[compiler] {"id":61, "op":"OR", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [59, 60], [], []], "out":[62]},
+[compiler] {"id":62, "op":"INT64_TO_TAGGED", "MType":"I64, bitfield=0, type=-GT(M=0, L=8), stamp=6, mark=3, ","in":[[], [], [61], [], []], "out":[38]},
+[compiler] {"id":63, "op":"SEXT", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [57], [], []], "out":[64]},
+[compiler] {"id":64, "op":"OR", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [63, 60], [], []], "out":[65]},
+[compiler] {"id":65, "op":"INT64_TO_TAGGED", "MType":"I64, bitfield=0, type=-GT(M=0, L=8), stamp=6, mark=3, ","in":[[], [], [64], [], []], "out":[16]},
+[compiler] ========================= End ==========================
+[compiler]
+[compiler] ================= After slowpath Lowering [func_main_0@a.abc] =================
+[compiler] {"id":0, "op":"CIRCUIT_ROOT", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[4, 3, 2, 1]},
+[compiler] {"id":1, "op":"STATE_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [0]], "out":[14]},
+[compiler] {"id":2, "op":"DEPEND_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [0]], "out":[136, 15]},
+[compiler] {"id":3, "op":"RETURN_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [0]], "out":[239, 194, 185, 171, 75, 37]},
+[compiler] {"id":4, "op":"ARG_LIST", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [0]], "out":[9, 8, 7, 6, 5]},
+[compiler] {"id":5, "op":"ARG", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[261, 254, 250, 241, 228, 187, 187, 176, 174, 174, 164, 164, 158, 77, 77, 67, 67]},
+[compiler] {"id":6, "op":"ARG", "MType":"I64, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":7, "op":"ARG", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [4]], "out":[158, 147, 135, 10]},
+[compiler] {"id":8, "op":"ARG", "MType":"I64, bitfield=3, type=TAGGED_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":9, "op":"ARG", "MType":"I64, bitfield=4, type=TAGGED_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":10, "op":"FRAME_ARGS", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [7, 8, 9, 6], [], []], "out":[]},
+[compiler] {"id":11, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840970, type=-GT(M=0, L=8), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":12, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840960, type=-GT(M=0, L=8), stamp=4, mark=3, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":13, "op":"LOOP_BACK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[252], [], [], [], []], "out":[14]},
+[compiler] {"id":14, "op":"LOOP_BEGIN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[1, 13], [], [], [], []], "out":[70, 38, 15]},
+[compiler] {"id":15, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[14], [2, 253], [], [], []], "out":[67]},
+[compiler] {"id":19, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[133], [], [], [], []], "out":[257, 24, 20]},
+[compiler] {"id":20, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[19], [89], [], [], []], "out":[24]},
+[compiler] {"id":21, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[132], [], [], [], []], "out":[152, 22]},
+[compiler] {"id":22, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[21], [89], [], [], []], "out":[148]},
+[compiler] {"id":24, "op":"LOOP_EXIT_DEPEND", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[19], [20], [], [], []], "out":[255]},
+[compiler] {"id":25, "op":"CONSTANT", "MType":"I16, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[146]},
+[compiler] {"id":31, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551589, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":33, "op":"CONSTANT", "MType":"I64, bitfield=2, type=-GT(M=0, L=7), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":34, "op":"CONSTANT", "MType":"I32, bitfield=18446744073709551572, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":36, "op":"CONSTANT", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[174, 174, 151, 37]},
+[compiler] {"id":37, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[263], [264], [36], [], [3]], "out":[]},
+[compiler] {"id":38, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[14], [], [62, 187], [], []], "out":[232, 228, 209, 200, 195, 187, 174, 67]},
+[compiler] {"id":39, "op":"CONSTANT", "MType":"I64, bitfield=18, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[]},
+[compiler] {"id":40, "op":"CONSTANT", "MType":"I64, bitfield=16, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[67]},
+[compiler] {"id":43, "op":"CONSTANT", "MType":"I64, bitfield=19, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[77]},
+[compiler] {"id":46, "op":"CONSTANT", "MType":"I64, bitfield=26, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[174]},
+[compiler] {"id":49, "op":"CONSTANT", "MType":"I64, bitfield=31, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[187]},
+[compiler] {"id":52, "op":"CONSTANT", "MType":"I64, bitfield=37, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[228]},
+[compiler] {"id":57, "op":"CONSTANT", "MType":"I32, bitfield=10, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[63]},
+[compiler] {"id":58, "op":"CONSTANT", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[199, 140, 105, 59]},
+[compiler] {"id":59, "op":"SEXT", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [58], [], []], "out":[61]},
+[compiler] {"id":60, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840960, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], []], "out":[196, 117, 116, 111, 97, 96, 64, 61]},
+[compiler] {"id":61, "op":"OR", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [59, 60], [], []], "out":[62]},
+[compiler] {"id":62, "op":"INT64_TO_TAGGED", "MType":"I64, bitfield=0, type=-GT(M=0, L=8), stamp=6, mark=3, ","in":[[], [], [61], [], []], "out":[38]},
+[compiler] {"id":63, "op":"SEXT", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [57], [], []], "out":[64]},
+[compiler] {"id":64, "op":"OR", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [63, 60], [], []], "out":[65]},
+[compiler] {"id":65, "op":"INT64_TO_TAGGED", "MType":"I64, bitfield=0, type=-GT(M=0, L=8), stamp=6, mark=3, ","in":[[], [], [64], [], []], "out":[67]},
+[compiler] {"id":66, "op":"CONSTANT", "MType":"ARCH, bitfield=9, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[67]},
+[compiler] {"id":67, "op":"CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [15], [66, 5, 5, 38, 65, 40], [], []], "out":[77, 74, 73, 69]},
+[compiler] {"id":68, "op":"CONSTANT", "MType":"I64, bitfield=10, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[239, 233, 194, 188, 185, 171, 165, 75, 69]},
+[compiler] {"id":69, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [67, 68], [], []], "out":[70]},
+[compiler] {"id":70, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[14], [], [69], [], []], "out":[72, 71]},
+[compiler] {"id":71, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[70], [], [], [], []], "out":[75, 73]},
+[compiler] {"id":72, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[70], [], [], [], []], "out":[80, 74]},
+[compiler] {"id":73, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[71], [67], [], [], []], "out":[75]},
+[compiler] {"id":74, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[72], [67], [], [], []], "out":[77]},
+[compiler] {"id":75, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[71], [73], [68], [], [3]], "out":[]},
+[compiler] {"id":76, "op":"CONSTANT", "MType":"ARCH, bitfield=25, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[77]},
+[compiler] {"id":77, "op":"CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [74], [76, 5, 5, 67, 43], [], []], "out":[86, 83, 79]},
+[compiler] {"id":78, "op":"CONSTANT", "MType":"I64, bitfield=7, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[90, 79]},
+[compiler] {"id":79, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [77, 78], [], []], "out":[80]},
+[compiler] {"id":80, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[72], [], [79], [], []], "out":[82, 81]},
+[compiler] {"id":81, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[80], [], [], [], []], "out":[85, 83]},
+[compiler] {"id":82, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[80], [], [], [], []], "out":[87, 86]},
+[compiler] {"id":83, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[81], [77], [], [], []], "out":[89]},
+[compiler] {"id":84, "op":"CONSTANT", "MType":"I64, bitfield=6, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[91, 90]},
+[compiler] {"id":85, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[81], [], [], [], []], "out":[88]},
+[compiler] {"id":86, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[82], [77], [], [], []], "out":[89]},
+[compiler] {"id":87, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[82], [], [], [], []], "out":[88]},
+[compiler] {"id":88, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[85, 87], [], [], [], []], "out":[92, 90, 89]},
+[compiler] {"id":89, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[88], [83, 86], [], [], []], "out":[20, 22]},
+[compiler] {"id":90, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[88], [], [84, 78], [], []], "out":[123, 115, 110, 101, 95, 91]},
+[compiler] {"id":91, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [90, 84], [], []], "out":[92]},
+[compiler] {"id":92, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[88], [], [91], [], []], "out":[94, 93]},
+[compiler] {"id":93, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[92], [], [], [], []], "out":[98]},
+[compiler] {"id":94, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[92], [], [], [], []], "out":[133]},
+[compiler] {"id":95, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [90], [], []], "out":[96]},
+[compiler] {"id":96, "op":"AND", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [95, 60], [], []], "out":[97]},
+[compiler] {"id":97, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [96, 60], [], []], "out":[98]},
+[compiler] {"id":98, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[93], [], [97], [], []], "out":[100, 99]},
+[compiler] {"id":99, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[98], [], [], [], []], "out":[106]},
+[compiler] {"id":100, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[98], [], [], [], []], "out":[109]},
+[compiler] {"id":101, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [90], [], []], "out":[103]},
+[compiler] {"id":102, "op":"CONSTANT", "MType":"I64, bitfield=281474976710655, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[103]},
+[compiler] {"id":103, "op":"AND", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [101, 102], [], []], "out":[104]},
+[compiler] {"id":104, "op":"TRUNC", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [103], [], []], "out":[105]},
+[compiler] {"id":105, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [104, 58], [], []], "out":[106]},
+[compiler] {"id":106, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[99], [], [105], [], []], "out":[108, 107]},
+[compiler] {"id":107, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[106], [], [], [], []], "out":[109]},
+[compiler] {"id":108, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[106], [], [], [], []], "out":[133]},
+[compiler] {"id":109, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[100, 107], [], [], [], []], "out":[120]},
+[compiler] {"id":110, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [90], [], []], "out":[111]},
+[compiler] {"id":111, "op":"AND", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [110, 60], [], []], "out":[113]},
+[compiler] {"id":112, "op":"CONSTANT", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[261, 250, 203, 197, 113]},
+[compiler] {"id":113, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [111, 112], [], []], "out":[114]},
+[compiler] {"id":114, "op":"REV", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [113], [], []], "out":[119]},
+[compiler] {"id":115, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [90], [], []], "out":[116]},
+[compiler] {"id":116, "op":"AND", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [115, 60], [], []], "out":[117]},
+[compiler] {"id":117, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [116, 60], [], []], "out":[118]},
+[compiler] {"id":118, "op":"REV", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [117], [], []], "out":[119]},
+[compiler] {"id":119, "op":"AND", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [114, 118], [], []], "out":[120]},
+[compiler] {"id":120, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[109], [], [119], [], []], "out":[122, 121]},
+[compiler] {"id":121, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[120], [], [], [], []], "out":[129]},
+[compiler] {"id":122, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[120], [], [], [], []], "out":[132]},
+[compiler] {"id":123, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [90], [], []], "out":[125]},
+[compiler] {"id":124, "op":"CONSTANT", "MType":"I64, bitfield=281474976710656, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[125]},
+[compiler] {"id":125, "op":"SUB", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [123, 124], [], []], "out":[126]},
+[compiler] {"id":126, "op":"BITCAST", "MType":"F64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [125], [], []], "out":[128]},
+[compiler] {"id":127, "op":"CONSTANT", "MType":"F64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[128]},
+[compiler] {"id":128, "op":"FCMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [126, 127], [], []], "out":[129]},
+[compiler] {"id":129, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[121], [], [128], [], []], "out":[131, 130]},
+[compiler] {"id":130, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[129], [], [], [], []], "out":[132]},
+[compiler] {"id":131, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[129], [], [], [], []], "out":[133]},
+[compiler] {"id":132, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[122, 130], [], [], [], []], "out":[21]},
+[compiler] {"id":133, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[94, 108, 131], [], [], [], []], "out":[19]},
+[compiler] {"id":134, "op":"CONSTANT", "MType":"ARCH, bitfield=32, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[147, 135]},
+[compiler] {"id":135, "op":"ADD", "MType":"ARCH, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [7, 134], [], []], "out":[136]},
+[compiler] {"id":136, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_POINTER-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [2], [135], [], []], "out":[139, 138]},
+[compiler] {"id":137, "op":"CONSTANT", "MType":"ARCH, bitfield=8, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[141, 138]},
+[compiler] {"id":138, "op":"ADD", "MType":"ARCH, bitfield=0, type=TAGGED_POINTER-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [136, 137], [], []], "out":[139]},
+[compiler] {"id":139, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [136], [138], [], []], "out":[145, 144]},
+[compiler] {"id":140, "op":"ZEXT", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [58], [], []], "out":[141]},
+[compiler] {"id":141, "op":"MUL", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [140, 137], [], []], "out":[143]},
+[compiler] {"id":142, "op":"CONSTANT", "MType":"ARCH, bitfield=16, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[149, 143]},
+[compiler] {"id":143, "op":"ADD", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [141, 142], [], []], "out":[144]},
+[compiler] {"id":144, "op":"ADD", "MType":"ARCH, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [139, 143], [], []], "out":[145]},
+[compiler] {"id":145, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [139], [144], [], []], "out":[164]},
+[compiler] {"id":146, "op":"ZEXT", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [25], [], []], "out":[164]},
+[compiler] {"id":147, "op":"ADD", "MType":"ARCH, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [7, 134], [], []], "out":[148]},
+[compiler] {"id":148, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_POINTER-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [22], [147], [], []], "out":[150, 149]},
+[compiler] {"id":149, "op":"ADD", "MType":"ARCH, bitfield=0, type=TAGGED_POINTER-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [148, 142], [], []], "out":[150]},
+[compiler] {"id":150, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [148], [149], [], []], "out":[162, 161, 155, 151]},
+[compiler] {"id":151, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [150, 36], [], []], "out":[152]},
+[compiler] {"id":152, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[21], [], [151], [], []], "out":[154, 153]},
+[compiler] {"id":153, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[152], [], [], [], []], "out":[159, 155]},
+[compiler] {"id":154, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[152], [], [], [], []], "out":[160]},
+[compiler] {"id":155, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[153], [150], [], [], []], "out":[158]},
+[compiler] {"id":156, "op":"CONSTANT", "MType":"ARCH, bitfield=132, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[158]},
+[compiler] {"id":157, "op":"CONSTANT", "MType":"I64, bitfield=22, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[164, 158]},
+[compiler] {"id":158, "op":"RUNTIME_CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [155], [156, 5, 7, 157], [], []], "out":[162, 161]},
+[compiler] {"id":159, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[153], [], [], [], []], "out":[160]},
+[compiler] {"id":160, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[154, 159], [], [], [], []], "out":[166, 162, 161]},
+[compiler] {"id":161, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[160], [150, 158], [], [], []], "out":[164]},
+[compiler] {"id":162, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[160], [], [150, 158], [], []], "out":[164]},
+[compiler] {"id":163, "op":"CONSTANT", "MType":"ARCH, bitfield=38, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[164]},
+[compiler] {"id":164, "op":"CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [161], [163, 5, 5, 145, 162, 146, 157], [], []], "out":[174, 170, 169, 165]},
+[compiler] {"id":165, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [164, 68], [], []], "out":[166]},
+[compiler] {"id":166, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[160], [], [165], [], []], "out":[168, 167]},
+[compiler] {"id":167, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[166], [], [], [], []], "out":[171, 169]},
+[compiler] {"id":168, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[166], [], [], [], []], "out":[180, 170]},
+[compiler] {"id":169, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[167], [164], [], [], []], "out":[171]},
+[compiler] {"id":170, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[168], [164], [], [], []], "out":[174]},
+[compiler] {"id":171, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[167], [169], [68], [], [3]], "out":[]},
+[compiler] {"id":172, "op":"CONSTANT", "MType":"I64, bitfield=4, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[174]},
+[compiler] {"id":173, "op":"CONSTANT", "MType":"ARCH, bitfield=3, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[174]},
+[compiler] {"id":174, "op":"NOGC_RUNTIME_CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [170], [173, 5, 5, 172, 164, 36, 36, 38, 46], [], []], "out":[184, 183, 177]},
+[compiler] {"id":175, "op":"CONSTANT", "MType":"ARCH, bitfield=3176, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[176]},
+[compiler] {"id":176, "op":"ADD", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [5, 175], [], []], "out":[177]},
+[compiler] {"id":177, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [174], [176], [], []], "out":[179]},
+[compiler] {"id":178, "op":"CONSTANT", "MType":"I64, bitfield=5, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[179]},
+[compiler] {"id":179, "op":"ICMP", "MType":"I1, bitfield=6, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [177, 178], [], []], "out":[180]},
+[compiler] {"id":180, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[168], [], [179], [], []], "out":[182, 181]},
+[compiler] {"id":181, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[180], [], [], [], []], "out":[185, 183]},
+[compiler] {"id":182, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[180], [], [], [], []], "out":[189, 184]},
+[compiler] {"id":183, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[181], [174], [], [], []], "out":[185]},
+[compiler] {"id":184, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[182], [174], [], [], []], "out":[187]},
+[compiler] {"id":185, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[181], [183], [68], [], [3]], "out":[]},
+[compiler] {"id":186, "op":"CONSTANT", "MType":"ARCH, bitfield=21, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[187]},
+[compiler] {"id":187, "op":"CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [184], [186, 5, 5, 38, 49], [], []], "out":[38, 193, 192, 188]},
+[compiler] {"id":188, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [187, 68], [], []], "out":[189]},
+[compiler] {"id":189, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[182], [], [188], [], []], "out":[191, 190]},
+[compiler] {"id":190, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[189], [], [], [], []], "out":[194, 192]},
+[compiler] {"id":191, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[189], [], [], [], []], "out":[204, 193]},
+[compiler] {"id":192, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[190], [187], [], [], []], "out":[194]},
+[compiler] {"id":193, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[191], [187], [], [], []], "out":[220, 207]},
+[compiler] {"id":194, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[190], [192], [68], [], [3]], "out":[]},
+[compiler] {"id":195, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [38], [], []], "out":[196]},
+[compiler] {"id":196, "op":"AND", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [195, 60], [], []], "out":[197]},
+[compiler] {"id":197, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [196, 112], [], []], "out":[198]},
+[compiler] {"id":198, "op":"REV", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [197], [], []], "out":[222]},
+[compiler] {"id":199, "op":"TRUNC", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [58], [], []], "out":[221]},
+[compiler] {"id":200, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [38], [], []], "out":[202]},
+[compiler] {"id":201, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840966, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[202]},
+[compiler] {"id":202, "op":"AND", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [200, 201], [], []], "out":[203]},
+[compiler] {"id":203, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [202, 112], [], []], "out":[204]},
+[compiler] {"id":204, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[191], [], [203], [], []], "out":[206, 205]},
+[compiler] {"id":205, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[204], [], [], [], []], "out":[218, 207]},
+[compiler] {"id":206, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[204], [], [], [], []], "out":[219]},
+[compiler] {"id":207, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[205], [193], [], [], []], "out":[210]},
+[compiler] {"id":208, "op":"CONSTANT", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[209]},
+[compiler] {"id":209, "op":"ADD", "MType":"ARCH, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [38, 208], [], []], "out":[210]},
+[compiler] {"id":210, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_POINTER-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [207], [209], [], []], "out":[213, 212]},
+[compiler] {"id":211, "op":"CONSTANT", "MType":"ARCH, bitfield=72, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[212]},
+[compiler] {"id":212, "op":"ADD", "MType":"ARCH, bitfield=0, type=TAGGED_POINTER-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [210, 211], [], []], "out":[213]},
+[compiler] {"id":213, "op":"LOAD", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [210], [212], [], []], "out":[220, 215]},
+[compiler] {"id":214, "op":"CONSTANT", "MType":"I32, bitfield=255, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[215]},
+[compiler] {"id":215, "op":"AND", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [213, 214], [], []], "out":[217]},
+[compiler] {"id":216, "op":"CONSTANT", "MType":"I32, bitfield=115, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[217]},
+[compiler] {"id":217, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [215, 216], [], []], "out":[221]},
+[compiler] {"id":218, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[205], [], [], [], []], "out":[219]},
+[compiler] {"id":219, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[206, 218], [], [], [], []], "out":[223, 221, 220]},
+[compiler] {"id":220, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[219], [193, 213], [], [], []], "out":[231, 226]},
+[compiler] {"id":221, "op":"VALUE_SELECTOR", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[219], [], [199, 217], [], []], "out":[222]},
+[compiler] {"id":222, "op":"OR", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [198, 221], [], []], "out":[223]},
+[compiler] {"id":223, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[219], [], [222], [], []], "out":[225, 224]},
+[compiler] {"id":224, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[223], [], [], [], []], "out":[230]},
+[compiler] {"id":225, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[223], [], [], [], []], "out":[229, 226]},
+[compiler] {"id":226, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[225], [220], [], [], []], "out":[228]},
+[compiler] {"id":227, "op":"CONSTANT", "MType":"ARCH, bitfield=201, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[228]},
+[compiler] {"id":228, "op":"RUNTIME_CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [226], [227, 5, 38, 52], [], []], "out":[232, 231]},
+[compiler] {"id":229, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[225], [], [], [], []], "out":[230]},
+[compiler] {"id":230, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[224, 229], [], [], [], []], "out":[234, 232, 231]},
+[compiler] {"id":231, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[230], [220, 228], [], [], []], "out":[238, 237]},
+[compiler] {"id":232, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[230], [], [38, 228], [], []], "out":[233]},
+[compiler] {"id":233, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [232, 68], [], []], "out":[234]},
+[compiler] {"id":234, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[230], [], [233], [], []], "out":[236, 235]},
+[compiler] {"id":235, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[234], [], [], [], []], "out":[239, 237]},
+[compiler] {"id":236, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[234], [], [], [], []], "out":[245, 238]},
+[compiler] {"id":237, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[235], [231], [], [], []], "out":[239]},
+[compiler] {"id":238, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[236], [231], [], [], []], "out":[242]},
+[compiler] {"id":239, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[235], [237], [68], [], [3]], "out":[]},
+[compiler] {"id":240, "op":"CONSTANT", "MType":"ARCH, bitfield=11112, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[254, 241]},
+[compiler] {"id":241, "op":"ADD", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [5, 240], [], []], "out":[242]},
+[compiler] {"id":242, "op":"LOAD", "MType":"I8, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [238], [241], [], []], "out":[253, 248, 244]},
+[compiler] {"id":243, "op":"CONSTANT", "MType":"I8, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[256, 244]},
+[compiler] {"id":244, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [242, 243], [], []], "out":[245]},
+[compiler] {"id":245, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[236], [], [244], [], []], "out":[247, 246]},
+[compiler] {"id":246, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[245], [], [], [], []], "out":[251, 248]},
+[compiler] {"id":247, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[245], [], [], [], []], "out":[252]},
+[compiler] {"id":248, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[246], [242], [], [], []], "out":[250]},
+[compiler] {"id":249, "op":"CONSTANT", "MType":"ARCH, bitfield=133, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], []], "out":[261, 250]},
+[compiler] {"id":250, "op":"RUNTIME_CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [248], [249, 5, 112], [], []], "out":[253]},
+[compiler] {"id":251, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[246], [], [], [], []], "out":[252]},
+[compiler] {"id":252, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[247, 251], [], [], [], []], "out":[13, 253]},
+[compiler] {"id":253, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[252], [242, 250], [], [], []], "out":[15]},
+[compiler] {"id":254, "op":"ADD", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [5, 240], [], []], "out":[255]},
+[compiler] {"id":255, "op":"LOAD", "MType":"I8, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [24], [254], [], []], "out":[264, 260, 256]},
+[compiler] {"id":256, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [255, 243], [], []], "out":[257]},
+[compiler] {"id":257, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[19], [], [256], [], []], "out":[259, 258]},
+[compiler] {"id":258, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[257], [], [], [], []], "out":[262, 260]},
+[compiler] {"id":259, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[257], [], [], [], []], "out":[263]},
+[compiler] {"id":260, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[258], [255], [], [], []], "out":[261]},
+[compiler] {"id":261, "op":"RUNTIME_CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [260], [249, 5, 112], [], []], "out":[264]},
+[compiler] {"id":262, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[258], [], [], [], []], "out":[263]},
+[compiler] {"id":263, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[259, 262], [], [], [], []], "out":[37, 264]},
+[compiler] {"id":264, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[263], [255, 261], [], [], []], "out":[37]},
+[compiler] =========================== End ===========================
+[compiler] [Verifier][Pass] Verifier success
+[compiler] [Verifier][Pass] Verifier success
+[compiler] ==================================== Scheduling ==================================
+[compiler] B0_STATE_ENTRY:  immDom=0
+[compiler]   pred=[
+[compiler] ]  succ=[
+[compiler] 1
+[compiler] ]
+[compiler] {"id":5, "op":"ARG", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[], [], [], [], [4]], "out":[261, 254, 250, 241, 228, 187, 187, 176, 174, 174, 164, 164, 158, 77, 77, 67, 67]},
+[compiler] {"id":6, "op":"ARG", "MType":"I64, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":7, "op":"ARG", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [4]], "out":[158, 147, 135, 10]},
+[compiler] {"id":8, "op":"ARG", "MType":"I64, bitfield=3, type=TAGGED_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":9, "op":"ARG", "MType":"I64, bitfield=4, type=TAGGED_VALUE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[], [], [], [], [4]], "out":[10]},
+[compiler] {"id":58, "op":"CONSTANT", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[199, 140, 105, 59]},
+[compiler] {"id":60, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840960, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[196, 117, 116, 111, 97, 96, 64, 61]},
+[compiler] {"id":59, "op":"SEXT", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [58], [], []], "out":[61]},
+[compiler] {"id":61, "op":"OR", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [59, 60], [], []], "out":[62]},
+[compiler] {"id":62, "op":"INT64_TO_TAGGED", "MType":"I64, bitfield=0, type=-GT(M=0, L=8), stamp=14, mark=3, ","in":[[], [], [61], [], []], "out":[38]},
+[compiler] {"id":1, "op":"STATE_ENTRY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[], [], [], [], [0]], "out":[14]},
+[compiler] B1_LOOP_BEGIN:  immDom=0
+[compiler]   pred=[
+[compiler] 0
+[compiler]  54
+[compiler] ]  succ=[
+[compiler] 2
+[compiler] ]
+[compiler] {"id":15, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[14], [2, 253], [], [], []], "out":[67]},
+[compiler] {"id":38, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=6, mark=3, ","in":[[14], [], [62, 187], [], []], "out":[232, 228, 209, 200, 195, 187, 174, 67]},
+[compiler] {"id":14, "op":"LOOP_BEGIN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[1, 13], [], [], [], []], "out":[70, 38, 15]},
+[compiler] B2_IF_BRANCH:  immDom=1
+[compiler]   pred=[
+[compiler] 1
+[compiler] ]  succ=[
+[compiler] 5
+[compiler]  3
+[compiler] ]
+[compiler] {"id":68, "op":"CONSTANT", "MType":"I64, bitfield=10, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[239, 233, 194, 188, 185, 171, 165, 75, 69]},
+[compiler] {"id":40, "op":"CONSTANT", "MType":"I64, bitfield=16, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[67]},
+[compiler] {"id":57, "op":"CONSTANT", "MType":"I32, bitfield=10, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[63]},
+[compiler] {"id":63, "op":"SEXT", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [57], [], []], "out":[64]},
+[compiler] {"id":64, "op":"OR", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [63, 60], [], []], "out":[65]},
+[compiler] {"id":65, "op":"INT64_TO_TAGGED", "MType":"I64, bitfield=0, type=-GT(M=0, L=8), stamp=14, mark=3, ","in":[[], [], [64], [], []], "out":[67]},
+[compiler] {"id":66, "op":"CONSTANT", "MType":"ARCH, bitfield=9, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[67]},
+[compiler] {"id":67, "op":"CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [15], [66, 5, 5, 38, 65, 40], [], []], "out":[77, 74, 73, 69]},
+[compiler] {"id":69, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [67, 68], [], []], "out":[70]},
+[compiler] {"id":70, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[14], [], [69], [], []], "out":[72, 71]},
+[compiler] B3_IF_TRUE:  immDom=2
+[compiler]   pred=[
+[compiler] 2
+[compiler] ]  succ=[
+[compiler] 4
+[compiler] ]
+[compiler] {"id":73, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[71], [67], [], [], []], "out":[75]},
+[compiler] {"id":71, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[70], [], [], [], []], "out":[75, 73]},
+[compiler] B4_RETURN:  immDom=3
+[compiler]   pred=[
+[compiler] 3
+[compiler] ]  succ=[
+[compiler] ]
+[compiler] {"id":75, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[71], [73], [68], [], [3]], "out":[]},
+[compiler] B5_IF_FALSE:  immDom=2
+[compiler]   pred=[
+[compiler] 2
+[compiler] ]  succ=[
+[compiler] 6
+[compiler] ]
+[compiler] {"id":74, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[72], [67], [], [], []], "out":[77]},
+[compiler] {"id":72, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[70], [], [], [], []], "out":[80, 74]},
+[compiler] B6_IF_BRANCH:  immDom=5
+[compiler]   pred=[
+[compiler] 5
+[compiler] ]  succ=[
+[compiler] 73
+[compiler]  7
+[compiler] ]
+[compiler] {"id":84, "op":"CONSTANT", "MType":"I64, bitfield=6, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[91, 90]},
+[compiler] {"id":78, "op":"CONSTANT", "MType":"I64, bitfield=7, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[90, 79]},
+[compiler] {"id":43, "op":"CONSTANT", "MType":"I64, bitfield=19, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[77]},
+[compiler] {"id":76, "op":"CONSTANT", "MType":"ARCH, bitfield=25, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[77]},
+[compiler] {"id":77, "op":"CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [74], [76, 5, 5, 67, 43], [], []], "out":[86, 83, 79]},
+[compiler] {"id":79, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [77, 78], [], []], "out":[80]},
+[compiler] {"id":80, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[72], [], [79], [], []], "out":[82, 81]},
+[compiler] B7_IF_TRUE:  immDom=6
+[compiler]   pred=[
+[compiler] 6
+[compiler] ]  succ=[
+[compiler] 8
+[compiler] ]
+[compiler] {"id":83, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[81], [77], [], [], []], "out":[89]},
+[compiler] {"id":81, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[80], [], [], [], []], "out":[85, 83]},
+[compiler] B8_ORDINARY_BLOCK:  immDom=7
+[compiler]   pred=[
+[compiler] 7
+[compiler] ]  succ=[
+[compiler] 9
+[compiler] ]
+[compiler] {"id":85, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[81], [], [], [], []], "out":[88]},
+[compiler] B9_MERGE:  immDom=6
+[compiler]   pred=[
+[compiler] 8
+[compiler]  74
+[compiler] ]  succ=[
+[compiler] 10
+[compiler] ]
+[compiler] {"id":89, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[88], [83, 86], [], [], []], "out":[20, 22]},
+[compiler] {"id":90, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[88], [], [84, 78], [], []], "out":[123, 115, 110, 101, 95, 91]},
+[compiler] {"id":88, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[85, 87], [], [], [], []], "out":[92, 90, 89]},
+[compiler] B10_IF_BRANCH:  immDom=9
+[compiler]   pred=[
+[compiler] 9
+[compiler] ]  succ=[
+[compiler] 72
+[compiler]  11
+[compiler] ]
+[compiler] {"id":240, "op":"CONSTANT", "MType":"ARCH, bitfield=11112, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[254, 241]},
+[compiler] {"id":36, "op":"CONSTANT", "MType":"I64, bitfield=2, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[174, 174, 151, 37]},
+[compiler] {"id":112, "op":"CONSTANT", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[261, 250, 203, 197, 113]},
+[compiler] {"id":243, "op":"CONSTANT", "MType":"I8, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[256, 244]},
+[compiler] {"id":249, "op":"CONSTANT", "MType":"ARCH, bitfield=133, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[261, 250]},
+[compiler] {"id":91, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [90, 84], [], []], "out":[92]},
+[compiler] {"id":92, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[88], [], [91], [], []], "out":[94, 93]},
+[compiler] B11_IF_TRUE:  immDom=10
+[compiler]   pred=[
+[compiler] 10
+[compiler] ]  succ=[
+[compiler] 12
+[compiler] ]
+[compiler] {"id":93, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[92], [], [], [], []], "out":[98]},
+[compiler] B12_IF_BRANCH:  immDom=11
+[compiler]   pred=[
+[compiler] 11
+[compiler] ]  succ=[
+[compiler] 71
+[compiler]  13
+[compiler] ]
+[compiler] {"id":95, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [90], [], []], "out":[96]},
+[compiler] {"id":96, "op":"AND", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [95, 60], [], []], "out":[97]},
+[compiler] {"id":97, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [96, 60], [], []], "out":[98]},
+[compiler] {"id":98, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[93], [], [97], [], []], "out":[100, 99]},
+[compiler] B13_IF_TRUE:  immDom=12
+[compiler]   pred=[
+[compiler] 12
+[compiler] ]  succ=[
+[compiler] 14
+[compiler] ]
+[compiler] {"id":99, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[98], [], [], [], []], "out":[106]},
+[compiler] B14_IF_BRANCH:  immDom=13
+[compiler]   pred=[
+[compiler] 13
+[compiler] ]  succ=[
+[compiler] 70
+[compiler]  15
+[compiler] ]
+[compiler] {"id":102, "op":"CONSTANT", "MType":"I64, bitfield=281474976710655, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[103]},
+[compiler] {"id":101, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [90], [], []], "out":[103]},
+[compiler] {"id":103, "op":"AND", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [101, 102], [], []], "out":[104]},
+[compiler] {"id":104, "op":"TRUNC", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [103], [], []], "out":[105]},
+[compiler] {"id":105, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [104, 58], [], []], "out":[106]},
+[compiler] {"id":106, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[99], [], [105], [], []], "out":[108, 107]},
+[compiler] B15_IF_TRUE:  immDom=14
+[compiler]   pred=[
+[compiler] 14
+[compiler] ]  succ=[
+[compiler] 16
+[compiler] ]
+[compiler] {"id":107, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[106], [], [], [], []], "out":[109]},
+[compiler] B16_MERGE:  immDom=12
+[compiler]   pred=[
+[compiler] 71
+[compiler]  15
+[compiler] ]  succ=[
+[compiler] 17
+[compiler] ]
+[compiler] {"id":109, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[100, 107], [], [], [], []], "out":[120]},
+[compiler] B17_IF_BRANCH:  immDom=16
+[compiler]   pred=[
+[compiler] 16
+[compiler] ]  succ=[
+[compiler] 69
+[compiler]  18
+[compiler] ]
+[compiler] {"id":115, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [90], [], []], "out":[116]},
+[compiler] {"id":116, "op":"AND", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [115, 60], [], []], "out":[117]},
+[compiler] {"id":117, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [116, 60], [], []], "out":[118]},
+[compiler] {"id":118, "op":"REV", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [117], [], []], "out":[119]},
+[compiler] {"id":110, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [90], [], []], "out":[111]},
+[compiler] {"id":111, "op":"AND", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [110, 60], [], []], "out":[113]},
+[compiler] {"id":113, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [111, 112], [], []], "out":[114]},
+[compiler] {"id":114, "op":"REV", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [113], [], []], "out":[119]},
+[compiler] {"id":119, "op":"AND", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [114, 118], [], []], "out":[120]},
+[compiler] {"id":120, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[109], [], [119], [], []], "out":[122, 121]},
+[compiler] B18_IF_TRUE:  immDom=17
+[compiler]   pred=[
+[compiler] 17
+[compiler] ]  succ=[
+[compiler] 19
+[compiler] ]
+[compiler] {"id":121, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[120], [], [], [], []], "out":[129]},
+[compiler] B19_IF_BRANCH:  immDom=18
+[compiler]   pred=[
+[compiler] 18
+[compiler] ]  succ=[
+[compiler] 60
+[compiler]  20
+[compiler] ]
+[compiler] {"id":127, "op":"CONSTANT", "MType":"F64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[128]},
+[compiler] {"id":124, "op":"CONSTANT", "MType":"I64, bitfield=281474976710656, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[125]},
+[compiler] {"id":123, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [90], [], []], "out":[125]},
+[compiler] {"id":125, "op":"SUB", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [123, 124], [], []], "out":[126]},
+[compiler] {"id":126, "op":"BITCAST", "MType":"F64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [125], [], []], "out":[128]},
+[compiler] {"id":128, "op":"FCMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [126, 127], [], []], "out":[129]},
+[compiler] {"id":129, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[121], [], [128], [], []], "out":[131, 130]},
+[compiler] B20_IF_TRUE:  immDom=19
+[compiler]   pred=[
+[compiler] 19
+[compiler] ]  succ=[
+[compiler] 21
+[compiler] ]
+[compiler] {"id":130, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[129], [], [], [], []], "out":[132]},
+[compiler] B21_MERGE:  immDom=17
+[compiler]   pred=[
+[compiler] 69
+[compiler]  20
+[compiler] ]  succ=[
+[compiler] 22
+[compiler] ]
+[compiler] {"id":132, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[122, 130], [], [], [], []], "out":[21]},
+[compiler] B22_ORDINARY_BLOCK:  immDom=21
+[compiler]   pred=[
+[compiler] 21
+[compiler] ]  succ=[
+[compiler] 23
+[compiler] ]
+[compiler] {"id":22, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[21], [89], [], [], []], "out":[148]},
+[compiler] {"id":21, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[132], [], [], [], []], "out":[152, 22]},
+[compiler] B23_IF_BRANCH:  immDom=22
+[compiler]   pred=[
+[compiler] 22
+[compiler] ]  succ=[
+[compiler] 59
+[compiler]  24
+[compiler] ]
+[compiler] {"id":157, "op":"CONSTANT", "MType":"I64, bitfield=22, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[164, 158]},
+[compiler] {"id":142, "op":"CONSTANT", "MType":"ARCH, bitfield=16, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[149, 143]},
+[compiler] {"id":134, "op":"CONSTANT", "MType":"ARCH, bitfield=32, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[147, 135]},
+[compiler] {"id":147, "op":"ADD", "MType":"ARCH, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [7, 134], [], []], "out":[148]},
+[compiler] {"id":148, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_POINTER-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [22], [147], [], []], "out":[150, 149]},
+[compiler] {"id":149, "op":"ADD", "MType":"ARCH, bitfield=0, type=TAGGED_POINTER-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [148, 142], [], []], "out":[150]},
+[compiler] {"id":150, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [148], [149], [], []], "out":[162, 161, 155, 151]},
+[compiler] {"id":151, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [150, 36], [], []], "out":[152]},
+[compiler] {"id":152, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[21], [], [151], [], []], "out":[154, 153]},
+[compiler] B24_IF_TRUE:  immDom=23
+[compiler]   pred=[
+[compiler] 23
+[compiler] ]  succ=[
+[compiler] 25
+[compiler] ]
+[compiler] {"id":155, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[153], [150], [], [], []], "out":[158]},
+[compiler] {"id":153, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[152], [], [], [], []], "out":[159, 155]},
+[compiler] B25_ORDINARY_BLOCK:  immDom=24
+[compiler]   pred=[
+[compiler] 24
+[compiler] ]  succ=[
+[compiler] 26
+[compiler] ]
+[compiler] {"id":156, "op":"CONSTANT", "MType":"ARCH, bitfield=132, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[158]},
+[compiler] {"id":158, "op":"RUNTIME_CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [155], [156, 5, 7, 157], [], []], "out":[162, 161]},
+[compiler] {"id":159, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[153], [], [], [], []], "out":[160]},
+[compiler] B26_MERGE:  immDom=23
+[compiler]   pred=[
+[compiler] 59
+[compiler]  25
+[compiler] ]  succ=[
+[compiler] 27
+[compiler] ]
+[compiler] {"id":161, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[160], [150, 158], [], [], []], "out":[164]},
+[compiler] {"id":162, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[160], [], [150, 158], [], []], "out":[164]},
+[compiler] {"id":160, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[154, 159], [], [], [], []], "out":[166, 162, 161]},
+[compiler] B27_IF_BRANCH:  immDom=26
+[compiler]   pred=[
+[compiler] 26
+[compiler] ]  succ=[
+[compiler] 30
+[compiler]  28
+[compiler] ]
+[compiler] {"id":25, "op":"CONSTANT", "MType":"I16, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[146]},
+[compiler] {"id":146, "op":"ZEXT", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [25], [], []], "out":[164]},
+[compiler] {"id":137, "op":"CONSTANT", "MType":"ARCH, bitfield=8, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[141, 138]},
+[compiler] {"id":140, "op":"ZEXT", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [58], [], []], "out":[141]},
+[compiler] {"id":141, "op":"MUL", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [140, 137], [], []], "out":[143]},
+[compiler] {"id":143, "op":"ADD", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [141, 142], [], []], "out":[144]},
+[compiler] {"id":135, "op":"ADD", "MType":"ARCH, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [7, 134], [], []], "out":[136]},
+[compiler] {"id":136, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_POINTER-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [2], [135], [], []], "out":[139, 138]},
+[compiler] {"id":138, "op":"ADD", "MType":"ARCH, bitfield=0, type=TAGGED_POINTER-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [136, 137], [], []], "out":[139]},
+[compiler] {"id":139, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [136], [138], [], []], "out":[145, 144]},
+[compiler] {"id":144, "op":"ADD", "MType":"ARCH, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [139, 143], [], []], "out":[145]},
+[compiler] {"id":145, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [139], [144], [], []], "out":[164]},
+[compiler] {"id":163, "op":"CONSTANT", "MType":"ARCH, bitfield=38, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[164]},
+[compiler] {"id":164, "op":"CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [161], [163, 5, 5, 145, 162, 146, 157], [], []], "out":[174, 170, 169, 165]},
+[compiler] {"id":165, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [164, 68], [], []], "out":[166]},
+[compiler] {"id":166, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[160], [], [165], [], []], "out":[168, 167]},
+[compiler] B28_IF_TRUE:  immDom=27
+[compiler]   pred=[
+[compiler] 27
+[compiler] ]  succ=[
+[compiler] 29
+[compiler] ]
+[compiler] {"id":169, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[167], [164], [], [], []], "out":[171]},
+[compiler] {"id":167, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[166], [], [], [], []], "out":[171, 169]},
+[compiler] B29_RETURN:  immDom=28
+[compiler]   pred=[
+[compiler] 28
+[compiler] ]  succ=[
+[compiler] ]
+[compiler] {"id":171, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[167], [169], [68], [], [3]], "out":[]},
+[compiler] B30_IF_FALSE:  immDom=27
+[compiler]   pred=[
+[compiler] 27
+[compiler] ]  succ=[
+[compiler] 31
+[compiler] ]
+[compiler] {"id":170, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[168], [164], [], [], []], "out":[174]},
+[compiler] {"id":168, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[166], [], [], [], []], "out":[180, 170]},
+[compiler] B31_IF_BRANCH:  immDom=30
+[compiler]   pred=[
+[compiler] 30
+[compiler] ]  succ=[
+[compiler] 34
+[compiler]  32
+[compiler] ]
+[compiler] {"id":178, "op":"CONSTANT", "MType":"I64, bitfield=5, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[179]},
+[compiler] {"id":175, "op":"CONSTANT", "MType":"ARCH, bitfield=3176, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[176]},
+[compiler] {"id":176, "op":"ADD", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [5, 175], [], []], "out":[177]},
+[compiler] {"id":46, "op":"CONSTANT", "MType":"I64, bitfield=26, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[174]},
+[compiler] {"id":172, "op":"CONSTANT", "MType":"I64, bitfield=4, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[174]},
+[compiler] {"id":173, "op":"CONSTANT", "MType":"ARCH, bitfield=3, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[174]},
+[compiler] {"id":174, "op":"NOGC_RUNTIME_CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [170], [173, 5, 5, 172, 164, 36, 36, 38, 46], [], []], "out":[184, 183, 177]},
+[compiler] {"id":177, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [174], [176], [], []], "out":[179]},
+[compiler] {"id":179, "op":"ICMP", "MType":"I1, bitfield=6, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [177, 178], [], []], "out":[180]},
+[compiler] {"id":180, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[168], [], [179], [], []], "out":[182, 181]},
+[compiler] B32_IF_TRUE:  immDom=31
+[compiler]   pred=[
+[compiler] 31
+[compiler] ]  succ=[
+[compiler] 33
+[compiler] ]
+[compiler] {"id":183, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[181], [174], [], [], []], "out":[185]},
+[compiler] {"id":181, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[180], [], [], [], []], "out":[185, 183]},
+[compiler] B33_RETURN:  immDom=32
+[compiler]   pred=[
+[compiler] 32
+[compiler] ]  succ=[
+[compiler] ]
+[compiler] {"id":185, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[181], [183], [68], [], [3]], "out":[]},
+[compiler] B34_IF_FALSE:  immDom=31
+[compiler]   pred=[
+[compiler] 31
+[compiler] ]  succ=[
+[compiler] 35
+[compiler] ]
+[compiler] {"id":184, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[182], [174], [], [], []], "out":[187]},
+[compiler] {"id":182, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[180], [], [], [], []], "out":[189, 184]},
+[compiler] B35_IF_BRANCH:  immDom=34
+[compiler]   pred=[
+[compiler] 34
+[compiler] ]  succ=[
+[compiler] 38
+[compiler]  36
+[compiler] ]
+[compiler] {"id":49, "op":"CONSTANT", "MType":"I64, bitfield=31, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[187]},
+[compiler] {"id":186, "op":"CONSTANT", "MType":"ARCH, bitfield=21, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[187]},
+[compiler] {"id":187, "op":"CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [184], [186, 5, 5, 38, 49], [], []], "out":[38, 193, 192, 188]},
+[compiler] {"id":188, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [187, 68], [], []], "out":[189]},
+[compiler] {"id":189, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[182], [], [188], [], []], "out":[191, 190]},
+[compiler] B36_IF_TRUE:  immDom=35
+[compiler]   pred=[
+[compiler] 35
+[compiler] ]  succ=[
+[compiler] 37
+[compiler] ]
+[compiler] {"id":192, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[190], [187], [], [], []], "out":[194]},
+[compiler] {"id":190, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[189], [], [], [], []], "out":[194, 192]},
+[compiler] B37_RETURN:  immDom=36
+[compiler]   pred=[
+[compiler] 36
+[compiler] ]  succ=[
+[compiler] ]
+[compiler] {"id":194, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[190], [192], [68], [], [3]], "out":[]},
+[compiler] B38_IF_FALSE:  immDom=35
+[compiler]   pred=[
+[compiler] 35
+[compiler] ]  succ=[
+[compiler] 39
+[compiler] ]
+[compiler] {"id":193, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[191], [187], [], [], []], "out":[220, 207]},
+[compiler] {"id":191, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[189], [], [], [], []], "out":[204, 193]},
+[compiler] B39_IF_BRANCH:  immDom=38
+[compiler]   pred=[
+[compiler] 38
+[compiler] ]  succ=[
+[compiler] 58
+[compiler]  40
+[compiler] ]
+[compiler] {"id":201, "op":"CONSTANT", "MType":"I64, bitfield=18446462598732840966, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[202]},
+[compiler] {"id":200, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [38], [], []], "out":[202]},
+[compiler] {"id":202, "op":"AND", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [200, 201], [], []], "out":[203]},
+[compiler] {"id":203, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [202, 112], [], []], "out":[204]},
+[compiler] {"id":204, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[191], [], [203], [], []], "out":[206, 205]},
+[compiler] B40_IF_TRUE:  immDom=39
+[compiler]   pred=[
+[compiler] 39
+[compiler] ]  succ=[
+[compiler] 41
+[compiler] ]
+[compiler] {"id":207, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[205], [193], [], [], []], "out":[210]},
+[compiler] {"id":205, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[204], [], [], [], []], "out":[218, 207]},
+[compiler] B41_ORDINARY_BLOCK:  immDom=40
+[compiler]   pred=[
+[compiler] 40
+[compiler] ]  succ=[
+[compiler] 42
+[compiler] ]
+[compiler] {"id":211, "op":"CONSTANT", "MType":"ARCH, bitfield=72, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[212]},
+[compiler] {"id":208, "op":"CONSTANT", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[209]},
+[compiler] {"id":209, "op":"ADD", "MType":"ARCH, bitfield=0, type=ANY_TYPE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [38, 208], [], []], "out":[210]},
+[compiler] {"id":210, "op":"LOAD", "MType":"I64, bitfield=0, type=TAGGED_POINTER-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [207], [209], [], []], "out":[213, 212]},
+[compiler] {"id":212, "op":"ADD", "MType":"ARCH, bitfield=0, type=TAGGED_POINTER-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [210, 211], [], []], "out":[213]},
+[compiler] {"id":213, "op":"LOAD", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [210], [212], [], []], "out":[220, 215]},
+[compiler] {"id":216, "op":"CONSTANT", "MType":"I32, bitfield=115, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[217]},
+[compiler] {"id":214, "op":"CONSTANT", "MType":"I32, bitfield=255, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[215]},
+[compiler] {"id":215, "op":"AND", "MType":"I32, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [213, 214], [], []], "out":[217]},
+[compiler] {"id":217, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [215, 216], [], []], "out":[221]},
+[compiler] {"id":218, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[205], [], [], [], []], "out":[219]},
+[compiler] B42_MERGE:  immDom=39
+[compiler]   pred=[
+[compiler] 58
+[compiler]  41
+[compiler] ]  succ=[
+[compiler] 43
+[compiler] ]
+[compiler] {"id":220, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[219], [193, 213], [], [], []], "out":[231, 226]},
+[compiler] {"id":221, "op":"VALUE_SELECTOR", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[219], [], [199, 217], [], []], "out":[222]},
+[compiler] {"id":219, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[206, 218], [], [], [], []], "out":[223, 221, 220]},
+[compiler] B43_IF_BRANCH:  immDom=42
+[compiler]   pred=[
+[compiler] 42
+[compiler] ]  succ=[
+[compiler] 56
+[compiler]  44
+[compiler] ]
+[compiler] {"id":195, "op":"TAGGED_TO_INT64", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [38], [], []], "out":[196]},
+[compiler] {"id":196, "op":"AND", "MType":"I64, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [195, 60], [], []], "out":[197]},
+[compiler] {"id":197, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [196, 112], [], []], "out":[198]},
+[compiler] {"id":198, "op":"REV", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [197], [], []], "out":[222]},
+[compiler] {"id":222, "op":"OR", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [198, 221], [], []], "out":[223]},
+[compiler] {"id":223, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[219], [], [222], [], []], "out":[225, 224]},
+[compiler] B44_IF_TRUE:  immDom=43
+[compiler]   pred=[
+[compiler] 43
+[compiler] ]  succ=[
+[compiler] 45
+[compiler] ]
+[compiler] {"id":224, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[223], [], [], [], []], "out":[230]},
+[compiler] B45_MERGE:  immDom=43
+[compiler]   pred=[
+[compiler] 44
+[compiler]  57
+[compiler] ]  succ=[
+[compiler] 46
+[compiler] ]
+[compiler] {"id":231, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[230], [220, 228], [], [], []], "out":[238, 237]},
+[compiler] {"id":232, "op":"VALUE_SELECTOR", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=0, mark=0, ","in":[[230], [], [38, 228], [], []], "out":[233]},
+[compiler] {"id":230, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[224, 229], [], [], [], []], "out":[234, 232, 231]},
+[compiler] B46_IF_BRANCH:  immDom=45
+[compiler]   pred=[
+[compiler] 45
+[compiler] ]  succ=[
+[compiler] 49
+[compiler]  47
+[compiler] ]
+[compiler] {"id":233, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [232, 68], [], []], "out":[234]},
+[compiler] {"id":234, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[230], [], [233], [], []], "out":[236, 235]},
+[compiler] B47_IF_TRUE:  immDom=46
+[compiler]   pred=[
+[compiler] 46
+[compiler] ]  succ=[
+[compiler] 48
+[compiler] ]
+[compiler] {"id":237, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[235], [231], [], [], []], "out":[239]},
+[compiler] {"id":235, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[234], [], [], [], []], "out":[239, 237]},
+[compiler] B48_RETURN:  immDom=47
+[compiler]   pred=[
+[compiler] 47
+[compiler] ]  succ=[
+[compiler] ]
+[compiler] {"id":239, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[235], [237], [68], [], [3]], "out":[]},
+[compiler] B49_IF_FALSE:  immDom=46
+[compiler]   pred=[
+[compiler] 46
+[compiler] ]  succ=[
+[compiler] 50
+[compiler] ]
+[compiler] {"id":238, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[236], [231], [], [], []], "out":[242]},
+[compiler] {"id":236, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[234], [], [], [], []], "out":[245, 238]},
+[compiler] B50_IF_BRANCH:  immDom=49
+[compiler]   pred=[
+[compiler] 49
+[compiler] ]  succ=[
+[compiler] 55
+[compiler]  51
+[compiler] ]
+[compiler] {"id":241, "op":"ADD", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [5, 240], [], []], "out":[242]},
+[compiler] {"id":242, "op":"LOAD", "MType":"I8, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [238], [241], [], []], "out":[253, 248, 244]},
+[compiler] {"id":244, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [242, 243], [], []], "out":[245]},
+[compiler] {"id":245, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[236], [], [244], [], []], "out":[247, 246]},
+[compiler] B51_IF_TRUE:  immDom=50
+[compiler]   pred=[
+[compiler] 50
+[compiler] ]  succ=[
+[compiler] 52
+[compiler] ]
+[compiler] {"id":248, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[246], [242], [], [], []], "out":[250]},
+[compiler] {"id":246, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[245], [], [], [], []], "out":[251, 248]},
+[compiler] B52_ORDINARY_BLOCK:  immDom=51
+[compiler]   pred=[
+[compiler] 51
+[compiler] ]  succ=[
+[compiler] 53
+[compiler] ]
+[compiler] {"id":250, "op":"RUNTIME_CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [248], [249, 5, 112], [], []], "out":[253]},
+[compiler] {"id":251, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[246], [], [], [], []], "out":[252]},
+[compiler] B53_MERGE:  immDom=50
+[compiler]   pred=[
+[compiler] 55
+[compiler]  52
+[compiler] ]  succ=[
+[compiler] 54
+[compiler] ]
+[compiler] {"id":253, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[252], [242, 250], [], [], []], "out":[15]},
+[compiler] {"id":252, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[247, 251], [], [], [], []], "out":[13, 253]},
+[compiler] B54_LOOP_BACK:  immDom=53
+[compiler]   pred=[
+[compiler] 53
+[compiler] ]  succ=[
+[compiler] 1
+[compiler] ]
+[compiler] {"id":13, "op":"LOOP_BACK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[252], [], [], [], []], "out":[14]},
+[compiler] B55_IF_FALSE:  immDom=50
+[compiler]   pred=[
+[compiler] 50
+[compiler] ]  succ=[
+[compiler] 53
+[compiler] ]
+[compiler] {"id":247, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[245], [], [], [], []], "out":[252]},
+[compiler] B56_IF_FALSE:  immDom=43
+[compiler]   pred=[
+[compiler] 43
+[compiler] ]  succ=[
+[compiler] 57
+[compiler] ]
+[compiler] {"id":226, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[225], [220], [], [], []], "out":[228]},
+[compiler] {"id":225, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[223], [], [], [], []], "out":[229, 226]},
+[compiler] B57_ORDINARY_BLOCK:  immDom=56
+[compiler]   pred=[
+[compiler] 56
+[compiler] ]  succ=[
+[compiler] 45
+[compiler] ]
+[compiler] {"id":52, "op":"CONSTANT", "MType":"I64, bitfield=37, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[228]},
+[compiler] {"id":227, "op":"CONSTANT", "MType":"ARCH, bitfield=201, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [], [], []], "out":[228]},
+[compiler] {"id":228, "op":"RUNTIME_CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [226], [227, 5, 38, 52], [], []], "out":[232, 231]},
+[compiler] {"id":229, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[225], [], [], [], []], "out":[230]},
+[compiler] B58_IF_FALSE:  immDom=39
+[compiler]   pred=[
+[compiler] 39
+[compiler] ]  succ=[
+[compiler] 42
+[compiler] ]
+[compiler] {"id":199, "op":"TRUNC", "MType":"I1, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [58], [], []], "out":[221]},
+[compiler] {"id":206, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[204], [], [], [], []], "out":[219]},
+[compiler] B59_IF_FALSE:  immDom=23
+[compiler]   pred=[
+[compiler] 23
+[compiler] ]  succ=[
+[compiler] 26
+[compiler] ]
+[compiler] {"id":154, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[152], [], [], [], []], "out":[160]},
+[compiler] B60_IF_FALSE:  immDom=19
+[compiler]   pred=[
+[compiler] 19
+[compiler] ]  succ=[
+[compiler] 61
+[compiler] ]
+[compiler] {"id":131, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[129], [], [], [], []], "out":[133]},
+[compiler] B61_MERGE:  immDom=10
+[compiler]   pred=[
+[compiler] 72
+[compiler]  70
+[compiler]  60
+[compiler] ]  succ=[
+[compiler] 62
+[compiler] ]
+[compiler] {"id":133, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[94, 108, 131], [], [], [], []], "out":[19]},
+[compiler] B62_ORDINARY_BLOCK:  immDom=61
+[compiler]   pred=[
+[compiler] 61
+[compiler] ]  succ=[
+[compiler] 63
+[compiler] ]
+[compiler] {"id":20, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[19], [89], [], [], []], "out":[24]},
+[compiler] {"id":24, "op":"LOOP_EXIT_DEPEND", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=6, mark=3, ","in":[[19], [20], [], [], []], "out":[255]},
+[compiler] {"id":19, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[133], [], [], [], []], "out":[257, 24, 20]},
+[compiler] B63_IF_BRANCH:  immDom=62
+[compiler]   pred=[
+[compiler] 62
+[compiler] ]  succ=[
+[compiler] 68
+[compiler]  64
+[compiler] ]
+[compiler] {"id":254, "op":"ADD", "MType":"ARCH, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [5, 240], [], []], "out":[255]},
+[compiler] {"id":255, "op":"LOAD", "MType":"I8, bitfield=0, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [24], [254], [], []], "out":[264, 260, 256]},
+[compiler] {"id":256, "op":"ICMP", "MType":"I1, bitfield=1, type=NJS_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [], [255, 243], [], []], "out":[257]},
+[compiler] {"id":257, "op":"IF_BRANCH", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[19], [], [256], [], []], "out":[259, 258]},
+[compiler] B64_IF_TRUE:  immDom=63
+[compiler]   pred=[
+[compiler] 63
+[compiler] ]  succ=[
+[compiler] 65
+[compiler] ]
+[compiler] {"id":260, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[258], [255], [], [], []], "out":[261]},
+[compiler] {"id":258, "op":"IF_TRUE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[257], [], [], [], []], "out":[262, 260]},
+[compiler] B65_ORDINARY_BLOCK:  immDom=64
+[compiler]   pred=[
+[compiler] 64
+[compiler] ]  succ=[
+[compiler] 66
+[compiler] ]
+[compiler] {"id":261, "op":"RUNTIME_CALL", "MType":"I64, bitfield=0, type=TAGGED_VALUE-GT(M=0, L=0), stamp=14, mark=3, ","in":[[], [260], [249, 5, 112], [], []], "out":[264]},
+[compiler] {"id":262, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[258], [], [], [], []], "out":[263]},
+[compiler] B66_MERGE:  immDom=63
+[compiler]   pred=[
+[compiler] 68
+[compiler]  65
+[compiler] ]  succ=[
+[compiler] 67
+[compiler] ]
+[compiler] {"id":264, "op":"DEPEND_SELECTOR", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[263], [255, 261], [], [], []], "out":[37]},
+[compiler] {"id":263, "op":"MERGE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[259, 262], [], [], [], []], "out":[37, 264]},
+[compiler] B67_RETURN:  immDom=66
+[compiler]   pred=[
+[compiler] 66
+[compiler] ]  succ=[
+[compiler] ]
+[compiler] {"id":37, "op":"RETURN", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[263], [264], [36], [], [3]], "out":[]},
+[compiler] B68_IF_FALSE:  immDom=63
+[compiler]   pred=[
+[compiler] 63
+[compiler] ]  succ=[
+[compiler] 66
+[compiler] ]
+[compiler] {"id":259, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[257], [], [], [], []], "out":[263]},
+[compiler] B69_IF_FALSE:  immDom=17
+[compiler]   pred=[
+[compiler] 17
+[compiler] ]  succ=[
+[compiler] 21
+[compiler] ]
+[compiler] {"id":122, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[120], [], [], [], []], "out":[132]},
+[compiler] B70_IF_FALSE:  immDom=14
+[compiler]   pred=[
+[compiler] 14
+[compiler] ]  succ=[
+[compiler] 61
+[compiler] ]
+[compiler] {"id":108, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[106], [], [], [], []], "out":[133]},
+[compiler] B71_IF_FALSE:  immDom=12
+[compiler]   pred=[
+[compiler] 12
+[compiler] ]  succ=[
+[compiler] 16
+[compiler] ]
+[compiler] {"id":100, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[98], [], [], [], []], "out":[109]},
+[compiler] B72_IF_FALSE:  immDom=10
+[compiler]   pred=[
+[compiler] 10
+[compiler] ]  succ=[
+[compiler] 61
+[compiler] ]
+[compiler] {"id":94, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[92], [], [], [], []], "out":[133]},
+[compiler] B73_IF_FALSE:  immDom=6
+[compiler]   pred=[
+[compiler] 6
+[compiler] ]  succ=[
+[compiler] 74
+[compiler] ]
+[compiler] {"id":86, "op":"DEPEND_RELAY", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=0, mark=0, ","in":[[82], [77], [], [], []], "out":[89]},
+[compiler] {"id":82, "op":"IF_FALSE", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[80], [], [], [], []], "out":[87, 86]},
+[compiler] B74_ORDINARY_BLOCK:  immDom=73
+[compiler]   pred=[
+[compiler] 73
+[compiler] ]  succ=[
+[compiler] 9
+[compiler] ]
+[compiler] {"id":87, "op":"ORDINARY_BLOCK", "MType":"NOVALUE, bitfield=0, type=EMPTY-GT(M=0, L=0), stamp=16, mark=2, ","in":[[82], [], [], [], []], "out":[88]},
+[compiler] ==================================== Scheduling ==================================
+[compiler] 0 methods in a.abc have been skipped
+[compiler] generate a.abc.ll
+[compiler] generate a.abc_opt.ll
+[compiler] ------------------- asm code [func_main_0@352@a.abc] -------------------
+[compiler] 00000000:00000055    pushq   %rbp
+[compiler] 00000001:00e58948    movq    %rsp, %rbp
+[compiler] 00000004:10ec8348    subq    $16, %rsp
+[compiler] 00000008:00005741    pushq   %r15
+[compiler] 0000000a:00005641    pushq   %r14
+[compiler] 0000000c:00005441    pushq   %r12
+[compiler] 0000000e:00000053    pushq   %rbx
+[compiler] 0000000f:30ec8348    subq    $48, %rsp
+[compiler] 00000013:00c38948    movq    %rax, %rbx
+[compiler] 00000016:18558b48    movq    24(%rbp), %rdx
+[compiler] 0000001a:00000000    movabsq $-281474976710656, %r12
+[compiler] 00000024:f0558948    movq    %rdx, -16(%rbp)
+[compiler] 00000028:00000000    movq    $2, -8(%rbp)
+[compiler] 00000030:0000c031    xorl    %eax, %eax
+[compiler] 00000032:00000000    movabsq $-281474976710646, %r14
+[compiler] 0000003c:00e6894c    movq    %r12, %rsi
+[compiler] 0000003f:00000000    movl    $10, %r15d
+[compiler] 00000045:00000000    nopw    %cs:(%rax,%rax)
+[compiler] 0000004f:00000090    nop
+[compiler] 00000050:00000000    movq    5232(%rbx), %rcx
+[compiler] 00000057:b0458948    movq    %rax, -80(%rbp)
+[compiler] 0000005b:c0758948    movq    %rsi, -64(%rbp)
+[compiler] 0000005f:c8558948    movq    %rdx, -56(%rbp)
+[compiler] 00000063:00df8948    movq    %rbx, %rdi
+[compiler] 00000066:00f2894c    movq    %r14, %rdx
+[compiler] 00000069:0000d1ff    callq   *%rcx
+[compiler] 0000006b:0af88348    cmpq    $10, %rax
+[compiler] 0000006f:00000000    je      0x24b
+[compiler] 00000075:00000000    movq    5360(%rbx), %rcx
+[compiler] 0000007c:b8458948    movq    %rax, -72(%rbp)
+[compiler] 00000080:00df8948    movq    %rbx, %rdi
+[compiler] 00000083:00c68948    movq    %rax, %rsi
+[compiler] 00000086:0000d1ff    callq   *%rcx
+[compiler] 00000088:0000d231    xorl    %edx, %edx
+[compiler] 0000008a:07f88348    cmpq    $7, %rax
+[compiler] 0000008e:00c1940f    sete    %cl
+[compiler] 00000091:07f88348    cmpq    $7, %rax
+[compiler] 00000095:00000000    jne     0x225
+[compiler] 0000009b:0000ca88    movb    %cl, %dl
+[compiler] 0000009d:07f28348    xorq    $7, %rdx
+[compiler] 000000a1:c84d8b48    movq    -56(%rbp), %rcx
+[compiler] 000000a5:00e28544    testl   %r12d, %edx
+[compiler] 000000a8:00001c74    je      0xc6
+[compiler] 000000aa:00e2094c    orq     %r12, %rdx
+[compiler] 000000ad:00000000    movq    %rdx, %xmm0
+[compiler] 000000b2:00000000    ucomisd -202(%rip), %xmm0
+[compiler] 000000ba:00000000    jne     0x225
+[compiler] 000000c0:00000000    jp      0x225
+[compiler] 000000c6:20418b48    movq    32(%rcx), %rax
+[compiler] 000000ca:10508b48    movq    16(%rax), %rdx
+[compiler] 000000ce:02fa8348    cmpq    $2, %rdx
+[compiler] 000000d2:00002375    jne     0xf7
+[compiler] 000000d4:00000000    movq    3240(%rbx), %rdx
+[compiler] 000000db:08ec8348    subq    $8, %rsp
+[compiler] 000000df:00d88948    movq    %rbx, %rax
+[compiler] 000000e2:00000051    pushq   %rcx
+[compiler] 000000e3:0000016a    pushq   $1
+[compiler] 000000e5:00000000    pushq   $132
+[compiler] 000000ea:0000d2ff    callq   *%rdx
+[compiler] 000000ec:20c48348    addq    $32, %rsp
+[compiler] 000000f0:00c28948    movq    %rax, %rdx
+[compiler] 000000f3:c84d8b48    movq    -56(%rbp), %rcx
+[compiler] 000000f7:20418b48    movq    32(%rcx), %rax
+[compiler] 000000fb:08408b48    movq    8(%rax), %rax
+[compiler] 000000ff:10708b48    movq    16(%rax), %rsi
+[compiler] 00000103:00000000    movq    5464(%rbx), %rax
+[compiler] 0000010a:a0558948    movq    %rdx, -96(%rbp)
+[compiler] 0000010e:b8558948    movq    %rdx, -72(%rbp)
+[compiler] 00000112:a8758948    movq    %rsi, -88(%rbp)
+[compiler] 00000116:00df8948    movq    %rbx, %rdi
+[compiler] 00000119:00000000    movl    $1, %ecx
+[compiler] 0000011e:0000d0ff    callq   *%rax
+[compiler] 00000120:0af88348    cmpq    $10, %rax
+[compiler] 00000124:00000000    je      0x24b
+[compiler] 0000012a:00c18948    movq    %rax, %rcx
+[compiler] 0000012d:c0558b48    movq    -64(%rbp), %rdx
+[compiler] 00000131:00000000    movq    %rbp, 3208(%rbx)
+[compiler] 00000138:00000000    movq    3264(%rbx), %rsi
+[compiler] 0000013f:b8458948    movq    %rax, -72(%rbp)
+[compiler] 00000143:08ec8348    subq    $8, %rsp
+[compiler] 00000147:00d88948    movq    %rbx, %rax
+[compiler] 0000014a:00000052    pushq   %rdx
+[compiler] 0000014b:0000026a    pushq   $2
+[compiler] 0000014d:0000026a    pushq   $2
+[compiler] 0000014f:00000051    pushq   %rcx
+[compiler] 00000150:0000046a    pushq   $4
+[compiler] 00000152:0000d6ff    callq   *%rsi
+[compiler] 00000154:30c48348    addq    $48, %rsp
+[compiler] 00000158:00000000    cmpq    $5, 3176(%rbx)
+[compiler] 00000160:00000000    jne     0x24b
+[compiler] 00000166:c0758b48    movq    -64(%rbp), %rsi
+[compiler] 0000016a:00000000    movq    5328(%rbx), %rax
+[compiler] 00000171:00df8948    movq    %rbx, %rdi
+[compiler] 00000174:0000d0ff    callq   *%rax
+[compiler] 00000176:0af88348    cmpq    $10, %rax
+[compiler] 0000017a:00000000    je      0x24b
+[compiler] 00000180:c04d8b48    movq    -64(%rbp), %rcx
+[compiler] 00000184:00000000    leaq    6(%r12), %rdx
+[compiler] 00000189:00d18548    testq   %rdx, %rcx
+[compiler] 0000018c:00001274    je      0x1a0
+[compiler] 0000018e:0000f631    xorl    %esi, %esi
+[compiler] 00000190:c8558b48    movq    -56(%rbp), %rdx
+[compiler] 00000194:00e1854c    testq   %r12, %rcx
+[compiler] 00000197:00001b74    je      0x1b4
+[compiler] 00000199:000049eb    jmp     0x1e4
+[compiler] 0000019b:00000000    nopl    (%rax,%rax)
+[compiler] 000001a0:00118b48    movq    (%rcx), %rdx
+[compiler] 000001a3:73487a80    cmpb    $115, 72(%rdx)
+[compiler] 000001a7:c6940f40    sete    %sil
+[compiler] 000001ab:c8558b48    movq    -56(%rbp), %rdx
+[compiler] 000001af:00e1854c    testq   %r12, %rcx
+[compiler] 000001b2:00003075    jne     0x1e4
+[compiler] 000001b4:00f68440    testb   %sil, %sil
+[compiler] 000001b7:00002b75    jne     0x1e4
+[compiler] 000001b9:00000000    movq    3240(%rbx), %rdx
+[compiler] 000001c0:b8458948    movq    %rax, -72(%rbp)
+[compiler] 000001c4:08ec8348    subq    $8, %rsp
+[compiler] 000001c8:00d88948    movq    %rbx, %rax
+[compiler] 000001cb:00000051    pushq   %rcx
+[compiler] 000001cc:0000016a    pushq   $1
+[compiler] 000001ce:00000000    pushq   $201
+[compiler] 000001d3:0000d2ff    callq   *%rdx
+[compiler] 000001d5:20c48348    addq    $32, %rsp
+[compiler] 000001d9:00c18948    movq    %rax, %rcx
+[compiler] 000001dc:b8458b48    movq    -72(%rbp), %rax
+[compiler] 000001e0:c8558b48    movq    -56(%rbp), %rdx
+[compiler] 000001e4:0af98348    cmpq    $10, %rcx
+[compiler] 000001e8:00006174    je      0x24b
+[compiler] 000001ea:00000000    cmpb    $1, 11112(%rbx)
+[compiler] 000001f1:00c68948    movq    %rax, %rsi
+[compiler] 000001f4:00000000    jne     0x50
+[compiler] 000001fa:00000000    movq    3240(%rbx), %rcx
+[compiler] 00000201:c0458948    movq    %rax, -64(%rbp)
+[compiler] 00000205:00d88948    movq    %rbx, %rax
+[compiler] 00000208:0000006a    pushq   $0
+[compiler] 0000020a:00000000    pushq   $133
+[compiler] 0000020f:0000d1ff    callq   *%rcx
+[compiler] 00000211:10c48348    addq    $16, %rsp
+[compiler] 00000215:c0458b48    movq    -64(%rbp), %rax
+[compiler] 00000219:c8558b48    movq    -56(%rbp), %rdx
+[compiler] 0000021d:00c68948    movq    %rax, %rsi
+[compiler] 00000220:00000000    jmp     0x50
+[compiler] 00000225:00000000    movl    $2, %r15d
+[compiler] 0000022b:00000000    cmpb    $1, 11112(%rbx)
+[compiler] 00000232:00001775    jne     0x24b
+[compiler] 00000234:00000000    movq    3240(%rbx), %rcx
+[compiler] 0000023b:00d88948    movq    %rbx, %rax
+[compiler] 0000023e:0000006a    pushq   $0
+[compiler] 00000240:00000000    pushq   $133
+[compiler] 00000245:0000d1ff    callq   *%rcx
+[compiler] 00000247:10c48348    addq    $16, %rsp
+[compiler] 0000024b:00f8894c    movq    %r15, %rax
+[compiler] 0000024e:30c48348    addq    $48, %rsp
+[compiler] 00000252:0000005b    popq    %rbx
+[compiler] 00000253:00005c41    popq    %r12
+[compiler] 00000255:00005e41    popq    %r14
+[compiler] 00000257:00005f41    popq    %r15
+[compiler] 00000259:0000005d    popq    %rbp
+[compiler] 0000025a:0000005d    popq    %rbp
+[compiler] 0000025b:0000005d    popq    %rbp
+[compiler] 0000025c:000000c3    retq
+[compiler]
+[compiler]  Total number of full compiled methods is: 1
+[compiler]  method: func_main_0@a.abc in record:                                                          _GLOBAL has been full compiled
+[compiler] ts aot compile success

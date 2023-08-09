@@ -29,7 +29,7 @@ static const uint32_t MAX_VALUE = 0x7fffffff;
 static const uint32_t MAX_ARRAY_SIZE = MAX_VALUE - 8;
 bool JSAPIVector::Add(JSThread *thread, const JSHandle<JSAPIVector> &vector, const JSHandle<JSTaggedValue> &value)
 {
-    int32_t length = vector->GetSize();
+    uint32_t length = vector->GetSize();
     GrowCapacity(thread, vector, length + 1);
 
     TaggedArray *elements = TaggedArray::Cast(vector->GetElements().GetTaggedObject());
@@ -43,15 +43,15 @@ bool JSAPIVector::Add(JSThread *thread, const JSHandle<JSAPIVector> &vector, con
 void JSAPIVector::Insert(JSThread *thread, const JSHandle<JSAPIVector> &vector,
                          const JSHandle<JSTaggedValue> &value, int32_t index)
 {
-    int32_t length = vector->GetSize();
-    if (index < 0 || index > length) {
+    uint32_t length = vector->GetSize();
+    if (index < 0 || index > static_cast<int32_t>(length)) {
         THROW_ERROR(thread, ErrorType::RANGE_ERROR, "the index is out-of-bounds");
     }
     GrowCapacity(thread, vector, length + 1);
 
     TaggedArray *elements = TaggedArray::Cast(vector->GetElements().GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
-    for (int32_t i = length - 1; i >= index; i--) {
+    for (int32_t i = static_cast<int32_t>(length) - 1; i >= index; i--) {
         elements->Set(thread, i + 1, elements->Get(i));
     }
 
@@ -61,7 +61,7 @@ void JSAPIVector::Insert(JSThread *thread, const JSHandle<JSAPIVector> &vector,
 
 void JSAPIVector::SetLength(JSThread *thread, const JSHandle<JSAPIVector> &vector, uint32_t newSize)
 {
-    uint32_t len = static_cast<uint32_t>(vector->GetSize());
+    uint32_t len = vector->GetSize();
     if (newSize > len) {
         GrowCapacity(thread, vector, newSize);
     }
@@ -103,15 +103,15 @@ int32_t JSAPIVector::GetIndexFrom(JSThread *thread, const JSHandle<JSAPIVector> 
 {
     TaggedArray *elements = TaggedArray::Cast(vector->GetElements().GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
-    int32_t length = vector->GetSize();
+    uint32_t length = vector->GetSize();
     if (index < 0) {
         index = 0;
-    } else if (index >= length) {
+    } else if (index >= static_cast<int32_t>(length)) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "no-such-element", -1);
     }
 
     JSMutableHandle<JSTaggedValue> value(thread, JSTaggedValue::Undefined());
-    for (int32_t i = index; i < length; i++) {
+    for (uint32_t i = static_cast<uint32_t>(index); i < length; i++) {
         value.Update(JSTaggedValue(elements->Get(i)));
         if (JSTaggedValue::StrictEqual(thread, obj, value)) {
             return i;
@@ -127,7 +127,7 @@ bool JSAPIVector::IsEmpty() const
 
 JSTaggedValue JSAPIVector::GetLastElement()
 {
-    int32_t length = GetSize();
+    uint32_t length = GetSize();
     if (length == 0) {
         return JSTaggedValue::Undefined();
     }
@@ -139,7 +139,7 @@ JSTaggedValue JSAPIVector::GetLastElement()
 int32_t JSAPIVector::GetLastIndexOf(JSThread *thread, const JSHandle<JSAPIVector> &vector,
                                     const JSHandle<JSTaggedValue> &obj)
 {
-    int32_t index = vector->GetSize() - 1;
+    int32_t index = static_cast<int32_t>(vector->GetSize()) - 1;
     if (index < 0) {
         return -1; // vector isEmpty, defalut return -1
     }
@@ -149,8 +149,8 @@ int32_t JSAPIVector::GetLastIndexOf(JSThread *thread, const JSHandle<JSAPIVector
 int32_t JSAPIVector::GetLastIndexFrom(JSThread *thread, const JSHandle<JSAPIVector> &vector,
                                       const JSHandle<JSTaggedValue> &obj, int32_t index)
 {
-    int32_t length = vector->GetSize();
-    if (index >= length) {
+    uint32_t length = vector->GetSize();
+    if (index >= static_cast<int32_t>(length)) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "index-out-of-bounds", -1);
     } else if (index < 0) {
         index = 0;
@@ -170,7 +170,7 @@ int32_t JSAPIVector::GetLastIndexFrom(JSThread *thread, const JSHandle<JSAPIVect
 bool JSAPIVector::Remove(JSThread *thread, const JSHandle<JSAPIVector> &vector, const JSHandle<JSTaggedValue> &obj)
 {
     int32_t index = GetIndexOf(thread, vector, obj);
-    int32_t length = vector->GetSize();
+    uint32_t length = vector->GetSize();
     if (index >= 0) {
         JSHandle<TaggedArray> elements(thread, vector->GetElements());
         ASSERT(!elements->IsDictionaryMode());
@@ -184,8 +184,8 @@ bool JSAPIVector::Remove(JSThread *thread, const JSHandle<JSAPIVector> &vector, 
 
 JSTaggedValue JSAPIVector::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIVector> &vector, int32_t index)
 {
-    int32_t length = vector->GetSize();
-    if (index < 0 || index >= length) {
+    uint32_t length = vector->GetSize();
+    if (index < 0 || index >= static_cast<int32_t>(length)) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "the index is out-of-bounds", JSTaggedValue::Exception());
     }
     TaggedArray *resElements = TaggedArray::Cast(vector->GetElements().GetTaggedObject());
@@ -206,7 +206,7 @@ JSTaggedValue JSAPIVector::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIV
 JSTaggedValue JSAPIVector::RemoveByRange(JSThread *thread, const JSHandle<JSAPIVector> &vector,
                                          int32_t fromIndex, int32_t toIndex)
 {
-    int32_t length = vector->GetSize();
+    int32_t length = static_cast<int32_t>(vector->GetSize());
     if (toIndex <= fromIndex) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "the fromIndex cannot be less than or equal to toIndex",
                                      JSTaggedValue::Exception());
@@ -233,8 +233,9 @@ JSTaggedValue JSAPIVector::RemoveByRange(JSThread *thread, const JSHandle<JSAPIV
 JSHandle<JSAPIVector> JSAPIVector::SubVector(JSThread *thread, const JSHandle<JSAPIVector> &vector,
                                              int32_t fromIndex, int32_t toIndex)
 {
-    int32_t length = vector->GetSize();
-    if (fromIndex < 0 || toIndex < 0 || fromIndex >= length || toIndex >= length) {
+    int32_t length = static_cast<int32_t>(vector->GetSize());
+    if (fromIndex < 0 || toIndex < 0 ||
+        fromIndex >= length || toIndex >= length) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "the fromIndex or the toIndex is out-of-bounds",
                                      JSHandle<JSAPIVector>());
     }
@@ -243,12 +244,12 @@ JSHandle<JSAPIVector> JSAPIVector::SubVector(JSThread *thread, const JSHandle<JS
                                      JSHandle<JSAPIVector>());
     }
 
-    int32_t newLength = toIndex - fromIndex;
+    uint32_t newLength = static_cast<uint32_t>(toIndex - fromIndex);
     JSHandle<JSAPIVector> subVector = thread->GetEcmaVM()->GetFactory()->NewJSAPIVector(newLength);
     TaggedArray *elements = TaggedArray::Cast(vector->GetElements().GetTaggedObject());
 
     subVector->SetLength(newLength);
-    for (int32_t i = 0; i < newLength; i++) {
+    for (uint32_t i = 0; i < newLength; i++) {
         subVector->Set(thread, i, elements->Get(fromIndex + i));
     }
 
@@ -260,10 +261,10 @@ JSTaggedValue JSAPIVector::ToString(JSThread *thread, const JSHandle<JSAPIVector
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::u16string sepHandle = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> {}.from_bytes(",");
 
-    int32_t length = vector->GetSize();
+    uint32_t length = vector->GetSize();
     std::u16string concatStr;
     JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
-    for (int32_t k = 0; k < length; k++) {
+    for (uint32_t k = 0; k < length; k++) {
         std::u16string nextStr;
         element.Update(Get(thread, vector, k));
         if (!element->IsUndefined() && !element->IsNull()) {
@@ -290,13 +291,13 @@ JSTaggedValue JSAPIVector::ForEach(JSThread *thread, const JSHandle<JSTaggedValu
                                    const JSHandle<JSTaggedValue> &thisArg)
 {
     JSHandle<JSAPIVector> vector = JSHandle<JSAPIVector>::Cast(thisHandle);
-    int32_t length = vector->GetSize();
+    uint32_t length = vector->GetSize();
     JSTaggedValue key = JSTaggedValue::Undefined();
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
-    const int32_t argsLength = NUM_MANDATORY_JSFUNC_ARGS;
+    const uint32_t argsLength = NUM_MANDATORY_JSFUNC_ARGS;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
 
-    for (int32_t k = 0; k < length; k++) {
+    for (uint32_t k = 0; k < length; k++) {
         kValue.Update(Get(thread, vector, k));
         key = JSTaggedValue(k);
         EcmaRuntimeCallInfo *info =
@@ -318,13 +319,13 @@ JSTaggedValue JSAPIVector::ReplaceAllElements(JSThread *thread, const JSHandle<J
                                               const JSHandle<JSTaggedValue> &thisArg)
 {
     JSHandle<JSAPIVector> vector = JSHandle<JSAPIVector>::Cast(thisHandle);
-    int32_t length = vector->GetSize();
+    uint32_t length = vector->GetSize();
     JSTaggedValue key = JSTaggedValue::Undefined();
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
-    const int32_t argsLength = NUM_MANDATORY_JSFUNC_ARGS;
+    const uint32_t argsLength = NUM_MANDATORY_JSFUNC_ARGS;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
 
-    for (int32_t k = 0; k < length; k++) {
+    for (uint32_t k = 0; k < length; k++) {
         kValue.Update(Get(thread, vector, k));
         key = JSTaggedValue(k);
         EcmaRuntimeCallInfo *info =
@@ -367,8 +368,8 @@ void JSAPIVector::GrowCapacity(JSThread *thread, const JSHandle<JSAPIVector> &ve
 
 JSTaggedValue JSAPIVector::Get(JSThread *thread, const JSHandle<JSAPIVector> &vector, int32_t index)
 {
-    int32_t len = vector->GetSize();
-    if (index < 0 || index >= len) {
+    uint32_t len = vector->GetSize();
+    if (index < 0 || index >= static_cast<int32_t>(len)) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "the index is out-of-bounds", JSTaggedValue::Exception());
     }
 
@@ -386,12 +387,12 @@ JSTaggedValue JSAPIVector::Set(JSThread *thread, int32_t index, const JSTaggedVa
 bool JSAPIVector::Has(const JSTaggedValue &value) const
 {
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
-    int32_t length = GetSize();
+    uint32_t length = GetSize();
     if (length == 0) {
         return false;
     }
 
-    for (int32_t i = 0; i < length; i++) {
+    for (uint32_t i = 0; i < length; i++) {
         if (JSTaggedValue::SameValue(elements->Get(i), value)) {
             return true;
         }
@@ -417,7 +418,7 @@ bool JSAPIVector::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIVector> &
         THROW_TYPE_ERROR_AND_RETURN(thread, "Can not obtain attributes of no-number type", false);
     }
 
-    uint32_t length = static_cast<uint32_t>(obj->GetSize());
+    uint32_t length = obj->GetSize();
     if (index >= length) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "GetOwnProperty index out-of-bounds", false);
     }
@@ -429,21 +430,21 @@ bool JSAPIVector::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIVector> &
 
 void JSAPIVector::TrimToCurrentLength(JSThread *thread, const JSHandle<JSAPIVector> &obj)
 {
-    int32_t length = obj->GetSize();
+    uint32_t length = obj->GetSize();
     uint32_t capacity = obj->GetCapacity();
     TaggedArray *elements = TaggedArray::Cast(obj->GetElements().GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
-    if (capacity > static_cast<uint32_t>(length)) {
+    if (capacity > length) {
         elements->Trim(thread, length);
     }
 }
 
 void JSAPIVector::Clear(JSThread *thread, const JSHandle<JSAPIVector> &obj)
 {
-    int length = obj->GetLength();
+    uint32_t length = obj->GetLength();
     JSHandle<TaggedArray> elements(thread, obj->GetElements());
     ASSERT(!elements->IsDictionaryMode());
-    for (int i = 0; i <= length; ++i) {
+    for (uint32_t i = 0; i <= length; ++i) {
         elements->Set(thread, i, JSTaggedValue::Hole());
     }
     obj->SetLength(0);
@@ -455,7 +456,7 @@ JSHandle<JSAPIVector> JSAPIVector::Clone(JSThread *thread, const JSHandle<JSAPIV
     auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPIVector> newVector = factory->NewJSAPIVector(0);
 
-    int32_t length = obj->GetSize();
+    uint32_t length = obj->GetSize();
     newVector->SetLength(length);
 
     JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcElements, length, length);
@@ -465,7 +466,7 @@ JSHandle<JSAPIVector> JSAPIVector::Clone(JSThread *thread, const JSHandle<JSAPIV
 
 JSTaggedValue JSAPIVector::GetFirstElement(const JSHandle<JSAPIVector> &vector)
 {
-    int32_t length = vector->GetSize();
+    uint32_t length = vector->GetSize();
     if (length == 0) {
         return JSTaggedValue::Undefined();
     }
@@ -484,9 +485,9 @@ JSTaggedValue JSAPIVector::GetIteratorObj(JSThread *thread, const JSHandle<JSAPI
 OperationResult JSAPIVector::GetProperty(JSThread *thread, const JSHandle<JSAPIVector> &obj,
                                          const JSHandle<JSTaggedValue> &key)
 {
-    int length = obj->GetSize();
+    uint32_t length = obj->GetSize();
     int index = key->GetInt();
-    if (index < 0 || index >= length) {
+    if (index < 0 || index >= static_cast<int>(length)) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "GetProperty index out-of-bounds",
                                      OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
     }
@@ -498,9 +499,9 @@ bool JSAPIVector::SetProperty(JSThread *thread, const JSHandle<JSAPIVector> &obj
                               const JSHandle<JSTaggedValue> &key,
                               const JSHandle<JSTaggedValue> &value)
 {
-    int length = obj->GetSize();
+    uint32_t length = obj->GetSize();
     int index = key->GetInt();
-    if (index < 0 || index >= length) {
+    if (index < 0 || index >= static_cast<int>(length)) {
         return false;
     }
 

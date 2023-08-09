@@ -169,12 +169,12 @@ public:
     FIRST_BIT_FIELD(Type, LocalId, uint32_t, LOCAL_ID_BITS);
     NEXT_BIT_FIELD(Type, ModuleId, uint32_t, MODULE_ID_BITS, LocalId);
 
-    static inline bool IsVaildLocalId(uint32_t localId)
+    static inline bool IsValidLocalId(uint32_t localId)
     {
         return (static_cast<uint64_t>(localId) & ~MAX_LOCAL_ID) == 0;
     }
 
-    static inline bool IsVaildModuleId(uint32_t moduleId)
+    static inline bool IsValidModuleId(uint32_t moduleId)
     {
         return (static_cast<uint64_t>(moduleId) & ~MAX_MODULE_ID) == 0;
     }

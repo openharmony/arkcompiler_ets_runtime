@@ -17,6 +17,7 @@
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/builtins/builtins_promise_job.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
 
 namespace panda::ecmascript {
@@ -27,29 +28,40 @@ JSTaggedValue DynamicImport::ExecuteNativeModule(JSThread *thread, JSHandle<Ecma
     ModuleTypes moduleType, JSHandle<JSPromiseReactionsFunction> resolve, JSHandle<JSPromiseReactionsFunction> reject)
 {
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    CString requestPath = ConvertToString(specifierString.GetTaggedValue());
-    CString entryPoint = PathHelper::GetStrippedModuleName(requestPath);
-    JSHandle<JSTaggedValue> nativeModule = moduleManager->ResolveNativeModule(requestPath, moduleType);
-    JSHandle<SourceTextModule> requiredModule = JSHandle<SourceTextModule>::Cast(nativeModule);
+    JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
+    if (moduleManager->IsImportedModuleLoaded(specifierString.GetTaggedValue())) {
+        ModuleDeregister::ReviseLoadedModuleCount(thread, specifierString.GetTaggedValue());
+        JSHandle<SourceTextModule> moduleRecord =
+            moduleManager->HostGetImportedModule(specifierString.GetTaggedValue());
+        requiredModule.Update(moduleRecord);
+    } else {
+        CString requestPath = ConvertToString(specifierString.GetTaggedValue());
+        CString entryPoint = PathHelper::GetStrippedModuleName(requestPath);
+        JSHandle<JSTaggedValue> nativeModuleHld = moduleManager->ResolveNativeModule(requestPath, moduleType);
+        JSHandle<SourceTextModule> nativeModule = JSHandle<SourceTextModule>::Cast(nativeModuleHld);
 
-    if (!SourceTextModule::LoadNativeModule(thread, requiredModule, JSHandle<JSTaggedValue>(specifierString),
-        moduleType)) {
-        LOG_FULL(ERROR) << " dynamically loading native module" << requestPath << " failed";
+        if (!SourceTextModule::LoadNativeModule(thread, nativeModule, JSHandle<JSTaggedValue>(specifierString),
+            moduleType)) {
+            LOG_FULL(ERROR) << " dynamically loading native module" << requestPath << " failed";
+        }
+
+        // initialize native module
+        nativeModule->SetStatus(ModuleStatus::EVALUATED);
+        nativeModule->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
+        nativeModule->SetRegisterCounts(1);
+        thread->GetEcmaVM()->PushToDeregisterModuleList(requestPath);
+        requiredModule.Update(nativeModule);
     }
 
-    // initialize native module
-    requiredModule->SetStatus(ModuleStatus::EVALUATED);
-    requiredModule->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
-    requiredModule->SetRegisterCounts(1);
-    thread->GetEcmaVM()->PushToDeregisterModuleList(requestPath);
-
-    JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, requiredModule);
+    JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread,
+        JSHandle<SourceTextModule>(requiredModule));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, BuiltinsPromiseJob::CatchException(thread, reject));
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread,
                                             JSHandle<JSTaggedValue>(resolve),
                                             undefined, undefined, 1);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, BuiltinsPromiseJob::CatchException(thread, reject));
     info->SetCallArg(moduleNamespace.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSFunction::Call(info);

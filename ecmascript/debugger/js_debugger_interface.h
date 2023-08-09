@@ -71,11 +71,6 @@ public:
     virtual void LoadModule(std::string_view pandaFileName, std::string_view entryPoint) = 0;
 
     /**
-     * \brief called before executing pending job
-     */
-    virtual void PendingJobEntry() = 0;
-
-    /**
      * \brief called by the ecmavm when virtual machine start initialization
      */
     virtual void VmStart() = 0;

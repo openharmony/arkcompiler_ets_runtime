@@ -30,7 +30,7 @@ void JSAPIPlainArray::Add(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj
 {
     JSHandle<TaggedArray> keyArray(thread, obj->GetKeys());
     JSHandle<TaggedArray> valueArray(thread, obj->GetValues());
-    int32_t size = obj->GetLength();
+    uint32_t size = obj->GetLength();
     int32_t index = obj->BinarySearch(*keyArray, 0, size, key.GetTaggedValue().GetNumber());
     if (index >= 0) {
         keyArray->Set(thread, index, key);
@@ -38,12 +38,12 @@ void JSAPIPlainArray::Add(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj
         return;
     }
     index ^= 0xFFFFFFFF;
-    if (index < size) {
+    if (index < static_cast<int32_t>(size)) {
         obj->AdjustArray(thread, *keyArray, index, size, true);
         obj->AdjustArray(thread, *valueArray, index, size, true);
     }
     uint32_t capacity = valueArray->GetLength();
-    if (size + 1 >= static_cast<int32_t>(capacity)) {
+    if (size + 1 >= capacity) {
         uint32_t newCapacity = capacity << 1U;
         keyArray =
             thread->GetEcmaVM()->GetFactory()->CopyArray(keyArray, capacity, newCapacity);
@@ -68,12 +68,12 @@ JSHandle<TaggedArray> JSAPIPlainArray::CreateSlot(const JSThread *thread, const 
 
 bool JSAPIPlainArray::AdjustForward(JSThread *thread, int32_t index, int32_t forwardSize)
 {
-    int32_t size = GetLength();
+    uint32_t size = GetLength();
     TaggedArray *keys = TaggedArray::Cast(GetKeys().GetTaggedObject());
     TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
     AdjustArray(thread, keys, index + forwardSize, index, false);
     AdjustArray(thread, values, index + forwardSize, index, false);
-    size = size - forwardSize;
+    size = size - static_cast<uint32_t>(forwardSize);
     SetLength(size);
     return true;
 }
@@ -81,8 +81,8 @@ bool JSAPIPlainArray::AdjustForward(JSThread *thread, int32_t index, int32_t for
 void JSAPIPlainArray::AdjustArray(JSThread *thread, TaggedArray *srcArray, int32_t fromIndex,
                                   int32_t toIndex, bool direction)
 {
-    int32_t size = GetLength();
-    int32_t idx = size - 1;
+    uint32_t size = GetLength();
+    uint32_t idx = size - 1;
     if (direction) {
         while (fromIndex < toIndex) {
             JSTaggedValue value = srcArray->Get(idx);
@@ -91,9 +91,9 @@ void JSAPIPlainArray::AdjustArray(JSThread *thread, TaggedArray *srcArray, int32
             fromIndex++;
         }
     } else {
-        int32_t moveSize = size - fromIndex;
-        for (int32_t i = 0; i < moveSize; i++) {
-            if ((fromIndex + i) < size) {
+        uint32_t moveSize = size - static_cast<uint32_t>(fromIndex);
+        for (uint32_t i = 0; i < moveSize; i++) {
+            if ((fromIndex + static_cast<int32_t>(i)) < static_cast<int32_t>(size)) {
                 JSTaggedValue value = srcArray->Get(fromIndex + i);
                 srcArray->Set(thread, toIndex + i, value);
             } else {
@@ -126,8 +126,8 @@ void JSAPIPlainArray::Clear(JSThread *thread)
 {
     TaggedArray *keys = TaggedArray::Cast(GetKeys().GetTaggedObject());
     TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
-    int32_t size = GetLength();
-    for (int32_t index = 0; index < size; index++) {
+    uint32_t size = GetLength();
+    for (uint32_t index = 0; index < size; index++) {
         keys->Set(thread, index, JSTaggedValue::Hole());
         values->Set(thread, index, JSTaggedValue::Hole());
     }
@@ -136,7 +136,7 @@ void JSAPIPlainArray::Clear(JSThread *thread)
 
 JSTaggedValue JSAPIPlainArray::RemoveRangeFrom(JSThread *thread, int32_t index, int32_t batchSize)
 {
-    int32_t size = GetLength();
+    int32_t size = static_cast<int32_t>(GetLength());
     if (index < 0 || index >= size) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
@@ -168,9 +168,9 @@ bool JSAPIPlainArray::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIPlain
                                      const JSHandle<JSTaggedValue> &key)
 {
     TaggedArray *keyArray = TaggedArray::Cast(obj->GetKeys().GetTaggedObject());
-    int32_t size = obj->GetLength();
+    uint32_t size = obj->GetLength();
     int32_t index = obj->BinarySearch(keyArray, 0, size, key.GetTaggedValue().GetInt());
-    if (index < 0 || index >= size) {
+    if (index < 0 || index >= static_cast<int32_t>(size)) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
             << ". Received value is: " << index;
@@ -186,9 +186,9 @@ OperationResult JSAPIPlainArray::GetProperty(JSThread *thread, const JSHandle<JS
                                              const JSHandle<JSTaggedValue> &key)
 {
     TaggedArray *keyArray = TaggedArray::Cast(obj->GetKeys().GetTaggedObject());
-    int32_t size = obj->GetLength();
+    uint32_t size = obj->GetLength();
     int32_t index = obj->BinarySearch(keyArray, 0, size, key.GetTaggedValue().GetInt());
-    if (index < 0 || index >= size) {
+    if (index < 0 || index >= static_cast<int32_t>(size)) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
             << ". Received value is: " << index;
@@ -206,9 +206,9 @@ bool JSAPIPlainArray::SetProperty(JSThread *thread, const JSHandle<JSAPIPlainArr
                                   const JSHandle<JSTaggedValue> &value)
 {
     TaggedArray *keyArray = TaggedArray::Cast(obj->GetKeys().GetTaggedObject());
-    int32_t size = obj->GetLength();
+    uint32_t size = obj->GetLength();
     int32_t index = obj->BinarySearch(keyArray, 0, size, key.GetTaggedValue().GetInt());
-    if (index < 0 || index >= size) {
+    if (index < 0 || index >= static_cast<int32_t>(size)) {
         return false;
     }
 
@@ -223,7 +223,7 @@ JSHandle<JSAPIPlainArray> JSAPIPlainArray::Clone(JSThread *thread, const JSHandl
     auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPIPlainArray> newPlainArray = factory->NewJSAPIPlainArray(0);
 
-    int32_t length = obj->GetLength();
+    uint32_t length = obj->GetLength();
     newPlainArray->SetLength(length);
     JSHandle<TaggedArray> srcKeyArray(thread, obj->GetKeys());
     JSHandle<TaggedArray> srcValueArray(thread, obj->GetValues());
@@ -238,7 +238,7 @@ JSHandle<JSAPIPlainArray> JSAPIPlainArray::Clone(JSThread *thread, const JSHandl
 
 bool JSAPIPlainArray::Has(const int32_t key)
 {
-    int32_t size = GetLength();
+    uint32_t size = GetLength();
     TaggedArray *keyArray = TaggedArray::Cast(GetKeys().GetTaggedObject());
     int32_t index = BinarySearch(keyArray, 0, size, key);
     if (index < 0) {
@@ -249,7 +249,7 @@ bool JSAPIPlainArray::Has(const int32_t key)
 
 JSTaggedValue JSAPIPlainArray::Get(const JSTaggedValue key)
 {
-    int32_t size = GetLength();
+    uint32_t size = GetLength();
     TaggedArray *keyArray = TaggedArray::Cast(GetKeys().GetTaggedObject());
     int32_t index = BinarySearch(keyArray, 0, size, key.GetNumber());
     if (index < 0) {
@@ -273,11 +273,11 @@ JSTaggedValue JSAPIPlainArray::ForEach(JSThread *thread, const JSHandle<JSTagged
                                        const JSHandle<JSTaggedValue> &thisArg)
 {
     JSAPIPlainArray *plainarray = JSAPIPlainArray::Cast(thisHandle->GetTaggedObject());
-    int32_t length = plainarray->GetLength();
+    uint32_t length = plainarray->GetLength();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<TaggedArray> keyArray(thread, plainarray->GetKeys());
     JSHandle<TaggedArray> valueArray(thread, plainarray->GetValues());
-    for (int32_t k = 0; k < length; k++) {
+    for (uint32_t k = 0; k < length; k++) {
         JSTaggedValue kValue = valueArray->Get(k);
         JSTaggedValue key = keyArray->Get(k);
         EcmaRuntimeCallInfo *info =
@@ -296,12 +296,12 @@ JSTaggedValue JSAPIPlainArray::ToString(JSThread *thread, const JSHandle<JSAPIPl
     std::u16string sepStr = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> {}.from_bytes(",");
     std::u16string colonStr = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> {}.from_bytes(":");
 
-    int32_t length = plainarray->GetLength();
+    uint32_t length = plainarray->GetLength();
     std::u16string concatStr = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> {}.from_bytes("");
     std::u16string concatStrNew = std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> {}.from_bytes("");
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
-    for (int32_t k = 0; k < length; k++) {
+    for (uint32_t k = 0; k < length; k++) {
         std::u16string valueStr;
         valueHandle.Update(plainarray->GetValueAt(thread, k));
         if (!valueHandle->IsUndefined() && !valueHandle->IsNull()) {
@@ -336,7 +336,7 @@ JSTaggedValue JSAPIPlainArray::ToString(JSThread *thread, const JSHandle<JSAPIPl
 
 JSTaggedValue JSAPIPlainArray::GetIndexOfKey(int32_t key)
 {
-    int32_t size = GetLength();
+    uint32_t size = GetLength();
     TaggedArray *keyArray = TaggedArray::Cast(GetKeys().GetTaggedObject());
     int32_t index = BinarySearch(keyArray, 0, size, key);
     if (index < 0) {
@@ -348,7 +348,7 @@ JSTaggedValue JSAPIPlainArray::GetIndexOfKey(int32_t key)
 JSTaggedValue JSAPIPlainArray::GetIndexOfValue(JSTaggedValue value)
 {
     TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
-    int32_t size = GetLength();
+    int32_t size = static_cast<int32_t>(GetLength());
     int32_t index = -1;
     for (int32_t i = 0; i < size; i++) {
         if (JSTaggedValue::SameValue(values->Get(i), value)) {
@@ -364,15 +364,15 @@ JSTaggedValue JSAPIPlainArray::GetIndexOfValue(JSTaggedValue value)
 
 bool JSAPIPlainArray::IsEmpty()
 {
-    int32_t length = GetLength();
+    uint32_t length = GetLength();
     return length == 0;
 }
 
 JSTaggedValue JSAPIPlainArray::GetKeyAt(int32_t index)
 {
-    int32_t size = GetLength();
+    uint32_t size = GetLength();
     TaggedArray *keyArray = TaggedArray::Cast(GetKeys().GetTaggedObject());
-    if (index < 0 || index >= size) {
+    if (index < 0 || index >= static_cast<int32_t>(size)) {
         return JSTaggedValue::Undefined();
     }
     return keyArray->Get(index);
@@ -380,8 +380,8 @@ JSTaggedValue JSAPIPlainArray::GetKeyAt(int32_t index)
 
 JSTaggedValue JSAPIPlainArray::GetValueAt(JSThread *thread, int32_t index)
 {
-    int32_t size = GetLength();
-    if (index < 0 || index >= size) {
+    uint32_t size = GetLength();
+    if (index < 0 || index >= static_cast<int32_t>(size)) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
             << ". Received value is: " << index;
@@ -394,10 +394,10 @@ JSTaggedValue JSAPIPlainArray::GetValueAt(JSThread *thread, int32_t index)
 
 JSTaggedValue JSAPIPlainArray::Remove(JSThread *thread, JSTaggedValue key)
 {
-    int32_t size = GetLength();
+    uint32_t size = GetLength();
     TaggedArray *keyArray = TaggedArray::Cast(GetKeys().GetTaggedObject());
     int32_t index = BinarySearch(keyArray, 0, size, key.GetNumber());
-    if (index < 0 || index >= size) {
+    if (index < 0 || index >= static_cast<int32_t>(size)) {
         return JSTaggedValue::Undefined();
     }
     TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
@@ -408,9 +408,9 @@ JSTaggedValue JSAPIPlainArray::Remove(JSThread *thread, JSTaggedValue key)
 
 JSTaggedValue JSAPIPlainArray::RemoveAt(JSThread *thread, JSTaggedValue index)
 {
-    int32_t size = GetLength();
+    uint32_t size = GetLength();
     int32_t seat = index.GetNumber();
-    if (seat < 0 || seat >= size) {
+    if (seat < 0 || static_cast<uint32_t>(seat) >= size) {
         return JSTaggedValue::Undefined();
     }
     TaggedArray *values = TaggedArray::Cast(GetValues().GetTaggedObject());
@@ -421,9 +421,9 @@ JSTaggedValue JSAPIPlainArray::RemoveAt(JSThread *thread, JSTaggedValue index)
 
 bool JSAPIPlainArray::SetValueAt(JSThread *thread, JSTaggedValue index, JSTaggedValue value)
 {
-    int32_t size = GetLength();
+    uint32_t size = GetLength();
     int32_t seat = index.GetNumber();
-    if (seat < 0 || seat >= size) {
+    if (seat < 0 || static_cast<uint32_t>(seat) >= size) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
             << ". Received value is: " << seat;

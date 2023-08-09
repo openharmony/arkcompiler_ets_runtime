@@ -62,14 +62,14 @@ public:
     void Clear(JSThread *thread);
     void AdjustArray(JSThread *thread, TaggedArray *srcArray, int32_t fromIndex, int32_t toIndex,
                      bool direction);
-    inline int GetSize() const
+    inline uint32_t GetSize() const
     {
         return GetLength();
     }
     static constexpr size_t KEYS_OFFSET = JSObject::SIZE;
     ACCESSORS(Keys, KEYS_OFFSET, VALUES_OFFSET);
     ACCESSORS(Values, VALUES_OFFSET, LENGTH_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(Length, int32_t, LENGTH_OFFSET, LAST_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, KEYS_OFFSET, LENGTH_OFFSET)

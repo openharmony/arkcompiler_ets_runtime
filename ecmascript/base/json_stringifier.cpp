@@ -313,7 +313,7 @@ JSTaggedValue JsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &
     if (UNLIKELY(replacer->IsCallable())) {
         handleValue_.Update(tagValue);
         // a. Let value be Call(ReplacerFunction, holder, «key, value»).
-        const int32_t argsLength = 2; // 2: «key, value»
+        const uint32_t argsLength = 2; // 2: «key, value»
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread_, replacer, object, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
@@ -609,6 +609,7 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, con
     if (len > 0) {
         for (uint32_t i = 0; i < len; i++) {
             JSTaggedValue tagVal = ObjectFastOperator::FastGetPropertyByIndex(thread_, value.GetTaggedValue(), i);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             if (UNLIKELY(tagVal.IsAccessor())) {
                 tagVal = JSObject::CallGetter(thread_, AccessorData::Cast(tagVal.GetTaggedObject()), value);
             }

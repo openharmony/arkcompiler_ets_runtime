@@ -160,15 +160,16 @@ int Main(const int argc, const char **argv)
         bool isEnableLaterElimination = runtimeOptions.IsEnableLaterElimination();
         bool isEnableValueNumbering = runtimeOptions.IsEnableValueNumbering();
         bool isEnableOptInlining = runtimeOptions.IsEnableOptInlining();
-        bool isEnableOptStaticMethod = runtimeOptions.IsEnableOptStaticMethod();
         bool isEnableTypeInfer = isEnableTypeLowering ||
             vm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->AssertTypes();
         bool isEnableOptPGOType = runtimeOptions.IsEnableOptPGOType();
         bool isEnableOptTrackField = runtimeOptions.IsEnableOptTrackField();
+        bool isEnableOptLoopPeeling = runtimeOptions.IsEnableOptLoopPeeling();
 
         PassOptions passOptions(isEnableTypeLowering, isEnableEarlyElimination, isEnableLaterElimination,
                                 isEnableValueNumbering, isEnableTypeInfer, isEnableOptInlining,
-                                isEnableOptStaticMethod, isEnableOptPGOType, isEnableOptTrackField);
+                                isEnableOptPGOType, isEnableOptTrackField, isEnableOptLoopPeeling);
+
         uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
         AOTInitialize(vm);
 

@@ -549,8 +549,8 @@ JSTaggedValue BuiltinsRegExp::MatchAll(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     runtimeInfo->SetCallArg(thisObj.GetTaggedValue(), flagsStrHandle.GetTaggedValue());
     JSTaggedValue taggedMatcher = JSFunction::Construct(runtimeInfo);
-    JSHandle<JSTaggedValue> matcherHandle(thread, taggedMatcher);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> matcherHandle(thread, taggedMatcher);
 
     // 7. Let lastIndex be ? ToLength(? Get(R, "lastIndex")).
     JSHandle<JSTaggedValue> lastIndexString(globalConstants->GetHandledLastIndexString());
@@ -870,6 +870,7 @@ JSTaggedValue BuiltinsRegExp::Replace(EcmaRuntimeCallInfo *argv)
     // 16. Repeat, for each result in results,
     for (int i = 0; i < resultsIndex; i++) {
         resultValues.Update(ObjectFastOperator::FastGetPropertyByIndex(thread, resultsList.GetTaggedValue(), i));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // a. Let nCaptures be ToLength(Get(result, "length")).
         JSHandle<JSTaggedValue> lengthHandle = globalConst->GetHandledLengthString();
         ncapturesHandle.Update(ObjectFastOperator::FastGetPropertyByValue(
@@ -960,13 +961,14 @@ JSTaggedValue BuiltinsRegExp::Replace(EcmaRuntimeCallInfo *argv)
                 replacerArgs->Set(thread, index + 3, namedCaptures.GetTaggedValue()); // 3: position of groups
             }
             // iv. Let replValue be Call(replaceValue, undefined, replacerArgs).
-            const int32_t argsLength = static_cast<int32_t>(replacerArgs->GetLength());
+            const uint32_t argsLength = replacerArgs->GetLength();
             JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, inputReplaceValue, undefined, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(argsLength, replacerArgs);
             JSTaggedValue replaceResult = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             JSHandle<JSTaggedValue> replValue(thread, replaceResult);
             // v. Let replacement be ToString(replValue).
             JSHandle<EcmaString> replacementString = JSTaggedValue::ToString(thread, replValue);

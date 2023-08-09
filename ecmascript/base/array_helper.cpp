@@ -50,6 +50,8 @@ bool ArrayHelper::IsConcatSpreadable(JSThread *thread, const JSHandle<JSTaggedVa
     return obj->IsArray(thread);
 }
 
+// must use 'double' as return type, for sort result may double.
+// let arr = [1,2,3,4,5,6]; arr.sort(() => Math.random() - 0.5);
 double ArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &callbackfnHandle,
                                 const JSHandle<JSTaggedValue> &valueX, const JSHandle<JSTaggedValue> &valueY)
 {
@@ -86,10 +88,10 @@ double ArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> 
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
         info->SetCallArg(valueX.GetTaggedValue(), valueY.GetTaggedValue());
         JSTaggedValue callResult = JSFunction::Call(info);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
         if (callResult.IsInt()) {
             return callResult.GetInt();
         }
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
         JSHandle<JSTaggedValue> testResult(thread, callResult);
         JSTaggedNumber v = JSTaggedValue::ToNumber(thread, testResult);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
@@ -111,7 +113,13 @@ double ArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> 
     JSHandle<JSTaggedValue> yValueHandle(JSTaggedValue::ToString(thread, valueY));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
     ComparisonResult compareResult = JSTaggedValue::Compare(thread, xValueHandle, yValueHandle);
-    return compareResult == ComparisonResult::GREAT ? 1 : 0;
+    if (compareResult == ComparisonResult::GREAT) {
+        return 1;
+    }
+    if (compareResult == ComparisonResult::LESS) {
+        return -1;
+    }
+    return 0;
 }
 
 int64_t ArrayHelper::GetLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)

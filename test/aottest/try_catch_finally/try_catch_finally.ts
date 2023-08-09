@@ -111,3 +111,15 @@ for (x in mycars) {
 }
 print(fin6)
 print(c6)
+
+class A {
+    constructor(a:any|number) {
+        try {
+            a = -1234.5678;
+            function f():void {}
+            f(f, a);
+        } finally {
+            Symbol[a] = 1.0
+        }
+    }
+}

@@ -24,16 +24,18 @@ class PGOBCInfo {
 public:
     enum Type {
         OBJ_LITERAL = 0,
-
+        ARRAY_LITERAL,
+        CALL_TARGET,
         TYPE_NUM,
         TYPE_FIRST = OBJ_LITERAL,
-        TYPE_LAST = OBJ_LITERAL,
+        TYPE_LAST = CALL_TARGET,
     };
 
     struct InfoDetail {
         const CString &recordName;
         uint32_t methodOffset;
         uint32_t bcIndex;
+        uint32_t bcOffset;
         uint32_t cpIndex;
     };
 
@@ -49,13 +51,14 @@ public:
             if (methodOffsetToValVec_.find(methodOffset) != methodOffsetToValVec_.end()) {
                 const ValVec &valVec = methodOffsetToValVec_.at(methodOffset);
                 for (auto val : valVec) {
-                    cb(type, val.bcIndex, val.cpIndex);
+                    cb(type, val.bcIndex, val.bcOffset, val.cpIndex);
                 }
             }
         }
     private:
         struct Val {
             uint32_t bcIndex;
+            uint32_t bcOffset;
             uint32_t cpIndex;
         };
         using ValVec = CVector<Val>;

@@ -24,6 +24,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 
 namespace panda::ecmascript {
@@ -34,14 +35,14 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename;
     CString entry;
     CString name;
-    CString normalName = PathHelper::NormalizePath(filename);
     EcmaVM *vm = thread->GetEcmaVM();
     if (!vm->IsBundlePack() && !excuteFromJob) {
 #if defined(PANDA_TARGET_LINUX) || defined(OHOS_UNIT_TEST)
         name = filename;
         entry = entryPoint.data();
 #else
-        entry = PathHelper::ParseOhmUrl(vm, normalName, name);
+        CString normalName = PathHelper::NormalizePath(filename);
+        ModulePathHelper::ParseOhmUrl(vm, normalName, name, entry);
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
         if (name.empty()) {
             name = vm->GetAssetPath();
@@ -73,16 +74,18 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     if (!jsPandaFile->IsBundlePack() && !excuteFromJob && !vm->GetBundleName().empty()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
-            PathHelper::CroppingRecord(entry);
+            PathHelper::AdaptOldIsaRecord(entry);
         }
     }
 
-    bool isModule = jsPandaFile->IsModule(thread, entry, realEntry);
-    if (thread->HasPendingException()) {
-        thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
-        return Unexpected(false);
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
+    if (!hasRecord) {
+        LOG_FULL(ERROR) << "cannot find record '" << realEntry <<"' in baseFileName " << name << ".";
+        CString msg = "cannot find record '" + realEntry + "', please check the request path.";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
-    if (isModule) {
+    if (jsPandaFile->IsModule(recordInfo)) {
         [[maybe_unused]] EcmaHandleScope scope(thread);
         ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
         JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
@@ -122,8 +125,14 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     LoadAOTFilesForFile(vm, jsPandaFile.get());
 
     CString entry = entryPoint.data();
-    bool isModule = jsPandaFile->IsModule(thread, entry);
-    if (isModule) {
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
+    if (!hasRecord) {
+        LOG_FULL(ERROR) << "cannot find record '" << entry <<"' in baseFileName " << normalName << ".";
+        CString msg = "cannot find record '" + entry + "', please check the request path.";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+    }
+    if (jsPandaFile->IsModule(recordInfo)) {
         bool isBundle = jsPandaFile->IsBundlePack();
         return CommonExecuteBuffer(thread, isBundle, normalName, entry, buffer, size);
     }
@@ -147,7 +156,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
 #endif
     CString normalName = PathHelper::NormalizePath(filename);
-    CString entry = PathHelper::ParseOhmUrl(vm, normalName, name);
+    CString entry;
+    ModulePathHelper::ParseOhmUrl(vm, normalName, name, entry);
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
@@ -163,16 +173,19 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     if (!isBundle) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
-            PathHelper::CroppingRecord(entry);
+            PathHelper::AdaptOldIsaRecord(entry);
         }
     }
-    // will be refactored, temporarily use the function IsModule to verify realEntry
-    [[maybe_unused]] bool isModule = jsPandaFile->IsModule(thread, entry, realEntry);
-    if (thread->HasPendingException()) {
-        thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
-        return Unexpected(false);
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
+    if (!hasRecord) {
+        LOG_FULL(ERROR) << "cannot find record '" << realEntry <<"' in baseFileName " << name << ".";
+        CString msg = "cannot find record '" + realEntry + "', please check the request path.";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
-    ASSERT(isModule);
+    if (!jsPandaFile->IsModule(recordInfo)) {
+        LOG_ECMA(FATAL) << "Input file is not esmodule";
+    }
     return CommonExecuteBuffer(thread, isBundle, name, entry, buffer, size);
 }
 
@@ -246,8 +259,14 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
     LoadAOTFilesForFile(vm, jsPandaFile.get());
 
     CString entry = entryPoint.data();
-    bool isModule = jsPandaFile->IsModule(thread, entry);
-    if (isModule) {
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
+    if (!hasRecord) {
+        LOG_FULL(ERROR) << "cannot find record '" << entry <<"' in baseFileName " << normalName << ".";
+        CString msg = "cannot find record '" + entry + "', please check the request path.";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+    }
+    if (jsPandaFile->IsModule(recordInfo)) {
         return CommonExecuteBuffer(thread, normalName, entry, jsPandaFile.get());
     }
     return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entry);
@@ -294,7 +313,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     name = assetPath + "/" + JSPandaFile::MERGE_ABC_NAME;
 #endif
     CString normalName = PathHelper::NormalizePath(filename);
-    CString entry = PathHelper::ParseOhmUrl(vm, normalName, name);
+    CString entry;
+    ModulePathHelper::ParseOhmUrl(vm, normalName, name, entry);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
         LoadJSPandaFileSecure(thread, name, entry, buffer, size, needUpdate);
     if (jsPandaFile == nullptr) {
@@ -308,17 +328,21 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     if (!jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
-            PathHelper::CroppingRecord(entry);
+            PathHelper::AdaptOldIsaRecord(entry);
         }
     }
 
     // will be refactored, temporarily use the function IsModule to verify realEntry
-    [[maybe_unused]] bool isModule = jsPandaFile->IsModule(thread, entry, realEntry);
-    if (thread->HasPendingException()) {
-        thread->GetCurrentEcmaContext()->HandleUncaughtException(thread->GetException());
-        return Unexpected(false);
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
+    if (!hasRecord) {
+        LOG_FULL(ERROR) << "cannot find record '" << realEntry <<"' in baseFileName " << name << ".";
+        CString msg = "cannot find record '" + realEntry + "', please check the request path.";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
-    ASSERT(isModule);
+    if (!jsPandaFile->IsModule(recordInfo)) {
+        LOG_ECMA(FATAL) << "Input file is not esmodule";
+    }
     return CommonExecuteBuffer(thread, name, entry, jsPandaFile.get());
 }
 }  // namespace panda::ecmascript

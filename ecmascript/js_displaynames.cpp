@@ -193,6 +193,7 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
 
     // 18. Set displayNames.[[Locale]] to the value of r.[[Locale]].
     JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
     displayNames->SetLocale(thread, localeStr.GetTaggedValue());
     // 19. Let dataLocale be r.[[dataLocale]].
     // 20. Let dataLocaleData be localeData.[[<dataLocale>]].
@@ -256,6 +257,7 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
             THROW_TYPE_ERROR_AND_RETURN(thread, "not a structurally valid", code);
         }
         JSHandle<EcmaString> codeStr = intl::LocaleHelper::CanonicalizeUnicodeLocaleId(thread, code);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
         icu::LocaleDisplayNames *icuLocaldisplaynames = displayNames->GetIcuLocaleDisplayNames();
         icu::UnicodeString result;
         std::string codeString = intl::LocaleHelper::ConvertToStdString(codeStr);
@@ -378,23 +380,27 @@ void JSDisplayNames::ResolvedOptions(JSThread *thread, const JSHandle<JSDisplayN
     JSHandle<JSTaggedValue> propertyKey = globalConst->GetHandledLocaleString();
     JSHandle<JSTaggedValue> locale(thread, displayNames->GetLocale());
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, locale);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[Style]]
     StyOption style = displayNames->GetStyle();
     propertyKey = globalConst->GetHandledStyleString();
     JSHandle<JSTaggedValue> styleString = StyOptionToEcmaString(thread, style);
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, styleString);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[type]]
     TypednsOption type = displayNames->GetType();
     propertyKey = globalConst->GetHandledTypeString();
     JSHandle<JSTaggedValue> typeString = TypeOptionToEcmaString(thread, type);
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, typeString);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // [[fallback]]
     FallbackOption fallback = displayNames->GetFallback();
     propertyKey = globalConst->GetHandledFallbackString();
     JSHandle<JSTaggedValue> fallbackString = FallbackOptionToEcmaString(thread, fallback);
     JSObject::CreateDataPropertyOrThrow(thread, options, propertyKey, fallbackString);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 }
 }  // namespace panda::ecmascript

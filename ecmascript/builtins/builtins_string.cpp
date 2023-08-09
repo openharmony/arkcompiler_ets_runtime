@@ -859,7 +859,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
         // If replacer is not undefined, then
         if (!replaceMethod->IsUndefined()) {
             // Return Call(replacer, searchValue, «O, replaceValue»).
-            const int32_t argsLength = 2;
+            const uint32_t argsLength = 2;
             JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, replaceMethod, searchTag, undefined, argsLength);
@@ -897,12 +897,13 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
     // If functionalReplace is true, then
     if (replaceTag->IsCallable()) {
         // Let replValue be Call(replaceValue, undefined,«matched, pos, and string»).
-        const int32_t argsLength = 3; // 3: «matched, pos, and string»
+        const uint32_t argsLength = 3; // 3: «matched, pos, and string»
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, replaceTag, undefined, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(searchString.GetTaggedValue(), JSTaggedValue(pos), thisString.GetTaggedValue());
         JSTaggedValue replStrDeocodeValue = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         replHandle.Update(replStrDeocodeValue);
     } else {
         // Let captures be an empty List.
@@ -982,6 +983,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
             JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, replaceMethod, searchTag, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(thisTag.GetTaggedValue(), replaceTag.GetTaggedValue());
             return JSFunction::Call(info);
         }
@@ -1020,11 +1022,13 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
         // If functionalReplace is true, then
         if (replaceTag->IsCallable()) {
             // Let replValue be Call(replaceValue, undefined,«matched, pos, and string»).
-            const int32_t argsLength = 3; // 3: «matched, pos, and string»
+            const uint32_t argsLength = 3; // 3: «matched, pos, and string»
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, replaceTag, undefined, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(searchString.GetTaggedValue(), JSTaggedValue(pos), thisString.GetTaggedValue());
             JSTaggedValue replStrDeocodeValue = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             replHandle.Update(replStrDeocodeValue);
         } else {
             // Let captures be an empty List.
@@ -1366,7 +1370,7 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (!splitter->IsUndefined()) {
             // Return Call(splitter, separator, «‍O, limit»).
-            const int32_t argsLength = 2;
+            const uint32_t argsLength = 2;
             JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, splitter, seperatorTag, undefined, argsLength);

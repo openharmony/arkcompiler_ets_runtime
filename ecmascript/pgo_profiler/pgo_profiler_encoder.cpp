@@ -17,8 +17,10 @@
 #include <cstdio>
 #include <fstream>
 #include <memory>
+#include <string>
 
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 
 #include "ecmascript/platform/file.h"
@@ -52,7 +54,7 @@ bool PGOProfilerEncoder::InitializeData()
         LOG_ECMA(INFO) << "Save profiler to file:" << realOutPath_;
         PGOProfilerHeader::Build(&header_, PGOProfilerHeader::LastSize());
         pandaFileInfos_ = std::make_unique<PGOPandaFileInfos>();
-        globalRecordInfos_ = std::make_unique<PGORecordDetailInfos>(hotnessThreshold_);
+        globalRecordInfos_ = std::make_shared<PGORecordDetailInfos>(hotnessThreshold_);
         isInitialized_ = true;
     }
     return true;
@@ -92,14 +94,34 @@ bool PGOProfilerEncoder::Save()
         return false;
     }
     os::memory::LockHolder lock(mutex_);
-    return SaveProfiler();
+    return InternalSave();
 }
 
-bool PGOProfilerEncoder::SaveProfiler(const SaveTask *task)
+void PGOProfilerEncoder::MergeWithExistProfile(PGOProfilerEncoder &encoder, PGOProfilerDecoder &decoder,
+                                               const SaveTask *task)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerEncoder::SaveProfiler");
+    if (!decoder.LoadFull()) {
+        LOG_ECMA(ERROR) << "Fail to load ap: " << realOutPath_;
+    } else {
+        Merge(decoder.GetPandaFileInfos());
+        globalRecordInfos_ = decoder.GetRecordDetailInfosPtr();
+    }
+    if (task && task->IsTerminate()) {
+        LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
+        return;
+    }
+    Merge(*encoder.pandaFileInfos_);
+    if (task && task->IsTerminate()) {
+        LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
+        return;
+    }
+    Merge(*encoder.globalRecordInfos_);
+}
+
+bool PGOProfilerEncoder::SaveAndRename(const SaveTask *task)
+{
     static const char *tempSuffix = ".tmp";
-    auto tmpOutPath = realOutPath_ + tempSuffix;
+    auto tmpOutPath = realOutPath_ + "." + std::to_string(getpid()) + "." + tempSuffix;
     std::fstream fileStream(tmpOutPath.c_str(),
                             std::fstream::binary | std::fstream::out | std::fstream::in | std::fstream::trunc);
     if (!fileStream.is_open()) {
@@ -113,6 +135,10 @@ bool PGOProfilerEncoder::SaveProfiler(const SaveTask *task)
         AddChecksum(fileStream);
     }
     fileStream.close();
+    if (task && task->IsTerminate()) {
+        LOG_ECMA(DEBUG) << "ProcessProfile: task is already terminate";
+        return false;
+    }
     if (FileExist(realOutPath_.c_str()) && remove(realOutPath_.c_str())) {
         LOG_ECMA(ERROR) << "Remove " << realOutPath_ << " failure!, errno: " << errno;
         return false;
@@ -124,12 +150,28 @@ bool PGOProfilerEncoder::SaveProfiler(const SaveTask *task)
     return true;
 }
 
+bool PGOProfilerEncoder::InternalSave(const SaveTask *task)
+{
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerEncoder::InternalSave");
+    if (!isInitialized_) {
+        return false;
+    }
+    if ((mode_ == MERGE) && FileExist(realOutPath_.c_str())) {
+        PGOProfilerEncoder encoder(realOutPath_, hotnessThreshold_, mode_);
+        encoder.InitializeData();
+        PGOProfilerDecoder decoder(realOutPath_, hotnessThreshold_);
+        encoder.MergeWithExistProfile(*this, decoder, task);
+        return encoder.SaveAndRename(task);
+    }
+    return SaveAndRename(task);
+}
+
 void PGOProfilerEncoder::AddChecksum(std::fstream &fileStream)
 {
     static constexpr uint32_t KILO_BYTES = 1024;
     static constexpr uint32_t STEP_IN_KB = 256;
     static constexpr uint32_t STEP_SIZE = STEP_IN_KB * KILO_BYTES;
-    uint32_t size = fileStream.seekp(0, std::fstream::end).tellp();
+    uint32_t size = static_cast<uint32_t>(fileStream.seekp(0, std::fstream::end).tellp());
     std::unique_ptr<std::vector<uint8_t>> buffer = std::make_unique<std::vector<uint8_t>>(STEP_SIZE);
     // first, calculate the version field's checksum.
     fileStream.seekg(PGOProfilerHeader::MAGIC_SIZE, std::fstream::beg)
@@ -175,7 +217,7 @@ void PGOProfilerEncoder::StartSaveTask(const SaveTask *task)
         return;
     }
     os::memory::LockHolder lock(mutex_);
-    SaveProfiler(task);
+    InternalSave(task);
 }
 
 bool PGOProfilerEncoder::LoadAPTextFile(const std::string &inPath)

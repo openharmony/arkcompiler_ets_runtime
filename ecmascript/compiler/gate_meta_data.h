@@ -64,6 +64,16 @@ enum class TypedBinOp : uint8_t {
     TYPED_EXP,
 };
 
+enum class TypedCallTargetCheckOp : uint8_t {
+    JSCALL_IMMEDIATE_AFTER_FUNC_DEF = 0,
+    JSCALL,
+    JSCALL_FAST,
+    JSCALLTHIS,
+    JSCALLTHIS_FAST,
+    JSCALLTHIS_NOGC,
+    JSCALLTHIS_FAST_NOGC,
+};
+
 enum class TypedUnOp : uint8_t {
     TYPED_NEG = 0,
     TYPED_NOT,
@@ -85,27 +95,23 @@ enum class TypedJumpOp : uint8_t {
     V(NotBool, NOTBOOL)                       \
     V(NotHeapObject, NOTHEAPOBJECT)           \
     V(NotStableArray, NOTSARRAY)              \
-    V(NotI32Array, NOTI32ARRAY)               \
-    V(NotF32Array, NOTF32ARRAY)               \
-    V(NotF64Array, NOTF64ARRAY)               \
+    V(NotArray, NOTARRAY)                     \
     V(NotOnHeap, NOTONHEAP)                   \
     V(InconsistentHClass, INCONSISTENTHCLASS) \
     V(NotNewObj, NOTNEWOBJ)                   \
     V(NotArrayIndex, NOTARRAYIDX)             \
-    V(NotI32ArrayIndex, NOTI32ARRAYIDX)       \
-    V(NotF32ArrayIndex, NOTF32ARRAYIDX)       \
-    V(NotF64ArrayIndex, NOTF64ARRAYIDX)       \
     V(NotIncOverflow, NOTINCOV)               \
     V(NotDecOverflow, NOTDECOV)               \
     V(NotNegativeOverflow, NOTNEGOV)          \
     V(NotCallTarget, NOTCALLTGT)              \
     V(NotJSCallTarget, NOTJSCALLTGT)          \
+    V(CowArray, COWARRAY)                     \
     V(DivideZero, DIVZERO)                    \
-    V(NegativeIndex, NEGTIVEINDEX)            \
-    V(LargeIndex, LARGEINDEX)                 \
     V(InlineFail, INLINEFAIL)                 \
     V(NotJSFastCallTarget, NOTJSFASTCALLTGT)  \
-    V(ModZero, MODZERO)
+    V(LexVarIsHole, LEXVARISHOLE)             \
+    V(ModZero, MODZERO)                       \
+    V(Int32Overflow, INT32OVERFLOW)
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,
@@ -148,14 +154,30 @@ enum class FCmpCondition : uint8_t {
 
 enum class TypedStoreOp : uint8_t {
     ARRAY_STORE_ELEMENT = 0,
+    INT8ARRAY_STORE_ELEMENT,
+    UINT8ARRAY_STORE_ELEMENT,
+    UINT8CLAMPEDARRAY_STORE_ELEMENT,
+    INT16ARRAY_STORE_ELEMENT,
+    UINT16ARRAY_STORE_ELEMENT,
     INT32ARRAY_STORE_ELEMENT,
+    UINT32ARRAY_STORE_ELEMENT,
     FLOAT32ARRAY_STORE_ELEMENT,
     FLOAT64ARRAY_STORE_ELEMENT,
 };
 
+enum class MemoryType : uint8_t {
+    ELEMENT_TYPE = 0,
+};
+
 enum class TypedLoadOp : uint8_t {
     ARRAY_LOAD_ELEMENT = 0,
+    INT8ARRAY_LOAD_ELEMENT,
+    UINT8ARRAY_LOAD_ELEMENT,
+    UINT8CLAMPEDARRAY_LOAD_ELEMENT,
+    INT16ARRAY_LOAD_ELEMENT,
+    UINT16ARRAY_LOAD_ELEMENT,
     INT32ARRAY_LOAD_ELEMENT,
+    UINT32ARRAY_LOAD_ELEMENT,
     FLOAT32ARRAY_LOAD_ELEMENT,
     FLOAT64ARRAY_LOAD_ELEMENT,
 };
@@ -187,12 +209,11 @@ std::string MachineTypeToStr(MachineType machineType);
     V(Int32CheckRightIsZero, INT32_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)               \
     V(Float64CheckRightIsZero, FLOAT64_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)           \
     V(ValueCheckNegOverflow, VALUE_CHECK_NEG_OVERFLOW, GateFlags::CHECKABLE, 1, 1, 1)                \
-    V(NegativeIndexCheck, NEGATIVE_INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                       \
-    V(LargeIndexCheck, LARGE_INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                             \
     V(OverflowCheck, OVERFLOW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                  \
     V(Int32UnsignedUpperBoundCheck, INT32_UNSIGNED_UPPER_BOUND_CHECK, GateFlags::CHECKABLE, 1, 1, 2) \
-    V(Int32DivWithCheck, INT32_DIV_WITH_CHECK, GateFlags::CHECKABLE, 1, 1, 2)
-
+    V(Int32DivWithCheck, INT32_DIV_WITH_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                        \
+    V(LexVarIsHoleCheck, LEX_VAR_IS_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)
+    
 #define UNARY_GATE_META_DATA_CACHE_LIST(V)                                       \
     V(Zext, ZEXT, GateFlags::NONE_FLAG, 0, 0, 1)                                 \
     V(Sext, SEXT, GateFlags::NONE_FLAG, 0, 0, 1)                                 \
@@ -210,55 +231,59 @@ std::string MachineTypeToStr(MachineType machineType);
     V(UnsignedFloatToInt, UNSIGNED_FLOAT_TO_INT, GateFlags::NONE_FLAG, 0, 0, 1)  \
     V(Bitcast, BITCAST, GateFlags::NONE_FLAG, 0, 0, 1)
 
-#define IMMUTABLE_META_DATA_CACHE_LIST(V)                                               \
-    V(CircuitRoot, CIRCUIT_ROOT, GateFlags::NONE_FLAG, 0, 0, 0)                         \
-    V(StateEntry, STATE_ENTRY, GateFlags::ROOT, 0, 0, 0)                                \
-    V(DependEntry, DEPEND_ENTRY, GateFlags::ROOT, 0, 0, 0)                              \
-    V(ReturnList, RETURN_LIST, GateFlags::ROOT, 0, 0, 0)                                \
-    V(ArgList, ARG_LIST, GateFlags::ROOT, 0, 0, 0)                                      \
-    V(Return, RETURN, GateFlags::HAS_ROOT, 1, 1, 1)                                     \
-    V(ReturnVoid, RETURN_VOID, GateFlags::HAS_ROOT, 1, 1, 0)                            \
-    V(Throw, THROW, GateFlags::CONTROL, 1, 1, 1)                                        \
-    V(OrdinaryBlock, ORDINARY_BLOCK, GateFlags::CONTROL, 1, 0, 0)                       \
-    V(IfBranch, IF_BRANCH, GateFlags::CONTROL, 1, 0, 1)                                 \
-    V(IfTrue, IF_TRUE, GateFlags::CONTROL, 1, 0, 0)                                     \
-    V(IfFalse, IF_FALSE, GateFlags::CONTROL, 1, 0, 0)                                   \
-    V(LoopBegin, LOOP_BEGIN, GateFlags::CONTROL, 2, 0, 0)                               \
-    V(LoopBack, LOOP_BACK, GateFlags::CONTROL, 1, 0, 0)                                 \
-    V(LoopExit, LOOP_EXIT, GateFlags::CONTROL, 1, 0, 0)                                 \
-    V(LoopExitDepend, LOOP_EXIT_DEPEND, GateFlags::FIXED, 1, 1, 0)                      \
-    V(LoopExitValue, LOOP_EXIT_VALUE, GateFlags::FIXED, 1, 0, 1)                        \
-    V(DependRelay, DEPEND_RELAY, GateFlags::FIXED, 1, 1, 0)                             \
-    V(IfSuccess, IF_SUCCESS, GateFlags::CONTROL, 1, 0, 0)                               \
-    V(IfException, IF_EXCEPTION, GateFlags::CONTROL, 1, 1, 0)                           \
-    V(GetException, GET_EXCEPTION, GateFlags::NONE_FLAG, 1, 1, 0)                       \
-    V(GetConstPool, GET_CONSTPOOL, GateFlags::NO_WRITE, 0, 1, 1)                        \
-    V(GetGlobalEnv, GET_GLOBAL_ENV, GateFlags::NO_WRITE, 0, 1, 0)                       \
-    V(StateSplit, STATE_SPLIT, GateFlags::CHECKABLE, 1, 1, 0)                           \
-    V(Load, LOAD, GateFlags::NO_WRITE, 0, 1, 1)                                         \
-    V(Store, STORE, GateFlags::NONE_FLAG, 0, 1, 2)                                      \
-    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, 3)                  \
-    V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                \
-    V(StableArrayCheck, STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)              \
-    V(ArrayGuardianCheck, ARRAY_GUARDIAN_CHECK, GateFlags::CHECKABLE, 1, 1, 0)          \
-    V(HClassStableArrayCheck, HCLASS_STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1) \
-    V(DeoptCheck, DEOPT_CHECK, GateFlags::NO_WRITE, 1, 1, 3)                            \
-    V(StoreProperty, STORE_PROPERTY, GateFlags::NONE_FLAG, 1, 1, 3)                     \
-    V(StorePropertyNoBarrier, STORE_PROPERTY_NO_BARRIER, GateFlags::NONE_FLAG, 1, 1, 3) \
-    V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)                               \
-    V(DefaultCase, DEFAULT_CASE, GateFlags::CONTROL, 1, 0, 0)                           \
-    V(LoadArrayLength, LOAD_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                 \
-    V(TypedNewAllocateThis, TYPED_NEW_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)     \
-    V(TypedSuperAllocateThis, TYPED_SUPER_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2) \
-    V(GetSuperConstructor, GET_SUPER_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)         \
-    V(UpdateHotness, UPDATE_HOTNESS, GateFlags::NO_WRITE, 1, 1, 0)                      \
-    V(Dead, DEAD, GateFlags::NONE_FLAG, 0, 0, 0)                                        \
-    V(FrameArgs, FRAME_ARGS, GateFlags::NONE_FLAG, 0, 0, 4)                             \
-    V(GetEnv, GET_ENV, GateFlags::NONE_FLAG, 0, 0, 1)                                   \
-    V(ConvertHoleAsUndefined, CONVERT_HOLE_AS_UNDEFINED, GateFlags::NO_WRITE, 1, 1, 1)  \
-    V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                     \
-    V(FinishAllocate, FINISH_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                   \
-    BINARY_GATE_META_DATA_CACHE_LIST(V)                                                 \
+#define IMMUTABLE_META_DATA_CACHE_LIST(V)                                                       \
+    V(CircuitRoot, CIRCUIT_ROOT, GateFlags::NONE_FLAG, 0, 0, 0)                                 \
+    V(StateEntry, STATE_ENTRY, GateFlags::ROOT, 0, 0, 0)                                        \
+    V(DependEntry, DEPEND_ENTRY, GateFlags::ROOT, 0, 0, 0)                                      \
+    V(ReturnList, RETURN_LIST, GateFlags::ROOT, 0, 0, 0)                                        \
+    V(ArgList, ARG_LIST, GateFlags::ROOT, 0, 0, 0)                                              \
+    V(Return, RETURN, GateFlags::HAS_ROOT, 1, 1, 1)                                             \
+    V(ReturnVoid, RETURN_VOID, GateFlags::HAS_ROOT, 1, 1, 0)                                    \
+    V(Throw, THROW, GateFlags::CONTROL, 1, 1, 1)                                                \
+    V(OrdinaryBlock, ORDINARY_BLOCK, GateFlags::CONTROL, 1, 0, 0)                               \
+    V(IfBranch, IF_BRANCH, GateFlags::CONTROL, 1, 0, 1)                                         \
+    V(IfTrue, IF_TRUE, GateFlags::CONTROL, 1, 0, 0)                                             \
+    V(IfFalse, IF_FALSE, GateFlags::CONTROL, 1, 0, 0)                                           \
+    V(LoopBegin, LOOP_BEGIN, GateFlags::CONTROL, 2, 0, 0)                                       \
+    V(LoopBack, LOOP_BACK, GateFlags::CONTROL, 1, 0, 0)                                         \
+    V(LoopExit, LOOP_EXIT, GateFlags::CONTROL, 1, 0, 0)                                         \
+    V(LoopExitDepend, LOOP_EXIT_DEPEND, GateFlags::FIXED, 1, 1, 0)                              \
+    V(LoopExitValue, LOOP_EXIT_VALUE, GateFlags::FIXED, 1, 0, 1)                                \
+    V(DependRelay, DEPEND_RELAY, GateFlags::FIXED, 1, 1, 0)                                     \
+    V(IfSuccess, IF_SUCCESS, GateFlags::CONTROL, 1, 0, 0)                                       \
+    V(IfException, IF_EXCEPTION, GateFlags::CONTROL, 1, 1, 0)                                   \
+    V(GetException, GET_EXCEPTION, GateFlags::NONE_FLAG, 1, 1, 0)                               \
+    V(GetConstPool, GET_CONSTPOOL, GateFlags::NO_WRITE, 0, 1, 1)                                \
+    V(GetGlobalEnv, GET_GLOBAL_ENV, GateFlags::NO_WRITE, 0, 1, 0)                               \
+    V(StateSplit, STATE_SPLIT, GateFlags::CHECKABLE, 1, 1, 0)                                   \
+    V(Load, LOAD, GateFlags::NO_WRITE, 0, 1, 1)                                                 \
+    V(Store, STORE, GateFlags::NONE_FLAG, 0, 1, 2)                                              \
+    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, 3)                          \
+    V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                        \
+    V(StableArrayCheck, STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                      \
+    V(COWArrayCheck, COW_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                            \
+    V(ArrayGuardianCheck, ARRAY_GUARDIAN_CHECK, GateFlags::CHECKABLE, 1, 1, 0)                  \
+    V(HClassStableArrayCheck, HCLASS_STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)         \
+    V(DeoptCheck, DEOPT_CHECK, GateFlags::NO_WRITE, 1, 1, 3)                                    \
+    V(StoreProperty, STORE_PROPERTY, GateFlags::NONE_FLAG, 1, 1, 3)                             \
+    V(StorePropertyNoBarrier, STORE_PROPERTY_NO_BARRIER, GateFlags::NONE_FLAG, 1, 1, 3)         \
+    V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
+    V(DefaultCase, DEFAULT_CASE, GateFlags::CONTROL, 1, 0, 0)                                   \
+    V(LoadArrayLength, LOAD_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                         \
+    V(TypedNewAllocateThis, TYPED_NEW_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)             \
+    V(TypedSuperAllocateThis, TYPED_SUPER_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)         \
+    V(GetSuperConstructor, GET_SUPER_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)                 \
+    V(CheckSafePointAndStackOver, CHECK_SAFEPOINT_AND_STACKOVER, GateFlags::NO_WRITE, 1, 1, 0)  \
+    V(Dead, DEAD, GateFlags::NONE_FLAG, 0, 0, 0)                                                \
+    V(FrameArgs, FRAME_ARGS, GateFlags::NONE_FLAG, 0, 0, 4)                                     \
+    V(GetEnv, GET_ENV, GateFlags::NONE_FLAG, 0, 0, 1)                                           \
+    V(ConvertHoleAsUndefined, CONVERT_HOLE_AS_UNDEFINED, GateFlags::NO_WRITE, 1, 1, 1)          \
+    V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                             \
+    V(FinishAllocate, FINISH_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                           \
+    V(LoadGetter, LOAD_GETTER, GateFlags::NONE_FLAG, 0, 1, 2)                                   \
+    V(LoadSetter, LOAD_SETTER, GateFlags::NONE_FLAG, 0, 1, 2)                                   \
+    V(ReadSp, READSP, GateFlags::NONE_FLAG, 0, 0, 0)                                            \
+    BINARY_GATE_META_DATA_CACHE_LIST(V)                                                         \
     UNARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                             \
@@ -266,9 +291,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(FrameValues, FRAME_VALUES, GateFlags::NONE_FLAG, 0, 0, value)                      \
     V(RuntimeCall, RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)                      \
     V(RuntimeCallWithArgv, RUNTIME_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)    \
-    V(NoGcRuntimeCall, NOGC_RUNTIME_CALL, GateFlags::NONE_FLAG, 0, 1, value)             \
-    V(CallOptimized, CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)                  \
-    V(FastCallOptimized, FAST_CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)         \
+    V(NoGcRuntimeCall, NOGC_RUNTIME_CALL, GateFlags::NO_WRITE, 0, 1, value)              \
     V(Call, CALL, GateFlags::NONE_FLAG, 0, 1, value)                                     \
     V(BytecodeCall, BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)                    \
     V(DebuggerBytecodeCall, DEBUGGER_BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)   \
@@ -278,7 +301,9 @@ std::string MachineTypeToStr(MachineType machineType);
 
 #define GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                  \
     V(TypedCallBuiltin, TYPED_CALL_BUILTIN, GateFlags::NO_WRITE, 1, 1, value)  \
-    V(Construct, CONSTRUCT, GateFlags::NONE_FLAG, 1, 1, value)                 \
+    V(Construct, CONSTRUCT, GateFlags::NONE_FLAG, 1, 1, value)
+
+#define GATE_META_DATA_LIST_FOR_CALL(V)                                        \
     V(TypedCall, TYPEDCALL, GateFlags::NONE_FLAG, 1, 1, value)                 \
     V(TypedFastCall, TYPEDFASTCALL, GateFlags::NONE_FLAG, 1, 1, value)
 
@@ -286,28 +311,25 @@ std::string MachineTypeToStr(MachineType machineType);
     V(CallGetter, CALL_GETTER, GateFlags::NONE_FLAG, 1, 1, 2)                  \
     V(CallSetter, CALL_SETTER, GateFlags::NONE_FLAG, 1, 1, 3)
 
-#define GATE_META_DATA_LIST_WITH_SIZE(V)                                            \
-    V(Merge, MERGE, GateFlags::CONTROL, value, 0, 0)                                \
-    V(DependSelector, DEPEND_SELECTOR, GateFlags::FIXED, 1, value, 0)               \
+#define GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
+    V(Merge, MERGE, GateFlags::CONTROL, value, 0, 0)                           \
+    V(DependSelector, DEPEND_SELECTOR, GateFlags::FIXED, 1, value, 0)          \
     GATE_META_DATA_LIST_WITH_VALUE_IN(V)
 
-#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                                               \
-    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                              \
-    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                    \
-    V(JSCallTargetFromDefineFuncCheck, JSCALLTARGET_FROM_DEFINEFUNC_CHECK, GateFlags::CHECKABLE, 1, 1, 1)   \
-    V(JSCallTargetTypeCheck, JSCALLTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                        \
-    V(JSFastCallTargetTypeCheck, JSFASTCALLTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                \
-    V(JSCallThisTargetTypeCheck, JSCALLTHISTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                \
-    V(JSFastCallThisTargetTypeCheck, JSFASTCALLTHISTARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)        \
-    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                    \
-    V(LoadTypedArrayLength, LOAD_TYPED_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                          \
-    V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                                               \
-    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                                           \
-    V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)                               \
-    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                                             \
-    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 0, 1)                                    \
-    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                                      \
-    V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)
+#define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                              \
+    V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)             \
+    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                   \
+    V(ObjectTypeCompare, OBJECT_TYPE_COMPARE, GateFlags::CHECKABLE, 1, 1, 2)               \
+    V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                   \
+    V(LoadTypedArrayLength, LOAD_TYPED_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)         \
+    V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                              \
+    V(TypedUnaryOp, TYPED_UNARY_OP, GateFlags::NO_WRITE, 1, 1, 1)                          \
+    V(TypedConditionJump, TYPED_CONDITION_JUMP, GateFlags::NO_WRITE, 1, 1, 1)              \
+    V(TypedConvert, TYPE_CONVERT, GateFlags::NO_WRITE, 1, 1, 1)                            \
+    V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)                   \
+    V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                     \
+    V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)   \
+    V(InlineAccessorCheck, INLINE_ACCESSOR_CHECK, GateFlags::CHECKABLE, 1, 1, 2)
 
 #define GATE_META_DATA_LIST_WITH_VALUE(V)                                               \
     V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                                        \
@@ -320,13 +342,16 @@ std::string MachineTypeToStr(MachineType machineType);
     V(StoreConstOffset, STORE_CONST_OFFSET, GateFlags::NONE_FLAG, 1, 1, 2)              \
     V(LoadElement, LOAD_ELEMENT, GateFlags::NO_WRITE, 1, 1, 2)                          \
     V(StoreElement, STORE_ELEMENT, GateFlags::NONE_FLAG, 1, 1, 3)                       \
+    V(StoreMemory, STORE_MEMORY, GateFlags::NONE_FLAG, 1, 1, 3)                         \
     V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 0, 1)                 \
     V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                                \
     V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)                 \
     V(GetGlobalEnvObjHClass, GET_GLOBAL_ENV_OBJ_HCLASS, GateFlags::NO_WRITE, 0, 1, 1)   \
     V(GetGlobalConstantValue, GET_GLOBAL_CONSTANT_VALUE, GateFlags::NO_WRITE, 0, 1, 0)  \
     V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, 2)                     \
-    V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 0)
+    V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 0)                         \
+    V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 2)   \
+    V(RangeGuard, RANGE_GUARD, GateFlags::NO_WRITE, 1, 1, 1)
 
 #define GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     V(Arg, ARG, GateFlags::HAS_ROOT, 0, 0, 0)             \
@@ -336,9 +361,14 @@ std::string MachineTypeToStr(MachineType machineType);
 #define GATE_META_DATA_LIST_WITH_BOOL(V)                                           \
     V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)                   \
 
+#define GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(V)                                  \
+    V(CallOptimized, CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)            \
+    V(FastCallOptimized, FAST_CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)   \
+
 #define GATE_OPCODE_LIST(V)     \
     V(JS_BYTECODE)              \
     V(TYPED_BINARY_OP)          \
+    V(TYPED_CALLTARGETCHECK_OP) \
     V(CONSTSTRING)
 
 enum class OpCode : uint8_t {
@@ -348,8 +378,10 @@ enum class OpCode : uint8_t {
     GATE_META_DATA_LIST_WITH_SIZE(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_ONE_PARAMETER(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_PC_OFFSET(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_LIST_FOR_CALL(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(DECLARE_GATE_OPCODE)
     GATE_META_DATA_LIST_WITH_BOOL(DECLARE_GATE_OPCODE)
+    GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(DECLARE_GATE_OPCODE)
 #undef DECLARE_GATE_OPCODE
 #define DECLARE_GATE_OPCODE(NAME) NAME,
     GATE_OPCODE_LIST(DECLARE_GATE_OPCODE)
@@ -379,6 +411,8 @@ public:
         MUTABLE_STRING,
         JSBYTECODE,
         TYPED_BINARY_OP,
+        TYPED_CALLTARGETCHECK_OP,
+        TYPED_CALL,
     };
     GateMetaData() = default;
     GateMetaData(OpCode opcode, GateFlags flags,
@@ -487,7 +521,7 @@ public:
     bool IsOneParameterKind() const
     {
         return GetKind() == Kind::IMMUTABLE_ONE_PARAMETER || GetKind() == Kind::MUTABLE_ONE_PARAMETER ||
-            GetKind() == Kind::TYPED_BINARY_OP;
+            GetKind() == Kind::TYPED_BINARY_OP || GetKind() == Kind::TYPED_CALLTARGETCHECK_OP;
     }
 
     bool IsStringType() const
@@ -601,7 +635,7 @@ public:
         return static_cast<const BoolMetaData*>(meta);
     }
 
-    bool getBool() const
+    bool GetBool() const
     {
         return value_;
     }
@@ -679,19 +713,66 @@ private:
     uint64_t value_ { 0 };
 };
 
-class TypedBinaryMegaData : public OneParameterMetaData {
+class TypedCallMetaData : public OneParameterMetaData {
 public:
-    TypedBinaryMegaData(uint64_t value, TypedBinOp binOp, PGOSampleType type)
+    TypedCallMetaData(OpCode opcode, GateFlags flags, uint32_t statesIn,
+        uint16_t dependsIn, uint32_t valuesIn, uint64_t value, bool noGC)
+        : OneParameterMetaData(opcode, flags, statesIn, dependsIn, valuesIn, value),
+        noGC_(noGC)
+    {
+        SetKind(GateMetaData::Kind::TYPED_CALL);
+    }
+
+    static const TypedCallMetaData* Cast(const GateMetaData* meta)
+    {
+        meta->AssertKind(GateMetaData::Kind::TYPED_CALL);
+        return static_cast<const TypedCallMetaData*>(meta);
+    }
+
+    bool IsNoGC() const
+    {
+        return noGC_;
+    }
+private:
+    bool noGC_;
+};
+
+class TypedCallTargetCheckMetaData : public OneParameterMetaData {
+public:
+    TypedCallTargetCheckMetaData(uint32_t valuesIn, uint64_t value, TypedCallTargetCheckOp checkOp)
+        : OneParameterMetaData(OpCode::TYPED_CALLTARGETCHECK_OP, GateFlags::CHECKABLE, 1, 1, valuesIn, value),
+        checkOp_(checkOp)
+    {
+        SetKind(GateMetaData::Kind::TYPED_CALLTARGETCHECK_OP);
+    }
+
+    static const TypedCallTargetCheckMetaData* Cast(const GateMetaData* meta)
+    {
+        meta->AssertKind(GateMetaData::Kind::TYPED_CALLTARGETCHECK_OP);
+        return static_cast<const TypedCallTargetCheckMetaData*>(meta);
+    }
+
+    TypedCallTargetCheckOp GetTypedCallTargetCheckOp() const
+    {
+        return checkOp_;
+    }
+private:
+    TypedCallTargetCheckOp checkOp_;
+};
+
+class TypedBinaryMetaData : public OneParameterMetaData {
+public:
+    TypedBinaryMetaData(uint64_t value, TypedBinOp binOp, PGOSampleType type)
         : OneParameterMetaData(OpCode::TYPED_BINARY_OP, GateFlags::NO_WRITE, 1, 1, 2, value), // 2: valuesIn
         binOp_(binOp), type_(type)
     {
         SetKind(GateMetaData::Kind::TYPED_BINARY_OP);
     }
 
-    static const TypedBinaryMegaData* Cast(const GateMetaData* meta)
+    static const TypedBinaryMetaData* Cast(const GateMetaData* meta)
     {
         meta->AssertKind(GateMetaData::Kind::TYPED_BINARY_OP);
-        return static_cast<const TypedBinaryMegaData*>(meta);
+        return static_cast<const TypedBinaryMetaData*>(meta);
     }
 
     TypedBinOp GetTypedBinaryOp() const
@@ -767,16 +848,22 @@ public:
         return static_cast<ValueType>(RightBits::Get(bitField_));
     }
 
-    static uint16_t ToValue(ValueType srcType, ValueType dstType)
+    bool IsConvertSupport() const
+    {
+        return ConvertSupportBits::Get(bitField_) == ConvertSupport::ENABLE;
+    }
+
+    static uint64_t ToValue(ValueType srcType, ValueType dstType, ConvertSupport support = ConvertSupport::ENABLE)
     {
         uint8_t srcVlaue = static_cast<uint8_t>(srcType);
         uint8_t dstVlaue = static_cast<uint8_t>(dstType);
-        return LeftBits::Encode(srcVlaue) | RightBits::Encode(dstVlaue);
+        return LeftBits::Encode(srcVlaue) | RightBits::Encode(dstVlaue) | ConvertSupportBits::Encode(support);
     }
 
 private:
     using LeftBits = panda::BitField<uint8_t, 0, OPRAND_TYPE_BITS>;
     using RightBits = LeftBits::NextField<uint8_t, OPRAND_TYPE_BITS>;
+    using ConvertSupportBits = RightBits::NextField<ConvertSupport, OPRAND_TYPE_BITS>;
 
     uint64_t bitField_;
 };

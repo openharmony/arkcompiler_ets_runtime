@@ -548,9 +548,9 @@ JSTaggedValue ContainersLightWeightMap::ForEach(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<TaggedArray> keys(thread, tmap->GetKeys());
     JSMutableHandle<TaggedArray> values(thread, tmap->GetValues());
 
-    int index = 0;
-    int32_t length = tmap->GetSize();
-    const int32_t argsLength = 3;
+    uint32_t index = 0;
+    uint32_t length = tmap->GetSize();
+    const uint32_t argsLength = 3;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     while (index < length) {
         // ignore the hash value is required to determine the true index

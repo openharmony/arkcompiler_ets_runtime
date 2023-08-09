@@ -24,7 +24,6 @@
 namespace panda::ecmascript::kungfu {
 enum class OperationType : uint8_t {
     CALL,
-    CALL_WIDE,
     OPERATION_TYPE,
     DEFINE_CLASS,
     CREATE_OBJECT,
@@ -47,11 +46,10 @@ public:
         return callback_ == nullptr;
     }
 
-    inline void ProfileCall(GateRef func, BytecodeInstruction::Format format) const
+    inline void ProfileCall(GateRef func) const
     {
         if (callback_) {
-            callback_({ func },
-                format == BytecodeInstruction::Format::IMM16 ? OperationType::CALL_WIDE : OperationType::CALL);
+            callback_({ func }, OperationType::CALL);
         }
     }
 

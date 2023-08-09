@@ -20,32 +20,56 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 namespace panda::ecmascript {
-void PGOProfiler::ProfileCall(JSTaggedType value, SampleMode mode, int32_t incCount)
+void PGOProfiler::ProfileCall(JSTaggedType func, JSTaggedType callTarget, int32_t pcOffset, SampleMode mode,
+                              int32_t incCount)
 {
     if (!isEnable_) {
         return;
     }
     DISALLOW_GARBAGE_COLLECTION;
-    JSTaggedValue jsValue(value);
-    if (jsValue.IsJSFunction() && JSFunction::Cast(jsValue)->GetMethod().IsMethod()) {
-        auto jsMethod = Method::Cast(JSFunction::Cast(jsValue)->GetMethod());
-        JSTaggedValue recordNameValue = JSFunction::Cast(jsValue)->GetRecordName();
-        if (recordNameValue.IsHole()) {
+    JSTaggedValue calleeFunc(callTarget);
+    if (!calleeFunc.IsJSFunction()) {
+        return;
+    }
+    if (!JSFunction::Cast(calleeFunc)->GetMethod().IsMethod()) {
+        return;
+    }
+    auto calleeMethod = Method::Cast(JSFunction::Cast(calleeFunc)->GetMethod());
+    JSTaggedValue calleeRecordNameValue = JSFunction::Cast(calleeFunc)->GetRecordName();
+    if (calleeRecordNameValue.IsHole()) {
+        return;
+    }
+    CString calleeRecordName = ConvertToString(calleeRecordNameValue);
+    if (recordInfos_->AddMethod(calleeRecordName, calleeMethod, mode, incCount)) {
+        methodCount_++;
+    }
+    JSTaggedValue currentFunc(func);
+    if (pcOffset > 0 && currentFunc.IsJSFunction() && JSFunction::Cast(currentFunc)->GetMethod().IsMethod()) {
+        auto currentMethod = Method::Cast(JSFunction::Cast(currentFunc)->GetMethod());
+        JSTaggedValue currentRecordNameValue = JSFunction::Cast(currentFunc)->GetRecordName();
+        if (currentRecordNameValue.IsHole()) {
             return;
         }
-        CString recordName = ConvertToString(recordNameValue);
-        if (recordInfos_->AddMethod(recordName, jsMethod, mode, incCount)) {
-            methodCount_++;
+        if (calleeMethod->IsNativeWithCallField()) {
+            return;
         }
-        auto interval = std::chrono::system_clock::now() - saveTimestamp_;
-        // Merged every 10 methods and merge interval greater than minimal interval
-        if (methodCount_ >= MERGED_EVERY_COUNT && interval > MERGED_MIN_INTERVAL) {
-            LOG_ECMA(DEBUG) << "Sample: post task to save profiler";
-            PGOProfilerManager::GetInstance()->Merge(this);
-            PGOProfilerManager::GetInstance()->AsynSave();
-            SetSaveTimestamp(std::chrono::system_clock::now());
-            methodCount_ = 0;
+        CString currentRecordName = ConvertToString(currentRecordNameValue);
+        // Only mark the call in the same record now
+        if (currentRecordName != calleeRecordName) {
+            return;
         }
+        auto currentMethodId = currentMethod->GetMethodId();
+        PGOSampleType calleeMethodOffset = PGOSampleType::CreateClassType(calleeMethod->GetMethodId().GetOffset());
+        recordInfos_->AddCallTargetType(currentRecordName, currentMethodId, pcOffset, calleeMethodOffset);
+    }
+    auto interval = std::chrono::system_clock::now() - saveTimestamp_;
+    // Merged every 10 methods and merge interval greater than minimal interval
+    if (methodCount_ >= MERGED_EVERY_COUNT && interval > MERGED_MIN_INTERVAL) {
+        LOG_ECMA(DEBUG) << "Sample: post task to save profiler";
+        PGOProfilerManager::GetInstance()->Merge(this);
+        PGOProfilerManager::GetInstance()->AsynSave();
+        SetSaveTimestamp(std::chrono::system_clock::now());
+        methodCount_ = 0;
     }
 }
 
@@ -208,7 +232,12 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
             auto iter = literalIds_.find(JSTaggedType(hclass));
             if (iter != literalIds_.end()) {
                 PGOObjectInfo info(ClassType(iter->second.GetOffset()), kind);
-                recordInfos_->AddObjectInfo(recordName, jsMethod->GetMethodId(), offset, info);
+                auto methodId = jsMethod->GetMethodId();
+                recordInfos_->AddObjectInfo(recordName, methodId, offset, info);
+                if (store) {
+                    auto type = PGOSampleType::CreateClassType(iter->second.GetOffset());
+                    recordInfos_->AddLayout(type, JSTaggedType(hclass), kind);
+                }
             }
             return;
         } else {

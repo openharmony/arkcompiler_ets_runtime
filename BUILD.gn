@@ -518,6 +518,7 @@ ecma_source = [
   "ecmascript/base/json_parser.cpp",
   "ecmascript/base/json_stringifier.cpp",
   "ecmascript/base/number_helper.cpp",
+  "ecmascript/base/path_helper.cpp",
   "ecmascript/base/string_helper.cpp",
   "ecmascript/base/typed_array_helper.cpp",
   "ecmascript/base/utf_helper.cpp",
@@ -732,6 +733,7 @@ ecma_source = [
   "ecmascript/module/js_module_source_text.cpp",
   "ecmascript/module/js_module_deregister.cpp",
   "ecmascript/module/module_data_extractor.cpp",
+  "ecmascript/module/module_path_helper.cpp",
   "ecmascript/napi/jsnapi.cpp",
   "ecmascript/object_factory.cpp",
   "ecmascript/object_operator.cpp",
@@ -791,6 +793,7 @@ if (is_ohos && is_standard_system && enable_hitrace) {
 ecma_debugger_source = [
   "ecmascript/debugger/debugger_api.cpp",
   "ecmascript/debugger/js_debugger.cpp",
+  "ecmascript/debugger/dropframe_manager.cpp",
   "ecmascript/debugger/hot_reload_manager.cpp",
 ]
 

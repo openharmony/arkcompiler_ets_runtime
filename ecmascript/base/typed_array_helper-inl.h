@@ -126,50 +126,52 @@ JSHandle<JSFunction> TypedArrayHelper::GetConstructorFromType(JSThread *thread, 
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     switch (arrayType) {
-    case DataViewType::INT8:
-        return JSHandle<JSFunction>(env->GetInt8ArrayFunction());
-    case DataViewType::UINT8:
-        return JSHandle<JSFunction>(env->GetUint8ArrayFunction());
-    case DataViewType::UINT8_CLAMPED:
-        return JSHandle<JSFunction>(env->GetUint8ClampedArrayFunction());
-    case DataViewType::INT16:
-        return JSHandle<JSFunction>(env->GetInt16ArrayFunction());
-    case DataViewType::UINT16:
-        return JSHandle<JSFunction>(env->GetUint16ArrayFunction());
-    case DataViewType::INT32:
-        return JSHandle<JSFunction>(env->GetInt32ArrayFunction());
-    case DataViewType::UINT32:
-        return JSHandle<JSFunction>(env->GetUint32ArrayFunction());
-    case DataViewType::FLOAT32:
-        return JSHandle<JSFunction>(env->GetFloat32ArrayFunction());
-    case DataViewType::FLOAT64:
-        return JSHandle<JSFunction>(env->GetFloat64ArrayFunction());
-    case DataViewType::BIGINT64:
-        return JSHandle<JSFunction>(env->GetBigInt64ArrayFunction());
-    default:
-        break;
+        case DataViewType::INT8:
+            return JSHandle<JSFunction>(env->GetInt8ArrayFunction());
+        case DataViewType::UINT8:
+            return JSHandle<JSFunction>(env->GetUint8ArrayFunction());
+        case DataViewType::UINT8_CLAMPED:
+            return JSHandle<JSFunction>(env->GetUint8ClampedArrayFunction());
+        case DataViewType::INT16:
+            return JSHandle<JSFunction>(env->GetInt16ArrayFunction());
+        case DataViewType::UINT16:
+            return JSHandle<JSFunction>(env->GetUint16ArrayFunction());
+        case DataViewType::INT32:
+            return JSHandle<JSFunction>(env->GetInt32ArrayFunction());
+        case DataViewType::UINT32:
+            return JSHandle<JSFunction>(env->GetUint32ArrayFunction());
+        case DataViewType::FLOAT32:
+            return JSHandle<JSFunction>(env->GetFloat32ArrayFunction());
+        case DataViewType::FLOAT64:
+            return JSHandle<JSFunction>(env->GetFloat64ArrayFunction());
+        case DataViewType::BIGINT64:
+            return JSHandle<JSFunction>(env->GetBigInt64ArrayFunction());
+        default:
+            break;
     }
     return JSHandle<JSFunction>(env->GetBigUint64ArrayFunction());
 }
 
 uint32_t TypedArrayHelper::GetSizeFromType(const DataViewType arrayType)
 {
-    uint32_t elementSize;
     if (arrayType == DataViewType::INT8 ||
         arrayType == DataViewType::UINT8 ||
         arrayType == DataViewType::UINT8_CLAMPED) {
-        elementSize = ElementSize::ONE;
-    } else if (arrayType == DataViewType::INT16 ||
-               arrayType == DataViewType::UINT16) {
-        elementSize = ElementSize::TWO;
-    } else if (arrayType == DataViewType::FLOAT32 ||
-               arrayType == DataViewType::UINT32 ||
-               arrayType == DataViewType::INT32) {
-        elementSize = ElementSize::FOUR;
-    } else {
-        elementSize = ElementSize::EIGHT;
+        return ElementSize::ONE;
     }
-    return elementSize;
+
+    if (arrayType == DataViewType::INT16 ||
+        arrayType == DataViewType::UINT16) {
+        return ElementSize::TWO;
+    }
+
+    if (arrayType == DataViewType::FLOAT32 ||
+        arrayType == DataViewType::UINT32 ||
+        arrayType == DataViewType::INT32) {
+        return ElementSize::FOUR;
+    }
+
+    return ElementSize::EIGHT;
 }
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_TYPED_ARRAY_HELPER_INL_H

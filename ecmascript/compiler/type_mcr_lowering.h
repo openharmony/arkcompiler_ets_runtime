@@ -131,6 +131,12 @@ private:
     void LowerObjectTypeCheck(GateRef gate);
     void LowerSimpleHClassCheck(GateRef gate);
     void LowerTSSubtypingCheck(GateRef gate);
+    void LowerObjectTypeCompare(GateRef gate);
+    void LowerSimpleHClassCompare(GateRef gate);
+    void LowerTSSubtypingCompare(GateRef gate);
+    GateRef BuildCompareSubTyping(GateRef gate, GateRef frameState, Label *levelValid, Label *exit);
+    GateRef BuildCompareHClass(GateRef gate, GateRef frameState);
+    void BuildCompareSubTyping(GateRef gate);
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);
     void LowerLoadTypedArrayLength(GateRef gate);
@@ -144,24 +150,29 @@ private:
     void LowerLoadFromTaggedArray(GateRef gate);
     void LowerStoreToTaggedArray(GateRef gate, GateRef glue);
     void LowerArrayLoadElement(GateRef gate);
-    void LowerInt32ArrayLoadElement(GateRef gate);
-    void LowerFloat64ArrayLoadElement(GateRef gate);
-    void LowerFloat32ArrayLoadElement(GateRef gate);
+    void LowerCowArrayCheck(GateRef gate, GateRef glue);
+    void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
     void LowerArrayStoreElement(GateRef gate, GateRef glue);
-    void LowerInt32ArrayStoreElement(GateRef gate, GateRef glue);
-    void LowerFloat32ArrayStoreElement(GateRef gate, GateRef glue);
-    void LowerFloat64ArrayStoreElement(GateRef gate, GateRef glue);
+    void LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id);
+    void LowerUInt8ClampedArrayStoreElement(GateRef gate);
     void LowerTypedCallBuitin(GateRef gate);
     void LowerCallTargetCheck(GateRef gate);
+    void LowerJSCallTargetCheck(GateRef gate);
     void LowerJSCallTargetFromDefineFuncCheck(GateRef gate);
     void LowerJSCallTargetTypeCheck(GateRef gate);
     void LowerJSFastCallTargetTypeCheck(GateRef gate);
     void LowerJSCallThisTargetTypeCheck(GateRef gate);
     void LowerJSFastCallThisTargetTypeCheck(GateRef gate);
+    void LowerJSNoGCCallThisTargetTypeCheck(GateRef gate);
+    void LowerJSNoGCFastCallThisTargetTypeCheck(GateRef gate);
     void LowerTypedNewAllocateThis(GateRef gate, GateRef glue);
     void LowerTypedSuperAllocateThis(GateRef gate, GateRef glue);
     void LowerGetSuperConstructor(GateRef gate);
     void LowerJSInlineTargetTypeCheck(GateRef gate);
+    void SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &funcIndex);
+    void LowerLoadGetter(GateRef gate);
+    void LowerLoadSetter(GateRef gate);
+    void LowerInlineAccessorCheck(GateRef gate);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
@@ -182,6 +193,8 @@ private:
     GateType GetLeftType(GateRef gate);
     GateType GetRightType(GateRef gate);
     GateRef GetObjectFromConstPool(GateRef jsFunc, GateRef index);
+    GateRef GetElementSize(BuiltinTypeId id);
+    VariableType GetVariableType(BuiltinTypeId id);
 
     GateRef GetFrameState(GateRef gate) const
     {

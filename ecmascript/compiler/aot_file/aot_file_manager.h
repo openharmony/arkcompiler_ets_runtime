@@ -45,6 +45,7 @@ class JSThread;
  *      |     AOT Function Entry Index   |  |
  *      +--------------------------------+----
  *      |      AOT Instance Hclass (IHC) |
+ *      |   AOT Constructor Hclass (CHC) |
  *      +--------------------------------+
  */
 class AOTLiteralInfo : public TaggedArray {
@@ -64,6 +65,7 @@ public:
     {
         TaggedArray::InitializeWithSpecialValue(initValue, capacity + RESERVED_LENGTH, extraLength);
         SetIhc(JSTaggedValue::Undefined());
+        SetChc(JSTaggedValue::Undefined());
     }
 
     inline uint32_t GetCacheLength() const
@@ -81,6 +83,16 @@ public:
         return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetIhcOffset()));
     }
 
+    inline void SetChc(JSTaggedValue value)
+    {
+        Barriers::SetPrimitive(GetData(), GetChcOffset(), value.GetRawData());
+    }
+
+    inline JSTaggedValue GetChc() const
+    {
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetChcOffset()));
+    }
+
     inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
     {
         Set(thread, index, value);
@@ -91,12 +103,18 @@ public:
         return Get(index);
     }
 private:
-    static constexpr size_t AOT_IHC_INDEX = 1;
+    static constexpr size_t AOT_CHC_INDEX = 1;
+    static constexpr size_t AOT_IHC_INDEX = 2;
     static constexpr size_t RESERVED_LENGTH = AOT_IHC_INDEX;
 
     inline size_t GetIhcOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_IHC_INDEX);
+    }
+
+    inline size_t GetChcOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_CHC_INDEX);
     }
 };
 

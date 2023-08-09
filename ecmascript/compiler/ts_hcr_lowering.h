@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/object_access_helper.h"
 #include "ecmascript/compiler/pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
@@ -27,7 +28,7 @@ class TSHCRLowering {
 public:
     TSHCRLowering(Circuit *circuit, PassContext *ctx,
                    bool enableLog, bool enableTypeLog,
-                   bool enableOptStaticMethod, const std::string& name)
+                   const std::string& name)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -35,7 +36,6 @@ public:
           tsManager_(ctx->GetTSManager()),
           enableLog_(enableLog),
           enableTypeLog_(enableTypeLog),
-          enableOptStaticMethod_(enableOptStaticMethod),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
           verifyVTable_(ctx->GetCompilerConfig()->IsVerifyVTbale()),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
@@ -59,11 +59,6 @@ private:
     bool IsTypeLogEnabled() const
     {
         return enableTypeLog_;
-    }
-
-    bool EnableOptStaticMethod() const
-    {
-        return enableOptStaticMethod_;
     }
 
     bool IsProfiling() const
@@ -105,17 +100,17 @@ private:
     void LowerConditionJump(GateRef gate, bool flag);
     void LowerTypedNeg(GateRef gate);
     void LowerTypedNot(GateRef gate);
+
     void LowerTypedLdObjByName(GateRef gate);
-    void LowerTypedLdObjByNameForClassOrObject(GateRef gate, GateRef receiver, JSTaggedValue prop);
-    void LowerTypedLdObjByNameForClassInstance(GateRef gate, GateRef receiver, JSTaggedValue prop);
-    bool TryLowerTypedLdObjByNameForArray(GateRef gate, GateRef receiver, JSTaggedValue prop);
+    void LowerTypedStObjByName(GateRef gate, bool isThis);
+    using AccessMode = ObjectAccessHelper::AccessMode;
+    void LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode accessMode, JSTaggedValue key, GateRef value);
+    GateRef BuildNamedPropertyAccess(GateRef hir, ObjectAccessHelper accessHelper, PropertyLookupResult plr);
+    void BuildNamedPropertyAccessVerifier(GateRef gate, GateRef receiver, AccessMode mode, GateRef value);
+    bool TryLowerTypedLdObjByNameForArray(GateRef gate, GateType receiverType, JSTaggedValue key);
     void LowerTypedLdArrayLength(GateRef gate);
     void LowerTypedLdTypedArrayLength(GateRef gate);
-    void LowerTypedStObjByName(GateRef gate, bool isThis);
-    void LowerTypedStObjByNameForClassOrObject(GateRef gate, GateRef receiver, GateRef value,
-                                               JSTaggedValue prop);
-    void LowerTypedStObjByNameForClassInstance(GateRef gate, GateRef receiver, GateRef value,
-                                               JSTaggedValue prop, bool isThis);
+
     void LowerTypedLdObjByIndex(GateRef gate);
     void LowerTypedStObjByIndex(GateRef gate);
     void LowerTypedLdObjByValue(GateRef gate, bool isThis);
@@ -140,9 +135,16 @@ private:
     bool CanOptimizeAsFastCall(GateRef func);
     void CheckCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
         GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
+    void CheckCallTargetFromDefineFuncAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+        GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall, bool isNoGC);
     void CheckThisCallTargetAndLowerCall(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
         GateType funcType, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
-
+    void CheckCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+                                 GateType funcType, bool isNoGC);
+    void CheckFastCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
+                                     GateType funcType, bool isNoGC);
+    void LowerFastCall(GateRef gate, GateRef func, const std::vector<GateRef> &argsFastCall, bool isNoGC);
+    void LowerCall(GateRef gate, GateRef func, const std::vector<GateRef> &args, bool isNoGC);
     GateRef LoadJSArrayByIndex(GateRef receiver, GateRef propKey);
     GateRef LoadTypedArrayByIndex(GateRef receiver, GateRef propKey);
     void StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value);
@@ -169,8 +171,11 @@ private:
     void DeleteConstDataIfNoUser(GateRef gate);
 
     void AddProfiling(GateRef gate);
-    void AddVTableLoadVerifer(GateRef gate, GateRef value);
-    void AddVTableStoreVerifer(GateRef gate, GateRef store, bool isThis);
+
+    bool Uncheck() const
+    {
+        return noCheck_;
+    }
 
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
@@ -179,7 +184,6 @@ private:
     TSManager *tsManager_ {nullptr};
     bool enableLog_ {false};
     bool enableTypeLog_ {false};
-    bool enableOptStaticMethod_ {false};
     bool profiling_ {false};
     bool verifyVTable_ {false};
     bool traceBc_ {false};
@@ -189,7 +193,7 @@ private:
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
     ArgumentAccessor argAcc_;
-    EcmaOpcode currentOp_;
+    EcmaOpcode currentOp_ {static_cast<EcmaOpcode>(0xff)};
     PGOTypeLogList pgoTypeLog_;
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeMap_;
     std::unordered_map<EcmaOpcode, uint32_t> bytecodeHitTimeMap_;

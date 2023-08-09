@@ -120,11 +120,9 @@ JSTaggedValue BuiltinsWeakSet::Add(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
-    if (!value->IsHeapObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "value is not an object", JSTaggedValue::Exception());
-    }
-    if (value->IsSymbol() || value->IsString()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "value is Symblol or String", JSTaggedValue::Exception());
+    // 4.If CanBeHeldWeakly(value) is false, throw a TypeError exception.
+    if (!JSTaggedValue::CanBeHeldWeakly(thread, value)) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "invalid value used in weak set", JSTaggedValue::Exception());
     }
 
     JSHandle<JSWeakSet> weakSet(thread, JSWeakSet::Cast(*JSTaggedValue::ToObject(thread, self)));
@@ -149,7 +147,8 @@ JSTaggedValue BuiltinsWeakSet::Delete(EcmaRuntimeCallInfo *argv)
     JSHandle<JSWeakSet> weakSet(thread, JSWeakSet::Cast(*JSTaggedValue::ToObject(thread, self)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
-    if (!value->IsHeapObject()) {
+    // 4.If CanBeHeldWeakly(value) is false, return false.
+    if (!JSTaggedValue::CanBeHeldWeakly(thread, value)) {
         GetTaggedBoolean(false);
     }
     return GetTaggedBoolean(JSWeakSet::Delete(thread, weakSet, value));
@@ -170,7 +169,8 @@ JSTaggedValue BuiltinsWeakSet::Has(EcmaRuntimeCallInfo *argv)
     JSWeakSet *jsWeakSet = JSWeakSet::Cast(*JSTaggedValue::ToObject(thread, self));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
-    if (!value->IsHeapObject()) {
+    // 4.If CanBeHeldWeakly(value) is false, return false.
+    if (!JSTaggedValue::CanBeHeldWeakly(thread, value)) {
         GetTaggedBoolean(false);
     }
     return GetTaggedBoolean(jsWeakSet->Has(value.GetTaggedValue()));

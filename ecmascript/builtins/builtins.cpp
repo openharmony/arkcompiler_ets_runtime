@@ -1316,6 +1316,7 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread_, JSHandle<JSTaggedValue>(setFuncPrototype), constructorKey, setFunction);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     // set.prototype.add()
     SetFunction(env, setFuncPrototype, "add", BuiltinsSet::Add, FunctionLength::ONE);
     // set.prototype.clear()
@@ -1335,6 +1336,7 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     JSHandle<JSTaggedValue> values(factory_->NewFromASCII("values"));
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(setFuncPrototype), values);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     PropertyDescriptor descriptor(thread_, valuesFunc, true, false, true);
     JSObject::DefineOwnProperty(thread_, setFuncPrototype, keys, descriptor);
 
@@ -1389,6 +1391,7 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread_, JSHandle<JSTaggedValue>(mapFuncPrototype), constructorKey, mapFunction);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     // map.prototype.set()
     SetFunction(env, mapFuncPrototype, globalConst->GetHandledSetString(), BuiltinsMap::Set, FunctionLength::TWO);
     // map.prototype.clear()
@@ -1427,6 +1430,7 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     JSHandle<JSTaggedValue> entries(factory_->NewFromASCII("entries"));
     JSHandle<JSTaggedValue> entriesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(mapFuncPrototype), entries);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     PropertyDescriptor descriptor(thread_, entriesFunc, true, false, true);
     JSObject::DefineOwnProperty(thread_, mapFuncPrototype, iteratorSymbol, descriptor);
 
@@ -1465,6 +1469,7 @@ void Builtins::InitializeWeakMap(const JSHandle<GlobalEnv> &env, const JSHandle<
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread_, JSHandle<JSTaggedValue>(weakMapFuncPrototype), constructorKey, weakMapFunction);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     // weakmap.prototype.set()
     SetFunction(env, weakMapFuncPrototype, globalConst->GetHandledSetString(), BuiltinsWeakMap::Set,
                 FunctionLength::TWO);
@@ -1509,6 +1514,7 @@ void Builtins::InitializeWeakSet(const JSHandle<GlobalEnv> &env, const JSHandle<
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread_, JSHandle<JSTaggedValue>(weakSetFuncPrototype), constructorKey, weakSetFunction);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     // set.prototype.add()
     SetFunction(env, weakSetFuncPrototype, "add", BuiltinsWeakSet::Add, FunctionLength::ONE);
     // set.prototype.delete()
@@ -1578,6 +1584,7 @@ void Builtins::InitializeWeakRef(const JSHandle<GlobalEnv> &env, const JSHandle<
     // "constructor" property on the prototype
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread_, JSHandle<JSTaggedValue>(weakRefFuncPrototype), constructorKey, weakRefFunction);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     // WeakRef.prototype.deref()
     SetFunction(env, weakRefFuncPrototype, "deref", BuiltinsWeakRef::Deref, FunctionLength::ZERO);
 
@@ -1620,6 +1627,7 @@ void Builtins::InitializeFinalizationRegistry(const JSHandle<GlobalEnv> &env,
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread_, JSHandle<JSTaggedValue>(finalizationRegistryFuncPrototype),
                           constructorKey, finalizationRegistryFunction);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     // FinalizationRegistry.prototype.deref()
     SetFunction(env, finalizationRegistryFuncPrototype, "register",
                 BuiltinsFinalizationRegistry::Register, FunctionLength::TWO);
@@ -2124,6 +2132,7 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(arrFuncPrototype), values);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     PropertyDescriptor iteartorDesc(thread_, valuesFunc, true, false, true);
     JSObject::DefineOwnProperty(thread_, arrFuncPrototype, iteratorSymbol, iteartorDesc);
 
@@ -2229,6 +2238,7 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHand
     JSHandle<JSTaggedValue> arrFuncPrototype = env->GetArrayPrototype();
     JSHandle<JSTaggedValue> toStringFunc =
         JSObject::GetMethod(thread_, arrFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString());
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     PropertyDescriptor toStringDesc(thread_, toStringFunc, true, false, true);
     JSObject::DefineOwnProperty(thread_, typedArrFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(),
                                 toStringDesc);
@@ -2238,6 +2248,7 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHand
     JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(typedArrFuncPrototype), values);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     PropertyDescriptor iteartorDesc(thread_, valuesFunc, true, false, true);
     JSObject::DefineOwnProperty(thread_, typedArrFuncPrototype, iteratorSymbol, iteartorDesc);
 

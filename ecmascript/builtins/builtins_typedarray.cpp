@@ -184,7 +184,9 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> usingIterator = JSObject::GetMethod(thread, source, iteratorSymbol);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> arrIter = JSObject::GetMethod(thread, env->GetArrayProtoValuesFunction(), iteratorSymbol);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> typedArrIter = JSObject::GetMethod(thread, env->GetTypedArrayPrototype(), iteratorSymbol);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     bool isArrIter = JSTaggedValue::SameValue(usingIterator, arrIter);
     bool isTypedArrIter = JSTaggedValue::SameValue(usingIterator, typedArrIter);
     // 6. If usingIterator is not undefined, then
@@ -220,7 +222,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
         //     vi. Set k to k + 1.
         JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
         JSMutableHandle<JSTaggedValue> mapValue(thread, JSTaggedValue::Undefined());
-        const int32_t argsLength = 2;
+        const uint32_t argsLength = 2;
         uint32_t k = 0;
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         while (k < len) {
@@ -275,7 +277,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     //   e. Perform ? Set(targetObj, Pk, mappedValue, true).
     //   f. Set k to k + 1.
     JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
-    const int32_t argsLength = 2;
+    const uint32_t argsLength = 2;
     int64_t k = 0;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
@@ -519,7 +521,7 @@ JSTaggedValue BuiltinsTypedArray::Every(EcmaRuntimeCallInfo *argv)
     //     v. If testResult is false, return false.
     //   e. Increase k by 1.
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    const int32_t argsLength = 3;
+    const uint32_t argsLength = 3;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     uint32_t k = 0;
     while (k < len) {
@@ -612,9 +614,7 @@ JSTaggedValue BuiltinsTypedArray::Filter(EcmaRuntimeCallInfo *argv)
         info->SetCallArg(kValue.GetTaggedValue(), tKey.GetTaggedValue(), thisHandle.GetTaggedValue());
         JSTaggedValue callResult = JSFunction::Call(info);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        bool testResult = callResult.ToBoolean();
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (testResult) {
+        if (callResult.ToBoolean()) {
             kept->Set(thread, captured, kValue);
             captured++;
         }
@@ -708,7 +708,7 @@ JSTaggedValue BuiltinsTypedArray::ForEach(EcmaRuntimeCallInfo *argv)
     //     iv. ReturnIfAbrupt(funcResult).
     //   e. Increase k by 1.
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    const int32_t argsLength = 3;
+    const uint32_t argsLength = 3;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     uint32_t k = 0;
     while (k < len) {
@@ -936,7 +936,7 @@ JSTaggedValue BuiltinsTypedArray::Map(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> mapValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
-    const int32_t argsLength = 3;
+    const uint32_t argsLength = 3;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     for (uint32_t k = 0; k < len; k++) {
         key.Update(JSTaggedValue(k));
@@ -1513,7 +1513,7 @@ JSTaggedValue BuiltinsTypedArray::Subarray(EcmaRuntimeCallInfo *argv)
     // 21. Let argumentsList be «buffer, beginByteOffset, newLength».
     // 5. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
     // 22. Return Construct(constructor, argumentsList).
-    const int32_t argsLength = 3;
+    const uint32_t argsLength = 3;
     JSTaggedType args[argsLength] = {
         buffer.GetRawData(),
         JSTaggedValue(beginByteOffset).GetRawData(),
@@ -1622,7 +1622,7 @@ JSTaggedValue BuiltinsTypedArray::At(EcmaRuntimeCallInfo *argv)
     int64_t k = 0;
     // 5. If relativeIndex ≥ 0, then Let k be relativeIndex.
     // 6. Else, Let k be len + relativeIndex.
-    k = relativeIndex >= 0 ? relativeIndex : len + relativeIndex;
+    k = relativeIndex >= 0 ? relativeIndex : static_cast<int64_t>(len) + relativeIndex;
     // 7. If k < 0 or k ≥ len, return undefined.
     if (k < 0 || k >= len) {
         return JSTaggedValue::Undefined();

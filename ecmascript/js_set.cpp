@@ -56,7 +56,7 @@ bool JSSet::Has(JSTaggedValue value) const
     return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->Has(value);
 }
 
-int JSSet::GetSize() const
+uint32_t JSSet::GetSize() const
 {
     return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->NumberOfElements();
 }

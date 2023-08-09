@@ -55,6 +55,8 @@ template("host_unittest_action") {
           rebase_path(_root_out_dir_) + "/test/test:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
           rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+          rebase_path(_root_out_dir_) +
+          "/thirdparty/bounds_checking_function:" +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
       "--timeout-limit",
       "1200",
@@ -579,6 +581,11 @@ template("host_aot_js_test_action") {
           " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
     }
 
+    if (defined(invoker.is_enable_opt_loop_peeling) &&
+        invoker.is_enable_opt_loop_peeling) {
+      _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+    }
+
     if (defined(invoker.is_enable_inline_trace) &&
         invoker.is_enable_inline_trace) {
       _aot_compile_options_ += " --compiler-trace-inline=true"
@@ -729,6 +736,7 @@ template("host_aot_test_action") {
   _test_aot_arg_slowpath_ = "$target_out_dir/slowpath/${_target_name_}"
   _test_aot_log_level = "info"
   _test_expect_path_ = "./expect_output.txt"
+  _test_pgo_expect_path_ = "./pgo_expect_output.txt"
 
   es2abc_gen_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
@@ -759,6 +767,56 @@ template("host_aot_test_action") {
 
   _script_args_ = rebase_path(_test_abc_path_)
 
+  action("${_target_name_}PgoExecute") {
+    testonly = true
+    _host_jsvm_target_ =
+        "$js_root/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+    deps = [
+      ":gen_${_target_name_}_abc",
+      _host_jsvm_target_,
+    ]
+    deps += _deps_
+
+    script = "$js_root/script/run_ark_executable.py"
+
+    _aot_run_options_ =
+        " --asm-interpreter=true" + " --entry-point=${_target_name_}" +
+        " --enable-pgo-profiler=true" + " --compiler-pgo-profiler-path=" +
+        rebase_path(_test_aot_arg_) + "/modules.ap"
+
+    if (defined(invoker.is_enable_enableArkTools) &&
+        invoker.is_enable_enableArkTools) {
+      _aot_run_options_ += " --enable-ark-tools=true"
+      _aot_run_options_ += " --enable-force-gc=false"
+    }
+
+    if (defined(invoker.log_option)) {
+      _aot_run_options_ += invoker.log_option
+    }
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+      "--script-options",
+      _aot_run_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-file",
+      rebase_path(_test_pgo_expect_path_),
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+    ]
+
+    inputs = [ _test_abc_path_ ]
+
+    outputs = [ "$target_out_dir/${_target_name_}/pgo" ]
+  }
+
   action("${_target_name_}AotCompileAction") {
     testonly = true
 
@@ -770,6 +828,10 @@ template("host_aot_test_action") {
     ]
     deps += _deps_
 
+    if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
+      deps += [ ":${_target_name_}PgoExecute" ]
+    }
+
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_compile_options_ =
@@ -777,6 +839,10 @@ template("host_aot_test_action") {
         _test_aot_log_level + " --log-components=compiler" +
         " --compiler-opt-inlining=false"
 
+    if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
+      _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
+                               rebase_path(_test_aot_arg_) + "/modules.ap"
+    }
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
       _aot_compile_options_ += " --compiler-trace-deopt=true"
@@ -790,6 +856,11 @@ template("host_aot_test_action") {
         invoker.is_enable_opt_inlining) {
       _aot_compile_options_ +=
           " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
+    }
+
+    if (defined(invoker.is_enable_opt_loop_peeling) &&
+        invoker.is_enable_opt_loop_peeling) {
+      _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
     }
 
     if (defined(invoker.is_enable_inline_trace) &&
@@ -858,6 +929,11 @@ template("host_aot_test_action") {
         invoker.is_enable_opt_inlining) {
       _aot_compile_options_ +=
           " --compiler-opt-inlining=true --compiler-opt-type-lowering=true"
+    }
+
+    if (defined(invoker.is_enable_opt_loop_peeling) &&
+        invoker.is_enable_opt_loop_peeling) {
+      _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
     }
 
     if (defined(invoker.is_enable_inline_trace) &&

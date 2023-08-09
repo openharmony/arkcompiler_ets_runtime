@@ -368,17 +368,7 @@ JSHandle<JSTaggedValue> EcmaVM::GetEcmaUncaughtException() const
 
 void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const
 {
-    JSHandle<JSTaggedValue> nameKey = thread_->GlobalConstants()->GetHandledNameString();
-    JSHandle<EcmaString> name(JSObject::GetProperty(thread_, exceptionInfo, nameKey).GetValue());
-    JSHandle<JSTaggedValue> msgKey = thread_->GlobalConstants()->GetHandledMessageString();
-    JSHandle<EcmaString> msg(JSObject::GetProperty(thread_, exceptionInfo, msgKey).GetValue());
-    JSHandle<JSTaggedValue> stackKey = thread_->GlobalConstants()->GetHandledStackString();
-    JSHandle<EcmaString> stack(JSObject::GetProperty(thread_, exceptionInfo, stackKey).GetValue());
-
-    CString nameBuffer = ConvertToString(*name);
-    CString msgBuffer = ConvertToString(*msg);
-    CString stackBuffer = ConvertToString(*stack);
-    LOG_NO_TAG(ERROR) << nameBuffer << ": " << msgBuffer << "\n" << stackBuffer;
+    EcmaContext::PrintJSErrorInfo(thread_, exceptionInfo);
 }
 
 void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
@@ -452,11 +442,8 @@ void EcmaVM::RemoveFromDeregisterModuleList(CString module)
 
 bool EcmaVM::ContainInDeregisterModuleList(CString module)
 {
-    auto iter = std::find(deregisterModuleList_.begin(), deregisterModuleList_.end(), module);
-    if (iter != deregisterModuleList_.end()) {
-        return true;
-    }
-    return false;
+    return (std::find(deregisterModuleList_.begin(), deregisterModuleList_.end(), module)
+        != deregisterModuleList_.end());
 }
 
 void EcmaVM::ClearBufferData()
@@ -474,16 +461,6 @@ void EcmaVM::ClearBufferData()
 void EcmaVM::CollectGarbage(TriggerGCType gcType, GCReason reason) const
 {
     heap_->CollectGarbage(gcType, reason);
-}
-
-void EcmaVM::StartHeapTracking(HeapTracker *tracker)
-{
-    heap_->StartHeapTracking(tracker);
-}
-
-void EcmaVM::StopHeapTracking()
-{
-    heap_->StopHeapTracking();
 }
 
 void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
@@ -505,6 +482,14 @@ void EcmaVM::DeleteHeapProfile()
     heapProfile_ = nullptr;
 }
 
+HeapProfilerInterface *EcmaVM::GetHeapProfile()
+{
+    if (heapProfile_ != nullptr) {
+        return heapProfile_;
+    }
+    return nullptr;
+}
+
 HeapProfilerInterface *EcmaVM::GetOrNewHeapProfile()
 {
     if (heapProfile_ != nullptr) {
@@ -513,6 +498,16 @@ HeapProfilerInterface *EcmaVM::GetOrNewHeapProfile()
     heapProfile_ = const_cast<NativeAreaAllocator *>(GetNativeAreaAllocator())->New<HeapProfiler>(this);
     ASSERT(heapProfile_ != nullptr);
     return heapProfile_;
+}
+
+void EcmaVM::StartHeapTracking()
+{
+    heap_->StartHeapTracking();
+}
+
+void EcmaVM::StopHeapTracking()
+{
+    heap_->StopHeapTracking();
 }
 #endif
 

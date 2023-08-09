@@ -28,6 +28,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -437,11 +438,10 @@ void JSObject::GetAllElementKeys(JSThread *thread, const JSHandle<JSObject> &obj
                                  const JSHandle<TaggedArray> &keyArray)
 {
     uint32_t elementIndex = 0;
-
     if (obj->IsJSPrimitiveRef() && JSPrimitiveRef::Cast(*obj)->IsString()) {
         elementIndex = JSPrimitiveRef::Cast(*obj)->GetStringLength() + static_cast<uint32_t>(offset);
         for (uint32_t i = static_cast<uint32_t>(offset); i < elementIndex; ++i) {
-            auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(i));
+            auto key = base::NumberHelper::IntToEcmaString(thread, i);
             keyArray->Set(thread, i, key);
         }
     }
@@ -451,7 +451,7 @@ void JSObject::GetAllElementKeys(JSThread *thread, const JSHandle<JSObject> &obj
         uint32_t elementsLen = elements->GetLength();
         for (uint32_t i = 0, j = elementIndex; i < elementsLen; ++i) {
             if (!elements->Get(i).IsHole()) {
-                auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(i));
+                auto key = base::NumberHelper::IntToEcmaString(thread, i);
                 keyArray->Set(thread, j++, key);
             }
         }
@@ -530,10 +530,8 @@ JSHandle<TaggedArray> JSObject::GetEnumElementKeys(JSThread *thread, const JSHan
         *keys += elementIndex;
         elementIndex += static_cast<uint32_t>(offset);
         for (uint32_t i = static_cast<uint32_t>(offset); i < elementIndex; ++i) {
-            keyHandle.Update(JSTaggedValue(i));
-            auto key = JSTaggedValue::ToString(thread, keyHandle);
-            RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
-            elementArray->Set(thread, i, key);
+            keyHandle.Update(base::NumberHelper::IntToEcmaString(thread, i));
+            elementArray->Set(thread, i, keyHandle);
         }
     }
 
@@ -543,7 +541,7 @@ JSHandle<TaggedArray> JSObject::GetEnumElementKeys(JSThread *thread, const JSHan
         uint32_t preElementIndex = elementIndex;
         for (uint32_t i = 0; i < elementsLen; ++i) {
             if (!arr->Get(i).IsHole()) {
-                keyHandle.Update(factory->NewFromASCII(ToCString(i)).GetTaggedValue());
+                keyHandle.Update(base::NumberHelper::IntToEcmaString(thread, i));
                 elementArray->Set(thread, elementIndex++, keyHandle);
             }
         }
@@ -561,7 +559,7 @@ void JSObject::GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &ob
     if (obj->IsJSPrimitiveRef() && JSPrimitiveRef::Cast(*obj)->IsString()) {
         elementIndex = JSPrimitiveRef::Cast(*obj)->GetStringLength() + static_cast<uint32_t>(offset);
         for (uint32_t i = static_cast<uint32_t>(offset); i < elementIndex; ++i) {
-            auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(i));
+            auto key = base::NumberHelper::IntToEcmaString(thread, i);
             keyArray->Set(thread, i, key);
         }
     }
@@ -571,7 +569,7 @@ void JSObject::GetEnumElementKeys(JSThread *thread, const JSHandle<JSObject> &ob
         uint32_t elementsLen = elements->GetLength();
         for (uint32_t i = 0, j = elementIndex; i < elementsLen; ++i) {
             if (!elements->Get(i).IsHole()) {
-                auto key = base::NumberHelper::NumberToString(thread, JSTaggedValue(i));
+                auto key = base::NumberHelper::IntToEcmaString(thread, i);
                 keyArray->Set(thread, j++, key);
             }
         }
@@ -800,6 +798,10 @@ bool JSObject::CallSetter(JSThread *thread, const AccessorData &accessor, const 
     }
 
     JSHandle<JSTaggedValue> func(thread, setter);
+    if (thread->IsPGOProfilerEnable()) {
+        auto profiler = thread->GetEcmaVM()->GetPGOProfiler();
+        profiler->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, receiver, undefined, 1);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -822,6 +824,10 @@ JSTaggedValue JSObject::CallGetter(JSThread *thread, const AccessorData *accesso
     }
 
     JSHandle<JSTaggedValue> func(thread, getter);
+    if (thread->IsPGOProfilerEnable()) {
+        auto profiler = thread->GetEcmaVM()->GetPGOProfiler();
+        profiler->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, receiver, undefined, 0);
     JSTaggedValue res = JSFunction::Call(info);
@@ -974,9 +980,12 @@ bool JSObject::OrdinaryGetOwnProperty(JSThread *thread, const JSHandle<JSObject>
     op.ToPropertyDescriptor(desc);
 
     if (desc.HasValue() && obj->IsJSGlobalObject()) {
-        PropertyBox *cell = PropertyBox::Cast(desc.GetValue().GetTaggedValue().GetTaggedObject());
-        JSHandle<JSTaggedValue> valueHandle(thread, cell->GetValue());
-        desc.SetValue(valueHandle);
+        JSTaggedValue val = desc.GetValue().GetTaggedValue();
+        if (val.IsPropertyBox()) {
+            PropertyBox *cell = PropertyBox::Cast(val.GetTaggedObject());
+            JSHandle<JSTaggedValue> valueHandle(thread, cell->GetValue());
+            desc.SetValue(valueHandle);
+        }
     }
 
     return true;
@@ -1188,7 +1197,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
     JSHandle<JSHClass> hclass(thread, obj->GetJSHClass());
     JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto);
     JSHClass::NotifyHclassChanged(thread, hclass, newClass);
-    obj->SetClass(newClass);
+    obj->SynchronizedSetClass(*newClass);
     thread->NotifyStableArrayElementsGuardians(obj);
     return true;
 }
@@ -1241,7 +1250,7 @@ bool JSObject::PreventExtensions(JSThread *thread, const JSHandle<JSObject> &obj
     if (obj->IsExtensible()) {
         JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
         JSHandle<JSHClass> newHclass = JSHClass::TransitionExtension(thread, jshclass);
-        obj->SetClass(newHclass);
+        obj->SynchronizedSetClass(*newHclass);
     }
 
     return true;
@@ -1748,6 +1757,7 @@ bool JSObject::InstanceOf(JSThread *thread, const JSHandle<JSTaggedValue> &objec
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, instOfHandler, target, undefined, 1);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         info->SetCallArg(object.GetTaggedValue());
         JSTaggedValue tagged = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -2101,7 +2111,8 @@ void JSObject::DefineGetter(JSThread *thread, const JSHandle<JSTaggedValue> &obj
     op.DefineGetter(value);
 }
 
-JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, const JSHandle<TaggedArray> &properties)
+JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, const JSHandle<TaggedArray> &properties,
+                                                        JSTaggedValue ihcVal)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     size_t length = properties->GetLength();
@@ -2114,10 +2125,17 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
     }
     if (propsLen <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES) {
         JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(properties, propsLen);
+        if (ihcVal.IsJSHClass()) {
+            JSHClass *ihc = JSHClass::Cast(ihcVal.GetTaggedObject());
+            JSHClass *oldHC = obj->GetJSHClass();
+            ihc->SetPrototype(thread, oldHC->GetPrototype());
+            obj->SetClass(ihc);
+        }
         ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
         for (size_t i = 0; i < propsLen; i++) {
             // 2: literal contains a pair of key-value
-            obj->SetPropertyInlinedProps(thread, i, properties->Get(i * 2 + 1));
+            auto value = obj->ConvertValueWithRep(i, properties->Get(i * 2 + 1));
+            obj->SetPropertyInlinedPropsWithRep(thread, i, value);
         }
         return obj;
     } else {

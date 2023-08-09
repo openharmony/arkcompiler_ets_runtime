@@ -223,6 +223,30 @@ inline bool JSObject::IsTypedArray() const
     return GetJSHClass()->IsTypedArray();
 }
 
+JSTaggedValue JSObject::ConvertValueWithRep(uint32_t index, JSTaggedValue value)
+{
+    auto layout = LayoutInfo::Cast(GetJSHClass()->GetLayout().GetTaggedObject());
+    auto attr = layout->GetAttr(index);
+    if (attr.IsDoubleRep()) {
+        if (value.IsInt()) {
+            double doubleValue = value.GetInt();
+            return JSTaggedValue(bit_cast<JSTaggedType>(doubleValue));
+        } else if (value.IsDouble()) {
+            return JSTaggedValue(bit_cast<JSTaggedType>(value.GetDouble()));
+        } else {
+            UNREACHABLE();
+        }
+    } else if (attr.IsIntRep()) {
+        if (value.IsInt()) {
+            int intValue = value.GetInt();
+            return JSTaggedValue(static_cast<JSTaggedType>(intValue));
+        } else {
+            UNREACHABLE();
+        }
+    }
+    return value;
+}
+
 void JSObject::SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value)
 {
     auto layout = LayoutInfo::Cast(GetJSHClass()->GetLayout().GetTaggedObject());

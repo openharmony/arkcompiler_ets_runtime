@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_FILE_GENERATORS_H
 #define ECMASCRIPT_COMPILER_FILE_GENERATORS_H
 
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/compiler_log.h"
@@ -58,6 +59,18 @@ public:
 
     uintptr_t GetSectionAddr(ElfSecName sec) const;
 
+    std::tuple<uint64_t, uint32_t> GetMergedRODataAddrAndSize() const
+    {
+        uint64_t addr = base::MAX_UINT64_VALUE;
+        uint32_t size = 0;
+        UpdateRODataInfo(addr, size, ElfSecName::RODATA);
+        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST4);
+        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST8);
+        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST16);
+        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST32);
+        return std::make_tuple(addr, size);
+    }
+
     void RunAssembler(const CompilerLog &log, bool fastCompileMode);
 
     void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset, const CompilerLog &log,
@@ -81,9 +94,11 @@ private:
         return assembler_->GetSectionSize(ElfSecName::TEXT);
     }
 
-    uint32_t GetRODataSize() const
+    void UpdateRODataInfo(uint64_t &addr, uint32_t &size, ElfSecName sec) const
     {
-        return assembler_->GetSectionSize(ElfSecName::RODATA_CST8);
+        uint64_t curSectionAddr = GetSectionAddr(sec);
+        addr = ((curSectionAddr != 0) && (curSectionAddr < addr)) ? curSectionAddr : addr;
+        size += GetSectionSize(sec);
     }
 
     LLVMModule *llvmModule_ {nullptr};

@@ -491,6 +491,11 @@ inline bool JSTaggedValue::IsTaggedArray() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTaggedArray();
 }
 
+inline bool JSTaggedValue::IsDictionary() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsDictionary();
+}
+
 inline bool JSTaggedValue::IsByteArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsByteArray();

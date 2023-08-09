@@ -18,10 +18,12 @@
 
 #include "ecmascript/debugger/hot_reload_manager.h"
 #include "ecmascript/debugger/notification_manager.h"
+#include "ecmascript/debugger/dropframe_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/global_handle_collection.h"
 
 #include "libpandabase/os/library_loader.h"
 
@@ -131,6 +133,21 @@ public:
         }
     }
 
+    void MethodEntry(JSHandle<Method> method)
+    {
+        dropframeManager_.MethodEntry(jsThread_, method);
+    }
+
+    void MethodExit(JSHandle<Method> method)
+    {
+        dropframeManager_.MethodExit(jsThread_, method);
+    }
+
+    void DropLastFrame()
+    {
+        dropframeManager_.DropLastFrame(jsThread_);
+    }
+
 private:
     bool isDebugMode_ {false};
     bool isMixedDebugEnabled_ { false };
@@ -140,6 +157,7 @@ private:
     SingleStepperFunc *stepperFunc_ {nullptr};
     JSThread *jsThread_ {nullptr};
     std::shared_ptr<FrameHandler> frameHandler_;
+    DropframeManager dropframeManager_ { };
 
     NotificationManager notificationManager_;
     HotReloadManager hotReloadManager_;

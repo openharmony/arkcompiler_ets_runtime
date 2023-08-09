@@ -585,7 +585,7 @@ void PGOMethodTypeSet::RWScalarOpTypeInfo::ProcessToText(std::string &text) cons
     text += BLOCK_START;
     text += ARRAY_START + SPACE;
     bool isFirst = true;
-    for (int i = 0; i < type_.GetCount(); i++) {
+    for (uint32_t i = 0; i < type_.GetCount(); i++) {
         if (!isFirst) {
             text += TYPE_SEPARATOR + SPACE;
         }
@@ -646,6 +646,14 @@ bool PGOMethodInfoMap::AddType(Chunk *chunk, PGOMethodId methodId, int32_t offse
     auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
     ASSERT(typeInfoSet != nullptr);
     typeInfoSet->AddType(offset, type);
+    return true;
+}
+
+bool PGOMethodInfoMap::AddCallTargetType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type)
+{
+    auto typeInfoSet = GetOrInsertMethodTypeSet(chunk, methodId);
+    ASSERT(typeInfoSet != nullptr);
+    typeInfoSet->AddCallTargetType(offset, type);
     return true;
 }
 
@@ -763,7 +771,6 @@ bool PGOMethodInfoMap::ProcessToBinary(uint32_t threshold, const CString &record
         if (header->SupportMethodChecksum()) {
             auto checksumIter = methodsChecksum_.find(curMethodInfo->GetMethodId());
             uint32_t checksum = 0;
-            ASSERT(checksumIter != methodsChecksum_.end());
             if (checksumIter != methodsChecksum_.end()) {
                 checksum = checksumIter->second;
             }
@@ -985,6 +992,14 @@ bool PGORecordDetailInfos::AddType(const CString &recordName, PGOMethodId method
     return curMethodInfos->AddType(chunk_.get(), methodId, offset, type);
 }
 
+bool PGORecordDetailInfos::AddCallTargetType(const CString &recordName, PGOMethodId methodId, int32_t offset,
+                                             PGOSampleType type)
+{
+    auto curMethodInfos = GetMethodInfoMap(recordName);
+    ASSERT(curMethodInfos != nullptr);
+    return curMethodInfos->AddCallTargetType(chunk_.get(), methodId, offset, type);
+}
+
 bool PGORecordDetailInfos::AddObjectInfo(
     const CString &recordName, EntityId methodId, int32_t offset, const PGOObjectInfo &info)
 {
@@ -1021,7 +1036,7 @@ bool PGORecordDetailInfos::AddLayout(PGOSampleType type, JSTaggedType hclass, PG
             return false;
         }
     } else {
-        LOG_ECMA(INFO) << "The current class did not find a definition";
+        LOG_ECMA(DEBUG) << "The current class did not find a definition";
         return false;
     }
     return true;
@@ -1072,7 +1087,7 @@ void PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
     if (info == nullptr) {
         return;
     }
-    if (header->SupportType()) {
+    if (header->SupportTrackField()) {
         ParseFromBinaryForLayout(&addr);
     }
 }
@@ -1152,7 +1167,8 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
     }
 
     secInfo.offset_ = sizeof(SectionInfo);
-    secInfo.size_ = static_cast<uint32_t>(stream.tellp()) - layoutBeginPosition - sizeof(SectionInfo);
+    secInfo.size_ = static_cast<uint32_t>(stream.tellp()) -
+        static_cast<uint32_t>(layoutBeginPosition) - sizeof(SectionInfo);
     stream.seekp(layoutBeginPosition, std::ofstream::beg)
         .write(reinterpret_cast<char *>(&secInfo), sizeof(SectionInfo))
         .seekp(0, std::ofstream::end);
@@ -1248,7 +1264,7 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
     if (info == nullptr) {
         return;
     }
-    if (header->SupportType()) {
+    if (header->SupportTrackField()) {
         ParseFromBinaryForLayout(&addr);
     }
 }

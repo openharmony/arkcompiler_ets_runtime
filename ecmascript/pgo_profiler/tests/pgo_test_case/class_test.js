@@ -14,38 +14,38 @@
  */
 
 class Body {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-    }
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  }
 }
 
 class Foot extends Body {
-    constructor(x, y, u, v) {
-        super(x, y)
-        this.u = u
-        this.v = v
-    }
+  constructor(x, y, u, v) {
+    super(x, y);
+    this.u = u;
+    this.v = v;
+  }
 }
 
 class Arm extends Body {
-    constructor(x, y, t) {
-        super(x, y)
-        this.t = t
-    }
+  constructor(x, y, t) {
+    super(x, y);
+    this.t = t;
+  }
 }
 
 function foo(p)
 {
-    return p.x
+  return p.x;
 }
 
-let a = new Body(1, 23)
-let b = new Foot(3, 3.2, 2, 32.3)
-let c = new Arm(1.3, 23.2, 23)
+let a = new Body(1, 23);
+let b = new Foot(3, 3.2, 2, 32.3);
+let c = new Arm(1.3, 23.2, 23);
 
 for (let i = 0; i < 1000000; i++) {
-    foo(a)
-    foo(b)
-    foo(c)
+  foo(a);
+  foo(b);
+  foo(c);
 }

@@ -14,7 +14,6 @@
  */
 #include "ecmascript/module/js_module_manager.h"
 
-#include "ecmascript/base/path_helper.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
@@ -27,6 +26,7 @@
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/tagged_dictionary.h"
 #ifdef PANDA_TARGET_WINDOWS
@@ -34,8 +34,10 @@
 #endif
 
 namespace panda::ecmascript {
-using PathHelper = base::PathHelper;
 using StringHelper = base::StringHelper;
+using JSPandaFile = ecmascript::JSPandaFile;
+using JSRecordInfo = ecmascript::JSPandaFile::JSRecordInfo;
+
 ModuleManager::ModuleManager(EcmaVM *vm) : vm_(vm)
 {
     resolvedModules_ = NameDictionary::Create(vm_->GetJSThread(), DEAULT_DICTIONART_CAPACITY).GetTaggedValue();
@@ -161,11 +163,18 @@ JSTaggedValue ModuleManager::GetValueFromExportObject(JSHandle<JSTaggedValue> &e
     if (index == SourceTextModule::UNDEFINED_INDEX) {
         return exportObject.GetTaggedValue();
     }
+    JSTaggedValue value = JSTaggedValue::Hole();
     JSObject *obj = JSObject::Cast(exportObject.GetTaggedValue());
-    JSHClass *jsHclass = obj->GetJSHClass();
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
-    PropertyAttributes attr = layoutInfo->GetAttr(index);
-    JSTaggedValue value = obj->GetProperty(jsHclass, attr);
+    TaggedArray *properties = TaggedArray::Cast(obj->GetProperties().GetTaggedObject());
+    if (!properties->IsDictionaryMode()) {
+        JSHClass *jsHclass = obj->GetJSHClass();
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
+        PropertyAttributes attr = layoutInfo->GetAttr(index);
+        value = obj->GetProperty(jsHclass, attr);
+    } else {
+        NameDictionary *dict = NameDictionary::Cast(properties);
+        value = dict->GetValue(index);
+    }
     if (UNLIKELY(value.IsAccessor())) {
         return FastRuntimeStub::CallGetter(vm_->GetJSThread(), JSTaggedValue(obj), JSTaggedValue(obj), value);
     }
@@ -327,7 +336,7 @@ bool ModuleManager::SkipDefaultBundleFile(const CString &moduleFileName) const
     const char relativeFilePath[] = "..";
     // just to skip misunderstanding error log in LoadJSPandaFile when we ignore Module Resolving Failure.
     return !vm_->EnableReportModuleResolvingFailure() &&
-        (base::StringHelper::StringStartWith(moduleFileName, PathHelper::BUNDLE_INSTALL_PATH) ||
+        (base::StringHelper::StringStartWith(moduleFileName, ModulePathHelper::BUNDLE_INSTALL_PATH) ||
         base::StringHelper::StringStartWith(moduleFileName, relativeFilePath));
 }
 
@@ -455,12 +464,13 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModule(JSThread *thread, const JSP
     ObjectFactory *factory = vm_->GetFactory();
     CString moduleFileName = jsPandaFile->GetJSPandaFileDesc();
     JSHandle<JSTaggedValue> moduleRecord = thread->GlobalConstants()->GetHandledUndefined();
-    if (jsPandaFile->IsModule(thread)) {
+    JSRecordInfo recordInfo = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME);
+    if (jsPandaFile->IsModule(recordInfo)) {
         moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName, moduleFileName);
-    } else if (jsPandaFile->IsJson(thread)) {
+    } else if (jsPandaFile->IsJson(recordInfo)) {
         moduleRecord = ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, moduleFileName);
     } else {
-        ASSERT(jsPandaFile->IsCjs(thread));
+        ASSERT(jsPandaFile->IsCjs(recordInfo));
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
     }
     ModuleDeregister::InitForDeregisterModule(moduleRecord, excuteFromJob);
@@ -492,13 +502,20 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
     ObjectFactory *factory = vm_->GetFactory();
     CString moduleFileName = jsPandaFile->GetJSPandaFileDesc();
     JSHandle<JSTaggedValue> moduleRecord = thread->GlobalConstants()->GetHandledUndefined();
-    if (jsPandaFile->IsModule(thread, recordName)) {
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
+    if (!hasRecord) {
+        CString msg = "cannot find record '" + recordName + "', please check the request path.";
+        LOG_FULL(ERROR) << msg;
+        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
+    }
+    if (jsPandaFile->IsModule(recordInfo)) {
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, recordName, moduleFileName);
-    } else if (jsPandaFile->IsJson(thread, recordName)) {
+    } else if (jsPandaFile->IsJson(recordInfo)) {
         moduleRecord = ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, moduleFileName, recordName);
     } else {
-        ASSERT(jsPandaFile->IsCjs(thread, recordName));
+        ASSERT(jsPandaFile->IsCjs(recordInfo));
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
     }

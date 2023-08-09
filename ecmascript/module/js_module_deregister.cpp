@@ -43,18 +43,21 @@ void ModuleDeregister::FreeModuleRecord(void *pointer, void *hint)
         thread->GetCurrentEcmaContext()->GetModuleManager()->HostGetImportedModule(pointer);
 
     LoadingTypes type = module->GetLoadingTypes();
+    JSTaggedValue moduleRecordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
+    CString recordNameStr = ConvertToString(moduleRecordName);
     if (type != LoadingTypes::DYNAMITC_MODULE) {
-        LOG_FULL(DEBUG) << "free stable module's ModuleNameSpace" <<
-            ConvertToString(module->GetEcmaModuleRecordName()).c_str();
+        LOG_FULL(DEBUG) << "free stable module's ModuleNameSpace" << recordNameStr;
     }
     NativeAreaAllocator* allocator = thread->GetEcmaVM()->GetNativeAreaAllocator();
     allocator->FreeBuffer(pointer);
     if (type == LoadingTypes::DYNAMITC_MODULE) {
-        DecreaseRegisterCounts(thread, module);
-        if (module->GetRegisterCounts() == 0) {
-            JSTaggedValue moduleRecordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
-            thread->GetEcmaVM()->RemoveFromDeregisterModuleList(ConvertToString(moduleRecordName));
+        std::set<CString> decreaseModule = {recordNameStr};
+        DecreaseRegisterCounts(thread, module, decreaseModule);
+        uint16_t counts = module->GetRegisterCounts();
+        if (counts == 0) {
+            thread->GetEcmaVM()->RemoveFromDeregisterModuleList(recordNameStr);
         }
+        LOG_FULL(DEBUG) << "try to remove module " << recordNameStr << ", register counts is " << counts;
     }
 }
 
@@ -69,8 +72,10 @@ void ModuleDeregister::ReviseLoadedModuleCount(JSThread *thread, JSTaggedValue m
     if (type == LoadingTypes::STABLE_MODULE) {
         return;
     }
-    if (!vm->ContainInDeregisterModuleList(ConvertToString(moduleName))) {
-        IncreaseRegisterCounts(thread, module);
+    CString recordNameStr = ConvertToString(moduleName);
+    if (!vm->ContainInDeregisterModuleList(recordNameStr)) {
+        std::set<CString> increaseModule = {recordNameStr};
+        IncreaseRegisterCounts(thread, module, increaseModule);
     }
 }
 
@@ -78,11 +83,12 @@ void ModuleDeregister::RemoveModule(JSThread *thread, JSHandle<SourceTextModule>
 {
     JSTaggedValue moduleRecordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    if (module->GetTypes() == ModuleTypes::APP_MODULE) {
+    if (module->GetTypes() == ModuleTypes::APP_MODULE || module->GetTypes() == ModuleTypes::OHOS_MODULE) {
         if (TryToRemoveSO(thread, module)) {
             LOG_FULL(INFO) << "Remove native module " << ConvertToString(moduleRecordName).c_str() << " successfully.";
+        } else {
+            LOG_FULL(INFO) << "Remove native module " << ConvertToString(moduleRecordName).c_str() << " failed.";
         }
-        LOG_FULL(INFO) << "Remove native module " << ConvertToString(moduleRecordName).c_str() << " failed.";
     }
     JSHandle<NameDictionary> dict(thread, moduleManager->resolvedModules_.GetTaggedObject());
     int entry = dict->FindEntry(moduleRecordName);
@@ -92,7 +98,8 @@ void ModuleDeregister::RemoveModule(JSThread *thread, JSHandle<SourceTextModule>
     moduleManager->resolvedModules_  = NameDictionary::Remove(thread, dict, entry).GetTaggedValue();
 }
 
-void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module)
+void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
+    std::set<CString> &increaseModule)
 {
     if (!module->GetRequestedModules().IsUndefined()) {
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
@@ -102,22 +109,29 @@ void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
             required.Update(requestedModules->Get(idx));
             JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
             JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
+            CString moduleName;
             if (moduleRecordName.IsUndefined()) {
                 JSHandle<JSTaggedValue> requiredVal =
                     SourceTextModule::HostResolveImportedModule(thread, module, required);
                 RETURN_IF_ABRUPT_COMPLETION(thread);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
+                moduleName = ConvertToString(requiredModule->GetEcmaModuleFilename());
             } else {
                 ASSERT(moduleRecordName.IsString());
                 JSHandle<JSTaggedValue> requiredVal =
                     SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required);
                 RETURN_IF_ABRUPT_COMPLETION(thread);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
+                moduleName = ConvertToString(requiredModule->GetEcmaModuleRecordName());
             }
-
+            if (increaseModule.find(moduleName) != increaseModule.end()) {
+                LOG_FULL(DEBUG) << "Find module cyclical loading, stop increasing.";
+                requiredModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
+                return;
+            }
             LoadingTypes type = requiredModule->GetLoadingTypes();
             if (type == LoadingTypes::DYNAMITC_MODULE) {
-                IncreaseRegisterCounts(thread, requiredModule);
+                IncreaseRegisterCounts(thread, requiredModule, increaseModule);
             }
         }
     }
@@ -133,7 +147,8 @@ void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
     module->SetRegisterCounts(registerNum + 1);
 }
 
-void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module)
+void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
+    std::set<CString> &decreaseModule)
 {
     if (!module->GetRequestedModules().IsUndefined()) {
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
@@ -143,22 +158,30 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
             required.Update(requestedModules->Get(idx));
             JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
             JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
+            CString moduleName;
             if (moduleRecordName.IsUndefined()) {
                 JSHandle<JSTaggedValue> requiredVal =
                     SourceTextModule::HostResolveImportedModule(thread, module, required);
                 RETURN_IF_ABRUPT_COMPLETION(thread);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
+                moduleName = ConvertToString(requiredModule->GetEcmaModuleFilename());
             } else {
                 ASSERT(moduleRecordName.IsString());
                 JSHandle<JSTaggedValue> requiredVal =
                     SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required);
                 RETURN_IF_ABRUPT_COMPLETION(thread);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
+                moduleName = ConvertToString(requiredModule->GetEcmaModuleRecordName());
             }
-
+            if (decreaseModule.find(moduleName) != decreaseModule.end()) {
+                LOG_FULL(DEBUG) << "Find module cyclical loading, stop increasing.";
+                requiredModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
+                return;
+            }
+            decreaseModule.emplace(moduleName);
             LoadingTypes type = requiredModule->GetLoadingTypes();
             if (type == LoadingTypes::DYNAMITC_MODULE) {
-                DecreaseRegisterCounts(thread, requiredModule);
+                DecreaseRegisterCounts(thread, requiredModule, decreaseModule);
             }
         }
     }

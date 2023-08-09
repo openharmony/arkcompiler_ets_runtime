@@ -256,6 +256,7 @@ JSHandle<JSPluralRules> JSPluralRules::InitializePluralRules(JSThread *thread,
 
     // 12. Set pluralRules.[[Locale]] to the value of r.[[locale]].
     JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSPluralRules, thread);
     pluralRules->SetLocale(thread, localeStr.GetTaggedValue());
 
     // 13. Return pluralRules.
@@ -325,6 +326,7 @@ void JSPluralRules::ResolvedOptions(JSThread *thread, const JSHandle<JSPluralRul
     property = JSHandle<JSTaggedValue>::Cast(globalConst->GetHandledMinimumIntegerDigitsString());
     JSHandle<JSTaggedValue> minimumIntegerDigits(thread, pluralRules->GetMinimumIntegerDigits());
     JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumIntegerDigits);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
 
     RoundingType roundingType = pluralRules->GetRoundingType();
     if (roundingType == RoundingType::SIGNIFICANTDIGITS) {
@@ -332,19 +334,23 @@ void JSPluralRules::ResolvedOptions(JSThread *thread, const JSHandle<JSPluralRul
         property = globalConst->GetHandledMinimumSignificantDigitsString();
         JSHandle<JSTaggedValue> minimumSignificantDigits(thread, pluralRules->GetMinimumSignificantDigits());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumSignificantDigits);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         // [[MaximumSignificantDigits]]
         property = globalConst->GetHandledMaximumSignificantDigitsString();
         JSHandle<JSTaggedValue> maximumSignificantDigits(thread, pluralRules->GetMaximumSignificantDigits());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumSignificantDigits);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     } else {
         // [[MinimumFractionDigits]]
         property = globalConst->GetHandledMinimumFractionDigitsString();
         JSHandle<JSTaggedValue> minimumFractionDigits(thread, pluralRules->GetMinimumFractionDigits());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, minimumFractionDigits);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         // [[MaximumFractionDigits]]
         property = globalConst->GetHandledMaximumFractionDigitsString();
         JSHandle<JSTaggedValue> maximumFractionDigits(thread, pluralRules->GetMaximumFractionDigits());
         JSObject::CreateDataPropertyOrThrow(thread, options, property, maximumFractionDigits);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
     }
 
     // 5. Let pluralCategories be a List of Strings representing the possible results of PluralRuleSelect

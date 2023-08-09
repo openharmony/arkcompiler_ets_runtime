@@ -15,12 +15,17 @@
 
 declare function print(arg:any):string;
 {
-    let typedArray : Float64Array = new Float64Array([1, 2, 3, 4, 5, 6, 7]);
-    typedArray[0] = 10;
-    print(typedArray[0])
-    let s = 0;
-    for (let i = 0; i < typedArray.length; ++i) {
-        s += typedArray[i];
-    }
+    let typedArray : Int32Array = new Int32Array([1, 2, 2147483640, -2147483640, 7, 8, 8, 9]);
+    typedArray[0] = typedArray[2] + typedArray[4]; //upper bound
+    print(typedArray[0]);
+    typedArray[1] = typedArray[3] - typedArray[5]; //lower bound
+    print(typedArray[1]);
+    typedArray[0] = typedArray[2] + typedArray[6]; //over flow
+    print(typedArray[0]);
+    typedArray[1] = typedArray[3] - typedArray[7]; //under spill
+    print(typedArray[1]);
+    let s = typedArray[2] + typedArray[6];
+    print(s);
+    s = typedArray[3] - typedArray[7];
     print(s);
 }

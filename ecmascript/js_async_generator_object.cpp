@@ -76,8 +76,10 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResolve(JSThread *thread,
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo* info =
         EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, undefined, undefined, 1);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(its.GetTaggedValue());
     [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 9. Perform ! AsyncGeneratorResumeNext(generator).
     AsyncGeneratorResumeNext(thread, generator);
@@ -109,8 +111,10 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorReject(JSThread *thread,
     const JSHandle<JSTaggedValue> undefined = constants->GetHandledUndefined();
     EcmaRuntimeCallInfo* info =
         EcmaInterpreter::NewRuntimeCallInfo(thread, reject, thisArg, undefined, 1);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(value.GetTaggedValue());
     [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 8. Perform ! AsyncGeneratorResumeNext(generator).
     AsyncGeneratorResumeNext(thread, generator);
     // 9. Return undefined.
@@ -265,8 +269,10 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
         JSHandle<JSTaggedValue> undefined = constants->GetHandledUndefined();
         EcmaRuntimeCallInfo* info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, thisArg, undefined, 1);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(rstErr.GetTaggedValue());
         [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
         // c. Return promiseCapability.[[Promise]].
         JSHandle<JSObject> promise(thread, pcap->GetPromise());
@@ -320,6 +326,7 @@ JSTaggedValue JSAsyncGeneratorObject::PromiseResolve(JSThread *thread, const JSH
     JSHandle<JSTaggedValue> thisArg = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo* info =
         EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, thisArg, undefined, 1);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(value.GetTaggedValue());
     [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
 

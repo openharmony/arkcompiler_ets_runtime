@@ -15,7 +15,6 @@
 
 #include "ecmascript/builtins/builtins_promise_job.h"
 
-#include "ecmascript/base/path_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -28,12 +27,14 @@
 #include "ecmascript/module/js_dynamic_import.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::builtins {
-using PathHelper = base::PathHelper;
+using JSRecordInfo = ecmascript::JSPandaFile::JSRecordInfo;
+
 JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -52,10 +53,11 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
     // 3. Let handler be reaction.[[Handler]].
     JSHandle<JSTaggedValue> handler(thread, reaction->GetHandler());
     JSHandle<JSTaggedValue> call(thread, capability->GetResolve());
-    const int32_t argsLength = 1;
+    const uint32_t argsLength = 1;
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *runtimeInfo =
         EcmaInterpreter::NewRuntimeCallInfo(thread, call, undefined, undefined, argsLength);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (handler->IsString()) {
         // 4. If handler is "Identity", let handlerResult be NormalCompletion(argument).
         // 5. Else if handler is "Thrower", let handlerResult be Completion{[[type]]: throw, [[value]]: argument,
@@ -69,6 +71,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
         // 6. Else, let handlerResult be Call(handler, undefined, «argument»).
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, handler, undefined, undefined, argsLength);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(argument.GetTaggedValue());
         JSTaggedValue taggedValue = JSFunction::Call(info);
         // 7. If handlerResult is an abrupt completion, then
@@ -102,7 +105,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseResolveThenableJob(EcmaRuntimeCallInfo 
     JSHandle<JSTaggedValue> then = GetCallArg(argv, BuiltinsBase::ArgsPosition::THIRD);
 
     // 2. Let thenCallResult be Call(then, thenable, «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»).
-    const int32_t argsLength = 2; // 2: «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»
+    const uint32_t argsLength = 2; // 2: «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, then, thenable, undefined, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -150,12 +153,12 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     CString entryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
     CString fileNameStr = ConvertToString(dirPath.GetTaggedValue());
     CString requestPath = ConvertToString(specifierString.GetTaggedValue());
-    LOG_FULL(DEBUG) << "Start importing dynamic module : " << requestPath;
+    LOG_ECMA(DEBUG) << "Start importing dynamic module : " << requestPath;
 
     // resolve native module
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    if (isNative && !moduleManager->IsImportedModuleLoaded(specifierString.GetTaggedValue())) {
+    if (isNative) {
         return DynamicImport::ExecuteNativeModule(thread, specifierString, moduleType, resolve, reject);
     }
 
@@ -172,7 +175,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
             LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << recordNameStr;
         }
         entryPoint =
-            PathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(), fileNameStr, recordNameStr, requestPath);
+            ModulePathHelper::ConcatFileNameWithMerge(thread, jsPandaFile.get(),
+                fileNameStr, recordNameStr, requestPath);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
         moduleName.Update(factory->NewFromUtf8(entryPoint).GetTaggedValue());
     }
@@ -197,11 +201,16 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     }
 
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
-    bool isModule = jsPandaFile->IsModule(thread, entryPoint);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
+    if (!hasRecord) {
+        LOG_FULL(ERROR) << "cannot find record '" << entryPoint <<"' in basefileName " << fileNameStr << ".";
+        CString msg = "cannot find record '" + entryPoint + "', please check the request path.";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), CatchException(thread, reject));
+    }
     JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
     // only support importing es module, or return a default object.
-    if (!isModule) {
+    if (!jsPandaFile->IsModule(recordInfo)) {
         moduleNamespace.Update(vm->GetGlobalEnv()->GetExportOfScript());
     } else {
         // b. Let moduleRecord be ! HostResolveImportedModule(referencingScriptOrModule, specifier).
@@ -217,6 +226,7 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         EcmaInterpreter::NewRuntimeCallInfo(thread,
                                             JSHandle<JSTaggedValue>(resolve),
                                             undefined, undefined, 1);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
     info->SetCallArg(moduleNamespace.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSFunction::Call(info);

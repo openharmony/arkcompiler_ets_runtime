@@ -45,7 +45,6 @@ JSTaggedValue TypedArrayHelper::TypedArrayConstructor(EcmaRuntimeCallInfo *argv,
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<JSTaggedValue> newTarget = BuiltinsBase::GetNewTarget(argv);
     // 2. If NewTarget is undefined, throw a TypeError exception.
     if (newTarget->IsUndefined()) {
@@ -54,7 +53,6 @@ JSTaggedValue TypedArrayHelper::TypedArrayConstructor(EcmaRuntimeCallInfo *argv,
     // 3. Let constructorName be the String value of the Constructor Name value specified in Table 61 for this
     // TypedArray constructor.
     // 4. Let O be ? AllocateTypedArray(constructorName, NewTarget, "%TypedArray.prototype%").
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> firstArg = BuiltinsBase::GetCallArg(argv, 0);
     if (!firstArg->IsECMAObject()) {
         // es11 22.2.4.1 TypedArray ( )
@@ -65,13 +63,13 @@ JSTaggedValue TypedArrayHelper::TypedArrayConstructor(EcmaRuntimeCallInfo *argv,
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             elementLength = static_cast<int32_t>(index.GetNumber());
         }
-        JSHandle<JSObject> obj = TypedArrayHelper::AllocateTypedArray(factory, ecmaVm, constructorName, newTarget,
+        JSHandle<JSObject> obj = TypedArrayHelper::AllocateTypedArray(thread, constructorName, newTarget,
                                                                       elementLength, arrayType);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return obj.GetTaggedValue();
     }
-    JSHandle<JSObject> obj =
-        TypedArrayHelper::AllocateTypedArray(factory, ecmaVm, constructorName, newTarget, arrayType);
+
+    JSHandle<JSObject> obj = TypedArrayHelper::AllocateTypedArray(thread, constructorName, newTarget, arrayType);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (firstArg->IsTypedArray()) {
         return TypedArrayHelper::CreateFromTypedArray(argv, obj, arrayType);
@@ -98,10 +96,11 @@ JSTaggedValue TypedArrayHelper::FastCopyElementFromArray(EcmaRuntimeCallInfo *ar
     if (elements->GetLength() < len) {
         TypedArrayHelper::CreateFromOrdinaryObject(argv, obj, arrayType);
     }
-    EcmaVM *ecmaVm = thread->GetEcmaVM();
-    TypedArrayHelper::AllocateTypedArrayBuffer(thread, ecmaVm, obj, len, arrayType);
+
+    TypedArrayHelper::AllocateTypedArrayBuffer(thread, obj, len, arrayType);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTypedArray> targetObj = JSHandle<JSTypedArray>::Cast(obj);
-    
+
     JSStableArray::FastCopyFromArrayToTypedArray(thread, targetObj, arrayType, 0, len, elements);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSHandle<JSObject>::Cast(targetObj).GetTaggedValue();
@@ -142,7 +141,7 @@ JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *ar
             }
         }
         uint32_t len = static_cast<uint32_t>(vec.size());
-        TypedArrayHelper::AllocateTypedArrayBuffer(thread, ecmaVm, obj, len, arrayType);
+        TypedArrayHelper::AllocateTypedArrayBuffer(thread, obj, len, arrayType);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // d. Let k be 0.
         // e. Repeat, while k < len
@@ -175,7 +174,7 @@ JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *ar
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint64_t rawLen = lenTemp.GetNumber();
     // 10. Perform ? AllocateTypedArrayBuffer(O, len).
-    TypedArrayHelper::AllocateTypedArrayBuffer(thread, ecmaVm, obj, rawLen, arrayType);
+    TypedArrayHelper::AllocateTypedArrayBuffer(thread, obj, rawLen, arrayType);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 11. Let k be 0.
     // 12. Repeat, while k < len
@@ -233,7 +232,9 @@ JSTaggedValue TypedArrayHelper::CreateFromTypedArray(EcmaRuntimeCallInfo *argv, 
     // 15. Let byteLength be elementSize × elementLength.
     uint32_t srcByteOffset = srcObj->GetByteOffset();
     uint32_t elementSize = TypedArrayHelper::GetSizeFromType(arrayType);
-    uint32_t byteLength = elementSize * elementLength;
+    // If elementLength is a large number, the multiplication of elementSize and elementLength may exceed
+    //     the maximum value of uint32, resulting in data overflow. Therefore, the type of byteLength is uint64_t.
+    uint64_t byteLength = elementSize * static_cast<uint64_t>(elementLength);
     // 16. If IsSharedArrayBuffer(srcData) is false, then
     //   a. Let bufferConstructor be ? SpeciesConstructor(srcData, %ArrayBuffer%).
 
@@ -310,7 +311,7 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 5. Let elementSize be the Element Size value specified in Table 61 for constructorName.
     // 6. Let offset be ? ToIndex(byteOffset).
-    uint32_t elementSize = static_cast<uint32_t>(TypedArrayHelper::GetSizeFromType(arrayType));
+    uint32_t elementSize = TypedArrayHelper::GetSizeFromType(arrayType);
     JSHandle<JSTaggedValue> byteOffset = BuiltinsBase::GetCallArg(argv, 1);
     JSTaggedNumber index = JSTaggedValue::ToIndex(thread, byteOffset);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -367,23 +368,22 @@ JSTaggedValue TypedArrayHelper::CreateFromArrayBuffer(EcmaRuntimeCallInfo *argv,
     // 16. Set O.[[ArrayLength]] to newByteLength / elementSize.
     JSTypedArray *jsTypedArray = JSTypedArray::Cast(*obj);
     jsTypedArray->SetViewedArrayBufferOrByteArray(thread, buffer);
-    jsTypedArray->SetByteLength(static_cast<int32_t>(newByteLength));
+    jsTypedArray->SetByteLength(newByteLength);
     jsTypedArray->SetByteOffset(offset);
-    jsTypedArray->SetArrayLength(static_cast<int32_t>(newByteLength / elementSize));
+    jsTypedArray->SetArrayLength(newByteLength / elementSize);
     // 17. Return O.
     return obj.GetTaggedValue();
 }
 
 // es11 22.2.4.2.1 Runtime Semantics: AllocateTypedArray ( constructorName, newTarget, defaultProto )
-JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(ObjectFactory *factory, EcmaVM *ecmaVm,
+JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(JSThread *thread,
                                                         const JSHandle<JSTaggedValue> &constructorName,
                                                         const JSHandle<JSTaggedValue> &newTarget,
                                                         const DataViewType arrayType)
 {
-    JSThread *thread = ecmaVm->GetJSThread();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let proto be ? GetPrototypeFromConstructor(newTarget, defaultProto).
     // 2. Let obj be ! IntegerIndexedObjectCreate(proto).
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
     JSHandle<JSFunction> typedArrayFunc = TypedArrayHelper::GetConstructorFromType(thread, arrayType);
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(typedArrayFunc, newTarget);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
@@ -410,18 +410,17 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(ObjectFactory *factory, 
     jsTypedArray->SetIsOnHeap(false);
     // 9. Return obj.
     return obj;
-}  // namespace panda::ecmascript::base
+}
 
 // es11 22.2.4.2.1 Runtime Semantics: AllocateTypedArray ( constructorName, newTarget, defaultProto, length )
-JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(ObjectFactory *factory, EcmaVM *ecmaVm,
+JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(JSThread *thread,
                                                         const JSHandle<JSTaggedValue> &constructorName,
                                                         const JSHandle<JSTaggedValue> &newTarget, int32_t length,
                                                         const DataViewType arrayType)
 {
-    JSThread *thread = ecmaVm->GetJSThread();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let proto be ? GetPrototypeFromConstructor(newTarget, defaultProto).
     // 2. Let obj be ! IntegerIndexedObjectCreate(proto).
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
     JSHandle<JSFunction> typedArrayFunc = TypedArrayHelper::GetConstructorFromType(thread, arrayType);
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(typedArrayFunc, newTarget);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
@@ -431,14 +430,14 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArray(ObjectFactory *factory, 
     // 7. If length is not present, then
     // 8. Else,
     //   a. Perform ? AllocateTypedArrayBuffer(obj, length).
-    TypedArrayHelper::AllocateTypedArrayBuffer(thread, ecmaVm, obj, length, arrayType);
+    TypedArrayHelper::AllocateTypedArrayBuffer(thread, obj, length, arrayType);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
     // 9. Return obj.
     return obj;
 }
 
 // es11 22.2.4.2.2 Runtime Semantics: AllocateTypedArrayBuffer ( O, length )
-JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer(JSThread *thread, EcmaVM *ecmaVm,
+JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer(JSThread *thread,
                                                               const JSHandle<JSObject> &obj, uint64_t length,
                                                               const DataViewType arrayType)
 {
@@ -459,7 +458,7 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer(JSThread *thread, 
     // 7. Let data be ? AllocateArrayBuffer(%ArrayBuffer%, byteLength).
     JSTaggedValue data;
     if (byteLength > JSTypedArray::MAX_ONHEAP_LENGTH) {
-        JSHandle<JSTaggedValue> constructor = ecmaVm->GetGlobalEnv()->GetArrayBufferFunction();
+        JSHandle<JSTaggedValue> constructor = thread->GetEcmaVM()->GetGlobalEnv()->GetArrayBufferFunction();
         data = BuiltinsArrayBuffer::AllocateArrayBuffer(thread, constructor, byteLength);
         JSTypedArray::Cast(*obj)->SetIsOnHeap(false);
     } else {
@@ -580,7 +579,7 @@ int32_t TypedArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedV
     //   d. If v is NaN, return +0.
     //   e. Return v.
     if (!callbackfnHandle->IsUndefined()) {
-        const int32_t argsLength = 2;
+        const uint32_t argsLength = 2;
         JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackfnHandle, undefined, undefined, argsLength);

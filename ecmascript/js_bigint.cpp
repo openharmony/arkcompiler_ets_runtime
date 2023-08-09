@@ -591,6 +591,8 @@ void BigInt::BigIntToInt64(JSThread *thread, JSHandle<JSTaggedValue> bigint, int
     RETURN_IF_ABRUPT_COMPLETION(thread);
     if (Equal(bigInt64.GetTaggedValue(), bigint.GetTaggedValue())) {
         *lossless = true;
+    } else {
+        *lossless = false;
     }
     *cValue = bigInt64->ToInt64();
 }
@@ -603,6 +605,8 @@ void BigInt::BigIntToUint64(JSThread *thread, JSHandle<JSTaggedValue> bigint, ui
     RETURN_IF_ABRUPT_COMPLETION(thread);
     if (Equal(bigUint64.GetTaggedValue(), bigint.GetTaggedValue())) {
         *lossless = true;
+    } else {
+        *lossless = false;
     }
     *cValue = bigUint64->ToUint64();
 }
@@ -1459,6 +1463,7 @@ JSHandle<BigInt> BigInt::Remainder(JSThread *thread, JSHandle<BigInt> n, JSHandl
 JSHandle<BigInt> BigInt::FloorMod(JSThread *thread, JSHandle<BigInt> leftVal, JSHandle<BigInt> rightVal)
 {
     JSHandle<BigInt> remainder = Remainder(thread, leftVal, rightVal);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     if (leftVal->GetSign() && !remainder->IsZero()) {
         return Add(thread, remainder, rightVal);
     }

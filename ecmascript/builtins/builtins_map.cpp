@@ -180,7 +180,7 @@ JSTaggedValue BuiltinsMap::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 1);
 
     JSMutableHandle<LinkedHashMap> hashMap(thread, map->GetLinkedMap());
-    const int32_t argsLength = 3;
+    const uint32_t argsLength = 3;
     int index = 0;
     int totalElements = hashMap->NumberOfElements() + hashMap->NumberOfDeletedElements();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
@@ -231,7 +231,7 @@ JSTaggedValue BuiltinsMap::GetSize(EcmaRuntimeCallInfo *argv)
     }
     JSMap *jsMap = JSMap::Cast(*JSTaggedValue::ToObject(thread, self));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int count = jsMap->GetSize();
+    uint32_t count = jsMap->GetSize();
     return JSTaggedValue(count);
 }
 
@@ -242,6 +242,7 @@ JSTaggedValue BuiltinsMap::Entries(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     JSHandle<JSTaggedValue> iter = JSMapIterator::CreateMapIterator(thread, self, IterationKind::KEY_AND_VALUE);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return iter.GetTaggedValue();
 }
 
@@ -252,6 +253,7 @@ JSTaggedValue BuiltinsMap::Keys(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     JSHandle<JSTaggedValue> iter = JSMapIterator::CreateMapIterator(thread, self, IterationKind::KEY);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return iter.GetTaggedValue();
 }
 
@@ -262,6 +264,7 @@ JSTaggedValue BuiltinsMap::Values(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
     JSHandle<JSTaggedValue> iter = JSMapIterator::CreateMapIterator(thread, self, IterationKind::VALUE);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return iter.GetTaggedValue();
 }
 
@@ -311,7 +314,7 @@ JSTaggedValue BuiltinsMap::AddEntriesFromIterable(JSThread *thread, const JSHand
         if (thread->HasPendingException()) {
             return JSIterator::IteratorCloseAndReturn(thread, iter);
         }
-        const int32_t argsLength = 2;  // 2: key and value pair
+        const uint32_t argsLength = 2;  // 2: key and value pair
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, adder, JSHandle<JSTaggedValue>(target), undefined, argsLength);

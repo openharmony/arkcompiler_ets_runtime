@@ -78,7 +78,7 @@ JSHandle<JSAPIArrayList> JSAPIArrayList::Clone(JSThread *thread, const JSHandle<
     JSHandle<TaggedArray> srcElements(thread, obj->GetElements());
     ASSERT(!srcElements->IsDictionaryMode());
 
-    int32_t length = obj->GetSize();
+    uint32_t length = obj->GetSize();
     auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSAPIArrayList> newArrayList = factory->NewJSAPIArrayList(0);
     newArrayList->SetLength(thread, JSTaggedValue(length));
@@ -199,7 +199,7 @@ bool JSAPIArrayList::Remove(JSThread *thread, const JSHandle<JSAPIArrayList> &ar
                             const JSHandle<JSTaggedValue> &value)
 {
     int index = GetIndexOf(thread, arrayList, value);
-    int length = arrayList->GetSize();
+    uint32_t length = arrayList->GetSize();
     if (index >= 0) {
         JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
         ASSERT(!elements->IsDictionaryMode());
@@ -253,7 +253,7 @@ JSTaggedValue JSAPIArrayList::ReplaceAllElements(JSThread *thread, const JSHandl
                                                  const JSHandle<JSTaggedValue> &thisArg)
 {
     JSHandle<JSAPIArrayList> arrayList = JSHandle<JSAPIArrayList>::Cast(thisHandle);
-    uint32_t length = static_cast<uint32_t>(arrayList->GetSize());
+    uint32_t length = arrayList->GetSize();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     const int32_t argsLength = 3;
@@ -334,7 +334,7 @@ JSTaggedValue JSAPIArrayList::ForEach(JSThread *thread, const JSHandle<JSTaggedV
                                       const JSHandle<JSTaggedValue> &thisArg)
 {
     JSHandle<JSAPIArrayList> arrayList = JSHandle<JSAPIArrayList>::Cast(thisHandle);
-    uint32_t length = static_cast<uint32_t>(arrayList->GetSize());
+    uint32_t length = arrayList->GetSize();
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     const int32_t argsLength = 3;
@@ -348,8 +348,8 @@ JSTaggedValue JSAPIArrayList::ForEach(JSThread *thread, const JSHandle<JSTaggedV
         info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisHandle.GetTaggedValue());
         JSTaggedValue funcResult = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, funcResult);
-        if (static_cast<int>(length) != arrayList->GetSize()) {
-            length = static_cast<uint32_t>(arrayList->GetSize());
+        if (length != arrayList->GetSize()) {
+            length = arrayList->GetSize();
         }
     }
 

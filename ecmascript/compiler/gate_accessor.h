@@ -386,7 +386,9 @@ public:
     size_t GetVirtualRegisterIndex(GateRef gate) const;
     TypedLoadOp GetTypedLoadOp(GateRef gate) const;
     TypedStoreOp GetTypedStoreOp(GateRef gate) const;
+    MemoryType GetMemoryType(GateRef gate) const;
     TypedBinOp GetTypedBinaryOp(GateRef gate) const;
+    TypedCallTargetCheckOp GetTypedCallTargetCheckOp(GateRef gate) const;
     PGOSampleType GetTypedBinaryType(GateRef gate) const;
     bool HasNumberType(GateRef gate) const;
     GlobalTSTypeRef GetFuncGT(GateRef gate) const;
@@ -396,6 +398,9 @@ public:
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;
+    bool GetNoGCFlag(GateRef gate) const;
+    bool TypedCallIsNoGC(GateRef gate) const;
+    bool IsNoGC(GateRef gate) const;
     uint32_t TryGetPcOffset(GateRef gate) const;
     PGOSampleType TryGetPGOType(GateRef gate) const;
     void TrySetPGOType(GateRef gate, PGOSampleType type);
@@ -413,6 +418,7 @@ public:
     UseIterator ReplaceIn(const UseIterator &useIt, GateRef replaceGate);
     // Add for lowering
     GateType GetGateType(GateRef gate) const;
+    bool IsConvertSupport(GateRef gate) const;
     ValueType GetSrcType(GateRef gate) const;
     ValueType GetDstType(GateRef gate) const;
     void SetGateType(GateRef gate, GateType gt);
@@ -482,6 +488,8 @@ public:
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
     GateType GetLeftType(GateRef gate) const;
     GateType GetRightType(GateRef gate) const;
+    uint32_t GetFirstValue(GateRef gate) const;
+    uint32_t GetSecondValue(GateRef gate) const;
     GateRef GetGlueFromArgList() const;
     void GetArgsOuts(std::vector<GateRef>& outs) const;
     void GetReturnOuts(std::vector<GateRef>& outs) const;

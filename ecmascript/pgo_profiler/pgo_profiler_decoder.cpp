@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
+#include <memory>
 
 #include "ecmascript/base/file_header.h"
 #include "ecmascript/jspandafile/method_literal.h"
@@ -94,7 +95,7 @@ bool PGOProfilerDecoder::LoadFull()
     }
     pandaFileInfos_.ParseFromBinary(addr, header_->GetPandaInfoSection());
     if (!recordDetailInfos_) {
-        recordDetailInfos_ = std::make_unique<PGORecordDetailInfos>(hotnessThreshold_);
+        recordDetailInfos_ = std::make_shared<PGORecordDetailInfos>(hotnessThreshold_);
     }
     recordDetailInfos_->ParseFromBinary(addr, header_);
 

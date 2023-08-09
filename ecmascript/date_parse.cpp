@@ -236,7 +236,7 @@ bool DateParse::ParseLegacyDates(DateProxy *proxy, DayValue *dayValue, TimeValue
                 return false;
             }
             int timeNum = timeNumUnit.GetValue();
-            int numLength = timeNumUnit.GetLength();
+            uint32_t numLength = timeNumUnit.GetLength();
             proxy->NextDate();
             // parse +hh:mm
             if (proxy->GetDate().IsSymbol(':')) {

@@ -408,6 +408,7 @@ public:
         uint32_t index {0};
         uint32_t outerMethodOffset {0};
         CString *recordName {nullptr};
+        uint32_t bcIndex {0};
     };
 
     // key:constantpool index, value:ItemData
@@ -421,9 +422,14 @@ public:
         return items_[type];
     }
 
-    void AddIndexToCPItem(ItemType type, uint32_t index, uint32_t methodOffset);
+    void AddIndexToCPItem(ItemType type, uint32_t index, uint32_t methodOffset, uint32_t bcIndex);
 private:
     std::vector<Item> items_;
+};
+
+struct FastCallInfo {
+    bool canFastCall_ {false};
+    bool isNoGC_ {false};
 };
 
 class BCInfo {
@@ -500,9 +506,9 @@ public:
         return skippedMethods_.size();
     }
 
-    void AddIndexToCPInfo(ConstantPoolInfo::ItemType type, uint32_t index, uint32_t methodOffset)
+    void AddIndexToCPInfo(ConstantPoolInfo::ItemType type, uint32_t index, uint32_t methodOffset, uint32_t bcIndex)
     {
-        cpInfo_.AddIndexToCPItem(type, index, methodOffset);
+        cpInfo_.AddIndexToCPItem(type, index, methodOffset, bcIndex);
     }
 
     template <class Callback>
@@ -611,29 +617,34 @@ public:
         return recordToImportRecordsInfo_;
     }
 
-    bool IterateMethodOffsetToCanFastCall(uint32_t methodOffset, bool *isValid)
+    FastCallInfo IterateMethodOffsetToFastCallInfo(uint32_t methodOffset, bool *isValid)
     {
-        auto iter = methodOffsetToCanFastCall_.find(methodOffset);
-        if (iter != methodOffsetToCanFastCall_.end()) {
+        auto iter = methodOffsetToFastCallInfos_.find(methodOffset);
+        if (iter != methodOffsetToFastCallInfos_.end()) {
             *isValid = true;
             return iter->second;
         }
         *isValid = false;
-        return false;
+        return FastCallInfo();
     }
 
-    void SetMethodOffsetToCanFastCall(uint32_t methodOffset, bool canFastCall)
+    void SetMethodOffsetToFastCallInfo(uint32_t methodOffset, bool canFastCall, bool noGC)
     {
-        if (methodOffsetToCanFastCall_.find(methodOffset) == methodOffsetToCanFastCall_.end()) {
-            methodOffsetToCanFastCall_.emplace(methodOffset, canFastCall);
+        if (methodOffsetToFastCallInfos_.find(methodOffset) == methodOffsetToFastCallInfos_.end()) {
+            methodOffsetToFastCallInfos_.emplace(methodOffset, FastCallInfo { canFastCall, noGC });
         }
     }
 
     void ModifyMethodOffsetToCanFastCall(uint32_t methodOffset, bool canFastCall)
     {
-        methodOffsetToCanFastCall_.erase(methodOffset);
-        if (methodOffsetToCanFastCall_.find(methodOffset) == methodOffsetToCanFastCall_.end()) {
-            methodOffsetToCanFastCall_.emplace(methodOffset, canFastCall);
+        auto iter = methodOffsetToFastCallInfos_.find(methodOffset);
+        bool isNoGC = false;
+        if (iter != methodOffsetToFastCallInfos_.end()) {
+            isNoGC = iter->second.isNoGC_;
+        }
+        methodOffsetToFastCallInfos_.erase(methodOffset);
+        if (methodOffsetToFastCallInfos_.find(methodOffset) == methodOffsetToFastCallInfos_.end()) {
+            methodOffsetToFastCallInfos_.emplace(methodOffset, FastCallInfo { canFastCall, isNoGC });
         }
     }
 private:
@@ -649,7 +660,7 @@ private:
     std::unordered_map<uint32_t, uint32_t> functionTypeIdToMethodOffset_ {};
     std::unordered_map<CString, ExportRecordInfo> recordNameToExportInfo_ {};
     std::unordered_map<CString, ImportRecordInfo> recordToImportRecordsInfo_ {};
-    std::unordered_map<uint32_t, bool> methodOffsetToCanFastCall_ {};
+    std::unordered_map<uint32_t, FastCallInfo> methodOffsetToFastCallInfos_ {};
 };
 
 class LexEnvManager {
@@ -694,6 +705,11 @@ public:
     bool EnableCollectLiteralInfo() const
     {
         return enableCollectLiteralInfo_;
+    }
+
+    Bytecodes* GetByteCodes()
+    {
+        return &bytecodes_;
     }
 
     BCInfo& GetBytecodeInfo()
@@ -746,9 +762,9 @@ private:
     }
 
     void AddConstantPoolIndexToBCInfo(ConstantPoolInfo::ItemType type,
-                                      uint32_t index, uint32_t methodOffset)
+                                      uint32_t index, uint32_t methodOffset, uint32_t bcIndex)
     {
-        bytecodeInfo_.AddIndexToCPInfo(type, index, methodOffset);
+        bytecodeInfo_.AddIndexToCPInfo(type, index, methodOffset, bcIndex);
     }
 
     inline std::string GetClassName(const EntityId entityId)
@@ -780,7 +796,8 @@ private:
                                  bool *canFastCall);
     void CollectModuleInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
                                  const CString &recordName);
-    void CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method);
+    void CollectConstantPoolIndexInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
+                                            uint32_t bcIndex);
     void IterateLiteral(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
     void StoreClassTypeOffset(const uint32_t typeOffset, std::vector<uint32_t> &classOffsetVector);
     void CollectClassLiteralInfo(const MethodLiteral *method, const std::vector<std::string> &classNameVec);
@@ -802,6 +819,7 @@ private:
     bool enableCollectLiteralInfo_ {false};
     std::set<int32_t> classDefBCIndexes_ {};
     LexEnvManager* envManager_ {nullptr};
+    Bytecodes bytecodes_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BYTECODE_INFO_COLLECTOR_H

@@ -55,6 +55,9 @@ public:
                                                        uint32_t srcLength, JSHandle<TaggedArray> &elements);
     static JSTaggedValue At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ToReversed(JSThread *thread, JSHandle<JSObject> thisObjHandle, uint32_t len);
+    static JSTaggedValue Reduce(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                JSHandle<JSTaggedValue> callbackFnHandle,
+                                JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

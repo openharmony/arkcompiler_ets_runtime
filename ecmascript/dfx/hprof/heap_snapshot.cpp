@@ -61,7 +61,7 @@ Node *Node::NewNode(Chunk *chunk, size_t id, size_t index, const CString *name, 
     return node;
 }
 
-Edge *Edge::NewEdge(Chunk *chunk, uint64_t id, EdgeType type, Node *from, Node *to, CString *name)
+Edge *Edge::NewEdge(Chunk *chunk, uint32_t id, EdgeType type, Node *from, Node *to, CString *name)
 {
     auto edge = chunk->New<Edge>(id, type, from, to, name);
     if (UNLIKELY(edge == nullptr)) {
@@ -86,6 +86,7 @@ HeapSnapshot::~HeapSnapshot()
     scriptIdMap_.clear();
     methodToTraceNodeId_.clear();
     traceNodeIndex_.clear();
+    entryIdMap_ = nullptr;
     chunk_ = nullptr;
 }
 
@@ -121,6 +122,7 @@ void HeapSnapshot::UpdateNodes(bool isInFinish)
         if (!(*iter)->IsLive()) {
             Node *node = entryMap_.FindAndEraseNode((*iter)->GetAddress());
             ASSERT(*iter == node);
+            entryIdMap_->EraseId((*iter)->GetAddress());
             if (node != nullptr) {
                 DecreaseNodeSize(node->GetSelfSize());
                 chunk_->Delete(node);
@@ -143,7 +145,7 @@ bool HeapSnapshot::FinishSnapshot()
 
 void HeapSnapshot::RecordSampleTime()
 {
-    timeStamps_.emplace_back(sequenceId_);
+    timeStamps_.emplace_back(entryIdMap_->GetLastId());
 }
 
 void HeapSnapshot::PushHeapStat(Stream* stream)
@@ -161,8 +163,8 @@ void HeapSnapshot::PushHeapStat(Stream* stream)
         TimeStamp& timeStamp = timeStamps_[timeIndex];
         sequenceId = timeStamp.GetLastSequenceId();
         timeStampUs = timeStamp.GetTimeStamp();
-        int32_t nodesSize = 0;
-        int32_t nodesCount = 0;
+        uint32_t nodesSize = 0;
+        uint32_t nodesCount = 0;
         while (iter != nodes_.end() && (*iter)->GetId() <= static_cast<uint32_t>(sequenceId)) {
             nodesCount++;
             nodesSize += (*iter)->GetSelfSize();
@@ -198,7 +200,7 @@ void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject *forwardAddress, siz
 
     Node *node = entryMap_.FindAndEraseNode(address);
     if (node != nullptr) {
-        ASSERT(node->GetId() <= static_cast<uint64_t>(INT_MAX));
+        ASSERT(node->GetId() <= UINT_MAX);
 
         Node *oldNode = entryMap_.FindAndEraseNode(Node::NewAddress(forwardAddress));
         if (oldNode != nullptr) {
@@ -215,7 +217,6 @@ void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject *forwardAddress, siz
             node->SetSelfSize(size);
         }
         node->SetAddress(Node::NewAddress(forwardAddress));
-
         entryMap_.InsertEntry(node);
     } else {
         LOG_DEBUGGER(WARN) << "Untracked object moves from " << address << " to " << forwardAddress;
@@ -375,6 +376,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("PromiseReactionsFunction");
         case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
             return GetString("PromiseExecutorFunction");
+        case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION:
+            return GetString("AsyncFromSyncIterUnwarpFunction");
         case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
             return GetString("PromiseAllResolveElementFunction");
         case JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION:
@@ -587,26 +590,23 @@ void HeapSnapshot::FillNodes(bool isInFinish)
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
         heap->IterateOverObjects([this, isInFinish](TaggedObject *obj) {
-            GenerateNode(JSTaggedValue(obj), 0, -1, isInFinish);
+            GenerateNode(JSTaggedValue(obj), 0, isInFinish);
         });
     }
 }
 
-Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, int sequenceId, bool isInFinish)
+Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFinish)
 {
     Node *node = nullptr;
-    if (sequenceId == -1) {
-        sequenceId = sequenceId_ + SEQ_STEP;
-    }
     if (entry.IsHeapObject()) {
         if (entry.IsWeak()) {
             entry.RemoveWeakTag();
         }
         if (entry.IsString()) {
             if (isPrivate_) {
-                node = GeneratePrivateStringNode(size, sequenceId);
+                node = GeneratePrivateStringNode(size);
             } else {
-                node = GenerateStringNode(entry, size, sequenceId, isInFinish);
+                node = GenerateStringNode(entry, size, isInFinish);
             }
             if (node == nullptr) {
                 LOG_ECMA(DEBUG) << "string node nullptr";
@@ -618,14 +618,15 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, int sequenceI
         if (baseClass != nullptr) {
             Address addr = reinterpret_cast<Address>(obj);
             Node *existNode = entryMap_.FindEntry(addr);  // Fast Index
+            auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
             if (existNode == nullptr) {
                 size_t selfSize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
                 node = Node::NewNode(chunk_, sequenceId, nodeCount_, GenerateNodeName(obj), GenerateNodeType(obj),
                     selfSize, obj);
-                if (sequenceId == sequenceId_ + SEQ_STEP) {
-                    sequenceId_ = sequenceId;  // Odd Digit
-                }
                 entryMap_.InsertEntry(node);
+                if (!idExist) {
+                    entryIdMap_->InsertId(addr, sequenceId);
+                }
                 InsertNodeUnique(node);
                 ASSERT(entryMap_.FindEntry(node->GetAddress())->GetAddress() == node->GetAddress());
             } else {
@@ -668,12 +669,13 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, int sequenceI
             existNode->SetLive(true);
             return existNode;
         }
-
+        Address addr = reinterpret_cast<Address>(obj);
+        auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
         node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString(primitiveName), NodeType::JS_PRIMITIVE_REF, 0,
                              obj);
         entryMap_.InsertEntry(node);  // Fast Index
-        if (sequenceId == sequenceId_ + SEQ_STEP) {
-            sequenceId_ = sequenceId;  // Odd Digit
+        if (!idExist) {
+            entryIdMap_->InsertId(addr, sequenceId);
         }
         InsertNodeUnique(node);
     }
@@ -829,7 +831,7 @@ bool HeapSnapshot::AddMethodInfo(MethodLiteral *methodLiteral,
     return true;
 }
 
-Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, int sequenceId, bool isInFinish)
+Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish)
 {
     static const CString EMPTY_STRING;
 
@@ -849,17 +851,19 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, int seq
     if (isInFinish) {
         nodeName = GetString(EntryVisitor::ConvertKey(entry));
     }
+    Address addr = reinterpret_cast<Address>(entry.GetTaggedObject());
+    auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
     Node *node = Node::NewNode(chunk_, sequenceId, nodeCount_, nodeName, NodeType::PRIM_STRING, selfsize,
                                entry.GetTaggedObject());
-    if (sequenceId == sequenceId_ + SEQ_STEP) {
-        sequenceId_ = sequenceId;  // Odd Digit
+    if (!idExist) {
+        entryIdMap_->InsertId(addr, sequenceId);
     }
     entryMap_.InsertEntry(node);
     InsertNodeUnique(node);
     return node;
 }
 
-Node *HeapSnapshot::GeneratePrivateStringNode(size_t size, int sequenceId)
+Node *HeapSnapshot::GeneratePrivateStringNode(size_t size)
 {
     if (privateStringNode_ != nullptr) {
         return privateStringNode_;
@@ -870,13 +874,16 @@ Node *HeapSnapshot::GeneratePrivateStringNode(size_t size, int sequenceId)
     size_t selfsize = (size != 0) ? size : EcmaStringAccessor(originStr).GetFlatStringSize();
     CString strContent;
     strContent.append(EntryVisitor::ConvertKey(stringValue));
+    Address addr = reinterpret_cast<Address>(stringValue.GetTaggedObject());
+    auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
     node = Node::NewNode(chunk_, sequenceId, nodeCount_, GetString(strContent), NodeType::PRIM_STRING, selfsize,
                          stringValue.GetTaggedObject());
     Node *existNode = entryMap_.FindOrInsertNode(node);  // Fast Index
     if (existNode == node) {
-        if (sequenceId == sequenceId_ + SEQ_STEP) {
-            sequenceId_ = sequenceId;  // Odd Digit
+        if (!idExist) {
+            entryIdMap_->InsertId(addr, sequenceId);
         }
+        entryMap_.InsertEntry(node);
         InsertNodeUnique(node);
     } else {
         existNode->SetLive(true);
@@ -900,7 +907,8 @@ void HeapSnapshot::FillEdges()
     size_t count = 0;
     while (++count < length) {
         ASSERT(*iter != nullptr);
-        auto *objFrom = reinterpret_cast<TaggedObject *>((*iter)->GetAddress());
+        auto entryFrom = *iter;
+        auto *objFrom = reinterpret_cast<TaggedObject *>(entryFrom->GetAddress());
         std::vector<std::pair<CString, JSTaggedValue>> nameResources;
         JSTaggedValue(objFrom).DumpForSnapshot(nameResources, isVmMode_);
         JSTaggedValue objValue(objFrom);
@@ -915,17 +923,23 @@ void HeapSnapshot::FillEdges()
                 entryTo = entryMap_.FindEntry(Node::NewAddress(to));
             }
             if (entryTo == nullptr) {
-                entryTo = GenerateNode(toValue, 0, -1, true);
+                entryTo = GenerateNode(toValue, 0, true);
             }
             if (entryTo != nullptr) {
-                Edge *edge = Edge::NewEdge(chunk_, edgeCount_, EdgeType::DEFAULT, *iter, entryTo, GetString(it.first));
+                Edge *edge = Edge::NewEdge(chunk_, edgeCount_, EdgeType::DEFAULT,
+                                           entryFrom, entryTo, GetString(it.first));
+                RenameFunction(it.first, entryFrom, entryTo);
                 InsertEdgeUnique(edge);
                 (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here
             }
         }
         iter++;
     }
-    // Fill Primitive Edge
+    FillPrimitiveEdge(count, iter);
+}
+
+void HeapSnapshot::FillPrimitiveEdge(size_t count, CList<Node *>::iterator iter)
+{
     size_t lengthExtend = nodes_.size();
     while (++count < lengthExtend) {
         ASSERT(*iter != nullptr);
@@ -944,6 +958,25 @@ void HeapSnapshot::FillEdges()
             (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here
         }
         iter++;
+    }
+}
+
+void HeapSnapshot::RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo)
+{
+    if (edgeName != "name") {
+        return;
+    }
+    auto fromName = *entryFrom->GetName();
+    if (*entryTo->GetName() != "" && (fromName == "JSFunctionBase" ||
+        fromName == "JSFunction" || fromName == "PromiseValueThunkOrThrowerFunction" ||
+        fromName == "JSGeneratorFunction" || fromName == "PromiseAllSettledElementFunction" ||
+        fromName == "Bound Function" || fromName == "PromiseAnyRejectElementFunction" ||
+        fromName == "PromiseReactionsFunction" || fromName == "PromiseExecutorFunction" ||
+        fromName == "PromiseAllResolveElementFunction" || fromName == "AsyncFunction" ||
+        fromName == "ProxyRevocFunction" || fromName == "AsyncFromSyncIterUnwarpFunction" ||
+        fromName == "PromiseFinallyFunction" || fromName == "JSIntlBoundFunction" ||
+        fromName == "JSAsyncGeneratorFunction" || fromName == "AsyncAwaitStatusFunction")) {
+        entryFrom->SetName(GetString(*entryTo->GetName()));
     }
 }
 
@@ -1121,11 +1154,11 @@ FrontType NodeTypeConverter::Convert(NodeType type)
     } else if (type == NodeType::JS_OBJECT) {
         fType = FrontType::OBJECT;
     } else if (type >= NodeType::JS_FUNCTION_FIRST && type <= NodeType::JS_FUNCTION_LAST) {
-        fType = FrontType::CLOSURE;
+        fType = FrontType::DEFAULT;
     } else if (type == NodeType::JS_BOUND_FUNCTION) {
-        fType = FrontType::CLOSURE;
+        fType = FrontType::DEFAULT;
     } else if (type == NodeType::JS_FUNCTION_BASE) {
-        fType = FrontType::CLOSURE;
+        fType = FrontType::DEFAULT;
     } else if (type == NodeType::JS_REG_EXP) {
         fType = FrontType::REGEXP;
     } else if (type == NodeType::SYMBOL) {

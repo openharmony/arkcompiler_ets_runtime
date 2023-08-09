@@ -87,7 +87,7 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
             break;
         }
 
-        JSHClass *jsHclass = obj->GetClass();
+        JSHClass *jsHclass = obj->SynchronizedGetClass();
         MarkObject(threadId, jsHclass);
         objXRay_.VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
     }

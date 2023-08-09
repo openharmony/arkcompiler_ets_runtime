@@ -317,6 +317,11 @@ public:
         return jsGatesToByteCode_.at(gate);
     }
 
+    bool NeedCheckSafePointAndStackOver() const
+    {
+        return !isInline_ && !method_->IsNoGC();
+    }
+
     void UpdateBcIndexGate(GateRef gate, uint32_t bcIndex)
     {
         ASSERT(gateAcc_.GetOpCode(gate) == OpCode::JS_BYTECODE);
@@ -578,11 +583,6 @@ private:
     inline bool IsFirstBCEnvIn(const size_t bbId, const size_t bcIndex, const uint16_t reg) const
     {
         return (IsFirstBasicBlock(bbId) && bcIndex == 0 && reg == GetNumberVRegs());
-    }
-
-    inline bool HasValidType(GateType type)
-    {
-        return HasTypes() && !type.IsAnyType() && !tsManager_->IsPGOGT(type.GetGTRef());
     }
 
     TSManager *tsManager_;

@@ -219,62 +219,24 @@ bool JSPandaFile::IsFirstMergedAbc() const
     return false;
 }
 
-bool JSPandaFile::IsModule(JSThread *thread, const CString &recordName, CString fullRecordName) const
+bool JSPandaFile::CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo &recordInfo) const
 {
     if (IsBundlePack()) {
-        return jsRecordInfo_.begin()->second.moduleRecordIdx != -1;
+        recordInfo = jsRecordInfo_.begin()->second;
+        return true;
     }
     auto info = jsRecordInfo_.find(recordName);
     if (info != jsRecordInfo_.end()) {
-        return info->second.moduleRecordIdx != -1;
+        recordInfo = info->second;
+        return true;
     }
-    if (fullRecordName.empty()) {
-        fullRecordName = recordName;
-    }
-    CString msg = "cannot find record '" + fullRecordName + "', please check the request path.";
-    THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), false);
+    return false;
 }
 
-bool JSPandaFile::IsCjs(JSThread *thread, const CString &recordName) const
+CString JSPandaFile::GetJsonStringId(const JSRecordInfo &jsRecordInfo) const
 {
-    if (IsBundlePack()) {
-        return jsRecordInfo_.begin()->second.isCjs;
-    }
-    auto info = jsRecordInfo_.find(recordName);
-    if (info != jsRecordInfo_.end()) {
-        return info->second.isCjs;
-    }
-    CString msg = "cannot find record '" + recordName + "', please check the request path.";
-    THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), false);
-}
-
-bool JSPandaFile::IsJson(JSThread *thread, const CString &recordName) const
-{
-    if (IsBundlePack()) {
-        return jsRecordInfo_.begin()->second.isJson;
-    }
-    auto info = jsRecordInfo_.find(recordName);
-    if (info != jsRecordInfo_.end()) {
-        return info->second.isJson;
-    }
-    CString msg = "cannot find record '" + recordName + "', please check the request path.";
-    THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), false);
-}
-
-CString JSPandaFile::GetJsonStringId(JSThread *thread, const CString &recordName) const
-{
-    if (IsBundlePack()) {
-        StringData sd = GetStringData(EntityId(jsRecordInfo_.begin()->second.jsonStringId));
-        return utf::Mutf8AsCString(sd.data);
-    }
-
-    auto info = jsRecordInfo_.find(recordName);
-    if (info != jsRecordInfo_.end()) {
-        StringData sd = GetStringData(EntityId(info->second.jsonStringId));
-        return utf::Mutf8AsCString(sd.data);
-    }
-    CString msg = "cannot find record '" + recordName + "', please check the request path.";
-    THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), "");
+    StringData sd = GetStringData(EntityId(jsRecordInfo.jsonStringId));
+    return utf::Mutf8AsCString(sd.data);
 }
 
 CString JSPandaFile::GetEntryPoint(const CString &recordName) const

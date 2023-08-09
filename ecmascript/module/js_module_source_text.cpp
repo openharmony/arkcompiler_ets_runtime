@@ -25,6 +25,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/tagged_dictionary.h"
 
@@ -104,12 +105,12 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
     }
 
     CString outFileName = baseFilename;
-    CString entryPoint = PathHelper::ConcatFileNameWithMerge(
+    CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(
         thread, jsPandaFile.get(), outFileName, moduleRecordName, moduleRequestName);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-    if (entryPoint == PathHelper::PREVIEW_OF_ACROSS_HAP_FLAG &&
+    if (entryPoint == ModulePathHelper::PREVIEW_OF_ACROSS_HAP_FLAG &&
         thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
         THROW_SYNTAX_ERROR_AND_RETURN(thread, "", thread->GlobalConstants()->GetHandledUndefined());
     }
@@ -128,7 +129,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModule(JSThread *th
     }
 
     JSHandle<EcmaString> dirname = base::PathHelper::ResolveDirPath(thread,
-        JSHandle<JSTaggedValue>(thread, module->GetEcmaModuleFilename()));
+        ConvertToString(module->GetEcmaModuleFilename()));
     JSHandle<EcmaString> moduleFilename = ResolveFilenameFromNative(thread, dirname.GetTaggedValue(),
         moduleRequest.GetTaggedValue());
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
@@ -155,27 +156,38 @@ bool SourceTextModule::CheckCircularImport(const JSHandle<SourceTextModule> &mod
 
 JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
                                                               const JSHandle<SourceTextModule> &module,
-                                                              const JSHandle<JSTaggedValue> &exportObject,
+                                                              const JSHandle<JSTaggedValue> &exports,
                                                               const JSHandle<JSTaggedValue> &exportName)
 {
     // Let module be this Source Text Module Record.
     auto globalConstants = thread->GlobalConstants();
-    // For CJS, if exportObject is not JSObject, means the CJS module use default output
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // For CJS, if exports is not JSObject, means the CJS module use default output
     JSHandle<JSTaggedValue> defaultString = globalConstants->GetHandledDefaultString();
     if (JSTaggedValue::SameValue(exportName, defaultString)) {
         // bind with a number
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
     }
-    if (exportObject->IsJSObject()) {
-        JSHandle<JSHClass> jsHclass(thread, JSObject::Cast(exportObject.GetTaggedValue())->GetJSHClass());
-        // Get layoutInfo and compare the input and output names of files
-        JSHandle<LayoutInfo> layoutInfo(thread, jsHclass->GetLayout());
-        if (layoutInfo->NumberOfElements() != 0) {
-            JSHandle<JSTaggedValue> resolution = ResolveElementOfObject(thread, jsHclass, exportName, module);
-            if (!resolution->IsUndefined()) {
-                return resolution;
+    if (exports->IsJSObject()) {
+        JSHandle<JSTaggedValue> resolution(thread, JSTaggedValue::Hole());
+        JSObject *exportObject = JSObject::Cast(exports.GetTaggedValue().GetTaggedObject());
+        TaggedArray *properties = TaggedArray::Cast(exportObject->GetProperties().GetTaggedObject());
+        if (!properties->IsDictionaryMode()) {
+            JSHandle<JSHClass> jsHclass(thread, exportObject->GetJSHClass());
+            // Get layoutInfo and compare the input and output names of files
+            LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHclass->GetLayout().GetTaggedObject());
+            if (layoutInfo->NumberOfElements() != 0) {
+                resolution = ResolveElementOfObject(thread, jsHclass, exportName, module);
             }
+        } else {
+            NameDictionary *dict = NameDictionary::Cast(properties);
+            int entry = dict->FindEntry(exportName.GetTaggedValue());
+            if (entry != -1) {
+                resolution = JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, entry));
+            }
+        }
+        if (!resolution->IsUndefined()) {
+            return resolution;
         }
     }
     return globalConstants->GetHandledNull();
@@ -272,19 +284,19 @@ void SourceTextModule::InstantiateCJS(JSThread *thread, const JSHandle<SourceTex
 std::pair<bool, ModuleTypes> SourceTextModule::CheckNativeModule(const CString &moduleRequestName)
 {
     if (moduleRequestName[0] != '@' ||
-        StringHelper::StringStartWith(moduleRequestName, PathHelper::PREFIX_BUNDLE) ||
-        StringHelper::StringStartWith(moduleRequestName, PathHelper::PREFIX_PACKAGE)||
+        StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::PREFIX_BUNDLE) ||
+        StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::PREFIX_PACKAGE)||
         moduleRequestName.find(':') == CString::npos) {
         return {false, ModuleTypes::UNKNOWN};
     }
 
-    if (StringHelper::StringStartWith(moduleRequestName, PathHelper::REQUIRE_NAPI_OHOS_PREFIX)) {
+    if (StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::REQUIRE_NAPI_OHOS_PREFIX)) {
         return {true, ModuleTypes::OHOS_MODULE};
     }
-    if (StringHelper::StringStartWith(moduleRequestName, PathHelper::REQUIRE_NAPI_APP_PREFIX)) {
+    if (StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::REQUIRE_NAPI_APP_PREFIX)) {
         return {true, ModuleTypes::APP_MODULE};
     }
-    if (StringHelper::StringStartWith(moduleRequestName, PathHelper::REQUIRE_NAITVE_MODULE_PREFIX)) {
+    if (StringHelper::StringStartWith(moduleRequestName, ModulePathHelper::REQUIRE_NAITVE_MODULE_PREFIX)) {
         return {true, ModuleTypes::NATIVE_MODULE};
     }
     return {true, ModuleTypes::INTERNAL_MODULE};
@@ -528,7 +540,6 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
                 ModuleDeregister::InitForDeregisterModule(requiredVal, excuteFromJob);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
-                requestedModules->Set(thread, idx, requiredModule->GetEcmaModuleFilename());
             } else {
                 ASSERT(moduleRecordName.IsString());
                 JSHandle<JSTaggedValue> requiredVal =
@@ -536,7 +547,6 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
                 ModuleDeregister::InitForDeregisterModule(requiredVal, excuteFromJob);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
-                requestedModules->Set(thread, idx, requiredModule->GetEcmaModuleRecordName());
             }
 
             // b. Set index to ? InnerModuleInstantiation(requiredModule, stack, index).
@@ -561,7 +571,6 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
             }
         }
     }
-
     // Adapter new opcode
     // 10. Perform ? ModuleDeclarationEnvironmentSetup(module).
     if (module->GetIsNewBcVersion()) {
@@ -1027,6 +1036,7 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
             } else {
                 ASSERT(moduleRecordName.IsString());
                 requiredModule.Update(SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
             }
             ModuleTypes moduleType = requiredModule->GetTypes();
             if (SourceTextModule::IsNativeModule(moduleType)) {
@@ -1524,9 +1534,12 @@ void SourceTextModule::CheckResolvedIndexBinding(JSThread *thread, const JSHandl
             CString msg = "the requested module '" +
                           ConvertToString(ee->GetModuleRequest()) +
                           "' does not provide an export named '" +
-                          ConvertToString(exportName.GetTaggedValue()) +
-                          "' which exported by '" +
-                          ConvertToString(module->GetEcmaModuleRecordName()) + "'";
+                          ConvertToString(exportName.GetTaggedValue());
+            if (!module->GetEcmaModuleRecordName().IsUndefined()) {
+                msg += "' which exported by '" + ConvertToString(module->GetEcmaModuleRecordName()) + "'";
+            } else {
+                msg += "' which exported by '" + ConvertToString(module->GetEcmaModuleFilename()) + "'";
+            }
             THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
         }
     }
@@ -1544,10 +1557,6 @@ JSTaggedValue SourceTextModule::GetModuleName(JSTaggedValue currentModule)
 
 bool SourceTextModule::IsDynamicModule(LoadingTypes types)
 {
-    if (types == LoadingTypes::DYNAMITC_MODULE) {
-        return true;
-    }
-    return false;
+    return types == LoadingTypes::DYNAMITC_MODULE;
 }
-
 } // namespace panda::ecmascript

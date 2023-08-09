@@ -199,3 +199,19 @@ function foo() {}
 const f = new foo();
 const protoOf = f.isPrototypeOf;
 print(protoOf.apply(protoOf, a7));
+
+try {
+    const a8 = new Int8Array(new ArrayBuffer(0x40004141, {"maxByteLength": 0x40004141}));
+    const a9 = new Float64Array(a8);
+} catch (e) {
+    print("test successful !!!");
+}
+
+try {
+    const a10 = [1, 2];
+    const a11 = new Uint8Array(a10);
+    const a12 = new Uint32Array(a11);
+    a12.set(a10, 0x1ffffffff);
+} catch (e) {
+    print("test successful !!!");
+}

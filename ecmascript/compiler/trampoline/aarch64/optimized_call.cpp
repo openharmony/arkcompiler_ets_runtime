@@ -747,13 +747,12 @@ void OptimizedCall::CallRuntimeWithArgv(ExtendedAssembler *assembler)
     Register sp(SP);
     // 2 : 2 means pair
     __ Stp(argc, argv, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
-    __ Str(runtimeId, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    __ PushFpAndLr();
+    __ Stp(Register(X30), runtimeId, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX)); // 2 : 2 means pair
     Register fp(X29);
     // construct leave frame
     Register frameType(X9);
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::LEAVE_FRAME_WITH_ARGV)));
-    __ Str(frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Stp(frameType, Register(X29), MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX)); // 2 : 2 means pair
     __ Add(Register(FP), sp, Immediate(FRAME_SLOT_SIZE));
     __ Str(fp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
 
@@ -766,9 +765,9 @@ void OptimizedCall::CallRuntimeWithArgv(ExtendedAssembler *assembler)
     __ Mov(X1, argc);
     __ Mov(X2, argv);
     __ Blr(rtfunc);
-    __ Add(sp, sp, Immediate(FRAME_SLOT_SIZE));
-    __ RestoreFpAndLr();
-    __ Add(sp, sp, Immediate(3 * FRAME_SLOT_SIZE)); // 3 : 3 means pair
+    __ Ldp(Register(Zero), Register(X29), MemoryOperand(sp, ExtendedAssembler::PAIR_SLOT_SIZE, POSTINDEX));
+    __ Ldp(Register(X30), Register(Zero), MemoryOperand(sp, ExtendedAssembler::PAIR_SLOT_SIZE, POSTINDEX));
+    __ Add(sp, sp, Immediate(2 * FRAME_SLOT_SIZE)); // 2 : 2 means pair
     __ Ret();
 }
 

@@ -210,3 +210,117 @@ try {
 } catch (e) {
     print(e)
 }
+
+class Info {
+    isHit: boolean = false;
+    hitCount: int = 0;
+    distance: number;
+
+    constructor() {
+        this.distance = 0;
+    }
+
+    toString() :string {
+        return 'Intersection [' + this.distance + ']';
+    }
+}
+
+class Shape {
+    intersect(ray: number) : Info {
+        return undefined;
+    }
+    func1(a:any,...A:any) : void {
+        for (let p in A) {
+            print(A[p]);
+        }
+    }
+}
+
+class Scene {
+    shapes : Shape[];
+    constructor() {
+        this.shapes = new Array();
+    }
+}
+
+class Sphere extends Shape {
+    radius: number;
+
+    constructor(radius: number) {
+        super();
+        this.radius = radius;
+    }
+
+    intersect(ray: number) : Info {
+        var info = new Info();
+        print("intersect");
+        return info;
+    }
+
+    func1() : void {
+        print("func1")
+    }
+}
+
+function testIntersection(scene: Scene): number {
+    var hits = 0;
+    for(var i= 0; i<scene.shapes.length; i++){
+        var shape = scene.shapes[i];
+        var info = shape.intersect(hits);
+        shape.func1(hits);
+    }
+    return hits;
+}
+
+function renderScene(){
+    var scene = new Scene();
+
+    var sphere = new Sphere(3);
+
+    var sphere1 = new Sphere(4);
+
+    scene.shapes.push(sphere);
+    scene.shapes.push(sphere1);
+
+    testIntersection(scene);
+}
+renderScene();
+let sh = new Shape();
+sh.func1(1, 2);
+
+class Node{
+    public map : string;
+    public nodeType : number;
+    public parentNode : Node;
+    public childNode : Node;
+
+    constructor(radius: number) {
+        this.map = "hh";
+        this.nodeType = 1;
+        this.parentNode = null;
+        this.childNode = null;
+    }
+
+    public lookup(names: string) : void {
+        var el = this;
+        while (el) {
+            var map = el.map;
+            if (map == names) {
+                print(map)
+            }
+            el = el.nodeType == 1 ? el.childNode : el.parentNode;
+            const tmp = Node.Constant;
+            print(el);
+        }
+    }
+
+    static Constant = 1;
+    static Curve = 2;
+    static TwoC = 3;
+}
+Object.defineProperty(Node, "property1", {
+    value: 32,
+    writable: false
+});
+let obj = new Node();
+obj.lookup("hh");
