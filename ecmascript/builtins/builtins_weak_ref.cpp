@@ -32,10 +32,10 @@ JSTaggedValue BuiltinsWeakRef::WeakRefConstructor(EcmaRuntimeCallInfo *argv)
     if (newTarget->IsUndefined()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "new target can't be undefined", JSTaggedValue::Exception());
     }
-    // 2. If Type(target) is not Object, throw a TypeError exception.
+    // 2. If CanBeHeldWeakly(target) is false, throw a TypeError exception.
     JSHandle<JSTaggedValue> target = GetCallArg(argv, 0);
-    if (!target->IsECMAObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "target is not object", JSTaggedValue::Exception());
+    if (!JSTaggedValue::CanBeHeldWeakly(thread, target)) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "target invalid", JSTaggedValue::Exception());
     }
     // 3. Let weakRef be ? OrdinaryCreateFromConstructor(NewTarget, "%WeakRef.prototype%", « [[WeakRefTarget]] »).
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);

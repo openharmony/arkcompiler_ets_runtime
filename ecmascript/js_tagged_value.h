@@ -458,6 +458,9 @@ public:
     // ES6 7.4 Operations on Iterator Objects
     static JSObject *CreateIterResultObject(JSThread *thread, const JSHandle<JSTaggedValue> &value, bool done);
 
+    // ECMAScript 2023 allow the use of most Symbols as keys in weak collections
+    static bool CanBeHeldWeakly(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
+
     // ecma6 7.3
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                        const JSHandle<JSTaggedValue> &key);

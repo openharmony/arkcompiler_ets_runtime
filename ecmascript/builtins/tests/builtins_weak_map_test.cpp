@@ -213,4 +213,55 @@ HWTEST_F_L0(BuiltinsWeakMapTest, DeleteAndRemove)
 
     EXPECT_EQ(result4.GetRawData(), JSTaggedValue::False().GetRawData());
 }
+
+HWTEST_F_L0(BuiltinsWeakMapTest, SymbolKey)
+{
+    // create jsWeakMap
+    JSHandle<JSWeakMap> weakMap(thread, CreateBuiltinsWeakMap(thread));
+
+    // add 2 symbol keys
+    JSTaggedValue lastKey(JSTaggedValue::Undefined());
+    for (int i = 0; i < 2; i++) {
+        JSHandle<JSSymbol> symbolKey = thread->GetEcmaVM()->GetFactory()->NewJSSymbol();
+        JSHandle<JSTaggedValue> key(symbolKey);
+        auto ecmaRuntimeCallInfo =
+            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8 means 2 call args
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(weakMap.GetTaggedValue());
+        ecmaRuntimeCallInfo->SetCallArg(0, key.GetTaggedValue());
+        ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(i)));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        // set
+        JSTaggedValue result1 = BuiltinsWeakMap::Set(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        EXPECT_TRUE(result1.IsECMAObject());
+        JSWeakMap *jsWeakMap = JSWeakMap::Cast(reinterpret_cast<TaggedObject *>(result1.GetRawData()));
+        EXPECT_EQ(jsWeakMap->GetSize(), static_cast<int>(i) + 1);
+        lastKey = key.GetTaggedValue();
+    }
+
+    // check whether jsWeakMap can get and delete lastKey
+
+    auto ecmaRuntimeCallInfo1 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 means 1 call arg
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(weakMap.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, lastKey);
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    // get
+    JSTaggedValue result2 = BuiltinsWeakMap::Get(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev);
+    EXPECT_EQ(result2, JSTaggedValue(1));
+
+    // delete
+    JSTaggedValue result3 = BuiltinsWeakMap::Delete(ecmaRuntimeCallInfo1);
+    EXPECT_EQ(result3.GetRawData(), JSTaggedValue::True().GetRawData());
+
+    // check deleteKey is deleted
+    JSTaggedValue result4 = BuiltinsWeakMap::Has(ecmaRuntimeCallInfo1);
+    EXPECT_EQ(result4.GetRawData(), JSTaggedValue::False().GetRawData());
+}
 }  // namespace panda::test
