@@ -2102,6 +2102,7 @@ JSHandle<JSProxy> ObjectFactory::NewJSProxy(const JSHandle<JSTaggedValue> &targe
     proxy->SetMethod(thread_, vm_->GetMethodByIndex(MethodIndex::BUILTINS_GLOBAL_CALL_JS_PROXY));
     proxy->SetTarget(thread_, target.GetTaggedValue());
     proxy->SetHandler(thread_, handler.GetTaggedValue());
+    proxy->SetIsRevoked(false);
     return proxy;
 }
 
