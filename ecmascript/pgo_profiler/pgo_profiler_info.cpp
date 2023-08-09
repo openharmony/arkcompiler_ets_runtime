@@ -912,8 +912,7 @@ bool PGOMethodIdSet::ParseFromBinary(uint32_t threshold, void **buffer, PGOProfi
         if (header->SupportMethodChecksum()) {
             checksum = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
         }
-        auto ret = methodInfoMap_.emplace(info->GetMethodName(), chunk_);
-        ASSERT(ret.second);
+        auto ret = methodInfoMap_.try_emplace(info->GetMethodName(), chunk_);
         auto methodNameSetIter = ret.first;
         auto &methodInfo = methodNameSetIter->second.GetOrCreateMethodInfo(checksum, info->GetMethodId());
         LOG_ECMA(DEBUG) << "Method:" << info->GetMethodId() << ELEMENT_SEPARATOR << info->GetCount()
@@ -947,8 +946,7 @@ void PGOMethodIdSet::Merge(const PGOMethodIdSet &from)
     for (const auto &methodNameSet : from.methodInfoMap_) {
         auto iter = methodInfoMap_.find(methodNameSet.first);
         if (iter == methodInfoMap_.end()) {
-            auto ret = methodInfoMap_.emplace(methodNameSet.first, chunk_);
-            ASSERT(ret.second);
+            auto ret = methodInfoMap_.try_emplace(methodNameSet.first, chunk_);
             iter = ret.first;
         }
         const_cast<PGOMethodNameSet &>(iter->second).Merge(methodNameSet.second);
