@@ -231,6 +231,9 @@ EcmaVM::~EcmaVM()
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     DFXJSNApi::StopCpuProfilerForFile(this);
 #endif
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    DeleteHeapProfile();
+#endif
     heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
 
