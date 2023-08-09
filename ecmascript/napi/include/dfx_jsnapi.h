@@ -104,7 +104,8 @@ public:
     static bool SuspendVM(const EcmaVM *vm);
     static bool IsSuspended(const EcmaVM *vm);
     static bool CheckSafepoint(const EcmaVM *vm);
-    static EcmaVM *GetWorkerVm(EcmaVM *hostVm, uint32_t tid);
+    static void ResumeVMById(EcmaVM *vm, uint32_t tid);
+    static bool SuspendVMById(EcmaVM *vm, uint32_t tid);
 };
 }
 #endif
