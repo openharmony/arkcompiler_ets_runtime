@@ -694,6 +694,38 @@ JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo 
     return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
 
+JSTaggedValue JSStableArray::ToSpliced(JSThread *thread, JSHandle<JSObject> &thisObjHandle, EcmaRuntimeCallInfo *argv,
+                                       int64_t argc, int64_t actualStart, int64_t actualSkipCount, int64_t newLen)
+{
+    JSMutableHandle<TaggedArray> thisArray(thread, thisObjHandle->GetElements());
+    // 1. Let A be ? ArrayCreate(newLen).
+    JSHandle<JSTaggedValue> newJsTaggedArray =
+        JSArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(newLen)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> newArrayHandle(thread, newJsTaggedArray.GetTaggedValue());
+    JSMutableHandle<TaggedArray> newArray(thread, newArrayHandle->GetElements());
+
+    int64_t i = 0;
+    int64_t r = actualStart + actualSkipCount;
+    while (i < actualStart) {
+        JSTaggedValue value = thisArray->Get(i);
+        newArray->Set(thread, i, value);
+        ++i;
+    }
+    for (int64_t pos = 2; pos < argc; ++pos) { // 2:2 means there two arguments before the insert items.
+        JSHandle<JSTaggedValue> element = base::BuiltinsBase::GetCallArg(argv, pos);
+        newArray->Set(thread, i, element.GetTaggedValue());
+        ++i;
+    }
+    while (i < newLen) {
+        JSTaggedValue fromValue = thisArray->Get(r);
+        newArray->Set(thread, i, fromValue);
+        ++i;
+        ++r;
+    }
+    return newArrayHandle.GetTaggedValue();
+}
+
 JSTaggedValue JSStableArray::Reduce(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                     JSHandle<JSTaggedValue> callbackFnHandle,
                                     JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len)
@@ -727,5 +759,4 @@ JSTaggedValue JSStableArray::Reduce(JSThread *thread, JSHandle<JSObject> thisObj
     }
     return base::BuiltinsBase::GetTaggedDouble(true);
 }
-
 }  // namespace panda::ecmascript
