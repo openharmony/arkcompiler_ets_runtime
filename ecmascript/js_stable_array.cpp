@@ -725,6 +725,7 @@ JSTaggedValue JSStableArray::ToSpliced(JSThread *thread, JSHandle<JSObject> &thi
     }
     return newArrayHandle.GetTaggedValue();
 }
+
 JSTaggedValue JSStableArray::Reduce(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                     JSHandle<JSTaggedValue> callbackFnHandle,
                                     JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len)
