@@ -3028,7 +3028,7 @@ JSTaggedValue BuiltinsArray::ToSpliced(EcmaRuntimeCallInfo *argv)
     //     a. Let sc be ? ToIntegerOrInfinity(skipCount).
     //     b. Let actualSkipCount be the result of clamping sc between 0 and len - actualStart.
     if (argc > 1) {
-        insertCount = argc - 2;
+        insertCount = argc - 2; // 2:2 means there two arguments before the insert items.
         JSTaggedNumber argSkipCount = JSTaggedValue::ToInteger(thread, GetCallArg(argv, 1));
         // ReturnIfAbrupt(argSkipCount).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -3074,7 +3074,7 @@ JSTaggedValue BuiltinsArray::ToSpliced(EcmaRuntimeCallInfo *argv)
     //     b. Perform ! CreateDataPropertyOrThrow(A, Pi, E).
     //     c. Set i to i + 1.
     JSMutableHandle<JSTaggedValue> pi(thread, JSTaggedValue::Undefined());
-    for (int64_t pos = 2; pos < argc; ++pos) {
+    for (int64_t pos = 2; pos < argc; ++pos) { // 2:2 means there two arguments before the insert items.
         pi.Update(JSTaggedValue(i));
         JSHandle<JSTaggedValue> element = GetCallArg(argv, pos);
         JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, pi, element);

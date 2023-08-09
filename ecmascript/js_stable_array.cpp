@@ -699,7 +699,7 @@ JSTaggedValue JSStableArray::ToSpliced(JSThread *thread, JSHandle<JSObject> &thi
 {
     JSMutableHandle<TaggedArray> thisArray(thread, thisObjHandle->GetElements());
     // 1. Let A be ? ArrayCreate(newLen).
-    JSHandle<JSTaggedValue> newJsTaggedArray = 
+    JSHandle<JSTaggedValue> newJsTaggedArray =
         JSArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(newLen)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newJsTaggedArray.GetTaggedValue());
@@ -712,7 +712,7 @@ JSTaggedValue JSStableArray::ToSpliced(JSThread *thread, JSHandle<JSObject> &thi
         newArray->Set(thread, i, value);
         ++i;
     }
-    for (int64_t pos = 2; pos < argc; ++pos) {
+    for (int64_t pos = 2; pos < argc; ++pos) { // 2:2 means there two arguments before the insert items.
         JSHandle<JSTaggedValue> element = base::BuiltinsBase::GetCallArg(argv, pos);
         newArray->Set(thread, i, element.GetTaggedValue());
         ++i;
@@ -759,5 +759,4 @@ JSTaggedValue JSStableArray::Reduce(JSThread *thread, JSHandle<JSObject> thisObj
     }
     return base::BuiltinsBase::GetTaggedDouble(true);
 }
-
 }  // namespace panda::ecmascript
