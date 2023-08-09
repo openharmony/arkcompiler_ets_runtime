@@ -775,6 +775,11 @@ inline GateRef StubBuilder::TaggedFalse()
     return env_->GetBuilder()->TaggedFalse();
 }
 
+inline GateRef StubBuilder::TaggedUndefined()
+{
+    return env_->GetBuilder()->UndefineConstant();
+}
+
 // compare operation
 inline GateRef StubBuilder::Int8Equal(GateRef x, GateRef y)
 {

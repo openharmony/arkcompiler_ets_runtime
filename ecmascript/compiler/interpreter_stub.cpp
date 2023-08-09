@@ -162,6 +162,36 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     CheckPendingException(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter,  \
 		          res, offset)
 
+#define METHOD_ENTRY(func)                                                                        \
+    auto env = GetEnvironment();                                                                  \
+    METHOD_ENTRY_ENV_DEFINED(func);
+
+#define METHOD_ENTRY_ENV_DEFINED(func)                                                            \
+    GateRef isDebugModeOffset = IntPtr(JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit())); \
+    GateRef isDebugMode = Load(VariableType::BOOL(), glue, isDebugModeOffset);                    \
+    Label isDebugModeTrue(env);                                                                   \
+    Label isDebugModeFalse(env);                                                                  \
+    Branch(isDebugMode, &isDebugModeTrue, &isDebugModeFalse);                                     \
+    Bind(&isDebugModeTrue);                                                                       \
+    {                                                                                             \
+        CallRuntime(glue, RTSTUB_ID(MethodEntry), { func });                                      \
+        Jump(&isDebugModeFalse);                                                                  \
+    }                                                                                             \
+    Bind(&isDebugModeFalse);
+
+#define METHOD_EXIT()                                                                             \
+    GateRef isDebugModeOffset = IntPtr(JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit())); \
+    GateRef isDebugMode = Load(VariableType::BOOL(), glue, isDebugModeOffset);                    \
+    Label isDebugModeTrue(env);                                                                   \
+    Label isDebugModeFalse(env);                                                                  \
+    Branch(isDebugMode, &isDebugModeTrue, &isDebugModeFalse);                                     \
+    Bind(&isDebugModeTrue);                                                                       \
+    {                                                                                             \
+        CallRuntime(glue, RTSTUB_ID(MethodExit), {});                                             \
+        Jump(&isDebugModeFalse);                                                                  \
+    }                                                                                             \
+    Bind(&isDebugModeFalse);
+
 template <bool needPrint>
 void InterpreterStubBuilder::DebugPrintInstruction()
 {
@@ -2297,6 +2327,7 @@ DECLARE_ASM_HANDLER(HandleJnezImm32)
 DECLARE_ASM_HANDLER(HandleReturn)
 {
     auto env = GetEnvironment();
+    METHOD_EXIT();
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
     DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
@@ -2360,6 +2391,7 @@ DECLARE_ASM_HANDLER(HandleReturn)
 DECLARE_ASM_HANDLER(HandleReturnundefined)
 {
     auto env = GetEnvironment();
+    METHOD_EXIT();
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
     DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
@@ -3571,6 +3603,7 @@ DECLARE_ASM_HANDLER(HandleCallarg0Imm8)
 {
     GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARG0);
     GateRef func = acc;
+    METHOD_ENTRY(func);
     GateRef jumpSize = INT_PTR(CALLARG0_IMM8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
                                  JSCallMode::CALL_ARG0, {}, callback);
@@ -3593,6 +3626,7 @@ DECLARE_ASM_HANDLER(HandleCallarg1Imm8V8)
     GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARG1);
     GateRef a0 = ReadInst8_1(pc);
     GateRef func = acc;
+    METHOD_ENTRY(func);
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef jumpSize = INT_PTR(CALLARG1_IMM8_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
@@ -3619,6 +3653,7 @@ DECLARE_ASM_HANDLER(HandleCallargs2Imm8V8V8)
     GateRef a0 = ReadInst8_1(pc);
     GateRef a1 = ReadInst8_2(pc);
     GateRef func = acc;
+    METHOD_ENTRY(func);
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef a1Value = GetVregValue(sp, ZExtInt8ToPtr(a1));
     GateRef jumpSize = INT_PTR(CALLARGS2_IMM8_V8_V8);
@@ -3649,6 +3684,7 @@ DECLARE_ASM_HANDLER(HandleCallargs3Imm8V8V8V8)
     GateRef a1 = ReadInst8_2(pc);
     GateRef a2 = ReadInst8_3(pc);
     GateRef func = acc;
+    METHOD_ENTRY(func);
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef a1Value = GetVregValue(sp, ZExtInt8ToPtr(a1));
     GateRef a2Value = GetVregValue(sp, ZExtInt8ToPtr(a2));
@@ -3679,6 +3715,7 @@ DECLARE_ASM_HANDLER(HandleCallrangeImm8Imm8V8)
 {
     GateRef actualNumArgs = ZExtInt8ToInt32(ReadInst8_1(pc));
     GateRef func = acc;
+    METHOD_ENTRY(func);
     GateRef argv = PtrAdd(sp, PtrMul(ZExtInt8ToPtr(ReadInst8_2(pc)), IntPtr(8))); // 8: byteSize
     GateRef jumpSize = INT_PTR(CALLRANGE_IMM8_IMM8_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
@@ -3691,6 +3728,7 @@ DECLARE_ASM_HANDLER(HandleWideCallrangePrefImm16V8)
 {
     GateRef actualNumArgs = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef func = acc;
+    METHOD_ENTRY(func);
     GateRef argv = PtrAdd(sp, PtrMul(ZExtInt8ToPtr(ReadInst8_2(pc)), IntPtr(8))); // 8: byteSize
     GateRef jumpSize = INT_PTR(WIDE_CALLRANGE_PREF_IMM16_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
@@ -3720,6 +3758,7 @@ DECLARE_ASM_HANDLER(HandleCallthisrangeImm8Imm8V8)
     GateRef actualNumArgs = ZExtInt8ToInt32(ReadInst8_1(pc));
     GateRef thisReg = ZExtInt8ToPtr(ReadInst8_2(pc));
     GateRef func = acc;
+    METHOD_ENTRY(func);
     GateRef thisValue = GetVregValue(sp, thisReg);
     GateRef argv = PtrAdd(sp, PtrMul(
         PtrAdd(thisReg, IntPtr(1)), IntPtr(8))); // 1: skip this
@@ -3735,6 +3774,7 @@ DECLARE_ASM_HANDLER(HandleWideCallthisrangePrefImm16V8)
     GateRef actualNumArgs = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef thisReg = ZExtInt8ToPtr(ReadInst8_3(pc));
     GateRef func = acc;
+    METHOD_ENTRY(func);
     GateRef thisValue = GetVregValue(sp, thisReg);
     GateRef argv = PtrAdd(sp, PtrMul(
         PtrAdd(thisReg, IntPtr(1)), IntPtr(8))); // 1: skip this
@@ -3768,6 +3808,7 @@ DECLARE_ASM_HANDLER(HandleCallthis0Imm8V8)
     GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARG0);
     GateRef thisValue = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef func = acc;
+    METHOD_ENTRY(func);
     GateRef jumpSize = INT_PTR(CALLTHIS0_IMM8_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
                                  JSCallMode::CALL_THIS_ARG0, { thisValue }, callback);
@@ -3780,6 +3821,7 @@ DECLARE_ASM_HANDLER(HandleCallthis1Imm8V8V8)
     GateRef thisValue = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_1(pc)));
     GateRef a0 = ReadInst8_2(pc);
     GateRef func = acc;
+    METHOD_ENTRY(func);
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef jumpSize = INT_PTR(CALLTHIS1_IMM8_V8_V8);
     GateRef res = JSCallDispatch(glue, func, actualNumArgs, jumpSize, hotnessCounter,
@@ -3794,6 +3836,7 @@ DECLARE_ASM_HANDLER(HandleCallthis2Imm8V8V8V8)
     GateRef a0 = ReadInst8_2(pc);
     GateRef a1 = ReadInst8_3(pc);
     GateRef func = acc;
+    METHOD_ENTRY(func);
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef a1Value = GetVregValue(sp, ZExtInt8ToPtr(a1));
     GateRef jumpSize = INT_PTR(CALLTHIS2_IMM8_V8_V8_V8);
@@ -3810,6 +3853,7 @@ DECLARE_ASM_HANDLER(HandleCallthis3Imm8V8V8V8V8)
     GateRef a1 = ReadInst8_3(pc);
     GateRef a2 = ReadInst8_4(pc);
     GateRef func = acc;
+    METHOD_ENTRY(func);
     GateRef a0Value = GetVregValue(sp, ZExtInt8ToPtr(a0));
     GateRef a1Value = GetVregValue(sp, ZExtInt8ToPtr(a1));
     GateRef a2Value = GetVregValue(sp, ZExtInt8ToPtr(a2));
@@ -3924,6 +3968,7 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm8Imm8V8)
         GateRef argv = PtrAdd(sp, PtrMul(
             PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function
         GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8));
+        METHOD_ENTRY_ENV_DEFINED(ctor);
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize, hotnessCounter,
                              JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
                              { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj }, callback);
@@ -3994,6 +4039,7 @@ DECLARE_ASM_HANDLER(HandleNewobjrangeImm16Imm8V8)
             PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function
         GateRef jumpSize =
             IntPtr(-static_cast<int64_t>(BytecodeInstruction::Size(BytecodeInstruction::Format::IMM16_IMM8_V8)));
+        METHOD_ENTRY_ENV_DEFINED(ctor);
         res = JSCallDispatch(glue, ctor, actualNumArgs, jumpSize, hotnessCounter,
                              JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
                              { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj }, callback,
@@ -4503,6 +4549,7 @@ DECLARE_ASM_HANDLER_NOPRINT(HandleCallRuntime)
 DECLARE_ASM_HANDLER_NOPRINT(ExceptionHandler)
 {
     auto env = GetEnvironment();
+    METHOD_EXIT();
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
     DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
@@ -4588,10 +4635,80 @@ DECLARE_ASM_HANDLER(SingleStepDebugging)
 
 DECLARE_ASM_HANDLER(BCDebuggerEntry)
 {
+    auto env = GetEnvironment();
+    Label callByteCodeChanged(env);
+    Label isFrameDroppedTrue(env);
+    Label isFrameDroppedFalse(env);
+    Label isEntryFrameDroppedPending(env);
+    Label isEntryFrameDroppedNotTrue(env);
+    Label pcEqualNullptr(env);
+    Label pcNotEqualNullptr(env);
     GateRef frame = GetFrame(sp);
+    GateRef isEntryFrameDropped = Load(VariableType::INT8(), glue,
+        IntPtr(JSThread::GlueData::GetEntryFrameDroppedStateOffset(env->Is32Bit())));
+    Branch(Int8Equal(isEntryFrameDropped, Int8(JSThread::FrameDroppedState::StatePending)),
+        &isEntryFrameDroppedPending, &callByteCodeChanged);
+    Bind(&isEntryFrameDroppedPending);
+    {
+        Store(VariableType::INT8(), glue, glue,
+            IntPtr(JSThread::GlueData::GetEntryFrameDroppedStateOffset(env->Is32Bit())),
+            Int8(JSThread::FrameDroppedState::StateFalse));
+        DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
+        DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+        varPc = GetPcFromFrame(frame);
+        varAcc = GetAccFromFrame(frame);
+        Dispatch(glue, sp, *varPc, constpool, profileTypeInfo, *varAcc, hotnessCounter, IntPtr(0));
+    }
+    Bind(&callByteCodeChanged);
     SetPcToFrame(glue, frame, pc);
     // NOTIFY_DEBUGGER_EVENT()
     CallRuntime(glue, RTSTUB_ID(NotifyBytecodePcChanged), {});
+    GateRef isFrameDropped = Load(VariableType::BOOL(), glue,
+        IntPtr(JSThread::GlueData::GetIsFrameDroppedOffset(env->Is32Bit())));
+    Branch(isFrameDropped, &isFrameDroppedTrue, &isFrameDroppedFalse);
+    Bind(&isFrameDroppedTrue);
+    {
+        DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
+        DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
+        DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
+        DEFVARIABLE(varProfileTypeInfo, VariableType::JS_POINTER(), profileTypeInfo);
+        DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+        DEFVARIABLE(varHotnessCounter, VariableType::INT32(), hotnessCounter);
+        GateRef state = GetFrame(*varSp);
+        GateRef currentSp = *varSp;
+        Store(VariableType::BOOL(), glue, glue,
+            IntPtr(JSThread::GlueData::GetIsFrameDroppedOffset(env->Is32Bit())), False());
+        varSp = Load(VariableType::NATIVE_POINTER(), state,
+            IntPtr(AsmInterpretedFrame::GetBaseOffset(env->IsArch32Bit())));
+        isEntryFrameDropped = Load(VariableType::INT8(), glue,
+            IntPtr(JSThread::GlueData::GetEntryFrameDroppedStateOffset(env->Is32Bit())));
+        Branch(Int8Equal(isEntryFrameDropped, Int8(JSThread::FrameDroppedState::StateTrue)),
+            &pcEqualNullptr, &isEntryFrameDroppedNotTrue);
+        Bind(&isEntryFrameDroppedNotTrue);
+        GateRef prevState = GetFrame(*varSp);
+        varPc = GetPcFromFrame(prevState);
+        Branch(IntPtrEqual(*varPc, IntPtr(0)), &pcEqualNullptr, &pcNotEqualNullptr);
+        Bind(&pcEqualNullptr);
+        {
+            CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndReturn), { *varAcc, *varSp, currentSp });
+            Return();
+        }
+        Bind(&pcNotEqualNullptr);
+        {
+            GateRef function = GetFunctionFromFrame(prevState);
+            GateRef method = Load(VariableType::JS_ANY(), function, IntPtr(JSFunctionBase::METHOD_OFFSET));
+            varConstpool = GetConstpoolFromMethod(method);
+            varProfileTypeInfo = GetProfileTypeInfoFromMethod(method);
+            varHotnessCounter = GetHotnessCounterFromMethod(method);
+            GateRef jumpSize = IntPtr(0);
+            CallNGCRuntime(glue, RTSTUB_ID(ResumeRspAndRollback),
+                        { glue, currentSp, *varPc, *varConstpool, *varProfileTypeInfo,
+                            *varAcc, *varHotnessCounter, jumpSize });
+            Return();
+        }
+    }
+    Bind(&isFrameDroppedFalse);
+    SetAccToFrame(glue, frame, acc);
     // goto normal handle stub
     DispatchDebugger(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter);
 }

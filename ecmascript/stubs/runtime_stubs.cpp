@@ -1538,6 +1538,45 @@ DEF_RUNTIME_STUBS(NotifyDebuggerStatement)
     return RuntimeNotifyDebuggerStatement(thread).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(MethodEntry)
+{
+    RUNTIME_STUBS_HEADER(MethodEntry);
+    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    if (func.GetTaggedValue().IsECMAObject()) {
+        Method *method = ECMAObject::Cast(func.GetTaggedValue().GetTaggedObject())->GetCallTarget();
+        FrameHandler frameHandler(thread);
+        for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+            if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
+                continue;
+            }
+            auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
+            debuggerMgr->GetNotificationManager()->MethodEntryEvent(thread, method);
+            return JSTaggedValue::Hole().GetRawData();
+        }
+    }
+    return JSTaggedValue::Hole().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(MethodExit)
+{
+    RUNTIME_STUBS_HEADER(MethodExit);
+    FrameHandler frameHandler(thread);
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+        if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
+            continue;
+        }
+        Method *method = frameHandler.GetMethod();
+        // Skip builtins method
+        if (method->IsNativeWithCallField()) {
+            continue;
+        }
+        auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
+        debuggerMgr->GetNotificationManager()->MethodExitEvent(thread, method);
+        return JSTaggedValue::Hole().GetRawData();
+    }
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CreateEmptyObject)
 {
     RUNTIME_STUBS_HEADER(CreateEmptyObject);

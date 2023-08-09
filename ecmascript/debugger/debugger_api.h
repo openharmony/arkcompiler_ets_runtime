@@ -55,6 +55,7 @@ public:
     static uint32_t GetStackDepth(const EcmaVM *ecmaVm);
     static std::shared_ptr<FrameHandler> NewFrameHandler(const EcmaVM *ecmaVm);
     static bool StackWalker(const EcmaVM *ecmaVm, std::function<StackState(const FrameHandler *)> func);
+    static uint32_t GetStackDepthOverBuiltin(const EcmaVM *ecmaVm);
 
     static uint32_t GetBytecodeOffset(const EcmaVM *ecmaVm);
     static uint32_t GetBytecodeOffset(const FrameHandler *frameHandler);

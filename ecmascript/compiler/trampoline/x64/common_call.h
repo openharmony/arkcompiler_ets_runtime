@@ -155,6 +155,8 @@ public:
 
     static void ResumeUncaughtFrameAndReturn(ExtendedAssembler *assembler);
 
+    static void ResumeRspAndRollback(ExtendedAssembler *assembler);
+
 private:
     static void PushFrameState(ExtendedAssembler *assembler, Register prevSpRegister, Register fpRegister,
         Register callTargetRegister, Register thisRegister, Register methodRegister, Register pcRegister,

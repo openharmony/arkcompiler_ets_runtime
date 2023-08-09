@@ -40,6 +40,7 @@ public:
     static JSTaggedValue Execute(EcmaRuntimeCallInfo *info);
     static JSTaggedValue GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context);
     static inline size_t GetJumpSizeAfterCall(const uint8_t *prevPc);
+    static inline void MethodEntry(JSThread *thread, Method *method);
 
     static inline JSTaggedValue UpdateHotnessCounter(JSThread* thread, JSTaggedType *sp);
     static inline void InterpreterFrameCopyArgs(JSTaggedType *newSp, uint32_t numVregs, uint32_t numActualArgs,

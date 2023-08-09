@@ -133,11 +133,27 @@ void DropframeManager::DropLastFrame(JSThread *thread)
     }
     RemoveLexModifyRecordOfTopFrame(thread);
 
-    JSTaggedType *sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
-    InterpretedFrame *state = InterpretedFrame::GetFrameFromSp(sp);
-    JSTaggedType *prevSp = state->base.prev;
-    thread->SetCurrentSPFrame(prevSp);
-    thread->SetFrameDroppedBit();
+    FrameHandler frameHandler(thread);
+    bool isEntryFrameDropped = false;
+    while (frameHandler.HasFrame()) {
+        frameHandler.PrevJSFrame();
+        if (frameHandler.IsEntryFrame()) {
+            isEntryFrameDropped = true;
+            continue;
+        }
+        if (frameHandler.IsBuiltinFrame()) {
+            continue;
+        }
+        if (!thread->IsAsmInterpreter()) {
+            JSTaggedType *prevSp = frameHandler.GetSp();
+            thread->SetCurrentFrame(prevSp);
+        }
+        if (isEntryFrameDropped) {
+            thread->SetEntryFrameDroppedState();
+        }
+        thread->SetFrameDroppedState();
+        break;
+    }
 }
 
 void DropframeManager::NewLexModifyRecordLevel()

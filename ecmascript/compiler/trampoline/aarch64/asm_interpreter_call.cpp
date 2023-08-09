@@ -827,6 +827,55 @@ void AsmInterpreterCall::ResumeUncaughtFrameAndReturn(ExtendedAssembler *assembl
     __ Ret();
 }
 
+// ResumeRspAndRollback(uintptr_t glue, uintptr_t sp, uintptr_t pc, uintptr_t constantPool,
+//     uint64_t profileTypeInfo, uint64_t acc, uint32_t hotnessCounter, size_t jumpSize)
+// GHC calling convention
+// X19 - glue
+// FP  - sp
+// X20 - pc
+// X21 - constantPool
+// X22 - profileTypeInfo
+// X23 - acc
+// X24 - hotnessCounter
+// X25 - jumpSizeAfterCall
+void AsmInterpreterCall::ResumeRspAndRollback(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(ResumeRspAndRollback));
+
+    Register glueRegister = __ GlueRegister();
+    Register sp(FP);
+    Register rsp(SP);
+    Register pc(X20);
+    Register jumpSizeRegister(X25);
+
+    Register ret(X23);
+    Register opcode(X6, W);
+    Register bcStub(X7);
+    Register fp(X8);
+
+    int64_t fpOffset = static_cast<int64_t>(AsmInterpretedFrame::GetFpOffset(false))
+        - static_cast<int64_t>(AsmInterpretedFrame::GetSize(false));
+    int64_t spOffset = static_cast<int64_t>(AsmInterpretedFrame::GetBaseOffset(false))
+        - static_cast<int64_t>(AsmInterpretedFrame::GetSize(false));
+    int64_t funcOffset = static_cast<int64_t>(AsmInterpretedFrame::GetFunctionOffset(false))
+        - static_cast<int64_t>(AsmInterpretedFrame::GetSize(false));
+    ASSERT(fpOffset < 0);
+    ASSERT(spOffset < 0);
+    ASSERT(funcOffset < 0);
+
+    __ Ldur(fp, MemoryOperand(sp, fpOffset));  // store fp for temporary
+    __ Ldur(ret, MemoryOperand(sp, funcOffset)); // restore acc
+    __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
+
+    __ Add(pc, pc, Operand(jumpSizeRegister, LSL, 0));
+    __ Ldrb(opcode, MemoryOperand(pc, 0));
+
+    __ Mov(rsp, fp);  // resume rsp
+    __ Add(bcStub, glueRegister, Operand(opcode, UXTW, FRAME_SLOT_SIZE_LOG2));
+    __ Ldr(bcStub, MemoryOperand(bcStub, JSThread::GlueData::GetBCStubEntriesOffset(false)));
+    __ Br(bcStub);
+}
+
 // c++ calling convention
 // X0 - glue
 // X1 - callTarget
