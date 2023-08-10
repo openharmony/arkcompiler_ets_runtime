@@ -237,6 +237,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
                                   const JSHandle<JSTaggedValue> &value, PropertyAttributes attr)
 {
     bool isDictionary = receiver->GetJSHClass()->IsDictionaryElement();
+    ElementsKind kind = ElementsKind::NONE;
     if (receiver->IsJSArray()) {
         DISALLOW_GARBAGE_COLLECTION;
         JSArray *arr = JSArray::Cast(*receiver);
@@ -246,6 +247,9 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
                 return false;
             }
             arr->SetArrayLength(thread, index + 1);
+            if (index > oldLength) {
+                kind = ElementsKind::HOLE;
+            }
         }
     }
     thread->NotifyStableArrayElementsGuardians(receiver);
@@ -273,6 +277,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
         elements = *JSObject::GrowElementsCapacity(thread, receiver, index + 1);
     }
     elements->Set(thread, index, value);
+    JSHClass::TransitToElementsKind(thread, receiver, value, kind);
     return true;
 }
 
@@ -2125,17 +2130,30 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
     }
     if (propsLen <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES) {
         JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(properties, propsLen);
+        ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
         if (ihcVal.IsJSHClass()) {
+            bool isSuccess = true;
             JSHClass *ihc = JSHClass::Cast(ihcVal.GetTaggedObject());
             JSHClass *oldHC = obj->GetJSHClass();
             ihc->SetPrototype(thread, oldHC->GetPrototype());
             obj->SetClass(ihc);
+            for (size_t i = 0; i < propsLen; i++) {
+                auto value = obj->ConvertValueWithRep(i, properties->Get(i * 2 + 1));
+                if (!value.first) {
+                    isSuccess = false;
+                    break;
+                }
+                obj->SetPropertyInlinedPropsWithRep(thread, i, value.second);
+            }
+            if (isSuccess) {
+                return obj;
+            }
+            // The layout representation of ihc is inaccurate and needs to be rolled back to the old HClass
+            obj->SetClass(oldHC);
         }
-        ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
         for (size_t i = 0; i < propsLen; i++) {
             // 2: literal contains a pair of key-value
-            auto value = obj->ConvertValueWithRep(i, properties->Get(i * 2 + 1));
-            obj->SetPropertyInlinedPropsWithRep(thread, i, value);
+            obj->SetPropertyInlinedProps(thread, i, properties->Get(i * 2 + 1));
         }
         return obj;
     } else {

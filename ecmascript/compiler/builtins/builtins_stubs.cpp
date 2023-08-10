@@ -931,7 +931,7 @@ DECLARE_BUILTINS(FunctionPrototypeApply)
                     }
                     Bind(&taggedNotStableJsArg);
                     {
-                        GateRef length = GetLengthOfJsArray(glue, arrayObj);
+                        GateRef length = GetArrayLength(arrayObj);
                         GateRef argsLength = MakeArgListWithHole(glue, elements, length);
                         GateRef elementArgv = PtrAdd(elements, IntPtr(TaggedArray::DATA_OFFSET));
                         res = JSCallDispatch(glue, thisValue, argsLength, 0, Circuit::NullGate(),
@@ -1165,7 +1165,7 @@ DECLARE_BUILTINS(ArrayConstructor)
                     newBuilder.SetParameters(glue, 0);
                     res = newBuilder.NewJSArrayWithSize(intialHClass, *arrayLength);
                     GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
-                    Store(VariableType::JS_ANY(), glue, *res, lengthOffset, Int64ToTaggedInt(*arrayLength));
+                    Store(VariableType::INT32(), glue, *res, lengthOffset, TruncInt64ToInt32(*arrayLength));
                     GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
                                                               ConstantIndex::ARRAY_LENGTH_ACCESSOR);
                     SetPropertyInlinedProps(glue, *res, intialHClass, accessor,

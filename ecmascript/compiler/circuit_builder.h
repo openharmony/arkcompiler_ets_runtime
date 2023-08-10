@@ -469,6 +469,7 @@ public:
     inline GateRef TaggedIsAsyncGeneratorObject(GateRef x);
     inline GateRef TaggedIsJSGlobalObject(GateRef x);
     inline GateRef TaggedIsGeneratorObject(GateRef x);
+    inline GateRef TaggedIsJSArray(GateRef x);
     inline GateRef TaggedIsPropertyBox(GateRef x);
     inline GateRef TaggedIsWeak(GateRef x);
     inline GateRef TaggedIsPrototypeHandler(GateRef x);

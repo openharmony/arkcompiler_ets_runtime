@@ -49,18 +49,19 @@ public:
     // use first inlined property slot for array length
     inline uint32_t GetArrayLength() const
     {
-        return GetLength().GetArrayLength();
+        return GetLength();
     }
 
-    inline void SetArrayLength(const JSThread *thread, uint32_t length)
+    inline void SetArrayLength([[maybe_unused]]const JSThread *thread, uint32_t length)
     {
-        SetLength(thread, JSTaggedValue(length));
+        SetLength(length);
     }
 
     static constexpr size_t LENGTH_OFFSET = JSObject::SIZE;
-    ACCESSORS(Length, LENGTH_OFFSET, SIZE);
+    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, TRACE_INDEX_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(TraceIndex, uint32_t, TRACE_INDEX_OFFSET, SIZE)
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, LENGTH_OFFSET, SIZE)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, SIZE, SIZE)
 
     static const uint32_t MAX_ARRAY_INDEX = MAX_ELEMENT_INDEX;
     DECL_DUMP()

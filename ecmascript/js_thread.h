@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/dfx/vm_thread_control.h"
+#include "ecmascript/elements.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/mem/visitor.h"
@@ -314,6 +315,11 @@ public:
     const GlobalEnvConstants *GlobalConstants() const
     {
         return glueData_.globalConst_;
+    }
+
+    const CMap<ElementsKind, ConstantIndex> &GetArrayHClassIndexMap() const
+    {
+        return arrayHClassIndexMap_;
     }
 
     void NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver);
@@ -876,6 +882,11 @@ private:
         currentContext_ = context;
     }
 
+    void SetArrayHClassIndexMap(const CMap<ElementsKind, ConstantIndex> &map)
+    {
+        arrayHClassIndexMap_ = map;
+    }
+
     void DumpStack() DUMP_API_ATTR;
 
     static size_t GetAsmStackLimit();
@@ -921,6 +932,8 @@ private:
     bool finalizationCheckState_ {false};
 
     bool isFrameDropped_ {false};
+
+    CMap<ElementsKind, ConstantIndex> arrayHClassIndexMap_;
 
     CVector<EcmaContext *> contexts_;
     EcmaContext *currentContext_ {nullptr};

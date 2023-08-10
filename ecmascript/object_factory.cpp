@@ -1037,7 +1037,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         }
 #endif
         case JSType::JS_ARRAY: {
-            JSArray::Cast(*obj)->SetLength(thread_, JSTaggedValue(0));
+            JSArray::Cast(*obj)->SetLength(0);
             ASSERT(!obj->GetJSHClass()->IsDictionaryMode());
             auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
             JSArray::Cast(*obj)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
@@ -4040,7 +4040,7 @@ JSHandle<JSArray> ObjectFactory::NewJSStableArrayWithElements(const JSHandle<Tag
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(NewJSObject(cls));
     array->SetElements(thread_, elements);
 
-    array->SetLength(thread_, JSTaggedValue(elements->GetLength()));
+    array->SetLength(elements->GetLength());
     auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
     array->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
     return array;

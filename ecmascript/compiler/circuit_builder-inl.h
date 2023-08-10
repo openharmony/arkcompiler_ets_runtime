@@ -409,6 +409,13 @@ GateRef CircuitBuilder::TaggedIsGeneratorObject(GateRef x)
     return LogicAnd(isHeapObj, isAsyncGeneratorObj);
 }
 
+GateRef CircuitBuilder::TaggedIsJSArray(GateRef x)
+{
+    GateRef objType = GetObjectType(LoadHClass(x));
+    GateRef isJSArray = Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
+    return isJSArray;
+}
+
 GateRef CircuitBuilder::TaggedIsPropertyBox(GateRef x)
 {
     return LogicAnd(TaggedIsHeapObject(x),

@@ -147,7 +147,7 @@ void ICStubBuilder::LoadICByValue(
     ValuedICAccessor(&cachedHandler, &loadWithHandler, &loadElement);
     Bind(&loadElement);
     {
-        GateRef ret = LoadElement(glue_, receiver_, propKey_);
+        GateRef ret = LoadElement(glue_, receiver_, propKey_, callback);
         result->WriteVariable(ret);
         Branch(TaggedIsHole(ret), slowPath_, success_);
     }
@@ -172,7 +172,7 @@ void ICStubBuilder::StoreICByValue(Variable* result, Label* tryFastPath, Label *
     ValuedICAccessor(&cachedHandler, &storeWithHandler, &storeElement);
     Bind(&storeElement);
     {
-        GateRef ret = ICStoreElement(glue_, receiver_, propKey_, value_, secondValue);
+        GateRef ret = ICStoreElement(glue_, receiver_, propKey_, value_, secondValue, callback_);
         result->WriteVariable(ret);
         Branch(TaggedIsHole(ret), slowPath_, success_);
     }

@@ -154,7 +154,7 @@ void PGOProfiler::ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_
     }
 }
 
-void PGOProfiler::ProfileCreateObject(JSTaggedType func, int32_t offset, JSTaggedType originObj, JSTaggedType newObj)
+void PGOProfiler::ProfileCreateObject(JSTaggedType func, int32_t offset, JSTaggedType newObj, int32_t traceId)
 {
     if (!isEnable_) {
         return;
@@ -177,23 +177,26 @@ void PGOProfiler::ProfileCreateObject(JSTaggedType func, int32_t offset, JSTagge
         auto jsMethod = Method::Cast(method);
         auto funcMethodId = jsMethod->GetMethodId();
 
-        auto originObjValue = JSTaggedValue(originObj);
         auto newObjValue = JSTaggedValue(newObj);
-        if (!originObjValue.IsJSObject() || !newObjValue.IsJSObject()) {
-            return;
-        }
-        auto originHclass = JSObject::Cast(originObjValue)->GetJSHClass();
-        auto iter = literalIds_.find(JSTaggedType(originHclass));
-        if (iter == literalIds_.end()) {
+        if (!newObjValue.IsJSObject()) {
             return;
         }
         auto newHClass = JSObject::Cast(newObjValue) ->GetJSHClass();
-        InsertLiteralId(JSTaggedType(newHClass), iter->second);
-
-        auto currentType = PGOSampleType::CreateClassType(iter->second.GetOffset());
-        auto superType = PGOSampleType::CreateClassType(0);
-        recordInfos_->AddDefine(recordName, funcMethodId, offset, currentType, superType);
-        recordInfos_->AddLayout(currentType, JSTaggedType(newHClass), PGOObjKind::LOCAL);
+        if (newHClass->IsJSArray()) {
+            auto array = JSArray::Cast(newObjValue);
+            auto currentType = PGOSampleType::CreateClassType(array->GetTraceIndex());
+            auto superType = PGOSampleType::CreateClassType(0);
+            recordInfos_->AddDefine(recordName, funcMethodId, offset, currentType, superType);
+            PGOObjKind kind = PGOObjKind::ELEMENT;
+            recordInfos_->AddLayout(currentType, JSTaggedType(newHClass), kind);
+        } else {
+            InsertLiteralId(JSTaggedType(newHClass), traceId);
+            auto currentType = PGOSampleType::CreateClassType(traceId);
+            auto superType = PGOSampleType::CreateClassType(0);
+            recordInfos_->AddDefine(recordName, funcMethodId, offset, currentType, superType);
+            PGOObjKind kind = PGOObjKind::LOCAL;
+            recordInfos_->AddLayout(currentType, JSTaggedType(newHClass), kind);
+        }
     }
 }
 
@@ -229,13 +232,26 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
             ctor = holder;
             kind = PGOObjKind::CONSTRUCTOR;
         } else if (hclass->IsLiteral()) {
-            auto iter = literalIds_.find(JSTaggedType(hclass));
-            if (iter != literalIds_.end()) {
-                PGOObjectInfo info(ClassType(iter->second.GetOffset()), kind);
+            auto iter = traceIds_.find(JSTaggedType(hclass));
+            if (iter != traceIds_.end()) {
+                PGOObjectInfo info(ClassType(iter->second), kind);
                 auto methodId = jsMethod->GetMethodId();
                 recordInfos_->AddObjectInfo(recordName, methodId, offset, info);
                 if (store) {
-                    auto type = PGOSampleType::CreateClassType(iter->second.GetOffset());
+                    auto type = PGOSampleType::CreateClassType(iter->second);
+                    recordInfos_->AddLayout(type, JSTaggedType(hclass), kind);
+                }
+            }
+            return;
+        } else if (hclass->IsJSArray()) {
+            kind = PGOObjKind::ELEMENT;
+            auto array = JSArray::Cast(holder);
+            if (array->GetTraceIndex() != 0) {
+                PGOObjectInfo info(ClassType(array->GetTraceIndex()), kind);
+                auto methodId = jsMethod->GetMethodId();
+                recordInfos_->AddObjectInfo(recordName, methodId, offset, info);
+                if (store) {
+                    auto type = PGOSampleType::CreateClassType(array->GetTraceIndex());
                     recordInfos_->AddLayout(type, JSTaggedType(hclass), kind);
                 }
             }
@@ -263,17 +279,34 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
     }
 }
 
-void PGOProfiler::InsertLiteralId(JSTaggedType hclass, EntityId literalId)
+void PGOProfiler::InsertLiteralId(JSTaggedType hclass, int32_t traceId)
 {
     if (!isEnable_) {
         return;
     }
-    auto iter = literalIds_.find(hclass);
-    if (iter != literalIds_.end()) {
-        if (!(iter->second == literalId)) {
-            literalIds_.erase(iter);
-        }
+    auto iter = traceIds_.find(hclass);
+    if (iter != traceIds_.end() && iter->second != traceId) {
+        traceIds_.erase(iter);
     }
-    literalIds_.emplace(hclass, literalId);
+    traceIds_.emplace(hclass, traceId);
+}
+
+void PGOProfiler::ProcessReferences(const WeakRootVisitor &visitor)
+{
+    if (!isEnable_) {
+        return;
+    }
+    for (auto iter = traceIds_.begin(); iter != traceIds_.end();) {
+        JSTaggedType object = iter->first;
+        auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
+        if (fwd == nullptr) {
+            iter = traceIds_.erase(iter);
+            continue;
+        }
+        if (fwd != reinterpret_cast<TaggedObject *>(object)) {
+            UNREACHABLE();
+        }
+        ++iter;
+    }
 }
 } // namespace panda::ecmascript

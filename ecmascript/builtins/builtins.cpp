@@ -2069,13 +2069,15 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
 
     // Array.prototype
     JSHandle<JSObject> arrFuncPrototype = factory_->NewJSObjectWithInit(arrBaseFuncInstanceHClass);
-    JSHandle<JSArray>::Cast(arrFuncPrototype)->SetLength(thread_, JSTaggedValue(FunctionLength::ZERO));
+    JSHandle<JSArray>::Cast(arrFuncPrototype)->SetLength(FunctionLength::ZERO);
     auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
     JSArray::Cast(*arrFuncPrototype)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
     JSHandle<JSTaggedValue> arrFuncPrototypeValue(arrFuncPrototype);
 
     //  Array.prototype_or_hclass
     JSHandle<JSHClass> arrFuncInstanceHClass = factory_->CreateJSArrayInstanceClass(arrFuncPrototypeValue);
+    auto globalConstant = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    globalConstant->InitElementKindHClass(thread_, arrFuncInstanceHClass);
 
     // Array = new Function()
     JSHandle<JSObject> arrayFunction(
