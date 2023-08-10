@@ -30,7 +30,10 @@ public:
     PGOProfilerDecoder(const std::string &inPath, uint32_t hotnessThreshold)
         : inPath_(inPath), hotnessThreshold_(hotnessThreshold) {}
 
-    virtual ~PGOProfilerDecoder() = default;
+    virtual ~PGOProfilerDecoder()
+    {
+        Clear();
+    };
 
     NO_COPY_SEMANTIC(PGOProfilerDecoder);
     NO_MOVE_SEMANTIC(PGOProfilerDecoder);
@@ -121,6 +124,11 @@ public:
         return *recordDetailInfos_;
     }
 
+    std::shared_ptr<PGORecordDetailInfos> GetRecordDetailInfosPtr() const
+    {
+        return recordDetailInfos_;
+    }
+
     PGORecordSimpleInfos &GetRecordSimpleInfos() const
     {
         return *recordSimpleInfos_;
@@ -144,7 +152,7 @@ private:
     uint32_t hotnessThreshold_ {0};
     PGOProfilerHeader *header_ {nullptr};
     PGOPandaFileInfos pandaFileInfos_;
-    std::unique_ptr<PGORecordDetailInfos> recordDetailInfos_;
+    std::shared_ptr<PGORecordDetailInfos> recordDetailInfos_;
     std::unique_ptr<PGORecordSimpleInfos> recordSimpleInfos_;
     MemMap fileMapAddr_;
 };

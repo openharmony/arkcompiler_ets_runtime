@@ -569,7 +569,8 @@ public:
     static void DefineGetter(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                              const JSHandle<JSTaggedValue> &value);
     static JSHandle<JSObject> CreateObjectFromProperties(const JSThread *thread,
-                                                         const JSHandle<TaggedArray> &properties);
+                                                         const JSHandle<TaggedArray> &properties,
+                                                         JSTaggedValue ihc = JSTaggedValue::Undefined());
     static void GetAllKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                            const JSHandle<TaggedArray> &keyArray);
     static void GetAllKeys(const JSHandle<JSObject> &obj, std::vector<JSTaggedValue> &keyVector);
@@ -614,6 +615,7 @@ public:
 
     static JSHandle<NameDictionary> TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &receiver);
 
+    inline std::pair<bool, JSTaggedValue> ConvertValueWithRep(uint32_t index, JSTaggedValue value);
     inline void SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value);
     template <bool needBarrier = true>
     inline void SetPropertyInlinedProps(const JSThread *thread, uint32_t index, JSTaggedValue value);

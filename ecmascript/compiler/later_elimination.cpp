@@ -37,7 +37,7 @@ void LaterElimination::Run()
 
 GateRef LaterElimination::VisitDependEntry(GateRef gate)
 {
-    auto empty = new (chunk_) DependChainNodes(chunk_);
+    auto empty = new (chunk_) DependChains(chunk_);
     return UpdateDependChain(gate, empty);
 }
 
@@ -54,13 +54,13 @@ GateRef LaterElimination::VisitGate(GateRef gate)
         case OpCode::HEAP_OBJECT_CHECK:
         case OpCode::INT32_UNSIGNED_UPPER_BOUND_CHECK:
         case OpCode::OVERFLOW_CHECK:
-        case OpCode::LARGE_INDEX_CHECK:
-        case OpCode::NEGATIVE_INDEX_CHECK:
         case OpCode::VALUE_CHECK_NEG_OVERFLOW:
         case OpCode::FLOAT64_CHECK_RIGHT_IS_ZERO:
         case OpCode::INT32_CHECK_RIGHT_IS_ZERO:
         case OpCode::INT32_DIV_WITH_CHECK:
         case OpCode::LEX_VAR_IS_HOLE_CHECK:
+        case OpCode::COW_ARRAY_CHECK:
+        case OpCode::CHECK_AND_CONVERT:
             return TryEliminateGate(gate);
         case OpCode::DEPEND_SELECTOR:
             return TryEliminateDependSelector(gate);
@@ -122,7 +122,7 @@ GateRef LaterElimination::TryEliminateDependSelector(GateRef gate)
     // all depend done.
     auto depend = acc_.GetDep(gate);
     auto dependChain = GetDependChain(depend);
-    DependChainNodes* copy = new (chunk_) DependChainNodes(chunk_);
+    DependChains* copy = new (chunk_) DependChains(chunk_);
     copy->CopyFrom(dependChain);
     for (size_t i = 1; i < dependCount; ++i) { // 1: second in
         auto dependIn = acc_.GetDep(gate, i);
@@ -132,7 +132,7 @@ GateRef LaterElimination::TryEliminateDependSelector(GateRef gate)
     return UpdateDependChain(gate, copy);
 }
 
-GateRef LaterElimination::UpdateDependChain(GateRef gate, DependChainNodes* dependChain)
+GateRef LaterElimination::UpdateDependChain(GateRef gate, DependChains* dependChain)
 {
     ASSERT(dependChain != nullptr);
     auto oldDependChain = GetDependChain(gate);
@@ -157,77 +157,26 @@ bool LaterElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         }
     }
     auto opcode = acc_.GetOpCode(lhs);
-    if (opcode == OpCode::GET_GLOBAL_ENV_OBJ_HCLASS ||
-        opcode == OpCode::GET_GLOBAL_CONSTANT_VALUE) {
-        if (acc_.GetIndex(lhs) != acc_.GetIndex(rhs)) {
-            return false;
+    switch (opcode) {
+        case OpCode::GET_GLOBAL_ENV_OBJ_HCLASS:
+        case OpCode::GET_GLOBAL_CONSTANT_VALUE: {
+            if (acc_.GetIndex(lhs) != acc_.GetIndex(rhs)) {
+                return false;
+            }
+            break;
         }
+        case OpCode::CHECK_AND_CONVERT: {
+            if (acc_.GetSrcType(lhs) != acc_.GetSrcType(rhs)) {
+                return false;
+            }
+            if (acc_.GetDstType(lhs) != acc_.GetDstType(rhs)) {
+                return false;
+            }
+            break;
+        }
+        default:
+            break;
     }
     return true;
-}
-
-void DependChainNodes::Merge(DependChainNodes* that)
-{
-    // find common sub list
-    while (size_ > that->size_) {
-        head_ = head_->next;
-        size_--;
-    }
-
-    auto lhs = this->head_;
-    auto rhs = that->head_;
-    size_t rhsSize = that->size_;
-    while (rhsSize > size_) {
-        rhs = rhs->next;
-        rhsSize--;
-    }
-    while (lhs != rhs) {
-        ASSERT(lhs != nullptr);
-        lhs = lhs->next;
-        rhs = rhs->next;
-        size_--;
-    }
-    head_ = lhs;
-}
-
-bool DependChainNodes::Equals(DependChainNodes* that)
-{
-    if (that == nullptr) {
-        return false;
-    }
-    if (size_ != that->size_) {
-        return false;
-    }
-    auto lhs = this->head_;
-    auto rhs = that->head_;
-    while (lhs != rhs) {
-        if (lhs->gate != rhs->gate) {
-            return false;
-        }
-        lhs = lhs->next;
-        rhs = rhs->next;
-    }
-    return true;
-}
-
-GateRef DependChainNodes::LookupNode(LaterElimination* elimination, GateRef gate)
-{
-    for (Node* node = head_; node != nullptr; node = node->next) {
-        if (elimination->CheckReplacement(node->gate, gate)) {
-            return node->gate;
-        }
-    }
-    return Circuit::NullGate();
-}
-
-DependChainNodes* DependChainNodes::UpdateNode(GateRef gate)
-{
-    // assign node->next to head
-    Node* node = chunk_->New<Node>(gate, head_);
-    DependChainNodes* that = new (chunk_) DependChainNodes(chunk_);
-    // assign head to node
-    that->head_ = node;
-    that->size_ = size_ + 1;
-    return that;
 }
 }  // namespace panda::ecmascript::kungfu

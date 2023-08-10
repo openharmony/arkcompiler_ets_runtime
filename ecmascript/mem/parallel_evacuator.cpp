@@ -296,8 +296,11 @@ void ParallelEvacuator::UpdateWeakReference()
         }
         return header;
     };
+    if (isFullMark) {
+        // Only old gc will sweep string table.
+        stringTable->SweepWeakReference(gcUpdateWeak);
+    }
 
-    stringTable->SweepWeakReference(gcUpdateWeak);
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
 }

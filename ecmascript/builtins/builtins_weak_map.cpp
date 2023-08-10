@@ -87,8 +87,8 @@ JSTaggedValue BuiltinsWeakMap::Delete(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSWeakMap> weakMap(self);
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
-    // 5.if Type(key) is not Object, return false.
-    if (!key->IsHeapObject()) {
+    // 5.If CanBeHeldWeakly(key) is false, return false.
+    if (!JSTaggedValue::CanBeHeldWeakly(thread, key)) {
         return GetTaggedBoolean(false);
     }
     return GetTaggedBoolean(JSWeakMap::Delete(thread, weakMap, key));
@@ -109,8 +109,8 @@ JSTaggedValue BuiltinsWeakMap::Has(EcmaRuntimeCallInfo *argv)
     JSWeakMap *jsWeakMap = JSWeakMap::Cast(*JSTaggedValue::ToObject(thread, self));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
-    // 5.if Type(key) is not Object, return false.
-    if (!key->IsHeapObject()) {
+    // 5.If CanBeHeldWeakly(key) is false, return false.
+    if (!JSTaggedValue::CanBeHeldWeakly(thread, key)) {
         return GetTaggedBoolean(false);
     }
     return GetTaggedBoolean(jsWeakMap->Has(key.GetTaggedValue()));
@@ -131,7 +131,8 @@ JSTaggedValue BuiltinsWeakMap::Get(EcmaRuntimeCallInfo *argv)
     JSWeakMap *jsWeakMap = JSWeakMap::Cast(*JSTaggedValue::ToObject(thread, self));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
-    if (!key->IsHeapObject()) {
+    // 4.If CanBeHeldWeakly(key) is false, return undefined.
+    if (!JSTaggedValue::CanBeHeldWeakly(thread, key)) {
         return JSTaggedValue::Undefined();
     }
     return jsWeakMap->Get(key.GetTaggedValue());
@@ -152,11 +153,9 @@ JSTaggedValue BuiltinsWeakMap::Set(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
-    if (!key->IsHeapObject()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not an object.", JSTaggedValue::Exception());
-    }
-    if (key->IsSymbol() || key->IsString()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "key is Symblol or String", JSTaggedValue::Exception());
+    // 4.If CanBeHeldWeakly(key) is false, throw a TypeError exception.
+    if (!JSTaggedValue::CanBeHeldWeakly(thread, key)) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "invalid value used as weak map key.", JSTaggedValue::Exception());
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 1);

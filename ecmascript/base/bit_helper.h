@@ -22,6 +22,7 @@
 #include <type_traits>
 
 namespace panda::ecmascript::base {
+constexpr uint64_t pureNaN = 0x7FF8ULL << 48U; // Be sure return the NaN that is safe.
 template <class S, class R>
 union Data {
     S src;

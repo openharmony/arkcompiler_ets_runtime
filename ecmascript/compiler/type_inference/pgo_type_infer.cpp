@@ -90,6 +90,16 @@ void PGOTypeInfer::RunTypeInfer(GateRef gate)
         case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
             InferStOwnByName(gate);
             break;
+        case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
+        case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
+        case EcmaOpcode::LDTHISBYVALUE_IMM8:
+        case EcmaOpcode::LDTHISBYVALUE_IMM16:
+        case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
+        case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
+        case EcmaOpcode::STTHISBYVALUE_IMM8_V8:
+        case EcmaOpcode::STTHISBYVALUE_IMM16_V8:
+            InferAccessObjByValue(gate);
+            break;
         default:
             break;
     }
@@ -108,7 +118,7 @@ void PGOTypeInfer::CheckAndInsert(CollectedType &types, GateType type)
         if (hclassIndex == -1) {
             return;
         }
-        JSHClass *hclass = JSHClass::Cast(tsManager_->GetHClassFromCache(hclassIndex).GetTaggedObject());
+        JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
         if (hclass->HasTSSubtyping()) {
             GlobalTSTypeRef instanceGT = type.GetGTRef();
             type = GateType(tsManager_->GetClassType(instanceGT));
@@ -130,6 +140,17 @@ void PGOTypeInfer::CollectGateType(CollectedType &types, GateType tsType, PGORWO
             pgoType = GateType(tsManager_->CreateClassInstanceType(pgoType));
         }
         CheckAndInsert(types, pgoType);
+    }
+
+    // for static TS uinon type
+    if (tsManager_->IsUnionTypeKind(tsType)) {
+        JSHandle<TSUnionType> unionType(tsManager_->GetTSType(tsType.GetGTRef()));
+        TaggedArray *components = TaggedArray::Cast(unionType->GetComponents().GetTaggedObject());
+        uint32_t length = components->GetLength();
+        for (uint32_t i = 0; i < length; ++i) {
+            GlobalTSTypeRef gt(components->Get(i).GetInt());
+            CheckAndInsert(types, GateType(gt));
+        }
     }
 }
 
@@ -328,5 +349,19 @@ void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedVal
 
     AddProfiler(gate, tsType, pgoTypes, inferTypes);
     acc_.SetGateType(receiver, *inferTypes.begin());
+}
+
+void PGOTypeInfer::InferAccessObjByValue(GateRef gate)
+{
+    if (!builder_->ShouldPGOTypeInfer(gate)) {
+        return;
+    }
+
+    ElementsKind kind = builder_->GetElementsKind(gate);
+    if (Elements::IsGeneric(kind)) {
+        return;
+    }
+
+    acc_.TrySetElementsKind(gate, kind);
 }
 }  // namespace panda::ecmascript

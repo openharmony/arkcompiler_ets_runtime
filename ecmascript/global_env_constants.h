@@ -126,6 +126,19 @@ class ObjectFactory;
     V(JSTaggedValue, AOTLiteralInfoClass, AOT_LITERAL_INFO_CLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, VTableClass, VTABLE_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, ClassLiteralClass, CLASS_LITERAL_HCLASS_INDEX, ecma_roots_class)                                 \
+    V(JSTaggedValue, ElementNoneClass, ELEMENT_NONE_HCLASS_INDEX, ecma_roots_class)                                   \
+    V(JSTaggedValue, ElementIntClass, ELEMENT_INT_HCLASS_INDEX, ecma_roots_class)                                     \
+    V(JSTaggedValue, ElementDoubleClass, ELEMENT_DOUBLE_HCLASS_INDEX, ecma_roots_class)                               \
+    V(JSTaggedValue, ElementNumberClass, ELEMENT_NUMBER_HCLASS_INDEX, ecma_roots_class)                               \
+    V(JSTaggedValue, ElementStringClass, ELEMENT_STRING_HCLASS_INDEX, ecma_roots_class)                               \
+    V(JSTaggedValue, ElementObjectClass, ELEMENT_OBJECT_HCLASS_INDEX, ecma_roots_class)                               \
+    V(JSTaggedValue, ElementTaggedClass, ELEMENT_TAGGED_HCLASS_INDEX, ecma_roots_class)                               \
+    V(JSTaggedValue, ElementHoleIntClass, ELEMENT_HOLE_INT_HCLASS_INDEX, ecma_roots_class)                            \
+    V(JSTaggedValue, ElementHoleDoubleClass, ELEMENT_HOLE_DOUBLE_HCLASS_INDEX, ecma_roots_class)                      \
+    V(JSTaggedValue, ElementHoleNumberClass, ELEMENT_HOLE_NUMBER_HCLASS_INDEX, ecma_roots_class)                      \
+    V(JSTaggedValue, ElementHoleStringClass, ELEMENT_HOLE_STRING_HCLASS_INDEX, ecma_roots_class)                      \
+    V(JSTaggedValue, ElementHoleObjectClass, ELEMENT_HOLE_OBJECT_HCLASS_INDEX, ecma_roots_class)                      \
+    V(JSTaggedValue, ElementHoleTaggedClass, ELEMENT_HOLE_TAGGED_HCLASS_INDEX, ecma_roots_class)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                                 \
@@ -501,6 +514,8 @@ public:
 
     void InitSpecialForSnapshot();
     void InitClassConstructorOptimizedClass(ObjectFactory *factory);
+
+    void InitElementKindHClass(const JSThread *thread, JSHandle<JSHClass> originHClass);
 
     void SetCachedLocales(JSTaggedValue value);
 

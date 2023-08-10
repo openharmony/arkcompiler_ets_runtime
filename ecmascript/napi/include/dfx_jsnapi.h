@@ -55,6 +55,7 @@ public:
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, Stream *stream, Progress *progress = nullptr,
                                  bool isVmMode = true, bool isPrivate = false);
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false);
+    static void DestroyHeapProfiler(const EcmaVM *vm);
 
     static bool BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
     static bool BuildJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
@@ -103,6 +104,7 @@ public:
     static bool SuspendVM(const EcmaVM *vm);
     static bool IsSuspended(const EcmaVM *vm);
     static bool CheckSafepoint(const EcmaVM *vm);
+    static EcmaVM *GetWorkerVm(EcmaVM *hostVm, uint32_t tid);
 };
 }
 #endif

@@ -581,7 +581,7 @@ bool JSSerializer::WriteJSArray(const JSHandle<JSTaggedValue> &value)
     if (!WritePlainObject(value)) {
         return false;
     }
-    uint32_t arrayLength = static_cast<uint32_t>(array->GetLength().GetInt());
+    uint32_t arrayLength = array->GetLength();
     if (!WriteInt(arrayLength)) {
         return false;
     }
@@ -634,13 +634,13 @@ bool JSSerializer::WriteJSMap(const JSHandle<JSTaggedValue> &value)
     if (!WritePlainObject(value)) {
         return false;
     }
-    int size = map->GetSize();
-    if (!WriteInt(size)) {
+    uint32_t size = map->GetSize();
+    if (!WriteInt(static_cast<int32_t>(size))) {
         return false;
     }
     JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         key.Update(map->GetKey(i));
         if (!SerializeJSTaggedValue(key)) {
             return false;
@@ -662,12 +662,12 @@ bool JSSerializer::WriteJSSet(const JSHandle<JSTaggedValue> &value)
     if (!WritePlainObject(value)) {
         return false;
     }
-    int size = set->GetSize();
-    if (!WriteInt(size)) {
+    uint32_t size = set->GetSize();
+    if (!WriteInt(static_cast<int32_t>(size))) {
         return false;
     }
     JSMutableHandle<JSTaggedValue> val(thread_, JSTaggedValue::Undefined());
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < size; i++) {
         val.Update(set->GetValue(i));
         if (!SerializeJSTaggedValue(val)) {
             return false;
@@ -1088,8 +1088,6 @@ bool JSDeserializer::ReadDouble(double *value)
 JSDeserializer::~JSDeserializer()
 {
     referenceMap_.clear();
-    free(begin_);
-    begin_ = nullptr;
 }
 
 JSHandle<JSTaggedValue> JSDeserializer::Deserialize()
@@ -1445,7 +1443,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArray()
     if (!JudgeType(SerializationUID::INT32) || !ReadInt(&arrLength)) {
         return JSHandle<JSTaggedValue>();
     }
-    jsArray->SetLength(thread_, JSTaggedValue(arrLength));
+    jsArray->SetLength(arrLength);
     return arrayTag;
 }
 

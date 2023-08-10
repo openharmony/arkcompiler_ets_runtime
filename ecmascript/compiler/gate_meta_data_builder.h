@@ -141,7 +141,7 @@ public:
 
     const GateMetaData* TypedBinaryOp(uint64_t value, TypedBinOp binOp, PGOSampleType type)
     {
-        return new (chunk_) TypedBinaryMegaData(value, binOp, type);
+        return new (chunk_) TypedBinaryMetaData(value, binOp, type);
     }
 
     const GateMetaData* TypedCallTargetCheckOp(uint32_t numIns, uint64_t value, TypedCallTargetCheckOp checkOp)

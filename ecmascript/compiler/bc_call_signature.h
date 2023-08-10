@@ -453,7 +453,13 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleCallthis3Imm8V8V8V8V8, V)              \
     APPEND_SUFFIX(HandleNewobjrangeImm8Imm8V8, V)              \
     APPEND_SUFFIX(HandleNewobjrangeImm16Imm8V8, V)             \
-    APPEND_SUFFIX(HandleWideNewobjrangePrefImm16V8, V)
+    APPEND_SUFFIX(HandleWideNewobjrangePrefImm16V8, V)         \
+    APPEND_SUFFIX(HandleInstanceofImm8V8, V)                   \
+    APPEND_SUFFIX(HandleTryldglobalbynameImm8Id16, V)          \
+    APPEND_SUFFIX(HandleTryldglobalbynameImm16Id16, V)         \
+    APPEND_SUFFIX(HandleTrystglobalbynameImm8Id16, V)          \
+    APPEND_SUFFIX(HandleTrystglobalbynameImm16Id16, V)         \
+    APPEND_SUFFIX(HandleLdglobalvarImm16Id16, V)
 
 #define ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(V)               \
     APPEND_SUFFIX(HandleDefineclasswithbufferImm8Id16Id16Imm16V8, V)  \
@@ -461,6 +467,11 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleDefinegettersetterbyvalueV8V8V8V8, V)         \
     APPEND_SUFFIX(HandleCreateobjectwithbufferImm8Id16, V)            \
     APPEND_SUFFIX(HandleCreateobjectwithbufferImm16Id16, V)           \
+    APPEND_SUFFIX(HandleCreatearraywithbufferImm8Id16, V)             \
+    APPEND_SUFFIX(HandleCreatearraywithbufferImm16Id16, V)            \
+    APPEND_SUFFIX(HandleCreateemptyobject, V)                         \
+    APPEND_SUFFIX(HandleCreateemptyarrayImm8, V)                      \
+    APPEND_SUFFIX(HandleCreateemptyarrayImm16, V)                     \
     APPEND_SUFFIX(HandleLdobjbynameImm8Id16, V)                       \
     APPEND_SUFFIX(HandleLdobjbynameImm16Id16, V)                      \
     APPEND_SUFFIX(HandleLdthisbynameImm16Id16, V)                     \
@@ -473,6 +484,19 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleStobjbynameImm8Id16V8, V)                     \
     APPEND_SUFFIX(HandleStobjbynameImm16Id16V8, V)                    \
     APPEND_SUFFIX(HandleStobjbyvalueImm8V8V8, V)                      \
+    APPEND_SUFFIX(HandleStobjbyindexImm8V8Imm16, V)                   \
+    APPEND_SUFFIX(HandleStobjbyindexImm16V8Imm16, V)                  \
+    APPEND_SUFFIX(HandleLdobjbyvalueImm8V8, V)                        \
+    APPEND_SUFFIX(HandleLdobjbyvalueImm16V8, V)                       \
+    APPEND_SUFFIX(HandleLdthisbyvalueImm16, V)                        \
+    APPEND_SUFFIX(HandleLdthisbyvalueImm8, V)                         \
+    APPEND_SUFFIX(HandleLdobjbyindexImm8Imm16, V)                     \
+    APPEND_SUFFIX(HandleLdobjbyindexImm16Imm16, V)                    \
+    APPEND_SUFFIX(HandleWideLdobjbyindexPrefImm32, V)                 \
+    APPEND_SUFFIX(HandleWideStobjbyindexPrefV8Imm32, V)               \
+    APPEND_SUFFIX(HandleStownbyindexImm16V8Imm16, V)                  \
+    APPEND_SUFFIX(HandleStownbyindexImm8V8Imm16, V)                   \
+    APPEND_SUFFIX(HandleWideStownbyindexPrefV8Imm32, V)               \
     APPEND_SUFFIX(HandleStownbyvaluewithnamesetImm16V8V8, V)          \
     APPEND_SUFFIX(HandleStownbyvaluewithnamesetImm8V8V8, V)           \
     APPEND_SUFFIX(HandleStownbyvalueImm8V8V8, V)                      \

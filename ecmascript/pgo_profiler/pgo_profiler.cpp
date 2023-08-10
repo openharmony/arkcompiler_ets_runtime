@@ -20,32 +20,56 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 namespace panda::ecmascript {
-void PGOProfiler::ProfileCall(JSTaggedType value, SampleMode mode, int32_t incCount)
+void PGOProfiler::ProfileCall(JSTaggedType func, JSTaggedType callTarget, int32_t pcOffset, SampleMode mode,
+                              int32_t incCount)
 {
     if (!isEnable_) {
         return;
     }
     DISALLOW_GARBAGE_COLLECTION;
-    JSTaggedValue jsValue(value);
-    if (jsValue.IsJSFunction() && JSFunction::Cast(jsValue)->GetMethod().IsMethod()) {
-        auto jsMethod = Method::Cast(JSFunction::Cast(jsValue)->GetMethod());
-        JSTaggedValue recordNameValue = JSFunction::Cast(jsValue)->GetRecordName();
-        if (recordNameValue.IsHole()) {
+    JSTaggedValue calleeFunc(callTarget);
+    if (!calleeFunc.IsJSFunction()) {
+        return;
+    }
+    if (!JSFunction::Cast(calleeFunc)->GetMethod().IsMethod()) {
+        return;
+    }
+    auto calleeMethod = Method::Cast(JSFunction::Cast(calleeFunc)->GetMethod());
+    JSTaggedValue calleeRecordNameValue = JSFunction::Cast(calleeFunc)->GetRecordName();
+    if (calleeRecordNameValue.IsHole()) {
+        return;
+    }
+    CString calleeRecordName = ConvertToString(calleeRecordNameValue);
+    if (recordInfos_->AddMethod(calleeRecordName, calleeMethod, mode, incCount)) {
+        methodCount_++;
+    }
+    JSTaggedValue currentFunc(func);
+    if (pcOffset > 0 && currentFunc.IsJSFunction() && JSFunction::Cast(currentFunc)->GetMethod().IsMethod()) {
+        auto currentMethod = Method::Cast(JSFunction::Cast(currentFunc)->GetMethod());
+        JSTaggedValue currentRecordNameValue = JSFunction::Cast(currentFunc)->GetRecordName();
+        if (currentRecordNameValue.IsHole()) {
             return;
         }
-        CString recordName = ConvertToString(recordNameValue);
-        if (recordInfos_->AddMethod(recordName, jsMethod, mode, incCount)) {
-            methodCount_++;
+        if (calleeMethod->IsNativeWithCallField()) {
+            return;
         }
-        auto interval = std::chrono::system_clock::now() - saveTimestamp_;
-        // Merged every 10 methods and merge interval greater than minimal interval
-        if (methodCount_ >= MERGED_EVERY_COUNT && interval > MERGED_MIN_INTERVAL) {
-            LOG_ECMA(DEBUG) << "Sample: post task to save profiler";
-            PGOProfilerManager::GetInstance()->Merge(this);
-            PGOProfilerManager::GetInstance()->AsynSave();
-            SetSaveTimestamp(std::chrono::system_clock::now());
-            methodCount_ = 0;
+        CString currentRecordName = ConvertToString(currentRecordNameValue);
+        // Only mark the call in the same record now
+        if (currentRecordName != calleeRecordName) {
+            return;
         }
+        auto currentMethodId = currentMethod->GetMethodId();
+        PGOSampleType calleeMethodOffset = PGOSampleType::CreateClassType(calleeMethod->GetMethodId().GetOffset());
+        recordInfos_->AddCallTargetType(currentRecordName, currentMethodId, pcOffset, calleeMethodOffset);
+    }
+    auto interval = std::chrono::system_clock::now() - saveTimestamp_;
+    // Merged every 10 methods and merge interval greater than minimal interval
+    if (methodCount_ >= MERGED_EVERY_COUNT && interval > MERGED_MIN_INTERVAL) {
+        LOG_ECMA(DEBUG) << "Sample: post task to save profiler";
+        PGOProfilerManager::GetInstance()->Merge(this);
+        PGOProfilerManager::GetInstance()->AsynSave();
+        SetSaveTimestamp(std::chrono::system_clock::now());
+        methodCount_ = 0;
     }
 }
 
@@ -130,7 +154,7 @@ void PGOProfiler::ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_
     }
 }
 
-void PGOProfiler::ProfileCreateObject(JSTaggedType func, int32_t offset, JSTaggedType originObj, JSTaggedType newObj)
+void PGOProfiler::ProfileCreateObject(JSTaggedType func, int32_t offset, JSTaggedType newObj, int32_t traceId)
 {
     if (!isEnable_) {
         return;
@@ -153,23 +177,26 @@ void PGOProfiler::ProfileCreateObject(JSTaggedType func, int32_t offset, JSTagge
         auto jsMethod = Method::Cast(method);
         auto funcMethodId = jsMethod->GetMethodId();
 
-        auto originObjValue = JSTaggedValue(originObj);
         auto newObjValue = JSTaggedValue(newObj);
-        if (!originObjValue.IsJSObject() || !newObjValue.IsJSObject()) {
-            return;
-        }
-        auto originHclass = JSObject::Cast(originObjValue)->GetJSHClass();
-        auto iter = literalIds_.find(JSTaggedType(originHclass));
-        if (iter == literalIds_.end()) {
+        if (!newObjValue.IsJSObject()) {
             return;
         }
         auto newHClass = JSObject::Cast(newObjValue) ->GetJSHClass();
-        InsertLiteralId(JSTaggedType(newHClass), iter->second);
-
-        auto currentType = PGOSampleType::CreateClassType(iter->second.GetOffset());
-        auto superType = PGOSampleType::CreateClassType(0);
-        recordInfos_->AddDefine(recordName, funcMethodId, offset, currentType, superType);
-        recordInfos_->AddLayout(currentType, JSTaggedType(newHClass), PGOObjKind::LOCAL);
+        if (newHClass->IsJSArray()) {
+            auto array = JSArray::Cast(newObjValue);
+            auto currentType = PGOSampleType::CreateClassType(array->GetTraceIndex());
+            auto superType = PGOSampleType::CreateClassType(0);
+            recordInfos_->AddDefine(recordName, funcMethodId, offset, currentType, superType);
+            PGOObjKind kind = PGOObjKind::ELEMENT;
+            recordInfos_->AddLayout(currentType, JSTaggedType(newHClass), kind);
+        } else {
+            InsertLiteralId(JSTaggedType(newHClass), traceId);
+            auto currentType = PGOSampleType::CreateClassType(traceId);
+            auto superType = PGOSampleType::CreateClassType(0);
+            recordInfos_->AddDefine(recordName, funcMethodId, offset, currentType, superType);
+            PGOObjKind kind = PGOObjKind::LOCAL;
+            recordInfos_->AddLayout(currentType, JSTaggedType(newHClass), kind);
+        }
     }
 }
 
@@ -205,13 +232,26 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
             ctor = holder;
             kind = PGOObjKind::CONSTRUCTOR;
         } else if (hclass->IsLiteral()) {
-            auto iter = literalIds_.find(JSTaggedType(hclass));
-            if (iter != literalIds_.end()) {
-                PGOObjectInfo info(ClassType(iter->second.GetOffset()), kind);
+            auto iter = traceIds_.find(JSTaggedType(hclass));
+            if (iter != traceIds_.end()) {
+                PGOObjectInfo info(ClassType(iter->second), kind);
                 auto methodId = jsMethod->GetMethodId();
                 recordInfos_->AddObjectInfo(recordName, methodId, offset, info);
                 if (store) {
-                    auto type = PGOSampleType::CreateClassType(iter->second.GetOffset());
+                    auto type = PGOSampleType::CreateClassType(iter->second);
+                    recordInfos_->AddLayout(type, JSTaggedType(hclass), kind);
+                }
+            }
+            return;
+        } else if (hclass->IsJSArray()) {
+            kind = PGOObjKind::ELEMENT;
+            auto array = JSArray::Cast(holder);
+            if (array->GetTraceIndex() != 0) {
+                PGOObjectInfo info(ClassType(array->GetTraceIndex()), kind);
+                auto methodId = jsMethod->GetMethodId();
+                recordInfos_->AddObjectInfo(recordName, methodId, offset, info);
+                if (store) {
+                    auto type = PGOSampleType::CreateClassType(array->GetTraceIndex());
                     recordInfos_->AddLayout(type, JSTaggedType(hclass), kind);
                 }
             }
@@ -239,17 +279,34 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
     }
 }
 
-void PGOProfiler::InsertLiteralId(JSTaggedType hclass, EntityId literalId)
+void PGOProfiler::InsertLiteralId(JSTaggedType hclass, int32_t traceId)
 {
     if (!isEnable_) {
         return;
     }
-    auto iter = literalIds_.find(hclass);
-    if (iter != literalIds_.end()) {
-        if (!(iter->second == literalId)) {
-            literalIds_.erase(iter);
-        }
+    auto iter = traceIds_.find(hclass);
+    if (iter != traceIds_.end() && iter->second != traceId) {
+        traceIds_.erase(iter);
     }
-    literalIds_.emplace(hclass, literalId);
+    traceIds_.emplace(hclass, traceId);
+}
+
+void PGOProfiler::ProcessReferences(const WeakRootVisitor &visitor)
+{
+    if (!isEnable_) {
+        return;
+    }
+    for (auto iter = traceIds_.begin(); iter != traceIds_.end();) {
+        JSTaggedType object = iter->first;
+        auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
+        if (fwd == nullptr) {
+            iter = traceIds_.erase(iter);
+            continue;
+        }
+        if (fwd != reinterpret_cast<TaggedObject *>(object)) {
+            UNREACHABLE();
+        }
+        ++iter;
+    }
 }
 } // namespace panda::ecmascript

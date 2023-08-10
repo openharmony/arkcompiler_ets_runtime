@@ -419,6 +419,7 @@ public:
         int enumIndex = table->NextEnumerationIndex(thread);
         PropertyAttributes attr(metaData);
         attr.SetDictionaryOrder(enumIndex);
+        attr.SetRepresentation(Representation::TAGGED);
         // Check whether the table should be growed.
         JSHandle<Derived> newTable = HashTableT::GrowHashTable(thread, table);
 
@@ -439,6 +440,7 @@ public:
         int enumIndex = table->NextEnumerationIndex(thread);
         PropertyAttributes attr(metaData);
         attr.SetDictionaryOrder(enumIndex);
+        attr.SetRepresentation(Representation::TAGGED);
         int entry = table->FindEntry(key.GetTaggedValue());
         if (entry != -1) {
             table->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue(), attr);
@@ -489,6 +491,7 @@ public:
                 int enumIndex = PropertyAttributes::INITIAL_PROPERTY_INDEX + i;
                 PropertyAttributes attr = table->GetAttributes(oldIndex);
                 attr.SetDictionaryOrder(enumIndex);
+                attr.SetRepresentation(Representation::TAGGED);
                 table->SetAttributes(thread, oldIndex, attr);
             }
             index = PropertyAttributes::INITIAL_PROPERTY_INDEX + length;

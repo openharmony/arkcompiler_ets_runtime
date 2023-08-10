@@ -112,47 +112,38 @@ public:
 
 class HProfTestHelper {
 public:
-    HProfTestHelper(const std::string &aFilePath, EcmaVM *vm)
-        : instance(vm),
-          filePath(aFilePath)
-    {
-        fstream outputString(filePath, std::ios::out);
-        outputString.close();
-        outputString.clear();
-
-        FileStream stream(filePath.c_str());
-        HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
-        heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream);
-
-        inputStream = fstream(filePath, std::ios::in);
-        HeapProfilerInterface::Destroy(instance);
-    }
+    explicit HProfTestHelper(EcmaVM *vm) : instance(vm) {}
 
     ~HProfTestHelper()
     {
-        inputStream.close();
-        inputStream.clear();
+        HeapProfilerInterface::Destroy(instance);
     }
 
-    bool ContrastJSONLineHeader(std::string lineHeader)
+    size_t GenerateSnapShot(const std::string &filePath)
     {
-        bool allSame = false;
+        FileStream stream(filePath.c_str());
+        HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
+        heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream);
+        return heapProfile->GetIdCount();
+    }
+
+    bool ContrastJSONLineHeader(const std::string &filePath, std::string lineHeader)
+    {
         std::string line;
-        int i = 1;
+        std::ifstream inputStream(filePath);
         while (getline(inputStream, line)) {
             if (line.find(lineHeader) != line.npos) {
-                allSame = true;
-                break;
+                return true;
             }
-            i++;
         }
-        return allSame;
+        return false;
     }
 
-    bool ContrastJSONSectionPayload(std::string dataLable, int fieldNum)
+    bool ContrastJSONSectionPayload(const std::string &filePath, std::string dataLable, int fieldNum)
     {
         std::string line;
         int i = 1;
+        std::ifstream inputStream(filePath);
         while (getline(inputStream, line)) {
             if (i > 10 && line.find(dataLable) != line.npos) {  // 10 : Hit the line
                 std::string::size_type pos = 0;
@@ -168,20 +159,21 @@ public:
         return false;  // Lost the Line
     }
 
-    bool ContrastJSONClousure()
+    bool ContrastJSONClousure(const std::string &filePath)
     {
         std::string lineBk;  // The Last Line
         std::string line;
+        std::ifstream inputStream(filePath);
         while (getline(inputStream, line)) {
             lineBk = line;
         }
         return lineBk.compare("}") == 0;
     }
 
-    int ExtractCountFromMeta(std::string typeLable)
+    int ExtractCountFromMeta(const std::string &filePath, std::string typeLable)
     {
         std::string line;
-        int i = 1;
+        std::ifstream inputStream(filePath);
         while (getline(inputStream, line)) {
             int length = line.length() - typeLable.length() - 1;
             if (line.find(typeLable) != line.npos) {  // Get
@@ -191,16 +183,16 @@ public:
                 line = line.substr(typeLable.length(), length);
                 return std::stoi(line.c_str());
             }
-            i++;
         }
         return -1;
     }
 
-    int ExtractCountFromPayload(std::string dataLabel)
+    int ExtractCountFromPayload(const std::string &filePath, std::string dataLabel)
     {
         std::string line;
         bool hit = false;
         int loop = 0;
+        std::ifstream inputStream(filePath);
         while (getline(inputStream, line)) {
             if (!hit && line.find(dataLabel) != line.npos) {  // Get
                 loop += 1;                                    // First Line
@@ -227,71 +219,92 @@ public:
 
 private:
     EcmaVM *instance {nullptr};
-    std::string filePath;
-    std::fstream inputStream {};
 };
 
 HWTEST_F_L0(HProfTest, ParseJSONHeader)
 {
-    HProfTestHelper tester("ParseJSONHeader.heapsnapshot", instance);
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("{\"snapshot\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("{\"meta\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("{\"node_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"node_types\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"edge_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"edge_types\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"trace_function_info_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"trace_node_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"sample_fields\":"));
-    ASSERT_TRUE(tester.ContrastJSONLineHeader("\"location_fields\":"));
+    HProfTestHelper tester(instance);
+    tester.GenerateSnapShot("test.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "{\"snapshot\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "{\"meta\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "{\"node_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"node_types\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"edge_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"edge_types\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"trace_function_info_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"trace_node_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"sample_fields\":"));
+    ASSERT_TRUE(tester.ContrastJSONLineHeader("test.heapsnapshot", "\"location_fields\":"));
 }
 
 HWTEST_F_L0(HProfTest, ContrastTraceFunctionInfo)
 {
-    HProfTestHelper tester("ContrastTraceFunctionInfo.heapsnapshot", instance);
-    ASSERT_TRUE(tester.ContrastJSONSectionPayload("\"trace_function_infos\":", 2));  // Empty
+    HProfTestHelper tester(instance);
+    tester.GenerateSnapShot("test.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test.heapsnapshot", "\"trace_function_infos\":", 2));  // Empty
 }
 
 HWTEST_F_L0(HProfTest, ContrastTraceTree)
 {
-    HProfTestHelper tester("ContrastTraceTree.heapsnapshot", instance);
-    ASSERT_TRUE(tester.ContrastJSONSectionPayload("\"trace_tree\":", 2));  // Empty
+    HProfTestHelper tester(instance);
+    tester.GenerateSnapShot("test.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test.heapsnapshot", "\"trace_tree\":", 2));  // Empty
 }
 
 HWTEST_F_L0(HProfTest, ContrastSamples)
 {
-    HProfTestHelper tester("ContrastSamples.heapsnapshot", instance);
-    ASSERT_TRUE(tester.ContrastJSONSectionPayload("\"samples\":", 2));  // Empty
+    HProfTestHelper tester(instance);
+    tester.GenerateSnapShot("test.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test.heapsnapshot", "\"samples\":", 2));  // Empty
 }
 
 HWTEST_F_L0(HProfTest, ContrastLocations)
 {
-    HProfTestHelper tester("ContrastLocations.heapsnapshot", instance);
-    ASSERT_TRUE(tester.ContrastJSONSectionPayload("\"locations\":", 2));  // Empty
+    HProfTestHelper tester(instance);
+    tester.GenerateSnapShot("test.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test.heapsnapshot", "\"locations\":", 2));  // Empty
 }
 
 HWTEST_F_L0(HProfTest, ContrastString)
 {
-    HProfTestHelper tester("ContrastString.heapsnapshot", instance);
-    ASSERT_TRUE(tester.ContrastJSONSectionPayload("\"strings\":[", 1 + 1));
+    HProfTestHelper tester(instance);
+    tester.GenerateSnapShot("test.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONSectionPayload("test.heapsnapshot", "\"strings\":[", 2));
 }
 
 HWTEST_F_L0(HProfTest, ContrastClosure)
 {
-    HProfTestHelper tester("ContrastClosure.heapsnapshot", instance);
-    ASSERT_TRUE(tester.ContrastJSONClousure());
+    HProfTestHelper tester(instance);
+    tester.GenerateSnapShot("test.heapsnapshot");
+    ASSERT_TRUE(tester.ContrastJSONClousure("test.heapsnapshot"));
 }
 
 HWTEST_F_L0(HProfTest, ContrastEdgeCount)
 {
-    HProfTestHelper tester("ContrastEdgeCount.heapsnapshot", instance);
-    ASSERT_TRUE(tester.ExtractCountFromMeta("\"edge_count\":") == tester.ExtractCountFromPayload("\"edges\":["));
+    HProfTestHelper tester(instance);
+    tester.GenerateSnapShot("test.heapsnapshot");
+    ASSERT_TRUE(tester.ExtractCountFromMeta("test.heapsnapshot", "\"edge_count\":") ==
+                tester.ExtractCountFromPayload("test.heapsnapshot", "\"edges\":["));
 }
 
-HWTEST_F_L0(HProfTest, ContrastTraceFunctionInfoCount)
+HWTEST_F_L0(HProfTest, TraceFuncInfoCount)
 {
-    HProfTestHelper tester("ContrastTraceFunctionInfoCount.heapsnapshot", instance);
-    ASSERT_TRUE(tester.ExtractCountFromMeta("\"trace_function_count\":") ==
-                tester.ExtractCountFromPayload("\"trace_function_infos\":"));
+    HProfTestHelper tester(instance);
+    tester.GenerateSnapShot("test.heapsnapshot");
+    ASSERT_TRUE(tester.ExtractCountFromMeta("test.heapsnapshot", "\"trace_function_count\":") ==
+                tester.ExtractCountFromPayload("test.heapsnapshot", "\"trace_function_infos\":"));
+}
+
+HWTEST_F_L0(HProfTest, TestIdConsistency)
+{
+    HProfTestHelper tester(instance);
+    int64_t count1 = tester.GenerateSnapShot("TestIdConsistency_1.heapsnapshot");
+    for (int i = 0; i < 100; ++i) {
+        instance->GetFactory()->NewJSAsyncFuncObject();
+        instance->GetFactory()->NewJSSymbol();
+    }
+    int64_t count2 = tester.GenerateSnapShot("TestIdConsistency_2.heapsnapshot");
+    ASSERT_TRUE(std::abs(count1 - count2) <= 500LL);
+    // load two heapsnapshots into chrome, and further use "Comparision View"
 }
 }  // namespace panda::test

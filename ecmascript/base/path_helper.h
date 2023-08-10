@@ -68,8 +68,8 @@ public:
     }
 
     /*
-     * Before: @xxx:****
-     * After:  ****
+     * Before: @***:xxxx
+     * After:  xxxx
      */
     inline static CString GetStrippedModuleName(const CString &moduleRequestName)
     {

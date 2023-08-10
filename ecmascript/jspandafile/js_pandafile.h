@@ -77,6 +77,7 @@ public:
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
     static constexpr int PACKAGE_NAME_LEN = 8;
     static constexpr int TYPE_SUMMARY_OFFSET_NOT_FOUND = 0;
+    static constexpr int32_t PF_OFFSET = 0;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();
@@ -241,14 +242,24 @@ public:
         return pf_->GetHeader()->file_size;
     }
 
-    bool PUBLIC_API IsModule(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME,
-                             CString fullRecordName = "") const;
+    bool CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo &recordInfo) const;
 
-    bool IsCjs(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
+    CString GetJsonStringId(const JSRecordInfo &jsRecordInfo) const;
 
-    bool IsJson(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
+    bool PUBLIC_API IsModule(const JSRecordInfo &jsRecordInfo) const
+    {
+        return jsRecordInfo.moduleRecordIdx != -1;
+    }
 
-    CString GetJsonStringId(JSThread *thread, const CString &recordName = ENTRY_FUNCTION_NAME) const;
+    bool IsCjs(const JSRecordInfo &jsRecordInfo) const
+    {
+        return jsRecordInfo.isCjs;
+    }
+
+    bool IsJson(const JSRecordInfo &jsRecordInfo) const
+    {
+        return jsRecordInfo.isJson;
+    }
 
     bool IsBundlePack() const
     {
@@ -334,6 +345,11 @@ public:
         return false;
     }
 
+    bool HasTSTypes(const JSRecordInfo &recordInfo) const
+    {
+        return recordInfo.hasTSTypes;
+    }
+
     uint32_t GetTypeSummaryOffset(const CString &recordName) const
     {
         auto it = jsRecordInfo_.find(recordName);
@@ -370,13 +386,13 @@ private:
     static constexpr size_t VERSION_SIZE = 4;
     static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
 
+    const panda_file::File *pf_ {nullptr};
     uint32_t constpoolIndex_ {0};
     uint32_t checksum_ {0};
     CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
     MethodLiteral *methodLiterals_ {nullptr};
-    const panda_file::File *pf_ {nullptr};
     CString desc_;
     uint32_t anFileInfoIndex_ {INVALID_INDEX};
     bool isNewVersion_ {false};

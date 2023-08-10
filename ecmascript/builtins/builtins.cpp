@@ -2069,13 +2069,15 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
 
     // Array.prototype
     JSHandle<JSObject> arrFuncPrototype = factory_->NewJSObjectWithInit(arrBaseFuncInstanceHClass);
-    JSHandle<JSArray>::Cast(arrFuncPrototype)->SetLength(thread_, JSTaggedValue(FunctionLength::ZERO));
+    JSHandle<JSArray>::Cast(arrFuncPrototype)->SetLength(FunctionLength::ZERO);
     auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
     JSArray::Cast(*arrFuncPrototype)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
     JSHandle<JSTaggedValue> arrFuncPrototypeValue(arrFuncPrototype);
 
     //  Array.prototype_or_hclass
     JSHandle<JSHClass> arrFuncInstanceHClass = factory_->CreateJSArrayInstanceClass(arrFuncPrototypeValue);
+    auto globalConstant = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    globalConstant->InitElementKindHClass(thread_, arrFuncInstanceHClass);
 
     // Array = new Function()
     JSHandle<JSObject> arrayFunction(
@@ -2099,6 +2101,8 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     SetFunction(env, arrFuncPrototype, "filter", BuiltinsArray::Filter, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "find", BuiltinsArray::Find, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "findIndex", BuiltinsArray::FindIndex, FunctionLength::ONE);
+    SetFunction(env, arrFuncPrototype, "findLast", BuiltinsArray::FindLast, FunctionLength::ONE);
+    SetFunction(env, arrFuncPrototype, "findLastIndex", BuiltinsArray::FindLastIndex, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "forEach", BuiltinsArray::ForEach, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "indexOf", BuiltinsArray::IndexOf, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "join", BuiltinsArray::Join, FunctionLength::ONE);
@@ -2126,6 +2130,7 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     SetFunction(env, arrFuncPrototype, "flatMap", BuiltinsArray::FlatMap, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "at", BuiltinsArray::At, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "toSorted", BuiltinsArray::ToSorted, FunctionLength::ONE);
+    SetFunction(env, arrFuncPrototype, "toSpliced", BuiltinsArray::ToSpliced, FunctionLength::TWO);
 
     // %ArrayPrototype% [ @@iterator ]
     JSHandle<JSTaggedValue> values(factory_->NewFromASCII("values"));
@@ -2195,6 +2200,8 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHand
     SetFunction(env, typedArrFuncPrototype, "filter", BuiltinsTypedArray::Filter, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "find", BuiltinsTypedArray::Find, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "findIndex", BuiltinsTypedArray::FindIndex, FunctionLength::ONE);
+    SetFunction(env, typedArrFuncPrototype, "findLast", BuiltinsTypedArray::FindLast, FunctionLength::ONE);
+    SetFunction(env, typedArrFuncPrototype, "findLastIndex", BuiltinsTypedArray::FindLastIndex, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "forEach", BuiltinsTypedArray::ForEach, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "indexOf", BuiltinsTypedArray::IndexOf, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "join", BuiltinsTypedArray::Join, FunctionLength::ONE);
@@ -2208,10 +2215,12 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, const JSHand
     SetFunction(env, typedArrFuncPrototype, "slice", BuiltinsTypedArray::Slice, FunctionLength::TWO);
     SetFunction(env, typedArrFuncPrototype, "some", BuiltinsTypedArray::Some, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "sort", BuiltinsTypedArray::Sort, FunctionLength::ONE);
+    SetFunction(env, typedArrFuncPrototype, "toSorted", BuiltinsTypedArray::ToSorted, FunctionLength::ONE);
     SetFunction(env, typedArrFuncPrototype, "subarray", BuiltinsTypedArray::Subarray, FunctionLength::TWO);
     SetFunction(env, typedArrFuncPrototype, thread_->GlobalConstants()->GetHandledToLocaleStringString(),
                 BuiltinsTypedArray::ToLocaleString, FunctionLength::ZERO);
     SetFunction(env, typedArrFuncPrototype, "values", BuiltinsTypedArray::Values, FunctionLength::ZERO);
+    SetFunction(env, typedArrFuncPrototype, "with", BuiltinsTypedArray::With, FunctionLength::TWO);
     SetFunction(env, typedArrFuncPrototype, "includes", BuiltinsTypedArray::Includes, FunctionLength::ONE);
 
     JSHandle<JSTaggedValue> bufferGetter =

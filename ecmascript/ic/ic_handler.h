@@ -117,13 +117,13 @@ public:
             KindBit::Set<uint32_t>(HandlerKind::FIELD, &handler);
         }
 
-        RepresentationBit::Set(op.GetRepresentation(), &handler);
         if (op.IsInlinedProps()) {
             InlinedPropsBit::Set<uint32_t>(true, &handler);
             JSHandle<JSObject> holder = JSHandle<JSObject>::Cast(op.GetHolder());
             auto index = holder->GetJSHClass()->GetInlinedPropertiesIndex(op.GetIndex());
             OffsetBit::Set<uint32_t>(index, &handler);
             AttrIndexBit::Set<uint32_t>(op.GetIndex(), &handler);
+            RepresentationBit::Set(op.GetRepresentation(), &handler);
             return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
         }
         if (op.IsFastMode()) {
@@ -131,6 +131,7 @@ public:
             uint32_t inlinePropNum = holder->GetJSHClass()->GetInlinedProperties();
             AttrIndexBit::Set<uint32_t>(op.GetIndex() + inlinePropNum, &handler);
             OffsetBit::Set<uint32_t>(op.GetIndex(), &handler);
+            RepresentationBit::Set(Representation::TAGGED, &handler);
             return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
         }
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -162,7 +163,6 @@ public:
         if (!hasSetter) {
             KindBit::Set<uint32_t>(HandlerKind::FIELD, &handler);
         }
-        RepresentationBit::Set(op.GetRepresentation(), &handler);
         if (op.IsInlinedProps()) {
             InlinedPropsBit::Set<uint32_t>(true, &handler);
             uint32_t index = 0;
@@ -175,6 +175,7 @@ public:
             }
             AttrIndexBit::Set<uint32_t>(op.GetIndex(), &handler);
             OffsetBit::Set<uint32_t>(index, &handler);
+            RepresentationBit::Set(op.GetRepresentation(), &handler);
             return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
         }
         ASSERT(op.IsFastMode());
@@ -182,6 +183,7 @@ public:
         uint32_t inlinePropNum = receiver->GetJSHClass()->GetInlinedProperties();
         AttrIndexBit::Set<uint32_t>(op.GetIndex() + inlinePropNum, &handler);
         OffsetBit::Set<uint32_t>(op.GetIndex(), &handler);
+        RepresentationBit::Set(Representation::TAGGED, &handler);
         return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
     }
 

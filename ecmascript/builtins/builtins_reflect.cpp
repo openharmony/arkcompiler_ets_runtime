@@ -40,7 +40,7 @@ JSTaggedValue BuiltinsReflect::ReflectApply(EcmaRuntimeCallInfo *argv)
 
     // 3. Perform PrepareForTailCall().
     // 4. Return ? Call(target, thisArgument, args).
-    const int32_t argsLength = static_cast<int32_t>(args->GetLength());
+    const uint32_t argsLength = args->GetLength();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread, target, thisArgument, undefined, argsLength);
@@ -75,7 +75,7 @@ JSTaggedValue BuiltinsReflect::ReflectConstruct(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<TaggedArray> args = JSHandle<TaggedArray>::Cast(argOrAbrupt);
     // 5. Return ? Construct(target, args, newTarget).
-    const int32_t argsLength = static_cast<int32_t>(args->GetLength());
+    const uint32_t argsLength = args->GetLength();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, target, undefined, newTarget, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

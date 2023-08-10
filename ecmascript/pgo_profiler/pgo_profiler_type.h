@@ -207,6 +207,18 @@ public:
         return *this;
     }
 
+    PGOSampleType CombineCallTargetType(PGOSampleType type)
+    {
+        ASSERT(type_.index() == 1);
+        int32_t oldMethodId = GetClassType().GetClassType();
+        int32_t newMethodId = type.GetClassType().GetClassType();
+        // If we have recorded a valid method if before, invalidate it.
+        if ((oldMethodId != newMethodId) && (oldMethodId != 0)) {
+            type_ = ClassType(0);
+        }
+        return *this;
+    }
+
     void SetType(PGOSampleType type)
     {
         type_ = type.type_;
@@ -297,17 +309,13 @@ enum class PGOObjKind {
     LOCAL,
     PROTOTYPE,
     CONSTRUCTOR,
+    ELEMENT,
 };
 
 class PGOObjectInfo {
 public:
     PGOObjectInfo() : type_(ClassType()), objKind_(PGOObjKind::LOCAL) {}
-    PGOObjectInfo(ClassType type, PGOObjKind kind) : type_(type), objKind_(PGOObjKind::LOCAL)
-    {
-        if (kind == PGOObjKind::CONSTRUCTOR) {
-            objKind_ = kind;
-        }
-    }
+    PGOObjectInfo(ClassType type, PGOObjKind kind) : type_(type), objKind_(kind) {}
 
     std::string GetInfoString() const
     {
@@ -315,6 +323,10 @@ public:
         result += "(";
         if (objKind_ == PGOObjKind::CONSTRUCTOR) {
             result += "c";
+        } else if (objKind_ == PGOObjKind::PROTOTYPE) {
+            result += "p";
+        } else if (objKind_ == PGOObjKind::ELEMENT) {
+            result += "e";
         } else {
             result += "l";
         }

@@ -206,3 +206,12 @@ try {
 } catch (e) {
     print("test successful !!!");
 }
+
+try {
+    const a10 = [1, 2];
+    const a11 = new Uint8Array(a10);
+    const a12 = new Uint32Array(a11);
+    a12.set(a10, 0x1ffffffff);
+} catch (e) {
+    print("test successful !!!");
+}

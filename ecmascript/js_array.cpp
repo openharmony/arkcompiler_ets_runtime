@@ -26,7 +26,7 @@
 namespace panda::ecmascript {
 JSTaggedValue JSArray::LengthGetter([[maybe_unused]] JSThread *thread, const JSHandle<JSObject> &self)
 {
-    return JSArray::Cast(*self)->GetLength();
+    return JSTaggedValue(JSArray::Cast(*self)->GetLength());
 }
 
 bool JSArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &self, const JSHandle<JSTaggedValue> &value,

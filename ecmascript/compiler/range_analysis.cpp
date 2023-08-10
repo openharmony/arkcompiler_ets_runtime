@@ -61,6 +61,8 @@ GateRef RangeAnalysis::VisitGate(GateRef gate)
             return VisitLoadArrayLength(gate);
         case OpCode::LOAD_TYPED_ARRAY_LENGTH:
             return VisitLoadTypedArrayLength(gate);
+        case OpCode::RANGE_GUARD:
+            return VisitRangeGuard(gate);
         default:
             return VisitOthers(gate);
     }
@@ -167,6 +169,13 @@ GateRef RangeAnalysis::VisitLoadArrayLength(GateRef gate)
 GateRef RangeAnalysis::VisitLoadTypedArrayLength(GateRef gate)
 {
     return UpdateRange(gate, RangeInfo(0, RangeInfo::TYPED_ARRAY_ONHEAP_MAX));
+}
+
+GateRef RangeAnalysis::VisitRangeGuard(GateRef gate)
+{ 
+    auto left = acc_.GetFirstValue(gate);
+    auto right = acc_.GetSecondValue(gate);
+    return UpdateRange(gate, RangeInfo(left, right));
 }
 
 template<TypedBinOp Op>

@@ -63,7 +63,10 @@ public:
     JSHandle<JSTaggedValue> HostResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &filename);
 
     JSTaggedValue GetCurrentModule();
-
+    JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
+        JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
+    JSTaggedValue GetCJSModuleValue(JSThread *thread, JSTaggedValue currentModule,
+        JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
     void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);
     void AddResolveImportedModule(const CString &referencingModule, JSHandle<JSTaggedValue> moduleRecord);
     void Iterate(const RootVisitor &v);
@@ -92,10 +95,6 @@ private:
     void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
                                   int32_t index, JSTaggedValue value);
 
-    JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
-        JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
-    JSTaggedValue GetCJSModuleValue(JSThread *thread, JSTaggedValue currentModule,
-        JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
     JSTaggedValue GetValueFromExportObject(JSHandle<JSTaggedValue> &exportObject, int32_t index);
 
     // deprecated begin

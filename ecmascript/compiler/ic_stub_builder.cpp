@@ -96,7 +96,8 @@ void ICStubBuilder::ValuedICAccessor(Variable* cachedHandler, Label *tryICHandle
     }
 }
 
-void ICStubBuilder::LoadICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success)
+void ICStubBuilder::LoadICByName(
+    Variable *result, Label *tryFastPath, Label *slowPath, Label *success, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label loadWithHandler(env);
@@ -108,7 +109,7 @@ void ICStubBuilder::LoadICByName(Variable* result, Label* tryFastPath, Label *sl
     NamedICAccessor(&cachedHandler, &loadWithHandler);
     Bind(&loadWithHandler);
     {
-        GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler);
+        GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback);
         result->WriteVariable(ret);
         Branch(TaggedIsHole(ret), slowPath_, success_);
     }
@@ -132,7 +133,8 @@ void ICStubBuilder::StoreICByName(Variable* result, Label* tryFastPath, Label *s
     }
 }
 
-void ICStubBuilder::LoadICByValue(Variable* result, Label* tryFastPath, Label *slowPath, Label *success)
+void ICStubBuilder::LoadICByValue(
+    Variable *result, Label *tryFastPath, Label *slowPath, Label *success, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label loadWithHandler(env);
@@ -145,13 +147,13 @@ void ICStubBuilder::LoadICByValue(Variable* result, Label* tryFastPath, Label *s
     ValuedICAccessor(&cachedHandler, &loadWithHandler, &loadElement);
     Bind(&loadElement);
     {
-        GateRef ret = LoadElement(glue_, receiver_, propKey_);
+        GateRef ret = LoadElement(glue_, receiver_, propKey_, callback);
         result->WriteVariable(ret);
         Branch(TaggedIsHole(ret), slowPath_, success_);
     }
     Bind(&loadWithHandler);
     {
-        GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler);
+        GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback);
         result->WriteVariable(ret);
         Branch(TaggedIsHole(ret), slowPath_, success_);
     }
@@ -170,7 +172,7 @@ void ICStubBuilder::StoreICByValue(Variable* result, Label* tryFastPath, Label *
     ValuedICAccessor(&cachedHandler, &storeWithHandler, &storeElement);
     Bind(&storeElement);
     {
-        GateRef ret = ICStoreElement(glue_, receiver_, propKey_, value_, secondValue);
+        GateRef ret = ICStoreElement(glue_, receiver_, propKey_, value_, secondValue, callback_);
         result->WriteVariable(ret);
         Branch(TaggedIsHole(ret), slowPath_, success_);
     }

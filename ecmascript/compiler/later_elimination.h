@@ -19,37 +19,11 @@
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/graph_visitor.h"
+#include "ecmascript/compiler/base/depend_chain_helper.h"
 #include "ecmascript/mem/chunk_containers.h"
 
 namespace panda::ecmascript::kungfu {
-class LaterElimination;
-
-class DependChainNodes : public ChunkObject {
-public:
-    DependChainNodes(Chunk* chunk) : chunk_(chunk) {}
-    ~DependChainNodes() = default;
-
-    GateRef LookupNode(LaterElimination* elimination, GateRef gate);
-    DependChainNodes* UpdateNode(GateRef gate);
-    bool Equals(DependChainNodes* that);
-    void Merge(DependChainNodes* that);
-    void CopyFrom(DependChainNodes *other)
-    {
-        head_ = other->head_;
-        size_ = other->size_;
-    }
-private:
-    struct Node {
-        Node(GateRef gate, Node* next) : gate(gate), next(next) {}
-        GateRef gate;
-        Node *next;
-    };
-
-    Node *head_{nullptr};
-    size_t size_ {0};
-    Chunk* chunk_;
-};
-
+class DependChains;
 class LaterElimination : public GraphVisitor {
 public:
     LaterElimination(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
@@ -73,7 +47,7 @@ private:
         return methodName_;
     }
 
-    DependChainNodes* GetDependChain(GateRef dependIn)
+    DependChains* GetDependChain(GateRef dependIn)
     {
         size_t idx = acc_.GetId(dependIn);
         ASSERT(idx <= circuit_->GetMaxGateId());
@@ -81,14 +55,14 @@ private:
     }
 
     GateRef VisitDependEntry(GateRef gate);
-    GateRef UpdateDependChain(GateRef gate, DependChainNodes* dependInfo);
+    GateRef UpdateDependChain(GateRef gate, DependChains* dependInfo);
     GateRef TryEliminateGate(GateRef gate);
     GateRef TryEliminateOther(GateRef gate);
     GateRef TryEliminateDependSelector(GateRef gate);
 
     bool enableLog_ {false};
     std::string methodName_;
-    ChunkVector<DependChainNodes*> dependChains_;
+    ChunkVector<DependChains*> dependChains_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_LATER_ELIMINATION_H

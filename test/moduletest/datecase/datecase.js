@@ -29,6 +29,7 @@ var d6 = new Date(1680278400000);
 //daylight savings offset
 var d7 = new Date(1949, 4, 1);
 var d8 = new Date(1947, 9, 31, 16);
+var d9 = new Date(1970, 1, 1);
 
 print(d1.getFullYear() == 2022);
 print(d1.getMonth() == 0);
@@ -54,3 +55,8 @@ print(d6.getMonth() == 3);
 
 print(d7.getFullYear(),d7.getMonth(),d7.getDate(),d7.getHours());
 print(d8.getFullYear(),d8.getMonth(),d8.getDate(),d8.getHours());
+
+print(d9.getFullYear() == 1970);
+print(d9.getMonth() == 1);
+print(d9.getDate() == 1);
+print(d9.getHours() == 0);

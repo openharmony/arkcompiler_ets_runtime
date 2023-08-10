@@ -1345,7 +1345,7 @@ GateRef OperationsStubBuilder::Neg(GateRef glue, GateRef value, ProfileOperation
         {
             callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
             GateRef valueDouble = GetDoubleOfTDouble(value);
-            result = DoubleToTaggedDoublePtr(DoubleSub(Double(0), valueDouble));
+            result = DoubleToTaggedDoublePtr(DoubleMul(Double(-1), valueDouble));
             Jump(&exit);
         }
         Bind(&valueNotDouble);

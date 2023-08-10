@@ -125,14 +125,14 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeApply(EcmaRuntimeCallInfo *argv
             JSObject::CreateListFromArrayLike(thread, arrayObj));
         // 4. ReturnIfAbrupt(argList).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        const int32_t argsLength = static_cast<int32_t>(argList->GetLength());
+        const uint32_t argsLength = argList->GetLength();
         EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, thisArg, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(argsLength, argList);
         return JSFunction::Call(info);
     }
     // 6. Return Call(func, thisArg, argList).
-    const int32_t argsLength = static_cast<int32_t>(argumentsList.second);
+    const uint32_t argsLength = static_cast<uint32_t>(argumentsList.second);
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, thisArg, undefined, argsLength);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     info->SetCallArg(argsLength, argumentsList.first);

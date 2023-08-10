@@ -317,7 +317,7 @@ public:
         return jsGatesToByteCode_.at(gate);
     }
 
-    bool NeedUpdateHotness() const
+    bool NeedCheckSafePointAndStackOver() const
     {
         return !isInline_ && !method_->IsNoGC();
     }
@@ -422,6 +422,11 @@ public:
     PGORWOpType GetPGOType(GateRef gate) const
     {
         return typeRecorder_.GetRwOpType(GetPcOffsetByGate(gate));
+    }
+
+    ElementsKind GetElementsKind(GateRef gate) const
+    {
+        return typeRecorder_.GetElementsKind(GetPcOffsetByGate(gate));
     }
 
     bool ShouldPGOTypeInfer(GateRef gate) const
@@ -583,11 +588,6 @@ private:
     inline bool IsFirstBCEnvIn(const size_t bbId, const size_t bcIndex, const uint16_t reg) const
     {
         return (IsFirstBasicBlock(bbId) && bcIndex == 0 && reg == GetNumberVRegs());
-    }
-
-    inline bool HasValidType(GateType type)
-    {
-        return HasTypes() && !type.IsAnyType() && !tsManager_->IsPGOGT(type.GetGTRef());
     }
 
     TSManager *tsManager_;

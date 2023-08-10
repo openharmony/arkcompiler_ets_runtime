@@ -520,6 +520,9 @@ void FrameStateBuilder::BindBBStateSplit()
         if (builder_->IsFirstBasicBlock(bb.id)) {
             BuildStateSplitBefore(bb, bb.start);
         }
+        if (builder_->IsEntryBlock(bb.id)) {
+            BuildStateSplitBefore(bb, bb.start);
+        }
         ASSERT(!bb.isDead);
         builder_->EnumerateBlock(bb, [&](const BytecodeInfo &bytecodeInfo) -> bool {
             auto &iterator = bb.GetBytecodeIterator();

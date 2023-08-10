@@ -245,6 +245,8 @@ namespace panda::ecmascript {
     V(Array, Filter)                          \
     V(Array, Find)                            \
     V(Array, FindIndex)                       \
+    V(Array, FindLast)                        \
+    V(Array, FindLastIndex)                   \
     V(Array, ForEach)                         \
     V(Array, IndexOf)                         \
     V(Array, Join)                            \
@@ -271,6 +273,7 @@ namespace panda::ecmascript {
     V(Array, FlatMap)                         \
     V(Array, At)                              \
     V(Array, ToSorted)                        \
+    V(Array, ToSpliced)                       \
     V(ArrayBuffer, Constructor)               \
     V(ArrayBuffer, Slice)                     \
     V(ArrayBuffer, Species)                   \
@@ -740,6 +743,8 @@ namespace panda::ecmascript {
     V(TypedArray, Fill)                       \
     V(TypedArray, Find)                       \
     V(TypedArray, FindIndex)                  \
+    V(TypedArray, FindLast)                   \
+    V(TypedArray, FindLastIndex)              \
     V(TypedArray, IndexOf)                    \
     V(TypedArray, LastIndexOf)                \
     V(TypedArray, Reduce)                     \
@@ -767,8 +772,10 @@ namespace panda::ecmascript {
     V(TypedArray, Set)                        \
     V(TypedArray, Slice)                      \
     V(TypedArray, Sort)                       \
+    V(TypedArray, ToSorted)                   \
     V(TypedArray, Subarray)                   \
     V(TypedArray, Values)                     \
+    V(TypedArray, With)                       \
     V(TypedArray, ToStringTag)                \
     V(TypedArray, At)                         \
     V(WeakMap, Constructor)                   \

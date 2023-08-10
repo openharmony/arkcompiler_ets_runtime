@@ -87,7 +87,7 @@ JSTaggedValue BuiltinsArrayBuffer::GetByteLength(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(thread, ArrayBuffer, GetByteLength);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    
+
     // 1. Let O be the this value.
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     // 2. If Type(O) is not Object, throw a TypeError exception.
@@ -507,7 +507,11 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForFloat(uint8_t *block, ui
         }
         if (!littleEndian) {
             uint64_t res = LittleEndianToBigEndian64Bit(unionValue.uValue);
-            return GetTaggedDouble(base::bit_cast<T>(res));
+            T d = base::bit_cast<T>(res);
+            if (JSTaggedValue::IsImpureNaN(d)) {
+                return GetTaggedDouble(base::bit_cast<T>(base::pureNaN));
+            }
+            return GetTaggedDouble(d);
         }
     }
 

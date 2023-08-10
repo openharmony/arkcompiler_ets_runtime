@@ -85,12 +85,8 @@ JSTaggedValue BuiltinsProxy::InvalidateProxyFunction(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    JSHandle<JSObject> revokeObj(GetThis(argv));
-    JSHandle<JSTaggedValue> revokeKey = thread->GlobalConstants()->GetHandledRevokeString();
-
-    PropertyDescriptor desc(thread);
-    JSObject::GetOwnProperty(thread, revokeObj, revokeKey, desc);
-    JSProxyRevocFunction::ProxyRevocFunctions(thread, JSHandle<JSProxyRevocFunction>(desc.GetValue()));
+    JSHandle<JSTaggedValue> proxy = GetConstructor(argv);
+    JSProxyRevocFunction::ProxyRevocFunctions(thread, JSHandle<JSProxyRevocFunction>(proxy));
     return JSTaggedValue::Undefined();
 }
 }  // namespace panda::ecmascript::builtins

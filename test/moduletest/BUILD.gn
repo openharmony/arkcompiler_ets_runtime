@@ -17,6 +17,7 @@ group("ark_js_moduletest") {
   test_list = [
     "allocatearraybuffer",
     "array",
+    "arrayfindlast",
     "arrayforeach",
     "arrayjoin",
     "assignproxy",
@@ -91,7 +92,11 @@ group("ark_js_moduletest") {
     "trycatch",
     "typearray",
     "typedarrayat",
+    "typedarrayfindlast",
+    "typedarraytosorted",
+    "typedarraywith",
     "watch",
+    "weakcollectionswithsymbol",
     "wrapperclassfunc",
     "yieldstar",
     "esmnestedimportcjs",
@@ -131,6 +136,7 @@ group("ark_asm_test") {
   test_list = [
     "allocatearraybuffer",
     "array",
+    "arrayfindlast",
     "arrayforeach",
     "arrayjoin",
     "asmstackoverflow",
@@ -189,7 +195,11 @@ group("ark_asm_test") {
     "throwdyn",
     "trycatch",
     "typedarrayat",
+    "typedarrayfindlast",
+    "typedarraytosorted",
+    "typedarraywith",
     "watch",
+    "weakcollectionswithsymbol",
     "wrapperclassfunc",
     "yieldstar",
     "regexp",
@@ -227,6 +237,7 @@ group("ark_asm_single_step_test") {
 
   test_list = [
     "allocatearraybuffer",
+    "arrayfindlast",
     "arrayforeach",
     "arrayjoin",
     "asmstackoverflow",
@@ -279,7 +290,11 @@ group("ark_asm_single_step_test") {
     "throwdyn",
     "trycatch",
     "typedarrayat",
+    "typedarrayfindlast",
+    "typedarraytosorted",
+    "typedarraywith",
     "watch",
+    "weakcollectionswithsymbol",
     "yieldstar",
   ]
 

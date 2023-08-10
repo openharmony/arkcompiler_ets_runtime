@@ -209,6 +209,7 @@ public:
     GateRef ObjectAddressToRange(GateRef x);
     GateRef InYoungGeneration(GateRef region);
     GateRef TaggedIsGeneratorObject(GateRef x);
+    GateRef TaggedIsJSArray(GateRef x);
     GateRef TaggedIsAsyncGeneratorObject(GateRef x);
     GateRef TaggedIsJSGlobalObject(GateRef x);
     GateRef TaggedIsWeak(GateRef x);
@@ -360,10 +361,11 @@ public:
     GateRef HclassIsTransitionHandler(GateRef hClass);
     GateRef HclassIsPropertyBox(GateRef hClass);
     GateRef PropAttrGetOffset(GateRef attr);
-    GateRef InstanceOf(GateRef glue, GateRef object, GateRef target, GateRef profileTypeInfo, GateRef slotId);
+    GateRef InstanceOf(GateRef glue, GateRef object, GateRef target, GateRef profileTypeInfo, GateRef slotId,
+        ProfileOperation callback);
     GateRef OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj);
     void TryFastHasInstance(GateRef glue, GateRef instof, GateRef target, GateRef object, Label *fastPath,
-                            Label *exit, Variable *result);
+                            Label *exit, Variable *result, ProfileOperation callback);
     GateRef SameValue(GateRef glue, GateRef left, GateRef right);
     GateRef HasStableElements(GateRef glue, GateRef obj);
     GateRef IsStableJSArguments(GateRef glue, GateRef obj);
@@ -405,6 +407,7 @@ public:
     GateRef GetNumberOfPropsFromHClass(GateRef hClass);
     GateRef IsTSHClass(GateRef hClass);
     void SetNumberOfPropsToHClass(GateRef glue, GateRef hClass, GateRef value);
+    GateRef GetElementsKindFromHClass(GateRef hClass);
     GateRef GetObjectSizeFromHClass(GateRef hClass);
     GateRef GetInlinedPropsStartFromHClass(GateRef hClass);
     GateRef GetInlinedPropertiesFromHClass(GateRef hClass);
@@ -439,7 +442,7 @@ public:
     GateRef JSObjectGetProperty(GateRef obj, GateRef hClass, GateRef propAttr);
     void JSObjectSetProperty(GateRef glue, GateRef obj, GateRef hClass, GateRef attr, GateRef key, GateRef value);
     GateRef ShouldCallSetter(GateRef receiver, GateRef holder, GateRef accessor, GateRef attr);
-    GateRef CallSetterHelper(GateRef glue, GateRef holder, GateRef accessor,  GateRef value);
+    GateRef CallSetterHelper(GateRef glue, GateRef holder, GateRef accessor,  GateRef value, ProfileOperation callback);
     GateRef SetHasConstructorCondition(GateRef glue, GateRef receiver, GateRef key);
     GateRef AddPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef propertyAttributes,
         ProfileOperation callback);
@@ -451,18 +454,21 @@ public:
     GateRef ComputePropertyCapacityInJSObj(GateRef oldLength);
     GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hClass, GateRef key, GateRef attr);
     void TransitionForRepChange(GateRef glue, GateRef receiver, GateRef key, GateRef attr);
+    void TransitToElementsKind(GateRef glue, GateRef receiver, GateRef value, GateRef kind);
     GateRef TaggedToRepresentation(GateRef value);
+    GateRef TaggedToElementKind(GateRef value);
     GateRef LdGlobalRecord(GateRef glue, GateRef key);
     GateRef LoadFromField(GateRef receiver, GateRef handlerInfo);
     GateRef LoadGlobal(GateRef cell);
-    GateRef LoadElement(GateRef glue, GateRef receiver, GateRef key);
+    GateRef LoadElement(GateRef glue, GateRef receiver, GateRef key, ProfileOperation callback);
     GateRef TryToElementsIndex(GateRef glue, GateRef key);
     GateRef CheckPolyHClass(GateRef cachedValue, GateRef hClass);
-    GateRef LoadICWithHandler(GateRef glue, GateRef receiver, GateRef holder, GateRef handler);
+    GateRef LoadICWithHandler(
+        GateRef glue, GateRef receiver, GateRef holder, GateRef handler, ProfileOperation callback);
     GateRef StoreICWithHandler(GateRef glue, GateRef receiver, GateRef holder,
                                GateRef value, GateRef handler, ProfileOperation callback = ProfileOperation());
     GateRef ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
-                             GateRef value, GateRef handlerInfo);
+                           GateRef value, GateRef handlerInfo, ProfileOperation callback);
     GateRef GetArrayLength(GateRef object);
     GateRef DoubleToInt(GateRef glue, GateRef x);
     GateRef StoreField(GateRef glue, GateRef receiver, GateRef value, GateRef handler, ProfileOperation callback);
@@ -528,12 +534,13 @@ public:
     void SetValueWithAttr(GateRef glue, GateRef obj, GateRef offset, GateRef key, GateRef value, GateRef attr);
     void SetValueWithRep(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef rep, Label *repChange);
     void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
-    GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index);
-    GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key);
-    GateRef FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key);
-    GateRef FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index);
-    GateRef GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue);
-    GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn);
+    GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, ProfileOperation callback);
+    GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key, ProfileOperation callback);
+    GateRef FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key, ProfileOperation callback);
+    GateRef FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, ProfileOperation callback);
+    GateRef GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue, ProfileOperation callback);
+    GateRef SetPropertyByIndex(
+        GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn, ProfileOperation callback);
     GateRef SetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
         GateRef value, bool useOwn, ProfileOperation callback = ProfileOperation()); // Crawl prototype chain
     GateRef SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
@@ -556,9 +563,10 @@ public:
     GateRef BinaryOp(GateRef x, GateRef y);
     template<OpCode Op, MachineType Type>
     GateRef BinaryOpWithOverflow(GateRef x, GateRef y);
-    GateRef GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key);
+    GateRef GetGlobalOwnProperty(GateRef glue, GateRef receiver, GateRef key, ProfileOperation callback);
 
     inline GateRef GetObjectFromConstPool(GateRef constpool, GateRef index);
+    GateRef GetConstPoolFromFunction(GateRef jsFunc);
     GateRef GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
@@ -609,12 +617,12 @@ public:
     inline GateRef GetGlobalConstantValue(
         VariableType type, GateRef glue, ConstantIndex index);
     inline GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
-    GateRef CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder, GateRef accessor);
+    GateRef CallGetterHelper(
+        GateRef glue, GateRef receiver, GateRef holder, GateRef accessor, ProfileOperation callback);
     GateRef ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj);
     GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize, GateRef hotnessCounter,
                            JSCallMode mode, std::initializer_list<GateRef> args,
-                           ProfileOperation callback = ProfileOperation(),
-                           BytecodeInstruction::Format format = BytecodeInstruction::Format::IMM8);
+                           ProfileOperation callback = ProfileOperation());
     GateRef IsFastTypeArray(GateRef jsType);
     GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
@@ -640,6 +648,7 @@ public:
     void Comment(GateRef glue, const std::string &str);
     GateRef ToNumber(GateRef glue, GateRef tagged);
     inline GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
+    inline GateRef LoadPfHeaderFromConstPool(GateRef jsFunc);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     GateRef ChangeTaggedPointerToInt64(GateRef x);

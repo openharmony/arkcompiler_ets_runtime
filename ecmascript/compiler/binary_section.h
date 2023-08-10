@@ -212,7 +212,7 @@ public:
     // RO data section needs 16 bytes alignment
     bool InRodataSection() const
     {
-        return ElfSecName::RODATA <= value_ && value_ <= ElfSecName::RODATA_CST8;
+        return ElfSecName::RODATA <= value_ && value_ <= ElfSecName::RODATA_CST32;
     }
 private:
     static int const FIX_SIZE = 24; // 24:Elf_Rel

@@ -30,7 +30,7 @@ constexpr size_t HEAD_SIZE = TaggedObject::TaggedObjectSize();
 template <typename Callback>
 inline bool NonMovableMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback)
 {
-    auto hclass = root->GetClass();
+    auto hclass = root->SynchronizedGetClass();
     if (hclass->IsAllTaggedProp()) {
         return false;
     }

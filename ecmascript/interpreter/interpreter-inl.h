@@ -198,12 +198,25 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         }                                                 \
     } while (false)
 
+#define RESET_AND_JUMP_IF_DROPFRAME()                                     \
+    do {                                                                  \
+        if (thread->GetFrameDroppedBit()) {                               \
+            thread->ResetFrameDroppedBit();                               \
+            sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame()); \
+            InterpretedFrame *state = GET_FRAME(sp);                      \
+            pc = state->pc;                                               \
+            RESTORE_ACC();                                                \
+            DISPATCH_OFFSET(0);                                           \
+        }                                                                 \
+    } while (false)
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define NOTIFY_DEBUGGER_EVENT()          \
     do {                                 \
         SAVE_ACC();                      \
         SAVE_PC();                       \
         NotifyBytecodePcChanged(thread); \
+        RESET_AND_JUMP_IF_DROPFRAME();   \
         RESTORE_ACC();                   \
     } while (false)
 
@@ -865,6 +878,40 @@ void EcmaInterpreter::NotifyDebuggerStmt(JSThread *thread)
     }
 }
 
+void EcmaInterpreter::MethodEntry(JSThread *thread)
+{
+    FrameHandler frameHandler(thread);
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+        if (frameHandler.IsEntryFrame()) {
+            continue;
+        }
+        Method *method = frameHandler.GetMethod();
+        if (method->IsNativeWithCallField()) {
+            continue;
+        }
+        auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
+        debuggerMgr->GetNotificationManager()->MethodEntryEvent(thread, method);
+        return;
+    }
+}
+
+void EcmaInterpreter::MethodExit(JSThread *thread)
+{
+    FrameHandler frameHandler(thread);
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+        if (frameHandler.IsEntryFrame()) {
+            continue;
+        }
+        Method *method = frameHandler.GetMethod();
+        if (method->IsNativeWithCallField()) {
+            continue;
+        }
+        auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
+        debuggerMgr->GetNotificationManager()->MethodExitEvent(thread, method);
+        return;
+    }
+}
+
 const JSPandaFile *EcmaInterpreter::GetNativeCallPandafile(JSThread *thread)
 {
     FrameHandler frameHandler(thread);
@@ -1363,6 +1410,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             thread->SetCurrentSPFrame(newSp);
             LOG_INST() << "Entry: Runtime Call " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
                                     << std::hex << reinterpret_cast<uintptr_t>(pc);
+            MethodEntry(thread);
             DISPATCH_OFFSET(0);
         }
     }
@@ -1400,6 +1448,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(DEPRECATED_CALLSPREAD_PREF_V8_V8_V8);
     }
     HANDLE_OPCODE(RETURN) {
+        MethodExit(thread);
         LOG_INST() << "return";
         InterpretedFrame *state = GET_FRAME(sp);
         LOG_INST() << "Exit: Runtime Call " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
@@ -1448,6 +1497,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         INTERPRETER_HANDLE_RETURN();
     }
     HANDLE_OPCODE(RETURNUNDEFINED) {
+        MethodExit(thread);
         LOG_INST() << "return.undefined";
         InterpretedFrame *state = GET_FRAME(sp);
         LOG_INST() << "Exit: Runtime Call " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
@@ -7357,10 +7407,14 @@ JSTaggedType *EcmaInterpreter::GetInterpreterFrameEnd(JSThread *thread, JSTagged
     } else {
         if (FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_FRAME ||
             FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_FAST_NEW_FRAME) {
-            newSp = sp - InterpretedFrame::NumOfMembers();  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp = sp - InterpretedFrame::NumOfMembers();
+        } else if (FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_BUILTIN_FRAME) {
+            // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp = sp - InterpretedBuiltinFrame::NumOfMembers();
         } else {
-            newSp =
-                sp - InterpretedEntryFrame::NumOfMembers();  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            newSp = sp - InterpretedEntryFrame::NumOfMembers();
         }
     }
     return newSp;

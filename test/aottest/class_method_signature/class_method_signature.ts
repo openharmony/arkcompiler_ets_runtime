@@ -15,6 +15,91 @@
 
 declare function print(str:any):string;
 
+class A {
+    constructor() {}
+
+    foo?(): string;
+
+    bar(): string {
+        return "bar";
+    }
+
+    bar2(): string {
+        return "bar2";
+    }
+}
+
+let a = new A();
+print(a.bar());
+print(a.bar2());
+print(Reflect.ownKeys(A.prototype)); //constructor,bar,bar2
+
+class A2 {
+    constructor() {}
+
+    foo?(): string;
+    foo(): string {
+        return "foo";
+    }
+
+    bar(): string {
+        return "bar";
+    }
+
+    bar2(): string {
+        return "bar2";
+    }
+}
+
+let a2 = new A2();
+print(a2.foo());
+print(a2.bar());
+print(a2.bar2());
+print(Reflect.ownKeys(A2.prototype)); //constructor,foo,bar,bar2
+
+
+class B {
+    constructor() {}
+
+    bar(): string {
+        return "bar";
+    }
+
+    foo?(): string;
+
+    bar2(): string {
+        return "bar2";
+    }
+}
+
+let b = new B();
+print(b.bar());
+print(b.bar2());
+print(Reflect.ownKeys(B.prototype)); //constructor,bar,bar2
+
+class B2 {
+    constructor() {}
+
+    bar(): string {
+        return "bar";
+    }
+
+    foo?(): string;
+    foo(): string {
+        return "foo";
+    }
+
+    bar2(): string {
+        return "bar2";
+    }
+}
+
+let b2 = new B2();
+print(b2.foo());
+print(b2.bar());
+print(b2.bar2());
+print(Reflect.ownKeys(B2.prototype)); //constructor,bar,foo,bar2
+
 // one signature but no body
 class C {
     constructor() {}

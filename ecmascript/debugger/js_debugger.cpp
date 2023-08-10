@@ -21,6 +21,7 @@
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/interpreter/interpreter-inl.h"
 
 namespace panda::ecmascript::tooling {
 using panda::ecmascript::base::BuiltinsBase;
@@ -204,5 +205,31 @@ void JSDebugger::DumpBreakpoints()
     for (const auto &bp : breakpoints_) {
         LOG_DEBUGGER(DEBUG) << bp.ToString();
     }
+}
+
+void JSDebugger::MethodEntry(JSHandle<Method> method)
+{
+    if (hooks_ == nullptr || !ecmaVm_->GetJsDebuggerManager()->IsDebugMode()) {
+        return;
+    }
+    FrameHandler frameHandler(ecmaVm_->GetJSThread());
+    if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame() || frameHandler.GetEnv().IsUndefinedOrNull()) {
+        return;
+    }
+    auto *debuggerMgr = ecmaVm_->GetJsDebuggerManager();
+    debuggerMgr->MethodEntry(method);
+}
+
+void JSDebugger::MethodExit([[maybe_unused]] JSHandle<Method> method)
+{
+    if (hooks_ == nullptr || !ecmaVm_->GetJsDebuggerManager()->IsDebugMode()) {
+        return;
+    }
+    FrameHandler frameHandler(ecmaVm_->GetJSThread());
+    if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
+        return;
+    }
+    auto *debuggerMgr = ecmaVm_->GetJsDebuggerManager();
+    debuggerMgr->MethodExit(method);
 }
 }  // namespace panda::tooling::ecmascript

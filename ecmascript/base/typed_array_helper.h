@@ -41,6 +41,8 @@ public:
                                                       uint32_t argc, JSTaggedType argv[]);
     static JSHandle<JSObject> TypedArrayCreate(JSThread *thread, const JSHandle<JSTaggedValue> &constructor,
                                                uint32_t argc, const JSTaggedType argv[]);
+    static JSHandle<JSObject> TypedArrayCreateSameType(JSThread *thread, const JSHandle<JSTypedArray> &obj,
+                                                       uint32_t argc, const JSTaggedType argv[]);
     static JSTaggedValue ValidateTypedArray(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     inline static DataViewType GetType(const JSHandle<JSTypedArray> &obj);
     inline static DataViewType GetType(JSType type);

@@ -40,6 +40,9 @@ class Environment;
 class Label;
 class Variable;
 class StubBuilder;
+class TSHCRLowering;
+class NTypeHCRLowering;
+class SlowPathLowering;
 
 #define BINARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(V)                    \
     V(Int16Add, Add, MachineType::I16)                                    \
@@ -247,13 +250,16 @@ public:
     static constexpr uint32_t GATE_TWO_VALUESIN = 2;
     // low level interface
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
-    GateRef StableArrayCheck(GateRef gate);
-    GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState);
+    GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
+    GateRef COWArrayCheck(GateRef gate);
+    GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState, ArrayMetaDataAccessor accessor);
     GateRef ArrayGuardianCheck(GateRef frameState);
     GateRef TypedArrayCheck(GateType type, GateRef gate);
     GateRef LoadTypedArrayLength(GateType type, GateRef gate);
+    GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
-    GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassOffset);
+    GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassIndex);
+    GateRef ObjectTypeCompare(GateType type, GateRef gate, GateRef hclassIndex);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, GateRef param, const char* comment = nullptr);
     GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate);
@@ -277,8 +283,6 @@ public:
     GateRef Int32CheckRightIsZero(GateRef right);
     GateRef Float64CheckRightIsZero(GateRef right);
     GateRef ValueCheckNegOverflow(GateRef value);
-    GateRef NegativeIndexCheck(GateRef index);
-    GateRef LargeIndexCheck(GateRef index, GateRef length);
     GateRef OverflowCheck(GateRef value);
     GateRef LexVarIsHoleCheck(GateRef value);
     GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);
@@ -299,9 +303,13 @@ public:
     GateRef ConvertInt32ToFloat64(GateRef gate);
     GateRef ConvertBoolToInt32(GateRef gate, ConvertSupport support);
     GateRef ConvertBoolToFloat64(GateRef gate, ConvertSupport support);
+    GateRef ConvertUInt32ToBool(GateRef gate);
+    GateRef ConvertUInt32ToTaggedNumber(GateRef gate);
+    GateRef ConvertUInt32ToFloat64(GateRef gate);
     GateRef CheckAndConvert(
         GateRef gate, ValueType src, ValueType dst, ConvertSupport support = ConvertSupport::ENABLE);
     GateRef ConvertHoleAsUndefined(GateRef receiver);
+    GateRef CheckUInt32AndConvertToInt32(GateRef gate);
     GateRef CheckTaggedIntAndConvertToInt32(GateRef gate);
     GateRef CheckTaggedDoubleAndConvertToInt32(GateRef gate);
     GateRef CheckTaggedNumberAndConvertToInt32(GateRef gate);
@@ -348,6 +356,7 @@ public:
     GateRef SwitchCase(GateRef switchBranch, int64_t value);
     GateRef DefaultCase(GateRef switchBranch);
     GateRef DependRelay(GateRef state, GateRef depend);
+    GateRef ReadSp();
     GateRef BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
         GateRef left, GateRef right, GateType gateType = GateType::Empty());
     GateRef BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right);
@@ -460,6 +469,7 @@ public:
     inline GateRef TaggedIsAsyncGeneratorObject(GateRef x);
     inline GateRef TaggedIsJSGlobalObject(GateRef x);
     inline GateRef TaggedIsGeneratorObject(GateRef x);
+    inline GateRef TaggedIsJSArray(GateRef x);
     inline GateRef TaggedIsPropertyBox(GateRef x);
     inline GateRef TaggedIsWeak(GateRef x);
     inline GateRef TaggedIsPrototypeHandler(GateRef x);
@@ -529,6 +539,7 @@ public:
     GateRef LoadElement(GateRef receiver, GateRef index);
     template<TypedStoreOp Op>
     GateRef StoreElement(GateRef receiver, GateRef index, GateRef value);
+    GateRef StoreMemory(MemoryType Op, VariableType type, GateRef receiver, GateRef index, GateRef value);
     GateRef LoadProperty(GateRef receiver, GateRef propertyLookupResult, bool isFunction);
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
     GateRef LoadArrayLength(GateRef array);
@@ -559,6 +570,7 @@ public:
     inline GateRef IsJsType(GateRef object, JSType type);
     inline GateRef GetObjectType(GateRef hClass);
     inline GateRef IsDictionaryModeByHClass(GateRef hClass);
+    inline GateRef GetElementsKindByHClass(GateRef hClass);
     inline GateRef IsIsStableElementsByHClass(GateRef hClass);
     inline GateRef IsStableElements(GateRef hClass);
     inline GateRef IsStableArguments(GateRef hClass);
@@ -609,6 +621,7 @@ public:
     GateRef FinishAllocate();
     GateRef HeapAlloc(GateRef size, GateType type, RegionSpaceFlag flag);
     GateRef CreateArray(size_t arraySize);
+    GateRef CreateArrayWithBuffer(size_t arraySize, GateRef constPoolIndex, GateRef elementIndex);
 
     void SetEnvironment(Environment *env)
     {
@@ -647,8 +660,6 @@ public:
     inline GateRef GetState() const;
     inline GateRef GetDepend() const;
     inline StateDepend GetStateDepend() const;
-    inline void SetDepend(GateRef depend);
-    inline void SetState(GateRef state);
 
     GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
     GateRef IsBase(GateRef ctor);
@@ -657,6 +668,9 @@ public:
     inline GateRef StoreToTaggedArray(GateRef array, size_t index, GateRef value);
 
 private:
+    inline void SetDepend(GateRef depend);
+    inline void SetState(GateRef state);
+
 #define ARITHMETIC_UNARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                            \
     inline GateRef NAME(GateRef x)                                                                  \
     {                                                                                               \
@@ -671,6 +685,9 @@ private:
     Environment *env_ {nullptr};
     CompilationConfig *cmpCfg_ {nullptr};
     friend StubBuilder;
+    friend TSHCRLowering;
+    friend NTypeHCRLowering;
+    friend SlowPathLowering;
 };
 
 class Label {

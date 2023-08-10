@@ -199,7 +199,7 @@ bool JSAPIArrayList::Remove(JSThread *thread, const JSHandle<JSAPIArrayList> &ar
                             const JSHandle<JSTaggedValue> &value)
 {
     int index = GetIndexOf(thread, arrayList, value);
-    int length = arrayList->GetSize();
+    uint32_t length = arrayList->GetSize();
     if (index >= 0) {
         JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
         ASSERT(!elements->IsDictionaryMode());

@@ -531,12 +531,31 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
         LayoutInfo *layoutInfo = LayoutInfo::Cast(attrs.GetTaggedObject());
         layoutInfo->Dump(os);
     }
+
     os << " - Transitions :" << std::setw(DUMP_TYPE_OFFSET);
     JSTaggedValue transtions = jshclass->GetTransitions();
     transtions.DumpTaggedValue(os);
     os << "\n";
-    if (withDetail && !transtions.IsUndefined()) {
+    if (withDetail && !transtions.IsWeakForHeapObject() && transtions.IsDictionary()) {
         transtions.Dump(os);
+    }
+
+    os << " - ProtoChangeMarker :" << std::setw(DUMP_TYPE_OFFSET);
+    JSTaggedValue marker = jshclass->GetProtoChangeMarker();
+    marker.DumpTaggedValue(os);
+    if (marker.IsHeapObject()) {
+        ProtoChangeMarker::Cast(marker.GetTaggedObject())->Dump(os);
+    } else {
+        os << "\n";
+    }
+
+    os << " - ProtoChangeDetails :" << std::setw(DUMP_TYPE_OFFSET);
+    JSTaggedValue details = jshclass->GetProtoChangeDetails();
+    details.DumpTaggedValue(os);
+    if (details.IsHeapObject()) {
+        ProtoChangeDetails::Cast(details.GetTaggedObject())->Dump(os);
+    } else {
+        os << "\n";
     }
 
     JSTaggedValue supers = jshclass->GetSupers();
@@ -544,26 +563,28 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     if (supers.IsTaggedArray()) {
         length = WeakVector::Cast(supers.GetTaggedObject())->GetExtraLength();
     }
-    os << " - Supers[" << std::dec << length << "]:\n";
+    os << " - Supers[" << std::dec << length << "]: " << std::setw(DUMP_TYPE_OFFSET);;
     supers.DumpTaggedValue(os);
-    os << "\n";
     if (withDetail && !supers.IsUndefined()) {
         WeakVector::Cast(supers.GetTaggedObject())->Dump(os);
+    } else {
+        os << "\n";
     }
 
     os << " - VTable :" << std::setw(DUMP_TYPE_OFFSET);
     JSTaggedValue vtable = jshclass->GetVTable();
     vtable.DumpTaggedValue(os);
-    os << "\n";
     if (withDetail && !vtable.IsUndefined()) {
         VTable::Cast(vtable.GetTaggedObject())->Dump(os);
+    } else {
+        os << "\n";
     }
 
     os << " - Flags : " << std::setw(DUMP_TYPE_OFFSET);
     os << "IsCtor :" << std::boolalpha << jshclass->IsConstructor();
     os << "| IsCallable :" << std::boolalpha << jshclass->IsCallable();
     os << "| IsExtensible :" << std::boolalpha << jshclass->IsExtensible();
-    os << "| ElementRepresentation :" << static_cast<int>(jshclass->GetElementRepresentation());
+    os << "| ElementsKind :" << Elements::GetString(jshclass->GetElementsKind());
     os << "| NumberOfProps :" << std::dec << jshclass->NumberOfProps();
     os << "| InlinedProperties :" << std::dec << jshclass->GetInlinedProperties();
     os << "| IsTS :" << std::boolalpha << jshclass->IsTS();
@@ -573,9 +594,8 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
 
 static void DumpClass(TaggedObject *obj, std::ostream &os)
 {
-    JSHClass *hclass = obj->GetClass();
-    os << "JSHClass :" << std::setw(DUMP_TYPE_OFFSET) << " klass_(" << std::hex << hclass << ")\n";
-    DumpHClass(hclass, os, true);
+    ASSERT(obj->GetClass()->GetObjectType() == JSType::HCLASS);
+    DumpHClass(JSHClass::Cast(obj), os, true);
 }
 
 static void DumpAttr(const PropertyAttributes &attr, bool fastMode, std::ostream &os)
@@ -615,6 +635,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
     auto jsHclass = obj->GetClass();
     JSType type = jsHclass->GetObjectType();
 
+    bool needDumpHClass = false;
     switch (type) {
         case JSType::HCLASS:
             return DumpClass(obj, os);
@@ -652,9 +673,11 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_SYNTAX_ERROR:
         case JSType::JS_OOM_ERROR:
         case JSType::JS_ARGUMENTS:
+            needDumpHClass = true;
             JSObject::Cast(obj)->Dump(os);
             break;
         case JSType::JS_FUNCTION_BASE:
+            needDumpHClass = true;
             JSFunctionBase::Cast(obj)->Dump(os);
             break;
         case JSType::GLOBAL_ENV:
@@ -663,24 +686,31 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::ACCESSOR_DATA:
             break;
         case JSType::JS_FUNCTION:
+            needDumpHClass = true;
             JSFunction::Cast(obj)->Dump(os);
             break;
         case JSType::JS_BOUND_FUNCTION:
+            needDumpHClass = true;
             JSBoundFunction::Cast(obj)->Dump(os);
             break;
         case JSType::JS_SET:
+            needDumpHClass = true;
             JSSet::Cast(obj)->Dump(os);
             break;
         case JSType::JS_MAP:
+            needDumpHClass = true;
             JSMap::Cast(obj)->Dump(os);
             break;
         case JSType::JS_WEAK_SET:
+            needDumpHClass = true;
             JSWeakSet::Cast(obj)->Dump(os);
             break;
         case JSType::JS_WEAK_MAP:
+            needDumpHClass = true;
             JSWeakMap::Cast(obj)->Dump(os);
             break;
         case JSType::JS_WEAK_REF:
+            needDumpHClass = true;
             JSWeakRef::Cast(obj)->Dump(os);
             break;
         case JSType::JS_FINALIZATION_REGISTRY:
@@ -690,12 +720,15 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             CellRecord::Cast(obj)->Dump(os);
             break;
         case JSType::JS_REG_EXP:
+            needDumpHClass = true;
             JSRegExp::Cast(obj)->Dump(os);
             break;
         case JSType::JS_DATE:
+            needDumpHClass = true;
             JSDate::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ARRAY:
+            needDumpHClass = true;
             JSArray::Cast(obj)->Dump(os);
             break;
         case JSType::JS_TYPED_ARRAY:
@@ -710,6 +743,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::JS_FLOAT64_ARRAY:
         case JSType::JS_BIGINT64_ARRAY:
         case JSType::JS_BIGUINT64_ARRAY:
+            needDumpHClass = true;
             JSTypedArray::Cast(obj)->Dump(os);
             break;
         case JSType::BIGINT:
@@ -719,6 +753,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             ByteArray::Cast(obj)->Dump(os);
             break;
         case JSType::JS_PROXY:
+            needDumpHClass = true;
             JSProxy::Cast(obj)->Dump(os);
             break;
         case JSType::JS_PRIMITIVE_REF:
@@ -752,6 +787,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             ResolvingFunctionsRecord::Cast(obj)->Dump(os);
             break;
         case JSType::JS_PROMISE:
+            needDumpHClass = true;
             JSPromise::Cast(obj)->Dump(os);
             break;
         case JSType::JS_PROMISE_REACTIONS_FUNCTION:
@@ -800,6 +836,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             JSProxyRevocFunction::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ASYNC_FUNCTION:
+            needDumpHClass = true;
             JSAsyncFunction::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION:
@@ -809,6 +846,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             JSGeneratorFunction::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ASYNC_GENERATOR_FUNCTION:
+            needDumpHClass = true;
             JSAsyncGeneratorFunction::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
@@ -855,13 +893,16 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             PropertyBox::Cast(obj)->Dump(os);
             break;
         case JSType::JS_REALM:
+            needDumpHClass = true;
             JSRealm::Cast(obj)->Dump(os);
             break;
 #ifdef ARK_SUPPORT_INTL
         case JSType::JS_INTL:
+            needDumpHClass = true;
             JSIntl::Cast(obj)->Dump(os);
             break;
         case JSType::JS_LOCALE:
+            needDumpHClass = true;
             JSLocale::Cast(obj)->Dump(os);
             break;
         case JSType::JS_DATE_TIME_FORMAT:
@@ -874,6 +915,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             JSNumberFormat::Cast(obj)->Dump(os);
             break;
         case JSType::JS_COLLATOR:
+            needDumpHClass = true;
             JSCollator::Cast(obj)->Dump(os);
             break;
         case JSType::JS_PLURAL_RULES:
@@ -898,12 +940,15 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
 #endif
         case JSType::JS_GENERATOR_OBJECT:
+            needDumpHClass = true;
             JSGeneratorObject::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ASYNC_GENERATOR_OBJECT:
+            needDumpHClass = true;
             JSAsyncGeneratorObject::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ASYNC_FUNC_OBJECT:
+            needDumpHClass = true;
             JSAsyncFuncObject::Cast(obj)->Dump(os);
             break;
         case JSType::JS_GENERATOR_CONTEXT:
@@ -1083,7 +1128,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
     }
 
-    DumpHClass(jsHclass, os, false);
+    if (needDumpHClass) {
+        DumpHClass(jsHclass, os, false);
+    }
 }
 
 void JSTaggedValue::DumpSpecialValue(std::ostream &os) const
@@ -1122,8 +1169,7 @@ void JSTaggedValue::DumpHeapObjectType(std::ostream &os) const
     bool isWeak = IsWeak();
     TaggedObject *obj = isWeak ? GetTaggedWeakRef() : GetTaggedObject();
     if (isWeak) {
-        os << "----------Dump Weak Referent----------"
-           << "\n";
+        os << " [Weak Ref] ";
     }
 
     JSType type = obj->GetClass()->GetObjectType();
@@ -1663,8 +1709,8 @@ void TaggedTreeMap::Dump(std::ostream &os) const
     node.DumpTaggedValue(os);
     os << std::right << "}" << "\n";
 
-    int capacity = NumberOfElements() + NumberOfDeletedElements();
-    for (int index = 0; index < capacity; index++) {
+    uint32_t capacity = NumberOfElements() + NumberOfDeletedElements();
+    for (uint32_t index = 0; index < capacity; index++) {
         if (GetKey(index).IsHole()) {
             os << std::left << std::setw(DUMP_ELEMENT_OFFSET) << "[entry] " << index << ": ";
             GetKey(index).DumpTaggedValue(os);
@@ -1740,8 +1786,8 @@ void TaggedTreeSet::Dump(std::ostream &os) const
     node.DumpTaggedValue(os);
     os << std::right << "}" << "\n";
 
-    int capacity = NumberOfElements() + NumberOfDeletedElements();
-    for (int index = 0; index < capacity; index++) {
+    uint32_t capacity = NumberOfElements() + NumberOfDeletedElements();
+    for (uint32_t index = 0; index < capacity; index++) {
         if (GetKey(index).IsHole()) {
             os << std::left << std::setw(DUMP_ELEMENT_OFFSET) << "[entry] " << index << ": ";
             GetKey(index).DumpTaggedValue(os);
@@ -1966,9 +2012,9 @@ void JSAPIDequeIterator::Dump(std::ostream &os) const
 
 void JSAPILightWeightMap::Dump(std::ostream &os) const
 {
-    int capacity = GetSize();
+    uint32_t capacity = GetSize();
     os << " - length: " << std::dec << capacity << "\n";
-    int i = 0;
+    uint32_t i = 0;
     TaggedArray *hashArray = TaggedArray::Cast(GetHashes().GetTaggedObject());
     TaggedArray *keyArray = TaggedArray::Cast(GetKeys().GetTaggedObject());
     TaggedArray *valueArray = TaggedArray::Cast(GetValues().GetTaggedObject());
@@ -3099,8 +3145,7 @@ void ProtoChangeDetails::Dump(std::ostream &os) const
 {
     os << " - ChangeListener: ";
     GetChangeListener().Dump(os);
-    os << "\n";
-    os << " - RegisterIndex: " << GetRegisterIndex();
+    os << " \t- RegisterIndex: " << GetRegisterIndex();
     os << "\n";
 }
 
@@ -3650,15 +3695,13 @@ static void DumpStringClass(const EcmaString *str,
     vec.emplace_back("string", JSTaggedValue(str));
 }
 
-static void DumpClass(TaggedObject *obj,
-                         std::vector<std::pair<CString, JSTaggedValue>> &vec)
+static void DumpClass(TaggedObject *obj, std::vector<std::pair<CString, JSTaggedValue>> &vec)
 {
     JSHClass *jshclass = obj->GetClass();
     vec.emplace_back("__proto__", jshclass->GetPrototype());
 }
 
-static void DumpObject(TaggedObject *obj,
-                       std::vector<std::pair<CString, JSTaggedValue>> &vec, bool isVmMode)
+static void DumpObject(TaggedObject *obj, std::vector<std::pair<CString, JSTaggedValue>> &vec, bool isVmMode)
 {
     DISALLOW_GARBAGE_COLLECTION;
     auto jsHclass = obj->GetClass();
@@ -4248,9 +4291,9 @@ void LinkedHashMap::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue
 void TaggedTreeMap::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
-    int capacity = NumberOfElements() + NumberOfDeletedElements();
+    uint32_t capacity = NumberOfElements() + NumberOfDeletedElements();
     vec.reserve(vec.size() + capacity);
-    for (int index = 0; index < capacity; index++) {
+    for (uint32_t index = 0; index < capacity; index++) {
         JSTaggedValue key(GetKey(index));
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             JSTaggedValue val = GetValue(index);
@@ -4264,9 +4307,9 @@ void TaggedTreeMap::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue
 void TaggedTreeSet::DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
-    int capacity = NumberOfElements() + NumberOfDeletedElements();
+    uint32_t capacity = NumberOfElements() + NumberOfDeletedElements();
     vec.reserve(vec.size() + capacity);
-    for (int index = 0; index < capacity; index++) {
+    for (uint32_t index = 0; index < capacity; index++) {
         JSTaggedValue key(GetKey(index));
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             CString str;

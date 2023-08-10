@@ -131,6 +131,12 @@ private:
     void LowerObjectTypeCheck(GateRef gate);
     void LowerSimpleHClassCheck(GateRef gate);
     void LowerTSSubtypingCheck(GateRef gate);
+    void LowerObjectTypeCompare(GateRef gate);
+    void LowerSimpleHClassCompare(GateRef gate);
+    void LowerTSSubtypingCompare(GateRef gate);
+    GateRef BuildCompareSubTyping(GateRef gate, GateRef frameState, Label *levelValid, Label *exit);
+    GateRef BuildCompareHClass(GateRef gate, GateRef frameState);
+    void BuildCompareSubTyping(GateRef gate);
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);
     void LowerLoadTypedArrayLength(GateRef gate);
@@ -143,11 +149,17 @@ private:
     void LowerLoadElement(GateRef gate);
     void LowerLoadFromTaggedArray(GateRef gate);
     void LowerStoreToTaggedArray(GateRef gate, GateRef glue);
-    void LowerArrayLoadElement(GateRef gate);
+
+    enum class ArrayState : uint8_t {
+        PACKED = 0,
+        HOLEY,
+    };
+    void LowerArrayLoadElement(GateRef gate, ArrayState arrayState);
+    void LowerCowArrayCheck(GateRef gate, GateRef glue);
     void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
     void LowerArrayStoreElement(GateRef gate, GateRef glue);
-    void LowerTypedArrayStoreElement(GateRef gate, GateRef glue, BuiltinTypeId id);
-    void LowerUInt8ClampedArrayStoreElement(GateRef gate, GateRef glue);
+    void LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id);
+    void LowerUInt8ClampedArrayStoreElement(GateRef gate);
     void LowerTypedCallBuitin(GateRef gate);
     void LowerCallTargetCheck(GateRef gate);
     void LowerJSCallTargetCheck(GateRef gate);
@@ -163,6 +175,9 @@ private:
     void LowerGetSuperConstructor(GateRef gate);
     void LowerJSInlineTargetTypeCheck(GateRef gate);
     void SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &funcIndex);
+    void LowerLoadGetter(GateRef gate);
+    void LowerLoadSetter(GateRef gate);
+    void LowerInlineAccessorCheck(GateRef gate);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
