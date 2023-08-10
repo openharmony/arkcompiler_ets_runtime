@@ -563,7 +563,8 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     if (supers.IsTaggedArray()) {
         length = WeakVector::Cast(supers.GetTaggedObject())->GetExtraLength();
     }
-    os << " - Supers[" << std::dec << length << "]: " << std::setw(DUMP_TYPE_OFFSET);;
+    os << " - Supers[" << std::dec << length << "]: ";
+    os << std::setw(DUMP_TYPE_OFFSET);
     supers.DumpTaggedValue(os);
     if (withDetail && !supers.IsUndefined()) {
         WeakVector::Cast(supers.GetTaggedObject())->Dump(os);
