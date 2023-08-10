@@ -143,6 +143,9 @@ void EcmaVM::PostFork()
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->SetThreadId();
     heap_->EnableParallelGC();
+#ifdef ENABLE_POSTFORK_FORCEEXPAND
+    heap_->NotifyPostFork();
+#endif
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)

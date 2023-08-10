@@ -726,8 +726,9 @@ bool Heap::CheckAndTriggerOldGC(size_t size)
     if (isFullMarking && oldSpace_->GetOvershootSize() == 0) {
         oldSpace_->SetOvershootSize(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
     }
-    if (isNativeSizeLargeTrigger || OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) ||
-        GetHeapObjectSize() > globalSpaceAllocLimit_ + oldSpace_->GetOvershootSize()) {
+    if ((isNativeSizeLargeTrigger || OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) ||
+        GetHeapObjectSize() > globalSpaceAllocLimit_ + oldSpace_->GetOvershootSize()) &&
+        !NeedStopCollection()) {
         CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
         if (!oldGCRequested_) {
             return true;
@@ -853,8 +854,7 @@ void Heap::TryTriggerIncrementalMarking()
 
     double oldSpaceRemainSize = (oldSpaceAllocToLimitDuration - oldSpaceMarkDuration) * oldSpaceAllocSpeed;
     // mark finished before allocate limit
-    if ((oldSpaceRemainSize > 0 && oldSpaceRemainSize < DEFAULT_REGION_SIZE) ||
-        GetHeapObjectSize() >= globalSpaceAllocLimit_) {
+    if ((oldSpaceRemainSize < DEFAULT_REGION_SIZE) || GetHeapObjectSize() >= globalSpaceAllocLimit_) {
         // The object allocated in incremental marking should lower than limit,
         // otherwise select trigger concurrent mark.
         size_t allocateSize = oldSpaceAllocSpeed * oldSpaceMarkDuration;
@@ -1112,6 +1112,74 @@ void Heap::NotifyMemoryPressure(bool inHighMemoryPressure)
     }
 }
 
+void Heap::NotifyFinishColdStart(bool isMainThread)
+{
+    {
+        os::memory::LockHolder holder(finishColdStartMutex_);
+        if (!onStartupEvent_) {
+            return;
+        }
+
+        // set overshoot size to increase gc threashold larger 8MB than current heap size.
+        int64_t semiRemainSize = GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize();
+        int64_t overshootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize() - semiRemainSize;
+        // overshoot size should be larger than 0.
+        GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
+        GetNewSpace()->SetWaterLineWithoutGC();
+        onStartupEvent_ = false;
+    }
+
+    if (isMainThread) {
+        markType_ = MarkType::MARK_FULL;
+        TriggerConcurrentMarking();
+    }
+}
+
+void Heap::NotifyFinishColdStartSoon()
+{
+    if (!onStartupEvent_) {
+        return;
+    }
+
+    // post 2s task
+    Taskpool::GetCurrentTaskpool()->PostTask(
+        std::make_unique<FinishColdStartTask>(GetJSThread()->GetThreadId(), this));
+}
+
+void Heap::NotifyHighSensitive(bool isStart)
+{
+    onHighSensitiveEvent_ = isStart;
+    if (!onHighSensitiveEvent_ && !onStartupEvent_) {
+        // set overshoot size to increase gc threashold larger 8MB than current heap size.
+        int64_t semiRemainSize = GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize();
+        int64_t overshootSize = GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize() - semiRemainSize;
+        // overshoot size should be larger than 0.
+        GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
+        GetNewSpace()->SetWaterLineWithoutGC();
+
+        TryTriggerIncrementalMarking();
+        TryTriggerIdleCollection();
+        TryTriggerConcurrentMarking();
+    }
+}
+
+bool Heap::NeedStopCollection()
+{
+    if (!InSensitiveStatus()) {
+        return false;
+    }
+
+    if (GetHeapObjectSize() < ecmaVm_->GetEcmaParamConfiguration().GetMaxHeapSize() -
+        ecmaVm_->GetEcmaParamConfiguration().GetOldSpaceOvershootSize()) {
+        return true;
+    }
+
+    GetNewSpace()->SetOverShootSize(
+        GetNewSpace()->GetCommittedSize() - GetNewSpace()->GetInitialCapacity() +
+        ecmaVm_->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
+    return false;
+}
+
 bool Heap::CheckCanDistributeTask()
 {
     os::memory::LockHolder holder(waitTaskFinishedMutex_);
@@ -1164,6 +1232,13 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
 bool Heap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     heap_->ReclaimRegions(gcType_);
+    return true;
+}
+
+bool Heap::FinishColdStartTask::Run([[maybe_unused]] uint32_t threadIndex)
+{
+    usleep(2000000);  // 2000000 means 2s
+    heap_->NotifyFinishColdStart(false);
     return true;
 }
 
