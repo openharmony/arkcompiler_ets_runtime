@@ -103,7 +103,7 @@ EcmaString *EcmaString::CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<Ec
     EcmaString *newString = nullptr;
     if (strOrigin->IsLineString()) {
         newString = CreateLineStringWithSpaceType(vm, length, compressed, MemSpaceType::OLD_SPACE);
-    } else if (strOrigin->IsConstantString()){
+    } else if (strOrigin->IsConstantString()) {
         return CreateConstantString(vm, strOrigin->GetDataUtf8(), length, MemSpaceType::OLD_SPACE);
     }
     strOrigin = *original;

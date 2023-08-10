@@ -576,7 +576,7 @@ public:
     static void GetAllKeys(const JSHandle<JSObject> &obj, std::vector<JSTaggedValue> &keyVector);
 
     static void GetAllKeysByFilter(const JSThread *thread, const JSHandle<JSObject> &obj,
-                                   uint32_t& keyArrayEffectivelength,
+                                   uint32_t &keyArrayEffectivelength,
                                    const JSHandle<TaggedArray> &keyArray,
                                    uint32_t filter);
     static void GetAllElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
@@ -584,7 +584,7 @@ public:
     static void GetAllElementKeysByFilter(JSThread *thread,
                                           const JSHandle<JSObject> &obj,
                                           const JSHandle<TaggedArray> &keyArray,
-                                          uint32_t &keyArrayEffectivelength,
+                                          uint32_t &keyArrayEffectiveLength,
                                           uint32_t filter);
 
     static void GetALLElementKeysIntoVector(const JSThread *thread, const JSHandle<JSObject> &obj,
