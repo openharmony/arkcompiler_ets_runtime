@@ -31,3 +31,20 @@ function foo() {
 
 foo();
 
+
+class C {
+    x: number;
+    constructor(v: number) {
+        this.x = v;
+    }
+}
+
+function testObject() {
+    let objArray: C[] = [new C(1), new C(2)];
+    for (let i: number = 0; i < objArray.length; ++i) {
+        print(objArray[i].x);
+    }
+}
+
+testObject();
+

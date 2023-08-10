@@ -52,6 +52,11 @@ bool Elements::IsDouble(ElementsKind kind)
     return kind == ElementsKind::DOUBLE;
 }
 
+bool Elements::IsObject(ElementsKind kind)
+{
+    return kind == ElementsKind::OBJECT;
+}
+
 bool Elements::IsHole(ElementsKind kind)
 {
     static constexpr uint8_t EVEN_NUMBER = 2;

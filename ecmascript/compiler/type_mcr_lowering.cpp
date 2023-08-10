@@ -319,7 +319,7 @@ void TypeMCRLowering::LowerLoadTypedArrayLength(GateRef gate)
 void TypeMCRLowering::LowerObjectTypeCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    auto type = acc_.GetParamGateType(gate);
+    GateType type = acc_.GetObjectTypeAccessor(gate).GetType();
     if (tsManager_->IsClassInstanceTypeKind(type)) {
         LowerTSSubtypingCheck(gate);
     } else if (tsManager_->IsClassTypeKind(type) ||
@@ -352,7 +352,7 @@ void TypeMCRLowering::LowerSimpleHClassCheck(GateRef gate)
 void TypeMCRLowering::LowerObjectTypeCompare(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    auto type = acc_.GetParamGateType(gate);
+    auto type = acc_.GetObjectTypeAccessor(gate).GetType();
     if (tsManager_->IsClassInstanceTypeKind(type)) {
         LowerTSSubtypingCompare(gate);
     } else if (tsManager_->IsClassTypeKind(type) ||
@@ -383,7 +383,10 @@ void TypeMCRLowering::LowerTSSubtypingCompare(GateRef gate)
 GateRef TypeMCRLowering::BuildCompareSubTyping(GateRef gate, GateRef frameState, Label *levelValid, Label *exit)
 {
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    builder_.HeapObjectCheck(receiver, frameState);
+    bool isHeapObject = acc_.GetObjectTypeAccessor(gate).IsHeapObject();
+    if (!isHeapObject) {
+        builder_.HeapObjectCheck(receiver, frameState);
+    }
 
     GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
     ArgumentAccessor argAcc(circuit_);
@@ -423,7 +426,11 @@ GateRef TypeMCRLowering::BuildCompareSubTyping(GateRef gate, GateRef frameState,
 GateRef TypeMCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
 {
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    builder_.HeapObjectCheck(receiver, frameState);
+    bool isHeapObject = acc_.GetObjectTypeAccessor(gate).IsHeapObject();
+    if (!isHeapObject) {
+        builder_.HeapObjectCheck(receiver, frameState);
+    }
+
     GateRef aotHCIndex = acc_.GetValueIn(gate, 1);
     auto hclassIndex = acc_.GetConstantValue(aotHCIndex);
     ArgumentAccessor argAcc(circuit_);
@@ -688,6 +695,7 @@ void TypeMCRLowering::LowerLoadElement(GateRef gate)
     switch (op) {
         case TypedLoadOp::ARRAY_LOAD_INT_ELEMENT:
         case TypedLoadOp::ARRAY_LOAD_DOUBLE_ELEMENT:
+        case TypedLoadOp::ARRAY_LOAD_OBJECT_ELEMENT:
         case TypedLoadOp::ARRAY_LOAD_TAGGED_ELEMENT:
             LowerArrayLoadElement(gate, ArrayState::PACKED);
             break;

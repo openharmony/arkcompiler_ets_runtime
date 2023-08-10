@@ -601,13 +601,17 @@ void TSHCRLowering::LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode 
     ASSERT(!infos.empty());
     AddProfiling(gate);
 
+    // If all elements of the array are objects, and receiver is one of the elements,
+    // no HeapObjectCheck is required.
+    bool isHeapObject = acc_.IsHeapObjectFromElementsKind(receiver);
+
     // monomorphic
     if (infos.size() == 1) {
         int hclassIndex = infos[0].HClassIndex();
         PropertyLookupResult plr = infos[0].Plr();
         if (!Uncheck()) {
             GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-            builder_.ObjectTypeCheck(infos[0].Type(), receiver, hclassIndexGate);
+            builder_.ObjectTypeCheck(infos[0].Type(), isHeapObject, receiver, hclassIndexGate);
         }
 
         GateRef result = BuildNamedPropertyAccess(gate, accessHelper, plr);
@@ -631,11 +635,11 @@ void TSHCRLowering::LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode 
         builder_.SetState(fallthroughState);
         builder_.SetDepend(fallthroughDepend);
         if (i == size - 1) {
-            builder_.ObjectTypeCheck(type, receiver, hclassIndexGate);
+            builder_.ObjectTypeCheck(type, isHeapObject, receiver, hclassIndexGate);
             fallthroughState = Circuit::NullGate();
             fallthroughDepend = Circuit::NullGate();
         } else {
-            GateRef compare = builder_.ObjectTypeCompare(type, receiver, hclassIndexGate);
+            GateRef compare = builder_.ObjectTypeCompare(type, isHeapObject, receiver, hclassIndexGate);
             GateRef branch = builder_.Branch(builder_.GetState(), compare);
             GateRef ifTrue = builder_.IfTrue(branch);
             GateRef ifFalse = builder_.IfFalse(branch);
@@ -866,6 +870,8 @@ GateRef TSHCRLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey, Ele
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_INT_ELEMENT>(receiver, propKey);
     } else if (Elements::IsDouble(kind)) {
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_DOUBLE_ELEMENT>(receiver, propKey);
+    } else if (Elements::IsObject(kind)) {
+        result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_OBJECT_ELEMENT>(receiver, propKey);
     } else if (!Elements::IsHole(kind)) {
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_TAGGED_ELEMENT>(receiver, propKey);
     } else {
@@ -920,6 +926,11 @@ void TSHCRLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateR
         GateRef length = builder_.LoadArrayLength(receiver);
         builder_.IndexCheck(receiverType, length, propKey);
         builder_.COWArrayCheck(receiver);
+
+        if (Elements::IsObject(kind)) {
+            GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
+            builder_.HeapObjectCheck(value, frameState);
+        }
     }
     builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, propKey, value);
 }

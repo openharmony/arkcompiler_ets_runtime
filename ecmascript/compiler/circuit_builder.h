@@ -258,8 +258,8 @@ public:
     GateRef LoadTypedArrayLength(GateType type, GateRef gate);
     GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
     GateRef IndexCheck(GateType type, GateRef gate, GateRef index);
-    GateRef ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassIndex);
-    GateRef ObjectTypeCompare(GateType type, GateRef gate, GateRef hclassIndex);
+    GateRef ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex);
+    GateRef ObjectTypeCompare(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex);
     GateRef TryPrimitiveTypeCheck(GateType type, GateRef gate);
     GateRef CallTargetCheck(GateRef gate, GateRef function, GateRef id, GateRef param, const char* comment = nullptr);
     GateRef JSCallTargetFromDefineFuncCheck(GateType type, GateRef func, GateRef gate);
