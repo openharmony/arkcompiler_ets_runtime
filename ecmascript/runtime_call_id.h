@@ -272,6 +272,7 @@ namespace panda::ecmascript {
     V(Array, Flat)                            \
     V(Array, FlatMap)                         \
     V(Array, At)                              \
+    V(Array, ToSorted)                        \
     V(Array, ToSpliced)                       \
     V(ArrayBuffer, Constructor)               \
     V(ArrayBuffer, Slice)                     \
