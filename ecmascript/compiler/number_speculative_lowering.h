@@ -45,6 +45,7 @@ private:
     void VisitUndefinedStrictEq(GateRef gate);
     void VisitCallBuiltins(GateRef gate);
     void VisitRangeGuard(GateRef gate);
+    void VisitIndexCheck(GateRef gate);
     void VisitLoadArrayLength(GateRef gate);
     void VisitLoadElement(GateRef gate);
     void VisitLoadProperty(GateRef gate);
