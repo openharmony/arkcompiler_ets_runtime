@@ -34,6 +34,9 @@ public:
     static JSTaggedValue HandleFindIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                  JSHandle<JSTaggedValue> callbackFnHandle,
                                                  JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
+    static JSTaggedValue HandleFindLastIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                                     JSHandle<JSTaggedValue> callbackFnHandle,
+                                                     JSHandle<JSTaggedValue> thisArgHandle, int64_t &k);
     static JSTaggedValue HandleEveryOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                              JSHandle<JSTaggedValue> callbackFnHandle,
                                              JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);

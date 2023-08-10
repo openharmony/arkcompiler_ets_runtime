@@ -109,6 +109,10 @@ public:
     static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv);
     // 23.2.3.1
     static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
+    // 23.2.3.13
+    static JSTaggedValue FindLast(EcmaRuntimeCallInfo *argv);
+    // 23.2.3.14
+    static JSTaggedValue FindLastIndex(EcmaRuntimeCallInfo *argv);
     // 23.2.3.33
     static JSTaggedValue ToSorted(EcmaRuntimeCallInfo *argv);
     // 23.2.3.36
