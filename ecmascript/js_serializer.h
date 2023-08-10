@@ -115,6 +115,11 @@ public:
     // Return pointer to the buffer and its length, should not use this Serializer anymore after Release
     std::pair<uint8_t *, size_t> ReleaseBuffer();
 
+    void SetDefaultTransfer()
+    {
+        defaultTransfer_ = true;
+    }
+
 private:
     bool WriteJSFunction(const JSHandle<JSTaggedValue> &value);
     bool WriteMethod(const JSHandle<JSTaggedValue> &value);
@@ -165,6 +170,7 @@ private:
     CUnorderedMap<uintptr_t, uint64_t> referenceMap_;
     CUnorderedSet<uintptr_t> transferDataSet_;
     uint64_t objectId_ = 0;
+    bool defaultTransfer_ = false;
 };
 
 class JSDeserializer {
