@@ -44,6 +44,8 @@ public:
     static CMap<ElementsKind, ConstantIndex> InitializeHClassMap();
 
     static std::string GetString(ElementsKind kind);
+    static bool IsInt(ElementsKind kind);
+    static bool IsDouble(ElementsKind kind);
     static bool IsHole(ElementsKind kind);
     static bool IsGeneric(ElementsKind kind)
     {

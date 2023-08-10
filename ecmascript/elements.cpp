@@ -42,6 +42,16 @@ std::string Elements::GetString(ElementsKind kind)
     return std::to_string(static_cast<uint32_t>(kind));
 }
 
+bool Elements::IsInt(ElementsKind kind)
+{
+    return kind == ElementsKind::INT;
+}
+
+bool Elements::IsDouble(ElementsKind kind)
+{
+    return kind == ElementsKind::DOUBLE;
+}
+
 bool Elements::IsHole(ElementsKind kind)
 {
     static constexpr uint8_t EVEN_NUMBER = 2;

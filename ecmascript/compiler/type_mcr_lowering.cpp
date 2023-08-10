@@ -241,7 +241,8 @@ void TypeMCRLowering::LowerStableArrayCheck(GateRef gate)
 
     GateRef receiverHClass = builder_.LoadConstOffset(
         VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
-    builder_.HClassStableArrayCheck(receiverHClass, frameState);
+    ArrayMetaDataAccessor accessor = acc_.GetArrayMetaDataAccessor(gate);
+    builder_.HClassStableArrayCheck(receiverHClass, frameState, accessor);
     builder_.ArrayGuardianCheck(frameState);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -685,8 +686,13 @@ void TypeMCRLowering::LowerLoadElement(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     auto op = acc_.GetTypedLoadOp(gate);
     switch (op) {
-        case TypedLoadOp::ARRAY_LOAD_ELEMENT:
-            LowerArrayLoadElement(gate);
+        case TypedLoadOp::ARRAY_LOAD_INT_ELEMENT:
+        case TypedLoadOp::ARRAY_LOAD_DOUBLE_ELEMENT:
+        case TypedLoadOp::ARRAY_LOAD_TAGGED_ELEMENT:
+            LowerArrayLoadElement(gate, ArrayState::PACKED);
+            break;
+        case TypedLoadOp::ARRAY_LOAD_HOLE_TAGGED_ELEMENT:
+            LowerArrayLoadElement(gate, ArrayState::HOLEY);
             break;
         case TypedLoadOp::INT8ARRAY_LOAD_ELEMENT:
             LowerTypedArrayLoadElement(gate, BuiltinTypeId::INT8_ARRAY);
@@ -738,14 +744,16 @@ void TypeMCRLowering::LowerCowArrayCheck(GateRef gate, GateRef glue) {
 }
 
 // for JSArray
-void TypeMCRLowering::LowerArrayLoadElement(GateRef gate)
+void TypeMCRLowering::LowerArrayLoadElement(GateRef gate, ArrayState arrayState)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSObject::ELEMENTS_OFFSET);
     GateRef result = builder_.GetValueFromTaggedArray(element, index);
-    result = builder_.ConvertHoleAsUndefined(result);
+    if (arrayState == ArrayState::HOLEY) {
+        result = builder_.ConvertHoleAsUndefined(result);
+    }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 

@@ -1671,10 +1671,7 @@ inline GateRef StubBuilder::GetInlinedPropertiesFromHClass(GateRef hClass)
 
 inline GateRef StubBuilder::GetElementsKindFromHClass(GateRef hClass)
 {
-    GateRef bitfield = Load(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
-    return Int32And(Int32LSR(bitfield,
-        Int32(JSHClass::ElementsKindBits::START_BIT)),
-        Int32((1LLU << JSHClass::ElementsKindBits::SIZE) - 1));
+    return env_->GetBuilder()->GetElementsKindByHClass(hClass);
 }
 
 inline GateRef StubBuilder::GetObjectSizeFromHClass(GateRef hClass)

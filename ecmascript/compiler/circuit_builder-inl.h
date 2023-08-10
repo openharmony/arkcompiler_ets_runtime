@@ -706,6 +706,15 @@ GateRef CircuitBuilder::IsIsStableElementsByHClass(GateRef hClass)
         Int32(0));
 }
 
+GateRef CircuitBuilder::GetElementsKindByHClass(GateRef hClass)
+{
+    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    return Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::ElementsKindBits::START_BIT)),
+        Int32((1LLU << JSHClass::ElementsKindBits::SIZE) - 1));
+}
+
 GateRef CircuitBuilder::IsDictionaryElement(GateRef hClass)
 {
     GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);

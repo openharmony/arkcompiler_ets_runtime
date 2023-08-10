@@ -732,7 +732,8 @@ void TSHCRLowering::LowerTypedLdArrayLength(GateRef gate)
     AddProfiling(gate);
     GateRef array = acc_.GetValueIn(gate, 2);
     if (!Uncheck()) {
-        builder_.StableArrayCheck(array);
+        ElementsKind kind = acc_.TryGetElementsKind(gate);
+        builder_.StableArrayCheck(array, kind, ArrayMetaDataAccessor::Mode::LOAD_LENGTH);
     }
 
     GateRef result = builder_.LoadArrayLength(array);
@@ -839,7 +840,8 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     GateRef result = Circuit::NullGate();
     if (tsManager_->IsArrayTypeKind(receiverType)) {
         AddProfiling(gate);
-        result = LoadJSArrayByIndex(receiver, propKey);
+        ElementsKind kind = acc_.TryGetElementsKind(gate);
+        result = LoadJSArrayByIndex(receiver, propKey, kind);
     } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
         AddProfiling(gate);
         result = LoadTypedArrayByIndex(receiver, propKey);
@@ -849,16 +851,27 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-GateRef TSHCRLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey)
+GateRef TSHCRLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey, ElementsKind kind)
 {
     if (!Uncheck()) {
         GateType receiverType = acc_.GetGateType(receiver);
         receiverType = tsManager_->TryNarrowUnionType(receiverType);
-        builder_.StableArrayCheck(receiver);
+        builder_.StableArrayCheck(receiver, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
         GateRef length = builder_.LoadArrayLength(receiver);
         propKey = builder_.IndexCheck(receiverType, length, propKey);
     }
-    return builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, propKey);
+
+    GateRef result = Circuit::NullGate();
+    if (Elements::IsInt(kind)) {
+        result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_INT_ELEMENT>(receiver, propKey);
+    } else if (Elements::IsDouble(kind)) {
+        result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_DOUBLE_ELEMENT>(receiver, propKey);
+    } else if (!Elements::IsHole(kind)) {
+        result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_TAGGED_ELEMENT>(receiver, propKey);
+    } else {
+        result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_HOLE_TAGGED_ELEMENT>(receiver, propKey);
+    }
+    return result;
 }
 
 GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
@@ -898,12 +911,12 @@ GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
     return Circuit::NullGate();
 }
 
-void TSHCRLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value)
+void TSHCRLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value, ElementsKind kind)
 {
     if (!Uncheck()) {
         GateType receiverType = acc_.GetGateType(receiver);
         receiverType = tsManager_->TryNarrowUnionType(receiverType);
-        builder_.StableArrayCheck(receiver);
+        builder_.StableArrayCheck(receiver, kind, ArrayMetaDataAccessor::Mode::STORE_ELEMENT);
         GateRef length = builder_.LoadArrayLength(receiver);
         builder_.IndexCheck(receiverType, length, propKey);
         builder_.COWArrayCheck(receiver);
@@ -972,7 +985,8 @@ void TSHCRLowering::LowerTypedStObjByValue(GateRef gate)
 
     if (tsManager_->IsArrayTypeKind(receiverType)) {
         AddProfiling(gate);
-        StoreJSArrayByIndex(receiver, propKey, value);
+        ElementsKind kind = acc_.TryGetElementsKind(gate);
+        StoreJSArrayByIndex(receiver, propKey, value, kind);
     } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
         AddProfiling(gate);
         StoreTypedArrayByIndex(receiver, propKey, value);

@@ -253,8 +253,8 @@ bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
             return acc_.GetOpCode(lhs) == OpCode::LOAD_ELEMENT;
         case OpCode::STORE_ELEMENT: {
             if(lop == OpCode::LOAD_ELEMENT) {
-                auto lopIsTypedArray = static_cast<uint8_t>(acc_.GetTypedLoadOp(lhs)) > 0;
-                auto ropIsTypedArray = static_cast<uint8_t>(acc_.GetTypedStoreOp(rhs)) > 0;
+                auto lopIsTypedArray = acc_.GetTypedLoadOp(lhs) >= TypedLoadOp::TYPED_ARRAY_FIRST;
+                auto ropIsTypedArray = acc_.GetTypedStoreOp(rhs) >= TypedStoreOp::TYPED_ARRAY_FIRST;
                 return lopIsTypedArray == ropIsTypedArray;
             }
             return false;
