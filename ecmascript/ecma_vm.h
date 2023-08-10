@@ -26,6 +26,7 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/gc_stats.h"
+#include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/taskpool/taskpool.h"
 
@@ -274,49 +275,15 @@ public:
 
     void TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint);
 
-    void WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm)
-    {
-        os::memory::LockHolder lock(mutex_);
-        auto thread = workerVm->GetJSThread();
-        if (thread != nullptr && hostVm != nullptr) {
-            auto tid = thread->GetThreadId();
-            if (tid != 0) {
-                workerList_.emplace(tid, workerVm);
-            }
-        }
-    }
+    void WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm);
 
-    EcmaVM *GetWorkerVm(uint32_t tid)
-    {
-        os::memory::LockHolder lock(mutex_);
-        EcmaVM *workerVm = nullptr;
-        if (!workerList_.empty()) {
-            auto iter = workerList_.find(tid);
-            if (iter != workerList_.end()) {
-                workerVm = iter->second;
-            }
-        }
-        return workerVm;
-    }
+    EcmaVM *GetWorkerVm(uint32_t tid);
 
-    bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
-    {
-        os::memory::LockHolder lock(mutex_);
-        auto thread = workerVm->GetJSThread();
-        if (hostVm != nullptr && thread != nullptr) {
-            auto tid = thread->GetThreadId();
-            if (tid == 0) {
-                return false;
-            }
-            auto iter = workerList_.find(tid);
-            if (iter != workerList_.end()) {
-                workerList_.erase(iter);
-                return true;
-            }
-            return false;
-        }
-        return false;
-    }
+    bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+
+    bool SuspendWorkerVm(uint32_t tid);
+
+    void ResumeWorkerVm(uint32_t tid);
 
     template<typename Callback>
     void EnumerateWorkerVm(Callback cb)
