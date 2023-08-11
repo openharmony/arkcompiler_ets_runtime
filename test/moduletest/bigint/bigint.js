@@ -44,3 +44,10 @@ try {
 } catch (err) {
     print(err.name);
 }
+
+try {
+    const atom = this.Atomics;
+    atom.and(new BigInt64Array(3807), atom, atom);
+} catch (err) {
+    print(err.name)
+}
