@@ -283,7 +283,6 @@ public:
     void SetPropertiesArray(VariableType type, GateRef glue, GateRef object, GateRef propsArray);
     void SetHash(GateRef glue, GateRef object, GateRef hash);
     GateRef GetLengthOfTaggedArray(GateRef array);
-    GateRef GetLengthOfJsArray(GateRef glue, GateRef array);
     // object operation
     GateRef IsJSHClass(GateRef obj);
     GateRef LoadHClass(GateRef object);

@@ -1026,10 +1026,7 @@ inline GateRef StubBuilder::IsDictionaryElement(GateRef hClass)
 inline GateRef StubBuilder::IsClassConstructorFromBitField(GateRef bitfield)
 {
     // decode
-    return Int32NotEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSHClass::ClassConstructorBit::START_BIT)),
-                 Int32((1LU << JSHClass::ClassConstructorBit::SIZE) - 1)),
-        Int32(0));
+    return env_->GetBuilder()->IsClassConstructorWithBitField(bitfield);
 }
 
 inline GateRef StubBuilder::IsClassConstructor(GateRef object)

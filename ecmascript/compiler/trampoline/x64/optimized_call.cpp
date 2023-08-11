@@ -350,15 +350,19 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
     Register argV = r9;
     {
         Label lCallConstructor;
+        Label lNotClass;
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
         __ Movl(Operand(rsp, FRAME_SLOT_SIZE), argc); // skip return addr
         __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
         __ Btq(MethodLiteral::IsNativeBit::START_BIT, methodCallField); // is native
         __ Jb(&lCallNativeMethod);
         if (!isNew) {
-            __ Btq(JSHClass::ClassConstructorBit::START_BIT, rax); // is CallConstructor
+            __ Btq(JSHClass::IsClassConstructorOrPrototypeBit::START_BIT, rax); // is CallConstructor
+            __ Jnb(&lNotClass);
+            __ Btq(JSHClass::ConstructorBit::START_BIT, rax); // is CallConstructor
             __ Jb(&lCallConstructor);
         }
+        __ Bind(&lNotClass);
         __ Movq(rsp, argV);
         auto argvSlotOffset = kungfu::ArgumentAccessor::GetExtraArgsNum() + 1;  // 1: return addr
         __ Addq(argvSlotOffset * FRAME_SLOT_SIZE, argV); // skip return addr and argc
@@ -575,6 +579,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     Label aotCall;
     Label popArgs;
     Label isJsFunc;
+    Label isNotClass;
     __ Pushq(rbp);
     __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME));
     __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
@@ -640,8 +645,11 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     Register jsfunc = rsi;
     __ Bind(&isJsFunc);
     {
-        __ Btq(JSHClass::ClassConstructorBit::START_BIT, rax); // is CallConstructor
+        __ Btq(JSHClass::IsClassConstructorOrPrototypeBit::START_BIT, rax); // is CallConstructor
+        __ Jnb(&isNotClass);
+        __ Btq(JSHClass::ConstructorBit::START_BIT, rax);
         __ Jb(&slowCall);
+        __ Bind(&isNotClass);
         __ Btq(JSHClass::IsOptimizedBit::START_BIT, rax); // is aot
         __ Jnb(&slowCall);
         __ Bind(&aotCall);

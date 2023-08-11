@@ -2130,30 +2130,7 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
     if (propsLen <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES) {
         JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(properties, propsLen);
         ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
-        if (ihcVal.IsJSHClass()) {
-            bool isSuccess = true;
-            JSHClass *ihc = JSHClass::Cast(ihcVal.GetTaggedObject());
-            JSHClass *oldHC = obj->GetJSHClass();
-            ihc->SetPrototype(thread, oldHC->GetPrototype());
-            obj->SetClass(ihc);
-            for (size_t i = 0; i < propsLen; i++) {
-                auto value = obj->ConvertValueWithRep(i, properties->Get(i * 2 + 1));
-                if (!value.first) {
-                    isSuccess = false;
-                    break;
-                }
-                obj->SetPropertyInlinedPropsWithRep(thread, i, value.second);
-            }
-            if (isSuccess) {
-                return obj;
-            }
-            // The layout representation of ihc is inaccurate and needs to be rolled back to the old HClass
-            obj->SetClass(oldHC);
-        }
-        for (size_t i = 0; i < propsLen; i++) {
-            // 2: literal contains a pair of key-value
-            obj->SetPropertyInlinedProps(thread, i, properties->Get(i * 2 + 1));
-        }
+        SetAllPropertys(thread, obj, properties, propsLen, ihcVal);
         return obj;
     } else {
         JSHandle<JSObject> obj = factory->NewEmptyJSObject();
@@ -2174,6 +2151,52 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
         }
         obj->SetProperties(thread, dict);
         return obj;
+    }
+}
+
+void JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, const JSHandle<TaggedArray> &properties,
+    uint32_t propsLen, JSTaggedValue ihcVal)
+{
+    // AOT runtime
+    if (ihcVal.IsJSHClass()) {
+        bool isSuccess = true;
+        JSHClass *ihc = JSHClass::Cast(ihcVal.GetTaggedObject());
+        JSHClass *oldHC = obj->GetJSHClass();
+        ihc->SetPrototype(thread, oldHC->GetPrototype());
+        obj->SetClass(ihc);
+        for (size_t i = 0; i < propsLen; i++) {
+            auto value = obj->ConvertValueWithRep(i, properties->Get(i * 2 + 1));
+            // If value.first is false, indicating that value cannot be converted to the expected value of
+            // representation. For example, the representation is INT, but the value type is string.
+            if (!value.first) {
+                isSuccess = false;
+                break;
+            }
+            obj->SetPropertyInlinedPropsWithRep(thread, i, value.second);
+        }
+        if (isSuccess) {
+            return;
+        }
+        // If conversion fails, it needs to be rolled back to the old HClass and reset the value.
+        obj->SetClass(oldHC);
+    } else if (thread->IsPGOProfilerEnable()) {
+        // PGO need to track TrackType
+        JSHClass *oldHC = obj->GetJSHClass();
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(oldHC->GetLayout().GetTaggedObject());
+        for (size_t i = 0; i < propsLen; i++) {
+            auto value = properties->Get(i * 2 + 1);
+            auto attr = layoutInfo->GetAttr(i);
+            if (attr.UpdateTrackType(value)) {
+                layoutInfo->SetNormalAttr(thread, i, attr);
+            }
+            obj->SetPropertyInlinedProps(thread, i, value);
+        }
+        return;
+    }
+    // Interpreter runtime or track field initialized fail.
+    for (size_t i = 0; i < propsLen; i++) {
+        // 2: literal contains a pair of key-value
+        obj->SetPropertyInlinedProps(thread, i, properties->Get(i * 2 + 1));
     }
 }
 

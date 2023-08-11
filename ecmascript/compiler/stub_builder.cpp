@@ -581,8 +581,23 @@ GateRef StubBuilder::CallGetterHelper(
         Branch(Equal(accessor, lengthAccessor), &arrayLength, &tryContinue);
         Bind(&arrayLength);
         {
-            result = IntToTaggedPtr(Load(VariableType::INT32(), holder, IntPtr(JSArray::LENGTH_OFFSET)));
-            Jump(&exit);
+            auto length = Load(VariableType::INT32(), holder, IntPtr(JSArray::LENGTH_OFFSET));
+            // TaggedInt supports up to INT32_MAX.
+            // If length is greater than Int32_MAX, needs to be converted to TaggedDouble.
+            auto condition = Int32UnsignedGreaterThan(length, Int32(INT32_MAX));
+            Label overflow(env);
+            Label notOverflow(env);
+            Branch(condition, &overflow, &notOverflow);
+            Bind(&overflow);
+            {
+                result = DoubleToTaggedDoublePtr(ChangeUInt32ToFloat64(length));
+                Jump(&exit);
+            }
+            Bind(&notOverflow);
+            {
+                result = IntToTaggedPtr(length);
+                Jump(&exit);
+            }
         }
         Bind(&tryContinue);
         result = CallRuntime(glue, RTSTUB_ID(CallInternalGetter), { accessor, holder });
@@ -6120,44 +6135,6 @@ GateRef StubBuilder::ToNumber(GateRef glue, GateRef tagged)
         Bind(&defaultLabel);
         {
             CallRuntime(glue, RTSTUB_ID(OtherToNumber), { tagged });
-            Jump(&exit);
-        }
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-GateRef StubBuilder::GetLengthOfJsArray(GateRef glue, GateRef array)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    Label isInt(env);
-    Label notInt(env);
-    Label notDouble(env);
-    Label isDouble(env);
-    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
-    GateRef len = Load(VariableType::JS_ANY(), array, IntPtr(JSArray::LENGTH_OFFSET));
-    Branch(TaggedIsInt(len), &isInt, &notInt);
-    Bind(&isInt);
-    {
-        result = TaggedGetInt(len);
-        Jump(&exit);
-    }
-    Bind(&notInt);
-    {
-        Branch(TaggedIsDouble(len), &isDouble, &notDouble);
-        Bind(&isDouble);
-        {
-            result = DoubleToInt(glue, GetDoubleOfTDouble(len));
-            Jump(&exit);
-        }
-        Bind(&notDouble);
-        {
-            FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable)) });
             Jump(&exit);
         }
     }
