@@ -41,6 +41,7 @@
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/symbol_table.h"
 
 namespace panda::ecmascript {
 JSHandle<EcmaString> GetTypeString(JSThread *thread, PreferredPrimitiveType type)
@@ -854,7 +855,7 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnPropertyKeys(JSThread *thread, const 
 }
 
 JSHandle<TaggedArray> JSTaggedValue::GetAllPropertyKeys(JSThread *thread,
-    const JSHandle<JSTaggedValue> &obj, uint32_t filter)
+                                                        const JSHandle<JSTaggedValue> &obj, uint32_t filter)
 {
     if (obj->IsJSProxy()) {
         LOG_ECMA(WARN) << "GetAllPropertyKeys do not support JSProxy yet";
@@ -941,6 +942,25 @@ bool JSTaggedValue::GlobalHasOwnProperty(JSThread *thread, const JSHandle<JSTagg
 
     PropertyDescriptor desc(thread);
     return JSObject::GlobalGetOwnProperty(thread, key, desc);
+}
+
+bool JSTaggedValue::CanBeHeldWeakly(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
+{
+    // 1. If v is an Object, return true.
+    if (tagged->IsECMAObject()) {
+        return true;
+    }
+    // 2. If v is a Symbol and KeyForSymbol(v) is undefined, return true.
+    if (tagged->IsSymbol()) {
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        auto *table = env->GetRegisterSymbols().GetObject<SymbolTable>();
+        JSTaggedValue key = table->FindSymbol(tagged.GetTaggedValue());
+        if (key.IsUndefined()) {
+            return true;
+        }
+    }
+    // 3. Return false.
+    return false;
 }
 
 JSTaggedNumber JSTaggedValue::ToIndex(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)

@@ -905,6 +905,13 @@ public:
     double GetTime();
 };
 
+class PUBLIC_API ProxyRef : public ObjectRef {
+public:
+    Local<JSValueRef> GetHandler(const EcmaVM *vm);
+    Local<JSValueRef> GetTarget(const EcmaVM *vm);
+    bool IsRevoked();
+};
+
 class PUBLIC_API MapRef : public ObjectRef {
 public:
     int32_t GetSize();
@@ -1352,7 +1359,8 @@ public:
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
     static void DeleteSerializationData(void *data);
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
-    static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<std::vector<uint8_t>(std::string dirPath)> cb);
+    static void SetHostResolveBufferTracker(EcmaVM *vm,
+        std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)> cb);
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);

@@ -145,9 +145,9 @@ private:
                                      GateType funcType, bool isNoGC);
     void LowerFastCall(GateRef gate, GateRef func, const std::vector<GateRef> &argsFastCall, bool isNoGC);
     void LowerCall(GateRef gate, GateRef func, const std::vector<GateRef> &args, bool isNoGC);
-    GateRef LoadJSArrayByIndex(GateRef receiver, GateRef propKey);
+    GateRef LoadJSArrayByIndex(GateRef receiver, GateRef propKey, ElementsKind kind);
     GateRef LoadTypedArrayByIndex(GateRef receiver, GateRef propKey);
-    void StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value);
+    void StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value, ElementsKind kind);
     void StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, GateRef value);
 
     // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed,

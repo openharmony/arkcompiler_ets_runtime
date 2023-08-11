@@ -1,0 +1,54 @@
+# Copyright (c) 2023 Shenzhen Kaihong Digital Industry Development Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+weakmapsymbolkey test start
+TypeError
+wm.has(s1) true
+wm.get(s1) 1
+wm.delete(s1) true
+wm.has(s1) false
+wm.has(s2) false
+wm.get(s2) undefined
+wm.delete(s2) false
+wm.get(Symbol.match) == 4 true
+weakmapsymbolkey test end
+weaksetsymbolvalue test start
+TypeError
+ws.has(sym1) true
+ws.delete(sym1) true
+ws.has(sym1) false
+ws.has(sym2) false
+ws.delete(sym2) false
+ws.has(Symbol.match) true
+weaksetsymbolvalue test end
+weakrefforsymbol test start
+TypeError
+wr1.deref() == target1 true
+0 wr.deref() == ctor true
+1 wr.deref() == ctor true
+2 wr.deref() == ctor true
+3 wr.deref() == ctor true
+4 wr.deref() == ctor true
+5 wr.deref() == ctor true
+6 wr.deref() == ctor true
+7 wr.deref() == ctor true
+8 wr.deref() == ctor true
+9 wr.deref() == ctor true
+10 wr.deref() == ctor true
+11 wr.deref() == ctor true
+12 wr.deref() == ctor true
+weakrefforsymbol test end
+finalizationregistrywithsymbol test start
+TypeError
+finalizationregistrywithsymbol test end
+symbol 2 destroyed

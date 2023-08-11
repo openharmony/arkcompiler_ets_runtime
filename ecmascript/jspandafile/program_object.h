@@ -292,8 +292,6 @@ public:
                         JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
                     }
 
-                    PGOProfiler *profiler = thread->GetEcmaVM()->GetPGOProfiler();
-                    profiler->InsertLiteralId(JSTaggedType(obj->GetJSHClass()), id);
                     val = obj.GetTaggedValue();
                     break;
                 }
@@ -303,6 +301,9 @@ public:
                     uint32_t length = literal->GetLength();
                     JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length), ArrayMode::LITERAL));
                     arr->SetElements(thread, literal);
+                    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+                        JSHClass::TransitToElementsKind(thread, arr);
+                    }
                     val = arr.GetTaggedValue();
                     break;
                 }

@@ -43,6 +43,7 @@ using namespace panda::pandasm;
 namespace panda::test {
 class PGOProfilerTest : public testing::Test {
 public:
+    using ApGenMode = PGOProfilerEncoder::ApGenMode;
     static void SetUpTestCase()
     {
         GTEST_LOG_(INFO) << "SetUpTestCase";
@@ -512,6 +513,7 @@ HWTEST_F_L0(PGOProfilerTest, PGOProfilerPostTask)
     JSHandle<ConstantPool> constPool = vm_->GetFactory()->NewConstantPool(4);
     constPool->SetJSPandaFile(pf.get());
     uint32_t checksum = 304293;
+    PGOProfilerManager::GetInstance()->SetApGenMode(ApGenMode::OVERWRITE);
     PGOProfilerManager::GetInstance()->SamplePandaFileInfo(checksum);
 
     JSHandle<JSTaggedValue> recordName(vm_->GetFactory()->NewFromStdString("test"));
@@ -606,7 +608,8 @@ HWTEST_F_L0(PGOProfilerTest, TextToBinary)
     file.write(result.c_str(), result.size());
     file.close();
 
-    ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary("ark-profiler10/modules.text", "ark-profiler10/", 2));
+    ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary("ark-profiler10/modules.text", "ark-profiler10/", 2,
+                                                                ApGenMode::MERGE));
 
     PGOProfilerDecoder loader("ark-profiler10/modules.ap", 2);
     ASSERT_TRUE(loader.LoadAndVerify(413775942));
@@ -614,45 +617,6 @@ HWTEST_F_L0(PGOProfilerTest, TextToBinary)
     unlink("ark-profiler10/modules.ap");
     unlink("ark-profiler10/modules.text");
     rmdir("ark-profiler10");
-}
-
-HWTEST_F_L0(PGOProfilerTest, TextRecover)
-{
-    mkdir("ark-profiler11/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    std::ofstream file("ark-profiler11/modules.text");
-    std::string result = "Profiler Version: 0.0.0.2\n";
-    file.write(result.c_str(), result.size());
-    result = "\nPanda file sumcheck list: [ 413775942 ]\n";
-    file.write(result.c_str(), result.size());
-    result = "\n_GLOBAL::funct_main_0: [ 1232/3/CALL_MODE/hello/ ]\n";
-    file.write(result.c_str(), result.size());
-    result = "\nrecordName: [ 234/100/HOTNESS_MODE/h#ello1/ ]\n";
-    file.write(result.c_str(), result.size());
-    file.close();
-
-    ASSERT_TRUE(PGOProfilerManager::GetInstance()->TextToBinary("ark-profiler11/modules.text", "ark-profiler11/", 2));
-
-    ASSERT_TRUE(PGOProfilerManager::GetInstance()->BinaryToText(
-        "ark-profiler11/modules.ap", "ark-profiler11/modules_recover.text", 2));
-
-    std::ifstream fileOrigin("ark-profiler11/modules.text");
-    std::ifstream fileRecover("ark-profiler11/modules_recover.text");
-
-    std::string lineOrigin;
-    std::string lineRecover;
-    // check content from origin and recovered profile line by line.
-    while (std::getline(fileOrigin, lineOrigin)) {
-        std::getline(fileRecover, lineRecover);
-        ASSERT_EQ(lineOrigin, lineRecover);
-    }
-
-    fileOrigin.close();
-    fileRecover.close();
-    unlink("ark-profiler11/modules.ap");
-    unlink("ark-profiler11/modules.text");
-    unlink("ark-profiler11/modules_recover.text");
-    rmdir("ark-profiler11");
 }
 
 HWTEST_F_L0(PGOProfilerTest, FailResetProfilerInWorker)
@@ -873,6 +837,68 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
     unlink("ark-profiler16/modules.ap");
     rmdir("ark-profiler16/");
 }
+
+HWTEST_F_L0(PGOProfilerTest, ArrayProfileTest)
+{
+    mkdir("ark-profiler18/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "array_test";
+    std::shared_ptr<JSPandaFile> jsPandaFile = ExecuteAndLoadJSPandaFile("ark-profiler18/", targetRecordName);
+    ASSERT_NE(jsPandaFile, nullptr);
+    uint32_t checksum = jsPandaFile->GetChecksum();
+
+    // Loader
+    PGOProfilerDecoder decoder("ark-profiler18/modules.ap", 1);
+    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    auto methodLiterals = jsPandaFile->GetMethodLiteralMap();
+    for (auto iter : methodLiterals) {
+        auto methodLiteral = iter.second;
+        auto methodId = methodLiteral->GetMethodId();
+        auto methodName = methodLiteral->GetMethodName(jsPandaFile.get(), methodId);
+        decoder.MatchAndMarkMethod(targetRecordName, methodName, methodId);
+        ASSERT_TRUE(decoder.Match(targetRecordName, methodId));
+        auto callback = [methodName, &decoder, jsPandaFile](uint32_t offset, PGOType *type) {
+            if (type->IsScalarOpType()) {
+                auto sampleType = *reinterpret_cast<PGOSampleType *>(type);
+                if (sampleType.IsClassType()) {
+                    ASSERT_EQ(std::string(methodName), "func_main_0");
+                    PGOHClassLayoutDesc *desc;
+                    if (!decoder.GetHClassLayoutDesc(sampleType, &desc)) {
+                        return;
+                    }
+                    ASSERT_EQ(desc->GetCtorLayoutDesc().size(), 0);
+                    ASSERT_EQ(desc->GetPtLayoutDesc().size(), 0);
+                    ASSERT_EQ(desc->GetLayoutDesc().size(), 1);
+                }
+            } else if (type->IsRwOpType()) {
+                auto pgoRWOpType = *reinterpret_cast<PGORWOpType *>(type);
+                if (std::string(methodName) == "foo") {
+                    ASSERT_TRUE(pgoRWOpType.GetCount() == 3);
+                    auto classType = PGOSampleType(pgoRWOpType.GetObjectInfo(0).GetClassType());
+                    PGOHClassLayoutDesc *desc;
+                    ASSERT_TRUE(decoder.GetHClassLayoutDesc(classType, &desc));
+                    ASSERT_EQ(desc->GetElementsKind(), ElementsKind::NUMBER);
+
+                    classType = PGOSampleType(pgoRWOpType.GetObjectInfo(1).GetClassType());
+                    ASSERT_TRUE(decoder.GetHClassLayoutDesc(classType, &desc));
+                    ASSERT_EQ(desc->GetElementsKind(), ElementsKind::HOLE_NUMBER);
+
+                    classType = PGOSampleType(pgoRWOpType.GetObjectInfo(2).GetClassType());
+                    ASSERT_TRUE(decoder.GetHClassLayoutDesc(classType, &desc));
+                    ASSERT_EQ(desc->GetElementsKind(), ElementsKind::HOLE_TAGGED);
+                } else if (std::string(methodName) == "foo1") {
+                    ASSERT_TRUE(pgoRWOpType.GetCount() == 1);
+                    auto classType = PGOSampleType(pgoRWOpType.GetObjectInfo(0).GetClassType());
+                    PGOHClassLayoutDesc *desc;
+                    ASSERT_TRUE(decoder.GetHClassLayoutDesc(classType, &desc));
+                    ASSERT_EQ(desc->GetElementsKind(), ElementsKind::TAGGED);
+                }
+            }
+        };
+        decoder.GetTypeInfo(jsPandaFile.get(), targetRecordName, methodLiteral, callback);
+    }
+    unlink("ark-profiler18/modules.ap");
+    rmdir("ark-profiler18/");
+}
 #endif
 
 HWTEST_F_L0(PGOProfilerTest, FileConsistencyCheck)
@@ -938,7 +964,7 @@ HWTEST_F_L0(PGOProfilerTest, MergeApSelfTwice)
     PGOProfilerDecoder decoder("ark-profiler18/modules_merge.ap", 1);
     PGOProfilerDecoder decoderSingle("ark-profiler18/modules.ap", 1);
     ASSERT_TRUE(PGOProfilerManager::MergeApFiles("ark-profiler18/modules.ap:ark-profiler18/modules.ap",
-                                                 "ark-profiler18/modules_merge.ap", 1));
+                                                 "ark-profiler18/modules_merge.ap", 1, ApGenMode::OVERWRITE));
     ASSERT_TRUE(decoder.LoadFull());
     ASSERT_TRUE(decoderSingle.LoadFull());
 

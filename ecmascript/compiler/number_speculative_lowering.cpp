@@ -80,6 +80,10 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitLoadElement(gate);
             break;
         }
+        case OpCode::INDEX_CHECK: {
+            VisitIndexCheck(gate);
+            break;
+        }
         case OpCode::LOAD_ARRAY_LENGTH:
         case OpCode::LOAD_TYPED_ARRAY_LENGTH: {
             VisitLoadArrayLength(gate);
@@ -355,9 +359,7 @@ void NumberSpeculativeLowering::VisitNumberMod(GateRef gate)
     }
     GateRef result = Circuit::NullGate();
     if (gateType.IsIntType()) {
-        if(GetRange(right).MaybeZero()) {
-            builder_.Int32CheckRightIsZero(right);
-        }
+        builder_.Int32CheckRightIsZero(right);
         result = CalculateInts<Op>(left, right);
         UpdateRange(result, GetRange(gate));
         acc_.SetMachineType(gate, MachineType::I32);
@@ -496,6 +498,12 @@ void NumberSpeculativeLowering::VisitPhi(GateRef gate)
     }
 }
 
+void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)
+{
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.SetMachineType(gate, MachineType::I32);
+}
+
 void NumberSpeculativeLowering::VisitLoadArrayLength(GateRef gate)
 {
     acc_.SetGateType(gate, GateType::NJSValue());
@@ -578,9 +586,6 @@ GateRef NumberSpeculativeLowering::CalculateInts(GateRef left, GateRef right)
             break;
         }
         case TypedBinOp::TYPED_MUL:
-            if(!leftRange.MaybeMulOverflowOrUnderflow(rightRange)) {
-                return builder_.Int32Mul(left, right);
-            }
             res = builder_.MulWithOverflow(left, right);
             break;
         case TypedBinOp::TYPED_MOD: {

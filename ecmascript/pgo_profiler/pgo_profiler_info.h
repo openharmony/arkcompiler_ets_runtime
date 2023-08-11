@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_PGO_PROFILER_INFO_H
 #define ECMASCRIPT_PGO_PROFILER_INFO_H
 
+#include <cstdint>
 #include <memory>
 #include <sstream>
 #include <unordered_map>
@@ -102,10 +103,11 @@ public:
     static constexpr VersionType USE_HCLASS_TYPE_MINI_VERSION = {0, 0, 0, 5};
     static constexpr VersionType FILE_CONSISTENCY_MINI_VERSION = {0, 0, 0, 6};
     static constexpr VersionType TRACK_FIELD_MINI_VERSION = {0, 0, 0, 7};
+    static constexpr VersionType ELEMENTS_KIND_MINI_VERSION = {0, 0, 0, 8};
     static constexpr VersionType FILE_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType HEADER_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType ELASTIC_HEADER_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
-    static constexpr VersionType LAST_VERSION = {0, 0, 0, 7};
+    static constexpr VersionType LAST_VERSION = {0, 0, 0, 8};
     static constexpr size_t SECTION_SIZE = 3;
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
@@ -226,6 +228,11 @@ public:
         return CompatibleVerify(TRACK_FIELD_MINI_VERSION);
     }
 
+    bool SupportElementsKind() const
+    {
+        return CompatibleVerify(ELEMENTS_KIND_MINI_VERSION);
+    }
+
     NO_COPY_SEMANTIC(PGOProfilerHeader);
     NO_MOVE_SEMANTIC(PGOProfilerHeader);
 
@@ -326,6 +333,7 @@ public:
     static constexpr int METHOD_COUNT_INDEX = 1;
     static constexpr int METHOD_MODE_INDEX = 2;
     static constexpr int METHOD_NAME_INDEX = 3;
+    static constexpr uint32_t METHOD_MAX_HIT_COUNT = 10000U;
 
     explicit PGOMethodInfo(PGOMethodId id) : id_(id) {}
 
@@ -383,7 +391,7 @@ public:
             LOG_ECMA(ERROR) << "The method id must same for merging";
             return;
         }
-        count_ += info->GetCount();
+        count_ = std::min(count_ + info->GetCount(), METHOD_MAX_HIT_COUNT);
         SetSampleMode(info->GetSampleMode());
     }
 
@@ -697,8 +705,11 @@ private:
 
 class PGOHClassLayoutDescInner {
 public:
-    PGOHClassLayoutDescInner(size_t size, PGOSampleType type, PGOSampleType superType)
-        : size_(size), type_(type), superType_(superType) {}
+    PGOHClassLayoutDescInner(size_t size, PGOSampleType type, PGOSampleType superType, ElementsKind kind)
+        : size_(size), type_(type), superType_(superType)
+    {
+        SetElementsKind(kind);
+    }
 
     static size_t CaculateSize(const PGOHClassLayoutDesc &desc);
     static std::string GetTypeString(const PGOHClassLayoutDesc &desc);
@@ -715,7 +726,7 @@ public:
         return type_;
     }
 
-    PGOHClassLayoutDesc Convert()
+    PGOHClassLayoutDesc Convert(PGOProfilerHeader *const header)
     {
         PGOHClassLayoutDesc desc(GetType().GetClassType());
         desc.SetSuperClassType(superType_.GetClassType());
@@ -731,6 +742,9 @@ public:
         for (int32_t i = 0; i < ctorCount_; i++) {
             desc.AddCtorKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
             descInfo = GetNext(descInfo);
+        }
+        if (header->SupportElementsKind()) {
+            desc.SetElementsKind(GetElementsKind());
         }
         return desc;
     }
@@ -784,6 +798,21 @@ private:
     const PGOLayoutDescInfo *GetNext(const PGOLayoutDescInfo *current) const
     {
         return reinterpret_cast<PGOLayoutDescInfo *>(reinterpret_cast<uintptr_t>(current) + current->Size());
+    }
+
+    void SetElementsKind(ElementsKind kind)
+    {
+        *reinterpret_cast<ElementsKind *>(GetEnd() - sizeof(ElementsKind)) = kind;
+    }
+
+    ElementsKind GetElementsKind() const
+    {
+        return *reinterpret_cast<const ElementsKind *>(GetEnd() - sizeof(ElementsKind));
+    }
+
+    uintptr_t GetEnd() const
+    {
+        return reinterpret_cast<uintptr_t>(this) + Size();
     }
 
     int32_t size_;
@@ -1027,7 +1056,7 @@ public:
 
 private:
     PGOMethodInfoMap *GetMethodInfoMap(const CString &recordName);
-    bool ParseFromBinaryForLayout(void **buffer);
+    bool ParseFromBinaryForLayout(void **buffer, PGOProfilerHeader *const header);
     bool ProcessToBinaryForLayout(NativeAreaAllocator *allocator, const SaveTask *task, std::fstream &stream) const;
 
     uint32_t hotnessThreshold_ {2};
@@ -1140,7 +1169,7 @@ public:
     NO_MOVE_SEMANTIC(PGORecordSimpleInfos);
 
 private:
-    bool ParseFromBinaryForLayout(void **buffer);
+    bool ParseFromBinaryForLayout(void **buffer, PGOProfilerHeader *const header);
 
     uint32_t hotnessThreshold_ {2};
     NativeAreaAllocator nativeAreaAllocator_;

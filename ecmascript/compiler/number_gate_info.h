@@ -25,6 +25,7 @@ enum class TypeInfo {
     NONE,
     INT1,
     INT32,
+    UINT32,
     FLOAT64,
     TAGGED,
 };
@@ -102,10 +103,9 @@ public:
 
     static constexpr int32_t UINT30_MAX = 0x3fffffff;
     static constexpr int32_t TYPED_ARRAY_ONHEAP_MAX = JSTypedArray::MAX_ONHEAP_LENGTH;
-    static constexpr int32_t UINT18_MAX = (1 << 18) - 1;
-    static const inline std::vector<int32_t> rangeBounds_ = { INT32_MIN, INT32_MIN + 1, -UINT18_MAX, -TYPED_ARRAY_ONHEAP_MAX,
+    static const inline std::vector<int32_t> rangeBounds_ = { INT32_MIN, INT32_MIN + 1,
         -1, 0, 1, TYPED_ARRAY_ONHEAP_MAX - 1, TYPED_ARRAY_ONHEAP_MAX, TYPED_ARRAY_ONHEAP_MAX + 1,
-        TYPED_ARRAY_ONHEAP_MAX * 3, UINT18_MAX, UINT30_MAX, UINT30_MAX + 1, INT32_MAX - 1, INT32_MAX };
+        TYPED_ARRAY_ONHEAP_MAX * 3, UINT30_MAX, UINT30_MAX + 1, INT32_MAX - 1, INT32_MAX };
 
     static RangeInfo NONE()
     {
@@ -154,79 +154,9 @@ public:
 
     RangeInfo operator+ (const RangeInfo &rhs) const
     {
-        ASSERT(min_ <= max_ && rhs.min_ <= rhs.max_);
         int32_t nmax = MaybeAddOverflow(rhs) ? INT32_MAX : max_ + rhs.max_;
         int32_t nmin = MaybeAddUnderflow(rhs) ? INT32_MIN : min_ + rhs.min_;
         return RangeInfo(nmin, nmax);
-    }
-
-    RangeInfo operator% (const RangeInfo &rhs) const
-    {
-        ASSERT(min_ <= max_ && rhs.min_ <= rhs.max_);
-        RangeInfo result = RangeInfo(0, 0);
-        int32_t nmax = std::max(std::abs(rhs.min_), std::abs(rhs.max_));
-        if (max_ > 0) result = result.Union(RangeInfo(0, nmax - 1));
-        if (min_ < 0) result = result.Union(RangeInfo(-nmax + 1, 0));
-        return result;
-    }
-
-    bool MaybeZero() const
-    {
-        return min_ <= 0 && max_ >= 0;
-    }
-
-    RangeInfo operator* (const RangeInfo &rhs) const
-    {
-        ASSERT(min_ <= max_ && rhs.min_ <= rhs.max_);
-        int32_t nmax = GetMaxMulResult(rhs);
-        int32_t nmin = GetMinMulResult(rhs);
-        return RangeInfo(nmin, nmax);
-    }
-
-    int32_t GetMaxMulResult(const RangeInfo &rhs) const
-    {   
-        return std::max({ TryMul(min_, rhs.min_), TryMul(min_, rhs.max_), TryMul(max_, rhs.min_), TryMul(max_, rhs.max_) });
-    }
-
-    int32_t GetMinMulResult(const RangeInfo &rhs) const
-    {   
-        return std::min({ TryMul(min_, rhs.min_), TryMul(min_, rhs.max_), TryMul(max_, rhs.min_), TryMul(max_, rhs.max_) });
-    }
-
-    int32_t TryMul(int32_t lhs, int32_t rhs) const
-    {
-        if (MaybeMulOverflow(lhs, rhs)){
-            return INT32_MAX;
-        }
-        if (MaybeMulUnderflow(lhs, rhs)){
-            return INT32_MIN;
-        }
-        return lhs * rhs;
-    }
-
-    bool MaybeMulOverflowOrUnderflow(const RangeInfo &rhs) const
-    {
-        return MaybeMulOverflow(rhs) || MaybeMulUnderflow(rhs);
-    }
-
-    bool MaybeMulUnderflow(const RangeInfo &rhs) const
-    {
-        return MaybeMulUnderflow(min_, rhs.max_) || MaybeMulUnderflow(max_, rhs.min_);
-    }
-
-    bool MaybeMulOverflow(const RangeInfo &rhs) const
-    {
-        return MaybeMulOverflow(max_, rhs.max_) || MaybeMulOverflow(min_, rhs.min_);
-    }
-
-    bool MaybeMulUnderflow(int32_t lhs, int32_t rhs) const
-    {
-        return (lhs > 0 && rhs < 0 && rhs < INT32_MIN / lhs) || (lhs < 0 && rhs > 0 && lhs < INT32_MIN / rhs);
-    }
-
-    bool MaybeMulOverflow(int32_t lhs, int32_t rhs) const
-    {
-        return (lhs > 0 && rhs > 0 && lhs > INT32_MAX / rhs) || (lhs < 0 && rhs < 0 && lhs < INT32_MAX / rhs);
     }
 
     bool MaybeSubOverflow(const RangeInfo &rhs) const
@@ -246,7 +176,6 @@ public:
 
     RangeInfo operator- (const RangeInfo &rhs) const
     {
-        ASSERT(min_ <= max_ && rhs.min_ <= rhs.max_);
         int32_t nmax = MaybeSubOverflow(rhs) ? INT32_MAX : max_ - rhs.min_;
         int32_t nmin = MaybeSubUnderflow(rhs) ? INT32_MIN : min_ - rhs.max_;
         return RangeInfo(nmin, nmax);
@@ -262,8 +191,6 @@ public:
 
     RangeInfo SHR(const RangeInfo &rhs) const
     {
-        ASSERT(min_ <= max_);
-        ASSERT(rhs.max_ == rhs.min_);
         if (MaybeShrOverflow(rhs)) {
             // assume no overflow occurs since overflow will lead to deopt
             return RangeInfo(0, std::max(0, GetMax()));
@@ -278,7 +205,6 @@ public:
 
     RangeInfo ASHR(const RangeInfo &rhs) const
     {
-        ASSERT(min_ <= max_);
         ASSERT(rhs.max_ == rhs.min_);
         int32_t shift = rhs.max_ & 0x1f;    // 0x1f : shift bits
         int32_t nmin = min_ >> shift;

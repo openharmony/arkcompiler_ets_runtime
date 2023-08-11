@@ -40,6 +40,11 @@ private:
         Convert,
     };
 
+    enum class OpType {
+        NORMAL,
+        SHIFT_AND_LOGICAL,
+    };
+
     bool IsRetype() const
     {
         return state_ == State::Retype;
@@ -53,6 +58,7 @@ private:
     GateRef SetOutputType(GateRef gate, PGOSampleType type);
     GateRef SetOutputType(GateRef gate, GateType type);
     GateRef SetOutputType(GateRef gate, Representation rep);
+    GateRef SetOutputType(GateRef gate, TypeInfo type);
     GateRef VisitPhi(GateRef gate);
     GateRef VisitConstant(GateRef gate);
     GateRef VisitTypedBinaryOp(GateRef gate);
@@ -90,9 +96,11 @@ private:
     void ConvertForBinaryOp(GateRef gate);
     void ConvertForCompareOp(GateRef gate);
     void ConvertForIntOperator(GateRef gate, GateType leftType, GateType rightType);
+    void ConvertForShiftAndLogicalOperator(GateRef gate, GateType leftType, GateType rightType);
     void ConvertForDoubleOperator(GateRef gate, GateType leftType, GateType rightType);
 
-    GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE);
+    GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE,
+                                   OpType type = OpType::NORMAL);
     GateRef CheckAndConvertToFloat64(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE);
     GateRef CheckAndConvertToTagged(GateRef gate, GateType gateType);
     GateRef CheckAndConvertToBool(GateRef gate, GateType gateType);

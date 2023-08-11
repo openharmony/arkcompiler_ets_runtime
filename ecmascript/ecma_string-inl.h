@@ -154,6 +154,7 @@ inline EcmaString *EcmaString::CreateConstantString(const EcmaVM *vm, const uint
 inline EcmaString *EcmaString::CreateTreeString(const EcmaVM *vm,
     const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, uint32_t length, bool compressed)
 {
+    ECMA_STRING_CHECK_LENGTH_AND_TRHOW(vm, length);
     auto thread = vm->GetJSThread();
     auto string = TreeEcmaString::Cast(vm->GetFactory()->AllocTreeStringObject());
     string->SetLength(length, compressed);

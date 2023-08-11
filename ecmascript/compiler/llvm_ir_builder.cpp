@@ -202,6 +202,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::MUL_WITH_OVERFLOW, &LLVMIRBuilder::HandleMulWithOverflow},
         {OpCode::EXTRACT_VALUE, &LLVMIRBuilder::HandleExtractValue},
         {OpCode::SQRT, &LLVMIRBuilder::HandleSqrt},
+        {OpCode::READSP, &LLVMIRBuilder::HandleReadSp},
     };
     illegalOpHandlers_ = {
         OpCode::NOP, OpCode::CIRCUIT_ROOT, OpCode::DEPEND_ENTRY,
@@ -474,6 +475,12 @@ LLVMTypeRef LLVMIRBuilder::GetMachineRepType(MachineRep rep) const
             break;
     }
     return dstType;
+}
+
+void LLVMIRBuilder::HandleReadSp(GateRef gate)
+{
+    ASSERT(acc_.GetOpCode(gate) == OpCode::READSP);
+    VisitReadSp(gate);
 }
 
 void LLVMIRBuilder::HandleCall(GateRef gate)
@@ -790,6 +797,12 @@ LLVMValueRef LLVMIRBuilder::GetCallee(const std::vector<GateRef> &inList, const 
     LLVMValueRef callee = LLVMBuildIntToPtr(builder_, code, rtfuncTypePtr, (name + "-cast").c_str());
     ASSERT(callee != nullptr);
     return callee;
+}
+
+void LLVMIRBuilder::VisitReadSp(GateRef gate)
+{
+    LLVMValueRef spValue = GetCurrentSP();
+    gate2LValue_[gate] = spValue;
 }
 
 void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, OpCode op)

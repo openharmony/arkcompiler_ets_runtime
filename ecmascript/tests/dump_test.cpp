@@ -768,7 +768,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_PROXY: {
-                CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSProxy::SIZE, 3U);
+                CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSProxy::SIZE, 4U);
                 JSHandle<JSTaggedValue> emptyObj(thread, NewJSObject(thread, factory, globalEnv).GetTaggedValue());
                 JSHandle<JSProxy> proxy = factory->NewJSProxy(emptyObj, emptyObj);
                 DUMP_FOR_HANDLE(proxy)

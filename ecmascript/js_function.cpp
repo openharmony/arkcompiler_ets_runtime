@@ -24,7 +24,6 @@
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_promise.h"
-#include "ecmascript/js_proxy.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/module/js_module_source_text.h"
@@ -592,6 +591,7 @@ void JSProxyRevocFunction::ProxyRevocFunctions(const JSThread *thread, const JSH
     // 5 ~ 6 Set internal slot of p to null.
     proxyHandle->SetTarget(thread, JSTaggedValue::Null());
     proxyHandle->SetHandler(thread, JSTaggedValue::Null());
+    proxyHandle->SetIsRevoked(true);
 }
 
 JSTaggedValue JSFunction::AccessCallerArgumentsThrowTypeError(EcmaRuntimeCallInfo *argv)

@@ -128,7 +128,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
             Int8(VmThreadControl::VM_NEED_SUSPENSION))), &callRuntime, &dispatch);                             \
         Bind(&callRuntime);                                                                                    \
         {                                                                                                      \
-            if (!callback.IsEmpty()) {                                                                         \
+            if (!(callback).IsEmpty()) {                                                                       \
                 varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { func });     \
             } else {                                                                                           \
                 varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { func });             \
@@ -427,6 +427,7 @@ DECLARE_ASM_HANDLER(HandleCreateemptyobject)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateEmptyObject), {});
+    callback.ProfileCreateObject(res);
     varAcc = res;
     DISPATCH_WITH_ACC(CREATEEMPTYOBJECT);
 }
@@ -435,7 +436,7 @@ DECLARE_ASM_HANDLER(HandleCreateemptyarrayImm8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     NewObjectStubBuilder newBuilder(this);
-    varAcc = newBuilder.CreateEmptyArray(glue);
+    varAcc = newBuilder.CreateEmptyArray(glue, callback);
     DISPATCH_WITH_ACC(CREATEEMPTYARRAY_IMM8);
 }
 
@@ -443,7 +444,7 @@ DECLARE_ASM_HANDLER(HandleCreateemptyarrayImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
     NewObjectStubBuilder newBuilder(this);
-    varAcc = newBuilder.CreateEmptyArray(glue);
+    varAcc = newBuilder.CreateEmptyArray(glue, callback);
     DISPATCH_WITH_ACC(CREATEEMPTYARRAY_IMM16);
 }
 
@@ -1470,7 +1471,7 @@ DECLARE_ASM_HANDLER(HandleStobjbyindexImm8V8Imm16)
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false);
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false, callback);
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -1496,7 +1497,7 @@ DECLARE_ASM_HANDLER(HandleStobjbyindexImm16V8Imm16)
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false);
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false, callback);
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -1521,7 +1522,7 @@ DECLARE_ASM_HANDLER(HandleWideStobjbyindexPrefV8Imm32)
     Branch(TaggedIsHeapObject(receiver), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false);
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, false, callback);
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -1554,7 +1555,7 @@ DECLARE_ASM_HANDLER(HandleStownbyindexImm16V8Imm16)
     Bind(&notClassPrototype);
     {
         // fast path
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true); // acc is value
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true, callback); // acc is value
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -1587,7 +1588,7 @@ DECLARE_ASM_HANDLER(HandleStownbyindexImm8V8Imm16)
     Bind(&notClassPrototype);
     {
         // fast path
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true); // acc is value
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true, callback); // acc is value
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -1619,7 +1620,7 @@ DECLARE_ASM_HANDLER(HandleWideStownbyindexPrefV8Imm32)
     Bind(&notClassPrototype);
     {
         // fast path
-        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true); // acc is value
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true, callback); // acc is value
         Label notHole(env);
         Branch(TaggedIsHole(result), &slowPath, &notHole);
         Bind(&notHole);
@@ -3821,7 +3822,7 @@ DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm8Id16)
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
 
     NewObjectStubBuilder newBuilder(this);
-    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc);
+    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc, callback);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEARRAYWITHBUFFER_IMM8_ID16));
 }
 
@@ -3831,7 +3832,7 @@ DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm16Id16)
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
 
     NewObjectStubBuilder newBuilder(this);
-    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc);
+    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc, callback);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEARRAYWITHBUFFER_IMM16_ID16));
 }
 
@@ -3841,7 +3842,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCreatearraywithbufferPrefImm16)
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
 
     NewObjectStubBuilder newBuilder(this);
-    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc);
+    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc, callback);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_CREATEARRAYWITHBUFFER_PREF_IMM16));
 }
 
@@ -3853,7 +3854,7 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm8Id16)
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
     GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
-    callback.ProfileCreateObject(result, res);
+    callback.ProfileCreateObject(res);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM8_ID16));
 }
 
@@ -3865,7 +3866,7 @@ DECLARE_ASM_HANDLER(HandleCreateobjectwithbufferImm16Id16)
     GateRef result = GetObjectLiteralFromConstPool(glue, constpool, imm, module);
     GateRef currentEnv = GetEnvFromFrame(GetFrame(sp));
     GateRef res = CallRuntime(glue, RTSTUB_ID(CreateObjectHavingMethod), { result, currentEnv });
-    callback.ProfileCreateObject(result, res);
+    callback.ProfileCreateObject(res);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEOBJECTWITHBUFFER_IMM16_ID16));
 }
 

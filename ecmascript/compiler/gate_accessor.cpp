@@ -135,6 +135,14 @@ TypedJumpAccessor GateAccessor::GetTypedJumpAccessor(GateRef gate) const
     return TypedJumpAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
+ArrayMetaDataAccessor GateAccessor::GetArrayMetaDataAccessor(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::STABLE_ARRAY_CHECK ||
+           GetOpCode(gate) == OpCode::HCLASS_STABLE_ARRAY_CHECK);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return ArrayMetaDataAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
 TypedLoadOp GateAccessor::GetTypedLoadOp(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::LOAD_ELEMENT);
@@ -373,6 +381,25 @@ void GateAccessor::TrySetPGOType(GateRef gate, PGOSampleType type)
     OpCode op = GetOpCode(gate);
     if (op == OpCode::JS_BYTECODE) {
         const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetType(type);
+    }
+}
+
+ElementsKind GateAccessor::TryGetElementsKind(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        return gatePtr->GetJSBytecodeMetaData()->GetElementsKind();
+    }
+    return ElementsKind::GENERIC;
+}
+
+void GateAccessor::TrySetElementsKind(GateRef gate, ElementsKind kind)
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetElementsKind(kind);
     }
 }
 

@@ -167,6 +167,7 @@ using ecmascript::JSIterator;
 using ecmascript::JSGeneratorFunction;
 using ecmascript::JSGeneratorObject;
 using ecmascript::GeneratorContext;
+using ecmascript::JSProxy;
 #ifdef ARK_SUPPORT_INTL
 using ecmascript::JSCollator;
 using ecmascript::JSDateTimeFormat;
@@ -371,7 +372,7 @@ void JSNApi::TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType)
         CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
         switch (gcType) {
             case TRIGGER_GC_TYPE::SEMI_GC:
-                vm->CollectGarbage(ecmascript::TriggerGCType::YOUNG_GC, ecmascript::GCReason::EXTERNAL_TRIGGER);
+                vm->CollectGarbage(vm->GetHeap()->SelectGCType(), ecmascript::GCReason::EXTERNAL_TRIGGER);
                 break;
             case TRIGGER_GC_TYPE::OLD_GC:
                 vm->CollectGarbage(ecmascript::TriggerGCType::OLD_GC, ecmascript::GCReason::EXTERNAL_TRIGGER);
@@ -836,7 +837,8 @@ void JSNApi::SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data)
     vm->GetJSThread()->GetCurrentEcmaContext()->SetData(data);
 }
 
-void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm, std::function<std::vector<uint8_t>(std::string dirPath)> cb)
+void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
+    std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)> cb)
 {
     vm->SetResolveBufferCallback(cb);
 }
@@ -2506,6 +2508,26 @@ double DateRef::GetTime()
         LOG_ECMA(ERROR) << "Not a Date Object";
     }
     return date->GetTime().GetDouble();
+}
+
+Local<JSValueRef> ProxyRef::GetHandler(const EcmaVM *vm)
+{
+    JSHandle<JSProxy> jsProxy(JSNApiHelper::ToJSHandle(this));
+    JSThread *thread = vm->GetJSThread();
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, jsProxy->GetHandler()));
+}
+
+Local<JSValueRef> ProxyRef::GetTarget(const EcmaVM *vm)
+{
+    JSHandle<JSProxy> jsProxy(JSNApiHelper::ToJSHandle(this));
+    JSThread *thread = vm->GetJSThread();
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, jsProxy->GetTarget()));
+}
+
+bool ProxyRef::IsRevoked()
+{
+    JSHandle<JSProxy> jsProxy(JSNApiHelper::ToJSHandle(this));
+    return jsProxy->GetIsRevoked();
 }
 
 Local<JSValueRef> MapRef::Get(const EcmaVM *vm, Local<JSValueRef> key)

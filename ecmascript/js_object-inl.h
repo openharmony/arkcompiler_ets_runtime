@@ -223,28 +223,28 @@ inline bool JSObject::IsTypedArray() const
     return GetJSHClass()->IsTypedArray();
 }
 
-JSTaggedValue JSObject::ConvertValueWithRep(uint32_t index, JSTaggedValue value)
+std::pair<bool, JSTaggedValue> JSObject::ConvertValueWithRep(uint32_t index, JSTaggedValue value)
 {
     auto layout = LayoutInfo::Cast(GetJSHClass()->GetLayout().GetTaggedObject());
     auto attr = layout->GetAttr(index);
     if (attr.IsDoubleRep()) {
         if (value.IsInt()) {
             double doubleValue = value.GetInt();
-            return JSTaggedValue(bit_cast<JSTaggedType>(doubleValue));
+            return std::pair(true, JSTaggedValue(bit_cast<JSTaggedType>(doubleValue)));
         } else if (value.IsDouble()) {
-            return JSTaggedValue(bit_cast<JSTaggedType>(value.GetDouble()));
+            return std::pair(true, JSTaggedValue(bit_cast<JSTaggedType>(value.GetDouble())));
         } else {
-            UNREACHABLE();
+            return std::pair(false, value);
         }
     } else if (attr.IsIntRep()) {
         if (value.IsInt()) {
             int intValue = value.GetInt();
-            return JSTaggedValue(static_cast<JSTaggedType>(intValue));
+            return std::pair(true, JSTaggedValue(static_cast<JSTaggedType>(intValue)));
         } else {
-            UNREACHABLE();
+            return std::pair(false, value);
         }
     }
-    return value;
+    return std::pair(true, value);
 }
 
 void JSObject::SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value)

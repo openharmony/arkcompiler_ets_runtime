@@ -52,10 +52,6 @@ void NTypeHCRLowering::Lower(GateRef gate)
         case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
             LowerNTypedCreateEmptyArray(gate);
             break;
-        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
-        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
-            LowerNTypedCreateArrayWithBuffer(gate);
-            break;
         case EcmaOpcode::STOWNBYINDEX_IMM8_V8_IMM16:
         case EcmaOpcode::STOWNBYINDEX_IMM16_V8_IMM16:
         case EcmaOpcode::WIDE_STOWNBYINDEX_PREF_V8_IMM32:

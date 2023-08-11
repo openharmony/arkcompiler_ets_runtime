@@ -111,3 +111,20 @@ Array.prototype[Symbol.iterator] = function* () {
 }
 print(...fruits1)
 print(...fruits2)
+
+// test spread array when encounter situations like [...arr, elem1, elem2] with arr be StableJSArray 
+function appendChild(newNode) { 
+    this.childNodes = [...this.childNodes, newNode];
+}
+const app = { tageName: 'VIEW', childNodes: [], appendChild };
+for (let i = 0; i < 5; ++i) { 
+    const el = { tageName: 'VIEW', childNodes: [], appendChild };
+    const text = { tageName: 'VIEW', childNodes: [], appendChild };
+    const content = { tageName: '#text', content: i }; 
+    text.appendChild(content); 
+    el.appendChild(text); 
+    app.appendChild(el);
+}
+for (let i = 0; i < 5; ++i) { 
+    print(app.childNodes[i].childNodes[0].childNodes[0].content); 
+}

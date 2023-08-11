@@ -40,6 +40,7 @@ public:
     GateType GetType(const int32_t offset) const;
     PGOSampleType GetOrUpdatePGOType(TSManager *tsManager, int32_t offset, const GateType &type) const;
     PGORWOpType GetRwOpType(int32_t offset) const;
+    ElementsKind GetElementsKind(int32_t offset) const;
     GateType GetArgType(const uint32_t argIndex) const;
     GateType UpdateType(const int32_t offset, const GateType &type) const;
     GateType GetCallTargetType(int32_t offset) const;

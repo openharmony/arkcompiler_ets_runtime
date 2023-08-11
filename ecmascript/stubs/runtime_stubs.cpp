@@ -387,6 +387,23 @@ DEF_RUNTIME_STUBS(CopyAndUpdateObjLayout)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
+{
+    RUNTIME_STUBS_HEADER(UpdateHClassForElementsKind);
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the first parameter
+    JSTaggedType elementsKind = GetTArg(argv, argc, 1);        // 1: means the first parameter
+    ElementsKind kind = Elements::FixElementsKind(static_cast<ElementsKind>(elementsKind));
+    auto arrayIndexMap = thread->GetArrayHClassIndexMap();
+    if (arrayIndexMap.find(kind) != arrayIndexMap.end()) {
+        auto index = thread->GetArrayHClassIndexMap().at(kind);
+        auto globalConst = thread->GlobalConstants();
+        auto targetHClassValue = globalConst->GetGlobalConstantObject(static_cast<size_t>(index));
+        auto hclass = JSHClass::Cast(targetHClassValue.GetTaggedObject());
+        JSHandle<JSObject>(receiver)->SetClass(hclass);
+    }
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
 {
     std::string format = MessageString::GetMessageString(fmtMessageId);
@@ -432,10 +449,10 @@ void RuntimeStubs::ProfileDefineClass(uintptr_t argGlue, uintptr_t func, int32_t
 }
 
 void RuntimeStubs::ProfileCreateObject(
-    uintptr_t argGlue, JSTaggedType func, int32_t offset, JSTaggedType originObj, JSTaggedType newObj)
+    uintptr_t argGlue, JSTaggedType func, int32_t offset, JSTaggedType newObj, int32_t traceId)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCreateObject(func, offset, originObj, newObj);
+    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCreateObject(func, offset, newObj, traceId);
 }
 
 void RuntimeStubs::ProfileObjLayout(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object, int32_t store)
@@ -2285,7 +2302,7 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
         FunctionKind kind = function->GetCallTarget()->GetFunctionKind();
         // instead of hclass by non_optimized hclass when method ClearAOTFlags
         JSHandle<JSHClass> newHClass = factory->GetNonOptimizedHclass(hclass, kind);
-        function->SetClass(newHClass);
+        function->SynchronizedSetClass(*newHClass);
     }
     context->SetMethod(thread, function.GetTaggedValue());
     context->SetThis(thread, frameHandler.GetThis());

@@ -71,7 +71,6 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
     heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress, isVmMode, isPrivate);
-    ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif
@@ -118,6 +117,15 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
+}
+
+void DFXJSNApi::DestroyHeapProfiler([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
+#endif
 }
 
 bool DFXJSNApi::BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
@@ -332,9 +340,11 @@ bool DFXJSNApi::CpuProfilerSamplingAnyTime([[maybe_unused]] const EcmaVM *vm)
         } else {
             LOG_ECMA(INFO) << "Stop CpuProfiler Any Time Worker Thread, killCount = " << killCount;
             const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
-                if (workerVm->GetJSThread()->GetIsProfiling()) {
+                auto *thread = workerVm->GetAssociatedJSThread();
+                if (thread->GetIsProfiling()) {
                     DFXJSNApi::StopCpuProfilerForFile(workerVm);
                 }
+                thread->SetNeedProfiling(false);
             });
         }
     }
@@ -560,8 +570,21 @@ bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, int32_t 
     }
 }
 
-EcmaVM *DFXJSNApi::GetWorkerVm(EcmaVM *hostVm, uint32_t tid)
+void DFXJSNApi::ResumeVMById(EcmaVM *hostVm, uint32_t tid)
 {
-    return hostVm->GetWorkerVm(tid);
+    if (hostVm->GetAssociatedJSThread()->GetThreadId() == tid) {
+        ResumeVM(hostVm);
+    } else {
+        hostVm->ResumeWorkerVm(tid);
+    }
+}
+
+bool DFXJSNApi::SuspendVMById(EcmaVM *hostVm, uint32_t tid)
+{
+    if (hostVm->GetAssociatedJSThread()->GetThreadId() == tid) {
+        return SuspendVM(hostVm);
+    } else {
+        return hostVm->SuspendWorkerVm(tid);
+    }
 }
 } // namespace panda

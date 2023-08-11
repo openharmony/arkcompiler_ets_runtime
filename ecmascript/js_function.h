@@ -20,6 +20,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/lexical_env.h"
+#include "ecmascript/js_proxy.h"
 
 namespace panda::ecmascript {
 class JSThread;
@@ -66,6 +67,7 @@ public:
 };
 
 static_assert((JSFunctionBase::SIZE % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
+static_assert(JSFunctionBase::METHOD_OFFSET == JSProxy::METHOD_OFFSET);
 
 class JSFunction : public JSFunctionBase {
 public:

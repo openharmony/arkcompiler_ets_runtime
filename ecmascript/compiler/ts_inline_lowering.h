@@ -51,8 +51,8 @@ private:
 
 class CallGateInfo {
 public:
-    explicit CallGateInfo(GateRef call, CallKind kind, GlobalTSTypeRef gt)
-        : call_(call), kind_(kind), gt_(gt)
+    explicit CallGateInfo(GateRef call, CallKind kind, GlobalTSTypeRef gt, uint32_t type)
+        : call_(call), kind_(kind), gt_(gt), type_(type)
     {
     }
 
@@ -92,10 +92,17 @@ public:
     {
         return gt_;
     }
+
+    uint32_t GetType() const
+    {
+        return type_;
+    }
+
 private:
     GateRef call_ {Circuit::NullGate()};
     CallKind kind_ {CallKind::INVALID};
     GlobalTSTypeRef gt_;
+    uint32_t type_;
 };
 
 class TSInlineLowering {
@@ -171,7 +178,7 @@ private:
     void RemoveRoot();
     void BuildFrameStateChain(CallGateInfo &info, BytecodeCircuitBuilder &builder);
     GateRef TraceInlineFunction(GateRef glue, GateRef depend, std::vector<GateRef> &args, GateRef callGate);
-    void InlineFuncCheck(GateRef gate);
+    void InlineFuncCheck(const CallGateInfo &info);
     void SupplementType(GateRef callGate, GateRef targetGate);
     void UpdateWorkList(ChunkQueue<CallGateInfo> &workList);
     size_t GetOrInitialInlineCounts(GateRef frameArgs);

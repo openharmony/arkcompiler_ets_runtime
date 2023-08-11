@@ -1055,8 +1055,8 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
         ASSERT(stateCur != Circuit::NullGate());
         ASSERT(dependCur != Circuit::NullGate());
         if (IsEntryBlock(bb.id)) {
-            if (NeedUpdateHotness()) {
-                stateCur = circuit_->NewGate(circuit_->UpdateHotness(), {stateCur, dependCur});
+            if (NeedCheckSafePointAndStackOver()) {
+                stateCur = circuit_->NewGate(circuit_->CheckSafePointAndStackOver(), {stateCur, dependCur});
                 dependCur = stateCur;
             }
             auto &bbNext = graph_[bb.id + 1];

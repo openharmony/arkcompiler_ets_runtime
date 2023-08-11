@@ -317,7 +317,7 @@ public:
         return jsGatesToByteCode_.at(gate);
     }
 
-    bool NeedUpdateHotness() const
+    bool NeedCheckSafePointAndStackOver() const
     {
         return !isInline_ && !method_->IsNoGC();
     }
@@ -422,6 +422,11 @@ public:
     PGORWOpType GetPGOType(GateRef gate) const
     {
         return typeRecorder_.GetRwOpType(GetPcOffsetByGate(gate));
+    }
+
+    ElementsKind GetElementsKind(GateRef gate) const
+    {
+        return typeRecorder_.GetElementsKind(GetPcOffsetByGate(gate));
     }
 
     bool ShouldPGOTypeInfer(GateRef gate) const

@@ -55,6 +55,12 @@ inline void Barriers::SetObject([[maybe_unused]] const JSThread *thread, void *o
     *reinterpret_cast<JSTaggedType *>(reinterpret_cast<uintptr_t>(obj) + offset) = value;
     WriteBarrier(obj, offset, value);
 }
+
+inline void Barriers::SynchronizedSetClass(void *obj, JSTaggedType value)
+{
+    reinterpret_cast<volatile std::atomic<JSTaggedType> *>(obj)->store(value, std::memory_order_release);
+    WriteBarrier(obj, 0, value);
+}
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_MEM_BARRIERS_INL_H

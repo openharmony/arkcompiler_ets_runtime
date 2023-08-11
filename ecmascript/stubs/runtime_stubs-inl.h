@@ -430,6 +430,17 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
         return JSTaggedValue(dstLen + strLen);
     }
 
+    if (index.GetInt() == 0 && src->IsStableJSArray(thread)) {
+        JSHandle<TaggedArray> srcElements(thread, JSHandle<JSObject>::Cast(src)->GetElements());
+        uint32_t length = JSHandle<JSArray>::Cast(src)->GetArrayLength();
+        JSHandle<TaggedArray> dstElements = factory->NewTaggedArray(length);
+        JSHandle<JSArray> dstArray = JSHandle<JSArray>::Cast(dst);
+        dstArray->SetElements(thread, dstElements);
+        dstArray->SetArrayLength(thread, length);
+        TaggedArray::CopyTaggedArrayElement(thread, srcElements, dstElements, length);
+        return JSTaggedValue(length);
+    }
+
     JSHandle<JSTaggedValue> iter;
     auto globalConst = thread->GlobalConstants();
     if (src->IsJSArrayIterator() || src->IsJSMapIterator() || src->IsJSSetIterator() ||
@@ -1455,8 +1466,10 @@ JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTagge
                                            const JSHandle<JSTaggedValue> &right)
 {
     if (left->IsString() && right->IsString()) {
-        return JSTaggedValue(EcmaStringAccessor::Concat(
-            thread->GetEcmaVM(), JSHandle<EcmaString>(left), JSHandle<EcmaString>(right)));
+        EcmaString *resultStr = EcmaStringAccessor::Concat(
+            thread->GetEcmaVM(), JSHandle<EcmaString>(left), JSHandle<EcmaString>(right));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return JSTaggedValue(resultStr);
     }
     JSHandle<JSTaggedValue> primitiveA0(thread, JSTaggedValue::ToPrimitive(thread, left));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1468,7 +1481,9 @@ JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTagge
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSHandle<EcmaString> stringA1 = JSTaggedValue::ToString(thread, primitiveA1);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        return JSTaggedValue(EcmaStringAccessor::Concat(thread->GetEcmaVM(), stringA0, stringA1));
+        EcmaString *resultStr = EcmaStringAccessor::Concat(thread->GetEcmaVM(), stringA0, stringA1);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return JSTaggedValue(resultStr);
     }
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, primitiveA0);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

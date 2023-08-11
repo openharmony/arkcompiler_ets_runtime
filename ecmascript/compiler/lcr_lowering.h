@@ -52,6 +52,7 @@ private:
     void LowerStoreConstOffset(GateRef gate);
     void LowerConvertHoleAsUndefined(GateRef gate);
     void LowerCheckAndConvert(GateRef gate);
+    void LowerCheckUInt32AndConvert(GateRef gate, GateRef frameState);
     void LowerCheckTaggedIntAndConvert(GateRef gate, GateRef frameState);
     void LowerCheckTaggedDoubleAndConvert(GateRef gate, GateRef frameState, Label *exit);
     void LowerCheckTaggedNumberAndConvert(GateRef gate, GateRef frameState, Label *exit);
@@ -72,7 +73,9 @@ private:
 
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
     GateRef ConvertInt32ToFloat64(GateRef gate);
+    GateRef ConvertUInt32ToFloat64(GateRef gate);
     GateRef ConvertInt32ToTaggedInt(GateRef gate);
+    GateRef ConvertUInt32ToTaggedNumber(GateRef gate, Label *exit);
     GateRef ConvertFloat64ToBool(GateRef gate);
     GateRef ConvertFloat64ToInt32(GateRef gate, Label *exit);
     GateRef ConvertFloat64ToTaggedDouble(GateRef gate);
