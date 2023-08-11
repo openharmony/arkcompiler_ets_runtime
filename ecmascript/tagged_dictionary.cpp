@@ -187,7 +187,7 @@ int NumberDictionary::Hash(const JSTaggedValue &key)
     }
     if (key.IsDouble()) {
         int32_t keyValue = static_cast<int32_t>(static_cast<uint32_t>(key.GetDouble()));
-        return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t)); 
+        return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
     }
     // key must be object
     LOG_ECMA(FATAL) << "this branch is unreachable";
