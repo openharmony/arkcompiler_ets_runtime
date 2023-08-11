@@ -34,6 +34,9 @@ public:
     static JSTaggedValue HandleFindIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                  JSHandle<JSTaggedValue> callbackFnHandle,
                                                  JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
+    static JSTaggedValue HandleFindLastIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                                     JSHandle<JSTaggedValue> callbackFnHandle,
+                                                     JSHandle<JSTaggedValue> thisArgHandle, int64_t &k);
     static JSTaggedValue HandleEveryOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                              JSHandle<JSTaggedValue> callbackFnHandle,
                                              JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
@@ -57,6 +60,8 @@ public:
     static JSTaggedValue With(JSThread *thread, const JSHandle<JSObject> thisObjHandle,
                               JSHandle<JSObject> newArrayHandle, int64_t &len, int64_t &index,
                               JSHandle<JSTaggedValue> value);
+    static JSTaggedValue ToSpliced(JSThread *thread, JSHandle<JSObject> &thisObjHandle, EcmaRuntimeCallInfo *argv,
+                                   int64_t argc, int64_t actualStart, int64_t actualSkipCount, int64_t newLen);
     static JSTaggedValue Reduce(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                 JSHandle<JSTaggedValue> callbackFnHandle,
                                 JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len);

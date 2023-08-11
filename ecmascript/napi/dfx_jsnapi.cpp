@@ -119,7 +119,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
 
-void DFXJSNApi::DestroyProfiler([[maybe_unused]] const EcmaVM *vm)
+void DFXJSNApi::DestroyHeapProfiler([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::HeapProfilerInterface::Destroy(const_cast<EcmaVM *>(vm));
@@ -570,8 +570,21 @@ bool DFXJSNApi::StartProfiler(EcmaVM *vm, const ProfilerOption &option, int32_t 
     }
 }
 
-EcmaVM *DFXJSNApi::GetWorkerVm(EcmaVM *hostVm, uint32_t tid)
+void DFXJSNApi::ResumeVMById(EcmaVM *hostVm, uint32_t tid)
 {
-    return hostVm->GetWorkerVm(tid);
+    if (hostVm->GetAssociatedJSThread()->GetThreadId() == tid) {
+        ResumeVM(hostVm);
+    } else {
+        hostVm->ResumeWorkerVm(tid);
+    }
+}
+
+bool DFXJSNApi::SuspendVMById(EcmaVM *hostVm, uint32_t tid)
+{
+    if (hostVm->GetAssociatedJSThread()->GetThreadId() == tid) {
+        return SuspendVM(hostVm);
+    } else {
+        return hostVm->SuspendWorkerVm(tid);
+    }
 }
 } // namespace panda

@@ -855,7 +855,7 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnPropertyKeys(JSThread *thread, const 
 }
 
 JSHandle<TaggedArray> JSTaggedValue::GetAllPropertyKeys(JSThread *thread,
-    const JSHandle<JSTaggedValue> &obj, uint32_t filter)
+                                                        const JSHandle<JSTaggedValue> &obj, uint32_t filter)
 {
     if (obj->IsJSProxy()) {
         LOG_ECMA(WARN) << "GetAllPropertyKeys do not support JSProxy yet";

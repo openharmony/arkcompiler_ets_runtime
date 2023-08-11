@@ -143,6 +143,42 @@ protected:
             return GetTaggedBoolean(false);
         }
 
+        static JSTaggedValue TestToSortedFunc(EcmaRuntimeCallInfo *argv)
+        {
+            uint32_t argc = argv->GetArgsNumber();
+            if (argc > 1) {
+                // x < y
+                if (GetCallArg(argv, 0)->GetInt() < GetCallArg(argv, 1)->GetInt()) {
+                    return GetTaggedBoolean(true);
+                }
+            }
+            return GetTaggedBoolean(false);
+        }
+
+        static JSTaggedValue TestFindLastFunc(EcmaRuntimeCallInfo *argv)
+        {
+            uint32_t argc = argv->GetArgsNumber();
+            if (argc > 0) {
+                // 20 : test case
+                if (GetCallArg(argv, 0)->GetInt() > 20) {
+                    return GetTaggedBoolean(true);
+                }
+            }
+            return GetTaggedBoolean(false);
+        }
+
+        static JSTaggedValue TestFindLastIndexFunc(EcmaRuntimeCallInfo *argv)
+        {
+            uint32_t argc = argv->GetArgsNumber();
+            if (argc > 0) {
+                // 20 : test case
+                if (GetCallArg(argv, 0)->GetInt() > 20) {
+                    return GetTaggedBoolean(true);
+                }
+            }
+            return GetTaggedBoolean(false);
+        }
+
         static JSTaggedValue TestReduceFunc(EcmaRuntimeCallInfo *argv)
         {
             int accumulator = GetCallArg(argv, 0)->GetInt();
@@ -349,5 +385,152 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, At)
     TestHelper::TearDownFrame(thread, prev);
 
     ASSERT_TRUE(result.IsUndefined());
+}
+
+HWTEST_F_L0(BuiltinsTypedArrayTest, ToSorted)
+{
+    ASSERT_NE(thread, nullptr);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<TaggedArray> array(factory->NewTaggedArray(3));
+    // array [10, 8, 30]
+    array->Set(thread, 0, JSTaggedValue(10));
+    array->Set(thread, 1, JSTaggedValue(8));
+    array->Set(thread, 2, JSTaggedValue(30));
+
+    JSHandle<JSTaggedValue> obj = JSHandle<JSTaggedValue>(thread, CreateTypedArrayFromList(thread, array));
+    JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestToSortedFunc));
+    auto ecmaRuntimeCallInfo1 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 means 1 call arg
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, func.GetTaggedValue());
+
+    [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result1 = TypedArray::ToSorted(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev1);
+
+    EXPECT_TRUE(result1.IsTypedArray());
+    JSHandle<JSTaggedValue> resultArr1 = JSHandle<JSTaggedValue>(thread, result1);
+    // [30, 10, 8]
+    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr1, 0).GetValue()->GetInt(), 30);
+    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr1, 1).GetValue()->GetInt(), 10);
+    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr1, 2).GetValue()->GetInt(), 8);
+
+    auto ecmaRuntimeCallInfo2 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4); // 4 means 0 call arg
+    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo2->SetThis(obj.GetTaggedValue());
+
+    [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 = TypedArray::ToSorted(ecmaRuntimeCallInfo2);
+    TestHelper::TearDownFrame(thread, prev2);
+
+    EXPECT_TRUE(result2.IsTypedArray());
+    JSHandle<JSTaggedValue> resultArr2 = JSHandle<JSTaggedValue>(thread, result2);
+    // [8, 10 ,30]
+    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr2, 0).GetValue()->GetInt(), 8);
+    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr2, 1).GetValue()->GetInt(), 10);
+    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr2, 2).GetValue()->GetInt(), 30);
+}
+
+HWTEST_F_L0(BuiltinsTypedArrayTest, With)
+{
+    ASSERT_NE(thread, nullptr);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> array(factory->NewTaggedArray(3));
+    // array [1, 2, 3]
+    array->Set(thread, 0, JSTaggedValue(1));
+    array->Set(thread, 1, JSTaggedValue(2));
+    array->Set(thread, 2, JSTaggedValue(3));
+
+    JSHandle<JSTaggedValue> obj = JSHandle<JSTaggedValue>(thread, CreateTypedArrayFromList(thread, array));
+    auto ecmaRuntimeCallInfo1 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8 means 2 call args
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(-1)));
+    ecmaRuntimeCallInfo1->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(30))); // with(-1, 30)
+
+    [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result1 = TypedArray::With(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev1);
+
+    EXPECT_TRUE(result1.IsTypedArray());
+    JSHandle<JSTaggedValue> resultArr1 = JSHandle<JSTaggedValue>(thread, result1);
+    // [1, 2, 30]
+    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr1, 0).GetValue()->GetInt(), 1);
+    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr1, 1).GetValue()->GetInt(), 2);
+    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr1, 2).GetValue()->GetInt(), 30);
+
+    auto ecmaRuntimeCallInfo2 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8 means 2 call args
+    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo2->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(1)));
+    ecmaRuntimeCallInfo2->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(-100))); // with(1, -100)
+
+    [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 = TypedArray::With(ecmaRuntimeCallInfo2);
+    TestHelper::TearDownFrame(thread, prev2);
+
+    EXPECT_TRUE(result2.IsTypedArray());
+    JSHandle<JSTaggedValue> resultArr2 = JSHandle<JSTaggedValue>(thread, result2);
+    // [1, -100, 3]
+    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr2, 0).GetValue()->GetInt(), 1);
+    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr2, 1).GetValue()->GetInt(), -100);
+    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr2, 2).GetValue()->GetInt(), 3); 
+}
+
+HWTEST_F_L0(BuiltinsTypedArrayTest, FindLast)
+{
+    ASSERT_NE(thread, nullptr);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<TaggedArray> array(factory->NewTaggedArray(3));
+    // array [50, 40, 2]
+    array->Set(thread, 0, JSTaggedValue(50));
+    array->Set(thread, 1, JSTaggedValue(40));
+    array->Set(thread, 2, JSTaggedValue(2));
+
+    JSHandle<JSTaggedValue> obj = JSHandle<JSTaggedValue>(thread, CreateTypedArrayFromList(thread, array));
+    JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestFindLastFunc));
+    auto ecmaRuntimeCallInfo1 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 means 1 call arg
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, func.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result = TypedArray::FindLast(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_EQ(result.GetRawData(), JSTaggedValue(40).GetRawData());
+}
+
+HWTEST_F_L0(BuiltinsTypedArrayTest, FindLastIndex)
+{
+    ASSERT_NE(thread, nullptr);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<TaggedArray> array(factory->NewTaggedArray(3));
+    // array [50, 40, 30]
+    array->Set(thread, 0, JSTaggedValue(50));
+    array->Set(thread, 1, JSTaggedValue(40));
+    array->Set(thread, 2, JSTaggedValue(30));
+
+    JSHandle<JSTaggedValue> obj = JSHandle<JSTaggedValue>(thread, CreateTypedArrayFromList(thread, array));
+    JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestFindLastFunc));
+    auto ecmaRuntimeCallInfo1 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 means 1 call arg
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, func.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result = TypedArray::FindLastIndex(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev);
+
+    EXPECT_EQ(result.GetRawData(), JSTaggedValue(static_cast<double>(2)).GetRawData());
 }
 }  // namespace panda::test

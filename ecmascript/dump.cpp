@@ -563,7 +563,8 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     if (supers.IsTaggedArray()) {
         length = WeakVector::Cast(supers.GetTaggedObject())->GetExtraLength();
     }
-    os << " - Supers[" << std::dec << length << "]: " << std::setw(DUMP_TYPE_OFFSET);;
+    os << " - Supers[" << std::dec << length << "]: ";
+    os << std::setw(DUMP_TYPE_OFFSET);
     supers.DumpTaggedValue(os);
     if (withDetail && !supers.IsUndefined()) {
         WeakVector::Cast(supers.GetTaggedObject())->Dump(os);
@@ -584,7 +585,7 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
     os << "IsCtor :" << std::boolalpha << jshclass->IsConstructor();
     os << "| IsCallable :" << std::boolalpha << jshclass->IsCallable();
     os << "| IsExtensible :" << std::boolalpha << jshclass->IsExtensible();
-    os << "| ElementRepresentation :" << static_cast<int>(jshclass->GetElementRepresentation());
+    os << "| ElementsKind :" << Elements::GetString(jshclass->GetElementsKind());
     os << "| NumberOfProps :" << std::dec << jshclass->NumberOfProps();
     os << "| InlinedProperties :" << std::dec << jshclass->GetInlinedProperties();
     os << "| IsTS :" << std::boolalpha << jshclass->IsTS();

@@ -344,6 +344,40 @@ JSTaggedValue JSStableArray::HandleFindIndexOfStable(JSThread *thread, JSHandle<
     return callResult;
 }
 
+JSTaggedValue JSStableArray::HandleFindLastIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                                     JSHandle<JSTaggedValue> callbackFnHandle,
+                                                     JSHandle<JSTaggedValue> thisArgHandle, int64_t &k)
+{
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    JSTaggedValue callResult = base::BuiltinsBase::GetTaggedBoolean(false);
+    const int32_t argsLength = 3; // 3: ?kValue, k, O?
+    JSMutableHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
+    while (k >= 0) {
+        // Elements of thisObjHandle may change.
+        array.Update(thisObjHandle->GetElements());
+        kValue.Update(array->Get(k));
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        info->SetCallArg(kValue.GetTaggedValue(), JSTaggedValue(k), thisObjVal.GetTaggedValue());
+        callResult = JSFunction::Call(info);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, callResult);
+        if (callResult.ToBoolean()) {
+            return callResult;
+        }
+        k--;
+        if (base::ArrayHelper::GetArrayLength(thread, thisObjVal) - 1 < k) {
+            return callResult;
+        }
+        if (!thisObjVal->IsStableJSArray(thread)) {
+            return callResult;
+        }
+    }
+    return callResult;
+}
+
 JSTaggedValue JSStableArray::HandleEveryOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                  JSHandle<JSTaggedValue> callbackFnHandle,
                                                  JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k)
@@ -708,6 +742,38 @@ JSTaggedValue JSStableArray::With(JSThread *thread, const JSHandle<JSObject> thi
             newArray->Set(thread, k, array->Get(k));
         }
         ++k;
+    }
+    return newArrayHandle.GetTaggedValue();
+}
+
+JSTaggedValue JSStableArray::ToSpliced(JSThread *thread, JSHandle<JSObject> &thisObjHandle, EcmaRuntimeCallInfo *argv,
+                                       int64_t argc, int64_t actualStart, int64_t actualSkipCount, int64_t newLen)
+{
+    JSMutableHandle<TaggedArray> thisArray(thread, thisObjHandle->GetElements());
+    // 1. Let A be ? ArrayCreate(newLen).
+    JSHandle<JSTaggedValue> newJsTaggedArray =
+        JSArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(newLen)));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> newArrayHandle(thread, newJsTaggedArray.GetTaggedValue());
+    JSMutableHandle<TaggedArray> newArray(thread, newArrayHandle->GetElements());
+
+    int64_t i = 0;
+    int64_t r = actualStart + actualSkipCount;
+    while (i < actualStart) {
+        JSTaggedValue value = thisArray->Get(i);
+        newArray->Set(thread, i, value);
+        ++i;
+    }
+    for (int64_t pos = 2; pos < argc; ++pos) { // 2:2 means there two arguments before the insert items.
+        JSHandle<JSTaggedValue> element = base::BuiltinsBase::GetCallArg(argv, pos);
+        newArray->Set(thread, i, element.GetTaggedValue());
+        ++i;
+    }
+    while (i < newLen) {
+        JSTaggedValue fromValue = thisArray->Get(r);
+        newArray->Set(thread, i, fromValue);
+        ++i;
+        ++r;
     }
     return newArrayHandle.GetTaggedValue();
 }

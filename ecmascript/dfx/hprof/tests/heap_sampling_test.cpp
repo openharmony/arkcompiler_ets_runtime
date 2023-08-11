@@ -97,7 +97,7 @@ HWTEST_F_L0(HeapSamplingTest, ImplementSampling)
     int size = 1 << 15; // default size
     Address addr = 0;
     heapSampling->ImplementSampling(addr, size);
-    const struct SamplingInfo *result = heapSampling->GetAllocationProfile();
+    const SamplingInfo *result = heapSampling->GetAllocationProfile();
     EXPECT_TRUE(result != nullptr);
     EXPECT_TRUE(result->samples_[0].size_ == size);
 }

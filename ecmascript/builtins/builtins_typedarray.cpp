@@ -1408,7 +1408,7 @@ JSTaggedValue BuiltinsTypedArray::Sort(EcmaRuntimeCallInfo *argv)
                                                                        key.GetTaggedValue()));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         while (beginIndex < endIndex) {
-            uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
+            uint32_t middleIndex = beginIndex + (endIndex - beginIndex) / 2;  // 2 : half
             key1.Update(JSTaggedValue(middleIndex));
             middleValue.Update(ObjectFastOperator::FastGetPropertyByValue(thread, thisObjHandle.GetTaggedValue(),
                                                                           key1.GetTaggedValue()));
@@ -1633,6 +1633,168 @@ JSTaggedValue BuiltinsTypedArray::At(EcmaRuntimeCallInfo *argv)
     return kValue.GetTaggedValue();
 }
 
+// 23.2.3.33
+JSTaggedValue BuiltinsTypedArray::ToSorted(EcmaRuntimeCallInfo* argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, ToSorted);
+    JSThread* thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. If comparefn is not undefined and IsCallable(comparefn) is false, throw a TypeError exception.
+    JSHandle<JSTaggedValue> comparefnHandle = GetCallArg(argv, 0);
+    if (!comparefnHandle->IsUndefined() && !comparefnHandle->IsCallable()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "the comparefn is not callable.", JSTaggedValue::Exception());
+    }
+    // 2. Let O be the this value.
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    // 3. Perform ? ValidateTypedArray(O).
+    TypedArrayHelper::ValidateTypedArray(thread, thisHandle);
+    // ReturnIfAbrupt(valid).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    JSHandle<JSTypedArray> thisObj(thisHandle);
+    // 4. Let len be O.[[ArrayLength]].
+    uint32_t len = thisObj->GetArrayLength();
+
+    // 5. Let A be ? TypedArrayCreateSameType(O, « 𝔽(len) »).
+    JSTaggedType args[1] = { JSTaggedValue(len).GetRawData() };
+    JSHandle<JSObject> newArrObj = TypedArrayHelper::TypedArrayCreateSameType(thread, thisObj, 1, args); // 1: one arg.
+    // ReturnIfAbrupt(A).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    JSHandle<JSTaggedValue> buffer =
+        JSHandle<JSTaggedValue>(thread, TypedArrayHelper::ValidateTypedArray(thread, thisHandle));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> key1(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> key2(thread, JSTaggedValue::Undefined());
+    if (len > 0) {
+        previousValue.Update(
+            ObjectFastOperator::FastGetPropertyByValue(thread, thisHandle.GetTaggedValue(), JSTaggedValue(0)));
+        ObjectFastOperator::FastSetPropertyByIndex(
+            thread, newArrObj.GetTaggedValue(), 0, previousValue.GetTaggedValue());
+    }
+    for (uint32_t i = 1; i < len; i++) {
+        uint32_t beginIndex = 0;
+        uint32_t endIndex = i;
+        key.Update(JSTaggedValue(i));
+        presentValue.Update(
+            ObjectFastOperator::FastGetPropertyByValue(thread, thisHandle.GetTaggedValue(), key.GetTaggedValue()));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        while (beginIndex < endIndex) {
+            uint32_t middleIndex = beginIndex + (endIndex - beginIndex) / 2; // 2 : half
+            key1.Update(JSTaggedValue(middleIndex));
+            middleValue.Update(
+                ObjectFastOperator::FastGetPropertyByValue(thread, newArrObj.GetTaggedValue(), key1.GetTaggedValue()));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            int32_t compareResult =
+                TypedArrayHelper::SortCompare(thread, comparefnHandle, buffer, middleValue, presentValue);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            compareResult > 0 ? (endIndex = middleIndex) : (beginIndex = middleIndex + 1);
+        }
+
+        if (endIndex < i) {
+            for (uint32_t j = i; j > endIndex; j--) {
+                key2.Update(JSTaggedValue(j - 1));
+                previousValue.Update(ObjectFastOperator::FastGetPropertyByValue(
+                    thread, newArrObj.GetTaggedValue(), key2.GetTaggedValue()));
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                ObjectFastOperator::FastSetPropertyByIndex(
+                    thread, newArrObj.GetTaggedValue(), j, previousValue.GetTaggedValue());
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            }
+        }
+        ObjectFastOperator::FastSetPropertyByIndex(
+            thread, newArrObj.GetTaggedValue(), endIndex, presentValue.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
+    return newArrObj.GetTaggedValue();
+}
+
+// 23.2.3.36
+JSTaggedValue BuiltinsTypedArray::With(EcmaRuntimeCallInfo* argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, With);
+    JSThread* thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. Let O be the this value.
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    // 2. Perform ? ValidateTypedArray(O).
+    TypedArrayHelper::ValidateTypedArray(thread, thisHandle);
+    // ReturnIfAbrupt(valid).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    JSHandle<JSTypedArray> thisObj(thisHandle);
+    // 3. Let len be O.[[ArrayLength]].
+    uint32_t len = thisObj->GetArrayLength();
+
+    // 4. Let relativeIndex be ? ToIntegerOrInfinity(index).
+    JSTaggedNumber indexVal = JSTaggedValue::ToInteger(thread, GetCallArg(argv, 0));
+    // ReturnIfAbrupt(indexVal).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int64_t relativeIndex = indexVal.GetNumber();
+    // 5. If relativeIndex ≥ 0, let actualIndex be relativeIndex.
+    // 6. Else, let actualIndex be len + relativeIndex.
+    int64_t actualIndex = relativeIndex >= 0 ? relativeIndex : len + relativeIndex;
+
+    // 7. If O.[[ContentType]] is BigInt, let numericValue be ? ToBigInt(value).
+    // 8. Else, let numericValue be ? ToNumber(value).
+    JSHandle<JSTaggedValue> value = GetCallArg(argv, 1);
+    ContentType contentType = thisObj->GetContentType();
+    JSHandle<JSTaggedValue> numericValue;
+    if (contentType == ContentType::BigInt) {
+        numericValue = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, value));
+    } else {
+        numericValue = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToNumber(thread, value));
+    }
+    // ReturnIfAbrupt(numericValue).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 9. If IsValidIntegerIndex(O, 𝔽(actualIndex)) is false, throw a RangeError exception.
+    if (!JSTypedArray::IsValidIntegerIndex(thisHandle, JSTaggedValue(actualIndex))) {
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid typed array index", JSTaggedValue::Exception());
+    }
+
+    // 10. Let A be ? TypedArrayCreateSameType(O, « 𝔽(len) »).
+    JSTaggedType args[1] = { JSTaggedValue(len).GetRawData() };
+    JSHandle<JSObject> newArrObj = TypedArrayHelper::TypedArrayCreateSameType(thread, thisObj, 1, args); // 1: one arg.
+    // ReturnIfAbrupt(A).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 11. Let k be 0.
+    // 12. Repeat, while k < len,
+    //     a. Let Pk be ! ToString(𝔽(k)).
+    //     b. If k is actualIndex, let fromValue be numericValue.
+    //     c. Else, let fromValue be ! Get(O, Pk).
+    //     d. Perform ! Set(A, Pk, fromValue, true).
+    //     e. Set k to k + 1.
+    JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> fromValue(thread, JSTaggedValue::Undefined());
+    uint32_t k = 0;
+    while (k < len) {
+        tKey.Update(JSTaggedValue(k));
+        if (k == actualIndex) {
+            fromValue.Update(numericValue);
+        } else {
+            fromValue.Update(
+                ObjectFastOperator::FastGetPropertyByValue(thread, thisHandle.GetTaggedValue(), tKey.GetTaggedValue()));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
+        ObjectFastOperator::FastSetPropertyByValue(thread, newArrObj.GetTaggedValue(),
+            tKey.GetTaggedValue(), fromValue.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        k++;
+    }
+    return newArrObj.GetTaggedValue();
+}
+
 // es12 23.2.3.13
 JSTaggedValue BuiltinsTypedArray::Includes(EcmaRuntimeCallInfo *argv)
 {
@@ -1642,5 +1804,27 @@ JSTaggedValue BuiltinsTypedArray::Includes(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
     return BuiltinsArray::Includes(argv);
+}
+
+// 23.2.3.13
+JSTaggedValue BuiltinsTypedArray::FindLast(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, FindLast);
+    if (!GetThis(argv)->IsTypedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
+    }
+    return BuiltinsArray::FindLast(argv);
+}
+
+// 23.2.3.14
+JSTaggedValue BuiltinsTypedArray::FindLastIndex(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, FindLastIndex);
+    if (!GetThis(argv)->IsTypedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
+    }
+    return BuiltinsArray::FindLastIndex(argv);
 }
 }  // namespace panda::ecmascript::builtins

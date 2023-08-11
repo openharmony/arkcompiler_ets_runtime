@@ -83,7 +83,7 @@ void NameDictionary::GetAllKeys(const JSThread *thread, int offset, TaggedArray 
 }
 
 void NameDictionary::GetAllKeysByFilter(const JSThread *thread, uint32_t &keyArrayEffectivelength,
-    TaggedArray *keyArray, uint32_t filter) const
+                                        TaggedArray *keyArray, uint32_t filter) const
 {
     int size = Size();
     CVector<std::pair<JSTaggedValue, PropertyAttributes>> sortArr;
@@ -115,8 +115,8 @@ void NameDictionary::GetAllKeysByFilter(const JSThread *thread, uint32_t &keyArr
 void NameDictionary::GetAllEnumKeys(const JSThread *thread, int offset, TaggedArray *keyArray, uint32_t *keys) const
 {
     uint32_t arrayIndex = 0;
-    int size = Size();
     CVector<std::pair<JSTaggedValue, PropertyAttributes>> sortArr;
+    int size = Size();
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
         JSTaggedValue key = GetKey(hashIndex);
         if (key.IsString()) {
@@ -185,6 +185,10 @@ int NumberDictionary::Hash(const JSTaggedValue &key)
         int keyValue = key.GetInt();
         return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
     }
+    if (key.IsDouble()) {
+        int32_t keyValue = static_cast<int32_t>(static_cast<uint32_t>(key.GetDouble()));
+        return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
+    }
     // key must be object
     LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
@@ -199,6 +203,17 @@ bool NumberDictionary::IsMatch(const JSTaggedValue &key, const JSTaggedValue &ot
     if (key.IsInt()) {
         if (other.IsInt()) {
             return key.GetInt() == other.GetInt();
+        }
+        return false;
+    }
+
+    if (key.IsDouble()) {
+        if (other.IsInt()) {
+            int32_t keyValue = static_cast<int32_t>(static_cast<uint32_t>(key.GetDouble()));
+            return keyValue == other.GetInt();
+        }
+        if (other.IsDouble()) {
+            return key.GetDouble() == other.GetDouble();
         }
         return false;
     }
@@ -232,22 +247,22 @@ void NumberDictionary::GetAllKeys(const JSThread *thread, const JSHandle<NumberD
 }
 
 void NumberDictionary::GetAllKeysByFilter(const JSThread *thread, const JSHandle<NumberDictionary> &obj,
-    uint32_t &keyArrayEffectivelength, const JSHandle<TaggedArray> &keyArray, uint32_t filter)
+                                          uint32_t &keyArrayEffectivelength, const JSHandle<TaggedArray> &keyArray,
+                                          uint32_t filter)
 {
     ASSERT_PRINT(keyArrayEffectivelength + static_cast<uint32_t>(obj->EntriesCount()) <= keyArray->GetLength(),
                  "keyArray capacity is not enough for dictionary");
 
-    uint32_t size = static_cast<uint32_t>(obj->Size());
     CVector<JSTaggedValue> sortArr;
+    uint32_t size = static_cast<uint32_t>(obj->Size());
     for (uint32_t hashIndex = 0; hashIndex < size; hashIndex++) {
         JSTaggedValue key = obj->GetKey(hashIndex);
         if (key.IsUndefined() || key.IsHole()) {
             continue;
         }
-        
+
         PropertyAttributes attr = obj->GetAttributes(hashIndex);
         bool bIgnore = FilterHelper::IgnoreKeyByFilter<PropertyAttributes>(attr, filter);
-
         if (!bIgnore) {
             sortArr.push_back(JSTaggedValue(static_cast<uint32_t>(key.GetInt())));
         }

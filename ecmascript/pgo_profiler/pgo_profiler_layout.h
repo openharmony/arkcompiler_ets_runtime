@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <string>
 
+#include "ecmascript/elements.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_type.h"
 #include "ecmascript/property_attributes.h"
@@ -145,6 +146,16 @@ public:
         return ctorLayoutDesc_;
     }
 
+    ElementsKind GetElementsKind() const
+    {
+        return kind_;
+    }
+
+    void SetElementsKind(ElementsKind kind)
+    {
+        kind_ = kind;
+    }
+
     bool FindProperty(const CString &key, PropertyDesc &desc) const
     {
         for (const auto &iter : layoutDesc_) {
@@ -171,6 +182,7 @@ public:
         ctorLayoutDesc_.emplace_back(key, handler);
     }
 
+    void UpdateElementKind(const ElementsKind kind);
     void UpdateKeyAndDesc(const CString &key, const PGOHandler &handler, PGOObjKind kind);
 
     bool FindDescWithKey(const CString &key, PGOHandler &handler) const;
@@ -187,6 +199,7 @@ private:
 
     ClassType type_;
     ClassType superType_;
+    ElementsKind kind_;
     LayoutDesc layoutDesc_;
     LayoutDesc ptLayoutDesc_;
     LayoutDesc ctorLayoutDesc_;

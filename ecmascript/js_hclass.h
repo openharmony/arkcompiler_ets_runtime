@@ -17,6 +17,7 @@
 #define ECMASCRIPT_JS_HCLASS_H
 
 #include "ecmascript/ecma_macros.h"
+#include "ecmascript/elements.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/mem/barriers.h"
@@ -289,14 +290,14 @@ enum class JSType : uint8_t {
 class JSHClass : public TaggedObject {
 public:
     static constexpr int TYPE_BITFIELD_NUM = 8;
-    static constexpr int LEVEL_BTTFIELD_NUM = 5;
+    static constexpr int LEVEL_BTTFIELD_NUM = 3;
     using ObjectTypeBits = BitField<JSType, 0, TYPE_BITFIELD_NUM>;  // 8
     using CallableBit = ObjectTypeBits::NextFlag;
     using ConstructorBit = CallableBit::NextFlag;      // 10
     using ExtensibleBit = ConstructorBit::NextFlag;
     using IsPrototypeBit = ExtensibleBit::NextFlag;
-    using ElementRepresentationBits = IsPrototypeBit::NextField<Representation, 3>;        // 3 means next 3 bit
-    using DictionaryElementBits = ElementRepresentationBits::NextFlag;                     // 16
+    using ElementsKindBits = IsPrototypeBit::NextField<ElementsKind, 5>;        // 5 means next 5 bit
+    using DictionaryElementBits = ElementsKindBits::NextFlag;                     // 16
     using IsDictionaryBit = DictionaryElementBits::NextFlag;                               // 17
     using IsStableElementsBit = IsDictionaryBit::NextFlag;                                 // 18
     using HasConstructorBits = IsStableElementsBit::NextFlag;                              // 19
@@ -356,6 +357,9 @@ public:
     static void TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &obj);
     static void TransitionForRepChange(const JSThread *thread, const JSHandle<JSObject> &receiver,
                                        const JSHandle<JSTaggedValue> &key, PropertyAttributes attr);
+    static void TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array);
+    static void TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
+        const JSHandle<JSTaggedValue> &value, ElementsKind kind = ElementsKind::NONE);
 
     static JSHandle<JSTaggedValue> EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
@@ -1473,17 +1477,17 @@ public:
         return GetObjectType() == JSType::JS_MODULE_NAMESPACE;
     }
 
-    inline void SetElementRepresentation(Representation representation)
+    inline void SetElementsKind(ElementsKind kind)
     {
         uint32_t bits = GetBitField();
-        uint32_t newVal = ElementRepresentationBits::Update(bits, representation);
+        uint32_t newVal = ElementsKindBits::Update(bits, kind);
         SetBitField(newVal);
     }
 
-    inline Representation GetElementRepresentation() const
+    inline ElementsKind GetElementsKind() const
     {
         uint32_t bits = GetBitField();
-        return ElementRepresentationBits::Decode(bits);
+        return ElementsKindBits::Decode(bits);
     }
 
     inline void SetLevel(uint8_t level)

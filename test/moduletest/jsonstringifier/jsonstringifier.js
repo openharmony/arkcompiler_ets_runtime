@@ -31,3 +31,8 @@ try {
 } catch (e) {
     print("test successful");
 }
+
+var obj = {
+    2147483648: 2289
+}
+print(JSON.stringify(obj));

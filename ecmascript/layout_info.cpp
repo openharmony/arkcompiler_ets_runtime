@@ -86,7 +86,7 @@ void LayoutInfo::GetAllKeys(const JSThread *thread, int end, int offset, TaggedA
     }
 }
 void LayoutInfo::GetAllKeysByFilter(const JSThread *thread, uint32_t numberOfProps, uint32_t &keyArrayEffectivelength,
-    TaggedArray *keyArray, const JSHandle<JSObject> object, uint32_t filter)
+                                    TaggedArray *keyArray, const JSHandle<JSObject> object, uint32_t filter)
 {
     ASSERT(numberOfProps <= static_cast<uint32_t>(NumberOfElements()));
     ASSERT_PRINT(keyArrayEffectivelength + numberOfProps <= keyArray->GetLength(),

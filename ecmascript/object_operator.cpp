@@ -484,6 +484,7 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
                 return true;
             }
             elements->Set(thread_, GetIndex(), value.GetTaggedValue());
+            JSHClass::TransitToElementsKind(thread_, receiver, value);
             return true;
         }
 

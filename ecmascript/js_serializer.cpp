@@ -581,7 +581,7 @@ bool JSSerializer::WriteJSArray(const JSHandle<JSTaggedValue> &value)
     if (!WritePlainObject(value)) {
         return false;
     }
-    uint32_t arrayLength = static_cast<uint32_t>(array->GetLength().GetInt());
+    uint32_t arrayLength = array->GetLength();
     if (!WriteInt(arrayLength)) {
         return false;
     }
@@ -1443,7 +1443,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArray()
     if (!JudgeType(SerializationUID::INT32) || !ReadInt(&arrLength)) {
         return JSHandle<JSTaggedValue>();
     }
-    jsArray->SetLength(thread_, JSTaggedValue(arrLength));
+    jsArray->SetLength(arrLength);
     return arrayTag;
 }
 

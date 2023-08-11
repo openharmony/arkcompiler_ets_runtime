@@ -648,4 +648,17 @@ void GlobalEnvConstants::InitClassConstructorOptimizedClass(ObjectFactory *facto
     fastCall->SetCanFastCall(true);
     SetConstant(ConstantIndex::CLASS_CONSTRUCTOR_OPTIMIZED_WITH_FAST_CALL_HCLASS_INDEX, fastCall);
 }
+
+void GlobalEnvConstants::InitElementKindHClass(const JSThread *thread, JSHandle<JSHClass> originHClass)
+{
+    auto map = thread->GetArrayHClassIndexMap();
+    for (auto iter : map) {
+        JSHandle<JSHClass> hclass = originHClass;
+        if (iter.first != ElementsKind::GENERIC) {
+            hclass = JSHClass::Clone(thread, originHClass);
+            hclass->SetElementsKind(iter.first);
+        }
+        SetConstant(iter.second, hclass);
+    }
+}
 }  // namespace panda::ecmascript
