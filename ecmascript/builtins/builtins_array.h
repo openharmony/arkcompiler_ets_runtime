@@ -103,6 +103,8 @@ public:
     static JSTaggedValue FlatMap(EcmaRuntimeCallInfo *argv);
     // 23.1.3.1 Array.prototype.at ( index )
     static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
+    // 23.1.3.39 Array.prototype.with ( index, value )
+    static JSTaggedValue With(EcmaRuntimeCallInfo *argv);
     // 23.1.3.34 Array.prototype.toSorted ( comparefn )
     static JSTaggedValue ToSorted(EcmaRuntimeCallInfo *argv);
     // 23.1.3.11

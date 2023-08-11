@@ -728,6 +728,24 @@ JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo 
     return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
 
+JSTaggedValue JSStableArray::With(JSThread *thread, const JSHandle<JSObject> thisObjHandle,
+                                  JSHandle<JSObject> newArrayHandle, int64_t &len, int64_t &index,
+                                  JSHandle<JSTaggedValue> value)
+{
+    JSMutableHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
+    JSMutableHandle<TaggedArray> newArray(thread, newArrayHandle->GetElements());
+    int64_t k = 0;
+    while (k < len) {
+        if (k == index) {
+            newArray->Set(thread, k, value.GetTaggedValue());
+        } else {
+            newArray->Set(thread, k, array->Get(k));
+        }
+        ++k;
+    }
+    return newArrayHandle.GetTaggedValue();
+}
+
 JSTaggedValue JSStableArray::ToSpliced(JSThread *thread, JSHandle<JSObject> &thisObjHandle, EcmaRuntimeCallInfo *argv,
                                        int64_t argc, int64_t actualStart, int64_t actualSkipCount, int64_t newLen)
 {
