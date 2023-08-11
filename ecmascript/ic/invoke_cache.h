@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_IC_INVOKE_CACHE_H_
-#define ECMASCRIPT_IC_INVOKE_CACHE_H_
+#ifndef ECMASCRIPT_IC_INVOKE_CACHE_H
+#define ECMASCRIPT_IC_INVOKE_CACHE_H
 
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/js_tagged_value.h"
@@ -48,4 +48,4 @@ public:
 };
 }  // namespace panda::ecmascript
 
-#endif  // ECMASCRIPT_IC_INVOKE_CACHE_H_
+#endif  // ECMASCRIPT_IC_INVOKE_CACHE_H

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TOOLING_BACKEND_DEBUGGER_API_H
-#define ECMASCRIPT_TOOLING_BACKEND_DEBUGGER_API_H
+#ifndef ECMASCRIPT_DEBUGGER_DEBUGGER_API_H
+#define ECMASCRIPT_DEBUGGER_DEBUGGER_API_H
 
 #include <functional>
 
@@ -116,14 +116,14 @@ public:
     static void DestroyJSDebugger(JSDebugger *debugger);
     static void RegisterHooks(JSDebugger *debugger, PtHooks *hooks);
     static bool SetBreakpoint(JSDebugger *debugger, const JSPtLocation &location,
-        Local<FunctionRef> condFuncRef);
+                              Local<FunctionRef> condFuncRef);
     static bool RemoveBreakpoint(JSDebugger *debugger, const JSPtLocation &location);
     static void RemoveAllBreakpoints(JSDebugger *debugger);
     static void HandleUncaughtException(const EcmaVM *ecmaVm, std::string &message);
     static Local<JSValueRef> EvaluateViaFuncCall(EcmaVM *ecmaVm, Local<FunctionRef> funcRef,
-        std::shared_ptr<FrameHandler> &frameHandler);
+                                                 std::shared_ptr<FrameHandler> &frameHandler);
     static Local<FunctionRef> GenerateFuncFromBuffer(const EcmaVM *ecmaVm, const void *buffer, size_t size,
-        std::string_view entryPoint);
+                                                     std::string_view entryPoint);
 
     // HotReload
     static DebugInfoExtractor *GetPatchExtractor(const EcmaVM *ecmaVm, const std::string &url);
@@ -167,4 +167,4 @@ public:
 };
 }  // namespace panda::ecmascript::tooling
 
-#endif  // ECMASCRIPT_TOOLING_BACKEND_DEBUGGER_API_H
+#endif  // ECMASCRIPT_DEBUGGER_DEBUGGER_API_H

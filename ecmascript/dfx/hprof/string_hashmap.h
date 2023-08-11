@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_HPROF_STRING_HASHMAP_H
-#define ECMASCRIPT_HPROF_STRING_HASHMAP_H
+#ifndef ECMASCRIPT_DFX_HPROF_STRING_HASHMAP_H
+#define ECMASCRIPT_DFX_HPROF_STRING_HASHMAP_H
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/c_containers.h"
@@ -78,4 +78,4 @@ private:
     CUnorderedMap<StringKey, CString *> hashmap_;
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_HPROF_STRING_HASHMAP_H
+#endif  // ECMASCRIPT_DFX_HPROF_STRING_HASHMAP_H
