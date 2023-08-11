@@ -473,6 +473,12 @@ void RuntimeStubs::ProfileObjLayout(uintptr_t argGlue, uintptr_t func, int32_t o
     thread->GetEcmaVM()->GetPGOProfiler()->ProfileObjLayout(thread, func, offset, object, store != 0);
 }
 
+void RuntimeStubs::ProfileObjIndex(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object)
+{
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    thread->GetEcmaVM()->GetPGOProfiler()->ProfileObjIndex(thread, func, offset, object);
+}
+
 void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
 {
     std::string format = MessageString::GetMessageString(fmtMessageId);

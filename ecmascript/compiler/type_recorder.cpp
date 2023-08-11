@@ -160,7 +160,7 @@ void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const Metho
 
         EcmaOpcode ecmaOpcode = bytecodes_->GetOpcode(pcOffsets_[bcIdx]);
         if (jsPandaFile->HasTSTypes(recordName) && Bytecodes::IsCallOp(ecmaOpcode)) {
-            int32_t callTargetMethodOffset = it->second.GetClassType().GetClassType();
+            uint32_t callTargetMethodOffset = it->second.GetClassType().GetClassType();
             if (callTargetMethodOffset == 0) {
                 return;
             }

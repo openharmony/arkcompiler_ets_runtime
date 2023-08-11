@@ -34,12 +34,14 @@ public:
     void ProfileCreateObject(JSTaggedType func, int32_t offset, JSTaggedType newObj, int32_t traceId);
     void ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType ctor);
     void ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType object, bool store);
+    void ProfileObjIndex(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType object);
+
     void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp)
     {
         saveTimestamp_ = timestamp;
     }
 
-    void InsertLiteralId(JSTaggedType hclass, int32_t traceId);
+    int32_t InsertLiteralId(JSTaggedType hclass, int32_t traceId);
     void ProcessReferences(const WeakRootVisitor &visitor);
 
 private:

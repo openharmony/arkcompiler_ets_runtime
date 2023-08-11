@@ -42,6 +42,9 @@ void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, Ga
         case OperationType::LOAD_LAYOUT:
             ProfileObjLayout(glue, pc, func, values[0], Int32(0));
             break;
+        case OperationType::INDEX:
+            ProfileObjIndex(glue, pc, func, values[0]);
+            break;
         default:
             break;
     }
@@ -187,6 +190,27 @@ void ProfilerStubBuilder::ProfileObjLayout(GateRef glue, GateRef pc, GateRef fun
     env->SubCfgExit();
 }
 
+void ProfilerStubBuilder::ProfileObjIndex(GateRef glue, GateRef pc, GateRef func, GateRef object)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label isHeap(env);
+    Label exit(env);
+    Branch(TaggedIsHeapObject(object), &isHeap, &exit);
+    Bind(&isHeap);
+    {
+        GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        GateRef firstPC =
+            Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
+        CallNGCRuntime(glue, RTSTUB_ID(ProfileObjIndex), { glue, func, offset, object });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
 void ProfilerStubBuilder::ProfileCall(GateRef glue, GateRef pc, GateRef func, GateRef target)
 {
     auto env = GetEnvironment();
@@ -255,6 +279,52 @@ GateRef ProfilerStubBuilder::UpdateTrackTypeInPropAttr(GateRef attr, GateRef val
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+void ProfilerStubBuilder::ProfileObjLayoutOrIndex(GateRef glue, GateRef receiver, GateRef key, GateRef isStore,
+    ProfileOperation callback)
+{
+    if (callback.IsEmpty()) {
+        return;
+    }
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    GateRef index = TryToElementsIndex(glue, key);
+    Label validIndex(env);
+    Label profileIndex(env);
+    Label profileLayout(env);
+    Branch(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &profileLayout);
+    Bind(&validIndex);
+    {
+        Branch(IsTypedArray(receiver), &profileIndex, &profileLayout);
+        Bind(&profileIndex);
+        {
+            callback.ProfileObjIndex(receiver);
+            Jump(&exit);
+        }
+    }
+    Bind(&profileLayout);
+    {
+        Label store(env);
+        Label load(env);
+        Branch(isStore, &store, &load);
+        Bind(&store);
+        {
+            callback.ProfileObjLayoutByStore(receiver);
+            Jump(&exit);
+        }
+        Bind(&load);
+        {
+            callback.ProfileObjLayoutByLoad(receiver);
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    env->SubCfgExit();
 }
 
 void ProfilerStubBuilder::UpdatePropAttrIC(
