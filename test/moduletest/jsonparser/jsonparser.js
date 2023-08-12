@@ -41,3 +41,7 @@ var a = `{"code": 0, "msg": "ok"}`
 function reviver(k, v) { return v; }
 var o = JSON.parse(a, reviver);
 print(o);
+
+let strData2 = "1.7976971348623157e+308";
+let res2 = JSON.parse(strData2);
+print(res2);
