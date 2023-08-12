@@ -409,130 +409,107 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), Array, Concat);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    uint32_t argc = argv->GetArgsNumber();
+    int argc = static_cast<int>(argv->GetArgsNumber());
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
-    // 3. Let A be ArraySpeciesCreate(O, 0).
+    // 2. Let A be ArraySpeciesCreate(O, 0).
     uint32_t arrayLen = 0;
     JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(arrayLen));
-    // 4. ReturnIfAbrupt(A).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
 
-    // 5. Let n be 0.
+    JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
+    // Fast path
+    uint32_t arrLen = ArrayHelper::GetArrayLength(thread, thisObjVal);
+    if (arrLen == 0 && argc == 1) {
+        JSHandle<JSTaggedValue> argHandle = GetCallArg(argv, 0);
+        uint32_t argLen = ArrayHelper::GetArrayLength(thread, argHandle);
+        if (argLen == 0 && argHandle->IsJSArray()) {
+            JSHandle<JSTaggedValue> lenHandle(thread, JSTaggedValue(arrLen));
+            JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(newArrayHandle),
+                                       lengthKey, lenHandle, true);
+            return newArrayHandle.GetTaggedValue();
+        }
+    }
+
+    // 3. Let n be 0.
     int64_t n = 0;
+    JSMutableHandle<JSTaggedValue> ele(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> fromKey(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> toKey(thread, JSTaggedValue::Undefined());
-    bool isSpreadable = ArrayHelper::IsConcatSpreadable(thread, thisHandle);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (isSpreadable) {
-        int64_t thisLen = ArrayHelper::GetArrayLength(thread, thisObjVal);
+    // 4. Prepend O to items.
+    // 5. For each element E of items, do
+    for (int i = -1; i < argc; i++) {
+        if (i < 0) {
+            ele.Update(thisObjHandle.GetTaggedValue());
+        } else {
+            ele.Update(GetCallArg(argv, i));
+        }
+        // a. Let spreadable be ? IsConcatSpreadable(E).
+        bool isSpreadable = ArrayHelper::IsConcatSpreadable(thread, ele);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (n + thisLen > base::MAX_SAFE_INTEGER) {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
-        }
-        int64_t k = 0;
-        if (thisObjVal->IsStableJSArray(thread)) {
-            JSStableArray::Concat(thread, newArrayHandle, thisObjHandle, k, n);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        }
-        while (k < thisLen) {
-            fromKey.Update(JSTaggedValue(k));
-            toKey.Update(JSTaggedValue(n));
-            bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, fromKey);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (exists) {
-                JSHandle<JSTaggedValue> fromValHandle = JSArray::FastGetPropertyByValue(thread, thisObjVal, fromKey);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, fromValHandle);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            }
-            n++;
-            k++;
-        }
-    } else {
-        if (n >= base::MAX_SAFE_INTEGER) {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
-        }
-        JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, n, thisObjVal);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        n++;
-    }
-    // 7. Repeat, while items is not empty
-    for (uint32_t i = 0; i < argc; i++) {
-        // a. Remove the first element from items and let E be the value of the element
-        JSHandle<JSTaggedValue> addHandle = GetCallArg(argv, i);
-
-        // b. Let spreadable be IsConcatSpreadable(E).
-        isSpreadable = ArrayHelper::IsConcatSpreadable(thread, addHandle);
-        // c. ReturnIfAbrupt(spreadable).
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        // d. If spreadable is true, then
+        // b. If spreadable is true, then
         if (isSpreadable) {
-            // ii. Let len be ToLength(Get(E, "length")).
-            int64_t len = ArrayHelper::GetArrayLength(thread, addHandle);
-            // iii. ReturnIfAbrupt(len).
+            // i. Let k be 0.
+            // ii. Let len be ? LengthOfArrayLike(E).
+            // iii. If n + len > 253 - 1, throw a TypeError exception.
+            int64_t len = ArrayHelper::GetArrayLength(thread, ele);
+            int64_t k = 0;
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            // iv. If n + len > 253-1, throw a TypeError exception.
             if (n + len > base::MAX_SAFE_INTEGER) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
             }
-            int64_t k = 0;
-            if (addHandle->IsStableJSArray(thread)) {
-                JSStableArray::Concat(thread, newArrayHandle, JSHandle<JSObject>(addHandle), k, n);
+
+            if (ele->IsStableJSArray(thread)) {
+                JSStableArray::Concat(thread, newArrayHandle, JSHandle<JSObject>::Cast(ele), k, n);
             }
-            // v. Repeat, while k < len
+            // iv. Repeat, while k < len,
             while (k < len) {
-                fromKey.Update(JSTaggedValue(k));
-                toKey.Update(JSTaggedValue(n));
                 // 1. Let P be ToString(k).
                 // 2. Let exists be HasProperty(E, P).
-                // 4. If exists is true, then
-                bool exists = JSTaggedValue::HasProperty(thread, addHandle, fromKey);
+                // 3. If exists is true, then
+                fromKey.Update(JSTaggedValue(k));
+                toKey.Update(JSTaggedValue(n));
+                bool exists = JSTaggedValue::HasProperty(thread, ele, fromKey);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 if (exists) {
                     // a. Let subElement be Get(E, P).
                     JSHandle<JSTaggedValue> fromValHandle =
-                        JSArray::FastGetPropertyByValue(thread, addHandle, fromKey);
-                    // b. ReturnIfAbrupt(subElement).
+                        JSArray::FastGetPropertyByValue(thread, ele, fromKey);
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                    // b. Perform ? CreateDataPropertyOrThrow(A, ! ToString(𝔽(n)), subElement).
                     JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, toKey, fromValHandle);
-                    // d. ReturnIfAbrupt(status).
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 }
-                // 5. Increase n by 1.
-                // 6. Increase k by 1.
+                // 4. Set n to n + 1.
+                // 5. Set k to k + 1.
                 n++;
                 k++;
             }
-        } else {  // e. Else E is added as a single item rather than spread,
-                  // i. If n≥253-1, throw a TypeError exception.
+        //c. Else
+        } else {
+            // ii. If n ≥ 253 - 1, throw a TypeError exception.
             if (n >= base::MAX_SAFE_INTEGER) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
             }
-            // ii. Let status be CreateDataPropertyOrThrow (A, ToString(n), E).
-            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, n, addHandle);
-            // iii. ReturnIfAbrupt(status).
+            // iii. Perform ? CreateDataPropertyOrThrow(A, ! ToString(𝔽(n)), E).
+            // iv. Set n to n + 1.
+            JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, n, ele);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-            // iv. Increase n by 1.
             n++;
         }
     }
-    // 8. Let setStatus be Set(A, "length", n, true).
-    JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
+    // 6. Perform ? Set(A, "length", 𝔽(n), true).
     JSHandle<JSTaggedValue> lenHandle(thread, JSTaggedValue(n));
     JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(newArrayHandle), lengthKey, lenHandle, true);
-    // 9. ReturnIfAbrupt(setStatus).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    // 10. Return A.
+    // 7. Return A.
     return newArrayHandle.GetTaggedValue();
 }
 

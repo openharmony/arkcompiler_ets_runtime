@@ -38,13 +38,14 @@ bool ArrayHelper::IsConcatSpreadable(JSThread *thread, const JSHandle<JSTaggedVa
     auto ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     JSHandle<JSTaggedValue> isConcatsprKey = env->GetIsConcatSpreadableSymbol();
-    JSHandle<JSTaggedValue> spreadable = JSTaggedValue::GetProperty(thread, obj, isConcatsprKey).GetValue();
+    JSTaggedValue spreadable = ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(),
+                                                                          isConcatsprKey.GetTaggedValue());
     // 3. ReturnIfAbrupt(spreadable).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
 
     // 4. If spreadable is not undefined, return ToBoolean(spreadable).
-    if (!spreadable->IsUndefined()) {
-        return spreadable->ToBoolean();
+    if (!spreadable.IsUndefined()) {
+        return spreadable.ToBoolean();
     }
 
     // 5. Return IsArray(O).
