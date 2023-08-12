@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_FCUNTION_CALL_TIMER_H
-#define ECMASCRIPT_FCUNTION_CALL_TIMER_H
+#ifndef ECMASCRIPT_DFX_VMSTAT_FCUNTION_CALL_TIMER_H
+#define ECMASCRIPT_DFX_VMSTAT_FCUNTION_CALL_TIMER_H
 
 #include "ecmascript/dfx/vmstat/caller_stat.h"
 #include "ecmascript/mem/c_containers.h"
@@ -82,4 +82,4 @@ private:
     CMap<size_t, PandaRuntimeTimer> callTimer_ {};
 };
 }
-#endif
+#endif // ECMASCRIPT_DFX_VMSTAT_FCUNTION_CALL_TIMER_H

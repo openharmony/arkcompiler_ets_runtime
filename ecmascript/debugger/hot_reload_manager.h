@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TOOLING_INTERFACE_HOT_RELOAD_MANAGER_H
-#define ECMASCRIPT_TOOLING_INTERFACE_HOT_RELOAD_MANAGER_H
+#ifndef ECMASCRIPT_DEBUGGER_HOT_RELOAD_MANAGER_H
+#define ECMASCRIPT_DEBUGGER_HOT_RELOAD_MANAGER_H
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/debug_info_extractor.h"
@@ -42,4 +42,4 @@ private:
     CUnorderedMap<std::string, DebugInfoExtractor *> patchExtractors_ {};
 };
 }  // namespace panda::ecmascript::tooling
-#endif  // ECMASCRIPT_TOOLING_INTERFACE_HOT_RELOAD_MANAGER_H
+#endif  // ECMASCRIPT_DEBUGGER_HOT_RELOAD_MANAGER_H

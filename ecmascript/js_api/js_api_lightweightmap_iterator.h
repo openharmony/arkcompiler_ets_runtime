@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_JS_API_LIGHT_WEIGHT_MAP_ITERATOR_H
-#define ECMASCRIPT_JS_API_LIGHT_WEIGHT_MAP_ITERATOR_H
+#ifndef ECMASCRIPT_JS_API_JS_API_LIGHT_WEIGHT_MAP_ITERATOR_H
+#define ECMASCRIPT_JS_API_JS_API_LIGHT_WEIGHT_MAP_ITERATOR_H
 
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_object.h"
@@ -48,4 +48,4 @@ public:
 };
 }  // namespace panda::ecmascript
 
-#endif  // ECMASCRIPT_JS_LinkedList_ITERATOR_H
+#endif  // ECMASCRIPT_JS_API_JS_API_LIGHT_WEIGHT_MAP_ITERATOR_H

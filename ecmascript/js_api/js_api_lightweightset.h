@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_JS_API_LIGHTWEIGHTSET_H
-#define ECMASCRIPT_JS_API_LIGHTWEIGHTSET_H
+#ifndef ECMASCRIPT_JS_API_JS_API_LIGHTWEIGHTSET_H
+#define ECMASCRIPT_JS_API_JS_API_LIGHTWEIGHTSET_H
 
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value-inl.h"
@@ -77,4 +77,4 @@ public:
     DECL_DUMP()
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_JS_API_LIGHTWEIGHTSET_H
+#endif  // ECMASCRIPT_JS_API_JS_API_LIGHTWEIGHTSET_H

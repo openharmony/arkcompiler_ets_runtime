@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TOOLING_INTERFACE_DROPFRAME_MANAGER_H
-#define ECMASCRIPT_TOOLING_INTERFACE_DROPFRAME_MANAGER_H
+#ifndef ECMASCRIPT_DEBUGGER_DROPFRAME_MANAGER_H
+#define ECMASCRIPT_DEBUGGER_DROPFRAME_MANAGER_H
 
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_thread.h"
@@ -39,8 +39,7 @@ private:
     void NewLexModifyRecordLevel();
     void EmplaceLexModifyRecord(JSThread *thread, JSTaggedValue env, uint16_t slot, JSTaggedValue value);
     uint32_t GetLexModifyRecordLevel();
-    std::vector<std::tuple<JSHandle<JSTaggedValue>, uint16_t, JSHandle<JSTaggedValue>>>
-        GetLexModifyRecordOfTopFrame();
+    std::vector<std::tuple<JSHandle<JSTaggedValue>, uint16_t, JSHandle<JSTaggedValue>>> GetLexModifyRecordOfTopFrame();
     void RemoveLexModifyRecordOfTopFrame(JSThread *thread);
     void MergeLexModifyRecordOfTopFrame(JSThread *thread);
 
@@ -48,4 +47,4 @@ private:
 };
 }
 
-#endif  // ECMASCRIPT_TOOLING_INTERFACE_DROPFRAME_MANAGER_H
+#endif  // ECMASCRIPT_DEBUGGER_DROPFRAME_MANAGER_H

@@ -837,5 +837,4 @@ void EcmaContext::JoinStackPop(JSHandle<JSTaggedValue> receiver)
         }
     }
 }
-
 }  // namespace panda::ecmascript
