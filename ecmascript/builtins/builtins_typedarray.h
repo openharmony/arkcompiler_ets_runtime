@@ -109,6 +109,8 @@ public:
     static JSTaggedValue Includes(EcmaRuntimeCallInfo *argv);
     // 23.2.3.1
     static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
+    // 23.2.3.32 %TypedArray%.prototype.toReversed ( )
+    static JSTaggedValue ToReversed(EcmaRuntimeCallInfo *argv);
     // 23.2.3.13
     static JSTaggedValue FindLast(EcmaRuntimeCallInfo *argv);
     // 23.2.3.14

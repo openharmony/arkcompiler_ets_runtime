@@ -1806,6 +1806,54 @@ JSTaggedValue BuiltinsTypedArray::Includes(EcmaRuntimeCallInfo *argv)
     return BuiltinsArray::Includes(argv);
 }
 
+// 23.2.3.32
+JSTaggedValue BuiltinsTypedArray::ToReversed(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, TypedArray, ToReversed);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. Let O be ToObject(this value).
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    JSHandle<JSTypedArray> thisObj(thisHandle);
+    // 2. Perform ? ValidateTypedArray(O).
+    TypedArrayHelper::ValidateTypedArray(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    // ReturnIfAbrupt(O).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 3. Let len be O.[[ArrayLength]].
+    uint32_t len = JSHandle<JSTypedArray>::Cast(thisObjHandle)->GetArrayLength();
+    // ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 4. Let A be ? TypedArrayCreateSameType(O, « 𝔽(length) »).
+    JSTaggedType args[1] = {JSTaggedValue(len).GetRawData()};
+    JSHandle<JSObject> newArrayHandle = TypedArrayHelper::TypedArrayCreateSameType(thread, thisObj, 1, args);
+    // ReturnIfAbrupt(newObj).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 5. Let k be 0.
+    uint32_t k = 0;
+
+    // 6. Repeat, while k < length,
+    //     a. Let from be ! ToString(𝔽(length - k - 1)).
+    //     b. Let Pk be ! ToString(𝔽(k)).
+    //     c. Let fromValue be ! Get(O, from).
+    //     d. Perform ! Set(A, Pk, fromValue, true).
+    //     e. Set k to k + 1.
+    while (k < len) {
+        uint32_t from = len - k - 1;
+        JSHandle<JSTaggedValue> fromValue = JSTypedArray::GetProperty(thread, thisHandle, from).GetValue();
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ObjectFastOperator::FastSetPropertyByIndex(thread, newArrayHandle.GetTaggedValue(), k,
+                                                   fromValue.GetTaggedValue());
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ++k;
+    }
+    // 7. Return A.
+    return newArrayHandle.GetTaggedValue();
+}
+
 // 23.2.3.13
 JSTaggedValue BuiltinsTypedArray::FindLast(EcmaRuntimeCallInfo *argv)
 {

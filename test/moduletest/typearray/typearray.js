@@ -199,6 +199,10 @@ function foo() {}
 const f = new foo();
 const protoOf = f.isPrototypeOf;
 print(protoOf.apply(protoOf, a7));
+const uint8 = new Uint8Array([1, 2, 3]);
+const reversedUint8 = uint8.toReversed();
+print(reversedUint8); // Uint8Array [3, 2, 1]
+print(uint8); // Uint8Array [1, 2, 3]
 
 try {
     const a8 = new Int8Array(new ArrayBuffer(0x40004141, {"maxByteLength": 0x40004141}));
