@@ -76,7 +76,7 @@ public:
      * dump the specific snapshot in target format
      */
     bool DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress = nullptr,
-                          bool isVmMode = true, bool isPrivate = false) override;
+                          bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false) override;
 
     void AddSnapshot(HeapSnapshot *snapshot);
 
@@ -109,7 +109,8 @@ private:
      * make a new heap snapshot and put it into a container eg, vector
      */
     HeapSnapshot *MakeHeapSnapshot(SampleType sampleType, bool isVmMode = true,
-                                   bool isPrivate = false, bool traceAllocation = false);
+                                   bool isPrivate = false, bool captureNumericValue = false,
+                                   bool traceAllocation = false);
     std::string GenDumpFileName(DumpFormat dumpFormat);
     CString GetTimeStamp();
     void UpdateHeapObjects(HeapSnapshot *snapshot);

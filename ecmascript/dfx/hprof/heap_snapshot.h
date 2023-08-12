@@ -363,9 +363,10 @@ public:
     static constexpr int SEQ_STEP = 2;
     NO_MOVE_SEMANTIC(HeapSnapshot);
     NO_COPY_SEMANTIC(HeapSnapshot);
-    HeapSnapshot(const EcmaVM *vm, const bool isVmMode, const bool isPrivate, const bool trackAllocations,
-                 EntryIdMap *entryIdMap, Chunk *chunk)
-        : stringTable_(vm), vm_(vm), isVmMode_(isVmMode), isPrivate_(isPrivate), trackAllocations_(trackAllocations),
+    HeapSnapshot(const EcmaVM *vm, const bool isVmMode, const bool isPrivate, const bool captureNumericValue,
+                 const bool trackAllocations, EntryIdMap *entryIdMap, Chunk *chunk)
+        : stringTable_(vm), vm_(vm), isVmMode_(isVmMode), isPrivate_(isPrivate),
+          captureNumericValue_(captureNumericValue), trackAllocations_(trackAllocations),
           entryIdMap_(entryIdMap), chunk_(chunk) {}
     ~HeapSnapshot();
     bool BuildUp();
@@ -489,6 +490,7 @@ private:
     const EcmaVM *vm_;
     bool isVmMode_ {true};
     bool isPrivate_ {false};
+    bool captureNumericValue_ {false};
     Node* privateStringNode_ {nullptr};
     bool trackAllocations_ {false};
     CVector<FunctionInfo> traceInfoStack_ {};
