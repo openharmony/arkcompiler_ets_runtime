@@ -274,7 +274,7 @@ JSTaggedValue ArrayHelper::SortIndexedProperties(JSThread *thread, const JSHandl
     JSHandle<JSTaggedValue> thisObjVal(thisObj);
     JSMutableHandle<JSTaggedValue> pk(thread, JSTaggedValue::Undefined());
 
-    while(k < len) {
+    while (k < len) {
         if (holes == HolesType::SKIP_HOLES) {
         pk.Update(JSTaggedValue(k));
             kRead = JSTaggedValue::HasProperty(thread, thisObjVal, pk);

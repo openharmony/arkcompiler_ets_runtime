@@ -57,6 +57,7 @@ public:
                                                        DataViewType targetType, uint32_t targetOffset,
                                                        uint32_t srcLength, JSHandle<TaggedArray> &elements);
     static JSTaggedValue At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue ToReversed(JSThread *thread, JSHandle<JSObject> thisObjHandle, uint32_t len);
     static JSTaggedValue With(JSThread *thread, const JSHandle<JSObject> thisObjHandle,
                               JSHandle<JSObject> newArrayHandle, int64_t &len, int64_t &index,
                               JSHandle<JSTaggedValue> value);

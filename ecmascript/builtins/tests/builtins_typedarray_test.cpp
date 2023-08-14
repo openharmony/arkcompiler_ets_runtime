@@ -456,8 +456,6 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, ToReversed)
     value = TypedArray::At(ecmaRuntimeCallInfo4);
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_EQ(value, JSTaggedValue(INT_VALUE_9));
-
-
     auto ecmaRuntimeCallInfo5 = TestHelper::CreateEcmaRuntimeCallInfo(thread,
                                                                       JSTaggedValue::Undefined(),
                                                                       ECMA_RUNTIME_CALL_INFO_6);
@@ -563,7 +561,7 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, With)
     // [1, -100, 3]
     EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr2, 0).GetValue()->GetInt(), 1);
     EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr2, 1).GetValue()->GetInt(), -100);
-    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr2, 2).GetValue()->GetInt(), 3); 
+    EXPECT_EQ(JSTypedArray::GetProperty(thread, resultArr2, 2).GetValue()->GetInt(), 3);
 }
 
 HWTEST_F_L0(BuiltinsTypedArrayTest, FindLast)

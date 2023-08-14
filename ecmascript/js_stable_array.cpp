@@ -345,8 +345,8 @@ JSTaggedValue JSStableArray::HandleFindIndexOfStable(JSThread *thread, JSHandle<
 }
 
 JSTaggedValue JSStableArray::HandleFindLastIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
-                                                     JSHandle<JSTaggedValue> callbackFnHandle,
-                                                     JSHandle<JSTaggedValue> thisArgHandle, int64_t &k)
+                                                         JSHandle<JSTaggedValue> callbackFnHandle,
+                                                         JSHandle<JSTaggedValue> thisArgHandle, int64_t &k)
 {
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
@@ -774,6 +774,23 @@ JSTaggedValue JSStableArray::ToSpliced(JSThread *thread, JSHandle<JSObject> &thi
         newArray->Set(thread, i, fromValue);
         ++i;
         ++r;
+    }
+    return newArrayHandle.GetTaggedValue();
+}
+
+JSTaggedValue JSStableArray::ToReversed(JSThread *thread, JSHandle<JSObject> thisObjHandle, uint32_t len)
+{
+    JSHandle<TaggedArray> srcArray(thread, thisObjHandle->GetElements());
+    JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(static_cast<double>(len))).GetTaggedValue();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSObject> newArrayHandle(thread, newArray);
+    JSHandle<TaggedArray> dstArray(thread, newArrayHandle->GetElements());
+    uint32_t k = 0;
+    while (k < len) {
+        uint32_t start = len - k - 1;
+        JSTaggedValue value = srcArray->Get(start);
+        dstArray->Set(thread, k, value);
+        ++k;
     }
     return newArrayHandle.GetTaggedValue();
 }

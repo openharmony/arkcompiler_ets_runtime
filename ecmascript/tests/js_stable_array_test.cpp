@@ -466,4 +466,44 @@ HWTEST_F_L0(JSStableArrayTest, With)
     EXPECT_EQ(destTaggedArr->Get(
         static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_3)).GetNumber(), INT_VALUE_3);
 }
+
+/**
+ * @tc.name: ToReversed
+ * @tc.desc: Create a source Array whose elements are Numbers and an EcmaRuntimeCallInfo, check whether the
+             value returned through calling ToReversed function with the source Array is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JSStableArrayTest, ToReversed)
+{
+    ObjectFactory *objFactory = thread->GetEcmaVM()->GetFactory();
+    int32_t lengthArr = ARRAY_LENGTH_4;
+    JSHandle<TaggedArray> handleTagArr(objFactory->NewTaggedArray(lengthArr));
+    for (int i = 0; i < lengthArr; i++) {
+        handleTagArr->Set(thread, i, JSTaggedValue(i));
+    }
+    JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
+    JSTaggedValue resultArr =
+        JSStableArray::ToReversed(thread, JSHandle<JSObject>::Cast(handleArr), ARRAY_LENGTH_4);
+    JSHandle<JSTaggedValue> destTaggedValue(thread, resultArr);
+    JSHandle<JSArray> destArr(destTaggedValue);
+    JSHandle<TaggedArray> destTaggedArr(thread, TaggedArray::Cast(destArr->GetElements().GetTaggedObject()));
+
+    EXPECT_EQ(handleTagArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_0)).GetNumber(), INT_VALUE_0);
+    EXPECT_EQ(handleTagArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_1)).GetNumber(), INT_VALUE_1);
+    EXPECT_EQ(handleTagArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_2)).GetNumber(), INT_VALUE_2);
+    EXPECT_EQ(handleTagArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_3)).GetNumber(), INT_VALUE_3);
+    EXPECT_EQ(destTaggedArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_0)).GetNumber(), INT_VALUE_3);
+    EXPECT_EQ(destTaggedArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_1)).GetNumber(), INT_VALUE_2);
+    EXPECT_EQ(destTaggedArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_2)).GetNumber(), INT_VALUE_1);
+    EXPECT_EQ(destTaggedArr->Get(
+        static_cast<uint32_t>(StableArrayIndex::STABLE_ARRAY_INDEX_3)).GetNumber(), INT_VALUE_0);
+}
 }  // namespace panda::test
