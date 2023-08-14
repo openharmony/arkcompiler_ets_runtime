@@ -37,7 +37,7 @@ enum class MemAlignmentLog2 : uint8_t {
     MEM_ALIGN_REGION_LOG2 = 4,
 };
 
-static constexpr size_t MAX_HUGE_OBJECT_CAPACITY = 512_MB;
+static constexpr size_t MAX_HUGE_OBJECT_CAPACITY = 1024_MB;
 static constexpr size_t LARGE_POOL_SIZE = 480_MB;
 static constexpr size_t MEDIUM_POOL_SIZE = 256_MB;
 static constexpr size_t LOW_POOL_SIZE = 64_MB;
