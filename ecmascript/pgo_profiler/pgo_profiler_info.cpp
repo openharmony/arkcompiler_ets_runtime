@@ -482,6 +482,7 @@ size_t PGOHClassLayoutDescInner::CaculateSize(const PGOHClassLayoutDesc &desc)
             size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
         }
     }
+    size += sizeof(ElementsKind);
     return size;
 }
 
@@ -489,8 +490,14 @@ std::string PGOHClassLayoutDescInner::GetTypeString(const PGOHClassLayoutDesc &d
 {
     std::string text;
     text += desc.GetClassType().GetTypeString();
-    text += TYPE_SEPARATOR + SPACE;
-    text += desc.GetSuperClassType().GetTypeString();
+    if (!desc.GetSuperClassType().IsNone()) {
+        text += TYPE_SEPARATOR + SPACE;
+        text += desc.GetSuperClassType().GetTypeString();
+    }
+    if (!Elements::IsNone(desc.GetElementsKind())) {
+        text += TYPE_SEPARATOR + SPACE;
+        text += Elements::GetString(desc.GetElementsKind());
+    }
     text += BLOCK_AND_ARRAY_START;
     bool isLayoutFirst = true;
     for (const auto &layoutDesc : desc.GetLayoutDesc()) {
@@ -912,8 +919,7 @@ bool PGOMethodIdSet::ParseFromBinary(uint32_t threshold, void **buffer, PGOProfi
         if (header->SupportMethodChecksum()) {
             checksum = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
         }
-        auto ret = methodInfoMap_.emplace(info->GetMethodName(), chunk_);
-        ASSERT(ret.second);
+        auto ret = methodInfoMap_.try_emplace(info->GetMethodName(), chunk_);
         auto methodNameSetIter = ret.first;
         auto &methodInfo = methodNameSetIter->second.GetOrCreateMethodInfo(checksum, info->GetMethodId());
         LOG_ECMA(DEBUG) << "Method:" << info->GetMethodId() << ELEMENT_SEPARATOR << info->GetCount()
@@ -947,8 +953,7 @@ void PGOMethodIdSet::Merge(const PGOMethodIdSet &from)
     for (const auto &methodNameSet : from.methodInfoMap_) {
         auto iter = methodInfoMap_.find(methodNameSet.first);
         if (iter == methodInfoMap_.end()) {
-            auto ret = methodInfoMap_.emplace(methodNameSet.first, chunk_);
-            ASSERT(ret.second);
+            auto ret = methodInfoMap_.try_emplace(methodNameSet.first, chunk_);
             iter = ret.first;
         }
         const_cast<PGOMethodNameSet &>(iter->second).Merge(methodNameSet.second);
@@ -1088,11 +1093,11 @@ void PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
         return;
     }
     if (header->SupportTrackField()) {
-        ParseFromBinaryForLayout(&addr);
+        ParseFromBinaryForLayout(&addr, header);
     }
 }
 
-bool PGORecordDetailInfos::ParseFromBinaryForLayout(void **buffer)
+bool PGORecordDetailInfos::ParseFromBinaryForLayout(void **buffer, PGOProfilerHeader *const header)
 {
     SectionInfo secInfo = base::ReadBuffer<SectionInfo>(buffer);
     for (uint32_t i = 0; i < secInfo.number_; i++) {
@@ -1101,7 +1106,7 @@ bool PGORecordDetailInfos::ParseFromBinaryForLayout(void **buffer)
             LOG_ECMA(INFO) << "Binary format error!";
             continue;
         }
-        moduleLayoutDescInfos_.emplace(info->Convert());
+        moduleLayoutDescInfos_.emplace(info->Convert(header));
     }
     return true;
 }
@@ -1153,13 +1158,14 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(
             return false;
         }
         auto classType = PGOSampleType(typeInfo.GetClassType());
+        auto elementsKind = typeInfo.GetElementsKind();
         size_t size = PGOHClassLayoutDescInner::CaculateSize(typeInfo);
         if (size == 0) {
             continue;
         }
         auto superType = PGOSampleType(typeInfo.GetSuperClassType());
         void *addr = allocator->Allocate(size);
-        auto descInfos = new (addr) PGOHClassLayoutDescInner(size, classType, superType);
+        auto descInfos = new (addr) PGOHClassLayoutDescInner(size, classType, superType, elementsKind);
         descInfos->Merge(typeInfo);
         stream.write(reinterpret_cast<char *>(descInfos), size);
         allocator->Delete(addr);
@@ -1265,7 +1271,7 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
         return;
     }
     if (header->SupportTrackField()) {
-        ParseFromBinaryForLayout(&addr);
+        ParseFromBinaryForLayout(&addr, header);
     }
 }
 
@@ -1292,7 +1298,7 @@ void PGORecordSimpleInfos::Merge(const PGORecordSimpleInfos &simpleInfos)
     }
 }
 
-bool PGORecordSimpleInfos::ParseFromBinaryForLayout(void **buffer)
+bool PGORecordSimpleInfos::ParseFromBinaryForLayout(void **buffer, PGOProfilerHeader *const header)
 {
     SectionInfo secInfo = base::ReadBuffer<SectionInfo>(buffer);
     for (uint32_t i = 0; i < secInfo.number_; i++) {
@@ -1301,7 +1307,7 @@ bool PGORecordSimpleInfos::ParseFromBinaryForLayout(void **buffer)
             LOG_ECMA(INFO) << "Binary format error!";
             continue;
         }
-        moduleLayoutDescInfos_.emplace(info->Convert());
+        moduleLayoutDescInfos_.emplace(info->Convert(header));
     }
     return true;
 }

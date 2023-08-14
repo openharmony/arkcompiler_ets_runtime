@@ -149,7 +149,12 @@ private:
     void LowerLoadElement(GateRef gate);
     void LowerLoadFromTaggedArray(GateRef gate);
     void LowerStoreToTaggedArray(GateRef gate, GateRef glue);
-    void LowerArrayLoadElement(GateRef gate);
+
+    enum class ArrayState : uint8_t {
+        PACKED = 0,
+        HOLEY,
+    };
+    void LowerArrayLoadElement(GateRef gate, ArrayState arrayState);
     void LowerCowArrayCheck(GateRef gate, GateRef glue);
     void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
     void LowerArrayStoreElement(GateRef gate, GateRef glue);

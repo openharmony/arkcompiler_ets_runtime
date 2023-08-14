@@ -45,10 +45,11 @@ namespace OHOS {
         }
         bool isVmMode = true;
         bool isPrivate = false;
+        bool captureNumericValue = false;
         std::string path(data, data + size);
         FileStream stream(path);
         Progress *progress = nullptr;
-        DFXJSNApi::DumpHeapSnapshot(vm, input, &stream, progress, isVmMode, isPrivate);
+        DFXJSNApi::DumpHeapSnapshot(vm, input, &stream, progress, isVmMode, isPrivate, captureNumericValue);
         JSNApi::DestroyJSVM(vm);
     }
 }

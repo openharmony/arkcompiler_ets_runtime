@@ -133,7 +133,7 @@ void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
 }
 
 bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress,
-                                    bool isVmMode, bool isPrivate)
+                                    bool isVmMode, bool isPrivate, bool captureNumericValue)
 {
     [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
     ASSERT(heapClean);
@@ -144,7 +144,7 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
     if (progress != nullptr) {
         progress->ReportProgress(0, heapCount);
     }
-    HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::ONE_SHOT, isVmMode, isPrivate);
+    HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::ONE_SHOT, isVmMode, isPrivate, captureNumericValue);
     ASSERT(snapshot != nullptr);
     entryIdMap_->RemoveDeadEntryId(snapshot);
     isProfiling_ = true;
@@ -165,7 +165,7 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
 bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream *stream,
                                      bool traceAllocation, bool newThread)
 {
-    HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::REAL_TIME, isVmMode, false, traceAllocation);
+    HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::REAL_TIME, isVmMode, false, false, traceAllocation);
     if (snapshot == nullptr) {
         return false;
     }
@@ -283,16 +283,16 @@ bool HeapProfiler::ForceFullGC(const EcmaVM *vm)
     return false;
 }
 
-HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMode,
-                                             bool isPrivate, bool traceAllocation)
+HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMode, bool isPrivate,
+                                             bool captureNumericValue, bool traceAllocation)
 {
     LOG_ECMA(INFO) << "HeapProfiler::MakeHeapSnapshot";
     DISALLOW_GARBAGE_COLLECTION;
     const_cast<Heap *>(vm_->GetHeap())->Prepare();
     switch (sampleType) {
         case SampleType::ONE_SHOT: {
-            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation,
-                                                           entryIdMap_, GetChunk());
+            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, captureNumericValue,
+                                                           traceAllocation, entryIdMap_, GetChunk());
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
@@ -301,8 +301,8 @@ HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMod
             return snapshot;
         }
         case SampleType::REAL_TIME: {
-            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, traceAllocation,
-                                                           entryIdMap_, GetChunk());
+            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, isVmMode, isPrivate, captureNumericValue,
+                                                           traceAllocation, entryIdMap_, GetChunk());
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();

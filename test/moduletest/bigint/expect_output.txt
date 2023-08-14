@@ -19,3 +19,4 @@ RangeError
 4702111234474983745
 0
 RangeError
+SyntaxError

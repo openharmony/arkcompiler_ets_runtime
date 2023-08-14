@@ -1458,7 +1458,7 @@ DEF_CALL_SIGNATURE(ProfileCreateObject)
         VariableType::JS_ANY(),
         VariableType::INT32(),
         VariableType::JS_ANY(),
-        VariableType::JS_ANY(),
+        VariableType::INT32(),
     };
     callSign->SetVariadicArgs(true);
     callSign->SetParameters(params.data());

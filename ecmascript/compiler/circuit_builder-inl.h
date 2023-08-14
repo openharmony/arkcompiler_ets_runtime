@@ -409,6 +409,13 @@ GateRef CircuitBuilder::TaggedIsGeneratorObject(GateRef x)
     return LogicAnd(isHeapObj, isAsyncGeneratorObj);
 }
 
+GateRef CircuitBuilder::TaggedIsJSArray(GateRef x)
+{
+    GateRef objType = GetObjectType(LoadHClass(x));
+    GateRef isJSArray = Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
+    return isJSArray;
+}
+
 GateRef CircuitBuilder::TaggedIsPropertyBox(GateRef x)
 {
     return LogicAnd(TaggedIsHeapObject(x),
@@ -697,6 +704,15 @@ GateRef CircuitBuilder::IsIsStableElementsByHClass(GateRef hClass)
         Int32(JSHClass::IsStableElementsBit::START_BIT)),
         Int32((1LU << JSHClass::IsStableElementsBit::SIZE) - 1)),
         Int32(0));
+}
+
+GateRef CircuitBuilder::GetElementsKindByHClass(GateRef hClass)
+{
+    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    return Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::ElementsKindBits::START_BIT)),
+        Int32((1LLU << JSHClass::ElementsKindBits::SIZE) - 1));
 }
 
 GateRef CircuitBuilder::IsDictionaryElement(GateRef hClass)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_IC_IC_COMPARE_H
-#define ECMASCRIPT_IC_IC_COMPARE_H
+#ifndef ECMASCRIPT_IC_IC_COMPARE_OP_H
+#define ECMASCRIPT_IC_IC_COMPARE_OP_H
 
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
@@ -75,4 +75,4 @@ public:
         JSTaggedValue right, CompareOpType operationType);
 };
 }   // namespace panda::ecmascript
-#endif  // ECMASCRIPT_IC_IC_COMPAREOP_H
+#endif  // ECMASCRIPT_IC_IC_COMPARE_OP_H

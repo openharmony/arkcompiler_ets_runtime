@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_HPROF_HEAP_PROFILER_H
-#define ECMASCRIPT_HPROF_HEAP_PROFILER_H
+#ifndef ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H
+#define ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H
 
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_snapshot_json_serializer.h"
@@ -76,7 +76,7 @@ public:
      * dump the specific snapshot in target format
      */
     bool DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress = nullptr,
-                          bool isVmMode = true, bool isPrivate = false) override;
+                          bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false) override;
 
     void AddSnapshot(HeapSnapshot *snapshot);
 
@@ -109,7 +109,8 @@ private:
      * make a new heap snapshot and put it into a container eg, vector
      */
     HeapSnapshot *MakeHeapSnapshot(SampleType sampleType, bool isVmMode = true,
-                                   bool isPrivate = false, bool traceAllocation = false);
+                                   bool isPrivate = false, bool captureNumericValue = false,
+                                   bool traceAllocation = false);
     std::string GenDumpFileName(DumpFormat dumpFormat);
     CString GetTimeStamp();
     void UpdateHeapObjects(HeapSnapshot *snapshot);
@@ -127,4 +128,4 @@ private:
     os::memory::Mutex mutex_;
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_HPROF_HEAP_PROFILER_H
+#endif  // ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H

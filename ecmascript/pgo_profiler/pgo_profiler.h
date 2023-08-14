@@ -31,7 +31,7 @@ public:
     void ProfileCall(JSTaggedType func, JSTaggedType callTarget, int32_t pcOffset = -1,
                      SampleMode mode = SampleMode::CALL_MODE, int32_t incCount = 1);
     void ProfileOpType(JSTaggedType func, int32_t offset, uint32_t type);
-    void ProfileCreateObject(JSTaggedType func, int32_t offset, JSTaggedType originObj, JSTaggedType newObj);
+    void ProfileCreateObject(JSTaggedType func, int32_t offset, JSTaggedType newObj, int32_t traceId);
     void ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType ctor);
     void ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t offset, JSTaggedType object, bool store);
     void SetSaveTimestamp(std::chrono::system_clock::time_point timestamp)
@@ -39,7 +39,8 @@ public:
         saveTimestamp_ = timestamp;
     }
 
-    void InsertLiteralId(JSTaggedType hclass, EntityId literalId);
+    void InsertLiteralId(JSTaggedType hclass, int32_t traceId);
+    void ProcessReferences(const WeakRootVisitor &visitor);
 
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT = 20;
@@ -73,7 +74,7 @@ private:
     bool isEnable_ {false};
     uint32_t methodCount_ {0};
     std::chrono::system_clock::time_point saveTimestamp_;
-    CMap<JSTaggedType, EntityId> literalIds_;
+    CMap<JSTaggedType, int32_t> traceIds_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
     friend class PGOProfilerManager;
 };

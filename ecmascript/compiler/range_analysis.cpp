@@ -172,7 +172,7 @@ GateRef RangeAnalysis::VisitLoadTypedArrayLength(GateRef gate)
 }
 
 GateRef RangeAnalysis::VisitRangeGuard(GateRef gate)
-{ 
+{
     auto left = acc_.GetFirstValue(gate);
     auto right = acc_.GetSecondValue(gate);
     return UpdateRange(gate, RangeInfo(left, right));

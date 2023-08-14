@@ -248,7 +248,7 @@ HWTEST_F_L0(HeapTrackerTest, DumpHeapSnapshot)
 
     FileStream stream(fileName.c_str());
     TestProgress testProgress;
-    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream, &testProgress, true, true);
+    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream, &testProgress, true, true, false);
     HeapProfilerInterface::Destroy(instance);
 
     // Check
@@ -282,8 +282,9 @@ HWTEST_F_L0(HeapTrackerTest, HeapSnapshotBuildUp)
     bool isVmMode = true;
     bool isPrivate = false;
     bool traceAllocation = false;
+    bool captureNumericValue = false;
     HeapProfiler heapProfiler(instance);
-    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, traceAllocation,
+    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, captureNumericValue, traceAllocation,
                               heapProfiler.GetEntryIdMap(), instance->GetChunk());
     EXPECT_TRUE(heapSnapshot.BuildUp());
 }
@@ -293,8 +294,9 @@ HWTEST_F_L0(HeapTrackerTest, HeapSnapshotUpdateNode)
     bool isVmMode = true;
     bool isPrivate = false;
     bool traceAllocation = false;
+    bool captureNumericValue = false;
     HeapProfiler heapProfiler(instance);
-    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, traceAllocation,
+    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, captureNumericValue, traceAllocation,
                               heapProfiler.GetEntryIdMap(), instance->GetChunk());
     size_t beginNode = heapSnapshot.GetNodeCount();
     heapSnapshot.UpdateNodes();
@@ -329,7 +331,7 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_001)
     stream.Clear();
     EXPECT_TRUE(!stream.Good());
     TestProgress testProgress;
-    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream, &testProgress, true, true);
+    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream, &testProgress, true, true, false);
     HeapProfilerInterface::Destroy(instance);
 }
 
@@ -360,7 +362,7 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_002)
     stream.Clear();
     EXPECT_TRUE(!stream.Good());
     TestProgress testProgress;
-    heapProfile->DumpHeapSnapshot(DumpFormat::BINARY, &stream, &testProgress, true, true);
+    heapProfile->DumpHeapSnapshot(DumpFormat::BINARY, &stream, &testProgress, true, true, false);
     HeapProfilerInterface::Destroy(instance);
 }
 
@@ -391,7 +393,7 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_003)
     stream.Clear();
     EXPECT_TRUE(!stream.Good());
     TestProgress testProgress;
-    heapProfile->DumpHeapSnapshot(DumpFormat::OTHER, &stream, &testProgress, true, true);
+    heapProfile->DumpHeapSnapshot(DumpFormat::OTHER, &stream, &testProgress, true, true, false);
     HeapProfilerInterface::Destroy(instance);
 }
 
@@ -423,7 +425,7 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_004)
     EXPECT_TRUE(!stream.Good());
     TestProgress testProgress;
     DumpFormat dumFormat = static_cast<DumpFormat>(5);
-    heapProfile->DumpHeapSnapshot(dumFormat, &stream, &testProgress, true, true);
+    heapProfile->DumpHeapSnapshot(dumFormat, &stream, &testProgress, true, true, false);
     HeapProfilerInterface::Destroy(instance);
 }
 
@@ -471,7 +473,7 @@ HWTEST_F_L0(HeapTrackerTest, StreamWriterEnd)
     stream.UpdateLastSeenObjectId(1, 1677567644913058);
 
     TestProgress testProgress;
-    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream, &testProgress, true, true);
+    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream, &testProgress, true, true, false);
     StreamWriter streamWriter(&stream);
     streamWriter.End();
     HeapProfilerInterface::Destroy(instance);
@@ -515,8 +517,9 @@ HWTEST_F_L0(HeapTrackerTest, FormatString)
     bool isVmMode = true;
     bool isPrivate = false;
     bool traceAllocation = false;
+    bool captureNumericValue = false;
     HeapProfiler heapProfiler(instance);
-    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, traceAllocation,
+    HeapSnapshot heapSnapshot(instance, isVmMode, isPrivate, captureNumericValue, traceAllocation,
                               heapProfiler.GetEntryIdMap(), instance->GetChunk());
 
     StringHashMap stringHashMap(instance);

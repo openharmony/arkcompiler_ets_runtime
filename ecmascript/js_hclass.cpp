@@ -19,6 +19,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/tagged_array.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_object-inl.h"
@@ -149,7 +150,7 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, ui
     SetIsPrototype(false);
     SetHasDeleteProperty(false);
     SetIsAllTaggedProp(true);
-    SetElementRepresentation(Representation::NONE);
+    SetElementsKind(ElementsKind::GENERIC);
     SetTransitions(thread, JSTaggedValue::Undefined());
     SetProtoChangeMarker(thread, JSTaggedValue::Null());
     SetProtoChangeDetails(thread, JSTaggedValue::Null());
@@ -208,6 +209,7 @@ void JSHClass::TransitionElementsToDictionary(const JSThread *thread, const JSHa
     }
     obj->GetJSHClass()->SetIsDictionaryElement(true);
     obj->GetJSHClass()->SetIsStableElements(false);
+    obj->GetJSHClass()->SetElementsKind(ElementsKind::GENERIC);
 }
 
 JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
@@ -459,6 +461,57 @@ void JSHClass::TransitionForRepChange(const JSThread *thread, const JSHandle<JSO
 
     receiver->SynchronizedSetClass(*newHClass);
     // 4. Maybe Transition And Maintain subtypeing check
+}
+
+void JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array)
+{
+    JSTaggedValue elements = array->GetElements();
+    if (!elements.IsTaggedArray()) {
+        return;
+    }
+    ElementsKind newKind = ElementsKind::NONE;
+    auto elementArray = TaggedArray::Cast(elements);
+    int length = elementArray->GetLength();
+    for (int i = 0; i < length; i++) {
+        JSTaggedValue value = elementArray->Get(i);
+        newKind = Elements::ToElementsKind(value, newKind);
+    }
+    ElementsKind current = array->GetJSHClass()->GetElementsKind();
+    if (newKind == current) {
+        return;
+    }
+    auto arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
+    if (arrayHClassIndexMap.find(newKind) != arrayHClassIndexMap.end()) {
+        auto index = static_cast<size_t>(thread->GetArrayHClassIndexMap().at(newKind));
+        auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
+        JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
+        array->SetClass(hclass);
+    }
+}
+
+void JSHClass::TransitToElementsKind(
+    const JSThread *thread, const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &value, ElementsKind kind)
+{
+    if (!object->IsJSArray()) {
+        return;
+    }
+    ElementsKind current = object->GetJSHClass()->GetElementsKind();
+    if (Elements::IsGeneric(current)) {
+        return;
+    }
+    auto newKind = Elements::ToElementsKind(value.GetTaggedValue(), kind);
+    // Merge current kind and new kind
+    newKind = Elements::MergeElementsKind(current, newKind);
+    if (newKind == current) {
+        return;
+    }
+    auto arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
+    if (arrayHClassIndexMap.find(newKind) != arrayHClassIndexMap.end()) {
+        auto index = static_cast<size_t>(thread->GetArrayHClassIndexMap().at(newKind));
+        auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
+        JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
+        object->SetClass(hclass);
+    }
 }
 
 JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
@@ -736,6 +789,9 @@ bool JSHClass::DumpForProfile(const JSHClass *hclass, PGOHClassLayoutDesc &desc,
     DISALLOW_GARBAGE_COLLECTION;
     if (hclass->IsDictionaryMode()) {
         return false;
+    }
+    if (kind == PGOObjKind::ELEMENT) {
+        desc.UpdateElementKind(hclass->GetElementsKind());
     }
 
     LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());

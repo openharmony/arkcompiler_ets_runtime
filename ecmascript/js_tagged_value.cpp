@@ -826,6 +826,7 @@ JSTaggedValue JSTaggedValue::GetPrototype(JSThread *thread, const JSHandle<JSTag
     }
     return JSObject::GetPrototype(JSHandle<JSObject>(obj));
 }
+
 bool JSTaggedValue::PreventExtensions(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     if (obj->IsJSProxy()) {
@@ -855,7 +856,7 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnPropertyKeys(JSThread *thread, const 
 }
 
 JSHandle<TaggedArray> JSTaggedValue::GetAllPropertyKeys(JSThread *thread,
-    const JSHandle<JSTaggedValue> &obj, uint32_t filter)
+                                                        const JSHandle<JSTaggedValue> &obj, uint32_t filter)
 {
     if (obj->IsJSProxy()) {
         LOG_ECMA(WARN) << "GetAllPropertyKeys do not support JSProxy yet";
@@ -1191,6 +1192,7 @@ bool JSTaggedValue::GetContainerProperty(JSThread *thread, const JSHandle<JSTagg
     }
     return false;
 }
+
 JSHandle<JSTaggedValue> JSTaggedValue::ToNumeric(JSThread *thread, JSHandle<JSTaggedValue> tagged)
 {
     // 1. Let primValue be ? ToPrimitive(value, number)
@@ -1206,6 +1208,7 @@ JSHandle<JSTaggedValue> JSTaggedValue::ToNumeric(JSThread *thread, JSHandle<JSTa
     JSHandle<JSTaggedValue> value(thread, number);
     return value;
 }
+
 OperationResult JSTaggedValue::GetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                 const JSHandle<JSTaggedValue> &key)
 {

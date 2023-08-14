@@ -72,7 +72,6 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
-#include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -230,6 +229,9 @@ EcmaVM::~EcmaVM()
     initialized_ = false;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     DFXJSNApi::StopCpuProfilerForFile(this);
+#endif
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    DeleteHeapProfile();
 #endif
     heap_->WaitAllTasksFinished();
     Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
@@ -607,6 +609,73 @@ void EcmaVM::DumpCallTimeInfo()
 {
     if (callTimer_ != nullptr) {
         callTimer_->PrintAllStats();
+    }
+}
+
+void EcmaVM::WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm)
+{
+    os::memory::LockHolder lock(mutex_);
+    auto thread = workerVm->GetJSThread();
+    if (thread != nullptr && hostVm != nullptr) {
+        auto tid = thread->GetThreadId();
+        if (tid != 0) {
+            workerList_.emplace(tid, workerVm);
+        }
+    }
+}
+
+EcmaVM *EcmaVM::GetWorkerVm(uint32_t tid)
+{
+    os::memory::LockHolder lock(mutex_);
+    EcmaVM *workerVm = nullptr;
+    if (!workerList_.empty()) {
+        auto iter = workerList_.find(tid);
+        if (iter != workerList_.end()) {
+            workerVm = iter->second;
+        }
+    }
+    return workerVm;
+}
+
+bool EcmaVM::DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
+{
+    os::memory::LockHolder lock(mutex_);
+    auto thread = workerVm->GetJSThread();
+    if (hostVm != nullptr && thread != nullptr) {
+        auto tid = thread->GetThreadId();
+        if (tid == 0) {
+            return false;
+        }
+        auto iter = workerList_.find(tid);
+        if (iter != workerList_.end()) {
+            workerList_.erase(iter);
+            return true;
+        }
+        return false;
+    }
+    return false;
+}
+
+bool EcmaVM::SuspendWorkerVm(uint32_t tid)
+{
+    os::memory::LockHolder lock(mutex_);
+    if (!workerList_.empty()) {
+        auto iter = workerList_.find(tid);
+        if (iter != workerList_.end()) {
+            return DFXJSNApi::SuspendVM(iter->second);
+        }
+    }
+    return false;
+}
+
+void EcmaVM::ResumeWorkerVm(uint32_t tid)
+{
+    os::memory::LockHolder lock(mutex_);
+    if (!workerList_.empty()) {
+        auto iter = workerList_.find(tid);
+        if (iter != workerList_.end()) {
+            DFXJSNApi::ResumeVM(iter->second);
+        }
     }
 }
 }  // namespace panda::ecmascript

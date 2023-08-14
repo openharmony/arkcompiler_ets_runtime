@@ -300,7 +300,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::JS_ARRAY: {
             JSArray *jsArray = JSArray::Cast(entry);
             CString jsArrayName("JSArray[");
-            jsArrayName.append(ToCString(jsArray->GetLength().GetInt()));
+            jsArrayName.append(ToCString(jsArray->GetLength()));
             jsArrayName.append("]");
             return GetString(jsArrayName);
         }
@@ -637,11 +637,17 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
     } else {
         CString primitiveName;
         if (entry.IsInt()) {
+            if (!captureNumericValue_) {
+                return nullptr;
+            }
             primitiveName.append("Int:");
             if (!isPrivate_) {
                 primitiveName.append(ToCString(entry.GetInt()));
             }
         } else if (entry.IsDouble()) {
+            if (!captureNumericValue_) {
+                return nullptr;
+            }
             primitiveName.append("Double:");
             if (!isPrivate_) {
                 primitiveName.append(FloatToCString(entry.GetDouble()));
@@ -910,10 +916,13 @@ void HeapSnapshot::FillEdges()
         auto entryFrom = *iter;
         auto *objFrom = reinterpret_cast<TaggedObject *>(entryFrom->GetAddress());
         std::vector<std::pair<CString, JSTaggedValue>> nameResources;
-        JSTaggedValue(objFrom).DumpForSnapshot(nameResources, isVmMode_);
         JSTaggedValue objValue(objFrom);
+        objValue.DumpForSnapshot(nameResources, isVmMode_);
         for (auto const &it : nameResources) {
             JSTaggedValue toValue = it.second;
+            if (toValue.IsNumber() && !captureNumericValue_) {
+                continue;
+            }
             Node *entryTo = nullptr;
             if (toValue.IsWeak()) {
                 toValue.RemoveWeakTag();

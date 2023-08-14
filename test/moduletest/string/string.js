@@ -35,3 +35,14 @@ let utf82 = utf81.substring(0, 169) + '8';
 let utf83 = utf81.substring(0, 169) + '0';
 print((utf81 === utf82).toString());
 print((utf81 === utf83).toString());
+
+function foo(a) {
+    return a;
+}
+try {
+    for (let i = 0; i < 25; i++) {
+        foo += foo;
+    }
+} catch (e) {
+    print(e.message);
+}

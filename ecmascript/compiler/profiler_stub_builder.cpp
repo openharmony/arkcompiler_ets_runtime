@@ -34,7 +34,7 @@ void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, Ga
             ProfileDefineClass(glue, pc, func, values[0]);
             break;
         case OperationType::CREATE_OBJECT:
-            ProfileCreateObject(glue, pc, func, values[0], values[1]);
+            ProfileCreateObject(glue, pc, func, values[0]);
             break;
         case OperationType::STORE_LAYOUT:
             ProfileObjLayout(glue, pc, func, values[0], Int32(1));
@@ -121,18 +121,48 @@ void ProfilerStubBuilder::ProfileDefineClass(GateRef glue, GateRef pc, GateRef f
     env->SubCfgExit();
 }
 
-void ProfilerStubBuilder::ProfileCreateObject(GateRef glue, GateRef pc, GateRef func, GateRef originObj, GateRef newObj)
+void ProfilerStubBuilder::ProfileCreateObject(GateRef glue, GateRef pc, GateRef func, GateRef newObj)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
+    Label exit(env);
 
-    GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
-    GateRef firstPC =
-        Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-    GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
-    CallNGCRuntime(glue, RTSTUB_ID(ProfileCreateObject), { glue, func, offset, originObj, newObj });
-
+    DEFVARIABLE(traceId, VariableType::INT32(), Int32(0));
+    Label isArray(env);
+    Label profile(env);
+    Label calculateTraceId(env);
+    Branch(TaggedIsJSArray(newObj), &isArray, &calculateTraceId);
+    Bind(&isArray);
+    {
+        GateRef traceIdOffset = IntPtr(JSArray::TRACE_INDEX_OFFSET);
+        traceId = Load(VariableType::INT32(), newObj, traceIdOffset);
+        Label uninitialize(env);
+        Branch(Int32GreaterThan(*traceId, Int32(0)), &exit, &uninitialize);
+        Bind(&uninitialize);
+        {
+            auto pfAddr = LoadPfHeaderFromConstPool(func);
+            traceId = TruncPtrToInt32(PtrSub(pc, pfAddr));
+            Store(VariableType::INT32(), glue, newObj, traceIdOffset, *traceId);
+            Jump(&profile);
+        }
+    }
+    Bind(&calculateTraceId);
+    {
+        auto pfAddr = LoadPfHeaderFromConstPool(func);
+        traceId = TruncPtrToInt32(PtrSub(pc, pfAddr));
+        Jump(&profile);
+    }
+    Bind(&profile);
+    {
+        GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        GateRef firstPC =
+            Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
+        CallNGCRuntime(glue, RTSTUB_ID(ProfileCreateObject), { glue, func, offset, newObj, *traceId });
+        Jump(&exit);
+    }
+    Bind(&exit);
     env->SubCfgExit();
 }
 

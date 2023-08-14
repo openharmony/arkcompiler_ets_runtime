@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_HPROF_HEAP_SAMPLING_H
-#define ECMASCRIPT_HPROF_HEAP_SAMPLING_H
+#ifndef ECMASCRIPT_DFX_HPROF_HEAP_SAMPLING_H
+#define ECMASCRIPT_DFX_HPROF_HEAP_SAMPLING_H
 
 #include "ecmascript/dfx/stackinfo/js_stackgetter.h"
 #include "ecmascript/mem/heap.h"
@@ -92,4 +92,4 @@ private:
     CVector<FrameInfoTemp> frameInfoTemps_;
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_HPROF_HEAP_SAMPLING_H
+#endif  // ECMASCRIPT_DFX_HPROF_HEAP_SAMPLING_H

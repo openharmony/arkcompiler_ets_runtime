@@ -65,7 +65,7 @@ uint32_t DependChains::FoundIndexCheckedForLength(RangeGuard* rangeGuard, GateRe
 {
     for (Node* node = head_; node != nullptr; node = node->next) {
         uint32_t length = rangeGuard->CheckIndexCheckLengthInput(node->gate, input);
-        if(length > 0) { // found !!!
+        if (length > 0) { // found !!!
             return length;
         }
     }
@@ -76,7 +76,7 @@ uint32_t DependChains::FoundIndexCheckedForIndex(RangeGuard* rangeGuard, GateRef
 {
     for (Node* node = head_; node != nullptr; node = node->next) {
         uint32_t length = rangeGuard->CheckIndexCheckIndexInput(node->gate, input);
-        if(length > 0) { // found !!!
+        if (length > 0) { // found !!!
             return length;
         }
     }

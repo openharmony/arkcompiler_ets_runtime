@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_CPU_PROFILER_H
-#define ECMASCRIPT_CPU_PROFILER_H
+#ifndef ECMASCRIPT_DFX_CPU_PROFILER_CPU_PROFILER_H
+#define ECMASCRIPT_DFX_CPU_PROFILER_CPU_PROFILER_H
 
 #include <csignal>
 
@@ -134,4 +134,4 @@ private:
     CpuProfiler *profiler_ {nullptr};
 };
 } // namespace panda::ecmascript
-#endif // ECMASCRIPT_CPU_PROFILE_H
+#endif // ECMASCRIPT_DFX_CPU_PROFILER_CPU_PROFILER_H

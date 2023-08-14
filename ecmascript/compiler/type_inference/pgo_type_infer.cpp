@@ -90,6 +90,16 @@ void PGOTypeInfer::RunTypeInfer(GateRef gate)
         case EcmaOpcode::STOWNBYNAME_IMM16_ID16_V8:
             InferStOwnByName(gate);
             break;
+        case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
+        case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
+        case EcmaOpcode::LDTHISBYVALUE_IMM8:
+        case EcmaOpcode::LDTHISBYVALUE_IMM16:
+        case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
+        case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
+        case EcmaOpcode::STTHISBYVALUE_IMM8_V8:
+        case EcmaOpcode::STTHISBYVALUE_IMM16_V8:
+            InferAccessObjByValue(gate);
+            break;
         default:
             break;
     }
@@ -339,5 +349,19 @@ void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedVal
 
     AddProfiler(gate, tsType, pgoTypes, inferTypes);
     acc_.SetGateType(receiver, *inferTypes.begin());
+}
+
+void PGOTypeInfer::InferAccessObjByValue(GateRef gate)
+{
+    if (!builder_->ShouldPGOTypeInfer(gate)) {
+        return;
+    }
+
+    ElementsKind kind = builder_->GetElementsKind(gate);
+    if (Elements::IsGeneric(kind)) {
+        return;
+    }
+
+    acc_.TrySetElementsKind(gate, kind);
 }
 }  // namespace panda::ecmascript

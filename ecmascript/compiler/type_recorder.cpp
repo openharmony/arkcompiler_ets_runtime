@@ -301,6 +301,28 @@ PGORWOpType TypeRecorder::GetRwOpType(int32_t offset) const
     return PGORWOpType();
 }
 
+ElementsKind TypeRecorder::GetElementsKind(int32_t offset) const
+{
+    if (bcOffsetPGORwTypeMap_.find(offset) == bcOffsetPGORwTypeMap_.end()) {
+        return ElementsKind::GENERIC;
+    }
+
+    PGORWOpType rwType = bcOffsetPGORwTypeMap_.at(offset);
+    PGOObjectInfo info = rwType.GetObjectInfo(0);
+    if (info.IsNone()) {
+        return ElementsKind::GENERIC;
+    }
+
+    PGOSampleType type(info.GetClassType());
+    PGOHClassLayoutDesc *desc;
+    if (!decoder_->GetHClassLayoutDesc(type, &desc)) {
+        return ElementsKind::GENERIC;
+    }
+
+    auto elementsKind = desc->GetElementsKind();
+    return elementsKind;
+}
+
 bool TypeRecorder::TypeNeedFilter(GlobalTSTypeRef gt) const
 {
     return gt.IsDefault() || gt.IsGenericsModule();

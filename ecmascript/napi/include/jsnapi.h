@@ -905,6 +905,13 @@ public:
     double GetTime();
 };
 
+class PUBLIC_API ProxyRef : public ObjectRef {
+public:
+    Local<JSValueRef> GetHandler(const EcmaVM *vm);
+    Local<JSValueRef> GetTarget(const EcmaVM *vm);
+    bool IsRevoked();
+};
+
 class PUBLIC_API MapRef : public ObjectRef {
 public:
     int32_t GetSize();

@@ -395,6 +395,7 @@ public:
     GateType GetParamGateType(GateRef gate) const;
     TypedUnaryAccessor GetTypedUnAccessor(GateRef gate) const;
     TypedJumpAccessor GetTypedJumpAccessor(GateRef gate) const;
+    ArrayMetaDataAccessor GetArrayMetaDataAccessor(GateRef gate) const;
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;
@@ -404,6 +405,8 @@ public:
     uint32_t TryGetPcOffset(GateRef gate) const;
     PGOSampleType TryGetPGOType(GateRef gate) const;
     void TrySetPGOType(GateRef gate, PGOSampleType type);
+    ElementsKind TryGetElementsKind(GateRef gate) const;
+    void TrySetElementsKind(GateRef gate, ElementsKind kind);
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
     void Print(GateRef gate) const;
     void ShortPrint(GateRef gate) const;
