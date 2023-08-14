@@ -138,7 +138,8 @@ private:
                 current_ = end_;
                 double v = std::strtod(strNum.c_str(), nullptr);
                 if (errno == ERANGE) {
-                    return JSTaggedValue(base::POSITIVE_INFINITY);
+                    errno = 0;
+                    return v > 0 ? JSTaggedValue(base::POSITIVE_INFINITY): JSTaggedValue(-base::POSITIVE_INFINITY);
                 }
                 return JSTaggedValue::TryCastDoubleToInt32(v);
             }
@@ -167,7 +168,8 @@ private:
         current_ = end_;
         double v = std::strtod(strNum.c_str(), nullptr);
         if (errno == ERANGE) {
-            return JSTaggedValue(base::POSITIVE_INFINITY);
+            errno = 0;
+            return v > 0 ? JSTaggedValue(base::POSITIVE_INFINITY): JSTaggedValue(-base::POSITIVE_INFINITY);
         }
         return JSTaggedValue::TryCastDoubleToInt32(v);
     }
