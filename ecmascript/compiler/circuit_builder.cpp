@@ -138,26 +138,28 @@ GateRef CircuitBuilder::Arguments(size_t index)
     return GetCircuit()->NewArg(MachineType::I64, index, GateType::NJSValue(), argListOfCircuit);
 }
 
-GateRef CircuitBuilder::ObjectTypeCheck(GateType type, GateRef gate, GateRef hclassIndex)
+GateRef CircuitBuilder::ObjectTypeCheck(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(static_cast<size_t>(type.Value())), MachineType::I1,
+    ObjectTypeAccessor accessor(type, isHeapObject);
+    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCheck(accessor.ToValue()), MachineType::I1,
         {currentControl, currentDepend, gate, hclassIndex, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
 }
 
-GateRef CircuitBuilder::ObjectTypeCompare(GateType type, GateRef gate, GateRef hclassIndex)
+GateRef CircuitBuilder::ObjectTypeCompare(GateType type, bool isHeapObject, GateRef gate, GateRef hclassIndex)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCompare(static_cast<size_t>(type.Value())), MachineType::I1,
+    ObjectTypeAccessor accessor(type, isHeapObject);
+    GateRef ret = GetCircuit()->NewGate(circuit_->ObjectTypeCompare(accessor.ToValue()), MachineType::I1,
         {currentControl, currentDepend, gate, hclassIndex, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);

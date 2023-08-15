@@ -143,6 +143,14 @@ ArrayMetaDataAccessor GateAccessor::GetArrayMetaDataAccessor(GateRef gate) const
     return ArrayMetaDataAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
+ObjectTypeAccessor GateAccessor::GetObjectTypeAccessor(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK ||
+           GetOpCode(gate) == OpCode::OBJECT_TYPE_COMPARE);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return ObjectTypeAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
 TypedLoadOp GateAccessor::GetTypedLoadOp(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::LOAD_ELEMENT);
@@ -212,8 +220,6 @@ GlobalTSTypeRef GateAccessor::GetFuncGT(GateRef gate) const
 GateType GateAccessor::GetParamGateType(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::PRIMITIVE_TYPE_CHECK ||
-           GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK ||
-           GetOpCode(gate) == OpCode::OBJECT_TYPE_COMPARE ||
            GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::INDEX_CHECK ||
            GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP ||
@@ -1286,6 +1292,27 @@ bool GateAccessor::HasIfExceptionUse(GateRef gate) const
             return true;
         }
     }
+    return false;
+}
+
+bool GateAccessor::IsHeapObjectFromElementsKind(GateRef gate)
+{
+    OpCode opcode = GetOpCode(gate);
+    if (opcode == OpCode::JS_BYTECODE) {
+        auto bc = GetByteCodeOpcode(gate);
+        if (bc == EcmaOpcode::LDOBJBYVALUE_IMM8_V8 || bc == EcmaOpcode::LDOBJBYVALUE_IMM16_V8 ||
+            bc == EcmaOpcode::LDTHISBYVALUE_IMM8 || bc == EcmaOpcode::LDTHISBYVALUE_IMM16) {
+            ElementsKind kind = TryGetElementsKind(gate);
+            return Elements::IsObject(kind);
+        }
+        return false;
+    }
+
+    if (opcode == OpCode::LOAD_ELEMENT) {
+        TypedLoadOp typedOp = GetTypedLoadOp(gate);
+        return typedOp == TypedLoadOp::ARRAY_LOAD_OBJECT_ELEMENT;
+    }
+
     return false;
 }
 }  // namespace panda::ecmascript::kungfu

@@ -175,6 +175,7 @@ enum class MemoryType : uint8_t {
 enum class TypedLoadOp : uint8_t {
     ARRAY_LOAD_INT_ELEMENT = 0,
     ARRAY_LOAD_DOUBLE_ELEMENT,
+    ARRAY_LOAD_OBJECT_ELEMENT,
     ARRAY_LOAD_TAGGED_ELEMENT,
     ARRAY_LOAD_HOLE_TAGGED_ELEMENT,
     INT8ARRAY_LOAD_ELEMENT,
@@ -324,8 +325,6 @@ std::string MachineTypeToStr(MachineType machineType);
 
 #define GATE_META_DATA_LIST_WITH_GATE_TYPE(V)                                              \
     V(PrimitiveTypeCheck, PRIMITIVE_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)             \
-    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                   \
-    V(ObjectTypeCompare, OBJECT_TYPE_COMPARE, GateFlags::CHECKABLE, 1, 1, 2)               \
     V(TypedArrayCheck, TYPED_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                   \
     V(LoadTypedArrayLength, LOAD_TYPED_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)         \
     V(IndexCheck, INDEX_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                              \
@@ -359,7 +358,9 @@ std::string MachineTypeToStr(MachineType machineType);
     V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 2)   \
     V(RangeGuard, RANGE_GUARD, GateFlags::NO_WRITE, 1, 1, 1)                            \
     V(StableArrayCheck, STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)              \
-    V(HClassStableArrayCheck, HCLASS_STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)
+    V(HClassStableArrayCheck, HCLASS_STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1) \
+    V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                \
+    V(ObjectTypeCompare, OBJECT_TYPE_COMPARE, GateFlags::CHECKABLE, 1, 1, 2)
 
 #define GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     V(Arg, ARG, GateFlags::HAS_ROOT, 0, 0, 0)             \
@@ -1081,6 +1082,39 @@ private:
     using ElementsKindBits = panda::BitField<ElementsKind, 0, BITS_SIZE>;
     using ModeBits = ElementsKindBits::NextField<Mode, BITS_SIZE>;
     using ArrayLengthBits = ModeBits::NextField<uint32_t, ARRAY_LENGTH_BITS_SIZE>;
+
+    uint64_t bitField_;
+};
+
+class ObjectTypeAccessor {
+public:
+    static constexpr int TYPE_BITS_SIZE = 32;
+    static constexpr int IS_HEAP_OBJECT_BIT_SIZE = 1;
+
+    explicit ObjectTypeAccessor(uint64_t value) : bitField_(value) {}
+    explicit ObjectTypeAccessor(GateType type, bool isHeapObject = false)
+    {
+        bitField_ = TypeBits::Encode(type.Value()) | IsHeapObjectBit::Encode(isHeapObject);
+    }
+
+    GateType GetType() const
+    {
+        return GateType(TypeBits::Get(bitField_));
+    }
+
+    bool IsHeapObject() const
+    {
+        return IsHeapObjectBit::Get(bitField_);
+    }
+
+    uint64_t ToValue() const
+    {
+        return bitField_;
+    }
+
+private:
+    using TypeBits = panda::BitField<uint32_t, 0, TYPE_BITS_SIZE>;
+    using IsHeapObjectBit = TypeBits::NextField<bool, IS_HEAP_OBJECT_BIT_SIZE>;
 
     uint64_t bitField_;
 };

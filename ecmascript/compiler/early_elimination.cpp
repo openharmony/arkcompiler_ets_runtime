@@ -329,10 +329,15 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             break;
         }
         case OpCode::TYPED_ARRAY_CHECK:
-        case OpCode::OBJECT_TYPE_CHECK:
-        case OpCode::OBJECT_TYPE_COMPARE:
         case OpCode::INDEX_CHECK: {
             if (acc_.GetParamGateType(lhs) != acc_.GetParamGateType(rhs)) {
+                return false;
+            }
+            break;
+        }
+        case OpCode::OBJECT_TYPE_CHECK:
+        case OpCode::OBJECT_TYPE_COMPARE: {
+            if (acc_.GetObjectTypeAccessor(lhs).GetType() != acc_.GetObjectTypeAccessor(rhs).GetType()) {
                 return false;
             }
             break;

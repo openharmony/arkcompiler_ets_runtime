@@ -396,6 +396,7 @@ public:
     TypedUnaryAccessor GetTypedUnAccessor(GateRef gate) const;
     TypedJumpAccessor GetTypedJumpAccessor(GateRef gate) const;
     ArrayMetaDataAccessor GetArrayMetaDataAccessor(GateRef gate) const;
+    ObjectTypeAccessor GetObjectTypeAccessor(GateRef gate) const;
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;
@@ -507,6 +508,7 @@ public:
     GateRef GetDependSelectorFromMerge(GateRef gate);
     bool HasIfExceptionUse(GateRef gate) const;
     bool IsIn(GateRef g, GateRef in) const;
+    bool IsHeapObjectFromElementsKind(GateRef gate);
 
     GateRef GetCircuitRoot() const
     {
