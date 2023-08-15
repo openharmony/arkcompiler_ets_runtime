@@ -54,7 +54,7 @@ public:
     static JSTaggedValue Concat(JSThread *thread, JSHandle<JSObject> newArrayHandle,
                                 JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &n);
     static JSTaggedValue FastCopyFromArrayToTypedArray(JSThread *thread, JSHandle<JSTypedArray> &target,
-                                                       DataViewType targetType, uint32_t targetOffset,
+                                                       DataViewType targetType, uint64_t targetOffset,
                                                        uint32_t srcLength, JSHandle<TaggedArray> &elements);
     static JSTaggedValue At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ToReversed(JSThread *thread, JSHandle<JSObject> thisObjHandle, uint32_t len);
