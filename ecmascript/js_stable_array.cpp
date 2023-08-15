@@ -828,4 +828,21 @@ JSTaggedValue JSStableArray::Reduce(JSThread *thread, JSHandle<JSObject> thisObj
     }
     return base::BuiltinsBase::GetTaggedDouble(true);
 }
+
+JSTaggedValue JSStableArray::Slice(JSThread *thread, JSHandle<JSObject> thisObjHandle,
+                                   int64_t &k, int64_t &count)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> srcElements(thread, thisObjHandle->GetElements());
+    uint32_t len = srcElements->GetLength();
+    uint32_t oldLen;
+    if (len > k + count) {
+        oldLen = count;
+    } else {
+        oldLen = len - k;
+    }
+    JSHandle<TaggedArray> dstElements = factory->NewAndCopyTaggedArray(srcElements, count, oldLen, k);
+    return factory->NewJSStableArrayWithElements(dstElements).GetTaggedValue();
+}
+
 }  // namespace panda::ecmascript

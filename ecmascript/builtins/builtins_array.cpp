@@ -2058,25 +2058,7 @@ JSTaggedValue BuiltinsArray::Slice(EcmaRuntimeCallInfo *argv)
     int64_t count = final > k ? (final - k) : 0;
 
     if (thisHandle->IsStableJSArray(thread) && !thisObjHandle->GetJSHClass()->HasConstructor()) {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<TaggedArray> destElements = factory->NewTaggedArray(count);
-        JSHandle<JSArray> newArrayHandle = factory->NewJSStableArrayWithElements(destElements);
-        TaggedArray *srcElements = TaggedArray::Cast(thisObjHandle->GetElements().GetTaggedObject());
-
-        uint32_t length = srcElements->GetLength();
-        if (length > k + count) {
-            for (uint32_t idx = 0; idx < count; idx++) {
-                destElements->Set(thread, idx, srcElements->Get(k + idx));
-            }
-        } else {
-            for (uint32_t idx = 0; idx < count; idx++) {
-                uint32_t index = static_cast<uint32_t>(k) + idx;
-                JSTaggedValue value = length > index ? srcElements->Get(index) : JSTaggedValue::Hole();
-                destElements->Set(thread, idx, value);
-            }
-        }
-
-        return newArrayHandle.GetTaggedValue();
+        return JSStableArray::Slice(thread, thisObjHandle, k, count);
     }
 
     // 12. Let A be ArraySpeciesCreate(O, count).

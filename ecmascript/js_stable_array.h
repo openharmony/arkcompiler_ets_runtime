@@ -66,6 +66,7 @@ public:
     static JSTaggedValue Reduce(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                 JSHandle<JSTaggedValue> callbackFnHandle,
                                 JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len);
+    static JSTaggedValue Slice(JSThread *thread, JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &count);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

@@ -2184,9 +2184,8 @@ JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedVal
     return array;
 }
 
-JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements,
-                                                           uint32_t newLength,
-                                                           uint32_t oldLength)
+JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
+                                                           uint32_t oldLength, uint32_t k)
 {
     ASSERT(oldLength <= newLength);
     MemSpaceType spaceType = newLength < LENGTH_THRESHOLD ? MemSpaceType::SEMI_SPACE : MemSpaceType::OLD_SPACE;
@@ -2198,12 +2197,12 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     if (region->InYoungSpace() && !region->IsMarking()) {
         size_t size = oldLength * sizeof(JSTaggedType);
         if (memcpy_s(reinterpret_cast<void *>(dstElements->GetData()), size,
-            reinterpret_cast<void *>(srcElements->GetData()), size) != EOK) {
+            reinterpret_cast<void *>(srcElements->GetData() + k), size) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
         }
     } else {
         for (uint32_t i = 0; i < oldLength; i++) {
-            dstElements->Set(thread_, i, srcElements->Get(i));
+            dstElements->Set(thread_, i, srcElements->Get(i + k));
         }
     }
     for (uint32_t i = oldLength; i < newLength; i++) {
