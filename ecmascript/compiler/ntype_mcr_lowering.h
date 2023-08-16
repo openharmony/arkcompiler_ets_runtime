@@ -52,7 +52,7 @@ private:
     void LowerLdLexVar(GateRef gate);
 
     GateRef LoadFromConstPool(GateRef jsFunc, size_t index);
-    GateRef NewJSArrayLiteral(GateRef elements, GateRef length);
+    GateRef NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length);
     GateRef NewTaggedArray(size_t length);
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);

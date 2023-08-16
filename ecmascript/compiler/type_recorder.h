@@ -38,6 +38,7 @@ public:
     ~TypeRecorder() = default;
 
     GateType GetType(const int32_t offset) const;
+    ElementsKind GetElementsKind(PGOSampleType type) const;
     PGOSampleType GetOrUpdatePGOType(TSManager *tsManager, int32_t offset, const GateType &type) const;
     PGORWOpType GetRwOpType(int32_t offset) const;
     ElementsKind GetElementsKind(int32_t offset) const;

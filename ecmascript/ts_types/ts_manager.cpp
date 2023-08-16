@@ -48,6 +48,16 @@ int TSManager::GetElementsIndexByArrayType(const kungfu::GateType &gateType,
     return GetElementsIndex(id);
 }
 
+int TSManager::GetElementsKindIndexByArrayType(const kungfu::GateType &gateType,
+                                               const panda_file::File::EntityId id)
+{
+    // make sure already setting correct curCP_ and curCPID_ before calling this method
+    if (!IsArrayTypeKind(gateType)) {
+        return -1;
+    }
+    return GetElementsKindIndex(id);
+}
+
 int TSManager::GetHClassIndexByArrayType(const kungfu::GateType &gateType,
                                          const panda_file::File::EntityId id)
 {
@@ -111,7 +121,7 @@ int TSManager::GetElementsIndex(panda_file::File::EntityId id)
         std::unordered_map<int32_t, uint32_t> &cpIndexMap = iter->second.GetCPIndexMap();
         auto indexIter = cpIndexMap.find(curCPID_);
         if (indexIter == cpIndexMap.end()) {
-            // This ihc is used in the current constantpool, but has not yet been recorded
+            // This elm is used in the current constantpool, but has not yet been recorded
             return RecordElmToVecAndIndexMap(iter->second);
         }
         return indexIter->second;
@@ -127,6 +137,39 @@ uint32_t TSManager::RecordElmToVecAndIndexMap(ElementData &elmData)
 
     uint32_t index = constantPool->GetCacheLength() + elmVec.size() - 1;
     std::unordered_map<int32_t, uint32_t> &cpIndexMap = elmData.GetCPIndexMap();
+    cpIndexMap[curCPID_] = index;
+
+    return index;
+}
+
+int TSManager::GetElementsKindIndex(panda_file::File::EntityId id)
+{
+    // make sure already setting correct curCP_ and curCPID_ before calling this method
+    auto elementKindMap = jsArrayData_.GetElmKindMap();
+    auto iter = elementKindMap.find(id);
+    auto endIter = elementKindMap.end();
+    if (iter == endIter) {
+        return -1;
+    } else {
+        std::unordered_map<int32_t, uint32_t> &cpIndexMap = iter->second.GetCPIndexMap();
+        auto indexIter = cpIndexMap.find(curCPID_);
+        if (indexIter == cpIndexMap.end()) {
+            // This elmKind is used in the current constantpool, but has not yet been recorded
+            return RecordElmKindToVecAndIndexMap(iter->second);
+        }
+        return indexIter->second;
+    }
+}
+
+uint32_t TSManager::RecordElmKindToVecAndIndexMap(ElementKindData &elmKindData)
+{
+    // make sure already setting correct curCP_ and curCPID_ before calling this method
+    JSHandle<ConstantPool> constantPool(GetConstantPool());
+    CVector<JSTaggedType> &kindVec = snapshotData_.GetSnapshotValVector(curCPID_);
+    kindVec.emplace_back(elmKindData.GetElmKind());
+
+    uint32_t index = constantPool->GetCacheLength() + kindVec.size() - 1;
+    std::unordered_map<int32_t, uint32_t> &cpIndexMap = elmKindData.GetCPIndexMap();
     cpIndexMap[curCPID_] = index;
 
     return index;
@@ -749,15 +792,32 @@ GlobalTSTypeRef TSManager::GetArrayParameterTypeGT(GlobalTSTypeRef gt) const
     return arrayType->GetElementGT();
 }
 
-void TSManager::AddArrayTSElements(panda_file::File::EntityId id, JSHandle<TaggedArray> &elements)
+void TSManager::AddArrayTSElements(panda_file::File::EntityId id, JSTaggedValue elements)
 {
-    ElementData elementData = ElementData(elements.GetTaggedType());
+    JSHandle<TaggedArray> elementsHandle(thread_, elements);
+    ElementData elementData = ElementData(elementsHandle.GetTaggedType());
     jsArrayData_.AddElmMap(id, elementData);
 }
 
-void TSManager::AddArrayTSHClass(panda_file::File::EntityId id, JSHandle<JSHClass> &ihclass)
+void TSManager::AddArrayTSElementsKind(panda_file::File::EntityId id, JSTaggedValue kind)
 {
-    IHClassData ihcData = IHClassData(ihclass.GetTaggedType());
+    JSHandle<JSTaggedValue> kindHandle(thread_, kind);
+    ElementKindData elementKindData = ElementKindData(kindHandle.GetTaggedType());
+    jsArrayData_.AddElmKindMap(id, elementKindData);
+}
+
+void TSManager::AddArrayTSConstantIndex(uint64_t bcAbsoluteOffset, JSTaggedValue index)
+{
+    JSHandle<JSTaggedValue> indexHandle(thread_, index);
+    ConstantIndexData constantIndexData = ConstantIndexData(indexHandle.GetTaggedType());
+    jsArrayData_.AddOffConstIndexMap(bcAbsoluteOffset, constantIndexData);
+}
+
+void TSManager::AddArrayTSHClass(panda_file::File::EntityId id, JSHClass *hclass)
+{
+    JSHandle<JSHClass> oldHClass(thread_, hclass);
+    JSHandle<JSHClass> hclassHandle = JSHClass::Clone(thread_, oldHClass);
+    IHClassData ihcData = IHClassData(hclassHandle.GetTaggedType());
     jsArrayData_.AddIhcMap(id, ihcData);
 }
 
@@ -1250,8 +1310,21 @@ void TSManager::GenerateSnapshotConstantPoolList(std::map<int32_t, uint32_t> &cp
             LOG_COMPILER(INFO) << "[aot-snapshot] constantPoolID: " << oldCPID;
             LOG_COMPILER(INFO) << "[aot-snapshot] constantPoolSize: " << cpSize;
             LOG_COMPILER(INFO) << "[aot-snapshot] valueSize: " << valVecSize;
+            LOG_COMPILER(INFO) << "[aot-snapshot] constIndexInfoSize: 1";
         }
-        JSHandle<ConstantPool> newCp = factory_->NewConstantPool(cpSize + valVecSize);
+        // 1: constIndexInfo TaggedArray
+        JSHandle<ConstantPool> newCp = factory_->NewConstantPool(cpSize + valVecSize + 1);
+
+        auto offConstIndexMap = jsArrayData_.GetOffConstIndexMap();
+        // 2: each item need store (bcAbsoluteOffset, constIndex)
+        JSHandle<TaggedArray> constIndexInfoList =
+            factory_->NewTaggedArray(offConstIndexMap.size() * SnapshotData::SNAPSHOT_CP_LIST_ITEM_SIZE);
+        uint32_t idx = 0;
+        for (auto &x : offConstIndexMap) {
+            constIndexInfoList->Set(thread_, idx++, JSTaggedValue(static_cast<int32_t>(x.first)));
+            constIndexInfoList->Set(thread_, idx++, JSTaggedValue(x.second.GetIndex()));
+        }
+        newCp->SetObjectToCache(thread_, cpSize + valVecSize, constIndexInfoList.GetTaggedValue());
 
         snapshotCPList->Set(thread_, pos++, JSTaggedValue(oldCPID));
         cpListIndexMap[oldCPID] = pos;

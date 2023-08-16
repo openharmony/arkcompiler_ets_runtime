@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/elements.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_type.h"
 
 namespace panda::ecmascript::kungfu {
@@ -381,8 +382,8 @@ public:
     FCmpCondition GetFCmpCondition(GateRef gate) const;
     size_t GetOffset(GateRef gate) const;
     size_t GetIndex(GateRef gate) const;
-    size_t GetArraySize(GateRef gate) const;
-    void SetArraySize(GateRef gate, size_t size);
+    uint32_t GetArraySize(GateRef gate) const;
+    void SetArraySize(GateRef gate, uint32_t size);
     size_t GetVirtualRegisterIndex(GateRef gate) const;
     TypedLoadOp GetTypedLoadOp(GateRef gate) const;
     TypedStoreOp GetTypedStoreOp(GateRef gate) const;

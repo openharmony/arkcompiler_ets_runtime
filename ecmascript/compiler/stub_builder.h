@@ -648,6 +648,7 @@ public:
     GateRef ToNumber(GateRef glue, GateRef tagged);
     inline GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
     inline GateRef LoadPfHeaderFromConstPool(GateRef jsFunc);
+    inline GateRef LoadHCIndexFromConstPool(GateRef jsFunc, GateRef traceId);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     GateRef ChangeTaggedPointerToInt64(GateRef x);

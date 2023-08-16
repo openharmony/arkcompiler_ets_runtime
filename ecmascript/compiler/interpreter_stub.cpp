@@ -435,16 +435,22 @@ DECLARE_ASM_HANDLER(HandleCreateemptyobject)
 DECLARE_ASM_HANDLER(HandleCreateemptyarrayImm8)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
     NewObjectStubBuilder newBuilder(this);
-    varAcc = newBuilder.CreateEmptyArray(glue, callback);
+    GateRef frame = GetFrame(*varSp);
+    GateRef func = GetFunctionFromFrame(frame);
+    varAcc = newBuilder.CreateEmptyArray(glue, func, pc, profileTypeInfo, callback);
     DISPATCH_WITH_ACC(CREATEEMPTYARRAY_IMM8);
 }
 
 DECLARE_ASM_HANDLER(HandleCreateemptyarrayImm16)
 {
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
+    DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
     NewObjectStubBuilder newBuilder(this);
-    varAcc = newBuilder.CreateEmptyArray(glue, callback);
+    GateRef frame = GetFrame(*varSp);
+    GateRef func = GetFunctionFromFrame(frame);
+    varAcc = newBuilder.CreateEmptyArray(glue, func, pc, profileTypeInfo, callback);
     DISPATCH_WITH_ACC(CREATEEMPTYARRAY_IMM16);
 }
 
@@ -3822,7 +3828,8 @@ DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm8Id16)
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
 
     NewObjectStubBuilder newBuilder(this);
-    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc, callback);
+    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc, pc,
+                                                   profileTypeInfo, callback);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEARRAYWITHBUFFER_IMM8_ID16));
 }
 
@@ -3832,7 +3839,8 @@ DECLARE_ASM_HANDLER(HandleCreatearraywithbufferImm16Id16)
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
 
     NewObjectStubBuilder newBuilder(this);
-    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc, callback);
+    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc, pc,
+                                                   profileTypeInfo, callback);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CREATEARRAYWITHBUFFER_IMM16_ID16));
 }
 
@@ -3842,7 +3850,8 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCreatearraywithbufferPrefImm16)
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
 
     NewObjectStubBuilder newBuilder(this);
-    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc, callback);
+    GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc, pc,
+                                                   profileTypeInfo, callback);
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(DEPRECATED_CREATEARRAYWITHBUFFER_PREF_IMM16));
 }
 
