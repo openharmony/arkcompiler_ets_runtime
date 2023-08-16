@@ -180,6 +180,21 @@ public:
         return loopNumber_ >= 0;
     }
 
+    GateRegion* GetDominator()
+    {
+        return iDominator_;
+    }
+
+    ChunkVector<GateRegion*>& GetDominatedRegions()
+    {
+        return dominatedRegions_;
+    }
+
+    int32_t GetDepth()
+    {
+        return depth_;
+    }
+
 private:
     enum StateKind {
         BRANCH,
@@ -200,6 +215,7 @@ private:
     GateRef state_ {Circuit::NullGate()};
     StateKind stateKind_ {StateKind::OTHER};
     int32_t loopNumber_ {INVALID_DEPTH};
+    friend class ArrayBoundsCheckElimination;
     friend class CFGBuilder;
     friend class GateScheduler;
     friend class ImmediateDominatorsGenerator;
@@ -212,10 +228,10 @@ class GraphLinearizer {
 public:
     using ControlFlowGraph = std::vector<std::vector<GateRef>>;
 
-    GraphLinearizer(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
+    GraphLinearizer(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk, bool onlyBB = false)
         : enableLog_(enableLog), methodName_(name), chunk_(chunk), circuit_(circuit),
         acc_(circuit), gateIdToGateInfo_(chunk),
-        regionList_(chunk), regionRootList_(chunk) {}
+        regionList_(chunk), regionRootList_(chunk), onlyBB_(onlyBB) {}
 
     void Run(ControlFlowGraph &result);
 private:
@@ -387,6 +403,9 @@ private:
     ChunkVector<GateRegion*> regionList_;
     ChunkVector<GateRef> regionRootList_;
 
+    bool onlyBB_ {false}; // dont schedule
+
+    friend class ArrayBoundsCheckElimination;
     friend class CFGBuilder;
     friend class GateScheduler;
     friend class ImmediateDominatorsGenerator;

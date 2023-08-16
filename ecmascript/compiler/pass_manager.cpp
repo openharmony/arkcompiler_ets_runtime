@@ -133,6 +133,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
             return;
         }
         pipeline.RunPass<EarlyEliminationPass>();
+        pipeline.RunPass<ArrayBoundsCheckEliminationPass>();
         pipeline.RunPass<NumberSpeculativePass>();
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<ValueNumberingPass>();

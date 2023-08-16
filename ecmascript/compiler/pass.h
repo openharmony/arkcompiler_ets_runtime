@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/early_elimination.h"
+#include "ecmascript/compiler/array_bounds_check_elimination.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/lcr_lowering.h"
@@ -466,6 +467,23 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         EarlyElimination(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
+        return true;
+    }
+};
+
+class ArrayBoundsCheckEliminationPass {
+public:
+    bool Run(PassData* data)
+    {
+        PassOptions *passOptions = data->GetPassOptions();
+        if (!passOptions->EnableTypeLowering() || !passOptions->EnableArrayBoundsCheckElimination()) {
+            return false;
+        }
+        TimeScope timescope("ArrayBoundsCheckEliminationPass",
+                            data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        Chunk chunk(data->GetNativeAreaAllocator());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        ArrayBoundsCheckElimination(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
         return true;
     }
 };

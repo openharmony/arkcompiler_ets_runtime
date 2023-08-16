@@ -76,6 +76,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-force-gc:                    Enable force gc when allocating object. Default: 'true'\n"
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
+    "--compiler-opt-array-bounds-check-elimination: Enable Index Check elimination. Default: 'false'\n"
     "--compiler-opt-type-lowering:         Enable all type optimization pass for aot compiler. Default: 'true'\n"
     "--compiler-opt-early-elimination:     Enable EarlyElimination for aot compiler. Default: 'true'\n"
     "--compiler-opt-later-elimination:     Enable LaterElimination for aot compiler. Default: 'true'\n"
@@ -173,6 +174,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
+        {"compiler-opt-array-bounds-check-elimination", required_argument, nullptr,
+            OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION},
         {"compiler-opt-type-lowering", required_argument, nullptr, OPTION_COMPILER_OPT_TYPE_LOWERING},
         {"compiler-opt-early-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_EARLY_ELIMINATION},
         {"compiler-opt-later-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_LATER_ELIMINATION},
@@ -612,6 +615,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableTypeLowering(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableArrayBoundsCheckElimination(argBool);
                 } else {
                     return false;
                 }
