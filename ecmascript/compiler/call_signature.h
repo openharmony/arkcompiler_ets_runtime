@@ -413,6 +413,7 @@ private:
     V(StringsAreEquals)                     \
     V(BigIntEquals)                         \
     V(DebugPrint)                           \
+    V(DebugPrintCustom)                     \
     V(DebugPrintInstruction)                \
     V(Comment)                              \
     V(ProfileCall)                          \
@@ -421,6 +422,7 @@ private:
     V(ProfileOpType)                        \
     V(ProfileObjLayout)                     \
     V(FatalPrint)                           \
+    V(FatalPrintCustom)                     \
     V(GetActualArgvNoGC)                    \
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \

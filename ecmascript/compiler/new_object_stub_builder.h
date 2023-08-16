@@ -57,6 +57,7 @@ public:
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end);
     GateRef FastNewThisObject(GateRef glue, GateRef ctor);
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);
+    GateRef CreateEmptyArray(GateRef glue, ProfileOperation callback);
     GateRef CreateEmptyArray(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo,
                              ProfileOperation callback);
     GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc,
@@ -67,6 +68,7 @@ public:
 
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
+    GateRef CreateEmptyArrayCommon(GateRef glue, GateRef hclass, ProfileOperation callback);
     void AllocateInYoung(Variable *result, Label *exit);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,
         GateRef array, GateRef value, GateRef start, GateRef length);

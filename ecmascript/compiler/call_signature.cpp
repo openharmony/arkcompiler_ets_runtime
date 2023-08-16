@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/call_signature.h"
+#include "ecmascript/compiler/variable_type.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -1382,6 +1383,22 @@ DEF_CALL_SIGNATURE(DebugPrint)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(DebugPrintCustom)
+{
+    // 1 : 1 input parameters
+    CallSignature debugPrintCustom("DebugPrintCustom", 0,  1,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = debugPrintCustom;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::NATIVE_POINTER()
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(DebugPrintInstruction)
 {
     // 2 : 2 input parameters
@@ -1517,6 +1534,22 @@ DEF_CALL_SIGNATURE(FatalPrint)
     // 1 : 1 input parameters
     std::array<VariableType, 1> params = {
         VariableType::INT32(),
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(FatalPrintCustom)
+{
+    // 1 : 1 input parameters
+    CallSignature fatalPrintCustom("FatalPrintCustom", 0, 1,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = fatalPrintCustom;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::NATIVE_POINTER()
     };
     callSign->SetVariadicArgs(true);
     callSign->SetParameters(params.data());

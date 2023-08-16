@@ -197,7 +197,7 @@ void LCRLowering::LowerHClassStableArrayCheck(GateRef gate)
     GateRef hclass = acc_.GetValueIn(gate, 0);
 
     GateRef check = Circuit::NullGate();
-    GateRef stableCheck = builder_.IsIsStableElementsByHClass(hclass);
+    GateRef stableCheck = builder_.IsStableElements(hclass);
     ArrayMetaDataAccessor accessor = acc_.GetArrayMetaDataAccessor(gate);
     ElementsKind kind = accessor.GetElementsKind();
     if (accessor.IsLoadElement() && !Elements::IsHole(kind)) {

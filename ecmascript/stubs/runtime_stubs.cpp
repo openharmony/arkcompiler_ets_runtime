@@ -15,6 +15,7 @@
 
 #include <cmath>
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/accessor_data.h"
@@ -49,11 +50,13 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
+#include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "libpandafile/bytecode_instruction-inl.h"
+#include "macros.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_locale.h"
@@ -418,6 +421,15 @@ void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
     va_end(args);
 }
 
+void RuntimeStubs::DebugPrintCustom(uintptr_t fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    std::string result = base::StringHelper::Vformat(reinterpret_cast<const char*>(fmt), args);
+    LOG_ECMA(ERROR) << result;
+    va_end(args);
+}
+
 void RuntimeStubs::DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc)
 {
     BytecodeInstruction inst(pc);
@@ -467,6 +479,17 @@ void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
     va_list args;
     va_start(args, fmtMessageId);
     std::string result = base::StringHelper::Vformat(format.c_str(), args);
+    LOG_FULL(FATAL) << result;
+    va_end(args);
+    LOG_ECMA(FATAL) << "this branch is unreachable";
+    UNREACHABLE();
+}
+
+void RuntimeStubs::FatalPrintCustom(uintptr_t fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    std::string result = base::StringHelper::Vformat(reinterpret_cast<const char*>(fmt), args);
     LOG_FULL(FATAL) << result;
     va_end(args);
     LOG_ECMA(FATAL) << "this branch is unreachable";

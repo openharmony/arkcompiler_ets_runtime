@@ -95,6 +95,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
     V(DebugPrint)                              \
+    V(DebugPrintCustom)                        \
     V(DebugPrintInstruction)                   \
     V(ProfileCall)                             \
     V(ProfileDefineClass)                      \
@@ -103,6 +104,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(ProfileObjLayout)                        \
     V(Comment)                                 \
     V(FatalPrint)                              \
+    V(FatalPrintCustom)                        \
     V(GetActualArgvNoGC)                       \
     V(InsertOldToNewRSet)                      \
     V(MarkingBarrier)                          \
@@ -352,6 +354,7 @@ public:
     }
 
     static void DebugPrint(int fmtMessageId, ...);
+    static void DebugPrintCustom(uintptr_t fmt, ...);
     static void DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc);
     static void Comment(uintptr_t argStr);
     static void ProfileCall(uintptr_t argGlue, uintptr_t func, uintptr_t target, int32_t pcOffset, uint32_t incCount);
@@ -361,6 +364,7 @@ public:
     static void ProfileOpType(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type);
     static void ProfileObjLayout(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object, int32_t store);
     static void FatalPrint(int fmtMessageId, ...);
+    static void FatalPrintCustom(uintptr_t fmt, ...);
     static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
     static void StoreBarrier([[maybe_unused]] uintptr_t argGlue,

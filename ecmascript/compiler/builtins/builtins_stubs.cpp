@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/builtins/builtins_stubs.h"
 
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
@@ -24,6 +25,7 @@
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_primitive_ref.h"
@@ -951,6 +953,42 @@ DECLARE_BUILTINS(FunctionPrototypeApply)
     Bind(&exit);
     Return(*res);
 }
+
+#define DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(Method, resultVariableType, resultDefaultValue) \
+DECLARE_BUILTINS(Array##Method)                                                                     \
+{                                                                                                   \
+    auto env = GetEnvironment();                                                                    \
+    DEFVARIABLE(res, VariableType::resultVariableType(), resultDefaultValue);                       \
+    Label exit(env);                                                                                \
+    Label slowPath(env);                                                                            \
+    BuiltinsArrayStubBuilder arrayStubBuilder(this);                                                \
+    arrayStubBuilder.Method(glue, thisValue, numArgs, &res, &exit, &slowPath);                      \
+    Bind(&slowPath);                                                                                \
+    {                                                                                               \
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(Array##Method));                   \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
+        Jump(&exit);                                                                                \
+    }                                                                                               \
+    Bind(&exit);                                                                                    \
+    Return(*res);                                                                                   \
+}
+
+// Returns the new array
+DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(Concat, JS_POINTER, Undefined())
+// Returns the new array
+DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(Filter, JS_POINTER, Undefined())
+// Returns undefined
+DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(ForEach, JS_ANY, Undefined())
+// Returns the tagged number as index
+DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(IndexOf, JS_ANY, Undefined())
+// Returns the tagged number as index
+DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(LastIndexOf, JS_ANY, Undefined())
+// Returns the new array
+DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(Slice, JS_POINTER, Undefined())
+// Returns thisValue (with elements changed in-place)
+DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(Reverse, JS_POINTER, Undefined())
+
+#undef DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER
 
 DECLARE_BUILTINS(BooleanConstructor)
 {
