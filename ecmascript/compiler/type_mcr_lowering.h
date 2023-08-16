@@ -146,6 +146,7 @@ private:
     void LowerLoadElement(GateRef gate);
     void LowerLoadFromTaggedArray(GateRef gate);
     void LowerStoreToTaggedArray(GateRef gate, GateRef glue);
+    void LowerRangeCheckPredicate(GateRef gate);
 
     enum class ArrayState : uint8_t {
         PACKED = 0,

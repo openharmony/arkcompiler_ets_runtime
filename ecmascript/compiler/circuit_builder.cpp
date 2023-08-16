@@ -2147,4 +2147,108 @@ void CircuitBuilder::ClearConstantCache(GateRef gate)
     auto gateType = acc_.GetGateType(gate);
     GetCircuit()->ClearConstantCache(machineType, value, gateType);
 }
+
+GateRef CircuitBuilder::InsertTypedBinaryop(GateRef left, GateRef right, GateType leftType, GateType rightType,
+                                            GateType gateType, PGOSampleType sampleType, TypedBinOp op)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    uint64_t operandTypes = GatePairTypeAccessor::ToValue(leftType, rightType);
+    auto ret = GetCircuit()->NewGate(circuit_->TypedBinaryOp(operandTypes, op, sampleType),
+                                     MachineType::I64,
+                                     {currentControl, currentDepend, left, right},
+                                     gateType);
+    acc_.ReplaceInAfterInsert(currentControl, currentDepend, ret);
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::InsertRangeCheckPredicate(GateRef left, TypedBinOp cond, GateRef right)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    TypedBinaryAccessor accessor(GateType::IntType(), cond);
+    auto ret = GetCircuit()->NewGate(circuit_->RangeCheckPredicate(accessor.ToValue()),
+                                     MachineType::I32,
+                                     {currentControl, currentDepend, left, right, frameState},
+                                     GateType::IntType());
+    acc_.ReplaceInAfterInsert(currentControl, currentDepend, ret);
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::InsertStableArrayCheck(GateRef array)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef frameState = acc_.FindNearestFrameState(currentDepend);
+    ElementsKind kind = acc_.TryGetElementsKind(array);
+    ArrayMetaDataAccessor::Mode mode = ArrayMetaDataAccessor::Mode::LOAD_LENGTH;
+    ArrayMetaDataAccessor accessor(kind, mode);
+    auto ret = GetCircuit()->NewGate(circuit_->StableArrayCheck(accessor.ToValue()),
+                                     MachineType::I1,
+                                     {currentControl, currentDepend, array, frameState},
+                                     GateType::NJSValue());
+    acc_.ReplaceInAfterInsert(currentControl, currentDepend, ret);
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::InsertTypedArrayCheck(GateType type, GateRef array)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef frameState = acc_.FindNearestFrameState(currentDepend);
+    auto ret = GetCircuit()->NewGate(circuit_->TypedArrayCheck(static_cast<size_t>(type.Value())),
+                                     MachineType::I1,
+                                     {currentControl, currentDepend, array, frameState},
+                                     GateType::NJSValue());
+    acc_.ReplaceInAfterInsert(currentControl, currentDepend, ret);
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::InsertLoadArrayLength(GateRef array, bool isTypedArray)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateType arrayType = acc_.GetGateType(array);
+    if (isTypedArray) {
+        InsertTypedArrayCheck(arrayType, array);
+        currentControl = currentLabel->GetControl();
+        currentDepend = currentLabel->GetDepend();
+        auto ret = GetCircuit()->NewGate(circuit_->LoadTypedArrayLength(static_cast<size_t>(arrayType.Value())),
+                                         MachineType::I64,
+                                         { currentControl, currentDepend, array },
+                                         GateType::IntType());
+        acc_.ReplaceInAfterInsert(currentControl, currentDepend, ret);
+        currentLabel->SetControl(ret);
+        currentLabel->SetDepend(ret);
+        return ret;
+    } else {
+        InsertStableArrayCheck(array);
+        currentControl = currentLabel->GetControl();
+        currentDepend = currentLabel->GetDepend();
+        auto ret = GetCircuit()->NewGate(circuit_->LoadArrayLength(),
+                                         MachineType::I64,
+                                         { currentControl, currentDepend, array },
+                                         GateType::IntType());
+        acc_.ReplaceInAfterInsert(currentControl, currentDepend, ret);
+        currentLabel->SetControl(ret);
+        currentLabel->SetDepend(ret);
+        return ret;
+    }
+    UNREACHABLE();
+    return Circuit::NullGate();
+}
 }  // namespace panda::ecmascript::kungfu

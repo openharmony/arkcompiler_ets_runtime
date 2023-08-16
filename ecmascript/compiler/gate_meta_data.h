@@ -396,7 +396,8 @@ std::string MachineTypeToStr(MachineType machineType);
     V(StableArrayCheck, STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)              \
     V(HClassStableArrayCheck, HCLASS_STABLE_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1) \
     V(ObjectTypeCheck, OBJECT_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)                \
-    V(ObjectTypeCompare, OBJECT_TYPE_COMPARE, GateFlags::CHECKABLE, 1, 1, 2)
+    V(ObjectTypeCompare, OBJECT_TYPE_COMPARE, GateFlags::CHECKABLE, 1, 1, 2)            \
+    V(RangeCheckPredicate, RANGE_CHECK_PREDICATE, GateFlags::CHECKABLE, 1, 1, 2)
 
 #define GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     V(Arg, ARG, GateFlags::HAS_ROOT, 0, 0, 0)             \
@@ -1013,6 +1014,38 @@ public:
 private:
     using TrueWeightBits = panda::BitField<uint32_t, 0, OPRAND_TYPE_BITS>;
     using FalseWeightBits = TrueWeightBits::NextField<uint32_t, OPRAND_TYPE_BITS>;
+
+    uint64_t bitField_;
+};
+
+class TypedBinaryAccessor {
+public:
+    // type bits shift
+    static constexpr int OPRAND_TYPE_BITS = 32;
+    explicit TypedBinaryAccessor(uint64_t value) : bitField_(value) {}
+    explicit TypedBinaryAccessor(GateType gate, TypedBinOp binOp)
+    {
+        bitField_ = TypedValueBits::Encode(gate.Value()) | TypedBinOpBits::Encode(binOp);
+    }
+
+    GateType GetTypeValue() const
+    {
+        return GateType(TypedValueBits::Get(bitField_));
+    }
+
+    TypedBinOp GetTypedBinOp() const
+    {
+        return TypedBinOpBits::Get(bitField_);
+    }
+
+    uint64_t ToValue() const
+    {
+        return bitField_;
+    }
+
+private:
+    using TypedValueBits = panda::BitField<uint32_t, 0, OPRAND_TYPE_BITS>;
+    using TypedBinOpBits = TypedValueBits::NextField<TypedBinOp, OPRAND_TYPE_BITS>;
 
     uint64_t bitField_;
 };
