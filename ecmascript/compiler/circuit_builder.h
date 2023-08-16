@@ -581,6 +581,7 @@ public:
     inline GateRef IsClassConstructorWithBitField(GateRef bitfield);
     inline GateRef IsConstructor(GateRef object);
     inline GateRef IsClassPrototype(GateRef object);
+    inline GateRef IsClassPrototypeWithBitField(GateRef object);
     inline GateRef IsExtensible(GateRef object);
     inline GateRef GetExpectedNumOfArgs(GateRef method);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);

@@ -99,6 +99,7 @@ void PGOProfiler::ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_
     }
 
     DISALLOW_GARBAGE_COLLECTION;
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSTaggedValue funcValue(func);
     if (funcValue.IsJSFunction()) {
         JSFunction *funcFunction = JSFunction::Cast(funcValue);
@@ -207,6 +208,7 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
     }
 
     DISALLOW_GARBAGE_COLLECTION;
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSTaggedValue funcValue(func);
     if (funcValue.IsJSFunction()) {
         JSFunction *funcFunction = JSFunction::Cast(funcValue);
@@ -231,18 +233,6 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
         } else if (hclass->IsClassConstructor()) {
             ctor = holder;
             kind = PGOObjKind::CONSTRUCTOR;
-        } else if (hclass->IsLiteral()) {
-            auto iter = traceIds_.find(JSTaggedType(hclass));
-            if (iter != traceIds_.end()) {
-                PGOObjectInfo info(ClassType(iter->second), kind);
-                auto methodId = jsMethod->GetMethodId();
-                recordInfos_->AddObjectInfo(recordName, methodId, offset, info);
-                if (store) {
-                    auto type = PGOSampleType::CreateClassType(iter->second);
-                    recordInfos_->AddLayout(type, JSTaggedType(hclass), kind);
-                }
-            }
-            return;
         } else if (hclass->IsJSArray()) {
             kind = PGOObjKind::ELEMENT;
             auto array = JSArray::Cast(holder);
@@ -257,6 +247,19 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
             }
             return;
         } else {
+            if (hclass->IsJSObject()) {
+                auto iter = traceIds_.find(JSTaggedType(hclass));
+                if (iter != traceIds_.end()) {
+                    PGOObjectInfo info(ClassType(iter->second), kind);
+                    auto methodId = jsMethod->GetMethodId();
+                    recordInfos_->AddObjectInfo(recordName, methodId, offset, info);
+                    if (store) {
+                        auto type = PGOSampleType::CreateClassType(iter->second);
+                        recordInfos_->AddLayout(type, JSTaggedType(hclass), kind);
+                    }
+                    return;
+                }
+            }
             auto prototype = hclass->GetProto();
             ctor = JSObject::GetCtorFromPrototype(thread, prototype);
         }

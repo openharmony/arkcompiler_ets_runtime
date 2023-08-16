@@ -290,26 +290,28 @@ enum class JSType : uint8_t {
 class JSHClass : public TaggedObject {
 public:
     static constexpr int TYPE_BITFIELD_NUM = 8;
-    static constexpr int LEVEL_BTTFIELD_NUM = 3;
-    using ObjectTypeBits = BitField<JSType, 0, TYPE_BITFIELD_NUM>;  // 8
-    using CallableBit = ObjectTypeBits::NextFlag;
-    using ConstructorBit = CallableBit::NextFlag;      // 10
-    using ExtensibleBit = ConstructorBit::NextFlag;
-    using IsPrototypeBit = ExtensibleBit::NextFlag;
-    using ElementsKindBits = IsPrototypeBit::NextField<ElementsKind, 5>;        // 5 means next 5 bit
-    using DictionaryElementBits = ElementsKindBits::NextFlag;                     // 16
-    using IsDictionaryBit = DictionaryElementBits::NextFlag;                               // 17
-    using IsStableElementsBit = IsDictionaryBit::NextFlag;                                 // 18
-    using HasConstructorBits = IsStableElementsBit::NextFlag;                              // 19
-    using IsLiteralBit = HasConstructorBits::NextFlag;                                     // 20
-    using ClassConstructorBit = IsLiteralBit::NextFlag;                                    // 21
-    using ClassPrototypeBit = ClassConstructorBit::NextFlag;                               // 22
-    using GlobalConstOrBuiltinsObjectBit = ClassPrototypeBit::NextFlag;                    // 23
-    using IsTSBit = GlobalConstOrBuiltinsObjectBit::NextFlag;                              // 24
-    using LevelBit = IsTSBit::NextField<uint32_t, LEVEL_BTTFIELD_NUM>;                     // 29
-    using IsJSFunctionBit = LevelBit::NextFlag;                                            // 30
-    using IsOptimizedBit = IsJSFunctionBit::NextFlag;                                      // 31
-    using CanFastCallBit = IsOptimizedBit::NextFlag;                                       // 32
+    static constexpr int LEVEL_BTTFIELD_NUM = 5;
+    static constexpr int ELEMENTS_KIND_BITFIELD_NUM = 5;
+    static constexpr unsigned BITS_PER_BYTE = 8;
+    using ObjectTypeBits = BitField<JSType, 0, TYPE_BITFIELD_NUM>;                                // 8
+    using CallableBit = ObjectTypeBits::NextFlag;                                                 // 9
+    using ConstructorBit = CallableBit::NextFlag;                                                 // 10
+    using ExtensibleBit = ConstructorBit::NextFlag;                                               // 11
+    using IsPrototypeBit = ExtensibleBit::NextFlag;                                               // 12
+    using ElementsKindBits = IsPrototypeBit::NextField<ElementsKind, ELEMENTS_KIND_BITFIELD_NUM>; // 13-17
+    using DictionaryElementBits = ElementsKindBits::NextFlag;                                     // 18
+    using IsDictionaryBit = DictionaryElementBits::NextFlag;                                      // 19
+    using IsStableElementsBit = IsDictionaryBit::NextFlag;                                        // 20
+    using HasConstructorBits = IsStableElementsBit::NextFlag;                                     // 21
+    using IsClassConstructorOrPrototypeBit = HasConstructorBits::NextFlag;                        // 22
+    using GlobalConstOrBuiltinsObjectBit = IsClassConstructorOrPrototypeBit::NextFlag;            // 23
+    using IsTSBit = GlobalConstOrBuiltinsObjectBit::NextFlag;                                     // 24
+    using LevelBit = IsTSBit::NextField<uint32_t, LEVEL_BTTFIELD_NUM>;                            // 25-29
+    using IsJSFunctionBit = LevelBit::NextFlag;                                                   // 30
+    using IsOptimizedBit = IsJSFunctionBit::NextFlag;                                             // 31
+    using CanFastCallBit = IsOptimizedBit::NextFlag;                                              // 32
+    using BitFieldLastBit = CanFastCallBit;
+    static_assert(BitFieldLastBit::START_BIT + BitFieldLastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
     static constexpr int DEFAULT_CAPACITY_OF_IN_OBJECTS = 4;
     static constexpr int MAX_CAPACITY_OF_OUT_OBJECTS =
@@ -322,12 +324,14 @@ public:
     static constexpr uint64_t FASTCALL_BIT = 1LU << CanFastCallBit::START_BIT;
     static constexpr uint64_t OPTIMIZED_FASTCALL_BITS = OPTIMIZED_BIT | FASTCALL_BIT;
 
-    using NumberOfPropsBits = BitField<uint32_t, 0, PropertyAttributes::OFFSET_BITFIELD_NUM>; // 10
+    using NumberOfPropsBits = BitField<uint32_t, 0, PropertyAttributes::OFFSET_BITFIELD_NUM>;                  // 10
     using InlinedPropsStartBits = NumberOfPropsBits::NextField<uint32_t,
-            OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED>; // 15
+        OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED>;                                                      // 15
     using ObjectSizeInWordsBits = InlinedPropsStartBits::NextField<uint32_t, OFFSET_MAX_OBJECT_SIZE_IN_WORDS>; // 30
-    using HasDeletePropertyBit = ObjectSizeInWordsBits::NextFlag;
-    using IsAllTaggedPropBit = HasDeletePropertyBit::NextFlag;  //32
+    using HasDeletePropertyBit = ObjectSizeInWordsBits::NextFlag;                                              //
+    using IsAllTaggedPropBit = HasDeletePropertyBit::NextFlag;                                                 // 32
+    using BitField1LastBit = IsAllTaggedPropBit;
+    static_assert(BitField1LastBit::START_BIT + BitField1LastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
     static JSHClass *Cast(const TaggedObject *object);
 
@@ -435,19 +439,16 @@ public:
         IsPrototypeBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
-    inline void SetIsLiteral(bool flag) const
-    {
-        IsLiteralBit::Set<uint32_t>(flag, GetBitFieldAddr());
-    }
-
     inline void SetClassConstructor(bool flag) const
     {
-        ClassConstructorBit::Set<uint32_t>(flag, GetBitFieldAddr());
+        IsClassConstructorOrPrototypeBit::Set<uint32_t>(flag, GetBitFieldAddr());
+        SetConstructor(flag);
     }
 
     inline void SetClassPrototype(bool flag) const
     {
-        ClassPrototypeBit::Set<uint32_t>(flag, GetBitFieldAddr());
+        IsClassConstructorOrPrototypeBit::Set<uint32_t>(flag, GetBitFieldAddr());
+        SetIsPrototype(flag);
     }
 
     inline void SetGlobalConstOrBuiltinsObject(bool flag) const
@@ -1163,16 +1164,10 @@ public:
         return IsPrototypeBit::Decode(bits);
     }
 
-    inline bool IsLiteral() const
-    {
-        uint32_t bits = GetBitField();
-        return IsLiteralBit::Decode(bits);
-    }
-
     inline bool IsClassConstructor() const
     {
         uint32_t bits = GetBitField();
-        return ClassConstructorBit::Decode(bits);
+        return IsClassConstructorOrPrototypeBit::Decode(bits) && IsConstructor();
     }
 
     inline bool IsJSGlobalObject() const
@@ -1183,7 +1178,7 @@ public:
     inline bool IsClassPrototype() const
     {
         uint32_t bits = GetBitField();
-        return ClassPrototypeBit::Decode(bits);
+        return IsClassConstructorOrPrototypeBit::Decode(bits) && IsPrototype();
     }
 
     inline bool IsGlobalConstOrBuiltinsObject() const

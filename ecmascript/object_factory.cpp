@@ -3114,7 +3114,6 @@ JSHandle<JSHClass> ObjectFactory::CreateObjectClass(const JSHandle<TaggedArray> 
     objClass->SetPrototype(thread_, proto.GetTaggedValue());
     {
         objClass->SetExtensible(true);
-        objClass->SetIsLiteral(true);
         objClass->SetLayout(thread_, layoutInfoHandle);
         objClass->SetNumberOfProps(fieldOrder);
     }
@@ -3166,7 +3165,6 @@ JSHandle<JSHClass> ObjectFactory::GetObjectLiteralHClass(const JSHandle<TaggedAr
         {
             objHClass->SetNumberOfProps(0);
             objHClass->SetExtensible(true);
-            objHClass->SetIsLiteral(true);
         }
         hclassCacheArr->Set(thread_, length, objHClass);
         return SetLayoutInObjHClass(properties, length, objHClass);

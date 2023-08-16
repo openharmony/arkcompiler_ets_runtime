@@ -660,6 +660,8 @@ private:
     static bool SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow);
     static void DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, uint32_t index);
+    static void SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj,
+        const JSHandle<TaggedArray> &properties, uint32_t propsLen, JSTaggedValue ihcVal);
     int FindProperty(const JSHandle<JSTaggedValue> &key);
 
     static uint32_t ComputeElementCapacity(uint32_t oldCapacity);
