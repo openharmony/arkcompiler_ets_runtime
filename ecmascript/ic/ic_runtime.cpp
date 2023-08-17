@@ -149,7 +149,9 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
 {
     if (!receiver->IsJSObject() || receiver->HasOrdinaryGet()) {
         icAccessor_.SetAsMega();
-        return JSTaggedValue::GetProperty(thread_, receiver, key).GetValue().GetTaggedValue();
+        JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread_, key);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        return JSTaggedValue::GetProperty(thread_, receiver, propKey).GetValue().GetTaggedValue();
     }
 
     ICKind kind = GetICKind();
