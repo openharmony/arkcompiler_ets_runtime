@@ -340,7 +340,7 @@ public:
     }
 
     JSHandle<TaggedArray> NewAndCopyTaggedArray(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
-                                                uint32_t oldLength);
+                                                uint32_t oldLength, uint32_t k = 0);
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal, bool nonMovable);
     JSHandle<TaggedArray> NewTaggedArray(uint32_t length, JSTaggedValue initVal, MemSpaceType spaceType);
