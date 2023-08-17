@@ -58,12 +58,12 @@ public:
     GateRef FastNewThisObject(GateRef glue, GateRef ctor);
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);
     GateRef CreateEmptyArray(GateRef glue, ProfileOperation callback);
-    GateRef CreateEmptyArray(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo,
+    GateRef CreateEmptyArray(GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef slotId,
                              ProfileOperation callback);
-    GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc,
-                                  GateRef pc, GateRef profileTypeInfo, ProfileOperation callback);
-    void LoadArrayHClass(Variable *hclass, Label *exit, GateRef glue,
-        GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, GateRef arrayLiteral = Circuit::NullGate());
+    GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc, GateRef pc,
+                                  GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
+    void LoadArrayHClass(Variable *hclass, Label *exit, GateRef glue, GateRef jsFunc,
+        GateRef pc, GateRef profileTypeInfo, GateRef slotId, GateRef arrayLiteral = Circuit::NullGate());
     void NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
 
 private:

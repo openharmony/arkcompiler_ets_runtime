@@ -645,16 +645,17 @@ DEF_CALL_SIGNATURE(ConstructorCheck)
 
 DEF_CALL_SIGNATURE(CreateEmptyArray)
 {
-    // 4 : 4 input parameters
-    CallSignature signature("CreateEmptyArray", 0, 4,
+    // 5 : 5 input parameters
+    CallSignature signature("CreateEmptyArray", 0, 5,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 4 : 4 input parameters
-    std::array<VariableType, 4> params = {
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
         VariableType::NATIVE_POINTER(),  // glue
         VariableType::JS_ANY(),          // jsFunc
         VariableType::JS_ANY(),          // pc
         VariableType::INT32(),           // profileTypeInfo
+        VariableType::INT32(),           // slotId
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
@@ -662,17 +663,18 @@ DEF_CALL_SIGNATURE(CreateEmptyArray)
 
 DEF_CALL_SIGNATURE(CreateArrayWithBuffer)
 {
-    // 5 : 5 input parameters
-    CallSignature signature("CreateArrayWithBuffer", 0, 5,
+    // 6 : 6 input parameters
+    CallSignature signature("CreateArrayWithBuffer", 0, 6,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 5 : 5 input parameters
-    std::array<VariableType, 5> params = {
+    // 6 : 6 input parameters
+    std::array<VariableType, 6> params = {
         VariableType::NATIVE_POINTER(),  // glue
         VariableType::INT32(),           // index
         VariableType::JS_ANY(),          // jsFunc
         VariableType::JS_ANY(),          // pc
         VariableType::INT32(),           // profileTypeInfo
+        VariableType::INT32(),           // slotId
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
