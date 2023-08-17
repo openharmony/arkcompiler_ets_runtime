@@ -80,13 +80,6 @@ public:
             LLVMInitializeAArch64AsmPrinter();
             LLVMInitializeAArch64AsmParser();
             LLVMInitializeAArch64Target();
-        } else if (triple.compare(TARGET_ARM32) == 0) {
-            LLVMInitializeARMTargetInfo();
-            LLVMInitializeARMTargetMC();
-            LLVMInitializeARMDisassembler();
-            LLVMInitializeARMAsmPrinter();
-            LLVMInitializeARMAsmParser();
-            LLVMInitializeARMTarget();
         } else {
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
