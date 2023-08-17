@@ -416,15 +416,6 @@ void LLVMAssembler::Initialize(LOptions option)
         LLVMInitializeAArch64AsmPrinter();
         LLVMInitializeAArch64AsmParser();
         LLVMInitializeAArch64Target();
-    } else if (triple.compare(TARGET_ARM32) == 0) {
-#if defined(PANDA_TARGET_MACOS) || !defined(PANDA_TARGET_ARM64)
-        LLVMInitializeARMTargetInfo();
-        LLVMInitializeARMTargetMC();
-        LLVMInitializeARMDisassembler();
-        LLVMInitializeARMAsmPrinter();
-        LLVMInitializeARMAsmParser();
-        LLVMInitializeARMTarget();
-#endif
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();

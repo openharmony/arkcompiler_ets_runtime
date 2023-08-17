@@ -21,7 +21,6 @@
 #include <memory>
 
 #include "ecmascript/compiler/variable_type.h"
-#include "ecmascript/compiler/test_stubs_signature.h"
 
 #include "libpandabase/macros.h"
 #include "libpandabase/utils/bit_field.h"
@@ -459,8 +458,7 @@ private:
     V(SetDateValues)                        \
     V(CallReturnWithArgv)                   \
     V(StartCallTimer)                       \
-    V(EndCallTimer)                         \
-    TEST_STUB_SIGNATRUE_LIST(V)
+    V(EndCallTimer)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

@@ -119,8 +119,6 @@ ohos_source_set("libark_jsoptimizer_set") {
     "state_split_linearizer.cpp",
     "stub.cpp",
     "stub_builder.cpp",
-    "test_stubs.cpp",
-    "test_stubs_signature.cpp",
     "trampoline/aarch64/asm_interpreter_call.cpp",
     "trampoline/aarch64/common_call.cpp",
     "trampoline/aarch64/optimized_call.cpp",
@@ -240,15 +238,9 @@ ohos_source_set("libark_jsoptimizer_set") {
   }
 
   # Only support compiling aarch64 target at device-side(arm64 platform).
-  # So these os-related libs of arm and x86 are not needed on arm64 platform.
+  # So these os-related libs of x86 are not needed on arm64 platform.
   if (is_mac || current_cpu != "arm64") {
     libs += [
-      "LLVMARMUtils",
-      "LLVMARMCodeGen",
-      "LLVMARMDisassembler",
-      "LLVMARMDesc",
-      "LLVMARMInfo",
-      "LLVMARMAsmParser",
       "LLVMX86AsmParser",
       "LLVMX86CodeGen",
       "LLVMX86Desc",

@@ -17,7 +17,6 @@
 #define ECMASCRIPT_COMPILER_COMMON_STUBS_H
 
 #include "ecmascript/compiler/stub_builder.h"
-#include "ecmascript/compiler/test_stubs.h"
 
 namespace panda::ecmascript::kungfu {
 #define COMMON_STUB_LIST(V)           \
@@ -80,8 +79,7 @@ namespace panda::ecmascript::kungfu {
     V(JsProxyCallInternal)
 
 #define COMMON_STUB_ID_LIST(V)          \
-    COMMON_STUB_LIST(V)                 \
-    TEST_STUB_SIGNATRUE_LIST(V)
+    COMMON_STUB_LIST(V)
 
 #define DECLARE_STUB_CLASS(name)                                                   \
     class name##StubBuilder : public StubBuilder {                                 \
