@@ -50,7 +50,7 @@ public:
     static JSTaggedValue Map(JSHandle<JSObject> newArrayHandle, JSHandle<JSObject> thisObjHandle,
                                  EcmaRuntimeCallInfo *argv, uint32_t &k, uint32_t len);
     static JSTaggedValue Reverse(JSThread *thread, JSHandle<JSObject> thisObjHandle,
-                                 JSHandle<JSTaggedValue> thisHandle, int64_t &lower, uint32_t len);
+                                 int64_t &lower, uint32_t len);
     static JSTaggedValue Concat(JSThread *thread, JSHandle<JSObject> newArrayHandle,
                                 JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &n);
     static JSTaggedValue FastCopyFromArrayToTypedArray(JSThread *thread, JSHandle<JSTypedArray> &target,

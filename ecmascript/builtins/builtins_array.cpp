@@ -1860,7 +1860,7 @@ JSTaggedValue BuiltinsArray::Reverse(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> lowerValueHandle(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> upperValueHandle(thread, JSTaggedValue::Undefined());
     if (thisObjVal->IsStableJSArray(thread)) {
-        JSStableArray::Reverse(thread, thisObjHandle, thisHandle, lower, len);
+        JSStableArray::Reverse(thread, thisObjHandle, lower, len);
     }
     while (lower != middle) {
         int64_t upper = len - lower - 1;

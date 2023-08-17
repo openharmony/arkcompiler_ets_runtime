@@ -159,3 +159,13 @@ const values = [1, 10, 21, 2];
 const sortedValues = values.toSorted((a, b) => {return a- b});
 print(sortedValues); // [1, 2, 10, 21]
 print(values); // [1, 10, 21, 2]
+
+const arrs = new Array(6);
+for (let i = 0; i < 6; i++) {
+    var str = i.toString();
+    if (i != 1) {
+        arrs[i] = str;
+    }
+}
+arrs.reverse();
+print(arrs); // 5,4,3,2,,0
