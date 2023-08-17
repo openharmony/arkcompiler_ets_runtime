@@ -34,39 +34,6 @@ void PGOTypeInfer::Run()
     }
 }
 
-struct CollectedType {
-    explicit CollectedType(Chunk *chunk) : classTypes(chunk), classInstanceTypes(chunk), otherTypes(chunk) {}
-
-    bool AllInSameKind() const
-    {
-        uint8_t kind = classTypes.empty() ? 0 : 1;
-        kind += classInstanceTypes.empty() ? 0 : 1;
-        kind += otherTypes.empty() ? 0 : 1;
-        return kind == 1;
-    }
-
-    ChunkSet<GateType> Merge(Chunk *chunk, TSManager *tsManager)
-    {
-        ChunkSet<GateType> inferTypes(chunk);
-        for (GateType type : classTypes) {
-            inferTypes.insert(type);
-        }
-        for (GateType type : classInstanceTypes) {
-            GlobalTSTypeRef gt = type.GetGTRef();
-            GlobalTSTypeRef instanceGT = tsManager->CreateClassInstanceType(gt);
-            inferTypes.insert(GateType(instanceGT));
-        }
-        for (GateType type : otherTypes) {
-            inferTypes.insert(type);
-        }
-        return inferTypes;
-    }
-
-    ChunkSet<GateType> classTypes;
-    ChunkSet<GateType> classInstanceTypes;
-    ChunkSet<GateType> otherTypes;
-};
-
 void PGOTypeInfer::RunTypeInfer(GateRef gate)
 {
     ASSERT(acc_.GetOpCode(gate) == OpCode::JS_BYTECODE);
@@ -108,130 +75,6 @@ void PGOTypeInfer::RunTypeInfer(GateRef gate)
             break;
         default:
             break;
-    }
-}
-
-void PGOTypeInfer::CheckAndInsert(CollectedType &types, GateType type)
-{
-    if (tsManager_->IsClassTypeKind(type)) {
-        int hclassIndex = tsManager_->GetConstructorHClassIndexByClassGateType(type);
-        if (hclassIndex == -1) {
-            return;
-        }
-        types.classTypes.insert(type);
-    } else if (tsManager_->IsClassInstanceTypeKind(type)) {
-        int hclassIndex = tsManager_->GetHClassIndexByInstanceGateType(type);
-        if (hclassIndex == -1) {
-            return;
-        }
-        JSHClass *hclass = JSHClass::Cast(tsManager_->GetValueFromCache(hclassIndex).GetTaggedObject());
-        if (hclass->HasTSSubtyping()) {
-            GlobalTSTypeRef instanceGT = type.GetGTRef();
-            type = GateType(tsManager_->GetClassType(instanceGT));
-            types.classInstanceTypes.insert(type);
-        }
-    } else if (!type.IsAnyType()) {
-        types.otherTypes.insert(type);
-    }
-}
-
-void PGOTypeInfer::CollectGateType(CollectedType &types, GateType tsType, PGORWOpType pgoTypes)
-{
-    CheckAndInsert(types, tsType);
-
-    for (uint32_t i = 0; i < pgoTypes.GetCount(); i++) {
-        ClassType classType = pgoTypes.GetObjectInfo(i).GetClassType();
-        GateType pgoType = tsManager_->GetGateTypeByPt(classType);
-        if (tsManager_->IsClassTypeKind(pgoType) && !pgoTypes.GetObjectInfo(i).InConstructor()) {
-            pgoType = GateType(tsManager_->CreateClassInstanceType(pgoType));
-        }
-        CheckAndInsert(types, pgoType);
-    }
-
-    // for static TS uinon type
-    if (tsManager_->IsUnionTypeKind(tsType)) {
-        JSHandle<TSUnionType> unionType(tsManager_->GetTSType(tsType.GetGTRef()));
-        TaggedArray *components = TaggedArray::Cast(unionType->GetComponents().GetTaggedObject());
-        uint32_t length = components->GetLength();
-        for (uint32_t i = 0; i < length; ++i) {
-            GlobalTSTypeRef gt(components->Get(i).GetInt());
-            CheckAndInsert(types, GateType(gt));
-        }
-    }
-}
-
-void PGOTypeInfer::UpdateType(CollectedType &types, JSTaggedValue prop)
-{
-    ChunkSet<GateType> &classTypes = types.classTypes;
-    InferTypeForClass(classTypes, prop);
-
-    ChunkSet<GateType> &classInstanceTypes = types.classInstanceTypes;
-    InferTypeForClass(classInstanceTypes, prop);
-}
-
-void PGOTypeInfer::InferTypeForClass(ChunkSet<GateType> &types, JSTaggedValue prop)
-{
-    if (NoNeedUpdate(types)) {
-        return;
-    }
-    EliminateSubclassTypes(types);
-    ComputeCommonSuperClassTypes(types, prop);
-}
-
-void PGOTypeInfer::EliminateSubclassTypes(ChunkSet<GateType> &types)
-{
-    std::set<GateType> deletedGates;
-    for (GateType type : types) {
-        if (deletedGates.find(type) != deletedGates.end()) {
-            continue;
-        }
-
-        std::stack<GateType> ancestors;
-        GateType curType = type;
-        do {
-            if (types.find(curType) != types.end()) {
-                ancestors.push(curType);
-            }
-        } while (tsManager_->GetSuperGateType(curType));
-
-        ancestors.pop(); // top type is alive
-        while (!ancestors.empty()) {
-            curType = ancestors.top();
-            ancestors.pop();
-            auto it = deletedGates.find(curType);
-            if (it != deletedGates.end()) {
-                deletedGates.insert(curType);
-            }
-        }
-    }
-    for (GateType gateType : deletedGates) {
-        types.erase(gateType);
-    }
-}
-
-void PGOTypeInfer::ComputeCommonSuperClassTypes(ChunkSet<GateType> &types, JSTaggedValue prop)
-{
-    JSThread *thread = tsManager_->GetEcmaVM()->GetJSThread();
-    std::map<GateType, GateType> removeTypes;
-    for (GateType type : types) {
-        GateType curType = type;
-        GateType preType = type;
-        while (tsManager_->GetSuperGateType(curType)) {
-            JSHClass *ihc = JSHClass::Cast(tsManager_->GetTSHClass(curType).GetTaggedObject());
-            PropertyLookupResult plr = JSHClass::LookupPropertyInAotHClass(thread, ihc, prop);
-            if (!plr.IsFound()) {
-                break;
-            }
-            preType = curType;
-        }
-        if (type != preType) {
-            removeTypes[type] = preType;
-        }
-    }
-
-    for (auto item : removeTypes) {
-        types.erase(item.first);
-        types.insert(item.second);
     }
 }
 
@@ -347,12 +190,45 @@ void PGOTypeInfer::InferCreateArray(GateRef gate)
     acc_.TrySetElementsKind(gate, kind);
 }
 
+void PGOTypeInfer::InferAccessObjByValue(GateRef gate)
+{
+    if (!builder_->ShouldPGOTypeInfer(gate)) {
+        return;
+    }
+    GateRef receiver = Circuit::NullGate();
+    GateRef propKey = Circuit::NullGate();
+    EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
+    switch (ecmaOpcode) {
+        case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
+        case EcmaOpcode::LDOBJBYVALUE_IMM16_V8:
+        case EcmaOpcode::STOBJBYVALUE_IMM8_V8_V8:
+        case EcmaOpcode::STOBJBYVALUE_IMM16_V8_V8:
+            receiver = acc_.GetValueIn(gate, 1);  // 1: receiver
+            propKey = acc_.GetValueIn(gate, 2);  // 2: the third parameter
+            break;
+        case EcmaOpcode::LDTHISBYVALUE_IMM8:
+        case EcmaOpcode::LDTHISBYVALUE_IMM16:
+        case EcmaOpcode::STTHISBYVALUE_IMM8_V8:
+        case EcmaOpcode::STTHISBYVALUE_IMM16_V8:
+            receiver = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::THIS_OBJECT);
+            propKey = acc_.GetValueIn(gate, 1);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    UpdateTypeForRWOp(gate, receiver);
+    TrySetPropKeyKind(gate, propKey);
+    TrySetElementsKind(gate);
+}
+
 void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedValue prop)
 {
     GateType tsType = acc_.GetGateType(receiver);
     PGORWOpType pgoTypes = builder_->GetPGOType(gate);
+
     CollectedType types(chunk_);
-    CollectGateType(types, tsType, pgoTypes);
+    helper_.CollectGateType(types, tsType, pgoTypes);
 
     // polymorphism is not currently supported,
     // all types must in the same kind
@@ -361,27 +237,30 @@ void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedVal
     }
 
     // polymorphism is not currently supported
-    UpdateType(types, prop);
-    ChunkSet<GateType> inferTypes = types.Merge(chunk_, tsManager_);
+    ChunkSet<GateType> inferTypes = helper_.GetInferTypes(chunk_, types, prop);
+    AddProfiler(gate, tsType, pgoTypes, inferTypes);
     if (!IsMonoTypes(inferTypes)) {
         return;
     }
 
-    AddProfiler(gate, tsType, pgoTypes, inferTypes);
     acc_.SetGateType(receiver, *inferTypes.begin());
 }
 
-void PGOTypeInfer::InferAccessObjByValue(GateRef gate)
+void PGOTypeInfer::TrySetElementsKind(GateRef gate)
 {
-    if (!builder_->ShouldPGOTypeInfer(gate)) {
-        return;
-    }
-
     ElementsKind kind = builder_->GetElementsKind(gate);
     if (Elements::IsGeneric(kind)) {
         return;
     }
-
     acc_.TrySetElementsKind(gate, kind);
+}
+
+void PGOTypeInfer::TrySetPropKeyKind(GateRef gate, GateRef propKey)
+{
+    PGORWOpType pgoTypes = builder_->GetPGOType(gate);
+    GateType oldType = acc_.GetGateType(propKey);
+    if (oldType.IsAnyType() && IsMonoNumberType(pgoTypes)) {
+        acc_.SetGateType(propKey, GateType::NumberType());
+    }
 }
 }  // namespace panda::ecmascript

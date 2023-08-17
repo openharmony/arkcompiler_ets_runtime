@@ -899,6 +899,9 @@ public:
 
     inline const kungfu::GateType GetGateTypeByPt(ClassType pgoType)
     {
+        if (pgoType.IsBuiltinsType()) {
+            return GetBuiltinsGateTypeByPt(pgoType);
+        }
         auto it = ptToGtMap_.find(pgoType);
         if (it != ptToGtMap_.end()) {
             return it->second;
@@ -1029,6 +1032,10 @@ private:
 
     JSHandle<ConstantPool> GetSnapshotConstantPool(uint32_t cpListIndex);
 
+    const kungfu::GateType GetBuiltinsGateTypeByPt(ClassType pgoType);
+
+    BuiltinTypeId GetBuiltinTypeIdByJSType(JSType jsType);
+
     EcmaVM *vm_ {nullptr};
     JSThread *thread_ {nullptr};
     ObjectFactory *factory_ {nullptr};
@@ -1037,6 +1044,7 @@ private:
     std::map<GlobalTSTypeRef, IHClassData> gtIhcMap_ {};
     std::map<GlobalTSTypeRef, IHClassData> gtConstructorhcMap_ {};
     std::unordered_map<TypeLocation, GlobalTSTypeRef, HashTypeLocation> literalGTMap_ {};
+    std::map<JSType, GlobalTSTypeRef> pgoBuiltinGTCache_ {};
     bool assertTypes_ {false};
     double typeThreshold_ {-1};
 

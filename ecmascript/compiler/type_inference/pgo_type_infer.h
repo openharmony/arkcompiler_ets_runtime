@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_TYPE_INFERENCE_PGO_TYPE_INFER_H
 #define ECMASCRIPT_COMPILER_TYPE_INFERENCE_PGO_TYPE_INFER_H
 
+#include "ecmascript/compiler/type_inference/pgo_type_infer_helper.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "ecmascript/compiler/argument_accessor.h"
@@ -26,7 +27,7 @@ class PGOTypeInfer {
 public:
     PGOTypeInfer(Circuit *circuit, TSManager *tsManager, BytecodeCircuitBuilder *builder,
                  const std::string &name, Chunk *chunk, bool enableLog)
-        : circuit_(circuit), acc_(circuit), argAcc_(circuit), tsManager_(tsManager),
+        : circuit_(circuit), acc_(circuit), argAcc_(circuit), tsManager_(tsManager), helper_(tsManager),
           builder_(builder), methodName_(name), chunk_(chunk), enableLog_(enableLog), profiler_(chunk) {}
     ~PGOTypeInfer() = default;
 
@@ -59,9 +60,11 @@ private:
         return types.size() == 1;
     }
 
-    inline bool NoNeedUpdate(const ChunkSet<GateType> &types) const
+    inline bool IsMonoNumberType(PGORWOpType &pgoTypes) const
     {
-        return types.size() <= 1;
+        // "ldobjbyvalue" will collect the type of the variable inside the square brackets while pgo collecting.
+        // If the type is "number", it will be marked as an "Element".
+        return pgoTypes.GetCount() == 1 && pgoTypes.GetObjectInfo(0).InElement();
     }
 
     void RunTypeInfer(GateRef gate);
@@ -71,13 +74,9 @@ private:
     void InferAccessObjByValue(GateRef gate);
     void InferCreateArray(GateRef gate);
 
-    void UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedValue prop);
-    void CollectGateType(CollectedType &types, GateType tsType, PGORWOpType pgoTypes);
-    void UpdateType(CollectedType &types, JSTaggedValue prop);
-    void InferTypeForClass(ChunkSet<GateType> &types, JSTaggedValue prop);
-    void CheckAndInsert(CollectedType &types, GateType type);
-    void EliminateSubclassTypes(ChunkSet<GateType> &types);
-    void ComputeCommonSuperClassTypes(ChunkSet<GateType> &types, JSTaggedValue prop);
+    void UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedValue prop = JSTaggedValue::Undefined());
+    void TrySetElementsKind(GateRef gate);
+    void TrySetPropKeyKind(GateRef gate, GateRef propKey);
 
     void Print() const;
     void AddProfiler(GateRef gate, GateType tsType, PGORWOpType pgoType, ChunkSet<GateType>& inferTypes);
@@ -86,6 +85,7 @@ private:
     GateAccessor acc_;
     ArgumentAccessor argAcc_;
     TSManager *tsManager_ {nullptr};
+    PGOTypeInferHelper helper_;
     BytecodeCircuitBuilder *builder_ {nullptr};
     const std::string &methodName_;
     Chunk *chunk_ {nullptr};

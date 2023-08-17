@@ -239,17 +239,15 @@ public:
             return false;
         }
         TimeScope timescope("TypeInferPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
-        if (data->HasTypes()) {
-            bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
-            GlobalTypeInfer globalTypeInfer(data->GetPassContext(), data->GetMethodOffset(), data->GetRecordName(),
-                                            data->GetPGOProfilerDecoder(), passOptions->EnableOptTrackField(),
-                                            enableLog);
-            globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
-            if (data->GetMethodLiteral()->IsClassConstructor()) {
-                InitializationAnalysis initAnalysis(data->GetCircuit(), data->GetTSManager(), data->GetRecordName(),
-                                                    data->GetMethodName(), enableLog);
-                initAnalysis.Run();
-            }
+        bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
+        GlobalTypeInfer globalTypeInfer(data->GetPassContext(), data->GetMethodOffset(), data->GetRecordName(),
+                                        data->GetPGOProfilerDecoder(), passOptions->EnableOptTrackField(),
+                                        enableLog);
+        globalTypeInfer.ProcessTypeInference(data->GetBuilder(), data->GetCircuit());
+        if (data->HasTypes() && data->GetMethodLiteral()->IsClassConstructor()) {
+            InitializationAnalysis initAnalysis(data->GetCircuit(), data->GetTSManager(), data->GetRecordName(),
+                                                data->GetMethodName(), enableLog);
+            initAnalysis.Run();
         }
         return true;
     }
