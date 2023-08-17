@@ -571,7 +571,7 @@ public:
     inline GateRef GetObjectType(GateRef hClass);
     inline GateRef IsDictionaryModeByHClass(GateRef hClass);
     inline GateRef GetElementsKindByHClass(GateRef hClass);
-    inline GateRef IsIsStableElementsByHClass(GateRef hClass);
+    inline GateRef HasConstructorByHClass(GateRef hClass);
     inline GateRef IsStableElements(GateRef hClass);
     inline GateRef IsStableArguments(GateRef hClass);
     inline GateRef IsStableArray(GateRef hClass);
@@ -579,6 +579,7 @@ public:
     inline GateRef IsDictionaryElement(GateRef hClass);
     inline GateRef IsClassConstructor(GateRef object);
     inline GateRef IsClassConstructorWithBitField(GateRef bitfield);
+    inline GateRef HasConstructor(GateRef object);
     inline GateRef IsConstructor(GateRef object);
     inline GateRef IsClassPrototype(GateRef object);
     inline GateRef IsClassPrototypeWithBitField(GateRef object);

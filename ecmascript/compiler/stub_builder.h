@@ -293,6 +293,8 @@ public:
     GateRef IsDictionaryModeByHClass(GateRef hClass);
     GateRef IsDictionaryElement(GateRef hClass);
     GateRef IsStableElements(GateRef hClass);
+    GateRef HasConstructorByHClass(GateRef hClass);
+    GateRef HasConstructor(GateRef object);
     GateRef IsClassConstructorFromBitField(GateRef bitfield);
     GateRef IsClassConstructor(GateRef object);
     GateRef IsClassPrototype(GateRef object);

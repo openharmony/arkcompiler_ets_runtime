@@ -6438,21 +6438,9 @@ GateRef StubBuilder::IsStableJSArray(GateRef glue, GateRef obj)
         Bind(&targetIsStableArray);
         {
             GateRef guardiansOffset = IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
-            GateRef guardians = Load(VariableType::JS_ANY(), glue, guardiansOffset);
-
-            Label targetIsTaggedTrue(env);
-            Label targetIsTaggedFalse(env);
-            Branch(TaggedIsTrue(guardians), &targetIsTaggedTrue, &targetIsTaggedFalse);
-            Bind(&targetIsTaggedTrue);
-            {
-                result = True();
-                Jump(&exit);
-            }
-            Bind(&targetIsTaggedFalse);
-            {
-                result = False();
-                Jump(&exit);
-            }
+            GateRef guardians = Load(VariableType::BOOL(), glue, guardiansOffset);
+            result.WriteVariable(guardians);
+            Jump(&exit);
         }
     }
     Bind(&exit);

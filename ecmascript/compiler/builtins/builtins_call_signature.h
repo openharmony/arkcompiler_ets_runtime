@@ -50,7 +50,14 @@ namespace panda::ecmascript::kungfu {
     V(ListForEach)                                  \
     V(ArrayListForEach)                             \
     V(ArrayListReplaceAllElements)                  \
-    V(FunctionPrototypeApply)
+    V(FunctionPrototypeApply)                       \
+    V(ArrayConcat)                                  \
+    V(ArrayFilter)                                  \
+    V(ArrayForEach)                                 \
+    V(ArrayIndexOf)                                 \
+    V(ArrayLastIndexOf)                             \
+    V(ArraySlice)                                   \
+    V(ArrayReverse)
 
 #define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
     V(BooleanConstructor)                           \

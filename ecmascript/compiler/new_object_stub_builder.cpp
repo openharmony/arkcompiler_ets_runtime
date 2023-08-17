@@ -563,34 +563,56 @@ void NewObjectStubBuilder::LoadArrayHClass(Variable *hclass, Label *exit, GateRe
     }
 }
 
+GateRef NewObjectStubBuilder::CreateEmptyArrayCommon(GateRef glue, GateRef hclass, ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    GateRef size = GetObjectSizeFromHClass(hclass);
+    GateRef emptyArray = GetGlobalConstantValue(
+        VariableType::JS_POINTER(), glue, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+    SetParameters(glue, size);
+    NewJSArrayLiteral(&result, &exit, RegionSpaceFlag::IN_YOUNG_SPACE, emptyArray, hclass, true);
+    Bind(&exit);
+    GateRef ret = *result;
+    if (!callback.IsEmpty()) {
+        GateRef noneHClass = GetGlobalConstantValue(
+            VariableType::JS_POINTER(), glue, ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
+        StoreHClass(glue, ret, noneHClass);
+        callback.ProfileCreateObject(ret);
+    }
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue, ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
+    GateRef hclass = Load(VariableType::JS_POINTER(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    return CreateEmptyArrayCommon(glue, hclass, callback);
+}
+
 GateRef NewObjectStubBuilder::CreateEmptyArray(
     GateRef glue, GateRef jsFunc, GateRef pc, GateRef profileTypeInfo, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
-    Label exit(env);
     Label afterHClassInit(env);
 
-    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(hclass, VariableType::JS_POINTER(), Undefined());
     LoadArrayHClass(&hclass, &afterHClassInit, glue, jsFunc, pc, profileTypeInfo);
     Bind(&afterHClassInit);
-    GateRef size = GetObjectSizeFromHClass(*hclass);
-    auto emptyArray = GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
-
-    SetParameters(glue, size);
-    NewJSArrayLiteral(&result, &exit, RegionSpaceFlag::IN_YOUNG_SPACE, emptyArray, *hclass, true);
-    Bind(&exit);
-    auto ret = *result;
-    if (!callback.IsEmpty()) {
-        auto noneHClass =
-            GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
-        StoreHClass(glue, ret, noneHClass);
-        callback.ProfileCreateObject(ret);
-    }
+    GateRef result = CreateEmptyArrayCommon(glue, *hclass, callback);
     env->SubCfgExit();
-    return ret;
+    return result;
 }
 
 GateRef NewObjectStubBuilder::CreateArrayWithBuffer(

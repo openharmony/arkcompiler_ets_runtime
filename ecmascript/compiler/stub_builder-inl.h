@@ -2400,6 +2400,16 @@ inline GateRef StubBuilder::IsStableElements(GateRef hClass)
     return env_->GetBuilder()->IsStableElements(hClass);
 }
 
+inline GateRef StubBuilder::HasConstructorByHClass(GateRef hClass)
+{
+    return env_->GetBuilder()->HasConstructorByHClass(hClass);
+}
+
+inline GateRef StubBuilder::HasConstructor(GateRef object)
+{
+    return env_->GetBuilder()->HasConstructor(object);
+}
+
 inline GateRef StubBuilder::IsStableArguments(GateRef hClass)
 {
     return env_->GetBuilder()->IsStableArguments(hClass);
