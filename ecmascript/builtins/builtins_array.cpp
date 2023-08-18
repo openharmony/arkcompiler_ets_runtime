@@ -21,6 +21,7 @@
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
+#include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
@@ -32,6 +33,7 @@
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_stable_array.h"
 #include "ecmascript/js_tagged_number.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/tagged_array-inl.h"
@@ -1121,89 +1123,74 @@ JSTaggedValue BuiltinsArray::ForEach(EcmaRuntimeCallInfo *argv)
     return JSTaggedValue::Undefined();
 }
 
-// 22.1.3.11 Array.prototype.indexOf ( searchElement [ , fromIndex ] )
-JSTaggedValue BuiltinsArray::IndexOf(EcmaRuntimeCallInfo *argv)
+JSTaggedValue BuiltinsArray::IndexOfStable(
+    EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)
 {
-    ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Array, IndexOf);
-    JSThread *thread = argv->GetThread();
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    int64_t length = JSHandle<JSArray>::Cast(thisHandle)->GetArrayLength();
+    if (length == 0) {
+        return JSTaggedValue(-1);
+    }
+    int64_t fromIndex = ArrayHelper::GetStartIndexFromArgs(thread, argv, 1, length);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (fromIndex >= length) {
+        return JSTaggedValue(-1);
+    }
+    JSHandle<JSTaggedValue> target = GetCallArg(argv, 0);
+    return JSStableArray::IndexOf(
+        thread, thisHandle, target, static_cast<uint32_t>(fromIndex), static_cast<uint32_t>(length));
+}
 
-    uint32_t argc = argv->GetArgsNumber();
-
+JSTaggedValue BuiltinsArray::IndexOfSlowPath(
+    EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)
+{
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-
-    JSHandle<JSTaggedValue> searchElement = GetCallArg(argv, 0);
-
     // 3. Let len be ToLength(Get(O, "length")).
-    int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
+    int64_t length = ArrayHelper::GetLength(thread, thisObjVal);
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     // 5. If len is 0, return −1.
-    if (len == 0) {
-        return GetTaggedInt(-1);
+    if (length == 0) {
+        return JSTaggedValue(-1);
     }
-
     // 6. If argument fromIndex was passed let n be ToInteger(fromIndex); else let n be 0.
-    double fromIndex = 0;
-    if (argc > 1) {
-        JSHandle<JSTaggedValue> msg1 = GetCallArg(argv, 1);
-        JSTaggedNumber fromIndexTemp = JSTaggedValue::ToNumber(thread, msg1);
-        // 7. ReturnIfAbrupt(n).
+    int64_t fromIndex = ArrayHelper::GetStartIndexFromArgs(thread, argv, 1, length);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (fromIndex >= length) {
+        return JSTaggedValue(-1);
+    }
+
+    JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> target = GetCallArg(argv, 0);
+    // 11. Repeat, while k < len
+    for (int64_t curIndex = fromIndex; curIndex < length; ++curIndex) {
+        keyHandle.Update(JSTaggedValue(curIndex));
+        bool found = ArrayHelper::ElementIsStrictEqualTo(thread, thisObjVal, keyHandle, target);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        fromIndex = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber());
-    }
-
-    // 8. If n ≥ len, return −1.
-    if (fromIndex >= len) {
-        return GetTaggedInt(-1);
-    }
-
-    // 9. If n ≥ 0, then
-    //   a. Let k be n.
-    // 10. Else n<0,
-    //   a. Let k be len - abs(n).
-    //   b. If k < 0, let k be 0.
-    int64_t from = (fromIndex >= 0) ? fromIndex : ((len + fromIndex) >= 0 ? len + fromIndex : 0);
-
-    // if it is stable array, we can go to fast path
-    if (thisObjVal->IsStableJSArray(thread)) {
-        return JSStableArray::IndexOf(thread, thisObjVal, searchElement, static_cast<uint32_t>(from),
-                                      static_cast<uint32_t>(len));
-    }
-
-    // 11. Repeat, while k<len
-    //   a. Let kPresent be HasProperty(O, ToString(k)).
-    //   b. ReturnIfAbrupt(kPresent).
-    //   c. If kPresent is true, then
-    //     i. Let elementK be Get(O, ToString(k)).
-    //     ii. ReturnIfAbrupt(elementK).
-    //     iii. Let same be the result of performing Strict Equality Comparison searchElement === elementK.
-    //     iv. If same is true, return k.
-    //   d. Increase k by 1.
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    while (from < len) {
-        key.Update(JSTaggedValue(from));
-        bool exists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, key));
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (exists) {
-            JSHandle<JSTaggedValue> kValueHandle = JSArray::FastGetPropertyByValue(thread, thisObjVal, key);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (JSTaggedValue::StrictEqual(thread, searchElement, kValueHandle)) {
-                return GetTaggedDouble(from);
-            }
+        if (UNLIKELY(found)) {
+            return JSTaggedValue(curIndex);
         }
-        from++;
     }
-
     // 12. Return -1.
-    return GetTaggedInt(-1);
+    return JSTaggedValue(-1);
+}
+
+// 22.1.3.11 Array.prototype.indexOf ( searchElement [ , fromIndex ] )
+JSTaggedValue BuiltinsArray::IndexOf(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, Array, IndexOf);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (thisHandle->IsStableJSArray(thread)) {
+        return IndexOfStable(argv, thread, thisHandle);
+    }
+    return IndexOfSlowPath(argv, thread, thisHandle);
 }
 
 // 22.1.3.12 Array.prototype.join (separator)
@@ -1307,82 +1294,74 @@ JSTaggedValue BuiltinsArray::Keys(EcmaRuntimeCallInfo *argv)
     return iter.GetTaggedValue();
 }
 
-// 22.1.3.14 Array.prototype.lastIndexOf ( searchElement [ , fromIndex ] )
-JSTaggedValue BuiltinsArray::LastIndexOf(EcmaRuntimeCallInfo *argv)
+JSTaggedValue BuiltinsArray::LastIndexOfStable(
+    EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)
 {
-    ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), Array, LastIndexOf);
-    JSThread *thread = argv->GetThread();
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    int64_t length = JSHandle<JSArray>::Cast(thisHandle)->GetArrayLength();
+    if (length == 0) {
+        return JSTaggedValue(-1);
+    }
+    int64_t fromIndex = ArrayHelper::GetLastStartIndexFromArgs(thread, argv, 1, length);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (fromIndex < 0) {
+        return JSTaggedValue(-1);
+    }
+    JSHandle<JSTaggedValue> target = GetCallArg(argv, 0);
+    return JSStableArray::LastIndexOf(
+        thread, thisHandle, target, static_cast<uint32_t>(fromIndex), static_cast<uint32_t>(length));
+}
 
-    uint32_t argc = argv->GetArgsNumber();
-
+JSTaggedValue BuiltinsArray::LastIndexOfSlowPath(
+    EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)
+{
     // 1. Let O be ToObject(this value).
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-
-    JSHandle<JSTaggedValue> searchElement = GetCallArg(argv, 0);
-
     // 3. Let len be ToLength(Get(O, "length")).
-    int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
+    int64_t length = ArrayHelper::GetLength(thread, thisObjVal);
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     // 5. If len is 0, return −1.
-    if (len == 0) {
-        return GetTaggedInt(-1);
+    if (length == 0) {
+        return JSTaggedValue(-1);
+    }
+    // 6. If argument fromIndex was passed let n be ToInteger(fromIndex); else let n be 0.
+    int64_t fromIndex = ArrayHelper::GetLastStartIndexFromArgs(thread, argv, 1, length);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (fromIndex < 0) {
+        return JSTaggedValue(-1);
     }
 
-    // 6. If argument fromIndex was passed let n be ToInteger(fromIndex); else let n be len-1.
-    double fromIndex = len - 1;
-    if (argc > 1) {
-        JSHandle<JSTaggedValue> msg1 = GetCallArg(argv, 1);
-        JSTaggedNumber fromIndexTemp = JSTaggedValue::ToNumber(thread, msg1);
-        // 7. ReturnIfAbrupt(n).
+    JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> target = base::BuiltinsBase::GetCallArg(argv, 0);
+    // 11. Repeat, while k < len
+    for (int64_t curIndex = fromIndex; curIndex >= 0; --curIndex) {
+        keyHandle.Update(JSTaggedValue(curIndex));
+        bool found = ArrayHelper::ElementIsStrictEqualTo(thread, thisObjVal, keyHandle, target);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        fromIndex = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber());
-    }
-
-    // 8. If n ≥ 0, let k be min(n, len – 1).
-    // 9. Else n < 0,
-    //   a. Let k be len - abs(n).
-    int64_t from = 0;
-    if (fromIndex >= 0) {
-        from = (len - 1) < fromIndex ? len - 1 : fromIndex;
-    } else {
-        double tempFrom = len + fromIndex;
-        from = tempFrom >= 0 ? tempFrom : -1;
-    }
-
-    // 10. Repeat, while k≥ 0
-    //   a. Let kPresent be HasProperty(O, ToString(k)).
-    //   b. ReturnIfAbrupt(kPresent).
-    //   c. If kPresent is true, then
-    //     i. Let elementK be Get(O, ToString(k)).
-    //     ii. ReturnIfAbrupt(elementK).
-    //     iii. Let same be the result of performing Strict Equality Comparison searchElement === elementK.
-    //     iv. If same is true, return k.
-    //   d. Decrease k by 1.
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    while (from >= 0) {
-        key.Update(JSTaggedValue(from));
-        bool exists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, key));
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (exists) {
-            JSHandle<JSTaggedValue> kValueHandle = JSArray::FastGetPropertyByValue(thread, thisObjVal, key);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (JSTaggedValue::StrictEqual(thread, searchElement, kValueHandle)) {
-                return GetTaggedDouble(from);
-            }
+        if (UNLIKELY(found)) {
+            return JSTaggedValue(curIndex);
         }
-        from--;
     }
+    // 12. Return -1.
+    return JSTaggedValue(-1);
+}
 
-    // 11. Return -1.
-    return GetTaggedInt(-1);
+// 22.1.3.14 Array.prototype.lastIndexOf ( searchElement [ , fromIndex ] )
+JSTaggedValue BuiltinsArray::LastIndexOf(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), Array, IndexOf);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (thisHandle->IsStableJSArray(thread)) {
+        return LastIndexOfStable(argv, thread, thisHandle);
+    }
+    return LastIndexOfSlowPath(argv, thread, thisHandle);
 }
 
 // 22.1.3.15 Array.prototype.map ( callbackfn [ , thisArg ] )

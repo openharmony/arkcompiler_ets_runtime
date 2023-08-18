@@ -972,7 +972,53 @@ HWTEST_F_L0(BuiltinsArrayTest, ForEach)
     EXPECT_EQ(jsArray->GetArrayLength(), 3U);
 }
 
-// 22.1.3.11 new Array(1,2,3,4,3).IndexOf(searchElement [ , fromIndex ])
+#define ARRAY_DEFINE_OWN_PROPERTY(dest, index, value)                                                               \
+    do {                                                                                                            \
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(index));                                                  \
+        PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(value)), true, true, true);   \
+        JSArray::DefineOwnProperty(thread, dest, key, desc);                                                        \
+    } while (false)
+
+#define ARRAY_BUILTIN_METHOD_TEST_CASE_ARG0(method, target, expected)                                               \
+    do {                                                                                                            \
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);    \
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());                                               \
+        ecmaRuntimeCallInfo->SetThis((target).GetTaggedValue());                                                    \
+                                                                                                                    \
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);                           \
+        JSTaggedValue result = Array::method(ecmaRuntimeCallInfo);                                                  \
+        TestHelper::TearDownFrame(thread, prev);                                                                    \
+        ASSERT_TRUE(JSTaggedValue::StrictEqual(result, JSTaggedValue(expected)));                                   \
+    } while (false)
+
+#define ARRAY_BUILTIN_METHOD_TEST_CASE_ARG1(method, target, expected, arg0)                                         \
+    do {                                                                                                            \
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);    \
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());                                               \
+        ecmaRuntimeCallInfo->SetThis((target).GetTaggedValue());                                                    \
+        ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(arg0));                                                    \
+                                                                                                                    \
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);                           \
+        JSTaggedValue result = Array::method(ecmaRuntimeCallInfo);                                                  \
+        TestHelper::TearDownFrame(thread, prev);                                                                    \
+        ASSERT_TRUE(JSTaggedValue::StrictEqual(result, JSTaggedValue(expected)));                                   \
+    } while (false)
+
+#define ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(method, target, expected, arg0, arg1)                                   \
+    do {                                                                                                            \
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);    \
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());                                               \
+        ecmaRuntimeCallInfo->SetThis((target).GetTaggedValue());                                                    \
+        ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(arg0));                                                    \
+        ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(arg1));                                                    \
+                                                                                                                    \
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);                           \
+        JSTaggedValue result = Array::method(ecmaRuntimeCallInfo);                                                  \
+        TestHelper::TearDownFrame(thread, prev);                                                                    \
+        ASSERT_TRUE(JSTaggedValue::StrictEqual(result, JSTaggedValue(expected)));                                   \
+    } while (false)
+
+// 22.1.3.11 Array.IndexOf(searchElement [ , fromIndex ])
 HWTEST_F_L0(BuiltinsArrayTest, IndexOf)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
@@ -981,67 +1027,54 @@ HWTEST_F_L0(BuiltinsArrayTest, IndexOf)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
 
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
-    JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(3));
-    PropertyDescriptor desc3(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(4)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key3, desc3);
-    JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(4));
-    PropertyDescriptor desc4(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key4, desc4);
+    // arr = [1, 2, 3, 4, 3, 0, 2.0, +0.0, 3.0, -0.0, <hole>, <hole>, undefined]
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 0, 1);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 1, 2);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 2, 3);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 3, 4);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 4, 3);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 5, 0);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 6, 2.0);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 7, +0.0);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 8, 3.0);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 9, -0.0);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 12, JSTaggedValue::Undefined());
 
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
-    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(3)));
-    ecmaRuntimeCallInfo1->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(0)));
+    // arr.indexOf(3, 0) == 2
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(IndexOf, obj, 2, 3, 0);
+    // arr.indexOf(3, 3) == 4
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(IndexOf, obj, 4, 3, 3);
+    // arr.indexOf(5, 0) == -1
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(IndexOf, obj, -1, 5, 0);
+    // arr.indexOf(3) == 2
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG1(IndexOf, obj, 2, 3);
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result = Array::IndexOf(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
-    ASSERT_EQ(result.GetRawData(), JSTaggedValue(2).GetRawData());
+    // Expects int32_t(x) and double(x) to be strictly equal
+    // arr.indexOf(3.0) == 2
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG1(IndexOf, obj, 2, 3.0);
+    // arr.indexOf(3, 5) == 8
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(IndexOf, obj, 8, 3, 5);
 
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(obj.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(3)));
-    ecmaRuntimeCallInfo2->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(3)));
+    // Expects 0, +0.0, -0.0 to be strictly equal
+    // arr.indexOf(+0.0) == 5
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG1(IndexOf, obj, 5, +0.0);
+    // arr.indexOf(-0.0) == 5
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG1(IndexOf, obj, 5, -0.0);
+    // arr.indexOf(0, 6) == 7
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(IndexOf, obj, 7, 0, 6);
+    // arr.indexOf(-0.0, 6) == 7
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(IndexOf, obj, 7, -0.0, 6);
+    // arr.indexOf(0, 8) == 9
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(IndexOf, obj, 9, 0, 8);
+    // arr.indexOf(+0.0, 8) == 9
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(IndexOf, obj, 9, +0.0, 8);
 
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    result = Array::IndexOf(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
-    ASSERT_EQ(result.GetRawData(), JSTaggedValue(4).GetRawData());
-
-    auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo3->SetThis(obj.GetTaggedValue());
-    ecmaRuntimeCallInfo3->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(5)));
-    ecmaRuntimeCallInfo3->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(0)));
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
-    result = Array::IndexOf(ecmaRuntimeCallInfo3);
-    TestHelper::TearDownFrame(thread, prev);
-    ASSERT_EQ(result.GetRawData(), JSTaggedValue(-1).GetRawData());
-
-    auto ecmaRuntimeCallInfo4 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo4->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo4->SetThis(obj.GetTaggedValue());
-    ecmaRuntimeCallInfo4->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(3)));
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo4);
-    result = Array::IndexOf(ecmaRuntimeCallInfo4);
-    TestHelper::TearDownFrame(thread, prev);
-    ASSERT_EQ(result.GetRawData(), JSTaggedValue(2).GetRawData());
+    // Expects undefined to be found
+    // arr.indexOf() == 12, where the first argument is undefined
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG0(IndexOf, obj, 12);
 }
 
-// 22.1.3.14 new Array(1,2,3,4,3).LastIndexOf(searchElement [ , fromIndex ])
+// 22.1.3.14 Array.LastIndexOf(searchElement [ , fromIndex ])
 HWTEST_F_L0(BuiltinsArrayTest, LastIndexOf)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
@@ -1050,68 +1083,50 @@ HWTEST_F_L0(BuiltinsArrayTest, LastIndexOf)
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle).GetValue()->GetInt(), 0);
 
-    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
-    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key0, desc0);
-    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(1));
-    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key1, desc1);
-    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(2));
-    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key2, desc2);
-    JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(3));
-    PropertyDescriptor desc3(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(4)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key3, desc3);
-    JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(4));
-    PropertyDescriptor desc4(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(3)), true, true, true);
-    JSArray::DefineOwnProperty(thread, obj, key4, desc4);
+    // arr = [1, 2, 3, 4, 3, 0, 2.0, +0.0, 3.0, -0.0, <hole>, <hole>, undefined, <hole>, <hole>, -1]
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 0, 1);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 1, 2);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 2, 3);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 3, 4);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 4, 3);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 5, 0);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 6, 2.0);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 7, +0.0);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 8, 3.0);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 9, -0.0);
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 12, JSTaggedValue::Undefined());
+    ARRAY_DEFINE_OWN_PROPERTY(obj, 15, -1);
 
-    // new Array(1,2,3,4,3).LastIndexOf(3,4)
-    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
-    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(3)));
-    ecmaRuntimeCallInfo1->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(4)));
+    // arr.lastIndexOf(3, 4) == 4
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(LastIndexOf, obj, 4, 3, 4);
+    // arr.lastIndexOf(3, 3) == 2
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(LastIndexOf, obj, 2, 3, 3);
+    // arr.lastIndexOf(5, 4) == -1
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(LastIndexOf, obj, -1, 5, 4);
 
-    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
-    JSTaggedValue result = Array::LastIndexOf(ecmaRuntimeCallInfo1);
-    TestHelper::TearDownFrame(thread, prev);
-    ASSERT_EQ(result.GetRawData(), JSTaggedValue(static_cast<double>(4)).GetRawData());
+    // Expects int32_t(x) and double(x) to be strictly equal
+    // arr.lastIndexOf(3) == 8
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG1(LastIndexOf, obj, 8, 3);
+    // arr.lastIndexOf(1.0) == 0
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG1(LastIndexOf, obj, 0, 1.0);
 
-    // new Array(1,2,3,4,3).LastIndexOf(3,3)
-    auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(obj.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(3)));
-    ecmaRuntimeCallInfo2->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(3)));
+    // Expects 0, +0.0, -0.0 to be strictly equal
+    // arr.indexOf(+0.0) == 9
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG1(LastIndexOf, obj, 9, +0.0);
+    // arr.indexOf(0) == 9
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG1(LastIndexOf, obj, 9, 0);
+    // arr.indexOf(0, 8) == 7
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(LastIndexOf, obj, 7, 0, 8);
+    // arr.indexOf(-0.0, 8) == 7
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(LastIndexOf, obj, 7, -0.0, 8);
+    // arr.indexOf(-0.0, 6) == 5
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(LastIndexOf, obj, 5, -0.0, 6);
+    // arr.indexOf(+0.0, 6) == 5
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG2(LastIndexOf, obj, 5, +0.0, 6);
 
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    result = Array::LastIndexOf(ecmaRuntimeCallInfo2);
-    TestHelper::TearDownFrame(thread, prev);
-    ASSERT_EQ(result.GetRawData(), JSTaggedValue(static_cast<double>(2)).GetRawData());
-
-    // new Array(1,2,3,4,3).LastIndexOf(5,4)
-    auto ecmaRuntimeCallInfo3 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
-    ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo3->SetThis(obj.GetTaggedValue());
-    ecmaRuntimeCallInfo3->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(5)));
-    ecmaRuntimeCallInfo3->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(4)));
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
-    result = Array::LastIndexOf(ecmaRuntimeCallInfo3);
-    TestHelper::TearDownFrame(thread, prev);
-    ASSERT_EQ(result.GetRawData(), JSTaggedValue(-1).GetRawData());
-
-    // new Array(1,2,3,4,3).LastIndexOf(3)
-    auto ecmaRuntimeCallInfo4 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo4->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo4->SetThis(obj.GetTaggedValue());
-    ecmaRuntimeCallInfo4->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(3)));
-
-    prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo4);
-    result = Array::LastIndexOf(ecmaRuntimeCallInfo4);
-    TestHelper::TearDownFrame(thread, prev);
-    ASSERT_EQ(result.GetRawData(), JSTaggedValue(static_cast<double>(4)).GetRawData());
+    // Expects undefined to be found
+    // arr.indexOf() == 12, where the first argument is undefined
+    ARRAY_BUILTIN_METHOD_TEST_CASE_ARG0(LastIndexOf, obj, 12);
 }
 
 // 22.1.3.11 new Array().Pop()

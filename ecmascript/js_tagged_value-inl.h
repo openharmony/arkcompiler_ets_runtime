@@ -305,6 +305,11 @@ inline bool JSTaggedValue::IsExtensible(JSThread *thread) const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsExtensible();
 }
 
+inline bool JSTaggedValue::IsExactlyZero() const
+{
+    return value_ == VALUE_ZERO || value_ == VALUE_POSITIVE_ZERO || value_ == VALUE_NEGATIVE_ZERO;
+}
+
 inline bool JSTaggedValue::IsClassConstructor() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsClassConstructor();
@@ -414,23 +419,17 @@ inline bool JSTaggedValue::StrictEqual(const JSTaggedValue &x, const JSTaggedVal
     if (x.IsInt() && y.IsInt()) {
         return StrictIntEquals(x.GetInt(), y.GetInt());
     }
-
-    if (x.IsDouble() && y.IsDouble()) {
-        return StrictNumberEquals(x.GetDouble(), y.GetDouble());
-    }
-
     if (x.IsNumber() && y.IsNumber()) {
         return StrictNumberEquals(x.GetNumber(), y.GetNumber());
     }
-
+    // Note: x == y must be put after number comparison
+    // in case of NaN (whose comparison result is always false even with another NaN)
     if (x == y) {
         return true;
     }
-
     if (x.IsString() && y.IsString()) {
         return StringCompare(EcmaString::Cast(x.GetTaggedObject()), EcmaString::Cast(y.GetTaggedObject()));
     }
-
     if (x.IsBigInt() && y.IsBigInt()) {
         return BigInt::Equal(x, y);
     }

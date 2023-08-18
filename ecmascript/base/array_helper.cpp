@@ -27,6 +27,101 @@
 #include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript::base {
+int64_t ArrayHelper::GetStartIndex(JSThread *thread, const JSHandle<JSTaggedValue> &startIndexHandle,
+                                   int64_t length)
+{
+    // Common procedure to clamp fromIndexValue to the range [0, length].
+    // For integer case, conditional selection instructions (csel in ARM, cmov in x86, etc.)
+    // may be utilized by the compiler to minimize branching.
+    auto doClamp = [length](auto fromIndexValue) -> int64_t {
+        if (LIKELY(fromIndexValue >= 0)) {
+            // Including the case where fromIndexValue == Infinity
+            return (fromIndexValue >= length) ? length : static_cast<int64_t>(fromIndexValue);
+        }
+        auto plusLength = fromIndexValue + length;
+        if (plusLength >= 0) {
+            return static_cast<int64_t>(plusLength);
+        }
+        return 0; // Including the case where fromIndexValue == -Infinity
+    };
+    if (LIKELY(startIndexHandle->IsInt())) {
+        // Fast path: startIndexHandle is tagged int32.
+        return doClamp(startIndexHandle->GetInt());
+    }
+    // Slow path: startIndexHandle is targged double, or type conversion is involved.
+    JSTaggedNumber fromIndexTemp = JSTaggedValue::ToNumber(thread, startIndexHandle);
+    if (UNLIKELY(thread->HasPendingException())) {
+        return length;
+    }
+    double fromIndexValue = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber());
+    return doClamp(fromIndexValue);
+}
+
+int64_t ArrayHelper::GetStartIndexFromArgs(JSThread *thread, EcmaRuntimeCallInfo *argv,
+                                           uint32_t argIndex, int64_t length)
+{
+    uint32_t argc = argv->GetArgsNumber();
+    if (argc <= argIndex) {
+        return 0;
+    }
+    JSHandle<JSTaggedValue> arg = base::BuiltinsBase::GetCallArg(argv, argIndex);
+    return GetStartIndex(thread, arg, length);
+}
+
+int64_t ArrayHelper::GetLastStartIndex(JSThread *thread, const JSHandle<JSTaggedValue> &startIndexHandle,
+                                       int64_t length)
+{
+    // Common procedure to clamp fromIndexValue to the range [-1, length-1].
+    auto doClamp = [length](auto fromIndexValue) -> int64_t {
+        if (LIKELY(fromIndexValue >= 0)) {
+            // Including the case where fromIndexValue == Infinity
+            return (length - 1 < fromIndexValue) ? (length - 1) : static_cast<int64_t>(fromIndexValue);
+        }
+        auto plusLength = fromIndexValue + length;
+        if (plusLength >= 0) {
+            return static_cast<int64_t>(plusLength);
+        }
+        return -1; // Including the case where fromIndexValue == -Infinity
+    };
+    if (LIKELY(startIndexHandle->IsInt())) {
+        // Fast path: startIndexHandle is tagged int32.
+        return doClamp(startIndexHandle->GetInt());
+    }
+    // Slow path: startIndexHandle is targged double, or type conversion is involved.
+    JSTaggedNumber fromIndexTemp = JSTaggedValue::ToNumber(thread, startIndexHandle);
+    if (UNLIKELY(thread->HasPendingException())) {
+        return -1;
+    }
+    double fromIndexValue = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber());
+    return doClamp(fromIndexValue);
+}
+
+int64_t ArrayHelper::GetLastStartIndexFromArgs(JSThread *thread, EcmaRuntimeCallInfo *argv,
+                                               uint32_t argIndex, int64_t length)
+{
+    uint32_t argc = argv->GetArgsNumber();
+    if (argc <= argIndex) {
+        return length - 1;
+    }
+    JSHandle<JSTaggedValue> arg = base::BuiltinsBase::GetCallArg(argv, argIndex);
+    return GetLastStartIndex(thread, arg, length);
+}
+
+bool ArrayHelper::ElementIsStrictEqualTo(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
+                                         const JSHandle<JSTaggedValue> &keyHandle,
+                                         const JSHandle<JSTaggedValue> &target)
+{
+    bool exists = thisObjVal->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, keyHandle);
+    if (thread->HasPendingException() || !exists) {
+        return false;
+    }
+    JSHandle<JSTaggedValue> valueHandle = JSArray::FastGetPropertyByValue(thread, thisObjVal, keyHandle);
+    if (thread->HasPendingException()) {
+        return false;
+    }
+    return JSTaggedValue::StrictEqual(thread, target, valueHandle);
+}
+
 bool ArrayHelper::IsConcatSpreadable(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     // 1. If Type(O) is not Object, return false.

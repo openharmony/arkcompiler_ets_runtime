@@ -19,13 +19,16 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
+#include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
+#include "macros.h"
 
 namespace panda::ecmascript {
 using TypedArrayHelper = base::TypedArrayHelper;
@@ -472,33 +475,205 @@ JSTaggedValue JSStableArray::HandleforEachOfStable(JSThread *thread, JSHandle<JS
     return base::BuiltinsBase::GetTaggedBoolean(true);
 }
 
+template <class Predicate>
+JSTaggedValue JSStableArray::FindRawData(IndexOfContext &ctx, Predicate &&predicate)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSHandle<TaggedArray> elements(ctx.thread, JSHandle<JSObject>::Cast(ctx.receiver)->GetElements());
+    // Note: GC is guaranteed not to happen since no new object is created during the searching process.
+    JSTaggedType *data = elements->GetData();
+    JSTaggedType *first = data + ctx.fromIndex;
+    JSTaggedType *last = data + ctx.length;
+    // Note: for stable arrays, elements->GetLength() returns the CAPACITY, instead of actual length!
+
+    JSMutableHandle<JSTaggedValue> indexHandle(ctx.thread, JSTaggedValue::Undefined());
+    for (JSTaggedType *cur = first; cur < last; ++cur) {
+        if (LIKELY(*cur != JSTaggedValue::VALUE_HOLE)) {
+            if (UNLIKELY(std::invoke(predicate, *cur))) {
+                return JSTaggedValue(cur - data);
+            }
+            continue;
+        }
+        // Fallback slow path
+        indexHandle.Update(JSTaggedValue(cur - data));
+        bool found = base::ArrayHelper::ElementIsStrictEqualTo(
+            ctx.thread, ctx.receiver, indexHandle, ctx.searchElement);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(ctx.thread);
+        if (found) {
+            return indexHandle.GetTaggedValue();
+        }
+    }
+    return JSTaggedValue(-1); // Not found
+}
+
+template <class Predicate>
+JSTaggedValue JSStableArray::FindLastRawData(IndexOfContext &ctx, Predicate &&predicate)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSHandle<TaggedArray> elements(ctx.thread, JSHandle<JSObject>::Cast(ctx.receiver)->GetElements());
+    // Note: GC is guaranteed not to happen since no new object is created during the searching process.
+    JSTaggedType *data = elements->GetData();
+    JSTaggedType *beforeFirst = data - 1;
+    JSTaggedType *beforeLast = data + ctx.fromIndex;
+
+    JSMutableHandle<JSTaggedValue> indexHandle(ctx.thread, JSTaggedValue::Undefined());
+    for (JSTaggedType *cur = beforeLast; cur > beforeFirst; --cur) {
+        if (LIKELY(*cur != JSTaggedValue::VALUE_HOLE)) {
+            if (UNLIKELY(std::invoke(predicate, *cur))) {
+                return JSTaggedValue(cur - data);
+            }
+            continue;
+        }
+        // Fallback slow path
+        indexHandle.Update(JSTaggedValue(cur - data));
+        bool found = base::ArrayHelper::ElementIsStrictEqualTo(
+            ctx.thread, ctx.receiver, indexHandle, ctx.searchElement);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(ctx.thread);
+        if (found) {
+            return indexHandle.GetTaggedValue();
+        }
+    }
+    return JSTaggedValue(-1); // Not found
+}
+
+template <class Predicate>
+JSTaggedValue JSStableArray::FindRawDataDispatch(IndexOfType type, IndexOfContext &ctx, Predicate &&predicate)
+{
+    switch (type) {
+        case IndexOfType::IndexOf:
+            return FindRawData(ctx, std::forward<Predicate>(predicate));
+        case IndexOfType::LastIndexOf:
+            return FindLastRawData(ctx, std::forward<Predicate>(predicate));
+        default:
+            UNREACHABLE();
+    }
+}
+
+// Zeros need special judge
+JSTaggedValue JSStableArray::IndexOfZero(IndexOfType type, IndexOfContext &ctx)
+{
+    return FindRawDataDispatch(type, ctx, [](JSTaggedType cur) {
+        return JSTaggedValue(cur).IsExactlyZero();
+    });
+}
+
+JSTaggedValue JSStableArray::IndexOfInt32(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement)
+{
+    ASSERT(searchElement.IsInt());
+    int32_t untagged = searchElement.GetInt();
+    if (untagged == 0) {
+        return IndexOfZero(type, ctx);
+    }
+    JSTaggedType targetInt32 = searchElement.GetRawData();
+    JSTaggedType targetDouble = JSTaggedValue(static_cast<double>(untagged)).GetRawData();
+    return FindRawDataDispatch(type, ctx, [targetInt32, targetDouble](JSTaggedType cur) {
+        return cur == targetInt32 || cur == targetDouble;
+    });
+}
+
+JSTaggedValue JSStableArray::IndexOfDouble(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement)
+{
+    ASSERT(searchElement.IsDouble());
+    double untagged = searchElement.GetDouble();
+    if (std::isnan(untagged)) {
+        return JSTaggedValue(-1);
+    }
+    if (untagged == 0.0) {
+        return IndexOfZero(type, ctx);
+    }
+    JSTaggedType targetDouble = searchElement.GetRawData();
+    if (searchElement.WithinInt32()) {
+        JSTaggedType targetInt32 = JSTaggedValue(static_cast<int32_t>(untagged)).GetRawData();
+        return FindRawDataDispatch(type, ctx, [targetDouble, targetInt32](JSTaggedType cur) {
+            return cur == targetDouble || cur == targetInt32;
+        });
+    } else {
+        return FindRawDataDispatch(type, ctx, [targetDouble](JSTaggedType cur) {
+            return cur == targetDouble;
+        });
+    }
+}
+
+JSTaggedValue JSStableArray::IndexOfObjectAddress(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement)
+{
+    ASSERT(searchElement.IsObject());
+    JSTaggedType targetAddress = searchElement.GetRawData();
+    return FindRawDataDispatch(type, ctx, [targetAddress](JSTaggedType cur) {
+        return cur == targetAddress;
+    });
+}
+
+JSTaggedValue JSStableArray::IndexOfString(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement)
+{
+    ASSERT(searchElement.IsString());
+    JSTaggedType targetAddress = searchElement.GetRawData();
+    return FindRawDataDispatch(type, ctx, [searchElement, targetAddress](JSTaggedType cur) {
+        if (targetAddress == cur) {
+            return true;
+        }
+        JSTaggedValue curValue(cur);
+        if (!curValue.IsString()) {
+            return false;
+        }
+        return JSTaggedValue::StringCompare(
+            EcmaString::Cast(curValue.GetTaggedObject()),
+            EcmaString::Cast(searchElement.GetTaggedObject()));
+    });
+}
+
+JSTaggedValue JSStableArray::IndexOfBigInt(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement)
+{
+    ASSERT(searchElement.IsBigInt());
+    JSTaggedType targetAddress = searchElement.GetRawData();
+    return FindRawDataDispatch(type, ctx, [searchElement, targetAddress](JSTaggedType cur) {
+        if (cur == targetAddress) {
+            return true;
+        }
+        JSTaggedValue curValue(cur);
+        if (!curValue.IsBigInt()) {
+            return false;
+        }
+        return BigInt::Equal(curValue, searchElement);
+    });
+}
+
+JSTaggedValue JSStableArray::IndexOfDispatch(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement)
+{
+    if (searchElement.IsInt()) {
+        return IndexOfInt32(type, ctx, searchElement);
+    } else if (searchElement.IsDouble()) {
+        return IndexOfDouble(type, ctx, searchElement);
+    } else if (searchElement.IsString()) {
+        return IndexOfString(type, ctx, searchElement);
+    } else if (searchElement.IsBigInt()) {
+        return IndexOfBigInt(type, ctx, searchElement);
+    } else {
+        return IndexOfObjectAddress(type, ctx, searchElement);
+    }
+}
+
 JSTaggedValue JSStableArray::IndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
                                      JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len)
 {
-    JSHandle<TaggedArray> elements(thread, JSHandle<JSObject>::Cast(receiver)->GetElements());
-    while (from < len) {
-        JSTaggedValue value = JSTaggedValue::Hole();
-        if (elements->GetLength() > from) {
-            value = elements->Get(from);
-        }
-        if (!value.IsUndefined() && !value.IsHole()) {
-            if (JSTaggedValue::StrictEqual(searchElement.GetTaggedValue(), value)) {
-                return JSTaggedValue(from);
-            }
-        } else {
-            bool exist = JSTaggedValue::HasProperty(thread, receiver, from);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (exist) {
-                JSHandle<JSTaggedValue> kValueHandle = JSArray::FastGetPropertyByValue(thread, receiver, from);
-                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                if (JSTaggedValue::StrictEqual(thread, searchElement, kValueHandle)) {
-                    return JSTaggedValue(from);
-                }
-            }
-        }
-        from++;
-    }
-    return JSTaggedValue(-1);
+    IndexOfContext ctx;
+    ctx.thread = thread;
+    ctx.receiver = receiver;
+    ctx.searchElement = searchElement;
+    ctx.fromIndex = from;
+    ctx.length = len;
+    return IndexOfDispatch(IndexOfType::IndexOf, ctx, searchElement.GetTaggedValue());
+}
+
+JSTaggedValue JSStableArray::LastIndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
+                                         JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len)
+{
+    IndexOfContext ctx;
+    ctx.thread = thread;
+    ctx.receiver = receiver;
+    ctx.searchElement = searchElement;
+    ctx.fromIndex = from;
+    ctx.length = len;
+    return IndexOfDispatch(IndexOfType::LastIndexOf, ctx, searchElement.GetTaggedValue());
 }
 
 JSTaggedValue JSStableArray::Filter(JSHandle<JSObject> newArrayHandle, JSHandle<JSObject> thisObjHandle,
