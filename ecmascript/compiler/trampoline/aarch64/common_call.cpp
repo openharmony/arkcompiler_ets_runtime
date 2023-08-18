@@ -140,6 +140,9 @@ void CommonCall::StackOverflowCheck(ExtendedAssembler *assembler, Register glue,
     __ Sub(op, currentSlot, Operand(op, UXTX, 0));
     __ Cmp(op, Operand(numArgs, LSL, 3));  // 3: each args occupies 8 bytes
     __ B(Condition::GT, &skipThrow);
+    __ Ldr(op, MemoryOperand(glue, JSThread::GlueData::GetInterruptVectorOffset(false)));
+    __ Tbnz(op, JSThread::CheckSafePointBit::START_BIT, &skipThrow);
+    // CheckSafePointBit is false, is actual stack over flow
     __ Ldr(op, MemoryOperand(glue, JSThread::GlueData::GetAllowCrossThreadExecutionOffset(false)));
     __ Cbz(op, stackOverflow);
     __ Bind(&skipThrow);

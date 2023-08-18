@@ -203,7 +203,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LoadICByName)                       \
     V(StoreICByName)                      \
     V(UpdateHotnessCounter)               \
-    V(CheckSafePoint)                     \
+    V(CheckSafePointAndStackOverflow)     \
     V(UpdateHotnessCounterWithProf)       \
     V(GetModuleNamespaceByIndex)          \
     V(GetModuleNamespaceByIndexOnJSFunc)  \
@@ -685,6 +685,7 @@ private:
     static inline JSTaggedValue RuntimeNotifyConcurrentResult(JSThread *thread, JSTaggedValue result,
         JSTaggedValue hint);
     static inline JSTaggedValue RuntimeNotifyDebuggerStatement(JSThread *thread);
+    static inline JSTaggedValue RuntimeThrowStackOverflowException(JSThread *thread);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript
