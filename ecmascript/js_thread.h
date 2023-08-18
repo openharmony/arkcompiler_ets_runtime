@@ -198,6 +198,12 @@ public:
     using BCStubStatusBits = PGOStatusBits::NextField<BCStubStatus, BOOL_BITFIELD_NUM>;
     using ThreadId = uint32_t;
 
+    enum FrameDroppedState {
+        StateFalse = 0,
+        StateTrue,
+        StatePending
+    };
+
     explicit JSThread(EcmaVM *vm);
 
     PUBLIC_API ~JSThread();
@@ -646,19 +652,59 @@ public:
         return glueData_.allowCrossThreadExecution_;
     }
 
-    bool GetFrameDroppedBit()
+    bool IsFrameDropped()
     {
-        return isFrameDropped_;
+        return glueData_.isFrameDropped_;
     }
 
-    void SetFrameDroppedBit()
+    void SetFrameDroppedState()
     {
-        isFrameDropped_ = true;
+        glueData_.isFrameDropped_ = true;
     }
 
-    void ResetFrameDroppedBit()
+    void ResetFrameDroppedState()
     {
-        isFrameDropped_ = false;
+        glueData_.isFrameDropped_ = false;
+    }
+
+    bool IsEntryFrameDroppedTrue()
+    {
+        return glueData_.entryFrameDroppedState_ == FrameDroppedState::StateTrue;
+    }
+
+    bool IsEntryFrameDroppedPending()
+    {
+        return glueData_.entryFrameDroppedState_ == FrameDroppedState::StatePending;
+    }
+
+    void SetEntryFrameDroppedState()
+    {
+        glueData_.entryFrameDroppedState_ = FrameDroppedState::StateTrue;
+    }
+
+    void ResetEntryFrameDroppedState()
+    {
+        glueData_.entryFrameDroppedState_ = FrameDroppedState::StateFalse;
+    }
+
+    void PendingEntryFrameDroppedState()
+    {
+        glueData_.entryFrameDroppedState_ = FrameDroppedState::StatePending;
+    }
+
+    bool IsDebugMode()
+    {
+        return glueData_.isDebugMode_;
+    }
+
+    void SetDebugModeState()
+    {
+        glueData_.isDebugMode_ = true;
+    }
+
+    void ResetDebugModeState()
+    {
+        glueData_.isDebugMode_ = false;
     }
 
     bool IsStartGlobalLeakCheck() const;
@@ -694,6 +740,9 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
+                                                 JSTaggedValue,
+                                                 base::AlignedBool,
+                                                 base::AlignedBool,
                                                  JSTaggedValue> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
@@ -718,6 +767,9 @@ public:
             AllowCrossThreadExecutionIndex,
             InterruptVectorIndex,
             IsStartHeapSamplingIndex,
+            IsDebugModeIndex,
+            IsFrameDroppedIndex,
+            EntryFrameDroppedStateIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -827,6 +879,21 @@ public:
             return GetOffset<static_cast<size_t>(Index::IsStartHeapSamplingIndex)>(isArch32);
         }
 
+        static size_t GetIsDebugModeOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::IsDebugModeIndex)>(isArch32);
+        }
+
+        static size_t GetIsFrameDroppedOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::IsFrameDroppedIndex)>(isArch32);
+        }
+
+        static size_t GetEntryFrameDroppedStateOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::EntryFrameDroppedStateIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -849,6 +916,9 @@ public:
         alignas(EAS) bool allowCrossThreadExecution_ {false};
         alignas(EAS) volatile uint64_t interruptVector_ {0};
         alignas(EAS) JSTaggedValue isStartHeapSampling_ {JSTaggedValue::False()};
+        alignas(EAS) bool isDebugMode_ {false};
+        alignas(EAS) bool isFrameDropped_ {false};
+        alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -930,8 +1000,6 @@ private:
     std::string profileName_ {""};
 
     bool finalizationCheckState_ {false};
-
-    bool isFrameDropped_ {false};
 
     CMap<ElementsKind, ConstantIndex> arrayHClassIndexMap_;
 

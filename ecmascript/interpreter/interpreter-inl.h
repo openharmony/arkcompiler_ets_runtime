@@ -198,21 +198,38 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         }                                                 \
     } while (false)
 
-#define RESET_AND_JUMP_IF_DROPFRAME()                                     \
-    do {                                                                  \
-        if (thread->GetFrameDroppedBit()) {                               \
-            thread->ResetFrameDroppedBit();                               \
-            sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame()); \
-            InterpretedFrame *state = GET_FRAME(sp);                      \
-            pc = state->pc;                                               \
-            RESTORE_ACC();                                                \
-            DISPATCH_OFFSET(0);                                           \
-        }                                                                 \
+#define JUMP_IF_ENTRYFRAME_PENDING()                \
+    do {                                            \
+        if (thread->IsEntryFrameDroppedPending()) { \
+            thread->ResetEntryFrameDroppedState();  \
+            DROPFRAME_JUMP();                       \
+        }                                           \
+    } while (false)
+
+#define DROPFRAME_JUMP()                                              \
+    do {                                                              \
+        thread->ResetFrameDroppedState();                             \
+        sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame()); \
+        InterpretedFrame *state = GET_FRAME(sp);                      \
+        pc = state->pc;                                               \
+        RESTORE_ACC();                                                \
+        DISPATCH_OFFSET(0);                                           \
+    } while (false)
+
+#define RESET_AND_JUMP_IF_DROPFRAME()                \
+    do {                                             \
+        if (thread->IsFrameDropped()) {              \
+            if (thread->IsEntryFrameDroppedTrue()) { \
+                return;                              \
+            }                                        \
+            DROPFRAME_JUMP();                        \
+        }                                            \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define NOTIFY_DEBUGGER_EVENT()          \
     do {                                 \
+        JUMP_IF_ENTRYFRAME_PENDING();    \
         SAVE_ACC();                      \
         SAVE_PC();                       \
         NotifyBytecodePcChanged(thread); \
@@ -725,14 +742,22 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     thread->CheckSafepoint();
     LOG_INST() << "Entry: Runtime Call " << std::hex << reinterpret_cast<uintptr_t>(newSp) << " "
                             << std::hex << reinterpret_cast<uintptr_t>(pc);
-
+    MethodEntry(thread);
     EcmaInterpreter::RunInternal(thread, pc, newSp);
 
     // NOLINTNEXTLINE(readability-identifier-naming)
     const JSTaggedValue resAcc = state->acc;
-    // pop frame
+
     InterpretedEntryFrame *entryState = GET_ENTRY_FRAME(sp);
     JSTaggedType *prevSp = entryState->base.prev;
+
+    if (thread->IsEntryFrameDroppedTrue()) {
+        thread->PendingEntryFrameDroppedState();
+        InterpretedFrame *prevState = GET_FRAME(prevSp);
+        return prevState->acc;
+    }
+
+    // pop frame
     thread->SetCurrentSPFrame(prevSp);
     return resAcc;
 #else
@@ -3285,6 +3310,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 thread->SetCurrentSPFrame(newSp);
                 LOG_INST() << "Entry: Runtime SuperCall " << std::hex << reinterpret_cast<uintptr_t>(sp)
                                         << " " << std::hex << reinterpret_cast<uintptr_t>(pc);
+                MethodEntry(thread);
                 DISPATCH_OFFSET(0);
             }
         }
@@ -3420,6 +3446,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 thread->SetCurrentSPFrame(newSp);
                 LOG_INST() << "Entry: Runtime SuperCall " << std::hex << reinterpret_cast<uintptr_t>(sp)
                                         << " " << std::hex << reinterpret_cast<uintptr_t>(pc);
+                MethodEntry(thread);
                 DISPATCH_OFFSET(0);
             }
         }
@@ -3555,6 +3582,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 thread->SetCurrentSPFrame(newSp);
                 LOG_INST() << "Entry: Runtime SuperCall " << std::hex << reinterpret_cast<uintptr_t>(sp)
                                         << " " << std::hex << reinterpret_cast<uintptr_t>(pc);
+                MethodEntry(thread);
                 DISPATCH_OFFSET(0);
             }
         }
@@ -3690,6 +3718,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 thread->SetCurrentSPFrame(newSp);
                 LOG_INST() << "Entry: Runtime SuperCall " << std::hex << reinterpret_cast<uintptr_t>(sp)
                                         << " " << std::hex << reinterpret_cast<uintptr_t>(pc);
+                MethodEntry(thread);
                 DISPATCH_OFFSET(0);
             }
         }
@@ -4055,6 +4084,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 thread->SetCurrentSPFrame(newSp);
                 LOG_INST() << "Entry: Runtime New " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
                                         << std::hex << reinterpret_cast<uintptr_t>(pc);
+                MethodEntry(thread);
                 DISPATCH_OFFSET(0);
             }
         }
@@ -4191,6 +4221,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 thread->SetCurrentSPFrame(newSp);
                 LOG_INST() << "Entry: Runtime New " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
                                         << std::hex << reinterpret_cast<uintptr_t>(pc);
+                MethodEntry(thread);
                 DISPATCH_OFFSET(0);
             }
         }
@@ -4326,6 +4357,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 thread->SetCurrentSPFrame(newSp);
                 LOG_INST() << "Entry: Runtime New " << std::hex << reinterpret_cast<uintptr_t>(sp) << " "
                                         << std::hex << reinterpret_cast<uintptr_t>(pc);
+                MethodEntry(thread);
                 DISPATCH_OFFSET(0);
             }
         }

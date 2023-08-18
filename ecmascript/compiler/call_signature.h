@@ -409,6 +409,7 @@ private:
     V(ResumeRspAndReturn)                   \
     V(ResumeCaughtFrameAndDispatch)         \
     V(ResumeUncaughtFrameAndReturn)         \
+    V(ResumeRspAndRollback)                 \
     V(StringsAreEquals)                     \
     V(BigIntEquals)                         \
     V(DebugPrint)                           \

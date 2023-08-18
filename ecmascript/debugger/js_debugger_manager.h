@@ -62,6 +62,12 @@ public:
         }
 
         isDebugMode_ = isDebugMode;
+
+        if (isDebugMode) {
+            jsThread_->SetDebugModeState();
+        } else {
+            jsThread_->ResetDebugModeState();
+        }
     }
 
     bool IsDebugMode() const

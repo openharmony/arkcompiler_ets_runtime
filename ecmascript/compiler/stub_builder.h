@@ -241,6 +241,7 @@ public:
     GateRef CastDoubleToInt64(GateRef x);
     GateRef TaggedTrue();
     GateRef TaggedFalse();
+    GateRef TaggedUndefined();
     // compare operation
     GateRef Int8Equal(GateRef x, GateRef y);
     GateRef Equal(GateRef x, GateRef y);

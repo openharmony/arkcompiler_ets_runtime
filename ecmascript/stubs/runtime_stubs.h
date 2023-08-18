@@ -68,6 +68,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(ResumeRspAndReturn)                    \
     V(ResumeCaughtFrameAndDispatch)          \
     V(ResumeUncaughtFrameAndReturn)          \
+    V(ResumeRspAndRollback)                  \
     V(CallSetter)                            \
     V(CallGetter)                            \
     V(CallContainersArgs3)                   \
@@ -280,6 +281,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(OptCopyRestArgs)                    \
     V(NotifyBytecodePcChanged)            \
     V(NotifyDebuggerStatement)            \
+    V(MethodEntry)                        \
+    V(MethodExit)                         \
     V(OptNewLexicalEnvWithName)           \
     V(OptSuspendGenerator)                \
     V(OptAsyncGeneratorResolve)           \

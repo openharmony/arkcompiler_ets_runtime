@@ -1128,6 +1128,27 @@ DEF_CALL_SIGNATURE(ResumeUncaughtFrameAndReturn)
     callSign->SetCallConv(CallSignature::CallConv::GHCCallConv);
 }
 
+DEF_CALL_SIGNATURE(ResumeRspAndRollback)
+{
+    // 8 : 8 input parameters
+    CallSignature resumeRspAndRollback("ResumeRspAndRollback", 0, 8,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = resumeRspAndRollback;
+    std::array<VariableType, 8> params = { // 8 : 8 input parameters
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::JS_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::INT32(),
+        VariableType::NATIVE_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::GHCCallConv);
+}
+
 DEF_CALL_SIGNATURE(StringsAreEquals)
 {
     // 2 : 2 input parameters

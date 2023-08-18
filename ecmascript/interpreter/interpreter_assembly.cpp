@@ -32,6 +32,7 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/template_string.h"
+#include "ecmascript/debugger/js_debugger_manager.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
@@ -256,14 +257,36 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), info->GetFunctionValue().GetRawData(), false);
 #endif
+    if (thread->IsDebugMode()) {
+        MethodEntry(thread, method);
+    }
     auto acc = reinterpret_cast<InterpreterEntry>(entry)(thread->GetGlueAddr(),
         callTarget, method, method->GetCallField(), argc, argv);
+    
+    if (thread->IsEntryFrameDroppedTrue()) {
+        thread->PendingEntryFrameDroppedState();
+        return JSTaggedValue::Hole();
+    }
+
     auto sp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
     ASSERT(FrameHandler::GetFrameType(sp) == FrameType::INTERPRETER_ENTRY_FRAME);
     auto prevEntry = InterpretedEntryFrame::GetFrameFromSp(sp)->GetPrevFrameFp();
     thread->SetCurrentSPFrame(prevEntry);
 
     return JSTaggedValue(acc);
+}
+
+void InterpreterAssembly::MethodEntry(JSThread *thread, Method *method)
+{
+    FrameHandler frameHandler(thread);
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+        if (frameHandler.IsEntryFrame()) {
+            continue;
+        }
+        auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
+        debuggerMgr->GetNotificationManager()->MethodEntryEvent(thread, method);
+        return;
+    }
 }
 
 JSTaggedValue InterpreterAssembly::GeneratorReEnterInterpreter(JSThread *thread, JSHandle<GeneratorContext> context)

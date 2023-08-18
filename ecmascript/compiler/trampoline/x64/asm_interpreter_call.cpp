@@ -1186,6 +1186,44 @@ void AsmInterpreterCall::ResumeUncaughtFrameAndReturn(ExtendedAssembler *assembl
     __ Ret();
 }
 
+// ResumeRspAndRollback(uintptr_t glue, uintptr_t sp, uintptr_t pc, uintptr_t constantPool,
+//     uint64_t profileTypeInfo, uint64_t acc, uint32_t hotnessCounter, size_t jumpSize)
+// GHC calling convention
+// %r13 - glue
+// %rbp - sp
+// %r12 - pc
+// %rbx - constantPool
+// %r14 - profileTypeInfo
+// %rsi - acc
+// %rdi - hotnessCounter
+// %r8  - jumpSizeAfterCall
+void AsmInterpreterCall::ResumeRspAndRollback(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(ResumeRspAndRollback));
+    Register glueRegister = __ GlueRegister();
+    Register spRegister = rbp;
+    Register pcRegister = r12;
+    Register ret = rsi;
+    Register jumpSizeRegister = r8;
+
+    Register frameStateBaseRegister = r11;
+    __ Movq(spRegister, frameStateBaseRegister);
+    __ Subq(AsmInterpretedFrame::GetSize(false), frameStateBaseRegister);
+
+    __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetBaseOffset(false)), spRegister);  // update sp
+    __ Addq(jumpSizeRegister, pcRegister);  // newPC
+    Register opcodeRegister = rax;
+    __ Movzbq(Operand(pcRegister, 0), opcodeRegister);
+
+    __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetFunctionOffset(false)), ret); // restore acc
+
+    __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetFpOffset(false)), rsp);   // resume rsp
+    Register bcStubRegister = r11;
+    __ Movq(Operand(glueRegister, opcodeRegister, Times8, JSThread::GlueData::GetBCStubEntriesOffset(false)),
+        bcStubRegister);
+    __ Jmp(bcStubRegister);
+}
+
 void AsmInterpreterCall::PushUndefinedWithArgcAndCheckStack(ExtendedAssembler *assembler, Register glue, Register argc,
     Register op1, Register op2, Label *stackOverflow)
 {

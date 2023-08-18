@@ -177,6 +177,8 @@ public:
 
     static void ResumeUncaughtFrameAndReturn(ExtendedAssembler *assembler);
 
+    static void ResumeRspAndRollback(ExtendedAssembler *assembler);
+
     static void CallGetter(ExtendedAssembler *assembler);
 
     static void CallSetter(ExtendedAssembler *assembler);

@@ -107,6 +107,22 @@ bool DebuggerApi::StackWalker(const EcmaVM *ecmaVm, std::function<StackState(con
     return true;
 }
 
+uint32_t DebuggerApi::GetStackDepthOverBuiltin(const EcmaVM *ecmaVm)
+{
+    uint32_t count = 0;
+    FrameHandler frameHandler(ecmaVm->GetJSThread());
+    for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
+        if (frameHandler.IsEntryFrame()) {
+            continue;
+        }
+        if (frameHandler.IsBuiltinFrame()) {
+            break;
+        }
+        ++count;
+    }
+    return count;
+}
+
 uint32_t DebuggerApi::GetBytecodeOffset(const EcmaVM *ecmaVm)
 {
     return FrameHandler(ecmaVm->GetJSThread()).GetBytecodeOffset();
@@ -1222,10 +1238,7 @@ Local<JSValueRef> DebuggerApi::GetVectorValue(const EcmaVM *ecmaVm, Local<JSValu
 
 void DebuggerApi::DropLastFrame(const EcmaVM *ecmaVm)
 {
-    JSThread *thread = ecmaVm->GetJSThread();
     auto *debuggerMgr = ecmaVm->GetJsDebuggerManager();
-    if (!thread->IsAsmInterpreter()) {
-        debuggerMgr->DropLastFrame();
-    }
+    debuggerMgr->DropLastFrame();
 }
 }  // namespace panda::ecmascript::tooling
