@@ -1742,7 +1742,7 @@ JSTaggedValue BuiltinsTypedArray::With(EcmaRuntimeCallInfo* argv)
     int64_t relativeIndex = indexVal.GetNumber();
     // 5. If relativeIndex ≥ 0, let actualIndex be relativeIndex.
     // 6. Else, let actualIndex be len + relativeIndex.
-    int64_t actualIndex = relativeIndex >= 0 ? relativeIndex : len + relativeIndex;
+    int64_t actualIndex = relativeIndex >= 0 ? relativeIndex : static_cast<int64_t>(len) + relativeIndex;
 
     // 7. If O.[[ContentType]] is BigInt, let numericValue be ? ToBigInt(value).
     // 8. Else, let numericValue be ? ToNumber(value).
