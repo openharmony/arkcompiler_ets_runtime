@@ -13,21 +13,21 @@
  * limitations under the License.
  */
 
-let a = [1, 2, 3]
-let b = [1, , 3]
-let c = [1, 2, "test", 1]
-let d = [1, 2, 3, 4.23]
+let a = [1, 2, 3];
+let b = [1, , 3];
+let c = [1, 2, 'test', 1];
+let d = [1, 2, 3, 4.23];
 
 function foo(p) {
-    p[1] = 1.1
+  p[1] = 1.1;
 }
 
 function foo1(p) {
-    p[2] = "test";
+  p[2] = 'test';
 }
 
-foo(a)
-foo(b)
-foo(c)
-foo1(d)
-c[6] = 1
+foo(a);
+foo(b);
+foo(c);
+foo1(d);
+c[6] = 1;

@@ -241,7 +241,7 @@ StateDepend LCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
                 result = ConvertUInt32ToFloat64(value);
             } else {
                 ASSERT(dstType == ValueType::BOOL);
-                result = builder_.NotEqual(value,builder_.Int32(0));
+                result = builder_.NotEqual(value, builder_.Int32(0));
             }
             break;
         case ValueType::FLOAT64:

@@ -472,8 +472,8 @@ void JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSAr
     }
     ElementsKind newKind = ElementsKind::NONE;
     auto elementArray = TaggedArray::Cast(elements);
-    int length = elementArray->GetLength();
-    for (int i = 0; i < length; i++) {
+    uint32_t length = elementArray->GetLength();
+    for (uint32_t i = 0; i < length; i++) {
         JSTaggedValue value = elementArray->Get(i);
         newKind = Elements::ToElementsKind(value, newKind);
     }
