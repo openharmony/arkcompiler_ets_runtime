@@ -1348,6 +1348,7 @@ public:
     static Local<ObjectRef> GetAndClearUncaughtException(const EcmaVM *vm);
     static Local<ObjectRef> GetUncaughtException(const EcmaVM *vm);
     static bool HasPendingException(const EcmaVM *vm);
+    static bool HasPendingJob(const EcmaVM *vm);
     static void EnableUserUncaughtErrorHandler(EcmaVM *vm);
     static bool StartDebugger(EcmaVM *vm, const DebugOption &option, int32_t instanceId = 0,
         const DebuggerPostTask &debuggerPostTask = {});
@@ -1403,6 +1404,8 @@ public:
     static std::string GetModuleName(EcmaVM *vm);
     static void AllowCrossThreadExecution(EcmaVM *vm);
     static void SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
+    static bool IsProfiling(EcmaVM *vm);
+    static void SetProfilerState(const EcmaVM *vm, bool value);
 
 private:
     static int vmCount_;
