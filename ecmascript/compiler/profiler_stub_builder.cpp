@@ -25,8 +25,7 @@ void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, Ga
 {
     switch (type) {
         case OperationType::CALL:
-        case OperationType::CALL_WIDE:
-            ProfileCall(glue, pc, profileTypeInfo, values[0], type);
+            ProfileCall(glue, pc, func, values[0]);
             break;
         case OperationType::OPERATION_TYPE:
             ProfileOpType(glue, pc, func, profileTypeInfo, values[0]);
@@ -35,7 +34,7 @@ void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef pc, GateRef func, Ga
             ProfileDefineClass(glue, pc, func, values[0]);
             break;
         case OperationType::CREATE_OBJECT:
-            ProfileCreateObject(glue, pc, func, values[0], values[1]);
+            ProfileCreateObject(glue, pc, func, values[0]);
             break;
         case OperationType::STORE_LAYOUT:
             ProfileObjLayout(glue, pc, func, values[0], Int32(1));
@@ -69,22 +68,32 @@ void ProfilerStubBuilder::ProfileOpType(GateRef glue, GateRef pc, GateRef func, 
     }
     Bind(&profiler);
     {
-        Label pushLabel(env);
+        Label uninitialize(env);
         Label compareLabel(env);
+        Label updateSlot(env);
+        Label updateProfile(env);
 
         GateRef slotId = ZExtInt8ToInt32(Load(VariableType::INT8(), pc, IntPtr(1)));
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
         DEFVARIABLE(curType, VariableType::INT32(), type);
-        Branch(TaggedIsInt(slotValue), &compareLabel, &pushLabel);
+        Branch(TaggedIsInt(slotValue), &compareLabel, &uninitialize);
         Bind(&compareLabel);
         {
             GateRef oldSlotValue = TaggedGetInt(slotValue);
             curType = Int32Or(oldSlotValue, type);
-            Branch(Int32Equal(oldSlotValue, *curType), &exit, &pushLabel);
+            Branch(Int32Equal(oldSlotValue, *curType), &exit, &updateSlot);
         }
-        Bind(&pushLabel);
+        Bind(&uninitialize);
+        {
+            Branch(TaggedIsUndefined(slotValue), &updateSlot, &updateProfile);
+        }
+        Bind(&updateSlot);
         {
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(*curType));
+            Jump(&updateProfile);
+        }
+        Bind(&updateProfile);
+        {
             GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
             GateRef firstPC =
                 Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
@@ -112,18 +121,48 @@ void ProfilerStubBuilder::ProfileDefineClass(GateRef glue, GateRef pc, GateRef f
     env->SubCfgExit();
 }
 
-void ProfilerStubBuilder::ProfileCreateObject(GateRef glue, GateRef pc, GateRef func, GateRef originObj, GateRef newObj)
+void ProfilerStubBuilder::ProfileCreateObject(GateRef glue, GateRef pc, GateRef func, GateRef newObj)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
+    Label exit(env);
 
-    GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
-    GateRef firstPC =
-        Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-    GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
-    CallNGCRuntime(glue, RTSTUB_ID(ProfileCreateObject), { glue, func, offset, originObj, newObj });
-
+    DEFVARIABLE(traceId, VariableType::INT32(), Int32(0));
+    Label isArray(env);
+    Label profile(env);
+    Label calculateTraceId(env);
+    Branch(TaggedIsJSArray(newObj), &isArray, &calculateTraceId);
+    Bind(&isArray);
+    {
+        GateRef traceIdOffset = IntPtr(JSArray::TRACE_INDEX_OFFSET);
+        traceId = Load(VariableType::INT32(), newObj, traceIdOffset);
+        Label uninitialize(env);
+        Branch(Int32GreaterThan(*traceId, Int32(0)), &exit, &uninitialize);
+        Bind(&uninitialize);
+        {
+            auto pfAddr = LoadPfHeaderFromConstPool(func);
+            traceId = TruncPtrToInt32(PtrSub(pc, pfAddr));
+            Store(VariableType::INT32(), glue, newObj, traceIdOffset, *traceId);
+            Jump(&profile);
+        }
+    }
+    Bind(&calculateTraceId);
+    {
+        auto pfAddr = LoadPfHeaderFromConstPool(func);
+        traceId = TruncPtrToInt32(PtrSub(pc, pfAddr));
+        Jump(&profile);
+    }
+    Bind(&profile);
+    {
+        GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
+        GateRef firstPC =
+            Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
+        CallNGCRuntime(glue, RTSTUB_ID(ProfileCreateObject), { glue, func, offset, newObj, *traceId });
+        Jump(&exit);
+    }
+    Bind(&exit);
     env->SubCfgExit();
 }
 
@@ -148,59 +187,32 @@ void ProfilerStubBuilder::ProfileObjLayout(GateRef glue, GateRef pc, GateRef fun
     env->SubCfgExit();
 }
 
-void ProfilerStubBuilder::ProfileCall(
-    GateRef glue, GateRef pc, GateRef profileTypeInfo, GateRef target, OperationType type)
+void ProfilerStubBuilder::ProfileCall(GateRef glue, GateRef pc, GateRef func, GateRef target)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
 
     Label exit(env);
-    Label fastpath(env);
     Label slowpath(env);
+    Label fastpath(env);
 
-    DEFVARIABLE(inc, VariableType::INT32(), Int32(1));
-    Branch(TaggedIsUndefined(profileTypeInfo), &slowpath, &fastpath);
-    Bind(&fastpath);
+    Label targetIsFunction(env);
+    Branch(IsJSFunction(target), &targetIsFunction, &exit);
+    Bind(&targetIsFunction);
     {
-        Label initialLabel(env);
-        Label uninitialLabel(env);
-        GateRef slotId = Int32(panda::ecmascript::ProfileTypeInfo::INVALID_SLOT_INDEX);
-        if (type == OperationType::CALL_WIDE) {
-            GateRef currentInstHigh = ZExtInt8ToInt16(Load(VariableType::INT8(), pc, IntPtr(HIGH_WORD_OFFSET)));
-            GateRef currentInstHighLsl = Int16LSL(currentInstHigh, Int16(BITS_OF_WORD));
-            GateRef currentInstLow = ZExtInt8ToInt16(Load(VariableType::INT8(), pc, IntPtr(LOW_WORD_OFFSET)));
-            slotId = ZExtInt16ToInt32(Int16Add(currentInstHighLsl, currentInstLow));
-        } else {
-            slotId = ZExtInt8ToInt32(Load(VariableType::INT8(), pc, IntPtr(1)));
-        }
-        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-        Branch(TaggedIsInt(slotValue), &initialLabel, &uninitialLabel);
-        Bind(&initialLabel);
+        GateRef targetProfileInfo = GetProfileTypeInfo(target);
+        Label nonHotness(env);
+        Branch(TaggedIsUndefined(targetProfileInfo), &nonHotness, &exit);
+        Bind(&nonHotness);
         {
-            Label fastLabel(env);
-            GateRef oldInc = TaggedGetInt(slotValue);
-            Branch(Int32GreaterThan(oldInc, Int32(MAX_PROFILE_CALL_COUNT)), &exit, &fastLabel);
-            Bind(&fastLabel);
-            GateRef count = Int32Add(oldInc, *inc);
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(count));
-            inc = Int32(MIN_PROFILE_CALL_INTERVAL);
-            GateRef mod = Int32Mod(oldInc, *inc);
-            Branch(Int32Equal(mod, Int32(0)), &slowpath, &exit);
+            GateRef method = Load(VariableType::JS_ANY(), func, IntPtr(JSFunctionBase::METHOD_OFFSET));
+            GateRef firstPC =
+                Load(VariableType::NATIVE_POINTER(), method, IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+            GateRef offset = TruncPtrToInt32(PtrSub(pc, firstPC));
+            CallNGCRuntime(glue, RTSTUB_ID(ProfileCall), { glue, func, target, offset, Int32(1)});
+            Jump(&exit);
         }
-        Bind(&uninitialLabel);
-        {
-            Label fastLabel(env);
-            Branch(TaggedIsUndefined(slotValue), &fastLabel, &slowpath);
-            Bind(&fastLabel);
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(*inc));
-            Jump(&slowpath);
-        }
-    }
-    Bind(&slowpath);
-    {
-        CallNGCRuntime(glue, RTSTUB_ID(ProfileCall), { glue, target, *inc});
-        Jump(&exit);
     }
     Bind(&exit);
     env->SubCfgExit();

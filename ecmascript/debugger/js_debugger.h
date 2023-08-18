@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TOOLING_BACKEND_JS_DEBUGGER_H
-#define ECMASCRIPT_TOOLING_BACKEND_JS_DEBUGGER_H
+#ifndef ECMASCRIPT_DEBUGGER_JS_DEBUGGER_H
+#define ECMASCRIPT_DEBUGGER_JS_DEBUGGER_H
 
 #include "ecmascript/debugger/debugger_api.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
@@ -167,4 +167,4 @@ private:
 };
 }  // namespace panda::ecmascript::tooling
 
-#endif  // ECMASCRIPT_TOOLING_BACKEND_JS_DEBUGGER_H
+#endif  // ECMASCRIPT_DEBUGGER_JS_DEBUGGER_H

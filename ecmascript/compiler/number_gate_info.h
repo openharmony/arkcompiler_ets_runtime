@@ -25,6 +25,7 @@ enum class TypeInfo {
     NONE,
     INT1,
     INT32,
+    UINT32,
     FLOAT64,
     TAGGED,
 };
@@ -99,18 +100,18 @@ public:
             max_ = *std::lower_bound(rangeBounds_.begin(), rangeBounds_.end(), max);
         }
     }
-    
+
     static constexpr int32_t UINT30_MAX = 0x3fffffff;
     static constexpr int32_t TYPED_ARRAY_ONHEAP_MAX = JSTypedArray::MAX_ONHEAP_LENGTH;
     static const inline std::vector<int32_t> rangeBounds_ = { INT32_MIN, INT32_MIN + 1,
-                                                              -1, 0, 1, TYPED_ARRAY_ONHEAP_MAX - 1, TYPED_ARRAY_ONHEAP_MAX, TYPED_ARRAY_ONHEAP_MAX + 1, TYPED_ARRAY_ONHEAP_MAX * 3, UINT30_MAX, UINT30_MAX + 1,
-                                                              INT32_MAX - 1, INT32_MAX };
+        -1, 0, 1, TYPED_ARRAY_ONHEAP_MAX - 1, TYPED_ARRAY_ONHEAP_MAX, TYPED_ARRAY_ONHEAP_MAX + 1,
+        TYPED_ARRAY_ONHEAP_MAX * 3, UINT30_MAX, UINT30_MAX + 1, INT32_MAX - 1, INT32_MAX };
 
     static RangeInfo NONE()
     {
         return RangeInfo(INT32_MAX, INT32_MIN);
     }
-    
+
     static RangeInfo ANY()
     {
         return RangeInfo(INT32_MIN, INT32_MAX);
@@ -225,7 +226,7 @@ public:
     {
         return (min_ == INT32_MAX) && (max_ == INT32_MIN);
     }
-    
+
 private:
     int32_t min_ {INT32_MIN};
     int32_t max_ {INT32_MAX};

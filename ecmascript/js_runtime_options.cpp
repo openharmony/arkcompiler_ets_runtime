@@ -76,12 +76,12 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-force-gc:                    Enable force gc when allocating object. Default: 'true'\n"
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
+    "--compiler-opt-array-bounds-check-elimination: Enable Index Check elimination. Default: 'false'\n"
     "--compiler-opt-type-lowering:         Enable all type optimization pass for aot compiler. Default: 'true'\n"
     "--compiler-opt-early-elimination:     Enable EarlyElimination for aot compiler. Default: 'true'\n"
     "--compiler-opt-later-elimination:     Enable LaterElimination for aot compiler. Default: 'true'\n"
     "--compiler-opt-value-numbering:       Enable ValueNumbering for aot compiler. Default: 'true'\n"
     "--compiler-opt-inlining:              Enable inlining function for aot compiler: Default: 'true'\n"
-    "--compiler-opt-static-method:         Enable static method optimize for aot compiler: Default: 'false'\n"
     "--compiler-opt-pgotype:               Enable pgo type for aot compiler: Default: 'true'\n"
     "--compiler-opt-track-field:           Enable track field for aot compiler: Default: 'false'\n"
     "--entry-point:                        Full name of entrypoint function. Default: '_GLOBAL::func_main_0'\n"
@@ -174,12 +174,13 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
+        {"compiler-opt-array-bounds-check-elimination", required_argument, nullptr,
+            OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION},
         {"compiler-opt-type-lowering", required_argument, nullptr, OPTION_COMPILER_OPT_TYPE_LOWERING},
         {"compiler-opt-early-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_EARLY_ELIMINATION},
         {"compiler-opt-later-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_LATER_ELIMINATION},
         {"compiler-opt-value-numbering", required_argument, nullptr, OPTION_COMPILER_OPT_VALUE_NUMBERING},
         {"compiler-opt-inlining", required_argument, nullptr, OPTION_COMPILER_OPT_INLINING},
-        {"compiler-opt-static-method", required_argument, nullptr, OPTION_COMPILER_OPT_STATIC_METHOD},
         {"compiler-opt-pgotype", required_argument, nullptr, OPTION_COMPILER_OPT_PGOTYPE},
         {"compiler-opt-track-field", required_argument, nullptr, OPTION_COMPILER_OPT_TRACK_FIELD},
         {"entry-point", required_argument, nullptr, OPTION_ENTRY_POINT},
@@ -618,6 +619,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableArrayBoundsCheckElimination(argBool);
+                } else {
+                    return false;
+                }
+                break;
             case OPTION_COMPILER_OPT_EARLY_ELIMINATION:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -646,14 +655,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableOptInlining(argBool);
-                } else {
-                    return false;
-                }
-                break;
-            case OPTION_COMPILER_OPT_STATIC_METHOD:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetEnableOptStaticMethod(argBool);
                 } else {
                     return false;
                 }

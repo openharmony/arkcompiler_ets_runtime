@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_HPROF_HEAP_SNAPSHOT_H
-#define ECMASCRIPT_HPROF_HEAP_SNAPSHOT_H
+#ifndef ECMASCRIPT_DFX_HPROF_HEAP_SNAPSHOT_H
+#define ECMASCRIPT_DFX_HPROF_HEAP_SNAPSHOT_H
 
 #include <atomic>
 #include <cstdint>
@@ -33,6 +33,7 @@
 #include "ecmascript/interpreter/frame_handler.h"
 
 namespace panda::ecmascript {
+class EntryIdMap;
 // Define the Object Graphic
 using Address = uintptr_t;
 
@@ -47,7 +48,7 @@ enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WE
 
 class Node {
 public:
-    Node(uint64_t id, uint64_t index, const CString *name, NodeType type, size_t size, uint64_t traceId,
+    Node(uint32_t id, uint32_t index, const CString *name, NodeType type, size_t size, uint32_t traceId,
          Address address, bool isLive = true)
         : id_(id),
           index_(index),
@@ -59,15 +60,15 @@ public:
           isLive_(isLive)
     {
     }
-    uint64_t GetId() const
+    uint32_t GetId() const
     {
         return id_;
     }
-    void SetIndex(uint64_t index)
+    void SetIndex(uint32_t index)
     {
         index_ = index;
     }
-    uint64_t GetIndex() const
+    uint32_t GetIndex() const
     {
         return index_;
     }
@@ -102,7 +103,7 @@ public:
     {
         edgeCount_++;
     }
-    uint64_t GetStackTraceId() const
+    uint32_t GetStackTraceId() const
     {
         return traceId_;
     }
@@ -122,7 +123,7 @@ public:
     {
         isLive_ = isLive;
     }
-    void SetTraceId(uint64_t traceId)
+    void SetTraceId(uint32_t traceId)
     {
         traceId_ = traceId;
     }
@@ -137,24 +138,24 @@ public:
     ~Node() = default;
 
 private:
-    uint64_t id_ {0};  // Range from 1
-    uint64_t index_ {0};
+    uint32_t id_ {0};  // Range from 1
+    uint32_t index_ {0};
     const CString *name_ {nullptr};
     NodeType type_ {NodeType::INVALID};
     size_t size_ {0};
     size_t edgeCount_ {0};
-    uint64_t traceId_ {0};
+    uint32_t traceId_ {0};
     Address address_ {0x0};
     bool isLive_ {true};
 };
 
 class Edge {
 public:
-    Edge(uint64_t id, EdgeType type, Node *from, Node *to, CString *name)
+    Edge(uint32_t id, EdgeType type, Node *from, Node *to, CString *name)
         : id_(id), edgeType_(type), from_(from), to_(to), name_(name)
     {
     }
-    uint64_t GetId() const
+    uint32_t GetId() const
     {
         return id_;
     }
@@ -186,12 +187,12 @@ public:
     {
         to_ = node;
     }
-    static Edge *NewEdge(Chunk *chunk, uint64_t id, EdgeType type, Node *from, Node *to, CString *name);
+    static Edge *NewEdge(Chunk *chunk, uint32_t id, EdgeType type, Node *from, Node *to, CString *name);
     static constexpr int EDGE_FIELD_COUNT = 3;
     ~Edge() = default;
 
 private:
-    uint64_t id_ {-1ULL};
+    uint32_t id_ {-1U};
     EdgeType edgeType_ {EdgeType::DEFAULT};
     Node *from_ {nullptr};
     Node *to_ {nullptr};
@@ -362,12 +363,11 @@ public:
     static constexpr int SEQ_STEP = 2;
     NO_MOVE_SEMANTIC(HeapSnapshot);
     NO_COPY_SEMANTIC(HeapSnapshot);
-    HeapSnapshot(const EcmaVM *vm, const bool isVmMode, const bool isPrivate, const bool trackAllocations,
-                 Chunk *chunk)
-        : stringTable_(vm), vm_(vm), isVmMode_(isVmMode), isPrivate_(isPrivate), trackAllocations_(trackAllocations),
-          chunk_(chunk)
-    {
-    }
+    HeapSnapshot(const EcmaVM *vm, const bool isVmMode, const bool isPrivate, const bool captureNumericValue,
+                 const bool trackAllocations, EntryIdMap *entryIdMap, Chunk *chunk)
+        : stringTable_(vm), vm_(vm), isVmMode_(isVmMode), isPrivate_(isPrivate),
+          captureNumericValue_(captureNumericValue), trackAllocations_(trackAllocations),
+          entryIdMap_(entryIdMap), chunk_(chunk) {}
     ~HeapSnapshot();
     bool BuildUp();
     bool Verify();
@@ -462,10 +462,12 @@ public:
 
 private:
     void FillNodes(bool isInFinish = false);
-    Node *GenerateNode(JSTaggedValue entry, size_t size = 0, int sequenceId = -1, bool isInFinish = false);
-    Node *GeneratePrivateStringNode(size_t size, int sequenceId);
-    Node *GenerateStringNode(JSTaggedValue entry, size_t size, int sequenceId, bool isInFinish = false);
+    Node *GenerateNode(JSTaggedValue entry, size_t size = 0, bool isInFinish = false);
+    Node *GeneratePrivateStringNode(size_t size);
+    Node *GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges();
+    void FillPrimitiveEdge(size_t count, CList<Node *>::iterator iter);
+    void RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo);
     void BridgeAllReferences();
     CString *GenerateEdgeName(TaggedObject *from, TaggedObject *to);
 
@@ -480,7 +482,6 @@ private:
     CList<Node *> nodes_ {};
     CList<Edge *> edges_ {};
     CVector<TimeStamp> timeStamps_ {};
-    std::atomic_int sequenceId_ {1};  // 1 Reversed for SyntheticRoot
     int nodeCount_ {0};
     int edgeCount_ {0};
     int totalNodesSize_ {0};
@@ -489,6 +490,7 @@ private:
     const EcmaVM *vm_;
     bool isVmMode_ {true};
     bool isPrivate_ {false};
+    bool captureNumericValue_ {false};
     Node* privateStringNode_ {nullptr};
     bool trackAllocations_ {false};
     CVector<FunctionInfo> traceInfoStack_ {};
@@ -497,6 +499,7 @@ private:
     TraceTree traceTree_;
     CMap<MethodLiteral *, uint32_t> methodToTraceNodeId_;
     CVector<uint32_t> traceNodeIndex_;
+    EntryIdMap* entryIdMap_;
     Chunk *chunk_ {nullptr};
 };
 
@@ -539,4 +542,4 @@ public:
     static FrontType Convert(NodeType type);
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_HPROF_HEAP_SNAPSHOT_H
+#endif  // ECMASCRIPT_DFX_HPROF_HEAP_SNAPSHOT_H

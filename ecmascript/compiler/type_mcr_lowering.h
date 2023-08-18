@@ -149,7 +149,12 @@ private:
     void LowerLoadElement(GateRef gate);
     void LowerLoadFromTaggedArray(GateRef gate);
     void LowerStoreToTaggedArray(GateRef gate, GateRef glue);
-    void LowerArrayLoadElement(GateRef gate);
+
+    enum class ArrayState : uint8_t {
+        PACKED = 0,
+        HOLEY,
+    };
+    void LowerArrayLoadElement(GateRef gate, ArrayState arrayState);
     void LowerCowArrayCheck(GateRef gate, GateRef glue);
     void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
     void LowerArrayStoreElement(GateRef gate, GateRef glue);
@@ -170,6 +175,9 @@ private:
     void LowerGetSuperConstructor(GateRef gate);
     void LowerJSInlineTargetTypeCheck(GateRef gate);
     void SetDeoptTypeInfo(BuiltinTypeId id, DeoptType &type, size_t &funcIndex);
+    void LowerLoadGetter(GateRef gate);
+    void LowerLoadSetter(GateRef gate);
+    void LowerInlineAccessorCheck(GateRef gate);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);

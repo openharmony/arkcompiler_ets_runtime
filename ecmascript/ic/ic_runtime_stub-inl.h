@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_IC_IC_RUNTIME_STUB_INL_H_
-#define ECMASCRIPT_IC_IC_RUNTIME_STUB_INL_H_
+#ifndef ECMASCRIPT_IC_IC_RUNTIME_STUB_INL_H
+#define ECMASCRIPT_IC_IC_RUNTIME_STUB_INL_H
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/global_env.h"
@@ -283,7 +283,7 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
         handlerInfo = static_cast<uint32_t>(transitionHandler->GetHandlerInfo().GetInt());
     }
 
-    receiver->SetClass(newHClass);
+    receiver->SynchronizedSetClass(newHClass);
     ASSERT(HandlerBase::IsField(handlerInfo));
 
     if (!HandlerBase::IsInlinedProps(handlerInfo)) {
@@ -536,4 +536,4 @@ JSTaggedValue ICRuntimeStub::StoreMiss(JSThread *thread, ProfileTypeInfo *profil
 }
 }  // namespace panda::ecmascript
 
-#endif  // ECMASCRIPT_IC_IC_RUNTIME_STUB_INL_H_
+#endif  // ECMASCRIPT_IC_IC_RUNTIME_STUB_INL_H

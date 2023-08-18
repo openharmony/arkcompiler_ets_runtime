@@ -233,7 +233,12 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
         moduleName = entryPoint;
         entry = entryPoint;
     }
-    if (jsPandaFile->IsModule(thread, entry)) {
+    JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
+    if (!hasRecord) {
+        LOG_ECMA(FATAL) << "cannot find record '" + entry + "', please check the request path.";
+    }
+    if (jsPandaFile->IsModule(recordInfo)) {
         JSHandle<SourceTextModule> module = thread->GetCurrentEcmaContext()->GetModuleManager()->HostGetImportedModule(
             moduleName);
         jsFunc->SetModule(thread, module.GetTaggedValue());

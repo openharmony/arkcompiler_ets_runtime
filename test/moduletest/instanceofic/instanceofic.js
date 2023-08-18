@@ -53,3 +53,16 @@ for (let index = 0; index <= 30; index++) {
     }
 }
 print("test success")
+
+for (let index = 0; index <= 30; index++) {
+    function foo() {
+        try {
+            const obj = {};
+            obj instanceof {};
+        } catch (e) {
+
+        }
+    }
+    foo();
+}
+print("test success")

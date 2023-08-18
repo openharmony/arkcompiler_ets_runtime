@@ -103,9 +103,14 @@ public:
                 case OpCode::SWITCH_CASE:
                 case OpCode::STATE_ENTRY:
                 case OpCode::IF_EXCEPTION:
-                case OpCode::IF_SUCCESS:
+                case OpCode::IF_SUCCESS: {
                     linearizer_->CreateGateRegion(gate);
+                    if (linearizer_->onlyBB_) {
+                        GateRegion* region = linearizer_->GateToRegion(gate);
+                        currentRegion_ = region;
+                    }
                     break;
+                }
                 case OpCode::LOOP_BACK:
                 case OpCode::IF_BRANCH:
                 case OpCode::SWITCH_BRANCH:
@@ -119,8 +124,14 @@ public:
                         endStateList_.emplace_back(gate);
                     }
                     break;
-                default:
+                default: {
+                    if (linearizer_->onlyBB_) {
+                        auto& info = linearizer_->GetGateInfo(gate);
+                        info.region = currentRegion_;
+                        linearizer_->BindGate(gate, currentRegion_);
+                    }
                     break;
+                }
             }
         }
     }
@@ -152,6 +163,7 @@ private:
     ChunkDeque<GateRef> pendingList_;
     ChunkVector<GateRef> endStateList_;
     GateAccessor acc_;
+    GateRegion* currentRegion_;
     bool scheduleLIR_;
 };
 
@@ -796,16 +808,18 @@ void GraphLinearizer::LinearizeGraph()
     builder.Run();
     ImmediateDominatorsGenerator generator(this, chunk_, regionList_.size());
     generator.Run();
-    if (!IsSchedueLIR() && loopNumber_ > 0) {
-        scheduleUpperBound_ = true;
-        LoopInfoBuilder loopInfoBuilder(this, chunk_);
-        loopInfoBuilder.Run();
+    if (!onlyBB_) {
+        if (!IsSchedueLIR() && loopNumber_ > 0) {
+            scheduleUpperBound_ = true;
+            LoopInfoBuilder loopInfoBuilder(this, chunk_);
+            loopInfoBuilder.Run();
+        }
+        GateScheduler scheduler(this);
+        scheduler.Prepare();
+        scheduler.ScheduleUpperBound();
+        scheduler.ScheduleFloatingGate();
+        scheduler.ScheduleFixedGate();
     }
-    GateScheduler scheduler(this);
-    scheduler.Prepare();
-    scheduler.ScheduleUpperBound();
-    scheduler.ScheduleFloatingGate();
-    scheduler.ScheduleFixedGate();
 }
 
 void GraphLinearizer::CreateGateRegion(GateRef gate)

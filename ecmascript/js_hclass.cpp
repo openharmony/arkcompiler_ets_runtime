@@ -13,12 +13,14 @@
  * limitations under the License.
  */
 
+#include "ecmascript/elements.h"
 #include "ecmascript/js_hclass-inl.h"
 
 #include <algorithm>
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/tagged_array.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_object-inl.h"
@@ -149,7 +151,7 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, ui
     SetIsPrototype(false);
     SetHasDeleteProperty(false);
     SetIsAllTaggedProp(true);
-    SetElementRepresentation(Representation::NONE);
+    SetElementsKind(ElementsKind::GENERIC);
     SetTransitions(thread, JSTaggedValue::Undefined());
     SetProtoChangeMarker(thread, JSTaggedValue::Null());
     SetProtoChangeDetails(thread, JSTaggedValue::Null());
@@ -208,6 +210,7 @@ void JSHClass::TransitionElementsToDictionary(const JSThread *thread, const JSHa
     }
     obj->GetJSHClass()->SetIsDictionaryElement(true);
     obj->GetJSHClass()->SetIsStableElements(false);
+    obj->GetJSHClass()->SetElementsKind(ElementsKind::GENERIC);
 }
 
 JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
@@ -246,7 +249,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
     JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
     JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()));
     if (newClass != nullptr) {
-        obj->SetClass(newClass);
+        obj->SynchronizedSetClass(newClass);
 #if ECMASCRIPT_ENABLE_IC
         JSHClass::NotifyHclassChanged(thread, jshclass, JSHandle<JSHClass>(thread, newClass), key.GetTaggedValue());
 #endif
@@ -280,7 +283,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
 #if ECMASCRIPT_ENABLE_IC
     JSHClass::NotifyHclassChanged(thread, jshclass, newJsHClass, key.GetTaggedValue());
 #endif
-    obj->SetClass(*newJsHClass);
+    obj->SynchronizedSetClass(*newJsHClass);
 
     // Maintaining subtyping is no longer required when transition succeeds.
     if (jshclass->HasTSSubtyping()) {
@@ -407,7 +410,7 @@ void JSHClass::ShouldUpdateProtoClass(const JSThread *thread, const JSHandle<JST
         // After the hclass is updated, check whether the proto chain status of ic is updated.
         NotifyHclassChanged(thread, hclass, newProtoClass);
 #endif
-        JSObject::Cast(proto->GetTaggedObject())->SetClass(*newProtoClass);
+        JSObject::Cast(proto->GetTaggedObject())->SynchronizedSetClass(*newProtoClass);
         newProtoClass->SetIsPrototype(true);
     }
 }
@@ -429,7 +432,7 @@ void JSHClass::TransitionToDictionary(const JSThread *thread, const JSHandle<JSO
 #if ECMASCRIPT_ENABLE_IC
         JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, obj->GetJSHClass()), newJsHClass);
 #endif
-        obj->SetClass(newJsHClass);
+        obj->SynchronizedSetClass(*newJsHClass);
     }
 }
 
@@ -457,8 +460,59 @@ void JSHClass::TransitionForRepChange(const JSThread *thread, const JSHandle<JSO
     JSHClass::NotifyHclassChanged(thread, oldHClass, newHClass, key.GetTaggedValue());
 #endif
 
-    receiver->SetClass(newHClass);
+    receiver->SynchronizedSetClass(*newHClass);
     // 4. Maybe Transition And Maintain subtypeing check
+}
+
+void JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array)
+{
+    JSTaggedValue elements = array->GetElements();
+    if (!elements.IsTaggedArray()) {
+        return;
+    }
+    ElementsKind newKind = ElementsKind::NONE;
+    auto elementArray = TaggedArray::Cast(elements);
+    uint32_t length = elementArray->GetLength();
+    for (uint32_t i = 0; i < length; i++) {
+        JSTaggedValue value = elementArray->Get(i);
+        newKind = Elements::ToElementsKind(value, newKind);
+    }
+    ElementsKind current = array->GetJSHClass()->GetElementsKind();
+    if (newKind == current) {
+        return;
+    }
+    auto arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
+    if (arrayHClassIndexMap.find(newKind) != arrayHClassIndexMap.end()) {
+        auto index = static_cast<size_t>(thread->GetArrayHClassIndexMap().at(newKind));
+        auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
+        JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
+        array->SetClass(hclass);
+    }
+}
+
+void JSHClass::TransitToElementsKind(
+    const JSThread *thread, const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &value, ElementsKind kind)
+{
+    if (!object->IsJSArray()) {
+        return;
+    }
+    ElementsKind current = object->GetJSHClass()->GetElementsKind();
+    if (Elements::IsGeneric(current)) {
+        return;
+    }
+    auto newKind = Elements::ToElementsKind(value.GetTaggedValue(), kind);
+    // Merge current kind and new kind
+    newKind = Elements::MergeElementsKind(current, newKind);
+    if (newKind == current) {
+        return;
+    }
+    auto arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
+    if (arrayHClassIndexMap.find(newKind) != arrayHClassIndexMap.end()) {
+        auto index = static_cast<size_t>(thread->GetArrayHClassIndexMap().at(newKind));
+        auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
+        JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
+        object->SetClass(hclass);
+    }
 }
 
 JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
@@ -643,7 +697,10 @@ void JSHClass::RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &ol
     ASSERT(newHclass->IsPrototype());
     bool onceRegistered = UnregisterOnProtoChain(thread, oldHclass);
 
-    newHclass->SetProtoChangeDetails(thread, oldHclass->GetProtoChangeDetails());
+    // oldHclass is already marked. Only update newHclass.protoChangeDetails if it doesn't exist for further use.
+    if (!newHclass->GetProtoChangeDetails().IsProtoChangeDetails()) {
+        newHclass->SetProtoChangeDetails(thread, oldHclass->GetProtoChangeDetails());
+    }
     oldHclass->SetProtoChangeDetails(thread, JSTaggedValue::Undefined());
     if (onceRegistered) {
         if (newHclass->GetProtoChangeDetails().IsProtoChangeDetails()) {
@@ -733,6 +790,9 @@ bool JSHClass::DumpForProfile(const JSHClass *hclass, PGOHClassLayoutDesc &desc,
     DISALLOW_GARBAGE_COLLECTION;
     if (hclass->IsDictionaryMode()) {
         return false;
+    }
+    if (kind == PGOObjKind::ELEMENT) {
+        desc.UpdateElementKind(hclass->GetElementsKind());
     }
 
     LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());

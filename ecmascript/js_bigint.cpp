@@ -546,6 +546,7 @@ JSHandle<BigInt> BigInt::Int64ToBigInt(JSThread *thread, const int64_t &number)
         value = number;
     }
     JSHandle<BigInt> bigint = Uint64ToBigInt(thread, value);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     bigint->SetSign(sign);
     return BigIntHelper::RightTruncate(thread, bigint);
 }
@@ -591,6 +592,8 @@ void BigInt::BigIntToInt64(JSThread *thread, JSHandle<JSTaggedValue> bigint, int
     RETURN_IF_ABRUPT_COMPLETION(thread);
     if (Equal(bigInt64.GetTaggedValue(), bigint.GetTaggedValue())) {
         *lossless = true;
+    } else {
+        *lossless = false;
     }
     *cValue = bigInt64->ToInt64();
 }
@@ -603,6 +606,8 @@ void BigInt::BigIntToUint64(JSThread *thread, JSHandle<JSTaggedValue> bigint, ui
     RETURN_IF_ABRUPT_COMPLETION(thread);
     if (Equal(bigUint64.GetTaggedValue(), bigint.GetTaggedValue())) {
         *lossless = true;
+    } else {
+        *lossless = false;
     }
     *cValue = bigUint64->ToUint64();
 }

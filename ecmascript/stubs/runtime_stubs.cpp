@@ -15,6 +15,7 @@
 
 #include <cmath>
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/accessor_data.h"
@@ -49,11 +50,13 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
+#include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_manager.h"
 #include "libpandafile/bytecode_instruction-inl.h"
+#include "macros.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_locale.h"
@@ -387,6 +390,23 @@ DEF_RUNTIME_STUBS(CopyAndUpdateObjLayout)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
+{
+    RUNTIME_STUBS_HEADER(UpdateHClassForElementsKind);
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the first parameter
+    JSTaggedType elementsKind = GetTArg(argv, argc, 1);        // 1: means the first parameter
+    ElementsKind kind = Elements::FixElementsKind(static_cast<ElementsKind>(elementsKind));
+    auto arrayIndexMap = thread->GetArrayHClassIndexMap();
+    if (arrayIndexMap.find(kind) != arrayIndexMap.end()) {
+        auto index = thread->GetArrayHClassIndexMap().at(kind);
+        auto globalConst = thread->GlobalConstants();
+        auto targetHClassValue = globalConst->GetGlobalConstantObject(static_cast<size_t>(index));
+        auto hclass = JSHClass::Cast(targetHClassValue.GetTaggedObject());
+        JSHandle<JSObject>(receiver)->SetClass(hclass);
+    }
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
 {
     std::string format = MessageString::GetMessageString(fmtMessageId);
@@ -398,6 +418,15 @@ void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
     } else {
         LOG_ECMA(ERROR) << result;
     }
+    va_end(args);
+}
+
+void RuntimeStubs::DebugPrintCustom(uintptr_t fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    std::string result = base::StringHelper::Vformat(reinterpret_cast<const char*>(fmt), args);
+    LOG_ECMA(ERROR) << result;
     va_end(args);
 }
 
@@ -413,10 +442,10 @@ void RuntimeStubs::Comment(uintptr_t argStr)
     LOG_ECMA(DEBUG) << str;
 }
 
-void RuntimeStubs::ProfileCall(uintptr_t argGlue, uintptr_t target, uint32_t incCount)
+void RuntimeStubs::ProfileCall(uintptr_t argGlue, uintptr_t func, uintptr_t target, int32_t pcOffset, uint32_t incCount)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(target, SampleMode::CALL_MODE, incCount);
+    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(func, target, pcOffset, SampleMode::CALL_MODE, incCount);
 }
 
 void RuntimeStubs::ProfileOpType(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type)
@@ -432,10 +461,10 @@ void RuntimeStubs::ProfileDefineClass(uintptr_t argGlue, uintptr_t func, int32_t
 }
 
 void RuntimeStubs::ProfileCreateObject(
-    uintptr_t argGlue, JSTaggedType func, int32_t offset, JSTaggedType originObj, JSTaggedType newObj)
+    uintptr_t argGlue, JSTaggedType func, int32_t offset, JSTaggedType newObj, int32_t traceId)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCreateObject(func, offset, originObj, newObj);
+    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCreateObject(func, offset, newObj, traceId);
 }
 
 void RuntimeStubs::ProfileObjLayout(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object, int32_t store)
@@ -450,6 +479,17 @@ void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
     va_list args;
     va_start(args, fmtMessageId);
     std::string result = base::StringHelper::Vformat(format.c_str(), args);
+    LOG_FULL(FATAL) << result;
+    va_end(args);
+    LOG_ECMA(FATAL) << "this branch is unreachable";
+    UNREACHABLE();
+}
+
+void RuntimeStubs::FatalPrintCustom(uintptr_t fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    std::string result = base::StringHelper::Vformat(reinterpret_cast<const char*>(fmt), args);
     LOG_FULL(FATAL) << result;
     va_end(args);
     LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -978,7 +1018,8 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounterWithProf)
     JSHandle<Method> method(thread, thisFunc->GetMethod());
     auto profileTypeInfo = method->GetProfileTypeInfo();
     if (profileTypeInfo.IsUndefined()) {
-        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(thisFunc.GetTaggedType(), SampleMode::HOTNESS_MODE);
+        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(
+            JSTaggedValue::VALUE_UNDEFINED, thisFunc.GetTaggedType(), -1, SampleMode::HOTNESS_MODE);
         uint32_t slotSize = method->GetSlotSize();
         auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
         return res.GetRawData();
@@ -2323,7 +2364,7 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
         FunctionKind kind = function->GetCallTarget()->GetFunctionKind();
         // instead of hclass by non_optimized hclass when method ClearAOTFlags
         JSHandle<JSHClass> newHClass = factory->GetNonOptimizedHclass(hclass, kind);
-        function->SetClass(newHClass);
+        function->SynchronizedSetClass(*newHClass);
     }
     context->SetMethod(thread, function.GetTaggedValue());
     context->SetThis(thread, frameHandler.GetThis());
@@ -2350,7 +2391,8 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
         ASSERT(callTarget != nullptr);
         Method *method = callTarget->GetCallTarget();
         if (!method->IsNativeWithCallField()) {
-            thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(targetFunc.GetTaggedType());
+            thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(
+                JSTaggedValue::VALUE_UNDEFINED, targetFunc.GetTaggedType());
         }
     }
     JSHandle<TaggedArray> boundArgs(thread, boundFunc->GetBoundArguments());

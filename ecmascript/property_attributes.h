@@ -50,6 +50,24 @@ enum class PropertyBoxType {
     INVALIDATED = CONSTANT,     // Cell has been deleted, invalidated or never existed.
 };
 
+/**
+ * [bitfield]
+ *  Common | WritableField (bit 1)
+ *         | EnumerableField (bit 2)
+ *         | ConfigurableField (bit 3)
+ *         | IsAccessorField (bit 4)
+ *         | IsInlinedPropsField(bit 5)
+ *         | RepresentationField(bit 6...7)
+ *         --------------------------------
+ *    Fast | OffsetField(bit 8...17)
+ *         | TrackTypeField(bit 18...20)
+ *         | SortedIndexField(bit 21...30)
+ *         | IsConstPropsField(bit 31)
+ *         | IsNotHoleField(bit 32)
+ *         -----------------------------
+ *    Slow | PropertyBoxTypeField(bit 8...9)
+ *         | DictionaryOrderField(bit 10...29)
+ */
 class PropertyAttributes {
 public:
     PropertyAttributes() = default;
@@ -68,29 +86,48 @@ public:
     static constexpr uint32_t REPRESENTATION_NUM = 2;
     static constexpr uint32_t TRACK_TYPE_NUM = 3;
     static constexpr uint32_t MAX_CAPACITY_OF_PROPERTIES = (1U << OFFSET_BITFIELD_NUM) - 1;
+    static constexpr unsigned BITS_PER_BYTE = 8;
 
-    using PropertyMetaDataField = BitField<int, 0, 4>;    // 4: property metaData field occupies 4 bits
-    using AttributesField = BitField<int, 0, 4>;          // 4: attributes field occupies 4 bits
-    using DefaultAttributesField = BitField<int, 0, 3>;   // 3: default attributes field occupies 3 bits
-    using WritableField = BitField<bool, 0, 1>;           // 1: writable field occupies 1 bits
+    using PropertyMetaDataField = BitField<int, 0, 4>;  // 4: property metaData field occupies 4 bits
+    using AttributesField = BitField<int, 0, 4>;        // 4: attributes field occupies 4 bits
+    using DefaultAttributesField = BitField<int, 0, 3>; // 3: default attributes field occupies 3 bits
+    using WritableField = BitField<bool, 0, 1>;         // 1: writable field occupies 1 bits
     using EnumerableField = WritableField::NextFlag;
     using ConfigurableField = EnumerableField::NextFlag;
-    using IsAccessorField = ConfigurableField::NextFlag;  // 4
+    using IsAccessorField = ConfigurableField::NextFlag; // 4
 
-    // fast mode
-    using IsInlinedPropsField = PropertyMetaDataField::NextFlag;                        // 5
-    using RepresentationField = IsInlinedPropsField::NextField<Representation, REPRESENTATION_NUM>; // 2: 2 bits, 6-8
-    using OffsetField = RepresentationField::NextField<uint32_t, OFFSET_BITFIELD_NUM>;  // 18
-    using TrackTypeField = OffsetField::NextField<TrackType, TRACK_TYPE_NUM>;           // 3: 3 bits
+    using IsInlinedPropsField = PropertyMetaDataField::NextFlag;                                    // 5
+    using RepresentationField = IsInlinedPropsField::NextField<Representation, REPRESENTATION_NUM>; // 2: 2 bits, 6-7
+    using CommonLastBitField = RepresentationField;
+    // For flags required for both fast mode and slow mode, need to be added before CommonLastBitField
+
+    // ---------------------------------------------------------------------------------------------
+    // only for fast mode
+    using FastModeStartField = CommonLastBitField;
+    static_assert(FastModeStartField::START_BIT == CommonLastBitField::START_BIT);
+    static_assert(FastModeStartField::SIZE == CommonLastBitField::SIZE);
+    using OffsetField = FastModeStartField::NextField<uint32_t, OFFSET_BITFIELD_NUM>; // 17
+    using TrackTypeField = OffsetField::NextField<TrackType, TRACK_TYPE_NUM>;     // 20: 3 bits
 
     static constexpr uint32_t NORMAL_ATTR_BITS = 20;
     using NormalAttrField = BitField<int, 0, NORMAL_ATTR_BITS>;
-    using SortedIndexField = TrackTypeField::NextField<uint32_t, OFFSET_BITFIELD_NUM>;  // 30
-    using IsConstPropsField = SortedIndexField::NextFlag;                               // 31
-    using IsNotHoleField = IsConstPropsField::NextFlag;                                 // 32
-    // dictionary mode, include global
-    using PropertyBoxTypeField = PropertyMetaDataField::NextField<PropertyBoxType, 2>;             // 2: 2 bits, 5-6
-    using DictionaryOrderField = PropertyBoxTypeField::NextField<uint32_t, DICTIONARY_ORDER_NUM>;  // 26
+    using SortedIndexField = TrackTypeField::NextField<uint32_t, OFFSET_BITFIELD_NUM>; // 30
+    using IsConstPropsField = SortedIndexField::NextFlag;                              // 31
+    using IsNotHoleField = IsConstPropsField::NextFlag;                                // 32
+    using FastModeLastField = IsNotHoleField;
+    static_assert(
+        FastModeLastField::START_BIT + FastModeLastField::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
+
+    // ---------------------------------------------------------------------------------------------
+    // only for dictionary mode, include global
+    using DictModeStartField = CommonLastBitField;
+    static_assert(DictModeStartField::START_BIT == CommonLastBitField::START_BIT);
+    static_assert(DictModeStartField::SIZE == CommonLastBitField::SIZE);
+    using PropertyBoxTypeField = DictModeStartField::NextField<PropertyBoxType, 2>;               // 2: 2 bits, 8-9
+    using DictionaryOrderField = PropertyBoxTypeField::NextField<uint32_t, DICTIONARY_ORDER_NUM>; // 29
+    using DictModeLastField = DictionaryOrderField;
+    static_assert(
+        DictModeLastField::START_BIT + DictModeLastField::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
     static constexpr uint32_t BIT_SIZE = 28;
     static constexpr int INITIAL_PROPERTY_INDEX = 0;

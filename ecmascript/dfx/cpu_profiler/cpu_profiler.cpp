@@ -77,7 +77,7 @@ void CpuProfiler::StartCpuProfilerForInfo()
     vm_->GetJSThread()->SetIsProfiling(true);
     JSPandaFileManager *pandaFileManager = JSPandaFileManager::GetInstance();
     pandaFileManager->EnumerateJSPandaFiles([&](const JSPandaFile *file) -> bool {
-        pandaFileManager->GetJSPtExtractorAndExtract(file);
+        pandaFileManager->CpuProfilerGetJSPtExtractor(file);
         return true;
     });
 
@@ -137,7 +137,7 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
     vm_->GetJSThread()->SetIsProfiling(true);
     JSPandaFileManager *pandaFileManager = JSPandaFileManager::GetInstance();
     pandaFileManager->EnumerateJSPandaFiles([&](const JSPandaFile *file) -> bool {
-        pandaFileManager->GetJSPtExtractorAndExtract(file);
+        pandaFileManager->CpuProfilerGetJSPtExtractor(file);
         return true;
     });
 
@@ -395,7 +395,7 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
         }
     }
 
-    if (profiler->GetBuildNapiStack()) {
+    if (profiler->GetBuildNapiStack() || thread->GetGcState()) {
         if (profiler->generator_->SemPost(0) != 0) {
             LOG_ECMA(ERROR) << "sem_[0] post failed";
         }

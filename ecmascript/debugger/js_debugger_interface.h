@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TOOLING_INTERFACE_JS_DEBUG_INTERFACE_H
-#define ECMASCRIPT_TOOLING_INTERFACE_JS_DEBUG_INTERFACE_H
+#ifndef ECMASCRIPT_DEBUGGER_JS_DEBUG_INTERFACE_H
+#define ECMASCRIPT_DEBUGGER_JS_DEBUG_INTERFACE_H
 
 #include <string_view>
 
@@ -141,4 +141,4 @@ public:
 };
 }  // namespace panda::ecmascript::tooling
 
-#endif  // ECMASCRIPT_TOOLING_INTERFACE_JS_DEBUG_INTERFACE_H
+#endif  // ECMASCRIPT_DEBUGGER_JS_DEBUG_INTERFACE_H

@@ -32,6 +32,7 @@
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/mem/slots.h"
@@ -634,6 +635,11 @@ inline GateRef StubBuilder::TaggedIsGeneratorObject(GateRef x)
     return env_->GetBuilder()->TaggedIsGeneratorObject(x);
 }
 
+inline GateRef StubBuilder::TaggedIsJSArray(GateRef x)
+{
+    return env_->GetBuilder()->TaggedIsJSArray(x);
+}
+
 inline GateRef StubBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsAsyncGeneratorObject(x);
@@ -1025,10 +1031,7 @@ inline GateRef StubBuilder::IsDictionaryElement(GateRef hClass)
 inline GateRef StubBuilder::IsClassConstructorFromBitField(GateRef bitfield)
 {
     // decode
-    return Int32NotEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSHClass::ClassConstructorBit::START_BIT)),
-                 Int32((1LU << JSHClass::ClassConstructorBit::SIZE) - 1)),
-        Int32(0));
+    return env_->GetBuilder()->IsClassConstructorWithBitField(bitfield);
 }
 
 inline GateRef StubBuilder::IsClassConstructor(GateRef object)
@@ -1666,6 +1669,11 @@ inline GateRef StubBuilder::GetInlinedPropertiesFromHClass(GateRef hClass)
         Int32(JSHClass::InlinedPropsStartBits::START_BIT)),
         Int32((1LU << JSHClass::InlinedPropsStartBits::SIZE) - 1));
     return Int32Sub(objectSizeInWords, inlinedPropsStart);
+}
+
+inline GateRef StubBuilder::GetElementsKindFromHClass(GateRef hClass)
+{
+    return env_->GetBuilder()->GetElementsKindByHClass(hClass);
 }
 
 inline GateRef StubBuilder::GetObjectSizeFromHClass(GateRef hClass)
@@ -2397,6 +2405,16 @@ inline GateRef StubBuilder::IsStableElements(GateRef hClass)
     return env_->GetBuilder()->IsStableElements(hClass);
 }
 
+inline GateRef StubBuilder::HasConstructorByHClass(GateRef hClass)
+{
+    return env_->GetBuilder()->HasConstructorByHClass(hClass);
+}
+
+inline GateRef StubBuilder::HasConstructor(GateRef object)
+{
+    return env_->GetBuilder()->HasConstructor(object);
+}
+
 inline GateRef StubBuilder::IsStableArguments(GateRef hClass)
 {
     return env_->GetBuilder()->IsStableArguments(hClass);
@@ -2424,6 +2442,61 @@ inline GateRef StubBuilder::GetProfileTypeInfo(GateRef jsFunc)
 inline GateRef StubBuilder::LoadObjectFromConstPool(GateRef jsFunc, GateRef index)
 {
     return env_->GetBuilder()->LoadObjectFromConstPool(jsFunc, index);
+}
+
+inline GateRef StubBuilder::LoadPfHeaderFromConstPool(GateRef jsFunc)
+{
+    GateRef method = Load(VariableType::JS_ANY(), jsFunc, IntPtr(JSFunctionBase::METHOD_OFFSET));
+    GateRef constPool = Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
+    auto length = GetLengthOfTaggedArray(constPool);
+    auto index = Int32Sub(length, Int32(ConstantPool::JS_PANDA_FILE_INDEX));
+    auto jsPandaFile = GetValueFromTaggedArray(constPool, index);
+    auto jsPfAddr = ChangeInt64ToIntPtr(ChangeTaggedPointerToInt64(jsPandaFile));
+    auto pfAddr = Load(VariableType::NATIVE_POINTER(), jsPfAddr, Int32(JSPandaFile::PF_OFFSET));
+    auto pfHeader = Load(VariableType::NATIVE_POINTER(), pfAddr, Int32(0));
+    return pfHeader;
+}
+
+inline GateRef StubBuilder::LoadHCIndexFromConstPool(GateRef jsFunc, GateRef traceId)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+
+    GateRef method = Load(VariableType::JS_ANY(), jsFunc, IntPtr(JSFunctionBase::METHOD_OFFSET));
+    GateRef constPool = Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
+    auto length = GetLengthOfTaggedArray(constPool);
+    // 1: constantIndexInfo at the end of the constpool
+    auto index = Int32Sub(length, Int32(1));
+    auto constantIndexInfo = GetValueFromTaggedArray(constPool, index);
+    auto indexInfoLength = GetLengthOfTaggedArray(constantIndexInfo);
+    DEFVARIABLE(bcOffset, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(constantIndex, VariableType::INT32(),
+        Int32(static_cast<int32_t>(ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX)));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    Label matchSuccess(env);
+    Label afterUpdate(env);
+    Branch(Int32LessThan(*i, indexInfoLength), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    bcOffset = GetInt32OfTInt(GetValueFromTaggedArray(constantIndexInfo, Int32(*i)));
+    Branch(Int32Equal(*bcOffset, traceId), &matchSuccess, &afterUpdate);
+    Bind(&matchSuccess);
+    constantIndex = GetInt32OfTInt(GetValueFromTaggedArray(constantIndexInfo, Int32(*i + 1)));
+    Jump(&afterUpdate);
+    Bind(&afterUpdate);
+    i = Int32Add(*i, Int32(2)); // 2 : skip traceId and constantIndex
+    Branch(Int32LessThan(*i, indexInfoLength), &loopEnd, &afterLoop);
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&afterLoop);
+    auto ret = *constantIndex;
+
+    env->SubCfgExit();
+    return ret;
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

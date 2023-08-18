@@ -39,7 +39,8 @@ public:
         head_ = other->head_;
         size_ = other->size_;
     }
-    bool FoundIndexChecked(RangeGuard* rangeGuard, GateRef input);
+    uint32_t FoundIndexCheckedForLength(RangeGuard* rangeGuard, GateRef input);
+    uint32_t FoundIndexCheckedForIndex(RangeGuard* rangeGuard, GateRef input);
     GateRef LookupNode(LaterElimination* elimination, GateRef gate);
 private:
     struct Node {

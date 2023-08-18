@@ -63,7 +63,7 @@ uint32_t JSSet::GetSize() const
 
 JSTaggedValue JSSet::GetValue(int entry) const
 {
-    ASSERT_PRINT(entry >= 0 && entry < GetSize(), "entry must be non-negative integer less than capacity");
+    ASSERT_PRINT(entry >= 0 && static_cast<uint32_t>(entry) < GetSize(), "entry must be non-negative integer less than capacity");
     return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->GetValue(entry);
 }
 }  // namespace panda::ecmascript

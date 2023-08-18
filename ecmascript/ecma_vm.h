@@ -26,6 +26,7 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/gc_stats.h"
+#include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/taskpool/taskpool.h"
 
@@ -58,6 +59,7 @@ class SnapshotProcessor;
 class PGOProfiler;
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 class HeapProfilerInterface;
+class HeapProfiler;
 #endif
 namespace job {
 class MicroJobQueue;
@@ -83,7 +85,7 @@ class EcmaStringTable;
 
 using NativePtrGetter = void* (*)(void* info);
 
-using ResolveBufferCallback = std::function<std::vector<uint8_t>(std::string dirPath)>;
+using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)>;
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 class EcmaVM {
 public:
@@ -198,10 +200,6 @@ public:
     }
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER) const;
 
-    void StartHeapTracking(HeapTracker *tracker);
-
-    void StopHeapTracking();
-
     NativeAreaAllocator *GetNativeAreaAllocator() const
     {
         return nativeAreaAllocator_.get();
@@ -277,48 +275,15 @@ public:
 
     void TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint);
 
-    void WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm)
-    {
-        os::memory::LockHolder lock(mutex_);
-        auto thread = workerVm->GetJSThread();
-        if (thread != nullptr && hostVm != nullptr) {
-            auto tid = thread->GetThreadId();
-            if (tid != 0) {
-                workerList_.emplace(tid, workerVm);
-            }
-        }
-    }
+    void WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm);
 
-    EcmaVM *GetWorkerVm(uint32_t tid) const
-    {
-        EcmaVM *workerVm = nullptr;
-        if (!workerList_.empty()) {
-            auto iter = workerList_.find(tid);
-            if (iter != workerList_.end()) {
-                workerVm = iter->second;
-            }
-        }
-        return workerVm;
-    }
+    EcmaVM *GetWorkerVm(uint32_t tid);
 
-    bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
-    {
-        os::memory::LockHolder lock(mutex_);
-        auto thread = workerVm->GetJSThread();
-        if (hostVm != nullptr && thread != nullptr) {
-            auto tid = thread->GetThreadId();
-            if (tid == 0) {
-                return false;
-            }
-            auto iter = workerList_.find(tid);
-            if (iter != workerList_.end()) {
-                workerList_.erase(iter);
-                return true;
-            }
-            return false;
-        }
-        return false;
-    }
+    bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+
+    bool SuspendWorkerVm(uint32_t tid);
+
+    void ResumeWorkerVm(uint32_t tid);
 
     template<typename Callback>
     void EnumerateWorkerVm(Callback cb)
@@ -347,7 +312,10 @@ public:
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     void DeleteHeapProfile();
+    HeapProfilerInterface *GetHeapProfile();
     HeapProfilerInterface *GetOrNewHeapProfile();
+    void StartHeapTracking();
+    void StopHeapTracking();
 #endif
 
     bool EnableReportModuleResolvingFailure() const

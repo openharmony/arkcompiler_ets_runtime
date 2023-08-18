@@ -198,7 +198,7 @@ void DropframeManager::RemoveLexModifyRecordOfTopFrame(JSThread *thread)
     GlobalHandleCollection globalHandleCollection(thread);
     for (const auto &item : modifiedLexVar_.top()) {
         JSHandle<JSTaggedValue> envHandle = std::get<0>(item);
-        JSHandle<JSTaggedValue> valueHandle = std::get<2>(item); // get the third item of the tuple
+        JSHandle<JSTaggedValue> valueHandle = std::get<2>(item); // 2：get the third item of the tuple
         globalHandleCollection.Dispose(envHandle);
         globalHandleCollection.Dispose(valueHandle);
     }

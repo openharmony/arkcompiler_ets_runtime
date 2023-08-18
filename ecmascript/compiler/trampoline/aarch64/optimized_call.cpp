@@ -401,6 +401,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     Label lCallConstructor;
     Label lCallBuiltinStub;
     Label lCallNativeCpp;
+    Label lNotClass;
 
     __ Ldr(Register(X5), MemoryOperand(jsfunc, 0));
     __ Ldr(Register(X5), MemoryOperand(Register(X5), JSHClass::BIT_FIELD_OFFSET));
@@ -409,8 +410,10 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     __ Ldr(callField, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
     __ Tbnz(callField, MethodLiteral::IsNativeBit::START_BIT, &callNativeMethod);
     if (!isNew) {
-        __ Tbnz(Register(X5), JSHClass::ClassConstructorBit::START_BIT, &lCallConstructor);
+        __ Tbz(Register(X5), JSHClass::IsClassConstructorOrPrototypeBit::START_BIT, &lNotClass);
+        __ Tbnz(Register(X5), JSHClass::ConstructorBit::START_BIT, &lCallConstructor);
     }
+    __ Bind(&lNotClass);
     {
         Register argV(X5);
         // skip argc
@@ -603,6 +606,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     Label popArgs;
     Label slowCall;
     Label aotCall;
+    Label notClass;
     // get bound arguments
     __ Ldr(boundLength, MemoryOperand(jsfunc, JSBoundFunction::BOUND_ARGUMENTS_OFFSET));
     //  get bound length
@@ -650,7 +654,9 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     Register hclass = __ AvailableRegister2();
     __ Ldr(hclass, MemoryOperand(boundTarget, 0));
     __ Ldr(hclass, MemoryOperand(hclass, JSHClass::BIT_FIELD_OFFSET));
-    __ Tbnz(hclass, JSHClass::ClassConstructorBit::START_BIT, &slowCall);
+    __ Tbz(hclass, JSHClass::IsClassConstructorOrPrototypeBit::START_BIT, &notClass);
+    __ Tbnz(hclass, JSHClass::ConstructorBit::START_BIT, &slowCall);
+    __ Bind(&notClass);
     __ Tbz(hclass, JSHClass::IsOptimizedBit::START_BIT, &slowCall);
     __ Bind(&aotCall);
     {
@@ -747,12 +753,12 @@ void OptimizedCall::CallRuntimeWithArgv(ExtendedAssembler *assembler)
     Register sp(SP);
     // 2 : 2 means pair
     __ Stp(argc, argv, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
-    __ Stp(Register(X30), runtimeId, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+    __ Stp(Register(X30), runtimeId, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX)); // 2 : 2 means pair
     Register fp(X29);
     // construct leave frame
     Register frameType(X9);
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::LEAVE_FRAME_WITH_ARGV)));
-    __ Stp(frameType, Register(X29), MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+    __ Stp(frameType, Register(X29), MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX)); // 2 : 2 means pair
     __ Add(Register(FP), sp, Immediate(FRAME_SLOT_SIZE));
     __ Str(fp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
 

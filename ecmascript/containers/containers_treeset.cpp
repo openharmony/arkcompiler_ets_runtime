@@ -378,9 +378,9 @@ JSTaggedValue ContainersTreeSet::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 1);
     JSHandle<JSAPITreeSet> tset = JSHandle<JSAPITreeSet>::Cast(self);
     JSMutableHandle<TaggedTreeSet> iteratedSet(thread, tset->GetTreeSet());
-    int elements = iteratedSet->NumberOfElements();
+    uint32_t elements = iteratedSet->NumberOfElements();
     JSHandle<TaggedArray> entries = TaggedTreeSet::GetArrayFromSet(thread, iteratedSet);
-    int index = 0;
+    uint32_t index = 0;
     size_t length = entries->GetLength();
     const uint32_t argsLength = 3;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();

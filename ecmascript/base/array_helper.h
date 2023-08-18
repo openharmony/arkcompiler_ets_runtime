@@ -26,6 +26,11 @@ struct FlattenArgs {
     int64_t start = 0;
     double depth = 0;
 };
+
+enum class HolesType {
+    SKIP_HOLES,
+    READ_THROUGH_HOLES,
+};
 class ArrayHelper {
 public:
     static bool IsConcatSpreadable(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
@@ -37,6 +42,9 @@ public:
                                           const JSHandle<JSTaggedValue> &thisObjVal, const FlattenArgs &args,
                                           const JSHandle<JSTaggedValue> &mapperFunctionHandle,
                                           const JSHandle<JSTaggedValue> &thisArg);
+    static JSTaggedValue SortIndexedProperties(JSThread *thread, const JSHandle<JSObject> &thisObj,
+                                               int64_t len, const JSHandle<JSTaggedValue> &callbackFnHandle,
+                                               HolesType holes);
 };
 }  // namespace panda::ecmascript::base
 

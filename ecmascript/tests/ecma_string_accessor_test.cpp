@@ -56,7 +56,7 @@ public:
 HWTEST_F_L0(LineEcmaStringTest, ComputeSizeUtf8)
 {
     uint32_t scale = 3333;
-    for (uint32_t i = 0x40000000U - 1; i > scale; i = i - scale) {
+    for (uint32_t i = EcmaString::MAX_STRING_LENGTH - 1; i > scale; i = i - scale) {
         uint32_t length = i;
         EXPECT_EQ(LineEcmaString::ComputeSizeUtf8(length), length + LineEcmaString::SIZE);
     }
@@ -71,7 +71,7 @@ HWTEST_F_L0(LineEcmaStringTest, ComputeSizeUtf8)
 HWTEST_F_L0(LineEcmaStringTest, ComputeSizeUtf16)
 {
     uint32_t scale = 3333;
-    for (uint32_t i = 0x40000000U - 1; i > scale; i = i - scale) {
+    for (uint32_t i = EcmaString::MAX_STRING_LENGTH - 1; i > scale; i = i - scale) {
         uint32_t length = i;
         EXPECT_EQ(LineEcmaString::ComputeSizeUtf16(length), 2 * length + LineEcmaString::SIZE);
     }

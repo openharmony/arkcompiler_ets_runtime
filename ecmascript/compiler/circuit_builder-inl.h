@@ -409,6 +409,13 @@ GateRef CircuitBuilder::TaggedIsGeneratorObject(GateRef x)
     return LogicAnd(isHeapObj, isAsyncGeneratorObj);
 }
 
+GateRef CircuitBuilder::TaggedIsJSArray(GateRef x)
+{
+    GateRef objType = GetObjectType(LoadHClass(x));
+    GateRef isJSArray = Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
+    return isJSArray;
+}
+
 GateRef CircuitBuilder::TaggedIsPropertyBox(GateRef x)
 {
     return LogicAnd(TaggedIsHeapObject(x),
@@ -689,13 +696,22 @@ GateRef CircuitBuilder::IsDictionaryModeByHClass(GateRef hClass)
         Int32(0));
 }
 
-GateRef CircuitBuilder::IsIsStableElementsByHClass(GateRef hClass)
+GateRef CircuitBuilder::GetElementsKindByHClass(GateRef hClass)
+{
+    GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
+    return Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::ElementsKindBits::START_BIT)),
+        Int32((1LLU << JSHClass::ElementsKindBits::SIZE) - 1));
+}
+
+GateRef CircuitBuilder::HasConstructorByHClass(GateRef hClass)
 {
     GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
     GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
     return NotEqual(Int32And(Int32LSR(bitfield,
-        Int32(JSHClass::IsStableElementsBit::START_BIT)),
-        Int32((1LU << JSHClass::IsStableElementsBit::SIZE) - 1)),
+        Int32(JSHClass::HasConstructorBits::START_BIT)),
+        Int32((1LU << JSHClass::HasConstructorBits::SIZE) - 1)),
         Int32(0));
 }
 
@@ -740,15 +756,22 @@ GateRef CircuitBuilder::IsClassConstructor(GateRef object)
     GateRef hClass = LoadHClass(object);
     GateRef bitfieldOffset = Int32(JSHClass::BIT_FIELD_OFFSET);
     GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
-    return NotEqual(Int32And(Int32LSR(bitfield,
-        Int32(JSHClass::ClassConstructorBit::START_BIT)),
-        Int32((1LU << JSHClass::ClassConstructorBit::SIZE) - 1)),
-        Int32(0));
+    return IsClassConstructorWithBitField(bitfield);
 }
 
 GateRef CircuitBuilder::IsClassConstructorWithBitField(GateRef bitfield)
 {
-    return NotEqual(Int32And(bitfield, Int32(1LU << JSHClass::ClassConstructorBit::START_BIT)), Int32(0));
+    auto classBitMask = 1LU << JSHClass::IsClassConstructorOrPrototypeBit::START_BIT;
+    auto ctorBitMask = 1LU << JSHClass::ConstructorBit::START_BIT;
+    auto mask = Int32(classBitMask | ctorBitMask);
+    auto classCtor = Int32And(bitfield, mask);
+    return Int32Equal(classCtor, mask);
+}
+
+GateRef CircuitBuilder::HasConstructor(GateRef object)
+{
+    GateRef hClass = LoadHClass(object);
+    return HasConstructorByHClass(hClass);
 }
 
 GateRef CircuitBuilder::IsConstructor(GateRef object)
@@ -769,10 +792,16 @@ GateRef CircuitBuilder::IsClassPrototype(GateRef object)
     GateRef bitfieldOffset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
     GateRef bitfield = Load(VariableType::INT32(), hClass, bitfieldOffset);
     // decode
-    return NotEqual(
-        Int32And(Int32LSR(bitfield, Int32(JSHClass::ClassPrototypeBit::START_BIT)),
-        Int32((1LU << JSHClass::ClassPrototypeBit::SIZE) - 1)),
-        Int32(0));
+    return IsClassPrototypeWithBitField(bitfield);
+}
+
+GateRef CircuitBuilder::IsClassPrototypeWithBitField(GateRef bitfield)
+{
+    auto classBitMask = 1LU << JSHClass::IsClassConstructorOrPrototypeBit::START_BIT;
+    auto ptBitMask = 1LU << JSHClass::IsPrototypeBit::START_BIT;
+    auto mask = Int32(classBitMask | ptBitMask);
+    auto classPt = Int32And(bitfield, mask);
+    return Int32Equal(classPt, mask);
 }
 
 GateRef CircuitBuilder::IsExtensible(GateRef object)

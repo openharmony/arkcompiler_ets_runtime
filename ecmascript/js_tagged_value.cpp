@@ -41,6 +41,7 @@
 #include "ecmascript/module/js_module_namespace.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/symbol_table.h"
 
 namespace panda::ecmascript {
 JSHandle<EcmaString> GetTypeString(JSThread *thread, PreferredPrimitiveType type)
@@ -825,6 +826,7 @@ JSTaggedValue JSTaggedValue::GetPrototype(JSThread *thread, const JSHandle<JSTag
     }
     return JSObject::GetPrototype(JSHandle<JSObject>(obj));
 }
+
 bool JSTaggedValue::PreventExtensions(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     if (obj->IsJSProxy()) {
@@ -854,7 +856,7 @@ JSHandle<TaggedArray> JSTaggedValue::GetOwnPropertyKeys(JSThread *thread, const 
 }
 
 JSHandle<TaggedArray> JSTaggedValue::GetAllPropertyKeys(JSThread *thread,
-    const JSHandle<JSTaggedValue> &obj, uint32_t filter)
+                                                        const JSHandle<JSTaggedValue> &obj, uint32_t filter)
 {
     if (obj->IsJSProxy()) {
         LOG_ECMA(WARN) << "GetAllPropertyKeys do not support JSProxy yet";
@@ -941,6 +943,25 @@ bool JSTaggedValue::GlobalHasOwnProperty(JSThread *thread, const JSHandle<JSTagg
 
     PropertyDescriptor desc(thread);
     return JSObject::GlobalGetOwnProperty(thread, key, desc);
+}
+
+bool JSTaggedValue::CanBeHeldWeakly(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
+{
+    // 1. If v is an Object, return true.
+    if (tagged->IsECMAObject()) {
+        return true;
+    }
+    // 2. If v is a Symbol and KeyForSymbol(v) is undefined, return true.
+    if (tagged->IsSymbol()) {
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        auto *table = env->GetRegisterSymbols().GetObject<SymbolTable>();
+        JSTaggedValue key = table->FindSymbol(tagged.GetTaggedValue());
+        if (key.IsUndefined()) {
+            return true;
+        }
+    }
+    // 3. Return false.
+    return false;
 }
 
 JSTaggedNumber JSTaggedValue::ToIndex(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
@@ -1171,6 +1192,7 @@ bool JSTaggedValue::GetContainerProperty(JSThread *thread, const JSHandle<JSTagg
     }
     return false;
 }
+
 JSHandle<JSTaggedValue> JSTaggedValue::ToNumeric(JSThread *thread, JSHandle<JSTaggedValue> tagged)
 {
     // 1. Let primValue be ? ToPrimitive(value, number)
@@ -1186,6 +1208,7 @@ JSHandle<JSTaggedValue> JSTaggedValue::ToNumeric(JSThread *thread, JSHandle<JSTa
     JSHandle<JSTaggedValue> value(thread, number);
     return value;
 }
+
 OperationResult JSTaggedValue::GetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                 const JSHandle<JSTaggedValue> &key)
 {

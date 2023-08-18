@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/base/depend_chain_helper.h"
 #include "ecmascript/mem/chunk_containers.h"
+#include "ecmascript/compiler/number_gate_info.h"
 
 namespace panda::ecmascript::kungfu {
 class DependChains;
@@ -37,7 +38,8 @@ public:
 
     GateRef VisitGate(GateRef gate) override;
     bool CheckInputSource(GateRef lhs, GateRef rhs);
-    bool CheckIndexCheckInput(GateRef lhs, GateRef rhs);
+    uint32_t CheckIndexCheckLengthInput(GateRef lhs, GateRef rhs);
+    uint32_t CheckIndexCheckIndexInput(GateRef lhs, GateRef rhs);
 private:
 
     DependChains* GetDependChain(GateRef dependIn)
@@ -49,7 +51,8 @@ private:
 
     GateRef VisitDependEntry(GateRef gate);
     GateRef UpdateDependChain(GateRef gate, DependChains* dependInfo);
-    GateRef TryApplyTypedArrayRangeGuard(DependChains* dependInfo, GateRef gate, GateRef input);
+    GateRef TryApplyRangeGuardForLength(DependChains* dependInfo, GateRef gate, GateRef input);
+    GateRef TryApplyRangeGuardForIndex(DependChains* dependInfo, GateRef gate, GateRef input);
     GateRef TryApplyRangeGuardGate(GateRef gate);
     GateRef TraverseOthers(GateRef gate);
     GateRef TraverseDependSelector(GateRef gate);
@@ -57,6 +60,8 @@ private:
     Circuit* circuit_;
     CircuitBuilder builder_;
     ChunkVector<DependChains*> dependChains_;
+
+    friend class RangeInfo;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_RANGE_GUARD_H

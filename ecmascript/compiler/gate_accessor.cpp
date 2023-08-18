@@ -105,18 +105,21 @@ size_t GateAccessor::GetIndex(GateRef gate) const
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }
 
-size_t GateAccessor::GetArraySize(GateRef gate) const
+uint32_t GateAccessor::GetArraySize(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return gatePtr->GetOneParameterMetaData()->GetValue();
+    auto array = gatePtr->GetOneParameterMetaData()->GetValue();
+    return ArrayMetaDataAccessor(array).GetArrayLength();
 }
 
-void GateAccessor::SetArraySize(GateRef gate, size_t size)
+void GateAccessor::SetArraySize(GateRef gate, uint32_t size)
 {
     ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    const_cast<OneParameterMetaData *>(gatePtr->GetOneParameterMetaData())->SetValue(size);
+    ArrayMetaDataAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    accessor.SetArrayLength(size);
+    const_cast<OneParameterMetaData *>(gatePtr->GetOneParameterMetaData())->SetValue(accessor.ToValue());
 }
 
 TypedUnaryAccessor GateAccessor::GetTypedUnAccessor(GateRef gate) const
@@ -131,6 +134,24 @@ TypedJumpAccessor GateAccessor::GetTypedJumpAccessor(GateRef gate) const
     ASSERT(GetOpCode(gate) == OpCode::TYPED_CONDITION_JUMP);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return TypedJumpAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
+ArrayMetaDataAccessor GateAccessor::GetArrayMetaDataAccessor(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::STABLE_ARRAY_CHECK ||
+           GetOpCode(gate) == OpCode::HCLASS_STABLE_ARRAY_CHECK ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return ArrayMetaDataAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
+ObjectTypeAccessor GateAccessor::GetObjectTypeAccessor(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK ||
+           GetOpCode(gate) == OpCode::OBJECT_TYPE_COMPARE);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return ObjectTypeAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
 TypedLoadOp GateAccessor::GetTypedLoadOp(GateRef gate) const
@@ -202,11 +223,10 @@ GlobalTSTypeRef GateAccessor::GetFuncGT(GateRef gate) const
 GateType GateAccessor::GetParamGateType(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::PRIMITIVE_TYPE_CHECK ||
-           GetOpCode(gate) == OpCode::OBJECT_TYPE_CHECK ||
-           GetOpCode(gate) == OpCode::OBJECT_TYPE_COMPARE ||
            GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::INDEX_CHECK ||
-           GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP);
+           GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();
@@ -256,6 +276,22 @@ GateType GateAccessor::GetRightType(GateRef gate) const
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GatePairTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetRightType();
+}
+
+uint32_t GateAccessor::GetFirstValue(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::RANGE_GUARD);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    UInt32PairAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetFirstValue();
+}
+
+uint32_t GateAccessor::GetSecondValue(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::RANGE_GUARD);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    UInt32PairAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return accessor.GetSecondValue();
 }
 
 size_t GateAccessor::GetVirtualRegisterIndex(GateRef gate) const
@@ -354,6 +390,25 @@ void GateAccessor::TrySetPGOType(GateRef gate, PGOSampleType type)
     OpCode op = GetOpCode(gate);
     if (op == OpCode::JS_BYTECODE) {
         const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetType(type);
+    }
+}
+
+ElementsKind GateAccessor::TryGetElementsKind(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        return gatePtr->GetJSBytecodeMetaData()->GetElementsKind();
+    }
+    return ElementsKind::GENERIC;
+}
+
+void GateAccessor::TrySetElementsKind(GateRef gate, ElementsKind kind)
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetElementsKind(kind);
     }
 }
 
@@ -843,55 +898,7 @@ void GateAccessor::ReplaceHirAndDeleteIfException(GateRef hirGate,
 
 void GateAccessor::EliminateRedundantPhi()
 {
-    std::vector<GateRef> gateList;
-    GetAllGates(gateList);
-    std::queue<GateRef> workList;
-    std::set<GateRef> inList;
-    for (auto gate : gateList) {
-        if (IsValueSelector(gate)) {
-            workList.push(gate);
-            inList.insert(gate);
-        }
-    }
-
-    while (!workList.empty()) {
-        auto cur = workList.front();
-        workList.pop();
-        ASSERT(IsValueSelector(cur));
-        GateRef first = GetValueIn(cur, 0);
-        bool sameIns = true;
-        bool selfUse = first == cur;
-        auto valueNum = GetNumValueIn(cur);
-        for (size_t i = 1; i < valueNum; ++i) {
-            GateRef input = GetValueIn(cur, i);
-            if (input != first) {
-                sameIns = false;
-            }
-            if (input == cur) {
-                ASSERT(IsLoopHead(GetState(cur)));
-                selfUse = true;
-            }
-        }
-        if ((!sameIns) && (!selfUse)) {
-            inList.erase(cur);
-            continue;
-        }
-        auto use = Uses(cur);
-        for (auto it = use.begin(); it != use.end(); ++it) {
-            if (((*it) == cur) || (!IsValueSelector(*it)) || inList.count(*it)) {
-                // selfUse or notPhi or inListPhi
-                continue;
-            }
-            workList.push(*it);
-            inList.insert(*it);
-        }
-        UpdateAllUses(cur, first);
-    }
-    for (auto phi : inList) {
-        ASSERT(IsValueSelector(phi));
-        DeleteGate(phi);
-    }
-    return;
+    GraphEditor::EliminateRedundantPhi(circuit_);
 }
 
 UseIterator GateAccessor::DeleteGate(const UseIterator &useIt)
@@ -1288,6 +1295,27 @@ bool GateAccessor::HasIfExceptionUse(GateRef gate) const
             return true;
         }
     }
+    return false;
+}
+
+bool GateAccessor::IsHeapObjectFromElementsKind(GateRef gate)
+{
+    OpCode opcode = GetOpCode(gate);
+    if (opcode == OpCode::JS_BYTECODE) {
+        auto bc = GetByteCodeOpcode(gate);
+        if (bc == EcmaOpcode::LDOBJBYVALUE_IMM8_V8 || bc == EcmaOpcode::LDOBJBYVALUE_IMM16_V8 ||
+            bc == EcmaOpcode::LDTHISBYVALUE_IMM8 || bc == EcmaOpcode::LDTHISBYVALUE_IMM16) {
+            ElementsKind kind = TryGetElementsKind(gate);
+            return Elements::IsObject(kind);
+        }
+        return false;
+    }
+
+    if (opcode == OpCode::LOAD_ELEMENT) {
+        TypedLoadOp typedOp = GetTypedLoadOp(gate);
+        return typedOp == TypedLoadOp::ARRAY_LOAD_OBJECT_ELEMENT;
+    }
+
     return false;
 }
 }  // namespace panda::ecmascript::kungfu

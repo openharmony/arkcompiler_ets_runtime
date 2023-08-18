@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/early_elimination.h"
+#include "ecmascript/compiler/array_bounds_check_elimination.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/lcr_lowering.h"
@@ -291,7 +292,7 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableTypeLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         TSHCRLowering lowering(data->GetCircuit(), data->GetPassContext(),
-            enableLog, enableTypeLog, passOptions->EnableOptStaticMethod(), data->GetMethodName());
+            enableLog, enableTypeLog, data->GetMethodName());
         bool success = lowering.RunTSHCRLowering();
         if (!success) {
             data->MarkAsTypeAbort();
@@ -310,8 +311,8 @@ public:
         }
         TimeScope timescope("NTypeHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        NTypeHCRLowering lowering(data->GetCircuit(), data->GetPassContext(),
-            data->GetTSManager(), enableLog, data->GetMethodName());
+        NTypeHCRLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
+            data->GetMethodLiteral(), data->GetRecordName(), enableLog, data->GetMethodName());
         lowering.RunNTypeHCRLowering();
         return true;
     }
@@ -344,8 +345,8 @@ public:
         }
         TimeScope timescope("NTypeMCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        NTypeMCRLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
-                                  enableLog, data->GetMethodName());
+        NTypeMCRLowering lowering(data->GetCircuit(), data->GetPassContext(),
+                                  data->GetRecordName(), enableLog, data->GetMethodName());
         lowering.RunNTypeMCRLowering();
         return true;
     }
@@ -378,7 +379,7 @@ public:
         TimeScope timescope("TSInlineLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         TSInlineLowering inlining(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName(),
-                                  data->GetNativeAreaAllocator(), passOptions);
+                                  data->GetNativeAreaAllocator(), passOptions, data->GetMethodOffset());
         inlining.RunTSInlineLowering();
         return true;
     }
@@ -388,12 +389,10 @@ class SlowPathLoweringPass {
 public:
     bool Run(PassData* data)
     {
-        PassOptions *passOptions = data->GetPassOptions();
         TimeScope timescope("SlowPathLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         SlowPathLowering lowering(data->GetCircuit(), data->GetCompilerConfig(), data->GetTSManager(),
-                                  data->GetMethodLiteral(), enableLog,
-                                  passOptions->EnableOptStaticMethod(), data->GetMethodName());
+                                  data->GetMethodLiteral(), enableLog, data->GetMethodName());
         lowering.CallRuntimeLowering();
         return true;
     }
@@ -425,8 +424,7 @@ public:
         TimeScope timescope("NumberSpeculativePass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        NumberSpeculativeRunner(data->GetCircuit(), data->GetTSManager(),
-                                enableLog, data->GetMethodName(), &chunk, data->GetPassContext()).Run();
+        NumberSpeculativeRunner(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
         return true;
     }
 };
@@ -469,6 +467,23 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         EarlyElimination(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
+        return true;
+    }
+};
+
+class ArrayBoundsCheckEliminationPass {
+public:
+    bool Run(PassData* data)
+    {
+        PassOptions *passOptions = data->GetPassOptions();
+        if (!passOptions->EnableTypeLowering() || !passOptions->EnableArrayBoundsCheckElimination()) {
+            return false;
+        }
+        TimeScope timescope("ArrayBoundsCheckEliminationPass",
+                            data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        Chunk chunk(data->GetNativeAreaAllocator());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        ArrayBoundsCheckElimination(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
         return true;
     }
 };

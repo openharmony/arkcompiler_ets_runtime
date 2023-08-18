@@ -16,6 +16,8 @@
 #include "ecmascript/dfx/vm_thread_control.h"
 
 namespace panda::ecmascript {
+constexpr int32_t TIME_OUT_MS = 1500;
+
 bool VmThreadControl::NotifyVMThreadSuspension() // block caller thread
 {
     if (VMNeedSuspension()) { // only enable one thread to post suspension
@@ -25,7 +27,11 @@ bool VmThreadControl::NotifyVMThreadSuspension() // block caller thread
     thread_->SetCheckSafePointStatus();
     os::memory::LockHolder lock(vmThreadSuspensionMutex_);
     while (!IsSuspended()) {
-        vmThreadNeedSuspensionCV_.Wait(&vmThreadSuspensionMutex_);
+        if (vmThreadNeedSuspensionCV_.TimedWait(&vmThreadSuspensionMutex_, TIME_OUT_MS)) {
+            SetVMNeedSuspension(false);
+            thread_->ResetCheckSafePointStatus();
+            return false;
+        }
     }
     return true;
 }

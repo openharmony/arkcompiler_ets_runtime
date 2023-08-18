@@ -41,6 +41,7 @@
       panda::RegExpRef::*;
       panda::SetIteratorRef::*;
       panda::SetRef::*;
+      panda::ProxyRef::*;
       panda::StringRef::*;
       panda::SymbolRef::*;
       panda::TypedArrayRef::*;

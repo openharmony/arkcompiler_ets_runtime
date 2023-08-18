@@ -44,6 +44,7 @@ bool TSHCRLowering::RunTSHCRLowering()
             success = false;
         }
     }
+    acc_.EliminateRedundantPhi();
 
     if (IsTypeLogEnabled()) {
         pgoTypeLog_.PrintPGOTypeLog();
@@ -590,7 +591,7 @@ void TSHCRLowering::LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode 
         return;
     }
 
-    ObjectAccessHelper accessHelper(tsManager_, accessMode, receiver, receiverType, key, value, enableOptStaticMethod_);
+    ObjectAccessHelper accessHelper(tsManager_, accessMode, receiver, receiverType, key, value);
     ChunkVector<ObjectAccessInfo> infos(circuit_->chunk());
     bool continuation = accessHelper.Compute(infos);
     if (!continuation) {
@@ -600,13 +601,17 @@ void TSHCRLowering::LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode 
     ASSERT(!infos.empty());
     AddProfiling(gate);
 
+    // If all elements of the array are objects, and receiver is one of the elements,
+    // no HeapObjectCheck is required.
+    bool isHeapObject = acc_.IsHeapObjectFromElementsKind(receiver);
+
     // monomorphic
     if (infos.size() == 1) {
         int hclassIndex = infos[0].HClassIndex();
         PropertyLookupResult plr = infos[0].Plr();
         if (!Uncheck()) {
             GateRef hclassIndexGate = builder_.IntPtr(hclassIndex);
-            builder_.ObjectTypeCheck(infos[0].Type(), receiver, hclassIndexGate);
+            builder_.ObjectTypeCheck(infos[0].Type(), isHeapObject, receiver, hclassIndexGate);
         }
 
         GateRef result = BuildNamedPropertyAccess(gate, accessHelper, plr);
@@ -630,11 +635,11 @@ void TSHCRLowering::LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode 
         builder_.SetState(fallthroughState);
         builder_.SetDepend(fallthroughDepend);
         if (i == size - 1) {
-            builder_.ObjectTypeCheck(type, receiver, hclassIndexGate);
+            builder_.ObjectTypeCheck(type, isHeapObject, receiver, hclassIndexGate);
             fallthroughState = Circuit::NullGate();
             fallthroughDepend = Circuit::NullGate();
         } else {
-            GateRef compare = builder_.ObjectTypeCompare(type, receiver, hclassIndexGate);
+            GateRef compare = builder_.ObjectTypeCompare(type, isHeapObject, receiver, hclassIndexGate);
             GateRef branch = builder_.Branch(builder_.GetState(), compare);
             GateRef ifTrue = builder_.IfTrue(branch);
             GateRef ifFalse = builder_.IfFalse(branch);
@@ -731,7 +736,8 @@ void TSHCRLowering::LowerTypedLdArrayLength(GateRef gate)
     AddProfiling(gate);
     GateRef array = acc_.GetValueIn(gate, 2);
     if (!Uncheck()) {
-        builder_.StableArrayCheck(array);
+        ElementsKind kind = acc_.TryGetElementsKind(gate);
+        builder_.StableArrayCheck(array, kind, ArrayMetaDataAccessor::Mode::LOAD_LENGTH);
     }
 
     GateRef result = builder_.LoadArrayLength(array);
@@ -838,7 +844,8 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     GateRef result = Circuit::NullGate();
     if (tsManager_->IsArrayTypeKind(receiverType)) {
         AddProfiling(gate);
-        result = LoadJSArrayByIndex(receiver, propKey);
+        ElementsKind kind = acc_.TryGetElementsKind(gate);
+        result = LoadJSArrayByIndex(receiver, propKey, kind);
     } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
         AddProfiling(gate);
         result = LoadTypedArrayByIndex(receiver, propKey);
@@ -848,16 +855,29 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
-GateRef TSHCRLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey)
+GateRef TSHCRLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey, ElementsKind kind)
 {
     if (!Uncheck()) {
         GateType receiverType = acc_.GetGateType(receiver);
         receiverType = tsManager_->TryNarrowUnionType(receiverType);
-        builder_.StableArrayCheck(receiver);
+        builder_.StableArrayCheck(receiver, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
         GateRef length = builder_.LoadArrayLength(receiver);
         propKey = builder_.IndexCheck(receiverType, length, propKey);
     }
-    return builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_ELEMENT>(receiver, propKey);
+
+    GateRef result = Circuit::NullGate();
+    if (Elements::IsInt(kind)) {
+        result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_INT_ELEMENT>(receiver, propKey);
+    } else if (Elements::IsDouble(kind)) {
+        result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_DOUBLE_ELEMENT>(receiver, propKey);
+    } else if (Elements::IsObject(kind)) {
+        result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_OBJECT_ELEMENT>(receiver, propKey);
+    } else if (!Elements::IsHole(kind)) {
+        result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_TAGGED_ELEMENT>(receiver, propKey);
+    } else {
+        result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_HOLE_TAGGED_ELEMENT>(receiver, propKey);
+    }
+    return result;
 }
 
 GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
@@ -883,6 +903,8 @@ GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
             return builder_.LoadElement<TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT>(receiver, propKey);
         case BuiltinTypeId::INT32_ARRAY:
             return builder_.LoadElement<TypedLoadOp::INT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
+        case BuiltinTypeId::UINT32_ARRAY:
+            return builder_.LoadElement<TypedLoadOp::UINT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
         case BuiltinTypeId::FLOAT32_ARRAY:
             return builder_.LoadElement<TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT>(receiver, propKey);
         case BuiltinTypeId::FLOAT64_ARRAY:
@@ -895,15 +917,20 @@ GateRef TSHCRLowering::LoadTypedArrayByIndex(GateRef receiver, GateRef propKey)
     return Circuit::NullGate();
 }
 
-void TSHCRLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value)
+void TSHCRLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value, ElementsKind kind)
 {
     if (!Uncheck()) {
         GateType receiverType = acc_.GetGateType(receiver);
         receiverType = tsManager_->TryNarrowUnionType(receiverType);
-        builder_.StableArrayCheck(receiver);
+        builder_.StableArrayCheck(receiver, kind, ArrayMetaDataAccessor::Mode::STORE_ELEMENT);
         GateRef length = builder_.LoadArrayLength(receiver);
         builder_.IndexCheck(receiverType, length, propKey);
         builder_.COWArrayCheck(receiver);
+
+        if (Elements::IsObject(kind)) {
+            GateRef frameState = acc_.FindNearestFrameState(builder_.GetDepend());
+            builder_.HeapObjectCheck(value, frameState);
+        }
     }
     builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, propKey, value);
 }
@@ -939,6 +966,9 @@ void TSHCRLowering::StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, Ga
         case BuiltinTypeId::INT32_ARRAY:
             builder_.StoreElement<TypedStoreOp::INT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
             break;
+        case BuiltinTypeId::UINT32_ARRAY:
+            builder_.StoreElement<TypedStoreOp::UINT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
+            break;
         case BuiltinTypeId::FLOAT32_ARRAY:
             builder_.StoreElement<TypedStoreOp::FLOAT32ARRAY_STORE_ELEMENT>(receiver, propKey, value);
             break;
@@ -966,7 +996,8 @@ void TSHCRLowering::LowerTypedStObjByValue(GateRef gate)
 
     if (tsManager_->IsArrayTypeKind(receiverType)) {
         AddProfiling(gate);
-        StoreJSArrayByIndex(receiver, propKey, value);
+        ElementsKind kind = acc_.TryGetElementsKind(gate);
+        StoreJSArrayByIndex(receiver, propKey, value, kind);
     } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
         AddProfiling(gate);
         StoreTypedArrayByIndex(receiver, propKey, value);
@@ -1285,7 +1316,7 @@ void TSHCRLowering::CheckFastCallThisCallTarget(GateRef gate, GateRef func, Glob
 }
 
 void TSHCRLowering::CheckCallThisCallTarget(GateRef gate, GateRef func, GlobalTSTypeRef funcGt,
-                                                GateType funcType, bool isNoGC)
+    GateType funcType, bool isNoGC)
 {
     if (noCheck_) {
         return;

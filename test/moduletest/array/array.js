@@ -143,3 +143,19 @@ print(arr21.at(-1));
 print(arr21.at(6));
 print(arr21.at('1.9'));
 print(arr21.at(true));
+var arr22 = arr21.toReversed();
+print(arr22)
+print(arr21)
+var arr23 = [1, 2, 3, 4, 5];
+print(arr23.with(2, 6)); // [1, 2, 6, 4, 5]
+print(arr23); // [1, 2, 3, 4, 5]
+
+const months = ["Mar", "Jan", "Feb", "Dec"];
+const sortedMonths = months.toSorted();
+print(sortedMonths); // ['Dec', 'Feb', 'Jan', 'Mar']
+print(months); // ['Mar', 'Jan', 'Feb', 'Dec']
+
+const values = [1, 10, 21, 2];
+const sortedValues = values.toSorted((a, b) => {return a- b});
+print(sortedValues); // [1, 2, 10, 21]
+print(values); // [1, 10, 21, 2]

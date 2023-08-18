@@ -93,6 +93,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::TYPED_BINARY_OP:
         case OpCode::TYPED_UNARY_OP:
         case OpCode::JSINLINETARGET_TYPE_CHECK:
+        case OpCode::INLINE_ACCESSOR_CHECK:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
             return TryEliminateFrameState(gate);
@@ -250,8 +251,14 @@ bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
         case OpCode::STORE_MEMORY:
             ASSERT(acc_.GetMemoryType(rhs) == MemoryType::ELEMENT_TYPE);
             return acc_.GetOpCode(lhs) == OpCode::LOAD_ELEMENT;
-        case OpCode::STORE_ELEMENT:
-            return lop == OpCode::LOAD_ELEMENT;
+        case OpCode::STORE_ELEMENT: {
+            if (lop == OpCode::LOAD_ELEMENT) {
+                auto lopIsTypedArray = acc_.GetTypedLoadOp(lhs) >= TypedLoadOp::TYPED_ARRAY_FIRST;
+                auto ropIsTypedArray = acc_.GetTypedStoreOp(rhs) >= TypedStoreOp::TYPED_ARRAY_FIRST;
+                return lopIsTypedArray == ropIsTypedArray;
+            }
+            return false;
+        }
         case OpCode::STORE_PROPERTY:
         case OpCode::STORE_PROPERTY_NO_BARRIER: {
             if (lop == OpCode::LOAD_PROPERTY) {
@@ -322,10 +329,15 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             break;
         }
         case OpCode::TYPED_ARRAY_CHECK:
-        case OpCode::OBJECT_TYPE_CHECK:
-        case OpCode::OBJECT_TYPE_COMPARE:
         case OpCode::INDEX_CHECK: {
             if (acc_.GetParamGateType(lhs) != acc_.GetParamGateType(rhs)) {
+                return false;
+            }
+            break;
+        }
+        case OpCode::OBJECT_TYPE_CHECK:
+        case OpCode::OBJECT_TYPE_COMPARE: {
+            if (acc_.GetObjectTypeAccessor(lhs).GetType() != acc_.GetObjectTypeAccessor(rhs).GetType()) {
                 return false;
             }
             break;

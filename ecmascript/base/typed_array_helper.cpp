@@ -546,6 +546,27 @@ JSHandle<JSObject> TypedArrayHelper::TypedArrayCreate(JSThread *thread, const JS
     return newTypedArray;
 }
 
+// TypedArrayCreateSameType ( exemplar, argumentList )
+JSHandle<JSObject> TypedArrayHelper::TypedArrayCreateSameType(JSThread *thread, const JSHandle<JSTypedArray> &obj,
+                                                              uint32_t argc, JSTaggedType argv[])
+{
+    // 1. Let constructor be the intrinsic object associated with the constructor name exemplar.[[TypedArrayName]]
+    // in Table 70.
+    JSHandle<JSTaggedValue> buffHandle(thread, JSTaggedValue(argv[0]));
+    JSHandle<JSTaggedValue> constructor =
+        TypedArrayHelper::GetConstructor(thread, JSHandle<JSTaggedValue>(obj));
+    argv[0] = buffHandle.GetTaggedType();
+    // 2. Let result be ? TypedArrayCreate(constructor, argumentList).
+    JSHandle<JSObject> result = TypedArrayHelper::TypedArrayCreate(thread, constructor, argc, argv);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
+    // 3. Assert: result has [[TypedArrayName]] and [[ContentType]] internal slots.
+    // 4. Assert: result.[[ContentType]] is exemplar.[[ContentType]].
+    [[maybe_unused]] ContentType objContentType = obj->GetContentType();
+    [[maybe_unused]] ContentType resultContentType = JSHandle<JSTypedArray>::Cast(result)->GetContentType();
+    ASSERT(objContentType == resultContentType);
+    return result;
+}
+
 // es11 22.2.3.5.1 Runtime Semantics: ValidateTypedArray ( O )
 JSTaggedValue TypedArrayHelper::ValidateTypedArray(JSThread *thread, const JSHandle<JSTaggedValue> &value)
 {

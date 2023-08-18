@@ -32,6 +32,10 @@ class EcmaVM;
 class FullGC;
 class HeapRegionAllocator;
 class HeapTracker;
+#if !WIN_OR_MAC_OR_IOS_PLATFORM
+class HeapProfilerInterface;
+class HeapProfiler;
+#endif
 class IncrementalMarker;
 class JSNativePointer;
 class Marker;
@@ -264,7 +268,7 @@ public:
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
 
     void CheckAndTriggerOldGC(size_t size = 0);
-
+    TriggerGCType SelectGCType() const;
     /*
      * Parallel GC related configurations and utilities.
      */
@@ -401,26 +405,19 @@ public:
 
     void ClearIdleTask();
 
-    /*
-     * Heap tracking will be used by tools like heap profiler etc.
-     */
-
-    void StartHeapTracking(HeapTracker *tracker)
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    void StartHeapTracking()
     {
         WaitAllTasksFinished();
-        parallelGC_ = false;
-        tracker_ = tracker;
     }
 
     void StopHeapTracking()
     {
         WaitAllTasksFinished();
-        parallelGC_ = true;
-        tracker_ = nullptr;
     }
-
-    inline void OnAllocateEvent(TaggedObject* address, size_t size);
-    inline void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
+#endif
+    void OnAllocateEvent(TaggedObject* address, size_t size);
+    void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
     void AddToKeptObjects(JSHandle<JSTaggedValue> value) const;
     void ClearKeptObjects() const;
 
@@ -528,8 +525,13 @@ public:
     {
         return heapAliveSizeAfterGC_;
     }
+
+    bool IsInBackground() const
+    {
+        return inBackground_;
+    }
 private:
-    static constexpr int IDLE_TIME_LIMIT = 15;  // if idle time over 15ms we can do something
+    static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
     static constexpr int IDLE_MAINTAIN_TIME = 500;
     static constexpr int BACKGROUND_GROW_LIMIT = 2_MB;
@@ -538,7 +540,6 @@ private:
     void AdjustOldSpaceLimit();
     // record lastRegion for each space, which will be used in ReclaimRegions()
     void PrepareRecordRegionsForReclaim();
-    TriggerGCType SelectGCType() const;
     void IncreaseTaskCount();
     void ReduceTaskCount();
     void WaitClearTaskFinished();
@@ -681,8 +682,8 @@ private:
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
     HeapRegionAllocator *heapRegionAllocator_ {nullptr};
 
-    // The tracker tracking heap object allocation and movement events.
-    HeapTracker *tracker_ {nullptr};
+    // Application status
+    bool inBackground_ {false};
 
     IdleNotifyStatusCallback notifyIdleStatusCallback {nullptr};
 

@@ -469,6 +469,7 @@ JSTaggedValue BuiltinsAtomics::HandleWithBigInt64(JSThread *thread, uint32_t siz
     int64_t val = 0;
     bool lossless = true;
     BigInt::BigIntToInt64(thread, value, &val, &lossless);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (size == 3) { // the number of parameters is 3
         auto result = op(reinterpret_cast<int64_t *>(block + indexedPosition), &val);
         return BigInt::Int64ToBigInt(thread, result).GetTaggedValue();
@@ -476,6 +477,7 @@ JSTaggedValue BuiltinsAtomics::HandleWithBigInt64(JSThread *thread, uint32_t siz
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     int64_t newVal = 0;
     BigInt::BigIntToInt64(thread, newValue, &newVal, &lossless);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     int64_t arg[ARGS_NUMBER] = {0};
     arg[0] = val;
     arg[1] = newVal;

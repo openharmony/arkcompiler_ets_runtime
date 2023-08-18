@@ -18,3 +18,6 @@ https://www.a.com
 https://www.b.com
 https://www.c.com
 [object Object]
+Infinity
+-Infinity
+123

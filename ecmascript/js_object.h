@@ -569,13 +569,14 @@ public:
     static void DefineGetter(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                              const JSHandle<JSTaggedValue> &value);
     static JSHandle<JSObject> CreateObjectFromProperties(const JSThread *thread,
-                                                         const JSHandle<TaggedArray> &properties);
+                                                         const JSHandle<TaggedArray> &properties,
+                                                         JSTaggedValue ihc = JSTaggedValue::Undefined());
     static void GetAllKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                            const JSHandle<TaggedArray> &keyArray);
     static void GetAllKeys(const JSHandle<JSObject> &obj, std::vector<JSTaggedValue> &keyVector);
 
     static void GetAllKeysByFilter(const JSThread *thread, const JSHandle<JSObject> &obj,
-                                   uint32_t& keyArrayEffectivelength,
+                                   uint32_t &keyArrayEffectivelength,
                                    const JSHandle<TaggedArray> &keyArray,
                                    uint32_t filter);
     static void GetAllElementKeys(JSThread *thread, const JSHandle<JSObject> &obj, int offset,
@@ -583,7 +584,7 @@ public:
     static void GetAllElementKeysByFilter(JSThread *thread,
                                           const JSHandle<JSObject> &obj,
                                           const JSHandle<TaggedArray> &keyArray,
-                                          uint32_t &keyArrayEffectivelength,
+                                          uint32_t &keyArrayEffectiveLength,
                                           uint32_t filter);
 
     static void GetALLElementKeysIntoVector(const JSThread *thread, const JSHandle<JSObject> &obj,
@@ -614,6 +615,7 @@ public:
 
     static JSHandle<NameDictionary> TransitionToDictionary(const JSThread *thread, const JSHandle<JSObject> &receiver);
 
+    inline std::pair<bool, JSTaggedValue> ConvertValueWithRep(uint32_t index, JSTaggedValue value);
     inline void SetPropertyInlinedPropsWithRep(const JSThread *thread, uint32_t index, JSTaggedValue value);
     template <bool needBarrier = true>
     inline void SetPropertyInlinedProps(const JSThread *thread, uint32_t index, JSTaggedValue value);
@@ -658,6 +660,8 @@ private:
     static bool SetProperty(ObjectOperator *op, const JSHandle<JSTaggedValue> &value, bool mayThrow);
     static void DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, uint32_t index);
+    static void SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj,
+        const JSHandle<TaggedArray> &properties, uint32_t propsLen, JSTaggedValue ihcVal);
     int FindProperty(const JSHandle<JSTaggedValue> &key);
 
     static uint32_t ComputeElementCapacity(uint32_t oldCapacity);

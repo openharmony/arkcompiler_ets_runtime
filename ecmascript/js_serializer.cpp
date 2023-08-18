@@ -581,7 +581,7 @@ bool JSSerializer::WriteJSArray(const JSHandle<JSTaggedValue> &value)
     if (!WritePlainObject(value)) {
         return false;
     }
-    uint32_t arrayLength = static_cast<uint32_t>(array->GetLength().GetInt());
+    uint32_t arrayLength = array->GetLength();
     if (!WriteInt(arrayLength)) {
         return false;
     }
@@ -797,15 +797,15 @@ bool JSSerializer::WriteJSArrayBuffer(const JSHandle<JSTaggedValue> &value)
     }
     bool shared = arrayBuffer->GetShared();
     bool transfer = transferDataSet_.find(static_cast<uintptr_t>(value.GetTaggedType())) != transferDataSet_.end();
-    if (shared && transfer) {
-        LOG_ECMA(ERROR) << "Can't transfer a shared JSArrayBuffer";
-        return false;
-    }
     if (shared) {
+        if (transfer) {
+            LOG_ECMA(ERROR) << "Can't transfer a shared JSArrayBuffer";
+            return false;
+        }
         if (!WriteType(SerializationUID::JS_SHARED_ARRAY_BUFFER)) {
             return false;
         }
-    } else if (transfer) {
+    } else if (defaultTransfer_ || transfer) {
         if (!WriteType(SerializationUID::JS_TRANSFER_ARRAY_BUFFER)) {
             return false;
         }
@@ -836,7 +836,7 @@ bool JSSerializer::WriteJSArrayBuffer(const JSHandle<JSTaggedValue> &value)
             if (!WriteRawData(&bufferAddr, sizeof(uint64_t))) {
                 return false;
             }
-        } else if (transfer) {
+        } else if (defaultTransfer_ || transfer) {
             // Write Accessors(ArrayBufferData) which is a pointer to a Buffer
             if (!WriteJSNativePointer(np)) {
                 return false;
@@ -1088,8 +1088,6 @@ bool JSDeserializer::ReadDouble(double *value)
 JSDeserializer::~JSDeserializer()
 {
     referenceMap_.clear();
-    free(begin_);
-    begin_ = nullptr;
 }
 
 JSHandle<JSTaggedValue> JSDeserializer::Deserialize()
@@ -1445,7 +1443,7 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadJSArray()
     if (!JudgeType(SerializationUID::INT32) || !ReadInt(&arrLength)) {
         return JSHandle<JSTaggedValue>();
     }
-    jsArray->SetLength(thread_, JSTaggedValue(arrLength));
+    jsArray->SetLength(arrLength);
     return arrayTag;
 }
 
@@ -1978,7 +1976,9 @@ bool Serializer::WriteValue(
         return false;
     }
     data_.reset(new SerializationData);
-    if (!PrepareTransfer(thread, transfer)) {
+    if (value.GetTaggedValue() == transfer.GetTaggedValue()) {
+        valueSerializer_.SetDefaultTransfer();
+    } else if (!PrepareTransfer(thread, transfer)) {
         return false;
     }
     if (!valueSerializer_.SerializeJSTaggedValue(value)) {

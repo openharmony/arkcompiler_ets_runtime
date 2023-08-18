@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/elements.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_type.h"
 
 namespace panda::ecmascript::kungfu {
@@ -381,8 +382,8 @@ public:
     FCmpCondition GetFCmpCondition(GateRef gate) const;
     size_t GetOffset(GateRef gate) const;
     size_t GetIndex(GateRef gate) const;
-    size_t GetArraySize(GateRef gate) const;
-    void SetArraySize(GateRef gate, size_t size);
+    uint32_t GetArraySize(GateRef gate) const;
+    void SetArraySize(GateRef gate, uint32_t size);
     size_t GetVirtualRegisterIndex(GateRef gate) const;
     TypedLoadOp GetTypedLoadOp(GateRef gate) const;
     TypedStoreOp GetTypedStoreOp(GateRef gate) const;
@@ -395,6 +396,8 @@ public:
     GateType GetParamGateType(GateRef gate) const;
     TypedUnaryAccessor GetTypedUnAccessor(GateRef gate) const;
     TypedJumpAccessor GetTypedJumpAccessor(GateRef gate) const;
+    ArrayMetaDataAccessor GetArrayMetaDataAccessor(GateRef gate) const;
+    ObjectTypeAccessor GetObjectTypeAccessor(GateRef gate) const;
     uint64_t GetConstantValue(GateRef gate) const;
     const ChunkVector<char>& GetConstantString(GateRef gate) const;
     bool IsVtable(GateRef gate) const;
@@ -404,6 +407,8 @@ public:
     uint32_t TryGetPcOffset(GateRef gate) const;
     PGOSampleType TryGetPGOType(GateRef gate) const;
     void TrySetPGOType(GateRef gate, PGOSampleType type);
+    ElementsKind TryGetElementsKind(GateRef gate) const;
+    void TrySetElementsKind(GateRef gate, ElementsKind kind);
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
     void Print(GateRef gate) const;
     void ShortPrint(GateRef gate) const;
@@ -488,6 +493,8 @@ public:
     void ReplaceGate(GateRef gate, GateRef state, GateRef depend, GateRef value);
     GateType GetLeftType(GateRef gate) const;
     GateType GetRightType(GateRef gate) const;
+    uint32_t GetFirstValue(GateRef gate) const;
+    uint32_t GetSecondValue(GateRef gate) const;
     GateRef GetGlueFromArgList() const;
     void GetArgsOuts(std::vector<GateRef>& outs) const;
     void GetReturnOuts(std::vector<GateRef>& outs) const;
@@ -502,6 +509,7 @@ public:
     GateRef GetDependSelectorFromMerge(GateRef gate);
     bool HasIfExceptionUse(GateRef gate) const;
     bool IsIn(GateRef g, GateRef in) const;
+    bool IsHeapObjectFromElementsKind(GateRef gate);
 
     GateRef GetCircuitRoot() const
     {

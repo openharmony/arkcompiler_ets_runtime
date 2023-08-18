@@ -65,3 +65,48 @@ let index = new Index;
 for (let i = 0; i < 3; i++) {
     index.run();
 }
+
+let K:number[] = [];
+K.push(8.2);
+print(K[0]);
+K[1] = 3;
+print(K[1]);
+
+let x = 1.2;
+let y = 9;
+let T:number[] = [0, 1, 1.2, x];
+print(T[0]);
+print(T[1]);
+print(T[2]);
+print(T[3]);
+x = 1;
+let Ta:number[] = [,, 4.2, x];
+let Tb:number[] = [1, y, 1.2, x];
+let Tc:number[] = [-2, -9, 8.3, x];
+
+print(Ta[0]);
+print(Ta[1]);
+print(Ta[2]);
+print(Ta[3]);
+
+print(Tb[0]);
+print(Tb[1]);
+print(Tb[2]);
+print(Tb[3]);
+
+print(Tc[0]);
+print(Tc[1]);
+print(Tc[2]);
+print(Tc[3]);
+
+let z = {test: 1.8}
+
+let Td:number[] = [8848, "aotTest", z, x];
+
+print(Td[0]);
+print(Td[1]);
+print(Td[2].test);
+print(Td[3]);
+
+Td[4] = 9999;
+print(Td[4]);

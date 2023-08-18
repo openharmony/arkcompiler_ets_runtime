@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_HPROF_HEAP_TRACKER_H
-#define ECMASCRIPT_HPROF_HEAP_TRACKER_H
+#ifndef ECMASCRIPT_DFX_HPROF_HEAP_TRACKER_H
+#define ECMASCRIPT_DFX_HPROF_HEAP_TRACKER_H
 
 #include <atomic>
 #include <cstdint>
@@ -83,6 +83,11 @@ public:
         sample_.Stop();
     }
 
+    HeapSnapshot* GetHeapSnapshot() const
+    {
+        return snapshot_;
+    }
+
     void AllocationEvent(TaggedObject *address, size_t size);
     void MoveEvent(uintptr_t address, TaggedObject *forwardAddress, size_t size);
 
@@ -94,4 +99,4 @@ private:
     HeapTrackerSample sample_;
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_HPROF_HEAP_TRACKER_H
+#endif  // ECMASCRIPT_DFX_HPROF_HEAP_TRACKER_H

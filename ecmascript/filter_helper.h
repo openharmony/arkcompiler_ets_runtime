@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_FILTER_HELPER_H
 #define ECMASCRIPT_FILTER_HELPER_H
 
-#include "ecmascript/property_attributes.h"
 #include "ecmascript/object_operator.h"
+#include "ecmascript/property_attributes.h"
 
 #define NATIVE_DEFAULT 0
 #define NATIVE_WRITABLE 1 << 0

@@ -130,7 +130,7 @@ JSTaggedValue RuntimeStubs::RuntimeInstanceofByHandler(JSThread *thread, JSHandl
                                                        JSHandle<JSTaggedValue> instOfHandler)
 {
     // 3. ReturnIfAbrupt(instOfHandler).
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue(false));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 4. If instOfHandler is not undefined, then
     if (!instOfHandler->IsUndefined()) {
         // a. Return ! ToBoolean(? Call(instOfHandler, target, «object»)).
@@ -142,17 +142,17 @@ JSTaggedValue RuntimeStubs::RuntimeInstanceofByHandler(JSThread *thread, JSHandl
             JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
             EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, instOfHandler, target,
                                                                             undefined, 1);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue(false));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(object.GetTaggedValue());
             JSTaggedValue tagged = JSFunction::Call(info);
 
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue(false));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             return tagged;
         }
     }
     // 5. If IsCallable(target) is false, throw a TypeError exception.
     if (!target->IsCallable()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "InstanceOf error when target is not Callable", JSTaggedValue(false));
+        THROW_TYPE_ERROR_AND_RETURN(thread, "InstanceOf error when target is not Callable", JSTaggedValue::Exception());
     }
     // fastpath
     // 6. Return ? OrdinaryHasInstance(target, object).
@@ -364,10 +364,7 @@ JSTaggedValue RuntimeStubs::RuntimeAsyncGeneratorResolve(JSThread *thread, JSHan
 
     ASSERT(flag.IsBoolean());
     bool done = flag.IsTrue();
-    if (asyncGeneratorObjHandle->GetAsyncGeneratorState() == JSAsyncGeneratorState::COMPLETED &&
-        TaggedQueue::Cast(asyncGeneratorObjHandle->GetAsyncGeneratorQueue().GetTaggedObject())->Empty()) {
-        return JSTaggedValue::Undefined();
-    }
+
     return JSAsyncGeneratorObject::AsyncGeneratorResolve(thread, asyncGeneratorObjHandle, valueHandle, done);
 }
 
@@ -428,6 +425,17 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
         return JSTaggedValue(dstLen + strLen);
+    }
+
+    if (index.GetInt() == 0 && src->IsStableJSArray(thread)) {
+        JSHandle<TaggedArray> srcElements(thread, JSHandle<JSObject>::Cast(src)->GetElements());
+        uint32_t length = JSHandle<JSArray>::Cast(src)->GetArrayLength();
+        JSHandle<TaggedArray> dstElements = factory->NewTaggedArray(length);
+        JSHandle<JSArray> dstArray = JSHandle<JSArray>::Cast(dst);
+        dstArray->SetElements(thread, dstElements);
+        dstArray->SetArrayLength(thread, length);
+        TaggedArray::CopyTaggedArrayElement(thread, srcElements, dstElements, length);
+        return JSTaggedValue(length);
     }
 
     JSHandle<JSTaggedValue> iter;
@@ -838,16 +846,10 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
         cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
     } else {
         classLiteral->SetIsAOTUsed(true);
-        if (chc->IsUndefined()) {
-            JSHandle<JSHClass> ihclass(ihc);
-            cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor,
-                                                      lexenv, ihclass);
-        } else {
-            JSHandle<JSHClass> ihclass(ihc);
-            JSHandle<JSHClass> chclass(chc);
-            cls = ClassHelper::DefineClassWithIHClassAndConstructorHClass(thread, extractor,
-                                                                          lexenv, ihclass, chclass);
-        }
+        JSHandle<JSHClass> ihclass(ihc);
+        JSHandle<JSHClass> chclass(chc);
+        cls = ClassHelper::DefineClassWithIHClass(thread, extractor,
+                                                  lexenv, ihclass, chclass);
     }
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(cls), base);
@@ -1461,8 +1463,10 @@ JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTagge
                                            const JSHandle<JSTaggedValue> &right)
 {
     if (left->IsString() && right->IsString()) {
-        return JSTaggedValue(EcmaStringAccessor::Concat(
-            thread->GetEcmaVM(), JSHandle<EcmaString>(left), JSHandle<EcmaString>(right)));
+        EcmaString *resultStr = EcmaStringAccessor::Concat(
+            thread->GetEcmaVM(), JSHandle<EcmaString>(left), JSHandle<EcmaString>(right));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return JSTaggedValue(resultStr);
     }
     JSHandle<JSTaggedValue> primitiveA0(thread, JSTaggedValue::ToPrimitive(thread, left));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1474,7 +1478,9 @@ JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTagge
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSHandle<EcmaString> stringA1 = JSTaggedValue::ToString(thread, primitiveA1);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        return JSTaggedValue(EcmaStringAccessor::Concat(thread->GetEcmaVM(), stringA0, stringA1));
+        EcmaString *resultStr = EcmaStringAccessor::Concat(thread->GetEcmaVM(), stringA0, stringA1);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        return JSTaggedValue(resultStr);
     }
     JSHandle<JSTaggedValue> valLeft = JSTaggedValue::ToNumeric(thread, primitiveA0);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

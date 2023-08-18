@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TOOLING_INTERFACE_PROGRESS_H
-#define ECMASCRIPT_TOOLING_INTERFACE_PROGRESS_H
+#ifndef ECMASCRIPT_DFX_HPROF_PROGRESS_H
+#define ECMASCRIPT_DFX_HPROF_PROGRESS_H
 
 #include <memory>
 
@@ -27,4 +27,4 @@ public:
 };
 }  // namespace panda::ecmascript
 
-#endif  // ECMASCRIPT_TOOLING_INTERFACE_PROGRESS_H
+#endif  // ECMASCRIPT_DFX_HPROF_PROGRESS_H

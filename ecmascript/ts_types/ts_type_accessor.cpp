@@ -139,4 +139,24 @@ JSHandle<TSObjLayoutInfo> TSTypeAccessor::GetInstanceTypeLayout() const
     JSHandle<TSObjLayoutInfo> layout(thread_, instanceType->GetObjLayoutInfo());
     return layout;
 }
+
+JSHandle<TSObjLayoutInfo> TSTypeAccessor::GetPrototypeTypeLayout() const
+{
+    ASSERT(tsManager_->IsClassTypeKind(gt_));
+    JSHandle<TSClassType> classType = GetClassType();
+    JSHandle<TSObjectType> prototypeType(thread_, classType->GetPrototypeType());
+    JSHandle<TSObjLayoutInfo> layout(thread_, prototypeType->GetObjLayoutInfo());
+    return layout;
+}
+
+GlobalTSTypeRef TSTypeAccessor::GetPrototypePropGT(JSTaggedValue key) const
+{
+    ASSERT(tsManager_->IsClassTypeKind(gt_));
+    JSHandle<TSObjLayoutInfo> layout = GetPrototypeTypeLayout();
+    int index = layout->GetElementIndexByKey(key);
+    if (TSObjLayoutInfo::IsValidIndex(index)) {
+        return GlobalTSTypeRef(layout->GetTypeId(index).GetInt());
+    }
+    return GlobalTSTypeRef();
+}
 }  // namespace panda::ecmascript

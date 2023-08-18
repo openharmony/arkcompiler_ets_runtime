@@ -61,14 +61,26 @@ bool DependChains::Equals(DependChains* that)
     return true;
 }
 
-bool DependChains::FoundIndexChecked(RangeGuard* rangeGuard, GateRef input)
+uint32_t DependChains::FoundIndexCheckedForLength(RangeGuard* rangeGuard, GateRef input)
 {
     for (Node* node = head_; node != nullptr; node = node->next) {
-        if (rangeGuard->CheckIndexCheckInput(node->gate, input)) {
-            return true;
+        uint32_t length = rangeGuard->CheckIndexCheckLengthInput(node->gate, input);
+        if (length > 0) { // found !!!
+            return length;
         }
     }
-    return false;
+    return 0;
+}
+
+uint32_t DependChains::FoundIndexCheckedForIndex(RangeGuard* rangeGuard, GateRef input)
+{
+    for (Node* node = head_; node != nullptr; node = node->next) {
+        uint32_t length = rangeGuard->CheckIndexCheckIndexInput(node->gate, input);
+        if (length > 0) { // found !!!
+            return length;
+        }
+    }
+    return 0;
 }
 
 GateRef DependChains::LookupNode(LaterElimination* elimination, GateRef gate)

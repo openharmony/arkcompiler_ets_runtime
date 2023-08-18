@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_BASE_JSON_PARSE_INL_H
 #define ECMASCRIPT_BASE_JSON_PARSE_INL_H
 
+#include <cerrno>
+
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/number_helper.h"
@@ -134,7 +136,11 @@ private:
             if (isFast) {
                 std::string strNum(current_, end_ + 1);
                 current_ = end_;
-                double v = std::stod(strNum);
+                double v = std::strtod(strNum.c_str(), nullptr);
+                if (errno == ERANGE) {
+                    errno = 0;
+                    return v > 0 ? JSTaggedValue(base::POSITIVE_INFINITY): JSTaggedValue(-base::POSITIVE_INFINITY);
+                }
                 return JSTaggedValue::TryCastDoubleToInt32(v);
             }
         }
@@ -160,7 +166,11 @@ private:
 
         std::string strNum(current, end_ + 1);
         current_ = end_;
-        double v = std::stod(strNum);
+        double v = std::strtod(strNum.c_str(), nullptr);
+        if (errno == ERANGE) {
+            errno = 0;
+            return v > 0 ? JSTaggedValue(base::POSITIVE_INFINITY): JSTaggedValue(-base::POSITIVE_INFINITY);
+        }
         return JSTaggedValue::TryCastDoubleToInt32(v);
     }
 

@@ -118,7 +118,6 @@ enum CommandValues {
     OPTION_COMPILER_OPT_LATER_ELIMINATION,
     OPTION_COMPILER_OPT_VALUE_NUMBERING,
     OPTION_COMPILER_OPT_INLINING,
-    OPTION_COMPILER_OPT_STATIC_METHOD,
     OPTION_COMPILER_OPT_PGOTYPE,
     OPTION_COMPILER_OPT_TRACK_FIELD,
     OPTION_COMPILER_OPT_GLOBAL_TYPEINFER,
@@ -138,6 +137,7 @@ enum CommandValues {
     OPTION_COMPILER_NOCHECK,
     OPTION_FAST_AOT_COMPILE_MODE,
     OPTION_COMPILER_OPT_LOOP_PEELING,
+    OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION,
 };
 
 class PUBLIC_API JSRuntimeOptions {
@@ -901,6 +901,16 @@ public:
         enableTypeLowering_ = value;
     }
 
+    bool IsEnableArrayBoundsCheckElimination() const
+    {
+        return enableArrayBoundsCheckElimination_;
+    }
+
+    void SetEnableArrayBoundsCheckElimination(bool value)
+    {
+        enableArrayBoundsCheckElimination_ = value;
+    }
+
     bool IsEnableTypeLowering() const
     {
         return enableTypeLowering_;
@@ -944,16 +954,6 @@ public:
     bool IsEnableOptInlining() const
     {
         return enableOptInlining_;
-    }
-
-    void SetEnableOptStaticMethod(bool value)
-    {
-        enableOptStaticMethod_ = value;
-    }
-
-    bool IsEnableOptStaticMethod() const
-    {
-        return enableOptStaticMethod_;
     }
 
     void SetEnableOptPGOType(bool value)
@@ -1242,12 +1242,12 @@ private:
     double typeThreshold_ {-1};
     std::string entryPoint_ {"_GLOBAL::func_main_0"};
     bool mergeAbc_ {false};
+    bool enableArrayBoundsCheckElimination_ {false};
     bool enableTypeLowering_ {true};
     bool enableEarlyElimination_ {true};
     bool enableLaterElimination_ {true};
     bool enableValueNumbering_ {true};
     bool enableOptInlining_ {true};
-    bool enableOptStaticMethod_ {false};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};
     bool enableOptTrackField_ {true};

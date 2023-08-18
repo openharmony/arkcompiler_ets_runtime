@@ -91,13 +91,32 @@ void TypeRecorder::CollectLiteralGT(TSManager *tsManager, TypeLocation &loc, Glo
     if (bcIdx < 0) {
         return;
     }
-    if (tsManager->IsUserDefinedClassTypeKind(gt) ||
-        tsManager->IsObjectTypeKind(gt)) {
-        if (bytecodes_->GetOpcode(pcOffsets_[bcIdx]) == EcmaOpcode::STA_V8) {
-            // bcIndex of literal marked in es2abc maybe in the next bc whose opcode should be sta.
-            loc.SetBcIdx(bcIdx - 1);
+
+    if (bytecodes_->GetOpcode(pcOffsets_[bcIdx]) == EcmaOpcode::STA_V8) {
+        // bcIndex of literal marked in es2abc maybe in the next bc whose opcode should be sta.
+        bcIdx--;
+        loc.SetBcIdx(bcIdx);
+    }
+
+    EcmaOpcode ecmaOpcode =  bytecodes_->GetOpcode(pcOffsets_[bcIdx]);
+
+    switch (ecmaOpcode) {
+        case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8:
+        case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8: {
+            if (tsManager->IsUserDefinedClassTypeKind(gt)) {
+                tsManager->InsertLiteralGTMap(loc, gt);
+            }
+            return;
         }
-        tsManager->InsertLiteralGTMap(loc, gt);
+        case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
+        case BytecodeInstruction::Opcode::CREATEOBJECTWITHBUFFER_IMM16_ID16: {
+            if (tsManager->IsObjectTypeKind(gt)) {
+                tsManager->InsertLiteralGTMap(loc, gt);
+            }
+            return;
+        }
+        default:
+            return;
     }
 }
 
@@ -134,16 +153,35 @@ void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const Metho
     PGOBCInfo *bcInfo = tsManager->GetBytecodeInfoCollector()->GetPGOBCInfo();
     bcInfo->IterateInfoAndType(methodOffset, [this, &typeParser, methodOffset, &recordName, &jsPandaFile, tsManager]
         (const PGOBCInfo::Type type, const uint32_t bcIdx, const uint32_t bcOffset, const uint32_t cpIdx) {
-        TypeLocation loc(jsPandaFile, methodOffset, bcIdx);
-        if (!tsManager->GetLiteralGT(loc).IsDefault()) {
-            return;
-        }
         auto it = bcOffsetPGOOpTypeMap_.find(bcOffset);
         if (it == bcOffsetPGOOpTypeMap_.end()) {
             return;
         }
-        GlobalTSTypeRef gt = typeParser.CreatePGOGT(
-            TSTypeParser::PGOInfo { jsPandaFile, recordName, methodOffset, cpIdx, it->second, type });
+
+        EcmaOpcode ecmaOpcode = bytecodes_->GetOpcode(pcOffsets_[bcIdx]);
+        if (jsPandaFile->HasTSTypes(recordName) && Bytecodes::IsCallOp(ecmaOpcode)) {
+            int32_t callTargetMethodOffset = it->second.GetClassType().GetClassType();
+            if (callTargetMethodOffset == 0) {
+                return;
+            }
+            TypeAnnotationExtractor annoExtractor(jsPandaFile, callTargetMethodOffset);
+            GlobalTSTypeRef funcGT =
+                typeParser.CreateGT(jsPandaFile, recordName, annoExtractor.GetMethodTypeOffset());
+            if (funcGT.IsDefault()) {
+                return;
+            }
+            GateType callTargetType = GateType(funcGT);
+            bcOffsetCallTargetGtMap_.emplace(bcIdx, callTargetType);
+            return;
+        }
+
+        TypeLocation loc(jsPandaFile, methodOffset, bcIdx);
+        if (!tsManager->GetLiteralGT(loc).IsDefault()) {
+            return;
+        }
+
+        GlobalTSTypeRef gt = typeParser.CreatePGOGT(TSTypeParser::PGOInfo {
+            jsPandaFile, recordName, methodOffset, cpIdx, it->second, type, decoder_, enableOptTrackField_ });
         if (TypeNeedFilter(gt)) {
             return;
         }
@@ -229,6 +267,16 @@ GateType TypeRecorder::UpdateType(const int32_t offset, const GateType &type) co
     return type;
 }
 
+ElementsKind TypeRecorder::GetElementsKind(PGOSampleType type) const
+{
+    PGOHClassLayoutDesc *desc;
+    if (type.IsClassType() && decoder_->GetHClassLayoutDesc(type, &desc)) {
+        auto elementsKind = desc->GetElementsKind();
+        return elementsKind;
+    }
+    return ElementsKind::GENERIC;
+}
+
 PGOSampleType TypeRecorder::GetOrUpdatePGOType(TSManager *tsManager, int32_t offset, const GateType &type) const
 {
     if (bcOffsetPGOOpTypeMap_.find(offset) != bcOffsetPGOOpTypeMap_.end()) {
@@ -247,12 +295,42 @@ PGOSampleType TypeRecorder::GetOrUpdatePGOType(TSManager *tsManager, int32_t off
     return PGOSampleType::NoneType();
 }
 
+GateType TypeRecorder::GetCallTargetType(int32_t offset) const
+{
+    if (bcOffsetCallTargetGtMap_.find(offset) != bcOffsetCallTargetGtMap_.end()) {
+        return bcOffsetCallTargetGtMap_.at(offset);
+    }
+    return GateType::AnyType();
+}
+
 PGORWOpType TypeRecorder::GetRwOpType(int32_t offset) const
 {
     if (bcOffsetPGORwTypeMap_.find(offset) != bcOffsetPGORwTypeMap_.end()) {
         return bcOffsetPGORwTypeMap_.at(offset);
     }
     return PGORWOpType();
+}
+
+ElementsKind TypeRecorder::GetElementsKind(int32_t offset) const
+{
+    if (bcOffsetPGORwTypeMap_.find(offset) == bcOffsetPGORwTypeMap_.end()) {
+        return ElementsKind::GENERIC;
+    }
+
+    PGORWOpType rwType = bcOffsetPGORwTypeMap_.at(offset);
+    PGOObjectInfo info = rwType.GetObjectInfo(0);
+    if (info.IsNone()) {
+        return ElementsKind::GENERIC;
+    }
+
+    PGOSampleType type(info.GetClassType());
+    PGOHClassLayoutDesc *desc;
+    if (!decoder_->GetHClassLayoutDesc(type, &desc)) {
+        return ElementsKind::GENERIC;
+    }
+
+    auto elementsKind = desc->GetElementsKind();
+    return elementsKind;
 }
 
 bool TypeRecorder::TypeNeedFilter(GlobalTSTypeRef gt) const

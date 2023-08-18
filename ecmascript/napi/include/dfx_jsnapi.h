@@ -51,10 +51,12 @@ public:
     // progress pointer is used to report the object number for IDE.
     // isVmMode means the internal class in vm is visible. isPrivate means the number and string is not visible.
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, const std::string &path, bool isVmMode = true,
-                                 bool isPrivate = false);
+                                 bool isPrivate = false, bool captureNumericValue = false);
     static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, Stream *stream, Progress *progress = nullptr,
-                                 bool isVmMode = true, bool isPrivate = false);
-    static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false);
+                                 bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false);
+    static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false,
+                                 bool captureNumericValue = false);
+    static void DestroyHeapProfiler(const EcmaVM *vm);
 
     static bool BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
     static bool BuildJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
@@ -103,6 +105,8 @@ public:
     static bool SuspendVM(const EcmaVM *vm);
     static bool IsSuspended(const EcmaVM *vm);
     static bool CheckSafepoint(const EcmaVM *vm);
+    static void ResumeVMById(EcmaVM *vm, uint32_t tid);
+    static bool SuspendVMById(EcmaVM *vm, uint32_t tid);
 };
 }
 #endif

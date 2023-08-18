@@ -317,7 +317,7 @@ public:
         return jsGatesToByteCode_.at(gate);
     }
 
-    bool NeedUpdateHotness() const
+    bool NeedCheckSafePointAndStackOver() const
     {
         return !isInline_ && !method_->IsNoGC();
     }
@@ -422,6 +422,18 @@ public:
     PGORWOpType GetPGOType(GateRef gate) const
     {
         return typeRecorder_.GetRwOpType(GetPcOffsetByGate(gate));
+    }
+
+    ElementsKind GetElementsKind(GateRef gate) const
+    {
+        return typeRecorder_.GetElementsKind(GetPcOffsetByGate(gate));
+    }
+
+    ElementsKind GetArrayElementsKind(GateRef gate) const
+    {
+        auto type = typeRecorder_.GetType(GetBcIndexByGate(gate));
+        auto pgoType = typeRecorder_.GetOrUpdatePGOType(tsManager_, gateAcc_.TryGetPcOffset(gate), type);
+        return typeRecorder_.GetElementsKind(pgoType);
     }
 
     bool ShouldPGOTypeInfer(GateRef gate) const

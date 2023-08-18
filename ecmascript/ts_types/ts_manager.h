@@ -343,6 +343,14 @@ public:
         return CString(fileName);
     }
 
+    void AddArrayTSElements(panda_file::File::EntityId id, JSTaggedValue elements);
+
+    void AddArrayTSElementsKind(panda_file::File::EntityId id, JSTaggedValue kind);
+
+    void AddArrayTSConstantIndex(uint64_t bcAbsoluteOffset, JSTaggedValue index);
+
+    void AddArrayTSHClass(panda_file::File::EntityId id, JSHClass *hclass);
+
     void AddInstanceTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &ihclass);
 
     void AddConstructorTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &constructorHClass);
@@ -357,6 +365,15 @@ public:
 
     std::string PUBLIC_API GetTypeStr(kungfu::GateType gateType) const;
 
+    int PUBLIC_API GetElementsIndexByArrayType(const kungfu::GateType &gateType,
+                                               const panda_file::File::EntityId id);
+
+    int PUBLIC_API GetElementsKindIndexByArrayType(const kungfu::GateType &gateType,
+                                                   const panda_file::File::EntityId id);
+
+    int PUBLIC_API GetHClassIndexByArrayType(const kungfu::GateType &gateType,
+                                             const panda_file::File::EntityId id);
+
     int PUBLIC_API GetHClassIndexByObjectType(const kungfu::GateType &gateType);
 
     int PUBLIC_API GetHClassIndexByInstanceGateType(const kungfu::GateType &gateType);
@@ -367,7 +384,7 @@ public:
 
     JSTaggedValue GetTSHClass(const kungfu::GateType &gateType) const;
 
-    JSTaggedValue PUBLIC_API GetHClassFromCache(uint32_t index);
+    JSTaggedValue PUBLIC_API GetValueFromCache(uint32_t index);
 
     GlobalTSTypeRef PUBLIC_API CreateNamespaceType();
 
@@ -554,6 +571,8 @@ public:
 
     void PUBLIC_API SetCurConstantPool(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
 
+    int32_t PUBLIC_API GetConstantPoolIDByMethodOffset(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
+
     JSHandle<JSTaggedValue> PUBLIC_API GetConstantPool() const
     {
         return JSHandle<JSTaggedValue>(uintptr_t(&curCP_));
@@ -589,6 +608,78 @@ public:
         bcInfoCollector_ = bcInfoCollector;
     }
 
+    class ElementData {
+    public:
+        explicit ElementData(JSTaggedType element) : element_(element) {}
+
+        void Iterate(const RootVisitor &v)
+        {
+            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&element_)));
+        }
+
+        std::unordered_map<int32_t, uint32_t>& GetCPIndexMap()
+        {
+            return cpIndexMap_;
+        }
+
+        JSTaggedType GetELM() const
+        {
+            return element_;
+        }
+
+    private:
+        JSTaggedType element_ {0};
+        std::unordered_map<int32_t, uint32_t> cpIndexMap_ {};
+    };
+
+    class ElementKindData {
+    public:
+        explicit ElementKindData(JSTaggedType kind) : kind_(kind) {}
+
+        void Iterate(const RootVisitor &v)
+        {
+            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&kind_)));
+        }
+
+        std::unordered_map<int32_t, uint32_t>& GetCPIndexMap()
+        {
+            return cpIndexMap_;
+        }
+
+        JSTaggedType GetElmKind() const
+        {
+            return kind_;
+        }
+
+    private:
+        JSTaggedType kind_ {0};
+        std::unordered_map<int32_t, uint32_t> cpIndexMap_ {};
+    };
+
+    class ConstantIndexData {
+    public:
+        explicit ConstantIndexData(JSTaggedType index) : index_(index) {}
+
+        void Iterate(const RootVisitor &v)
+        {
+            v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&index_)));
+        }
+
+        std::unordered_map<int32_t, uint32_t>& GetCPIndexMap()
+        {
+            return cpIndexMap_;
+        }
+
+        JSTaggedType GetIndex() const
+        {
+            return index_;
+        }
+
+    private:
+        JSTaggedType index_ {0};
+        std::unordered_map<int32_t, uint32_t> cpIndexMap_ {};
+    };
+
     class IHClassData {
     public:
         explicit IHClassData(JSTaggedType ihc) : ihc_(ihc) {}
@@ -611,6 +702,74 @@ public:
     private:
         JSTaggedType ihc_ {0};
         std::unordered_map<int32_t, uint32_t> cpIndexMap_ {};
+    };
+
+    // for jsarray
+    class JSArrayData {
+    public:
+        explicit JSArrayData() {}
+
+        void Iterate(const RootVisitor &v)
+        {
+            for (auto iter : idElmMap_) {
+                iter.second.Iterate(v);
+            }
+            for (auto iter : idElmKindMap_) {
+                iter.second.Iterate(v);
+            }
+            for (auto iter : offConstIndexMap_) {
+                iter.second.Iterate(v);
+            }
+            for (auto iter : idIhcMap_) {
+                iter.second.Iterate(v);
+            }
+        }
+
+        std::map<panda_file::File::EntityId, ElementData>& GetElmMap()
+        {
+            return idElmMap_;
+        }
+
+        std::map<panda_file::File::EntityId, ElementKindData>& GetElmKindMap()
+        {
+            return idElmKindMap_;
+        }
+
+        std::map<uint64_t, ConstantIndexData>& GetOffConstIndexMap()
+        {
+            return offConstIndexMap_;
+        }
+
+        std::map<panda_file::File::EntityId, IHClassData>& GetIhcMap()
+        {
+            return idIhcMap_;
+        }
+
+        void AddElmMap(panda_file::File::EntityId id, ElementData data)
+        {
+            idElmMap_.insert({id, data});
+        }
+
+        void AddElmKindMap(panda_file::File::EntityId id, ElementKindData data)
+        {
+            idElmKindMap_.insert({id, data});
+        }
+
+        void AddOffConstIndexMap(uint64_t bcAbsoluteOffset, ConstantIndexData data)
+        {
+            offConstIndexMap_.insert({bcAbsoluteOffset, data});
+        }
+
+        void AddIhcMap(panda_file::File::EntityId id, IHClassData data)
+        {
+            idIhcMap_.insert({id, data});
+        }
+
+    private:
+        std::map<panda_file::File::EntityId, ElementData> idElmMap_ {};
+        std::map<panda_file::File::EntityId, ElementKindData> idElmKindMap_ {};
+        std::map<uint64_t, ConstantIndexData> offConstIndexMap_ {};
+        std::map<panda_file::File::EntityId, IHClassData> idIhcMap_ {};
     };
 
     // for snapshot
@@ -646,9 +805,9 @@ public:
             return snapshotCPList_;
         }
 
-        CVector<JSTaggedType>& GetSnapshotHCVector(int32_t cpID)
+        CVector<JSTaggedType>& GetSnapshotValVector(int32_t cpID)
         {
-            return snapshotHCs_[cpID];
+            return snapshotVals_[cpID];
         }
 
         void AddIndexInfoToRecordInfo(RecordType type, std::pair<uint32_t, uint32_t> indexInfo)
@@ -666,8 +825,8 @@ public:
     private:
         JSTaggedValue snapshotCPList_ {JSTaggedValue::Hole()};
 
-        // key: constantpoolnum,  value: store hclass which produced from static type info
-        CMap<int32_t, CVector<JSTaggedType>> snapshotHCs_ {};
+        // key: constantpoolnum,  value: store hclass or element which produced from static type info
+        CMap<int32_t, CVector<JSTaggedType>> snapshotVals_ {};
 
         // used to record the data that needs to be modified into the aot code entry index
         std::vector<RecordData> recordInfo_ {};
@@ -688,8 +847,7 @@ public:
         return snapshotData_.GetSnapshotCPList();
     }
 
-    void PUBLIC_API ProcessSnapshotConstantPool(kungfu::BytecodeInfoCollector *bcInfoCollector,
-                                                bool optStaticMethods);
+    void PUBLIC_API ProcessSnapshotConstantPool(kungfu::BytecodeInfoCollector *bcInfoCollector);
 
     void PUBLIC_API ResolveSnapshotConstantPool(const std::map<uint32_t, uint32_t> &methodToEntryIndexMap);
 
@@ -755,6 +913,12 @@ public:
     kungfu::GateType TryNarrowUnionType(kungfu::GateType gateType);
 
     JSHandle<TaggedArray> GetExportTableFromLiteral(const JSPandaFile *jsPandaFile, const CString &recordName);
+
+    int GetElementsIndex(panda_file::File::EntityId id);
+
+    int GetElementsKindIndex(panda_file::File::EntityId id);
+
+    int GetHClassIndex(panda_file::File::EntityId id);
 
     int GetHClassIndex(GlobalTSTypeRef classGT, bool isConstructor = false);
 
@@ -824,6 +988,10 @@ private:
 
     std::string GetPrimitiveStr(const GlobalTSTypeRef &gt) const;
 
+    uint32_t RecordElmToVecAndIndexMap(ElementData &elmData);
+
+    uint32_t RecordElmKindToVecAndIndexMap(ElementKindData &elmKindData);
+
     uint32_t RecordIhcToVecAndIndexMap(IHClassData &ihcData);
 
     uint32_t GetBuiltinIndex(GlobalTSTypeRef builtinGT) const;
@@ -845,20 +1013,18 @@ private:
         builtinsRecordName_ = builtinsRecordName;
     }
 
-    // for snapshot
-    int32_t GetOldConstantPoolIDByMethodOffset(const JSPandaFile *jsPandaFile, uint32_t methodOffset);
+    // for jsarray
+    void TryGetElmsKind(panda_file::File::EntityId id, JSHandle<JSTaggedValue> &ekd);
 
     void GenerateSnapshotConstantPoolList(std::map<int32_t, uint32_t> &cpListIndexMap,
                                           const CMap<int32_t, JSTaggedValue> &oldCPValues);
 
-    void TryGetIhcAndChc(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> &ihc, JSHandle<JSTaggedValue> &chc,
-                         bool optStaticMethods = false);
+    void TryGetIhcAndChc(GlobalTSTypeRef gt, JSHandle<JSTaggedValue> &ihc, JSHandle<JSTaggedValue> &chc);
 
     void FillSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
-                                      kungfu::BytecodeInfoCollector *bcInfoCollector,
-                                      bool optStaticMethods);
+                                      kungfu::BytecodeInfoCollector *bcInfoCollector);
 
-    void AddHClassToSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
+    void AddValueToSnapshotConstantPoolList(const std::map<int32_t, uint32_t> &cpListIndexMap,
                                              kungfu::BytecodeInfoCollector *bcInfoCollector);
 
     JSHandle<ConstantPool> GetSnapshotConstantPool(uint32_t cpListIndex);
@@ -878,6 +1044,9 @@ private:
     // so that subsequent passes (type_infer, ts_hcr_lowering) can obtain the correct constpool.
     JSTaggedValue curCP_ {JSTaggedValue::Hole()};
     int32_t curCPID_ {0};
+
+    // for jsarray
+    JSArrayData jsArrayData_ {};
 
     // for snapshot
     SnapshotData snapshotData_ {};

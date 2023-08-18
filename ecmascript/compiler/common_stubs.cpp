@@ -216,7 +216,7 @@ void InstanceofStubBuilder::GenerateCircuit()
     GateRef jsFunc = TaggedArgument(3); // 3 : 4th para
     GateRef slotId = Int32Argument(4); // 4 : 5th pars
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
-    Return(InstanceOf(glue, object, target, profileTypeInfo, slotId));
+    Return(InstanceOf(glue, object, target, profileTypeInfo, slotId, ProfileOperation()));
 }
 
 void IncStubBuilder::GenerateCircuit()
@@ -307,7 +307,7 @@ void GetPropertyByIndexStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
-    Return(GetPropertyByIndex(glue, receiver, index));
+    Return(GetPropertyByIndex(glue, receiver, index, ProfileOperation()));
 }
 
 void SetPropertyByIndexStubBuilder::GenerateCircuit()
@@ -316,7 +316,7 @@ void SetPropertyByIndexStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
     GateRef value = TaggedArgument(3); /* 3 : 4th parameter is value */
-    Return(SetPropertyByIndex(glue, receiver, index, value, false));
+    Return(SetPropertyByIndex(glue, receiver, index, value, false, ProfileOperation()));
 }
 
 void SetPropertyByIndexWithOwnStubBuilder::GenerateCircuit()
@@ -325,7 +325,7 @@ void SetPropertyByIndexWithOwnStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
     GateRef value = TaggedArgument(3); /* 3 : 4th parameter is value */
-    Return(SetPropertyByIndex(glue, receiver, index, value, true));
+    Return(SetPropertyByIndex(glue, receiver, index, value, true, ProfileOperation()));
 }
 
 void GetPropertyByNameStubBuilder::GenerateCircuit()
@@ -399,7 +399,7 @@ void DeprecatedGetPropertyByValueStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
-    Return(GetPropertyByValue(glue, receiver, key));
+    Return(GetPropertyByValue(glue, receiver, key, ProfileOperation()));
 }
 
 void SetPropertyByValueStubBuilder::GenerateCircuit()
@@ -442,7 +442,7 @@ void TryLdGlobalByNameStubBuilder::GenerateCircuit()
     AccessObjectStubBuilder builder(this, jsFunc);
     StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
-    Return(builder.TryLoadGlobalByName(glue, id, info, profileTypeInfo, slotId));
+    Return(builder.TryLoadGlobalByName(glue, id, info, profileTypeInfo, slotId, ProfileOperation()));
 }
 
 void TryStGlobalByNameStubBuilder::GenerateCircuit()
@@ -455,7 +455,7 @@ void TryStGlobalByNameStubBuilder::GenerateCircuit()
     AccessObjectStubBuilder builder(this, jsFunc);
     StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
-    Return(builder.TryStoreGlobalByName(glue, id, info, value, profileTypeInfo, slotId));
+    Return(builder.TryStoreGlobalByName(glue, id, info, value, profileTypeInfo, slotId, ProfileOperation()));
 }
 
 void LdGlobalVarStubBuilder::GenerateCircuit()
@@ -467,7 +467,7 @@ void LdGlobalVarStubBuilder::GenerateCircuit()
     AccessObjectStubBuilder builder(this, jsFunc);
     StringIdInfo info = { 0, 0, StringIdInfo::Offset::INVALID, StringIdInfo::Length::INVALID };
     GateRef profileTypeInfo = UpdateProfileTypeInfo(glue, jsFunc);
-    Return(builder.LoadGlobalVar(glue, id, info, profileTypeInfo, slotId));
+    Return(builder.LoadGlobalVar(glue, id, info, profileTypeInfo, slotId, ProfileOperation()));
 }
 
 void StGlobalVarStubBuilder::GenerateCircuit()
@@ -505,7 +505,7 @@ void TryLoadICByNameStubBuilder::GenerateCircuit()
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
         {
-            Return(LoadICWithHandler(glue, receiver, receiver, secondValue));
+            Return(LoadICWithHandler(glue, receiver, receiver, secondValue, ProfileOperation()));
         }
         Bind(&hclassNotEqualFirstValue);
         {
@@ -513,7 +513,7 @@ void TryLoadICByNameStubBuilder::GenerateCircuit()
             Branch(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
             Bind(&cachedHandlerNotHole);
             {
-                Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler));
+                Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler, ProfileOperation()));
             }
         }
     }
@@ -546,7 +546,7 @@ void TryLoadICByValueStubBuilder::GenerateCircuit()
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
-        Return(LoadElement(glue, receiver, key));
+        Return(LoadElement(glue, receiver, key, ProfileOperation()));
         Bind(&hclassNotEqualFirstValue);
         {
             Branch(Int64Equal(firstValue, key), &firstValueEqualKey, &receiverNotHeapObject);
@@ -555,7 +555,7 @@ void TryLoadICByValueStubBuilder::GenerateCircuit()
                 auto cachedHandler = CheckPolyHClass(secondValue, hclass);
                 Branch(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
                 Bind(&cachedHandlerNotHole);
-                Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler));
+                Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler, ProfileOperation()));
             }
         }
     }
@@ -624,7 +624,7 @@ void TryStoreICByValueStubBuilder::GenerateCircuit()
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
-        Return(ICStoreElement(glue, receiver, key, value, secondValue));
+        Return(ICStoreElement(glue, receiver, key, value, secondValue, ProfileOperation()));
         Bind(&hclassNotEqualFirstValue);
         {
             Branch(Int64Equal(firstValue, key), &firstValueEqualKey, &receiverNotHeapObject);
@@ -672,7 +672,8 @@ void CreateEmptyArrayStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     NewObjectStubBuilder newBuilder(this);
-    Return(newBuilder.CreateEmptyArray(glue));
+    Return(newBuilder.CreateEmptyArray(glue, Undefined(), Undefined(),
+        Undefined(), Undefined(), ProfileOperation()));
 }
 
 void CreateArrayWithBufferStubBuilder::GenerateCircuit()
@@ -681,7 +682,8 @@ void CreateArrayWithBufferStubBuilder::GenerateCircuit()
     GateRef index = Int32Argument(1);
     GateRef jsFunc = TaggedArgument(2); // 2 : 3rd para
     NewObjectStubBuilder newBuilder(this);
-    Return(newBuilder.CreateArrayWithBuffer(glue, index, jsFunc));
+    Return(newBuilder.CreateArrayWithBuffer(glue, index, jsFunc, Undefined(),
+        Undefined(), Undefined(), ProfileOperation()));
 }
 
 void NewJSObjectStubBuilder::GenerateCircuit()

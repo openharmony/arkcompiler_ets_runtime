@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -167,6 +167,7 @@ using ecmascript::JSIterator;
 using ecmascript::JSGeneratorFunction;
 using ecmascript::JSGeneratorObject;
 using ecmascript::GeneratorContext;
+using ecmascript::JSProxy;
 #ifdef ARK_SUPPORT_INTL
 using ecmascript::JSCollator;
 using ecmascript::JSDateTimeFormat;
@@ -371,7 +372,7 @@ void JSNApi::TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType)
         CHECK_HAS_PENDING_EXCEPTION_WITHOUT_RETURN(vm);
         switch (gcType) {
             case TRIGGER_GC_TYPE::SEMI_GC:
-                vm->CollectGarbage(ecmascript::TriggerGCType::YOUNG_GC, ecmascript::GCReason::EXTERNAL_TRIGGER);
+                vm->CollectGarbage(vm->GetHeap()->SelectGCType(), ecmascript::GCReason::EXTERNAL_TRIGGER);
                 break;
             case TRIGGER_GC_TYPE::OLD_GC:
                 vm->CollectGarbage(ecmascript::TriggerGCType::OLD_GC, ecmascript::GCReason::EXTERNAL_TRIGGER);
@@ -836,7 +837,8 @@ void JSNApi::SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data)
     vm->GetJSThread()->GetCurrentEcmaContext()->SetData(data);
 }
 
-void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm, std::function<std::vector<uint8_t>(std::string dirPath)> cb)
+void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
+    std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)> cb)
 {
     vm->SetResolveBufferCallback(cb);
 }
@@ -1903,6 +1905,7 @@ bool ArrayRef::SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t inde
     JSHandle<JSTaggedValue> valueHandle = JSNApiHelper::ToJSHandle(value);
     return JSArray::FastSetPropertyByValue(thread, objectHandle, index, valueHandle);
 }
+
 // ---------------------------------- Promise --------------------------------------
 Local<PromiseCapabilityRef> PromiseCapabilityRef::New(const EcmaVM *vm)
 {
@@ -2508,6 +2511,26 @@ double DateRef::GetTime()
     return date->GetTime().GetDouble();
 }
 
+Local<JSValueRef> ProxyRef::GetHandler(const EcmaVM *vm)
+{
+    JSHandle<JSProxy> jsProxy(JSNApiHelper::ToJSHandle(this));
+    JSThread *thread = vm->GetJSThread();
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, jsProxy->GetHandler()));
+}
+
+Local<JSValueRef> ProxyRef::GetTarget(const EcmaVM *vm)
+{
+    JSHandle<JSProxy> jsProxy(JSNApiHelper::ToJSHandle(this));
+    JSThread *thread = vm->GetJSThread();
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, jsProxy->GetTarget()));
+}
+
+bool ProxyRef::IsRevoked()
+{
+    JSHandle<JSProxy> jsProxy(JSNApiHelper::ToJSHandle(this));
+    return jsProxy->GetIsRevoked();
+}
+
 Local<JSValueRef> MapRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
 {
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
@@ -2753,7 +2776,6 @@ Local<JSValueRef> GeneratorObjectRef::GetGeneratorReceiver(const EcmaVM *vm)
     JSTaggedValue jsTagValue = generatorContext->GetAcc();
     return JSNApiHelper::ToLocal<GeneratorObjectRef>(JSHandle<JSTaggedValue>(thread, jsTagValue));
 }
-
 
 Local<JSValueRef> CollatorRef::GetCompareFunction(const EcmaVM *vm)
 {
@@ -3582,7 +3604,13 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
     notificationMgr->LoadModuleEvent(moduleName, recordName);
 
     // check ESM or CJS
-    if (!jsPandaFile->IsModule(thread, recordName)) {
+    ecmascript::JSRecordInfo recordInfo;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
+    if (!hasRecord) {
+        LOG_ECMA(ERROR) << "cannot find record '" << recordName << "', please check the request path.";
+        return false;
+    }
+    if (!jsPandaFile->IsModule(recordInfo)) {
         LOG_ECMA(DEBUG) << "Current function is not from ES Module's file.";
         return true;
     }

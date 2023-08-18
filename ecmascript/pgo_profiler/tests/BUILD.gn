@@ -23,6 +23,8 @@ test_js_files = [
   "op_type_test",
   "class_test",
   "call_test",
+  "array_test",
+  "object_literal",
 ]
 
 foreach(file, test_js_files) {

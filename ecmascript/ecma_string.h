@@ -43,12 +43,19 @@ class LineEcmaString;
 class ConstantString;
 class TreeEcmaString;
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ECMA_STRING_CHECK_LENGTH_AND_TRHOW(vm, length)                                        \
+    if ((length) >= MAX_STRING_LENGTH) {                                                      \
+        THROW_RANGE_ERROR_AND_RETURN((vm)->GetJSThread(), "Invalid string length", nullptr);  \
+    }
+
 class EcmaString : public TaggedObject {
 public:
     CAST_CHECK(EcmaString, IsString);
 
     static constexpr uint32_t STRING_COMPRESSED_BIT = 0x1;
     static constexpr uint32_t STRING_INTERN_BIT = 0x2;
+    static constexpr size_t MAX_STRING_LENGTH = 0x40000000U; // 30 bits for string length, 2 bits for special meaning
 
     static constexpr size_t MIX_LENGTH_OFFSET = TaggedObjectSize();
     // In last bit of mix_length we store if this string is compressed or not.
@@ -89,8 +96,10 @@ private:
         const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, uint32_t length, bool compressed);
     static EcmaString *CreateConstantString(const EcmaVM *vm, const uint8_t *utf8Data,
         size_t length, bool compressed, MemSpaceType type = MemSpaceType::SEMI_SPACE, uint32_t idOffset = 0);
-    static EcmaString *Concat(const EcmaVM *vm,
-        const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right);
+    static EcmaString *Concat(const EcmaVM *vm, const JSHandle<EcmaString> &left,
+        const JSHandle<EcmaString> &right, MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    static EcmaString *CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<EcmaString> &original,
+        uint32_t length, bool compressed);
     static EcmaString *FastSubString(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
     // require src is LineString
@@ -128,7 +137,7 @@ private:
 
     void SetLength(uint32_t length, bool compressed = false)
     {
-        ASSERT(length < 0x40000000U);
+        ASSERT(length < MAX_STRING_LENGTH);
         // Use 0u for compressed/utf8 expression
         SetMixLength((length << 2U) | (compressed ? STRING_COMPRESSED : STRING_UNCOMPRESSED));
     }
@@ -759,10 +768,16 @@ public:
         return EcmaString::CreateFromUtf16(vm, utf16Data, utf16Len, canBeCompress, type);
     }
 
-    static EcmaString *Concat(const EcmaVM *vm,
-        const JSHandle<EcmaString> &str1Handle, const JSHandle<EcmaString> &str2Handle)
+    static EcmaString *Concat(const EcmaVM *vm, const JSHandle<EcmaString> &str1Handle,
+        const JSHandle<EcmaString> &str2Handle, MemSpaceType type = MemSpaceType::SEMI_SPACE)
     {
-        return EcmaString::Concat(vm, str1Handle, str2Handle);
+        return EcmaString::Concat(vm, str1Handle, str2Handle, type);
+    }
+
+    static EcmaString *CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<EcmaString> &original,
+        uint32_t length, bool compressed)
+    {
+        return EcmaString::CopyStringToOldSpace(vm, original, length, compressed);
     }
 
     // can change src data structure

@@ -28,6 +28,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array-inl.h"
 
@@ -236,6 +237,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
                                   const JSHandle<JSTaggedValue> &value, PropertyAttributes attr)
 {
     bool isDictionary = receiver->GetJSHClass()->IsDictionaryElement();
+    ElementsKind kind = ElementsKind::NONE;
     if (receiver->IsJSArray()) {
         DISALLOW_GARBAGE_COLLECTION;
         JSArray *arr = JSArray::Cast(*receiver);
@@ -245,6 +247,9 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
                 return false;
             }
             arr->SetArrayLength(thread, index + 1);
+            if (index > oldLength) {
+                kind = ElementsKind::HOLE;
+            }
         }
     }
     thread->NotifyStableArrayElementsGuardians(receiver);
@@ -272,6 +277,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
         elements = *JSObject::GrowElementsCapacity(thread, receiver, index + 1);
     }
     elements->Set(thread, index, value);
+    JSHClass::TransitToElementsKind(thread, receiver, value, kind);
     return true;
 }
 
@@ -331,7 +337,7 @@ void JSObject::GetAllKeys(const JSThread *thread, const JSHandle<JSObject> &obj,
 }
 
 void JSObject::GetAllKeysByFilter(const JSThread *thread, const JSHandle<JSObject> &obj,
-                                  uint32_t& keyArrayEffectivelength,
+                                  uint32_t &keyArrayEffectivelength,
                                   const JSHandle<TaggedArray> &keyArray,
                                   uint32_t filter)
 {
@@ -339,8 +345,8 @@ void JSObject::GetAllKeysByFilter(const JSThread *thread, const JSHandle<JSObjec
     if (!array->IsDictionaryMode()) {
         uint32_t numberOfProps = obj->GetJSHClass()->NumberOfProps();
         if (numberOfProps > 0) {
-            LayoutInfo::Cast(obj->GetJSHClass()->GetLayout().GetTaggedObject())
-                ->GetAllKeysByFilter(thread, numberOfProps, keyArrayEffectivelength, *keyArray, obj, filter);
+            LayoutInfo::Cast(obj->GetJSHClass()->GetLayout().GetTaggedObject())->
+                GetAllKeysByFilter(thread, numberOfProps, keyArrayEffectivelength, *keyArray, obj, filter);
         }
         return;
     }
@@ -462,7 +468,7 @@ void JSObject::GetAllElementKeys(JSThread *thread, const JSHandle<JSObject> &obj
 void JSObject::GetAllElementKeysByFilter(JSThread *thread,
                                          const JSHandle<JSObject> &obj,
                                          const JSHandle<TaggedArray> &keyArray,
-                                         uint32_t &keyArrayEffectivelength,
+                                         uint32_t &keyArrayEffectiveLength,
                                          uint32_t filter)
 {
     ASSERT_PRINT(obj->IsECMAObject(), "obj is not object");
@@ -472,8 +478,8 @@ void JSObject::GetAllElementKeysByFilter(JSThread *thread,
     if ((filter & NATIVE_ENUMERABLE) && obj->IsJSPrimitiveRef() && JSPrimitiveRef::Cast(*obj)->IsString()) {
         elementIndex = JSPrimitiveRef::Cast(*obj)->GetStringLength();
         for (uint32_t i = 0; i < elementIndex; ++i) {
-            keyArray->Set(thread, keyArrayEffectivelength, JSTaggedValue(i));
-            keyArrayEffectivelength++;
+            keyArray->Set(thread, keyArrayEffectiveLength, JSTaggedValue(i));
+            keyArrayEffectiveLength++;
         }
     }
 
@@ -489,13 +495,13 @@ void JSObject::GetAllElementKeysByFilter(JSThread *thread,
                 if (bIgnore) {
                     continue;
                 }
-                keyArray->Set(thread, keyArrayEffectivelength, JSTaggedValue(i));
-                keyArrayEffectivelength++;
+                keyArray->Set(thread, keyArrayEffectiveLength, JSTaggedValue(i));
+                keyArrayEffectiveLength++;
             }
         }
     } else {
         NumberDictionary::GetAllKeysByFilter(thread, JSHandle<NumberDictionary>(elements),
-            keyArrayEffectivelength, keyArray, filter);
+            keyArrayEffectiveLength, keyArray, filter);
     }
 }
 
@@ -797,6 +803,10 @@ bool JSObject::CallSetter(JSThread *thread, const AccessorData &accessor, const 
     }
 
     JSHandle<JSTaggedValue> func(thread, setter);
+    if (thread->IsPGOProfilerEnable()) {
+        auto profiler = thread->GetEcmaVM()->GetPGOProfiler();
+        profiler->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, receiver, undefined, 1);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -819,6 +829,10 @@ JSTaggedValue JSObject::CallGetter(JSThread *thread, const AccessorData *accesso
     }
 
     JSHandle<JSTaggedValue> func(thread, getter);
+    if (thread->IsPGOProfilerEnable()) {
+        auto profiler = thread->GetEcmaVM()->GetPGOProfiler();
+        profiler->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+    }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, receiver, undefined, 0);
     JSTaggedValue res = JSFunction::Call(info);
@@ -1188,7 +1202,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
     JSHandle<JSHClass> hclass(thread, obj->GetJSHClass());
     JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto);
     JSHClass::NotifyHclassChanged(thread, hclass, newClass);
-    obj->SetClass(newClass);
+    obj->SynchronizedSetClass(*newClass);
     thread->NotifyStableArrayElementsGuardians(obj);
     return true;
 }
@@ -1241,7 +1255,7 @@ bool JSObject::PreventExtensions(JSThread *thread, const JSHandle<JSObject> &obj
     if (obj->IsExtensible()) {
         JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
         JSHandle<JSHClass> newHclass = JSHClass::TransitionExtension(thread, jshclass);
-        obj->SetClass(newHclass);
+        obj->SynchronizedSetClass(*newHclass);
     }
 
     return true;
@@ -1264,16 +1278,15 @@ JSHandle<TaggedArray> JSObject::GetOwnPropertyKeys(JSThread *thread, const JSHan
 
 JSHandle<TaggedArray> JSObject::GetAllPropertyKeys(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t filter)
 {
-    bool isInculdePrototypes = (filter & NATIVE_KEY_INCLUDE_PROTOTYPES);
     JSMutableHandle<JSObject> currentObj(thread, obj);
     JSMutableHandle<JSTaggedValue> currentObjValue(thread, currentObj);
 
     uint32_t curObjNumberOfElements = currentObj->GetNumberOfElements();
     uint32_t curObjNumberOfKeys = currentObj->GetNumberOfKeys();
     uint32_t curObjectKeysLength = curObjNumberOfElements + curObjNumberOfKeys;
-    uint32_t retArraylength = curObjectKeysLength;
+    uint32_t retArrayLength = curObjectKeysLength;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSMutableHandle<TaggedArray> retArray(thread, factory->NewTaggedArray(retArraylength));
+    JSMutableHandle<TaggedArray> retArray(thread, factory->NewTaggedArray(retArrayLength));
     uint32_t retArrayEffectivelength = 0;
 
     do {
@@ -1281,16 +1294,16 @@ JSHandle<TaggedArray> JSObject::GetAllPropertyKeys(JSThread *thread, const JSHan
         curObjNumberOfKeys = currentObj->GetNumberOfKeys();
         curObjectKeysLength = curObjNumberOfElements + curObjNumberOfKeys;
         uint32_t minRequireLength = curObjectKeysLength + retArrayEffectivelength;
-        if (retArraylength < minRequireLength) {
+        if (retArrayLength < minRequireLength) {
             // expand retArray
-            retArray.Update(factory->NewAndCopyTaggedArray(retArray, minRequireLength, retArraylength));
-            retArraylength = minRequireLength;
+            retArray.Update(factory->NewAndCopyTaggedArray(retArray, minRequireLength, retArrayLength));
+            retArrayLength = minRequireLength;
         }
 
         GetAllElementKeysByFilter(thread, currentObj, retArray, retArrayEffectivelength, filter);
 
         GetAllKeysByFilter(thread, currentObj, retArrayEffectivelength, retArray, filter);
-
+        bool isInculdePrototypes = (filter & NATIVE_KEY_INCLUDE_PROTOTYPES);
         if (!isInculdePrototypes) {
             break;
         }
@@ -2102,7 +2115,8 @@ void JSObject::DefineGetter(JSThread *thread, const JSHandle<JSTaggedValue> &obj
     op.DefineGetter(value);
 }
 
-JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, const JSHandle<TaggedArray> &properties)
+JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, const JSHandle<TaggedArray> &properties,
+                                                        JSTaggedValue ihcVal)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     size_t length = properties->GetLength();
@@ -2116,10 +2130,7 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
     if (propsLen <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES) {
         JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(properties, propsLen);
         ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
-        for (size_t i = 0; i < propsLen; i++) {
-            // 2: literal contains a pair of key-value
-            obj->SetPropertyInlinedProps(thread, i, properties->Get(i * 2 + 1));
-        }
+        SetAllPropertys(thread, obj, properties, propsLen, ihcVal);
         return obj;
     } else {
         JSHandle<JSObject> obj = factory->NewEmptyJSObject();
@@ -2140,6 +2151,52 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
         }
         obj->SetProperties(thread, dict);
         return obj;
+    }
+}
+
+void JSObject::SetAllPropertys(const JSThread *thread, JSHandle<JSObject> &obj, const JSHandle<TaggedArray> &properties,
+    uint32_t propsLen, JSTaggedValue ihcVal)
+{
+    // AOT runtime
+    if (ihcVal.IsJSHClass()) {
+        bool isSuccess = true;
+        JSHClass *ihc = JSHClass::Cast(ihcVal.GetTaggedObject());
+        JSHClass *oldHC = obj->GetJSHClass();
+        ihc->SetPrototype(thread, oldHC->GetPrototype());
+        obj->SetClass(ihc);
+        for (size_t i = 0; i < propsLen; i++) {
+            auto value = obj->ConvertValueWithRep(i, properties->Get(i * 2 + 1));
+            // If value.first is false, indicating that value cannot be converted to the expected value of
+            // representation. For example, the representation is INT, but the value type is string.
+            if (!value.first) {
+                isSuccess = false;
+                break;
+            }
+            obj->SetPropertyInlinedPropsWithRep(thread, i, value.second);
+        }
+        if (isSuccess) {
+            return;
+        }
+        // If conversion fails, it needs to be rolled back to the old HClass and reset the value.
+        obj->SetClass(oldHC);
+    } else if (thread->IsPGOProfilerEnable()) {
+        // PGO need to track TrackType
+        JSHClass *oldHC = obj->GetJSHClass();
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(oldHC->GetLayout().GetTaggedObject());
+        for (size_t i = 0; i < propsLen; i++) {
+            auto value = properties->Get(i * 2 + 1);
+            auto attr = layoutInfo->GetAttr(i);
+            if (attr.UpdateTrackType(value)) {
+                layoutInfo->SetNormalAttr(thread, i, attr);
+            }
+            obj->SetPropertyInlinedProps(thread, i, value);
+        }
+        return;
+    }
+    // Interpreter runtime or track field initialized fail.
+    for (size_t i = 0; i < propsLen; i++) {
+        // 2: literal contains a pair of key-value
+        obj->SetPropertyInlinedProps(thread, i, properties->Get(i * 2 + 1));
     }
 }
 

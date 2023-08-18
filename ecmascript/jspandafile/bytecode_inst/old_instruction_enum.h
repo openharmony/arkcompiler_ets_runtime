@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef OLD_INSTRUCTION_ENUM_H
-#define OLD_INSTRUCTION_ENUM_H
+#ifndef ECMASCRIPT_JSPANDAFILE_BYTECODE_INST_OLD_INSTRUCTION_ENUM_H
+#define ECMASCRIPT_JSPANDAFILE_BYTECODE_INST_OLD_INSTRUCTION_ENUM_H
 
 enum class Format : uint8_t {
     ID16,
@@ -478,4 +478,4 @@ enum Flags : uint32_t {
     ACC_WRITE = 0x40000,
 };
 
-#endif  // OLD_INSTRUCTION_ENUM_H
+#endif  // ECMASCRIPT_JSPANDAFILE_BYTECODE_INST_OLD_INSTRUCTION_ENUM_H

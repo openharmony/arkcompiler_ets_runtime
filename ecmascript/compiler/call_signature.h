@@ -21,7 +21,6 @@
 #include <memory>
 
 #include "ecmascript/compiler/variable_type.h"
-#include "ecmascript/compiler/test_stubs_signature.h"
 
 #include "libpandabase/macros.h"
 #include "libpandabase/utils/bit_field.h"
@@ -414,6 +413,7 @@ private:
     V(StringsAreEquals)                     \
     V(BigIntEquals)                         \
     V(DebugPrint)                           \
+    V(DebugPrintCustom)                     \
     V(DebugPrintInstruction)                \
     V(Comment)                              \
     V(ProfileCall)                          \
@@ -422,6 +422,7 @@ private:
     V(ProfileOpType)                        \
     V(ProfileObjLayout)                     \
     V(FatalPrint)                           \
+    V(FatalPrintCustom)                     \
     V(GetActualArgvNoGC)                    \
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \
@@ -458,8 +459,7 @@ private:
     V(SetDateValues)                        \
     V(CallReturnWithArgv)                   \
     V(StartCallTimer)                       \
-    V(EndCallTimer)                         \
-    TEST_STUB_SIGNATRUE_LIST(V)
+    V(EndCallTimer)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

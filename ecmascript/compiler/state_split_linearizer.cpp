@@ -21,17 +21,6 @@ void StateSplitLinearizer::Run()
 {
     graphLinearizer_.SetScheduleJSOpcode();
     graphLinearizer_.LinearizeGraph();
-    if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m"
-                           << "===================="
-                           << " Before state split linearizer "
-                           << "[" << GetMethodName() << "]"
-                           << "===================="
-                           << "\033[0m";
-        graphLinearizer_.PrintGraph("Build Basic Block");
-        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
-    }
     LinearizeStateSplit();
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";
@@ -190,11 +179,6 @@ public:
             case OpCode::CONVERT:
                 ASSERT(replacement_.State() != Circuit::NullGate());
                 replacement_ = lowering.LowerConvert(replacement_, gate);
-                break;
-            case OpCode::CHECK_AND_CONVERT:
-                ASSERT(replacement_.State() != Circuit::NullGate());
-                ASSERT(frameState_ != Circuit::NullGate());
-                replacement_ = lowering.LowerCheckAndConvert(replacement_, gate, frameState_);
                 break;
             default:
                 break;

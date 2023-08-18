@@ -24,13 +24,14 @@
 namespace panda::ecmascript::kungfu {
 class NTypeMCRLowering {
 public:
-    NTypeMCRLowering(Circuit *circuit, PassContext *ctx, TSManager *tsManager,
+    NTypeMCRLowering(Circuit *circuit, PassContext *ctx, const CString &recordName,
                      bool enableLog, const std::string& name)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
           dependEntry_(circuit->GetDependRoot()),
-          tsManager_(tsManager),
+          tsManager_(ctx->GetTSManager()),
+          recordName_(recordName),
           enableLog_(enableLog),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
@@ -44,14 +45,22 @@ private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
     void Lower(GateRef gate);
     void LowerCreateArray(GateRef gate, GateRef glue);
+    void LowerCreateArrayWithBuffer(GateRef gate);
     void LowerCreateEmptyArray(GateRef gate);
     void LowerCreateArrayWithOwn(GateRef gate, GateRef glue);
     void LowerStLexVar(GateRef gate);
     void LowerLdLexVar(GateRef gate);
 
+    GateRef LoadFromConstPool(GateRef jsFunc, size_t index);
+    GateRef NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length);
     GateRef NewTaggedArray(size_t length);
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
+
+    GateRef GetFrameState(GateRef gate) const
+    {
+        return acc_.GetFrameState(gate);
+    }
 
     bool IsLogEnabled() const
     {
@@ -68,6 +77,8 @@ private:
     CircuitBuilder builder_;
     GateRef dependEntry_;
     TSManager *tsManager_ {nullptr};
+    const CString &recordName_;
+    panda_file::File::EntityId methodId_ {0};
     bool enableLog_ {false};
     bool profiling_ {false};
     bool traceBc_ {false};

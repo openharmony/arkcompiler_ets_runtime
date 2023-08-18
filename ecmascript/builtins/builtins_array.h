@@ -103,6 +103,18 @@ public:
     static JSTaggedValue FlatMap(EcmaRuntimeCallInfo *argv);
     // 23.1.3.1 Array.prototype.at ( index )
     static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
+    // 23.1.3.33 Array.prototype.toReversed ( )
+    static JSTaggedValue ToReversed(EcmaRuntimeCallInfo *argv);
+    // 23.1.3.39 Array.prototype.with ( index, value )
+    static JSTaggedValue With(EcmaRuntimeCallInfo *argv);
+    // 23.1.3.34 Array.prototype.toSorted ( comparefn )
+    static JSTaggedValue ToSorted(EcmaRuntimeCallInfo *argv);
+    // 23.1.3.11
+    static JSTaggedValue FindLast(EcmaRuntimeCallInfo *argv);
+    // 23.1.3.12
+    static JSTaggedValue FindLastIndex(EcmaRuntimeCallInfo *argv);
+    // 23.1.3.35 Array.prototype.toSpliced ( start, skipCount, ...items )
+    static JSTaggedValue ToSpliced(EcmaRuntimeCallInfo *argv);
 };
 }  // namespace panda::ecmascript::builtins
 
