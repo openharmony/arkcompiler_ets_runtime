@@ -957,10 +957,13 @@ DECLARE_BUILTINS(BooleanConstructor)
     auto env = GetEnvironment();
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
 
+    Label newTargetIsHeapObject(env);
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
     Label exit(env);
 
+    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
+    Bind(&newTargetIsHeapObject);
     Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
     {
@@ -1000,10 +1003,13 @@ DECLARE_BUILTINS(DateConstructor)
     auto env = GetEnvironment();
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
 
+    Label newTargetIsHeapObject(env);
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
     Label exit(env);
 
+    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
+    Bind(&newTargetIsHeapObject);
     Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
     {
@@ -1082,10 +1088,13 @@ DECLARE_BUILTINS(ArrayConstructor)
     auto env = GetEnvironment();
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
 
+    Label newTargetIsHeapObject(env);
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
     Label exit(env);
 
+    Branch(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
+    Bind(&newTargetIsHeapObject);
     Branch(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
     Bind(&newTargetIsJSFunction);
     {

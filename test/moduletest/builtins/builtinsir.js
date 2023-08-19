@@ -45,4 +45,16 @@ lastName: "Gates"
 }
 var a = new Uint32Array([1,2]);
 print(person.fullName.apply(person1, a));
+// xxxConstructor
+var a = {
+    test() {
+        this.foo();
+    }
+}
+a.foo = Array;
+a.test();
+a.foo = Boolean;
+a.test();
+a.foo = Date;
+a.test();
 print("builtins ir end");
