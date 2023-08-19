@@ -381,6 +381,8 @@ public:
 
     JSTaggedValue PUBLIC_API GetValueFromCache(uint32_t index);
 
+    GlobalTSTypeRef PUBLIC_API CreateArrayType();
+
     GlobalTSTypeRef PUBLIC_API CreateNamespaceType();
 
     void AddNamespacePropType(kungfu::GateType objType, JSTaggedValue name, kungfu::GateType valueType);
@@ -449,6 +451,8 @@ public:
 
     IS_TSTYPEKIND_METHOD_LIST(IS_TSTYPEKIND)
 #undef IS_TSTYPEKIND
+
+    bool PUBLIC_API IsBuiltinClassType(BuiltinTypeId id, kungfu::GateType gateType) const;
 
     bool PUBLIC_API IsBuiltinInstanceType(BuiltinTypeId id, kungfu::GateType gateType) const;
 

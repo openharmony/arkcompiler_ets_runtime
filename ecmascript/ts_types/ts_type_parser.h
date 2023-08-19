@@ -135,6 +135,12 @@ private:
         return gt.IsPrimitiveModule() && (gt.GetLocalId() >= GENERICS_PARA_OFFSET);
     }
 
+    inline bool IsGenericsArrayType(TypeLiteralExtractor *typeLiteralExtractor) const
+    {
+        return typeLiteralExtractor->GetTypeKind() == TSTypeKind::BUILTIN_INSTANCE &&
+               typeLiteralExtractor->GetIntValue(DEFAULT_INDEX) == static_cast<uint32_t>(BuiltinTypeId::ARRAY);
+    }
+
     GlobalTSTypeRef ParseType(const JSPandaFile *jsPandaFile, const CString &recordName, uint32_t typeId);
 
     GlobalTSTypeRef ParseBuiltinObjType(uint32_t typeId);
@@ -154,8 +160,8 @@ private:
     JSHandle<TSClassType> ParseClassType(const JSPandaFile *jsPandaFile, const CString &recordName,
                                          TypeLiteralExtractor *typeLiteralExtractor);
 
-    JSHandle<TSClassInstanceType> ParseClassInstanceType(const JSPandaFile *jsPandaFile, const CString &recordName,
-                                                         TypeLiteralExtractor *typeLiteralExtractor);
+    JSHandle<JSTaggedValue> ParseClassInstanceType(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                   TypeLiteralExtractor *typeLiteralExtractor);
 
     JSHandle<TSInterfaceType> ParseInterfaceType(const JSPandaFile *jsPandaFile, const CString &recordName,
                                                  TypeLiteralExtractor *typeLiteralExtractor);

@@ -868,6 +868,9 @@ bool MethodTypeInfer::InferCallFunction(GateRef gate)
      */
     if (tsManager_->IsBuiltinObjectType(funcType)) {
         // For simplicity, calling and constructing are considered equivalent.
+        if (tsManager_->IsBuiltinClassType(BuiltinTypeId::ARRAY, funcType)) {
+            return UpdateType(gate, tsManager_->CreateArrayType());
+        }
         return UpdateType(gate, tsManager_->CreateClassInstanceType(funcType));
     }
     return UpdateType(gate, GateType::AnyType());

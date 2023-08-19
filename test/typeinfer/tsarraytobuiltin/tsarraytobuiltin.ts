@@ -62,4 +62,14 @@ declare function AssertType(value:any, type:string):void;
     AssertType(arr6.copyWithin(0, 3, 4), "number[]");
     AssertType(arr6.fill(0)[0], "number");
     AssertType(arr6.fill(0)[t], "number");
+
+    let arr7 = new Array<number>(10);
+    AssertType(arr7, "number[]");
+    AssertType(arr7[0], "number");
+    AssertType(arr7[t], "number");
+    AssertType(arr7.fill(0), "number[]");
+    AssertType(arr7.sort(), "number[]");
+    AssertType(arr7.copyWithin(0, 3, 4), "number[]");
+    AssertType(arr7.fill(0)[0], "number");
+    AssertType(arr7.fill(0)[t], "number");
 }

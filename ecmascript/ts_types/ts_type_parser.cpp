@@ -220,9 +220,7 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseNonImportType(const JSPandaFile *jsPa
             return JSHandle<JSTaggedValue>(classType);
         }
         case TSTypeKind::CLASS_INSTANCE: {
-            JSHandle<TSClassInstanceType> classInstanceType =
-                ParseClassInstanceType(jsPandaFile, recordName, typeLiteralExtractor);
-            return JSHandle<JSTaggedValue>(classInstanceType);
+            return ParseClassInstanceType(jsPandaFile, recordName, typeLiteralExtractor);
         }
         case TSTypeKind::INTERFACE: {
             JSHandle<TSInterfaceType> interfaceType = ParseInterfaceType(jsPandaFile, recordName, typeLiteralExtractor);
@@ -297,17 +295,23 @@ JSHandle<TSClassType> TSTypeParser::ParseClassType(const JSPandaFile *jsPandaFil
     return classType;
 }
 
-JSHandle<TSClassInstanceType> TSTypeParser::ParseClassInstanceType(const JSPandaFile *jsPandaFile,
-                                                                   const CString &recordName,
-                                                                   TypeLiteralExtractor *typeLiteralExtractor)
+JSHandle<JSTaggedValue> TSTypeParser::ParseClassInstanceType(const JSPandaFile *jsPandaFile,
+                                                             const CString &recordName,
+                                                             TypeLiteralExtractor *typeLiteralExtractor)
 {
     ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::CLASS_INSTANCE);
-    JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
     // classTypeId is stored in the first position
     uint32_t classTypeId = typeLiteralExtractor->GetIntValue(DEFAULT_INDEX);
+    if (classTypeId == static_cast<uint32_t>(BuiltinTypeId::ARRAY)) {
+        return JSHandle<JSTaggedValue>(factory_->NewTSArrayType());
+    }
     auto classGT = CreateGT(jsPandaFile, recordName, classTypeId);
+    if (tsManager_->IsArrayTypeKind(classGT)) {
+        return tsManager_->GetTSType(classGT);
+    }
+    JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
     classInstanceType->SetClassGT(classGT);
-    return classInstanceType;
+    return JSHandle<JSTaggedValue>(classInstanceType);
 }
 
 JSHandle<TSInterfaceType> TSTypeParser::ParseInterfaceType(const JSPandaFile *jsPandaFile, const CString &recordName,
@@ -636,7 +640,12 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseGenericsInstanceType(const JSPandaFil
 {
     ASSERT(typeLiteralExtractor->GetTypeKind() == TSTypeKind::BUILTIN_INSTANCE ||
            typeLiteralExtractor->GetTypeKind() == TSTypeKind::GENERIC_INSTANCE);
-    GlobalTSTypeRef genericsGT = CreateGT(jsPandaFile, recordName, typeLiteralExtractor->GetIntValue(DEFAULT_INDEX));
+    GlobalTSTypeRef genericsGT;
+    if (IsGenericsArrayType(typeLiteralExtractor)) {
+        genericsGT = tsManager_->CreateArrayType();
+    } else {
+        genericsGT = CreateGT(jsPandaFile, recordName, typeLiteralExtractor->GetIntValue(DEFAULT_INDEX));
+    }
     JSHandle<JSTaggedValue> genericsType = tsManager_->GetTSType(genericsGT);
     std::vector<GlobalTSTypeRef> paras {};
     typeLiteralExtractor->EnumerateElements(NUM_GENERICS_PARA_INDEX,
@@ -663,6 +672,11 @@ JSHandle<JSTaggedValue> TSTypeParser::InstantiateGenericsType(const JSHandle<JST
     } else if (genericsType->IsTSObjectType()) {
         JSHandle<TSObjectType> objectType = InstantiateObjGenericsType(JSHandle<TSObjectType>(genericsType), paras);
         return JSHandle<JSTaggedValue>(objectType);
+    } else if (genericsType->IsTSArrayType()) {
+        ASSERT(paras.size() == 1);
+        JSHandle<TSArrayType> arrayType(genericsType);
+        arrayType->SetElementGT(paras[0]);
+        return JSHandle<JSTaggedValue>(arrayType);
     }
     LOG_COMPILER(DEBUG) << "Unsupport GenericsType Instantiate: "
                         << static_cast<uint32_t>(genericsType->GetTaggedObject()->GetClass()->GetObjectType());
