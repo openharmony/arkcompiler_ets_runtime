@@ -661,7 +661,7 @@ JSTaggedValue JSStableArray::Concat(JSThread *thread, JSHandle<JSObject> newArra
 }
 
 JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSHandle<JSTypedArray> &targetArray,
-                                                           DataViewType targetType, uint32_t targetOffset,
+                                                           DataViewType targetType, uint64_t targetOffset,
                                                            uint32_t srcLength, JSHandle<TaggedArray> &elements)
 {
     JSHandle<JSTaggedValue> targetBuffer(thread, targetArray->GetViewedArrayBufferOrByteArray());
@@ -673,7 +673,7 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
     uint32_t targetLength = targetArray->GetArrayLength();
     uint32_t targetByteOffset = targetArray->GetByteOffset();
     uint32_t targetElementSize = TypedArrayHelper::GetSizeFromType(targetType);
-    if (srcLength + static_cast<uint64_t>(targetOffset) > targetLength) {
+    if (srcLength + targetOffset > targetLength) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "The sum of length and targetOffset is greater than targetLength.",
                                      JSTaggedValue::Exception());
     }
