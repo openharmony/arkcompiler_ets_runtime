@@ -456,6 +456,8 @@ void Builtins::InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHa
     SetFunction(env, globalObject, "isNaN", Global::IsNaN, FunctionLength::ONE);
     SetFunction(env, globalObject, "decodeURI", Global::DecodeURI, FunctionLength::ONE);
     SetFunction(env, globalObject, "encodeURI", Global::EncodeURI, FunctionLength::ONE);
+    SetFunction(env, globalObject, "escape", Global::Escape, FunctionLength::ONE);
+    SetFunction(env, globalObject, "unescape", Global::Unescape, FunctionLength::ONE);
     SetFunction(env, globalObject, "decodeURIComponent", Global::DecodeURIComponent, FunctionLength::ONE);
     SetFunction(env, globalObject, "encodeURIComponent", Global::EncodeURIComponent, FunctionLength::ONE);
 

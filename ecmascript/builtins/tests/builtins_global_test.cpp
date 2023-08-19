@@ -120,4 +120,98 @@ HWTEST_F_L0(BuiltinsGlobalTest, CallJsProxy)
     EXPECT_EQ(result, JSTaggedValue::Undefined());
     thread->ClearException();
 }
+
+HWTEST_F_L0(BuiltinsGlobalTest, Escape)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> str1 = factory->NewFromASCII("?!=()#%&");
+    auto ecmaRuntimeCallInfo1 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // NOLINT, 6 means 3 paras
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetCallArg(0, str1.GetTaggedValue());
+
+    [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result1 = BuiltinsGlobal::Escape(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev1);
+    EXPECT_TRUE(result1.IsString());
+    JSHandle<EcmaString> ecmaStrHandle1(thread, result1);
+    EXPECT_STREQ("%3F%21%3D%28%29%23%25%26", EcmaStringAccessor(ecmaStrHandle1).ToCString().c_str()); // NOLINT
+
+    JSHandle<EcmaString> str2 = factory->NewFromASCII("%u%u0%u9%ua%uF%u00%u09%u0f%u0F%u000%u00a%u00F");
+    auto ecmaRuntimeCallInfo2 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // NOLINT
+    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo2->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo2->SetCallArg(0, str2.GetTaggedValue()); // NOLINT
+
+    [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 = BuiltinsGlobal::Escape(ecmaRuntimeCallInfo2);
+    TestHelper::TearDownFrame(thread, prev2);
+    EXPECT_TRUE(result2.IsString());
+    JSHandle<EcmaString> ecmaStrHandle2(thread, result2);
+    EXPECT_STREQ("%25u%25u0%25u9%25ua%25uF%25u00%25u09%25u0f%25u0F%25u000%25u00a%25u00F", // NOLINT special value
+        EcmaStringAccessor(ecmaStrHandle2).ToCString().c_str());
+
+    JSHandle<EcmaString> str3 = factory->NewFromASCII("Hello World!");
+    auto ecmaRuntimeCallInfo3 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // NOLINT
+    ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo3->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo3->SetCallArg(0, str3.GetTaggedValue());
+
+    [[maybe_unused]] auto prev3 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
+    JSTaggedValue result3 = BuiltinsGlobal::Escape(ecmaRuntimeCallInfo3);
+    TestHelper::TearDownFrame(thread, prev3);
+    EXPECT_TRUE(result3.IsString());
+    JSHandle<EcmaString> ecmaStrHandle3(thread, result3);
+    EXPECT_STREQ("Hello%20World%21", EcmaStringAccessor(ecmaStrHandle3).ToCString().c_str());
+}
+
+HWTEST_F_L0(BuiltinsGlobalTest, Unescape)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<EcmaString> str1 = factory->NewFromASCII("");
+    auto ecmaRuntimeCallInfo1 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // NOLINT
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetCallArg(0, str1.GetTaggedValue());
+
+    [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result1 = BuiltinsGlobal::Unescape(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev1);
+    EXPECT_TRUE(result1.IsString());
+    JSHandle<EcmaString> ecmaStrHandle1(thread, result1);
+    EXPECT_STREQ("", EcmaStringAccessor(ecmaStrHandle1).ToCString().c_str());
+
+    JSHandle<EcmaString> str2 = factory->NewFromASCII("%u%u0%u9%ua%uF%u00%u09%u0f%u0F%u000%u00a%u00F");
+    auto ecmaRuntimeCallInfo2 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // NOLINT
+    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo2->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo2->SetCallArg(0, str2.GetTaggedValue()); // NOLINT
+
+    [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 = BuiltinsGlobal::Unescape(ecmaRuntimeCallInfo2);
+    TestHelper::TearDownFrame(thread, prev2);
+    EXPECT_TRUE(result2.IsString());
+    JSHandle<EcmaString> ecmaStrHandle2(thread, result2);
+    EXPECT_STREQ("%u%u0%u9%ua%uF%u00%u09%u0f%u0F%u000%u00a%u00F",
+        EcmaStringAccessor(ecmaStrHandle2).ToCString().c_str());
+
+    JSHandle<EcmaString> str3 = factory->NewFromASCII("Hello%20World%21");
+    auto ecmaRuntimeCallInfo3 =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // NOLINT 6 means 3 paras
+    ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo3->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo3->SetCallArg(0, str3.GetTaggedValue());
+
+    [[maybe_unused]] auto prev3 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
+    JSTaggedValue result3 = BuiltinsGlobal::Escape(ecmaRuntimeCallInfo3);
+    TestHelper::TearDownFrame(thread, prev3);
+    EXPECT_TRUE(result3.IsString());
+    JSHandle<EcmaString> ecmaStrHandle3(thread, result3);
+    EXPECT_STREQ("Hello%2520World%2521", EcmaStringAccessor(ecmaStrHandle3).ToCString().c_str());
+}
 }  // namespace panda::test
