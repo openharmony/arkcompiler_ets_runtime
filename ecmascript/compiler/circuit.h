@@ -41,7 +41,7 @@ enum class VisitState : uint8_t {
 class Circuit {  // note: calling NewGate could make all saved Gate* invalid
 public:
     explicit Circuit(NativeAreaAllocator* allocator, DebugInfo* dInfo = nullptr, const char* funcName = nullptr,
-                     bool isArch64 = true);
+                     bool isArch64 = true, FrameType type = FrameType::OPTIMIZED_FRAME);
     ~Circuit();
     NO_COPY_SEMANTIC(Circuit);
     NO_MOVE_SEMANTIC(Circuit);
@@ -204,7 +204,7 @@ public:
 
     bool IsOptimizedJSFunctionFrame() const
     {
-        return frameType_ == panda::ecmascript::FrameType::OPTIMIZED_JS_FUNCTION_FRAME
+        return frameType_ == FrameType::OPTIMIZED_JS_FUNCTION_FRAME
             || frameType_ == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME;
     }
 
@@ -261,7 +261,7 @@ private:
     std::map<std::tuple<MachineType, BitField, GateType>, GateRef> constantCache_ {};
     std::map<std::pair<BitField, GateRef>, GateRef> constantDataCache_ {};
     std::map<GateRef, GateRef> initialEnvCache_ {};
-    panda::ecmascript::FrameType frameType_ {panda::ecmascript::FrameType::OPTIMIZED_FRAME};
+    panda::ecmascript::FrameType frameType_ {FrameType::OPTIMIZED_FRAME};
     bool isArch64_ { false };
 
     Chunk chunk_;

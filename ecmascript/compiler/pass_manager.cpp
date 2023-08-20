@@ -97,8 +97,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         }
 
         Circuit circuit(vm_->GetNativeAreaAllocator(), ctx.GetAOTModule()->GetDebugInfo(),
-                        fullName.c_str(), cmpCfg->Is64Bit());
-        circuit.SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+                        fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
 
         PGOProfilerDecoder *decoder = passOptions_->EnableOptPGOType() ? &profilerDecoder_ : nullptr;
 

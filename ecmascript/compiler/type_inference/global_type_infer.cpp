@@ -62,10 +62,9 @@ void GlobalTypeInfer::NewTypeInfer(const uint32_t methodOffset)
     auto methodLiteral = jsPandaFile_->FindMethodLiteral(methodOffset);
     std::string fullName = module->GetFuncName(methodLiteral, jsPandaFile_);
 
-    Circuit *circuit =
-        new Circuit(ctx_->GetNativeAreaAllocator(), module->GetDebugInfo(),
-                    fullName.c_str(), ctx_->GetCompilerConfig()->Is64Bit());
-    circuit->SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    Circuit *circuit = new Circuit(ctx_->GetNativeAreaAllocator(), module->GetDebugInfo(),
+                                   fullName.c_str(), ctx_->GetCompilerConfig()->Is64Bit(),
+                                   FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
     circuits_.emplace_back(circuit);
 
     BytecodeCircuitBuilder *builder =

@@ -21,10 +21,12 @@
 #include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript::kungfu {
-Circuit::Circuit(NativeAreaAllocator* allocator, DebugInfo* debugInfo, const char* funcName, bool isArch64)
+Circuit::Circuit(NativeAreaAllocator* allocator, DebugInfo* debugInfo, const char* funcName,
+                 bool isArch64, panda::ecmascript::FrameType type)
     : circuitSize_(0),
       gateCount_(0),
       time_(1),
+      frameType_(type),
       isArch64_(isArch64),
       chunk_(allocator),
       root_(Circuit::NullGate()),

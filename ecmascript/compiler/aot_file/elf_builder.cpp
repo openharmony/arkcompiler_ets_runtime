@@ -150,7 +150,7 @@ uint32_t ElfBuilder::GetShIndex(ElfSecName section) const
 
 int ElfBuilder::GetSecNum() const
 {
-    return sections_.size();
+    return sections_.size() + 1; // add first empty section.
 }
 
 /*
@@ -213,7 +213,7 @@ void ElfBuilder::PackELFHeader(llvm::ELF::Elf64_Ehdr &header, uint32_t version, 
     // size of section headers
     header.e_shentsize = sizeof(llvm::ELF::Elf64_Shdr);
     // number of section headers
-    header.e_shnum = GetSecNum() + 1; // 1: skip null section and ark stackmap
+    header.e_shnum = GetSecNum();
     // section header string table index
     header.e_shstrndx = static_cast<llvm::ELF::Elf64_Half>(GetShIndex(ElfSecName::SHSTRTAB));
     // section header stub sec info index
@@ -296,8 +296,10 @@ std::pair<uint64_t, uint32_t> ElfBuilder::FindShStrTab() const
 void ElfBuilder::AllocateShdr(std::unique_ptr<llvm::ELF::Elf64_Shdr []> &shdr, const uint32_t &secNum)
 {
     shdr = std::make_unique<llvm::ELF::Elf64_Shdr []>(secNum);
-    if (memset_s(reinterpret_cast<void *>(&shdr[0]), sizeof(llvm::ELF::Elf64_Shdr),
-        0, sizeof(llvm::ELF::Elf64_Shdr)) != EOK) {
+    if (memset_s(reinterpret_cast<void *>(&shdr[0]),
+                 sizeof(llvm::ELF::Elf64_Shdr),
+                 0,
+                 sizeof(llvm::ELF::Elf64_Shdr)) != EOK) {
         UNREACHABLE();
     }
 }
@@ -374,6 +376,37 @@ void ElfBuilder::MergeArkStackMapSections(std::ofstream &file,
     }
 }
 
+void ElfBuilder::FixSymtab(llvm::ELF::Elf64_Shdr* shdr) {
+    using Elf64_Sym = llvm::ELF::Elf64_Sym;
+
+    uint32_t secSize = des_[FullSecIndex].GetSecSize(ElfSecName::SYMTAB);
+    uint64_t secAddr = des_[FullSecIndex].GetSecAddr(ElfSecName::SYMTAB);
+    uint32_t secNum = GetSecNum();
+    uint64_t textSecOffset = sectionToShdr_[ElfSecName::TEXT].sh_offset;
+    uint32_t shStrTabIndex = GetShIndex(ElfSecName::SHSTRTAB);
+    uint32_t textSecIndex = GetShIndex(ElfSecName::TEXT);
+
+    Elf64_Sym *syms = reinterpret_cast<Elf64_Sym*>(secAddr);
+    size_t n = secSize / sizeof(Elf64_Sym);
+    int localCount = -1;
+    for (size_t i = 0; i < n; ++i) {
+        Elf64_Sym* sy = &syms[i];
+        if (sy->getBinding() != llvm::ELF::STB_LOCAL && localCount == -1) {
+            localCount = i;
+        }
+        if (sy->getType() == llvm::ELF::STT_SECTION) {
+            sy->st_shndx = shStrTabIndex;
+        } else if (sy->getType() == llvm::ELF::STT_FUNC) {
+            sy->st_shndx = textSecIndex;
+            sy->st_value += textSecOffset;
+        }
+        if (sy->st_shndx > secNum) {
+            sy->st_shndx = 0;
+        }
+    }
+    shdr->sh_info = localCount;
+}
+
 /*
 
 section of aot.an layout as follows:
@@ -418,7 +451,7 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
     llvm::ELF::Elf64_Off curSecOffset = ComputeEndAddrOfShdr(secNum);
     file.seekp(curSecOffset);
 
-    int i = 1; // 1: skip null section
+    int i = GetShIndex(ElfSecName::TEXT);
     auto shStrTab = FindShStrTab();
 
     for (auto const &[secName, secInfo] : sections) {
@@ -445,6 +478,7 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
         curShdr.sh_flags = section.Flag();
         curShdr.sh_addr = curSecOffset;
         curShdr.sh_offset = static_cast<uint64_t>(curSecOffset);
+        curShdr.sh_info = 0;
         sectionToFileOffset_[secName] = static_cast<uintptr_t>(file.tellp());
         switch (secName) {
             case ElfSecName::ARK_MODULEINFO: {
@@ -471,6 +505,9 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
             case ElfSecName::SHSTRTAB:
             case ElfSecName::ARK_FUNCENTRY:
             case ElfSecName::ARK_ASMSTUB: {
+                if (secName == ElfSecName::SYMTAB) {
+                    FixSymtab(&curShdr);
+                }
                 uint32_t curSecSize = des_[FullSecIndex].GetSecSize(secName);
                 uint64_t curSecAddr = des_[FullSecIndex].GetSecAddr(secName);
                 file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
@@ -488,7 +525,6 @@ void ElfBuilder::PackELFSections(std::ofstream &file)
             file.seekp(curSecOffset);
         }
         curShdr.sh_link = static_cast<uint32_t>(section.Link());
-        curShdr.sh_info = 0;
         curShdr.sh_entsize = static_cast<uint64_t>(section.Entsize());
         sectionToShdr_[secName] = curShdr;
         LOG_COMPILER(DEBUG) << "  shdr[i].sh_entsize " << std::hex << curShdr.sh_entsize << std::endl;

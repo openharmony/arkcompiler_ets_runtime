@@ -144,7 +144,8 @@ public:
 
     int Link() const
     {
-        return value_ == ElfSecName::SYMTAB ? 1 : 0;
+        // The strtab index is 2 inside An file.
+        return value_ == ElfSecName::SYMTAB ? 2 : 0;
     }
 
     void InitShTypeAndFlag()
