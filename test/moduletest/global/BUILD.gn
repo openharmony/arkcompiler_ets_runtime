@@ -16,4 +16,3 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 host_moduletest_action("global") {
   deps = []
 }
-

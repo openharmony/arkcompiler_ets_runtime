@@ -835,7 +835,7 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
                 EcmaString *codePoints = StringToCodePoints(thread, hexDigitsString);
                 JSHandle<EcmaString> codePointString = JSHandle<EcmaString>(thread, codePoints);
                 bool isHex = true;
-                for (uint i = 0; i < EcmaStringAccessor(codePointString).GetLength(); ++i) {
+                for (uint32_t i = 0; i < EcmaStringAccessor(codePointString).GetLength(); ++i) {
                     if (!IsHexDigits(EcmaStringAccessor(codePointString).Get(i))) {
                         // throw exception
                         isHex = false;
