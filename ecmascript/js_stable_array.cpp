@@ -587,7 +587,7 @@ JSTaggedValue JSStableArray::Map(JSHandle<JSObject> newArrayHandle, JSHandle<JSO
 }
 
 JSTaggedValue JSStableArray::Reverse(JSThread *thread, JSHandle<JSObject> thisObjHandle,
-                                     JSHandle<JSTaggedValue> thisHandle, int64_t &lower, uint32_t len)
+                                     int64_t &lower, uint32_t len)
 {
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     if (thisObjHandle->IsJSArray()) {
@@ -606,32 +606,10 @@ JSTaggedValue JSStableArray::Reverse(JSThread *thread, JSHandle<JSObject> thisOb
         int64_t upper = static_cast<int64_t>(len) - lower - 1;
         lowerP.Update(JSTaggedValue(lower));
         upperP.Update(JSTaggedValue(upper));
-        bool lowerExists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, lowerP));
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (lowerExists) {
-            lowerValueHandle.Update(array->Get(lower));
-        }
-        bool upperExists = (thisHandle->IsTypedArray() || JSTaggedValue::HasProperty(thread, thisObjVal, upperP));
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (upperExists) {
-            upperValueHandle.Update(array->Get(upper));
-        }
-        if (lowerExists && upperExists) {
-            array->Set(thread, lower, upperValueHandle.GetTaggedValue());
-            array->Set(thread, upper, lowerValueHandle.GetTaggedValue());
-        } else if (upperExists) {
-            array->Set(thread, lower, upperValueHandle.GetTaggedValue());
-            JSTaggedValue::SetProperty(thread, thisObjVal, lowerP, upperValueHandle, true);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            JSTaggedValue::DeletePropertyOrThrow(thread, thisObjVal, upperP);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        } else if (lowerExists) {
-            array->Set(thread, upper, lowerValueHandle.GetTaggedValue());
-            JSTaggedValue::SetProperty(thread, thisObjVal, upperP, lowerValueHandle, true);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            JSTaggedValue::DeletePropertyOrThrow(thread, thisObjVal, lowerP);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        }
+        lowerValueHandle.Update(array->Get(lower));
+        upperValueHandle.Update(array->Get(upper));
+        array->Set(thread, lower, upperValueHandle.GetTaggedValue());
+        array->Set(thread, upper, lowerValueHandle.GetTaggedValue());
         lower++;
     }
     return base::BuiltinsBase::GetTaggedDouble(true);
