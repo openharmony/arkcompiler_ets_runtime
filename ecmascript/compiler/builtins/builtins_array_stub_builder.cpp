@@ -51,8 +51,7 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
             // Creates an empty array on fast path
             Bind(&argValIsEmpty);
             NewObjectStubBuilder newBuilder(this);
-            ProfileOperation callback;
-            result->WriteVariable(newBuilder.CreateEmptyArray(glue, callback));
+            result->WriteVariable(newBuilder.CreateEmptyArray(glue));
             Jump(exit);
         }
     }
@@ -76,8 +75,7 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
         // Creates an empty array on fast path
         Bind(&isCallable);
         NewObjectStubBuilder newBuilder(this);
-        ProfileOperation callback;
-        result->WriteVariable(newBuilder.CreateEmptyArray(glue, callback));
+        result->WriteVariable(newBuilder.CreateEmptyArray(glue));
         Jump(exit);
     }
 }
@@ -158,8 +156,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
         // Creates a new empty array on fast path
         Bind(&noArgs);
         NewObjectStubBuilder newBuilder(this);
-        ProfileOperation callback;
-        result->WriteVariable(newBuilder.CreateEmptyArray(glue, callback));
+        result->WriteVariable(newBuilder.CreateEmptyArray(glue));
         Jump(exit);
     }
 }

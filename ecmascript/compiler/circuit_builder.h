@@ -291,6 +291,7 @@ public:
     GateType GetGateTypeOfValueType(ValueType type);
     GateRef IsJsCOWArray(GateRef obj);
     GateRef IsCOWArray(GateRef objectType);
+    GateRef IsTaggedArray(GateRef object);
     GateRef GetElementsArray(GateRef object);
     GateRef Convert(GateRef gate, ValueType src, ValueType dst);
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
@@ -326,7 +327,7 @@ public:
                                 GateType gateType, PGOSampleType sampleType, TypedBinOp op);
     GateRef InsertRangeCheckPredicate(GateRef left, TypedBinOp cond, GateRef right);
     void AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate);
-    GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, BranchKind branchKind, GateType typeVal,
+    GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight, GateType typeVal,
                                const std::vector<GateRef>& inList);
     GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);
     GateRef TypedSuperAllocateThis(GateRef superCtor, GateRef newTarget, GateRef frameState);
@@ -529,6 +530,7 @@ public:
     GateRef TaggedIsSymbol(GateRef obj);
     inline GateRef GetGlobalConstantString(ConstantIndex index);
     inline GateRef LoadObjectFromWeakRef(GateRef x);
+    inline GateRef CreateWeakRef(GateRef x);
     GateRef ComputeTaggedArraySize(GateRef length);
 
     GateRef IsJSHClass(GateRef obj);
@@ -540,7 +542,7 @@ public:
     template<TypedUnOp Op>
     inline GateRef TypedUnaryOp(GateRef x, GateType xType, GateType gateType);
     template<TypedJumpOp Op>
-    inline GateRef TypedConditionJump(GateRef x, GateType xType, BranchKind branchKind);
+    inline GateRef TypedConditionJump(GateRef x, GateType xType, uint32_t weight);
     inline GateRef PrimitiveToNumber(GateRef x, VariableType type);
 
     // middle ir: object operations

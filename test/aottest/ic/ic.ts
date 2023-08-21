@@ -27,3 +27,18 @@ print(c1.x);
 
 let c2 = new C();
 print(c2.x);
+
+
+function foo(p) {
+    return p[1]
+}
+
+let a = [1, 2]
+let b = [1, 2.1, 3]
+for (let i = 0; i < 100000; i++) {
+    var a1 = foo(a)
+    var a2 = foo(b);
+}
+print(a1)
+print(a2)
+

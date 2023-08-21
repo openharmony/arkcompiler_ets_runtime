@@ -309,7 +309,9 @@ public:
                         valueHandle.Update(elements->Get(i + 1));
                         JSObject::DefinePropertyByLiteral(thread, obj, key, valueHandle);
                     }
-
+                    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+                        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCreateObject(obj.GetTaggedType(), id.GetOffset());
+                    }
                     val = obj.GetTaggedValue();
                     break;
                 }

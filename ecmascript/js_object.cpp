@@ -815,7 +815,7 @@ bool JSObject::CallSetter(JSThread *thread, const AccessorData &accessor, const 
     JSHandle<JSTaggedValue> func(thread, setter);
     if (thread->IsPGOProfilerEnable()) {
         auto profiler = thread->GetEcmaVM()->GetPGOProfiler();
-        profiler->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+        profiler->ProfileCall(func.GetTaggedType());
     }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, receiver, undefined, 1);
@@ -841,7 +841,7 @@ JSTaggedValue JSObject::CallGetter(JSThread *thread, const AccessorData *accesso
     JSHandle<JSTaggedValue> func(thread, getter);
     if (thread->IsPGOProfilerEnable()) {
         auto profiler = thread->GetEcmaVM()->GetPGOProfiler();
-        profiler->ProfileCall(JSTaggedValue::VALUE_UNDEFINED, func.GetTaggedType());
+        profiler->ProfileCall(func.GetTaggedType());
     }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, receiver, undefined, 0);
@@ -1215,21 +1215,6 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
     obj->SynchronizedSetClass(*newClass);
     thread->NotifyStableArrayElementsGuardians(obj, StableArrayChangeKind::PROTO);
     return true;
-}
-
-JSTaggedValue JSObject::GetCtorFromPrototype(JSThread *thread, JSTaggedValue prototype)
-{
-    if (!prototype.IsJSObject()) {
-        return JSTaggedValue::Undefined();
-    }
-    JSHandle<JSTaggedValue> object(thread, prototype);
-    JSHandle<JSTaggedValue> ctorKey = thread->GlobalConstants()->GetHandledConstructorString();
-    JSHandle<JSTaggedValue> ctorObj(JSObject::GetProperty(thread, object, ctorKey).GetValue());
-    if (thread->HasPendingException()) {
-        thread->ClearException();
-        return JSTaggedValue::Undefined();
-    }
-    return ctorObj.GetTaggedValue();
 }
 
 bool JSObject::HasProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key)

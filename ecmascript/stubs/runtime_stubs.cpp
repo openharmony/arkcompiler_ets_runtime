@@ -399,6 +399,7 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
     RUNTIME_STUBS_HEADER(UpdateHClassForElementsKind);
     JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the first parameter
     JSTaggedType elementsKind = GetTArg(argv, argc, 1);        // 1: means the first parameter
+    ASSERT(receiver->IsJSArray());
     ElementsKind kind = Elements::FixElementsKind(static_cast<ElementsKind>(elementsKind));
     auto arrayIndexMap = thread->GetArrayHClassIndexMap();
     if (arrayIndexMap.find(kind) != arrayIndexMap.end()) {
@@ -406,7 +407,14 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         auto globalConst = thread->GlobalConstants();
         auto targetHClassValue = globalConst->GetGlobalConstantObject(static_cast<size_t>(index));
         auto hclass = JSHClass::Cast(targetHClassValue.GetTaggedObject());
-        JSHandle<JSObject>(receiver)->SetClass(hclass);
+        auto array = JSHandle<JSArray>(receiver);
+        array->SetClass(hclass);
+        // Update TrackInfo
+        if (!thread->IsPGOProfilerEnable()) {
+            return JSTaggedValue::Hole().GetRawData();
+        }
+        auto trackInfoVal = array->GetTrackInfo();
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackInfo(trackInfoVal, kind);
     }
     return JSTaggedValue::Hole().GetRawData();
 }
@@ -444,43 +452,6 @@ void RuntimeStubs::Comment(uintptr_t argStr)
 {
     std::string str(reinterpret_cast<char *>(argStr));
     LOG_ECMA(DEBUG) << str;
-}
-
-void RuntimeStubs::ProfileCall(uintptr_t argGlue, uintptr_t func, uintptr_t target, int32_t pcOffset, uint32_t incCount)
-{
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(func, target, pcOffset, pgo::SampleMode::CALL_MODE, incCount);
-}
-
-void RuntimeStubs::ProfileOpType(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type)
-{
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->ProfileOpType(func, offset, type);
-}
-
-void RuntimeStubs::ProfileDefineClass(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t ctor)
-{
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->ProfileDefineClass(thread, func, offset, ctor);
-}
-
-void RuntimeStubs::ProfileCreateObject(
-    uintptr_t argGlue, JSTaggedType func, int32_t offset, JSTaggedType newObj, int32_t traceId)
-{
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCreateObject(func, offset, newObj, traceId);
-}
-
-void RuntimeStubs::ProfileObjLayout(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object, int32_t store)
-{
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->ProfileObjLayout(thread, func, offset, object, store != 0);
-}
-
-void RuntimeStubs::ProfileObjIndex(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object)
-{
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->ProfileObjIndex(thread, func, offset, object);
 }
 
 void RuntimeStubs::FatalPrint(int fmtMessageId, ...)
@@ -1020,6 +991,22 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounter)
     return profileTypeInfo.GetRawData();
 }
 
+DEF_RUNTIME_STUBS(PGODump)
+{
+    RUNTIME_STUBS_HEADER(PGODump);
+    JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    thread->GetEcmaVM()->GetPGOProfiler()->PGODump(thisFunc.GetTaggedType());
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(PGOPreDump)
+{
+    RUNTIME_STUBS_HEADER(PGOPreDump);
+    JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    thread->GetEcmaVM()->GetPGOProfiler()->PGOPreDump(thisFunc.GetTaggedType());
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(UpdateHotnessCounterWithProf)
 {
     RUNTIME_STUBS_HEADER(UpdateHotnessCounterWithProf);
@@ -1028,10 +1015,12 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounterWithProf)
     JSHandle<Method> method(thread, thisFunc->GetMethod());
     auto profileTypeInfo = method->GetProfileTypeInfo();
     if (profileTypeInfo.IsUndefined()) {
-        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(
-            JSTaggedValue::VALUE_UNDEFINED, thisFunc.GetTaggedType(), -1, pgo::SampleMode::HOTNESS_MODE);
         uint32_t slotSize = method->GetSlotSize();
         auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
+        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(thisFunc.GetTaggedType(), pgo::SampleMode::HOTNESS_MODE);
+        if (!res.IsUndefined()) {
+            thread->GetEcmaVM()->GetPGOProfiler()->PGOPreDump(thisFunc.GetTaggedType());
+        }
         return res.GetRawData();
     }
     return profileTypeInfo.GetRawData();
@@ -2402,8 +2391,7 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
         ASSERT(callTarget != nullptr);
         Method *method = callTarget->GetCallTarget();
         if (!method->IsNativeWithCallField()) {
-            thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(
-                JSTaggedValue::VALUE_UNDEFINED, targetFunc.GetTaggedType());
+            thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(targetFunc.GetTaggedType());
         }
     }
     JSHandle<TaggedArray> boundArgs(thread, boundFunc->GetBoundArguments());

@@ -457,6 +457,7 @@ JSHandle<JSArray> ObjectFactory::CloneArrayLiteral(JSHandle<JSArray> object)
 
     JSHandle<JSArray> cloneObject(NewJSObject(klass));
     cloneObject->SetArrayLength(thread_, object->GetArrayLength());
+    cloneObject->SetTrackInfo(thread_, JSTaggedValue::Undefined());
 
     JSHandle<TaggedArray> elements(thread_, object->GetElements());
     static constexpr uint8_t MAX_READ_ONLY_ARRAY_LENGTH = 10;
@@ -1039,6 +1040,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
 #endif
         case JSType::JS_ARRAY: {
             JSArray::Cast(*obj)->SetLength(0);
+            JSArray::Cast(*obj)->SetTrackInfo(thread_, JSTaggedValue::Undefined());
             ASSERT(!obj->GetJSHClass()->IsDictionaryMode());
             auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
             JSArray::Cast(*obj)->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
@@ -2642,9 +2644,9 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t length)
     NewObjectHook();
     ASSERT(length > 0);
 
-    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    size_t size = ProfileTypeInfo::ComputeSize(length);
     auto header = heap_->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject()), size);
+        JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoClass().GetTaggedObject()), size);
     JSHandle<ProfileTypeInfo> array(thread_, header);
     array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
 
@@ -4039,6 +4041,7 @@ JSHandle<JSArray> ObjectFactory::NewJSStableArrayWithElements(const JSHandle<Tag
     array->SetElements(thread_, elements);
 
     array->SetLength(elements->GetLength());
+    array->SetTrackInfo(thread_, JSTaggedValue::Undefined());
     auto accessor = thread_->GlobalConstants()->GetArrayLengthAccessor();
     array->SetPropertyInlinedProps(thread_, JSArray::LENGTH_INLINE_PROPERTY_INDEX, accessor);
     return array;

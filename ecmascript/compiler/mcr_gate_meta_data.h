@@ -309,7 +309,6 @@ public:
     // type bits shift
     static constexpr int OPRAND_TYPE_BITS = 32;
     static constexpr int JUMP_OP_BITS = 8;
-    static constexpr int BRANCH_KIND_BITS = 8;
     explicit TypedJumpAccessor(uint64_t value) : bitField_(value) {}
 
     GateType GetTypeValue() const
@@ -322,22 +321,29 @@ public:
         return TypedJumpOpBits::Get(bitField_);
     }
 
-    BranchKind GetBranchKind() const
+    uint32_t GetTrueWeight() const
     {
-        return BranchKindBits::Get(bitField_);
+        return TrueWeightBits::Get(bitField_);
     }
 
-    static uint64_t ToValue(GateType typeValue, TypedJumpOp jumpOp, BranchKind branchKind)
+    uint32_t GetFalseWeight() const
+    {
+        return FalseWeightBits::Get(bitField_);
+    }
+
+    static uint64_t ToValue(GateType typeValue, TypedJumpOp jumpOp, uint32_t weight)
     {
         return TypedValueBits::Encode(typeValue.Value())
             | TypedJumpOpBits::Encode(jumpOp)
-            | BranchKindBits::Encode(branchKind);
+            | WeightBits::Encode(weight);
     }
 
 private:
     using TypedValueBits = panda::BitField<uint32_t, 0, OPRAND_TYPE_BITS>;
     using TypedJumpOpBits = TypedValueBits::NextField<TypedJumpOp, JUMP_OP_BITS>;
-    using BranchKindBits = TypedJumpOpBits::NextField<BranchKind, BRANCH_KIND_BITS>;
+    using WeightBits = TypedJumpOpBits::NextField<uint32_t, PGOSampleType::WEIGHT_BITS + PGOSampleType::WEIGHT_BITS>;
+    using FalseWeightBits = TypedJumpOpBits::NextField<uint32_t, PGOSampleType::WEIGHT_BITS>;
+    using TrueWeightBits = FalseWeightBits::NextField<uint32_t, PGOSampleType::WEIGHT_BITS>;
 
     uint64_t bitField_;
 };

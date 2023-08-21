@@ -817,7 +817,6 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
             attr = SetTaggedRepInPropAttr(*attr);
             attr = ProfilerStubBuilder(env).UpdateTrackTypeInPropAttr(*attr, value, callback);
             JSHClassAddProperty(glue, receiver, key, *attr);
-            callback.ProfileObjLayoutByStore(receiver);
             result = Undefined();
             Jump(&exit);
         }
@@ -901,7 +900,6 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 attr = ProfilerStubBuilder(env).UpdateTrackTypeInPropAttr(*attr, value, callback);
                 JSHClassAddProperty(glue, receiver, key, *attr);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array, outProps, value);
-                callback.ProfileObjLayoutByStore(receiver);
                 Jump(&exit);
             }
         }
@@ -981,7 +979,7 @@ GateRef StubBuilder::TaggedToElementKind(GateRef value)
         Branch(TaggedIsObject(value), &isObject, &isDouble);
         Bind(&isDouble);
         {
-            result = Int32(static_cast<int32_t>(ElementsKind::DOUBLE));
+            result = Int32(static_cast<int32_t>(ElementsKind::NUMBER));
             Jump(&exit);
         }
         Bind(&isObject);
@@ -1694,7 +1692,7 @@ GateRef StubBuilder::LoadICWithHandler(
     return ret;
 }
 
-GateRef StubBuilder::LoadElement(GateRef glue, GateRef receiver, GateRef key, ProfileOperation callback)
+GateRef StubBuilder::LoadElement(GateRef glue, GateRef receiver, GateRef key)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1728,7 +1726,6 @@ GateRef StubBuilder::LoadElement(GateRef glue, GateRef receiver, GateRef key, Pr
         Jump(&exit);
         Bind(&lengthNotLessIndex);
         result = GetValueFromTaggedArray(elements, index);
-        callback.ProfileObjLayoutByLoad(receiver);
         Jump(&exit);
     }
     Bind(&exit);
@@ -1785,8 +1782,7 @@ GateRef StubBuilder::LoadStringElement(GateRef glue, GateRef receiver, GateRef k
     return ret;
 }
 
-GateRef StubBuilder::ICStoreElement(
-    GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef handler, ProfileOperation callback)
+GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef handler)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1885,7 +1881,6 @@ GateRef StubBuilder::ICStoreElement(
                         Bind(&notHole);
                         {
                             TransitToElementsKind(glue, receiver, value, *kind);
-                            callback.ProfileObjLayoutByStore(receiver);
                             Jump(&exit);
                         }
                     }
@@ -1895,7 +1890,6 @@ GateRef StubBuilder::ICStoreElement(
                     SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, value);
                     TransitToElementsKind(
                         glue, receiver, value, Int32(static_cast<int32_t>(ElementsKind::NONE)));
-                    callback.ProfileObjLayoutByStore(receiver);
                     result = Undefined();
                     Jump(&exit);
                 }
@@ -2312,7 +2306,6 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             {
                 TypedArrayStubBuilder typedArrayStubBuilder(this);
                 result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, *holder, index, jsType);
-                callback.ProfileObjIndex(receiver);
                 Jump(&exit);
             }
             Bind(&notFastTypeArray);
@@ -2349,7 +2342,6 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                     Label notHole(env);
                     Label isHole(env);
                     GateRef value = GetValueFromTaggedArray(elements, index);
-                    callback.ProfileObjLayoutByLoad(receiver);
                     Branch(TaggedIsNotHole(value), &notHole, &isHole);
                     Bind(&notHole);
                     {
@@ -2661,6 +2653,7 @@ void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHCla
     SetIsAllTaggedProp(glue, dstHClass, GetIsAllTaggedPropFromHClass(srcHClass));
     SetNumberOfPropsToHClass(glue, dstHClass, GetNumberOfPropsFromHClass(srcHClass));
     SetTransitionsToHClass(VariableType::INT64(), glue, dstHClass, Undefined());
+    SetParentToHClass(VariableType::INT64(), glue, dstHClass, Undefined());
     SetProtoChangeDetailsToHClass(VariableType::INT64(), glue, dstHClass, Null());
     SetEnumCacheToHClass(VariableType::INT64(), glue, dstHClass, Null());
     SetLayoutToHClass(VariableType::JS_POINTER(), glue, dstHClass, GetLayoutFromHClass(srcHClass));
@@ -2808,8 +2801,7 @@ GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hcl
     return ret;
 }
 
-GateRef StubBuilder::SetPropertyByIndex(
-    GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn, ProfileOperation callback)
+GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value, bool useOwn)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2848,7 +2840,6 @@ GateRef StubBuilder::SetPropertyByIndex(
             {
                 returnValue = CallRuntime(glue, RTSTUB_ID(SetTypeArrayPropertyByIndex),
                     { receiver, IntToTaggedInt(index), value, IntToTaggedInt(jsType)});
-                callback.ProfileObjIndex(receiver);
                 Jump(&exit);
             }
         }
@@ -2897,7 +2888,6 @@ GateRef StubBuilder::SetPropertyByIndex(
                             SetValueToTaggedArray(VariableType::JS_ANY(), glue, newElements, index, value);
                             TransitToElementsKind(
                                 glue, receiver, value, Int32(static_cast<int32_t>(ElementsKind::NONE)));
-                            callback.ProfileObjLayoutByStore(receiver);
                             returnValue = Undefined();
                             Jump(&exit);
                         }
@@ -2910,7 +2900,6 @@ GateRef StubBuilder::SetPropertyByIndex(
                             SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, value);
                             TransitToElementsKind(
                                 glue, receiver, value, Int32(static_cast<int32_t>(ElementsKind::NONE)));
-                            callback.ProfileObjLayoutByStore(receiver);
                             returnValue = Undefined();
                             Jump(&exit);
                         }
@@ -2949,7 +2938,6 @@ GateRef StubBuilder::SetPropertyByIndex(
         Branch(TaggedIsTrue(result), &success, &failed);
         Bind(&success);
         {
-            callback.ProfileObjLayoutByStore(receiver);
             returnValue = Undefined();
             Jump(&exit);
         }
@@ -3136,7 +3124,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             // return JSTaggedValue::Undefined()
                             JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
                             ProfilerStubBuilder(env).UpdatePropAttrWithValue(
-                                glue, *holder, layOutInfo, attr, entry, value, callback);
+                                glue, layOutInfo, attr, entry, value, callback);
                             result = Undefined();
                             Jump(&exit);
                         }
@@ -3235,7 +3223,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         GateRef holeAttr = GetInt32OfTInt(holePropAttr);
         JSObjectSetProperty(glue, receiver, receiverHClass, holeAttr, key, value);
         ProfilerStubBuilder(env).UpdatePropAttrWithValue(
-            glue, receiver, receiverLayoutInfo, holeAttr, *receiverHoleEntry, value, callback);
+            glue, receiverLayoutInfo, holeAttr, *receiverHoleEntry, value, callback);
         result = Undefined();
         Jump(&exit);
     }
@@ -3303,7 +3291,7 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
         Branch(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
         Bind(&validIndex);
         {
-            result = SetPropertyByIndex(glue, receiver, index, value, useOwn, callback);
+            result = SetPropertyByIndex(glue, receiver, index, value, useOwn);
             Jump(&exit);
         }
         Bind(&notValidIndex);
@@ -5421,7 +5409,9 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     // 4. call nonNative
     Bind(&methodNotNative);
 
-    callback.ProfileCall(func);
+    if (mode != JSCallMode::CALL_GETTER && mode != JSCallMode::CALL_SETTER) {
+        callback.ProfileCall(func);
+    }
     Label funcIsClassConstructor(env);
     Label funcNotClassConstructor(env);
     Label methodNotAot(env);

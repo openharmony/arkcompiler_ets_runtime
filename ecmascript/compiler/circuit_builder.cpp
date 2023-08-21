@@ -332,6 +332,12 @@ GateRef CircuitBuilder::IsCOWArray(GateRef objectType)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_TAGGED_ARRAY)));
 }
 
+GateRef CircuitBuilder::IsTaggedArray(GateRef object)
+{
+    GateRef objectType = GetObjectType(LoadHClass(object));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::TAGGED_ARRAY)));
+}
+
 GateRef CircuitBuilder::GetElementsArray(GateRef object)
 {
     GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
@@ -752,10 +758,10 @@ GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateTyp
         type, inList.size(), inList.data(), GateType::AnyType());
 }
 
-GateRef CircuitBuilder::TypedConditionJump(MachineType type, TypedJumpOp jumpOp, BranchKind branchKind,
+GateRef CircuitBuilder::TypedConditionJump(MachineType type, TypedJumpOp jumpOp, uint32_t weight,
     GateType typeVal, const std::vector<GateRef>& inList)
 {
-    uint64_t value = TypedJumpAccessor::ToValue(typeVal, jumpOp, branchKind);
+    uint64_t value = TypedJumpAccessor::ToValue(typeVal, jumpOp, weight);
     return GetCircuit()->NewGate(circuit_->TypedConditionJump(value),
         type, inList.size(), inList.data(), GateType::Empty());
 }

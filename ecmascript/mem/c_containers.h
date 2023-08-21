@@ -37,6 +37,9 @@ using CVector = std::vector<T, CAddressAllocator<T>>;
 template<class T>
 using CList = std::list<T, CAddressAllocator<T>>;
 
+template<class T, class Compare = std::less<>>
+using CSet = std::set<T, Compare, CAddressAllocator<T>>;
+
 template<class Key, class T, class Compare = std::less<>>
 using CMap = std::map<Key, T, Compare, CAddressAllocator<std::pair<const Key, T>>>;
 

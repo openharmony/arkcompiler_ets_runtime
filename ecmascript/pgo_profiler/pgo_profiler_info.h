@@ -274,7 +274,7 @@ public:
         methodTypeInfos_.clear();
     }
 
-    bool AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode, int32_t incCount);
+    bool AddMethod(NativeAreaAllocator *allocator, Method *jsMethod, SampleMode mode, int32_t incCount);
     bool AddType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddCallTargetType(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type);
     bool AddObjectInfo(Chunk *chunk, PGOMethodId methodId, int32_t offset, const PGOObjectInfo &info);
@@ -463,7 +463,10 @@ public:
     bool AddDefine(
         const CString &recordName, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
     bool AddLayout(PGOSampleType type, JSTaggedType hclass, PGOObjKind kind);
+    bool UpdateElementsKind(PGOSampleType type, ElementsKind kind);
     void Merge(const PGORecordDetailInfos &recordInfos);
+
+    void UpdateLayout();
 
     void ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
     void ProcessToBinary(const SaveTask *task, std::fstream &fileStream, PGOProfilerHeader *const header);

@@ -107,6 +107,8 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::BYTE_ARRAY));
     SetConstant(ConstantIndex::CONSTANT_POOL_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::CONSTANT_POOL));
+    SetConstant(ConstantIndex::PROFILE_TYPE_INFO_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::PROFILE_TYPE_INFO));
     SetConstant(ConstantIndex::AOT_LITERAL_INFO_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::AOT_LITERAL_INFO));
     SetConstant(ConstantIndex::VTABLE_CLASS_INDEX,
@@ -159,6 +161,8 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
                 factory->NewEcmaReadOnlyHClass(hClass, ProtoChangeMarker::SIZE, JSType::PROTO_CHANGE_MARKER));
     SetConstant(ConstantIndex::PROTO_CHANGE_DETAILS_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, ProtoChangeDetails::SIZE, JSType::PROTOTYPE_INFO));
+    SetConstant(ConstantIndex::TRACK_INFO_CLASS_INDEX,
+                factory->NewEcmaReadOnlyHClass(hClass, TrackInfo::SIZE, JSType::TRACK_INFO));
     SetConstant(ConstantIndex::PROTOTYPE_HANDLER_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, PrototypeHandler::SIZE, JSType::PROTOTYPE_HANDLER));
     SetConstant(ConstantIndex::TRANSITION_HANDLER_CLASS_INDEX,

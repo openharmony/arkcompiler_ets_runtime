@@ -417,12 +417,6 @@ private:
     V(DebugPrintCustom)                     \
     V(DebugPrintInstruction)                \
     V(Comment)                              \
-    V(ProfileCall)                          \
-    V(ProfileDefineClass)                   \
-    V(ProfileCreateObject)                  \
-    V(ProfileOpType)                        \
-    V(ProfileObjLayout)                     \
-    V(ProfileObjIndex)                      \
     V(FatalPrint)                           \
     V(FatalPrintCustom)                     \
     V(GetActualArgvNoGC)                    \

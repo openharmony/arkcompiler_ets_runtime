@@ -68,13 +68,16 @@ public:
 
     void SetElementsKind(ElementsKind kind)
     {
-        elementsKind_ = kind;
         elementsKinds_.emplace_back(kind);
     }
 
     ElementsKind GetElementsKind() const
     {
-        return elementsKind_;
+        auto size = elementsKinds_.size();
+        if (size == 0) {
+            return ElementsKind::GENERIC;
+        }
+        return elementsKinds_[0];
     }
 
     std::vector<ElementsKind> GetElementsKinds() const
@@ -86,7 +89,6 @@ private:
     EcmaOpcode opcode_;
     uint32_t pcOffset_;
     PGOSampleType type_;
-    ElementsKind elementsKind_ {ElementsKind::GENERIC};
     std::vector<ElementsKind> elementsKinds_ {};
 };
 

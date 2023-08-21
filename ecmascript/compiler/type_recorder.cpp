@@ -319,26 +319,37 @@ PGORWOpType TypeRecorder::GetRwOpType(int32_t offset) const
     return PGORWOpType();
 }
 
-ElementsKind TypeRecorder::GetElementsKind(int32_t offset) const
+std::vector<ElementsKind> TypeRecorder::LoadElementsKinds(int32_t offset) const
 {
+    std::vector<ElementsKind> elementsKinds;
     if (bcOffsetPGORwTypeMap_.find(offset) == bcOffsetPGORwTypeMap_.end()) {
-        return ElementsKind::GENERIC;
+        elementsKinds.emplace_back(ElementsKind::GENERIC);
+        return elementsKinds;
     }
 
     PGORWOpType rwType = bcOffsetPGORwTypeMap_.at(offset);
-    PGOObjectInfo info = rwType.GetObjectInfo(0);
-    if (info.IsNone()) {
-        return ElementsKind::GENERIC;
+    if (rwType.GetCount() == 0) {
+        elementsKinds.emplace_back(ElementsKind::GENERIC);
+        return elementsKinds;
+    }
+    for (uint32_t i = 0; i < rwType.GetCount(); i++) {
+        PGOObjectInfo info = rwType.GetObjectInfo(i);
+        auto profileType = info.GetProfileType();
+        if (profileType.IsElementType()) {
+            elementsKinds.emplace_back(ElementsKind(profileType.GetId()));
+            continue;
+        }
+        PGOSampleType type(profileType);
+        PGOHClassLayoutDesc *desc;
+        if (!decoder_->GetHClassLayoutDesc(type, &desc)) {
+            elementsKinds.emplace_back(ElementsKind::GENERIC);
+            continue;
+        }
+        auto elementsKind = desc->GetElementsKind();
+        elementsKinds.emplace_back(elementsKind);
     }
 
-    PGOSampleType type(info.GetProfileType());
-    PGOHClassLayoutDesc *desc;
-    if (!decoder_->GetHClassLayoutDesc(type, &desc)) {
-        return ElementsKind::GENERIC;
-    }
-
-    auto elementsKind = desc->GetElementsKind();
-    return elementsKind;
+    return elementsKinds;
 }
 
 bool TypeRecorder::TypeNeedFilter(GlobalTSTypeRef gt) const

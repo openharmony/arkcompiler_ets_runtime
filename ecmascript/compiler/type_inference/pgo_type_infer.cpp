@@ -248,11 +248,13 @@ void PGOTypeInfer::UpdateTypeForRWOp(GateRef gate, GateRef receiver, JSTaggedVal
 
 void PGOTypeInfer::TrySetElementsKind(GateRef gate)
 {
-    ElementsKind kind = builder_->GetElementsKind(gate);
-    if (Elements::IsGeneric(kind)) {
+    auto kinds = builder_->LoadElementsKinds(gate);
+    if (kinds.empty()) {
         return;
     }
-    acc_.TrySetElementsKind(gate, kind);
+    for (auto kind : kinds) {
+        acc_.TrySetElementsKind(gate, kind);
+    }
 }
 
 void PGOTypeInfer::TrySetPropKeyKind(GateRef gate, GateRef propKey)

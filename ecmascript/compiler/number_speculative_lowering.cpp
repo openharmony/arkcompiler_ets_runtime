@@ -437,25 +437,8 @@ void NumberSpeculativeLowering::VisitBooleanJump(GateRef gate)
     TypedJumpOp jumpOp = jumpAcc.GetTypedJumpOp();
     ASSERT((jumpOp == TypedJumpOp::TYPED_JEQZ) || (jumpOp == TypedJumpOp::TYPED_JNEZ));
     GateRef condition = acc_.GetValueIn(gate, 0);
-    uint32_t trueWeight = BranchWeight::ONE_WEIGHT;
-    uint32_t falseWeight = BranchWeight::ONE_WEIGHT;
-    BranchKind kind = jumpAcc.GetBranchKind();
-    switch (kind) {
-        case BranchKind::TRUE_BRANCH:
-            trueWeight = BranchWeight::WEAK_WEIGHT;
-            break;
-        case BranchKind::FALSE_BRANCH:
-            falseWeight = BranchWeight::WEAK_WEIGHT;
-            break;
-        case BranchKind::STRONG_TRUE_BRANCH:
-            trueWeight = BranchWeight::STRONG_WEIGHT;
-            break;
-        case BranchKind::STRONG_FALSE_BRANCH:
-            falseWeight = BranchWeight::STRONG_WEIGHT;
-            break;
-        default:
-            break;
-    }
+    uint32_t trueWeight = jumpAcc.GetTrueWeight();
+    uint32_t falseWeight = jumpAcc.GetFalseWeight();
     if (jumpOp == TypedJumpOp::TYPED_JEQZ) {
         std::swap(trueWeight, falseWeight);
         condition = builder_.BoolNot(condition);

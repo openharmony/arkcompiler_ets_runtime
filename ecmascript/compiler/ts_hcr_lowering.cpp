@@ -494,21 +494,11 @@ void TSHCRLowering::SpeculateConditionJump(GateRef gate, bool flag)
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
     GateRef jump = Circuit::NullGate();
-    auto branchKind = BranchKind::NORMAL_BRANCH;
     PGOSampleType sampleType = acc_.TryGetPGOType(value);
-    if (sampleType.IsLikely()) {
-        branchKind = BranchKind::TRUE_BRANCH;
-    } else if (sampleType.IsUnLikely()) {
-        branchKind = BranchKind::FALSE_BRANCH;
-    } else if (sampleType.IsStrongLikely()) {
-        branchKind = BranchKind::STRONG_TRUE_BRANCH;
-    } else if (sampleType.IsStrongUnLikely()) {
-        branchKind = BranchKind::STRONG_FALSE_BRANCH;
-    }
     if (flag) {
-        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JNEZ>(value, valueType, branchKind);
+        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JNEZ>(value, valueType, sampleType.GetWeight());
     } else {
-        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JEQZ>(value, valueType, branchKind);
+        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JEQZ>(value, valueType, sampleType.GetWeight());
     }
     acc_.ReplaceGate(gate, jump, jump, Circuit::NullGate());
 }
@@ -924,7 +914,7 @@ GateRef TSHCRLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey, Ele
     GateRef result = Circuit::NullGate();
     if (Elements::IsInt(kind)) {
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_INT_ELEMENT>(receiver, propKey);
-    } else if (Elements::IsDouble(kind)) {
+    } else if (Elements::IsNumber(kind)) {
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_DOUBLE_ELEMENT>(receiver, propKey);
     } else if (Elements::IsObject(kind)) {
         result = builder_.LoadElement<TypedLoadOp::ARRAY_LOAD_OBJECT_ELEMENT>(receiver, propKey);

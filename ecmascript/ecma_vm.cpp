@@ -419,6 +419,7 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
         }
     }
     thread_->GetCurrentEcmaContext()->ProcessReferences(visitor);
+    GetPGOProfiler()->ProcessReferences(visitor);
 }
 
 void EcmaVM::PushToNativePointerList(JSNativePointer *array)
@@ -479,6 +480,7 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (!WIN_OR_MAC_OR_IOS_PLATFORM) {
         snapshotEnv_->Iterate(v);
     }
+    pgoProfiler_->Iterate(v);
 }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)

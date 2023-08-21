@@ -193,9 +193,15 @@ void LCRLowering::LowerHClassStableArrayCheck(GateRef gate)
     ArrayMetaDataAccessor accessor = acc_.GetArrayMetaDataAccessor(gate);
     ElementsKind kind = accessor.GetElementsKind();
     if (accessor.IsLoadElement() && !Elements::IsHole(kind)) {
-        GateRef elementsKindCheck = builder_.Equal(builder_.Int32(static_cast<int32_t>(kind)),
-                                                   builder_.GetElementsKindByHClass(hclass));
-        check = builder_.BoolAnd(stableCheck, elementsKindCheck);
+        if (Elements::IsComplex(kind)) {
+            GateRef elementsKindCheck = builder_.Int32GreaterThanOrEqual(builder_.Int32(static_cast<int32_t>(kind)),
+                                                                         builder_.GetElementsKindByHClass(hclass));
+            check = builder_.BoolAnd(stableCheck, elementsKindCheck);
+        } else {
+            GateRef elementsKindCheck = builder_.Equal(builder_.Int32(static_cast<int32_t>(kind)),
+                                                       builder_.GetElementsKindByHClass(hclass));
+            check = builder_.BoolAnd(stableCheck, elementsKindCheck);
+        }
     } else {
         check = stableCheck;
     }

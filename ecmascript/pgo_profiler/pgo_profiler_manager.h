@@ -74,6 +74,8 @@ public:
     void Destroy(PGOProfiler *profiler)
     {
         if (profiler != nullptr) {
+            profiler->HandlePGOPreDump();
+            profiler->WaitPGODumpFinish();
             Merge(profiler);
             delete profiler;
         }

@@ -602,6 +602,11 @@ GateRef CircuitBuilder::LoadObjectFromWeakRef(GateRef x)
     return PtrAdd(x, IntPtr(-JSTaggedValue::TAG_WEAK));
 }
 
+GateRef CircuitBuilder::CreateWeakRef(GateRef x)
+{
+    return PtrAdd(x, IntPtr(JSTaggedValue::TAG_WEAK));
+}
+
 // object operation
 GateRef CircuitBuilder::LoadHClass(GateRef object)
 {
@@ -1009,13 +1014,13 @@ GateRef CircuitBuilder::TypedUnaryOp(GateRef x, GateType xType, GateType gateTyp
 }
 
 template<TypedJumpOp Op>
-GateRef CircuitBuilder::TypedConditionJump(GateRef x, GateType xType, BranchKind branchKind)
+GateRef CircuitBuilder::TypedConditionJump(GateRef x, GateType xType, uint32_t weight)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto machineType = MachineType::NOVALUE;
-    auto jumpOp = TypedConditionJump(machineType, Op, branchKind, xType, {currentControl, currentDepend, x});
+    auto jumpOp = TypedConditionJump(machineType, Op, weight, xType, {currentControl, currentDepend, x});
     currentLabel->SetControl(jumpOp);
     currentLabel->SetDepend(jumpOp);
     return jumpOp;
