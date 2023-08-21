@@ -45,6 +45,8 @@ public:
                                                JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
     static JSTaggedValue IndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
                                  JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len);
+    static JSTaggedValue LastIndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
+                                 JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len);
     static JSTaggedValue Filter(JSHandle<JSObject> newArrayHandle, JSHandle<JSObject> thisObjHandle,
                                  EcmaRuntimeCallInfo *argv, uint32_t &k, uint32_t &toIndex);
     static JSTaggedValue Map(JSHandle<JSObject> newArrayHandle, JSHandle<JSObject> thisObjHandle,
@@ -67,6 +69,35 @@ public:
                                 JSHandle<JSTaggedValue> callbackFnHandle,
                                 JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len);
     static JSTaggedValue Slice(JSThread *thread, JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &count);
+
+private:
+    enum class IndexOfType {
+        IndexOf,
+        LastIndexOf
+    };
+
+    struct IndexOfContext {
+        JSThread *thread;
+        JSHandle<JSTaggedValue> receiver;
+        JSHandle<JSTaggedValue> searchElement;
+        uint32_t fromIndex;
+        uint32_t length;
+    };
+
+    template <class Predicate>
+    static JSTaggedValue FindRawData(IndexOfContext &ctx, Predicate &&predicate);
+    template <class Predicate>
+    static JSTaggedValue FindLastRawData(IndexOfContext &ctx, Predicate &&predicate);
+    template <class Predicate>
+    static JSTaggedValue FindRawDataDispatch(IndexOfType type, IndexOfContext &ctx, Predicate &&predicate);
+
+    static JSTaggedValue IndexOfZero(IndexOfType type, IndexOfContext &ctx);
+    static JSTaggedValue IndexOfInt32(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
+    static JSTaggedValue IndexOfDouble(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
+    static JSTaggedValue IndexOfObjectAddress(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
+    static JSTaggedValue IndexOfString(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
+    static JSTaggedValue IndexOfBigInt(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
+    static JSTaggedValue IndexOfDispatch(IndexOfType type, IndexOfContext &ctx, JSTaggedValue searchElement);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

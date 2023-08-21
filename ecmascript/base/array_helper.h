@@ -19,6 +19,8 @@
 #include <string>
 
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/ecma_runtime_call_info.h"
+#include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript::base {
 struct FlattenArgs {
@@ -33,6 +35,30 @@ enum class HolesType {
 };
 class ArrayHelper {
 public:
+    // Common subprocedure for Array.prototype.at, Array.prototype.indexOf, Array.prototype.slice, etc.
+    // Gets start index that falls in range [0, length].
+    // length is returned on pending exception.
+    static int64_t GetStartIndex(JSThread *thread, const JSHandle<JSTaggedValue> &startIndexHandle,
+                                 int64_t length);
+    // If argIndex is out of range [0, argc), then start index = 0 by default.
+    // Otherwise, let startIndexHandle = GetCallArg(argv, argIndex) and call GetStartIndex.
+    static int64_t GetStartIndexFromArgs(JSThread *thread, EcmaRuntimeCallInfo *argv,
+                                         uint32_t argIndex, int64_t length);
+    // Common subprocedure for Array.prototype.lastIndexOf, etc.
+    // Gets last start index that falls in range [-1, length - 1].
+    // -1 is returned on pending exception.
+    static int64_t GetLastStartIndex(JSThread *thread, const JSHandle<JSTaggedValue> &startIndexHandle,
+                                     int64_t length);
+    // If argIndex is out of range [0, argc), then start index = length - 1 by default.
+    // Otherwise, let startIndexHandle = GetCallArg(argv, argIndex) and call GetLastStartIndex.
+    static int64_t GetLastStartIndexFromArgs(JSThread *thread, EcmaRuntimeCallInfo *argv,
+                                             uint32_t argIndex, int64_t length);
+    // Let thisHandle be the array object. Checks whether array[key] (if exists) is strictly equal to target.
+    // Returns false on pending exception.
+    static bool ElementIsStrictEqualTo(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle,
+                                       const JSHandle<JSTaggedValue> &keyHandle,
+                                       const JSHandle<JSTaggedValue> &target);
+
     static bool IsConcatSpreadable(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static double SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &callbackfnHandle,
                               const JSHandle<JSTaggedValue> &valueX, const JSHandle<JSTaggedValue> &valueY);

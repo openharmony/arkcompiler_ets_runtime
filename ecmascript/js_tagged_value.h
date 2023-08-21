@@ -112,6 +112,10 @@ public:
     static constexpr size_t INT_SIGN_BIT_OFFSET = 31;
     static constexpr size_t DOUBLE_ENCODE_OFFSET_BIT = 48;
     static constexpr JSTaggedType DOUBLE_ENCODE_OFFSET = 1ULL << DOUBLE_ENCODE_OFFSET_BIT;
+    // Tagged +0.0 = IEEE754 representation of +0.0 + offset
+    static constexpr JSTaggedType VALUE_POSITIVE_ZERO = 0x0000'0000'0000'0000uLL + DOUBLE_ENCODE_OFFSET;
+    // Tagged -0.0 = IEEE754 representation of -0.0 + offset
+    static constexpr JSTaggedType VALUE_NEGATIVE_ZERO = 0x8000'0000'0000'0000uLL + DOUBLE_ENCODE_OFFSET;
 
     static JSTaggedValue Cast(TaggedObject *object)
     {
@@ -443,6 +447,7 @@ public:
     bool IsInteger() const;
     bool WithinInt32() const;
     bool IsZero() const;
+    bool IsExactlyZero() const;
     static bool IsPropertyKey(const JSHandle<JSTaggedValue> &key);
     static JSHandle<JSTaggedValue> RequireObjectCoercible(JSThread *thread, const JSHandle<JSTaggedValue> &tagged,
                                                           const char *message = "RequireObjectCoercible throw Error");
