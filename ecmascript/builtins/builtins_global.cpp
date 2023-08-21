@@ -832,7 +832,6 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
         if (c == CHAR16_PERCENT_SIGN) {
             EcmaString *hexDigits = nullptr;
             uint16_t optionalAdvance = 0;
-            optionalAdvance = optionalAdvance + 2; // NOLINT 2:means plus 2
             if (k + 5 < len && // NOLINT 5: means offset by 5
                 EcmaStringAccessor(string).Get(k + 1) == CHAR16_LATIN_SMALL_LETTER_U) { // NOLINT 1: means offset by 1
                 hexDigits = EcmaStringAccessor(string).FastSubString(vm, string,
