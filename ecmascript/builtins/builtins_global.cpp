@@ -298,14 +298,14 @@ uint8_t BuiltinsGlobal::GetValueFromTwoHex(uint16_t front, uint16_t behind)
 uint16_t BuiltinsGlobal::GetValueFromHexString(const JSHandle<EcmaString> &string)
 {
     uint32_t size = EcmaStringAccessor(string).GetLength();
-    ASSERT(size > 0 && size <= 4);
+    ASSERT(size > 0 && size <= 4); // NOLINT 4: means 4 hex digits
     std::u16string hexString(u"0123456789ABCDEF");
 
     uint16_t ret = 0;
     for (uint32_t i = 0; i < size; ++i) {
         uint16_t ch = EcmaStringAccessor(string).Get(i);
         size_t idx = StringHelper::FindFromU16ToUpper(hexString, &ch);
-        ret = ((ret << 4U) | idx) & BIT_MASK_4F;
+        ret = ((ret << 4U) | idx) & BIT_MASK_4F; // NOLINT 4: means shift left by 4
     }
     return ret;
 }
@@ -401,7 +401,7 @@ EcmaString *BuiltinsGlobal::StringToCodePoints(JSThread *thread, const JSHandle<
             // vi. Set cp to UTF16SurrogatePairToCodePoint(first, second).
             // vii. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 2, [[IsUnpairedSurrogate]]: false }.
                 cp = UTF16SurrogatePairToCodePoint(first, second);
-                codeUnitCount = 2; // 1 means: code unit count
+                codeUnitCount = 2; // 2 means: code unit count
                 isUnpairedSurrogate = false;
             }
         }
@@ -768,11 +768,13 @@ JSTaggedValue BuiltinsGlobal::Escape(EcmaRuntimeCallInfo *msg)
             EcmaString *temp = nullptr;
             JSHandle<EcmaString> hexStringHandle = factory->NewFromStdString(std::string("\0"));
             if (n <= std::numeric_limits<uint8_t>::max()) {
-                EcmaString *hexEcmaString = StringPad(thread, hex, 2, fillString, Placement::START);
+                EcmaString *hexEcmaString =
+                    StringPad(thread, hex, 2, fillString, Placement::START); // NOLINT 2: means max string length
                 hexStringHandle = JSHandle<EcmaString>(thread, hexEcmaString);
                 temp = EcmaStringAccessor::Concat(vm, factory->NewFromStdString("%"), hexStringHandle);
             } else {
-                EcmaString *hexEcmaString = StringPad(thread, hex, 4, fillString, Placement::START);
+                EcmaString *hexEcmaString =
+                    StringPad(thread, hex, 4, fillString, Placement::START); // NOLINT 4: means max string length
                 hexStringHandle = JSHandle<EcmaString>(thread, hexEcmaString);
                 temp = EcmaStringAccessor::Concat(vm, factory->NewFromStdString("%u"), hexStringHandle);
             }
@@ -805,31 +807,41 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
     std::u16string r;
     // 4. Let k be 0.
     uint32_t k = 0;
+    // 5. Repeat, while k < len,
+    //   a. Let C be the code unit at index k within string.
+    //   b. If C is the code unit 0x0025 (PERCENT SIGN), then
+    //     i. Let hexDigits be the empty String.
+    //     ii. Let optionalAdvance be 0.
+    //     iii. If k + 5 < len and the code unit at index k + 1 within string is the code unit
+    //          0x0075 (LATIN SMALL LETTER U), then
+    //       1. Set hexDigits to the substring of string from k + 2 to k + 6.
+    //       2. Set optionalAdvance to 5.
+    //     iv. Else if k + 3 ≤ len, then
+    //       1. Set hexDigits to the substring of string from k + 1 to k + 3.
+    //       2. Set optionalAdvance to 2.
+    //     v. Let parseResult be ParseText(StringToCodePoints(hexDigits), HexDigits[~Sep]).
+    //     vi. If parseResult is a Parse Node, then
+    //       1. Let n be the MV of parseResult.
+    //       2. Set C to the code unit whose numeric value is n.
+    //       3. Set k to k + optionalAdvance.
+    //   c. Set R to the string-concatenation of R and C.
+    //   d. Set k to k + 1.
     while (k < len) {
-        //  a. Let C be the code unit at index k within string.
         uint16_t c = EcmaStringAccessor(string).Get(k);
         JSHandle<EcmaString> hexDigitsString;
-        //  b. If C is the code unit 0x0025 (PERCENT SIGN), then
         if (c == CHAR16_PERCENT_SIGN) {
-            //    i. Let hexDigits be the empty String.
             EcmaString *hexDigits = nullptr;
-            //   ii. Let optionalAdvance be 0.
             uint16_t optionalAdvance = 0;
-            //  iii. If k + 5 < len and the code unit at index k + 1 within string is the code
-            //    unit 0x0075 (LATIN SMALL LETTER U), then
-            //    1. Set hexDigits to the substring of string from k + 2 to k + 6.
-            //    2. Set optionalAdvance to 5.
-            if (k + 5 < len && EcmaStringAccessor(string).Get(k + 1) == CHAR16_LATIN_SMALL_LETTER_U) {
-                hexDigits = EcmaStringAccessor(string).FastSubString(vm, string, k + 2, 4); // 4 means plus 4
-                optionalAdvance = optionalAdvance + 5; // 5 means plus 5
-            } else if (k + 3 <= len) { // 3 means plus 3
-            //    iv. Else if k + 3 ≤ len, then
-            //      1. Set hexDigits to the substring of string from k + 1 to k + 3.
-            //      2. Set optionalAdvance to 2.
-                hexDigits = EcmaStringAccessor(string).FastSubString(vm, string, k + 1, 2); // 3 means plus 3
-                optionalAdvance = optionalAdvance + 2; // 2 means plus 2
+            optionalAdvance = optionalAdvance + 2; // NOLINT 2:means plus 2
+            if (k + 5 < len && // NOLINT 5: means offset by 5
+                EcmaStringAccessor(string).Get(k + 1) == CHAR16_LATIN_SMALL_LETTER_U) { // NOLINT 1: means offset by 1
+                hexDigits = EcmaStringAccessor(string).FastSubString(vm, string,
+                                                                     k + 2, 4); // NOLINT 2: means offset 4: means len
+                optionalAdvance = optionalAdvance + 5; // NOLINT 5: means plus 5
+            } else if (k + 3 <= len) { // NOLINT 3: means offset
+                hexDigits = EcmaStringAccessor(string).FastSubString(vm, string, k + 1, 2); // NOLINT 2:means len
+                optionalAdvance = optionalAdvance + 2; // NOLINT 2: means plus 2
             }
-            //     v. Let parseResult be ParseText(StringToCodePoints(hexDigits), HexDigits[~Sep]).
             if (hexDigits != nullptr) {
                 hexDigitsString = JSHandle<EcmaString>(thread, hexDigits);
                 EcmaString *codePoints = StringToCodePoints(thread, hexDigitsString);
@@ -837,25 +849,17 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
                 bool isHex = true;
                 for (uint32_t i = 0; i < EcmaStringAccessor(codePointString).GetLength(); ++i) {
                     if (!IsHexDigits(EcmaStringAccessor(codePointString).Get(i))) {
-                        // throw exception
                         isHex = false;
                     }
                 }
-                //     vi. If parseResult is a Parse Node, then
-                //       1. Let n be the MV of parseResult.
-                //       2. Set C to the code unit whose numeric value is n.
-                //       3. Set k to k + optionalAdvance.
                 if (isHex) {
                     uint16_t n = GetValueFromHexString(codePointString);
                     c = n;
                     k = k + optionalAdvance;
                 }
             }
-
         }
-        // c. Set R to the string-concatenation of R and C.
         r.push_back(c);
-        // d. Set k to k + 1.
         ++k;
     }
     // 7. Return R.
