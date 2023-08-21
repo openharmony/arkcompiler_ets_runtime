@@ -349,8 +349,6 @@ public:
 
     void AddArrayTSConstantIndex(uint64_t bcAbsoluteOffset, JSTaggedValue index);
 
-    void AddArrayTSHClass(panda_file::File::EntityId id, JSHClass *hclass);
-
     void AddInstanceTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &ihclass);
 
     void AddConstructorTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &constructorHClass);
@@ -370,9 +368,6 @@ public:
 
     int PUBLIC_API GetElementsKindIndexByArrayType(const kungfu::GateType &gateType,
                                                    const panda_file::File::EntityId id);
-
-    int PUBLIC_API GetHClassIndexByArrayType(const kungfu::GateType &gateType,
-                                             const panda_file::File::EntityId id);
 
     int PUBLIC_API GetHClassIndexByObjectType(const kungfu::GateType &gateType);
 
@@ -720,9 +715,6 @@ public:
             for (auto iter : offConstIndexMap_) {
                 iter.second.Iterate(v);
             }
-            for (auto iter : idIhcMap_) {
-                iter.second.Iterate(v);
-            }
         }
 
         std::map<panda_file::File::EntityId, ElementData>& GetElmMap()
@@ -740,11 +732,6 @@ public:
             return offConstIndexMap_;
         }
 
-        std::map<panda_file::File::EntityId, IHClassData>& GetIhcMap()
-        {
-            return idIhcMap_;
-        }
-
         void AddElmMap(panda_file::File::EntityId id, ElementData data)
         {
             idElmMap_.insert({id, data});
@@ -760,16 +747,10 @@ public:
             offConstIndexMap_.insert({bcAbsoluteOffset, data});
         }
 
-        void AddIhcMap(panda_file::File::EntityId id, IHClassData data)
-        {
-            idIhcMap_.insert({id, data});
-        }
-
     private:
         std::map<panda_file::File::EntityId, ElementData> idElmMap_ {};
         std::map<panda_file::File::EntityId, ElementKindData> idElmKindMap_ {};
         std::map<uint64_t, ConstantIndexData> offConstIndexMap_ {};
-        std::map<panda_file::File::EntityId, IHClassData> idIhcMap_ {};
     };
 
     // for snapshot
@@ -917,8 +898,6 @@ public:
     int GetElementsIndex(panda_file::File::EntityId id);
 
     int GetElementsKindIndex(panda_file::File::EntityId id);
-
-    int GetHClassIndex(panda_file::File::EntityId id);
 
     int GetHClassIndex(GlobalTSTypeRef classGT, bool isConstructor = false);
 

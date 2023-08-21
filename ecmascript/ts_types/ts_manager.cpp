@@ -58,16 +58,6 @@ int TSManager::GetElementsKindIndexByArrayType(const kungfu::GateType &gateType,
     return GetElementsKindIndex(id);
 }
 
-int TSManager::GetHClassIndexByArrayType(const kungfu::GateType &gateType,
-                                         const panda_file::File::EntityId id)
-{
-    // make sure already setting correct curCP_ and curCPID_ before calling this method
-    if (!IsArrayTypeKind(gateType)) {
-        return -1;
-    }
-    return GetHClassIndex(id);
-}
-
 int TSManager::GetHClassIndexByObjectType(const kungfu::GateType &gateType)
 {
     // make sure already setting correct curCP_ and curCPID_ before calling this method
@@ -173,25 +163,6 @@ uint32_t TSManager::RecordElmKindToVecAndIndexMap(ElementKindData &elmKindData)
     cpIndexMap[curCPID_] = index;
 
     return index;
-}
-
-int TSManager::GetHClassIndex(panda_file::File::EntityId id)
-{
-    // make sure already setting correct curCP_ and curCPID_ before calling this method
-    auto hclassMap = jsArrayData_.GetIhcMap();
-    auto iter = hclassMap.find(id);
-    auto endIter = hclassMap.end();
-    if (iter == endIter) {
-        return -1;
-    } else {
-        std::unordered_map<int32_t, uint32_t> &cpIndexMap = iter->second.GetCPIndexMap();
-        auto indexIter = cpIndexMap.find(curCPID_);
-        if (indexIter == cpIndexMap.end()) {
-            // This ihc is used in the current constantpool, but has not yet been recorded
-            return RecordIhcToVecAndIndexMap(iter->second);
-        }
-        return indexIter->second;
-    }
 }
 
 int TSManager::GetHClassIndex(GlobalTSTypeRef classGT, bool isConstructor)
@@ -813,14 +784,6 @@ void TSManager::AddArrayTSConstantIndex(uint64_t bcAbsoluteOffset, JSTaggedValue
     jsArrayData_.AddOffConstIndexMap(bcAbsoluteOffset, constantIndexData);
 }
 
-void TSManager::AddArrayTSHClass(panda_file::File::EntityId id, JSHClass *hclass)
-{
-    JSHandle<JSHClass> oldHClass(thread_, hclass);
-    JSHandle<JSHClass> hclassHandle = JSHClass::Clone(thread_, oldHClass);
-    IHClassData ihcData = IHClassData(hclassHandle.GetTaggedType());
-    jsArrayData_.AddIhcMap(id, ihcData);
-}
-
 void TSManager::AddInstanceTSHClass(GlobalTSTypeRef gt, JSHandle<JSHClass> &ihclass)
 {
     IHClassData ihcData = IHClassData(ihclass.GetTaggedType());
@@ -1310,10 +1273,9 @@ void TSManager::GenerateSnapshotConstantPoolList(std::map<int32_t, uint32_t> &cp
             LOG_COMPILER(INFO) << "[aot-snapshot] constantPoolID: " << oldCPID;
             LOG_COMPILER(INFO) << "[aot-snapshot] constantPoolSize: " << cpSize;
             LOG_COMPILER(INFO) << "[aot-snapshot] valueSize: " << valVecSize;
-            LOG_COMPILER(INFO) << "[aot-snapshot] constIndexInfoSize: 1";
         }
         // 1: constIndexInfo TaggedArray
-        JSHandle<ConstantPool> newCp = factory_->NewConstantPool(cpSize + valVecSize + 1);
+        JSHandle<ConstantPool> newCp = factory_->NewConstantPool(cpSize + valVecSize);
 
         auto offConstIndexMap = jsArrayData_.GetOffConstIndexMap();
         // 2: each item need store (bcAbsoluteOffset, constIndex)

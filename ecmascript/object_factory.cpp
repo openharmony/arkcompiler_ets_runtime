@@ -2474,7 +2474,7 @@ JSHandle<ConstantPool> ObjectFactory::NewConstantPool(uint32_t capacity)
     auto header = heap_->AllocateOldOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetConstantPoolClass().GetTaggedObject()), size);
     JSHandle<ConstantPool> array(thread_, header);
-    array->InitializeWithSpecialValue(JSTaggedValue::Hole(), capacity);
+    array->InitializeWithSpecialValue(thread_, JSTaggedValue::Hole(), capacity);
     return array;
 }
 

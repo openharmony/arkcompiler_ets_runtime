@@ -2466,8 +2466,7 @@ inline GateRef StubBuilder::LoadHCIndexFromConstPool(GateRef jsFunc, GateRef tra
     GateRef method = Load(VariableType::JS_ANY(), jsFunc, IntPtr(JSFunctionBase::METHOD_OFFSET));
     GateRef constPool = Load(VariableType::JS_ANY(), method, IntPtr(Method::CONSTANT_POOL_OFFSET));
     auto length = GetLengthOfTaggedArray(constPool);
-    // 1: constantIndexInfo at the end of the constpool
-    auto index = Int32Sub(length, Int32(1));
+    auto index = Int32Sub(length, Int32(ConstantPool::CONSTANT_INDEX_INFO_INDEX));
     auto constantIndexInfo = GetValueFromTaggedArray(constPool, index);
     auto indexInfoLength = GetLengthOfTaggedArray(constantIndexInfo);
     DEFVARIABLE(bcOffset, VariableType::INT32(), Int32(0));
