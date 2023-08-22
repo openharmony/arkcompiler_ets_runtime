@@ -584,10 +584,15 @@ void DFXJSNApi::ResumeVMById(EcmaVM *hostVm, uint32_t tid)
 
 bool DFXJSNApi::SuspendVMById(EcmaVM *hostVm, uint32_t tid)
 {
+    bool success = false;
     if (hostVm->GetAssociatedJSThread()->GetThreadId() == tid) {
-        return SuspendVM(hostVm);
+        success = SuspendVM(hostVm);
+        LOG_ECMA(INFO) << "The main thread, SuspendVMById succeeded: " << success;
+        return success;
     } else {
-        return hostVm->SuspendWorkerVm(tid);
+        success = hostVm->SuspendWorkerVm(tid);
+        LOG_ECMA(INFO) << "The worker thread, SuspendVMById succeeded: " << success;
+        return success;
     }
 }
 } // namespace panda
