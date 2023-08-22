@@ -151,6 +151,7 @@ public:
     static bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
     void AddConstantPool(const CString &snapshotFileName, JSTaggedValue deserializedCPList);
     JSHandle<JSTaggedValue> GetDeserializedConstantPool(const JSPandaFile *jsPandaFile, int32_t cpID);
+    const Heap *GetHeap();
 
     static void DumpAOTInfo() DUMP_API_ATTR;
 
