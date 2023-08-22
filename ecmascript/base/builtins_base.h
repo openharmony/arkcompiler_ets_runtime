@@ -63,6 +63,11 @@ public:
         return JSTaggedValue(value);
     }
 
+    static inline JSTaggedValue GetTaggedInt64(int64_t value)
+    {
+        return JSTaggedValue(value);
+    }
+
     static inline JSTaggedValue GetTaggedDouble(double value)
     {
         return JSTaggedValue(value);

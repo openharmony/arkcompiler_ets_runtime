@@ -490,12 +490,12 @@ JSTaggedValue JSStableArray::FindRawData(IndexOfContext &ctx, Predicate &&predic
     for (JSTaggedType *cur = first; cur < last; ++cur) {
         if (LIKELY(*cur != JSTaggedValue::VALUE_HOLE)) {
             if (UNLIKELY(std::invoke(predicate, *cur))) {
-                return JSTaggedValue(cur - data);
+                return base::BuiltinsBase::GetTaggedInt64(cur - data);
             }
             continue;
         }
         // Fallback slow path
-        indexHandle.Update(JSTaggedValue(cur - data));
+        indexHandle.Update(base::BuiltinsBase::GetTaggedInt64(cur - data));
         bool found = base::ArrayHelper::ElementIsStrictEqualTo(
             ctx.thread, ctx.receiver, indexHandle, ctx.searchElement);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(ctx.thread);
@@ -520,12 +520,12 @@ JSTaggedValue JSStableArray::FindLastRawData(IndexOfContext &ctx, Predicate &&pr
     for (JSTaggedType *cur = beforeLast; cur > beforeFirst; --cur) {
         if (LIKELY(*cur != JSTaggedValue::VALUE_HOLE)) {
             if (UNLIKELY(std::invoke(predicate, *cur))) {
-                return JSTaggedValue(cur - data);
+                return base::BuiltinsBase::GetTaggedInt64(cur - data);
             }
             continue;
         }
         // Fallback slow path
-        indexHandle.Update(JSTaggedValue(cur - data));
+        indexHandle.Update(base::BuiltinsBase::GetTaggedInt64(cur - data));
         bool found = base::ArrayHelper::ElementIsStrictEqualTo(
             ctx.thread, ctx.receiver, indexHandle, ctx.searchElement);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(ctx.thread);
