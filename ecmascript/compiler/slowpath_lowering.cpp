@@ -64,7 +64,7 @@ void SlowPathLowering::CallRuntimeLowering()
                 LowerTypedFastCall(gate);
                 break;
             case OpCode::CHECK_SAFEPOINT_AND_STACKOVER:
-                LowerCheckSafePointAndStackOver(gate);
+                LowerCheckSafePointAndStackOverflow(gate);
                 break;
             case OpCode::GET_ENV:
                 LowerGetEnv(gate);
@@ -3139,31 +3139,23 @@ void SlowPathLowering::LowerTypedFastCall(GateRef gate)
     ReplaceHirWithPendingException(gate, state, result, result);
 }
 
-void SlowPathLowering::LowerCheckSafePointAndStackOver(GateRef gate)
+void SlowPathLowering::LowerCheckSafePointAndStackOverflow(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    Label slowPath(&builder_);
     Label dispatch(&builder_);
-    Label checkStackOver(&builder_);
+    Label checkStackOverflow(&builder_);
     Label stackOverflow(&builder_);
-    GateRef stackLimit = builder_.Load(VariableType::INT64(), glue_,
-        builder_.IntPtr(JSThread::GlueData::GetStackLimitOffset(builder_.GetCompilationConfig()->Is32Bit())));
-    GateRef interruptsFlag = builder_.Load(VariableType::INT8(), glue_,
-        builder_.IntPtr(JSThread::GlueData::GetInterruptVectorOffset(builder_.GetCompilationConfig()->Is32Bit())));
+    GateRef stackLimitOffset =
+        builder_.IntPtr(JSThread::GlueData::GetStackLimitOffset(builder_.GetCompilationConfig()->Is32Bit()));
+    GateRef stackLimit = builder_.Load(VariableType::INT64(), glue_, stackLimitOffset);
     GateRef spValue = builder_.ReadSp();
-    builder_.Branch(builder_.Int8Equal(interruptsFlag,
-        builder_.Int8(VmThreadControl::VM_NEED_SUSPENSION)), &slowPath, &checkStackOver);
-    builder_.Bind(&slowPath);
+    builder_.Branch(builder_.Int64LessThanOrEqual(spValue, stackLimit), &checkStackOverflow, &dispatch);
+    builder_.Bind(&checkStackOverflow);
     {
-        LowerCallRuntime(glue_, RTSTUB_ID(CheckSafePoint), {}, true);
-        builder_.Jump(&checkStackOver);
-    }
-    builder_.Bind(&checkStackOver);
-    {
-        builder_.Branch(builder_.Int64LessThanOrEqual(spValue, stackLimit), &stackOverflow, &dispatch);
+        GateRef res = LowerCallRuntime(glue_, RTSTUB_ID(CheckSafePointAndStackOverflow), {}, true);
+        builder_.Branch(builder_.TaggedIsUndefined(res), &dispatch, &stackOverflow);
         builder_.Bind(&stackOverflow);
         {
-            GateRef res = LowerCallRuntime(glue_, RTSTUB_ID(ThrowStackOverflowException), {}, true);
             builder_.Return(res);
         }
     }

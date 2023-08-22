@@ -2636,5 +2636,19 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyDebuggerStatement(JSThread *thread)
     }
     return JSTaggedValue::Hole();
 }
+
+JSTaggedValue RuntimeStubs::RuntimeThrowStackOverflowException(JSThread *thread)
+{
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    // Multi-thread could cause stack-overflow-check failed too,
+    // so check thread here to distinguish it with the actual stack overflow.
+    ecmaVm->CheckThread();
+    if (LIKELY(!thread->HasPendingException())) {
+        ObjectFactory *factory = ecmaVm->GetFactory();
+        JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, "Stack overflow!", false);
+        thread->SetException(error.GetTaggedValue());
+    }
+    return JSTaggedValue::Exception();
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H

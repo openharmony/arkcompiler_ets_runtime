@@ -107,6 +107,7 @@ void CommonCall::StackOverflowCheck(ExtendedAssembler *assembler, Register glue,
 {
     Register temp1 = op1;
     Register temp2 = op2;
+    Label skipThrow;
     if (op1 == op2) {
         // reuse glue as an op register for temporary
         __ Pushq(glue);
@@ -118,10 +119,17 @@ void CommonCall::StackOverflowCheck(ExtendedAssembler *assembler, Register glue,
     __ Movl(numArgs, temp1);
     __ Shlq(3, temp1);  // 3: each arg occupies 8 bytes
     __ Cmpq(temp1, temp2);
+    __ Jg(&skipThrow);
     if (op1 == op2) {
         __ Popq(glue);
     }
-    __ Jle(stackOverflow);
+    __ Movq(Operand(glue, JSThread::GlueData::GetInterruptVectorOffset(false)), temp1);
+    __ Btq(JSThread::CheckSafePointBit::START_BIT, temp1);
+    __ Jnb(stackOverflow); // CheckSafePointBit is false, is actual stack over flow
+    __ Bind(&skipThrow);
+    if (op1 == op2) {
+        __ Popq(glue);
+    }
 }
 #undef __
 }  // namespace panda::ecmascript::x64

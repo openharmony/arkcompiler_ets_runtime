@@ -216,7 +216,7 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
         visitor(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
 
-    EcmaContext *tempContext = currentContext_;
+    EcmaContext *tempContext = glueData_.currentContext_;
     for (EcmaContext *context : contexts_) {
         // visit stack roots
         SwitchCurrentContext(context, true);
@@ -570,9 +570,9 @@ void JSThread::PushContext(EcmaContext *context)
     const_cast<Heap *>(vm_->GetHeap())->WaitAllTasksFinished();
     contexts_.emplace_back(context);
 
-    if (!currentContext_) {
+    if (!glueData_.currentContext_) {
         // The first context in ecma vm.
-        currentContext_ = context;
+        SetCurrentEcmaContext(context);
         context->SetFramePointers(const_cast<JSTaggedType *>(GetCurrentSPFrame()),
             const_cast<JSTaggedType *>(GetLastLeaveFrame()),
             const_cast<JSTaggedType *>(GetLastFp()));
@@ -596,27 +596,33 @@ void JSThread::PushContext(EcmaContext *context)
 void JSThread::PopContext()
 {
     contexts_.pop_back();
-    currentContext_ = contexts_.back();
+    SwitchCurrentContext(contexts_.back());
 }
 
 void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate)
 {
     ASSERT(std::count(contexts_.begin(), contexts_.end(), currentContext));
-
-    currentContext_->SetFramePointers(const_cast<JSTaggedType *>(GetCurrentSPFrame()),
+    // If glueData_.currentContext_ == currentContext, don't need switch context
+    if (glueData_.currentContext_ == currentContext) {
+        return;
+    }
+    glueData_.currentContext_->SetFramePointers(const_cast<JSTaggedType *>(GetCurrentSPFrame()),
         const_cast<JSTaggedType *>(GetLastLeaveFrame()),
         const_cast<JSTaggedType *>(GetLastFp()));
-    currentContext_->SetFrameBase(glueData_.frameBase_);
-    currentContext_->SetStackLimit(GetStackLimit());
-    currentContext_->SetStackStart(GetStackStart());
-    currentContext_->SetGlobalEnv(GetGlueGlobalEnv());
-    currentContext_->GetGlobalEnv()->SetJSGlobalObject(this, glueData_.globalObject_);
+    glueData_.currentContext_->SetFrameBase(glueData_.frameBase_);
+    glueData_.currentContext_->SetGlobalEnv(GetGlueGlobalEnv());
+    glueData_.currentContext_->GetGlobalEnv()->SetJSGlobalObject(this, glueData_.globalObject_);
 
     SetCurrentSPFrame(currentContext->GetCurrentFrame());
     SetLastLeaveFrame(currentContext->GetLeaveFrame());
     SetLastFp(currentContext->GetLastFp());
     glueData_.frameBase_ = currentContext->GetFrameBase();
-    glueData_.stackLimit_ = currentContext->GetStackLimit();
+    if (HasCheckSafePoint()) {
+        // If CheckSafePointBit is true, stackLimit_ need to be stackStart_ like SetCheckSafePointStatus
+        glueData_.stackLimit_ = currentContext->GetStackStart();
+    } else {
+        glueData_.stackLimit_ = currentContext->GetStackLimit();
+    }
     glueData_.stackStart_ = currentContext->GetStackStart();
     if (!currentContext->GlobalEnvIsHole()) {
         SetGlueGlobalEnv(*(currentContext->GetGlobalEnv()));
@@ -627,7 +633,7 @@ void JSThread::SwitchCurrentContext(EcmaContext *currentContext, bool isInIterat
         glueData_.globalConst_ = const_cast<GlobalEnvConstants *>(currentContext->GlobalConstants());
     }
 
-    currentContext_ = currentContext;
+    SetCurrentEcmaContext(currentContext);
 }
 
 bool JSThread::EraseContext(EcmaContext *context)
@@ -636,7 +642,7 @@ bool JSThread::EraseContext(EcmaContext *context)
     bool isCurrentContext = false;
     auto iter = std::find(contexts_.begin(), contexts_.end(), context);
     if (*iter == context) {
-        if (currentContext_ == context) {
+        if (glueData_.currentContext_ == context) {
             isCurrentContext = true;
         }
         contexts_.erase(iter);
@@ -650,7 +656,7 @@ bool JSThread::EraseContext(EcmaContext *context)
 
 PropertiesCache *JSThread::GetPropertiesCache() const
 {
-    return currentContext_->GetPropertiesCache();
+    return glueData_.currentContext_->GetPropertiesCache();
 }
 
 const GlobalEnvConstants *JSThread::GetFirstGlobalConst() const
@@ -666,5 +672,20 @@ bool JSThread::IsAllContextsInitialized() const
         }
     }
     return true;
+}
+
+void JSThread::ResetCheckSafePointStatus()
+{
+    ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & CHECKSAFEPOINT_FLAG) <= 1);
+    CheckSafePointBit::Set(false, &glueData_.interruptVector_);
+    ASSERT(glueData_.currentContext_ != nullptr);
+    SetStackLimit(glueData_.currentContext_->GetStackLimit());
+}
+
+void JSThread::SetCheckSafePointStatus()
+{
+    ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & CHECKSAFEPOINT_FLAG) <= 1);
+    CheckSafePointBit::Set(true, &glueData_.interruptVector_);
+    SetStackLimit(GetStackStart());
 }
 }  // namespace panda::ecmascript

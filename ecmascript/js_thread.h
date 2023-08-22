@@ -190,6 +190,7 @@ public:
     static constexpr int PGO_PROFILER_BITFIELD_START = 16;
     static constexpr int BOOL_BITFIELD_NUM = 1;
     static constexpr uint32_t RESERVE_STACK_SIZE = 128;
+    static constexpr uint64_t CHECKSAFEPOINT_FLAG = 0xFF;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
     using VMNeedSuspensionBit = BitField<bool, CHECK_SAFEPOINT_BITFIELD_NUM, BOOL_BITFIELD_NUM>;
@@ -542,16 +543,9 @@ public:
         return reinterpret_cast<JSThread *>(glue - GetGlueDataOffset());
     }
 
-    void SetCheckSafePointStatus()
+    bool HasCheckSafePoint() const
     {
-        ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & 0xFF) <= 1);
-        CheckSafePointBit::Set(true, &glueData_.interruptVector_);
-    }
-
-    void ResetCheckSafePointStatus()
-    {
-        ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & 0xFF) <= 1);
-        CheckSafePointBit::Set(false, &glueData_.interruptVector_);
+        return CheckSafePointBit::Decode(glueData_.interruptVector_);
     }
 
     void SetVMNeedSuspension(bool flag)
@@ -603,6 +597,11 @@ public:
     uint64_t GetStackLimit() const
     {
         return glueData_.stackLimit_;
+    }
+
+    void SetStackLimit(uint64_t stackLimit)
+    {
+        glueData_.stackLimit_ = stackLimit;
     }
 
     GlobalEnv *GetGlueGlobalEnv()
@@ -743,7 +742,8 @@ public:
                                                  JSTaggedValue,
                                                  base::AlignedBool,
                                                  base::AlignedBool,
-                                                 JSTaggedValue> {
+                                                 JSTaggedValue,
+                                                 base::AlignedPointer> {
         enum class Index : size_t {
             BCStubEntriesIndex = 0,
             ExceptionIndex,
@@ -770,6 +770,7 @@ public:
             IsDebugModeIndex,
             IsFrameDroppedIndex,
             EntryFrameDroppedStateIndex,
+            CurrentContextIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -894,6 +895,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::EntryFrameDroppedStateIndex)>(isArch32);
         }
 
+        static size_t GetCurrentContextOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::CurrentContextIndex)>(isArch32);
+        }
+
         alignas(EAS) BCStubEntries bcStubEntries_;
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
@@ -919,6 +925,7 @@ public:
         alignas(EAS) bool isDebugMode_ {false};
         alignas(EAS) bool isFrameDropped_ {false};
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
+        alignas(EAS) EcmaContext *currentContext_ {nullptr};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -927,7 +934,7 @@ public:
 
     EcmaContext *GetCurrentEcmaContext() const
     {
-        return currentContext_;
+        return glueData_.currentContext_;
     }
     void SwitchCurrentContext(EcmaContext *currentContext, bool isInIterate = false);
 
@@ -940,6 +947,8 @@ public:
 
     const GlobalEnvConstants *GetFirstGlobalConst() const;
     bool IsAllContextsInitialized() const;
+    void ResetCheckSafePointStatus();
+    void SetCheckSafePointStatus();
 private:
     NO_COPY_SEMANTIC(JSThread);
     NO_MOVE_SEMANTIC(JSThread);
@@ -949,7 +958,7 @@ private:
     }
     void SetCurrentEcmaContext(EcmaContext *context)
     {
-        currentContext_ = context;
+        glueData_.currentContext_ = context;
     }
 
     void SetArrayHClassIndexMap(const CMap<ElementsKind, ConstantIndex> &map)
@@ -1004,7 +1013,6 @@ private:
     CMap<ElementsKind, ConstantIndex> arrayHClassIndexMap_;
 
     CVector<EcmaContext *> contexts_;
-    EcmaContext *currentContext_ {nullptr};
     friend class GlobalHandleCollection;
     friend class EcmaVM;
     friend class EcmaContext;
