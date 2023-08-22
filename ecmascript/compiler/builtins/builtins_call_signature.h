@@ -57,7 +57,14 @@ namespace panda::ecmascript::kungfu {
     V(ArrayIndexOf)                                 \
     V(ArrayLastIndexOf)                             \
     V(ArraySlice)                                   \
-    V(ArrayReverse)
+    V(ArrayReverse)                                 \
+    V(SetClear)                                     \
+    V(SetValues)                                    \
+    V(SetEntries)                                   \
+    V(MapClear)                                     \
+    V(MapValues)                                    \
+    V(MapEntries)                                   \
+    V(MapKeys)
 
 #define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
     V(BooleanConstructor)                           \

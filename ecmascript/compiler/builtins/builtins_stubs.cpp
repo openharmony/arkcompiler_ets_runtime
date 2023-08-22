@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -1234,4 +1235,41 @@ DECLARE_BUILTINS(ArrayConstructor)
     Bind(&exit);
     Return(*res);
 }
+
+#define DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(type, method, retType, retDefaultValue)            \
+DECLARE_BUILTINS(type##method)                                                                      \
+{                                                                                                   \
+    auto env = GetEnvironment();                                                                    \
+    DEFVARIABLE(res, retType, retDefaultValue);                                                     \
+    Label thisCollectionObj(env);                                                                   \
+    Label slowPath(env);                                                                            \
+    Label exit(env);                                                                                \
+    BuiltinsCollectionStubBuilder<JS##type> builder(this, glue, thisValue);                         \
+    builder.method(&res, &exit, &slowPath);                                                         \
+    Bind(&slowPath);                                                                                \
+    {                                                                                               \
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                    \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());    \
+        Jump(&exit);                                                                                \
+    }                                                                                               \
+    Bind(&exit);                                                                                    \
+    Return(*res);                                                                                   \
+}
+
+// Set.protetype.Clear
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Clear, VariableType::JS_ANY(), Undefined());
+// Set.protetype.Values
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Values, VariableType::JS_ANY(), Undefined());
+// Set.protetype.Entries
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Entries, VariableType::JS_ANY(), Undefined());
+// Map.protetype.Clear
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Clear, VariableType::JS_ANY(), Undefined());
+// Map.protetype.Values
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Values, VariableType::JS_ANY(), Undefined());
+// Map.protetype.Entries
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Entries, VariableType::JS_ANY(), Undefined());
+// Map.protetype.Keys
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Keys, VariableType::JS_ANY(), Undefined());
+
+#undef DECLARE_BUILTINS_COLLECTION_STUB_BUILDER
 }  // namespace panda::ecmascript::kungfu

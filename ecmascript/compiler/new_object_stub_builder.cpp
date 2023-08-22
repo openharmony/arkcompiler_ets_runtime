@@ -23,6 +23,10 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/mem/mem.h"
+#include "ecmascript/js_map_iterator.h"
+#include "ecmascript/js_set_iterator.h"
+#include "ecmascript/js_set.h"
+#include "ecmascript/js_map.h"
 
 namespace panda::ecmascript::kungfu {
 void NewObjectStubBuilder::NewLexicalEnv(Variable *result, Label *exit, GateRef numSlots, GateRef parent)
@@ -647,4 +651,62 @@ GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue,
     env->SubCfgExit();
     return ret;
 }
+
+template <typename IteratorType, typename CollectionType>
+void NewObjectStubBuilder::CreateJSCollectionIterator(
+    Variable *result, Label *exit, GateRef thisValue, GateRef kind)
+{
+    ASSERT_PRINT((std::is_same_v<IteratorType, JSSetIterator> || std::is_same_v<IteratorType, JSMapIterator>),
+        "IteratorType must be JSSetIterator or JSMapIterator type");
+    auto env = GetEnvironment();
+    ConstantIndex iterClassIdx = static_cast<ConstantIndex>(0);
+    int32_t iterOffset = 0;       // ITERATED_SET_OFFSET
+    int32_t iterPrototypeIdx = 0; // ITERATOR_PROTOTYPE_INDEX
+    size_t linkedOffset = 0;      // LINKED_MAP_OFFSET
+    if constexpr (std::is_same_v<IteratorType, JSSetIterator>) {
+        iterClassIdx = ConstantIndex::JS_SET_ITERATOR_CLASS_INDEX;
+        iterOffset = IteratorType::ITERATED_SET_OFFSET;
+        iterPrototypeIdx = GlobalEnv::SET_ITERATOR_PROTOTYPE_INDEX;
+        linkedOffset = CollectionType::LINKED_SET_OFFSET;
+    } else {
+        iterClassIdx = ConstantIndex::JS_MAP_ITERATOR_CLASS_INDEX;
+        iterOffset = IteratorType::ITERATED_MAP_OFFSET;
+        iterPrototypeIdx = GlobalEnv::MAP_ITERATOR_PROTOTYPE_INDEX;
+        linkedOffset = CollectionType::LINKED_MAP_OFFSET;
+    }
+    GateRef iteratorHClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, iterClassIdx);
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
+    GateRef prototype = GetGlobalEnvValue(VariableType::JS_POINTER(), glueGlobalEnv, iterPrototypeIdx);
+    SetPrototypeToHClass(VariableType::JS_POINTER(), glue_, iteratorHClass, prototype);
+
+    Label afterAllocate(env);
+    NewJSObject(result, &afterAllocate, iteratorHClass);
+    Bind(&afterAllocate);
+    Label setProperties(env);
+    Branch(TaggedIsException(result->ReadVariable()), exit, &setProperties);
+    Bind(&setProperties);
+
+    SetExtensibleToBitfield(glue_, result->ReadVariable(), true);
+    // GetLinked
+    GateRef linked = Load(VariableType::JS_ANY(), thisValue, IntPtr(linkedOffset));
+
+    // SetIterated
+    GateRef iteratorOffset = IntPtr(iterOffset);
+    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), iteratorOffset, linked);
+
+    // SetIteratorNextIndex
+    GateRef nextIndexOffset = IntPtr(IteratorType::NEXT_INDEX_OFFSET);
+    Store(VariableType::INT32(), glue_, result->ReadVariable(), nextIndexOffset, Int32(0));
+
+    // SetIterationKind
+    GateRef kindBitfieldOffset = IntPtr(IteratorType::BIT_FIELD_OFFSET);
+    Store(VariableType::INT32(), glue_, result->ReadVariable(), kindBitfieldOffset, kind);
+    Jump(exit);
+}
+
+template void NewObjectStubBuilder::CreateJSCollectionIterator<JSSetIterator, JSSet>(
+    Variable *result, Label *exit, GateRef set, GateRef kind);
+template void NewObjectStubBuilder::CreateJSCollectionIterator<JSMapIterator, JSMap>(
+    Variable *result, Label *exit, GateRef set, GateRef kind);
 }  // namespace panda::ecmascript::kungfu

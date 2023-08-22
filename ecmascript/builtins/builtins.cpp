@@ -1320,7 +1320,8 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     // set.prototype.add()
     SetFunction(env, setFuncPrototype, "add", BuiltinsSet::Add, FunctionLength::ONE);
     // set.prototype.clear()
-    SetFunction(env, setFuncPrototype, "clear", BuiltinsSet::Clear, FunctionLength::ZERO);
+    SetFunction(env, setFuncPrototype, "clear", BuiltinsSet::Clear, FunctionLength::ZERO,
+        BUILTINS_STUB_ID(SetClear));
     // set.prototype.delete()
     SetFunction(env, setFuncPrototype, "delete", BuiltinsSet::Delete, FunctionLength::ONE);
     // set.prototype.has()
@@ -1328,9 +1329,11 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     // set.prototype.forEach()
     SetFunction(env, setFuncPrototype, "forEach", BuiltinsSet::ForEach, FunctionLength::ONE);
     // set.prototype.entries()
-    SetFunction(env, setFuncPrototype, "entries", BuiltinsSet::Entries, FunctionLength::ZERO);
+    SetFunction(env, setFuncPrototype, "entries", BuiltinsSet::Entries, FunctionLength::ZERO,
+        BUILTINS_STUB_ID(SetEntries));
     // set.prototype.keys()
-    SetFunction(env, setFuncPrototype, "values", BuiltinsSet::Values, FunctionLength::ZERO);
+    SetFunction(env, setFuncPrototype, "values", BuiltinsSet::Values, FunctionLength::ZERO,
+        BUILTINS_STUB_ID(SetValues));
     // set.prototype.values()
     JSHandle<JSTaggedValue> keys(factory_->NewFromASCII("keys"));
     JSHandle<JSTaggedValue> values(factory_->NewFromASCII("values"));
@@ -1395,7 +1398,8 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     // map.prototype.set()
     SetFunction(env, mapFuncPrototype, globalConst->GetHandledSetString(), BuiltinsMap::Set, FunctionLength::TWO);
     // map.prototype.clear()
-    SetFunction(env, mapFuncPrototype, "clear", BuiltinsMap::Clear, FunctionLength::ZERO);
+    SetFunction(env, mapFuncPrototype, "clear", BuiltinsMap::Clear, FunctionLength::ZERO,
+        BUILTINS_STUB_ID(MapClear));
     // map.prototype.delete()
     SetFunction(env, mapFuncPrototype, "delete", BuiltinsMap::Delete, FunctionLength::ONE);
     // map.prototype.has()
@@ -1406,11 +1410,14 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     // map.prototype.forEach()
     SetFunction(env, mapFuncPrototype, "forEach", BuiltinsMap::ForEach, FunctionLength::ONE);
     // map.prototype.keys()
-    SetFunction(env, mapFuncPrototype, "keys", BuiltinsMap::Keys, FunctionLength::ZERO);
+    SetFunction(env, mapFuncPrototype, "keys", BuiltinsMap::Keys, FunctionLength::ZERO,
+        BUILTINS_STUB_ID(MapKeys));
     // map.prototype.values()
-    SetFunction(env, mapFuncPrototype, "values", BuiltinsMap::Values, FunctionLength::ZERO);
+    SetFunction(env, mapFuncPrototype, "values", BuiltinsMap::Values, FunctionLength::ZERO,
+        BUILTINS_STUB_ID(MapValues));
     // map.prototype.entries()
-    SetFunction(env, mapFuncPrototype, "entries", BuiltinsMap::Entries, FunctionLength::ZERO);
+    SetFunction(env, mapFuncPrototype, "entries", BuiltinsMap::Entries, FunctionLength::ZERO,
+        BUILTINS_STUB_ID(MapEntries));
     // @@ToStringTag
     SetStringTagSymbol(env, mapFuncPrototype, "Map");
 

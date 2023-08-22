@@ -1248,6 +1248,13 @@ inline GateRef StubBuilder::IsJSAPIArrayList(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST)));
 }
 
+inline GateRef StubBuilder::IsJSObjectType(GateRef obj, JSType jsType)
+{
+    GateRef isHeapObject = TaggedIsHeapObject(obj);
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return env_->GetBuilder()->LogicAnd(isHeapObject, Int32Equal(objectType, Int32(static_cast<int32_t>(jsType))));
+}
+
 inline GateRef StubBuilder::GetTarget(GateRef proxyObj)
 {
     GateRef offset = IntPtr(JSProxy::TARGET_OFFSET);
