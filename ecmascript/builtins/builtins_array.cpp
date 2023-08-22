@@ -427,10 +427,10 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
     // Fast path
-    uint32_t arrLen = ArrayHelper::GetArrayLength(thread, thisObjVal);
+    int64_t arrLen = ArrayHelper::GetArrayLength(thread, thisObjVal);
     if (arrLen == 0 && argc == 1) {
         JSHandle<JSTaggedValue> argHandle = GetCallArg(argv, 0);
-        uint32_t argLen = ArrayHelper::GetArrayLength(thread, argHandle);
+        int64_t argLen = ArrayHelper::GetArrayLength(thread, argHandle);
         if (argLen == 0 && argHandle->IsJSArray()) {
             JSHandle<JSTaggedValue> lenHandle(thread, JSTaggedValue(arrLen));
             JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>::Cast(newArrayHandle),
