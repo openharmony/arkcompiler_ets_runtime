@@ -13,28 +13,46 @@
  * limitations under the License.
  */
 
-#include <queue>
-#include <stack>
-#include "ecmascript/compiler/graph_visitor.h"
+#include "ecmascript/compiler/combined_pass_visitor.h"
 
 namespace panda::ecmascript::kungfu {
 
-void GraphVisitor::ReplaceGate(GateRef gate, GateRef replacement)
+int32_t CombinedPassVisitor::GetGateOrder(GateRef gate) const
+{
+    return orderList_[acc_.GetId(gate)];
+}
+
+void CombinedPassVisitor::SetGateOrder(GateRef gate, int32_t orderId)
+{
+    orderList_[acc_.GetId(gate)] = orderId;
+}
+
+void CombinedPassVisitor::Resize(int32_t size, int32_t num)
+{
+    orderList_.resize(size, num);
+}
+
+void CombinedPassVisitor::AddPass(PassVisitor* pass)
+{
+    passList_.emplace_back(pass);
+}
+
+void CombinedPassVisitor::ReplaceGate(GateRef gate, GateRef replacement)
 {
     GateRef depend = Circuit::NullGate();
     if (acc_.GetDependCount(gate) > 0) {
-        ASSERT(acc_.GetDependCount(gate) == 1); // 1: one dep
+        ASSERT(acc_.GetDependCount(gate) == 1 || acc_.GetOpCode(replacement) == OpCode::DEAD); // 1: one dep
         depend = acc_.GetDep(gate);
     }
     GateRef state = Circuit::NullGate();
     if (acc_.GetStateCount(gate) > 0) {
-        ASSERT(acc_.GetStateCount(gate) == 1);  // 1: one state
+        ASSERT(acc_.GetStateCount(gate) == 1 || acc_.GetOpCode(replacement) == OpCode::DEAD);  // 1: one state
         state = acc_.GetState(gate);
     }
     return ReplaceGate(gate, StateDepend {state, depend}, replacement);
 }
 
-void GraphVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement)
+void CombinedPassVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement)
 {
     ASSERT(gate != replacement);
     auto state = stateDepend.State();
@@ -44,7 +62,9 @@ void GraphVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef re
         if (acc_.GetMark(*it) == MarkCode::FINISHED) {
             PushChangedGate(*it);
         }
-        if (acc_.IsStateIn(it)) {
+        if (acc_.GetOpCode(replacement) == OpCode::DEAD) {
+            it = acc_.ReplaceIn(it, replacement);
+        } else if (acc_.IsStateIn(it)) {
             ASSERT(state != Circuit::NullGate());
             it = acc_.ReplaceIn(it, state);
         } else if (acc_.IsDependIn(it)) {
@@ -57,11 +77,14 @@ void GraphVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef re
     acc_.DeleteGate(gate);
 }
 
-void GraphVisitor::VisitGraph()
+void CombinedPassVisitor::VisitGraph()
 {
+    for (auto pass : passList_) {
+        pass->Initialize();
+    }
     circuit_->AdvanceTime();
     orderCount_ = 0;
-    orderList_.resize(circuit_->GetMaxGateId() + 1, -1);
+    Resize(circuit_->GetMaxGateId() + 1, -1);
     GateRef returnList = acc_.GetReturnRoot();
     auto uses = acc_.Uses(returnList);
     for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
@@ -79,30 +102,47 @@ void GraphVisitor::VisitGraph()
                 PushGate(gate, 0);
             }
         } else {
+            for (auto pass : passList_) {
+                pass->Finalize();
+            }
             break;
         }
     }
 }
 
-void GraphVisitor::ReVisitGate(GateRef gate)
+void CombinedPassVisitor::ReVisitGate(GateRef gate)
 {
     if (acc_.GetMark(gate) == MarkCode::FINISHED) {
         PushChangedGate(gate);
     }
 }
 
-int32_t GraphVisitor::GetGateOrder(GateRef gate) const
-{
-    return orderList_[acc_.GetId(gate)];
-}
 
-void GraphVisitor::SetGateOrder(GateRef gate, int32_t orderId)
+GateRef CombinedPassVisitor::VisitGate(GateRef gate)
 {
-    orderList_[acc_.GetId(gate)] = orderId;
+    auto skip = passList_.end();
+    for (auto i = passList_.begin(); i != passList_.end();) {
+        if (i == skip) {
+            i++;
+            continue;
+        }
+        GateRef replacement = (*i)->VisitGate(gate);
+        if (replacement == gate) {
+            skip = i;
+            i = passList_.begin();
+            continue;
+        } else if (replacement != Circuit::NullGate()) {
+            return replacement;
+        }
+        i++;
+    }
+    if (skip == passList_.end()) {
+        return Circuit::NullGate();
+    }
+    return gate;
 }
-
 // Reverse post-order
-void GraphVisitor::VisitTopGate(Edge& current)
+void CombinedPassVisitor::VisitTopGate(Edge& current)
 {
     GateRef gate = current.GetGate();
     // gate is delete or dead
@@ -111,7 +151,21 @@ void GraphVisitor::VisitTopGate(Edge& current)
         return;
     }
     auto numIns = acc_.GetNumIns(gate);
-    for (size_t i = current.GetIndex(); i < numIns; i++) {
+    auto start = current.GetIndex();
+    for (size_t i = start; i < numIns; i++) {
+        GateRef input = acc_.GetIn(gate, i);
+        if (input == gate) {
+            continue;
+        }
+        // find not visited gate, push stack
+        if (acc_.GetMark(input) < MarkCode::VISITED) {
+            PushGate(input, 0);
+            // next index
+            current.SetIndex(i + 1);
+            return;
+        }
+    }
+    for (size_t i = 0; i < start; i++) {
         GateRef input = acc_.GetIn(gate, i);
         if (input == gate) {
             continue;
@@ -146,7 +200,7 @@ void GraphVisitor::VisitTopGate(Edge& current)
     }
 }
 
-void GraphVisitor::PrintStack()
+void CombinedPassVisitor::PrintStack()
 {
     std::string log;
     for (size_t i = 0; i < workList_.size(); i++) {
@@ -157,4 +211,19 @@ void GraphVisitor::PrintStack()
     LOG_COMPILER(INFO) << std::dec << log;
 }
 
-}  // namespace panda::ecmascript::kungfu
+void CombinedPassVisitor::PrintLog(const std::string& phaseName)
+{
+    if (enableLog_) {
+        LOG_COMPILER(INFO) << "";
+        LOG_COMPILER(INFO) << "\033[34m"
+                        << "===================="
+                        << " After " << phaseName << " "
+                        << "[" << methodName_ << "]"
+                        << "===================="
+                        << "\033[0m";
+        circuit_->PrintAllGatesWithBytecode();
+        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+    }
+}
+
+} // namespace panda::ecmascript::kungfu

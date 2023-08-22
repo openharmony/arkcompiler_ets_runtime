@@ -17,20 +17,19 @@
 #define ECMASCRIPT_COMPILER_RANGE_ANALYSIS_H
 
 #include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/gate_meta_data.h"
-#include "ecmascript/compiler/graph_visitor.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/mem/chunk_containers.h"
 
 namespace panda::ecmascript::kungfu {
-class RangeAnalysis : public GraphVisitor {
+class RangeAnalysis : public PassVisitor {
 public:
-    RangeAnalysis(Circuit *circuit, Chunk* chunk, ChunkVector<TypeInfo>& typeInfos,
+    RangeAnalysis(Circuit* circuit, RPOVisitor* visitor, Chunk* chunk, ChunkVector<TypeInfo>& typeInfos,
                   ChunkVector<RangeInfo>& rangeInfos)
-        : GraphVisitor(circuit, chunk), acc_(circuit), builder_(circuit),
+        : PassVisitor(circuit, chunk, visitor), acc_(circuit), builder_(circuit),
           typeInfos_(typeInfos), rangeInfos_(rangeInfos) {}
-    void Run();
     GateRef VisitGate(GateRef gate);
     void PrintRangeInfo() const;
 

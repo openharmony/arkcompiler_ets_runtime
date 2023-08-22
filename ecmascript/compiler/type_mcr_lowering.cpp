@@ -23,26 +23,8 @@
 #include "ecmascript/vtable.h"
 #include "ecmascript/message_string.h"
 namespace panda::ecmascript::kungfu {
-void TypeMCRLowering::RunTypeMCRLowering()
-{
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    for (const auto &gate : gateList) {
-        LowerType(gate);
-    }
 
-    if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m" << "=================="
-                           << " After TypeMCRlowering "
-                           << "[" << GetMethodName() << "] "
-                           << "==================" << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "=========================== End =========================" << "\033[0m";
-    }
-}
-
-void TypeMCRLowering::LowerType(GateRef gate)
+GateRef TypeMCRLowering::VisitGate(GateRef gate)
 {
     GateRef glue = acc_.GetGlueFromArgList();
     auto op = acc_.GetOpCode(gate);
@@ -129,6 +111,7 @@ void TypeMCRLowering::LowerType(GateRef gate)
         default:
             break;
     }
+    return Circuit::NullGate();
 }
 
 void TypeMCRLowering::LowerJSCallTargetCheck(GateRef gate)

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/number_speculative_lowering.h"
 #include "ecmascript/compiler/number_speculative_runner.h"
@@ -21,8 +22,10 @@
 namespace panda::ecmascript::kungfu {
 void NumberSpeculativeRunner::Run()
 {
-    RangeGuard rangeGuard(circuit_, chunk_);
-    rangeGuard.Run();
+    CombinedPassVisitor rangeGuardVisitor(circuit_, enableLog_, methodName_, chunk_);
+    RangeGuard rangeGuard(circuit_, &rangeGuardVisitor, chunk_);
+    rangeGuardVisitor.AddPass(&rangeGuard);
+    rangeGuardVisitor.VisitGraph();
 
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";
@@ -35,11 +38,24 @@ void NumberSpeculativeRunner::Run()
         circuit_->PrintAllGatesWithBytecode();
         LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
     }
-
+    
     auto maxId = circuit_->GetMaxGateId();
     typeInfos_.resize(maxId + 1, TypeInfo::NONE);
+
+    // visit gate in RPO, propagate use infos and
+    // reset the machine type of number operator gate and related phi,
+    // if some tagged phi is used as native value, change it to native phi.
     NumberSpeculativeRetype retype(circuit_, chunk_, typeInfos_);
-    retype.Run();
+    CombinedPassVisitor retypeVisitor(circuit_, enableLog_, methodName_, chunk_);
+    NumberSpeculativeRetypeManager retypePhase(circuit_, &retypeVisitor, chunk_,
+                                               &retype, NumberSpeculativeRetype::State::Retype);
+    retypeVisitor.AddPass(&retypePhase);
+    retypeVisitor.VisitGraph();
+    CombinedPassVisitor convertVisitor(circuit_, enableLog_, methodName_, chunk_);
+    NumberSpeculativeRetypeManager convertPhase(circuit_, &convertVisitor,
+                                                chunk_, &retype, NumberSpeculativeRetype::State::Convert);
+    convertVisitor.AddPass(&convertPhase);
+    convertVisitor.VisitGraph();
 
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";
@@ -55,8 +71,11 @@ void NumberSpeculativeRunner::Run()
 
     maxId = circuit_->GetMaxGateId();
     rangeInfos_.resize(maxId + 1, RangeInfo::NONE());
-    RangeAnalysis rangeAnalysis(circuit_, chunk_, typeInfos_, rangeInfos_);
-    rangeAnalysis.Run();
+    CombinedPassVisitor rangeAnalysisVisitor(circuit_, enableLog_, methodName_, chunk_);
+    RangeAnalysis rangeAnalysis(circuit_, &rangeAnalysisVisitor, chunk_, typeInfos_, rangeInfos_);
+    rangeAnalysisVisitor.AddPass(&rangeAnalysis);
+    rangeAnalysisVisitor.VisitGraph();
+
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";
         LOG_COMPILER(INFO) << "\033[34m"

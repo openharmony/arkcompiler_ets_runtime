@@ -18,27 +18,8 @@
 #include "ecmascript/compiler/new_object_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
-void NTypeMCRLowering::RunNTypeMCRLowering()
-{
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
 
-    for (const auto &gate : gateList) {
-        Lower(gate);
-    }
-
-    if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m" << "=================="
-                           << " after NTypeMCRlowering "
-                           << "[" << GetMethodName() << "] "
-                           << "==================" << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "=========================== End =========================" << "\033[0m";
-    }
-}
-
-void NTypeMCRLowering::Lower(GateRef gate)
+GateRef NTypeMCRLowering::VisitGate(GateRef gate)
 {
     GateRef glue = acc_.GetGlueFromArgList();
     auto op = acc_.GetOpCode(gate);
@@ -52,6 +33,7 @@ void NTypeMCRLowering::Lower(GateRef gate)
         default:
             break;
     }
+    return Circuit::NullGate();
 }
 
 void NTypeMCRLowering::LowerCreateArray(GateRef gate, GateRef glue)

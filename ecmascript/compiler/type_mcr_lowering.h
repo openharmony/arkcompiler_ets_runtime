@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/argument_accessor.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/combined_pass_visitor.h"
 
 namespace panda::ecmascript::kungfu {
 // TypeMCRLowering Process
@@ -95,29 +96,18 @@ namespace panda::ecmascript::kungfu {
 //                                  |      JS_BYTECODE       |
 //                                  +------------------------+
 
-class TypeMCRLowering {
+class TypeMCRLowering : public PassVisitor {
 public:
-    TypeMCRLowering(Circuit *circuit, CompilationConfig *cmpCfg, TSManager *tsManager,
-                 bool enableLog, const std::string& name)
-        : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
-          dependEntry_(circuit->GetDependRoot()), tsManager_(tsManager),
-          enableLog_(enableLog), methodName_(name) {}
+    TypeMCRLowering(Circuit *circuit, RPOVisitor *visitor,
+                    CompilationConfig *cmpCfg, TSManager *tsManager, Chunk *chunk)
+        : PassVisitor(circuit, chunk, visitor), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
+          dependEntry_(circuit->GetDependRoot()), tsManager_(tsManager) {}
 
     ~TypeMCRLowering() = default;
 
-    void RunTypeMCRLowering();
+    GateRef VisitGate(GateRef gate) override;
 
 private:
-    bool IsLogEnabled() const
-    {
-        return enableLog_;
-    }
-
-    const std::string& GetMethodName() const
-    {
-        return methodName_;
-    }
-
     void Lower(GateRef gate);
     void LowerType(GateRef gate);
     void LowerPrimitiveTypeCheck(GateRef gate);
@@ -219,8 +209,6 @@ private:
     CircuitBuilder builder_;
     GateRef dependEntry_;
     [[maybe_unused]] TSManager *tsManager_ {nullptr};
-    bool enableLog_ {false};
-    std::string methodName_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_MCR_LOWERING_H

@@ -17,8 +17,8 @@
 #define ECMASCRIPT_COMPILER_EARLY_ELIMINATION_H
 
 #include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/compiler/graph_visitor.h"
 #include "ecmascript/mem/chunk_containers.h"
 
 namespace panda::ecmascript::kungfu {
@@ -57,31 +57,20 @@ private:
     Chunk* chunk_;
 };
 
-class EarlyElimination : public GraphVisitor {
+class EarlyElimination : public PassVisitor {
 public:
-    EarlyElimination(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
-        : GraphVisitor(circuit, chunk), enableLog_(enableLog),
-        methodName_(name), dependChains_(chunk), renames_(chunk) {}
+    EarlyElimination(Circuit* circuit, RPOVisitor* visitor, Chunk* chunk)
+        : PassVisitor(circuit, chunk, visitor), dependChains_(chunk), renames_(chunk) {}
 
     ~EarlyElimination() = default;
 
-    void Run();
-
+    void Initialize() override;
     GateRef VisitGate(GateRef gate) override;
     bool CheckReplacement(GateRef lhs, GateRef rhs);
     bool CheckRenameReplacement(GateRef lhs, GateRef rhs);
     bool MayAccessOneMemory(GateRef lhs, GateRef rhs);
     bool CompareOrder(GateRef lhs, GateRef rhs);
 private:
-    bool IsLogEnabled() const
-    {
-        return enableLog_;
-    }
-
-    const std::string& GetMethodName() const
-    {
-        return methodName_;
-    }
 
     DependInfoNode* GetDependChain(GateRef dependIn)
     {
@@ -100,8 +89,6 @@ private:
     DependInfoNode* GetLoopDependInfo(GateRef depend);
     GateRef Rename(GateRef gate);
 
-    bool enableLog_ {false};
-    std::string methodName_;
     ChunkVector<DependInfoNode*> dependChains_;
     ChunkVector<GateRef> renames_;
 };
