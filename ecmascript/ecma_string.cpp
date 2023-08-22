@@ -27,7 +27,6 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
     EcmaString *strLeft = *left;
     EcmaString *strRight = *right;
     uint32_t leftLength = strLeft->GetLength();
-    bool compressed = (strLeft->IsUtf8() && strRight->IsUtf8());
     uint32_t rightLength = strRight->GetLength();
     uint32_t newLength = leftLength + rightLength;
     if (newLength == 0) {
@@ -38,7 +37,7 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
         if (type == MemSpaceType::OLD_SPACE) {
             Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*right));
             if (objectRegion->InYoungSpace()) {
-                return CopyStringToOldSpace(vm, right, rightLength, compressed);
+                return CopyStringToOldSpace(vm, right, rightLength, strLeft->IsUtf8());
             }
         }
         return strRight;
@@ -47,13 +46,13 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
         if (type == MemSpaceType::OLD_SPACE) {
             Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*left));
             if (objectRegion->InYoungSpace()) {
-                return CopyStringToOldSpace(vm, left, leftLength, compressed);
+                return CopyStringToOldSpace(vm, left, leftLength, strRight->IsUtf8());
             }
         }
         return strLeft;
     }
-
     // if the result string is small, make a LineString
+    bool compressed = (strLeft->IsUtf8() && strRight->IsUtf8());
     if (newLength < TreeEcmaString::MIN_TREE_ECMASTRING_LENGTH) {
         ASSERT(strLeft->IsLineOrConstantString());
         ASSERT(strRight->IsLineOrConstantString());
@@ -656,17 +655,27 @@ uint32_t EcmaString::ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t le
 bool EcmaString::IsUtf8EqualsUtf16(const uint8_t *utf8Data, size_t utf8Len, const uint16_t *utf16Data,
                                    uint32_t utf16Len)
 {
-    // length is one more than compared utf16Data, don't need convert all utf8Data to utf16Data
-    uint32_t utf8ConvertLength = utf16Len + 1;
-    CVector<uint16_t> tmpBuffer(utf8ConvertLength);
-    auto len = base::utf_helper::ConvertRegionUtf8ToUtf16(utf8Data, tmpBuffer.data(), utf8Len, utf8ConvertLength, 0);
-    if (len != utf16Len) {
-        return false;
+    size_t utf8Pos = 0;
+    size_t utf16Pos = 0;
+    while (utf8Pos < utf8Len) {
+        auto [pair, nbytes] = utf::ConvertMUtf8ToUtf16Pair(utf8Data, utf8Len - utf8Pos);
+        auto [pHigh, pLow] = utf::SplitUtf16Pair(pair);
+        utf8Data += nbytes;
+        utf8Pos += nbytes;
+        if (pHigh != 0) {
+            if (utf16Pos >= utf16Len - 1 || *utf16Data != pHigh) {
+                return false;
+            }
+            ++utf16Pos;
+            ++utf16Data;
+        }
+        if (utf16Pos >= utf16Len || *utf16Data != pLow) {
+            return false;
+        }
+        ++utf16Pos;
+        ++utf16Data;
     }
-
-    Span<const uint16_t> data1(tmpBuffer.data(), len);
-    Span<const uint16_t> data2(utf16Data, utf16Len);
-    return EcmaString::StringsAreEquals(data1, data2);
+    return true;
 }
 
 bool EcmaString::ToElementIndex(uint32_t *index)

@@ -160,13 +160,13 @@ JSTaggedValue BuiltinsString::FromCodePoint(EcmaRuntimeCallInfo *argv)
                 ((static_cast<uint32_t>(cp) - ENCODE_SECOND_FACTOR) % ENCODE_FIRST_FACTOR) + ENCODE_TRAIL_LOW;
             std::u16string nextU16str1 = base::StringHelper::Utf16ToU16String(&cu1, 1);
             std::u16string nextU16str2 = base::StringHelper::Utf16ToU16String(&cu2, 1);
-            u16str = base::StringHelper::Append(u16str, nextU16str1);
-            u16str = base::StringHelper::Append(u16str, nextU16str2);
+            base::StringHelper::InplaceAppend(u16str, nextU16str1);
+            base::StringHelper::InplaceAppend(u16str, nextU16str2);
             u16strSize++;
         } else {
             auto u16tCp = static_cast<uint16_t>(cp);
             std::u16string nextU16str = base::StringHelper::Utf16ToU16String(&u16tCp, 1);
-            u16str = base::StringHelper::Append(u16str, nextU16str);
+            base::StringHelper::InplaceAppend(u16str, nextU16str);
         }
     }
     const char16_t *constChar16tData = u16str.data();
@@ -341,7 +341,7 @@ JSTaggedValue BuiltinsString::Concat(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), String, Concat);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    auto ecmaVm = thread->GetEcmaVM();
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
@@ -350,29 +350,15 @@ JSTaggedValue BuiltinsString::Concat(EcmaRuntimeCallInfo *argv)
     if (argLength == 0) {
         return thisHandle.GetTaggedValue();
     }
-    std::u16string u16strThis;
-    std::u16string u16strNext;
-    bool canBeCompress = true;
-    u16strThis = EcmaStringAccessor(thisHandle).ToU16String();
-    if (EcmaStringAccessor(thisHandle).IsUtf16()) {
-        canBeCompress = false;
-    }
     for (uint32_t i = 0; i < argLength; i++) {
         JSHandle<JSTaggedValue> nextTag = BuiltinsString::GetCallArg(argv, i);
         JSHandle<EcmaString> nextHandle = JSTaggedValue::ToString(thread, nextTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        u16strNext = EcmaStringAccessor(nextHandle).ToU16String();
-        if (EcmaStringAccessor(nextHandle).IsUtf16()) {
-            canBeCompress = false;
-        }
-        u16strThis = base::StringHelper::Append(u16strThis, u16strNext);
+        EcmaString *tempStr = EcmaStringAccessor::Concat(ecmaVm, thisHandle, nextHandle);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        thisHandle = JSHandle<EcmaString>(thread, tempStr);
     }
-    const char16_t *constChar16tData = u16strThis.data();
-    auto *char16tData = const_cast<char16_t *>(constChar16tData);
-    auto *uint16tData = reinterpret_cast<uint16_t *>(char16tData);
-    uint32_t u16strSize = u16strThis.size();
-    return canBeCompress ? factory->NewFromUtf16LiteralCompress(uint16tData, u16strSize).GetTaggedValue() :
-                           factory->NewFromUtf16LiteralNotCompress(uint16tData, u16strSize).GetTaggedValue();
+    return thisHandle.GetTaggedValue();
 }
 
 // 21.1.3.5 String.prototype.constructor

@@ -723,7 +723,7 @@ public:
             }
         }
         UNREACHABLE();
-        }
+    }
 };
 
 // if you want to use functions of EcmaString, please not use directly,

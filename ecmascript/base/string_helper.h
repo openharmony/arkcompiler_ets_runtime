@@ -229,6 +229,11 @@ public:
         return c;
     }
 
+    static inline void InplaceAppend(std::u16string &str1, const std::u16string &str2)
+    {
+        str1.append(str2);
+    }
+
     static inline std::u16string Append(const std::u16string &str1, const std::u16string &str2)
     {
         std::u16string tmpStr = str1;
