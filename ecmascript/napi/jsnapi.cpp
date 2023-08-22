@@ -665,6 +665,7 @@ void JSNApi::addWorker(EcmaVM *hostVm, EcmaVM *workerVm)
 {
     if (hostVm != nullptr && workerVm != nullptr) {
         hostVm->WorkersetInfo(hostVm, workerVm);
+        workerVm->SetBundleName(hostVm->GetBundleName());
     }
 }
 
@@ -3628,9 +3629,6 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
     } else {
         LOG_ECMA(DEBUG) << "CompileMode is esmodule";
         moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(moduleName, recordName);
-        if (ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
-            thread->GetCurrentEcmaContext()->GetAOTFileManager()->LoadAiFile(jsPandaFile);
-        }
     }
     ecmascript::SourceTextModule::Instantiate(thread, moduleRecord);
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);

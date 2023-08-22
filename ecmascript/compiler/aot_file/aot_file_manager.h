@@ -144,7 +144,7 @@ public:
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method,
                          uint32_t entryIndex, bool *canFastCall = nullptr);
     bool LoadAiFile([[maybe_unused]] const std::string &filename);
-    void LoadAiFile(const JSPandaFile *jsPandaFile);
+    bool LoadAiFile(const JSPandaFile *jsPandaFile);
     kungfu::ArkStackMapParser* GetStackMapParser() const;
     static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
     static bool GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr);

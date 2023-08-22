@@ -592,9 +592,24 @@ public:
         AsyncFunctionLowering lowering(data->GetBuilder(), data->GetCircuit(), data->GetCompilerConfig(),
                                        enableLog, data->GetMethodName());
         if (lowering.IsAsyncRelated()) {
-            lowering.ProcessAll();
+            if (IsFunctionMain(data)) {
+                lowering.ProcessAll();
+            } else {
+                data->MarkAsTypeAbort();
+            }
         }
         return true;
+    }
+
+private:
+    bool IsFunctionMain(PassData* data)
+    {
+        auto methodName = data->GetMethodName();
+        auto pos = methodName.find(JSPandaFile::ENTRY_FUNCTION_NAME);
+        if (pos != std::string::npos) {
+            return true;
+        }
+        return false;
     }
 };
 } // namespace panda::ecmascript::kungfu

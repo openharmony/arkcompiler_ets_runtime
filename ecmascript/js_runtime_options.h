@@ -1250,7 +1250,7 @@ private:
     bool enableOptInlining_ {true};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};
-    bool enableOptTrackField_ {true};
+    bool enableOptTrackField_ {false};
     uint32_t compilerModuleMethods_ {100};
     uint64_t wasSet_ {0};
     bool enablePrintExecuteTime_ {false};

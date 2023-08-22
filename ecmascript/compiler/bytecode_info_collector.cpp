@@ -34,7 +34,7 @@ BytecodeInfoCollector::BytecodeInfoCollector(EcmaVM *vm, JSPandaFile *jsPandaFil
                                              size_t maxAotMethodSize, bool enableCollectLiteralInfo)
     : vm_(vm),
       jsPandaFile_(jsPandaFile),
-      bytecodeInfo_(maxAotMethodSize),
+      bytecodeInfo_(maxAotMethodSize, jsPandaFile),
       pfDecoder_(pfDecoder),
       enableCollectLiteralInfo_(enableCollectLiteralInfo)
 {
@@ -830,12 +830,24 @@ uint32_t LexEnvManager::GetTargetLexEnv(uint32_t methodId, uint32_t level) const
     return offset;
 }
 
+uint64_t ConstantPoolInfo::GetItemKey(uint32_t index, uint32_t methodOffset)
+{
+    panda_file::IndexAccessor indexAccessor(*jsPandaFile_->GetPandaFile(),
+                                             panda_file::File::EntityId(methodOffset));
+    uint64_t result = 0;
+    result = static_cast<uint32_t>(indexAccessor.GetHeaderIndex());
+    result = result << CONSTPOOL_MASK;
+    result |= index;
+    return result;
+}
+
 void ConstantPoolInfo::AddIndexToCPItem(ItemType type, uint32_t index, uint32_t methodOffset, uint32_t bcIndex)
 {
+    uint64_t key = GetItemKey(index, methodOffset);
     Item &item = GetCPItem(type);
-    if (item.find(index) != item.end()) {
+    if (item.find(key) != item.end()) {
         return;
     }
-    item.insert({index, ItemData {index, methodOffset, nullptr, bcIndex}});
+    item.insert({key, ItemData {index, methodOffset, nullptr, bcIndex}});
 }
 }  // namespace panda::ecmascript::kungfu
