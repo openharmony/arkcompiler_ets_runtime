@@ -101,6 +101,7 @@ group("ark_aot_ts_test") {
     "exception_case8",
     "exception_case9",
     "exp",
+    "fast_call_builtins",
     "forloop",
     "framestatesasync",
     "framestatesphi",

@@ -1758,7 +1758,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetFunction(env, stringFuncPrototype, "indexOf", BuiltinsString::IndexOf, FunctionLength::ONE,
                 BUILTINS_STUB_ID(IndexOf));
     SetFunction(env, stringFuncPrototype, "lastIndexOf", BuiltinsString::LastIndexOf, FunctionLength::ONE);
-    SetFunction(env, stringFuncPrototype, "localeCompare", BuiltinsString::LocaleCompare, FunctionLength::ONE);
+    SetFunction(env, stringFuncPrototype, "localeCompare", BuiltinsString::LocaleCompare, FunctionLength::ONE,
+                BUILTINS_STUB_ID(LocaleCompare));
     SetFunction(env, stringFuncPrototype, "match", BuiltinsString::Match, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "matchAll", BuiltinsString::MatchAll, FunctionLength::ONE);
     SetFunction(env, stringFuncPrototype, "repeat", BuiltinsString::Repeat, FunctionLength::ONE);
@@ -2124,7 +2125,7 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     SetFunction(env, arrFuncPrototype, "slice", BuiltinsArray::Slice, FunctionLength::TWO,
                 BUILTINS_STUB_ID(ArraySlice));
     SetFunction(env, arrFuncPrototype, "some", BuiltinsArray::Some, FunctionLength::ONE);
-    SetFunction(env, arrFuncPrototype, "sort", BuiltinsArray::Sort, FunctionLength::ONE);
+    SetFunction(env, arrFuncPrototype, "sort", BuiltinsArray::Sort, FunctionLength::ONE, BUILTINS_STUB_ID(SORT));
     SetFunction(env, arrFuncPrototype, "splice", BuiltinsArray::Splice, FunctionLength::TWO);
     SetFunction(env, arrFuncPrototype, thread_->GlobalConstants()->GetHandledToLocaleStringString(),
                 BuiltinsArray::ToLocaleString, FunctionLength::ZERO);

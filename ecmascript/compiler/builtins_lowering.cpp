@@ -36,6 +36,9 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
         case BUILTINS_STUB_ID(LocaleCompare):
             LowerTypedLocaleCompare(gate);
             break;
+        case BUILTINS_STUB_ID(SORT):
+            LowerTypedArraySort(gate);
+            break;
         default:
             break;
     }
@@ -237,6 +240,14 @@ void BuiltinLowering::LowerTypedLocaleCompare(GateRef gate)
     ReplaceHirWithValue(gate, result);
 }
 
+void BuiltinLowering::LowerTypedArraySort(GateRef gate)
+{
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    GateRef result = LowerCallRuntime(glue, gate, RTSTUB_ID(ArraySort), { thisObj });
+    ReplaceHirWithValue(gate, result);
+}
+
 GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
 {
     builder_.SetEnvironment(env);
@@ -265,6 +276,10 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         }
         case BuiltinsStubCSigns::ID::SQRT:
             // NumberSpeculativeRetype is checked
+            return funcCheck;
+        case BuiltinsStubCSigns::ID::LocaleCompare:
+        case BuiltinsStubCSigns::ID::SORT:
+            // Don't need check para
             return funcCheck;
         default: {
             LOG_COMPILER(FATAL) << "this branch is unreachable";

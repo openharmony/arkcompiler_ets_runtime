@@ -312,7 +312,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(NotifyConcurrentResult)             \
     V(OtherToNumber)                      \
     V(AotInlineTrace)                     \
-    V(LocaleCompare)
+    V(LocaleCompare)                      \
+    V(ArraySort)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -391,6 +392,7 @@ public:
     static double SetDateValues(double year, double month, double day);
     static void StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot);
     static void EndCallTimer(uintptr_t argGlue, JSTaggedType func);
+    static JSTaggedValue RuntimeArraySort(JSThread *thread, JSHandle<JSTaggedValue> thisHandle);
 
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
 private:
@@ -686,6 +688,11 @@ private:
         JSTaggedValue hint);
     static inline JSTaggedValue RuntimeNotifyDebuggerStatement(JSThread *thread);
     static inline JSTaggedValue RuntimeThrowStackOverflowException(JSThread *thread);
+    static inline bool CheckElementsNumber(JSHandle<TaggedArray> elements, uint32_t len);
+    static inline JSHandle<JSTaggedValue> GetOrCreateNumberString(JSThread *thread,
+        JSHandle<JSTaggedValue> presentValue, std::map<uint64_t, JSHandle<JSTaggedValue>> &cachedString);
+    static inline JSTaggedValue TryCopyCOWArray(JSThread *thread, JSHandle<JSArray> holderHandler, bool &isCOWArray);
+    static inline JSTaggedValue ArrayNumberSort(JSThread *thread, JSHandle<JSObject> thisObj, uint32_t len);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript

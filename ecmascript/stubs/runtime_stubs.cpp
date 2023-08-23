@@ -2500,6 +2500,75 @@ DEF_RUNTIME_STUBS(LocaleCompare)
 #endif
 }
 
+DEF_RUNTIME_STUBS(ArraySort)
+{
+    RUNTIME_STUBS_HEADER(ArraySort);
+
+    JSHandle<JSTaggedValue> thisHandle = GetHArg<JSTaggedValue>(argv, argc, 0);
+    return RuntimeArraySort(thread, thisHandle).GetRawData();
+}
+
+JSTaggedValue RuntimeStubs::RuntimeArraySort(JSThread *thread, JSHandle<JSTaggedValue> thisHandle)
+{
+    // 1. Let obj be ToObject(this value).
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+
+    // 2. Let len be ToLength(Get(obj, "length")).
+    int64_t len = ArrayHelper::GetArrayLength(thread, JSHandle<JSTaggedValue>(thisObjHandle));
+    // 3. ReturnIfAbrupt(len).
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+    JSHandle<JSHClass> hclass(thread, thisObjHandle->GetClass());
+    if (!hclass->IsDictionaryElement()) {
+        JSHandle<TaggedArray> elements(thread, thisObjHandle->GetElements());
+        // remove elements number check with pgo later and add int fast path at the same time
+        if (len <= elements->GetLength() && CheckElementsNumber(elements, len)) {
+            return ArrayNumberSort(thread, thisObjHandle, len);
+        }
+    }
+
+    JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> callbackFnHandle(thread, JSTaggedValue::Undefined());
+    for (int i = 1; i < len; i++) {
+        int beginIndex = 0;
+        int endIndex = i;
+        presentValue.Update(
+            ObjectFastOperator::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), i));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+        while (beginIndex < endIndex) {
+            int middleIndex = beginIndex + (endIndex - beginIndex) / 2; // 2 : half
+            middleValue.Update(
+                ObjectFastOperator::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), middleIndex));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+            double compareResult = ArrayHelper::SortCompare(thread, callbackFnHandle, middleValue, presentValue);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+            if (compareResult > 0) {
+                endIndex = middleIndex;
+            } else {
+                beginIndex = middleIndex + 1;
+            }
+        }
+
+        if (endIndex >= 0 && endIndex < i) {
+            for (int j = i; j > endIndex; j--) {
+                previousValue.Update(
+                    ObjectFastOperator::FastGetPropertyByIndex<true>(thread, thisObjHandle.GetTaggedValue(), j - 1));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+                ObjectFastOperator::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), j,
+                                                           previousValue.GetTaggedValue());
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+            }
+            ObjectFastOperator::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), endIndex,
+                                                       presentValue.GetTaggedValue());
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+        }
+    }
+
+    return thisObjHandle.GetTaggedValue();
+}
+
 void RuntimeStubs::StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot)
 {
     auto thread =  JSThread::GlueToJSThread(argGlue);

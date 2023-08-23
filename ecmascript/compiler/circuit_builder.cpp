@@ -571,13 +571,14 @@ GateRef CircuitBuilder::GetSuperConstructor(GateRef ctor)
     return ret;
 }
 
-GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args)
+GateRef CircuitBuilder::TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef> &inList)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
-    auto numValueIn = args.size() - 2; // 2: state & depend
+    auto numValueIn = inList.size() - 2; // 2: state & depend
     uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
     ASSERT(pcOffset != 0);
-    return GetCircuit()->NewGate(circuit_->TypedCallBuiltin(numValueIn, pcOffset), type, args, GateType::AnyType());
+    return GetCircuit()->NewGate(circuit_->TypedCallBuiltin(numValueIn, pcOffset), type, inList.size(), inList.data(),
+                                 GateType::AnyType());
 }
 
 GateRef CircuitBuilder::AddWithOverflow(GateRef left, GateRef right)
