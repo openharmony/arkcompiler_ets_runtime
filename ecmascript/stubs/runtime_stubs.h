@@ -103,6 +103,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(ProfileCreateObject)                     \
     V(ProfileOpType)                           \
     V(ProfileObjLayout)                        \
+    V(ProfileObjIndex)                         \
     V(Comment)                                 \
     V(FatalPrint)                              \
     V(FatalPrintCustom)                        \
@@ -366,6 +367,7 @@ public:
         uintptr_t argGlue, JSTaggedType func, int32_t offset, JSTaggedType newObj, int32_t traceId);
     static void ProfileOpType(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type);
     static void ProfileObjLayout(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object, int32_t store);
+    static void ProfileObjIndex(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object);
     static void FatalPrint(int fmtMessageId, ...);
     static void FatalPrintCustom(uintptr_t fmt, ...);
     static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,

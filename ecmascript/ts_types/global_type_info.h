@@ -66,7 +66,7 @@ struct HashGlobalTypeID {
     {
         if (id.IsPGOType()) {
             return std::hash<const JSPandaFile*>()(id.GetJSPandaFile()) ^
-                   std::hash<int32_t>()(id.GetPGOTypeId().GetClassType().GetClassType());
+                   std::hash<uint32_t>()(id.GetPGOTypeId().GetClassType().GetClassType());
         }
         return std::hash<const JSPandaFile*>()(id.GetJSPandaFile()) ^
                std::hash<uint32_t>()(id.GetTypeId());

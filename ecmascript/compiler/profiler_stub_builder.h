@@ -36,7 +36,10 @@ public:
     void ProfileDefineClass(GateRef glue, GateRef pc, GateRef func, GateRef constructor);
     void ProfileCreateObject(GateRef glue, GateRef pc, GateRef func, GateRef newObj);
     void ProfileObjLayout(GateRef glue, GateRef pc, GateRef func, GateRef object, GateRef store);
+    void ProfileObjIndex(GateRef glue, GateRef pc, GateRef func, GateRef object);
 
+    void ProfileObjLayoutOrIndex(GateRef glue, GateRef receiver, GateRef key, GateRef isStore,
+        ProfileOperation callback);
     GateRef UpdateTrackTypeInPropAttr(GateRef attr, GateRef value, ProfileOperation callback);
     void UpdatePropAttrIC(GateRef glue, GateRef receiver, GateRef value, GateRef handler, ProfileOperation callback);
     void UpdatePropAttrWithValue(GateRef glue, GateRef receiver, GateRef layout, GateRef attr, GateRef attrIndex,

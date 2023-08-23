@@ -421,6 +421,7 @@ private:
     V(ProfileCreateObject)                  \
     V(ProfileOpType)                        \
     V(ProfileObjLayout)                     \
+    V(ProfileObjIndex)                      \
     V(FatalPrint)                           \
     V(FatalPrintCustom)                     \
     V(GetActualArgvNoGC)                    \

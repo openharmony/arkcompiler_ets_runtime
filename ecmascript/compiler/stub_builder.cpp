@@ -2207,6 +2207,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                 Bind(&notOnProtoChain);
                 TypedArrayStubBuilder typedArrayStubBuilder(this);
                 result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, *holder, index, jsType);
+                callback.ProfileObjIndex(receiver);
                 Jump(&exit);
             }
             Bind(&notFastTypeArray);
@@ -2733,6 +2734,7 @@ GateRef StubBuilder::SetPropertyByIndex(
             {
                 returnValue = CallRuntime(glue, RTSTUB_ID(SetTypeArrayPropertyByIndex),
                     { receiver, IntToTaggedInt(index), value, IntToTaggedInt(jsType)});
+                callback.ProfileObjIndex(receiver);
                 Jump(&exit);
             }
         }

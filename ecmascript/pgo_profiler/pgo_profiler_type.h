@@ -25,17 +25,54 @@
 namespace panda::ecmascript {
 class ClassType {
 public:
+    enum class Kind : uint8_t {
+        ClassId,
+        LiteralId,
+        ElementId,
+        BuiltinsId,
+        TotalKinds
+    };
+
+    static constexpr uint32_t ID_BITFIELD_NUM = 29;
+    static constexpr uint32_t KIND_BITFIELD_NUM = 3;
+    using IdBits = BitField<uint32_t, 0, ID_BITFIELD_NUM>;
+    using KindBits = IdBits::NextField<Kind, KIND_BITFIELD_NUM>;
+
+    static_assert(static_cast<uint32_t>(Kind::TotalKinds) <= (1ul << KIND_BITFIELD_NUM));
+
     ClassType() = default;
-    explicit ClassType(int32_t type) : type_(type) {}
+    explicit ClassType(uint32_t type, Kind kind = Kind::ClassId)
+    {
+        if (UNLIKELY(type >= (1ul << ID_BITFIELD_NUM))) {
+            type_ = 0;
+        } else {
+            type_ = (static_cast<uint32_t>(kind) << ID_BITFIELD_NUM) + type;
+        }
+    }
 
     bool IsNone() const
     {
         return type_ == 0;
     }
 
-    int32_t GetClassType() const
+    uint32_t GetClassType() const
     {
         return type_;
+    }
+
+    bool IsBuiltinsType() const
+    {
+        return GetKind() == Kind::BuiltinsId;
+    }
+
+    uint32_t GetId() const
+    {
+        return IdBits::Decode(type_);
+    }
+
+    Kind GetKind() const
+    {
+        return KindBits::Decode(type_);
     }
 
     bool operator<(const ClassType &right) const
@@ -59,7 +96,7 @@ public:
     }
 
 private:
-    int32_t type_ { 0 };
+    uint32_t type_ { 0 };
 };
 
 class PGOType {
@@ -116,9 +153,9 @@ public:
     explicit PGOSampleType(uint32_t type) : type_(Type(type)) {};
     explicit PGOSampleType(ClassType type) : type_(type) {}
 
-    static PGOSampleType CreateClassType(int32_t classType)
+    static PGOSampleType CreateClassType(int32_t classType, ClassType::Kind kind = ClassType::Kind::ClassId)
     {
-        return PGOSampleType(ClassType(classType));
+        return PGOSampleType(ClassType(classType, kind));
     }
 
     static PGOSampleType NoneType()
@@ -210,8 +247,8 @@ public:
     PGOSampleType CombineCallTargetType(PGOSampleType type)
     {
         ASSERT(type_.index() == 1);
-        int32_t oldMethodId = GetClassType().GetClassType();
-        int32_t newMethodId = type.GetClassType().GetClassType();
+        uint32_t oldMethodId = GetClassType().GetClassType();
+        uint32_t newMethodId = type.GetClassType().GetClassType();
         // If we have recorded a valid method if before, invalidate it.
         if ((oldMethodId != newMethodId) && (oldMethodId != 0)) {
             type_ = ClassType(0);
@@ -347,6 +384,11 @@ public:
     bool InConstructor() const
     {
         return objKind_ == PGOObjKind::CONSTRUCTOR;
+    }
+
+    bool InElement() const
+    {
+        return objKind_ == PGOObjKind::ELEMENT;
     }
 
     bool operator<(const PGOObjectInfo &right) const

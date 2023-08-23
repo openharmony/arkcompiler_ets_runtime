@@ -29,6 +29,7 @@ enum class OperationType : uint8_t {
     CREATE_OBJECT,
     STORE_LAYOUT,
     LOAD_LAYOUT,
+    INDEX,
 };
 
 #define COMBINE_TYPE_CALL_BACK(curType, type) \
@@ -94,6 +95,13 @@ public:
     {
         if (callback_) {
             callback_({ object }, OperationType::LOAD_LAYOUT);
+        }
+    }
+
+    inline void ProfileObjIndex(GateRef object) const
+    {
+        if (callback_) {
+            callback_({ object }, OperationType::INDEX);
         }
     }
 

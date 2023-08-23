@@ -15,6 +15,7 @@
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/ic_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
+#include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -165,7 +166,7 @@ GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, 
     {
         result = CallRuntime(glue, RTSTUB_ID(LoadICByValue),
             { profileTypeInfo, receiver, key, IntToTaggedInt(slotId) });
-        callback.ProfileObjLayoutByLoad(receiver);
+        ProfilerStubBuilder(env).ProfileObjLayoutOrIndex(glue, receiver, key, False(), callback);
         Jump(&exit);
     }
     Bind(&exit);
@@ -226,7 +227,7 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
     {
         result = CallRuntime(glue, RTSTUB_ID(StoreICByValue),
             { profileTypeInfo, receiver, key, value, IntToTaggedInt(slotId) });
-        callback.ProfileObjLayoutByStore(receiver);
+        ProfilerStubBuilder(env).ProfileObjLayoutOrIndex(glue, receiver, key, True(), callback);
         Jump(&exit);
     }
     Bind(&exit);
