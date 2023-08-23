@@ -32,8 +32,8 @@
 namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;
 using StringHelper = base::StringHelper;
-std::u16string g_ascii_word_chars(u"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_");
-std::u16string g_escape_word_chars(u"@*+-./");
+std::u16string g_asciiWordChars(u"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_");
+std::u16string g_escapeWordChars(u"@*+-./");
 constexpr std::uint16_t CHAR16_PERCENT_SIGN = 0x0025; // u'%'
 constexpr std::uint16_t CHAR16_LATIN_SMALL_LETTER_U = 0x0075; // u'u';
 constexpr std::uint16_t CHAR16_LETTER_NULL = u'\0';
@@ -738,7 +738,7 @@ JSTaggedValue BuiltinsGlobal::Escape(EcmaRuntimeCallInfo *msg)
     // 3. Let R be the empty String.
     std::u16string r;
     // 4. Let unescapedSet be the string-concatenation of the ASCII word characters and "@*+-./".
-    std::u16string unescapedSet = g_ascii_word_chars + g_escape_word_chars;
+    std::u16string unescapedSet = g_asciiWordChars + g_escapeWordChars;
     // 5. Let k be 0.
     uint32_t k = 0;
     // 6. Repeat, while k < len,
