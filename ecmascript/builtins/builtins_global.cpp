@@ -32,6 +32,11 @@
 namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;
 using StringHelper = base::StringHelper;
+std::u16string g_asciiWordChars(u"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_");
+std::u16string g_escapeWordChars(u"@*+-./");
+constexpr std::uint16_t CHAR16_PERCENT_SIGN = 0x0025; // u'%'
+constexpr std::uint16_t CHAR16_LATIN_SMALL_LETTER_U = 0x0075; // u'u';
+constexpr std::uint16_t CHAR16_LETTER_NULL = u'\0';
 
 // 18.2.1
 JSTaggedValue BuiltinsGlobal::NotSupportEval(EcmaRuntimeCallInfo *msg)
@@ -288,6 +293,126 @@ uint8_t BuiltinsGlobal::GetValueFromTwoHex(uint16_t front, uint16_t behind)
     size_t idxb = StringHelper::FindFromU16ToUpper(hexString, &behind);
     uint8_t res = ((idxf << 4U) | idxb) & BIT_MASK_FF;  // NOLINT 4: means shift left by 4 digits
     return res;
+}
+
+uint16_t BuiltinsGlobal::GetValueFromHexString(const JSHandle<EcmaString> &string)
+{
+    uint32_t size = EcmaStringAccessor(string).GetLength();
+    ASSERT(size > 0 && size <= 4); // NOLINT 4: means 4 hex digits
+    std::u16string hexString(u"0123456789ABCDEF");
+
+    uint16_t ret = 0;
+    for (uint32_t i = 0; i < size; ++i) {
+        uint16_t ch = EcmaStringAccessor(string).Get(i);
+        size_t idx = StringHelper::FindFromU16ToUpper(hexString, &ch);
+        ret = ((ret << 4U) | idx) & BIT_MASK_4F; // NOLINT 4: means shift left by 4
+    }
+    return ret;
+}
+
+// 22.1.3.17.2 StringPad ( S, maxLength, fillString, placement )
+EcmaString *BuiltinsGlobal::StringPad(JSThread *thread, const JSHandle<EcmaString> &source,
+                                      uint32_t maxLength, const JSHandle<EcmaString> &fillString,
+                                      Placement placement)
+{
+    // 1. Let stringLength be the length of S.
+    uint32_t stringLength = EcmaStringAccessor(source).GetLength();
+    // 2. If maxLength ≤ stringLength, return S.
+    if (maxLength <= stringLength) {
+        return *source;
+    }
+    // 3. If fillString is the empty String, return S.
+    uint32_t targetStrLen = EcmaStringAccessor(fillString).GetLength();
+    if (targetStrLen == 0) {
+        return *source;
+    }
+    // 4. Let fillLen be maxLength - stringLength.
+    uint32_t fillLen = maxLength - stringLength;
+    EcmaVM *vm = thread->GetEcmaVM();
+    //5. Let truncatedStringFiller be the String value consisting of repeated concatenations
+    // of fillString truncated to length fillLen.
+    uint32_t repeatTimes = std::ceil(fillLen / targetStrLen);
+    EcmaString *p = nullptr;
+    JSHandle<EcmaString> stringFiller = vm->GetFactory()->NewFromStdString(std::string("\0"));
+    for (uint32_t k = 0; k < repeatTimes; ++k) {
+        p = EcmaStringAccessor::Concat(vm, stringFiller, fillString);
+        stringFiller = JSHandle<EcmaString>(thread, p);
+    }
+    JSHandle<EcmaString> truncatedStringFiller(thread,
+        EcmaStringAccessor::FastSubString(vm, stringFiller, 0, fillLen));
+    // 6. If placement is start, return the string-concatenation of truncatedStringFiller and S.
+    // 7. Else, return the string-concatenation of S and truncatedStringFiller.
+    if (placement == Placement::START) {
+        return EcmaStringAccessor::Concat(vm, truncatedStringFiller, source);
+    } else {
+        return EcmaStringAccessor::Concat(vm, source, truncatedStringFiller);
+    }
+}
+
+// Static Semantics: UTF16SurrogatePairToCodePoint ( lead, trail )
+uint16_t BuiltinsGlobal::UTF16SurrogatePairToCodePoint(uint16_t lead, uint16_t trail)
+{
+    // 1. Assert: lead is a leading surrogate and trail is a trailing surrogate.
+    ASSERT(IsUTF16HighSurrogate(lead) && IsUTF16LowSurrogate(trail));
+    // 2. Let cp be (lead - 0xD800) × 0x400 + (trail - 0xDC00) + 0x10000.
+    uint16_t cp = ((lead - 0xD800) << 10UL) + (trail - 0xDC00) + 0x10000;
+    // 3. Return the code point cp.
+    return cp;
+}
+
+// 11.1.5 Static Semantics: StringToCodePoints ( string )
+EcmaString *BuiltinsGlobal::StringToCodePoints(JSThread *thread, const JSHandle<EcmaString> &string)
+{
+    // 1. Let codePoints be a new empty List.
+    std::u16string codePoints;
+    // 2. Let size be the length of string.
+    uint32_t size = EcmaStringAccessor(string).GetLength();
+    // 3. Let position be 0.
+    uint32_t position = 0;
+    // 4. Repeat, while position < size,
+    //    a. Let cp be CodePointAt(string, position).
+    //    b. Append cp.[[CodePoint]] to codePoints.
+    //    c. Set position to position + cp.[[CodeUnitCount]].
+    while (position < size) {
+        // i.Let first be the code unit at index position within string.
+        uint16_t first = EcmaStringAccessor(string).Get(position);
+        uint16_t cp = first - CHAR16_LETTER_NULL;
+        uint8_t codeUnitCount = 0;
+        bool isUnpairedSurrogate = false;
+        // ii. If first is neither a leading surrogate nor a trailing surrogate, then
+        //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: false }.
+        if (!IsUTF16HighSurrogate(first) && !IsUTF16LowSurrogate(first)) {
+            codeUnitCount = 1; // 1 means: code unit count
+            isUnpairedSurrogate = false;
+        } else if (IsUTF16HighSurrogate(first) || position + 1 == size) {
+            // iii. If first is a trailing surrogate or position + 1 = size, then
+            //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: true }.
+            codeUnitCount = 1;
+            isUnpairedSurrogate = true;
+        } else {
+            // iv. Let second be the code unit at index position + 1 within string.
+            uint16_t second = EcmaStringAccessor(string).Get(position + 1);
+            // v. If second is not a trailing surrogate, then
+            //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: true }.
+            if (!IsUTF16LowSurrogate(second)) {
+                codeUnitCount = 1; // 1 means: code unit count
+                isUnpairedSurrogate = true;
+            } else {
+            // vi. Set cp to UTF16SurrogatePairToCodePoint(first, second).
+            // vii. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 2, [[IsUnpairedSurrogate]]: false }.
+                cp = UTF16SurrogatePairToCodePoint(first, second);
+                codeUnitCount = 2; // 2 means: code unit count
+                isUnpairedSurrogate = false;
+            }
+        }
+        codePoints.push_back(cp);
+        position = position + codeUnitCount;
+    }
+    // 5. Return codePoints.
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint16_t *ptr = reinterpret_cast<uint16_t *>(codePoints.data());
+    JSHandle<EcmaString> codePointsString = factory->NewFromUtf16Literal(ptr, codePoints.size());
+    return *codePointsString;
 }
 
 // Runtime Semantics
@@ -595,4 +720,150 @@ JSTaggedValue BuiltinsGlobal::PrintFunctionCallStat(EcmaRuntimeCallInfo *msg)
     return JSTaggedValue::Undefined();
 }
 #endif
+
+// B.2.1.1 escape ( string )
+JSTaggedValue BuiltinsGlobal::Escape(EcmaRuntimeCallInfo *msg)
+{
+    ASSERT(msg);
+    JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, Global, Escape);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // 1. Set string to ? ToString(string).
+    JSHandle<EcmaString> string = JSTaggedValue::ToString(thread, GetCallArg(msg, 0));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    EcmaVM *vm = thread->GetEcmaVM();
+    // 2. Let len be the length of string.
+    uint32_t len = EcmaStringAccessor(string).GetLength();
+    // 3. Let R be the empty String.
+    std::u16string r;
+    // 4. Let unescapedSet be the string-concatenation of the ASCII word characters and "@*+-./".
+    std::u16string unescapedSet = g_asciiWordChars + g_escapeWordChars;
+    // 5. Let k be 0.
+    uint32_t k = 0;
+    // 6. Repeat, while k < len,
+    //   a. Let C be the code unit at index k within string.
+    //   b. If unescapedSet contains C, then
+    //        i. Let S be C.
+    //   c. Else,
+    //        i. Let n be the numeric value of C.
+    //        ii. If n < 256, then
+    //          1. Let hex be the String representation of n, formatted as an uppercase hexadecimal number.
+    //          2. Let S be the string-concatenation of "%" and StringPad(hex, 2, "0", start).
+    //        iii. Else,
+    //          1. Let hex be the String representation of n, formatted as an uppercase hexadecimal number.
+    //          2. Let S be the string-concatenation of "%u" and StringPad(hex, 4, "0", start).
+    //    d. Set R to the string-concatenation of R and S.
+    //    e. Set k to k + 1.
+    while (k < len) {
+        uint16_t c = EcmaStringAccessor(string).Get(k);
+        if (unescapedSet.find(c) != std::u16string::npos) {
+            r.push_back(c);
+        } else {
+            uint16_t n = c - CHAR16_LETTER_NULL;
+            std::ostringstream oss;
+            oss << std::uppercase << std::hex << n;
+            JSHandle<EcmaString> hex = factory->NewFromStdString(oss.str());
+            JSHandle<EcmaString> fillString = factory->NewFromStdString(std::string("0"));
+            EcmaString *temp = nullptr;
+            JSHandle<EcmaString> hexStringHandle = factory->NewFromStdString(std::string("\0"));
+            if (n <= std::numeric_limits<uint8_t>::max()) {
+                EcmaString *hexEcmaString =
+                    StringPad(thread, hex, 2, fillString, Placement::START); // NOLINT 2: means max string length
+                hexStringHandle = JSHandle<EcmaString>(thread, hexEcmaString);
+                temp = EcmaStringAccessor::Concat(vm, factory->NewFromStdString("%"), hexStringHandle);
+            } else {
+                EcmaString *hexEcmaString =
+                    StringPad(thread, hex, 4, fillString, Placement::START); // NOLINT 4: means max string length
+                hexStringHandle = JSHandle<EcmaString>(thread, hexEcmaString);
+                temp = EcmaStringAccessor::Concat(vm, factory->NewFromStdString("%u"), hexStringHandle);
+            }
+            JSHandle<EcmaString> s = JSHandle<EcmaString>(thread, temp);
+            r = r + EcmaStringAccessor(s).ToU16String();
+        }
+        ++k;
+    }
+    // 7. Return R.
+    auto *returnData = reinterpret_cast<uint16_t *>(r.data());
+    uint32_t retSize = r.size();
+    return factory->NewFromUtf16Literal(returnData, retSize).GetTaggedValue();
+}
+
+// B.2.1.2 unescape ( string )
+JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
+{
+    ASSERT(msg);
+    JSThread *thread = msg->GetThread();
+    BUILTINS_API_TRACE(thread, Global, Unescape);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // 1. Set string to ? ToString(string).
+    JSHandle<EcmaString> string = JSTaggedValue::ToString(thread, GetCallArg(msg, 0));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 2. Let len be the length of string.
+    uint32_t len = EcmaStringAccessor(string).GetLength();
+    // 3. Let R be the empty String.
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    std::u16string r;
+    // 4. Let k be 0.
+    uint32_t k = 0;
+    // 5. Repeat, while k < len,
+    //   a. Let C be the code unit at index k within string.
+    //   b. If C is the code unit 0x0025 (PERCENT SIGN), then
+    //     i. Let hexDigits be the empty String.
+    //     ii. Let optionalAdvance be 0.
+    //     iii. If k + 5 < len and the code unit at index k + 1 within string is the code unit
+    //          0x0075 (LATIN SMALL LETTER U), then
+    //       1. Set hexDigits to the substring of string from k + 2 to k + 6.
+    //       2. Set optionalAdvance to 5.
+    //     iv. Else if k + 3 ≤ len, then
+    //       1. Set hexDigits to the substring of string from k + 1 to k + 3.
+    //       2. Set optionalAdvance to 2.
+    //     v. Let parseResult be ParseText(StringToCodePoints(hexDigits), HexDigits[~Sep]).
+    //     vi. If parseResult is a Parse Node, then
+    //       1. Let n be the MV of parseResult.
+    //       2. Set C to the code unit whose numeric value is n.
+    //       3. Set k to k + optionalAdvance.
+    //   c. Set R to the string-concatenation of R and C.
+    //   d. Set k to k + 1.
+    while (k < len) {
+        uint16_t c = EcmaStringAccessor(string).Get(k);
+        JSHandle<EcmaString> hexDigitsString;
+        if (c == CHAR16_PERCENT_SIGN) {
+            EcmaString *hexDigits = nullptr;
+            uint16_t optionalAdvance = 0;
+            if (k + 5 < len && // NOLINT 5: means offset by 5
+                EcmaStringAccessor(string).Get(k + 1) == CHAR16_LATIN_SMALL_LETTER_U) { // NOLINT 1: means offset by 1
+                hexDigits = EcmaStringAccessor(string).FastSubString(vm, string,
+                                                                     k + 2, 4); // NOLINT 2: means offset 4: means len
+                optionalAdvance = optionalAdvance + 5; // NOLINT 5: means plus 5
+            } else if (k + 3 <= len) { // NOLINT 3: means offset
+                hexDigits = EcmaStringAccessor(string).FastSubString(vm, string, k + 1, 2); // NOLINT 2:means len
+                optionalAdvance = optionalAdvance + 2; // NOLINT 2: means plus 2
+            }
+            if (hexDigits != nullptr) {
+                hexDigitsString = JSHandle<EcmaString>(thread, hexDigits);
+                EcmaString *codePoints = StringToCodePoints(thread, hexDigitsString);
+                JSHandle<EcmaString> codePointString = JSHandle<EcmaString>(thread, codePoints);
+                bool isHex = true;
+                for (uint32_t i = 0; i < EcmaStringAccessor(codePointString).GetLength(); ++i) {
+                    if (!IsHexDigits(EcmaStringAccessor(codePointString).Get(i))) {
+                        isHex = false;
+                    }
+                }
+                if (isHex) {
+                    uint16_t n = GetValueFromHexString(codePointString);
+                    c = n;
+                    k = k + optionalAdvance;
+                }
+            }
+        }
+        r.push_back(c);
+        ++k;
+    }
+    // 7. Return R.
+    auto *returnData = reinterpret_cast<uint16_t *>(r.data());
+    uint32_t retSize = r.size();
+    return factory->NewFromUtf16Literal(returnData, retSize).GetTaggedValue();
+}
 }  // namespace panda::ecmascript::builtins
