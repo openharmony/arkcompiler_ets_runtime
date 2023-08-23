@@ -1181,8 +1181,13 @@ DEF_RUNTIME_STUBS(UpFrame)
             uintptr_t pc = reinterpret_cast<uintptr_t>(method->GetBytecodeArray() + pcOffset);
             return JSTaggedValue(static_cast<uint64_t>(pc)).GetRawData();
         }
+        if (!method->IsNativeWithCallField()) {
+            auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
+            debuggerMgr->GetNotificationManager()->MethodExitEvent(thread, method);
+        }
     }
-    return JSTaggedValue(static_cast<uint64_t>(0)).GetRawData();
+    LOG_FULL(FATAL) << "EXCEPTION: EntryFrame Not Found";
+    UNREACHABLE();
 }
 
 DEF_RUNTIME_STUBS(GetModuleNamespaceByIndex)
@@ -1585,6 +1590,9 @@ DEF_RUNTIME_STUBS(MethodEntry)
     JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     if (func.GetTaggedValue().IsECMAObject()) {
         Method *method = ECMAObject::Cast(func.GetTaggedValue().GetTaggedObject())->GetCallTarget();
+        if (method->IsNativeWithCallField()) {
+            return JSTaggedValue::Hole().GetRawData();
+        }
         FrameHandler frameHandler(thread);
         for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
             if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {

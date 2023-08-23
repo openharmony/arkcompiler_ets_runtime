@@ -31,6 +31,7 @@ public:
     void MethodEntry(JSThread *thread, JSHandle<Method> method);
     void MethodExit(JSThread *thread, JSHandle<Method> method);
     void DropLastFrame(JSThread *thread);
+    uint32_t GetPromiseQueueSizeRecordOfTopFrame();
 private:
     bool IsNewlexenvOpcode(BytecodeInstruction::Opcode op);
     bool IsStlexvarOpcode(BytecodeInstruction::Opcode op);
@@ -43,7 +44,11 @@ private:
     void RemoveLexModifyRecordOfTopFrame(JSThread *thread);
     void MergeLexModifyRecordOfTopFrame(JSThread *thread);
 
+    void PushPromiseQueueSizeRecord(JSThread *thread);
+    void PopPromiseQueueSizeRecord();
+
     std::stack<std::vector<std::tuple<JSHandle<JSTaggedValue>, uint16_t, JSHandle<JSTaggedValue>>>> modifiedLexVar_;
+    std::stack<uint32_t> promiseQueueSizeRecord_;
 };
 }
 

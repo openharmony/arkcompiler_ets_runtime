@@ -257,7 +257,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), info->GetFunctionValue().GetRawData(), false);
 #endif
-    if (thread->IsDebugMode()) {
+    if (thread->IsDebugMode() && !method->IsNativeWithCallField()) {
         MethodEntry(thread, method);
     }
     auto acc = reinterpret_cast<InterpreterEntry>(entry)(thread->GetGlueAddr(),
@@ -294,6 +294,11 @@ JSTaggedValue InterpreterAssembly::GeneratorReEnterInterpreter(JSThread *thread,
     // check is or not debugger
     thread->CheckSwitchDebuggerBCStub();
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_GeneratorReEnterAsmInterp);
+    JSTaggedValue func = context->GetMethod();
+    Method *method = ECMAObject::Cast(func.GetTaggedObject())->GetCallTarget();
+    if (thread->IsDebugMode() && !method->IsNativeWithCallField()) {
+        MethodEntry(thread, method);
+    }
     auto acc = reinterpret_cast<GeneratorReEnterInterpEntry>(entry)(thread->GetGlueAddr(), context.GetTaggedType());
     return JSTaggedValue(acc);
 }

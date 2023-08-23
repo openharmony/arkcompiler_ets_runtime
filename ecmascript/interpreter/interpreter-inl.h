@@ -824,6 +824,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
     // execute interpreter
     thread->SetCurrentSPFrame(newSp);
 
+    MethodEntry(thread);
     EcmaInterpreter::RunInternal(thread, resumePc, newSp);
 
     JSTaggedValue res = state->acc;
@@ -3125,6 +3126,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(CREATEASYNCGENERATOROBJ_V8);
     }
     HANDLE_OPCODE(ASYNCGENERATORRESOLVE_V8_V8_V8) {
+        MethodExit(thread);
         uint16_t v0 = READ_INST_8_0();
         uint16_t v1 = READ_INST_8_1();
         uint16_t v2 = READ_INST_8_2();
@@ -3807,9 +3809,14 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 pc = method->GetBytecodeArray() + pcOffset;
                 break;
             }
+            if (!method->IsNativeWithCallField()) {
+                auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
+                debuggerMgr->GetNotificationManager()->MethodExitEvent(thread, method);
+            }
         }
         if (pcOffset == INVALID_INDEX) {
-            return;
+            LOG_FULL(FATAL) << "EXCEPTION: EntryFrame Not Found";
+            UNREACHABLE();
         }
 
         auto exception = thread->GetException();
@@ -5131,6 +5138,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         DISPATCH(DEPRECATED_DELOBJPROP_PREF_V8_V8);
     }
     HANDLE_OPCODE(SUSPENDGENERATOR_V8) {
+        MethodExit(thread);
         uint16_t v0 = READ_INST_8_0();
         LOG_INST() << "intrinsics::suspendgenerator"
                    << " v" << v0;

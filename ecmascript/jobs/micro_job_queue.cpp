@@ -27,6 +27,13 @@
 #include "ecmascript/tagged_queue.h"
 
 namespace panda::ecmascript::job {
+uint32_t MicroJobQueue::GetPromiseQueueSize(JSThread *thread, JSHandle<MicroJobQueue> jobQueue)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<TaggedQueue> promiseQueue(thread, jobQueue->GetPromiseJobQueue());
+    return promiseQueue->Size();
+}
+
 void MicroJobQueue::EnqueueJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueue, QueueType queueType,
     const JSHandle<JSFunction> &job, const JSHandle<TaggedArray> &argv)
 {

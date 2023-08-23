@@ -164,6 +164,7 @@ public:
     static Local<JSValueRef> GetVectorValue(const EcmaVM *ecmaVm, Local<JSValueRef> value,
                                             Global<MapRef> internalObjects);
 
+    static bool CheckPromiseQueueSize(const EcmaVM *ecmaVm);
     static void DropLastFrame(const EcmaVM *ecmaVm);
 };
 }  // namespace panda::ecmascript::tooling

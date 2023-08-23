@@ -20,6 +20,7 @@
 #include "ecmascript/global_handle_collection.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/jobs/micro_job_queue.h"
 
 namespace panda::ecmascript::tooling {
 bool DropframeManager::IsNewlexenvOpcode(BytecodeInstruction::Opcode op)
@@ -111,11 +112,13 @@ void DropframeManager::MethodEntry(JSThread *thread, JSHandle<Method> method)
         }
         bcIns = bcIns.GetNext();
     }
+    PushPromiseQueueSizeRecord(thread);
 }
 
 void DropframeManager::MethodExit(JSThread *thread, [[maybe_unused]] JSHandle<Method> method)
 {
     MergeLexModifyRecordOfTopFrame(thread);
+    PopPromiseQueueSizeRecord();
 }
 
 void DropframeManager::DropLastFrame(JSThread *thread)
@@ -132,6 +135,7 @@ void DropframeManager::DropLastFrame(JSThread *thread)
         LexicalEnv::Cast(env.GetTaggedObject())->SetProperties(thread, slot, valueHandle.GetTaggedValue());
     }
     RemoveLexModifyRecordOfTopFrame(thread);
+    PopPromiseQueueSizeRecord();
 
     FrameHandler frameHandler(thread);
     bool isEntryFrameDropped = false;
@@ -236,6 +240,26 @@ void DropframeManager::MergeLexModifyRecordOfTopFrame(JSThread *thread)
         } else {
             modifiedLexVar_.top().emplace_back(envHandle, slot, valueHandle);
         }
+    }
+}
+
+void DropframeManager::PushPromiseQueueSizeRecord(JSThread *thread)
+{
+    EcmaContext *context = thread->GetCurrentEcmaContext();
+    uint32_t queueSize = job::MicroJobQueue::GetPromiseQueueSize(thread, context->GetMicroJobQueue());
+    promiseQueueSizeRecord_.push(queueSize);
+}
+
+uint32_t DropframeManager::GetPromiseQueueSizeRecordOfTopFrame()
+{
+    ASSERT(!promiseQueueSizeRecord_.empty());
+    return promiseQueueSizeRecord_.top();
+}
+
+void DropframeManager::PopPromiseQueueSizeRecord()
+{
+    if (!promiseQueueSizeRecord_.empty()) {
+        promiseQueueSizeRecord_.pop();
     }
 }
 }
