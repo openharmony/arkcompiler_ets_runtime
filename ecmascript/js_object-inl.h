@@ -351,6 +351,12 @@ inline uint32_t JSObject::ComputeElementCapacity(uint32_t oldCapacity)
     return newCapacity > MIN_ELEMENTS_LENGTH ? newCapacity : MIN_ELEMENTS_LENGTH;
 }
 
+inline uint32_t JSObject::ComputeElementCapacityHighGrowth(uint32_t oldCapacity)
+{
+    uint32_t newCapacity = oldCapacity * 2;
+    return newCapacity > MIN_ELEMENTS_LENGTH ? newCapacity : MIN_ELEMENTS_LENGTH;
+}
+
 inline uint32_t JSObject::ComputePropertyCapacity(uint32_t oldCapacity)
 {
     uint32_t newCapacity = static_cast<uint32_t>(oldCapacity + PROPERTIES_GROW_SIZE);

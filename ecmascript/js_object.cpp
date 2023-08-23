@@ -72,9 +72,14 @@ Method *ECMAObject::GetCallTarget() const
 }
 
 JSHandle<TaggedArray> JSObject::GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,
-                                                     uint32_t capacity)
+                                                     uint32_t capacity, bool highGrowth)
 {
-    uint32_t newCapacity = ComputeElementCapacity(capacity);
+    uint32_t newCapacity;
+    if (highGrowth) {
+        newCapacity = ComputeElementCapacityHighGrowth(capacity);
+    } else {
+        newCapacity = ComputeElementCapacity(capacity);
+    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> oldElements(thread, obj->GetElements());
     uint32_t oldLength = oldElements->GetLength();

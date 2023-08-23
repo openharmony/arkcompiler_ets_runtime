@@ -43,7 +43,7 @@ JSTaggedValue JSStableArray::Push(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
 
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     if (newLength > elements->GetLength()) {
-        elements = *JSObject::GrowElementsCapacity(thread, JSHandle<JSObject>::Cast(receiver), newLength);
+        elements = *JSObject::GrowElementsCapacity(thread, JSHandle<JSObject>::Cast(receiver), newLength, true);
     }
 
     for (uint32_t k = 0; k < argc; k++) {
