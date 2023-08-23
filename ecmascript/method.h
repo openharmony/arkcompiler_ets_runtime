@@ -27,6 +27,7 @@
 
 namespace panda::ecmascript {
 class JSPandaFile;
+struct Reference;
 using EntityId = panda_file::File::EntityId;
 class Method : public TaggedObject {
 public:

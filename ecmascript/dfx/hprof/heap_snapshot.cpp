@@ -71,6 +71,16 @@ Edge *Edge::NewEdge(Chunk *chunk, uint32_t id, EdgeType type, Node *from, Node *
     return edge;
 }
 
+Edge *Edge::NewEdge(Chunk *chunk, uint32_t id, EdgeType type, Node *from, Node *to, uint32_t index)
+{
+    auto edge = chunk->New<Edge>(id, type, from, to, index);
+    if (UNLIKELY(edge == nullptr)) {
+        LOG_FULL(FATAL) << "internal allocator failed";
+        UNREACHABLE();
+    }
+    return edge;
+}
+
 HeapSnapshot::~HeapSnapshot()
 {
     for (Node *node : nodes_) {
@@ -915,11 +925,11 @@ void HeapSnapshot::FillEdges()
         ASSERT(*iter != nullptr);
         auto entryFrom = *iter;
         auto *objFrom = reinterpret_cast<TaggedObject *>(entryFrom->GetAddress());
-        std::vector<std::pair<CString, JSTaggedValue>> nameResources;
+        std::vector<Reference> referenceResources;
         JSTaggedValue objValue(objFrom);
-        objValue.DumpForSnapshot(nameResources, isVmMode_);
-        for (auto const &it : nameResources) {
-            JSTaggedValue toValue = it.second;
+        objValue.DumpForSnapshot(referenceResources, isVmMode_);
+        for (auto const &it : referenceResources) {
+            JSTaggedValue toValue = it.value_;
             if (toValue.IsNumber() && !captureNumericValue_) {
                 continue;
             }
@@ -935,9 +945,10 @@ void HeapSnapshot::FillEdges()
                 entryTo = GenerateNode(toValue, 0, true);
             }
             if (entryTo != nullptr) {
-                Edge *edge = Edge::NewEdge(chunk_, edgeCount_, EdgeType::DEFAULT,
-                                           entryFrom, entryTo, GetString(it.first));
-                RenameFunction(it.first, entryFrom, entryTo);
+                Edge *edge = (it.type_ == Reference::ReferenceType::ELEMENT) ?
+                    Edge::NewEdge(chunk_, edgeCount_, (EdgeType)it.type_, entryFrom, entryTo, it.index_) :
+                    Edge::NewEdge(chunk_, edgeCount_, (EdgeType)it.type_, entryFrom, entryTo, GetString(it.name_));
+                RenameFunction(it.name_, entryFrom, entryTo);
                 InsertEdgeUnique(edge);
                 (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here
             }

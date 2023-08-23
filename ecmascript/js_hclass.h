@@ -63,6 +63,7 @@
 namespace panda::ecmascript {
 class ProtoChangeDetails;
 class PropertyLookupResult;
+struct Reference;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define JSTYPE_DECL       /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \

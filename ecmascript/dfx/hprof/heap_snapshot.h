@@ -152,9 +152,9 @@ private:
 class Edge {
 public:
     Edge(uint32_t id, EdgeType type, Node *from, Node *to, CString *name)
-        : id_(id), edgeType_(type), from_(from), to_(to), name_(name)
-    {
-    }
+        : id_(id), edgeType_(type), from_(from), to_(to), name_(name) {}
+    Edge(uint32_t id, EdgeType type, Node *from, Node *to, uint32_t index)
+        : id_(id), edgeType_(type), from_(from), to_(to), index_(index) {}
     uint32_t GetId() const
     {
         return id_;
@@ -173,10 +173,17 @@ public:
     }
     const CString *GetName() const
     {
+        ASSERT(GetType() != EdgeType::ELEMENT);
         return name_;
+    }
+    uint32_t GetIndex() const
+    {
+        ASSERT(GetType() == EdgeType::ELEMENT);
+        return index_;
     }
     void SetName(CString *name)
     {
+        ASSERT(GetType() != EdgeType::ELEMENT);
         name_ = name;
     }
     void UpdateFrom(Node *node)
@@ -188,6 +195,7 @@ public:
         to_ = node;
     }
     static Edge *NewEdge(Chunk *chunk, uint32_t id, EdgeType type, Node *from, Node *to, CString *name);
+    static Edge *NewEdge(Chunk *chunk, uint32_t id, EdgeType type, Node *from, Node *to, uint32_t index);
     static constexpr int EDGE_FIELD_COUNT = 3;
     ~Edge() = default;
 
@@ -196,7 +204,10 @@ private:
     EdgeType edgeType_ {EdgeType::DEFAULT};
     Node *from_ {nullptr};
     Node *to_ {nullptr};
-    CString *name_ {nullptr};
+    union {
+        CString *name_;
+        uint32_t index_;
+    };
 };
 
 class TimeStamp {
@@ -356,6 +367,19 @@ public:
 private:
     uint32_t nextNodeId_ {0};
     TraceNode root_;
+};
+
+struct Reference {
+    enum class ReferenceType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WEAK, DEFAULT = PROPERTY };
+
+    Reference(const CString &name, JSTaggedValue value) : name_(name), value_(value) {}
+    Reference(const CString &name, JSTaggedValue value, ReferenceType type) : name_(name), value_(value), type_(type) {}
+    Reference(uint32_t index, JSTaggedValue value, ReferenceType type) : index_(index), value_(value), type_(type) {}
+
+    CString name_;
+    uint32_t index_ {-1U};
+    JSTaggedValue value_;
+    ReferenceType type_ {ReferenceType::DEFAULT};
 };
 
 class HeapSnapshot {

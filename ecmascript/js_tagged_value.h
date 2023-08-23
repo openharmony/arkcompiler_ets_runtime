@@ -34,6 +34,7 @@ class PropertyDescriptor;
 class OperationResult;
 class EcmaString;
 class JSThread;
+struct Reference;
 
 static constexpr double SAFE_NUMBER = 9007199254740991LL;
 
@@ -714,8 +715,7 @@ public:
     void DumpTaggedValue(std::ostream &os) const DUMP_API_ATTR;
     void Dump(std::ostream &os) const DUMP_API_ATTR;
     void D() const DUMP_API_ATTR;
-    void DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec,
-                         bool isVmMode = true) const;
+    void DumpForSnapshot(std::vector<Reference> &vec, bool isVmMode = true) const;
     static void DV(JSTaggedType val) DUMP_API_ATTR;
 
 private:

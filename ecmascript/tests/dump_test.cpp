@@ -394,7 +394,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
     auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     JSHandle<JSTaggedValue> proto = globalEnv->GetFunctionPrototype();
-    std::vector<std::pair<CString, JSTaggedValue>> snapshotVector;
+    std::vector<Reference> snapshotVector;
     std::ostringstream os;
 
 #define DUMP_FOR_HANDLE(dumpHandle)                                        \
