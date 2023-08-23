@@ -37,7 +37,7 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
         if (type == MemSpaceType::OLD_SPACE) {
             Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*right));
             if (objectRegion->InYoungSpace()) {
-                return CopyStringToOldSpace(vm, right, rightLength, strLeft->IsUtf8());
+                return CopyStringToOldSpace(vm, right, rightLength, strRight->IsUtf8());
             }
         }
         return strRight;
@@ -46,7 +46,7 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
         if (type == MemSpaceType::OLD_SPACE) {
             Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*left));
             if (objectRegion->InYoungSpace()) {
-                return CopyStringToOldSpace(vm, left, leftLength, strRight->IsUtf8());
+                return CopyStringToOldSpace(vm, left, leftLength, strLeft->IsUtf8());
             }
         }
         return strLeft;
