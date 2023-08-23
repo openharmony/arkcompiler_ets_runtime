@@ -538,14 +538,14 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
                 JSHandle<JSTaggedValue> requiredVal =
                     SourceTextModule::HostResolveImportedModule(thread, module, required);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
-                ModuleDeregister::InitForDeregisterModule(requiredVal, excuteFromJob);
+                ModuleDeregister::InitForDeregisterModule(thread, requiredVal, excuteFromJob);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
             } else {
                 ASSERT(moduleRecordName.IsString());
                 JSHandle<JSTaggedValue> requiredVal =
                     SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
-                ModuleDeregister::InitForDeregisterModule(requiredVal, excuteFromJob);
+                ModuleDeregister::InitForDeregisterModule(thread, requiredVal, excuteFromJob);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
             }
 
@@ -787,7 +787,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
         ASSERT(module->GetEvaluationError() == SourceTextModule::UNDEFINED_INDEX);
     }
     // 4. Let namespace be module.[[Namespace]].
-    JSMutableHandle<JSTaggedValue> moduleNamespace(thread, module->GetNamespace());
+    JSMutableHandle<JSTaggedValue> moduleNamespace(thread, module->GetNamespace().GetWeakRawValue());
     // If namespace is undefined, then
     if (moduleNamespace->IsUndefined()) {
         // a. Let exportedNames be ? module.GetExportedNames(« »).

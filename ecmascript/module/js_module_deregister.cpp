@@ -46,7 +46,7 @@ void ModuleDeregister::FreeModuleRecord(void *pointer, void *hint)
     JSTaggedValue moduleRecordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
     CString recordNameStr = ConvertToString(moduleRecordName);
     if (type != LoadingTypes::DYNAMITC_MODULE) {
-        LOG_FULL(DEBUG) << "free stable module's ModuleNameSpace" << recordNameStr;
+        LOG_FULL(INFO) << "free stable module's ModuleNameSpace" << recordNameStr;
     }
     NativeAreaAllocator* allocator = thread->GetEcmaVM()->GetNativeAreaAllocator();
     allocator->FreeBuffer(pointer);
@@ -57,7 +57,7 @@ void ModuleDeregister::FreeModuleRecord(void *pointer, void *hint)
         if (counts == 0) {
             thread->GetEcmaVM()->RemoveFromDeregisterModuleList(recordNameStr);
         }
-        LOG_FULL(DEBUG) << "try to remove module " << recordNameStr << ", register counts is " << counts;
+        LOG_FULL(INFO) << "try to remove module " << recordNameStr << ", register counts is " << counts;
     }
 }
 
@@ -196,7 +196,8 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
 
     uint16_t registerNum = num - 1;
     if (registerNum == 0) {
-        LOG_FULL(DEBUG) << "try to remove module " << ConvertToString(module->GetEcmaModuleRecordName()).c_str();
+        LOG_FULL(INFO) << "try to remove module " <<
+            ConvertToString(SourceTextModule::GetModuleName(module.GetTaggedValue())).c_str();
         RemoveModule(thread, module);
     }
     module->SetRegisterCounts(registerNum);

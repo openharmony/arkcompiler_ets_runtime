@@ -195,7 +195,6 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
             JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str()).GetTaggedValue();
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, CatchException(thread, reject));
         }
-        thread->GetEcmaVM()->PushToDeregisterModuleList(ConvertToString(moduleName.GetTaggedValue()));
     } else {
         ModuleDeregister::ReviseLoadedModuleCount(thread, moduleName.GetTaggedValue());
     }
