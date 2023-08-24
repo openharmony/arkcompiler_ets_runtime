@@ -847,7 +847,6 @@ void Heap::TryTriggerConcurrentMarking()
         TriggerConcurrentMarking();
         return;
     }
-    bool isFullMarkNeeded = false;
     double oldSpaceMarkDuration = 0, newSpaceMarkDuration = 0, newSpaceRemainSize = 0, newSpaceAllocToLimitDuration = 0,
            oldSpaceAllocToLimitDuration = 0;
     double oldSpaceAllocSpeed = memController_->GetOldSpaceAllocationThroughputPerMS();
@@ -866,14 +865,20 @@ void Heap::TryTriggerConcurrentMarking()
     } else {
         if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_ ||
             GlobalNativeSizeLargerThanLimit()) {
-            isFullMarkNeeded = true;
+            markType_ = MarkType::MARK_FULL;
+            TriggerConcurrentMarking();
+            OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark";
+            return;
         }
         oldSpaceAllocToLimitDuration = (oldSpaceAllocLimit - oldSpaceHeapObjectSize) / oldSpaceAllocSpeed;
         oldSpaceMarkDuration = GetHeapObjectSize() / oldSpaceConcurrentMarkSpeed;
         // oldSpaceRemainSize means the predicted size which can be allocated after the full concurrent mark.
         double oldSpaceRemainSize = (oldSpaceAllocToLimitDuration - oldSpaceMarkDuration) * oldSpaceAllocSpeed;
         if (oldSpaceRemainSize > 0 && oldSpaceRemainSize < DEFAULT_REGION_SIZE) {
-            isFullMarkNeeded = true;
+            markType_ = MarkType::MARK_FULL;
+            TriggerConcurrentMarking();
+            OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark";
+            return;
         }
     }
 
@@ -894,21 +899,7 @@ void Heap::TryTriggerConcurrentMarking()
     // newSpaceRemainSize means the predicted size which can be allocated after the semi concurrent mark.
     newSpaceRemainSize = (newSpaceAllocToLimitDuration - newSpaceMarkDuration) * newSpaceAllocSpeed;
 
-    if (isFullMarkNeeded) {
-        if (oldSpaceMarkDuration < newSpaceAllocToLimitDuration &&
-            oldSpaceMarkDuration < oldSpaceAllocToLimitDuration) {
-            markType_ = MarkType::MARK_FULL;
-            TriggerConcurrentMarking();
-            OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark by speed";
-        } else {
-            if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_  ||
-                GlobalNativeSizeLargerThanLimit()) {
-                markType_ = MarkType::MARK_FULL;
-                TriggerConcurrentMarking();
-                OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark by limit";
-            }
-        }
-    } else if (newSpaceRemainSize < DEFAULT_REGION_SIZE || activeSemiSpace_->NativeBindingSizeLargerThanLimit()) {
+    if (newSpaceRemainSize < DEFAULT_REGION_SIZE || activeSemiSpace_->NativeBindingSizeLargerThanLimit()) {
         markType_ = MarkType::MARK_YOUNG;
         TriggerConcurrentMarking();
         OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger semi mark";
