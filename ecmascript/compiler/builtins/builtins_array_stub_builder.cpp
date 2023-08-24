@@ -33,7 +33,7 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
     // (3) all the arguments (if exists) are empty arrays.
     JsArrayRequirements reqThisValue;
     reqThisValue.defaultConstructor = true;
-    Branch(IsEmptyJsArray(glue, thisValue, reqThisValue), &thisIsEmpty, slowPath);
+    Branch(IsJsArrayWithLengthLimit(glue, thisValue, MAX_LENGTH_ZERO, reqThisValue), &thisIsEmpty, slowPath);
     Bind(&thisIsEmpty);
     {
         Label atMostOneArg(env);
@@ -47,7 +47,7 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
             Bind(&exactlyOneArg);
             GateRef argVal = GetCallArg0(numArgs);
             JsArrayRequirements reqArgVal;
-            Branch(IsEmptyJsArray(glue, argVal, reqArgVal), &argValIsEmpty, slowPath);
+            Branch(IsJsArrayWithLengthLimit(glue, argVal, MAX_LENGTH_ZERO, reqArgVal), &argValIsEmpty, slowPath);
             // Creates an empty array on fast path
             Bind(&argValIsEmpty);
             NewObjectStubBuilder newBuilder(this);
@@ -68,7 +68,7 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     // (2) callbackFn is callable (otherwise a TypeError shall be thrown in the slow path)
     JsArrayRequirements req;
     req.defaultConstructor = true;
-    Branch(IsEmptyJsArray(glue, thisValue, req), &thisIsEmpty, slowPath);
+    Branch(IsJsArrayWithLengthLimit(glue, thisValue, MAX_LENGTH_ZERO, req), &thisIsEmpty, slowPath);
     Bind(&thisIsEmpty);
     {
         Label isCallable(env);
@@ -93,7 +93,7 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
     // (2) callbackFn is callable (otherwise a TypeError shall be thrown in the slow path)
     JsArrayRequirements req;
     req.defaultConstructor = true;
-    Branch(IsEmptyJsArray(glue, thisValue, req), &thisIsEmpty, slowPath);
+    Branch(IsJsArrayWithLengthLimit(glue, thisValue, MAX_LENGTH_ZERO, req), &thisIsEmpty, slowPath);
     Bind(&thisIsEmpty);
     // Do nothing on fast path
     Branch(IsCallable(GetCallArg0(numArgs)), exit, slowPath);
@@ -107,7 +107,7 @@ void BuiltinsArrayStubBuilder::IndexOf([[maybe_unused]] GateRef glue, GateRef th
     Label thisIsEmpty(env);
     // Fast path if: (1) this is an empty array; (2) fromIndex is missing
     JsArrayRequirements req;
-    Branch(IsEmptyJsArray(glue, thisValue, req), &thisIsEmpty, slowPath);
+    Branch(IsJsArrayWithLengthLimit(glue, thisValue, MAX_LENGTH_ZERO, req), &thisIsEmpty, slowPath);
     Bind(&thisIsEmpty);
     {
         Label atMostOneArg(env);
@@ -127,7 +127,7 @@ void BuiltinsArrayStubBuilder::LastIndexOf([[maybe_unused]] GateRef glue, GateRe
     Label thisIsEmpty(env);
     // Fast path if: (1) this is an empty array; (2) fromIndex is missing
     JsArrayRequirements req;
-    Branch(IsEmptyJsArray(glue, thisValue, req), &thisIsEmpty, slowPath);
+    Branch(IsJsArrayWithLengthLimit(glue, thisValue, MAX_LENGTH_ZERO, req), &thisIsEmpty, slowPath);
     Bind(&thisIsEmpty);
     {
         Label atMostOneArg(env);
@@ -149,7 +149,7 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
     // (2) no arguments exist
     JsArrayRequirements req;
     req.defaultConstructor = true;
-    Branch(IsEmptyJsArray(glue, thisValue, req), &thisIsEmpty, slowPath);
+    Branch(IsJsArrayWithLengthLimit(glue, thisValue, MAX_LENGTH_ZERO, req), &thisIsEmpty, slowPath);
     Bind(&thisIsEmpty);
     {
         Label noArgs(env);
@@ -171,17 +171,17 @@ void BuiltinsArrayStubBuilder::Reverse([[maybe_unused]] GateRef glue, GateRef th
 {
     auto env = GetEnvironment();
     Label thisIsEmpty(env);
-    // Fast path is this is an empty array
+    // Fast path is this is an array of length 0 or 1
     JsArrayRequirements req;
-    Branch(IsEmptyJsArray(glue, thisValue, req), &thisIsEmpty, slowPath);
+    Branch(IsJsArrayWithLengthLimit(glue, thisValue, MAX_LENGTH_ONE, req), &thisIsEmpty, slowPath);
     Bind(&thisIsEmpty);
     // Returns thisValue on fast path
     result->WriteVariable(thisValue);
     Jump(exit);
 }
 
-GateRef BuiltinsArrayStubBuilder::IsEmptyJsArray(GateRef glue, GateRef object,
-    JsArrayRequirements requirements)
+GateRef BuiltinsArrayStubBuilder::IsJsArrayWithLengthLimit(GateRef glue, GateRef object,
+    uint32_t maxLength, JsArrayRequirements requirements)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -210,7 +210,7 @@ GateRef BuiltinsArrayStubBuilder::IsEmptyJsArray(GateRef glue, GateRef object,
         Jump(&defaultConstructorCheckPassed);
     }
     Bind(&defaultConstructorCheckPassed);
-    result.WriteVariable(Int32Equal(GetArrayLength(object), Int32(0)));
+    result.WriteVariable(Int32UnsignedLessThanOrEqual(GetArrayLength(object), Int32(maxLength)));
     Jump(&exit);
     Bind(&exit);
     GateRef ret = *result;
