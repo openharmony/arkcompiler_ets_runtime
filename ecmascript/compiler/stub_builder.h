@@ -574,9 +574,6 @@ public:
     GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     GateRef GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
-    GateRef CreateListFromArrayLike(GateRef glue, GateRef arrayObj);
-    GateRef BuildArgumentsListFastElements(GateRef glue, GateRef arrayObj);
-    GateRef MakeArgListWithHole(GateRef glue, GateRef argv, GateRef length);
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
 
     // fast path

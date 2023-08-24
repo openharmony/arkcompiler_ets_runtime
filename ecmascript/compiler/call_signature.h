@@ -427,6 +427,7 @@ private:
     V(GetActualArgvNoGC)                    \
     V(InsertOldToNewRSet)                   \
     V(DoubleToInt)                          \
+    V(DoubleToLength)                       \
     V(FloatMod)                             \
     V(FloatSqrt)                            \
     V(FloatCos)                             \

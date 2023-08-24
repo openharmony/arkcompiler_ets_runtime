@@ -112,6 +112,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(MarkingBarrier)                          \
     V(StoreBarrier)                            \
     V(DoubleToInt)                             \
+    V(DoubleToLength)                          \
     V(FloatMod)                                \
     V(FloatSqrt)                               \
     V(FloatCos)                                \
@@ -311,7 +312,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(ContainerRBTreeForEach)             \
     V(SlowFlattenString)                  \
     V(NotifyConcurrentResult)             \
-    V(OtherToNumber)                      \
     V(AotInlineTrace)                     \
     V(LocaleCompare)                      \
     V(ArraySort)
@@ -379,6 +379,7 @@ public:
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static int32_t DoubleToInt(double x);
+    static JSTaggedType DoubleToLength(double x);
     static double FloatMod(double x, double y);
     static JSTaggedType FloatSqrt(double x);
     static JSTaggedType FloatCos(double x);
