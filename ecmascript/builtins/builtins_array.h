@@ -121,11 +121,16 @@ private:
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue IndexOfSlowPath(
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
+    static JSTaggedValue IndexOfSlowPath(
+        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
+        int64_t length, int64_t fromIndex);
 
     static JSTaggedValue LastIndexOfStable(
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue LastIndexOfSlowPath(
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
+    static JSTaggedValue LastIndexOfSlowPath(
+        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal, int64_t fromIndex);
 };
 }  // namespace panda::ecmascript::builtins
 

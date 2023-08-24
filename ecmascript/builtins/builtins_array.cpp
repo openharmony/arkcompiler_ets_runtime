@@ -1130,8 +1130,19 @@ JSTaggedValue BuiltinsArray::IndexOfStable(
     if (length == 0) {
         return JSTaggedValue(-1);
     }
-    int64_t fromIndex = ArrayHelper::GetStartIndexFromArgs(thread, argv, 1, length);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int64_t fromIndex = 0;
+    uint32_t argc = argv->GetArgsNumber();
+    // 2: [target, fromIndex]. Note that fromIndex is missing in most usage cases.
+    if (UNLIKELY(argc >= 2)) {
+        JSHandle<JSTaggedValue> fromIndexHandle = argv->GetCallArg(1);
+        fromIndex = ArrayHelper::GetStartIndex(thread, fromIndexHandle, length);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        // Slow path when fromIndex is obtained from an ECMAObject
+        // due to potential side effects in its 'toString' and 'valueOf' methods which modify the array object.
+        if (UNLIKELY(fromIndexHandle->IsECMAObject())) {
+            return IndexOfSlowPath(argv, thread, thisHandle, length, fromIndex);
+        }
+    }
     if (fromIndex >= length) {
         return JSTaggedValue(-1);
     }
@@ -1159,10 +1170,16 @@ JSTaggedValue BuiltinsArray::IndexOfSlowPath(
     // 6. If argument fromIndex was passed let n be ToInteger(fromIndex); else let n be 0.
     int64_t fromIndex = ArrayHelper::GetStartIndexFromArgs(thread, argv, 1, length);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return IndexOfSlowPath(argv, thread, thisObjVal, length, fromIndex);
+}
+
+JSTaggedValue BuiltinsArray::IndexOfSlowPath(
+    EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
+    int64_t length, int64_t fromIndex)
+{
     if (fromIndex >= length) {
         return JSTaggedValue(-1);
     }
-
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> target = GetCallArg(argv, 0);
     // 11. Repeat, while k < len
@@ -1301,8 +1318,19 @@ JSTaggedValue BuiltinsArray::LastIndexOfStable(
     if (length == 0) {
         return JSTaggedValue(-1);
     }
-    int64_t fromIndex = ArrayHelper::GetLastStartIndexFromArgs(thread, argv, 1, length);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int64_t fromIndex = length - 1;
+    uint32_t argc = argv->GetArgsNumber();
+    // 2: [target, fromIndex]. Note that fromIndex is missing in most usage cases.
+    if (UNLIKELY(argc >= 2)) {
+        JSHandle<JSTaggedValue> fromIndexHandle = argv->GetCallArg(1);
+        fromIndex = ArrayHelper::GetLastStartIndex(thread, fromIndexHandle, length);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        // Slow path when fromIndex is obtained from an ECMAObject
+        // due to potential side effects in its 'toString' and 'valueOf' methods which modify the array object.
+        if (UNLIKELY(fromIndexHandle->IsECMAObject())) {
+            return LastIndexOfSlowPath(argv, thread, thisHandle, fromIndex);
+        }
+    }
     if (fromIndex < 0) {
         return JSTaggedValue(-1);
     }
@@ -1330,10 +1358,15 @@ JSTaggedValue BuiltinsArray::LastIndexOfSlowPath(
     // 6. If argument fromIndex was passed let n be ToInteger(fromIndex); else let n be 0.
     int64_t fromIndex = ArrayHelper::GetLastStartIndexFromArgs(thread, argv, 1, length);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return LastIndexOfSlowPath(argv, thread, thisObjVal, fromIndex);
+}
+
+JSTaggedValue BuiltinsArray::LastIndexOfSlowPath(
+    EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal, int64_t fromIndex)
+{
     if (fromIndex < 0) {
         return JSTaggedValue(-1);
     }
-
     JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> target = base::BuiltinsBase::GetCallArg(argv, 0);
     // 11. Repeat, while k < len

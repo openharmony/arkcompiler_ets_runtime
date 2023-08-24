@@ -53,7 +53,7 @@ int64_t ArrayHelper::GetStartIndex(JSThread *thread, const JSHandle<JSTaggedValu
     if (UNLIKELY(thread->HasPendingException())) {
         return length;
     }
-    double fromIndexValue = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber());
+    double fromIndexValue = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber()); // NaN -> 0
     return doClamp(fromIndexValue);
 }
 
@@ -92,7 +92,7 @@ int64_t ArrayHelper::GetLastStartIndex(JSThread *thread, const JSHandle<JSTagged
     if (UNLIKELY(thread->HasPendingException())) {
         return -1;
     }
-    double fromIndexValue = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber());
+    double fromIndexValue = base::NumberHelper::TruncateDouble(fromIndexTemp.GetNumber()); // NaN -> 0
     return doClamp(fromIndexValue);
 }
 

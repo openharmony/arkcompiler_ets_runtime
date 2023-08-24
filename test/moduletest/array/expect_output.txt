@@ -84,3 +84,32 @@ Mar,Jan,Feb,Dec
 1,2,10,21
 1,10,21,2
 5,4,3,2,,0
+======== Begin: Array.prototype.reverse() ========
+arr0.reverse() === arr0 ? true
+arr0.length after reverse() called = 0
+arr1.reverse() === arr1 ? true
+arr1 after reverse() called = 1
+arrWithHoles before reverse() called = ,1,,,4,,,,,
+arrWithHoles.reverse()               = ,,,,,4,,,1,
+arrWithHoles after reverse() called  = ,,,,,4,,,1,
+======== End: Array.prototype.reverse() ========
+======== Begin: Array.prototype.indexOf() & Array.prototype.lastIndexOf() ========
+arr = [0, 10, 20, 80, 40, Hole, undefined, 10, "80", Hole]
+Group 1: 0 <= fromIndex < arr.length: 4,-1,1,7,4,-1,7,1
+Group 2: -arr.length <= fromIndex < 0: -1,4,7,1,4,-1,1,-1,0,1,0,-1
+Group 3: fromIndex >= arr.length: -1,-1,-1,-1,0,0
+Group 4: fromIndex < -arr.length: 0,-1
+Group 5: fromIndex in [Infinity, -Infinity]: 1,-1,-1,7
+Group 6: fromIndex is NaN: 0,1,0,-1
+Group 7: fromIndex is not of type 'number': 7,1,7,7
+Group 8: Strict equality checking: 8,3
+Group 9: Searching undefined and null: 6,6,-1,6,6,-1
+Group 10: fromIndex with side effects:
+  - indexOf:     result = -1, accessCount = 6
+  - lastIndexOf: result = -1, accesscount = 6
+Group 11: fromIndex that triggers exceptions:
+Expected TypeError caught in indexOf when fromIndex is bigint.
+Expected TypeError caught in lastIndexOf when fromIndex is bigint.
+Expected TypeError caught in indexOf when fromIndex is symbol.
+Expected TypeError caught in lastIndexOf when fromIndex is symbol.
+======== End: Array.prototype.indexOf() & Array.prototype.lastIndexOf() ========

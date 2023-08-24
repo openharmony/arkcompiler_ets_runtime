@@ -169,3 +169,180 @@ for (let i = 0; i < 6; i++) {
 }
 arrs.reverse();
 print(arrs); // 5,4,3,2,,0
+
+function handleExpectedErrorCaught(prompt, e) {
+    if (e instanceof Error) {
+        print(`Expected ${e.name} caught in ${prompt}.`);
+    } else {
+        print(`Expected error message caught in ${prompt}.`);
+    }
+}
+
+function handleUnexpectedErrorCaught(prompt, e) {
+    if (e instanceof Error) {
+        print(`Unexpected ${e.name} caught in ${prompt}: ${e.message}`);
+        if (typeof e.stack !== 'undefined') {
+            print(`Stacktrace:\n${e.stack}`);
+        }
+    } else {
+        print(`Unexpected error message caught in ${prompt}: ${e}`);
+    }
+}
+
+// Test cases for reverse()
+print("======== Begin: Array.prototype.reverse() ========");
+try {
+    const arr0 = [];
+    print(`arr0.reverse() === arr0 ? ${arr0.reverse() === arr0}`);  // true
+    print(`arr0.length after reverse() called = ${arr0.length}`);   // 0
+
+    const arr1 = [1];
+    print(`arr1.reverse() === arr1 ? ${arr1.reverse() === arr1}`);  // true
+    print(`arr1 after reverse() called = ${arr1}`);                 // 1
+
+    const arrWithHoles = [];
+    arrWithHoles[1] = 1;
+    arrWithHoles[4] = 4;
+    arrWithHoles[6] = undefined;
+    arrWithHoles.length = 10;
+    // arrWithHoles = [Hole, 1, Hole, Hole, 4, Hole, undefined, Hole, Hole, Hole]
+    print(`arrWithHoles before reverse() called = ${arrWithHoles}`);            // ,1,,,4,,,,,
+    print(`arrWithHoles.reverse()               = ${arrWithHoles.reverse()}`);  // ,,,,,4,,,1,
+    print(`arrWithHoles after reverse() called  = ${arrWithHoles}`);            // ,,,,,4,,,1,
+} catch (e) {
+    handleUnexpectedErrorCaught(e);
+}
+print("======== End: Array.prototype.reverse() ========");
+
+print("======== Begin: Array.prototype.indexOf() & Array.prototype.lastIndexOf() ========");
+// Test case for indexOf() and lastIndexOf()
+try {
+    const arr = [0, 10, 20];
+    arr.length = 10;
+    arr[3] = 80;
+    arr[4] = 40;
+    arr[6] = undefined;
+    arr[7] = 10;
+    arr[8] = "80";
+    print("arr = [0, 10, 20, 80, 40, Hole, undefined, 10, \"80\", Hole]");
+    // prompt1, results1, prompt2, results2, ...
+    const resultGroups = [
+        "Group 1: 0 <= fromIndex < arr.length", [
+            arr.indexOf(40),                        // 4
+            arr.indexOf(40, 5),                     // -1
+            arr.indexOf(10),                        // 1
+            arr.indexOf(10, 2),                     // 7
+            arr.lastIndexOf(40),                    // 4
+            arr.lastIndexOf(40, 3),                 // -1
+            arr.lastIndexOf(10),                    // 7
+            arr.lastIndexOf(10, 6),                 // 1
+        ],
+        "Group 2: -arr.length <= fromIndex < 0", [
+            arr.indexOf(40, -4),                    // -1
+            arr.indexOf(40, -8),                    // 4
+            arr.indexOf(10, -4),                    // 7
+            arr.indexOf(10, -10),                   // 1
+            arr.lastIndexOf(40, -4),                // 4
+            arr.lastIndexOf(40, -8),                // -1
+            arr.lastIndexOf(10, -4),                // 1
+            arr.lastIndexOf(10, -10),               // -1
+            arr.indexOf(0, -arr.length),            // 0
+            arr.indexOf(10, -arr.length),           // 1
+            arr.lastIndexOf(0, -arr.length),        // 0
+            arr.lastIndexOf(10, -arr.length),       // -1
+        ],
+        "Group 3: fromIndex >= arr.length", [
+            arr.indexOf(0, arr.length),             // -1
+            arr.indexOf(0, arr.length + 10),        // -1
+            arr.indexOf(10, arr.length),
+            arr.indexOf(10, arr.length + 10),
+            arr.lastIndexOf(0, arr.length),         // 0
+            arr.lastIndexOf(0, arr.length + 10),    // 0
+        ],
+        "Group 4: fromIndex < -arr.length", [
+            arr.indexOf(0, -arr.length - 10),       // 0
+            arr.lastIndexOf(0, -arr.length - 10)    // -1
+        ],
+        "Group 5: fromIndex in [Infinity, -Infinity]", [
+            arr.indexOf(10, -Infinity),             // 1
+            arr.indexOf(10, +Infinity),             // -1
+            arr.lastIndexOf(10, -Infinity),         // -1
+            arr.lastIndexOf(10, +Infinity)          // 7
+        ],
+        "Group 6: fromIndex is NaN", [
+            arr.indexOf(0, NaN),                    // 0
+            arr.indexOf(10, NaN),                   // 1
+            arr.lastIndexOf(0, NaN),                // 0
+            arr.lastIndexOf(10, NaN),               // -1
+        ],
+        "Group 7: fromIndex is not of type 'number'", [
+            arr.indexOf(10, '2'),                           // 7
+            arr.lastIndexOf(10, '2'),                       // 1
+            arr.indexOf(10, { valueOf() { return 3; } }),   // 7
+            arr.indexOf(10, { valueOf() { return 3; } }),   // 1
+        ],
+        "Group 8: Strict equality checking", [
+            arr.indexOf("80"),                      // 8
+            arr.lastIndexOf(80),                    // 3
+        ],
+        "Group 9: Searching undefined and null", [
+            arr.indexOf(),                          // 6
+            arr.indexOf(undefined),                 // 6
+            arr.indexOf(null),                      // -1
+            arr.lastIndexOf(),                      // 6
+            arr.lastIndexOf(undefined),             // 6
+            arr.lastIndexOf(null)                   // -1
+        ]
+    ];
+    for (let i = 0; i < resultGroups.length; i += 2) {
+        print(`${resultGroups[i]}: ${resultGroups[i + 1]}`);
+    }
+
+    print("Group 10: fromIndex with side effects:");
+    let accessCount = 0; 
+    const arrProxyHandler = {
+        has(target, key) {
+            accessCount += 1;
+            return key in target;
+        }
+    };
+    // Details on why accessCount = 6 can be seen in ECMAScript specifications:
+    // https://tc39.es/ecma262/multipage/indexed-collections.html#sec-array.prototype.indexof
+    accessCount = 0;
+    const arr2 = new Proxy([10, 20, 30, 40, 50, 60], arrProxyHandler);
+    const result2 = arr2.indexOf(30, {
+        valueOf() {
+            arr2.length = 2;    // Side effects to arr2
+            return 0;
+        }
+    });                         // Expected: -1 (with accessCount = 6)
+    print(`  - indexOf:     result = ${result2}, accessCount = ${accessCount}`);
+    // Details on why accessCount = 6 can be seen in ECMAScript specifications:
+    // https://tc39.es/ecma262/multipage/indexed-collections.html#sec-array.prototype.lastindexof
+    accessCount = 0;
+    const arr3 = new Proxy([15, 25, 35, 45, 55, 65], arrProxyHandler);
+    const result3 = arr3.lastIndexOf(45, {
+        valueOf() {
+            arr3.length = 2;    // Side effects to arr3
+            return 5;
+        }
+    });                         // Expected: -1 (with accessCount = 6)
+    print(`  - lastIndexOf: result = ${result3}, accesscount = ${accessCount}`);
+
+    print("Group 11: fromIndex that triggers exceptions:");
+    for (let [prompt, fromIndex] of [ ["bigint", 1n], ["symbol", Symbol()] ]) {
+        for (let method of [ Array.prototype.indexOf, Array.prototype.lastIndexOf ]) {
+            try {
+                const result = method.call(arr, 10, fromIndex);
+                print(`ERROR: Unexpected result (which is ${result}) returned by method '${method.name}': ` + 
+                      `Expects a TypeError thrown for fromIndex type '${prompt}'.`);
+            } catch (e) {
+                // Expects a TypeError thrown and caught here.
+                handleExpectedErrorCaught(`${method.name} when fromIndex is ${prompt}`, e);
+            }
+        }
+    }
+} catch (e) {
+    handleUnexpectedErrorCaught(e);
+}
+print("======== End: Array.prototype.indexOf() & Array.prototype.lastIndexOf() ========");
