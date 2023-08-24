@@ -73,7 +73,7 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
     if (nonMovable) {
         header = heap_->AllocateNonMovableOrHugeObject(jsNativePointerClass);
     } else {
-        header = heap_->AllocateYoungOrHugeObject(jsNativePointerClass);
+        header = heap_->AllocateOldOrHugeObject(jsNativePointerClass);
     }
     JSHandle<JSNativePointer> obj(thread_, header);
     obj->SetExternalPointer(externalPointer);
@@ -82,7 +82,7 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
     obj->SetBindingSize(nativeBindingsize);
 
     if (callBack != nullptr) {
-        heap_->IncreaseNativeBindingSize(nonMovable, nativeBindingsize);
+        heap_->IncreaseNativeBindingSize(nativeBindingsize);
         vm_->PushToNativePointerList(static_cast<JSNativePointer *>(header));
     }
     return obj;

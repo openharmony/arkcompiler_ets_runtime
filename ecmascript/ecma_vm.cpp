@@ -375,17 +375,20 @@ void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) cons
 
 void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
 {
-    auto iter = nativePointerList_.begin();
-    while (iter != nativePointerList_.end()) {
-        JSNativePointer *object = *iter;
-        auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
-        if (fwd == nullptr) {
-            object->Destroy();
-            iter = nativePointerList_.erase(iter);
-        } else {
-            ++iter;
+    if (!heap_->IsYoungGC()) {
+        auto iter = nativePointerList_.begin();
+        while (iter != nativePointerList_.end()) {
+            JSNativePointer *object = *iter;
+            auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
+            if (fwd == nullptr) {
+                object->Destroy();
+                iter = nativePointerList_.erase(iter);
+            } else {
+                ++iter;
+            }
         }
     }
+
     thread_->GetCurrentEcmaContext()->ProcessNativeDelete(visitor);
 }
 
@@ -394,22 +397,24 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
     if (thread_->GetCurrentEcmaContext()->GetRegExpParserCache() != nullptr) {
         thread_->GetCurrentEcmaContext()->GetRegExpParserCache()->Clear();
     }
-    heap_->ResetNativeBindingSize();
-    // array buffer
-    auto iter = nativePointerList_.begin();
-    while (iter != nativePointerList_.end()) {
-        JSNativePointer *object = *iter;
-        auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
-        if (fwd == nullptr) {
-            object->Destroy();
-            iter = nativePointerList_.erase(iter);
-            continue;
+    if (!heap_->IsYoungGC()) {
+        heap_->ResetNativeBindingSize();
+        // array buffer
+        auto iter = nativePointerList_.begin();
+        while (iter != nativePointerList_.end()) {
+            JSNativePointer *object = *iter;
+            auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
+            if (fwd == nullptr) {
+                object->Destroy();
+                iter = nativePointerList_.erase(iter);
+                continue;
+            }
+            heap_->IncreaseNativeBindingSize(JSNativePointer::Cast(fwd));
+            if (fwd != reinterpret_cast<TaggedObject *>(object)) {
+                *iter = JSNativePointer::Cast(fwd);
+            }
+            ++iter;
         }
-        heap_->IncreaseNativeBindingSize(JSNativePointer::Cast(fwd));
-        if (fwd != reinterpret_cast<TaggedObject *>(object)) {
-            *iter = JSNativePointer::Cast(fwd);
-        }
-        ++iter;
     }
     thread_->GetCurrentEcmaContext()->ProcessReferences(visitor);
 }

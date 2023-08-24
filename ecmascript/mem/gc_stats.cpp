@@ -147,7 +147,7 @@ void GCStats::PrintGCMemoryStatistic()
                     << STATS_DESCRIPTION_FORMAT("Native memory usage size:")
                     << STATS_DATA_FORMAT(sizeToMB(nativeAreaAllocator->GetNativeMemoryUsage())) << "MB\n"
                     << STATS_DESCRIPTION_FORMAT("NativeBindingSize:")
-                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeBindingSize())) << "MB";
+                    << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeBindingSize())) << "KB";
 
     switch (gcType_) {
         case GCType::STW_YOUNG_GC: {
