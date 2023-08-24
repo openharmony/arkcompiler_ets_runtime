@@ -149,13 +149,24 @@ JSHandle<TSObjLayoutInfo> TSTypeAccessor::GetPrototypeTypeLayout() const
     return layout;
 }
 
-GlobalTSTypeRef TSTypeAccessor::GetPrototypePropGT(JSTaggedValue key) const
+GlobalTSTypeRef TSTypeAccessor::GetAccessorGT(JSTaggedValue key, bool isSetter) const
 {
     ASSERT(tsManager_->IsClassTypeKind(gt_));
     JSHandle<TSObjLayoutInfo> layout = GetPrototypeTypeLayout();
-    int index = layout->GetElementIndexByKey(key);
-    if (TSObjLayoutInfo::IsValidIndex(index)) {
-        return GlobalTSTypeRef(layout->GetTypeId(index).GetInt());
+    std::vector<int> vec;
+    layout->GetAccessorIndexByKey(key, vec);
+    if (vec.empty()) {
+        return GlobalTSTypeRef();
+    }
+
+    for (size_t i = 0; i < vec.size(); i++) {
+        int index = vec[i];
+        ASSERT(TSObjLayoutInfo::IsValidIndex(index));
+        auto gt = GlobalTSTypeRef(layout->GetTypeId(index).GetInt());
+        uint32_t parameterLength = tsManager_->GetFunctionTypeLength(gt);
+        if (IsSetterGT(parameterLength, isSetter) || IsGetterGT(parameterLength, isSetter)) {
+            return gt;
+        }
     }
     return GlobalTSTypeRef();
 }

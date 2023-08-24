@@ -163,6 +163,11 @@ private:
         return isFastAccessor_ && !traceInline_;
     }
 
+    bool IsCallSetter(CallKind kind) const
+    {
+        return kind == CallKind::CALL_SETTER;
+    }
+
     void CandidateInlineCall(GateRef gate, ChunkQueue<CallGateInfo> &workList);
     void TryInline(CallGateInfo &info, ChunkQueue<CallGateInfo> &workList);
     bool FilterInlinedMethod(MethodLiteral* method, std::vector<const uint8_t*> pcOffsets);
@@ -196,7 +201,7 @@ private:
     GateRef BuildAccessor(CallGateInfo &info);
     uint32_t GetPlrData(GateRef receiver, GateRef constData);
     GateRef GetCallSetterValue(GateRef gate);
-    GlobalTSTypeRef GetAccessorFuncGT(GateRef receiver, GateRef constData);
+    GlobalTSTypeRef GetAccessorFuncGT(GateRef receiver, GateRef constData, bool isCallSetter);
     GateRef GetFrameState(CallGateInfo &info);
     void SetInitCallTargetAndConstPoolId(CallGateInfo &info);
     void AnalyseFastAccessor(CallGateInfo &info, std::vector<const uint8_t*> pcOffsets, uint32_t inlineMethodOffset);

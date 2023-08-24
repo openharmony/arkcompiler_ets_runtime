@@ -614,7 +614,7 @@ bool TSInlineLowering::IsAccessor(GateRef receiver, GateRef constData)
     return false;
 }
 
-GlobalTSTypeRef TSInlineLowering::GetAccessorFuncGT(GateRef receiver, GateRef constData)
+GlobalTSTypeRef TSInlineLowering::GetAccessorFuncGT(GateRef receiver, GateRef constData, bool isCallSetter)
 {
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
@@ -623,7 +623,7 @@ GlobalTSTypeRef TSInlineLowering::GetAccessorFuncGT(GateRef receiver, GateRef co
     TSTypeAccessor tsTypeAcc(tsManager_, classGT);
     uint16_t propIndex = acc_.GetConstantValue(constData);
     auto prop = tsManager_->GetStringFromConstantPool(propIndex);
-    GlobalTSTypeRef funcGT = tsTypeAcc.GetPrototypePropGT(prop);
+    GlobalTSTypeRef funcGT = tsTypeAcc.GetAccessorGT(prop, isCallSetter);
     return funcGT;
 }
 
@@ -632,7 +632,7 @@ void TSInlineLowering::CandidateAccessor(GateRef gate, ChunkQueue<CallGateInfo> 
     GateRef receiver = GetAccessorReceiver(gate);
     GateRef constData = acc_.GetValueIn(gate, 1);
     if (IsAccessor(receiver, constData)) {
-        GlobalTSTypeRef gt = GetAccessorFuncGT(receiver, constData);
+        GlobalTSTypeRef gt = GetAccessorFuncGT(receiver, constData, IsCallSetter(kind));
         if (!gt.IsDefault()) {
             workList.push(CallGateInfo(gate, kind, gt, 0));
             lastCallId_ = acc_.GetId(gate);

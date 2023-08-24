@@ -90,7 +90,7 @@ public:
 
     std::string PUBLIC_API GetFunctionName() const;
 
-    GlobalTSTypeRef PUBLIC_API GetPrototypePropGT(JSTaggedValue key) const;
+    GlobalTSTypeRef PUBLIC_API GetAccessorGT(JSTaggedValue key, bool isSetter) const;
 
 #define CLASS_TYPE_BITFIELD_ACCESSOR(NAME)                 \
     inline void PUBLIC_API MarkClass##NAME()               \
@@ -126,6 +126,16 @@ private:
 
     JSHandle<TSObjLayoutInfo> GetInstanceTypeLayout() const;
     JSHandle<TSObjLayoutInfo> GetPrototypeTypeLayout() const;
+
+    bool IsGetterGT(size_t parameterLength, bool isSetter) const
+    {
+        return parameterLength == 0 && !isSetter;
+    }
+
+    bool IsSetterGT(size_t parameterLength, bool isSetter) const
+    {
+        return parameterLength == 1 && isSetter;
+    }
 
     TSManager *tsManager_ {nullptr};
     JSThread *thread_ {nullptr};

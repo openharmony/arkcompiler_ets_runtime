@@ -55,6 +55,21 @@ int TSObjLayoutInfo::GetElementIndexByKey(JSTaggedValue key) const
     return INVALID_INDEX;
 }
 
+void TSObjLayoutInfo::GetAccessorIndexByKey(JSTaggedValue key, std::vector<int> &vec)
+{
+    [[maybe_unused]] EcmaString *str = EcmaString::Cast(key.GetTaggedObject());
+    ASSERT_PRINT(EcmaStringAccessor(str).IsInternString(), "TS class field key is not an intern string");
+
+    uint32_t length = GetNumOfProperties();
+    for (uint32_t i = 0; i < length; ++i) {
+        JSTaggedValue keyVal = GetKey(i);
+        ASSERT_PRINT(keyVal.IsString(), "TS class field key is not a string");
+        if (keyVal == key) {
+            vec.emplace_back(i);
+        }
+    }
+}
+
 JSTaggedValue TSObjLayoutInfo::TryGetTypeByIndexSign(const uint32_t keyType)
 {
     uint32_t length = GetNumOfProperties();
