@@ -251,9 +251,9 @@ private:
                 }
                 current_++;
             } else if (UNLIKELY(*current_ > ASCII_END)) {
-                if (UNLIKELY(*current_ > utf_helper::DECODE_LEAD_LOW && *current_ < utf_helper::DECODE_LEAD_HIGH &&
-                             *(current_ + 1) > utf_helper::DECODE_TRAIL_LOW &&
-                             *(current_ + 1) < utf_helper::DECODE_TRAIL_HIGH)) {
+                if (UNLIKELY(*current_ >= utf_helper::DECODE_LEAD_LOW && *current_ <= utf_helper::DECODE_LEAD_HIGH &&
+                             *(current_ + 1) >= utf_helper::DECODE_TRAIL_LOW &&
+                             *(current_ + 1) <= utf_helper::DECODE_TRAIL_HIGH)) {
                     std::u16string str(current_, current_ + 2);  // 2 means twice as many bytes as normal u16string
                     res += ConvertToString(StringHelper::U16stringToString(str));
                     current_ += 2;  // 2 means twice as many bytes as normal u16string
