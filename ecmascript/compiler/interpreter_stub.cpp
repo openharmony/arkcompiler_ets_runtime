@@ -164,7 +164,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 
 #define METHOD_ENTRY(func)                                                                        \
     auto env = GetEnvironment();                                                                  \
-    METHOD_ENTRY_ENV_DEFINED(func);
+    METHOD_ENTRY_ENV_DEFINED(func)
 
 #define METHOD_ENTRY_ENV_DEFINED(func)                                                            \
     GateRef isDebugModeOffset = IntPtr(JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit())); \
@@ -177,7 +177,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         CallRuntime(glue, RTSTUB_ID(MethodEntry), { func });                                      \
         Jump(&isDebugModeFalse);                                                                  \
     }                                                                                             \
-    Bind(&isDebugModeFalse);
+    Bind(&isDebugModeFalse)
 
 #define METHOD_EXIT()                                                                             \
     GateRef isDebugModeOffset = IntPtr(JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit())); \

@@ -987,8 +987,8 @@ JSTaggedValue JSStableArray::Slice(JSThread *thread, JSHandle<JSObject> thisObjH
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> srcElements(thread, thisObjHandle->GetElements());
-    uint32_t len = srcElements->GetLength();
-    uint32_t oldLen;
+    int64_t len = static_cast<int64_t>(srcElements->GetLength());
+    int64_t oldLen;
     if (len > k + count) {
         oldLen = count;
     } else {
