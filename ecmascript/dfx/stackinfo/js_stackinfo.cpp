@@ -219,9 +219,29 @@ void CrashCallback(char *buf __attribute__((unused)), size_t len __attribute__((
 #endif
 }
 
-bool ReadUintptrFromAddr(int pid, uintptr_t addr, uintptr_t &value)
+bool ReadUintptrFromAddr(int pid, uintptr_t addr, uintptr_t &value, bool needCheckRegion)
 {
     if (pid == getpid()) {
+        if (needCheckRegion) {
+            bool flag = false;
+            auto callback = [addr, &flag](Region *region) {
+                uintptr_t regionBegin = region->GetBegin();
+                uintptr_t regionEnd = region->GetEnd();
+                if (regionBegin <= addr && addr <= regionEnd) {
+                    flag = true;
+                }
+            };
+            if (JsStackInfo::loader != nullptr) {
+                const Heap *heap = JsStackInfo::loader->GetHeap();
+                if (heap != nullptr) {
+                    heap->EnumerateRegions(callback);
+                }
+            }
+            if (!flag) {
+                LOG_ECMA(ERROR) << "addr not in Region, addr: " << addr;
+                return false;
+            }
+        }
         value = *(reinterpret_cast<uintptr_t *>(addr));
         return true;
     }
@@ -329,10 +349,15 @@ bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t 
         LOG_ECMA(ERROR) << "fp is nullptr in StepArkManagedNativeFrame()!";
         return false;
     }
+    if (pid == getpid() && JsStackInfo::loader != nullptr &&
+        !JsStackInfo::loader->InsideStub(*pc) && !JsStackInfo::loader->InsideAOT(*pc)) {
+        LOG_ECMA(ERROR) << "invalid pc in StepArkManagedNativeFrame()!";
+        return false;
+    }
     while (true) {
         currentPtr -= sizeof(FrameType);
         uintptr_t frameType = 0;
-        if (!ReadUintptrFromAddr(pid, currentPtr, frameType)) {
+        if (!ReadUintptrFromAddr(pid, currentPtr, frameType, true)) {
             return false;
         }
         uintptr_t typeOffset = 0;
@@ -348,7 +373,7 @@ bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t 
         }
         currentPtr -= typeOffset;
         currentPtr += prevOffset;
-        if (!ReadUintptrFromAddr(pid, currentPtr, currentPtr)) {
+        if (!ReadUintptrFromAddr(pid, currentPtr, currentPtr, true)) {
             return false;
         }
         if (currentPtr == 0) {
@@ -359,7 +384,7 @@ bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t 
     currentPtr += sizeof(FrameType);
     *fp = currentPtr;
     currentPtr += FP_SIZE;
-    if (!ReadUintptrFromAddr(pid, currentPtr, *pc)) {
+    if (!ReadUintptrFromAddr(pid, currentPtr, *pc, true)) {
         return false;
     }
     currentPtr += LR_SIZE;
@@ -418,7 +443,7 @@ bool GetArkJSHeapCrashInfo(int pid, uintptr_t *bytecodePc, uintptr_t *fp, bool o
     }
     currentPtr -= sizeof(FrameType);
     uintptr_t frameType = 0;
-    if (!ReadUintptrFromAddr(pid, currentPtr, frameType)) {
+    if (!ReadUintptrFromAddr(pid, currentPtr, frameType, false)) {
         return false;
     }
     if (static_cast<FrameType>(frameType) != FrameType::ASM_INTERPRETER_FRAME) {
@@ -426,7 +451,7 @@ bool GetArkJSHeapCrashInfo(int pid, uintptr_t *bytecodePc, uintptr_t *fp, bool o
     }
     size_t strIndex = 0;
     uintptr_t registerBytecode = 0;
-    if (!ReadUintptrFromAddr(pid, *bytecodePc, registerBytecode)) {
+    if (!ReadUintptrFromAddr(pid, *bytecodePc, registerBytecode, false)) {
         return false;
     }
     CopyBytecodeInfoToBuffer("RegisterBytecode:", registerBytecode, strIndex, outStr, strLen);
@@ -436,10 +461,10 @@ bool GetArkJSHeapCrashInfo(int pid, uintptr_t *bytecodePc, uintptr_t *fp, bool o
     currentPtr += pcOffset;
     uintptr_t framePc = 0;
     uintptr_t frameBytecode = 0;
-    if (!ReadUintptrFromAddr(pid, currentPtr, framePc)) {
+    if (!ReadUintptrFromAddr(pid, currentPtr, framePc, false)) {
         return false;
     }
-    if (!ReadUintptrFromAddr(pid, framePc, frameBytecode)) {
+    if (!ReadUintptrFromAddr(pid, framePc, frameBytecode, false)) {
         return false;
     }
     CopyBytecodeInfoToBuffer(" FrameBytecode:", frameBytecode, strIndex, outStr, strLen);
@@ -448,7 +473,7 @@ bool GetArkJSHeapCrashInfo(int pid, uintptr_t *bytecodePc, uintptr_t *fp, bool o
         currentPtr -= pcOffset;
         currentPtr += functionOffset;
         uintptr_t functionAddress = 0;
-        if (!ReadUintptrFromAddr(pid, currentPtr, functionAddress)) {
+        if (!ReadUintptrFromAddr(pid, currentPtr, functionAddress, false)) {
             return false;
         }
         JSTaggedValue functionValue(static_cast<JSTaggedType>(functionAddress));
