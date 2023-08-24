@@ -1397,11 +1397,11 @@ GateRef StubBuilder::TryToElementsIndex(GateRef glue, GateRef key)
     Label isKeyInt(env);
     Label notKeyInt(env);
 
-    DEFVARIABLE(resultKey, VariableType::INT32(), Int32(-1));
+    DEFVARIABLE(resultKey, VariableType::INT64(), Int64(-1));
     Branch(TaggedIsInt(key), &isKeyInt, &notKeyInt);
     Bind(&isKeyInt);
     {
-        resultKey = GetInt32OfTInt(key);
+        resultKey = GetInt64OfTInt(key);
         Jump(&exit);
     }
     Bind(&notKeyInt);
@@ -1411,7 +1411,7 @@ GateRef StubBuilder::TryToElementsIndex(GateRef glue, GateRef key)
         Branch(TaggedIsString(key), &isString, &notString);
         Bind(&isString);
         {
-            resultKey = StringToElementIndex(glue, key);
+            resultKey = ZExtInt32ToInt64(StringToElementIndex(glue, key));
             Jump(&exit);
         }
         Bind(&notString);
@@ -1426,7 +1426,7 @@ GateRef StubBuilder::TryToElementsIndex(GateRef glue, GateRef key)
                 Branch(DoubleEqual(number, ChangeInt32ToFloat64(integer)), &isEqual, &exit);
                 Bind(&isEqual);
                 {
-                    resultKey = integer;
+                    resultKey = SExtInt32ToInt64(integer);
                     Jump(&exit);
                 }
             }
@@ -1663,8 +1663,17 @@ GateRef StubBuilder::LoadElement(GateRef glue, GateRef receiver, GateRef key, Pr
     Label indexNotLessZero(env);
     Label lengthLessIndex(env);
     Label lengthNotLessIndex(env);
+    Label greaterThanInt32Max(env);
+    Label notGreaterThanInt32Max(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    GateRef index = TryToElementsIndex(glue, key);
+    GateRef index64 = TryToElementsIndex(glue, key);
+    Branch(Int64GreaterThanOrEqual(index64, Int64(INT32_MAX)), &greaterThanInt32Max, &notGreaterThanInt32Max);
+    Bind(&greaterThanInt32Max);
+    {
+        Jump(&exit);
+    }
+    Bind(&notGreaterThanInt32Max);
+    GateRef index = TruncInt64ToInt32(index64);
     Branch(Int32LessThan(index, Int32(0)), &indexLessZero, &indexNotLessZero);
     Bind(&indexLessZero);
     {
@@ -1711,9 +1720,18 @@ GateRef StubBuilder::ICStoreElement(
     Label cellHasNotChanged(env);
     Label loopHead(env);
     Label loopEnd(env);
+    Label greaterThanInt32Max(env);
+    Label notGreaterThanInt32Max(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(varHandler, VariableType::JS_ANY(), handler);
-    GateRef index = TryToElementsIndex(glue, key);
+    GateRef index64 = TryToElementsIndex(glue, key);
+    Branch(Int64GreaterThanOrEqual(index64, Int64(INT32_MAX)), &greaterThanInt32Max, &notGreaterThanInt32Max);
+    Bind(&greaterThanInt32Max);
+    {
+        Jump(&exit);
+    }
+    Bind(&notGreaterThanInt32Max);
+    GateRef index = TruncInt64ToInt32(index64);
     Branch(Int32LessThan(index, Int32(0)), &indexLessZero, &indexNotLessZero);
     Bind(&indexLessZero);
     {
@@ -2334,9 +2352,18 @@ GateRef StubBuilder::GetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
     }
     Bind(&isNumberOrStringSymbol);
     {
-        GateRef index = TryToElementsIndex(glue, *key);
+        GateRef index64 = TryToElementsIndex(glue, *key);
         Label validIndex(env);
         Label notValidIndex(env);
+        Label greaterThanInt32Max(env);
+        Label notGreaterThanInt32Max(env);
+        Branch(Int64GreaterThanOrEqual(index64, Int64(INT32_MAX)), &greaterThanInt32Max, &notGreaterThanInt32Max);
+        Bind(&greaterThanInt32Max);
+        {
+            Jump(&exit);
+        }
+        Bind(&notGreaterThanInt32Max);
+        GateRef index = TruncInt64ToInt32(index64);
         Branch(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
         Bind(&validIndex);
         {
@@ -3174,9 +3201,18 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
     }
     Bind(&isNumberOrStringSymbol);
     {
-        GateRef index = TryToElementsIndex(glue, *varKey);
+        GateRef index64 = TryToElementsIndex(glue, *varKey);
         Label validIndex(env);
         Label notValidIndex(env);
+        Label greaterThanInt32Max(env);
+        Label notGreaterThanInt32Max(env);
+        Branch(Int64GreaterThanOrEqual(index64, Int64(INT32_MAX)), &greaterThanInt32Max, &notGreaterThanInt32Max);
+        Bind(&greaterThanInt32Max);
+        {
+            Jump(&exit);
+        }
+        Bind(&notGreaterThanInt32Max);
+        GateRef index = TruncInt64ToInt32(index64);
         Branch(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
         Bind(&validIndex);
         {

@@ -126,3 +126,14 @@ try {
 } catch (err) {
     print(err instanceof TypeError);
 }
+
+var obj1 = {
+    2147483647: 1,
+    2147483648: 2,
+    4294967295: 3,
+    4294967296: 4,
+}
+
+for (let item in obj1) {
+    print(item + " " + obj1[item]);
+}

@@ -488,7 +488,7 @@ JSTaggedValue ICRuntimeStub::StoreElement(JSThread *thread, JSObject *receiver, 
     return JSTaggedValue::Undefined();
 }
 
-ARK_INLINE int32_t ICRuntimeStub::TryToElementsIndex(JSTaggedValue key)
+ARK_INLINE int64_t ICRuntimeStub::TryToElementsIndex(JSTaggedValue key)
 {
     if (LIKELY(key.IsInt())) {
         return key.GetInt();
@@ -497,7 +497,7 @@ ARK_INLINE int32_t ICRuntimeStub::TryToElementsIndex(JSTaggedValue key)
     if (key.IsString()) {
         uint32_t index = 0;
         if (JSTaggedValue::StringToElementIndex(key, &index)) {
-            return static_cast<int32_t>(index);
+            return static_cast<int64_t>(index);
         }
     }
 

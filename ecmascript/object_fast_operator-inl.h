@@ -743,7 +743,7 @@ JSTaggedValue ObjectFastOperator::AddPropertyByIndex(JSThread *thread, JSTaggedV
     return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
 }
 
-int32_t ObjectFastOperator::TryToElementsIndex(JSTaggedValue key)
+int64_t ObjectFastOperator::TryToElementsIndex(JSTaggedValue key)
 {
     if (LIKELY(key.IsInt())) {
         return key.GetInt();
@@ -751,7 +751,7 @@ int32_t ObjectFastOperator::TryToElementsIndex(JSTaggedValue key)
     if (key.IsString()) {
         uint32_t index = 0;
         if (JSTaggedValue::StringToElementIndex(key, &index)) {
-            return static_cast<int32_t>(index);
+            return static_cast<int64_t>(index);
         }
     } else if (key.IsDouble()) {
         double number = key.GetDouble();
