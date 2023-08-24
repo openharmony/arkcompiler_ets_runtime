@@ -512,6 +512,7 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
             bool res = accessor->CallInternalSet(thread_, JSHandle<JSObject>(receiver), value, mayThrow);
             if (receiver->GetJSHClass()->IsDictionaryMode()) {
                 SetIsInlinedProps(false);
+                SetFastMode(false);
             }
             return res;
         }
