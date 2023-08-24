@@ -292,10 +292,19 @@ void ProfilerStubBuilder::ProfileObjLayoutOrIndex(GateRef glue, GateRef receiver
     env->SubCfgEntry(&entry);
     Label exit(env);
 
-    GateRef index = TryToElementsIndex(glue, key);
+    GateRef index64 = TryToElementsIndex(glue, key);
     Label validIndex(env);
     Label profileIndex(env);
     Label profileLayout(env);
+    Label greaterThanInt32Max(env);
+    Label notGreaterThanInt32Max(env);
+    Branch(Int64GreaterThanOrEqual(index64, Int64(INT32_MAX)), &greaterThanInt32Max, &notGreaterThanInt32Max);
+    Bind(&greaterThanInt32Max);
+    {
+        Jump(&exit);
+    }
+    Bind(&notGreaterThanInt32Max);
+    GateRef index = TruncInt64ToInt32(index64);
     Branch(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &profileLayout);
     Bind(&validIndex);
     {

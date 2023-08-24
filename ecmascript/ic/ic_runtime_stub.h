@@ -71,7 +71,7 @@ public:
     static inline JSTaggedValue LoadElement(JSObject *receiver, JSTaggedValue key);
     static inline JSTaggedValue StoreElement(JSThread *thread, JSObject *receiver, JSTaggedValue key,
                                              JSTaggedValue value, JSTaggedValue handlerInfo);
-    static inline int32_t TryToElementsIndex(JSTaggedValue key);
+    static inline int64_t TryToElementsIndex(JSTaggedValue key);
     static inline JSTaggedValue LoadMiss(JSThread *thread, ProfileTypeInfo *profileTypeInfo, JSTaggedValue receiver,
                                          JSTaggedValue key, uint32_t slotId, ICKind kind);
     static inline JSTaggedValue StoreMiss(JSThread *thread, ProfileTypeInfo *profileTypeInfo, JSTaggedValue receiver,
