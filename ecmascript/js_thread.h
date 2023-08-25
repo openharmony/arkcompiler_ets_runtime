@@ -59,6 +59,8 @@ enum class BCStubStatus: uint8_t {
     PROFILE_BC_STUB,
 };
 
+enum class StableArrayChangeKind { PROTO, NOT_PROTO };
+
 struct BCStubEntries {
     static constexpr size_t EXISTING_BC_HANDLER_STUB_ENTRIES_COUNT =
         kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS;
@@ -329,7 +331,7 @@ public:
         return arrayHClassIndexMap_;
     }
 
-    void NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver);
+    void NotifyStableArrayElementsGuardians(JSHandle<JSObject> receiver, StableArrayChangeKind changeKind);
 
     bool IsStableArrayElementsGuardiansInvalid() const
     {

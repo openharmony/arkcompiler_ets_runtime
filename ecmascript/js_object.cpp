@@ -252,7 +252,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
             }
         }
     }
-    thread->NotifyStableArrayElementsGuardians(receiver);
+    thread->NotifyStableArrayElementsGuardians(receiver, StableArrayChangeKind::NOT_PROTO);
 
     TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
     if (isDictionary) {
@@ -1203,7 +1203,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
     JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto);
     JSHClass::NotifyHclassChanged(thread, hclass, newClass);
     obj->SynchronizedSetClass(*newClass);
-    thread->NotifyStableArrayElementsGuardians(obj);
+    thread->NotifyStableArrayElementsGuardians(obj, StableArrayChangeKind::PROTO);
     return true;
 }
 
