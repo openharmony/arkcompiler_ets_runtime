@@ -124,15 +124,22 @@ public:
                                  ApGenMode mode)
     {
         PGOProfilerEncoder encoder(outPath, hotnessThreshold, mode);
+        PGOProfilerEncoder decoder(outPath, hotnessThreshold, mode);
         if (!encoder.InitializeData()) {
             LOG_ECMA(ERROR) << "PGO Profiler encoder initialized failed";
             return false;
         }
-        bool ret = encoder.LoadAPTextFile(inPath);
+        if (!decoder.InitializeData()) {
+            LOG_ECMA(ERROR) << "PGO Profiler decoder initialized failed";
+            return false;
+        }
+        bool ret = decoder.LoadAPTextFile(inPath);
         if (ret) {
+            encoder.Merge(decoder);
             ret = encoder.Save();
         }
         encoder.Destroy();
+        decoder.Destroy();
         return ret;
     }
 

@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "ecmascript/base/file_header.h"
+#include "ecmascript/common.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
@@ -31,7 +32,9 @@
 #include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/slots.h"
+#include "ecmascript/pgo_profiler/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
+#include "ecmascript/pgo_profiler/pgo_record_pool.h"
 #include "ecmascript/property_attributes.h"
 
 
@@ -42,15 +45,6 @@ enum class SampleMode : uint8_t {
     HOTNESS_MODE,
     CALL_MODE,
 };
-
-struct SectionInfo {
-    uint32_t offset_ {0};
-    // reserve
-    uint32_t size_ {0};
-    uint32_t number_ {0};
-};
-static constexpr size_t ALIGN_SIZE = 4;
-using PGOMethodId = EntityId;
 
 /**
   |----PGOProfilerHeader
@@ -67,20 +61,22 @@ using PGOMethodId = EntityId;
   |--------ENDIAN_TAG(4)
   |------------{ ENDIAN_TAG }
   |--------SECTION_NUMBER(4)
-  |------------{ 3 }
+  |------------{ 4 }
   |--------PANDA_FILE_INFO_SECTION_INFO(12)
   |------------{ offset, size (reserve), number1 }
   |--------RECORD_INFO_SECTION_INFO(12)
   |------------{ offset, size (reserve), number2 }
   |--------LAYOUT_DESC_SECTION_INFO(12)
   |------------{ offset, size (reserve), number3 }
+  |--------RECORD_POOL(12)
+  |------------{ offset, size (reserve), recordPoolCount }
   |
   |----Section1: PGOPandaFileInfos(number1)
   |--------[{ size, CHECK_SUM }, { size, CHECK_SUM }, ...]
   |
   |----Section2: PGORecordDetailInfos(number2)
   |--------[ PGOMethodInfoMap(number4)
-  |------------{ offset, size, number4 }
+  |------------{ recordId, offset, size, number4 }
   |------------[ PGOMethodInfo(size1)
   |----------------{ size1, entityId, count, mode, methodName, [{ size, offset, type }, { size, offset, type }, ...]},
   |------------  PGOMethodInfo(size1)
@@ -95,6 +91,10 @@ using PGOMethodId = EntityId;
   |------------{ size, type, superType, count, ptCount, ctorCount, [{ size, handle, key }, { size, heandle, key }, ...]}
   |--------  PGOHClassLayoutDescInner(size)
   |------------{ size, type, superType, count, ptCount, ctorCount, [{ size, handle, key }, { size, heandle, key }, ...]}
+  |
+  |----Section4: PGORecord(recordPoolCount)
+  |--------{ offset, size, recordItemCount }
+  |--------[ recordId, recordName ](recordItemCount)
  */
 class PGOProfilerHeader : public base::FileHeaderElastic {
 public:
@@ -104,14 +104,16 @@ public:
     static constexpr VersionType FILE_CONSISTENCY_MINI_VERSION = {0, 0, 0, 6};
     static constexpr VersionType TRACK_FIELD_MINI_VERSION = {0, 0, 0, 7};
     static constexpr VersionType ELEMENTS_KIND_MINI_VERSION = {0, 0, 0, 8};
+    static constexpr VersionType RECORD_POOL_MINI_VERSION = {0, 0, 0, 9};
     static constexpr VersionType FILE_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType HEADER_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType ELASTIC_HEADER_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
-    static constexpr VersionType LAST_VERSION = {0, 0, 0, 8};
-    static constexpr size_t SECTION_SIZE = 3;
+    static constexpr VersionType LAST_VERSION = {0, 0, 0, 9};
+    static constexpr size_t SECTION_SIZE = 4;
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
     static constexpr size_t LAYOUT_DESC_SECTION_INDEX = 2;
+    static constexpr size_t RECORD_POOL_SECTION_INDEX = 3;
 
     PGOProfilerHeader() : base::FileHeaderElastic(LAST_VERSION), sectionNumber_(SECTION_SIZE)
     {
@@ -193,6 +195,11 @@ public:
         return GetSectionInfo(LAYOUT_DESC_SECTION_INDEX);
     }
 
+    SectionInfo *GetRecordPoolSection() const
+    {
+        return GetSectionInfo(RECORD_POOL_SECTION_INDEX);
+    }
+
     bool SupportType() const
     {
         return CompatibleVerify(TYPE_MINI_VERSION);
@@ -231,6 +238,11 @@ public:
     bool SupportElementsKind() const
     {
         return CompatibleVerify(ELEMENTS_KIND_MINI_VERSION);
+    }
+
+    bool SupportRecordPool() const
+    {
+        return CompatibleVerify(RECORD_POOL_MINI_VERSION);
     }
 
     NO_COPY_SEMANTIC(PGOProfilerHeader);
@@ -355,7 +367,7 @@ public:
 
     static int32_t Size(uint32_t length)
     {
-        return sizeof(PGOMethodInfo) + AlignUp(length, ALIGN_SIZE);
+        return sizeof(PGOMethodInfo) + AlignUp(length, GetAlignmentInBytes(PGO_ALIGN_SIZE));
     }
 
     int32_t Size() const
@@ -765,7 +777,7 @@ public:
 
         static int32_t Size(size_t len)
         {
-            return sizeof(PGOLayoutDescInfo) + AlignUp(len, ALIGN_SIZE);
+            return sizeof(PGOLayoutDescInfo) + AlignUp(len, GetAlignmentInBytes(PGO_ALIGN_SIZE));
         }
 
         int32_t Size() const
@@ -843,7 +855,7 @@ public:
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
 
     bool ParseFromBinary(Chunk *chunk, uint32_t threshold, void **buffer, PGOProfilerHeader *const header);
-    bool ProcessToBinary(uint32_t threshold, const CString &recordName, const SaveTask *task, std::fstream &fileStream,
+    bool ProcessToBinary(uint32_t threshold, PGORecordId recordId, const SaveTask *task, std::fstream &fileStream,
         PGOProfilerHeader *const header) const;
 
     bool ParseFromText(Chunk *chunk, uint32_t threshold, const std::vector<std::string> &content);
@@ -1010,25 +1022,11 @@ private:
 
 class PGORecordDetailInfos {
 public:
-    explicit PGORecordDetailInfos(uint32_t hotnessThreshold) : hotnessThreshold_(hotnessThreshold)
-    {
-        chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
-    };
+    explicit PGORecordDetailInfos(uint32_t hotnessThreshold);
 
-    ~PGORecordDetailInfos()
-    {
-        Clear();
-    }
+    ~PGORecordDetailInfos();
 
-    void Clear()
-    {
-        for (auto iter : recordInfos_) {
-            iter.second->Clear();
-            nativeAreaAllocator_.Delete(iter.second);
-        }
-        recordInfos_.clear();
-        chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
-    }
+    void Clear();
 
     // If it is a new method, return true.
     bool AddMethod(const CString &recordName, Method *jsMethod, SampleMode mode, int32_t incCount);
@@ -1046,7 +1044,7 @@ public:
     bool ParseFromText(std::ifstream &stream);
     void ProcessToText(std::ofstream &stream) const;
 
-    const CMap<CString, PGOMethodInfoMap *> &GetRecordInfos() const
+    const CMap<PGORecordId, PGOMethodInfoMap *> &GetRecordInfos() const
     {
         return recordInfos_;
     }
@@ -1062,8 +1060,9 @@ private:
     uint32_t hotnessThreshold_ {2};
     NativeAreaAllocator nativeAreaAllocator_;
     std::unique_ptr<Chunk> chunk_;
-    CMap<CString, PGOMethodInfoMap *> recordInfos_;
+    CMap<PGORecordId, PGOMethodInfoMap *> recordInfos_;
     std::set<PGOHClassLayoutDesc> moduleLayoutDescInfos_;
+    std::unique_ptr<PGORecordPool> recordPool_;
 };
 
 class PGORecordSimpleInfos {
@@ -1071,6 +1070,7 @@ public:
     explicit PGORecordSimpleInfos(uint32_t threshold) : hotnessThreshold_(threshold)
     {
         chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
+        recordPool_ = std::make_unique<PGORecordPool>();
     }
 
     ~PGORecordSimpleInfos()
@@ -1085,7 +1085,9 @@ public:
             nativeAreaAllocator_.Delete(iter.second);
         }
         methodIds_.clear();
+        recordPool_->Clear();
         chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
+        recordPool_ = std::make_unique<PGORecordPool>();
     }
 
     bool Match(const CString &recordName, EntityId methodId);
@@ -1175,6 +1177,7 @@ private:
     NativeAreaAllocator nativeAreaAllocator_;
     std::unique_ptr<Chunk> chunk_;
     CUnorderedMap<CString, PGOMethodIdSet *> methodIds_;
+    std::unique_ptr<PGORecordPool> recordPool_;
     std::set<PGOHClassLayoutDesc> moduleLayoutDescInfos_;
 };
 } // namespace panda::ecmascript

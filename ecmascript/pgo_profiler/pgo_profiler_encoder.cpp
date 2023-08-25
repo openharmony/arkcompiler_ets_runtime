@@ -82,6 +82,12 @@ void PGOProfilerEncoder::Merge(const PGOPandaFileInfos &pandaFileInfos)
     return pandaFileInfos_->Merge(pandaFileInfos);
 }
 
+void PGOProfilerEncoder::Merge(const PGOProfilerEncoder &encoder)
+{
+    Merge(*encoder.pandaFileInfos_);
+    Merge(*encoder.globalRecordInfos_);
+}
+
 bool PGOProfilerEncoder::VerifyPandaFileMatched(const PGOPandaFileInfos &pandaFileInfos, const std::string &base,
                                                 const std::string &incoming) const
 {
