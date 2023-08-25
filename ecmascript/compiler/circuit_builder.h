@@ -270,10 +270,8 @@ public:
     template<TypedCallTargetCheckOp Op>
     inline GateRef JSNoGCCallThisTargetTypeCheck(GateType type, GateRef func, GateRef methodId, GateRef gate);
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
-    GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::initializer_list<GateRef>& args);
-    inline GateRef TypedCallBuiltin(GateRef hirGate, GateRef x, BuiltinsStubCSigns::ID id);
-    inline GateRef TypedCallThis3Builtin(GateRef hirGate, GateRef thisObj, GateRef a0, GateRef a1, GateRef a2,
-                                         BuiltinsStubCSigns::ID id);
+    GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef>& inList);
+    inline GateRef TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
     GateRef AddWithOverflow(GateRef left, GateRef right);
     GateRef SubWithOverflow(GateRef left, GateRef right);

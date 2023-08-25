@@ -219,6 +219,26 @@ double ArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedValue> 
     return 0;
 }
 
+double ArrayHelper::StringSortCompare(JSThread *thread, const JSHandle<JSTaggedValue> &valueX,
+                                      const JSHandle<JSTaggedValue> &valueY)
+{
+    ASSERT(valueX->IsString());
+    ASSERT(valueY->IsString());
+    // 9. If xString < yString, return -1.
+    // 10. If xString > yString, return 1.
+    // 11. Return +0.
+    auto xHandle = JSHandle<EcmaString>(valueX);
+    auto yHandle = JSHandle<EcmaString>(valueY);
+    int result = EcmaStringAccessor::Compare(thread->GetEcmaVM(), xHandle, yHandle);
+    if (result < 0) {
+        return -1;
+    }
+    if (result > 0) {
+        return 1;
+    }
+    return 0;
+}
+
 int64_t ArrayHelper::GetLength(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)
 {
     if (thisHandle->IsJSArray()) {

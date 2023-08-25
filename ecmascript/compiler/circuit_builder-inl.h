@@ -1196,30 +1196,21 @@ inline GateRef CircuitBuilder::IsBase(GateRef ctor)
     return Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR)));
 }
 
-inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, GateRef x, BuiltinsStubCSigns::ID id)
+inline GateRef CircuitBuilder::TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args,
+                                                BuiltinsStubCSigns::ID id)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    GateRef idGate = Int8(static_cast<int8_t>(id));
-    auto numberMathOp = TypedCallOperator(hirGate, MachineType::I64, {currentControl, currentDepend, x, idGate});
-    currentLabel->SetControl(numberMathOp);
-    currentLabel->SetDepend(numberMathOp);
-    return numberMathOp;
-}
 
-inline GateRef CircuitBuilder::TypedCallThis3Builtin(GateRef hirGate, GateRef thisObj, GateRef a0, GateRef a1,
-                                                     GateRef a2, BuiltinsStubCSigns::ID id)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    GateRef idGate = Int8(static_cast<int8_t>(id));
-    auto numberMathOp = TypedCallOperator(hirGate, MachineType::I64,
-        {currentControl, currentDepend, thisObj, a0, a1, a2, idGate});
-    currentLabel->SetControl(numberMathOp);
-    currentLabel->SetDepend(numberMathOp);
-    return numberMathOp;
+    std::vector<GateRef> inList { currentControl, currentDepend };
+    inList.insert(inList.end(), args.begin(), args.end());
+    inList.push_back(Int8(static_cast<int8_t>(id)));
+
+    auto builtinOp = TypedCallOperator(hirGate, MachineType::I64, inList);
+    currentLabel->SetControl(builtinOp);
+    currentLabel->SetDepend(builtinOp);
+    return builtinOp;
 }
 
 inline GateRef CircuitBuilder::GetMethodId(GateRef func)

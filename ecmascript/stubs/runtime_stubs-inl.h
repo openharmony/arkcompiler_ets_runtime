@@ -18,6 +18,7 @@
 
 #include "ecmascript/stubs/runtime_stubs.h"
 
+#include "ecmascript/base/array_helper.h"
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/ecma_string_table.h"
@@ -44,6 +45,7 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript {
+using ArrayHelper = base::ArrayHelper;
 JSTaggedValue RuntimeStubs::RuntimeInc(JSThread *thread, const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<JSTaggedValue> inputVal = JSTaggedValue::ToNumeric(thread, value);
@@ -2649,6 +2651,80 @@ JSTaggedValue RuntimeStubs::RuntimeThrowStackOverflowException(JSThread *thread)
         thread->SetException(error.GetTaggedValue());
     }
     return JSTaggedValue::Exception();
+}
+
+bool RuntimeStubs::CheckElementsNumber(JSHandle<TaggedArray> elements, uint32_t len)
+{
+    ASSERT(len <= elements->GetLength());
+    for (uint32_t i = 0; i < len; i++) {
+        if (!elements->Get(i).IsNumber()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+JSHandle<JSTaggedValue> RuntimeStubs::GetOrCreateNumberString(JSThread *thread, JSHandle<JSTaggedValue> presentValue,
+                                                              std::map<uint64_t, JSHandle<JSTaggedValue>> &cachedString)
+{
+    JSMutableHandle<JSTaggedValue> presentString(thread, JSTaggedValue::Undefined());
+    auto iter = cachedString.find(presentValue->GetRawData());
+    if (iter != cachedString.end()) {
+        presentString.Update(iter->second);
+    } else {
+        presentString.Update(JSTaggedValue::ToString(thread, presentValue).GetTaggedValue());
+        cachedString[presentValue->GetRawData()] = presentString;
+    }
+    return presentString;
+}
+
+JSTaggedValue RuntimeStubs::TryCopyCOWArray(JSThread *thread, JSHandle<JSArray> holderHandler, bool &isCOWArray)
+{
+    if (isCOWArray) {
+        JSArray::CheckAndCopyArray(thread, holderHandler);
+        isCOWArray = false;
+    }
+    return holderHandler->GetElements();
+}
+
+JSTaggedValue RuntimeStubs::ArrayNumberSort(JSThread *thread, JSHandle<JSObject> thisObj, uint32_t len)
+{
+    JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
+    bool isCOWArray = JSHandle<JSTaggedValue>(thisObj)->IsJSCOWArray();
+    JSMutableHandle<TaggedArray> elements(thread, thisObj->GetElements());
+    std::map<uint64_t, JSHandle<JSTaggedValue>> cachedString;
+    for (uint32_t i = 1; i < len; i++) {
+        uint32_t beginIndex = 0;
+        uint32_t endIndex = i;
+        presentValue.Update(elements->Get(i));
+        JSHandle<JSTaggedValue> presentString = GetOrCreateNumberString(thread, presentValue, cachedString);
+        while (beginIndex < endIndex) {
+            uint32_t middleIndex = beginIndex + (endIndex - beginIndex) / 2; // 2 : half
+            middleValue.Update(elements->Get(middleIndex));
+            JSHandle<JSTaggedValue> middleString = GetOrCreateNumberString(thread, middleValue, cachedString);
+            double compareResult = ArrayHelper::StringSortCompare(thread, middleString, presentString);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+            if (compareResult > 0) {
+                endIndex = middleIndex;
+            } else {
+                beginIndex = middleIndex + 1;
+            }
+        }
+        if (endIndex >= 0 && endIndex < i) {
+            for (uint32_t j = i; j > endIndex; j--) {
+                previousValue.Update(elements->Get(j - 1));
+                elements.Update(TryCopyCOWArray(thread, JSHandle<JSArray>(thisObj), isCOWArray));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+                elements->Set(thread, j, previousValue);
+            }
+            elements.Update(TryCopyCOWArray(thread, JSHandle<JSArray>(thisObj), isCOWArray));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
+            elements->Set(thread, endIndex, presentValue);
+        }
+    }
+    return thisObj.GetTaggedValue();
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H

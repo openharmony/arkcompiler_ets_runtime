@@ -31,6 +31,7 @@ public:
     void LowerTypedSqrt(GateRef gate);
     GateRef CheckPara(GateRef gate, GateRef funcCheck);
     void LowerTypedLocaleCompare(GateRef gate);
+    void LowerTypedArraySort(GateRef gate);
 
 private:
     void LowerTypedTrigonometric(GateRef gate, BuiltinsStubCSigns::ID id);

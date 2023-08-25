@@ -165,8 +165,8 @@ private:
     template<TypedUnOp Op>
     void SpeculateNumber(GateRef gate);
     void SpeculateConditionJump(GateRef gate, bool flag);
-    void SpeculateCallBuiltin(GateRef gate, GateRef func, GateRef a0, BuiltinsStubCSigns::ID Op);
-    void SpeculateCallThis3Builtin(GateRef gate, BuiltinsStubCSigns::ID id);
+    void SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
+                              BuiltinsStubCSigns::ID id, bool isThrow);
     BuiltinsStubCSigns::ID GetBuiltinId(BuiltinTypeId id, GateRef func);
     void DeleteConstDataIfNoUser(GateRef gate);
 

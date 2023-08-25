@@ -65,14 +65,15 @@ namespace panda::ecmascript::kungfu {
     V(ArrayConstructor)
 
 #define AOT_BUILTINS_STUB_LIST(V)                   \
-    V(SQRT)                                         \
+    V(SQRT)  /* list start and math list start */   \
     V(COS)                                          \
     V(SIN)                                          \
     V(ACOS)                                         \
     V(ATAN)                                         \
     V(ABS)                                          \
-    V(FLOOR)                                        \
-    V(LocaleCompare)
+    V(FLOOR)  /* math list end */                   \
+    V(LocaleCompare)                                \
+    V(SORT)
 
 class BuiltinsStubCSigns {
 public:
@@ -86,6 +87,10 @@ public:
         AOT_BUILTINS_STUB_LIST(DEF_STUB_ID)
 #undef DEF_STUB_ID
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
+        TYPED_BUILTINS_FIRST = SQRT,
+        TYPED_BUILTINS_LAST = SORT,
+        TYPED_BUILTINS_MATH_FIRST = SQRT,
+        TYPED_BUILTINS_MATH_LAST = FLOOR,
         INVALID = 0xFF,
     };
 
@@ -122,18 +127,14 @@ public:
 
     static bool IsTypedBuiltin(ID builtinId)
     {
-        switch (builtinId) {
-            case BuiltinsStubCSigns::ID::COS:
-            case BuiltinsStubCSigns::ID::SIN:
-            case BuiltinsStubCSigns::ID::ACOS:
-            case BuiltinsStubCSigns::ID::ATAN:
-            case BuiltinsStubCSigns::ID::ABS:
-            case BuiltinsStubCSigns::ID::FLOOR:
-            case BuiltinsStubCSigns::ID::SQRT:
-                return true;
-            default:
-                return false;
-        }
+        return (BuiltinsStubCSigns::ID::TYPED_BUILTINS_FIRST <= builtinId) &&
+               (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_LAST);
+    }
+
+    static bool IsTypedBuiltinMath(ID builtinId)
+    {
+        return (BuiltinsStubCSigns::ID::TYPED_BUILTINS_MATH_FIRST <= builtinId) &&
+               (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_MATH_LAST);
     }
 
     static ConstantIndex GetConstantIndex(ID builtinId)
@@ -153,6 +154,10 @@ public:
                 return ConstantIndex::MATH_FLOOR_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SQRT:
                 return ConstantIndex::MATH_SQRT_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::LocaleCompare:
+                return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::SORT:
+                return ConstantIndex::ARRAY_SORT_FUNCTION_INDEX;
             default:
                 LOG_COMPILER(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -170,6 +175,7 @@ public:
             {"abs", ABS},
             {"floor", FLOOR},
             {"localeCompare", LocaleCompare},
+            {"sort", SORT},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);
@@ -198,6 +204,7 @@ enum class BuiltinsArgs : size_t {
 
 #define BUILTINS_STUB_ID(name) kungfu::BuiltinsStubCSigns::name
 #define IS_TYPED_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltin(id)
+#define IS_TYPED_BUILTINS_MATH_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinMath(id)
 #define GET_TYPED_CONSTANT_INDEX(id) kungfu::BuiltinsStubCSigns::GetConstantIndex(id)
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H

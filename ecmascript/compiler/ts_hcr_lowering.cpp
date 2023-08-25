@@ -1085,25 +1085,20 @@ void TSHCRLowering::LowerTypedSuperCall(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), constructGate);
 }
 
-void TSHCRLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, GateRef a0, BuiltinsStubCSigns::ID id)
+void TSHCRLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
+                                         BuiltinsStubCSigns::ID id, bool isThrow)
 {
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), a0);
+        builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), args[0]);
     }
-    GateRef result = builder_.TypedCallBuiltin(gate, a0, id);
 
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
-}
+    GateRef result = builder_.TypedCallBuiltin(gate, args, id);
 
-void TSHCRLowering::SpeculateCallThis3Builtin(GateRef gate, BuiltinsStubCSigns::ID id)
-{
-    GateRef thisObj = acc_.GetValueIn(gate, 0);
-    GateRef a0 = acc_.GetValueIn(gate, 1);  // 1: the first-para
-    GateRef a1 = acc_.GetValueIn(gate, 2);  // 2: the third-para
-    GateRef a2 = acc_.GetValueIn(gate, 3);  // 3: the fourth-para
-    GateRef result = builder_.TypedCallThis3Builtin(gate, thisObj, a0, a1, a2, id);
-
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    if (isThrow) {
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    } else {
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    }
 }
 
 BuiltinsStubCSigns::ID TSHCRLowering::GetBuiltinId(BuiltinTypeId id, GateRef func)
@@ -1206,9 +1201,9 @@ void TSHCRLowering::LowerTypedCallArg1(GateRef gate)
     GateRef a0Value = acc_.GetValueIn(gate, 0);
     GateType a0Type = acc_.GetGateType(a0Value);
     BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::MATH, func);
-    if (id != BuiltinsStubCSigns::ID::NONE && a0Type.IsNumberType()) {
+    if (IS_TYPED_BUILTINS_MATH_ID(id) && a0Type.IsNumberType()) {
         AddProfiling(gate);
-        SpeculateCallBuiltin(gate, func, a0Value, id);
+        SpeculateCallBuiltin(gate, func, { a0Value }, id, false);
     } else {
         GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
             EcmaOpcode::CALLARG1_IMM8_V8));
@@ -1352,6 +1347,13 @@ void TSHCRLowering::LowerTypedCallthis0(GateRef gate)
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef func = acc_.GetValueIn(gate, 1);
+    BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::ARRAY, func);
+    if (id == BuiltinsStubCSigns::ID::SORT) {
+        AddProfiling(gate);
+        GateRef thisObj = acc_.GetValueIn(gate, 0);
+        SpeculateCallBuiltin(gate, func, { thisObj }, id, true);
+        return;
+    }
     if (!CanOptimizeAsFastCall(func)) {
         return;
     }
@@ -1368,9 +1370,9 @@ void TSHCRLowering::LowerTypedCallthis1(GateRef gate)
     GateType a0Type = acc_.GetGateType(a0);
     GateRef func = acc_.GetValueIn(gate, 2); // 2:function
     BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::MATH, func);
-    if (id != BuiltinsStubCSigns::ID::NONE && a0Type.IsNumberType()) {
+    if (IS_TYPED_BUILTINS_MATH_ID(id) && a0Type.IsNumberType()) {
         AddProfiling(gate);
-        SpeculateCallBuiltin(gate, func, a0, id);
+        SpeculateCallBuiltin(gate, func, { a0 }, id, false);
     } else {
         if (!CanOptimizeAsFastCall(func)) {
             return;
@@ -1402,7 +1404,11 @@ void TSHCRLowering::LowerTypedCallthis3(GateRef gate)
     BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::STRING, func);
     if (id == BuiltinsStubCSigns::ID::LocaleCompare) {
         AddProfiling(gate);
-        SpeculateCallThis3Builtin(gate, id);
+        GateRef thisObj = acc_.GetValueIn(gate, 0);
+        GateRef a0 = acc_.GetValueIn(gate, 1);  // 1: the first-para
+        GateRef a1 = acc_.GetValueIn(gate, 2);  // 2: the third-para
+        GateRef a2 = acc_.GetValueIn(gate, 3);  // 3: the fourth-para
+        SpeculateCallBuiltin(gate, func, { thisObj, a0, a1, a2 }, id, true);
         return;
     }
 

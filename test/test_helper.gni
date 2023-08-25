@@ -991,6 +991,10 @@ template("host_aot_test_action") {
         " --aot-file=" + rebase_path(_test_aot_arg_) +
         " --asm-interpreter=true" + " --entry-point=${_target_name_}"
 
+    _icu_data_path_options_ =
+        " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+    _aot_run_options_ += _icu_data_path_options_
+
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _aot_run_options_ += " --enable-ark-tools=true"
@@ -1043,6 +1047,10 @@ template("host_aot_test_action") {
         " --aot-file=" + rebase_path(_test_aot_arg_) +
         " --asm-interpreter=true" + " --entry-point=${_target_name_}"
 
+    _icu_data_path_options_ =
+        " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+    _aot_run_options_ += _icu_data_path_options_
+
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
       _aot_run_options_ += " --enable-ark-tools=true"
@@ -1092,6 +1100,10 @@ template("host_aot_test_action") {
     _aot_run_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_slowpath_) +
         " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+    _icu_data_path_options_ =
+        " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+    _aot_run_options_ += _icu_data_path_options_
 
     if (defined(invoker.is_enable_enableArkTools) &&
         invoker.is_enable_enableArkTools) {
