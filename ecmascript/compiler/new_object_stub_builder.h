@@ -65,6 +65,8 @@ public:
     void LoadArrayHClass(Variable *hclass, Label *exit, GateRef glue, GateRef jsFunc,
         GateRef pc, GateRef profileTypeInfo, GateRef slotId, GateRef arrayLiteral = Circuit::NullGate());
     void NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
+    template <typename IteratorType, typename CollectionType>
+    void CreateJSCollectionIterator(Variable *result, Label *exit, GateRef set, GateRef kind);
 
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;

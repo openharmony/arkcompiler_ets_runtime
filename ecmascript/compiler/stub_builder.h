@@ -337,6 +337,7 @@ public:
     GateRef IsJSAPILinkedList(GateRef obj);
     GateRef IsJSAPIList(GateRef obj);
     GateRef IsJSAPIArrayList(GateRef obj);
+    GateRef IsJSObjectType(GateRef obj, JSType jsType);
     GateRef GetTarget(GateRef proxyObj);
     GateRef HandlerBaseIsAccessor(GateRef attr);
     GateRef HandlerBaseIsJSArray(GateRef attr);
