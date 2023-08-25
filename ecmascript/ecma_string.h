@@ -534,9 +534,10 @@ private:
     static const uint16_t *GetUtf16DataFlat(const EcmaString *src, CVector<uint16_t> &buf);
 
     // string must be not flat
-    static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<TreeEcmaString> &string);
+    static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<TreeEcmaString> &string, MemSpaceType type);
 
-    static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string);
+    static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
+                               MemSpaceType type = MemSpaceType::SEMI_SPACE);
 
     static EcmaString *FlattenNoGC(const EcmaVM *vm, EcmaString *string);
 
@@ -1092,14 +1093,16 @@ public:
         return string_->IsTreeString();
     }
 
-    static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string)
+    static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
+        MemSpaceType type = MemSpaceType::SEMI_SPACE)
     {
-        return EcmaString::Flatten(vm, string);
+        return EcmaString::Flatten(vm, string, type);
     }
 
-    static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<TreeEcmaString> &string)
+    static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<TreeEcmaString> &string,
+        MemSpaceType type = MemSpaceType::SEMI_SPACE)
     {
-        return EcmaString::SlowFlatten(vm, string);
+        return EcmaString::SlowFlatten(vm, string, type);
     }
 
     static EcmaString *FlattenNoGC(const EcmaVM *vm, EcmaString *string)
