@@ -399,6 +399,15 @@ JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsP
     panda_file::IndexAccessor indexAccessor(*jsPandaFile->GetPandaFile(), id);
     int32_t index = static_cast<int32_t>(indexAccessor.GetHeaderIndex());
     JSTaggedValue constpool = FindConstpool(jsPandaFile, index);
+    // In the taskpool thread, there is a case where the Function object is serialized before InitForCurrentThread.
+    // A constpool is created when a Function is serialized. Slowpath, the default deserialized constpool,
+    // string is non-lazy load mode. A hole is returned if you access the constpool of the serialized Function
+    if (constpool.IsHole() && ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
+        bool result = GetAOTFileManager()->LoadAiFile(jsPandaFile);
+        if (result) {
+            constpool = FindConstpool(jsPandaFile, index);
+        }
+    }
     if (constpool.IsHole()) {
         JSHandle<ConstantPool> newConstpool = ConstantPool::CreateConstPool(vm_, jsPandaFile, id);
         AddConstpool(jsPandaFile, newConstpool.GetTaggedValue(), index);

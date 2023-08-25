@@ -82,24 +82,25 @@ bool AOTFileManager::LoadAiFile([[maybe_unused]] const std::string &filename)
 #endif
 }
 
-void AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
+bool AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
 {
     uint32_t anFileInfoIndex = GetAnFileIndex(jsPandaFile);
     // this abc file does not have corresponding an file
     if (anFileInfoIndex == INVALID_INDEX) {
-        return;
+        return false;
     }
 
     auto iter = desCPs_.find(anFileInfoIndex);
     // already loaded
     if (iter != desCPs_.end()) {
-        return;
+        return false;
     }
 
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
     std::string aiFilename = anFileDataManager->GetDir();
     aiFilename += JSFilePath::GetHapName(jsPandaFile) + AOTFileManager::FILE_EXTENSION_AI;
     LoadAiFile(aiFilename);
+    return true;
 }
 
 const std::shared_ptr<AnFileInfo> AOTFileManager::GetAnFileInfo(const JSPandaFile *jsPandaFile) const

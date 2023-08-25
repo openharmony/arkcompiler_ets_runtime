@@ -190,10 +190,6 @@ JSHandle<Program> JSPandaFileManager::GenerateProgram(EcmaVM *vm, const JSPandaF
                                                       std::string_view entryPoint)
 {
     ASSERT(GetJSPandaFile(jsPandaFile->GetPandaFile()) != nullptr);
-    if (AnFileDataManager::GetInstance()->IsEnable()) {
-        vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager()->LoadAiFile(jsPandaFile);
-    }
-
     return PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);
 }
 

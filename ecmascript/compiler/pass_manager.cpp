@@ -126,6 +126,11 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<TSClassAnalysisPass>();
         pipeline.RunPass<TSInlineLoweringPass>();
         pipeline.RunPass<AsyncFunctionLoweringPass>();
+        // skip async function, because some application run with errors.
+        if (methodInfo.IsTypeInferAbort()) {
+            data.AbortCompilation();
+            return;
+        }
         pipeline.RunPass<TSHCRLoweringPass>();
         pipeline.RunPass<NTypeHCRLoweringPass>();
         if (data.IsTypeAbort()) {

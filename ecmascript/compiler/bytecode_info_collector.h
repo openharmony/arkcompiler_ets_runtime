@@ -412,9 +412,10 @@ public:
     };
 
     // key:constantpool index, value:ItemData
-    using Item = std::unordered_map<uint32_t, ItemData>;
+    using Item = std::unordered_map<uint64_t, ItemData>;
 
-    ConstantPoolInfo() : items_(ItemType::ITEM_TYPE_NUM, Item{}) {}
+    ConstantPoolInfo(JSPandaFile* jsPandaFile) :
+        items_(ItemType::ITEM_TYPE_NUM, Item{}), jsPandaFile_(jsPandaFile) {}
 
     Item& GetCPItem(ItemType type)
     {
@@ -424,7 +425,11 @@ public:
 
     void AddIndexToCPItem(ItemType type, uint32_t index, uint32_t methodOffset, uint32_t bcIndex);
 private:
+    static constexpr uint32_t CONSTPOOL_MASK = 32;
+    uint64_t GetItemKey(uint32_t index, uint32_t methodOffset);
+
     std::vector<Item> items_;
+    JSPandaFile* jsPandaFile_ {nullptr};
 };
 
 struct FastCallInfo {
@@ -434,8 +439,8 @@ struct FastCallInfo {
 
 class BCInfo {
 public:
-    explicit BCInfo(size_t maxAotMethodSize)
-        : maxMethodSize_(maxAotMethodSize)
+    explicit BCInfo(size_t maxAotMethodSize, JSPandaFile* jsPandaFile)
+        : cpInfo_(jsPandaFile), maxMethodSize_(maxAotMethodSize)
     {
     }
 

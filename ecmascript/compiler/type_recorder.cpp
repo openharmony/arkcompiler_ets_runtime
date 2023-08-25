@@ -164,6 +164,12 @@ void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const Metho
             if (callTargetMethodOffset == 0) {
                 return;
             }
+            // Recompiling the application ABC changes the content, and there may be a calltargetMethodOffset
+            // that does not exist in ABC. Type resolution should be skipped when it does not exist,
+            // or parsing pandafile will fail
+            if (jsPandaFile->GetMethodLiteralByIndex(callTargetMethodOffset) == nullptr) {
+                return;
+            }
             TypeAnnotationExtractor annoExtractor(jsPandaFile, callTargetMethodOffset);
             GlobalTSTypeRef funcGT =
                 typeParser.CreateGT(jsPandaFile, recordName, annoExtractor.GetMethodTypeOffset());
