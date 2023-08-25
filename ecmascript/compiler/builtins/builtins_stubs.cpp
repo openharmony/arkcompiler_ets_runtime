@@ -1244,7 +1244,7 @@ DECLARE_BUILTINS(type##method)                                                  
     Label thisCollectionObj(env);                                                                   \
     Label slowPath(env);                                                                            \
     Label exit(env);                                                                                \
-    BuiltinsCollectionStubBuilder<JS##type> builder(this, glue, thisValue);                         \
+    BuiltinsCollectionStubBuilder<JS##type> builder(this, glue, thisValue, numArgs);                \
     builder.method(&res, &exit, &slowPath);                                                         \
     Bind(&slowPath);                                                                                \
     {                                                                                               \
@@ -1262,6 +1262,8 @@ DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Clear, VariableType::JS_ANY(), Und
 DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Values, VariableType::JS_ANY(), Undefined());
 // Set.protetype.Entries
 DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Entries, VariableType::JS_ANY(), Undefined());
+// Set.protetype.ForEach
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, ForEach, VariableType::JS_ANY(), Undefined());
 // Map.protetype.Clear
 DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Clear, VariableType::JS_ANY(), Undefined());
 // Map.protetype.Values
@@ -1270,6 +1272,7 @@ DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Values, VariableType::JS_ANY(), Un
 DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Entries, VariableType::JS_ANY(), Undefined());
 // Map.protetype.Keys
 DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Keys, VariableType::JS_ANY(), Undefined());
-
+// Map.protetype.ForEach
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, ForEach, VariableType::JS_ANY(), Undefined());
 #undef DECLARE_BUILTINS_COLLECTION_STUB_BUILDER
 }  // namespace panda::ecmascript::kungfu

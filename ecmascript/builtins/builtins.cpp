@@ -1329,7 +1329,8 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     // set.prototype.has()
     SetFunction(env, setFuncPrototype, "has", BuiltinsSet::Has, FunctionLength::ONE);
     // set.prototype.forEach()
-    SetFunction(env, setFuncPrototype, "forEach", BuiltinsSet::ForEach, FunctionLength::ONE);
+    SetFunction(env, setFuncPrototype, "forEach", BuiltinsSet::ForEach, FunctionLength::ONE,
+        BUILTINS_STUB_ID(SetForEach));
     // set.prototype.entries()
     SetFunction(env, setFuncPrototype, "entries", BuiltinsSet::Entries, FunctionLength::ZERO,
         BUILTINS_STUB_ID(SetEntries));
@@ -1410,7 +1411,8 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSHC
     SetFunction(env, mapFuncPrototype, thread_->GlobalConstants()->GetHandledGetString(), BuiltinsMap::Get,
                 FunctionLength::ONE);
     // map.prototype.forEach()
-    SetFunction(env, mapFuncPrototype, "forEach", BuiltinsMap::ForEach, FunctionLength::ONE);
+    SetFunction(env, mapFuncPrototype, "forEach", BuiltinsMap::ForEach, FunctionLength::ONE,
+        BUILTINS_STUB_ID(MapForEach));
     // map.prototype.keys()
     SetFunction(env, mapFuncPrototype, "keys", BuiltinsMap::Keys, FunctionLength::ZERO,
         BUILTINS_STUB_ID(MapKeys));

@@ -61,10 +61,12 @@ namespace panda::ecmascript::kungfu {
     V(SetClear)                                     \
     V(SetValues)                                    \
     V(SetEntries)                                   \
+    V(SetForEach)                                   \
     V(MapClear)                                     \
     V(MapValues)                                    \
     V(MapEntries)                                   \
-    V(MapKeys)
+    V(MapKeys)                                      \
+    V(MapForEach)
 
 #define BUILTINS_CONSTRUCTOR_STUB_LIST(V)           \
     V(BooleanConstructor)                           \
