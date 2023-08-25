@@ -56,6 +56,13 @@ public:
  *      |    object literal(JSObject)    |  |
  *      |   class literal(ClassLiteral)  |  v
  *      +--------------------------------+----
+ *      |              ...               |  ^
+ *      |        InstanceTSHClass        |  |
+ *      |       ConstructorTSHClass      |snapshotCPList(the positions of each part are random)
+ *      |         ArrayTSElements        |  |
+ *      |       ArrayTSElementsKind      |  v
+ *      |   constIndexInfo(TaggedArray)  |at the end of snapshotCPList
+ *      +--------------------------------+----
  *      |           IndexHeader          |
  *      +--------------------------------+
  *      |           JSPandaFile          |
@@ -63,9 +70,10 @@ public:
  */
 class ConstantPool : public TaggedArray {
 public:
-    static constexpr size_t JS_PANDA_FILE_INDEX = 1;
-    static constexpr size_t INDEX_HEADER_INDEX = 2;
-    static constexpr size_t RESERVED_POOL_LENGTH = INDEX_HEADER_INDEX;
+    static constexpr size_t JS_PANDA_FILE_INDEX = 1; // not need gc
+    static constexpr size_t INDEX_HEADER_INDEX = 2; // not need gc
+    static constexpr size_t CONSTANT_INDEX_INFO_INDEX = 3;
+    static constexpr size_t RESERVED_POOL_LENGTH = INDEX_HEADER_INDEX; // divide the gc area
 
     static ConstantPool *Cast(TaggedObject *object)
     {
@@ -137,18 +145,22 @@ public:
 
     static size_t ComputeSize(uint32_t cacheSize)
     {
-        return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), cacheSize + RESERVED_POOL_LENGTH);
+        // 1 : constIndexInfo is a TaggedArray, take up an extra spot
+        return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), cacheSize + 1 + RESERVED_POOL_LENGTH);
     }
 
-    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity, uint32_t extraLength = 0)
+    inline void InitializeWithSpecialValue(JSThread *thread, JSTaggedValue initValue,
+        uint32_t capacity, uint32_t extraLength = 0)
     {
         ASSERT(initValue.IsSpecial());
-        SetLength(capacity + RESERVED_POOL_LENGTH);
+        // 1 : constIndexInfo is a TaggedArray, take up an extra spot
+        SetLength(capacity + 1 + RESERVED_POOL_LENGTH);
         SetExtraLength(extraLength);
         for (uint32_t i = 0; i < capacity; i++) {
             size_t offset = JSTaggedValue::TaggedTypeSize() * i;
             Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
         }
+        SetConstantIndexInfo(thread);
         SetJSPandaFile(nullptr);
         SetIndexHeader(nullptr);
     }
@@ -166,6 +178,12 @@ public:
     inline JSPandaFile *GetJSPandaFile() const
     {
         return Barriers::GetValue<JSPandaFile *>(GetData(), GetJSPandaFileOffset());
+    }
+
+    inline void SetConstantIndexInfo(JSThread *thread)
+    {
+        JSHandle<TaggedArray> array(thread->GlobalConstants()->GetHandledEmptyArray());
+        Barriers::SetPrimitive(GetData(), GetConstantIndexInfoOffset(), array.GetTaggedValue().GetRawData());
     }
 
     inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
@@ -370,6 +388,11 @@ private:
     inline size_t GetIndexHeaderOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - INDEX_HEADER_INDEX);
+    }
+
+    inline size_t GetConstantIndexInfoOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - CONSTANT_INDEX_INFO_INDEX);
     }
 
     inline size_t GetLastOffset() const

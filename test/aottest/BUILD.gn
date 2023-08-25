@@ -61,6 +61,7 @@ group("ark_aot_ts_test") {
     "compiler_test",
     "continue_from_finally",
     "copyrestargs",
+    "createarrayimm16",
     "createarraywithbuffer",
     "createemptyarray",
     "createemptyobject",

@@ -169,18 +169,15 @@ void NTypeHCRLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
     GateType gateType = acc_.GetGateType(gate);
     panda_file::File::EntityId id = ConstantPool::GetIdFromCache(constpoolHandle.GetTaggedValue(), cpIdx);
     tsManager_->AddArrayTSConstantIndex(bcAbsoluteOffset, JSTaggedValue(static_cast<int64_t>(hclassIdx)));
-    tsManager_->AddArrayTSHClass(id, arrayHandle->GetClass());
     tsManager_->AddArrayTSElements(id, arrayHandle->GetElements());
     tsManager_->AddArrayTSElementsKind(id, JSTaggedValue(static_cast<int64_t>(kind)));
     gateType = tsManager_->TryNarrowUnionType(gateType);
 
-    int hclassIndex = -1;
     int elementIndex = -1;
     if (tsManager_->IsArrayTypeKind(gateType)) {
-        hclassIndex = tsManager_->GetHClassIndexByArrayType(gateType, id);
         elementIndex = tsManager_->GetElementsIndexByArrayType(gateType, id);
     }
-    if (hclassIndex == -1 || elementIndex == -1) { // slowpath
+    if (elementIndex == -1) { // slowpath
         return;
     }
 
@@ -201,6 +198,7 @@ void NTypeHCRLowering::LowerNTypedStownByIndex(GateRef gate)
         acc_.GetOpCode(receiver) != OpCode::CREATE_ARRAY_WITH_BUFFER) {
         return;
     }
+    builder_.COWArrayCheck(receiver);
 
     AddProfiling(gate);
     uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
