@@ -21,6 +21,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jspandafile/type_literal_extractor.h"
 #include "ecmascript/ts_types/ts_type_table_generator.h"
+#include "ecmascript/ts_types/ts_type_parser.h"
 #include "ecmascript/vtable.h"
 
 namespace panda::ecmascript {
@@ -938,6 +939,61 @@ const std::vector<BuiltinTypeId> &TSManager::GetValidTypedArrayIds()
         BuiltinTypeId::FLOAT64_ARRAY
     };
     return validTypedArrayIds;
+}
+
+BuiltinTypeId TSManager::GetBuiltinTypeIdByJSType(JSType jsType)
+{
+    static const std::map<JSType, BuiltinTypeId> jsTypeToBultinTypeID = {
+        {JSType::JS_INT8_ARRAY, BuiltinTypeId::INT8_ARRAY},
+        {JSType::JS_UINT8_ARRAY, BuiltinTypeId::UINT8_ARRAY},
+        {JSType::JS_UINT8_CLAMPED_ARRAY, BuiltinTypeId::UINT8_CLAMPED_ARRAY},
+        {JSType::JS_INT16_ARRAY, BuiltinTypeId::INT16_ARRAY},
+        {JSType::JS_UINT16_ARRAY, BuiltinTypeId::UINT16_ARRAY},
+        {JSType::JS_INT32_ARRAY, BuiltinTypeId::INT32_ARRAY},
+        {JSType::JS_UINT32_ARRAY, BuiltinTypeId::UINT32_ARRAY},
+        {JSType::JS_FLOAT32_ARRAY, BuiltinTypeId::FLOAT32_ARRAY},
+        {JSType::JS_FLOAT64_ARRAY, BuiltinTypeId::FLOAT64_ARRAY},
+    };
+
+    auto it = jsTypeToBultinTypeID.find(jsType);
+    if (it != jsTypeToBultinTypeID.end()) {
+        return it->second;
+    }
+
+    return BuiltinTypeId::NUM_INDEX_IN_SUMMARY;
+}
+
+const kungfu::GateType TSManager::GetBuiltinsGateTypeByPt(ClassType pgoType)
+{
+    ASSERT(pgoType.IsBuiltinsType());
+    JSType jsType = static_cast<JSType>(pgoType.GetId());
+
+    auto it = pgoBuiltinGTCache_.find(jsType);
+    if (it != pgoBuiltinGTCache_.end()) {
+        return kungfu::GateType(it->second);
+    }
+
+    BuiltinTypeId bTypeId = GetBuiltinTypeIdByJSType(jsType);
+    // If some builtin types sampled by pgo are not supported in AOT, AnyType will be returned
+    if (bTypeId == BuiltinTypeId::NUM_INDEX_IN_SUMMARY) {
+        return kungfu::GateType::AnyType();
+    }
+
+    TSTypeParser parser(this);
+    GlobalTSTypeRef gt = parser.CreateGT(GetBuiltinPandaFile(), GetBuiltinRecordName(),
+        static_cast<uint32_t>(bTypeId));
+    GlobalTSTypeRef instanceGT;
+
+    if (UNLIKELY(!IsBuiltinsDTSEnabled())) {
+        JSHandle<TSClassInstanceType> classInstanceType = factory_->NewTSClassInstanceType();
+        classInstanceType->SetClassGT(gt);
+        instanceGT = AddTSTypeToInferredTable(JSHandle<TSType>(classInstanceType));
+    } else {
+        instanceGT = CreateClassInstanceType(gt);
+    }
+
+    pgoBuiltinGTCache_.insert({jsType, instanceGT});
+    return kungfu::GateType(instanceGT);
 }
 
 BuiltinTypeId TSManager::GetTypedArrayBuiltinId(kungfu::GateType gateType) const

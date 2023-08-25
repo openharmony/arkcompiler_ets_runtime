@@ -138,6 +138,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "type_inference/initialization_analysis.cpp",
     "type_inference/method_type_infer.cpp",
     "type_inference/pgo_type_infer.cpp",
+    "type_inference/pgo_type_infer_helper.cpp",
     "type_mcr_lowering.cpp",
     "type_recorder.cpp",
     "typed_array_stub_builder.cpp",
