@@ -2465,6 +2465,7 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
 DECLARE_ASM_HANDLER(HandleSuspendgeneratorV8)
 {
     auto env = GetEnvironment();
+    METHOD_EXIT();
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
     DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
@@ -2871,6 +2872,7 @@ DECLARE_ASM_HANDLER(HandleCreateasyncgeneratorobjV8)
 DECLARE_ASM_HANDLER(HandleAsyncgeneratorresolveV8V8V8)
 {
     auto env = GetEnvironment();
+    METHOD_EXIT();
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
     DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);
@@ -4558,7 +4560,6 @@ DECLARE_ASM_HANDLER_NOPRINT(HandleCallRuntime)
 DECLARE_ASM_HANDLER_NOPRINT(ExceptionHandler)
 {
     auto env = GetEnvironment();
-    METHOD_EXIT();
     DEFVARIABLE(varPc, VariableType::NATIVE_POINTER(), pc);
     DEFVARIABLE(varSp, VariableType::NATIVE_POINTER(), sp);
     DEFVARIABLE(varConstpool, VariableType::JS_POINTER(), constpool);

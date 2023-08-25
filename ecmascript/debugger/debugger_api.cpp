@@ -40,6 +40,7 @@
 #include "ecmascript/js_api/js_api_tree_set.h"
 #include "ecmascript/js_api/js_api_lightweightmap.h"
 #include "ecmascript/js_api/js_api_lightweightset.h"
+#include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/frames.h"
 
 namespace panda::ecmascript::tooling {
@@ -1234,6 +1235,16 @@ Local<JSValueRef> DebuggerApi::GetVectorValue(const EcmaVM *ecmaVm, Local<JSValu
     }
     AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
     return jsValueRef;
+}
+
+bool DebuggerApi::CheckPromiseQueueSize(const EcmaVM *ecmaVm)
+{
+    auto *debuggerMgr = ecmaVm->GetJsDebuggerManager();
+    uint32_t queueSizeEntry = debuggerMgr->GetPromiseQueueSizeRecordOfTopFrame();
+    JSThread *thread = ecmaVm->GetJSThread();
+    EcmaContext *context = thread->GetCurrentEcmaContext();
+    uint32_t queueSizeCurrent = job::MicroJobQueue::GetPromiseQueueSize(thread, context->GetMicroJobQueue());
+    return queueSizeEntry == queueSizeCurrent;
 }
 
 void DebuggerApi::DropLastFrame(const EcmaVM *ecmaVm)

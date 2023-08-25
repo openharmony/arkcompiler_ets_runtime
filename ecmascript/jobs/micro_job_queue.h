@@ -35,6 +35,7 @@ public:
         return static_cast<MicroJobQueue *>(object);
     }
 
+    static uint32_t GetPromiseQueueSize(JSThread *thread, JSHandle<MicroJobQueue> jobQueue);
     static void EnqueueJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueue, QueueType queueType,
         const JSHandle<JSFunction> &job, const JSHandle<TaggedArray> &argv);
     static void ExecutePendingJob(JSThread *thread, JSHandle<MicroJobQueue> jobQueue);

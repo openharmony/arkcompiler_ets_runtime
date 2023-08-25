@@ -154,6 +154,11 @@ public:
         dropframeManager_.DropLastFrame(jsThread_);
     }
 
+    uint32_t GetPromiseQueueSizeRecordOfTopFrame()
+    {
+        return dropframeManager_.GetPromiseQueueSizeRecordOfTopFrame();
+    }
+
 private:
     bool isDebugMode_ {false};
     bool isMixedDebugEnabled_ { false };
