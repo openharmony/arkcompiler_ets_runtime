@@ -1756,6 +1756,20 @@ DEF_CALL_SIGNATURE(DoubleToInt)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(DoubleToLength)
+{
+    // 1 : 1 input parameters
+    CallSignature index("DoubleToLength", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::FLOAT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(MarkingBarrier)
 {
     // 4 : 4 input parameters

@@ -4878,121 +4878,6 @@ GateRef StubBuilder::GetObjectLiteralFromConstPool(GateRef glue, GateRef constpo
                                                       ConstPoolType::OBJECT_LITERAL);
 }
 
-// return elements
-GateRef StubBuilder::BuildArgumentsListFastElements(GateRef glue, GateRef arrayObj)
-{
-    auto env = GetEnvironment();
-    Label subentry(env);
-    env->SubCfgEntry(&subentry);
-    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
-    Label exit(env);
-    Label hasStableElements(env);
-    Label targetIsStableJSArguments(env);
-    Label targetNotStableJSArguments(env);
-    Label targetIsInt(env);
-    Label hClassEqual(env);
-    Label targetIsStableJSArray(env);
-    Label targetNotStableJSArray(env);
-
-    Branch(HasStableElements(glue, arrayObj), &hasStableElements, &exit);
-    Bind(&hasStableElements);
-    {
-        Branch(IsStableJSArguments(glue, arrayObj), &targetIsStableJSArguments, &targetNotStableJSArguments);
-        Bind(&targetIsStableJSArguments);
-        {
-            GateRef hClass = LoadHClass(arrayObj);
-            GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-            GateRef argmentsClass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
-                                                      GlobalEnv::ARGUMENTS_CLASS);
-            Branch(Int32Equal(hClass, argmentsClass), &hClassEqual, &exit);
-            Bind(&hClassEqual);
-            {
-                GateRef PropertyInlinedPropsOffset = IntPtr(JSArguments::LENGTH_INLINE_PROPERTY_INDEX);
-                GateRef result = GetPropertyInlinedProps(arrayObj, hClass, PropertyInlinedPropsOffset);
-                Branch(TaggedIsInt(result), &targetIsInt, &exit);
-                Bind(&targetIsInt);
-                {
-                    res = GetElementsArray(arrayObj);
-                    Jump(&exit);
-                }
-            }
-        }
-        Bind(&targetNotStableJSArguments);
-        {
-            Branch(IsStableJSArray(glue, arrayObj), &targetIsStableJSArray, &targetNotStableJSArray);
-            Bind(&targetIsStableJSArray);
-            {
-                res = GetElementsArray(arrayObj);
-                Jump(&exit);
-            }
-            Bind(&targetNotStableJSArray);
-            {
-                FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable)) });
-                Jump(&exit);
-            }
-        }
-    }
-    Bind(&exit);
-    auto ret = *res;
-    env->SubCfgExit();
-    return ret;
-}
-
-GateRef StubBuilder::MakeArgListWithHole(GateRef glue, GateRef argv, GateRef length)
-{
-    auto env = GetEnvironment();
-    Label subentry(env);
-    env->SubCfgEntry(&subentry);
-    DEFVARIABLE(res, VariableType::INT32(), length);
-    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
-    Label exit(env);
-
-    GateRef argsLength = GetLengthOfTaggedArray(argv);
-
-    Label lengthGreaterThanArgsLength(env);
-    Label lengthLessThanArgsLength(env);
-    Branch(Int32GreaterThan(length, argsLength), &lengthGreaterThanArgsLength, &lengthLessThanArgsLength);
-    Bind(&lengthGreaterThanArgsLength);
-    {
-        res = argsLength;
-        Jump(&lengthLessThanArgsLength);
-    }
-    Bind(&lengthLessThanArgsLength);
-    {
-        Label loopHead(env);
-        Label loopEnd(env);
-        Label afterLoop(env);
-        Label targetIsHole(env);
-        Label targetNotHole(env);
-        Branch(Int32UnsignedLessThan(*i, *res), &loopHead, &afterLoop);
-        LoopBegin(&loopHead);
-        {
-            GateRef value = GetValueFromTaggedArray(argv, *i);
-            Branch(TaggedIsHole(value), &targetIsHole, &targetNotHole);
-            Bind(&targetIsHole);
-            {
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, argv, *i, Undefined());
-                Jump(&targetNotHole);
-            }
-            Bind(&targetNotHole);
-            i = Int32Add(*i, Int32(1));
-            Branch(Int32UnsignedLessThan(*i, *res), &loopEnd, &afterLoop);
-        }
-        Bind(&loopEnd);
-        LoopEnd(&loopHead);
-        Bind(&afterLoop);
-        {
-            res = length;
-            Jump(&exit);
-        }
-    }
-    Bind(&exit);
-    auto ret = *res;
-    env->SubCfgExit();
-    return ret;
-}
-
 GateRef StubBuilder::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef index)
 {
     auto env = GetEnvironment();
@@ -6132,7 +6017,6 @@ GateRef StubBuilder::ToNumber(GateRef glue, GateRef tagged)
     Label exit(env);
     Label isNumber(env);
     Label notNumber(env);
-    Label defaultLabel(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     Branch(TaggedIsNumber(tagged), &isNumber, &notNumber);
     Bind(&isNumber);
@@ -6142,162 +6026,11 @@ GateRef StubBuilder::ToNumber(GateRef glue, GateRef tagged)
     }
     Bind(&notNumber);
     {
-        Label returnNan(env);
-        Label notNan(env);
-        Label returnNumber1(env);
-        Label notNumber1(env);
-        Label returnNumber0(env);
-        auto isHole = TaggedIsHole(tagged);
-        auto isUndefined = TaggedIsUndefined(tagged);
-        Branch(BoolOr(isHole, isUndefined), &returnNan, &notNan);
-        Bind(&returnNan);
-        {
-            result = DoubleToTaggedDoublePtr(Double(base::NAN_VALUE));
-            Jump(&exit);
-        }
-        Bind(&notNan);
-        Branch(TaggedIsTrue(tagged), &returnNumber1, &notNumber1);
-        Bind(&returnNumber1);
-        {
-            result = Int64ToTaggedPtr(Int32(1));
-            Jump(&exit);
-        }
-        Bind(&notNumber1);
-        auto isFalse = TaggedIsFalse(tagged);
-        auto isNull = TaggedIsNull(tagged);
-        Branch(BoolOr(isFalse, isNull), &returnNumber0, &defaultLabel);
-        Bind(&returnNumber0);
-        {
-            result = Int64ToTaggedPtr(Int32(0));
-            Jump(&exit);
-        }
-        Bind(&defaultLabel);
-        {
-            CallRuntime(glue, RTSTUB_ID(OtherToNumber), { tagged });
-            Jump(&exit);
-        }
+        result = CallRuntime(glue, RTSTUB_ID(ToNumber), { tagged });
+        Jump(&exit);
     }
     Bind(&exit);
     auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-GateRef StubBuilder::CreateListFromArrayLike(GateRef glue, GateRef arrayObj)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
-    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
-    Label exit(env);
-
-    // 3. If Type(obj) is Object, throw a TypeError exception.
-    Label targetIsHeapObject(env);
-    Label targetIsEcmaObject(env);
-    Label targetNotEcmaObject(env);
-    Branch(TaggedIsHeapObject(arrayObj), &targetIsHeapObject, &targetNotEcmaObject);
-    Bind(&targetIsHeapObject);
-    Branch(TaggedObjectIsEcmaObject(arrayObj), &targetIsEcmaObject, &targetNotEcmaObject);
-    Bind(&targetNotEcmaObject);
-    {
-        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(TargetTypeNotObject));
-        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-        Jump(&exit);
-    }
-    Bind(&targetIsEcmaObject);
-    {
-        // 4. Let len be ToLength(Get(obj, "length")).
-        GateRef lengthString = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
-                                                      ConstantIndex::LENGTH_STRING_INDEX);
-        GateRef value = FastGetPropertyByName(glue, arrayObj, lengthString, ProfileOperation());
-        GateRef number = ToLength(glue, value);
-        // 5. ReturnIfAbrupt(len).
-        Label isPendingException1(env);
-        Label noPendingException1(env);
-        Branch(HasPendingException(glue), &isPendingException1, &noPendingException1);
-        Bind(&isPendingException1);
-        {
-            Jump(&exit);
-        }
-        Bind(&noPendingException1);
-        {
-            Label indexInRange(env);
-            Label indexOutRange(env);
-            GateRef doubleLen = GetDoubleOfTNumber(number);
-            Branch(DoubleGreaterThan(doubleLen, Double(JSObject::MAX_ELEMENT_INDEX)), &indexOutRange, &indexInRange);
-            Bind(&indexOutRange);
-            {
-                GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(LenGreaterThanMax));
-                CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-                Jump(&exit);
-            }
-            Bind(&indexInRange);
-            {
-                GateRef int32Len = DoubleToInt(glue, doubleLen);
-                // 6. Let list be an empty List.
-                NewObjectStubBuilder newBuilder(this);
-                GateRef array = newBuilder.NewTaggedArray(glue, int32Len);
-                Label targetIsTypeArray(env);
-                Label targetNotTypeArray(env);
-                Branch(IsTypedArray(arrayObj), &targetIsTypeArray, &targetNotTypeArray);
-                Bind(&targetIsTypeArray);
-                {
-                    TypedArrayStubBuilder arrayStubBuilder(this);
-                    arrayStubBuilder.FastCopyElementToArray(glue, arrayObj, array);
-                    // c. ReturnIfAbrupt(next).
-                    Label isPendingException2(env);
-                    Label noPendingException2(env);
-                    Branch(HasPendingException(glue), &isPendingException2, &noPendingException2);
-                    Bind(&isPendingException2);
-                    {
-                        Jump(&exit);
-                    }
-                    Bind(&noPendingException2);
-                    {
-                        res = array;
-                        Jump(&exit);
-                    }
-                }
-                Bind(&targetNotTypeArray);
-                // 8. Repeat while index < len
-                Label loopHead(env);
-                Label loopEnd(env);
-                Label afterLoop(env);
-                Label isPendingException3(env);
-                Label noPendingException3(env);
-                Label storeValue(env);
-                Jump(&loopHead);
-                LoopBegin(&loopHead);
-                {
-                    Branch(Int32UnsignedLessThan(*index, int32Len), &storeValue, &afterLoop);
-                    Bind(&storeValue);
-                    {
-                        GateRef next = FastGetPropertyByIndex(glue, arrayObj, *index, ProfileOperation());
-                        // c. ReturnIfAbrupt(next).
-                        Branch(HasPendingException(glue), &isPendingException3, &noPendingException3);
-                        Bind(&isPendingException3);
-                        {
-                            Jump(&exit);
-                        }
-                        Bind(&noPendingException3);
-                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, array, *index, next);
-                        index = Int32Add(*index, Int32(1));
-                        Jump(&loopEnd);
-                    }
-                }
-                Bind(&loopEnd);
-                LoopEnd(&loopHead);
-                Bind(&afterLoop);
-                {
-                    res = array;
-                    Jump(&exit);
-                }
-            }
-        }
-    }
-    Bind(&exit);
-    GateRef ret = *res;
     env->SubCfgExit();
     return ret;
 }
@@ -6309,6 +6042,10 @@ GateRef StubBuilder::ToLength(GateRef glue, GateRef target)
     env->SubCfgEntry(&subentry);
     DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
     Label exit(env);
+    Label isInt(env);
+    Label notInt(env);
+    Label intIsLessZero(env);
+    Label intNotLessZero(env);
 
     GateRef number = ToNumber(glue, target);
     Label isPendingException(env);
@@ -6320,29 +6057,25 @@ GateRef StubBuilder::ToLength(GateRef glue, GateRef target)
     }
     Bind(&noPendingException);
     {
-        GateRef num = GetDoubleOfTNumber(number);
-        Label targetLessThanZero(env);
-        Label targetGreaterThanZero(env);
-        Label targetLessThanSafeNumber(env);
-        Label targetGreaterThanSafeNumber(env);
-        Branch(DoubleLessThan(num, Double(0.0)), &targetLessThanZero, &targetGreaterThanZero);
-        Bind(&targetLessThanZero);
+        Branch(TaggedIsInt(number), &isInt, &notInt);
+        Bind(&isInt);
         {
-            res = DoubleToTaggedDoublePtr(Double(0.0));
-            Jump(&exit);
+            GateRef len = GetInt32OfTInt(number);
+            Branch(Int32LessThan(len, Int32(0)), &intIsLessZero, &intNotLessZero);
+            Bind(&intIsLessZero);
+            {
+                res = IntToTaggedPtr(Int32(0));
+                Jump(&exit);
+            }
+            Bind(&intNotLessZero);
+            {
+                res = number;
+                Jump(&exit);
+            }
         }
-        Bind(&targetGreaterThanZero);
-        Branch(DoubleGreaterThan(num, Double(SAFE_NUMBER)), &targetGreaterThanSafeNumber, &targetLessThanSafeNumber);
-        Bind(&targetGreaterThanSafeNumber);
-        {
-            res = DoubleToTaggedDoublePtr(Double(SAFE_NUMBER));
-            Jump(&exit);
-        }
-        Bind(&targetLessThanSafeNumber);
-        {
-            res = number;
-            Jump(&exit);
-        }
+        Bind(&notInt);
+        res = CallNGCRuntime(glue, RTSTUB_ID(DoubleToLength), { TaggedGetNumber(number) });
+        Jump(&exit);
     }
     Bind(&exit);
     auto ret = *res;
@@ -6395,20 +6128,8 @@ GateRef StubBuilder::HasStableElements(GateRef glue, GateRef obj)
         Bind(&targetIsStableElements);
         {
             GateRef guardiansOffset = IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
-            GateRef guardians = Load(VariableType::JS_ANY(), glue, guardiansOffset);
-            Label targetIsTaggedTrue(env);
-            Label targetIsTaggedFalse(env);
-            Branch(TaggedIsTrue(guardians), &targetIsTaggedTrue, &targetIsTaggedFalse);
-            Bind(&targetIsTaggedTrue);
-            {
-                result = True();
-                Jump(&exit);
-            }
-            Bind(&targetIsTaggedFalse);
-            {
-                result = False();
-                Jump(&exit);
-            }
+            result = Load(VariableType::BOOL(), glue, guardiansOffset);
+            Jump(&exit);
         }
     }
     Bind(&exit);
@@ -6435,21 +6156,8 @@ GateRef StubBuilder::IsStableJSArguments(GateRef glue, GateRef obj)
         Bind(&targetIsStableArguments);
         {
             GateRef guardiansOffset = IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
-            GateRef guardians = Load(VariableType::JS_ANY(), glue, guardiansOffset);
-
-            Label targetIsTaggedTrue(env);
-            Label targetIsTaggedFalse(env);
-            Branch(TaggedIsTrue(guardians), &targetIsTaggedTrue, &targetIsTaggedFalse);
-            Bind(&targetIsTaggedTrue);
-            {
-                result = True();
-                Jump(&exit);
-            }
-            Bind(&targetIsTaggedFalse);
-            {
-                result = False();
-                Jump(&exit);
-            }
+            result = Load(VariableType::BOOL(), glue, guardiansOffset);
+            Jump(&exit);
         }
     }
     Bind(&exit);
