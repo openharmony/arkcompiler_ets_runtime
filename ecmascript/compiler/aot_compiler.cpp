@@ -168,6 +168,14 @@ int Main(const int argc, const char **argv)
         bool isEnableOptLoopPeeling = runtimeOptions.IsEnableOptLoopPeeling();
         bool isEnableOptOnHeapCheck = runtimeOptions.IsEnableOptOnHeapCheck();
 
+        if (runtimeOptions.IsTargetCompilerMode()) {
+            auto vmOpt = vm->GetJSOptions();
+            // target need fast compiler mode
+            vmOpt.SetFastAOTCompileMode(true);
+            vmOpt.SetOptLevel(3); // 3: default opt level
+            isEnableOptOnHeapCheck = false;
+        }
+
         PassOptions passOptions(isEnableArrayBoundsCheckElimination, isEnableTypeLowering, isEnableEarlyElimination,
                                 isEnableLaterElimination, isEnableValueNumbering, isEnableTypeInfer,
                                 isEnableOptInlining, isEnableOptPGOType, isEnableOptTrackField, isEnableOptLoopPeeling,
