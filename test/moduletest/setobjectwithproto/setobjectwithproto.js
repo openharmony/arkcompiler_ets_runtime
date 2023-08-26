@@ -22,5 +22,16 @@
 var object = {
     __proto__: null
 };
-    
+
 print(Object.getPrototypeOf(object));
+
+class C32 extends String {
+
+}
+let obj1 = new C32();
+print(obj1.__proto__ == C32.prototype);
+print(C32.__proto__ == String);
+C32.__proto__ = Array;
+let obj2 = new C32();
+print(obj2.__proto__ == C32.prototype);
+print(C32.__proto__ == Array);
