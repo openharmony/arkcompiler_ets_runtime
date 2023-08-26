@@ -153,6 +153,8 @@ void ConcurrentMarker::InitializeMarking()
 
 bool ConcurrentMarker::MarkerTask::Run(uint32_t threadId)
 {
+    // Synchronizes-with. Ensure that WorkManager::Initialize must be seen by MarkerThreads.
+    while (!heap_->GetWorkManager()->HasInitialized());
     ClockScope clockScope;
     heap_->GetNonMovableMarker()->ProcessMarkStack(threadId);
     heap_->WaitRunningTaskFinished();

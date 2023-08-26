@@ -142,6 +142,7 @@ void WorkManager::Finish(size_t &aliveSize, size_t &promotedSize)
         WorkNodeHolder &holder = works_[i];
         promotedSize += holder.promotedSize_;
     }
+    initialized_.store(false, std::memory_order_release);
 }
 
 void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase)
@@ -161,6 +162,7 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
             holder.allocator_ = new TlabAllocator(heap_);
         }
     }
+    initialized_.store(true, std::memory_order_release);
 }
 
 WorkNode *WorkManager::AllocateWorkNode()

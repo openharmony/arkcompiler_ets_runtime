@@ -1099,6 +1099,8 @@ void Heap::ReduceTaskCount()
 
 bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
 {
+    // Synchronizes-with. Ensure that WorkManager::Initialize must be seen by MarkerThreads.
+    while (!heap_->GetWorkManager()->HasInitialized());
     switch (taskPhase_) {
         case ParallelGCTaskPhase::SEMI_HANDLE_THREAD_ROOTS_TASK:
             heap_->GetSemiGCMarker()->MarkRoots(threadIndex);
