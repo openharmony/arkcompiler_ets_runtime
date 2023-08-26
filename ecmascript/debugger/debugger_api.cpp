@@ -903,6 +903,9 @@ uint32_t DebuggerApi::GetContainerLength(const EcmaVM *ecmaVm, Local<JSValueRef>
 void DebuggerApi::AddInternalProperties(const EcmaVM *ecmaVm, Local<ObjectRef> object,
                                         ArkInternalValueType type, Global<MapRef> internalObjects)
 {
+    if (internalObjects.IsEmpty()) {
+        return;
+    }
     internalObjects->Set(ecmaVm, object, NumberRef::New(ecmaVm, static_cast<int32_t>(type)));
 }
 
