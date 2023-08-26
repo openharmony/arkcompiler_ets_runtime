@@ -291,6 +291,7 @@ private:
     void LowerAsyncGeneratorReject(GateRef gate);
     void LowerSetGeneratorState(GateRef gate);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
+    GateRef LowerUpdateArrayHClass(GateRef gate, GateRef array);
     void AddProfiling(GateRef gate, bool skipGenerator = true);
     GateRef FastStrictEqual(GateRef left, GateRef right);
     void LowerWideLdPatchVar(GateRef gate);

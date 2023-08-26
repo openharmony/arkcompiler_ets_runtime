@@ -1450,7 +1450,8 @@ void SlowPathLowering::LowerFastStrictEqual(GateRef gate)
 void SlowPathLowering::LowerCreateEmptyArray(GateRef gate)
 {
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::CreateEmptyArray, { glue_ });
-    ReplaceHirWithValue(gate, result, true);
+    GateRef newRes = LowerUpdateArrayHClass(gate, result);
+    ReplaceHirWithValue(gate, newRes, true);
 }
 
 void SlowPathLowering::LowerCreateEmptyObject(GateRef gate)
@@ -1464,7 +1465,23 @@ void SlowPathLowering::LowerCreateArrayWithBuffer(GateRef gate)
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef index = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::CreateArrayWithBuffer, { glue_, index, jsFunc });
-    ReplaceHirWithValue(gate, result, true);
+    GateRef newRes = LowerUpdateArrayHClass(gate, result);
+    ReplaceHirWithValue(gate, newRes, true);
+}
+
+GateRef SlowPathLowering::LowerUpdateArrayHClass(GateRef gate, GateRef array)
+{
+    ElementsKind kind = acc_.TryGetElementsKind(gate);
+    if (!Elements::IsGeneric(kind)) {
+        auto thread = tsManager_->GetEcmaVM()->GetJSThread();
+        size_t hclassIndex = static_cast<size_t>(thread->GetArrayHClassIndexMap().at(kind));
+        GateRef gConstAddr = builder_.Load(VariableType::JS_POINTER(), glue_,
+            builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(false)));
+        GateRef constantIndex = builder_.IntPtr(JSTaggedValue::TaggedTypeSize() * hclassIndex);
+        GateRef hclass = builder_.Load(VariableType::JS_POINTER(), gConstAddr, constantIndex);
+        builder_.Store(VariableType::JS_POINTER(), glue_, array, builder_.IntPtr(0), hclass);
+    }
+    return array;
 }
 
 void SlowPathLowering::LowerCreateObjectWithBuffer(GateRef gate)
