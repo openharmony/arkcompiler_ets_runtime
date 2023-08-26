@@ -731,6 +731,12 @@ GlobalTSTypeRef TSManager::CreateClassInstanceType(GlobalTSTypeRef gt)
     return AddTSTypeToInferredTable(JSHandle<TSType>(classInstanceType));
 }
 
+GlobalTSTypeRef TSManager::CreateArrayType()
+{
+    JSHandle<TSArrayType> arrayType = factory_->NewTSArrayType();
+    return AddTSTypeToInferredTable(JSHandle<TSType>(arrayType));
+}
+
 GlobalTSTypeRef TSManager::CreateNamespaceType()
 {
     JSHandle<TSNamespaceType> namespaceType = factory_->NewTSNamespaceType();
@@ -841,6 +847,27 @@ JSHandle<JSTaggedValue> TSManager::GetTSType(const GlobalTSTypeRef &gt) const
     JSHandle<TSTypeTable> typeTable = GetTSTypeTable(moduleId);
     JSHandle<JSTaggedValue> tsType(thread_, typeTable->Get(localId));
     return tsType;
+}
+
+bool TSManager::IsBuiltinClassType(BuiltinTypeId id, kungfu::GateType gateType) const
+{
+    if (!IsClassTypeKind(gateType)) {
+        return false;
+    }
+    auto classGT = gateType.GetGTRef();
+    if (UNLIKELY(!IsBuiltinsDTSEnabled())) {
+        uint32_t localId = classGT.GetLocalId();
+        return classGT.IsBuiltinModule() && (localId == static_cast<uint32_t>(id));
+    }
+
+    const JSPandaFile *builtinPandaFile = GetBuiltinPandaFile();
+    uint32_t typeOffset = GetBuiltinOffset(static_cast<uint32_t>(id));
+    GlobalTypeID gId(builtinPandaFile, typeOffset);
+    if (HasCreatedGT(gId)) {
+        auto gt = GetGTByGlobalTypeID(gId);
+        return (gt == classGT);
+    }
+    return false;
 }
 
 bool TSManager::IsBuiltinInstanceType(BuiltinTypeId id, kungfu::GateType gateType) const
