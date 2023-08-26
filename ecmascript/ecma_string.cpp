@@ -890,7 +890,7 @@ EcmaString *EcmaString::Trim(const JSThread *thread, const JSHandle<EcmaString> 
     }
 }
 
-EcmaString *EcmaString::SlowFlatten(const EcmaVM *vm, const JSHandle<TreeEcmaString> &string)
+EcmaString *EcmaString::SlowFlatten(const EcmaVM *vm, const JSHandle<TreeEcmaString> &string, MemSpaceType type)
 {
     auto thread = vm->GetJSThread();
     ASSERT(EcmaString::Cast(string->GetSecond())->GetLength() != 0);
@@ -898,10 +898,10 @@ EcmaString *EcmaString::SlowFlatten(const EcmaVM *vm, const JSHandle<TreeEcmaStr
     uint32_t length = string->GetLength();
     EcmaString *result = nullptr;
     if (string->IsUtf8()) {
-        result = CreateLineString(vm, length, true);
+        result = CreateLineStringWithSpaceType(vm, length, true, type);
         WriteToFlat<uint8_t>(*string, result->GetDataUtf8Writable(), length);
     } else {
-        result = CreateLineString(vm, length, false);
+        result = CreateLineStringWithSpaceType(vm, length, false, type);
         WriteToFlat<uint16_t>(*string, result->GetDataUtf16Writable(), length);
     }
     string->SetFirst(thread, JSTaggedValue(result));
@@ -909,7 +909,7 @@ EcmaString *EcmaString::SlowFlatten(const EcmaVM *vm, const JSHandle<TreeEcmaStr
     return result;
 }
 
-EcmaString *EcmaString::Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string)
+EcmaString *EcmaString::Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string, MemSpaceType type)
 {
     EcmaString *s = *string;
     if (s->IsLineOrConstantString()) {
@@ -918,7 +918,7 @@ EcmaString *EcmaString::Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &st
     if (s->IsTreeString()) {
         JSHandle<TreeEcmaString> tree = JSHandle<TreeEcmaString>::Cast(string);
         if (!tree->IsFlat()) {
-            return SlowFlatten(vm, tree);
+            return SlowFlatten(vm, tree, type);
         }
         s = EcmaString::Cast(tree->GetFirst());
     }
