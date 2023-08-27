@@ -13,10 +13,7 @@
  * limitations under the License.
  */
 
-//declare function print(arg:any):string;
-function print(arg) {
-  console.log(arg)
-}
+declare function print(arg:any):string;
 function Dog(name) {
   this.name = name;
 }

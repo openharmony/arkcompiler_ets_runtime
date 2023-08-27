@@ -41,6 +41,43 @@ namespace panda::ecmascript {
         return JSTaggedValue::Hole();                 \
     }
 
+JSTaggedValue ObjectFastOperator::HasOwnProperty(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
+{
+    [[maybe_unused]] DisallowGarbageCollection noGc;
+    if (!receiver.IsHeapObject() ||
+        !(receiver.GetTaggedObject()->GetClass()->GetObjectType() == JSType::JS_OBJECT)) {
+        return JSTaggedValue::Hole();
+    }
+    if (!key.IsString() || !EcmaStringAccessor(key).IsInternString()) {
+        return JSTaggedValue::Hole();
+    }
+
+    auto *hclass = receiver.GetTaggedObject()->GetClass();
+    if (LIKELY(!hclass->IsDictionaryMode())) {
+        ASSERT(!TaggedArray::Cast(JSObject::Cast(receiver)->GetProperties().GetTaggedObject())->IsDictionaryMode());
+
+        int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
+        if (entry != -1) {
+            LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+            PropertyAttributes attr(layoutInfo->GetAttr(entry));
+            ASSERT(static_cast<int>(attr.GetOffset()) == entry);
+            auto value = JSObject::Cast(receiver)->GetProperty(hclass, attr);
+            return value;
+        }
+    } else {
+        TaggedArray *array = TaggedArray::Cast(JSObject::Cast(receiver)->GetProperties().GetTaggedObject());
+        ASSERT(array->IsDictionaryMode());
+        NameDictionary *dict = NameDictionary::Cast(array);
+        int entry = dict->FindEntry(key);
+        if (entry != -1) {
+            auto value = dict->GetValue(entry);
+            return value;
+        }
+    }
+    // not found
+    return JSTaggedValue::Hole();
+}
+
 template<bool UseOwn>
 JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key)
 {
