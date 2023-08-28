@@ -272,14 +272,14 @@ void CpuProfiler::GetStack(FrameIterator &it)
         if (method == nullptr) {
             continue;
         }
-        const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+        bool isNative = method->IsNativeWithCallField();
         struct MethodKey methodKey;
         methodKey.deoptType = method->GetDeoptType();
         if (topFrame) {
-            methodKey.state = JsStackGetter::GetRunningState(it, vm_, jsPandaFile, true, enableVMTag_);
+            methodKey.state = JsStackGetter::GetRunningState(it, vm_, isNative, true, enableVMTag_);
             topFrame = false;
         } else {
-            methodKey.state = JsStackGetter::GetRunningState(it, vm_, jsPandaFile, false, enableVMTag_);
+            methodKey.state = JsStackGetter::GetRunningState(it, vm_, isNative, false, enableVMTag_);
         }
         void *methodIdentifier = JsStackGetter::GetMethodIdentifier(method, it);
         if (methodIdentifier == nullptr) {
@@ -338,17 +338,18 @@ bool CpuProfiler::GetStackCallNapi(JSThread *thread, bool beforeCallNapi)
             continue;
         }
 
+        bool isNative = method->IsNativeWithCallField();
         struct MethodKey methodKey;
         methodKey.deoptType = method->GetDeoptType();
         if (topFrame) {
             if (beforeCallNapi) {
                 methodKey.state = RunningState::NAPI;
             } else {
-                methodKey.state = JsStackGetter::GetRunningState(it, vm_, method->GetJSPandaFile(), true, enableVMTag_);
+                methodKey.state = JsStackGetter::GetRunningState(it, vm_, isNative, true, enableVMTag_);
             }
             topFrame = false;
         } else {
-            methodKey.state = JsStackGetter::GetRunningState(it, vm_, method->GetJSPandaFile(), false, enableVMTag_);
+            methodKey.state = JsStackGetter::GetRunningState(it, vm_, isNative, false, enableVMTag_);
         }
         void *methodIdentifier = JsStackGetter::GetMethodIdentifier(method, it);
         if (methodIdentifier == nullptr) {
