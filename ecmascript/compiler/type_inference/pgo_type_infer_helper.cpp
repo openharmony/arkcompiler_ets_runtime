@@ -119,6 +119,10 @@ void PGOTypeInferHelper::CollectGateType(CollectedType &types, GateType tsType, 
     for (uint32_t i = 0; i < pgoTypes.GetCount(); i++) {
         ClassType classType = pgoTypes.GetObjectInfo(i).GetClassType();
         GateType pgoType = tsManager_->GetGateTypeByPt(classType);
+        if (pgoType.IsAnyType()) {
+            tsManager_->AddToSkipTrackFieldSet(classType);
+            continue;
+        }
         if (tsManager_->IsClassTypeKind(pgoType) && !pgoTypes.GetObjectInfo(i).InConstructor()) {
             pgoType = GateType(tsManager_->CreateClassInstanceType(pgoType));
         }

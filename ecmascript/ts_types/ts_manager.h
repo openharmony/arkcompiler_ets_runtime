@@ -894,6 +894,16 @@ public:
         return kungfu::GateType::AnyType();
     }
 
+    inline void AddToSkipTrackFieldSet(ClassType type)
+    {
+        skipTrackFieldSet_.insert(type);
+    }
+
+    inline bool IsInSkipTrackFieldSet(ClassType type)
+    {
+        return skipTrackFieldSet_.find(type) != skipTrackFieldSet_.end();
+    }
+
     void PrintNumOfTypes() const;
 
     void PrintTypeInfo(const JSPandaFile *jsPandaFile) const;
@@ -1024,6 +1034,7 @@ private:
     ObjectFactory *factory_ {nullptr};
     JSTaggedValue globalModuleTable_ {JSTaggedValue::Hole()};
     CMap<ClassType, const kungfu::GateType> ptToGtMap_ {};
+    std::set<ClassType> skipTrackFieldSet_ {};
     std::map<GlobalTSTypeRef, IHClassData> gtIhcMap_ {};
     std::map<GlobalTSTypeRef, IHClassData> gtConstructorhcMap_ {};
     std::unordered_map<TypeLocation, GlobalTSTypeRef, HashTypeLocation> literalGTMap_ {};

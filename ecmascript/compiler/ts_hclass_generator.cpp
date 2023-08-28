@@ -53,6 +53,9 @@ void TSHClassGenerator::UpdateTSHClassFromPGO(const kungfu::GateType &type, cons
     if (!enableOptTrackField) {
         return;
     }
+    if (tsManager_->IsInSkipTrackFieldSet(desc.GetClassType())) {
+        return;
+    }
 
     std::vector<JSHClass *> superHClasses;
     kungfu::GateType current = type;
