@@ -286,8 +286,11 @@ void TypeMCRLowering::LowerTypedArrayCheck(GateRef gate)
     GateRef protoOrHclass = builder_.GetGlobalEnvObjHClass(glueGlobalEnv, typedArrayFuncIndex);
     GateRef check = builder_.Equal(receiverHClass, protoOrHclass);
     builder_.DeoptCheck(check, frameState, deoptType);
-    GateRef isOnHeap = builder_.LoadConstOffset(VariableType::BOOL(), receiver, JSTypedArray::ON_HEAP_OFFSET);
-    builder_.DeoptCheck(isOnHeap, frameState, DeoptType::NOTONHEAP);
+
+    if (IsOnHeap()) {
+        GateRef isOnHeap = builder_.LoadConstOffset(VariableType::BOOL(), receiver, JSTypedArray::ON_HEAP_OFFSET);
+        builder_.DeoptCheck(isOnHeap, frameState, DeoptType::NOTONHEAP);
+    }
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -755,15 +758,21 @@ void TypeMCRLowering::LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef arrbuffer =
-        builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
     GateRef index = acc_.GetValueIn(gate, 1);
     GateRef elementSize = GetElementSize(id);
     GateRef offset = builder_.PtrMul(index, elementSize);
+    VariableType type = GetVariableType(id);
 
-    GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
-    auto type = GetVariableType(id);
-    GateRef result = builder_.Load(type, data, offset);
+    GateRef result = Circuit::NullGate();
+    if (IsOnHeap()) {
+        result = BuildOnHeapTypedArrayLoadElement(receiver, offset, type);
+    } else {
+        Label isByteArray(&builder_);
+        Label isArrayBuffer(&builder_);
+        Label exit(&builder_);
+        result = BuildTypedArrayLoadElement(receiver, offset, type, &isByteArray, &isArrayBuffer, &exit);
+    }
+
     switch (id) {
         case BuiltinTypeId::INT8_ARRAY:
             result = builder_.SExtInt8ToInt32(result);
@@ -785,6 +794,46 @@ void TypeMCRLowering::LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id)
             break;
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+GateRef TypeMCRLowering::BuildOnHeapTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type)
+{
+    GateRef arrbuffer =
+        builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
+    GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
+    GateRef result = builder_.Load(type, data, offset);
+    return result;
+}
+
+GateRef TypeMCRLowering::BuildTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type,
+                                                    Label *isByteArray, Label *isArrayBuffer, Label *exit)
+{
+    GateRef byteArrayOrArraybuffer =
+        builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
+    DEFVAlUE(data, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVAlUE(result, (&builder_), type, builder_.Double(0));
+
+    GateRef isOnHeap = builder_.Load(VariableType::BOOL(), receiver, builder_.IntPtr(JSTypedArray::ON_HEAP_OFFSET));
+    builder_.Branch(isOnHeap, isByteArray, isArrayBuffer);
+    builder_.Bind(isByteArray);
+    {
+        data = builder_.PtrAdd(byteArrayOrArraybuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
+        result = builder_.Load(type, *data, offset);
+        builder_.Jump(exit);
+    }
+    builder_.Bind(isArrayBuffer);
+    {
+        data = builder_.Load(VariableType::JS_POINTER(), byteArrayOrArraybuffer,
+                             builder_.IntPtr(JSArrayBuffer::DATA_OFFSET));
+        GateRef block = builder_.Load(VariableType::JS_ANY(), *data, builder_.IntPtr(JSNativePointer::POINTER_OFFSET));
+        GateRef byteOffset =
+            builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
+        result = builder_.Load(type, block, builder_.PtrAdd(offset, byteOffset));
+        builder_.Jump(exit);
+    }
+    builder_.Bind(exit);
+
+    return *result;
 }
 
 void TypeMCRLowering::LowerStoreElement(GateRef gate, GateRef glue)
@@ -867,12 +916,54 @@ void TypeMCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id
         default:
             break;
     }
+
+    if (IsOnHeap()) {
+        BuildOnHeapTypedArrayStoreElement(receiver, offset, value);
+    } else {
+        Label isByteArray(&builder_);
+        Label isArrayBuffer(&builder_);
+        Label exit(&builder_);
+        BuildTypedArrayStoreElement(receiver, offset, value, &isByteArray, &isArrayBuffer, &exit);
+    }
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeMCRLowering::BuildOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value)
+{
     GateRef arrbuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver,
-        JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
+                                                 JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
     GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
 
     builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), data, offset, value);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeMCRLowering::BuildTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value,
+                                                  Label *isByteArray, Label *isArrayBuffer, Label *exit)
+{
+    GateRef byteArrayOrArraybuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver,
+                                                              JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
+    GateRef isOnHeap = builder_.Load(VariableType::BOOL(), receiver, builder_.IntPtr(JSTypedArray::ON_HEAP_OFFSET));
+    DEFVAlUE(data, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    builder_.Branch(isOnHeap, isByteArray, isArrayBuffer);
+    builder_.Bind(isByteArray);
+    {
+        data = builder_.PtrAdd(byteArrayOrArraybuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
+        builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), *data, offset, value);
+        builder_.Jump(exit);
+    }
+    builder_.Bind(isArrayBuffer);
+    {
+        data = builder_.Load(VariableType::JS_POINTER(), byteArrayOrArraybuffer,
+                             builder_.IntPtr(JSArrayBuffer::DATA_OFFSET));
+        GateRef block = builder_.Load(VariableType::JS_ANY(), *data, builder_.IntPtr(JSNativePointer::POINTER_OFFSET));
+        GateRef byteOffset =
+            builder_.Load(VariableType::INT32(), receiver, builder_.IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET));
+        builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), block,
+                             builder_.PtrAdd(offset, byteOffset), value);
+        builder_.Jump(exit);
+    }
+    builder_.Bind(exit);
 }
 
 // for UInt8ClampedArray

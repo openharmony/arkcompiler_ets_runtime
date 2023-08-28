@@ -166,10 +166,12 @@ int Main(const int argc, const char **argv)
         bool isEnableOptPGOType = runtimeOptions.IsEnableOptPGOType();
         bool isEnableOptTrackField = runtimeOptions.IsEnableOptTrackField();
         bool isEnableOptLoopPeeling = runtimeOptions.IsEnableOptLoopPeeling();
+        bool isEnableOptOnHeapCheck = runtimeOptions.IsEnableOptOnHeapCheck();
 
         PassOptions passOptions(isEnableArrayBoundsCheckElimination, isEnableTypeLowering, isEnableEarlyElimination,
                                 isEnableLaterElimination, isEnableValueNumbering, isEnableTypeInfer,
-                                isEnableOptInlining, isEnableOptPGOType, isEnableOptTrackField, isEnableOptLoopPeeling);
+                                isEnableOptInlining, isEnableOptPGOType, isEnableOptTrackField, isEnableOptLoopPeeling,
+                                isEnableOptOnHeapCheck);
 
         uint32_t hotnessThreshold = runtimeOptions.GetPGOHotnessThreshold();
         AOTInitialize(vm);

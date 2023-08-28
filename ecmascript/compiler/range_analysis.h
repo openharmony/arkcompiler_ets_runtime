@@ -27,13 +27,18 @@ namespace panda::ecmascript::kungfu {
 class RangeAnalysis : public PassVisitor {
 public:
     RangeAnalysis(Circuit* circuit, RPOVisitor* visitor, Chunk* chunk, ChunkVector<TypeInfo>& typeInfos,
-                  ChunkVector<RangeInfo>& rangeInfos)
+                  ChunkVector<RangeInfo>& rangeInfos, bool onHeapCheck)
         : PassVisitor(circuit, chunk, visitor), acc_(circuit), builder_(circuit),
-          typeInfos_(typeInfos), rangeInfos_(rangeInfos) {}
+          typeInfos_(typeInfos), rangeInfos_(rangeInfos), onHeapCheck_(onHeapCheck) {}
     GateRef VisitGate(GateRef gate);
     void PrintRangeInfo() const;
 
 private:
+    bool IsOnHeap() const
+    {
+        return onHeapCheck_;
+    }
+
     GateRef VisitPhi(GateRef gate);
     GateRef VisitTypedBinaryOp(GateRef gate);
     GateRef VisitTypedUnaryOp(GateRef gate);
@@ -56,6 +61,7 @@ private:
     CircuitBuilder builder_;
     ChunkVector<TypeInfo>& typeInfos_;
     ChunkVector<RangeInfo>& rangeInfos_;
+    bool onHeapCheck_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_RANGE_ANALYSIS_H

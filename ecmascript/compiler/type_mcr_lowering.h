@@ -99,15 +99,19 @@ namespace panda::ecmascript::kungfu {
 class TypeMCRLowering : public PassVisitor {
 public:
     TypeMCRLowering(Circuit *circuit, RPOVisitor *visitor,
-                    CompilationConfig *cmpCfg, TSManager *tsManager, Chunk *chunk)
+                    CompilationConfig *cmpCfg, TSManager *tsManager, Chunk *chunk, bool onHeapCheck)
         : PassVisitor(circuit, chunk, visitor), circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
-          dependEntry_(circuit->GetDependRoot()), tsManager_(tsManager) {}
+          dependEntry_(circuit->GetDependRoot()), tsManager_(tsManager), onHeapCheck_(onHeapCheck) {}
 
     ~TypeMCRLowering() = default;
 
     GateRef VisitGate(GateRef gate) override;
 
 private:
+    bool IsOnHeap() const
+    {
+        return onHeapCheck_;
+    }
     void Lower(GateRef gate);
     void LowerType(GateRef gate);
     void LowerPrimitiveTypeCheck(GateRef gate);
@@ -147,8 +151,14 @@ private:
     void LowerArrayLoadElement(GateRef gate, ArrayState arrayState);
     void LowerCowArrayCheck(GateRef gate, GateRef glue);
     void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
+    GateRef BuildOnHeapTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type);
+    GateRef BuildTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type, Label *isByteArray,
+                                       Label *isArrayBuffer, Label *exit);
     void LowerArrayStoreElement(GateRef gate, GateRef glue);
     void LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id);
+    void BuildOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value);
+    void BuildTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value, Label *isByteArray,
+                                     Label *isArrayBuffer, Label *exit);
     void LowerUInt8ClampedArrayStoreElement(GateRef gate);
     void LowerTypedCallBuitin(GateRef gate);
     void LowerCallTargetCheck(GateRef gate);
@@ -209,6 +219,7 @@ private:
     CircuitBuilder builder_;
     GateRef dependEntry_;
     [[maybe_unused]] TSManager *tsManager_ {nullptr};
+    bool onHeapCheck_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TYPE_MCR_LOWERING_H

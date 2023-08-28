@@ -25,9 +25,9 @@
 namespace panda::ecmascript::kungfu {
 class NumberSpeculativeRunner {
 public:
-    NumberSpeculativeRunner(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
+    NumberSpeculativeRunner(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk, bool onHeapCheck)
         : circuit_(circuit), acc_(circuit), enableLog_(enableLog), methodName_(name),
-          chunk_(chunk), typeInfos_(chunk), rangeInfos_(chunk) {}
+          chunk_(chunk), typeInfos_(chunk), rangeInfos_(chunk), onHeapCheck_(onHeapCheck) {}
 
     ~NumberSpeculativeRunner() = default;
     void Run();
@@ -35,6 +35,11 @@ private:
     bool IsLogEnabled() const
     {
         return enableLog_;
+    }
+
+    bool IsOnHeap() const
+    {
+        return onHeapCheck_;
     }
 
     const std::string& GetMethodName() const
@@ -49,6 +54,7 @@ private:
     Chunk *chunk_ {nullptr};
     ChunkVector<TypeInfo> typeInfos_;
     ChunkVector<RangeInfo> rangeInfos_;
+    bool onHeapCheck_ {false};
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NUMBER_SPECULATIVE_RUNNER_H

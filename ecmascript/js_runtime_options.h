@@ -137,6 +137,7 @@ enum CommandValues {
     OPTION_COMPILER_NOCHECK,
     OPTION_FAST_AOT_COMPILE_MODE,
     OPTION_COMPILER_OPT_LOOP_PEELING,
+    OPTION_COMPILER_OPT_ON_HEAP_CHECK,
     OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION,
 };
 
@@ -1180,6 +1181,16 @@ public:
         return enableOptLoopPeeling_;
     }
 
+    void SetEnableOptOnHeapCheck(bool value)
+    {
+        enableOptOnHeapCheck_ = value;
+    }
+
+    bool IsEnableOptOnHeapCheck() const
+    {
+        return enableOptOnHeapCheck_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1275,6 +1286,7 @@ private:
     bool compilerNoCheck_ {false};
     bool fastAOTCompileMode_ {true};
     bool enableOptLoopPeeling_ {false};
+    bool enableOptOnHeapCheck_ {false};
 };
 }  // namespace panda::ecmascript
 
