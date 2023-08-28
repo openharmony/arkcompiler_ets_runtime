@@ -33,6 +33,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     std::string_view entryPoint, bool needUpdate, bool excuteFromJob)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromFile filename " << filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteFromFile");
     CString entry;
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
@@ -114,6 +115,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     const void *buffer, size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer filename " << filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteFromBuffer");
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, normalName, entryPoint, buffer, size, needUpdate);
@@ -144,6 +146,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     JSThread *thread, const void *buffer, size_t size, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBuffer filename " << filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteModuleBuffer");
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
@@ -248,6 +251,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
     size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBufferSecure with secure buffer filename " << filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteFromBufferSecure");
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
         LoadJSPandaFileSecure(thread, normalName, entryPoint, buffer, size, needUpdate);
@@ -301,6 +305,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     size_t size, const CString &filename, bool needUpdate)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBufferSecure with secure buffer filename " << filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JSPandaFileExecutor::ExecuteModuleBufferSecure");
     CString name;
     EcmaVM *vm = thread->GetEcmaVM();
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
