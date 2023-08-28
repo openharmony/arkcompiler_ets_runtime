@@ -201,6 +201,10 @@ public:
     {
         return threadNum_;
     }
+    inline bool HasInitialized() const
+    {
+        return initialized_.load(std::memory_order_acquire);
+    }
 
 private:
     NO_COPY_SEMANTIC(WorkManager);
@@ -219,6 +223,7 @@ private:
     std::vector<uintptr_t> agedSpaces_;
     os::memory::Mutex mtx_;
     ParallelGCTaskPhase parallelGCTaskPhase_;
+    std::atomic<bool> initialized_ {false};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_WORK_MANAGER_H
