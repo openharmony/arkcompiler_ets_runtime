@@ -258,7 +258,9 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), info->GetFunctionValue().GetRawData(), false);
 #endif
     if (thread->IsDebugMode() && !method->IsNativeWithCallField()) {
-        MethodEntry(thread, method);
+        JSHandle<JSFunction> func(thread, info->GetFunctionValue());
+        JSTaggedValue env = func->GetLexicalEnv();
+        MethodEntry(thread, method, env);
     }
     auto acc = reinterpret_cast<InterpreterEntry>(entry)(thread->GetGlueAddr(),
         callTarget, method, method->GetCallField(), argc, argv);
@@ -276,7 +278,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     return JSTaggedValue(acc);
 }
 
-void InterpreterAssembly::MethodEntry(JSThread *thread, Method *method)
+void InterpreterAssembly::MethodEntry(JSThread *thread, Method *method, JSTaggedValue env)
 {
     FrameHandler frameHandler(thread);
     for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
@@ -284,7 +286,7 @@ void InterpreterAssembly::MethodEntry(JSThread *thread, Method *method)
             continue;
         }
         auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
-        debuggerMgr->GetNotificationManager()->MethodEntryEvent(thread, method);
+        debuggerMgr->GetNotificationManager()->MethodEntryEvent(thread, method, env);
         return;
     }
 }
@@ -296,8 +298,9 @@ JSTaggedValue InterpreterAssembly::GeneratorReEnterInterpreter(JSThread *thread,
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_GeneratorReEnterAsmInterp);
     JSTaggedValue func = context->GetMethod();
     Method *method = ECMAObject::Cast(func.GetTaggedObject())->GetCallTarget();
+    JSTaggedValue env = context->GetLexicalEnv();
     if (thread->IsDebugMode() && !method->IsNativeWithCallField()) {
-        MethodEntry(thread, method);
+        MethodEntry(thread, method, env);
     }
     auto acc = reinterpret_cast<GeneratorReEnterInterpEntry>(entry)(thread->GetGlueAddr(), context.GetTaggedType());
     return JSTaggedValue(acc);

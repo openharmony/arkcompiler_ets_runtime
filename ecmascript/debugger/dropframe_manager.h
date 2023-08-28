@@ -28,7 +28,7 @@ public:
     NO_COPY_SEMANTIC(DropframeManager);
     NO_MOVE_SEMANTIC(DropframeManager);
 
-    void MethodEntry(JSThread *thread, JSHandle<Method> method);
+    void MethodEntry(JSThread *thread, JSHandle<Method> method, JSHandle<JSTaggedValue> env);
     void MethodExit(JSThread *thread, JSHandle<Method> method);
     void DropLastFrame(JSThread *thread);
     uint32_t GetPromiseQueueSizeRecordOfTopFrame();

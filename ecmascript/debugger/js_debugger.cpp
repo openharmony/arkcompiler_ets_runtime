@@ -207,17 +207,17 @@ void JSDebugger::DumpBreakpoints()
     }
 }
 
-void JSDebugger::MethodEntry(JSHandle<Method> method)
+void JSDebugger::MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle)
 {
     if (hooks_ == nullptr || !ecmaVm_->GetJsDebuggerManager()->IsDebugMode()) {
         return;
     }
     FrameHandler frameHandler(ecmaVm_->GetJSThread());
-    if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame() || frameHandler.GetEnv().IsUndefinedOrNull()) {
+    if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
         return;
     }
     auto *debuggerMgr = ecmaVm_->GetJsDebuggerManager();
-    debuggerMgr->MethodEntry(method);
+    debuggerMgr->MethodEntry(method, envHandle);
 }
 
 void JSDebugger::MethodExit([[maybe_unused]] JSHandle<Method> method)

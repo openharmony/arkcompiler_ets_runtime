@@ -73,13 +73,15 @@ std::pair<uint16_t, uint16_t> DropframeManager::ReadStlexvarParams(const uint8_t
     return std::make_pair(level, slot);
 }
 
-void DropframeManager::MethodEntry(JSThread *thread, JSHandle<Method> method)
+void DropframeManager::MethodEntry(JSThread *thread, JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle)
 {
-    uint32_t codeSize = method->GetCodeSize();
-    uint16_t newEnvCount = 0;
-    FrameHandler frameHandler(thread);
     std::set<std::pair<uint16_t, uint16_t>> modifiedLexVarPos;
     NewLexModifyRecordLevel();
+    if (envHandle.GetTaggedValue().IsUndefinedOrNull()) {
+        return;
+    }
+    uint32_t codeSize = method->GetCodeSize();
+    uint16_t newEnvCount = 0;
     auto bcIns = BytecodeInstruction(method->GetBytecodeArray());
     auto bcInsLast = bcIns.JumpTo(codeSize);
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
@@ -91,7 +93,7 @@ void DropframeManager::MethodEntry(JSThread *thread, JSHandle<Method> method)
             uint16_t level;
             uint16_t slot;
             std::tie(level, slot) = lexVarPos;
-            JSTaggedValue env = frameHandler.GetEnv();
+            JSTaggedValue env = envHandle.GetTaggedValue();
             for (uint16_t i = 0; ; i++) {
                 if ((level < newEnvCount || i >= level - newEnvCount) &&
                     slot < LexicalEnv::Cast(env.GetTaggedObject())->GetLength() - LexicalEnv::RESERVED_ENV_LENGTH &&

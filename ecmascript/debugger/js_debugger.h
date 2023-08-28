@@ -148,7 +148,7 @@ public:
         }
         hooks_->NativeCalling(nativeAddress);
     }
-    void MethodEntry(JSHandle<Method> method) override;
+    void MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle) override;
     void MethodExit(JSHandle<Method> method) override;
 private:
     std::unique_ptr<PtMethod> FindMethod(const JSPtLocation &location) const;
