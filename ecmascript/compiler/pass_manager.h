@@ -154,7 +154,8 @@ public:
     V(OptPGOType, false)         \
     V(NoCheck, false)            \
     V(OptTrackField, false)      \
-    V(OptLoopPeeling, false)
+    V(OptLoopPeeling, false)     \
+    V(DeadCodeElimination, false)
 
 #define DECL_OPTION(NAME, DEFAULT)    \
 public:                               \

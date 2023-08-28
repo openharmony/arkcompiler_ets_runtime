@@ -17,35 +17,24 @@
 #define ECMASCRIPT_COMPILER_LATER_ELIMINATION_H
 
 #include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/compiler/graph_visitor.h"
 #include "ecmascript/compiler/base/depend_chain_helper.h"
 #include "ecmascript/mem/chunk_containers.h"
 
 namespace panda::ecmascript::kungfu {
 class DependChains;
-class LaterElimination : public GraphVisitor {
+class LaterElimination : public PassVisitor {
 public:
-    LaterElimination(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
-        : GraphVisitor(circuit, chunk), enableLog_(enableLog),
-        methodName_(name), dependChains_(chunk) {}
+    LaterElimination(Circuit* circuit, RPOVisitor* visitor, Chunk* chunk)
+        : PassVisitor(circuit, chunk, visitor), dependChains_(chunk) {}
 
     ~LaterElimination() = default;
 
-    void Run();
-
+    void Initialize() override;
     GateRef VisitGate(GateRef gate) override;
     bool CheckReplacement(GateRef lhs, GateRef rhs);
 private:
-    bool IsLogEnabled() const
-    {
-        return enableLog_;
-    }
-
-    const std::string& GetMethodName() const
-    {
-        return methodName_;
-    }
 
     DependChains* GetDependChain(GateRef dependIn)
     {
@@ -60,8 +49,6 @@ private:
     GateRef TryEliminateOther(GateRef gate);
     GateRef TryEliminateDependSelector(GateRef gate);
 
-    bool enableLog_ {false};
-    std::string methodName_;
     ChunkVector<DependChains*> dependChains_;
 };
 }  // panda::ecmascript::kungfu

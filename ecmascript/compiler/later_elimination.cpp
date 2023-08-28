@@ -15,24 +15,12 @@
 #include "ecmascript/compiler/later_elimination.h"
 
 namespace panda::ecmascript::kungfu {
-void LaterElimination::Run()
+
+void LaterElimination::Initialize()
 {
     dependChains_.resize(circuit_->GetMaxGateId() + 1, nullptr); // 1: +1 for size
     GateRef entry = acc_.GetDependRoot();
     VisitDependEntry(entry);
-    VisitGraph();
-
-    if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m"
-                           << "===================="
-                           << " After late elimination "
-                           << "[" << GetMethodName() << "]"
-                           << "===================="
-                           << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
-    }
 }
 
 GateRef LaterElimination::VisitDependEntry(GateRef gate)

@@ -15,21 +15,6 @@
 #include "ecmascript/compiler/value_numbering.h"
 
 namespace panda::ecmascript::kungfu {
-void ValueNumbering::Run()
-{
-    VisitGraph();
-    if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m"
-                           << "===================="
-                           << " After value numbering "
-                           << "[" << GetMethodName() << "]"
-                           << "===================="
-                           << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
-    }
-}
 
 GateRef ValueNumbering::VisitGate(GateRef gate)
 {

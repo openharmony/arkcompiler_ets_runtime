@@ -18,28 +18,14 @@
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 
 namespace panda::ecmascript::kungfu {
-void NTypeHCRLowering::RunNTypeHCRLowering()
-{
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    for (const auto &gate : gateList) {
-        auto op = acc_.GetOpCode(gate);
-        if (op == OpCode::JS_BYTECODE) {
-            Lower(gate);
-        }
-    }
 
-    if (IsLogEnabled()) {
-        LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m"
-                           << "===================="
-                           << " After NTypeHCRlowering "
-                           << "[" << GetMethodName() << "]"
-                           << "===================="
-                           << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+GateRef NTypeHCRLowering::VisitGate(GateRef gate)
+{
+    auto op = acc_.GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        Lower(gate);
     }
+    return Circuit::NullGate();
 }
 
 void NTypeHCRLowering::Lower(GateRef gate)

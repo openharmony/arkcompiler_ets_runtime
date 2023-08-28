@@ -17,28 +17,28 @@
 #define ECMASCRIPT_COMPILER_NUMBER_SPECULATIVE_RETYPE_H
 
 #include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/gate_meta_data.h"
-#include "ecmascript/compiler/graph_visitor.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
-class NumberSpeculativeRetype : public GraphVisitor {
+class NumberSpeculativeRetype {
 public:
-    NumberSpeculativeRetype(Circuit *circuit, Chunk* chunk, ChunkVector<TypeInfo>& typeInfos)
-        : GraphVisitor(circuit, chunk), acc_(circuit), builder_(circuit),
-          typeInfos_(typeInfos) {}
-    void Run();
-    GateRef VisitGate(GateRef gate);
-
-private:
     enum class State {
         Retype,
         Convert,
     };
+    NumberSpeculativeRetype(Circuit* circuit, Chunk* chunk, ChunkVector<TypeInfo>& typeInfos)
+        : circuit_(circuit), acc_(circuit), builder_(circuit),
+          typeInfos_(typeInfos), chunk_(chunk) {}
+    GateRef VisitGate(GateRef gate);
+    void setState(NumberSpeculativeRetype::State state);
+
+private:
 
     enum class OpType {
         NORMAL,
@@ -134,10 +134,24 @@ private:
     }
 
     static constexpr size_t PROPERTY_LOOKUP_RESULT_INDEX = 1;
+    Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
     ChunkVector<TypeInfo>& typeInfos_;
     State state_ {0};
+    [[maybe_unused]] Chunk *chunk_ {nullptr};
 };
+
+class NumberSpeculativeRetypeManager : public PassVisitor {
+public:
+    NumberSpeculativeRetypeManager(Circuit* circuit, RPOVisitor* visitor, Chunk* chunk,
+                                   NumberSpeculativeRetype* retype, NumberSpeculativeRetype::State state)
+        : PassVisitor(circuit, chunk, visitor), retype_(retype), state_(state) {}
+    GateRef VisitGate(GateRef gate) override;
+private:
+    NumberSpeculativeRetype* retype_;
+    NumberSpeculativeRetype::State state_;
+};
+
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_NUMBER_SPECULATIVE_RETYPE_H
