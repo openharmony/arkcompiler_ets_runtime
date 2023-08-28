@@ -945,6 +945,10 @@ ohos_source_set("libark_jsruntime_set") {
     cflags_cc += [ "-fvisibility=hidden" ]
   }
 
+  if (enable_lto_O0) {
+    cflags = [ "-O0" ]
+  }
+
   external_deps = []
   deps = []
   if (!is_cross_platform_build) {
@@ -1065,6 +1069,10 @@ ohos_source_set("libark_jsruntime_test_set") {
 
   if (enable_target_compilation) {
     external_deps += [ "c_utils:utils" ]
+  }
+
+  if (enable_lto_O0) {
+    cflags = [ "-O0" ]
   }
 
   # hiviewdfx libraries
