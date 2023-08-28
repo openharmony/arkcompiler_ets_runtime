@@ -2120,6 +2120,14 @@ JSTaggedValue RuntimeStubs::RuntimeGetCallSpreadArgs(JSThread *thread, const JSH
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> argv = factory->NewTaggedArray(argvMayMaxLength);
     JSHandle<JSTaggedValue> itor = JSIterator::GetIterator(thread, jsArray);
+
+    // Fast path when array is stablearray and Iterator not change.
+    if (jsArray->IsStableJSArray(thread) && itor->IsJSArrayIterator()) {
+        JSHandle<TaggedArray> srcElements(thread, JSHandle<JSObject>::Cast(jsArray)->GetElements());
+        TaggedArray::CopyTaggedArrayElement(thread, srcElements, argv, argvMayMaxLength);
+        return argv.GetTaggedValue();
+    }
+
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSMutableHandle<JSTaggedValue> next(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> nextArg(thread, JSTaggedValue::Undefined());
