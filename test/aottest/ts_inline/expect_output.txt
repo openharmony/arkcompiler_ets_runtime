@@ -18,4 +18,5 @@
 [trace] aot inline function name: bar@ts_inline caller function name: func_main_0@ts_inline
 56
 56
+[trace] aot inline function name: calculate@ts_inline caller function name: func_main_0@ts_inline
 16

@@ -1125,7 +1125,7 @@ size_t BytecodeCircuitBuilder::LoopExitCount(size_t from, size_t to)
     ASSERT(bbNext.loopDepth >= headDep);
     size_t nextDep = bbNext.loopDepth - headDep;
     ASSERT(bb.loopDepth >= nextDep);
-    return bb.loopDepth > nextDep;
+    return bb.loopDepth - nextDep;
 }
 
 GateRef BytecodeCircuitBuilder::NewValueFromPredBB(BytecodeRegion &bb, size_t idx,

@@ -137,6 +137,7 @@ enum CommandValues {
     OPTION_COMPILER_NOCHECK,
     OPTION_FAST_AOT_COMPILE_MODE,
     OPTION_COMPILER_OPT_LOOP_PEELING,
+    OPTION_COMPILER_OPT_ON_HEAP_CHECK,
     OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION,
 };
 
@@ -1180,6 +1181,16 @@ public:
         return enableOptLoopPeeling_;
     }
 
+    void SetEnableOptOnHeapCheck(bool value)
+    {
+        enableOptOnHeapCheck_ = value;
+    }
+
+    bool IsEnableOptOnHeapCheck() const
+    {
+        return enableOptOnHeapCheck_;
+    }
+
 private:
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
@@ -1208,7 +1219,7 @@ private:
     uint32_t longPauseTime_ {40}; // 40: default pause time
     std::string aotOutputFile_ {""};
     std::string targetTriple_ {TARGET_X64};
-    uint32_t asmOptLevel_ {3}; // 3: default opt level
+    uint32_t asmOptLevel_ {2};
     uint32_t relocationMode_ {2}; // 2: default relocation mode
     uint32_t maxNonmovableSpaceCapacity_ {4_MB};
     bool enableAsmInterpreter_ {true};
@@ -1250,7 +1261,7 @@ private:
     bool enableOptInlining_ {true};
     bool enableOptPGOType_ {true};
     bool enableGlobalTypeInfer_ {false};
-    bool enableOptTrackField_ {false};
+    bool enableOptTrackField_ {true};
     uint32_t compilerModuleMethods_ {100};
     uint64_t wasSet_ {0};
     bool enablePrintExecuteTime_ {false};
@@ -1267,14 +1278,15 @@ private:
     std::string compilerSelectMethods_ {""};
     std::string compilerSkipMethods_ {""};
     bool traceInline_ {false};
-    size_t maxInlineBytecodes_ {25};
+    size_t maxInlineBytecodes_ {45};
     std::string targetCompilerMode_ {""};
     std::string hapPath_ {""};
     uint32_t hapAbcOffset_ {0};
     uint32_t hapAbcSize_ {0};
     bool compilerNoCheck_ {false};
-    bool fastAOTCompileMode_ {true};
-    bool enableOptLoopPeeling_ {false};
+    bool fastAOTCompileMode_ {false};
+    bool enableOptLoopPeeling_ {true};
+    bool enableOptOnHeapCheck_ {true};
 };
 }  // namespace panda::ecmascript
 

@@ -128,7 +128,8 @@ class PassOptions {
 public:
     PassOptions(bool enableArrayBoundsCheckElimination, bool enableTypeLowering, bool enableEarlyElimination,
                 bool enableLaterElimination, bool enableValueNumbering, bool enableTypeInfer,
-                bool enableOptInlining, bool enableOptPGOType, bool enableOptTrackField, bool enableOptLoopPeeling)
+                bool enableOptInlining, bool enableOptPGOType, bool enableOptTrackField, bool enableOptLoopPeeling,
+                bool enableOptOnHeapCheck)
         : enableArrayBoundsCheckElimination_(enableArrayBoundsCheckElimination),
           enableTypeLowering_(enableTypeLowering),
           enableEarlyElimination_(enableEarlyElimination),
@@ -138,7 +139,8 @@ public:
           enableOptInlining_(enableOptInlining),
           enableOptPGOType_(enableOptPGOType),
           enableOptTrackField_(enableOptTrackField),
-          enableOptLoopPeeling_(enableOptLoopPeeling)
+          enableOptLoopPeeling_(enableOptLoopPeeling),
+          enableOptOnHeapCheck_(enableOptOnHeapCheck)
         {
         }
 
@@ -155,7 +157,8 @@ public:
     V(NoCheck, false)            \
     V(OptTrackField, false)      \
     V(OptLoopPeeling, false)     \
-    V(DeadCodeElimination, false)
+    V(DeadCodeElimination, false) \
+    V(OptOnHeapCheck, false)
 
 #define DECL_OPTION(NAME, DEFAULT)    \
 public:                               \

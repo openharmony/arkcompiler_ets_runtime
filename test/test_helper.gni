@@ -568,7 +568,7 @@ template("host_aot_js_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_compile_options_ = " --aot-file=" + rebase_path(_test_aot_arg_) +
-                            " --log-level=" + _test_aot_log_level + " --log-components=compiler --compiler-opt-type-lowering=false --compiler-opt-inlining=false"
+                            " --log-level=" + _test_aot_log_level + " --log-components=compiler --compiler-opt-type-lowering=false --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=false"
 
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
@@ -837,7 +837,7 @@ template("host_aot_test_action") {
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
         _test_aot_log_level + " --log-components=compiler" +
-        " --compiler-opt-inlining=false"
+        " --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=false"
 
     if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
       _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
@@ -913,7 +913,8 @@ template("host_aot_test_action") {
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_slowpath_) +
         " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
-        " --compiler-opt-type-lowering=false" + " --compiler-opt-inlining=false"
+        " --compiler-opt-type-lowering=false" +
+        " --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=false"
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
       _aot_compile_options_ += " --compiler-trace-deopt=true"
@@ -1181,8 +1182,9 @@ template("host_typeinfer_test_action") {
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-    _aot_compile_options_ =
-        " --compiler-assert-types=true" + " --compiler-opt-type-lowering=false"
+    _aot_compile_options_ = " --compiler-assert-types=true" +
+                            " --compiler-opt-type-lowering=false" +
+                            " --compiler-opt-loop-peeling=false"
 
     if (defined(invoker.is_enable_builtins_dts) &&
         invoker.is_enable_builtins_dts) {

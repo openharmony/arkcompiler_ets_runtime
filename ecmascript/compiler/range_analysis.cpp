@@ -168,7 +168,8 @@ GateRef RangeAnalysis::VisitLoadArrayLength(GateRef gate)
 
 GateRef RangeAnalysis::VisitLoadTypedArrayLength(GateRef gate)
 {
-    return UpdateRange(gate, RangeInfo(0, RangeInfo::TYPED_ARRAY_ONHEAP_MAX));
+    int32_t max = IsOnHeap() ? RangeInfo::TYPED_ARRAY_ONHEAP_MAX : INT32_MAX;
+    return UpdateRange(gate, RangeInfo(0, max));
 }
 
 GateRef RangeAnalysis::VisitRangeGuard(GateRef gate)

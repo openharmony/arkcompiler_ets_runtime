@@ -334,7 +334,8 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         TypeMCRLowering lowering(data->GetCircuit(), &visitor,
-                                 data->GetCompilerConfig(), data->GetTSManager(), &chunk);
+                                 data->GetCompilerConfig(), data->GetTSManager(), &chunk,
+                                 data->GetPassOptions()->EnableOptOnHeapCheck());
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
         visitor.PrintLog("TypeMCRLowering");
@@ -440,7 +441,8 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        NumberSpeculativeRunner(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run();
+        bool onHeapCheck = data->GetPassOptions()->EnableOptOnHeapCheck();
+        NumberSpeculativeRunner(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, onHeapCheck).Run();
         return true;
     }
 };
