@@ -81,6 +81,8 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::TYPED_UNARY_OP:
         case OpCode::JSINLINETARGET_TYPE_CHECK:
         case OpCode::INLINE_ACCESSOR_CHECK:
+        case OpCode::LOAD_GETTER:
+        case OpCode::LOAD_SETTER:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
             return TryEliminateFrameState(gate);
@@ -337,6 +339,13 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
         }
         case OpCode::JSINLINETARGET_TYPE_CHECK: {
             if (acc_.GetFuncGT(lhs) != acc_.GetFuncGT(rhs)) {
+                return false;
+            }
+            break;
+        }
+        case OpCode::LOAD_GETTER:
+        case OpCode::LOAD_SETTER: {
+            if (acc_.TryGetValue(lhs) != acc_.TryGetValue(rhs)) {
                 return false;
             }
             break;
