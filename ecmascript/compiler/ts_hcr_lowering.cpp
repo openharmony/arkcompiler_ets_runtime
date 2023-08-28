@@ -510,10 +510,21 @@ void TSHCRLowering::SpeculateConditionJump(GateRef gate, bool flag)
     GateRef value = acc_.GetValueIn(gate, 0);
     GateType valueType = acc_.GetGateType(value);
     GateRef jump = Circuit::NullGate();
+    auto branchKind = BranchKind::NORMAL_BRANCH;
+    PGOSampleType sampleType = acc_.TryGetPGOType(value);
+    if (sampleType.IsLikely()) {
+        branchKind = BranchKind::TRUE_BRANCH;
+    } else if (sampleType.IsUnLikely()) {
+        branchKind = BranchKind::FALSE_BRANCH;
+    } else if (sampleType.IsStrongLikely()) {
+        branchKind = BranchKind::STRONG_TRUE_BRANCH;
+    } else if (sampleType.IsStrongUnLikely()) {
+        branchKind = BranchKind::STRONG_FALSE_BRANCH;
+    }
     if (flag) {
-        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JNEZ>(value, valueType);
+        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JNEZ>(value, valueType, branchKind);
     } else {
-        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JEQZ>(value, valueType);
+        jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JEQZ>(value, valueType, branchKind);
     }
     acc_.ReplaceGate(gate, jump, jump, Circuit::NullGate());
 }

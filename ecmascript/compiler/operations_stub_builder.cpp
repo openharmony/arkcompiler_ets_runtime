@@ -26,14 +26,31 @@ GateRef OperationsStubBuilder::Equal(GateRef glue, GateRef left, GateRef right, 
     env->SubCfgEntry(&entry);
     Label exit(env);
     Label isHole(env);
+    Label notHole(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     result = FastEqual(left, right, callback);
-    Branch(TaggedIsHole(*result), &isHole, &exit);
+    Branch(TaggedIsHole(*result), &isHole, &notHole);
     Bind(&isHole);
     {
         // slow path
         result = CallRuntime(glue, RTSTUB_ID(Eq), { left, right });
         Jump(&exit);
+    }
+    Bind(&notHole);
+    {
+        Label resultIsTrue(env);
+        Label resultNotTrue(env);
+        Branch(TaggedIsTrue(*result), &resultIsTrue, &resultNotTrue);
+        Bind(&resultIsTrue);
+        {
+            callback.ProfileBranch(true);
+            Jump(&exit);
+        }
+        Bind(&resultNotTrue);
+        {
+            callback.ProfileBranch(false);
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     auto ret = *result;
@@ -67,10 +84,12 @@ GateRef OperationsStubBuilder::NotEqual(GateRef glue, GateRef left, GateRef righ
         Bind(&resultIsTrue);
         {
             result = TaggedFalse();
+            callback.ProfileBranch(false);
             Jump(&exit);
         }
         Bind(&resultNotTrue);
         {
+            callback.ProfileBranch(true);
             result = TaggedTrue();
             Jump(&exit);
         }
@@ -87,12 +106,19 @@ GateRef OperationsStubBuilder::StrictEqual(GateRef glue, GateRef left, GateRef r
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
+    Label strictEqual(env);
     Label notStrictEqual(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), TaggedTrue());
-    Branch(FastStrictEqual(glue, left, right, callback), &exit, &notStrictEqual);
+    Branch(FastStrictEqual(glue, left, right, callback), &strictEqual, &notStrictEqual);
+    Bind(&strictEqual);
+    {
+        callback.ProfileBranch(true);
+        Jump(&exit);
+    }
     Bind(&notStrictEqual);
     {
         result = TaggedFalse();
+        callback.ProfileBranch(false);
         Jump(&exit);
     }
     Bind(&exit);
@@ -108,11 +134,18 @@ GateRef OperationsStubBuilder::StrictNotEqual(GateRef glue, GateRef left, GateRe
     env->SubCfgEntry(&entry);
     Label exit(env);
     Label strictEqual(env);
+    Label notStrictEqual(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), TaggedTrue());
-    Branch(FastStrictEqual(glue, left, right, callback), &strictEqual, &exit);
+    Branch(FastStrictEqual(glue, left, right, callback), &strictEqual, &notStrictEqual);
     Bind(&strictEqual);
     {
         result = TaggedFalse();
+        callback.ProfileBranch(false);
+        Jump(&exit);
+    }
+    Bind(&notStrictEqual);
+    {
+        callback.ProfileBranch(true);
         Jump(&exit);
     }
     Bind(&exit);
@@ -206,11 +239,13 @@ GateRef OperationsStubBuilder::Less(GateRef glue, GateRef left, GateRef right, P
     }
     Bind(&leftLessRight);
     {
+        callback.ProfileBranch(true);
         result = TaggedTrue();
         Jump(&exit);
     }
     Bind(&leftNotLessRight);
     {
+        callback.ProfileBranch(false);
         result = TaggedFalse();
         Jump(&exit);
     }
@@ -311,11 +346,13 @@ GateRef OperationsStubBuilder::LessEq(GateRef glue, GateRef left, GateRef right,
     }
     Bind(&leftLessEqRight);
     {
+        callback.ProfileBranch(true);
         result = TaggedTrue();
         Jump(&exit);
     }
     Bind(&leftNotLessEqRight);
     {
+        callback.ProfileBranch(false);
         result = TaggedFalse();
         Jump(&exit);
     }
@@ -415,11 +452,13 @@ GateRef OperationsStubBuilder::Greater(GateRef glue, GateRef left, GateRef right
     }
     Bind(&leftGreaterRight);
     {
+        callback.ProfileBranch(true);
         result = TaggedTrue();
         Jump(&exit);
     }
     Bind(&leftNotGreaterRight);
     {
+        callback.ProfileBranch(false);
         result = TaggedFalse();
         Jump(&exit);
     }
@@ -520,11 +559,13 @@ GateRef OperationsStubBuilder::GreaterEq(GateRef glue, GateRef left, GateRef rig
     }
     Bind(&leftGreaterEqRight);
     {
+        callback.ProfileBranch(true);
         result = TaggedTrue();
         Jump(&exit);
     }
     Bind(&leftNotGreaterEQRight);
     {
+        callback.ProfileBranch(false);
         result = TaggedFalse();
         Jump(&exit);
     }

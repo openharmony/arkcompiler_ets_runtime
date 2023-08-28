@@ -421,13 +421,34 @@ void NumberSpeculativeLowering::VisitIsTrueOrFalse(GateRef gate, bool flag)
 
 void NumberSpeculativeLowering::VisitBooleanJump(GateRef gate)
 {
-    TypedJumpOp jumpOp = acc_.GetTypedJumpAccessor(gate).GetTypedJumpOp();
+    TypedJumpAccessor jumpAcc = acc_.GetTypedJumpAccessor(gate);
+    TypedJumpOp jumpOp = jumpAcc.GetTypedJumpOp();
     ASSERT((jumpOp == TypedJumpOp::TYPED_JEQZ) || (jumpOp == TypedJumpOp::TYPED_JNEZ));
     GateRef condition = acc_.GetValueIn(gate, 0);
+    uint32_t trueWeight = BranchWeight::ONE_WEIGHT;
+    uint32_t falseWeight = BranchWeight::ONE_WEIGHT;
+    BranchKind kind = jumpAcc.GetBranchKind();
+    switch (kind) {
+        case BranchKind::TRUE_BRANCH:
+            trueWeight = BranchWeight::WEAK_WEIGHT;
+            break;
+        case BranchKind::FALSE_BRANCH:
+            falseWeight = BranchWeight::WEAK_WEIGHT;
+            break;
+        case BranchKind::STRONG_TRUE_BRANCH:
+            trueWeight = BranchWeight::STRONG_WEIGHT;
+            break;
+        case BranchKind::STRONG_FALSE_BRANCH:
+            falseWeight = BranchWeight::STRONG_WEIGHT;
+            break;
+        default:
+            break;
+    }
     if (jumpOp == TypedJumpOp::TYPED_JEQZ) {
+        std::swap(trueWeight, falseWeight);
         condition = builder_.BoolNot(condition);
     }
-    GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition);
+    GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition, trueWeight, falseWeight);
     acc_.ReplaceGate(gate, ifBranch, acc_.GetDep(gate), Circuit::NullGate());
 }
 

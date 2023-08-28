@@ -145,6 +145,13 @@ public:
         HEAP_OBJECT = 0x1ULL << 8,
         HEAP_OR_UNDEFINED_OR_NULL = HEAP_OBJECT | UNDEFINED_OR_NULL,
         ANY = 0x3FFULL,
+        BRANCH_START = 0x1ULL << 10,
+        LIKELY = 0x2ULL << 10,
+        UNLIKELY = 0x3ULL << 10,
+        STRONG_LIKELY = 0x4ULL << 10,
+        STRONG_UNLIKELY = 0x5ULL << 10,
+        NORMAL_BRANCH = 0x6ULL << 10,
+        BRANCH_END = 0x7ULL << 10,  // leave higher bits for branch type or count
     };
 
     PGOSampleType() : type_(Type::NONE) {};
@@ -223,9 +230,45 @@ public:
         return static_cast<int32_t>(Type::SPECIAL);
     }
 
+    static int32_t Likely()
+    {
+        return static_cast<int32_t>(Type::LIKELY);
+    }
+
+    static int32_t Unlikely()
+    {
+        return static_cast<int32_t>(Type::UNLIKELY);
+    }
+
+    static int32_t StrongLikely()
+    {
+        return static_cast<int32_t>(Type::STRONG_LIKELY);
+    }
+
+    static int32_t StrongUnLikely()
+    {
+        return static_cast<int32_t>(Type::STRONG_UNLIKELY);
+    }
+
+    static int32_t NormalBranch()
+    {
+        return static_cast<int32_t>(Type::NORMAL_BRANCH);
+    }
+
+    static int32_t BranchEndRev()
+    {
+        return static_cast<int32_t>(UINT32_MAX & static_cast<uint32_t>(Type::BRANCH_END));
+    }
+
     static int32_t CombineType(int32_t curType, int32_t newType)
     {
         return static_cast<int32_t>(static_cast<uint32_t>(curType) | static_cast<uint32_t>(newType));
+    }
+
+    bool IsBranchType() const
+    {
+        auto type = std::get<Type>(type_);
+        return (type >= Type::BRANCH_START) && (type <= Type::BRANCH_END);
     }
 
     static PGOSampleType NoneClassType()
@@ -236,6 +279,11 @@ public:
     PGOSampleType CombineType(PGOSampleType type)
     {
         if (type_.index() == 0) {
+            if (type.IsBranchType()) {
+                // clear branch type bit before update branch type
+                type_ = Type(static_cast<uint32_t>(std::get<Type>(type_)) &
+                    (UINT32_MAX ^ static_cast<uint32_t>(Type::BRANCH_END)));
+            }
             type_ =
                 Type(static_cast<uint32_t>(std::get<Type>(type_)) | static_cast<uint32_t>(std::get<Type>(type.type_)));
         } else {
@@ -281,29 +329,61 @@ public:
         return std::get<ClassType>(type_);
     }
 
+    Type GetPrimitiveType() const
+    {
+        auto type = static_cast<uint32_t>(std::get<Type>(type_));
+        return static_cast<Type>(type & (UINT32_MAX ^ static_cast<uint32_t>(Type::BRANCH_END)));
+    }
+
+    Type GetBranchType() const
+    {
+        auto type = static_cast<uint32_t>(std::get<Type>(type_));
+        return static_cast<Type>(type & static_cast<uint32_t>(Type::BRANCH_END));
+    }
+
     bool IsAny() const
     {
-        return type_.index() == 0 && std::get<Type>(type_) == Type::ANY;
+        return type_.index() == 0 && GetPrimitiveType() == Type::ANY;
     }
 
     bool IsNone() const
     {
-        return type_.index() == 0 && std::get<Type>(type_) == Type::NONE;
+        return type_.index() == 0 && GetPrimitiveType() == Type::NONE;
     }
 
     bool IsInt() const
     {
-        return type_.index() == 0 && std::get<Type>(type_) == Type::INT;
+        return type_.index() == 0 && GetPrimitiveType() == Type::INT;
     }
 
     bool IsIntOverFlow() const
     {
-        return type_.index() == 0 && std::get<Type>(type_) == Type::INT_OVERFLOW;
+        return type_.index() == 0 && GetPrimitiveType() == Type::INT_OVERFLOW;
     }
 
     bool IsDouble() const
     {
-        return type_.index() == 0 && std::get<Type>(type_) == Type::DOUBLE;
+        return type_.index() == 0 && GetPrimitiveType() == Type::DOUBLE;
+    }
+
+    bool IsLikely() const
+    {
+        return type_.index() == 0 && GetBranchType() == Type::LIKELY;
+    }
+
+    bool IsUnLikely() const
+    {
+        return type_.index() == 0 && GetBranchType() == Type::UNLIKELY;
+    }
+
+    bool IsStrongLikely() const
+    {
+        return type_.index() == 0 && GetBranchType() == Type::STRONG_LIKELY;
+    }
+
+    bool IsStrongUnLikely() const
+    {
+        return type_.index() == 0 && GetBranchType() == Type::STRONG_UNLIKELY;
     }
 
     bool IsNumber() const
@@ -311,7 +391,8 @@ public:
         if (type_.index() != 0) {
             return false;
         }
-        switch (std::get<Type>(type_)) {
+        auto primType = GetPrimitiveType();
+        switch (primType) {
             case Type::INT:
             case Type::INT_OVERFLOW:
             case Type::DOUBLE:

@@ -64,9 +64,10 @@ GateRef CircuitBuilder::UndefineConstant()
     return circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED, type);
 }
 
-GateRef CircuitBuilder::Branch(GateRef state, GateRef condition)
+GateRef CircuitBuilder::Branch(GateRef state, GateRef condition, uint32_t trueWeight, uint32_t falseWeight)
 {
-    return circuit_->NewGate(circuit_->IfBranch(), { state, condition });
+    auto value = BranchAccessor::ToValue(trueWeight, falseWeight);
+    return circuit_->NewGate(circuit_->IfBranch(value), { state, condition });
 }
 
 GateRef CircuitBuilder::SwitchBranch(GateRef state, GateRef index, int caseCounts)
@@ -708,10 +709,10 @@ GateRef CircuitBuilder::TypeConvert(MachineType type, GateType typeFrom, GateTyp
         type, inList.size(), inList.data(), GateType::AnyType());
 }
 
-GateRef CircuitBuilder::TypedConditionJump(MachineType type, TypedJumpOp jumpOp, GateType typeVal,
-                                           const std::vector<GateRef>& inList)
+GateRef CircuitBuilder::TypedConditionJump(MachineType type, TypedJumpOp jumpOp, BranchKind branchKind,
+    GateType typeVal, const std::vector<GateRef>& inList)
 {
-    uint64_t value = TypedJumpAccessor::ToValue(typeVal, jumpOp);
+    uint64_t value = TypedJumpAccessor::ToValue(typeVal, jumpOp, branchKind);
     return GetCircuit()->NewGate(circuit_->TypedConditionJump(value),
         type, inList.size(), inList.data(), GateType::Empty());
 }
@@ -1795,11 +1796,12 @@ void CircuitBuilder::Jump(Label *label)
     env_->SetCurrentLabel(nullptr);
 }
 
-void CircuitBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel)
+void CircuitBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
+    uint32_t trueWeight, uint32_t falseWeight)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
-    GateRef ifBranch = Branch(currentControl, condition);
+    GateRef ifBranch = Branch(currentControl, condition, trueWeight, falseWeight);
     currentLabel->SetControl(ifBranch);
     GateRef ifTrue = IfTrue(ifBranch);
     trueLabel->AppendPredecessor(GetCurrentLabel());

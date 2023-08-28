@@ -381,6 +381,9 @@ public:
     ICmpCondition GetICmpCondition(GateRef gate) const;
     FCmpCondition GetFCmpCondition(GateRef gate) const;
     size_t GetOffset(GateRef gate) const;
+    uint32_t GetTrueWeight(GateRef gate) const;
+    uint32_t GetFalseWeight(GateRef gate) const;
+    bool HasBranchWeight(GateRef gate) const;
     size_t GetIndex(GateRef gate) const;
     uint32_t GetArraySize(GateRef gate) const;
     void SetArraySize(GateRef gate, uint32_t size);
