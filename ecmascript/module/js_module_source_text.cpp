@@ -456,6 +456,7 @@ JSHandle<SourceTextModule> SourceTextModule::GetModuleFromBinding(JSThread *thre
 int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl,
     bool excuteFromJob)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SourceTextModule::Instantiate");
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, SourceTextModule::UNDEFINED_INDEX);
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleHdl);
     // 1. Let module be this Source Text Module Record.
@@ -821,6 +822,7 @@ JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
 int SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                const void *buffer, size_t size, bool excuteFromJob)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SourceTextModule::Evaluate");
     // 1. Let module be this Source Text Module Record.
     // 2. Assert: module.[[Status]] is "instantiated" or "evaluated".
     [[maybe_unused]] ModuleStatus status = module->GetStatus();
