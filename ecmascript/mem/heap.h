@@ -267,7 +267,7 @@ public:
 
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
 
-    void CheckAndTriggerOldGC(size_t size = 0);
+    bool CheckAndTriggerOldGC(size_t size = 0);
     TriggerGCType SelectGCType() const;
     /*
      * Parallel GC related configurations and utilities.
@@ -445,13 +445,14 @@ public:
     bool OldSpaceExceedCapacity(size_t size) const
     {
         size_t totalSize = oldSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize() + size;
-        return totalSize >= oldSpace_->GetMaximumCapacity() + oldSpace_->GetOutOfMemoryOvershootSize();
+        return totalSize >= oldSpace_->GetMaximumCapacity() + oldSpace_->GetOvershootSize() +
+               oldSpace_->GetOutOfMemoryOvershootSize();
     }
 
     bool OldSpaceExceedLimit() const
     {
         size_t totalSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
-        return totalSize >= oldSpace_->GetInitialCapacity();
+        return totalSize >= oldSpace_->GetInitialCapacity() + oldSpace_->GetOvershootSize();
     }
 
     void AdjustSpaceSizeForAppSpawn();
@@ -486,7 +487,7 @@ public:
         mode_ = mode;
     }
 
-    void ThrowOutOfMemoryError(size_t size, std::string functionName);
+    void ThrowOutOfMemoryError(size_t size, std::string functionName, bool NonMovableObjNearOOM = false);
 
     void IncreaseNativeBindingSize(size_t size);
     void IncreaseNativeBindingSize(JSNativePointer *object);
@@ -528,6 +529,18 @@ public:
     bool IsYoungGC() const
     {
         return gcType_ == TriggerGCType::YOUNG_GC;
+    }
+
+    bool GetOldGCRequested()
+    {
+        return oldGCRequested_;
+    }
+
+    void CheckNonMovableSpaceOOM()
+    {
+        if (nonMovableSpace_->GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE) {
+            ThrowOutOfMemoryError(nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
+        }
     }
 private:
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
@@ -646,6 +659,7 @@ private:
 
     bool parallelGC_ {true};
     bool fullGCRequested_ {false};
+    bool oldGCRequested_ {false};
     bool fullMarkRequested_ {false};
     bool oldSpaceLimitAdjusted_ {false};
     bool shouldThrowOOMError_ {false};

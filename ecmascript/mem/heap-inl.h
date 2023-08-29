@@ -229,7 +229,7 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return AllocateHugeObject(hclass, size);
     }
-    auto object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->Allocate(size));
+    auto object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->CheckAndAllocate(size));
     CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, nonMovableSpace_, "Heap::AllocateNonMovableOrHugeObject");
     object->SetClass(hclass);
     OnAllocateEvent(reinterpret_cast<TaggedObject*>(object), size);

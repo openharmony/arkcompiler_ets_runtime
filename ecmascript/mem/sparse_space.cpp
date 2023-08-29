@@ -59,19 +59,19 @@ uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
         CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
     }
 
-    if (allowGC) {
-        // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
-        heap_->CheckAndTriggerOldGC();
+    // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
+    if (allowGC && heap_->CheckAndTriggerOldGC()) {
+        object = allocator_->Allocate(size);
+        CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
     }
 
     if (Expand()) {
         object = allocator_->Allocate(size);
         CHECK_OBJECT_AND_INC_OBJ_SIZE(size);
-        return object;
     }
 
     if (allowGC) {
-        heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
+        heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
         object = Allocate(size, false);
         // Size is already increment
     }
@@ -80,7 +80,7 @@ uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
 
 bool SparseSpace::Expand()
 {
-    if (committedSize_ >= maximumCapacity_ + outOfMemoryOvershootSize_) {
+    if (committedSize_ >= maximumCapacity_ + overshootSize_ + outOfMemoryOvershootSize_) {
         LOG_ECMA_MEM(INFO) << "Expand::Committed size " << committedSize_ << " of Sparse Space is too big. ";
         return false;
     }
@@ -548,6 +548,16 @@ void LocalSpace::Stop()
     if (GetCurrentRegion() != nullptr) {
         GetCurrentRegion()->SetHighWaterMark(allocator_->GetTop());
     }
+}
+
+uintptr_t  NonMovableSpace::CheckAndAllocate(size_t size)
+{
+    if (maximumCapacity_ == committedSize_ && GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE &&
+        !heap_->GetOldGCRequested())
+    {
+        heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
+    }
+    return Allocate(size);
 }
 
 NonMovableSpace::NonMovableSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)

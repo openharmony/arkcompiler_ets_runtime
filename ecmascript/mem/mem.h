@@ -48,6 +48,8 @@ static constexpr size_t STANDARD_POOL_SIZE = WORKER_NUM * DEFAULT_WORKER_HEAP_SI
 
 static constexpr size_t MIN_OLD_SPACE_LIMIT = 2_MB;
 
+static constexpr size_t MAX_NONMOVABLE_LIVE_OBJ_SIZE = 16_MB;
+
 static constexpr size_t REGION_SIZE_LOG2 = 18U;
 
 static constexpr size_t MIN_HEAP_SIZE = 5_MB;
