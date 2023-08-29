@@ -915,8 +915,9 @@ void EcmaInterpreter::MethodEntry(JSThread *thread)
         if (method->IsNativeWithCallField()) {
             continue;
         }
+        JSTaggedValue env = frameHandler.GetEnv();
         auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
-        debuggerMgr->GetNotificationManager()->MethodEntryEvent(thread, method);
+        debuggerMgr->GetNotificationManager()->MethodEntryEvent(thread, method, env);
         return;
     }
 }

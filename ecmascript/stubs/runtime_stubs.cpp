@@ -1602,13 +1602,14 @@ DEF_RUNTIME_STUBS(MethodEntry)
         if (method->IsNativeWithCallField()) {
             return JSTaggedValue::Hole().GetRawData();
         }
+        JSHandle<JSFunction> funcObj = JSHandle<JSFunction>::Cast(func);
         FrameHandler frameHandler(thread);
         for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
             if (frameHandler.IsEntryFrame() || frameHandler.IsBuiltinFrame()) {
                 continue;
             }
             auto *debuggerMgr = thread->GetEcmaVM()->GetJsDebuggerManager();
-            debuggerMgr->GetNotificationManager()->MethodEntryEvent(thread, method);
+            debuggerMgr->GetNotificationManager()->MethodEntryEvent(thread, method, funcObj->GetLexicalEnv());
             return JSTaggedValue::Hole().GetRawData();
         }
     }

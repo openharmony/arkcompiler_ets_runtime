@@ -139,9 +139,9 @@ public:
         }
     }
 
-    void MethodEntry(JSHandle<Method> method)
+    void MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle)
     {
-        dropframeManager_.MethodEntry(jsThread_, method);
+        dropframeManager_.MethodEntry(jsThread_, method, envHandle);
     }
 
     void MethodExit(JSHandle<Method> method)

@@ -38,7 +38,7 @@ public:
     virtual void VmStart() = 0;
     virtual void VmDeath() = 0;
     virtual void NativeCalling(const void *nativeAddress) = 0;
-    virtual void MethodEntry(JSHandle<Method> method) = 0;
+    virtual void MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle) = 0;
     virtual void MethodExit(JSHandle<Method> method) = 0;
 };
 
@@ -102,11 +102,12 @@ public:
         }
     }
 
-    void MethodEntryEvent(JSThread *thread, Method *method) const
+    void MethodEntryEvent(JSThread *thread, Method *method, JSTaggedValue env) const
     {
         if (UNLIKELY(listener_ != nullptr)) {
             JSHandle<Method> methodHandle(thread, method);
-            listener_->MethodEntry(methodHandle);
+            JSHandle<JSTaggedValue> envHandle(thread, env);
+            listener_->MethodEntry(methodHandle, envHandle);
         }
     }
     void MethodExitEvent(JSThread *thread, Method *method) const
