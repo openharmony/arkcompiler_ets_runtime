@@ -3716,10 +3716,14 @@ static void DumpObject(TaggedObject *obj, std::vector<std::pair<CString, JSTagge
         case JSType::TAGGED_DICTIONARY:
         case JSType::LEXICAL_ENV:
         case JSType::COW_TAGGED_ARRAY:
+        case JSType::AOT_LITERAL_INFO:
             DumpArrayClass(TaggedArray::Cast(obj), vec);
             return;
         case JSType::CONSTANT_POOL:
             DumpConstantPoolClass(ConstantPool::Cast(obj), vec);
+            return;
+        case JSType::VTABLE:
+            VTable::Cast(obj)->DumpForSnapshot(vec);
             return;
         case JSType::LINE_STRING:
         case JSType::CONSTANT_STRING:
