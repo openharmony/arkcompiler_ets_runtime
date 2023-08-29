@@ -201,7 +201,7 @@ static os::memory::Mutex *mutex = new panda::os::memory::Mutex();
 #define XPM_PROC_SUFFIX "/xpm_region"
 #define XPM_PROC_LENGTH 50
 
-static bool CheckSecureMem(uintptr_t mem)
+bool JSNApi::CheckSecureMem(uintptr_t mem)
 {
     static bool hasOpen = false;
     static uintptr_t secureMemStart = 0;

@@ -22,6 +22,7 @@
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "file.h"
+#include "jsnapi.h"
 
 namespace panda::ecmascript {
 static const size_t MALLOC_SIZE_LIMIT = 2147483648; // Max internal memory used by the VM declared in options
@@ -76,6 +77,10 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(filename), &data, &dataSize);
         if (!getBuffer) {
             LOG_ECMA(ERROR) << "resolveBufferCallback get buffer failed";
+            return nullptr;
+        }
+        if (!JSNApi::CheckSecureMem(reinterpret_cast<uintptr_t>(data))) {
+            LOG_ECMA(ERROR) << "Hsp secure memory check failed, please execute in secure memory.";
             return nullptr;
         }
         pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
