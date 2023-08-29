@@ -488,17 +488,16 @@ public:
 
     void ThrowOutOfMemoryError(size_t size, std::string functionName);
 
-    void IncreaseNativeBindingSize(bool nonMovable, size_t size);
+    void IncreaseNativeBindingSize(size_t size);
     void IncreaseNativeBindingSize(JSNativePointer *object);
     void ResetNativeBindingSize()
     {
-        activeSemiSpace_->ResetNativeBindingSize();
-        nonNewSpaceNativeBindingSize_ = 0;
+        nativeBindingSize_ = 0;
     }
 
     size_t GetNativeBindingSize() const
     {
-        return activeSemiSpace_->GetNativeBindingSize() + nonNewSpaceNativeBindingSize_;
+        return nativeBindingSize_;
     }
 
     size_t GetGlobalNativeSize() const
@@ -509,11 +508,6 @@ public:
     bool GlobalNativeSizeLargerThanLimit() const
     {
         return GetGlobalNativeSize() >= globalSpaceNativeLimit_;
-    }
-
-    size_t GetNonNewSpaceNativeBindingSize() const
-    {
-        return nonNewSpaceNativeBindingSize_;
     }
 
     void NotifyHeapAliveSizeAfterGC(size_t size)
@@ -529,6 +523,11 @@ public:
     bool IsInBackground() const
     {
         return inBackground_;
+    }
+
+    bool IsYoungGC() const
+    {
+        return gcType_ == TriggerGCType::YOUNG_GC;
     }
 private:
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
@@ -657,9 +656,10 @@ private:
     size_t globalSpaceAllocLimit_ {0};
     size_t promotedSize_ {0};
     size_t semiSpaceCopiedSize_ {0};
-    size_t nonNewSpaceNativeBindingSize_{0};
+    size_t nativeBindingSize_{0};
     size_t globalSpaceNativeLimit_ {0};
     MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};
+    TriggerGCType gcType_ {TriggerGCType::YOUNG_GC};
 
     bool clearTaskFinished_ {true};
     os::memory::Mutex waitClearTaskFinishedMutex_;

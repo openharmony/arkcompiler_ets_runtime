@@ -367,7 +367,6 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         gcType = TriggerGCType::FULL_GC;
     }
     size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
-    size_t originalNewSpaceNativeSize = activeSemiSpace_->GetNativeBindingSize();
     memController_->StartCalculationBeforeGC();
     StatisticHeapObject(gcType);
     if (!GetJSThread()->IsReadyToMark() && markType_ == MarkType::MARK_FULL) {
@@ -375,11 +374,16 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     } else {
         ecmaVm_->GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
     }
+    gcType_ = gcType;
     switch (gcType) {
         case TriggerGCType::YOUNG_GC:
             // Use partial GC for young generation.
             if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
                 SetMarkType(MarkType::MARK_YOUNG);
+            }
+            if (concurrentMarker_->IsEnabled() && markType_ == MarkType::MARK_FULL) {
+                // gcType_ must be sure. Functions ProcessNativeReferences need to use it.
+                gcType_ = TriggerGCType::OLD_GC;
             }
             partialGC_->RunPhases();
             break;
@@ -423,7 +427,6 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     // Adjust the old space capacity and global limit for the first partial GC with full mark.
     // Trigger the full mark next time if the current survival rate is much less than half the average survival rates.
     AdjustBySurvivalRate(originalNewSpaceSize);
-    activeSemiSpace_->AdjustNativeLimit(originalNewSpaceNativeSize);
     memController_->StopCalculationAfterGC(gcType);
     if (gcType == TriggerGCType::FULL_GC || IsFullMark()) {
         // Only when the gc type is not semiGC and after the old space sweeping has been finished,
@@ -741,7 +744,7 @@ void Heap::TryTriggerIdleCollection()
     double newSpaceMarkDuration = activeSemiSpace_->GetHeapObjectSize() / newSpaceConcurrentMarkSpeed;
     double newSpaceRemainSize = (newSpaceAllocToLimitDuration - newSpaceMarkDuration) * newSpaceAllocSpeed;
     // 2 means double
-    if (newSpaceRemainSize < 2 * DEFAULT_REGION_SIZE || activeSemiSpace_->NativeBindingSizeLargerThanLimit()) {
+    if (newSpaceRemainSize < 2 * DEFAULT_REGION_SIZE) {
         SetIdleTask(IdleTaskType::YOUNG_GC);
         SetMarkType(MarkType::MARK_YOUNG);
         EnableNotifyIdle();
@@ -899,7 +902,7 @@ void Heap::TryTriggerConcurrentMarking()
     // newSpaceRemainSize means the predicted size which can be allocated after the semi concurrent mark.
     newSpaceRemainSize = (newSpaceAllocToLimitDuration - newSpaceMarkDuration) * newSpaceAllocSpeed;
 
-    if (newSpaceRemainSize < DEFAULT_REGION_SIZE || activeSemiSpace_->NativeBindingSizeLargerThanLimit()) {
+    if (newSpaceRemainSize < DEFAULT_REGION_SIZE) {
         markType_ = MarkType::MARK_YOUNG;
         TriggerConcurrentMarking();
         OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger semi mark";
@@ -912,24 +915,15 @@ void Heap::IncreaseNativeBindingSize(JSNativePointer *object)
     if (size == 0) {
         return;
     }
-    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(object));
-    if (region->InYoungSpace()) {
-        activeSemiSpace_->IncreaseNativeBindingSize(size);
-    } else {
-        nonNewSpaceNativeBindingSize_ += size;
-    }
+    nativeBindingSize_ += size;
 }
 
-void Heap::IncreaseNativeBindingSize(bool nonMovable, size_t size)
+void Heap::IncreaseNativeBindingSize(size_t size)
 {
     if (size == 0) {
         return;
     }
-    if (!nonMovable) {
-        activeSemiSpace_->IncreaseNativeBindingSize(size);
-    } else {
-        nonNewSpaceNativeBindingSize_ += size;
-    }
+    nativeBindingSize_ += size;
 }
 
 void Heap::PrepareRecordRegionsForReclaim()

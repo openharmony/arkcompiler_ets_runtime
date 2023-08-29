@@ -41,23 +41,6 @@ public:
     {
         return allocator_.GetEndAddress();
     }
-    void ResetNativeBindingSize()
-    {
-        newSpaceNativeBindingSize_ = 0;
-    }
-    void IncreaseNativeBindingSize(size_t size)
-    {
-        newSpaceNativeBindingSize_ += size;
-    }
-    size_t GetNativeBindingSize()
-    {
-        return newSpaceNativeBindingSize_;
-    }
-
-    bool NativeBindingSizeLargerThanLimit()
-    {
-        return newSpaceNativeBindingSize_ > newSpaceNativeLimit_;
-    }
 
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 protected:
@@ -68,8 +51,6 @@ protected:
     size_t allocateAfterLastGC_ {0};
     size_t survivalObjectSize_ {0};
     uintptr_t waterLine_ {0};
-    size_t newSpaceNativeLimit_;
-    size_t newSpaceNativeBindingSize_ {0};
 };
 
 class SemiSpace : public LinearSpace {
@@ -86,7 +67,6 @@ public:
 
     void SetOverShootSize(size_t size);
     bool AdjustCapacity(size_t allocatedSizeSinceGC);
-    void AdjustNativeLimit(size_t previousNativeSize);
     void SetWaterLine();
 
     uintptr_t GetWaterLine() const

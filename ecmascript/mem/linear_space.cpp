@@ -25,8 +25,7 @@ namespace panda::ecmascript {
 LinearSpace::LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
     : Space(heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
       heap_(heap),
-      waterLine_(0),
-      newSpaceNativeLimit_(initialCapacity)
+      waterLine_(0)
 {
 }
 
@@ -40,10 +39,6 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
             InvokeAllocationInspector(object, size, size);
         }
 #endif
-        return object;
-    }
-    if (!isPromoted && heap_->GetConcurrentMarker()->IsConfigDisabled() && NativeBindingSizeLargerThanLimit()) {
-        // Native binding size is larger than limit. Trigger gc.
         return object;
     }
     if (Expand(isPromoted)) {
@@ -263,27 +258,6 @@ bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC)
         return true;
     }
     return false;
-}
-
-void SemiSpace::AdjustNativeLimit(size_t previousNativeSize)
-{
-    if (newSpaceNativeBindingSize_ <= newSpaceNativeLimit_ * GROW_OBJECT_SURVIVAL_RATE / GROWING_FACTOR) {
-        return;
-    }
-    double curObjectSurvivalRate = static_cast<double>(previousNativeSize) / newSpaceNativeBindingSize_;
-    if (curObjectSurvivalRate > GROW_OBJECT_SURVIVAL_RATE) {
-        if (newSpaceNativeLimit_ >= maximumCapacity_) {
-            return;
-        }
-        size_t newCapacity = newSpaceNativeLimit_ * GROWING_FACTOR;
-        newSpaceNativeLimit_ = std::min(newCapacity, maximumCapacity_);
-    } else if (curObjectSurvivalRate < SHRINK_OBJECT_SURVIVAL_RATE) {
-        if (newSpaceNativeLimit_ <= minimumCapacity_) {
-            return;
-        }
-        size_t newCapacity = newSpaceNativeLimit_ / GROWING_FACTOR;
-        newSpaceNativeLimit_ = std::max(newCapacity, minimumCapacity_);
-    }
 }
 
 size_t SemiSpace::GetAllocatedSizeSinceGC(uintptr_t top) const
