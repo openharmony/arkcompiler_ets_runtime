@@ -67,6 +67,8 @@ public:
     // ES6 9.5.12 [[OwnPropertyKeys]] ()
     static JSHandle<TaggedArray> OwnPropertyKeys(JSThread *thread, const JSHandle<JSProxy> &proxy);
 
+    static JSHandle<TaggedArray> GetAllPropertyKeys(JSThread *thread, const JSHandle<JSProxy> &proxy, uint32_t filter);
+
     void SetCallable(bool callable) const
     {
         GetClass()->SetCallable(callable);

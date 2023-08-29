@@ -857,6 +857,72 @@ JSHandle<TaggedArray> JSProxy::OwnPropertyKeys(JSThread *thread, const JSHandle<
     return trapRes;
 }
 
+JSHandle<TaggedArray> JSProxy::GetAllPropertyKeys(JSThread *thread, const JSHandle<JSProxy> &proxy, uint32_t filter)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+
+    JSTaggedValue handler = proxy->GetHandler();
+    if (handler.IsNull()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "OwnPropertyKeys: handler is null",
+                                    JSHandle<TaggedArray>(thread, JSTaggedValue::Exception()));
+    }
+
+    ASSERT(handler.IsECMAObject());
+    JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget());
+
+    JSHandle<JSTaggedValue> key = globalConst->GetHandledOwnKeysString();
+    JSHandle<JSTaggedValue> handlerHandle(thread, handler);
+    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, handlerHandle, key));
+
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
+
+    if (trap->IsUndefined()) {
+        return JSTaggedValue::GetAllPropertyKeys(thread, targetHandle, filter);
+    }
+
+    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerHandle, undefined, 1);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
+    info->SetCallArg(targetHandle.GetTaggedValue());
+    JSTaggedValue res = JSFunction::Call(info);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
+    JSHandle<JSTaggedValue> trapResArr(thread, res);
+
+    JSHandle<TaggedArray> trapRes(
+        JSObject::CreateListFromArrayLike<ElementTypes::STRING_AND_SYMBOL>(thread, trapResArr));
+    JSHandle<TaggedArray> ownKeys = JSTaggedValue::GetOwnPropertyKeys(thread, targetHandle);
+    JSHandle<TaggedArray> reciveArray = JSTaggedValue::GetAllPropertyKeys(thread, targetHandle, filter);
+
+    uint32_t trapResLength = trapRes->GetLength();
+    uint32_t ownKeysLength = ownKeys->GetLength();
+    uint32_t reciveArrayLength = reciveArray->GetLength();
+    uint32_t newArrayLength = reciveArrayLength + trapResLength - ownKeysLength;
+
+    JSHandle<TaggedArray> resArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(newArrayLength);
+
+    uint32_t elementIndex = 0;
+    if (filter & NATIVE_KEY_SKIP_SYMBOLS) {
+        for (uint32_t index = 0; index < reciveArrayLength; index++) {
+            if (!ownKeys->Get(index).IsSymbol()) {
+                resArray->Set(thread, elementIndex, reciveArray->Get(index));
+                elementIndex++;
+            }
+        }
+        return resArray;
+    }
+
+    for (uint32_t i = 0; i < trapResLength; i++) {
+        resArray->Set(thread, i, trapRes->Get(i));
+    }
+
+    uint32_t index = ownKeysLength;
+    for (uint32_t j = 0; j < reciveArrayLength - ownKeysLength; j++) {
+        resArray->Set(thread, trapResLength + j, reciveArray->Get(index));
+        index++;
+    }
+    return resArray;
+}
+
 // ES6 9.5.13 [[Call]] (thisArgument, argumentsList)
 JSTaggedValue JSProxy::CallInternal(EcmaRuntimeCallInfo *info)
 {
