@@ -869,8 +869,7 @@ JSHandle<TaggedArray> JSTaggedValue::GetAllPropertyKeys(JSThread *thread,
                                                         const JSHandle<JSTaggedValue> &obj, uint32_t filter)
 {
     if (obj->IsJSProxy()) {
-        LOG_ECMA(WARN) << "GetAllPropertyKeys do not support JSProxy yet";
-        return thread->GetEcmaVM()->GetFactory()->EmptyArray();
+        return JSProxy::GetAllPropertyKeys(thread, JSHandle<JSProxy>(obj), filter);
     }
     if (obj->IsTypedArray()) {
         LOG_ECMA(WARN) << "GetAllPropertyKeys do not support TypedArray yet";
