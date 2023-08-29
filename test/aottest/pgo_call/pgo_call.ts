@@ -52,4 +52,13 @@ for (let i = 0; i < 2; i++) {
 }
 
 let ret = callFoo3(<any>mol, 1);
+
+callFoo2(bar, 1);   // bot callFoo2 and bar inlined
+callFoo2(foo, 1);   // bot callFoo2 and foo inlined
+
+// inline_max_count_overflow
+callFoo2(bar, 1);   // neither callFoo2 nor bar will be inlined
+callFoo2(foo, 1);   // neither callFoo2 nor foo will be inlined
+
+callFoo1(foo, 1);   // callFoo1 will not be inlined but foo will be inlined in callFoo1
 print(ret)

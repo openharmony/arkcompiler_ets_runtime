@@ -106,7 +106,6 @@ void TSInlineLowering::TryInline(CallGateInfo &info, ChunkQueue<CallGateInfo> &w
     if (IsSmallMethod(methodPcInfo.pcOffsets.size()) && !IsInlineCountsOverflow(inlineCallCounts)) {
         inlineSuccess_ = FilterInlinedMethod(inlinedMethod, methodPcInfo.pcOffsets);
         if (inlineSuccess_) {
-            GateRef glue = acc_.GetGlueFromArgList();
             SetInitCallTargetAndConstPoolId(info);
             CircuitRootScope scope(circuit_);
             AnalyseFastAccessor(info, methodPcInfo.pcOffsets, methodOffset);
@@ -114,7 +113,6 @@ void TSInlineLowering::TryInline(CallGateInfo &info, ChunkQueue<CallGateInfo> &w
                 InlineCheck(info);
             }
             InlineCall(methodInfo, methodPcInfo, inlinedMethod, info);
-            ReplaceInput(info, glue, inlinedMethod);
             UpdateInlineCounts(frameArgs, inlineCallCounts);
             if (info.IsNormalCall()) {
                 UpdateWorkList(workList);
@@ -202,12 +200,16 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
         builder.BytecodeToCircuit();
     }
 
+    ReplaceInput(info, glue_, method);
+
     PassData data(&builder, circuit_, ctx_, log, fullName,
                   &methodInfo, hasTyps, recordName,
                   method, method->GetMethodId().GetOffset(), nativeAreaAllocator_, ctx_->GetPfDecoder(), passOptions_);
     PassRunner<PassData> pipeline(&data);
+    pipeline.RunPass<RedundantPhiEliminationPass>();
     if (builder.EnableLoopOptimization()) {
         pipeline.RunPass<LoopOptimizationPass>();
+        pipeline.RunPass<RedundantPhiEliminationPass>();
     }
     pipeline.RunPass<TypeInferPass>();
     pipeline.RunPass<PGOTypeInferPass>();
@@ -447,7 +449,9 @@ void TSInlineLowering::LowerToInlineCall(CallGateInfo &info, const std::vector<G
     for (size_t i = 0; i < argAcc.ArgsCount(); i++) {
         GateRef arg = argAcc.ArgsAt(i);
         acc_.UpdateAllUses(arg, args.at(i));
-        acc_.SetGateType(args.at(i), acc_.GetGateType(arg));
+        if (acc_.GetGateType(args.at(i)).IsAnyType()) {
+            acc_.SetGateType(args.at(i), acc_.GetGateType(arg));
+        }
         acc_.DeleteGate(arg);
     }
     // replace in depend and state

@@ -23,6 +23,7 @@
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/early_elimination.h"
 #include "ecmascript/compiler/array_bounds_check_elimination.h"
+#include "ecmascript/compiler/graph_editor.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/later_elimination.h"
 #include "ecmascript/compiler/lcr_lowering.h"
@@ -479,6 +480,18 @@ public:
             }
         }
         loopAnalysis_.LoopExitElimination();
+        return true;
+    }
+};
+
+class RedundantPhiEliminationPass {
+public:
+    bool Run(PassData* data)
+    {
+        TimeScope timescope("RedundantPhiEliminationPass", data->GetMethodName(),
+            data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        GraphEditor::EliminateRedundantPhi(data->GetCircuit(), enableLog, data->GetMethodName());
         return true;
     }
 };

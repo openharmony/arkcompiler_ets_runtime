@@ -27,8 +27,16 @@ function Foo(resources: number[], index: number) : number {
     } else {
         num += 1
     }
-
     num = num / 2;
+    for (let i = 0; i < resources.length; ++i) {
+        num += resources[i] * i;
+        if (num % 2 == 0) {
+            num += 2
+        } else {
+            num += 1
+        }
+        num = num / 2;
+    }
     return resources[index % resources.length] + num;
 }
 export function RunNormalCall():number {

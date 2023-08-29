@@ -1476,8 +1476,6 @@ void BytecodeCircuitBuilder::BuildCircuit()
         frameStateBuilder_.BuildFrameState();
     }
 
-    gateAcc_.EliminateRedundantPhi();
-
     if (IsLogEnabled()) {
         PrintGraph("Bytecode2Gate");
         LOG_COMPILER(INFO) << "\033[34m" << "============= "

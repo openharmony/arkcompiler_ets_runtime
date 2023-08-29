@@ -115,8 +115,10 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
                       methodLiteral, methodOffset, vm_->GetNativeAreaAllocator(), decoder, passOptions_);
         PassRunner<PassData> pipeline(&data);
         pipeline.RunPass<RunFlowCyclesVerifierPass>();
+        pipeline.RunPass<RedundantPhiEliminationPass>();
         if (builder.EnableLoopOptimization()) {
             pipeline.RunPass<LoopOptimizationPass>();
+            pipeline.RunPass<RedundantPhiEliminationPass>();
         }
         pipeline.RunPass<TypeInferPass>();
         if (data.IsTypeAbort()) {
@@ -126,6 +128,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<PGOTypeInferPass>();
         pipeline.RunPass<TSClassAnalysisPass>();
         pipeline.RunPass<TSInlineLoweringPass>();
+        pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         // skip async function, because some application run with errors.
         if (methodInfo.IsTypeInferAbort()) {
@@ -133,6 +136,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
             return;
         }
         pipeline.RunPass<TSHCRLoweringPass>();
+        pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<NTypeHCRLoweringPass>();
         if (data.IsTypeAbort()) {
             data.AbortCompilation();
