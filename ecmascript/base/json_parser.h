@@ -192,7 +192,7 @@ private:
         return IsFastParseString(isFastString, isAscii);
     }
 
-    bool ParseBackslash(std::string &res)
+    bool ParseBackslash(CString &res)
     {
         if (current_ == end_) {
             return false;
@@ -200,34 +200,36 @@ private:
         current_++;
         switch (*current_) {
             case '\"':
-                res += '\"';
+                res += "\"";
                 break;
             case '\\':
-                res += '\\';
+                res += "\\";
                 break;
             case '/':
-                res += '/';
+                res += "/";
                 break;
             case 'b':
-                res += '\b';
+                res += "\b";
                 break;
             case 'f':
-                res += '\f';
+                res += "\f";
                 break;
             case 'n':
-                res += '\n';
+                res += "\n";
                 break;
             case 'r':
-                res += '\r';
+                res += "\r";
                 break;
             case 't':
-                res += '\t';
+                res += "\t";
                 break;
             case 'u': {
-                std::u16string u16Str;
-                if (UNLIKELY(!ConvertStringUnicode(u16Str))) {
+                CVector<uint16_t> vec;
+                if (UNLIKELY(!ConvertStringUnicode(vec))) {
                     return false;
                 }
+                std::u16string u16Str;
+                u16Str.assign(vec.begin(), vec.end());
                 res += base::StringHelper::U16stringToString(u16Str);
                 break;
             }
@@ -240,7 +242,7 @@ private:
     JSTaggedValue SlowParseString()
     {
         end_--;
-        std::string res;
+        CString res;
         while (current_ <= end_) {
             if (*current_ == '\\') {
                 bool isLegalChar = ParseBackslash(res);
@@ -252,12 +254,12 @@ private:
                 if (UNLIKELY(*current_ >= utf_helper::DECODE_LEAD_LOW && *current_ <= utf_helper::DECODE_LEAD_HIGH &&
                              *(current_ + 1) >= utf_helper::DECODE_TRAIL_LOW &&
                              *(current_ + 1) <= utf_helper::DECODE_TRAIL_HIGH)) {
-                    std::u16string_view sv(reinterpret_cast<const char16_t *>(current_), 2);
-                    res += StringHelper::U16stringToString(sv.data());
+                    std::u16string str(current_, current_ + 2);  // 2 means twice as many bytes as normal u16string
+                    res += ConvertToString(StringHelper::U16stringToString(str));
                     current_ += 2;  // 2 means twice as many bytes as normal u16string
                 } else {
-                    std::u16string_view sv(reinterpret_cast<const char16_t *>(current_), 1);
-                    res += StringHelper::U16stringToString(sv.data());
+                    std::u16string str(current_, current_ + 1);
+                    res += ConvertToString(StringHelper::U16stringToString(str));
                     current_++;
                 }
             } else {
@@ -283,17 +285,17 @@ private:
             }
             if (isFastString) {
                 if (isAscii) {
-                    std::string value(current_, end_);
+                    CString value(current_, end_);
                     current_ = end_;
                     ASSERT(value.length() <= static_cast<size_t>(UINT32_MAX));
                     return factory_->NewFromUtf8LiteralCompress(
                         reinterpret_cast<const uint8_t *>(value.c_str()), value.length()).GetTaggedValue();
                 }
-                std::u16string_view value(reinterpret_cast<const char16_t *>(current_), end_ - current_);
+                std::u16string value(current_, end_);
                 current_ = end_;
                 ASSERT(value.length() <= static_cast<size_t>(UINT32_MAX));
                 return factory_->NewFromUtf16LiteralNotCompress(
-                    reinterpret_cast<const uint16_t *>(value.data()), value.length()).GetTaggedValue();
+                    reinterpret_cast<const uint16_t *>(value.c_str()), value.length()).GetTaggedValue();
             }
         } else {
             if (*end_ != '"' || current_ == end_) {
@@ -305,15 +307,15 @@ private:
             }
             if (LIKELY(isFastString)) {
                 if (isAscii) {
-                    std::string value(current_, end_);
+                    CString value(current_, end_);
                     ASSERT(value.length() <= static_cast<size_t>(UINT32_MAX));
                     return factory_->NewFromUtf8LiteralCompress(
                         reinterpret_cast<const uint8_t *>(value.c_str()), value.length()).GetTaggedValue();
                 }
-                std::u16string_view value(reinterpret_cast<const char16_t *>(current_), end_ - current_);
+                std::u16string value(current_, end_);
                 ASSERT(value.length() <= static_cast<size_t>(UINT32_MAX));
                 return factory_->NewFromUtf16LiteralNotCompress(
-                    reinterpret_cast<const uint16_t *>(value.data()), value.length()).GetTaggedValue();
+                    reinterpret_cast<const uint16_t *>(value.c_str()), value.length()).GetTaggedValue();
             }
         }
         return SlowParseString();
@@ -471,7 +473,7 @@ private:
         }
     }
 
-    JSTaggedValue ParseLiteral(const std::string &str, Tokens literalToken)
+    JSTaggedValue ParseLiteral(CString str, Tokens literalToken)
     {
         ASSERT((str.size() - 1) <= static_cast<size_t>(UINT32_MAX));
         uint32_t strLen = str.size() - 1;
@@ -497,12 +499,15 @@ private:
         THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
     }
 
-    bool MatchText(const std::string &str, uint32_t matchLen)
+    bool MatchText(CString str, uint32_t matchLen)
     {
-        for (uint32_t pos = 1; pos <= matchLen; ++pos) {
-            if (current_[pos] != str[pos]) {
+        const char *text = str.c_str();
+        uint32_t pos = 1;
+        while (pos <= matchLen) {
+            if (current_[pos] != text[pos]) {
                 return false;
             }
+            pos++;
         }
         current_ += matchLen;
         return true;
@@ -697,34 +702,33 @@ private:
         return true;
     }
 
-    bool ConvertStringUnicode(std::u16string &u16Str)
+    bool ConvertStringUnicode(CVector<uint16_t> &vec)
     {
         uint32_t remainingLength = end_ - current_;
         if (remainingLength < UNICODE_DIGIT_LENGTH) {
             return false;
         }
         uint16_t res = 0;
+        uint32_t exponent = UNICODE_DIGIT_LENGTH;
         for (uint32_t pos = 0; pos < UNICODE_DIGIT_LENGTH; pos++) {
             current_++;
+            exponent--;
             if (*current_ >= '0' && *current_ <= '9') {
-                res *= NUMBER_SIXTEEN;
-                res += (*current_ - '0');
+                res += (*current_ - '0') * pow(NUMBER_SIXTEEN, exponent);
             } else if (*current_ >= 'a' && *current_ <= 'f') {
-                res *= NUMBER_SIXTEEN;
-                res += (*current_ - 'a' + NUMBER_TEN);
+                res += (*current_ - 'a' + NUMBER_TEN) * pow(NUMBER_SIXTEEN, exponent);
             } else if (*current_ >= 'A' && *current_ <= 'F') {
-                res *= NUMBER_SIXTEEN;
-                res += (*current_ - 'A' + NUMBER_TEN);
+                res += (*current_ - 'A' + NUMBER_TEN) * pow(NUMBER_SIXTEEN, exponent);
             } else {
                 return false;
             }
         }
 
-        u16Str.push_back(res);
+        vec.emplace_back(res);
 
         if (*(current_ + 1) == '\\' && *(current_ + 2) == 'u') {  // 2: next two chars
             current_ += 2;                                        // 2: point moves backwards by two digits
-            return ConvertStringUnicode(u16Str);
+            return ConvertStringUnicode(vec);
         }
         return true;
     }
