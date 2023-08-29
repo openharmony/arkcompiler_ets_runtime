@@ -1418,23 +1418,25 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
         lastIndex = lastIndexNumber.GetNumber();
     }
 
-    JSHandle<JSTaggedValue> globalHandle = globalConst->GetHandledGlobalString();
-    bool global = ObjectFastOperator::FastGetPropertyByValue(
-        thread, regexp.GetTaggedValue(), globalHandle.GetTaggedValue()).ToBoolean();
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> stickyHandle = globalConst->GetHandledStickyString();
-    bool sticky = ObjectFastOperator::FastGetPropertyByValue(
-        thread, regexp.GetTaggedValue(), stickyHandle.GetTaggedValue()).ToBoolean();
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (!global && !sticky) {
-        lastIndex = 0;
-    }
-
     JSHandle<JSRegExp> regexpObj(regexp);
     JSMutableHandle<JSTaggedValue> pattern(thread, regexpObj->GetOriginalSource());
     JSMutableHandle<JSTaggedValue> flags(thread, regexpObj->GetOriginalFlags());
-
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetRegExpCache());
+
+    uint8_t flagsBits = static_cast<uint8_t>(flags->GetInt());
+    bool global = (flagsBits & RegExpParser::FLAG_GLOBAL) != 0;
+    bool sticky = (flagsBits & RegExpParser::FLAG_STICKY) != 0;
+    if (!global && !sticky) {
+        if (useCache) {
+            JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, inputStr,
+                                                                     RegExpExecResultCache::EXEC_TYPE, regexp);
+            if (!cacheResult.IsUndefined()) {
+                return cacheResult;
+            }
+        }
+        lastIndex = 0;
+    }
+
     uint32_t length = EcmaStringAccessor(inputStr->GetTaggedObject()).GetLength();
     if (lastIndex > static_cast<int32_t>(length)) {
         ObjectFastOperator::FastSetPropertyByValue(thread, regexp.GetTaggedValue(), lastIndexHandle.GetTaggedValue(),
