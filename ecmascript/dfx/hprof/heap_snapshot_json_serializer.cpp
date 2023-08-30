@@ -130,12 +130,14 @@ void HeapSnapshotJSONSerializer::SerializeEdges()
     writer_->Write("\"edges\":[");
     size_t i = 0;
     for (auto *edge : *edges) {
+        StringId nameOrIndex = edge->GetType() == EdgeType::ELEMENT ?
+            edge->GetIndex() : stringTable->GetStringId(edge->GetName());
         if (i > 0) {  // add comma except the first line
             writer_->Write(",");
         }
         writer_->Write(static_cast<int>(edge->GetType()));          // 1.
         writer_->Write(",");
-        writer_->Write(stringTable->GetStringId(edge->GetName()));  // 2. Use StringId
+        writer_->Write(nameOrIndex);  // 2. Use StringId
         writer_->Write(",");
 
         if (i == edges->size() - 1) {  // add comma at last the line

@@ -432,7 +432,7 @@
     {                                                \
         Dump(std::cout);                             \
     }                                                \
-    void DumpForSnapshot(std::vector<std::pair<CString, JSTaggedValue>> &vec) const;
+    void DumpForSnapshot(std::vector<Reference> &vec) const;
 
 #endif  // defined(__cplusplus)
 
