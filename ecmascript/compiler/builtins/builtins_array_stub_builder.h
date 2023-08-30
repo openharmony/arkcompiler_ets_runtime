@@ -52,11 +52,14 @@ public:
         Variable *result, Label *exit, Label *slowPath);
 
 private:
+    static constexpr uint32_t MAX_LENGTH_ZERO = 0;
+    static constexpr uint32_t MAX_LENGTH_ONE = 1;
     struct JsArrayRequirements {
         bool stable = false;
         bool defaultConstructor = false;
     };
-    GateRef IsEmptyJsArray(GateRef glue, GateRef object, JsArrayRequirements requirements);
+    GateRef IsJsArrayWithLengthLimit(GateRef glue, GateRef object,
+        uint32_t maxLength, JsArrayRequirements requirements);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H

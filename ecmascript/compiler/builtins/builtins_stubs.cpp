@@ -566,300 +566,6 @@ DECLARE_BUILTINS(CharAt)
     Return(*res);
 }
 
-DECLARE_BUILTINS(VectorForEach)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
-                                               &slowPath, ContainersType::VECTOR_FOREACH);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(VectorForEach));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(VectorReplaceAllElements)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::VECTOR_REPLACEALLELEMENTS);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(VectorReplaceAllElements));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(StackForEach)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::STACK_FOREACH);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(StackForEach));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(PlainArrayForEach)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::PLAINARRAY_FOREACH);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(PlainArrayForEach));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(QueueForEach)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.QueueCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::QUEUE_FOREACH);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(QueueForEach));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(DequeForEach)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.DequeCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::DEQUE_FOREACH);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(DequeForEach));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(LightWeightMapForEach)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.ContainersLightWeightCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::LIGHTWEIGHTMAP_FOREACH);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(LightWeightMapForEach));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(LightWeightSetForEach)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.ContainersLightWeightCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::LIGHTWEIGHTSET_FOREACH);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(LightWeightSetForEach));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(HashMapForEach)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.ContainersHashCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::HASHMAP_FOREACH);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(HashMapForEach));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(HashSetForEach)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.ContainersHashCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::HASHSET_FOREACH);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(HashSetForEach));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(LinkedListForEach)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.ContainersLinkedListCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::LINKEDLIST_FOREACH);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(LinkedListForEach));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(ListForEach)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.ContainersLinkedListCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::LIST_FOREACH);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ListForEach));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(ArrayListForEach)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::ARRAYLIST_FOREACH);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayListForEach));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
-DECLARE_BUILTINS(ArrayListReplaceAllElements)
-{
-    auto env = GetEnvironment();
-    DEFVARIABLE(res, VariableType::JS_POINTER(), Undefined());
-
-    Label exit(env);
-    Label slowPath(env);
-
-    ContainersStubBuilder containersBuilder(this);
-    containersBuilder.ContainersCommonFuncCall(glue, thisValue, numArgs, &res, &exit,
-        &slowPath, ContainersType::ARRAYLIST_REPLACEALLELEMENTS);
-    Bind(&slowPath);
-    {
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(ArrayListReplaceAllElements));
-        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    Return(*res);
-}
-
 DECLARE_BUILTINS(FunctionPrototypeApply)
 {
     auto env = GetEnvironment();
@@ -878,11 +584,51 @@ DECLARE_BUILTINS(FunctionPrototypeApply)
     Return(*res);
 }
 
-#define DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(Method, resultVariableType, resultDefaultValue) \
+#define DECLARE_BUILTINS_WITH_CONTAINERS_STUB_BUILDER(StubName, Method, methodType, resultVariableType)     \
+DECLARE_BUILTINS(StubName)                                                                                  \
+{                                                                                                           \
+    auto env = GetEnvironment();                                                                            \
+    DEFVARIABLE(res, VariableType::resultVariableType(), Undefined());                                      \
+    Label exit(env);                                                                                        \
+    Label slowPath(env);                                                                                    \
+    ContainersStubBuilder containersBuilder(this);                                                          \
+    containersBuilder.Method(glue, thisValue, numArgs, &res, &exit, &slowPath, ContainersType::methodType); \
+    Bind(&slowPath);                                                                                        \
+    {                                                                                                       \
+        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(StubName));                                \
+        res = CallSlowPath(nativeCode, glue, thisValue, numArgs, func, newTarget, name.c_str());            \
+        Jump(&exit);                                                                                        \
+    }                                                                                                       \
+    Bind(&exit);                                                                                            \
+    Return(*res);                                                                                           \
+}
+
+#define BUILTINS_WITH_CONTAINERS_STUB_BUILDER(V) \
+    V(ArrayListForEach,            ContainersCommonFuncCall,  ARRAYLIST_FOREACH,            JS_POINTER) \
+    V(DequeForEach,                DequeCommonFuncCall,       DEQUE_FOREACH,                JS_POINTER) \
+    V(HashMapForEach,              ContainersHashCall,        HASHMAP_FOREACH,              JS_POINTER) \
+    V(HashSetForEach,              ContainersHashCall,        HASHSET_FOREACH,              JS_POINTER) \
+    V(LightWeightMapForEach,       ContainersLightWeightCall, LIGHTWEIGHTMAP_FOREACH,       JS_POINTER) \
+    V(LightWeightSetForEach,       ContainersLightWeightCall, LIGHTWEIGHTSET_FOREACH,       JS_POINTER) \
+    V(LinkedListForEach,           ContainersLinkedListCall,  LINKEDLIST_FOREACH,           JS_POINTER) \
+    V(ListForEach,                 ContainersLinkedListCall,  LIST_FOREACH,                 JS_POINTER) \
+    V(PlainArrayForEach,           ContainersCommonFuncCall,  PLAINARRAY_FOREACH,           JS_POINTER) \
+    V(QueueForEach,                QueueCommonFuncCall,       QUEUE_FOREACH,                JS_POINTER) \
+    V(StackForEach,                ContainersCommonFuncCall,  STACK_FOREACH,                JS_POINTER) \
+    V(VectorForEach,               ContainersCommonFuncCall,  VECTOR_FOREACH,               JS_POINTER) \
+    V(ArrayListReplaceAllElements, ContainersCommonFuncCall,  ARRAYLIST_REPLACEALLELEMENTS, JS_POINTER) \
+    V(VectorReplaceAllElements,    ContainersCommonFuncCall,  VECTOR_REPLACEALLELEMENTS,    JS_POINTER)
+
+BUILTINS_WITH_CONTAINERS_STUB_BUILDER(DECLARE_BUILTINS_WITH_CONTAINERS_STUB_BUILDER)
+
+#undef DECLARE_BUILTINS_WITH_CONTAINERS_STUB_BUILDER
+#undef BUILTINS_WITH_CONTAINERS_STUB_BUILDER
+
+#define DECLARE_BUILTINS_WITH_ARRAY_STUB_BUILDER(Method, resultVariableType)                        \
 DECLARE_BUILTINS(Array##Method)                                                                     \
 {                                                                                                   \
     auto env = GetEnvironment();                                                                    \
-    DEFVARIABLE(res, VariableType::resultVariableType(), resultDefaultValue);                       \
+    DEFVARIABLE(res, VariableType::resultVariableType(), Undefined());                              \
     Label exit(env);                                                                                \
     Label slowPath(env);                                                                            \
     BuiltinsArrayStubBuilder arrayStubBuilder(this);                                                \
@@ -897,22 +643,19 @@ DECLARE_BUILTINS(Array##Method)                                                 
     Return(*res);                                                                                   \
 }
 
-// Returns the new array
-DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(Concat, JS_POINTER, Undefined())
-// Returns the new array
-DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(Filter, JS_POINTER, Undefined())
-// Returns undefined
-DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(ForEach, JS_ANY, Undefined())
-// Returns the tagged number as index
-DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(IndexOf, JS_ANY, Undefined())
-// Returns the tagged number as index
-DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(LastIndexOf, JS_ANY, Undefined())
-// Returns the new array
-DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(Slice, JS_POINTER, Undefined())
-// Returns thisValue (with elements changed in-place)
-DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER(Reverse, JS_POINTER, Undefined())
+#define BUILTINS_WITH_ARRAY_STUB_BUILDER(V) \
+    V(Concat,       JS_POINTER)             \
+    V(Filter,       JS_POINTER)             \
+    V(ForEach,      JS_ANY)                 \
+    V(IndexOf,      JS_ANY)                 \
+    V(LastIndexOf,  JS_ANY)                 \
+    V(Slice,        JS_POINTER)             \
+    V(Reverse,      JS_POINTER)
 
-#undef DECLARE_BUILTINS_CALLING_ARRAY_STUB_BUILDER
+BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_WITH_ARRAY_STUB_BUILDER)
+
+#undef DECLARE_BUILTINS_WITH_ARRAY_STUB_BUILDER
+#undef BUILTINS_WITH_ARRAY_STUB_BUILDER
 
 DECLARE_BUILTINS(BooleanConstructor)
 {

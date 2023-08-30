@@ -262,6 +262,7 @@ public:
     GateRef Int32UnsignedGreaterThan(GateRef x, GateRef y);
     GateRef Int32UnsignedLessThan(GateRef x, GateRef y);
     GateRef Int32UnsignedGreaterThanOrEqual(GateRef x, GateRef y);
+    GateRef Int32UnsignedLessThanOrEqual(GateRef x, GateRef y);
     GateRef Int64GreaterThan(GateRef x, GateRef y);
     GateRef Int64LessThan(GateRef x, GateRef y);
     GateRef Int64LessThanOrEqual(GateRef x, GateRef y);

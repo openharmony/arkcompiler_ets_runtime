@@ -882,6 +882,11 @@ inline GateRef StubBuilder::Int32UnsignedGreaterThanOrEqual(GateRef x, GateRef y
     return env_->GetBuilder()->Int32UnsignedGreaterThanOrEqual(x, y);
 }
 
+inline GateRef StubBuilder::Int32UnsignedLessThanOrEqual(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int32UnsignedLessThanOrEqual(x, y);
+}
+
 inline GateRef StubBuilder::Int64GreaterThan(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int64GreaterThan(x, y);
