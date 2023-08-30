@@ -853,7 +853,10 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
     }
 
     GateRef result = Circuit::NullGate();
-    if (tsManager_->IsArrayTypeKind(receiverType)) {
+    if (receiverType.IsStringType()) {
+        AddProfiling(gate);
+        result = LoadStringByIndex(receiver, propKey);
+    } else if (tsManager_->IsArrayTypeKind(receiverType)) {
         AddProfiling(gate);
         ElementsKind kind = acc_.TryGetElementsKind(gate);
         result = LoadJSArrayByIndex(receiver, propKey, kind);
@@ -864,6 +867,19 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
         return; // slowpath
     }
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+}
+
+GateRef TSHCRLowering::LoadStringByIndex(GateRef receiver, GateRef propKey)
+{
+    if (!Uncheck()) {
+        GateType receiverType = acc_.GetGateType(receiver);
+        receiverType = tsManager_->TryNarrowUnionType(receiverType);
+        builder_.EcmaStringCheck(receiver);
+        GateRef length = builder_.LoadStringLength(receiver);
+        propKey = builder_.IndexCheck(receiverType, length, propKey);
+        receiver = builder_.FlattenStringCheck(receiver);
+    }
+    return builder_.LoadElement<TypedLoadOp::STRING_LOAD_ELEMENT>(receiver, propKey);
 }
 
 GateRef TSHCRLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey, ElementsKind kind)

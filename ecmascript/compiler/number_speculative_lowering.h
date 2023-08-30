@@ -47,6 +47,7 @@ private:
     void VisitRangeGuard(GateRef gate);
     void VisitIndexCheck(GateRef gate);
     void VisitLoadArrayLength(GateRef gate);
+    void VisitLoadStringLength(GateRef gate);
     void VisitLoadElement(GateRef gate);
     void VisitLoadProperty(GateRef gate);
 

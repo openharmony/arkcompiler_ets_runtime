@@ -83,6 +83,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::INLINE_ACCESSOR_CHECK:
         case OpCode::LOAD_GETTER:
         case OpCode::LOAD_SETTER:
+        case OpCode::ECMA_STRING_CHECK:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
             return TryEliminateFrameState(gate);
@@ -242,8 +243,8 @@ bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
             return acc_.GetOpCode(lhs) == OpCode::LOAD_ELEMENT;
         case OpCode::STORE_ELEMENT: {
             if (lop == OpCode::LOAD_ELEMENT) {
-                auto lopIsTypedArray = acc_.GetTypedLoadOp(lhs) >= TypedLoadOp::TYPED_ARRAY_FIRST;
-                auto ropIsTypedArray = acc_.GetTypedStoreOp(rhs) >= TypedStoreOp::TYPED_ARRAY_FIRST;
+                bool lopIsTypedArray = acc_.TypedOpIsTypedArray(lhs, TypedOpKind::TYPED_LOAD_OP);
+                bool ropIsTypedArray = acc_.TypedOpIsTypedArray(rhs, TypedOpKind::TYPED_STORE_OP);
                 return lopIsTypedArray == ropIsTypedArray;
             }
             return false;

@@ -59,6 +59,8 @@ GateRef RangeAnalysis::VisitGate(GateRef gate)
             return VisitIndexCheck(gate);
         case OpCode::LOAD_ARRAY_LENGTH:
             return VisitLoadArrayLength(gate);
+        case OpCode::LOAD_STRING_LENGTH:
+            return VisitLoadStringLength(gate);
         case OpCode::LOAD_TYPED_ARRAY_LENGTH:
             return VisitLoadTypedArrayLength(gate);
         case OpCode::RANGE_GUARD:
@@ -161,6 +163,12 @@ GateRef RangeAnalysis::VisitIndexCheck(GateRef gate)
 }
 
 GateRef RangeAnalysis::VisitLoadArrayLength(GateRef gate)
+{
+    ASSERT(IsInt32Type(gate));
+    return UpdateRange(gate, RangeInfo(0, INT32_MAX));
+}
+
+GateRef RangeAnalysis::VisitLoadStringLength(GateRef gate)
 {
     ASSERT(IsInt32Type(gate));
     return UpdateRange(gate, RangeInfo(0, INT32_MAX));

@@ -39,6 +39,15 @@ GateRef TypeMCRLowering::VisitGate(GateRef gate)
         case OpCode::TYPED_ARRAY_CHECK:
             LowerTypedArrayCheck(gate);
             break;
+        case OpCode::ECMA_STRING_CHECK:
+            LowerEcmaStringCheck(gate);
+            break;
+        case OpCode::FLATTEN_STRING_CHECK:
+            LowerFlattenStringCheck(gate, glue);
+            break;
+        case OpCode::LOAD_STRING_LENGTH:
+            LowerStringLength(gate);
+            break;
         case OpCode::LOAD_TYPED_ARRAY_LENGTH:
             LowerLoadTypedArrayLength(gate);
             break;
@@ -295,6 +304,58 @@ void TypeMCRLowering::LowerTypedArrayCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
+void TypeMCRLowering::LowerEcmaStringCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    builder_.HeapObjectCheck(receiver, frameState);
+    GateRef isString = builder_.TaggedObjectIsString(receiver);
+    builder_.DeoptCheck(isString, frameState, DeoptType::NOTSTRING);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeMCRLowering::LowerFlattenStringCheck(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef str = acc_.GetValueIn(gate, 0);
+    DEFVAlUE(result, (&builder_), VariableType::JS_POINTER(), str);
+    Label isTreeString(&builder_);
+    Label exit(&builder_);
+
+    builder_.Branch(builder_.IsTreeString(str), &isTreeString, &exit);
+    builder_.Bind(&isTreeString);
+    {
+        Label isFlat(&builder_);
+        Label notFlat(&builder_);
+        builder_.Branch(builder_.TreeStringIsFlat(str), &isFlat, &notFlat);
+        builder_.Bind(&isFlat);
+        {
+            result = builder_.GetFirstFromTreeString(str);
+            builder_.Jump(&exit);
+        }
+        builder_.Bind(&notFlat);
+        {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(SlowFlattenString), { str }, true);
+            builder_.Jump(&exit);
+        }
+    }
+
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypeMCRLowering::LowerStringLength(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef length = builder_.Int32LSR(
+        builder_.LoadConstOffset(VariableType::INT32(), receiver, EcmaString::MIX_LENGTH_OFFSET), builder_.Int32(2));
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), length);
+}
+
 void TypeMCRLowering::LowerLoadTypedArrayLength(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -432,7 +493,7 @@ GateRef TypeMCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
 void TypeMCRLowering::LowerIndexCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    auto deoptType = DeoptType::NOTARRAYIDX;
+    auto deoptType = DeoptType::NOTLEGALIDX;
 
     GateRef frameState = GetFrameState(gate);
     GateRef length = acc_.GetValueIn(gate, 0);
@@ -717,6 +778,9 @@ void TypeMCRLowering::LowerLoadElement(GateRef gate)
         case TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT:
             LowerTypedArrayLoadElement(gate, BuiltinTypeId::FLOAT64_ARRAY);
             break;
+        case TypedLoadOp::STRING_LOAD_ELEMENT:
+            LowerStringLoadElement(gate);
+            break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -834,6 +898,17 @@ GateRef TypeMCRLowering::BuildTypedArrayLoadElement(GateRef receiver, GateRef of
     builder_.Bind(exit);
 
     return *result;
+}
+
+void TypeMCRLowering::LowerStringLoadElement(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef index = acc_.GetValueIn(gate, 1);
+
+    GateRef result = builder_.CallStub(glue, gate, CommonStubCSigns::GetCharFromEcmaString, { glue, receiver, index });
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void TypeMCRLowering::LowerStoreElement(GateRef gate, GateRef glue)

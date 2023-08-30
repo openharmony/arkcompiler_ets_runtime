@@ -252,6 +252,8 @@ public:
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
     GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef COWArrayCheck(GateRef gate);
+    GateRef EcmaStringCheck(GateRef gate);
+    GateRef FlattenStringCheck(GateRef gate);
     GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState, ArrayMetaDataAccessor accessor);
     GateRef ArrayGuardianCheck(GateRef frameState);
     GateRef TypedArrayCheck(GateType type, GateRef gate);
@@ -542,6 +544,7 @@ public:
     GateRef LoadProperty(GateRef receiver, GateRef propertyLookupResult, bool isFunction);
     GateRef StoreProperty(GateRef receiver, GateRef propertyLookupResult, GateRef value);
     GateRef LoadArrayLength(GateRef array);
+    GateRef LoadStringLength(GateRef string);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
     GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
@@ -594,6 +597,10 @@ public:
     inline GateRef LogicOr(GateRef x, GateRef y);
     inline GateRef BothAreString(GateRef x, GateRef y);
     inline GateRef GetObjectSizeFromHClass(GateRef hClass);
+    inline GateRef IsTreeString(GateRef obj);
+    inline GateRef TreeStringIsFlat(GateRef string);
+    inline GateRef GetFirstFromTreeString(GateRef string);
+    inline GateRef GetSecondFromTreeString(GateRef string);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);

@@ -904,6 +904,31 @@ GateRef CircuitBuilder::GetObjectSizeFromHClass(GateRef hClass)
     return PtrMul(ZExtInt32ToPtr(objectSizeInWords), IntPtr(JSTaggedValue::TaggedTypeSize()));
 }
 
+GateRef CircuitBuilder::IsTreeString(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::TREE_STRING)));
+}
+
+GateRef CircuitBuilder::TreeStringIsFlat(GateRef string)
+{
+    GateRef second = GetSecondFromTreeString(string);
+    GateRef len = GetLengthFromString(second);
+    return Int32Equal(len, Int32(0));
+}
+
+GateRef CircuitBuilder::GetFirstFromTreeString(GateRef string)
+{
+    GateRef offset = IntPtr(TreeEcmaString::FIRST_OFFSET);
+    return Load(VariableType::JS_POINTER(), string, offset);
+}
+
+GateRef CircuitBuilder::GetSecondFromTreeString(GateRef string)
+{
+    GateRef offset = IntPtr(TreeEcmaString::SECOND_OFFSET);
+    return Load(VariableType::JS_POINTER(), string, offset);
+}
+
 template<TypedBinOp Op>
 GateRef CircuitBuilder::TypedBinaryOp(GateRef x, GateRef y, GateType xType, GateType yType, GateType gateType,
     PGOSampleType sampleType)

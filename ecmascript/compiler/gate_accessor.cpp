@@ -178,6 +178,23 @@ ObjectTypeAccessor GateAccessor::GetObjectTypeAccessor(GateRef gate) const
     return ObjectTypeAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
+bool GateAccessor::TypedOpIsTypedArray(GateRef gate, TypedOpKind kind) const
+{
+    switch (kind) {
+        case TypedOpKind::TYPED_LOAD_OP: {
+            TypedLoadOp op = GetTypedLoadOp(gate);
+            return TypedLoadOp::TYPED_ARRAY_FIRST <= op && op <=TypedLoadOp::TYPED_ARRAY_LAST;
+        }
+        case TypedOpKind::TYPED_STORE_OP: {
+            TypedStoreOp op = GetTypedStoreOp(gate);
+            return TypedStoreOp::TYPED_ARRAY_FIRST <= op && op <= TypedStoreOp::TYPED_ARRAY_LAST;
+        }
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+}
+
 TypedLoadOp GateAccessor::GetTypedLoadOp(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::LOAD_ELEMENT);

@@ -80,6 +80,7 @@ private:
     GateRef VisitBooleanJump(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);
     GateRef VisitLoadArrayLength(GateRef gate);
+    GateRef VisitLoadStringLength(GateRef gate);
     GateRef VisitLoadElement(GateRef gate);
     GateRef VisitStoreElement(GateRef gate);
     GateRef VisitStoreProperty(GateRef gate);

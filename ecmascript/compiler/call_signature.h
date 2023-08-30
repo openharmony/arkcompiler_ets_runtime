@@ -461,7 +461,8 @@ private:
     V(SetDateValues)                        \
     V(CallReturnWithArgv)                   \
     V(StartCallTimer)                       \
-    V(EndCallTimer)
+    V(EndCallTimer)                         \
+    V(GetCharFromEcmaString)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

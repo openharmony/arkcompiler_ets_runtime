@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -888,6 +889,17 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
     }
     Bind(&exit);
     Return(*result);
+}
+
+void GetCharFromEcmaStringStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef str = TaggedArgument(1);
+    GateRef index = Int32Argument(2);
+
+    BuiltinsStringStubBuilder builder(this);
+    GateRef result = builder.CreateFromEcmaString(glue, str, index);
+    Return(result);
 }
 
 CallSignature CommonStubCSigns::callSigns_[CommonStubCSigns::NUM_OF_STUBS];

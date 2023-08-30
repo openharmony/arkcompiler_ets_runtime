@@ -133,7 +133,10 @@ private:
     void BuildCompareSubTyping(GateRef gate);
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);
+    void LowerEcmaStringCheck(GateRef gate);
+    void LowerFlattenStringCheck(GateRef gate, GateRef glue);
     void LowerLoadTypedArrayLength(GateRef gate);
+    void LowerStringLength(GateRef gate);
     void LowerLoadProperty(GateRef gate);
     void LowerCallGetter(GateRef gate, GateRef glue);
     void LowerStoreProperty(GateRef gate);
@@ -151,6 +154,7 @@ private:
     void LowerArrayLoadElement(GateRef gate, ArrayState arrayState);
     void LowerCowArrayCheck(GateRef gate, GateRef glue);
     void LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id);
+    void LowerStringLoadElement(GateRef gate);
     GateRef BuildOnHeapTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type);
     GateRef BuildTypedArrayLoadElement(GateRef receiver, GateRef offset, VariableType type, Label *isByteArray,
                                        Label *isArrayBuffer, Label *exit);
