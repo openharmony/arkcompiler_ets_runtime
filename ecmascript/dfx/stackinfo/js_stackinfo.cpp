@@ -71,7 +71,7 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative)
     std::string data;
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
     FrameIterator it(current, thread);
-    for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
+    for (; !it.Done(); it.Advance<GCVisitedFlag::HYBRID_STACK>()) {
         if (!it.IsJSFrame()) {
             continue;
         }
