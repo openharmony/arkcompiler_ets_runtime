@@ -254,7 +254,11 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     JSHandle<JSFunction> func(thread_, program->GetMainFunction());
     JSHandle<JSTaggedValue> global = GlobalEnv::Cast(globalEnv_.GetTaggedObject())->GetJSGlobalObject();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+    CString moduleName = jsPandaFile->GetJSPandaFileDesc();
     CString entry = entryPoint.data();
+    if (jsPandaFile->IsMergedPF()) {
+        moduleName = entry;
+    }
     JSRecordInfo recordInfo;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entry, recordInfo);
     if (!hasRecord) {
@@ -264,16 +268,12 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     }
     if (jsPandaFile->IsModule(recordInfo)) {
         global = undefined;
-        CString moduleName = jsPandaFile->GetJSPandaFileDesc();
-        if (!jsPandaFile->IsBundlePack()) {
-            moduleName = entry;
-        }
         JSHandle<SourceTextModule> module = moduleManager_->HostGetImportedModule(moduleName);
         func->SetModule(thread_, module);
     } else {
         // if it is Cjs at present, the module slot of the function is not used. We borrow it to store the recordName,
         // which can avoid the problem of larger memory caused by the new slot
-        JSHandle<EcmaString> recordName = factory_->NewFromUtf8(entry);
+        JSHandle<EcmaString> recordName = factory_->NewFromUtf8(moduleName);
         func->SetModule(thread_, recordName);
     }
     vm_->CheckStartCpuProfiler();
@@ -315,14 +315,10 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
     JSHandle<CjsExports> exports = factory_->NewCjsExports();
     JSMutableHandle<JSTaggedValue> filename(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> dirname(thread_, JSTaggedValue::Undefined());
-    if (jsPandaFile->IsBundlePack()) {
-        ModulePathHelper::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
-    } else {
-        filename.Update(func->GetModule());
-        ASSERT(filename->IsString());
-        CString fullName = ConvertToString(filename.GetTaggedValue());
-        dirname.Update(PathHelper::ResolveDirPath(thread_, fullName));
-    }
+    // Cjs's module slot of the function stores the recordName.
+    filename.Update(func->GetModule());
+    CString fullName = ConvertToString(filename.GetTaggedValue());
+    dirname.Update(PathHelper::ResolveDirPath(thread_, fullName));
     CJSInfo cjsInfo(module, require, exports, filename, dirname);
     RequireManager::InitializeCommonJS(thread_, cjsInfo);
     if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {

@@ -24,7 +24,7 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
-#include "ecmascript/module/js_module_manager.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 
@@ -346,7 +346,7 @@ public:
     static JSTaggedValue GetLiteralFromCache(JSThread *thread, JSTaggedValue constpool,
                                              uint32_t index, JSTaggedValue module)
     {
-        CString entry = ModuleManager::GetRecordName(module);
+        CString entry = SourceTextModule::GetRecordName(module);
         return GetLiteralFromCache<type>(thread, constpool, index, entry);
     }
 

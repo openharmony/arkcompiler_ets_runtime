@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "file.h"
@@ -429,15 +430,15 @@ DebugInfoExtractor *JSPandaFileManager::CpuProfilerGetJSPtExtractor(const JSPand
     return extractor;
 }
 
-std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *thread, const panda_file::File *pf,
-                                                                     const CString &desc, std::string_view entryPoint)
+std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *thread,
+    const panda_file::File *pf, const CString &desc, std::string_view entryPoint)
 {
     ASSERT(GetJSPandaFile(pf) == nullptr);
     std::shared_ptr<JSPandaFile> newJsPandaFile = NewJSPandaFile(pf, desc);
     EcmaVM *vm = thread->GetEcmaVM();
 
     CString methodName = entryPoint.data();
-    if (newJsPandaFile->IsBundlePack()) {
+    if (!newJsPandaFile->IsMergedPF()) {
         // entryPoint maybe is _GLOBAL::func_main_watch to execute func_main_watch
         auto pos = entryPoint.find_last_of("::");
         if (pos != std::string_view::npos) {

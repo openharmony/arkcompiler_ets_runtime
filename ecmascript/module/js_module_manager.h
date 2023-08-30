@@ -61,13 +61,13 @@ public:
     JSHandle<JSTaggedValue> PUBLIC_API HostResolveImportedModuleWithMerge(const CString &referencingModule,
         const CString &recordName, bool excuteFromJob = false);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &filename);
-
+    JSTaggedValue GetExportObject(const CString &file, const CString &key);
+    JSTaggedValue GetExportObjectFromBuffer(const CString &file, const CString &key);
     JSTaggedValue GetCurrentModule();
     JSTaggedValue GetNativeModuleValue(JSThread *thread, JSTaggedValue currentModule,
         JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
     JSTaggedValue GetCJSModuleValue(JSThread *thread, JSTaggedValue currentModule,
         JSTaggedValue resolvedModule, ResolvedIndexBinding *binding);
-    void AddResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &referencingModule);
     void AddResolveImportedModule(const CString &referencingModule, JSHandle<JSTaggedValue> moduleRecord);
     void Iterate(const RootVisitor &v);
 
@@ -79,9 +79,6 @@ public:
     {
         isExecuteBuffer_ = mode;
     }
-
-    static CString GetRecordName(JSTaggedValue module);
-    static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
 
 private:
     NO_COPY_SEMANTIC(ModuleManager);

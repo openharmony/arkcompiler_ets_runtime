@@ -103,7 +103,7 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     CString requestEntryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
 
     JSMutableHandle<JSTaggedValue> filename(thread, JSTaggedValue::Undefined());
-    if (jsPandaFile->IsBundlePack()) {
+    if (!jsPandaFile->IsMergedPF()) {
         ModulePathHelper::ResolveCurrentPath(thread, parent, dirname, jsPandaFile);
         filename.Update(ResolveFilenameFromNative(thread, dirname.GetTaggedValue(),
                                                   request.GetTaggedValue()));
@@ -142,6 +142,7 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     if (jsPandaFile->IsJson(recordInfo)) {
         JSHandle<JSTaggedValue> result = JSHandle<JSTaggedValue>(thread,
             ModuleDataExtractor::JsonParse(thread, jsPandaFile, requestEntryPoint));
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         // Set module.exports ---> exports
         JSHandle<JSTaggedValue> exportsKey = thread->GlobalConstants()->GetHandledCjsExportsString();
         SlowRuntimeStub::StObjByName(thread, module.GetTaggedValue(), exportsKey.GetTaggedValue(),

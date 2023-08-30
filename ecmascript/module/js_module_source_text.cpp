@@ -93,9 +93,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(
         return moduleManager->ResolveNativeModule(moduleRequestName, moduleType);
     }
 
-    ASSERT(module->GetEcmaModuleFilename().IsHeapObject());
     CString baseFilename = ConvertToString(module->GetEcmaModuleFilename());
-    ASSERT(module->GetEcmaModuleRecordName().IsHeapObject());
     CString moduleRecordName = ConvertToString(module->GetEcmaModuleRecordName());
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, moduleRecordName);
@@ -269,16 +267,13 @@ void SourceTextModule::InstantiateCJS(JSThread *thread, const JSHandle<SourceTex
     JSTaggedValue cjsRecordName(requiredModule->GetEcmaModuleRecordName());
     JSMutableHandle<JSTaggedValue> cjsModuleName(thread, JSTaggedValue::Undefined());
     // Get exported cjs module
-    bool isBundle;
     if (cjsRecordName.IsUndefined()) {
         cjsModuleName.Update(cjsFileName);
-        isBundle = true;
     } else {
         cjsModuleName.Update(cjsRecordName);
-        isBundle = false;
     }
     JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
-    InitializeEnvironment(thread, currentModule, cjsModuleName, cjsExports, isBundle);
+    InitializeEnvironment(thread, currentModule, cjsModuleName, cjsExports);
 }
 
 std::pair<bool, ModuleTypes> SourceTextModule::CheckNativeModule(const CString &moduleRequestName)
@@ -311,7 +306,7 @@ Local<JSValueRef> SourceTextModule::GetRequireNativeModuleFunc(EcmaVM *vm, Modul
         globalConstants->GetHandledRequireNapiString();
     return globalObject->Get(vm, JSNApiHelper::ToLocal<StringRef>(funcName));
 }
-
+   
 void SourceTextModule::MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
     const CString &moduleName)
 {
@@ -386,11 +381,11 @@ void SourceTextModule::InstantiateNativeModule(JSThread *thread, JSHandle<Source
 
     JSHandle<JSTaggedValue> nativeModuleName(thread, requiredModule->GetEcmaModuleRecordName());
     JSHandle<JSTaggedValue> nativeExports(thread, requiredModule->GetModuleValue(thread, 0, false));
-    InitializeEnvironment(thread, currentModule, nativeModuleName, nativeExports, false);
+    InitializeEnvironment(thread, currentModule, nativeModuleName, nativeExports);
 }
 
 void SourceTextModule::InitializeEnvironment(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
-    JSHandle<JSTaggedValue> &moduleName, JSHandle<JSTaggedValue> &exports, bool isBundle)
+    JSHandle<JSTaggedValue> &moduleName, JSHandle<JSTaggedValue> &exports)
 {
     // Get esm environment
     JSHandle<JSTaggedValue> moduleEnvironment(thread, currentModule->GetEnvironment());
@@ -412,10 +407,11 @@ void SourceTextModule::InitializeEnvironment(JSThread *thread, const JSHandle<So
         }
         JSHandle<SourceTextModule> requestedModule = GetModuleFromBinding(thread, resolvedBinding);
         JSMutableHandle<JSTaggedValue> requestedName(thread, JSTaggedValue::Undefined());
-        if (isBundle) {
+        JSTaggedValue recordName = requestedModule->GetEcmaModuleRecordName();
+        if (recordName.IsUndefined()) {
             requestedName.Update(requestedModule->GetEcmaModuleFilename());
         } else {
-            requestedName.Update(requestedModule->GetEcmaModuleRecordName());
+            requestedName.Update(recordName);
         }
         // if not the same module, then don't have to update
         if (!JSTaggedValue::SameValue(requestedName, moduleName)) {
@@ -1066,18 +1062,8 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
 void SourceTextModule::ModuleExecution(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                        const void *buffer, size_t size, bool excuteFromJob)
 {
-    JSTaggedValue moduleFileName = module->GetEcmaModuleFilename();
-    ASSERT(moduleFileName.IsString());
-    CString moduleFilenameStr = ConvertToString(EcmaString::Cast(moduleFileName.GetTaggedObject()));
-
-    std::string entryPoint;
-    JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
-    if (moduleRecordName.IsUndefined()) {
-        entryPoint = JSPandaFile::ENTRY_FUNCTION_NAME;
-    } else {
-        ASSERT(moduleRecordName.IsString());
-        entryPoint = ConvertToString(moduleRecordName);
-    }
+    CString moduleFilenameStr = ConvertToString(module->GetEcmaModuleFilename());
+    CString entryPoint = GetRecordName(module.GetTaggedValue());
 
     std::shared_ptr<JSPandaFile> jsPandaFile;
     if (buffer != nullptr) {
@@ -1090,7 +1076,7 @@ void SourceTextModule::ModuleExecution(JSThread *thread, const JSHandle<SourceTe
 
     if (jsPandaFile == nullptr) {
         CString msg = "Load file with filename '" + moduleFilenameStr + "' failed, recordName '" +
-                      entryPoint.c_str() + "'";
+                      entryPoint + "'";
         THROW_ERROR(thread, ErrorType::REFERENCE_ERROR, msg.c_str());
     }
     JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entryPoint, excuteFromJob);
@@ -1560,5 +1546,41 @@ JSTaggedValue SourceTextModule::GetModuleName(JSTaggedValue currentModule)
 bool SourceTextModule::IsDynamicModule(LoadingTypes types)
 {
     return types == LoadingTypes::DYNAMITC_MODULE;
+}
+
+CString SourceTextModule::GetRecordName(JSTaggedValue module)
+{
+    if (module.IsString()) {
+        return ConvertToString(module);
+    }
+    if (module.IsSourceTextModule()) {
+        SourceTextModule *sourceTextModule = SourceTextModule::Cast(module.GetTaggedObject());
+        if (sourceTextModule->GetEcmaModuleRecordName().IsString()) {
+            return ConvertToString(sourceTextModule->GetEcmaModuleRecordName());
+        }
+    }
+    return "";
+}
+
+int SourceTextModule::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule,
+                                           const std::string &key)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<TaggedArray> localExportEntries(thread, ecmaModule->GetLocalExportEntries());
+    size_t exportEntriesLen = localExportEntries->GetLength();
+    // 0: There's only one export value "default"
+    if (exportEntriesLen == 0) {
+        return exportEntriesLen;
+    }
+    JSMutableHandle<LocalExportEntry> ee(thread, thread->GlobalConstants()->GetUndefined());
+    ASSERT(exportEntriesLen > 1); // 1:  The number of export objects exceeds 1
+    for (size_t idx = 0; idx < exportEntriesLen; idx++) {
+        ee.Update(localExportEntries->Get(idx));
+        if (EcmaStringAccessor(ee->GetExportName()).ToStdString() == key) {
+            ASSERT(idx <= static_cast<size_t>(INT_MAX));
+            return static_cast<int>(idx);
+        }
+    }
+    return -1;
 }
 } // namespace panda::ecmascript
