@@ -55,9 +55,10 @@ bool JsStackGetter::ParseMethodInfo(struct MethodKey &methodKey,
                                     FrameInfoTemp &codeEntry,
                                     bool isCpuProfiler)
 {
-    const JSPandaFile *jsPandaFile = it.CheckAndGetMethod()->GetJSPandaFile();
+    auto method = it.CheckAndGetMethod();
+    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     codeEntry.methodKey = methodKey;
-    if (jsPandaFile == nullptr) {
+    if (method->IsNativeWithCallField()) {
         FrameIterator itNext(it.GetSp(), it.GetThread());
         itNext.Advance<GCVisitedFlag::IGNORED>();
         GetNativeMethodCallPos(itNext, codeEntry);
@@ -160,12 +161,11 @@ void JsStackGetter::GetNativeStack(const EcmaVM *vm, const FrameIterator &it, ch
 }
 
 RunningState JsStackGetter::GetRunningState(const FrameIterator &it, const EcmaVM *vm,
-                                            const JSPandaFile *jsPandaFile, bool topFrame,
+                                            bool isNative, bool topFrame,
                                             bool enableVMTag)
 {
     JSThread *thread = vm->GetAssociatedJSThread();
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
-    bool isNative = jsPandaFile == nullptr;
 
     if (enableVMTag) {
         if (topFrame) {
@@ -272,12 +272,11 @@ void *JsStackGetter::GetMethodIdentifier(Method *method, const FrameIterator &it
 {
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
     JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
-    if (extraInfoValue.CheckIsJSNativePointer()) {
-        JSNativePointer *extraInfo = JSNativePointer::Cast(extraInfoValue.GetTaggedObject());
-        return reinterpret_cast<void *>(extraInfo->GetData());
-    }
-
-    if (method->GetJSPandaFile() == nullptr) {
+    if (method->IsNativeWithCallField()) {
+        if (extraInfoValue.CheckIsJSNativePointer()) {
+            JSNativePointer *extraInfo = JSNativePointer::Cast(extraInfoValue.GetTaggedObject());
+            return reinterpret_cast<void *>(extraInfo->GetData());
+        }
         return const_cast<void *>(method->GetNativePointer());
     }
 

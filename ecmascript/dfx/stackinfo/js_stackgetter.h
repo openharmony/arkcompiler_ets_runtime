@@ -80,7 +80,7 @@ public:
     static bool CheckAndCopy(char *dest, size_t length, const char *src);
     static void GetNativeStack(const EcmaVM *vm, const FrameIterator &it, char *functionName,
                                size_t size, bool isCpuProfiler);
-    static RunningState GetRunningState(const FrameIterator &it, const EcmaVM *vm, const JSPandaFile *jsPandaFile,
+    static RunningState GetRunningState(const FrameIterator &it, const EcmaVM *vm, bool isNative,
                                         bool topFrame, bool enableVMTag = false);
     static void GetNativeMethodCallPos(FrameIterator &it, FrameInfoTemp &codeEntry);
     static void *GetMethodIdentifier(Method *method, const FrameIterator &it);

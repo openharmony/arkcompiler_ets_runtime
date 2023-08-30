@@ -94,13 +94,13 @@ void HeapSampling::GetStack()
             if (method == nullptr) {
                 continue;
             }
-            const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+            bool isNative = method->IsNativeWithCallField();
             struct MethodKey methodKey;
             if (topFrame) {
-                methodKey.state = JsStackGetter::GetRunningState(it, vm_, jsPandaFile, true);
+                methodKey.state = JsStackGetter::GetRunningState(it, vm_, isNative, true);
                 topFrame = false;
             } else {
-                methodKey.state = JsStackGetter::GetRunningState(it, vm_, jsPandaFile, false);
+                methodKey.state = JsStackGetter::GetRunningState(it, vm_, isNative, false);
             }
             void *methodIdentifier = JsStackGetter::GetMethodIdentifier(method, it);
             if (methodIdentifier == nullptr) {
