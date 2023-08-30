@@ -106,6 +106,7 @@ group("ark_js_moduletest") {
     "yieldstar",
     "esmnestedimportcjs",
     "regexp",
+    "deregistermodule",
   ]
 
   deps = []
@@ -212,6 +213,7 @@ group("ark_asm_test") {
     "wrapperclassfunc",
     "yieldstar",
     "regexp",
+    "deregistermodule",
   ]
 
   deps = []

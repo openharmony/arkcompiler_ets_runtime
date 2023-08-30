@@ -326,8 +326,14 @@ JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(void *src)
 
 bool ModuleManager::IsImportedModuleLoaded(JSTaggedValue referencing)
 {
-    int entry = NameDictionary::Cast(resolvedModules_.GetTaggedObject())->FindEntry(referencing);
-    return (entry != -1);
+    NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
+    int entry = dict->FindEntry(referencing);
+    if (entry == -1) {
+        return false;
+    }
+    JSTaggedValue result = dict->GetValue(entry).GetWeakRawValue();
+    dict->UpdateValue(vm_->GetJSThread(), entry, result);
+    return true;
 }
 
 bool ModuleManager::SkipDefaultBundleFile(const CString &moduleFileName) const
@@ -473,7 +479,7 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModule(JSThread *thread, const JSP
         ASSERT(jsPandaFile->IsCjs(recordInfo));
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
     }
-    ModuleDeregister::InitForDeregisterModule(moduleRecord, excuteFromJob);
+    ModuleDeregister::InitForDeregisterModule(thread, moduleRecord, excuteFromJob);
     JSHandle<NameDictionary> dict(thread, resolvedModules_);
     JSHandle<JSTaggedValue> referencingHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(moduleFileName));
     resolvedModules_ =
@@ -522,7 +528,7 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
 
     JSHandle<JSTaggedValue> recordNameHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(recordName));
     JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, recordNameHandle);
-    ModuleDeregister::InitForDeregisterModule(moduleRecord, excuteFromJob);
+    ModuleDeregister::InitForDeregisterModule(thread, moduleRecord, excuteFromJob);
     return moduleRecord;
 }
 
