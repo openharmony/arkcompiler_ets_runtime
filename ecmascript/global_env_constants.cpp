@@ -538,6 +538,8 @@ void GlobalEnvConstants::InitGlobalConstant(JSThread *thread)
     SetConstant(ConstantIndex::GREGORY_INDEX, factory->NewFromASCIINonMovable("gregory"));
     SetConstant(ConstantIndex::ETHIOAA_INDEX, factory->NewFromASCIINonMovable("ethioaa"));
     SetConstant(ConstantIndex::STICKY_INDEX, factory->NewFromASCIINonMovable("sticky"));
+    SetConstant(ConstantIndex::HAS_INDICES_INDEX, factory->NewFromASCIINonMovable("hasIndices"));
+    SetConstant(ConstantIndex::INDICES_INDEX, factory->NewFromASCIINonMovable("indices"));
     SetConstant(ConstantIndex::U_INDEX, factory->NewFromASCIINonMovable("u"));
     SetConstant(ConstantIndex::INDEX_INDEX, factory->NewFromASCIINonMovable("index"));
     SetConstant(ConstantIndex::INPUT_INDEX, factory->NewFromASCIINonMovable("input"));

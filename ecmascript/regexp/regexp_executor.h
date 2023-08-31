@@ -18,6 +18,7 @@
 
 #include "ecmascript/regexp/regexp_parser.h"
 #include "ecmascript/mem/chunk.h"
+#include "ecmascript/js_handle.h"
 
 namespace panda::ecmascript {
 class RegExpExecutor {
@@ -41,11 +42,17 @@ public:
         __extension__ CaptureState *captureResultList_[0];  // NOLINT(modernize-avoid-c-arrays)
     };
 
+    struct Capture {
+        uint32_t startIndex = 0;
+        uint32_t endIndex = 0;
+        JSHandle<EcmaString> capturedValue;
+    };
+
     struct MatchResult {
         uint32_t endIndex_ = 0;
         uint32_t index_ = 0;
         // first value is true if result is undefined
-        std::vector<std::pair<bool, JSHandle<EcmaString>>> captures_;
+        std::vector<std::pair<bool, Capture>> captures_;
         bool isSuccess_ = false;
     };
 

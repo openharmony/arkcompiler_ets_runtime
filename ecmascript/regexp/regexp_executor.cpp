@@ -252,7 +252,7 @@ MatchResult RegExpExecutor::GetResult(const JSThread *thread, bool isSuccess) co
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     MatchResult result;
-    std::vector<std::pair<bool, JSHandle<EcmaString>>> captures;
+    std::vector<std::pair<bool, Capture>> captures;
     result.isSuccess_ = isSuccess;
     if (isSuccess) {
         for (uint32_t i = 0; i < nCapture_; i++) {
@@ -265,12 +265,15 @@ MatchResult RegExpExecutor::GetResult(const JSThread *thread, bool isSuccess) co
                 }
             }
             int32_t len = captureState->captureEnd - captureState->captureStart;
-            std::pair<bool, JSHandle<EcmaString>> pair;
+            std::pair<bool, Capture> pair;
             if ((captureState->captureStart != nullptr && captureState->captureEnd != nullptr) && (len >= 0)) {
                 pair.first = false;
+                Capture capture;
                 if (isWideChar_) {
+                    pair.second.startIndex = (captureState->captureStart - input_) / WIDE_CHAR_SIZE;
+                    pair.second.endIndex = (captureState->captureEnd - input_) / WIDE_CHAR_SIZE;
                     // create utf-16 string
-                    pair.second = factory->NewFromUtf16(
+                    pair.second.capturedValue = factory->NewFromUtf16(
                         reinterpret_cast<const uint16_t *>(captureState->captureStart), len / 2);
                 } else {
                     // create utf-8 string
@@ -282,8 +285,10 @@ MatchResult RegExpExecutor::GetResult(const JSThread *thread, bool isSuccess) co
                         UNREACHABLE();
                     }
                     dest[len] = '\0';  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                    pair.second =
+                    pair.second.capturedValue =
                         factory->NewFromUtf8(reinterpret_cast<const uint8_t *>(buffer.data()), len);
+                    pair.second.startIndex = captureState->captureStart - input_;
+                    pair.second.endIndex = captureState->captureEnd - input_;
                 }
             } else {
                 // undefined

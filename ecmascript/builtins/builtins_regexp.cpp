@@ -271,6 +271,18 @@ JSTaggedValue BuiltinsRegExp::GetGlobal(EcmaRuntimeCallInfo *argv)
     return GetTaggedBoolean(result);
 }
 
+// 22.2.6.6
+JSTaggedValue BuiltinsRegExp::GetHasIndices(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, RegExp, GetHasIndices);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> thisObj = GetThis(argv);
+    bool result = GetFlagsInternal(thread, thisObj, RegExpParser::FLAG_HASINDICES);
+    return GetTaggedBoolean(result);
+}
+
 // 20.2.5.5
 JSTaggedValue BuiltinsRegExp::GetIgnoreCase(EcmaRuntimeCallInfo *argv)
 {
@@ -1397,6 +1409,69 @@ bool BuiltinsRegExp::GetFlagsInternal(JSThread *thread, const JSHandle<JSTaggedV
     uint8_t flags = static_cast<uint8_t>(regexpObj->GetOriginalFlags().GetInt());
     return flags & mask;
 }
+
+// 22.2.7.8
+JSHandle<JSTaggedValue> BuiltinsRegExp::MakeMatchIndicesIndexPairArray(JSThread *thread,
+    const std::vector<std::pair<JSTaggedValue, JSTaggedValue>>& indices,
+    const std::vector<JSHandle<JSTaggedValue>>& groupNames, bool hasGroups)
+{
+    // 1. Let n be the number of elements in indices.
+    uint32_t n = indices.size();
+    // Assert: groupNames has n - 1 elements.
+    ASSERT(groupNames.size() == n - 1);
+    // 5. Let A be ! ArrayCreate(n).
+    JSHandle<JSObject> results(JSArray::ArrayCreate(thread, JSTaggedNumber(n)));
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // 6. If hasGroups is true, then
+    //    a. Let groups be OrdinaryObjectCreate(null).
+    // 7. Else,
+    //    a. Let groups be undefined.
+    JSMutableHandle<JSTaggedValue> groups(thread, JSTaggedValue::Undefined());
+    if (hasGroups) {
+        JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
+        JSHandle<JSObject> nullObj = factory->OrdinaryNewJSObjectCreate(nullHandle);
+        groups.Update(nullObj.GetTaggedValue());
+    }
+    // 8. Perform ! CreateDataPropertyOrThrow(A, "groups", groups).
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    JSHandle<JSTaggedValue> groupsKey = globalConst->GetHandledGroupsString();
+    JSObject::CreateDataProperty(thread, results, groupsKey, groups);
+    // 9. For each integer i such that 0 ≤ i < n, in ascending order, do
+    //    a. Let matchIndices be indices[i].
+    //    b. If matchIndices is not undefined, then
+    //        i. Let matchIndexPair be GetMatchIndexPair(S, matchIndices).
+    //    c. Else,
+    //        i. Let matchIndexPair be undefined.
+    //    d. Perform ! CreateDataPropertyOrThrow(A, ! ToString(𝔽(i)), matchIndexPair).
+    //    e. If i > 0 and groupNames[i - 1] is not undefined, then
+    //        i. Assert: groups is not undefined.
+    //        ii. Perform ! CreateDataPropertyOrThrow(groups, groupNames[i - 1], matchIndexPair).
+    JSMutableHandle<JSTaggedValue> matchIndexPair(thread, JSTaggedValue::Undefined());
+    for (uint32_t i = 0; i < n; i++) {
+        std::pair<JSTaggedValue, JSTaggedValue> matchIndices = indices[i];
+        if (!matchIndices.first.IsUndefined()) {
+            JSHandle<TaggedArray> match = factory->NewTaggedArray(2); // 2 means the length of array
+            match->Set(thread, 0, matchIndices.first);
+            match->Set(thread, 1, matchIndices.second);
+            JSHandle<JSTaggedValue> pair(JSArray::CreateArrayFromList(thread, JSHandle<TaggedArray>::Cast(match)));
+            matchIndexPair.Update(pair.GetTaggedValue());
+        } else {
+            matchIndexPair.Update(JSTaggedValue::Undefined());
+        }
+        JSObject::CreateDataProperty(thread, results, i, matchIndexPair);
+        if (i > 0) {
+            JSHandle<JSTaggedValue> groupName = groupNames[i - 1];
+            if (!groupName->IsUndefined()) {
+                JSHandle<JSObject> groupObject = JSHandle<JSObject>::Cast(groups);
+                JSObject::CreateDataProperty(thread, groupObject, groupName, matchIndexPair);
+            }
+        }
+    }
+    // 10. Return A.
+    return JSHandle<JSTaggedValue>::Cast(results);
+}
+
 // 21.2.5.2.2
 JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
                                                 const JSHandle<JSTaggedValue> &inputStr, bool useCache)
@@ -1426,6 +1501,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     uint8_t flagsBits = static_cast<uint8_t>(flags->GetInt());
     bool global = (flagsBits & RegExpParser::FLAG_GLOBAL) != 0;
     bool sticky = (flagsBits & RegExpParser::FLAG_STICKY) != 0;
+    bool hasIndices = (flagsBits & RegExpParser::FLAG_HASINDICES) != 0;
     if (!global && !sticky) {
         if (useCache) {
             JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, inputStr,
@@ -1479,36 +1555,55 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     JSObject::CreateDataProperty(thread, results, indexKey, indexValue);
     // 25. Perform CreateDataProperty(A, "input", S).
     JSHandle<JSTaggedValue> inputKey = globalConst->GetHandledInputString();
-
     JSHandle<JSTaggedValue> inputValue(thread, static_cast<EcmaString *>(inputStr->GetTaggedObject()));
     JSObject::CreateDataProperty(thread, results, inputKey, inputValue);
+
     // 27. Perform CreateDataProperty(A, "0", matched_substr).
-    JSHandle<JSTaggedValue> zeroValue(matchResult.captures_[0].second);
+    JSHandle<JSTaggedValue> zeroValue(matchResult.captures_[0].second.capturedValue);
     JSObject::CreateDataProperty(thread, results, 0, zeroValue);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
+    // Let indices be a new empty List.
+    // Let groupNames be a new empty List.
+    // Append match to indices.
+    std::vector<std::pair<JSTaggedValue, JSTaggedValue>> indices;
+    std::vector<JSHandle<JSTaggedValue>> groupNames;
+    indices.emplace_back(std::make_pair(JSTaggedValue(matchIndex), JSTaggedValue(endIndex)));
+    // If R contains any GroupName, then
+    //   a. Let groups be OrdinaryObjectCreate(null).
+    //   b. Let hasGroups be true.
+    // Else,
+    //   a. Let groups be undefined.
+    //   b. Let hasGroups be false.
     JSHandle<JSTaggedValue> groupName(thread, regexpObj->GetGroupName());
     JSMutableHandle<JSTaggedValue> groups(thread, JSTaggedValue::Undefined());
+    bool hasGroups = false;
     if (!groupName->IsUndefined()) {
         JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
         JSHandle<JSObject> nullObj = factory->OrdinaryNewJSObjectCreate(nullHandle);
         groups.Update(nullObj.GetTaggedValue());
+        hasGroups = true;
     }
+    // Perform ! CreateDataPropertyOrThrow(A, "groups", groups).
     JSHandle<JSTaggedValue> groupsKey = globalConst->GetHandledGroupsString();
     JSObject::CreateDataProperty(thread, results, groupsKey, groups);
     // Create a new RegExp on global
     JSHandle<JSObject> globalRegExp = JSHandle<JSObject>(env->GetRegExpFunction());
     JSMutableHandle<JSTaggedValue> keyString(thread, JSTaggedValue::Undefined());
     uint32_t captureIndex = 1;
+    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     // 28. For each integer i such that i > 0 and i <= n
     for (; captureIndex < capturesSize; captureIndex++) {
         // a. Let capture_i be ith element of r's captures List
         JSTaggedValue capturedValue;
         if (matchResult.captures_[captureIndex].first) {
             capturedValue = JSTaggedValue::Undefined();
+            indices.emplace_back(std::make_pair(JSTaggedValue::Undefined(), JSTaggedValue::Undefined()));
         } else {
-            capturedValue = matchResult.captures_[captureIndex].second.GetTaggedValue();
+            auto captureI = matchResult.captures_[captureIndex].second;
+            capturedValue = captureI.capturedValue.GetTaggedValue();
+            indices.emplace_back(std::make_pair(JSTaggedValue(captureI.startIndex), JSTaggedValue(captureI.endIndex)));
         }
         JSHandle<JSTaggedValue> iValue(thread, capturedValue);
         // add to RegExp.$i and i must <= 9
@@ -1526,8 +1621,21 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
             if (groupArray->GetLength() > captureIndex - 1) {
                 JSHandle<JSTaggedValue> skey(thread, groupArray->Get(captureIndex - 1));
                 JSObject::CreateDataProperty(thread, groupObject, skey, iValue);
+                groupNames.emplace_back(skey);
+            } else {
+                groupNames.emplace_back(undefined);
             }
+        } else {
+            groupNames.emplace_back(undefined);
         }
+    }
+    // If hasIndices is true, then
+    //   a. Let indicesArray be MakeMatchIndicesIndexPairArray(S, indices, groupNames, hasGroups).
+    //   b. Perform ! CreateDataPropertyOrThrow(A, "indices", indicesArray).
+    if (hasIndices) {
+        auto indicesArray = MakeMatchIndicesIndexPairArray(thread, indices, groupNames, hasGroups);
+        JSHandle<JSTaggedValue> indicesKey = globalConst->GetHandledIndicesString();
+        JSObject::CreateDataProperty(thread, results, indicesKey, indicesArray);
     }
     JSHandle<JSTaggedValue> emptyString = thread->GlobalConstants()->GetHandledEmptyString();
     while (captureIndex <= REGEXP_GLOBAL_ARRAY_SIZE) {
@@ -1631,6 +1739,9 @@ uint32_t BuiltinsRegExp::UpdateExpressionFlags(JSThread *thread, const CString &
             case 'y':
                 flagsBitsTemp = RegExpParser::FLAG_STICKY;
                 break;
+            case 'd':
+                flagsBitsTemp = RegExpParser::FLAG_HASINDICES;
+                break;
             default: {
                 ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
                 JSHandle<JSObject> syntaxError =
@@ -1678,10 +1789,14 @@ JSHandle<JSTaggedValue> BuiltinsRegExp::GetDollarString(JSThread *thread, RegExp
 
 JSTaggedValue BuiltinsRegExp::FlagsBitsToString(JSThread *thread, uint8_t flags)
 {
-    ASSERT((flags & 0xC0) == 0);  // 0xC0: first 2 bits of flags must be 0
+    ASSERT((flags & 0x80) == 0);  // 0x80: first bit of flags must be 0
     BUILTINS_API_TRACE(thread, RegExp, FlagsBitsToString);
     uint8_t *flagsStr = new uint8_t[7];  // 7: maximum 6 flags + '\0'
     size_t flagsLen = 0;
+    if (flags & RegExpParser::FLAG_HASINDICES) {
+        flagsStr[flagsLen] = 'd';
+        flagsLen++;
+    }
     if (flags & RegExpParser::FLAG_GLOBAL) {
         flagsStr[flagsLen] = 'g';
         flagsLen++;
@@ -1742,7 +1857,7 @@ JSTaggedValue BuiltinsRegExp::RegExpInitialize(JSThread *thread, const JSHandle<
         // 6. ReturnIfAbrupt(F).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         /**
-         * 7. If F contains any code unit other than "g", "i", "m", "u", or "y" or if it contains the same code
+         * 7. If F contains any code unit other than "d", "g", "i", "m", "u", or "y" or if it contains the same code
          * unit more than once, throw a SyntaxError exception.
          **/
         CString checkStr = ConvertToString(*flagsStrHandle, StringConvertedUsage::LOGICOPERATION);
