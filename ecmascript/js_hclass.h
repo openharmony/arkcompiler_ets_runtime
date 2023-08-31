@@ -1654,6 +1654,8 @@ public:
     inline static int FindPropertyEntry(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
 
     static PropertyLookupResult LookupPropertyInAotHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key);
+    static PropertyLookupResult LookupPropertyInBuiltinPrototypeHClass(const JSThread *thread, JSHClass *hclass,
+                                                                       JSTaggedValue key);
 
     static constexpr size_t PROTOTYPE_OFFSET = TaggedObjectSize();
     ACCESSORS(Proto, PROTOTYPE_OFFSET, LAYOUT_OFFSET);

@@ -1380,6 +1380,17 @@ GateRef CircuitBuilder::GetGlobalEnv()
     return newGate;
 }
 
+GateRef CircuitBuilder::GetGlobalEnvObj(GateRef env, size_t index)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    auto newGate = GetCircuit()->NewGate(circuit_->GetGlobalEnvObj(index), MachineType::I64,
+                                         { currentDepend, env },
+                                         GateType::AnyType());
+    currentLabel->SetDepend(newGate);
+    return newGate;
+}
+
 GateRef CircuitBuilder::GetGlobalEnvObjHClass(GateRef env, size_t index)
 {
     auto currentLabel = env_->GetCurrentLabel();

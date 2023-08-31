@@ -770,6 +770,36 @@ PropertyLookupResult JSHClass::LookupPropertyInAotHClass(const JSThread *thread,
     return result;
 }
 
+PropertyLookupResult JSHClass::LookupPropertyInBuiltinPrototypeHClass(const JSThread *thread, JSHClass *hclass,
+                                                                      JSTaggedValue key)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    ASSERT(hclass->IsPrototype());
+
+    PropertyLookupResult result;
+    int entry = JSHClass::FindPropertyEntry(thread, hclass, key);
+    // When the property is not found, the value of 'entry' is -1.
+    // Currently, not all methods on the prototype of 'builtin' have been changed to inlined.
+    // Therefore, when a non-inlined method is encountered, it is also considered not found.
+    if (entry == -1 || static_cast<uint32_t>(entry) >= hclass->GetInlinedProperties()) {
+        result.SetIsFound(false);
+        return result;
+    }
+
+    result.SetIsFound(true);
+    result.SetIsLocal(true);
+    uint32_t offset = hclass->GetInlinedPropertiesOffset(entry);
+    result.SetOffset(offset);
+    PropertyAttributes attr = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject())->GetAttr(entry);
+    result.SetIsNotHole(true);
+    if (attr.IsAccessor()) {
+        result.SetIsAccessor(true);
+    }
+    result.SetRepresentation(attr.GetRepresentation());
+    result.SetIsWritable(attr.IsWritable());
+    return result;
+}
+
 void JSHClass::CopyTSInheritInfo(const JSThread *thread, const JSHandle<JSHClass> &oldHClass,
                                  JSHandle<JSHClass> &newHClass)
 {

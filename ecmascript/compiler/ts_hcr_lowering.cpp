@@ -598,7 +598,7 @@ void TSHCRLowering::LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode 
     DISALLOW_GARBAGE_COLLECTION;
     GateType receiverType = acc_.GetGateType(receiver);
     receiverType = tsManager_->TryNarrowUnionType(receiverType);
-    if (accessMode == AccessMode::LOAD && TryLowerTypedLdObjByNameForArray(gate, receiverType, key)) {
+    if (accessMode == AccessMode::LOAD && TryLowerTypedLdObjByNameForBuiltin(gate, receiverType, key)) {
         return;
     }
 
@@ -726,7 +726,7 @@ void TSHCRLowering::BuildNamedPropertyAccessVerifier(GateRef gate, GateRef recei
     builder_.CallRuntime(glue_, stubId, builder_.GetDepend(), { receiver, key, value }, gate);
 }
 
-bool TSHCRLowering::TryLowerTypedLdObjByNameForArray(GateRef gate, GateType receiverType, JSTaggedValue key)
+bool TSHCRLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate, GateType receiverType, JSTaggedValue key)
 {
     EcmaString *propString = EcmaString::Cast(key.GetTaggedObject());
     EcmaString *lengthString = EcmaString::Cast(thread_->GlobalConstants()->GetLengthString().GetTaggedObject());
@@ -737,9 +737,12 @@ bool TSHCRLowering::TryLowerTypedLdObjByNameForArray(GateRef gate, GateType rece
         } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
             LowerTypedLdTypedArrayLength(gate);
             return true;
+        } else if (receiverType.IsStringType()) {
+            LowerTypedLdStringLength(gate);
+            return true;
         }
     }
-    return false;
+    return TryLowerTypedLdObjByNameForBuiltinMethod(gate, receiverType, key);
 }
 
 void TSHCRLowering::LowerTypedLdArrayLength(GateRef gate)
@@ -766,6 +769,41 @@ void TSHCRLowering::LowerTypedLdTypedArrayLength(GateRef gate)
     }
     GateRef result = builder_.LoadTypedArrayLength(arrayType, array);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+}
+
+void TSHCRLowering::LowerTypedLdStringLength(GateRef gate)
+{
+    AddProfiling(gate);
+    GateRef str = acc_.GetValueIn(gate, 2);
+    if (!Uncheck()) {
+        builder_.EcmaStringCheck(str);
+    }
+    GateRef result = builder_.LoadStringLength(str);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+}
+
+bool TSHCRLowering::TryLowerTypedLdObjByNameForBuiltinMethod(GateRef gate, GateType receiverType, JSTaggedValue key)
+{
+    JSHandle<GlobalEnv> globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
+    if (receiverType.IsStringType()) {
+        JSHClass *stringPhc = globalEnv->GetStringPrototype()->GetTaggedObject()->GetClass();
+        PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinPrototypeHClass(thread_, stringPhc, key);
+        // Unable to handle accessor at the moment
+        if (!plr.IsFound() || plr.IsAccessor()) {
+            return false;
+        }
+        AddProfiling(gate);
+        GateRef str = acc_.GetValueIn(gate, 2);
+        if (!Uncheck()) {
+            builder_.EcmaStringCheck(str);
+        }
+        GateRef plrGate = builder_.Int32(plr.GetData());
+        GateRef strPrototype = builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), GlobalEnv::STRING_PROTOTYPE_INDEX);
+        GateRef result = builder_.LoadProperty(strPrototype, plrGate, plr.IsFunction());
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+        return true;
+    }
+    return false;
 }
 
 void TSHCRLowering::LowerTypedLdObjByIndex(GateRef gate)

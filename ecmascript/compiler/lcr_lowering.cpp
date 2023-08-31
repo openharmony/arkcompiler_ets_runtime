@@ -52,6 +52,9 @@ GateRef LCRLowering::VisitGate(GateRef gate)
         case OpCode::GET_GLOBAL_ENV:
             LowerGetGlobalEnv(gate);
             break;
+        case OpCode::GET_GLOBAL_ENV_OBJ:
+            LowerGetGlobalEnvObj(gate);
+            break;
         case OpCode::GET_GLOBAL_ENV_OBJ_HCLASS:
             LowerGetGlobalEnvObjHClass(gate);
             break;
@@ -522,6 +525,16 @@ void LCRLowering::LowerGetGlobalEnv(GateRef gate)
     GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(false));
     GateRef glueGlobalEnv = builder_.Load(VariableType::JS_POINTER(), glue_, glueGlobalEnvOffset);
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), glueGlobalEnv);
+}
+
+void LCRLowering::LowerGetGlobalEnvObj(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef globalEnv = acc_.GetValueIn(gate, 0);
+    size_t index = acc_.GetIndex(gate);
+    GateRef offset = builder_.IntPtr(GlobalEnv::HEADER_SIZE + JSTaggedValue::TaggedTypeSize() * index);
+    GateRef object = builder_.Load(VariableType::JS_ANY(), globalEnv, offset);
+    acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), object);
 }
 
 void LCRLowering::LowerGetGlobalEnvObjHClass(GateRef gate)
