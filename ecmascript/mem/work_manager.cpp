@@ -132,6 +132,7 @@ size_t WorkManager::Finish()
             agedSpaces_.back()));
         agedSpaces_.pop_back();
     }
+    initialized_.store(false, std::memory_order_release);
     return aliveSize;
 }
 
