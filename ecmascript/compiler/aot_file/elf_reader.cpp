@@ -257,20 +257,18 @@ void ElfReader::SeparateTextSections(std::vector<ModuleSectionDes> &des,
     for (size_t i = 0; i < des.size(); ++i) {
         auto moduleInfo = GetCurModuleInfo(i, moduleInfoOffset);
         secOffset = AlignUp(secOffset, AOTFileInfo::PAGE_ALIGN);
-        uint32_t rodataSize = moduleInfo->rodataSize;
-        uint32_t rodataAfterText = moduleInfo->rodataAfterText;
-        if (rodataSize > 0 && rodataAfterText == 0) {
-            des[i].SetSecAddrAndSize(ElfSecName::RODATA_CST8, secAddr + secOffset, rodataSize);
-            secOffset += rodataSize;
+        uint32_t rodataSizeBeforeText = moduleInfo->rodataSizeBeforeText;
+        uint32_t rodataSizeAfterText = moduleInfo->rodataSizeAfterText;
+        if (rodataSizeBeforeText != 0) {
+            secOffset += rodataSizeBeforeText;
             secOffset = AlignUp(secOffset, AOTFileInfo::TEXT_SEC_ALIGN);
         }
         uint32_t textSize = moduleInfo->textSize;
         des[i].SetSecAddrAndSize(ElfSecName::TEXT, secAddr + secOffset, textSize);
         secOffset += textSize;
-        if (rodataSize > 0 && rodataAfterText == 1) {
+        if (rodataSizeAfterText != 0) {
             secOffset = AlignUp(secOffset, AOTFileInfo::DATA_SEC_ALIGN);
-            des[i].SetSecAddrAndSize(ElfSecName::RODATA_CST8, secAddr + secOffset, rodataSize);
-            secOffset += rodataSize;
+            secOffset += rodataSizeAfterText;
         }
     }
 }
@@ -302,23 +300,23 @@ void ElfReader::SeparateTextSections(BinaryBufferParser &parser,
     for (size_t i = 0; i < des.size(); ++i) {
         auto moduleInfo = moduleInfo_[i];
         secOffset = AlignUp(secOffset, AOTFileInfo::PAGE_ALIGN);
-        uint32_t rodataSize = moduleInfo.rodataSize;
-        uint32_t rodataAfterText = moduleInfo.rodataAfterText;
-        if (rodataSize > 0 && rodataAfterText == 0) {
-            parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), rodataSize, curShOffset + secOffset);
-            des[i].SetSecAddrAndSize(ElfSecName::RODATA_CST8, secAddr + secOffset, rodataSize);
-            secOffset += rodataSize;
+        uint32_t rodataSizeBeforeText = moduleInfo.rodataSizeBeforeText;
+        uint32_t rodataSizeAfterText = moduleInfo.rodataSizeAfterText;
+        if (rodataSizeBeforeText != 0) {
+            parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), rodataSizeBeforeText,
+                               curShOffset + secOffset);
+            secOffset += rodataSizeBeforeText;
             secOffset = AlignUp(secOffset, AOTFileInfo::TEXT_SEC_ALIGN);
         }
         uint32_t textSize = moduleInfo.textSize;
         parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), textSize, curShOffset + secOffset);
         des[i].SetSecAddrAndSize(ElfSecName::TEXT, secAddr + secOffset, textSize);
         secOffset += textSize;
-        if (rodataSize > 0 && rodataAfterText == 1) {
+        if (rodataSizeAfterText != 0) {
             secOffset = AlignUp(secOffset, AOTFileInfo::DATA_SEC_ALIGN);
-            parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), rodataSize, curShOffset + secOffset);
-            des[i].SetSecAddrAndSize(ElfSecName::RODATA_CST8, secAddr + secOffset, rodataSize);
-            secOffset += rodataSize;
+            parser.ParseBuffer(reinterpret_cast<void *>(secAddr + secOffset), rodataSizeAfterText,
+                               curShOffset + secOffset);
+            secOffset += rodataSizeAfterText;
         }
     }
 }

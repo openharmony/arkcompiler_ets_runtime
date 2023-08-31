@@ -6042,10 +6042,6 @@ GateRef StubBuilder::ToLength(GateRef glue, GateRef target)
     env->SubCfgEntry(&subentry);
     DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
     Label exit(env);
-    Label isInt(env);
-    Label notInt(env);
-    Label intIsLessZero(env);
-    Label intNotLessZero(env);
 
     GateRef number = ToNumber(glue, target);
     Label isPendingException(env);
@@ -6057,25 +6053,29 @@ GateRef StubBuilder::ToLength(GateRef glue, GateRef target)
     }
     Bind(&noPendingException);
     {
-        Branch(TaggedIsInt(number), &isInt, &notInt);
-        Bind(&isInt);
+        GateRef num = GetDoubleOfTNumber(number);
+        Label targetLessThanZero(env);
+        Label targetGreaterThanZero(env);
+        Label targetLessThanSafeNumber(env);
+        Label targetGreaterThanSafeNumber(env);
+        Branch(DoubleLessThan(num, Double(0.0)), &targetLessThanZero, &targetGreaterThanZero);
+        Bind(&targetLessThanZero);
         {
-            GateRef len = GetInt32OfTInt(number);
-            Branch(Int32LessThan(len, Int32(0)), &intIsLessZero, &intNotLessZero);
-            Bind(&intIsLessZero);
-            {
-                res = IntToTaggedPtr(Int32(0));
-                Jump(&exit);
-            }
-            Bind(&intNotLessZero);
-            {
-                res = number;
-                Jump(&exit);
-            }
+            res = DoubleToTaggedDoublePtr(Double(0.0));
+            Jump(&exit);
         }
-        Bind(&notInt);
-        res = CallNGCRuntime(glue, RTSTUB_ID(DoubleToLength), { TaggedGetNumber(number) });
-        Jump(&exit);
+        Bind(&targetGreaterThanZero);
+        Branch(DoubleGreaterThan(num, Double(SAFE_NUMBER)), &targetGreaterThanSafeNumber, &targetLessThanSafeNumber);
+        Bind(&targetGreaterThanSafeNumber);
+        {
+            res = DoubleToTaggedDoublePtr(Double(SAFE_NUMBER));
+            Jump(&exit);
+        }
+        Bind(&targetLessThanSafeNumber);
+        {
+            res = number;
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     auto ret = *res;

@@ -28,7 +28,6 @@ GateRef BuiltinsObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef
     env->SubCfgEntry(&entry);
     DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(index, VariableType::INT32(), Int32(0));
-    DEFVARIABLE(int32Len, VariableType::INT32(), Int32(0));
     Label exit(env);
 
     // 3. If Type(obj) is Object, throw a TypeError exception.
@@ -63,19 +62,9 @@ GateRef BuiltinsObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef
         {
             Label indexInRange(env);
             Label indexOutRange(env);
-            Label doubleIndexInRange(env);
-            Label isInt(env);
-            Label notInt(env);
-            Branch(TaggedIsInt(number), &isInt, &notInt);
-            Bind(&isInt);
-            {
-                int32Len = GetInt32OfTInt(number);
-                Jump(&indexInRange);
-            }
-            Bind(&notInt);
-            GateRef doubleLen = GetDoubleOfTDouble(number);
-            int32Len = DoubleToInt(glue, doubleLen);
-            Branch(Int32UnsignedGreaterThan(*int32Len, Int32(std::numeric_limits<int>::max())), &indexOutRange, &indexInRange);
+
+            GateRef doubleLen = GetDoubleOfTNumber(number);
+            Branch(DoubleGreaterThan(doubleLen, Double(JSObject::MAX_ELEMENT_INDEX)), &indexOutRange, &indexInRange);
             Bind(&indexOutRange);
             {
                 DebugPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable)) });
@@ -85,9 +74,10 @@ GateRef BuiltinsObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef
             }
             Bind(&indexInRange);
             {
+                GateRef int32Len = DoubleToInt(glue, doubleLen);
                 // 6. Let list be an empty List.
                 NewObjectStubBuilder newBuilder(this);
-                GateRef array = newBuilder.NewTaggedArray(glue, *int32Len);
+                GateRef array = newBuilder.NewTaggedArray(glue, int32Len);
                 Label targetIsTypeArray(env);
                 Label targetNotTypeArray(env);
                 Branch(IsTypedArray(arrayObj), &targetIsTypeArray, &targetNotTypeArray);
@@ -120,7 +110,7 @@ GateRef BuiltinsObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef
                 Jump(&loopHead);
                 LoopBegin(&loopHead);
                 {
-                    Branch(Int32UnsignedLessThan(*index, *int32Len), &storeValue, &afterLoop);
+                    Branch(Int32UnsignedLessThan(*index, int32Len), &storeValue, &afterLoop);
                     Bind(&storeValue);
                     {
                         GateRef next = FastGetPropertyByIndex(glue, arrayObj, *index, ProfileOperation());

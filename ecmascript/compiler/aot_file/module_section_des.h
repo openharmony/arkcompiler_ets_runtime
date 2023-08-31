@@ -28,33 +28,43 @@ public:
     struct ModuleRegionInfo {
         uint32_t startIndex {0};
         uint32_t funcCount {0};
-        uint32_t rodataSize {0};
+        uint32_t rodataSizeBeforeText {0};
+        uint32_t rodataSizeAfterText {0};
         uint32_t textSize {0};
         uint32_t stackMapSize {0};
-        uint32_t rodataAfterText {0};
     };
     static std::string GetSecName(ElfSecName idx);
 
-    void UpdateRODataInfo(uint64_t &addr, uint32_t &size, ElfSecName sec) const
+    void UpdateRODataInfo(uint64_t textAddr, uint64_t &addrBeforeText, uint32_t &sizeBeforeText,
+                          uint64_t &addrAfterText, uint32_t &sizeAfterText, ElfSecName sec) const
     {
         if (sectionsInfo_.find(sec) == sectionsInfo_.end()) {
             return;
         }
         uint64_t curSectionAddr = GetSecAddr(sec);
-        addr = curSectionAddr < addr ? curSectionAddr : addr;
-        size += GetSecSize(sec);
+        ASSERT(curSectionAddr != 0);
+        ASSERT(curSectionAddr != textAddr);
+        if (curSectionAddr < textAddr) {
+            addrBeforeText = (curSectionAddr < addrBeforeText) ? curSectionAddr : addrBeforeText;
+            sizeBeforeText += GetSecSize(sec);
+        } else {
+            addrAfterText = (curSectionAddr < addrAfterText) ? curSectionAddr : addrAfterText;
+            sizeAfterText += GetSecSize(sec);
+        }
     }
 
-    std::tuple<uint64_t, uint32_t> GetMergedRODataAddrAndSize() const
+    std::tuple<uint64_t, uint32_t, uint64_t, uint32_t> GetMergedRODataAddrAndSize(uint64_t textAddr) const
     {
-        uint64_t addr = base::MAX_UINT64_VALUE;
-        uint32_t size = 0;
-        UpdateRODataInfo(addr, size, ElfSecName::RODATA);
-        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST4);
-        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST8);
-        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST16);
-        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST32);
-        return std::make_tuple(addr, size);
+        uint64_t addrBeforeText = base::MAX_UINT64_VALUE;
+        uint32_t sizeBeforeText = 0;
+        uint64_t addrAfterText = base::MAX_UINT64_VALUE;
+        uint32_t sizeAfterText = 0;
+        for (uint8_t i = static_cast<uint8_t>(ElfSecName::RODATA); i <= static_cast<uint8_t>(ElfSecName::RODATA_CST32);
+             i++) {
+            UpdateRODataInfo(textAddr, addrBeforeText, sizeBeforeText, addrAfterText, sizeAfterText,
+                static_cast<ElfSecName>(i));
+        }
+        return std::make_tuple(addrBeforeText, sizeBeforeText, addrAfterText, sizeAfterText);
     }
 
     void SetArkStackMapPtr(std::shared_ptr<uint8_t> ptr)
