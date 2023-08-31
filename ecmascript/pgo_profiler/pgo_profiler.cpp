@@ -237,7 +237,8 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
             kind = PGOObjKind::ELEMENT;
             auto array = JSArray::Cast(holder);
             if (array->GetTraceIndex() != 0) {
-                PGOObjectInfo info(ClassType(array->GetTraceIndex(), ClassType::Kind::ElementId), kind);
+                auto elementsKind = hclass->GetElementsKind();
+                PGOObjectInfo info(ClassType(static_cast<uint32_t>(elementsKind), ClassType::Kind::ElementId), kind);
                 auto methodId = jsMethod->GetMethodId();
                 recordInfos_->AddObjectInfo(recordName, methodId, offset, info);
                 if (store) {

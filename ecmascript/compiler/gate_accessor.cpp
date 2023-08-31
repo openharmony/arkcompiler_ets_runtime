@@ -448,6 +448,21 @@ ElementsKind GateAccessor::TryGetElementsKind(GateRef gate) const
     return ElementsKind::GENERIC;
 }
 
+ElementsKind GateAccessor::TryGetArrayElementsKind(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        ElementsKind kind = gatePtr->GetJSBytecodeMetaData()->GetElementsKind();
+        std::vector<ElementsKind> kinds = gatePtr->GetJSBytecodeMetaData()->GetElementsKinds();
+        for (auto &x : kinds) {
+            kind = Elements::MergeElementsKind(kind, x);
+        }
+        return kind;
+    }
+    return ElementsKind::GENERIC;
+}
+
 void GateAccessor::TrySetElementsKind(GateRef gate, ElementsKind kind)
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);

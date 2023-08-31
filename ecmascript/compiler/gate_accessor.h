@@ -412,6 +412,7 @@ public:
     PGOSampleType TryGetPGOType(GateRef gate) const;
     void TrySetPGOType(GateRef gate, PGOSampleType type);
     ElementsKind TryGetElementsKind(GateRef gate) const;
+    ElementsKind TryGetArrayElementsKind(GateRef gate) const;
     void TrySetElementsKind(GateRef gate, ElementsKind kind);
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
     void Print(GateRef gate) const;
