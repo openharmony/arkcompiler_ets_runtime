@@ -1317,6 +1317,9 @@ public:
     static Local<ObjectRef> GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file, const std::string &key);
 
+    // secure memory check
+    static bool CheckSecureMem(uintptr_t mem);
+
     /*
      * Execute panda file from secure mem. secure memory lifecycle managed externally.
      * The data parameter needs to be created externally by an external caller and managed externally
