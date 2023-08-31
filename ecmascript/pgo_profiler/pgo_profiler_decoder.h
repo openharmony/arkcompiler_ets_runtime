@@ -20,10 +20,10 @@
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/platform/map.h"
 
-namespace panda::ecmascript {
+namespace panda::ecmascript::pgo {
 class PGOProfilerDecoder {
 public:
     PGOProfilerDecoder() = default;
@@ -112,7 +112,7 @@ public:
         return header_->SupportMethodChecksum();
     }
 
-    bool GetHClassLayoutDesc(PGOSampleType classType, PGOHClassLayoutDesc **desc) const;
+    bool GetHClassLayoutDesc(PGOSampleType profileType, PGOHClassLayoutDesc **desc) const;
 
     bool IsLoaded() const
     {
@@ -156,5 +156,5 @@ private:
     std::unique_ptr<PGORecordSimpleInfos> recordSimpleInfos_;
     MemMap fileMapAddr_;
 };
-} // namespace panda::ecmascript
+} // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILE_DECODER_H

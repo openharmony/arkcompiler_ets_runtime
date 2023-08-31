@@ -31,7 +31,7 @@
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/mem/remembered_set.h"
 #include "ecmascript/message_string.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_table.h"

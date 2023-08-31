@@ -23,7 +23,6 @@
 #include <unordered_set>
 #include <string.h>
 
-#include "ecmascript/base/file_header.h"
 #include "ecmascript/common.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/log_wrapper.h"
@@ -32,253 +31,20 @@
 #include "ecmascript/mem/chunk_containers.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/slots.h"
-#include "ecmascript/pgo_profiler/pgo_file_info.h"
+#include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
+#include "ecmascript/pgo_profiler/ap_file/pgo_method_type_set.h"
+#include "ecmascript/pgo_profiler/ap_file/pgo_profile_type_pool.h"
+#include "ecmascript/pgo_profiler/ap_file/pgo_record_pool.h"
+#include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
-#include "ecmascript/pgo_profiler/pgo_record_pool.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/property_attributes.h"
+#include "macros.h"
 
 
-namespace panda::ecmascript {
+namespace panda::ecmascript::pgo {
 class SaveTask;
-
-enum class SampleMode : uint8_t {
-    HOTNESS_MODE,
-    CALL_MODE,
-};
-
-/**
-  |----PGOProfilerHeader
-  |--------MAGIC(8)
-  |------------{ 'P', 'A', 'N', 'D', 'A', '\0', '\0', '\0' }
-  |--------VERSION(4)
-  |------------{ '0', '0', '0', '0' }
-  |--------CHECKSUM(4)
-  |------------{ checksum }
-  |--------FILE_SIZE(4)
-  |------------{ fileSize }
-  |--------HEADER_SIZE(4)
-  |------------{ headerSize, from MAGIC to SECTION_NUMBER }
-  |--------ENDIAN_TAG(4)
-  |------------{ ENDIAN_TAG }
-  |--------SECTION_NUMBER(4)
-  |------------{ 4 }
-  |--------PANDA_FILE_INFO_SECTION_INFO(12)
-  |------------{ offset, size (reserve), number1 }
-  |--------RECORD_INFO_SECTION_INFO(12)
-  |------------{ offset, size (reserve), number2 }
-  |--------LAYOUT_DESC_SECTION_INFO(12)
-  |------------{ offset, size (reserve), number3 }
-  |--------RECORD_POOL(12)
-  |------------{ offset, size (reserve), recordPoolCount }
-  |
-  |----Section1: PGOPandaFileInfos(number1)
-  |--------[{ size, CHECK_SUM }, { size, CHECK_SUM }, ...]
-  |
-  |----Section2: PGORecordDetailInfos(number2)
-  |--------[ PGOMethodInfoMap(number4)
-  |------------{ recordId, offset, size, number4 }
-  |------------[ PGOMethodInfo(size1)
-  |----------------{ size1, entityId, count, mode, methodName, [{ size, offset, type }, { size, offset, type }, ...]},
-  |------------  PGOMethodInfo(size1)
-  |----------------{ size1, entityId, count, mode, methodName, [{ size, offset, type }, { size, offset, type }, ...]},
-  |--------------... ]
-  |--------  PGOMethodInfoMap()
-  |--------... ]
-  |
-  |----Section3: PGHClassLayoutDescs(number3)
-  |--------{ offset, size, number5 }
-  |--------[ PGOHClassLayoutDescInner(size)
-  |------------{ size, type, superType, count, ptCount, ctorCount, [{ size, handle, key }, { size, heandle, key }, ...]}
-  |--------  PGOHClassLayoutDescInner(size)
-  |------------{ size, type, superType, count, ptCount, ctorCount, [{ size, handle, key }, { size, heandle, key }, ...]}
-  |
-  |----Section4: PGORecord(recordPoolCount)
-  |--------{ offset, size, recordItemCount }
-  |--------[ recordId, recordName ](recordItemCount)
- */
-class PGOProfilerHeader : public base::FileHeaderElastic {
-public:
-    static constexpr VersionType TYPE_MINI_VERSION = {0, 0, 0, 2};
-    static constexpr VersionType METHOD_CHECKSUM_MINI_VERSION = {0, 0, 0, 4};
-    static constexpr VersionType USE_HCLASS_TYPE_MINI_VERSION = {0, 0, 0, 5};
-    static constexpr VersionType FILE_CONSISTENCY_MINI_VERSION = {0, 0, 0, 6};
-    static constexpr VersionType TRACK_FIELD_MINI_VERSION = {0, 0, 0, 7};
-    static constexpr VersionType ELEMENTS_KIND_MINI_VERSION = {0, 0, 0, 8};
-    static constexpr VersionType RECORD_POOL_MINI_VERSION = {0, 0, 0, 9};
-    static constexpr VersionType FILE_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
-    static constexpr VersionType HEADER_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
-    static constexpr VersionType ELASTIC_HEADER_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
-    static constexpr VersionType LAST_VERSION = {0, 0, 0, 9};
-    static constexpr size_t SECTION_SIZE = 4;
-    static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
-    static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
-    static constexpr size_t LAYOUT_DESC_SECTION_INDEX = 2;
-    static constexpr size_t RECORD_POOL_SECTION_INDEX = 3;
-
-    PGOProfilerHeader() : base::FileHeaderElastic(LAST_VERSION), sectionNumber_(SECTION_SIZE)
-    {
-        GetPandaInfoSection()->offset_ = Size();
-        SetHeaderSize(Size());
-    }
-
-    static size_t LastSize()
-    {
-        return sizeof(PGOProfilerHeader) + (SECTION_SIZE - 1) * sizeof(SectionInfo);
-    }
-
-    static size_t Size(uint32_t sectionNumber)
-    {
-        return sizeof(PGOProfilerHeader) + (sectionNumber - 1) * sizeof(SectionInfo);
-    }
-
-    size_t Size() const
-    {
-        return Size(sectionNumber_);
-    }
-
-    bool Verify() const
-    {
-        return VerifyVersion("apPath file", LAST_VERSION, false);
-    }
-
-    bool Verify(void *buffer, size_t bufferSize) const
-    {
-        if (!Verify()) {
-            return false;
-        }
-        if (!VerifyConsistency(buffer, bufferSize)) {
-            return false;
-        }
-        if (!VerifyFileSize(bufferSize)) {
-            return false;
-        }
-        return true;
-    }
-
-    bool VerifyFileSize(size_t bufferSize) const;
-
-    bool VerifyConsistency(void *buffer, size_t bufferSize) const;
-
-    static void Build(PGOProfilerHeader **header, size_t size)
-    {
-        *header = reinterpret_cast<PGOProfilerHeader *>(malloc(size));
-        new (*header) PGOProfilerHeader();
-    }
-
-    static void Destroy(PGOProfilerHeader **header)
-    {
-        if (*header != nullptr) {
-            free(*header);
-            *header = nullptr;
-        }
-    }
-
-    // Copy Header.
-    static bool ParseFromBinary(void *buffer, size_t bufferSize, PGOProfilerHeader **header);
-    void ProcessToBinary(std::fstream &fileStream) const;
-
-    bool ParseFromText(std::ifstream &stream);
-    bool ProcessToText(std::ofstream &stream) const;
-
-    SectionInfo *GetPandaInfoSection() const
-    {
-        return GetSectionInfo(PANDA_FILE_SECTION_INDEX);
-    }
-
-    SectionInfo *GetRecordInfoSection() const
-    {
-        return GetSectionInfo(RECORD_INFO_SECTION_INDEX);
-    }
-
-    SectionInfo *GetLayoutDescSection() const
-    {
-        return GetSectionInfo(LAYOUT_DESC_SECTION_INDEX);
-    }
-
-    SectionInfo *GetRecordPoolSection() const
-    {
-        return GetSectionInfo(RECORD_POOL_SECTION_INDEX);
-    }
-
-    bool SupportType() const
-    {
-        return CompatibleVerify(TYPE_MINI_VERSION);
-    }
-
-    bool SupportMethodChecksum() const
-    {
-        return CompatibleVerify(METHOD_CHECKSUM_MINI_VERSION);
-    }
-
-    bool SupportUseHClassType() const
-    {
-        return CompatibleVerify(USE_HCLASS_TYPE_MINI_VERSION);
-    }
-
-    bool SupportFileConsistency() const
-    {
-        return CompatibleVerify(FILE_CONSISTENCY_MINI_VERSION);
-    }
-
-    bool SupportFileSize() const
-    {
-        return CompatibleVerify(FILE_SIZE_MINI_VERSION);
-    }
-
-    bool SupportHeaderSize() const
-    {
-        return CompatibleVerify(HEADER_SIZE_MINI_VERSION);
-    }
-
-    bool SupportTrackField() const
-    {
-        return CompatibleVerify(TRACK_FIELD_MINI_VERSION);
-    }
-
-    bool SupportElementsKind() const
-    {
-        return CompatibleVerify(ELEMENTS_KIND_MINI_VERSION);
-    }
-
-    bool SupportRecordPool() const
-    {
-        return CompatibleVerify(RECORD_POOL_MINI_VERSION);
-    }
-
-    NO_COPY_SEMANTIC(PGOProfilerHeader);
-    NO_MOVE_SEMANTIC(PGOProfilerHeader);
-
-private:
-    static bool BuildFromLegacy(void *buffer, PGOProfilerHeader **header);
-    static bool BuildFromElastic(void *buffer, size_t bufferSize, PGOProfilerHeader **header);
-
-    SectionInfo *GetSectionInfo(size_t index) const
-    {
-        if (index >= sectionNumber_) {
-            return nullptr;
-        }
-        return const_cast<SectionInfo *>(&sectionInfos_) + index;
-    }
-
-    uint32_t sectionNumber_ {SECTION_SIZE};
-    SectionInfo sectionInfos_;
-};
-
-class PGOProfilerHeaderLegacy : public base::FileHeaderBase {
-public:
-    static constexpr size_t SECTION_SIZE = 3;
-    static constexpr VersionType LAST_VERSION = {0, 0, 0, 5};
-    PGOProfilerHeaderLegacy() : base::FileHeaderBase(LAST_VERSION), sectionNumber_(SECTION_SIZE) {};
-
-    const uint32_t& GetSectionNumber () const
-    {
-        return sectionNumber_;
-    }
-
-private:
-    uint32_t sectionNumber_ {SECTION_SIZE};
-    SectionInfo sectionInfos_;
-};
+class PGOContext;
 
 class PGOPandaFileInfos {
 public:
@@ -367,7 +133,7 @@ public:
 
     static int32_t Size(uint32_t length)
     {
-        return sizeof(PGOMethodInfo) + AlignUp(length, GetAlignmentInBytes(PGO_ALIGN_SIZE));
+        return sizeof(PGOMethodInfo) + AlignUp(length, GetAlignmentInBytes(ALIGN_SIZE));
     }
 
     int32_t Size() const
@@ -476,224 +242,6 @@ private:
     char methodName_ {0};
 };
 
-class PGOMethodTypeSet {
-public:
-    static constexpr int METHOD_TYPE_INFO_INDEX = 4;
-    static constexpr int METHOD_TYPE_INFO_COUNT = 2;
-    static constexpr int METHOD_OFFSET_INDEX = 0;
-    static constexpr int METHOD_TYPE_INDEX = 1;
-
-    PGOMethodTypeSet() = default;
-
-    void AddType(uint32_t offset, PGOSampleType type)
-    {
-        auto result = scalarOpTypeInfos_.find(ScalarOpTypeInfo(offset, type));
-        if (result != scalarOpTypeInfos_.end()) {
-            auto combineType = result->GetType().CombineType(type);
-            const_cast<ScalarOpTypeInfo &>(*result).SetType(combineType);
-        } else {
-            scalarOpTypeInfos_.emplace(offset, type);
-        }
-    }
-
-    void AddCallTargetType(uint32_t offset, PGOSampleType type)
-    {
-        auto result = scalarOpTypeInfos_.find(ScalarOpTypeInfo(offset, type));
-        if (result != scalarOpTypeInfos_.end()) {
-            auto combineType = result->GetType().CombineCallTargetType(type);
-            const_cast<ScalarOpTypeInfo &>(*result).SetType(combineType);
-        } else {
-            scalarOpTypeInfos_.emplace(offset, type);
-        }
-    }
-
-    void AddObjectInfo(uint32_t offset, const PGOObjectInfo &info)
-    {
-        auto result = rwScalarOpTypeInfos_.find(RWScalarOpTypeInfo(offset));
-        if (result != rwScalarOpTypeInfos_.end()) {
-            const_cast<RWScalarOpTypeInfo &>(*result).AddObjectInfo(info);
-        } else {
-            rwScalarOpTypeInfos_.emplace(offset, info);
-        }
-    }
-
-    void AddDefine(uint32_t offset, PGOSampleType type, PGOSampleType superType)
-    {
-        auto result = objDefOpTypeInfos_.find(ObjDefOpTypeInfo(offset, type, superType));
-        if (result != objDefOpTypeInfos_.end()) {
-            return;
-        }
-        objDefOpTypeInfos_.emplace(offset, type, superType);
-    }
-
-    template <typename Callback>
-    void GetTypeInfo(Callback callback)
-    {
-        for (const auto &typeInfo : scalarOpTypeInfos_) {
-            auto type = typeInfo.GetType();
-            callback(typeInfo.GetOffset(), &type);
-        }
-        for (const auto &typeInfo : rwScalarOpTypeInfos_) {
-            auto type = typeInfo.GetType();
-            callback(typeInfo.GetOffset(), &type);
-        }
-        for (const auto &typeInfo : objDefOpTypeInfos_) {
-            auto classType = typeInfo.GetType();
-            callback(typeInfo.GetOffset(), &classType);
-        }
-    }
-
-    void Merge(const PGOMethodTypeSet *info);
-    static void SkipFromBinary(void **buffer);
-
-    bool ParseFromBinary(void **buffer, PGOProfilerHeader *const header);
-    bool ProcessToBinary(std::stringstream &stream) const;
-
-    bool ParseFromText(const std::string &typeString);
-    void ProcessToText(std::string &text) const;
-
-    NO_COPY_SEMANTIC(PGOMethodTypeSet);
-    NO_MOVE_SEMANTIC(PGOMethodTypeSet);
-
-private:
-    enum class InfoType : uint8_t { NONE, OP_TYPE, DEFINE_CLASS_TYPE = 3, USE_HCLASS_TYPE };
-
-    class TypeInfoHeader {
-    public:
-        TypeInfoHeader(InfoType type, uint32_t offset) : infoType_(type), offset_(offset) {}
-        TypeInfoHeader(uint32_t size, InfoType type, uint32_t offset)
-            : size_(size), infoType_(type), offset_(offset) {}
-
-        InfoType GetInfoType()
-        {
-            return infoType_;
-        }
-
-        int32_t Size() const
-        {
-            return size_;
-        }
-
-        uint32_t GetOffset() const
-        {
-            return offset_;
-        }
-
-    protected:
-        uint32_t size_ {0};
-        InfoType infoType_ {InfoType::NONE};
-        uint32_t offset_ {0};
-    };
-
-    class RWScalarOpTypeInfo : public TypeInfoHeader {
-    public:
-        explicit RWScalarOpTypeInfo(uint32_t offset)
-            : TypeInfoHeader(InfoType::USE_HCLASS_TYPE, offset) {};
-        RWScalarOpTypeInfo(uint32_t offset, PGOObjectInfo info)
-            : TypeInfoHeader(sizeof(RWScalarOpTypeInfo), InfoType::USE_HCLASS_TYPE, offset)
-        {
-            type_.AddObjectInfo(info);
-        }
-
-        bool operator<(const RWScalarOpTypeInfo &right) const
-        {
-            return offset_ < right.offset_;
-        }
-
-        int32_t GetCount()
-        {
-            return type_.GetCount();
-        }
-
-        void Merge(const RWScalarOpTypeInfo &type)
-        {
-            type_.Merge(type.type_);
-        }
-
-        void AddObjectInfo(const PGOObjectInfo &info)
-        {
-            type_.AddObjectInfo(info);
-        }
-
-        PGORWOpType GetType() const
-        {
-            return type_;
-        }
-
-        void ProcessToText(std::string &text) const;
-
-    private:
-        PGORWOpType type_;
-    };
-
-    class ScalarOpTypeInfo : public TypeInfoHeader {
-    public:
-        ScalarOpTypeInfo(uint32_t offset, PGOSampleType type)
-            : TypeInfoHeader(sizeof(ScalarOpTypeInfo), InfoType::OP_TYPE, offset), type_(type) {}
-
-        bool operator<(const ScalarOpTypeInfo &right) const
-        {
-            return offset_ < right.offset_;
-        }
-
-        void SetType(PGOSampleType type)
-        {
-            if (type_ != type) {
-                type_ = type;
-            }
-        }
-
-        void Merge(const ScalarOpTypeInfo &typeInfo)
-        {
-            PGOSampleType combineType = GetType().CombineType(typeInfo.GetType());
-            SetType(combineType);
-        }
-
-        PGOSampleType GetType() const
-        {
-            return type_;
-        }
-
-    protected:
-        ScalarOpTypeInfo(uint32_t size, InfoType infoType, uint32_t offset, PGOSampleType type)
-            : TypeInfoHeader(size, infoType, offset), type_(type) {}
-
-    private:
-        PGOSampleType type_;
-    };
-
-    class ObjDefOpTypeInfo : public ScalarOpTypeInfo {
-    public:
-        ObjDefOpTypeInfo(uint32_t offset, PGOSampleType type, PGOSampleType superType)
-            : ScalarOpTypeInfo(sizeof(ObjDefOpTypeInfo), InfoType::DEFINE_CLASS_TYPE, offset, type),
-            superType_(superType) {}
-
-        PGOSampleType GetSuperType() const
-        {
-            return superType_;
-        }
-
-        bool operator<(const ObjDefOpTypeInfo &right) const
-        {
-            return offset_ < right.GetOffset() || GetType() < right.GetType() || superType_ < right.superType_;
-        }
-
-        void ProcessToText(std::string &text) const;
-
-    protected:
-        ObjDefOpTypeInfo(
-            uint32_t size, InfoType infoType, uint32_t offset, PGOSampleType type, PGOSampleType superType)
-            : ScalarOpTypeInfo(size, infoType, offset, type), superType_(superType) {}
-
-    private:
-        PGOSampleType superType_;
-    };
-
-    std::set<ScalarOpTypeInfo> scalarOpTypeInfos_;
-    std::set<RWScalarOpTypeInfo> rwScalarOpTypeInfos_;
-    std::set<ObjDefOpTypeInfo> objDefOpTypeInfos_;
-};
-
 class PGODecodeMethodInfo {
 public:
     explicit PGODecodeMethodInfo(PGOMethodId id) : methodId_(id) {}
@@ -715,127 +263,6 @@ private:
     PGOMethodTypeSet pgoMethodTypeSet_ {};
 };
 
-class PGOHClassLayoutDescInner {
-public:
-    PGOHClassLayoutDescInner(size_t size, PGOSampleType type, PGOSampleType superType, ElementsKind kind)
-        : size_(size), type_(type), superType_(superType)
-    {
-        SetElementsKind(kind);
-    }
-
-    static size_t CaculateSize(const PGOHClassLayoutDesc &desc);
-    static std::string GetTypeString(const PGOHClassLayoutDesc &desc);
-
-    void Merge(const PGOHClassLayoutDesc &desc);
-
-    int32_t Size() const
-    {
-        return size_;
-    }
-
-    PGOSampleType GetType() const
-    {
-        return type_;
-    }
-
-    PGOHClassLayoutDesc Convert(PGOProfilerHeader *const header)
-    {
-        PGOHClassLayoutDesc desc(GetType().GetClassType());
-        desc.SetSuperClassType(superType_.GetClassType());
-        auto descInfo = GetFirst();
-        for (int32_t i = 0; i < count_; i++) {
-            desc.AddKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
-            descInfo = GetNext(descInfo);
-        }
-        for (int32_t i = 0; i < ptCount_; i++) {
-            desc.AddPtKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
-            descInfo = GetNext(descInfo);
-        }
-        for (int32_t i = 0; i < ctorCount_; i++) {
-            desc.AddCtorKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
-            descInfo = GetNext(descInfo);
-        }
-        if (header->SupportElementsKind()) {
-            desc.SetElementsKind(GetElementsKind());
-        }
-        return desc;
-    }
-
-    class PGOLayoutDescInfo {
-    public:
-        PGOLayoutDescInfo() = default;
-        PGOLayoutDescInfo(const CString &key, PGOHandler handler) : handler_(handler)
-        {
-            size_t len = key.size();
-            size_ = Size(len);
-            if (len > 0 && memcpy_s(&key_, len, key.c_str(), len) != EOK) {
-                LOG_ECMA(ERROR) << "SetMethodName memcpy_s failed" << key << ", len = " << len;
-                UNREACHABLE();
-            }
-            *(&key_ + len) = '\0';
-        }
-
-        static int32_t Size(size_t len)
-        {
-            return sizeof(PGOLayoutDescInfo) + AlignUp(len, GetAlignmentInBytes(PGO_ALIGN_SIZE));
-        }
-
-        int32_t Size() const
-        {
-            return size_;
-        }
-
-        const char *GetKey() const
-        {
-            return &key_;
-        }
-
-        PGOHandler GetHandler() const
-        {
-            return handler_;
-        }
-
-    private:
-        int32_t size_ {0};
-        PGOHandler handler_;
-        char key_ {'\0'};
-    };
-
-private:
-    const PGOLayoutDescInfo *GetFirst() const
-    {
-        return &descInfos_;
-    }
-
-    const PGOLayoutDescInfo *GetNext(const PGOLayoutDescInfo *current) const
-    {
-        return reinterpret_cast<PGOLayoutDescInfo *>(reinterpret_cast<uintptr_t>(current) + current->Size());
-    }
-
-    void SetElementsKind(ElementsKind kind)
-    {
-        *reinterpret_cast<ElementsKind *>(GetEnd() - sizeof(ElementsKind)) = kind;
-    }
-
-    ElementsKind GetElementsKind() const
-    {
-        return *reinterpret_cast<const ElementsKind *>(GetEnd() - sizeof(ElementsKind));
-    }
-
-    uintptr_t GetEnd() const
-    {
-        return reinterpret_cast<uintptr_t>(this) + Size();
-    }
-
-    int32_t size_;
-    PGOSampleType type_;
-    PGOSampleType superType_;
-    int32_t count_ {0};
-    int32_t ptCount_ {0};
-    int32_t ctorCount_ {0};
-    PGOLayoutDescInfo descInfos_;
-};
-
 class PGOMethodInfoMap {
 public:
     PGOMethodInfoMap() = default;
@@ -854,8 +281,8 @@ public:
     bool AddDefine(Chunk *chunk, PGOMethodId methodId, int32_t offset, PGOSampleType type, PGOSampleType superType);
     void Merge(Chunk *chunk, PGOMethodInfoMap *methodInfos);
 
-    bool ParseFromBinary(Chunk *chunk, uint32_t threshold, void **buffer, PGOProfilerHeader *const header);
-    bool ProcessToBinary(uint32_t threshold, PGORecordId recordId, const SaveTask *task, std::fstream &fileStream,
+    bool ParseFromBinary(Chunk *chunk, PGOContext &context, void **buffer);
+    bool ProcessToBinary(PGOContext &context, ApEntityId recordId, const SaveTask *task, std::fstream &fileStream,
         PGOProfilerHeader *const header) const;
 
     bool ParseFromText(Chunk *chunk, uint32_t threshold, const std::vector<std::string> &content);
@@ -939,7 +366,7 @@ public:
         iter->second.SetMatch();
     }
 
-    bool ParseFromBinary(uint32_t threshold, void **buffer, PGOProfilerHeader *const header);
+    bool ParseFromBinary(PGOContext &context, void **buffer);
 
     void GetMismatchResult(const CString &recordName, uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
                            std::set<std::pair<std::string, CString>> &mismatchMethodSet) const;
@@ -1020,11 +447,11 @@ private:
     ChunkUnorderedMap<CString, PGOMethodNameSet> methodInfoMap_;
 };
 
-class PGORecordDetailInfos {
+class PGORecordDetailInfos : public PGOContext {
 public:
     explicit PGORecordDetailInfos(uint32_t hotnessThreshold);
 
-    ~PGORecordDetailInfos();
+    ~PGORecordDetailInfos() override;
 
     void Clear();
 
@@ -1039,14 +466,39 @@ public:
     void Merge(const PGORecordDetailInfos &recordInfos);
 
     void ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
-    void ProcessToBinary(const SaveTask *task, std::fstream &fileStream, PGOProfilerHeader *const header) const;
+    void ProcessToBinary(const SaveTask *task, std::fstream &fileStream, PGOProfilerHeader *const header);
 
     bool ParseFromText(std::ifstream &stream);
     void ProcessToText(std::ofstream &stream) const;
 
-    const CMap<PGORecordId, PGOMethodInfoMap *> &GetRecordInfos() const
+    const CMap<ApEntityId, PGOMethodInfoMap *> &GetRecordInfos() const
     {
         return recordInfos_;
+    }
+
+    std::shared_ptr<PGORecordPool> GetRecordPool() const override
+    {
+        return recordPool_;
+    }
+    std::shared_ptr<PGOProfileTypePool> GetProfileTypePool() const override
+    {
+        return profileTypePool_;
+    }
+
+    uint32_t GetHotnessThreshold() const override
+    {
+        return hotnessThreshold_;
+    }
+
+    PGOProfilerHeader *GetHeader() const override
+    {
+        return header_;
+    }
+
+    bool SupportElementsKind() const override
+    {
+        ASSERT(header_ != nullptr);
+        return header_->SupportElementsKind();
     }
 
     NO_COPY_SEMANTIC(PGORecordDetailInfos);
@@ -1054,41 +506,26 @@ public:
 
 private:
     PGOMethodInfoMap *GetMethodInfoMap(const CString &recordName);
-    bool ParseFromBinaryForLayout(void **buffer, PGOProfilerHeader *const header);
-    bool ProcessToBinaryForLayout(NativeAreaAllocator *allocator, const SaveTask *task, std::fstream &stream) const;
+    bool ParseFromBinaryForLayout(void **buffer);
+    bool ProcessToBinaryForLayout(NativeAreaAllocator *allocator, const SaveTask *task, std::fstream &stream);
 
     uint32_t hotnessThreshold_ {2};
     NativeAreaAllocator nativeAreaAllocator_;
     std::unique_ptr<Chunk> chunk_;
-    CMap<PGORecordId, PGOMethodInfoMap *> recordInfos_;
+    CMap<ApEntityId, PGOMethodInfoMap *> recordInfos_;
     std::set<PGOHClassLayoutDesc> moduleLayoutDescInfos_;
-    std::unique_ptr<PGORecordPool> recordPool_;
+    PGOProfilerHeader *header_;
+    std::shared_ptr<PGORecordPool> recordPool_;
+    std::shared_ptr<PGOProfileTypePool> profileTypePool_;
 };
 
-class PGORecordSimpleInfos {
+class PGORecordSimpleInfos : public PGOContext {
 public:
-    explicit PGORecordSimpleInfos(uint32_t threshold) : hotnessThreshold_(threshold)
-    {
-        chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
-        recordPool_ = std::make_unique<PGORecordPool>();
-    }
+    explicit PGORecordSimpleInfos(uint32_t threshold);
 
-    ~PGORecordSimpleInfos()
-    {
-        Clear();
-    }
+    ~PGORecordSimpleInfos() override;
 
-    void Clear()
-    {
-        for (const auto &iter : methodIds_) {
-            iter.second->Clear();
-            nativeAreaAllocator_.Delete(iter.second);
-        }
-        methodIds_.clear();
-        recordPool_->Clear();
-        chunk_ = std::make_unique<Chunk>(&nativeAreaAllocator_);
-        recordPool_ = std::make_unique<PGORecordPool>();
-    }
+    void Clear();
 
     bool Match(const CString &recordName, EntityId methodId);
 
@@ -1136,9 +573,9 @@ public:
         }
     }
 
-    bool GetHClassLayoutDesc(PGOSampleType classType, PGOHClassLayoutDesc **desc) const
+    bool GetHClassLayoutDesc(PGOSampleType profileType, PGOHClassLayoutDesc **desc) const
     {
-        auto iter = moduleLayoutDescInfos_.find(PGOHClassLayoutDesc(classType.GetClassType()));
+        auto iter = moduleLayoutDescInfos_.find(PGOHClassLayoutDesc(profileType.GetProfileType()));
         if (iter != moduleLayoutDescInfos_.end()) {
             *desc = &(const_cast<PGOHClassLayoutDesc &>(*iter));
             return true;
@@ -1167,18 +604,45 @@ public:
 
     void Merge(const PGORecordSimpleInfos &simpleInfos);
 
+    std::shared_ptr<PGORecordPool> GetRecordPool() const override
+    {
+        return recordPool_;
+    }
+    std::shared_ptr<PGOProfileTypePool> GetProfileTypePool() const override
+    {
+        return profileTypePool_;
+    }
+
+    uint32_t GetHotnessThreshold() const override
+    {
+        return hotnessThreshold_;
+    }
+
+    PGOProfilerHeader *GetHeader() const override
+    {
+        return header_;
+    }
+
+    bool SupportElementsKind() const override
+    {
+        ASSERT(header_ != nullptr);
+        return header_->SupportElementsKind();
+    }
+
     NO_COPY_SEMANTIC(PGORecordSimpleInfos);
     NO_MOVE_SEMANTIC(PGORecordSimpleInfos);
 
 private:
-    bool ParseFromBinaryForLayout(void **buffer, PGOProfilerHeader *const header);
+    bool ParseFromBinaryForLayout(void **buffer);
 
     uint32_t hotnessThreshold_ {2};
     NativeAreaAllocator nativeAreaAllocator_;
     std::unique_ptr<Chunk> chunk_;
     CUnorderedMap<CString, PGOMethodIdSet *> methodIds_;
-    std::unique_ptr<PGORecordPool> recordPool_;
+    PGOProfilerHeader *header_;
+    std::shared_ptr<PGORecordPool> recordPool_;
+    std::shared_ptr<PGOProfileTypePool> profileTypePool_;
     std::set<PGOHClassLayoutDesc> moduleLayoutDescInfos_;
 };
-} // namespace panda::ecmascript
+} // namespace panda::ecmascript::pgo
 #endif // ECMASCRIPT_PGO_PROFILER_INFO_H

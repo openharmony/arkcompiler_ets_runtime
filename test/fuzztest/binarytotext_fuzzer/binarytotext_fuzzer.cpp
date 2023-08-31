@@ -28,7 +28,7 @@ namespace OHOS {
         std::string result(data, data + size);
         file.write(result.c_str(), result.size());
         file.close();
-        PGOProfilerManager::GetInstance()->BinaryToText(
+        panda::ecmascript::pgo::PGOProfilerManager::GetInstance()->BinaryToText(
             "ark-profiler11/modules.ap", "ark-profiler11/modules_recover.text", 2); // 2 : means the hotness threshold
     }
 }

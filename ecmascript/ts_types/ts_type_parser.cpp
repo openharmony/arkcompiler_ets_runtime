@@ -15,6 +15,7 @@
 
 #include "ecmascript/ts_types/ts_type_parser.h"
 
+#include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/js_module_manager.h"
@@ -27,6 +28,8 @@ namespace panda::ecmascript {
 static constexpr uint32_t FIELD_LENGTH = 4;
 static constexpr uint32_t METHOD_LENGTH = 2;
 static constexpr uint32_t INDEX_OCCUPIED_OFFSET = 1;
+
+using PGOHandler = pgo::PGOHandler;
 
 TSTypeParser::TSTypeParser(TSManager *tsManager)
     : tsManager_(tsManager), vm_(tsManager->GetEcmaVM()),
@@ -857,7 +860,7 @@ JSHandle<JSTaggedValue> TSTypeParser::ParseObjectPGOType(GlobalTSTypeRef gt, PGO
     JSHandle<JSObject> objHandle(thread_, obj);
 
     if (info.enableOptTrackField) {
-        ASSERT(info.pgoType.IsClassType());
+        ASSERT(info.pgoType.IsProfileType());
         PGOHClassLayoutDesc *desc;
         if (info.decoder->GetHClassLayoutDesc(info.pgoType, &desc)) {
             if (!VerifyObjIhcPGOType(objHandle, *desc)) {

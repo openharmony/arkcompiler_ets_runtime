@@ -19,10 +19,12 @@
 #include "ecmascript/jspandafile/type_literal_extractor.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/ts_types/ts_type_parser.h"
 
 namespace panda::ecmascript::kungfu {
+using PGOType = pgo::PGOType;
+using PGOObjectInfo = pgo::PGOObjectInfo;
 TypeRecorder::TypeRecorder(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral,
                            TSManager *tsManager, const CString &recordName, PGOProfilerDecoder *decoder,
                            const MethodPcInfo &methodPCInfo, const Bytecodes *bytecodes, bool enableOptTrackField)
@@ -160,7 +162,7 @@ void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const Metho
 
         EcmaOpcode ecmaOpcode = bytecodes_->GetOpcode(pcOffsets_[bcIdx]);
         if (jsPandaFile->HasTSTypes(recordName) && Bytecodes::IsCallOp(ecmaOpcode)) {
-            uint32_t callTargetMethodOffset = it->second.GetClassType().GetClassType();
+            uint32_t callTargetMethodOffset = it->second.GetProfileType().GetId();
             if (callTargetMethodOffset == 0) {
                 return;
             }
@@ -276,7 +278,7 @@ GateType TypeRecorder::UpdateType(const int32_t offset, const GateType &type) co
 ElementsKind TypeRecorder::GetElementsKind(PGOSampleType type) const
 {
     PGOHClassLayoutDesc *desc;
-    if (type.IsClassType() && decoder_->GetHClassLayoutDesc(type, &desc)) {
+    if (type.IsProfileType() && decoder_->GetHClassLayoutDesc(type, &desc)) {
         auto elementsKind = desc->GetElementsKind();
         return elementsKind;
     }
@@ -287,10 +289,10 @@ PGOSampleType TypeRecorder::GetOrUpdatePGOType(TSManager *tsManager, int32_t off
 {
     if (bcOffsetPGOOpTypeMap_.find(offset) != bcOffsetPGOOpTypeMap_.end()) {
         const auto iter = bcOffsetPGOOpTypeMap_.at(offset);
-        if (iter.IsClassType()) {
+        if (iter.IsProfileType()) {
             PGOHClassLayoutDesc *desc;
             if (!decoder_->GetHClassLayoutDesc(iter, &desc)) {
-                return PGOSampleType::NoneClassType();
+                return PGOSampleType::NoneProfileType();
             }
             TSHClassGenerator generator(tsManager);
             generator.UpdateTSHClassFromPGO(type, *desc, enableOptTrackField_);
@@ -329,7 +331,7 @@ ElementsKind TypeRecorder::GetElementsKind(int32_t offset) const
         return ElementsKind::GENERIC;
     }
 
-    PGOSampleType type(info.GetClassType());
+    PGOSampleType type(info.GetProfileType());
     PGOHClassLayoutDesc *desc;
     if (!decoder_->GetHClassLayoutDesc(type, &desc)) {
         return ElementsKind::GENERIC;

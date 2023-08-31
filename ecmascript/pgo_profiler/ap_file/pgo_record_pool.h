@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_PGO_PROFILER_PGO_RECORD_POOL_H
-#define ECMASCRIPT_PGO_PROFILER_PGO_RECORD_POOL_H
+#ifndef ECMASCRIPT_PGO_PROFILER_AP_FILE_PGO_RECORD_POOL_H
+#define ECMASCRIPT_PGO_PROFILER_AP_FILE_PGO_RECORD_POOL_H
 
 #include <cstdint>
 #include <fstream>
@@ -22,61 +22,71 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/mem/c_string.h"
-#include "ecmascript/pgo_profiler/pgo_file_info.h"
+#include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "macros.h"
 
-namespace panda::ecmascript {
-
+namespace panda::ecmascript::pgo {
 class PGOProfilerHeader;
-class PGORecord {
-public:
-    explicit PGORecord(CString name) : name_(std::move(name)) {}
-    PGORecordId GetId() const
-    {
-        return id_;
-    }
-
-    void SetId(PGORecordId id)
-    {
-        id_ = id;
-    }
-
-    const CString &GetRecordName() const
-    {
-        return name_;
-    }
-
-private:
-    PGORecordId id_ {};
-    CString name_;
-};
 
 class PGORecordPool : public PGOFileDataInterface {
 public:
+    class Entry {
+    public:
+        explicit Entry(CString name) : name_(std::move(name)) {}
+        ApEntityId GetEntryId() const
+        {
+            return id_;
+        }
+
+        void SetId(ApEntityId id)
+        {
+            id_ = id;
+        }
+
+        const CString &GetRecordName() const
+        {
+            return name_;
+        }
+
+    private:
+        ApEntityId id_ {};
+        CString name_;
+    };
+    enum class ReservedType : uint8_t {
+        EMPTY_RECORD_ID = 0,
+        END
+    };
+    static constexpr uint32_t RESERVED_COUNT = 64;
+
+    static_assert(static_cast<uint32_t>(ReservedType::END) < RESERVED_COUNT);
+
     PGORecordPool() = default;
     ~PGORecordPool() override
     {
         Clear();
     }
 
-    PGORecord *TryAdd(const CString &recordName)
+    bool TryAdd(const CString &recordName, ApEntityId &id)
     {
-        for (auto &record : recordIdMapping_) {
+        for (auto &record : pool_) {
             if (record.second.GetRecordName() == recordName) {
-                return &(record.second);
+                id = record.second.GetEntryId();
+                return true;
             }
         }
-        PGORecordId recordId(recordIdMapping_.size());
 
-        auto result = recordIdMapping_.emplace(recordId, recordName);
+        id = ApEntityId(IsReserved(recordName) ? GetReservedId(recordName).GetOffset()
+                                               : RESERVED_COUNT + pool_.size());
+
+        auto result = pool_.emplace(id, recordName);
         auto &record = result.first->second;
-        record.SetId(recordId);
-        return &(result.first->second);
+        record.SetId(id);
+        return true;
     }
 
-    bool GetRecordId(const CString &recordName, PGORecordId &recordId) const
+    bool GetRecordId(const CString &recordName, ApEntityId &recordId) const
     {
-        for (auto [id, record] : recordIdMapping_) {
+        for (auto [id, record] : pool_) {
             if (record.GetRecordName() == recordName) {
                 recordId = id;
                 return true;
@@ -85,10 +95,10 @@ public:
         return false;
     }
 
-    const PGORecord *GetRecord(PGORecordId id) const
+    const Entry *GetRecord(ApEntityId id) const
     {
-        auto iter = recordIdMapping_.find(id);
-        if (iter == recordIdMapping_.end()) {
+        auto iter = pool_.find(id);
+        if (iter == pool_.end()) {
             return nullptr;
         }
         return &(iter->second);
@@ -96,26 +106,27 @@ public:
 
     void Clear()
     {
-        recordIdMapping_.clear();
+        pool_.clear();
     }
 
-    void Merge(const PGORecordPool &recordPool, std::map<PGORecordId, PGORecordId> &idMapping)
+    void Merge(const PGORecordPool &recordPool, std::map<ApEntityId, ApEntityId> &idMapping)
     {
-        for (auto [id, record] : recordPool.recordIdMapping_) {
-            auto *newRecord = TryAdd(record.GetRecordName());
-            idMapping.emplace(id, newRecord->GetId());
+        for (auto [oldId, record] : recordPool.pool_) {
+            ApEntityId newId;
+            TryAdd(record.GetRecordName(), newId);
+            idMapping.emplace(oldId, newId);
         }
     }
 
     uint32_t ProcessToBinary(std::fstream &stream) override
     {
         SectionInfo secInfo;
-        secInfo.number_ = recordIdMapping_.size();
+        secInfo.number_ = pool_.size();
         secInfo.offset_ = sizeof(SectionInfo);
         auto secInfoPos = stream.tellp();
         stream.seekp(secInfo.offset_, std::ofstream::cur);
-        for (const auto &record : recordIdMapping_) {
-            stream.write(reinterpret_cast<const char *>(&(record.first)), sizeof(PGORecordId));
+        for (const auto &record : pool_) {
+            stream.write(reinterpret_cast<const char *>(&(record.first)), sizeof(ApEntityId));
             stream << record.second.GetRecordName() << '\0';
         }
         secInfo.size_ = static_cast<uint32_t>(stream.tellp()) - secInfoPos;
@@ -130,20 +141,20 @@ public:
     {
         std::string profilerString;
         bool isFirst = true;
-        for (auto [id, record] : recordIdMapping_) {
+        for (auto [id, record] : pool_) {
             if (isFirst) {
-                profilerString += PGODumpUtils::NEW_LINE;
+                profilerString += DumpUtils::NEW_LINE;
                 profilerString += "RecordPool";
-                profilerString += PGODumpUtils::BLOCK_START;
+                profilerString += DumpUtils::BLOCK_START;
                 isFirst = false;
             }
-            profilerString += PGODumpUtils::NEW_LINE;
+            profilerString += DumpUtils::NEW_LINE;
             profilerString += std::to_string(id.GetOffset());
-            profilerString += PGODumpUtils::ELEMENT_SEPARATOR;
+            profilerString += DumpUtils::ELEMENT_SEPARATOR;
             profilerString += record.GetRecordName();
         }
         if (!isFirst) {
-            profilerString += (PGODumpUtils::SPACE + PGODumpUtils::NEW_LINE);
+            profilerString += (DumpUtils::SPACE + DumpUtils::NEW_LINE);
             stream << profilerString;
         }
         return true;
@@ -154,9 +165,9 @@ public:
         auto *startBuffer = *buffer;
         auto secInfo = base::ReadBuffer<SectionInfo>(buffer);
         for (uint32_t i = 0; i < secInfo.number_; i++) {
-            auto recordId = base::ReadBuffer<PGORecordId>(buffer, sizeof(PGORecordId));
+            auto recordId = base::ReadBuffer<ApEntityId>(buffer, sizeof(ApEntityId));
             auto *recordName = base::ReadBuffer(buffer);
-            auto result = recordIdMapping_.emplace(recordId, recordName);
+            auto result = pool_.emplace(recordId, recordName);
             result.first->second.SetId(recordId);
         }
         return reinterpret_cast<uintptr_t>(*buffer) - reinterpret_cast<uintptr_t>(startBuffer);
@@ -165,7 +176,19 @@ public:
 private:
     NO_COPY_SEMANTIC(PGORecordPool);
     NO_MOVE_SEMANTIC(PGORecordPool);
-    std::unordered_map<PGORecordId, PGORecord> recordIdMapping_;
+
+    static bool IsReserved(const CString &recordName)
+    {
+        return recordName.empty();
+    }
+
+    static ApEntityId GetReservedId([[maybe_unused]]const CString &recordName)
+    {
+        ASSERT(recordName.empty());
+        return ApEntityId(static_cast<uint32_t>(ReservedType::EMPTY_RECORD_ID));
+    }
+
+    std::unordered_map<ApEntityId, Entry> pool_;
 };
-}  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_PGO_PROFILER_PGO_RECORD_POOL_H
+} // namespace panda::ecmascript::pgo
+#endif  // ECMASCRIPT_PGO_PROFILER_AP_FILE_PGO_RECORD_POOL_H

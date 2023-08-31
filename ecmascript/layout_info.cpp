@@ -20,8 +20,10 @@
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/mem/assert_scope.h"
+#include "pgo_profiler/pgo_profiler_layout.h"
 
 namespace panda::ecmascript {
+using PGOHandler = pgo::PGOHandler;
 void LayoutInfo::Initialize(const JSThread *thread, int num)
 {
     SetExtraLength(num);
@@ -182,7 +184,7 @@ void LayoutInfo::DumpFieldIndexForProfile(int index, PGOHClassLayoutDesc &desc, 
         TrackType type = attr.GetTrackType();
         bool isAccessor = attr.IsAccessor();
         auto keyString = EcmaStringAccessor(key).ToCString();
-        desc.UpdateKeyAndDesc(keyString.c_str(), PGOHandler(type, isAccessor), kind);
+        desc.UpdateKeyAndDesc(keyString, PGOHandler(type, isAccessor), kind);
     }
 }
 }  // namespace panda::ecmascript

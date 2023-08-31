@@ -19,6 +19,8 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/log_wrapper.h"
 #include "utils/bit_utils.h"
+#include "zlib.h"
+
 #include <array>
 #include <stddef.h>
 #include <stdint.h>
@@ -84,6 +86,11 @@ public:
     VersionType GetVersion() const
     {
         return version_;
+    }
+
+    void SetVersion(VersionType version)
+    {
+        version_ = version;
     }
 
 protected:

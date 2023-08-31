@@ -33,6 +33,7 @@
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
+using PGOProfiler = pgo::PGOProfiler;
 PropertyAttributes::PropertyAttributes(const PropertyDescriptor &desc)
 {
     DISALLOW_GARBAGE_COLLECTION;

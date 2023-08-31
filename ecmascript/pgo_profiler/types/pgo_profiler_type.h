@@ -13,92 +13,20 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_PGO_PROFILER_TYPE_H
-#define ECMASCRIPT_PGO_PROFILER_TYPE_H
+#ifndef ECMASCRIPT_PGO_PROFILER_TYPES_PGO_PROFILER_TYPE_H
+#define ECMASCRIPT_PGO_PROFILER_TYPES_PGO_PROFILER_TYPE_H
 
 #include <stdint.h>
 #include <string>
 #include <variant>
 
+#include "ecmascript/log_wrapper.h"
+#include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
+#include "libpandabase/utils/bit_field.h"
 #include "macros.h"
 
-namespace panda::ecmascript {
-class ClassType {
-public:
-    enum class Kind : uint8_t {
-        ClassId,
-        LiteralId,
-        ElementId,
-        BuiltinsId,
-        TotalKinds
-    };
-
-    static constexpr uint32_t ID_BITFIELD_NUM = 29;
-    static constexpr uint32_t KIND_BITFIELD_NUM = 3;
-    using IdBits = BitField<uint32_t, 0, ID_BITFIELD_NUM>;
-    using KindBits = IdBits::NextField<Kind, KIND_BITFIELD_NUM>;
-
-    static_assert(static_cast<uint32_t>(Kind::TotalKinds) <= (1ul << KIND_BITFIELD_NUM));
-
-    ClassType() = default;
-    explicit ClassType(uint32_t type, Kind kind = Kind::ClassId)
-    {
-        if (UNLIKELY(type >= (1ul << ID_BITFIELD_NUM))) {
-            type_ = 0;
-        } else {
-            type_ = (static_cast<uint32_t>(kind) << ID_BITFIELD_NUM) + type;
-        }
-    }
-
-    bool IsNone() const
-    {
-        return type_ == 0;
-    }
-
-    uint32_t GetClassType() const
-    {
-        return type_;
-    }
-
-    bool IsBuiltinsType() const
-    {
-        return GetKind() == Kind::BuiltinsId;
-    }
-
-    uint32_t GetId() const
-    {
-        return IdBits::Decode(type_);
-    }
-
-    Kind GetKind() const
-    {
-        return KindBits::Decode(type_);
-    }
-
-    bool operator<(const ClassType &right) const
-    {
-        return type_ < right.type_;
-    }
-
-    bool operator!=(const ClassType &right) const
-    {
-        return type_ != right.type_;
-    }
-
-    bool operator==(const ClassType &right) const
-    {
-        return type_ == right.type_;
-    }
-
-    std::string GetTypeString() const
-    {
-        return std::to_string(type_);
-    }
-
-private:
-    uint32_t type_ { 0 };
-};
-
+namespace panda::ecmascript::pgo {
+class PGOContext;
 class PGOType {
 public:
     enum class TypeKind : uint8_t {
@@ -119,7 +47,7 @@ public:
     }
 
 private:
-    TypeKind kind_ { TypeKind::SCALAR_OP_TYPE };
+    TypeKind kind_ {TypeKind::SCALAR_OP_TYPE};
 };
 
 /**
@@ -127,15 +55,16 @@ private:
  * |           NUMBER                    NUMBER_HETEROE1
  * | DOUBLE /                          /
  */
-class PGOSampleType : public PGOType {
+template <typename PGOProfileType>
+class PGOSampleTemplate : public PGOType {
 public:
     enum class Type : uint32_t {
         NONE = 0x0ULL,
-        INT = 0x1ULL,                       // 00000001
-        INT_OVERFLOW = (0x1ULL << 1) | INT, // 00000011
-        DOUBLE = 0x1ULL << 2,               // 00000100
-        NUMBER = INT | DOUBLE,              // 00000101
-        NUMBER1 = INT_OVERFLOW | DOUBLE,    // 00000111
+        INT = 0x1ULL,                        // 00000001
+        INT_OVERFLOW = (0x1ULL << 1) | INT,  // 00000011
+        DOUBLE = 0x1ULL << 2,                // 00000100
+        NUMBER = INT | DOUBLE,               // 00000101
+        NUMBER1 = INT_OVERFLOW | DOUBLE,     // 00000111
         BOOLEAN = 0x1ULL << 3,
         UNDEFINED_OR_NULL = 0x1ULL << 4,
         SPECIAL = 0x1ULL << 5,
@@ -154,20 +83,30 @@ public:
         BRANCH_END = 0x7ULL << 10,  // leave higher bits for branch type or count
     };
 
-    PGOSampleType() : type_(Type::NONE) {};
+    PGOSampleTemplate() : type_(Type::NONE) {};
 
-    explicit PGOSampleType(Type type) : type_(type) {};
-    explicit PGOSampleType(uint32_t type) : type_(Type(type)) {};
-    explicit PGOSampleType(ClassType type) : type_(type) {}
+    explicit PGOSampleTemplate(Type type) : type_(type) {};
+    explicit PGOSampleTemplate(uint32_t type) : type_(Type(type)) {};
+    explicit PGOSampleTemplate(PGOProfileType type) : type_(type) {}
 
-    static PGOSampleType CreateClassType(int32_t classType, ClassType::Kind kind = ClassType::Kind::ClassId)
+    template <typename FromType>
+    static PGOSampleTemplate ConvertFrom(PGOContext &context, const FromType &from)
     {
-        return PGOSampleType(ClassType(classType, kind));
+        if (from.IsProfileType()) {
+            return PGOSampleTemplate(PGOProfileType(context, from.GetProfileType()));
+        }
+        return PGOSampleTemplate(static_cast<PGOSampleTemplate::Type>(from.GetType()));
     }
 
-    static PGOSampleType NoneType()
+    static PGOSampleTemplate CreateProfileType(int32_t profileType,
+                                               typename ProfileType::Kind kind = ProfileType::Kind::ClassId)
     {
-        return PGOSampleType(Type::NONE);
+        return PGOSampleTemplate(PGOProfileType(profileType, kind));
+    }
+
+    static PGOSampleTemplate NoneType()
+    {
+        return PGOSampleTemplate(Type::NONE);
     }
 
     static int32_t None()
@@ -271,40 +210,40 @@ public:
         return (type >= Type::BRANCH_START) && (type <= Type::BRANCH_END);
     }
 
-    static PGOSampleType NoneClassType()
+    static PGOSampleTemplate NoneProfileType()
     {
-        return PGOSampleType(ClassType());
+        return PGOSampleTemplate(PGOProfileType());
     }
 
-    PGOSampleType CombineType(PGOSampleType type)
+    PGOSampleTemplate CombineType(PGOSampleTemplate type)
     {
         if (type_.index() == 0) {
             if (type.IsBranchType()) {
                 // clear branch type bit before update branch type
                 type_ = Type(static_cast<uint32_t>(std::get<Type>(type_)) &
-                    (UINT32_MAX ^ static_cast<uint32_t>(Type::BRANCH_END)));
+                             (UINT32_MAX ^ static_cast<uint32_t>(Type::BRANCH_END)));
             }
             type_ =
                 Type(static_cast<uint32_t>(std::get<Type>(type_)) | static_cast<uint32_t>(std::get<Type>(type.type_)));
         } else {
-            SetType(type);
+            this->SetType(type);
         }
         return *this;
     }
 
-    PGOSampleType CombineCallTargetType(PGOSampleType type)
+    PGOSampleTemplate CombineCallTargetType(PGOSampleTemplate type)
     {
         ASSERT(type_.index() == 1);
-        uint32_t oldMethodId = GetClassType().GetClassType();
-        uint32_t newMethodId = type.GetClassType().GetClassType();
+        uint32_t oldMethodId = GetProfileType().GetId();
+        uint32_t newMethodId = type.GetProfileType().GetId();
         // If we have recorded a valid method if before, invalidate it.
         if ((oldMethodId != newMethodId) && (oldMethodId != 0)) {
-            type_ = ClassType(0);
+            type_ = PGOProfileType(0);
         }
         return *this;
     }
 
-    void SetType(PGOSampleType type)
+    void SetType(PGOSampleTemplate type)
     {
         type_ = type.type_;
     }
@@ -314,19 +253,19 @@ public:
         if (type_.index() == 0) {
             return std::to_string(static_cast<uint32_t>(std::get<Type>(type_)));
         } else {
-            return std::get<ClassType>(type_).GetTypeString();
+            return std::get<PGOProfileType>(type_).GetTypeString();
         }
     }
 
-    bool IsClassType() const
+    bool IsProfileType() const
     {
         return type_.index() == 1;
     }
 
-    ClassType GetClassType() const
+    PGOProfileType GetProfileType() const
     {
-        ASSERT(IsClassType());
-        return std::get<ClassType>(type_);
+        ASSERT(IsProfileType());
+        return std::get<PGOProfileType>(type_);
     }
 
     Type GetPrimitiveType() const
@@ -404,24 +343,33 @@ public:
         }
     }
 
-    bool operator<(const PGOSampleType &right) const
+    bool operator<(const PGOSampleTemplate &right) const
     {
         return type_ < right.type_;
     }
 
-    bool operator!=(const PGOSampleType &right) const
+    bool operator!=(const PGOSampleTemplate &right) const
     {
         return type_ != right.type_;
     }
 
-    bool operator==(const PGOSampleType &right) const
+    bool operator==(const PGOSampleTemplate &right) const
     {
         return type_ == right.type_;
     }
 
+    Type GetType() const
+    {
+        ASSERT(!IsProfileType());
+        return std::get<Type>(type_);
+    }
+
 private:
-    std::variant<Type, ClassType> type_;
+    std::variant<Type, PGOProfileType> type_;
 };
+
+using PGOSampleType = PGOSampleTemplate<ProfileType>;
+using PGOSampleTypeRef = PGOSampleTemplate<ProfileTypeRef>;
 
 enum class PGOObjKind {
     LOCAL,
@@ -430,10 +378,18 @@ enum class PGOObjKind {
     ELEMENT,
 };
 
-class PGOObjectInfo {
+template <typename PGOProfileType>
+class PGOObjectTemplate {
 public:
-    PGOObjectInfo() : type_(ClassType()), objKind_(PGOObjKind::LOCAL) {}
-    PGOObjectInfo(ClassType type, PGOObjKind kind) : type_(type), objKind_(kind) {}
+    PGOObjectTemplate() = default;
+    PGOObjectTemplate(PGOProfileType type, PGOObjKind kind) : type_(type), objKind_(kind) {}
+
+    template <typename FromType>
+    void ConvertFrom(PGOContext &context, const FromType &from)
+    {
+        objKind_ = from.GetObjKind();
+        type_ = PGOProfileType(context, from.GetProfileType());
+    }
 
     std::string GetInfoString() const
     {
@@ -452,9 +408,14 @@ public:
         return result;
     }
 
-    ClassType GetClassType() const
+    PGOProfileType GetProfileType() const
     {
         return type_;
+    }
+
+    PGOObjKind GetObjKind() const
+    {
+        return objKind_;
     }
 
     bool IsNone() const
@@ -472,33 +433,45 @@ public:
         return objKind_ == PGOObjKind::ELEMENT;
     }
 
-    bool operator<(const PGOObjectInfo &right) const
+    bool operator<(const PGOObjectTemplate &right) const
     {
         return type_ < right.type_ || objKind_ < right.objKind_;
     }
 
-    bool operator==(const PGOObjectInfo &right) const
+    bool operator==(const PGOObjectTemplate &right) const
     {
         return type_ == right.type_ && objKind_ == right.objKind_;
     }
 
 private:
-    ClassType type_ { ClassType() };
-    PGOObjKind objKind_ { PGOObjKind::LOCAL };
+    PGOProfileType type_ {PGOProfileType()};
+    PGOObjKind objKind_ {PGOObjKind::LOCAL};
 };
+using PGOObjectInfo = PGOObjectTemplate<ProfileType>;
+using PGOObjectInfoRef = PGOObjectTemplate<ProfileTypeRef>;
 
-class PGORWOpType : public PGOType {
+template <typename PGOObjectInfoType>
+class PGORWOpTemplate : public PGOType {
 public:
-    PGORWOpType() : PGOType(TypeKind::RW_OP_TYPE), count_(0) {};
+    PGORWOpTemplate() : PGOType(TypeKind::RW_OP_TYPE) {};
 
-    void Merge(const PGORWOpType &type)
+    template <typename FromType>
+    void ConvertFrom(PGOContext &context, const FromType &from)
+    {
+        count_ = std::min(from.GetCount(), static_cast<uint32_t>(POLY_CASE_NUM));
+        for (uint32_t index = 0; index < count_; index++) {
+            infos_[index].ConvertFrom(context, from.GetObjectInfo(index));
+        }
+    }
+
+    void Merge(const PGORWOpTemplate &type)
     {
         for (uint32_t i = 0; i < type.count_; i++) {
             AddObjectInfo(type.infos_[i]);
         }
     }
 
-    void AddObjectInfo(const PGOObjectInfo &info)
+    void AddObjectInfo(const PGOObjectInfoType &info)
     {
         if (info.IsNone()) {
             return;
@@ -517,7 +490,7 @@ public:
         }
     }
 
-    PGOObjectInfo GetObjectInfo(uint32_t index) const
+    PGOObjectInfoType GetObjectInfo(uint32_t index) const
     {
         ASSERT(index < count_);
         return infos_[index];
@@ -531,7 +504,10 @@ public:
 private:
     static constexpr int POLY_CASE_NUM = 4;
     uint32_t count_ = 0;
-    PGOObjectInfo infos_[POLY_CASE_NUM];
+    PGOObjectInfoType infos_[POLY_CASE_NUM];
 };
-} // namespace panda::ecmascript
-#endif // ECMASCRIPT_PGO_PROFILER_TYPE_H
+
+using PGORWOpType = PGORWOpTemplate<PGOObjectInfo>;
+using PGORWOpTypeRef = PGORWOpTemplate<PGOObjectInfoRef>;
+} // namespace panda::ecmascript::pgo
+#endif  // ECMASCRIPT_PGO_PROFILER_TYPES_PGO_PROFILER_TYPE_H

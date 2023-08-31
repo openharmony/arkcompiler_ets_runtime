@@ -24,7 +24,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 
-namespace panda::ecmascript {
+namespace panda::ecmascript::pgo {
 class PGOProfilerManager {
 public:
     using ApGenMode = PGOProfilerEncoder::ApGenMode;
@@ -173,5 +173,5 @@ private:
     std::unique_ptr<PGOProfilerEncoder> encoder_;
     std::atomic_bool enableSignalSaving_ { false };
 };
-} // namespace panda::ecmascript
+} // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_MANAGER_H

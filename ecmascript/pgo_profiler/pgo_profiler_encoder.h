@@ -19,7 +19,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "macros.h"
 
-namespace panda::ecmascript {
+namespace panda::ecmascript::pgo {
 class PGOProfilerDecoder;
 class PGOProfilerEncoder {
 public:
@@ -99,5 +99,5 @@ public:
 private:
     PGOProfilerEncoder *encoder_;
 };
-} // namespace panda::ecmascript
+} // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_ENCODER_H

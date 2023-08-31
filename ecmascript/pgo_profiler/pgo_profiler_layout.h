@@ -16,15 +16,17 @@
 #ifndef ECMASCRIPT_PGO_PROFILER_LAYOUT_H
 #define ECMASCRIPT_PGO_PROFILER_LAYOUT_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 
 #include "ecmascript/elements.h"
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
+#include "ecmascript/pgo_profiler/pgo_context.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/property_attributes.h"
 
-namespace panda::ecmascript {
+namespace panda::ecmascript::pgo {
 class PGOHandler {
 public:
     using TrackTypeField = BitField<TrackType, 0, PropertyAttributes::TRACK_TYPE_NUM>; // 3 : three binary bits
@@ -109,19 +111,19 @@ using LayoutDesc = CVector<PropertyDesc>;
 class PGOHClassLayoutDesc {
 public:
     PGOHClassLayoutDesc() {};
-    explicit PGOHClassLayoutDesc(ClassType type) : type_(type) {}
+    explicit PGOHClassLayoutDesc(ProfileType type) : type_(type) {}
 
-    void SetSuperClassType(ClassType superType)
+    void SetSuperProfileType(ProfileType superType)
     {
         superType_ = superType;
     }
 
-    ClassType GetSuperClassType() const
+    ProfileType GetSuperProfileType() const
     {
         return superType_;
     }
 
-    ClassType GetClassType() const
+    ProfileType GetProfileType() const
     {
         return type_;
     }
@@ -197,12 +199,264 @@ public:
 private:
     void UpdateKeyAndDesc(const CString &key, const PGOHandler &handler, LayoutDesc &layoutDesc);
 
-    ClassType type_;
-    ClassType superType_;
+    ProfileType type_;
+    ProfileType superType_;
     ElementsKind kind_;
     LayoutDesc layoutDesc_;
     LayoutDesc ptLayoutDesc_;
     LayoutDesc ctorLayoutDesc_;
 };
-} // namespace panda::ecmascript
+
+template <typename SampleType>
+class PGOHClassLayoutTemplate {
+public:
+    PGOHClassLayoutTemplate(size_t size, SampleType type, SampleType superType, ElementsKind kind)
+        : size_(size), type_(type), superType_(superType)
+    {
+        SetElementsKind(kind);
+    }
+
+    static size_t CaculateSize(const PGOHClassLayoutDesc &desc)
+    {
+        if (desc.GetLayoutDesc().empty() && desc.GetPtLayoutDesc().empty() && desc.GetCtorLayoutDesc().empty()) {
+            return sizeof(PGOHClassLayoutTemplate<SampleType>);
+        }
+        size_t size = sizeof(PGOHClassLayoutTemplate<SampleType>) - sizeof(PGOLayoutDescInfo);
+        for (const auto &iter : desc.GetLayoutDesc()) {
+            auto key = iter.first;
+            if (key.size() > 0) {
+                size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
+            }
+        }
+        for (const auto &iter : desc.GetPtLayoutDesc()) {
+            auto key = iter.first;
+            if (key.size() > 0) {
+                size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
+            }
+        }
+        for (const auto &iter : desc.GetCtorLayoutDesc()) {
+            auto key = iter.first;
+            if (key.size() > 0) {
+                size += static_cast<size_t>(PGOLayoutDescInfo::Size(key.size()));
+            }
+        }
+        size += sizeof(ElementsKind);
+        return size;
+    }
+    static std::string GetTypeString(const PGOHClassLayoutDesc &desc)
+    {
+        std::string text;
+        text += desc.GetProfileType().GetTypeString();
+        if (!desc.GetSuperProfileType().IsNone()) {
+            text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
+            text += desc.GetSuperProfileType().GetTypeString();
+        }
+        if (!Elements::IsNone(desc.GetElementsKind())) {
+            text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
+            text += Elements::GetString(desc.GetElementsKind());
+        }
+        text += DumpUtils::BLOCK_AND_ARRAY_START;
+        bool isLayoutFirst = true;
+        for (const auto &layoutDesc : desc.GetLayoutDesc()) {
+            if (!isLayoutFirst) {
+                text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
+            } else {
+                text += DumpUtils::ARRAY_START;
+            }
+            isLayoutFirst = false;
+            text += layoutDesc.first;
+            text += DumpUtils::BLOCK_START;
+            text += std::to_string(layoutDesc.second.GetValue());
+        }
+        if (!isLayoutFirst) {
+            text += DumpUtils::ARRAY_END;
+        }
+        bool isPtLayoutFirst = true;
+        for (const auto &layoutDesc : desc.GetPtLayoutDesc()) {
+            if (!isPtLayoutFirst) {
+                text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
+            } else {
+                if (!isLayoutFirst) {
+                    text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
+                }
+                text += DumpUtils::ARRAY_START;
+            }
+            isPtLayoutFirst = false;
+            text += layoutDesc.first;
+            text += DumpUtils::BLOCK_START;
+            text += std::to_string(layoutDesc.second.GetValue());
+        }
+        if (!isPtLayoutFirst) {
+            text += DumpUtils::ARRAY_END;
+        }
+        bool isCtorLayoutFirst = true;
+        for (const auto &layoutDesc : desc.GetCtorLayoutDesc()) {
+            if (!isCtorLayoutFirst) {
+                text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
+            } else {
+                if (!isLayoutFirst || !isPtLayoutFirst) {
+                    text += DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
+                }
+                text += DumpUtils::ARRAY_START;
+            }
+            isCtorLayoutFirst = false;
+            text += layoutDesc.first;
+            text += DumpUtils::BLOCK_START;
+            text += std::to_string(layoutDesc.second.GetValue());
+        }
+        if (!isCtorLayoutFirst) {
+            text += DumpUtils::ARRAY_END;
+        }
+        text += (DumpUtils::SPACE + DumpUtils::ARRAY_END);
+        return text;
+    }
+
+    void Merge(const PGOHClassLayoutDesc &desc)
+    {
+        auto current = const_cast<PGOLayoutDescInfo *>(GetFirst());
+        for (const auto &iter : desc.GetLayoutDesc()) {
+            auto key = iter.first;
+            auto type = iter.second;
+            if (key.size() > 0) {
+                new (current) PGOLayoutDescInfo(key, type);
+                current = const_cast<PGOLayoutDescInfo *>(GetNext(current));
+                count_++;
+            }
+        }
+        for (const auto &iter : desc.GetPtLayoutDesc()) {
+            auto key = iter.first;
+            auto type = iter.second;
+            if (key.size() > 0) {
+                new (current) PGOLayoutDescInfo(key, type);
+                current = const_cast<PGOLayoutDescInfo *>(GetNext(current));
+                ptCount_++;
+            }
+        }
+        for (const auto &iter : desc.GetCtorLayoutDesc()) {
+            auto key = iter.first;
+            auto type = iter.second;
+            if (key.size() > 0) {
+                new (current) PGOLayoutDescInfo(key, type);
+                current = const_cast<PGOLayoutDescInfo *>(GetNext(current));
+                ctorCount_++;
+            }
+        }
+    }
+
+    int32_t Size() const
+    {
+        return size_;
+    }
+
+    SampleType GetType() const
+    {
+        return type_;
+    }
+
+    SampleType GetSuperType() const
+    {
+        return superType_;
+    }
+
+    PGOHClassLayoutDesc Convert(PGOContext& context)
+    {
+        PGOHClassLayoutDesc desc(ProfileType(context, GetType().GetProfileType()));
+        desc.SetSuperProfileType(ProfileType(context, superType_.GetProfileType()));
+        auto descInfo = GetFirst();
+        for (int32_t i = 0; i < count_; i++) {
+            desc.AddKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
+            descInfo = GetNext(descInfo);
+        }
+        for (int32_t i = 0; i < ptCount_; i++) {
+            desc.AddPtKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
+            descInfo = GetNext(descInfo);
+        }
+        for (int32_t i = 0; i < ctorCount_; i++) {
+            desc.AddCtorKeyAndDesc(descInfo->GetKey(), descInfo->GetHandler());
+            descInfo = GetNext(descInfo);
+        }
+        if (context.SupportElementsKind()) {
+            desc.SetElementsKind(GetElementsKind());
+        }
+        return desc;
+    }
+
+    class PGOLayoutDescInfo {
+    public:
+        PGOLayoutDescInfo() = default;
+        PGOLayoutDescInfo(const CString &key, PGOHandler handler) : handler_(handler)
+        {
+            size_t len = key.size();
+            size_ = Size(len);
+            if (len > 0 && memcpy_s(&key_, len, key.c_str(), len) != EOK) {
+                LOG_ECMA(ERROR) << "SetMethodName memcpy_s failed" << key << ", len = " << len;
+                UNREACHABLE();
+            }
+            *(&key_ + len) = '\0';
+        }
+
+        static int32_t Size(size_t len)
+        {
+            return sizeof(PGOLayoutDescInfo) + AlignUp(len, GetAlignmentInBytes(ALIGN_SIZE));
+        }
+
+        int32_t Size() const
+        {
+            return size_;
+        }
+
+        const char *GetKey() const
+        {
+            return &key_;
+        }
+
+        PGOHandler GetHandler() const
+        {
+            return handler_;
+        }
+
+    private:
+        int32_t size_ {0};
+        PGOHandler handler_;
+        char key_ {'\0'};
+    };
+
+private:
+    const PGOLayoutDescInfo *GetFirst() const
+    {
+        return &descInfos_;
+    }
+
+    const PGOLayoutDescInfo *GetNext(const PGOLayoutDescInfo *current) const
+    {
+        return reinterpret_cast<PGOLayoutDescInfo *>(reinterpret_cast<uintptr_t>(current) + current->Size());
+    }
+
+    void SetElementsKind(ElementsKind kind)
+    {
+        *reinterpret_cast<ElementsKind *>(GetEnd() - sizeof(ElementsKind)) = kind;
+    }
+
+    ElementsKind GetElementsKind() const
+    {
+        return *reinterpret_cast<const ElementsKind *>(GetEnd() - sizeof(ElementsKind));
+    }
+
+    uintptr_t GetEnd() const
+    {
+        return reinterpret_cast<uintptr_t>(this) + Size();
+    }
+
+    int32_t size_;
+    SampleType type_;
+    SampleType superType_;
+    int32_t count_ {0};
+    int32_t ptCount_ {0};
+    int32_t ctorCount_ {0};
+    PGOLayoutDescInfo descInfos_;
+};
+
+using PGOHClassLayoutDescInner = PGOHClassLayoutTemplate<PGOSampleType>;
+using PGOHClassLayoutDescInnerRef = PGOHClassLayoutTemplate<PGOSampleTypeRef>;
+} // namespace panda::ecmascript::pgo
 #endif // ECMASCRIPT_PGO_PROFILER_LAYOUT_H

@@ -19,6 +19,8 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 
 namespace panda::ecmascript {
+using PGOSampleType = pgo::PGOSampleType;
+using PGORWOpType = pgo::PGORWOpType;
 // a unique ID to determine whether the corresponding GT has been generated
 class GlobalTypeID {
 public:
@@ -66,10 +68,10 @@ struct HashGlobalTypeID {
     {
         if (id.IsPGOType()) {
             return std::hash<const JSPandaFile*>()(id.GetJSPandaFile()) ^
-                   std::hash<uint32_t>()(id.GetPGOTypeId().GetClassType().GetClassType());
+                   std::hash<uint64_t>()(id.GetPGOTypeId().GetProfileType().GetRaw());
         }
         return std::hash<const JSPandaFile*>()(id.GetJSPandaFile()) ^
-               std::hash<uint32_t>()(id.GetTypeId());
+               std::hash<uint64_t>()(id.GetTypeId());
     }
 };
 

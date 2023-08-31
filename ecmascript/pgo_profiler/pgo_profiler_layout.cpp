@@ -15,7 +15,7 @@
 
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 
-namespace panda::ecmascript {
+namespace panda::ecmascript::pgo {
 void PGOHClassLayoutDesc::UpdateElementKind(const ElementsKind kind)
 {
     kind_ = kind;
@@ -99,4 +99,4 @@ void PGOHClassLayoutDesc::UpdateKeyAndDesc(const CString &key, const PGOHandler 
     }
     layoutDesc.emplace_back(key, handler);
 }
-} // namespace panda::ecmascript
+} // namespace panda::ecmascript::pgo

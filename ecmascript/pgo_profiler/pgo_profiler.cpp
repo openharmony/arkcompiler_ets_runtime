@@ -17,9 +17,11 @@
 #include <chrono>
 
 #include "ecmascript/js_function.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 
-namespace panda::ecmascript {
+namespace panda::ecmascript::pgo {
 void PGOProfiler::ProfileCall(JSTaggedType func, JSTaggedType callTarget, int32_t pcOffset, SampleMode mode,
                               int32_t incCount)
 {
@@ -59,7 +61,7 @@ void PGOProfiler::ProfileCall(JSTaggedType func, JSTaggedType callTarget, int32_
             return;
         }
         auto currentMethodId = currentMethod->GetMethodId();
-        PGOSampleType calleeMethodOffset = PGOSampleType::CreateClassType(calleeMethod->GetMethodId().GetOffset());
+        PGOSampleType calleeMethodOffset = PGOSampleType::CreateProfileType(calleeMethod->GetMethodId().GetOffset());
         recordInfos_->AddCallTargetType(currentRecordName, currentMethodId, pcOffset, calleeMethodOffset);
     }
     auto interval = std::chrono::system_clock::now() - saveTimestamp_;
@@ -127,17 +129,17 @@ void PGOProfiler::ProfileDefineClass(JSThread *thread, JSTaggedType func, int32_
         }
         auto ctorJSMethod = Method::Cast(ctorMethod);
         int32_t ctorMethodId = static_cast<int32_t>(ctorJSMethod->GetMethodId().GetOffset());
-        auto currentType = PGOSampleType::CreateClassType(ctorMethodId);
+        auto currentType = PGOSampleType::CreateProfileType(ctorMethodId);
 
         auto superFuncValue = JSTaggedValue::GetPrototype(thread, ctorValue);
         RETURN_IF_ABRUPT_COMPLETION(thread);
-        PGOSampleType superType = PGOSampleType::CreateClassType(0);
+        PGOSampleType superType = PGOSampleType::CreateProfileType(0);
         if (superFuncValue.IsJSFunction()) {
             auto superFuncFunction = JSFunction::Cast(superFuncValue);
             if (superFuncFunction->GetMethod().IsMethod()) {
                 auto superMethod = Method::Cast(superFuncFunction->GetMethod());
                 auto superMethodId = superMethod->GetMethodId().GetOffset();
-                superType = PGOSampleType::CreateClassType(superMethodId);
+                superType = PGOSampleType::CreateProfileType(superMethodId);
             }
         }
         recordInfos_->AddDefine(recordName, funcMethodId, offset, currentType, superType);
@@ -185,15 +187,15 @@ void PGOProfiler::ProfileCreateObject(JSTaggedType func, int32_t offset, JSTagge
         auto newHClass = JSObject::Cast(newObjValue) ->GetJSHClass();
         if (newHClass->IsJSArray()) {
             auto array = JSArray::Cast(newObjValue);
-            auto currentType = PGOSampleType::CreateClassType(array->GetTraceIndex(), ClassType::Kind::ElementId);
-            auto superType = PGOSampleType::CreateClassType(0);
+            auto currentType = PGOSampleType::CreateProfileType(array->GetTraceIndex(), ProfileType::Kind::ElementId);
+            auto superType = PGOSampleType::CreateProfileType(0);
             recordInfos_->AddDefine(recordName, funcMethodId, offset, currentType, superType);
             PGOObjKind kind = PGOObjKind::ELEMENT;
             recordInfos_->AddLayout(currentType, JSTaggedType(newHClass), kind);
         } else {
             traceId = InsertLiteralId(JSTaggedType(newHClass), traceId);
-            auto currentType = PGOSampleType::CreateClassType(traceId, ClassType::Kind::LiteralId);
-            auto superType = PGOSampleType::CreateClassType(0);
+            auto currentType = PGOSampleType::CreateProfileType(traceId, ProfileType::Kind::LiteralId);
+            auto superType = PGOSampleType::CreateProfileType(0);
             recordInfos_->AddDefine(recordName, funcMethodId, offset, currentType, superType);
             PGOObjKind kind = PGOObjKind::LOCAL;
             recordInfos_->AddLayout(currentType, JSTaggedType(newHClass), kind);
@@ -237,30 +239,30 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
             kind = PGOObjKind::ELEMENT;
             auto array = JSArray::Cast(holder);
             if (array->GetTraceIndex() != 0) {
-                auto elementsKind = hclass->GetElementsKind();
-                PGOObjectInfo info(ClassType(static_cast<uint32_t>(elementsKind), ClassType::Kind::ElementId), kind);
+                auto infoKind = hclass->GetElementsKind();
+                PGOObjectInfo info(ProfileType(static_cast<uint32_t>(infoKind), ProfileType::Kind::ElementId), kind);
                 auto methodId = jsMethod->GetMethodId();
                 recordInfos_->AddObjectInfo(recordName, methodId, offset, info);
                 if (store) {
-                    auto type = PGOSampleType::CreateClassType(array->GetTraceIndex(), ClassType::Kind::ElementId);
+                    auto type = PGOSampleType::CreateProfileType(array->GetTraceIndex(), ProfileType::Kind::ElementId);
                     recordInfos_->AddLayout(type, JSTaggedType(hclass), kind);
                 }
             }
             return;
         } else if (hclass->IsTypedArray()) {
             auto id = static_cast<uint32_t>(hclass->GetObjectType());
-            PGOObjectInfo info(ClassType(id, ClassType::Kind::BuiltinsId), kind);
+            PGOObjectInfo info(ProfileType(id, ProfileType::Kind::BuiltinsId), kind);
             recordInfos_->AddObjectInfo(recordName, jsMethod->GetMethodId(), offset, info);
             return;
         } else {
             if (hclass->IsJSObject()) {
                 auto iter = traceIds_.find(JSTaggedType(hclass));
                 if (iter != traceIds_.end()) {
-                    PGOObjectInfo info(ClassType(iter->second, ClassType::Kind::LiteralId), kind);
+                    PGOObjectInfo info(ProfileType(iter->second, ProfileType::Kind::LiteralId), kind);
                     auto methodId = jsMethod->GetMethodId();
                     recordInfos_->AddObjectInfo(recordName, methodId, offset, info);
                     if (store) {
-                        auto type = PGOSampleType::CreateClassType(iter->second, ClassType::Kind::LiteralId);
+                        auto type = PGOSampleType::CreateProfileType(iter->second, ProfileType::Kind::LiteralId);
                         recordInfos_->AddLayout(type, JSTaggedType(hclass), kind);
                     }
                     return;
@@ -278,10 +280,10 @@ void PGOProfiler::ProfileObjLayout(JSThread *thread, JSTaggedType func, int32_t 
             }
             auto ctorJSMethod = Method::Cast(ctorMethod);
             auto methodId = ctorJSMethod->GetMethodId();
-            PGOObjectInfo info(ClassType(methodId.GetOffset()), kind);
+            PGOObjectInfo info(ProfileType(methodId.GetOffset()), kind);
             recordInfos_->AddObjectInfo(recordName, jsMethod->GetMethodId(), offset, info);
             if (store) {
-                PGOSampleType type = PGOSampleType::CreateClassType(methodId.GetOffset());
+                PGOSampleType type = PGOSampleType::CreateProfileType(methodId.GetOffset());
                 recordInfos_->AddLayout(type, JSTaggedType(hclass), kind);
             }
         }
@@ -314,7 +316,7 @@ void PGOProfiler::ProfileObjIndex(JSThread *thread, JSTaggedType func, int32_t o
         auto hclass = holder.GetTaggedObject()->GetClass();
         if (hclass->IsTypedArray()) {
             auto id = static_cast<uint32_t>(hclass->GetObjectType());
-            PGOObjectInfo info(ClassType(id, ClassType::Kind::BuiltinsId), PGOObjKind::ELEMENT);
+            PGOObjectInfo info(ProfileType(id, ProfileType::Kind::BuiltinsId), PGOObjKind::ELEMENT);
             recordInfos_->AddObjectInfo(recordName, jsMethod->GetMethodId(), offset, info);
         }
     }
@@ -351,4 +353,29 @@ void PGOProfiler::ProcessReferences(const WeakRootVisitor &visitor)
         ++iter;
     }
 }
-} // namespace panda::ecmascript
+
+PGOProfiler::PGOProfiler([[maybe_unused]] EcmaVM *vm, bool isEnable) : isEnable_(isEnable)
+{
+    if (isEnable_) {
+        recordInfos_ = std::make_unique<PGORecordDetailInfos>(0);
+    }
+};
+
+PGOProfiler::~PGOProfiler()
+{
+    Reset(false);
+}
+
+void PGOProfiler::Reset(bool isEnable)
+{
+    isEnable_ = isEnable;
+    methodCount_ = 0;
+    if (recordInfos_) {
+        recordInfos_->Clear();
+    } else {
+        if (isEnable_) {
+            recordInfos_ = std::make_unique<PGORecordDetailInfos>(0);
+        }
+    }
+}
+} // namespace panda::ecmascript::pgo

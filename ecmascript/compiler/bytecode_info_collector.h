@@ -54,6 +54,8 @@ namespace panda::ecmascript::kungfu {
  *    of global and function f will be created when methods are executed.
  */
 
+using PGOProfilerDecoder = pgo::PGOProfilerDecoder;
+
 enum class LexicalEnvStatus : uint8_t {
     VIRTUAL_LEXENV,
     REALITY_LEXENV

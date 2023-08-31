@@ -21,6 +21,8 @@
 #include "ecmascript/ts_types/ts_type_table_generator.h"
 
 namespace panda::ecmascript {
+using PGOHClassLayoutDesc = pgo::PGOHClassLayoutDesc;
+using PGOProfilerDecoder = pgo::PGOProfilerDecoder;
 /* TSTypeParser parses types recorded in abc files into TSTypes. VM uses TSTypeTables to
  * store TSTypes. Each TSTypeTable is used to store all types from the same record.
  * Since VM can only record types in GlobalTSTypeRef::MAX_MODULE_ID records and
