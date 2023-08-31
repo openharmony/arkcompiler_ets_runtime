@@ -105,6 +105,24 @@ public:
         liveObjectSize_ -= size;
     }
 
+    void SetOvershootSize(size_t size)
+    {
+        overshootSize_ = size;
+    }
+
+    size_t GetOvershootSize()
+    {
+        return overshootSize_;
+    }
+
+    void AdjustOvershootSize()
+    {
+        if (overshootSize_ > 0 && maximumCapacity_ > committedSize_) {
+            size_t size = maximumCapacity_ - committedSize_;
+            overshootSize_ = overshootSize_ > size ? overshootSize_ - size : 0;
+        }
+    }
+
     size_t GetTotalAllocatedSize() const;
 
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
@@ -122,6 +140,7 @@ private:
     std::vector<Region *> sweepingList_;
     std::vector<Region *> sweptList_;
     size_t liveObjectSize_ {0};
+    size_t overshootSize_ {0};
 };
 
 class OldSpace : public SparseSpace {
@@ -189,6 +208,8 @@ public:
     ~NonMovableSpace() override = default;
     NO_COPY_SEMANTIC(NonMovableSpace);
     NO_MOVE_SEMANTIC(NonMovableSpace);
+
+    uintptr_t  CheckAndAllocate(size_t size);
 };
 
 class AppSpawnSpace : public SparseSpace {

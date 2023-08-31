@@ -332,7 +332,8 @@ TriggerGCType Heap::SelectGCType() const
         return YOUNG_GC;
     }
     if (!OldSpaceExceedLimit() && !OldSpaceExceedCapacity(activeSemiSpace_->GetCommittedSize()) &&
-        GetHeapObjectSize() <= globalSpaceAllocLimit_ && !GlobalNativeSizeLargerThanLimit()) {
+        GetHeapObjectSize() <= globalSpaceAllocLimit_  + oldSpace_->GetOvershootSize() &&
+        !GlobalNativeSizeLargerThanLimit()) {
         return YOUNG_GC;
     }
     return OLD_GC;
@@ -366,6 +367,12 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     if (fullGCRequested_ && thread_->IsReadyToMark() && gcType != TriggerGCType::FULL_GC) {
         gcType = TriggerGCType::FULL_GC;
     }
+    if (oldGCRequested_ && gcType != TriggerGCType::FULL_GC) {
+        gcType = TriggerGCType::OLD_GC;
+    }
+    oldGCRequested_ = false;
+    oldSpace_->AdjustOvershootSize();
+
     size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
     memController_->StartCalculationBeforeGC();
     StatisticHeapObject(gcType);
@@ -387,7 +394,13 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             }
             partialGC_->RunPhases();
             break;
-        case TriggerGCType::OLD_GC:
+        case TriggerGCType::OLD_GC: {
+            bool fullConcurrentMarkRequested = false;
+            // Check whether it's needed to trigger full concurrent mark instead of trigger old gc
+            if (concurrentMarker_->IsEnabled() && (thread_->IsReadyToMark() || markType_ == MarkType::MARK_YOUNG) &&
+                reason == GCReason::ALLOCATION_LIMIT) {
+                fullConcurrentMarkRequested = true;
+            }
             if (concurrentMarker_->IsEnabled() && markType_ == MarkType::MARK_YOUNG) {
                 // Wait for existing concurrent marking tasks to be finished (if any),
                 // and reset concurrent marker's status for full mark.
@@ -397,8 +410,17 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
                 }
             }
             SetMarkType(MarkType::MARK_FULL);
+            if (fullConcurrentMarkRequested) {
+                LOG_ECMA(INFO) << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
+                oldSpace_->SetOvershootSize(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
+                TriggerConcurrentMarking();
+                oldGCRequested_ = true;
+                return;
+            }
             partialGC_->RunPhases();
+            CheckNonMovableSpaceOOM();
             break;
+        }
         case TriggerGCType::FULL_GC:
             fullGC_->SetForAppSpawn(false);
             fullGC_->RunPhases();
@@ -461,11 +483,16 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     JSFinalizationRegistry::CheckAndCall(thread_);
 }
 
-void Heap::ThrowOutOfMemoryError(size_t size, std::string functionName)
+void Heap::ThrowOutOfMemoryError(size_t size, std::string functionName, bool NonMovableObjNearOOM)
 {
     GetEcmaVM()->GetEcmaGCStats()->PrintGCMemoryStatistic();
     std::ostringstream oss;
-    oss << "OutOfMemory when trying to allocate " << size << " bytes" << " function name: " << functionName.c_str();
+    if (NonMovableObjNearOOM) {
+        oss << "OutOfMemory when nonmovable live obj size: " << size << " bytes"
+            << " function name: " << functionName.c_str();
+    } else {
+        oss << "OutOfMemory when trying to allocate " << size << " bytes" << " function name: " << functionName.c_str();
+    }
     LOG_ECMA_MEM(ERROR) << oss.str().c_str();
     THROW_OOM_ERROR(thread_, oss.str().c_str());
 }
@@ -692,12 +719,21 @@ void Heap::RecomputeLimits()
     }
 }
 
-void Heap::CheckAndTriggerOldGC(size_t size)
+bool Heap::CheckAndTriggerOldGC(size_t size)
 {
-    if (OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) || GetHeapObjectSize() > globalSpaceAllocLimit_ ||
-        GlobalNativeSizeLargerThanLimit()) {
-        CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
+    bool isFullMarking = IsFullMark() && GetJSThread()->IsMarking();
+    bool isNativeSizeLargeTrigger = isFullMarking ? false : GlobalNativeSizeLargerThanLimit();
+    if (isFullMarking && oldSpace_->GetOvershootSize() == 0) {
+        oldSpace_->SetOvershootSize(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
     }
+    if (isNativeSizeLargeTrigger || OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) ||
+        GetHeapObjectSize() > globalSpaceAllocLimit_ + oldSpace_->GetOvershootSize()) {
+        CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
+        if (!oldGCRequested_) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool Heap::CheckOngoingConcurrentMarking()

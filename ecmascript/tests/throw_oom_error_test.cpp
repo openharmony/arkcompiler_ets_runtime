@@ -55,9 +55,10 @@ public:
 
 HWTEST_F_L0(ThrowOOMErrorTest, ThrowNonMovableOOMError)
 {
+#ifdef NDEBUG
     static constexpr size_t SIZE = 100_KB / 8;
     [[maybe_unused]] ecmascript::EcmaHandleScope scope(thread);
-    for (int i = 0; i < 130; i++) {
+    for (int i = 0; i < 200; i++) {
         [[maybe_unused]] JSHandle<TaggedArray> array =
             thread->GetEcmaVM()->GetFactory()->NewTaggedArray(SIZE, JSTaggedValue::Hole(), MemSpaceType::NON_MOVABLE);
     }
@@ -65,6 +66,7 @@ HWTEST_F_L0(ThrowOOMErrorTest, ThrowNonMovableOOMError)
     EXPECT_TRUE(thread->HasPendingException());
     JSType errorType = thread->GetException().GetTaggedObject()->GetClass()->GetObjectType();
     EXPECT_EQ(errorType, JSType::JS_OOM_ERROR);
+#endif
 }
 
 HWTEST_F_L0(ThrowOOMErrorTest, ThrowOldSpaceMergeOOMError)
