@@ -485,6 +485,12 @@ bool JSSerializer::WriteMethod(const JSHandle<JSTaggedValue> &value)
         if (!WriteString(desc)) {
             return false;
         }
+        if (method->IsAotWithCallField()) {
+            uintptr_t codeEntry = method->GetCodeEntryOrLiteral();
+            if (!WriteRawData(&codeEntry, sizeof(uintptr_t))) {
+                return false;
+            }
+        }
     }
     return true;
 }
@@ -1327,6 +1333,17 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadMethod()
     JSHandle<ConstantPool> constPool =
         thread_->GetCurrentEcmaContext()->FindOrCreateConstPool(jsPandaFile.get(), method->GetMethodId());
     method->SetConstantPool(thread_, constPool.GetTaggedValue());
+
+    if (method->IsAotWithCallField()) {
+        uintptr_t codeEntry;
+        if (!ReadNativePointer(&codeEntry)) {
+            return JSHandle<JSTaggedValue>();
+        }
+        method->SetCodeEntryAndMarkAOT(codeEntry);
+
+        uint8_t deoptThreshold = thread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold();
+        method->SetDeoptThreshold(deoptThreshold);
+    }
     return methodTag;
 }
 
