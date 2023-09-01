@@ -739,6 +739,23 @@ public:
         Destroy();
     }
 
+    void AOTMethodTest(std::pair<uint8_t *, size_t> data)
+    {
+        Init();
+        JSDeserializer deserializer(thread, data.first, data.second);
+        JSHandle<JSTaggedValue> res = deserializer.Deserialize();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize Method fail";
+        EXPECT_TRUE(res.GetTaggedValue().IsMethod()) << "[NotMethod] Deserialize Method fail";
+
+        JSHandle<Method> method = JSHandle<Method>::Cast(res);
+        EXPECT_FALSE(method->IsNativeWithCallField());
+        EXPECT_TRUE(method->IsAotWithCallField());
+        EXPECT_TRUE(method->IsFastCall());
+        uintptr_t codeEntry = method->GetCodeEntryOrLiteral();
+        EXPECT_EQ(codeEntry, 0x1234);
+        Destroy();
+    }
+
     void ConcurrentFunctionTest(std::pair<uint8_t *, size_t> data)
     {
         Init();
@@ -1844,6 +1861,46 @@ HWTEST_F_L0(JSSerializerTest, SerializeMethod2)
     std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::MethodTest1, jsDeserializerTest, data);
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeAOTMethod)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    const char *source = R"(
+        .function void foo() {
+            lda.str "hello aot"
+            returnundefined
+        }
+    )";
+    const CString fileName = "test_aot_method.pa";
+    uint32_t methodOffset = 0;
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName, &methodOffset);
+    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(methodOffset));
+    methodLiteral->SetAotCodeBit(true);
+    methodLiteral->SetIsFastCall(true);
+    pf->SetMethodLiteralToMap(methodLiteral);
+
+    JSHandle<Method> method = factory->NewMethod(methodLiteral);
+    EXPECT_TRUE(method.GetTaggedValue().IsMethod());
+    JSPandaFileManager::GetInstance()->AddJSPandaFileVm(thread->GetEcmaVM(), pf);
+    EXPECT_TRUE(pf != nullptr);
+
+    JSHandle<ConstantPool> constPool = factory->NewConstantPool(4);
+    constPool->SetJSPandaFile(pf.get());
+    EXPECT_TRUE(constPool.GetTaggedValue().IsConstantPool());
+    method->SetConstantPool(thread, constPool.GetTaggedValue());
+
+    uintptr_t codeEntry = 0x1234;
+    method->SetCodeEntryAndMarkAOT(codeEntry);
+
+    JSSerializer *serializer = new JSSerializer(thread);
+    bool success = serializer->SerializeJSTaggedValue(JSHandle<JSTaggedValue>::Cast(method));
+    EXPECT_TRUE(success);
+    std::pair<uint8_t *, size_t> data = serializer->ReleaseBuffer();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::AOTMethodTest, jsDeserializerTest, data);
     t1.join();
     delete serializer;
 };

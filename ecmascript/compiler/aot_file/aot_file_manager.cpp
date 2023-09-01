@@ -218,6 +218,10 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
 #ifndef NDEBUG
     PrintAOTEntry(jsPandaFile, method, mainEntry);
 #endif
+
+    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    methodLiteral->SetAotCodeBit(true);
+    methodLiteral->SetIsFastCall(isFastCall);
 }
 
 void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *method,
@@ -240,6 +244,10 @@ void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, Method *met
     if (canFastCall != nullptr) {
         *canFastCall = entry.isFastCall_;
     }
+
+    MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    methodLiteral->SetAotCodeBit(true);
+    methodLiteral->SetIsFastCall(entry.isFastCall_);
 }
 
 kungfu::ArkStackMapParser *AOTFileManager::GetStackMapParser() const
