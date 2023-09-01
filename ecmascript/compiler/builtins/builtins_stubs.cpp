@@ -946,6 +946,12 @@ DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Values, VariableType::JS_ANY(), Un
 DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Entries, VariableType::JS_ANY(), Undefined());
 // Set.protetype.ForEach
 DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, ForEach, VariableType::JS_ANY(), Undefined());
+// Set.protetype.Add
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Add, VariableType::JS_ANY(), Undefined());
+// Set.protetype.Delete
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Delete, VariableType::JS_ANY(), Undefined());
+// Set.protetype.Has
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Set, Has, VariableType::JS_ANY(), Undefined());
 // Map.protetype.Clear
 DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Clear, VariableType::JS_ANY(), Undefined());
 // Map.protetype.Values
@@ -956,5 +962,11 @@ DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Entries, VariableType::JS_ANY(), U
 DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Keys, VariableType::JS_ANY(), Undefined());
 // Map.protetype.ForEach
 DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, ForEach, VariableType::JS_ANY(), Undefined());
+// Map.protetype.set
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Set, VariableType::JS_ANY(), Undefined());
+// Map.protetype.Delete
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Delete, VariableType::JS_ANY(), Undefined());
+// Map.protetype.Has
+DECLARE_BUILTINS_COLLECTION_STUB_BUILDER(Map, Has, VariableType::JS_ANY(), Undefined());
 #undef DECLARE_BUILTINS_COLLECTION_STUB_BUILDER
 }  // namespace panda::ecmascript::kungfu

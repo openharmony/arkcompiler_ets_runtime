@@ -221,6 +221,7 @@ public:
     GateRef TaggedIsString(GateRef obj);
     GateRef BothAreString(GateRef x, GateRef y);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
+    GateRef TaggedIsSymbol(GateRef obj);
     GateRef GetNextPositionForHash(GateRef last, GateRef count, GateRef size);
     GateRef DoubleIsNAN(GateRef x);
     GateRef DoubleIsINF(GateRef x);
@@ -373,6 +374,7 @@ public:
     void TryFastHasInstance(GateRef glue, GateRef instof, GateRef target, GateRef object, Label *fastPath,
                             Label *exit, Variable *result, ProfileOperation callback);
     GateRef SameValue(GateRef glue, GateRef left, GateRef right);
+    GateRef SameValueZero(GateRef glue, GateRef left, GateRef right);
     GateRef HasStableElements(GateRef glue, GateRef obj);
     GateRef IsStableJSArguments(GateRef glue, GateRef obj);
     GateRef IsStableJSArray(GateRef glue, GateRef obj);
@@ -652,6 +654,8 @@ public:
     inline GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
     inline GateRef LoadPfHeaderFromConstPool(GateRef jsFunc);
     inline GateRef LoadHCIndexFromConstPool(GateRef jsFunc, GateRef traceId);
+
+    GateRef RemoveTaggedWeakTag(GateRef weak);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     GateRef ChangeTaggedPointerToInt64(GateRef x);

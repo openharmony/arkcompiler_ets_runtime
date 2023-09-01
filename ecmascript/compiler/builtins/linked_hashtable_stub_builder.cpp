@@ -23,6 +23,316 @@
 
 namespace panda::ecmascript::kungfu {
 template <typename LinkedHashTableType, typename LinkedHashTableObject>
+void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Rehash(
+    GateRef linkedTable, GateRef newTable)
+{
+    auto env = GetEnvironment();
+    Label entryLabel(env);
+    env->SubCfgEntry(&entryLabel);
+
+    GateRef numberOfAllElements = Int32Add(GetNumberOfElements(linkedTable),
+        GetNumberOfDeletedElements(linkedTable));
+
+    DEFVARIABLE(desEntry, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(currentDeletedElements, VariableType::INT32(), Int32(0));
+    SetNextTable(linkedTable, newTable);
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label loopExit(env);
+
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Branch(Int32LessThan(*i, numberOfAllElements), &next, &loopExit);
+        Bind(&next);
+
+        GateRef fromIndex = EntryToIndex(linkedTable, *i);
+        DEFVARIABLE(key, VariableType::JS_ANY(), GetElement(linkedTable, fromIndex));
+        Label hole(env);
+        Label notHole(env);
+        Branch(TaggedIsHole(*key), &hole, &notHole);
+        Bind(&hole);
+        {
+            currentDeletedElements = Int32Add(*currentDeletedElements, Int32(1));
+            SetDeletedNum(linkedTable, *i, *currentDeletedElements);
+            Jump(&loopEnd);
+        }
+        Bind(&notHole);
+        {
+            Label weak(env);
+            Label notWeak(env);
+            Branch(TaggedIsWeak(*key), &weak, &notWeak);
+            Bind(&weak);
+            {
+                key = RemoveTaggedWeakTag(*key);
+                Jump(&notWeak);
+            }
+            Bind(&notWeak);
+
+            GateRef hash = GetHash(*key);
+            GateRef bucket = HashToBucket(newTable, hash);
+            InsertNewEntry(newTable, bucket, *desEntry);
+            GateRef desIndex = EntryToIndex(newTable, *desEntry);
+
+            Label loopHead1(env);
+            Label loopEnd1(env);
+            Label next1(env);
+            Label loopExit1(env);
+            DEFVARIABLE(j, VariableType::INT32(), Int32(0));
+            Jump(&loopHead1);
+            LoopBegin(&loopHead1);
+            {
+                Branch(Int32LessThan(*j, Int32(LinkedHashTableObject::ENTRY_SIZE)), &next1, &loopExit1);
+                Bind(&next1);
+                GateRef ele = GetElement(linkedTable, Int32Add(fromIndex, *j));
+                SetElement(newTable, Int32Add(desIndex, *j), ele);
+                Jump(&loopEnd1);
+            }
+            Bind(&loopEnd1);
+            j = Int32Add(*j, Int32(1));
+            LoopEnd(&loopHead1);
+            Bind(&loopExit1);
+            desEntry = Int32Add(*desEntry, Int32(1));
+            Jump(&loopEnd);
+        }
+    }
+    Bind(&loopEnd);
+    i = Int32Add(*i, Int32(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+
+    SetNumberOfElements(newTable, GetNumberOfElements(linkedTable));
+    SetNumberOfDeletedElements(newTable, Int32(0));
+    env->SubCfgExit();
+}
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::GrowCapacity(
+    GateRef linkedTable, GateRef numberOfAddedElements)
+{
+    auto env = GetEnvironment();
+    Label entryLabel(env);
+    env->SubCfgEntry(&entryLabel);
+    Label exit(env);
+    DEFVARIABLE(res, VariableType::JS_ANY(), linkedTable);
+
+    GateRef hasSufficient = HasSufficientCapacity(linkedTable, numberOfAddedElements);
+    Label grow(env);
+    Branch(hasSufficient, &exit, &grow);
+    Bind(&grow);
+    {
+        GateRef newCapacity = ComputeCapacity(Int32Add(GetNumberOfElements(linkedTable), numberOfAddedElements));
+        GateRef newTable = Create(newCapacity);
+        Rehash(linkedTable, newTable);
+        res = newTable;
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::ComputeCapacity(
+    GateRef atLeastSpaceFor)
+{
+    if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
+        return TaggedGetInt(CallRuntime(glue_, RTSTUB_ID(LinkedHashMapComputeCapacity), {
+        IntToTaggedInt(atLeastSpaceFor) }));
+    } else {
+        return TaggedGetInt(CallRuntime(glue_, RTSTUB_ID(LinkedHashSetComputeCapacity), {
+        IntToTaggedInt(atLeastSpaceFor) }));
+    }
+}
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::RemoveEntry(
+    GateRef linkedTable, GateRef entry)
+{
+    auto env = GetEnvironment();
+    Label entryLabel(env);
+    Label exit(env);
+    env->SubCfgEntry(&entryLabel);
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label next(env);
+    Label loopExit(env);
+    GateRef index = EntryToIndex(linkedTable, entry);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        Branch(Int32LessThan(*i, Int32(LinkedHashTableObject::ENTRY_SIZE)), &next, &loopExit);
+        Bind(&next);
+
+        GateRef idx = Int32Add(index, *i);
+        SetElement(linkedTable, idx, Hole());
+        Jump(&loopEnd);
+    }
+    Bind(&loopEnd);
+    i = Int32Add(*i, Int32(1));
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+
+    GateRef newNofe = Int32Sub(GetNumberOfElements(linkedTable), Int32(1));
+    SetNumberOfElements(linkedTable, newNofe);
+    GateRef newNofd = Int32Add(GetNumberOfDeletedElements(linkedTable), Int32(1));
+    SetNumberOfDeletedElements(linkedTable, newNofd);
+    env->SubCfgExit();
+}
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::HasSufficientCapacity(
+    GateRef linkedTable, GateRef numOfAddElements)
+{
+    auto env = GetEnvironment();
+    Label entryLabel(env);
+    Label exit(env);
+    env->SubCfgEntry(&entryLabel);
+    DEFVARIABLE(res, VariableType::BOOL(), False());
+
+    GateRef numberOfElements = GetNumberOfElements(linkedTable);
+    GateRef numOfDelElements = GetNumberOfDeletedElements(linkedTable);
+    GateRef nof = Int32Add(numberOfElements, numOfAddElements);
+    GateRef capacity = GetCapacity(linkedTable);
+    GateRef less = Int32LessThan(nof, capacity);
+    GateRef half = Int32Div(Int32Sub(capacity, nof), Int32(2));
+    GateRef lessHalf = Int32LessThanOrEqual(numOfDelElements, half);
+
+    Label lessLable(env);
+    Branch(BoolAnd(less, lessHalf), &lessLable, &exit);
+    Bind(&lessLable);
+    {
+        Label need(env);
+        Branch(Int32LessThanOrEqual(Int32Add(nof, Int32Div(nof, Int32(2))), capacity), &need, &exit);
+        Bind(&need);
+        {
+            res = True();
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::GetHash(GateRef key)
+{
+    auto env = GetEnvironment();
+    Label entryLabel(env);
+    Label exit(env);
+    env->SubCfgEntry(&entryLabel);
+    DEFVARIABLE(res, VariableType::INT32(), Int32(0));
+
+    Label symbolKey(env);
+    Label stringCheck(env);
+    Branch(TaggedIsSymbol(key), &symbolKey, &stringCheck);
+    Bind(&symbolKey);
+    {
+        res = Load(VariableType::INT32(), key, IntPtr(JSSymbol::HASHFIELD_OFFSET));
+        Jump(&exit);
+    }
+    Bind(&stringCheck);
+    Label stringKey(env);
+    Label slowGetHash(env);
+    Branch(TaggedIsString(key), &stringKey, &slowGetHash);
+    Bind(&stringKey);
+    {
+        res = GetHashcodeFromString(glue_, key);
+        Jump(&exit);
+    }
+    Bind(&slowGetHash);
+    {
+        // GetHash();
+        GateRef hash = CallRuntime(glue_, RTSTUB_ID(GetLinkedHash), { key });
+        res = GetInt32OfTInt(hash);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::HashObjectIsMatch(
+    GateRef key, GateRef other)
+{
+    return SameValueZero(glue_, key, other);
+}
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::FindElement(
+    GateRef linkedTable, GateRef key)
+{
+    auto env = GetEnvironment();
+    Label entryLabel(env);
+    env->SubCfgEntry(&entryLabel);
+
+    DEFVARIABLE(res, VariableType::INT32(), Int32(-1));
+    Label exit(env);
+    Label isKey(env);
+    Branch(IsKey(key), &isKey, &exit);
+    Bind(&isKey);
+    {
+        GateRef hash = GetHash(key);
+        GateRef bucket = HashToBucket(linkedTable, hash);
+        GateRef index = BucketToIndex(bucket);
+        DEFVARIABLE(entry, VariableType::JS_ANY(), GetElement(linkedTable, index));
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label next(env);
+        Label loopExit(env);
+
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            Branch(TaggedIsHole(*entry), &loopExit, &next);
+            Bind(&next);
+
+            DEFVARIABLE(element, VariableType::JS_ANY(), GetKey(linkedTable, TaggedGetInt(*entry)));
+            Label notHole(env);
+            Branch(TaggedIsHole(*element), &loopEnd, &notHole);
+            Bind(&notHole);
+            {
+                Label weak(env);
+                Label notWeak(env);
+                Branch(TaggedIsWeak(*element), &weak, &notWeak);
+                Bind(&weak);
+                {
+                    element = RemoveTaggedWeakTag(*element);
+                    Jump(&notWeak);
+                }
+                Bind(&notWeak);
+                Label match(env);
+                Branch(HashObjectIsMatch(key, *element), &match, &loopEnd);
+                Bind(&match);
+                {
+                    res = TaggedGetInt(*entry);
+                    Jump(&loopExit);
+                }
+            }
+        }
+        Bind(&loopEnd);
+        entry = GetNextEntry(linkedTable, TaggedGetInt(*entry));
+        LoopEnd(&loopHead);
+        Bind(&loopExit);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
 GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::GetDeletedElementsAt(
     GateRef linkedTable, GateRef entry)
 {
@@ -64,7 +374,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
 }
 
 template<typename LinkedHashTableType, typename LinkedHashTableObject>
-GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Create(int32_t numberOfElements)
+GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Create(GateRef numberOfElements)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -85,7 +395,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
         // SetNumberOfDeletedElements
         SetNumberOfDeletedElements(array, Int32(0));
         // SetCapacity
-        SetCapacity(array, Int32(numberOfElements));
+        SetCapacity(array, numberOfElements);
         Jump(&exit);
     }
     Bind(&exit);
@@ -102,7 +412,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     Label exit(env);
     Label setLinked(env);
 
-    GateRef newTable = Create(LinkedHashTableType::MIN_CAPACITY);
+    GateRef newTable = Create(Int32(LinkedHashTableType::MIN_CAPACITY));
     Label noException(env);
     Branch(TaggedIsException(newTable), &exit, &noException);
     Bind(&noException);
@@ -223,4 +533,109 @@ template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>:
     GateRef linkedTable, GateRef numArgs);
 template GateRef LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::ForEach(GateRef thisValue,
     GateRef linkedTable, GateRef numArgs);
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Insert(
+    GateRef linkedTable, GateRef key, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label cfgEntry(env);
+    env->SubCfgEntry(&cfgEntry);
+    Label exit(env);
+    DEFVARIABLE(res, VariableType::JS_ANY(), linkedTable);
+    GateRef entry = FindElement(linkedTable, key);
+    Label findEntry(env);
+    Label notFind(env);
+    Branch(Int32Equal(entry, Int32(-1)), &notFind, &findEntry);
+    Bind(&findEntry);
+    {
+        SetValue(linkedTable, entry, value);
+        Jump(&exit);
+    }
+    Bind(&notFind);
+    {
+        GateRef newTable = GrowCapacity(linkedTable, Int32(1));
+        res = newTable;
+        GateRef hash = GetHash(key);
+        GateRef bucket = HashToBucket(newTable, hash);
+        GateRef numberOfElements = GetNumberOfElements(newTable);
+
+        GateRef newEntry = Int32Add(numberOfElements, GetNumberOfDeletedElements(newTable));
+        InsertNewEntry(newTable, bucket, newEntry);
+        SetKey(newTable, newEntry, key);
+        SetValue(newTable, newEntry, value);
+        GateRef newNumberOfElements = Int32Add(numberOfElements, Int32(1));
+        SetNumberOfElements(newTable, newNumberOfElements);
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::Insert(
+    GateRef linkedTable, GateRef key, GateRef value);
+template GateRef LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::Insert(
+    GateRef linkedTable, GateRef key, GateRef value);
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Delete(
+    GateRef linkedTable, GateRef key)
+{
+    auto env = GetEnvironment();
+    Label cfgEntry(env);
+    env->SubCfgEntry(&cfgEntry);
+    Label exit(env);
+    DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
+    GateRef entry = FindElement(linkedTable, key);
+    Label findEntry(env);
+    Branch(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
+    Bind(&findEntry);
+    {
+        RemoveEntry(linkedTable, entry);
+        res = TaggedTrue();
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::Delete(
+    GateRef linkedTable, GateRef key);
+template GateRef LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::Delete(
+    GateRef linkedTable, GateRef key);
+
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Has(
+    GateRef linkedTable, GateRef key)
+{
+    auto env = GetEnvironment();
+    Label cfgEntry(env);
+    env->SubCfgEntry(&cfgEntry);
+    Label exit(env);
+    DEFVARIABLE(res, VariableType::JS_ANY(), TaggedFalse());
+    GateRef entry = FindElement(linkedTable, key);
+    Label findEntry(env);
+    Branch(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
+    Bind(&findEntry);
+    {
+        res = TaggedTrue();
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+template GateRef LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::Has(
+    GateRef linkedTable, GateRef key);
+template GateRef LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::Has(
+    GateRef linkedTable, GateRef key);
 }  // namespace panda::ecmascript::kungfu

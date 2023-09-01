@@ -1438,6 +1438,26 @@ GateRef CircuitBuilder::TaggedIsString(GateRef obj)
     return ret;
 }
 
+GateRef CircuitBuilder::TaggedIsSymbol(GateRef obj)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVAlUE(result, env_, VariableType::BOOL(), False());
+    Label isHeapObject(env_);
+    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    {
+        GateRef objType = GetObjectType(LoadHClass(obj));
+        result = Equal(objType, Int32(static_cast<int32_t>(JSType::SYMBOL)));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
 GateRef CircuitBuilder::TaggedIsStringOrSymbol(GateRef obj)
 {
     Label entry(env_);

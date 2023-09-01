@@ -152,4 +152,102 @@ void BuiltinsCollectionStubBuilder<CollectionType>::ForEach(Variable *result, La
 
 template void BuiltinsCollectionStubBuilder<JSMap>::ForEach(Variable *result, Label *exit, Label *slowPath);
 template void BuiltinsCollectionStubBuilder<JSSet>::ForEach(Variable *result, Label *exit, Label *slowPath);
+
+template <typename CollectionType>
+void BuiltinsCollectionStubBuilder<CollectionType>::MapSetOrSetAdd(
+    Variable *result, Label *exit, Label *slowPath, bool isJsMapSet)
+{
+    auto env = GetEnvironment();
+    Label thisCollectionObj(env);
+    // check target obj
+    CheckCollectionObj(&thisCollectionObj, slowPath);
+    Bind(&thisCollectionObj);
+    GateRef key = GetCallArg0(numArgs_);
+    // check key
+    Label keyNotHole(env);
+    Branch(TaggedIsHole(key), slowPath, &keyNotHole);
+    Bind(&keyNotHole);
+    GateRef value = isJsMapSet ? GetCallArg1(numArgs_) : key;
+    GateRef linkedTable = GetLinked();
+    GateRef res = Circuit::NullGate();
+    if constexpr (std::is_same_v<CollectionType, JSMap>) {
+        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_);
+        res = linkedHashTableStubBuilder.Insert(linkedTable, key, value);
+    } else {
+        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_);
+        res = linkedHashTableStubBuilder.Insert(linkedTable, key, value);
+    }
+
+    SetLinked(res);
+    *result = thisValue_;
+    Jump(exit);
+}
+
+template <typename CollectionType>
+void BuiltinsCollectionStubBuilder<CollectionType>::Set(Variable *result, Label *exit, Label *slowPath)
+{
+    MapSetOrSetAdd(result, exit, slowPath, true);
+}
+
+template void BuiltinsCollectionStubBuilder<JSMap>::Set(Variable *result, Label *exit, Label *slowPath);
+
+template <typename CollectionType>
+void BuiltinsCollectionStubBuilder<CollectionType>::Add(Variable *result, Label *exit, Label *slowPath)
+{
+    MapSetOrSetAdd(result, exit, slowPath, false);
+}
+
+template void BuiltinsCollectionStubBuilder<JSSet>::Add(Variable *result, Label *exit, Label *slowPath);
+
+template <typename CollectionType>
+void BuiltinsCollectionStubBuilder<CollectionType>::Delete(Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisCollectionObj(env);
+    // check target obj
+    CheckCollectionObj(&thisCollectionObj, slowPath);
+
+    Bind(&thisCollectionObj);
+    GateRef key = GetCallArg0(numArgs_);
+    GateRef linkedTable = GetLinked();
+    GateRef res = Circuit::NullGate();
+    if constexpr (std::is_same_v<CollectionType, JSMap>) {
+        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_);
+        res = linkedHashTableStubBuilder.Delete(linkedTable, key);
+    } else {
+        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_);
+        res = linkedHashTableStubBuilder.Delete(linkedTable, key);
+    }
+    *result = res;
+    Jump(exit);
+}
+
+template void BuiltinsCollectionStubBuilder<JSMap>::Delete(Variable *result, Label *exit, Label *slowPath);
+template void BuiltinsCollectionStubBuilder<JSSet>::Delete(Variable *result, Label *exit, Label *slowPath);
+
+template <typename CollectionType>
+void BuiltinsCollectionStubBuilder<CollectionType>::Has(Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisCollectionObj(env);
+    // check target obj
+    CheckCollectionObj(&thisCollectionObj, slowPath);
+
+    Bind(&thisCollectionObj);
+    GateRef key = GetCallArg0(numArgs_);
+    GateRef linkedTable = GetLinked();
+    GateRef res = Circuit::NullGate();
+    if constexpr (std::is_same_v<CollectionType, JSMap>) {
+        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_);
+        res = linkedHashTableStubBuilder.Has(linkedTable, key);
+    } else {
+        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_);
+        res = linkedHashTableStubBuilder.Has(linkedTable, key);
+    }
+    *result = res;
+    Jump(exit);
+}
+
+template void BuiltinsCollectionStubBuilder<JSMap>::Has(Variable *result, Label *exit, Label *slowPath);
+template void BuiltinsCollectionStubBuilder<JSSet>::Has(Variable *result, Label *exit, Label *slowPath);
 }  // namespace panda::ecmascript::kungfu

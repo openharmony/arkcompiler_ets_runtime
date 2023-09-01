@@ -29,15 +29,43 @@ public:
     NO_COPY_SEMANTIC(LinkedHashTableStubBuilder);
     void GenerateCircuit() override {}
 
-    GateRef Create(int32_t numberOfElements);
+    GateRef Create(GateRef numberOfElements);
     GateRef Clear(GateRef linkedTable);
     GateRef ForEach(GateRef thisValue, GateRef linkedTable, GateRef numArgs);
+    GateRef Insert(GateRef linkedTable, GateRef key, GateRef value);
+    GateRef Delete(GateRef linkedTable, GateRef key);
+    GateRef Has(GateRef linkedTable, GateRef key);
 
 private:
+    GateRef IsKey(GateRef key)
+    {
+        return TaggedIsNotHole(key);
+    }
+
+    GateRef HashToBucket(GateRef linkedTable, GateRef hash)
+    {
+        GateRef cap = GetCapacity(linkedTable);
+        return Int32And(hash, Int32Sub(cap, Int32(1)));
+    }
+
+    GateRef BucketToIndex(GateRef bucket)
+    {
+        return Int32Add(bucket, Int32(LinkedHashTableType::ELEMENTS_START_INDEX));
+    }
+
+    GateRef GetHash(GateRef key);
+    GateRef HashObjectIsMatch(GateRef key, GateRef other);
+    GateRef FindElement(GateRef linkedTable, GateRef key);
     GateRef GetKey(GateRef linkedTable, GateRef entry)
     {
         GateRef index = EntryToIndex(linkedTable, entry);
         return GetElement(linkedTable, index);
+    }
+
+    void SetKey(GateRef linkedTable, GateRef entry, GateRef key)
+    {
+        GateRef index = EntryToIndex(linkedTable, entry);
+        SetElement(linkedTable, index, key);
     }
 
     GateRef GetValue(GateRef linkedTable, GateRef entry)
@@ -45,6 +73,13 @@ private:
         GateRef index = EntryToIndex(linkedTable, entry);
         GateRef valueIndex = Int32(LinkedHashTableObject::ENTRY_VALUE_INDEX);
         return GetElement(linkedTable, Int32Add(index, valueIndex));
+    }
+
+    void SetValue(GateRef linkedTable, GateRef entry, GateRef value)
+    {
+        GateRef index = EntryToIndex(linkedTable, entry);
+        GateRef valueIndex = Int32(LinkedHashTableObject::ENTRY_VALUE_INDEX);
+        SetElement(linkedTable, Int32Add(index, valueIndex), value);
     }
 
     GateRef EntryToIndex(GateRef linkedTable, GateRef entry)
@@ -60,16 +95,32 @@ private:
         return GetValueFromTaggedArray(linkedTable, index);
     }
 
+    void SetElement(GateRef linkedTable, GateRef index, GateRef value)
+    {
+        SetValueToTaggedArray(VariableType::JS_ANY(), glue_, linkedTable, index, value);
+    }
+
     GateRef GetDeletedNum(GateRef linkedTable, GateRef entry)
     {
         return TaggedGetInt(GetNextEntry(linkedTable, entry));
     }
+
+    void SetDeletedNum(GateRef linkedTable, GateRef entry, GateRef num)
+    {
+        SetNextEntry(linkedTable, entry, IntToTaggedInt(num));
+     }
 
     GateRef GetNextEntry(GateRef linkedTable, GateRef entry)
     {
         GateRef entryIndex = EntryToIndex(linkedTable, entry);
         return GetElement(linkedTable, Int32Add(entryIndex, Int32(LinkedHashTableObject::ENTRY_SIZE)));
     }
+
+    void SetNextEntry(GateRef linkedTable, GateRef entry, GateRef nextEntry)
+    {
+        GateRef entryIndex = EntryToIndex(linkedTable, entry);
+        SetElement(linkedTable, Int32Add(entryIndex, Int32(LinkedHashTableObject::ENTRY_SIZE)), nextEntry);
+     }
 
     GateRef GetCapacity(GateRef linkedTable)
     {
@@ -124,15 +175,29 @@ private:
         SetValueToTaggedArray(VariableType::JS_POINTER(), glue_, linkedTable, nextTableIndex, nexTable);
     }
 
-    GateRef CalNewTaggedArrayLength(int32_t numberOfElements)
+    GateRef CalNewTaggedArrayLength(GateRef numberOfElements)
     {
-        int32_t startIndex = LinkedHashTableType::ELEMENTS_START_INDEX;
-        int32_t entrySize = LinkedHashTableObject::ENTRY_SIZE;
-        int32_t length = startIndex + numberOfElements + numberOfElements * (entrySize + 1);
-        return Int32(length);
+        GateRef startIndex = Int32(LinkedHashTableType::ELEMENTS_START_INDEX);
+        GateRef entrySize = Int32(LinkedHashTableObject::ENTRY_SIZE);
+        GateRef nEntrySize = Int32Mul(numberOfElements, Int32Add(entrySize, Int32(1)));
+        GateRef length = Int32Add(startIndex, Int32Add(numberOfElements, nEntrySize));
+        return length;
+    }
+
+    void InsertNewEntry(GateRef linkedTable, GateRef bucket, GateRef entry)
+    {
+        GateRef bucketIndex = BucketToIndex(bucket);
+        GateRef previousEntry = GetElement(linkedTable, bucketIndex);
+        SetNextEntry(linkedTable, entry, previousEntry);
+        SetElement(linkedTable, bucketIndex, IntToTaggedInt(entry));
     }
 
     GateRef GetDeletedElementsAt(GateRef linkedTable, GateRef entry);
+    GateRef GrowCapacity(GateRef linkedTable, GateRef numberOfAddedElements);
+    GateRef HasSufficientCapacity(GateRef linkedTable, GateRef numOfAddElements);
+    void Rehash(GateRef linkedTable, GateRef newTable);
+    GateRef ComputeCapacity(GateRef atLeastSpaceFor);
+    void RemoveEntry(GateRef linkedTable, GateRef entry);
 
     GateRef glue_;
 };

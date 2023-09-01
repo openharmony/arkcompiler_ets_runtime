@@ -3984,6 +3984,117 @@ GateRef StubBuilder::SameValue(GateRef glue, GateRef left, GateRef right)
     return ret;
 }
 
+GateRef StubBuilder::SameValueZero(GateRef glue, GateRef left, GateRef right)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label exit(env);
+    DEFVARIABLE(doubleLeft, VariableType::FLOAT64(), Double(0.0));
+    DEFVARIABLE(doubleRight, VariableType::FLOAT64(), Double(0.0));
+    Label strictEqual(env);
+    Label stringEqualCheck(env);
+    Label stringCompare(env);
+    Label bigIntEqualCheck(env);
+    Label numberEqualCheck1(env);
+
+    Branch(Equal(left, right), &strictEqual, &numberEqualCheck1);
+    Bind(&strictEqual);
+    {
+        result = True();
+        Jump(&exit);
+    }
+    Bind(&numberEqualCheck1);
+    {
+        Label leftIsNumber(env);
+        Label leftIsNotNumber(env);
+        Branch(TaggedIsNumber(left), &leftIsNumber, &leftIsNotNumber);
+        Bind(&leftIsNumber);
+        {
+            Label rightIsNumber(env);
+            Branch(TaggedIsNumber(right), &rightIsNumber, &exit);
+            Bind(&rightIsNumber);
+            {
+                Label numberEqualCheck2(env);
+                Label leftIsInt(env);
+                Label leftNotInt(env);
+                Label getRight(env);
+                Branch(TaggedIsInt(left), &leftIsInt, &leftNotInt);
+                Bind(&leftIsInt);
+                {
+                    doubleLeft = ChangeInt32ToFloat64(GetInt32OfTInt(left));
+                    Jump(&getRight);
+                }
+                Bind(&leftNotInt);
+                {
+                    doubleLeft = GetDoubleOfTDouble(left);
+                    Jump(&getRight);
+                }
+                Bind(&getRight);
+                {
+                    Label rightIsInt(env);
+                    Label rightNotInt(env);
+                    Branch(TaggedIsInt(right), &rightIsInt, &rightNotInt);
+                    Bind(&rightIsInt);
+                    {
+                        doubleRight = ChangeInt32ToFloat64(GetInt32OfTInt(right));
+                        Jump(&numberEqualCheck2);
+                    }
+                    Bind(&rightNotInt);
+                    {
+                        doubleRight = GetDoubleOfTDouble(right);
+                        Jump(&numberEqualCheck2);
+                    }
+                }
+                Bind(&numberEqualCheck2);
+                {
+                    Label nanCheck(env);
+                    Label doubleEqual(env);
+                    Branch(DoubleEqual(*doubleLeft, *doubleRight), &doubleEqual, &nanCheck);
+                    Bind(&doubleEqual);
+                    {
+                        result = True();
+                        Jump(&exit);
+                    }
+                    Bind(&nanCheck);
+                    {
+                        result = BoolAnd(DoubleIsNAN(*doubleLeft), DoubleIsNAN(*doubleRight));
+                        Jump(&exit);
+                    }
+                }
+            }
+        }
+        Bind(&leftIsNotNumber);
+        Branch(TaggedIsNumber(right), &exit, &stringEqualCheck);
+        Bind(&stringEqualCheck);
+        Branch(BothAreString(left, right), &stringCompare, &bigIntEqualCheck);
+        Bind(&stringCompare);
+        {
+            result = FastStringEqual(glue, left, right);
+            Jump(&exit);
+        }
+        Bind(&bigIntEqualCheck);
+        {
+            Label leftIsBigInt(env);
+            Label leftIsNotBigInt(env);
+            Branch(TaggedIsBigInt(left), &leftIsBigInt, &exit);
+            Bind(&leftIsBigInt);
+            {
+                Label rightIsBigInt(env);
+                Branch(TaggedIsBigInt(right), &rightIsBigInt, &exit);
+                Bind(&rightIsBigInt);
+                result = CallNGCRuntime(glue, RTSTUB_ID(BigIntSameValueZero), { left, right });
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::FastStringEqual(GateRef glue, GateRef left, GateRef right)
 {
     auto env = GetEnvironment();

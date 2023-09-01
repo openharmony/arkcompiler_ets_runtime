@@ -17,10 +17,11 @@ declare interface ArkTools{
 }
 
 function testAdd() {
+    let key = "key";
     let mySet = new Set();
     let start = ArkTools.timeInUs();
-    for (let i = 0; i < 100_000; i++) {
-        mySet.add(i);
+    for (let i = 0; i < 1_000_000; i++) {
+        mySet.add(key);
     }
     let end = ArkTools.timeInUs();
     let time = (end - start) / 1000
@@ -28,14 +29,13 @@ function testAdd() {
 }
 
 function testDelete() {
+    let key = "key";
     const mySet = new Set();
-    for (let i = 0; i < 100_000; i++) {
-        mySet.add(i);
-    }
+    mySet.add(key);
 
     let start = ArkTools.timeInUs();
     for (let i = 0; i < 1_000_000; i++) {
-        mySet.delete(i);
+        mySet.delete(key);
     }
     let end = ArkTools.timeInUs();
     let time = (end - start) / 1000

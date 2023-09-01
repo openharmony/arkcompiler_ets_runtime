@@ -34,11 +34,16 @@ public:
     void Entries(Variable *result, Label *exit, Label *slowPath);
     void Keys(Variable *result, Label *exit, Label *slowPath);
     void ForEach(Variable *result, Label *exit, Label *slowPath);
+    void Set(Variable *result, Label *exit, Label *slowPath);
+    void Add(Variable *result, Label *exit, Label *slowPath);
+    void Delete(Variable *result, Label *exit, Label *slowPath);
+    void Has(Variable *result, Label *exit, Label *slowPath);
 
 private:
     // check target obj
     void CheckCollectionObj(Label *exit, Label *slowPath);
     void CreateIterator(Variable *result, Label *exit, Label *slowPath, GateRef iterationKind);
+    void MapSetOrSetAdd(Variable *result, Label *exit, Label *slowPath, bool isJsMapSet);
 
     GateRef GetLinkedOffset()
     {
