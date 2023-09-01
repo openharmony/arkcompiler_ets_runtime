@@ -114,4 +114,42 @@ void BuiltinsCollectionStubBuilder<CollectionType>::Keys(Variable *result, Label
 }
 
 template void BuiltinsCollectionStubBuilder<JSMap>::Keys(Variable *result, Label *exit, Label *slowPath);
+
+template <typename CollectionType>
+void BuiltinsCollectionStubBuilder<CollectionType>::ForEach(Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisCollectionObj(env);
+    // check target obj
+    CheckCollectionObj(&thisCollectionObj, slowPath);
+
+    Bind(&thisCollectionObj);
+    GateRef callbackFnHandle = GetCallArg0(numArgs_);
+    Label callable(env);
+    // check heap obj
+    Label heapObj(env);
+    Branch(TaggedIsHeapObject(callbackFnHandle), &heapObj, slowPath);
+    Bind(&heapObj);
+    Branch(IsCallable(callbackFnHandle), &callable, slowPath);
+    Bind(&callable);
+
+    GateRef linkedTable = GetLinked();
+    GateRef res = Circuit::NullGate();
+    if constexpr (std::is_same_v<CollectionType, JSMap>) {
+        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_);
+        res = linkedHashTableStubBuilder.ForEach(thisValue_, linkedTable, numArgs_);
+    } else {
+        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_);
+        res = linkedHashTableStubBuilder.ForEach(thisValue_, linkedTable, numArgs_);
+    }
+
+    Label exception(env);
+    Branch(TaggedIsException(res), &exception, exit);
+    Bind(&exception);
+    *result = res;
+    Jump(exit);
+}
+
+template void BuiltinsCollectionStubBuilder<JSMap>::ForEach(Variable *result, Label *exit, Label *slowPath);
+template void BuiltinsCollectionStubBuilder<JSSet>::ForEach(Variable *result, Label *exit, Label *slowPath);
 }  // namespace panda::ecmascript::kungfu

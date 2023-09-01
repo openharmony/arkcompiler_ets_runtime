@@ -31,6 +31,7 @@ public:
 
     GateRef Create(int32_t numberOfElements);
     GateRef Clear(GateRef linkedTable);
+    GateRef ForEach(GateRef thisValue, GateRef linkedTable, GateRef numArgs);
 
 private:
     GateRef GetKey(GateRef linkedTable, GateRef entry)
@@ -61,13 +62,13 @@ private:
 
     GateRef GetDeletedNum(GateRef linkedTable, GateRef entry)
     {
-        return GetNextEntry(linkedTable, entry);
+        return TaggedGetInt(GetNextEntry(linkedTable, entry));
     }
 
     GateRef GetNextEntry(GateRef linkedTable, GateRef entry)
     {
         GateRef entryIndex = EntryToIndex(linkedTable, entry);
-        return TaggedGetInt(GetElement(linkedTable, Int32Add(entryIndex, Int32(LinkedHashTableObject::ENTRY_SIZE))));
+        return GetElement(linkedTable, Int32Add(entryIndex, Int32(LinkedHashTableObject::ENTRY_SIZE)));
     }
 
     GateRef GetCapacity(GateRef linkedTable)
@@ -101,7 +102,7 @@ private:
     GateRef GetNumberOfDeletedElements(GateRef linkedTable)
     {
         GateRef deletedIndex = Int32(LinkedHashTableType::NUMBER_OF_DELETED_ELEMENTS_INDEX);
-        GateRef tmpNumberOfDeletedElements = GetValueFromTaggedArray(linkedTable, Int32(deletedIndex));
+        GateRef tmpNumberOfDeletedElements = GetValueFromTaggedArray(linkedTable, deletedIndex);
         return TaggedGetInt(tmpNumberOfDeletedElements);
     }
 
@@ -130,6 +131,8 @@ private:
         int32_t length = startIndex + numberOfElements + numberOfElements * (entrySize + 1);
         return Int32(length);
     }
+
+    GateRef GetDeletedElementsAt(GateRef linkedTable, GateRef entry);
 
     GateRef glue_;
 };

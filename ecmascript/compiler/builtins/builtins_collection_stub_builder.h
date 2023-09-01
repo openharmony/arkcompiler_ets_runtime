@@ -22,8 +22,8 @@ namespace panda::ecmascript::kungfu {
 template <typename CollectionType>
 class BuiltinsCollectionStubBuilder : public BuiltinsStubBuilder {
 public:
-    explicit BuiltinsCollectionStubBuilder(BuiltinsStubBuilder *parent, GateRef glue, GateRef thisValue)
-        : BuiltinsStubBuilder(parent), glue_(glue), thisValue_(thisValue) {}
+    explicit BuiltinsCollectionStubBuilder(BuiltinsStubBuilder *parent, GateRef glue, GateRef thisValue,
+        GateRef numArgs) : BuiltinsStubBuilder(parent), glue_(glue), thisValue_(thisValue), numArgs_(numArgs) {}
     ~BuiltinsCollectionStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsCollectionStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsCollectionStubBuilder);
@@ -33,6 +33,7 @@ public:
     void Values(Variable *result, Label *exit, Label *slowPath);
     void Entries(Variable *result, Label *exit, Label *slowPath);
     void Keys(Variable *result, Label *exit, Label *slowPath);
+    void ForEach(Variable *result, Label *exit, Label *slowPath);
 
 private:
     // check target obj
@@ -64,6 +65,7 @@ private:
 
     GateRef glue_;
     GateRef thisValue_;
+    GateRef numArgs_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_COLLECTION_STUB_BUILDER_H
