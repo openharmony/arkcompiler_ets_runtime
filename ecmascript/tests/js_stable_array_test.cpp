@@ -439,12 +439,10 @@ HWTEST_F_L0(JSStableArrayTest, With)
     }
     JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
 
-    JSHandle<TaggedArray> newTagArr(objFactory->NewTaggedArray(lengthArr));
-    JSHandle<JSArray> newArr(JSArray::CreateArrayFromList(thread, newTagArr));
     int64_t arrayLength = ARRAY_LENGTH_4;
     int64_t index = static_cast<int64_t>(StableArrayIndex::STABLE_ARRAY_INDEX_2);
-    JSTaggedValue resultArr = JSStableArray::With(thread, JSHandle<JSObject>::Cast(handleArr),
-                                                  JSHandle<JSObject>::Cast(newArr), arrayLength, index,
+    JSTaggedValue resultArr = JSStableArray::With(thread, handleArr,
+                                                  arrayLength, index,
                                                   JSHandle<JSTaggedValue>(thread, JSTaggedValue(INT_VALUE_666)));
     JSHandle<JSTaggedValue> destTaggedValue(thread, resultArr);
     JSHandle<JSArray> destArr(destTaggedValue);
@@ -484,7 +482,7 @@ HWTEST_F_L0(JSStableArrayTest, ToReversed)
     }
     JSHandle<JSArray> handleArr(JSArray::CreateArrayFromList(thread, handleTagArr));
     JSTaggedValue resultArr =
-        JSStableArray::ToReversed(thread, JSHandle<JSObject>::Cast(handleArr), ARRAY_LENGTH_4);
+        JSStableArray::ToReversed(thread, handleArr, ARRAY_LENGTH_4);
     JSHandle<JSTaggedValue> destTaggedValue(thread, resultArr);
     JSHandle<JSArray> destArr(destTaggedValue);
     JSHandle<TaggedArray> destTaggedArr(thread, TaggedArray::Cast(destArr->GetElements().GetTaggedObject()));
