@@ -61,6 +61,8 @@ public:
 
     static void FindFixedGates(const Circuit *circuit, const std::vector<GateRef> &bbGatesList,
                                std::vector<GateRef> &fixedGatesList);
+    
+    static bool RunFlowCyclesFind(const Circuit* circuit);
 
     static bool Run(const Circuit *circuit, const std::string& methodName = "", bool enableLog = false);
 };

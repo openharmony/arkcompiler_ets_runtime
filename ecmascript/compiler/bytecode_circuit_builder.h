@@ -507,6 +507,8 @@ public:
         return (!HasTryCatch()) && (loopHeads_.size() != 0);
     }
 
+    size_t LoopExitCount(size_t from, size_t to);
+
     GateRef GetFrameArgs() const
     {
         return argAcc_.GetFrameArgs();
@@ -587,7 +589,6 @@ private:
     void PrintDefsitesInfo(const std::unordered_map<uint16_t, std::set<size_t>> &defsitesInfo);
     void BuildRegionInfo();
     void BuildFrameArgs();
-    size_t LoopExitCount(size_t from, size_t to);
     void CollectLoopBack();
     void ComputeLoopDepth(size_t loopHead);
     void CountLoopBackEdge(size_t fromId, size_t toId);

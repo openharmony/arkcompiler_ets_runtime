@@ -428,6 +428,53 @@ void Verifier::FindFixedGates(const Circuit *circuit, const std::vector<GateRef>
     }
 }
 
+bool Verifier::RunFlowCyclesFind(const Circuit* circuit)
+{
+    GateAccessor acc(const_cast<Circuit *>(circuit));
+    circuit->AdvanceTime();
+    struct DFSStack {
+        GateRef gate;
+        GateAccessor::UseIterator it;
+        GateAccessor::UseIterator end;
+    };
+    std::stack<DFSStack> st;
+    auto root = acc.GetCircuitRoot();
+    auto rootUse = acc.Uses(root);
+    st.push({root, rootUse.begin(), rootUse.end()});
+    acc.SetVisited(root);
+    while (!st.empty()) {
+        auto& cur = st.top();
+        if (cur.it == cur.end) {
+            st.pop();
+            acc.SetFinished(cur.gate);
+            continue;
+        }
+        auto succ = *cur.it;
+        if (acc.IsLoopBackUse(cur.it)) {
+            cur.it++;
+            continue;
+        }
+        if (acc.IsNotMarked(succ)) {
+            auto succUse = acc.Uses(succ);
+            st.push({succ, succUse.begin(), succUse.end()});
+            acc.SetVisited(succ);
+        } else if (acc.IsVisited(succ)) {
+            LOG_COMPILER(ERROR) << "====================== Cycle Found ======================";
+            std::string log = "";
+            while (st.top().gate != succ) {
+                log += std::to_string(acc.GetId(st.top().gate)) + " > ";
+                st.pop();
+            }
+            log += std::to_string(acc.GetId(st.top().gate));
+            std::reverse(log.begin(), log.end());
+            LOG_COMPILER(ERROR) << log;
+            return true;
+        }
+        cur.it++;
+    }
+    return false;
+}
+
 bool Verifier::Run(const Circuit *circuit, const std::string& methodName, bool enableLog)
 {
     if (!RunDataIntegrityCheck(circuit)) {
