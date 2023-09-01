@@ -893,12 +893,17 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
 
 void GetCharFromEcmaStringStubBuilder::GenerateCircuit()
 {
+    auto env = GetEnvironment();
     GateRef glue = PtrArgument(0);
     GateRef str = TaggedArgument(1);
     GateRef index = Int32Argument(2);
-
+    Label flattenFastPath(env);
+    FlatStringStubBuilder thisFlat(this);
+    thisFlat.FlattenString(glue, str, &flattenFastPath);
+    Bind(&flattenFastPath);
     BuiltinsStringStubBuilder builder(this);
-    GateRef result = builder.CreateFromEcmaString(glue, str, index);
+    StringInfoGateRef stringInfoGate(&thisFlat);
+    GateRef result = builder.CreateFromEcmaString(glue, index, stringInfoGate);
     Return(result);
 }
 

@@ -910,6 +910,12 @@ GateRef CircuitBuilder::IsTreeString(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::TREE_STRING)));
 }
 
+GateRef CircuitBuilder::IsSlicedString(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SLICED_STRING)));
+}
+
 GateRef CircuitBuilder::TreeStringIsFlat(GateRef string)
 {
     GateRef second = GetSecondFromTreeString(string);

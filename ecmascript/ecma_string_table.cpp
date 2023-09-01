@@ -27,8 +27,8 @@ EcmaStringTable::EcmaStringTable(const EcmaVM *vm) : vm_(vm) {}
 EcmaString *EcmaStringTable::GetString(const JSHandle<EcmaString> &firstString,
                                        const JSHandle<EcmaString> &secondString) const
 {
-    ASSERT(EcmaStringAccessor(firstString).IsLineOrConstantString());
-    ASSERT(EcmaStringAccessor(secondString).IsLineOrConstantString());
+    ASSERT(EcmaStringAccessor(firstString).NotTreeString());
+    ASSERT(EcmaStringAccessor(secondString).NotTreeString());
     uint32_t hashCode = EcmaStringAccessor(firstString).GetHashcode();
     hashCode = EcmaStringAccessor(secondString).ComputeHashcode(hashCode);
     auto range = table_.equal_range(hashCode);
@@ -69,7 +69,7 @@ EcmaString *EcmaStringTable::GetString(const uint16_t *utf16Data, uint32_t utf16
 
 EcmaString *EcmaStringTable::GetString(EcmaString *string) const
 {
-    ASSERT(EcmaStringAccessor(string).IsLineOrConstantString());
+    ASSERT(EcmaStringAccessor(string).NotTreeString());
     auto hashcode = EcmaStringAccessor(string).GetHashcode();
     auto range = table_.equal_range(hashcode);
     for (auto item = range.first; item != range.second; ++item) {
@@ -88,7 +88,7 @@ void EcmaStringTable::InternString(EcmaString *string)
     }
     // Strings in string table should not be in the young space.
     ASSERT(!Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InYoungSpace());
-    ASSERT(EcmaStringAccessor(string).IsLineOrConstantString());
+    ASSERT(EcmaStringAccessor(string).NotTreeString());
     auto hashcode = EcmaStringAccessor(string).GetHashcode();
     table_.emplace(hashcode, string);
     EcmaStringAccessor(string).SetInternString();
@@ -171,7 +171,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaString *string)
         return result;
     }
 
-    if (EcmaStringAccessor(strFlat).IsLineOrConstantString()) {
+    if (EcmaStringAccessor(strFlat).NotTreeString()) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(strFlat));
         if (objectRegion->InYoungSpace()) {
             JSHandle<EcmaString> resultHandle(vm_->GetJSThread(), strFlat);
@@ -240,7 +240,7 @@ bool EcmaStringTable::CheckStringTableValidity()
 {
     for (auto itemOuter = table_.begin(); itemOuter != table_.end(); ++itemOuter) {
         auto outerString = itemOuter->second;
-        if (!EcmaStringAccessor(outerString).IsLineOrConstantString()) {
+        if (!EcmaStringAccessor(outerString).NotTreeString()) {
             return false;
         }
         int counter = 0;

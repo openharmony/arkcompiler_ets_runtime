@@ -183,6 +183,7 @@ group("ark_aot_ts_test") {
     "stownbyvaluewithnameset",
     "strictequal",
     "strictnotequal",
+    "string",
     "stsuperbyname",
     "sub",
     "supercall",

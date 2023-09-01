@@ -475,6 +475,11 @@ inline bool JSTaggedValue::IsTreeString() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTreeString();
 }
 
+inline bool JSTaggedValue::IsSlicedString() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsSlicedString();
+}
+
 inline bool JSTaggedValue::IsBigInt() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsBigInt();

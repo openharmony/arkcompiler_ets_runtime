@@ -1132,6 +1132,12 @@ inline GateRef StubBuilder::IsLineString(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::LINE_STRING)));
 }
 
+inline GateRef StubBuilder::IsSlicedString(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SLICED_STRING)));
+}
+
 inline GateRef StubBuilder::IsConstantString(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
@@ -2377,6 +2383,13 @@ inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, bo
     } else {
         mixLength = Int32Or(len, Int32(EcmaString::STRING_UNCOMPRESSED));
     }
+    Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::MIX_LENGTH_OFFSET), mixLength);
+}
+
+inline void StubBuilder::SetLength(GateRef glue, GateRef str, GateRef length, GateRef isCompressed)
+{
+    GateRef len = Int32LSL(length, Int32(2));
+    GateRef mixLength = Int32Or(len, isCompressed);
     Store(VariableType::INT32(), glue, str, IntPtr(EcmaString::MIX_LENGTH_OFFSET), mixLength);
 }
 

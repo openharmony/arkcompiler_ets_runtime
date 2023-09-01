@@ -42,6 +42,8 @@ class EcmaVM;
 class LineEcmaString;
 class ConstantString;
 class TreeEcmaString;
+class SlicedString;
+class FlatStringInfo;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ECMA_STRING_CHECK_LENGTH_AND_TRHOW(vm, length)                                        \
@@ -78,6 +80,8 @@ private:
     friend class LineEcmaString;
     friend class ConstantString;
     friend class TreeEcmaString;
+    friend class SlicedString;
+    friend class FlatStringInfo;
     friend class NameDictionary;
 
     static constexpr int SMALL_STRING_SIZE = 128;
@@ -88,6 +92,7 @@ private:
         uint32_t idOffset = 0);
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
         bool canBeCompress, MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    static SlicedString *CreateSlicedString(const EcmaVM *vm, MemSpaceType type = MemSpaceType::SEMI_SPACE);
     static EcmaString *CreateLineString(const EcmaVM *vm, size_t length, bool compressed);
     static EcmaString *CreateLineStringNoGC(const EcmaVM *vm, size_t length, bool compressed);
     static EcmaString *CreateLineStringWithSpaceType(const EcmaVM *vm,
@@ -101,6 +106,8 @@ private:
     static EcmaString *CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<EcmaString> &original,
         uint32_t length, bool compressed);
     static EcmaString *FastSubString(const EcmaVM *vm,
+        const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
+    static EcmaString *GetSlicedString(const EcmaVM *vm,
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length);
     // require src is LineString
     // not change src data structure
@@ -227,6 +234,7 @@ private:
     static bool StringsAreEqual(EcmaString *str1, EcmaString *str2);
     // Two strings have the same type of utf encoding format.
     static bool StringsAreEqualSameUtfEncoding(EcmaString *str1, EcmaString *str2);
+    static bool StringsAreEqualSameUtfEncoding(const FlatStringInfo &str1, const FlatStringInfo &str2);
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
     // not change str1 data structure.
     // if str1 is not flat, this func has low efficiency.
@@ -509,9 +517,17 @@ private:
     {
         return GetClass()->IsConstantString();
     }
+    bool IsSlicedString() const
+    {
+        return GetClass()->IsSlicedString();
+    }
     bool IsTreeString() const
     {
         return GetClass()->IsTreeString();
+    }
+    bool NotTreeString() const
+    {
+        return !IsTreeString();
     }
     bool IsLineOrConstantString() const
     {
@@ -534,10 +550,13 @@ private:
     static const uint16_t *GetUtf16DataFlat(const EcmaString *src, CVector<uint16_t> &buf);
 
     // string must be not flat
-    static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<TreeEcmaString> &string, MemSpaceType type);
+    static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<EcmaString> &string, MemSpaceType type);
 
     static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
                                MemSpaceType type = MemSpaceType::SEMI_SPACE);
+
+    static FlatStringInfo FlattenAllString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
+                                            MemSpaceType type = MemSpaceType::SEMI_SPACE);
 
     static EcmaString *FlattenNoGC(const EcmaVM *vm, EcmaString *string);
 
@@ -666,6 +685,57 @@ public:
     }
 };
 
+// The substrings of another string use SlicedString to describe.
+class SlicedString : public EcmaString {
+public:
+    static constexpr uint32_t MIN_SLICED_ECMASTRING_LENGTH = 13;
+    static constexpr size_t PARENT_OFFSET = EcmaString::SIZE;
+    ACCESSORS(Parent, PARENT_OFFSET, STARTINDEX_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(StartIndex, uint32_t, STARTINDEX_OFFSET, SIZE);
+    DECL_VISIT_OBJECT(PARENT_OFFSET, STARTINDEX_OFFSET);
+
+    CAST_CHECK(SlicedString, IsSlicedString);
+private:
+    friend class EcmaString;
+    static SlicedString *Cast(EcmaString *str)
+    {
+        return static_cast<SlicedString *>(str);
+    }
+
+    static SlicedString *Cast(const EcmaString *str)
+    {
+        return SlicedString::Cast(const_cast<EcmaString *>(str));
+    }
+
+    static size_t ObjectSize()
+    {
+        return SlicedString::SIZE;
+    }
+
+    // Minimum length for a sliced string
+    template<bool verify = true>
+    uint16_t Get(int32_t index) const
+    {
+        int32_t length = static_cast<int32_t>(GetLength());
+        if (verify) {
+            if ((index < 0) || (index >= length)) {
+                return 0;
+            }
+        }
+        EcmaString *parent = EcmaString::Cast(GetParent());
+        if (parent->IsLineString()) {
+            if (parent->IsUtf8()) {
+                Span<const uint8_t> sp(parent->GetDataUtf8() + GetStartIndex(), length);
+                return sp[index];
+            }
+            Span<const uint16_t> sp(parent->GetDataUtf16() + GetStartIndex(), length);
+            return sp[index];
+        }
+        Span<const uint8_t> sp(ConstantString::Cast(parent)->GetConstantData() + GetStartIndex(), length);
+        return sp[index];
+    }
+};
+
 class TreeEcmaString : public EcmaString {
 public:
     // Minimum length for a tree string
@@ -727,6 +797,51 @@ public:
     }
 };
 
+class FlatStringInfo {
+public:
+    FlatStringInfo(EcmaString *string, uint32_t startIndex, uint32_t length) : string_(string),
+                                                                               startIndex_(startIndex),
+                                                                               length_(length) {}
+    bool IsUtf8() const
+    {
+        return string_->IsUtf8();
+    }
+
+    bool IsUtf16() const
+    {
+        return string_->IsUtf16();
+    }
+
+    EcmaString *GetString() const
+    {
+        return string_;
+    }
+
+    void SetString(EcmaString *string)
+    {
+        string_ = string;
+    }
+    
+    uint32_t GetStartIndex() const
+    {
+        return startIndex_;
+    }
+
+    uint32_t GetLength() const
+    {
+        return length_;
+    }
+
+    const uint8_t *GetDataUtf8() const;
+    const uint16_t *GetDataUtf16() const;
+    uint8_t *GetDataUtf8Writable() const;
+    std::u16string ToU16String(uint32_t len = 0);
+private:
+    EcmaString *string_ {nullptr};
+    uint32_t startIndex_ {0};
+    uint32_t length_ {0};
+};
+
 // if you want to use functions of EcmaString, please not use directly,
 // and use functions of EcmaStringAccessor alternatively.
 // eg: EcmaString *str = ***; str->GetLength() ----->  EcmaStringAccessor(str).GetLength()
@@ -786,6 +901,13 @@ public:
         const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)
     {
         return EcmaString::FastSubString(vm, src, start, length);
+    }
+
+    // get
+    static EcmaString *GetSlicedString(const EcmaVM *vm,
+        const JSHandle<EcmaString> &src, uint32_t start, uint32_t length)
+    {
+        return EcmaString::GetSlicedString(vm, src, start, length);
     }
 
     bool IsUtf8() const
@@ -1093,13 +1215,24 @@ public:
         return string_->IsTreeString();
     }
 
+    bool NotTreeString() const
+    {
+        return string_->NotTreeString();
+    }
+
     static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
         MemSpaceType type = MemSpaceType::SEMI_SPACE)
     {
         return EcmaString::Flatten(vm, string, type);
     }
 
-    static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<TreeEcmaString> &string,
+    static FlatStringInfo FlattenAllString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
+        MemSpaceType type = MemSpaceType::SEMI_SPACE)
+    {
+        return EcmaString::FlattenAllString(vm, string, type);
+    }
+
+    static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
         MemSpaceType type = MemSpaceType::SEMI_SPACE)
     {
         return EcmaString::SlowFlatten(vm, string, type);

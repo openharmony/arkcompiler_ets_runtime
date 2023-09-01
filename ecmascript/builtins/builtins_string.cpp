@@ -1519,6 +1519,9 @@ JSTaggedValue BuiltinsString::Substring(EcmaRuntimeCallInfo *argv)
     int32_t from = std::min(start, end);
     int32_t to = std::max(start, end);
     int32_t len = to - from;
+    if (static_cast<uint32_t>(len) >= SlicedString::MIN_SLICED_ECMASTRING_LENGTH) {
+        return JSTaggedValue(EcmaStringAccessor::GetSlicedString(thread->GetEcmaVM(), thisHandle, from, len));
+    }
     return JSTaggedValue(EcmaStringAccessor::FastSubString(thread->GetEcmaVM(), thisHandle, from, len));
 }
 

@@ -23,6 +23,7 @@
 #include "ecmascript/compiler/variable_type.h"
 
 namespace panda::ecmascript::kungfu {
+struct StringInfoGateRef;
 using namespace panda::ecmascript;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DEFVARIABLE(varname, type, val) Variable varname(GetEnvironment(), type, NextVariableId(), val)
@@ -306,6 +307,7 @@ public:
     GateRef IsSymbol(GateRef obj);
     GateRef IsString(GateRef obj);
     GateRef IsLineString(GateRef obj);
+    GateRef IsSlicedString(GateRef obj);
     GateRef IsConstantString(GateRef obj);
     GateRef IsTreeString(GateRef obj);
     GateRef TreeStringIsFlat(GateRef string);
@@ -639,12 +641,11 @@ public:
                       GateRef callField, GateRef method, Label* notFastBuiltins, Label* exit, Variable* result,
                       std::initializer_list<GateRef> args, JSCallMode mode);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
+    inline void SetLength(GateRef glue, GateRef str, GateRef length, GateRef isCompressed);
     inline void SetRawHashcode(GateRef glue, GateRef str, GateRef rawHashcode);
     void Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel);
 
-    GateRef FlattenString(GateRef glue, GateRef str);
-    void FlattenString(GateRef str, Variable *flatStr, Label *fastPath, Label *slowPath);
-    GateRef GetNormalStringData(GateRef str);
+    GateRef GetNormalStringData(const StringInfoGateRef &stringInfoGate);
 
     void Comment(GateRef glue, const std::string &str);
     GateRef ToNumber(GateRef glue, GateRef tagged);

@@ -19,7 +19,7 @@
 #include "ecmascript/compiler/new_object_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
-GateRef BuiltinsStringStubBuilder::StringAt(GateRef obj, GateRef index)
+GateRef BuiltinsStringStubBuilder::StringAt(const StringInfoGateRef &stringInfoGate, GateRef index)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -32,8 +32,8 @@ GateRef BuiltinsStringStubBuilder::StringAt(GateRef obj, GateRef index)
     Label doIntOp(env);
     Label leftIsNumber(env);
     Label rightIsNumber(env);
-    GateRef dataUtf16 = GetNormalStringData(obj);
-    Branch(IsUtf16String(obj), &isUtf16, &isUtf8);
+    GateRef dataUtf16 = GetNormalStringData(stringInfoGate);
+    Branch(IsUtf16String(stringInfoGate.GetString()), &isUtf16, &isUtf8);
     Bind(&isUtf16);
     {
         result = ZExtInt16ToInt32(Load(VariableType::INT16(), PtrAdd(dataUtf16,
@@ -52,7 +52,8 @@ GateRef BuiltinsStringStubBuilder::StringAt(GateRef obj, GateRef index)
     return ret;
 }
 
-GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef obj, GateRef index)
+GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef index,
+    const StringInfoGateRef &stringInfoGate)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -65,8 +66,8 @@ GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef ob
     Label isUtf16(env);
     Label isUtf8(env);
     Label allocString(env);
-    GateRef dataUtf = GetNormalStringData(obj);
-    Branch(IsUtf16String(obj), &isUtf16, &isUtf8);
+    GateRef dataUtf = GetNormalStringData(stringInfoGate);
+    Branch(IsUtf16String(stringInfoGate.GetString()), &isUtf16, &isUtf8);
     Bind(&isUtf16);
     {
         GateRef dataAddr = PtrAdd(dataUtf, PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint16_t))));
@@ -121,7 +122,8 @@ GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef ob
     return ret;
 }
 
-GateRef BuiltinsStringStubBuilder::FastSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len)
+GateRef BuiltinsStringStubBuilder::FastSubString(GateRef glue, GateRef thisValue, GateRef from,
+    GateRef len, const StringInfoGateRef &stringInfoGate)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -148,7 +150,7 @@ GateRef BuiltinsStringStubBuilder::FastSubString(GateRef glue, GateRef thisValue
         Branch(Int32Equal(from, Int32(0)), &fromEqualZero, &next);
         Bind(&fromEqualZero);
         {
-            GateRef thisLen = GetLengthFromString(thisValue);
+            GateRef thisLen = stringInfoGate.GetLength();
             Branch(Int32Equal(len, thisLen), &exit, &next);
         }
         Bind(&next);
@@ -156,12 +158,12 @@ GateRef BuiltinsStringStubBuilder::FastSubString(GateRef glue, GateRef thisValue
             Branch(IsUtf8String(thisValue), &isUtf8, &isUtf16);
             Bind(&isUtf8);
             {
-                result = FastSubUtf8String(glue, thisValue, from, len);
+                result = FastSubUtf8String(glue, from, len, stringInfoGate);
                 Jump(&exit);
             }
             Bind(&isUtf16);
             {
-                result = FastSubUtf16String(glue, thisValue, from, len);
+                result = FastSubUtf16String(glue, from, len, stringInfoGate);
                 Jump(&exit);
             }
         }
@@ -172,7 +174,8 @@ GateRef BuiltinsStringStubBuilder::FastSubString(GateRef glue, GateRef thisValue
     return ret;
 }
 
-GateRef BuiltinsStringStubBuilder::FastSubUtf8String(GateRef glue, GateRef thisValue, GateRef from, GateRef len)
+GateRef BuiltinsStringStubBuilder::FastSubUtf8String(GateRef glue, GateRef from, GateRef len,
+    const StringInfoGateRef &stringInfoGate)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -187,7 +190,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf8String(GateRef glue, GateRef thisV
     Bind(&afterNew);
     {
         GateRef dst = PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET));
-        GateRef source = PtrAdd(GetNormalStringData(thisValue), ZExtInt32ToPtr(from));
+        GateRef source = PtrAdd(GetNormalStringData(stringInfoGate), ZExtInt32ToPtr(from));
         CopyChars(glue, dst, source, len, IntPtr(sizeof(uint8_t)), VariableType::INT8());
         Jump(&exit);
     }
@@ -197,7 +200,8 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf8String(GateRef glue, GateRef thisV
     return ret;
 }
 
-GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef thisValue, GateRef from, GateRef len)
+GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef from, GateRef len,
+    const StringInfoGateRef &stringInfoGate)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -211,7 +215,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef this
     Label isUtf16Next(env);
 
     GateRef fromOffset = PtrMul(ZExtInt32ToPtr(from), IntPtr(sizeof(uint16_t) / sizeof(uint8_t)));
-    GateRef source = PtrAdd(GetNormalStringData(thisValue), fromOffset);
+    GateRef source = PtrAdd(GetNormalStringData(stringInfoGate), fromOffset);
     GateRef canBeCompressed = CanBeCompressed(source, len, true);
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
@@ -227,7 +231,7 @@ GateRef BuiltinsStringStubBuilder::FastSubUtf16String(GateRef glue, GateRef this
     }
     Bind(&afterNew);
     {
-        GateRef source1 = PtrAdd(GetNormalStringData(thisValue), fromOffset);
+        GateRef source1 = PtrAdd(GetNormalStringData(stringInfoGate), fromOffset);
         GateRef dst = PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET));
         Branch(canBeCompressed, &isUtf8Next, &isUtf16Next);
         Bind(&isUtf8Next);
@@ -503,7 +507,19 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhsData, bool lhsIsUtf8
     return ret;
 }
 
-GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhs, GateRef rhs, GateRef pos)
+
+void BuiltinsStringStubBuilder::StoreParent(GateRef glue, GateRef object, GateRef parent)
+{
+    Store(VariableType::JS_POINTER(), glue, object, IntPtr(SlicedString::PARENT_OFFSET), parent);
+}
+
+void BuiltinsStringStubBuilder::StoreStartIndex(GateRef glue, GateRef object, GateRef startIndex)
+{
+    Store(VariableType::INT32(), glue, object, IntPtr(SlicedString::STARTINDEX_OFFSET), startIndex);
+}
+
+GateRef BuiltinsStringStubBuilder::StringIndexOf(const StringInfoGateRef &lStringInfoGate,
+    const StringInfoGateRef &rStringInfoGate, GateRef pos)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -521,8 +537,8 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhs, GateRef rhs, GateR
     Label rhsIsUtf16(env);
     Label posRMaxNotGreaterLhs(env);
 
-    GateRef lhsCount = GetLengthFromString(lhs);
-    GateRef rhsCount = GetLengthFromString(rhs);
+    GateRef lhsCount = lStringInfoGate.GetLength();
+    GateRef rhsCount = rStringInfoGate.GetLength();
 
     Branch(Int32GreaterThan(pos, lhsCount), &exit, &nextCount);
     Bind(&nextCount);
@@ -550,14 +566,14 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhs, GateRef rhs, GateR
                     GateRef posRMax = Int32Add(*posTag, rhsCount);
                     Branch(Int32GreaterThan(posRMax, lhsCount), &exit, &posRMaxNotGreaterLhs);
                     Bind(&posRMaxNotGreaterLhs);
-                    GateRef rhsData = GetNormalStringData(rhs);
-                    GateRef lhsData = GetNormalStringData(lhs);
-                    Branch(IsUtf8String(rhs), &rhsIsUtf8, &rhsIsUtf16);
+                    GateRef rhsData = GetNormalStringData(rStringInfoGate);
+                    GateRef lhsData = GetNormalStringData(lStringInfoGate);
+                    Branch(IsUtf8String(rStringInfoGate.GetString()), &rhsIsUtf8, &rhsIsUtf16);
                     Bind(&rhsIsUtf8);
                     {
                         Label lhsIsUtf8(env);
                         Label lhsIsUtf16(env);
-                        Branch(IsUtf8String(lhs), &lhsIsUtf8, &lhsIsUtf16);
+                        Branch(IsUtf8String(lStringInfoGate.GetString()), &lhsIsUtf8, &lhsIsUtf16);
                         Bind(&lhsIsUtf8);
                         {
                             result = StringIndexOf(lhsData, true, rhsData, true, *posTag, max, rhsCount);
@@ -573,7 +589,7 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhs, GateRef rhs, GateR
                     {
                         Label lhsIsUtf8(env);
                         Label lhsIsUtf16(env);
-                        Branch(IsUtf8String(lhs), &lhsIsUtf8, &lhsIsUtf16);
+                        Branch(IsUtf8String(lStringInfoGate.GetString()), &lhsIsUtf8, &lhsIsUtf16);
                         Bind(&lhsIsUtf8);
                         {
                             result = StringIndexOf(lhsData, true, rhsData, false, *posTag, max, rhsCount);
@@ -593,5 +609,50 @@ GateRef BuiltinsStringStubBuilder::StringIndexOf(GateRef lhs, GateRef rhs, GateR
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+void FlatStringStubBuilder::FlattenString(GateRef glue, GateRef str, Label *fastPath)
+{
+    auto env = GetEnvironment();
+    Label notLineString(env);
+    Label exit(env);
+    length_ = GetLengthFromString(str);
+    Branch(BoolOr(IsLineString(str), IsConstantString(str)), &exit, &notLineString);
+    Bind(&notLineString);
+    {
+        Label isTreeString(env);
+        Label notTreeString(env);
+        Label isSlicedString(env);
+        Branch(IsTreeString(str), &isTreeString, &notTreeString);
+        Bind(&isTreeString);
+        {
+            Label isFlat(env);
+            Label notFlat(env);
+            Branch(TreeStringIsFlat(str), &isFlat, &notFlat);
+            Bind(&isFlat);
+            {
+                flatString_.WriteVariable(GetFirstFromTreeString(str));
+                Jump(fastPath);
+            }
+            Bind(&notFlat);
+            {
+                flatString_.WriteVariable(CallRuntime(glue, RTSTUB_ID(SlowFlattenString), { str }));
+                Jump(fastPath);
+            }
+        }
+        Bind(&notTreeString);
+        Branch(IsSlicedString(str), &isSlicedString, &exit);
+        Bind(&isSlicedString);
+        {
+            flatString_.WriteVariable(GetParentFromSlicedString(str));
+            startIndex_.WriteVariable(GetStartIndexFromSlicedString(str));
+            Jump(fastPath);
+        }
+    }
+    Bind(&exit);
+    {
+        flatString_.WriteVariable(str);
+        Jump(fastPath);
+    }
 }
 }  // namespace panda::ecmascript::kungfu

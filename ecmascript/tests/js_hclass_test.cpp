@@ -120,10 +120,12 @@ HWTEST_F_L0(JSHClassTest, HasReferenceField)
     JSHandle<JSHClass> obj3Class =
         factory->NewEcmaHClass(TaggedArray::SIZE, JSType::JS_NATIVE_POINTER, nullHandle);
     JSHandle<JSHClass> obj4Class = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::JS_OBJECT, nullHandle);
+    JSHandle<JSHClass> obj5Class = factory->NewEcmaHClass(TaggedArray::SIZE, JSType::SLICED_STRING, nullHandle);
     EXPECT_FALSE(obj1Class->HasReferenceField());
     EXPECT_TRUE(obj2Class->HasReferenceField());
     EXPECT_FALSE(obj3Class->HasReferenceField());
     EXPECT_TRUE(obj4Class->HasReferenceField());
+    EXPECT_TRUE(obj5Class->HasReferenceField());
 }
 
 HWTEST_F_L0(JSHClassTest, Clone)

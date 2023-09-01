@@ -599,6 +599,7 @@ public:
     inline GateRef BothAreString(GateRef x, GateRef y);
     inline GateRef GetObjectSizeFromHClass(GateRef hClass);
     inline GateRef IsTreeString(GateRef obj);
+    inline GateRef IsSlicedString(GateRef obj);
     inline GateRef TreeStringIsFlat(GateRef string);
     inline GateRef GetFirstFromTreeString(GateRef string);
     inline GateRef GetSecondFromTreeString(GateRef string);

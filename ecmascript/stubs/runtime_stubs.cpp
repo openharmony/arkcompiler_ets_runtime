@@ -2138,7 +2138,7 @@ DEF_RUNTIME_STUBS(ContainerRBTreeForEach)
 DEF_RUNTIME_STUBS(SlowFlattenString)
 {
     RUNTIME_STUBS_HEADER(SlowFlattenString);
-    JSHandle<TreeEcmaString> str = GetHArg<TreeEcmaString>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<EcmaString> str = GetHArg<EcmaString>(argv, argc, 0);  // 0: means the zeroth parameter
     return JSTaggedValue(EcmaStringAccessor::SlowFlatten(thread->GetEcmaVM(), str)).GetRawData();
 }
 

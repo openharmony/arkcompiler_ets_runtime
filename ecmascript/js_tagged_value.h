@@ -522,6 +522,7 @@ public:
     bool IsLineString() const;
     bool IsConstantString() const;
     bool IsTreeString() const;
+    bool IsSlicedString() const;
     bool IsStringOrSymbol() const;
     bool IsTaggedArray() const;
     bool IsDictionary() const;
