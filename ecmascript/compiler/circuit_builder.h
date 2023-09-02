@@ -553,6 +553,7 @@ public:
                        GateRef value, const char* comment = nullptr);
     GateRef GetConstPool(GateRef jsFunc);
     GateRef GetGlobalEnv();
+    GateRef GetGlobalEnvObj(GateRef env, size_t index);
     GateRef GetGlobalEnvObjHClass(GateRef env, size_t index);
     GateRef GetGlobalConstantValue(ConstantIndex index);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset);

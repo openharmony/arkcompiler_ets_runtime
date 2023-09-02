@@ -384,6 +384,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 0, 1)                 \
     V(Constant, CONSTANT, GateFlags::NONE_FLAG, 0, 0, 0)                                \
     V(RelocatableData, RELOCATABLE_DATA, GateFlags::NONE_FLAG, 0, 0, 0)                 \
+    V(GetGlobalEnvObj, GET_GLOBAL_ENV_OBJ, GateFlags::NO_WRITE, 0, 1, 1)                \
     V(GetGlobalEnvObjHClass, GET_GLOBAL_ENV_OBJ_HCLASS, GateFlags::NO_WRITE, 0, 1, 1)   \
     V(GetGlobalConstantValue, GET_GLOBAL_CONSTANT_VALUE, GateFlags::NO_WRITE, 0, 1, 0)  \
     V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, 2)                     \

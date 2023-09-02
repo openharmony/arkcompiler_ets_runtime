@@ -1815,6 +1815,7 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetGetter(stringFuncPrototype, lengthKey, lengthGetter);
 
     env->SetStringFunction(thread_, stringFunction);
+    env->SetStringPrototype(thread_, stringFuncPrototype);
 }
 
 void Builtins::InitializeStringIterator(const JSHandle<GlobalEnv> &env,

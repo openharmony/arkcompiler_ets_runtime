@@ -107,9 +107,11 @@ private:
     void LowerNamedAccess(GateRef gate, GateRef receiver, AccessMode accessMode, JSTaggedValue key, GateRef value);
     GateRef BuildNamedPropertyAccess(GateRef hir, ObjectAccessHelper accessHelper, PropertyLookupResult plr);
     void BuildNamedPropertyAccessVerifier(GateRef gate, GateRef receiver, AccessMode mode, GateRef value);
-    bool TryLowerTypedLdObjByNameForArray(GateRef gate, GateType receiverType, JSTaggedValue key);
+    bool TryLowerTypedLdObjByNameForBuiltin(GateRef gate, GateType receiverType, JSTaggedValue key);
+    bool TryLowerTypedLdObjByNameForBuiltinMethod(GateRef gate, GateType receiverType, JSTaggedValue key);
     void LowerTypedLdArrayLength(GateRef gate);
     void LowerTypedLdTypedArrayLength(GateRef gate);
+    void LowerTypedLdStringLength(GateRef gate);
 
     void LowerTypedLdObjByIndex(GateRef gate);
     void LowerTypedStObjByIndex(GateRef gate);

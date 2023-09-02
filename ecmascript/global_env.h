@@ -90,6 +90,7 @@ class JSThread;
     V(JSTaggedValue, AtomicsFunction, ATOMICS_FUNCTION_INDEX)                                       \
     V(JSTaggedValue, JsonFunction, JSON_FUNCTION_INDEX)                                             \
     V(JSTaggedValue, StringFunction, STRING_FUNCTION_INDEX)                                         \
+    V(JSTaggedValue, StringPrototype, STRING_PROTOTYPE_INDEX)                                       \
     V(JSTaggedValue, ProxyFunction, PROXY_FUNCTION_INDEX)                                           \
     V(JSTaggedValue, GeneratorFunctionFunction, GENERATOR_FUNCTION_OFFSET)                          \
     V(JSTaggedValue, GeneratorFunctionPrototype, GENERATOR_FUNCTION_PROTOTYPE_OFFSET)               \

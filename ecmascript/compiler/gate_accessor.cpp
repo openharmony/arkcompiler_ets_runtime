@@ -124,7 +124,8 @@ bool GateAccessor::HasBranchWeight(GateRef gate) const
 size_t GateAccessor::GetIndex(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::GET_GLOBAL_ENV_OBJ_HCLASS ||
-           GetOpCode(gate) == OpCode::GET_GLOBAL_CONSTANT_VALUE);
+           GetOpCode(gate) == OpCode::GET_GLOBAL_CONSTANT_VALUE ||
+           GetOpCode(gate) == OpCode::GET_GLOBAL_ENV_OBJ);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return gatePtr->GetOneParameterMetaData()->GetValue();
 }

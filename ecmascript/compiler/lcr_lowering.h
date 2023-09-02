@@ -52,6 +52,7 @@ private:
     void LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameState);
     void LowerCheckSupportAndConvert(GateRef gate, GateRef frameState);
     void LowerGetGlobalEnv(GateRef gate);
+    void LowerGetGlobalEnvObj(GateRef gate);
     void LowerGetGlobalEnvObjHClass(GateRef gate);
     void LowerGetGlobalConstantValue(GateRef gate);
     void LowerHeapAllocate(GateRef gate);
