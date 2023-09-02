@@ -59,16 +59,18 @@ public:
 
     uintptr_t GetSectionAddr(ElfSecName sec) const;
 
-    std::tuple<uint64_t, uint32_t> GetMergedRODataAddrAndSize() const
+    std::tuple<uint64_t, uint32_t, uint64_t, uint32_t> GetMergedRODataAddrAndSize(uint64_t textAddr) const
     {
-        uint64_t addr = base::MAX_UINT64_VALUE;
-        uint32_t size = 0;
-        UpdateRODataInfo(addr, size, ElfSecName::RODATA);
-        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST4);
-        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST8);
-        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST16);
-        UpdateRODataInfo(addr, size, ElfSecName::RODATA_CST32);
-        return std::make_tuple(addr, size);
+        uint64_t addrBeforeText = base::MAX_UINT64_VALUE;
+        uint32_t sizeBeforeText = 0;
+        uint64_t addrAfterText = base::MAX_UINT64_VALUE;
+        uint32_t sizeAfterText = 0;
+        for (uint8_t i = static_cast<uint8_t>(ElfSecName::RODATA); i <= static_cast<uint8_t>(ElfSecName::RODATA_CST32);
+             i++) {
+            UpdateRODataInfo(textAddr, addrBeforeText, sizeBeforeText, addrAfterText, sizeAfterText,
+                static_cast<ElfSecName>(i));
+        }
+        return std::make_tuple(addrBeforeText, sizeBeforeText, addrAfterText, sizeAfterText);
     }
 
     void RunAssembler(const CompilerLog &log, bool fastCompileMode);
@@ -94,11 +96,22 @@ private:
         return assembler_->GetSectionSize(ElfSecName::TEXT);
     }
 
-    void UpdateRODataInfo(uint64_t &addr, uint32_t &size, ElfSecName sec) const
+    void UpdateRODataInfo(uint64_t textAddr, uint64_t &addrBeforeText, uint32_t &sizeBeforeText,
+                          uint64_t &addrAfterText, uint32_t &sizeAfterText, ElfSecName sec) const
     {
         uint64_t curSectionAddr = GetSectionAddr(sec);
-        addr = ((curSectionAddr != 0) && (curSectionAddr < addr)) ? curSectionAddr : addr;
-        size += GetSectionSize(sec);
+        if (curSectionAddr == 0) {
+            ASSERT(GetSectionSize(sec) == 0);
+            return;
+        }
+        ASSERT(curSectionAddr != textAddr);
+        if (curSectionAddr < textAddr) {
+            addrBeforeText = (curSectionAddr < addrBeforeText) ? curSectionAddr : addrBeforeText;
+            sizeBeforeText += GetSectionSize(sec);
+        } else {
+            addrAfterText = (curSectionAddr < addrAfterText) ? curSectionAddr : addrAfterText;
+            sizeAfterText += GetSectionSize(sec);
+        }
     }
 
     LLVMModule *llvmModule_ {nullptr};

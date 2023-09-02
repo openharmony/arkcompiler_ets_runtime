@@ -84,7 +84,7 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
     if (mode == ArrayMode::LITERAL) {
         JSArray::Cast(*obj)->SetArrayLength(thread, normalArrayLength);
     } else {
-        JSArray::SetCapacity(thread, obj, 0, normalArrayLength);
+        JSArray::SetCapacity(thread, obj, 0, normalArrayLength, true);
     }
 
     return JSHandle<JSTaggedValue>(obj);
@@ -177,7 +177,8 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
     return result;
 }
 
-void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen)
+void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen,
+                          bool isNew)
 {
     TaggedArray *element = TaggedArray::Cast(array->GetElements().GetTaggedObject());
 
@@ -222,7 +223,7 @@ void JSArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uin
     if (JSObject::ShouldTransToDict(oldLen, newLen)) {
         JSObject::ElementsToDictionary(thread, array);
     } else if (newLen > capacity) {
-        JSObject::GrowElementsCapacity(thread, array, newLen);
+        JSObject::GrowElementsCapacity(thread, array, newLen, isNew);
     }
     JSArray::Cast(*array)->SetArrayLength(thread, newLen);
 }

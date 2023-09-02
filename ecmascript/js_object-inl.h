@@ -345,9 +345,9 @@ inline bool JSObject::ShouldTransToDict(uint32_t capacity, uint32_t index)
     return false;
 }
 
-inline uint32_t JSObject::ComputeElementCapacity(uint32_t oldCapacity)
+inline uint32_t JSObject::ComputeElementCapacity(uint32_t oldCapacity, bool isNew)
 {
-    uint32_t newCapacity = oldCapacity + (oldCapacity >> 1U);
+    uint32_t newCapacity = isNew ? oldCapacity : (oldCapacity + (oldCapacity >> 1U));
     return newCapacity > MIN_ELEMENTS_LENGTH ? newCapacity : MIN_ELEMENTS_LENGTH;
 }
 

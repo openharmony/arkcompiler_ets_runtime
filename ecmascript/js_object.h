@@ -636,7 +636,7 @@ public:
     bool UpdatePropertyInDictionary(const JSThread *thread, JSTaggedValue key, JSTaggedValue value);
     static bool ShouldTransToDict(uint32_t capacity, uint32_t index);
     static JSHandle<TaggedArray> GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,
-                                                      uint32_t capacity, bool highGrowth = false);
+                                                      uint32_t capacity, bool highGrowth = false, bool isNew = false);
 
     static JSHandle<JSTaggedValue> IterableToList(JSThread *thread, const JSHandle<JSTaggedValue> &items,
                                                   JSTaggedValue method = JSTaggedValue::Undefined());
@@ -664,7 +664,7 @@ private:
         const JSHandle<TaggedArray> &properties, uint32_t propsLen, JSTaggedValue ihcVal);
     int FindProperty(const JSHandle<JSTaggedValue> &key);
 
-    static uint32_t ComputeElementCapacity(uint32_t oldCapacity);
+    static uint32_t ComputeElementCapacity(uint32_t oldCapacity, bool isNew = false);
     static uint32_t ComputeElementCapacityHighGrowth(uint32_t oldCapacity);
     static uint32_t ComputePropertyCapacity(uint32_t oldCapacity);
 

@@ -122,12 +122,15 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
     // 2.After all functions compiled, the module sections would be fixed
     uintptr_t textAddr = GetTextAddr();
     uint32_t textSize = GetTextSize();
-    uintptr_t rodataAddr = 0;
-    uint32_t rodataSize = 0;
-    std::tie(rodataAddr, rodataSize) = GetMergedRODataAddrAndSize();
+    uintptr_t rodataAddrBeforeText = 0;
+    uint32_t rodataSizeBeforeText = 0;
+    uintptr_t rodataAddrAfterText = 0;
+    uint32_t rodataSizeAfterText = 0;
+    std::tie(rodataAddrBeforeText, rodataSizeBeforeText, rodataAddrAfterText, rodataSizeAfterText) =
+        GetMergedRODataAddrAndSize(textAddr);
     aotInfo.AlignTextSec(AOTFileInfo::PAGE_ALIGN);
-    if (rodataAddr < textAddr) {
-        aotInfo.UpdateCurTextSecOffset(rodataSize);
+    if (rodataSizeBeforeText != 0) {
+        aotInfo.UpdateCurTextSecOffset(rodataSizeBeforeText);
         aotInfo.AlignTextSec(AOTFileInfo::TEXT_SEC_ALIGN);
     }
 
@@ -154,9 +157,9 @@ void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, A
                          offset, moduleIndex, delta, funcSize, calleeSaveRegisters[i]);
     }
     aotInfo.UpdateCurTextSecOffset(textSize);
-    if (rodataAddr > textAddr) {
+    if (rodataSizeAfterText != 0) {
         aotInfo.AlignTextSec(AOTFileInfo::DATA_SEC_ALIGN);
-        aotInfo.UpdateCurTextSecOffset(rodataSize);
+        aotInfo.UpdateCurTextSecOffset(rodataSizeAfterText);
     }
 }
 
@@ -274,14 +277,17 @@ uint64_t AOTFileGenerator::RollbackTextSize(Module *module)
 {
     uint64_t textAddr = module->GetSectionAddr(ElfSecName::TEXT);
     uint32_t textSize = module->GetSectionSize(ElfSecName::TEXT);
-    uint64_t rodataAddr = 0;
-    uint32_t rodataSize = 0;
-    std::tie(rodataAddr, rodataSize) = module->GetMergedRODataAddrAndSize();
+    uint64_t rodataAddrBeforeText = 0;
+    uint32_t rodataSizeBeforeText = 0;
+    uint64_t rodataAddrAfterText = 0;
+    uint32_t rodataSizeAfterText = 0;
+    std::tie(rodataAddrBeforeText, rodataSizeBeforeText, rodataAddrAfterText, rodataSizeAfterText) =
+        module->GetMergedRODataAddrAndSize(textAddr);
     uint64_t textStart = 0;
-    if (textAddr > rodataAddr) {
+    if (rodataSizeAfterText == 0) {
         textStart = aotInfo_.GetCurTextSecOffset() - textSize;
     } else {
-        textStart = aotInfo_.GetCurTextSecOffset() - textSize - rodataSize;
+        textStart = aotInfo_.GetCurTextSecOffset() - textSize - rodataSizeAfterText;
         textStart = AlignDown(textStart, AOTFileInfo::DATA_SEC_ALIGN);
     }
     return textStart;

@@ -329,28 +329,28 @@ void ElfBuilder::MergeTextSections(std::ofstream &file,
         curSecOffset = AlignUp(curSecOffset, AOTFileInfo::PAGE_ALIGN);
         file.seekp(curSecOffset);
         auto curModuleSec = des.GetSectionsInfo();
-        uint32_t rodataSize = 0;
-        uint64_t rodataAddr = 0;
-        curInfo.rodataAfterText = 0;
-        std::tie(rodataAddr, rodataSize) = des.GetMergedRODataAddrAndSize();
-        if (rodataSize != 0 && rodataAddr < curSecAddr) {
-            file.write(reinterpret_cast<char *>(rodataAddr), rodataSize);
-            curInfo.rodataSize = rodataSize;
-            curSecOffset += rodataSize;
+        uint64_t rodataAddrBeforeText = 0;
+        uint32_t rodataSizeBeforeText = 0;
+        uint64_t rodataAddrAfterText = 0;
+        uint32_t rodataSizeAfterText = 0;
+        std::tie(rodataAddrBeforeText, rodataSizeBeforeText, rodataAddrAfterText, rodataSizeAfterText) =
+            des.GetMergedRODataAddrAndSize(curSecAddr);
+        if (rodataSizeBeforeText != 0) {
+            file.write(reinterpret_cast<char *>(rodataAddrBeforeText), rodataSizeBeforeText);
+            curInfo.rodataSizeBeforeText = rodataSizeBeforeText;
+            curSecOffset += rodataSizeBeforeText;
             curSecOffset = AlignUp(curSecOffset, AOTFileInfo::TEXT_SEC_ALIGN);
             file.seekp(curSecOffset);
         }
         file.write(reinterpret_cast<char *>(curSecAddr), curSecSize);
         curInfo.textSize = curSecSize;
         curSecOffset += curSecSize;
-        if (rodataSize != 0 && rodataAddr > curSecAddr) {
+        if (rodataSizeAfterText != 0) {
             curSecOffset = AlignUp(curSecOffset, AOTFileInfo::DATA_SEC_ALIGN);
             file.seekp(curSecOffset);
-            file.write(reinterpret_cast<char *>(rodataAddr), rodataSize);
-            curInfo.rodataSize = rodataSize;
-            curSecOffset += rodataSize;
-            // .rodata is written after .text
-            curInfo.rodataAfterText = 1;
+            file.write(reinterpret_cast<char *>(rodataAddrAfterText), rodataSizeAfterText);
+            curInfo.rodataSizeAfterText = rodataSizeAfterText;
+            curSecOffset += rodataSizeAfterText;
         }
     }
 }

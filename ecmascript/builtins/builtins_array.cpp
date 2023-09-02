@@ -74,8 +74,7 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
     // 22.1.1.2 Array(len)
     if (argc == 1) {
         // 6. Let array be ArrayCreate(0, proto).
-        uint32_t newLen = 0;
-        JSHandle<JSObject> newArrayHandle(JSArray::ArrayCreate(thread, JSTaggedNumber(newLen), newTarget));
+        JSHandle<JSObject> newArrayHandle(JSArray::ArrayCreate(thread, JSTaggedNumber(0), newTarget));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSHandle<JSTaggedValue> len = GetCallArg(argv, 0);
         // 7. If Type(len) is not Number, then
@@ -87,6 +86,7 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
         //   b. If intLen ≠ len, throw a RangeError exception.
         // 9. Let setStatus be Set(array, "length", intLen, true).
         // 10. Assert: setStatus is not an abrupt completion.
+        uint32_t newLen = 0;
         if (!len->IsNumber()) {
             JSHandle<JSTaggedValue> key0 = thread->GlobalConstants()->GetHandledZeroString();
             JSObject::CreateDataProperty(thread, newArrayHandle, key0, len);
@@ -98,7 +98,7 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
                 THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid array length", JSTaggedValue::Exception());
             }
         }
-        JSArray::SetCapacity(thread, newArrayHandle, 0, newLen);
+        JSArray::SetCapacity(thread, newArrayHandle, 0, newLen, true);
 
         // 11. Return array.
         return newArrayHandle.GetTaggedValue();
