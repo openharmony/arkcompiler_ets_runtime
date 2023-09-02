@@ -556,6 +556,7 @@ public:
     void ReplaceHirDirectly(GateRef hirGate, StateDepend replacement, GateRef value);
     void ReplaceHirAndDeleteIfException(GateRef hirGate, StateDepend replacement, GateRef value);
 
+    bool IsLoopBackUse(const UseIterator &useIt) const;
 private:
     const GateMetaData *GetMetaData(GateRef gate) const;
     UseIterator ReplaceHirIfSuccess(const UseIterator &useIt, GateRef state);

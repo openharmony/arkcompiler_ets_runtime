@@ -414,6 +414,20 @@ public:
     }
 };
 
+class RunFlowCyclesVerifierPass {
+public:
+    bool Run(PassData* data)
+    {
+        TimeScope timescope("FlowCyclesVerifierPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        bool hasFlowCycle = Verifier::RunFlowCyclesFind(data->GetCircuit());
+        if (hasFlowCycle) {
+            LOG_FULL(FATAL) << "FlowCyclesVerifierPass fail";
+            UNREACHABLE();
+        }
+        return !hasFlowCycle;
+    }
+};
+
 class VerifierPass {
 public:
     bool Run(PassData* data)

@@ -1363,4 +1363,16 @@ bool GateAccessor::IsHeapObjectFromElementsKind(GateRef gate)
 
     return false;
 }
+
+bool GateAccessor::IsLoopBackUse(const UseIterator &useIt) const
+{
+    if (IsStateIn(useIt)) {
+        return (useIt.GetIndex() == 1) && IsLoopHead(*useIt);
+    }
+    if ((IsValueSelector(*useIt) && IsValueIn(useIt)) ||
+        (IsDependSelector(*useIt) && IsDependIn(useIt))) {
+        return (useIt.GetIndex() == 2) && IsLoopHead(GetState(*useIt));
+    }
+    return false;
+}
 }  // namespace panda::ecmascript::kungfu

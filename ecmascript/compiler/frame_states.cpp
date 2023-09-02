@@ -578,14 +578,7 @@ void FrameStateBuilder::UpdateVirtualRegistersOfResume(GateRef gate)
 
 size_t FrameStateBuilder::LoopExitCount(BytecodeRegion* bb, BytecodeRegion* bbNext)
 {
-    size_t headDep = ((bbNext->numOfLoopBacks > 0) && (bbNext->loopbackBlocks.count(bb->id) == 0)) ? 1 : 0;
-    if (bbNext->loopDepth < headDep) {
-        // loop optimization disabled.
-        return 0;
-    }
-    size_t nextDep = bbNext->loopDepth - headDep;
-    ASSERT(bb->loopDepth >= nextDep);
-    return bb->loopDepth > nextDep;
+    return builder_->LoopExitCount(bb->id, bbNext->id);
 }
 
 GateRef FrameStateBuilder::TryGetLoopExitValue(GateRef value, size_t diff)
