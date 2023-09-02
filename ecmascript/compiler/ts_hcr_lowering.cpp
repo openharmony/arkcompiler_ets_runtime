@@ -742,13 +742,34 @@ bool TSHCRLowering::TryLowerTypedLdObjByNameForArray(GateRef gate, GateType rece
     return false;
 }
 
+bool TSHCRLowering::IsCreateArray(GateRef gate)
+{
+    if (acc_.GetOpCode(gate) != OpCode::JS_BYTECODE) {
+        return false;
+    }
+    EcmaOpcode ecmaop = acc_.GetByteCodeOpcode(gate);
+    switch (ecmaop) {
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM8:
+        case EcmaOpcode::CREATEEMPTYARRAY_IMM16:
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
+        case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
+            return true;
+        default:
+            return false;
+    }
+    UNREACHABLE();
+    return false;
+}
+
 void TSHCRLowering::LowerTypedLdArrayLength(GateRef gate)
 {
     AddProfiling(gate);
     GateRef array = acc_.GetValueIn(gate, 2);
     if (!Uncheck()) {
         ElementsKind kind = acc_.TryGetElementsKind(gate);
-        builder_.StableArrayCheck(array, kind, ArrayMetaDataAccessor::Mode::LOAD_LENGTH);
+        if (!IsCreateArray(array)) {
+            builder_.StableArrayCheck(array, kind, ArrayMetaDataAccessor::Mode::LOAD_LENGTH);
+        }
     }
 
     GateRef result = builder_.LoadArrayLength(array);
@@ -871,7 +892,9 @@ GateRef TSHCRLowering::LoadJSArrayByIndex(GateRef receiver, GateRef propKey, Ele
     if (!Uncheck()) {
         GateType receiverType = acc_.GetGateType(receiver);
         receiverType = tsManager_->TryNarrowUnionType(receiverType);
-        builder_.StableArrayCheck(receiver, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+        if (!IsCreateArray(receiver)) {
+            builder_.StableArrayCheck(receiver, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+        }
         GateRef length = builder_.LoadArrayLength(receiver);
         propKey = builder_.IndexCheck(receiverType, length, propKey);
     }
@@ -933,7 +956,9 @@ void TSHCRLowering::StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateR
     if (!Uncheck()) {
         GateType receiverType = acc_.GetGateType(receiver);
         receiverType = tsManager_->TryNarrowUnionType(receiverType);
-        builder_.StableArrayCheck(receiver, kind, ArrayMetaDataAccessor::Mode::STORE_ELEMENT);
+        if (!IsCreateArray(receiver)) {
+            builder_.StableArrayCheck(receiver, kind, ArrayMetaDataAccessor::Mode::STORE_ELEMENT);
+        }
         GateRef length = builder_.LoadArrayLength(receiver);
         builder_.IndexCheck(receiverType, length, propKey);
         builder_.COWArrayCheck(receiver);
