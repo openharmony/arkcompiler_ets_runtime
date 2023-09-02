@@ -388,6 +388,7 @@ public:
     uint32_t GetArraySize(GateRef gate) const;
     void SetArraySize(GateRef gate, uint32_t size);
     size_t GetVirtualRegisterIndex(GateRef gate) const;
+    bool TypedOpIsTypedArray(GateRef gate, TypedOpKind kind) const;
     TypedLoadOp GetTypedLoadOp(GateRef gate) const;
     TypedStoreOp GetTypedStoreOp(GateRef gate) const;
     MemoryType GetMemoryType(GateRef gate) const;

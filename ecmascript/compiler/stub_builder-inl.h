@@ -1140,15 +1140,12 @@ inline GateRef StubBuilder::IsConstantString(GateRef obj)
 
 inline GateRef StubBuilder::IsTreeString(GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
-    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::TREE_STRING)));
+    return env_->GetBuilder()->IsTreeString(obj);
 }
 
 inline GateRef StubBuilder::TreeStringIsFlat(GateRef string)
 {
-    GateRef second = GetSecondFromTreeString(string);
-    GateRef len = GetLengthFromString(second);
-    return Int32Equal(len, Int32(0));
+    return env_->GetBuilder()->TreeStringIsFlat(string);
 }
 
 inline GateRef StubBuilder::TaggedObjectIsBigInt(GateRef obj)
@@ -1519,14 +1516,12 @@ inline GateRef StubBuilder::GetLengthFromString(GateRef value)
 
 inline GateRef StubBuilder::GetFirstFromTreeString(GateRef string)
 {
-    GateRef offset = IntPtr(TreeEcmaString::FIRST_OFFSET);
-    return Load(VariableType::JS_POINTER(), string, offset);
+    return env_->GetBuilder()->GetFirstFromTreeString(string);
 }
 
 inline GateRef StubBuilder::GetSecondFromTreeString(GateRef string)
 {
-    GateRef offset = IntPtr(TreeEcmaString::SECOND_OFFSET);
-    return Load(VariableType::JS_POINTER(), string, offset);
+    return env_->GetBuilder()->GetSecondFromTreeString(string);
 }
 
 inline GateRef StubBuilder::GetIsAllTaggedPropFromHClass(GateRef hclass)

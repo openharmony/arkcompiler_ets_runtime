@@ -2039,4 +2039,20 @@ DEF_CALL_SIGNATURE(EndCallTimer)
     callSign->SetGCLeafFunction(true);
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
+
+DEF_CALL_SIGNATURE(GetCharFromEcmaString)
+{
+    // 3 : 3 input parameters
+    CallSignature signature("GetCharFromEcmaString", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // ecmaString
+        VariableType::INT32(),           // index
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
 }  // namespace panda::ecmascript::kungfu

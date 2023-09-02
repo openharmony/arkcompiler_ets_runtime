@@ -43,6 +43,15 @@ enum MachineType : uint8_t { // Bit width
     F64,
 };
 
+enum class TypedOpKind : uint8_t {
+    TYPED_BIN_OP,
+    TYPED_CALL_TARGET_CHECK_OP,
+    TYPED_UN_OP,
+    TYPED_JUMP_OP,
+    TYPED_STORE_OP,
+    TYPED_LOAD_OP,
+};
+
 enum class TypedBinOp : uint8_t {
     TYPED_ADD = 0,
     TYPED_SUB,
@@ -117,7 +126,7 @@ public:
     V(NotOnHeap, NOTONHEAP)                   \
     V(InconsistentHClass, INCONSISTENTHCLASS) \
     V(NotNewObj, NOTNEWOBJ)                   \
-    V(NotArrayIndex, NOTARRAYIDX)             \
+    V(NotLegalIndex, NOTLEGALIDX)             \
     V(NotIncOverflow, NOTINCOV)               \
     V(NotDecOverflow, NOTDECOV)               \
     V(NotNegativeOverflow, NOTNEGOV)          \
@@ -129,7 +138,8 @@ public:
     V(NotJSFastCallTarget, NOTJSFASTCALLTGT)  \
     V(LexVarIsHole, LEXVARISHOLE)             \
     V(ModZero, MODZERO)                       \
-    V(Int32Overflow, INT32OVERFLOW)
+    V(Int32Overflow, INT32OVERFLOW)           \
+    V(NotString, NOTSTRING)
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,
@@ -183,6 +193,7 @@ enum class TypedStoreOp : uint8_t {
     FLOAT64ARRAY_STORE_ELEMENT,
 
     TYPED_ARRAY_FIRST = INT8ARRAY_STORE_ELEMENT,
+    TYPED_ARRAY_LAST = FLOAT64ARRAY_STORE_ELEMENT,
 };
 
 enum class MemoryType : uint8_t {
@@ -204,8 +215,10 @@ enum class TypedLoadOp : uint8_t {
     UINT32ARRAY_LOAD_ELEMENT,
     FLOAT32ARRAY_LOAD_ELEMENT,
     FLOAT64ARRAY_LOAD_ELEMENT,
+    STRING_LOAD_ELEMENT,
 
     TYPED_ARRAY_FIRST = INT8ARRAY_LOAD_ELEMENT,
+    TYPED_ARRAY_LAST = FLOAT64ARRAY_LOAD_ELEMENT,
 };
 
 std::string MachineTypeToStr(MachineType machineType);
@@ -287,12 +300,15 @@ std::string MachineTypeToStr(MachineType machineType);
     V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                        \
     V(COWArrayCheck, COW_ARRAY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                            \
     V(ArrayGuardianCheck, ARRAY_GUARDIAN_CHECK, GateFlags::CHECKABLE, 1, 1, 0)                  \
+    V(EcmaStringCheck, ECMA_STRING_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                        \
+    V(FlattenStringCheck, FLATTEN_STRING_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                  \
     V(DeoptCheck, DEOPT_CHECK, GateFlags::NO_WRITE, 1, 1, 3)                                    \
     V(StoreProperty, STORE_PROPERTY, GateFlags::NONE_FLAG, 1, 1, 3)                             \
     V(StorePropertyNoBarrier, STORE_PROPERTY_NO_BARRIER, GateFlags::NONE_FLAG, 1, 1, 3)         \
     V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
     V(DefaultCase, DEFAULT_CASE, GateFlags::CONTROL, 1, 0, 0)                                   \
     V(LoadArrayLength, LOAD_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                         \
+    V(LoadStringLength, LOAD_STRING_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                       \
     V(TypedNewAllocateThis, TYPED_NEW_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)             \
     V(TypedSuperAllocateThis, TYPED_SUPER_ALLOCATE_THIS, GateFlags::CHECKABLE, 1, 1, 2)         \
     V(GetSuperConstructor, GET_SUPER_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)                 \
