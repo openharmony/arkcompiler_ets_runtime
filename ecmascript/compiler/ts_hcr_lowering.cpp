@@ -896,7 +896,7 @@ void TSHCRLowering::LowerTypedLdObjByValue(GateRef gate, bool isThis)
         result = LoadStringByIndex(receiver, propKey);
     } else if (tsManager_->IsArrayTypeKind(receiverType)) {
         AddProfiling(gate);
-        ElementsKind kind = acc_.TryGetElementsKind(gate);
+        ElementsKind kind = acc_.TryGetArrayElementsKind(gate);
         result = LoadJSArrayByIndex(receiver, propKey, kind);
     } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
         AddProfiling(gate);

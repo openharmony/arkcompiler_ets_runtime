@@ -725,6 +725,7 @@ public:
     void SetElementsKind(ElementsKind kind)
     {
         elementsKind_ = kind;
+        elementsKinds_.emplace_back(kind);
     }
 
     ElementsKind GetElementsKind() const
@@ -732,11 +733,17 @@ public:
         return elementsKind_;
     }
 
+    std::vector<ElementsKind> GetElementsKinds() const
+    {
+        return elementsKinds_;
+    }
+
 private:
     EcmaOpcode opcode_;
     uint32_t pcOffset_;
     PGOSampleType type_;
     ElementsKind elementsKind_ {ElementsKind::GENERIC};
+    std::vector<ElementsKind> elementsKinds_ {};
 };
 
 class OneParameterMetaData : public GateMetaData {
