@@ -173,6 +173,8 @@ int Main(const int argc, const char **argv)
             // target need fast compiler mode
             vmOpt.SetFastAOTCompileMode(true);
             vmOpt.SetOptLevel(3); // 3: default opt level
+            optLevel = 3;
+            vmOpt.SetEnableOptOnHeapCheck(false);
             isEnableOptOnHeapCheck = false;
         }
 
