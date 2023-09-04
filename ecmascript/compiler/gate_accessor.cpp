@@ -454,6 +454,9 @@ ElementsKind GateAccessor::TryGetArrayElementsKind(GateRef gate) const
     OpCode op = GetOpCode(gate);
     if (op == OpCode::JS_BYTECODE) {
         ElementsKind kind = gatePtr->GetJSBytecodeMetaData()->GetElementsKind();
+        if (Elements::IsGeneric(kind)) {
+            return kind;
+        }
         std::vector<ElementsKind> kinds = gatePtr->GetJSBytecodeMetaData()->GetElementsKinds();
         for (auto &x : kinds) {
             kind = Elements::MergeElementsKind(kind, x);

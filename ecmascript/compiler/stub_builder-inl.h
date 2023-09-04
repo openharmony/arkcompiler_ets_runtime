@@ -2492,7 +2492,7 @@ inline GateRef StubBuilder::LoadHCIndexFromConstPool(GateRef jsFunc, GateRef tra
     Branch(Int32Equal(*bcOffset, traceId), &matchSuccess, &afterUpdate);
     Bind(&matchSuccess);
     constantIndex = GetInt32OfTInt(GetValueFromTaggedArray(constantIndexInfo, Int32(*i + 1)));
-    Jump(&afterUpdate);
+    Jump(&afterLoop);
     Bind(&afterUpdate);
     i = Int32Add(*i, Int32(2)); // 2 : skip traceId and constantIndex
     Branch(Int32LessThan(*i, indexInfoLength), &loopEnd, &afterLoop);
