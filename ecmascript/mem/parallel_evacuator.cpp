@@ -276,6 +276,10 @@ void ParallelEvacuator::UpdateWeakReference()
     bool isFullMark = heap_->IsFullMark();
     WeakRootVisitor gcUpdateWeak = [isFullMark](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
+        if (!objectRegion) {
+            LOG_GC(ERROR) << "PartialGC updateWeakReference: region is nullptr, header is " << header;
+            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+        }
         if (objectRegion->InYoungSpaceOrCSet()) {
             if (objectRegion->InNewToNewSet()) {
                 if (objectRegion->Test(header)) {
