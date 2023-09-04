@@ -1093,7 +1093,7 @@ bool MethodTypeInfer::InferLdExternalModuleVar(GateRef gate)
         JSHandle<TaggedArray> moduleArray(thread, moduleEnvironment);
         JSTaggedValue resolvedBinding = moduleArray->Get(index);
         // if resolvedBinding.IsHole(), means that importname is * or it belongs to empty Aot module.
-        if (resolvedBinding.IsHole()) {
+        if (!resolvedBinding.IsResolvedIndexBinding()) {
             return UpdateType(gate, GateType::AnyType());
         }
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());

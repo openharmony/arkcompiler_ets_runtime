@@ -657,7 +657,7 @@ void BytecodeInfoCollector::CollectRecordImportInfo(const CString &recordName)
     for (size_t index = 0; index < length; index++) {
         JSTaggedValue resolvedBinding = moduleArray->Get(index);
         // if resolvedBinding.IsHole(), means that importname is * or it belongs to empty Aot module.
-        if (resolvedBinding.IsHole()) {
+        if (!resolvedBinding.IsResolvedIndexBinding()) {
             continue;
         }
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
