@@ -241,3 +241,8 @@ try {
 } catch (error) {
     print(error)
 }
+
+let arr12 = new Uint8Array(256).fill(255);
+print(arr12[0] == 255);
+print(arr12[123] == 255);
+print(arr12[255] == 255);

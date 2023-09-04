@@ -822,6 +822,13 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
             return thisObjHandle.GetTaggedValue();
         }
     }
+    if (thisHandle->IsTypedArray()) {
+        bool result = JSTypedArray::FastTypedArrayFill(thread, thisHandle, value, start, end);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (result) {
+            return thisObjHandle.GetTaggedValue();
+        }
+    }
     int64_t k = start;
     while (k < end) {
         key.Update(JSTaggedValue(k));

@@ -728,4 +728,41 @@ JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedA
 
     return arrayBuffer.GetTaggedValue();
 }
+
+bool JSTypedArray::FastTypedArrayFill(JSThread *thread, const JSHandle<JSTaggedValue> &typedArray,
+                                      const JSHandle<JSTaggedValue> &value, uint32_t start, uint32_t end)
+{
+    // Assert: O is an Object that has [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and
+    // [[TypedArrayName]] internal slots.
+    ASSERT(typedArray->IsTypedArray());
+    // If O.[[ContentType]] is BigInt, let numValue be ? ToBigInt(value).
+    JSHandle<JSTypedArray> typedArrayObj = JSHandle<JSTypedArray>::Cast(typedArray);
+    if (UNLIKELY(typedArrayObj->GetContentType() == ContentType::BigInt || value->IsECMAObject())) {
+        return false;
+    }
+    JSTaggedNumber numValue = JSTypedArray::NonEcmaObjectToNumber(thread, value.GetTaggedValue());
+    // ReturnIfAbrupt(numValue).
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, true);
+    JSTaggedValue buffer = typedArrayObj->GetViewedArrayBufferOrByteArray();
+    // If ℝ(index) < 0 or ℝ(index) ≥ O.[[ArrayLength]], return false.
+    uint32_t arrLen = typedArrayObj->GetArrayLength();
+    // Let offset be the value of O’s [[ByteOffset]] internal slot.
+    uint32_t offset = typedArrayObj->GetByteOffset();
+    // Let arrayTypeName be the String value of O’s [[TypedArrayName]]
+    // Let elementSize be the Number value of the Element Size value specified in Table 49 for arrayTypeName.
+    JSType jsType = typedArrayObj->GetClass()->GetObjectType();
+    uint32_t elementSize = TypedArrayHelper::GetElementSize(jsType);
+    // Let elementType be the String value of the Element Type value in Table 49 for arrayTypeName.
+    DataViewType elementType = TypedArrayHelper::GetType(jsType);
+    uint64_t byteIndex = 0;
+    uint32_t k = start;
+    while (k < end && k < arrLen) {
+        // Let indexedPosition = (index × elementSize) + offset.
+        byteIndex = k * elementSize + offset;
+        // Perform SetValueInBuffer(buffer, indexedPosition, elementType, numValue).
+        BuiltinsArrayBuffer::FastSetValueInBuffer(thread, buffer, byteIndex, elementType, numValue.GetNumber(), true);
+        k++;
+    }
+    return true;
+}
 }  // namespace panda::ecmascript
