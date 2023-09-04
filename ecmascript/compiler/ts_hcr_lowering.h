@@ -152,6 +152,7 @@ private:
     GateRef LoadTypedArrayByIndex(GateRef receiver, GateRef propKey);
     void StoreJSArrayByIndex(GateRef receiver, GateRef propKey, GateRef value, ElementsKind kind);
     void StoreTypedArrayByIndex(GateRef receiver, GateRef propKey, GateRef value);
+    bool IsCreateArray(GateRef receiver);
 
     // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed,
     // or the gate is constant and no need to check.
