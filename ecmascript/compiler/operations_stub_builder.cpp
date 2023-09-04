@@ -28,7 +28,7 @@ GateRef OperationsStubBuilder::Equal(GateRef glue, GateRef left, GateRef right, 
     Label isHole(env);
     Label notHole(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    result = FastEqual(left, right, callback);
+    result = FastEqual(glue, left, right, callback);
     Branch(TaggedIsHole(*result), &isHole, &notHole);
     Bind(&isHole);
     {
@@ -66,7 +66,7 @@ GateRef OperationsStubBuilder::NotEqual(GateRef glue, GateRef left, GateRef righ
     Label exit(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    result = FastEqual(left, right, callback);
+    result = FastEqual(glue, left, right, callback);
     Label isHole(env);
     Label notHole(env);
     Branch(TaggedIsHole(*result), &isHole, &notHole);

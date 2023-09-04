@@ -4133,7 +4133,7 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, 
     return ret;
 }
 
-GateRef StubBuilder::FastEqual(GateRef left, GateRef right, ProfileOperation callback)
+GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -4257,6 +4257,23 @@ GateRef StubBuilder::FastEqual(GateRef left, GateRef right, ProfileOperation cal
                 }
                 Bind(&leftNotBoolOrRightNotSpecial);
                 {
+                    Label bothString(env);
+                    Label eitherNotString(env);
+                    Branch(BothAreString(left, right), &bothString, &eitherNotString);
+                    Bind(&bothString);
+                    {
+                        callback.ProfileOpType(Int32(PGOSampleType::StringType()));
+                        Label stringEqual(env);
+                        Label stringNotEqual(env);
+                        Branch(FastStringEqual(glue, left, right), &stringEqual, &stringNotEqual);
+                        Bind(&stringEqual);
+                        result = TaggedTrue();
+                        Jump(&exit);
+                        Bind(&stringNotEqual);
+                        result = TaggedFalse();
+                        Jump(&exit);
+                    }
+                    Bind(&eitherNotString);
                     callback.ProfileOpType(Int32(PGOSampleType::AnyType()));
                     Jump(&exit);
                 }

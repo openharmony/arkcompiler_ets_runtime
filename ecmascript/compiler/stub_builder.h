@@ -578,7 +578,7 @@ public:
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
 
     // fast path
-    GateRef FastEqual(GateRef left, GateRef right, ProfileOperation callback);
+    GateRef FastEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastStrictEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastStringEqual(GateRef glue, GateRef left, GateRef right);
     GateRef FastMod(GateRef gule, GateRef left, GateRef right, ProfileOperation callback);
