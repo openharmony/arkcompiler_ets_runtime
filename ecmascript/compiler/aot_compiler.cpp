@@ -169,7 +169,7 @@ int Main(const int argc, const char **argv)
         bool isEnableOptOnHeapCheck = runtimeOptions.IsEnableOptOnHeapCheck();
 
         if (runtimeOptions.IsTargetCompilerMode()) {
-            auto vmOpt = vm->GetJSOptions();
+            JSRuntimeOptions &vmOpt = vm->GetJSOptions();
             // target need fast compiler mode
             vmOpt.SetFastAOTCompileMode(true);
             vmOpt.SetOptLevel(3); // 3: default opt level
