@@ -190,7 +190,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         CallRuntime(glue, RTSTUB_ID(MethodExit), {});                                             \
         Jump(&isDebugModeFalse);                                                                  \
     }                                                                                             \
-    Bind(&isDebugModeFalse);
+    Bind(&isDebugModeFalse)
 
 template <bool needPrint>
 void InterpreterStubBuilder::DebugPrintInstruction()
