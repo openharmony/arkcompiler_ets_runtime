@@ -1086,7 +1086,7 @@ void TSHCRLowering::LowerTypedStObjByValue(GateRef gate)
 
     if (tsManager_->IsArrayTypeKind(receiverType)) {
         AddProfiling(gate);
-        ElementsKind kind = acc_.TryGetElementsKind(gate);
+        ElementsKind kind = acc_.TryGetArrayElementsKind(gate);
         StoreJSArrayByIndex(receiver, propKey, value, kind);
     } else if (tsManager_->IsValidTypedArrayType(receiverType)) {
         AddProfiling(gate);

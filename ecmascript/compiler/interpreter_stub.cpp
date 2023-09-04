@@ -3898,7 +3898,7 @@ DECLARE_ASM_HANDLER(HandleDeprecatedCreatearraywithbufferPrefImm16)
 {
     GateRef imm = ZExtInt16ToInt32(ReadInst16_1(pc));
     GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
-    GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
 
     NewObjectStubBuilder newBuilder(this);
     GateRef res = newBuilder.CreateArrayWithBuffer(glue, imm, currentFunc, pc,
