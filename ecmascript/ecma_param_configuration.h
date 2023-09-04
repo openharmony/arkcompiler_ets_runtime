@@ -62,7 +62,7 @@ public:
             minAllocLimitGrowingStep_ = 2_MB;
             minGrowingStep_ = 4_MB;
             maxStackSize_ = 128_KB;
-            maxJSSerializerSize_ = 16_MB;
+            maxJSSerializerSize_ = 8_MB;
         } else if (maxHeapSize_ < HIGH_MEMORY) { // 128_MB ~ 256_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 8_MB;
@@ -77,7 +77,7 @@ public:
             minAllocLimitGrowingStep_ = 4_MB;
             minGrowingStep_ = 8_MB;
             maxStackSize_ = 128_KB;
-            maxJSSerializerSize_ = 32_MB;
+            maxJSSerializerSize_ = 16_MB;
         }  else { // 256_MB ~ 384_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 16_MB;
@@ -92,7 +92,7 @@ public:
             minAllocLimitGrowingStep_ = 8_MB;
             minGrowingStep_ = 16_MB;
             maxStackSize_ = 128_KB;
-            maxJSSerializerSize_ = 32_MB;
+            maxJSSerializerSize_ = 16_MB;
         }
     }
 
