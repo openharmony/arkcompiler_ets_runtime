@@ -620,7 +620,7 @@ public:
                 ClassLiteral::Cast(object)->VisitRangeSlot(visitor);
                 break;
             default:
-                LOG_ECMA(FATAL) << "this branch is unreachable";
+                LOG_ECMA(FATAL) << "this branch is unreachable, type: " << static_cast<size_t>(type);
                 UNREACHABLE();
         }
     }

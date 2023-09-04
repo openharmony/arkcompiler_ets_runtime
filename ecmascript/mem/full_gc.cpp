@@ -131,6 +131,10 @@ void FullGC::Sweep()
     auto stringTable = heap_->GetEcmaVM()->GetEcmaStringTable();
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(header);
+        if (!objectRegion) {
+            LOG_GC(ERROR) << "FullGC updateWeakReference: region is nullptr, header is " << header;
+            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+        }
         if (!HasEvacuated(objectRegion)) {
             if (objectRegion->Test(header)) {
                 return header;
