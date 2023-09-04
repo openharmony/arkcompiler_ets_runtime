@@ -27,5 +27,8 @@ bar
 [trace] aot inline function name: foo5@ts_multi_inline_max_call caller function name: foo@ts_multi_inline_max_call
 [trace] aot inline function name: bar@ts_multi_inline_max_call caller function name: foo5@ts_multi_inline_max_call
 bar
+[trace] aot inline function name: foo6@ts_multi_inline_max_call caller function name: foo@ts_multi_inline_max_call
 [trace] aot inline function name: bar@ts_multi_inline_max_call caller function name: foo6@ts_multi_inline_max_call
+bar
+[trace] aot inline function name: bar@ts_multi_inline_max_call caller function name: foo7@ts_multi_inline_max_call
 bar

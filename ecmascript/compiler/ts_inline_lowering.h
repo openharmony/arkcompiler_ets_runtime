@@ -107,7 +107,7 @@ private:
 
 class TSInlineLowering {
 public:
-    static constexpr size_t MAX_INLINE_CALL_ALLOWED = 5;
+    static constexpr size_t MAX_INLINE_CALL_ALLOWED = 6;
     TSInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string& name,
                      NativeAreaAllocator* nativeAreaAllocator, PassOptions *options, uint32_t methodOffset)
         : circuit_(circuit),
