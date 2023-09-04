@@ -396,6 +396,21 @@ public:
     void JoinStackPopFastPath(JSHandle<JSTaggedValue> receiver);
     void JoinStackPop(JSHandle<JSTaggedValue> receiver);
 
+    void SetJsonStringifyCache(size_t index, CVector<std::pair<CString, int>> &value)
+    {
+        stringifyCache_[index] = value;
+    }
+
+    CVector<std::pair<CString, int>> GetJsonStringifyCache(size_t index)
+    {
+        return stringifyCache_[index];
+    }
+
+    bool IsAotEntry()
+    {
+        return isAotEntry_;
+    }
+
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
@@ -475,6 +490,10 @@ private:
     // Join Stack
     static constexpr uint32_t MIN_JOIN_STACK_SIZE = 2;
     CVector<JSTaggedValue> joinStack_ {JSTaggedValue::Hole(), JSTaggedValue::Hole()};
+    // json stringify cache
+    static constexpr uint32_t STRINGIFY_CACHE_SIZE = 64;
+    std::array<CVector<std::pair<CString, int>>, STRINGIFY_CACHE_SIZE> stringifyCache_ {};
+    bool isAotEntry_ { false };
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

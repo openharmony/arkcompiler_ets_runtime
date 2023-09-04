@@ -41,6 +41,7 @@ void GlobalEnv::Init(JSThread *thread)
     stringTable->InternEmptyString(EcmaString::Cast(emptyStr.GetTaggedObject()));
     SetTemplateMap(thread, TemplateMap::Create(thread));
     SetObjectLiteralHClassCache(thread, JSTaggedValue::Hole());
+    SetJsonObjectHclassCache(thread, JSTaggedValue::Hole());
 }
 JSHandle<JSTaggedValue> GlobalEnv::GetSymbol(JSThread *thread, const JSHandle<JSTaggedValue> &string)
 {

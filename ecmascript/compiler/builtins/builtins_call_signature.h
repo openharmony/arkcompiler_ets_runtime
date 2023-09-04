@@ -82,7 +82,8 @@ namespace panda::ecmascript::kungfu {
     V(ABS)                                          \
     V(FLOOR)  /* math list end */                   \
     V(LocaleCompare)                                \
-    V(SORT)
+    V(SORT)                                         \
+    V(STRINGIFY)
 
 class BuiltinsStubCSigns {
 public:
@@ -97,7 +98,7 @@ public:
 #undef DEF_STUB_ID
         BUILTINS_CONSTRUCTOR_STUB_FIRST = BooleanConstructor,
         TYPED_BUILTINS_FIRST = SQRT,
-        TYPED_BUILTINS_LAST = SORT,
+        TYPED_BUILTINS_LAST = STRINGIFY,
         TYPED_BUILTINS_MATH_FIRST = SQRT,
         TYPED_BUILTINS_MATH_LAST = FLOOR,
         INVALID = 0xFF,
@@ -167,6 +168,8 @@ public:
                 return ConstantIndex::LOCALE_COMPARE_FUNCTION_INDEX;
             case BuiltinsStubCSigns::ID::SORT:
                 return ConstantIndex::ARRAY_SORT_FUNCTION_INDEX;
+            case BuiltinsStubCSigns::ID::STRINGIFY:
+                return ConstantIndex::JSON_STRINGIFY_FUNCTION_INDEX;
             default:
                 LOG_COMPILER(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -185,6 +188,7 @@ public:
             {"floor", FLOOR},
             {"localeCompare", LocaleCompare},
             {"sort", SORT},
+            {"stringify", STRINGIFY},
         };
         if (str2BuiltinId.count(idStr) > 0) {
             return str2BuiltinId.at(idStr);

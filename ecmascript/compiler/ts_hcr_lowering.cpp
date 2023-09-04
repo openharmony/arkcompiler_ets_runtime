@@ -1460,16 +1460,24 @@ void TSHCRLowering::LowerTypedCallthis1(GateRef gate)
     GateType a0Type = acc_.GetGateType(a0);
     GateRef func = acc_.GetValueIn(gate, 2); // 2:function
     BuiltinsStubCSigns::ID id = GetBuiltinId(BuiltinTypeId::MATH, func);
-    if (IS_TYPED_BUILTINS_MATH_ID(id) && a0Type.IsNumberType()) {
-        AddProfiling(gate);
-        SpeculateCallBuiltin(gate, func, { a0 }, id, false);
-    } else {
-        if (!CanOptimizeAsFastCall(func)) {
-            return;
+    if (id == BuiltinsStubCSigns::ID::NONE) {
+        id = GetBuiltinId(BuiltinTypeId::JSON, func);
+        if (id != BuiltinsStubCSigns::ID::NONE) {
+            AddProfiling(gate);
+            SpeculateCallBuiltin(gate, func, { a0 }, id, true);
         }
-        GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
-            EcmaOpcode::CALLTHIS1_IMM8_V8_V8));
-        LowerTypedThisCall(gate, func, actualArgc, 1);
+    } else {
+        if (a0Type.IsNumberType()) {
+            AddProfiling(gate);
+            SpeculateCallBuiltin(gate, func, { a0 }, id, false);
+        } else {
+            if (!CanOptimizeAsFastCall(func)) {
+                return;
+            }
+            GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
+                EcmaOpcode::CALLTHIS1_IMM8_V8_V8));
+            LowerTypedThisCall(gate, func, actualArgc, 1);
+        }
     }
 }
 

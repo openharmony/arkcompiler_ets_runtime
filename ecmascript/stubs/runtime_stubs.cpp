@@ -19,6 +19,7 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/accessor_data.h"
+#include "ecmascript/base/fast_json_stringifier.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
@@ -2595,6 +2596,15 @@ void RuntimeStubs::EndCallTimer(uintptr_t argGlue, JSTaggedType func)
     }
     auto callTimer = thread->GetEcmaVM()->GetCallTimer();
     callTimer->StopCount(method);
+}
+
+DEF_RUNTIME_STUBS(FastStringify)
+{
+    RUNTIME_STUBS_HEADER(FastStringify);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);
+    base::FastJsonStringifier fastJsonStringifier(thread);
+    JSHandle<JSTaggedValue> result = fastJsonStringifier.Stringify(value);
+    return result.GetTaggedValue().GetRawData();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

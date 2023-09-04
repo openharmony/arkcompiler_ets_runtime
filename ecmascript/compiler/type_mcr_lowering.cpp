@@ -1260,8 +1260,13 @@ void TypeMCRLowering::LowerCallTargetCheck(GateRef gate)
 
     BuiltinLowering lowering(circuit_);
     GateRef funcheck = lowering.LowerCallTargetCheck(&env, gate);
-    GateRef check = lowering.CheckPara(gate, funcheck);
-    builder_.DeoptCheck(check, frameState, DeoptType::NOTCALLTGT);
+    GateRef constId = acc_.GetValueIn(gate, 1); // 1: stub id
+    if (acc_.GetConstantValue(constId) != static_cast<uint64_t>(BuiltinsStubCSigns::ID::STRINGIFY)) {
+        GateRef check = lowering.CheckPara(gate, funcheck);
+        builder_.DeoptCheck(check, frameState, DeoptType::NOTCALLTGT);
+    } else {
+        builder_.DeoptCheck(funcheck, frameState, DeoptType::NOTCALLTGT);
+    }
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }

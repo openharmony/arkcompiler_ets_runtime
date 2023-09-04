@@ -42,6 +42,7 @@ private:
     GateRef LowerCallRuntime(GateRef glue, GateRef gate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
     void ReplaceHirWithValue(GateRef hirGate, GateRef value, bool noThrow = false);
+    void LowerTypedStringify(GateRef gate);
 
     Circuit *circuit_ {nullptr};
     CircuitBuilder builder_;

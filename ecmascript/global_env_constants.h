@@ -158,7 +158,8 @@ class ObjectFactory;
     V(JSTaggedValue, MathAbsFunction, MATH_ABS_FUNCTION_INDEX, ecma_roots_special)                     \
     V(JSTaggedValue, MathFloorFunction, MATH_FLOOR_FUNCTION_INDEX, ecma_roots_special)                 \
     V(JSTaggedValue, LocaleCompareFunction, LOCALE_COMPARE_FUNCTION_INDEX, ecma_roots_special)         \
-    V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_special)
+    V(JSTaggedValue, ArraySortFunction, ARRAY_SORT_FUNCTION_INDEX, ecma_roots_special)                 \
+    V(JSTaggedValue, JsonStringifyFunction, JSON_STRINGIFY_FUNCTION_INDEX, ecma_roots_special)
 
 /* GlobalConstant */
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

@@ -213,6 +213,10 @@ EcmaContext::~EcmaContext()
     }
     // clear join stack
     joinStack_.clear();
+
+    for (auto v : stringifyCache_) {
+        v.clear();
+    }
 }
 
 JSTaggedValue EcmaContext::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
@@ -323,6 +327,7 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
     RequireManager::InitializeCommonJS(thread_, cjsInfo);
     if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
         EcmaRuntimeStatScope runtimeStateScope(vm_);
+        isAotEntry_ = true;
         InvokeEcmaAotEntrypoint(func, thisArg, jsPandaFile, entryPoint, &cjsInfo);
     } else {
         // Execute main function
