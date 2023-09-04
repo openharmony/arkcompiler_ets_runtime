@@ -39,6 +39,9 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
         case BUILTINS_STUB_ID(SORT):
             LowerTypedArraySort(gate);
             break;
+        case BUILTINS_STUB_ID(STRINGIFY):
+            LowerTypedStringify(gate);
+            break;
         default:
             break;
     }
@@ -286,5 +289,15 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
             UNREACHABLE();
         }
     }
+}
+
+void BuiltinLowering::LowerTypedStringify(GateRef gate)
+{
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef value = acc_.GetValueIn(gate, 0);
+    std::vector<GateRef> args;
+    args.emplace_back(value);
+    GateRef result = LowerCallRuntime(glue, gate, RTSTUB_ID(FastStringify), args);
+    ReplaceHirWithValue(gate, result);
 }
 }  // namespace panda::ecmascript::kungfu

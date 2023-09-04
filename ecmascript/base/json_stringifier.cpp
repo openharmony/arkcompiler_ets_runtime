@@ -15,11 +15,8 @@
 
 #include "ecmascript/base/json_stringifier.h"
 
-#include <algorithm>
-#include <iomanip>
-#include <sstream>
-
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/base/json_helper.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/ecma_runtime_call_info.h"
@@ -36,109 +33,7 @@
 #include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript::base {
-constexpr unsigned char CODE_SPACE = 0x20;
 constexpr int GAP_MAX_LEN = 10;
-constexpr int FOUR_HEX = 4;
-constexpr char ZERO_FIRST = static_cast<char>(0xc0); // \u0000 => c0 80
-
-bool JsonStringifier::IsFastValueToQuotedString(const char *value)
-{
-    if (strpbrk(value, "\"\\\b\f\n\r\t") != nullptr) {
-        return false;
-    }
-    while (*value != '\0') {
-        if ((*value > 0 && *value < CODE_SPACE) || *value == ZERO_FIRST) {
-            return false;
-        }
-        value++;
-    }
-    return true;
-}
-
-CString JsonStringifier::ValueToQuotedString(CString str)
-{
-    CString product;
-    const char *value = str.c_str();
-    // fast mode
-    bool isFast = IsFastValueToQuotedString(value);
-    if (isFast) {
-        product += "\"";
-        product += str;
-        product += "\"";
-        return product;
-    }
-    // 1. Let product be code unit 0x0022 (QUOTATION MARK).
-    product += "\"";
-    // 2. For each code unit C in value
-    for (const char *c = value; *c != 0; ++c) {
-        switch (*c) {
-            /*
-             * a. If C is 0x0022 (QUOTATION MARK) or 0x005C (REVERSE SOLIDUS), then
-             * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
-             * ii. Let product be the concatenation of product and C.
-             */
-            case '\"':
-                product += "\\\"";
-                break;
-            case '\\':
-                product += "\\\\";
-                break;
-            /*
-             * b. Else if C is 0x0008 (BACKSPACE), 0x000C (FORM FEED), 0x000A (LINE FEED), 0x000D (CARRIAGE RETURN),
-             * or 0x000B (LINE TABULATION), then
-             * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
-             * ii. Let abbrev be the String value corresponding to the value of C as follows:
-             * BACKSPACE "b"
-             * FORM FEED (FF) "f"
-             * LINE FEED (LF) "n"
-             * CARRIAGE RETURN (CR) "r"
-             * LINE TABULATION "t"
-             * iii. Let product be the concatenation of product and abbrev.
-             */
-            case '\b':
-                product += "\\b";
-                break;
-            case '\f':
-                product += "\\f";
-                break;
-            case '\n':
-                product += "\\n";
-                break;
-            case '\r':
-                product += "\\r";
-                break;
-            case '\t':
-                product += "\\t";
-                break;
-            case ZERO_FIRST:
-                product += "\\u0000";
-                ++c;
-                break;
-            default:
-                // c. Else if C has a code unit value less than 0x0020 (SPACE), then
-                if (*c > 0 && *c < CODE_SPACE) {
-                    /*
-                     * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
-                     * ii. Let product be the concatenation of product and "u".
-                     * iii. Let hex be the string result of converting the numeric code unit value of C to a String of
-                     * four hexadecimal digits. Alphabetic hexadecimal digits are presented as lowercase Latin letters.
-                     * iv. Let product be the concatenation of product and hex.
-                     */
-                    std::ostringstream oss;
-                    oss << "\\u" << std::hex << std::setfill('0') << std::setw(FOUR_HEX) << static_cast<int>(*c);
-                    product += oss.str();
-                } else {
-                    // Else,
-                    // i. Let product be the concatenation of product and C.
-                    product += *c;
-                }
-        }
-    }
-    // 3. Let product be the concatenation of product and code unit 0x0022 (QUOTATION MARK).
-    product += "\"";
-    // Return product.
-    return product;
-}
 
 JSHandle<JSTaggedValue> JsonStringifier::Stringify(const JSHandle<JSTaggedValue> &value,
                                                    const JSHandle<JSTaggedValue> &replacer,
@@ -374,7 +269,7 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
                 auto string = JSHandle<EcmaString>(thread_,
                     EcmaStringAccessor::Flatten(thread_->GetEcmaVM(), strHandle));
                 CString str = ConvertToString(*string, StringConvertedUsage::LOGICOPERATION);
-                str = ValueToQuotedString(str);
+                str = JsonHelper::ValueToQuotedString(str);
                 result_ += str;
                 return tagValue;
             }
@@ -428,7 +323,7 @@ void JsonStringifier::SerializeObjectKey(const JSHandle<JSTaggedValue> &key, boo
         str = ConvertToString(*JSTaggedValue::ToString(thread_, key), StringConvertedUsage::LOGICOPERATION);
     }
     result_ += stepBegin;
-    str = ValueToQuotedString(str);
+    str = JsonHelper::ValueToQuotedString(str);
     result_ += str;
     result_ += ":";
     result_ += stepEnd;
@@ -649,7 +544,7 @@ void JsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primi
         auto priStr = JSTaggedValue::ToString(thread_, primitiveRef);
         RETURN_IF_ABRUPT_COMPLETION(thread_);
         CString str = ConvertToString(*priStr, StringConvertedUsage::LOGICOPERATION);
-        str = ValueToQuotedString(str);
+        str = JsonHelper::ValueToQuotedString(str);
         result_ += str;
     } else if (primitive.IsNumber()) {
         auto priNum = JSTaggedValue::ToNumber(thread_, primitiveRef);
@@ -694,7 +589,7 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSH
                 }
             }
         }
-        std::sort(sortArr.begin(), sortArr.end(), CompareNumber);
+        std::sort(sortArr.begin(), sortArr.end(), JsonHelper::CompareNumber);
         for (const auto &entry : sortArr) {
             JSTaggedValue entryKey = entry.GetTaggedValue();
             handleKey_.Update(entryKey);
@@ -795,7 +690,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
             std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> pair(JSHandle<JSTaggedValue>(thread_, key), attr);
             sortArr.emplace_back(pair);
         }
-        std::sort(sortArr.begin(), sortArr.end(), CompareKey);
+        std::sort(sortArr.begin(), sortArr.end(), JsonHelper::CompareKey);
         for (const auto &entry : sortArr) {
             JSTaggedValue entryKey = entry.first.GetTaggedValue();
             handleKey_.Update(entryKey);
@@ -826,7 +721,7 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
         std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> pair(JSHandle<JSTaggedValue>(thread_, key), attr);
         sortArr.emplace_back(pair);
     }
-    std::sort(sortArr.begin(), sortArr.end(), CompareKey);
+    std::sort(sortArr.begin(), sortArr.end(), JsonHelper::CompareKey);
     for (const auto &entry : sortArr) {
         JSTaggedValue entryKey = entry.first.GetTaggedValue();
         handleKey_.Update(entryKey);
