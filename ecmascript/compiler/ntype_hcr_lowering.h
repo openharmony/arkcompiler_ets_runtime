@@ -20,29 +20,29 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
-class NTypeHCRLowering : public PassVisitor {
+class NTypeHCRLowering {
 public:
-    NTypeHCRLowering(Circuit *circuit, RPOVisitor *visitor, PassContext *ctx, TSManager *tsManager,
-                    const MethodLiteral *methodLiteral, const CString &recordName, Chunk *chunk)
-        : PassVisitor(circuit, chunk, visitor),
-          circuit_(circuit),
+    NTypeHCRLowering(Circuit *circuit, PassContext *ctx, TSManager *tsManager, const MethodLiteral *methodLiteral,
+                     const CString &recordName, bool enableLog, const std::string& name)
+        : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
           recordName_(recordName),
           tsManager_(tsManager),
           jsPandaFile_(ctx->GetJSPandaFile()),
           methodLiteral_(methodLiteral),
+          enableLog_(enableLog),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
+          methodName_(name),
           glue_(acc_.GetGlueFromArgList()) {}
 
     ~NTypeHCRLowering() = default;
 
-    GateRef VisitGate(GateRef gate) override;
+    void RunNTypeHCRLowering();
 private:
     void Lower(GateRef gate);
     void LowerNTypedCreateEmptyArray(GateRef gate);
@@ -54,9 +54,19 @@ private:
     void LowerThrowUndefinedIfHoleWithName(GateRef gate);
     uint64_t GetBcAbsoluteOffset(GateRef gate) const;
 
+    bool IsLogEnabled() const
+    {
+        return enableLog_;
+    }
+
     bool IsProfiling() const
     {
         return profiling_;
+    }
+
+    const std::string& GetMethodName() const
+    {
+        return methodName_;
     }
 
     bool IsTraceBC() const
@@ -72,8 +82,10 @@ private:
     TSManager *tsManager_ {nullptr};
     const JSPandaFile *jsPandaFile_ {nullptr};
     const MethodLiteral *methodLiteral_ {nullptr};
+    bool enableLog_ {false};
     bool profiling_ {false};
     bool traceBc_ {false};
+    std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu
