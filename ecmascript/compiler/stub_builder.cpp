@@ -17,6 +17,7 @@
 
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 #include "ecmascript/compiler/llvm_ir_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -1312,6 +1313,7 @@ GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
     DEFVARIABLE(result, VariableType::INT32(), Int32(-1));
     Label greatThanZero(env);
     Label inRange(env);
+    Label flattenFastPath(env);
     auto len = GetLengthFromString(string);
     Branch(Int32Equal(len, Int32(0)), &exit, &greatThanZero);
     Bind(&greatThanZero);
@@ -1323,8 +1325,12 @@ GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
         Branch(isUtf16String, &exit, &isUtf8);
         Bind(&isUtf8);
         {
-            GateRef dataUtf8 = GetNormalStringData(FlattenString(glue, string));
             DEFVARIABLE(c, VariableType::INT32(), Int32(0));
+            FlatStringStubBuilder thisFlat(this);
+            thisFlat.FlattenString(glue, string, &flattenFastPath);
+            Bind(&flattenFastPath);
+            StringInfoGateRef stringInfoGate(&thisFlat);
+            GateRef dataUtf8 = GetNormalStringData(stringInfoGate);
             c = ZExtInt8ToInt32(Load(VariableType::INT8(), dataUtf8));
             Label isDigitZero(env);
             Label notDigitZero(env);
@@ -5712,6 +5718,7 @@ GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
 
     Label greatThanZero(env);
     Label inRange(env);
+    Label flattenFastPath(env);
     auto len = GetLengthFromString(key);
     Branch(Int32Equal(len, Int32(0)), &exit, &greatThanZero);
     Bind(&greatThanZero);
@@ -5719,10 +5726,14 @@ GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
     Bind(&inRange);
     {
         Label isUtf8(env);
+        DEFVARIABLE(c, VariableType::INT32(), Int32(0));
         Branch(IsUtf16String(key), &exit, &isUtf8);
         Bind(&isUtf8);
-        GateRef data = GetNormalStringData(FlattenString(glue, key));
-        DEFVARIABLE(c, VariableType::INT32(), Int32(0));
+        FlatStringStubBuilder thisFlat(this);
+        thisFlat.FlattenString(glue, key, &flattenFastPath);
+        Bind(&flattenFastPath);
+        StringInfoGateRef stringInfoGate(&thisFlat);
+        GateRef data = GetNormalStringData(stringInfoGate);
         c = ZExtInt8ToInt32(Load(VariableType::INT8(), data));
         Label isDigitZero(env);
         Label notDigitZero(env);
@@ -5937,38 +5948,7 @@ void StubBuilder::Assert(int messageId, int line, GateRef glue, GateRef conditio
     }
 }
 
-GateRef StubBuilder::FlattenString(GateRef glue, GateRef str)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::JS_POINTER(), str);
-    Label isTreeString(env);
-    Branch(IsTreeString(str), &isTreeString, &exit);
-    Bind(&isTreeString);
-    {
-        Label isFlat(env);
-        Label notFlat(env);
-        Branch(TreeStringIsFlat(str), &isFlat, &notFlat);
-        Bind(&isFlat);
-        {
-            result = GetFirstFromTreeString(str);
-            Jump(&exit);
-        }
-        Bind(&notFlat);
-        {
-            result = CallRuntime(glue, RTSTUB_ID(SlowFlattenString), { str });
-            Jump(&exit);
-        }
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
-GateRef StubBuilder::GetNormalStringData(GateRef str)
+GateRef StubBuilder::GetNormalStringData(const StringInfoGateRef &stringInfoGate)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -5976,52 +5956,36 @@ GateRef StubBuilder::GetNormalStringData(GateRef str)
     Label exit(env);
     Label isConstantString(env);
     Label isLineString(env);
+    Label isUtf8(env);
+    Label isUtf16(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    Branch(IsConstantString(str), &isConstantString, &isLineString);
+    Branch(IsConstantString(stringInfoGate.GetString()), &isConstantString, &isLineString);
     Bind(&isConstantString);
     {
-        GateRef address = PtrAdd(str, IntPtr(ConstantString::CONSTANT_DATA_OFFSET));
-        result = Load(VariableType::JS_ANY(), address, IntPtr(0));
+        GateRef address = PtrAdd(stringInfoGate.GetString(), IntPtr(ConstantString::CONSTANT_DATA_OFFSET));
+        result = PtrAdd(Load(VariableType::JS_ANY(), address, IntPtr(0)), ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
         Jump(&exit);
     }
     Bind(&isLineString);
     {
-        result = PtrAdd(str, IntPtr(LineEcmaString::DATA_OFFSET));
-        Jump(&exit);
+        GateRef data = PtrAdd(stringInfoGate.GetString(), IntPtr(LineEcmaString::DATA_OFFSET));
+        Branch(IsUtf8String(stringInfoGate.GetString()), &isUtf8, &isUtf16);
+        Bind(&isUtf8);
+        {
+            result = PtrAdd(data, ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
+            Jump(&exit);
+        }
+        Bind(&isUtf16);
+        {
+            GateRef offset = PtrMul(ZExtInt32ToPtr(stringInfoGate.GetStartIndex()), IntPtr(sizeof(uint16_t)));
+            result = PtrAdd(data, offset);
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
     return ret;
-}
-
-void StubBuilder::FlattenString(GateRef str, Variable *flatStr, Label *fastPath, Label *slowPath)
-{
-    auto env = GetEnvironment();
-    Label notLineString(env);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::JS_POINTER(), str);
-    Branch(BoolOr(IsLineString(str), IsConstantString(str)), &exit, &notLineString);
-    Bind(&notLineString);
-    {
-        Label isTreeString(env);
-        Branch(IsTreeString(str), &isTreeString, &exit);
-        Bind(&isTreeString);
-        {
-            Label isFlat(env);
-            Branch(TreeStringIsFlat(str), &isFlat, slowPath);
-            Bind(&isFlat);
-            {
-                result = GetFirstFromTreeString(str);
-                Jump(&exit);
-            }
-        }
-    }
-    Bind(&exit);
-    {
-        flatStr->WriteVariable(*result);
-        Jump(fastPath);
-    }
 }
 
 GateRef StubBuilder::ToNumber(GateRef glue, GateRef tagged)

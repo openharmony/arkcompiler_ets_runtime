@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/new_object_stub_builder.h"
 
 #include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_arguments.h"
@@ -425,6 +426,29 @@ void NewObjectStubBuilder::AllocLineStringObject(Variable *result, Label *exit, 
     Jump(exit);
 }
 
+void NewObjectStubBuilder::AllocSlicedStringObject(Variable *result, Label *exit, GateRef from, GateRef length,
+    FlatStringStubBuilder *flatString)
+{
+    auto env = GetEnvironment();
+    
+    size_ = AlignUp(IntPtr(SlicedString::SIZE), IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
+    Label afterAllocate(env);
+    AllocateInYoung(result, &afterAllocate);
+
+    Bind(&afterAllocate);
+    GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+                                                 ConstantIndex::SLICED_STRING_CLASS_INDEX);
+    StoreHClass(glue_, result->ReadVariable(), stringClass);
+    GateRef mixLength = Load(VariableType::INT32(), flatString->GetFlatString(), IntPtr(EcmaString::MIX_LENGTH_OFFSET));
+    GateRef isCompressed = Int32And(Int32(EcmaString::STRING_COMPRESSED_BIT), mixLength);
+    SetLength(glue_, result->ReadVariable(), length, isCompressed);
+    SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
+    BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
+    builtinsStringStubBuilder.StoreParent(glue_, result->ReadVariable(), flatString->GetFlatString());
+    builtinsStringStubBuilder.StoreStartIndex(glue_, result->ReadVariable(),
+        Int32Add(from, flatString->GetStartIndex()));
+    Jump(exit);
+}
 
 GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
 {

@@ -534,6 +534,7 @@ public:
     inline EcmaString *AllocLineStringObject(size_t size);
     inline EcmaString *AllocOldSpaceLineStringObject(size_t size);
     inline EcmaString *AllocNonMovableLineStringObject(size_t size);
+    inline EcmaString *AllocSlicedStringObject(MemSpaceType type);
     inline EcmaString *AllocConstantStringObject(MemSpaceType type);
     inline EcmaString *AllocTreeStringObject();
 

@@ -46,3 +46,9 @@ try {
 } catch (e) {
     print(e.message);
 }
+let string1 = "fdjDJSAjkdfalDDGETG";
+let string2 = string1.substring(1);
+print(str1.charAt());
+print(str2.charCodeAt());
+print(str1.substr(2, 4));
+print(string2.toLowerCase(2, 4));

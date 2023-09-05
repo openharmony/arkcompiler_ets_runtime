@@ -174,10 +174,10 @@ DECLARE_BUILTINS(CharCodeAt)
         Branch(IsString(thisValue), &isString, &slowPath);
         Bind(&isString);
         {
-            DEFVARIABLE(thisFlat, VariableType::JS_POINTER(), thisValue);
-            FlattenString(thisValue, &thisFlat, &flattenFastPath, &slowPath);
+            FlatStringStubBuilder thisFlat(this);
+            thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
             Bind(&flattenFastPath);
-            GateRef thisLen = GetLengthFromString(*thisFlat);
+            GateRef thisLen = GetLengthFromString(thisValue);
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
             Bind(&posTagNotUndefined);
             {
@@ -201,7 +201,8 @@ DECLARE_BUILTINS(CharCodeAt)
                     Bind(&posNotLessZero);
                     {
                         BuiltinsStringStubBuilder stringBuilder(this);
-                        res = IntToTaggedPtr(stringBuilder.StringAt(*thisFlat, *pos));
+                        StringInfoGateRef stringInfoGate(&thisFlat);
+                        res = IntToTaggedPtr(stringBuilder.StringAt(stringInfoGate, *pos));
                         Jump(&exit);
                     }
                 }
@@ -292,14 +293,16 @@ DECLARE_BUILTINS(IndexOf)
                     }
                     Bind(&nextCount);
                     {
-                        DEFVARIABLE(thisFlat, VariableType::JS_POINTER(), thisValue);
-                        DEFVARIABLE(searchFlat, VariableType::JS_POINTER(), searchTag);
-                        FlattenString(thisValue, &thisFlat, &flattenFastPath, &slowPath);
+                        FlatStringStubBuilder thisFlat(this);
+                        thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
                         Bind(&flattenFastPath);
-                        FlattenString(searchTag, &searchFlat, &flattenFastPath1, &slowPath);
+                        FlatStringStubBuilder searchFlat(this);
+                        searchFlat.FlattenString(glue, searchTag, &flattenFastPath1);
                         Bind(&flattenFastPath1);
                         BuiltinsStringStubBuilder stringBuilder(this);
-                        GateRef resPos = stringBuilder.StringIndexOf(*thisFlat, *searchFlat, *pos);
+                        StringInfoGateRef thisStringInfoGate(&thisFlat);
+                        StringInfoGateRef searchStringInfoGate(&searchFlat);
+                        GateRef resPos = stringBuilder.StringIndexOf(thisStringInfoGate, searchStringInfoGate, *pos);
                         Branch(Int32GreaterThanOrEqual(resPos, Int32(0)), &resPosGreaterZero, &exit);
                         Bind(&resPosGreaterZero);
                         {
@@ -362,6 +365,8 @@ DECLARE_BUILTINS(Substring)
     Label startNotGreatEnd(env);
     Label thisIsHeapobject(env);
     Label flattenFastPath(env);
+    Label sliceString(env);
+    Label fastSubstring(env);
 
     Branch(TaggedIsUndefinedOrNull(thisValue), &slowPath, &objNotUndefinedAndNull);
     Bind(&objNotUndefinedAndNull);
@@ -465,12 +470,22 @@ DECLARE_BUILTINS(Substring)
             Bind(&countRes);
             {
                 GateRef len = Int32Sub(*to, *from);
-                DEFVARIABLE(thisFlat, VariableType::JS_POINTER(), thisValue);
-                FlattenString(thisValue, &thisFlat, &flattenFastPath, &slowPath);
+                FlatStringStubBuilder thisFlat(this);
+                thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
                 Bind(&flattenFastPath);
                 {
+                    Branch(Int32GreaterThanOrEqual(len, Int32(SlicedString::MIN_SLICED_ECMASTRING_LENGTH)),
+                        &sliceString, &fastSubstring);
+                    Bind(&sliceString);
+                    {
+                        NewObjectStubBuilder newBuilder(this);
+                        newBuilder.SetParameters(glue, 0);
+                        newBuilder.AllocSlicedStringObject(&res, &exit, *from, len, &thisFlat);
+                    }
+                    Bind(&fastSubstring);
                     BuiltinsStringStubBuilder stringBuilder(this);
-                    res = stringBuilder.FastSubString(glue, *thisFlat, *from, len);
+                    StringInfoGateRef stringInfoGate(&thisFlat);
+                    res = stringBuilder.FastSubString(glue, thisValue, *from, len, stringInfoGate);
                     Jump(&exit);
                 }
             }
@@ -516,10 +531,10 @@ DECLARE_BUILTINS(CharAt)
         Branch(IsString(thisValue), &isString, &slowPath);
         Bind(&isString);
         {
-            DEFVARIABLE(thisFlat, VariableType::JS_POINTER(), thisValue);
-            FlattenString(thisValue, &thisFlat, &flattenFastPath, &slowPath);
+            FlatStringStubBuilder thisFlat(this);
+            thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
             Bind(&flattenFastPath);
-            GateRef thisLen = GetLengthFromString(*thisFlat);
+            GateRef thisLen = GetLengthFromString(thisValue);
             Branch(Int64GreaterThanOrEqual(IntPtr(0), numArgs), &next, &posTagNotUndefined);
             Bind(&posTagNotUndefined);
             {
@@ -543,7 +558,8 @@ DECLARE_BUILTINS(CharAt)
                     Bind(&posNotLessZero);
                     {
                         BuiltinsStringStubBuilder stringBuilder(this);
-                        res = stringBuilder.CreateFromEcmaString(glue, *thisFlat, *pos);
+                        StringInfoGateRef stringInfoGate(&thisFlat);
+                        res = stringBuilder.CreateFromEcmaString(glue, *pos, stringInfoGate);
                         Jump(&exit);
                     }
                 }

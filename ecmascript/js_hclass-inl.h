@@ -206,6 +206,10 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
             size = TreeEcmaString::SIZE;
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;
+        case JSType::SLICED_STRING:
+            size = SlicedString::SIZE;
+            size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+            break;
         case JSType::MACHINE_CODE_OBJECT:
             size = reinterpret_cast<MachineCode *>(header)->GetMachineCodeObjectSize();
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));

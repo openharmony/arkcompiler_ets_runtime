@@ -338,6 +338,9 @@ public:
             case JSType::TREE_STRING:
                 TreeEcmaString::Cast(object)->VisitRangeSlot(visitor);
                 break;
+            case JSType::SLICED_STRING:
+                SlicedString::Cast(object)->VisitRangeSlot(visitor);
+                break;
             case JSType::JS_NATIVE_POINTER:
                 if (visitType == VisitType::SNAPSHOT_VISIT) {
                     JSNativePointer::Cast(object)->VisitRangeSlotForNative(visitor);

@@ -322,26 +322,28 @@ void TypeMCRLowering::LowerFlattenStringCheck(GateRef gate, GateRef glue)
     GateRef str = acc_.GetValueIn(gate, 0);
     DEFVAlUE(result, (&builder_), VariableType::JS_POINTER(), str);
     Label isTreeString(&builder_);
+    Label notTreeString(&builder_);
+    Label needFlat(&builder_);
     Label exit(&builder_);
 
-    builder_.Branch(builder_.IsTreeString(str), &isTreeString, &exit);
+    builder_.Branch(builder_.IsTreeString(str), &isTreeString, &notTreeString);
     builder_.Bind(&isTreeString);
     {
         Label isFlat(&builder_);
-        Label notFlat(&builder_);
-        builder_.Branch(builder_.TreeStringIsFlat(str), &isFlat, &notFlat);
+        builder_.Branch(builder_.TreeStringIsFlat(str), &isFlat, &needFlat);
         builder_.Bind(&isFlat);
         {
             result = builder_.GetFirstFromTreeString(str);
             builder_.Jump(&exit);
         }
-        builder_.Bind(&notFlat);
-        {
-            result = LowerCallRuntime(glue, gate, RTSTUB_ID(SlowFlattenString), { str }, true);
-            builder_.Jump(&exit);
-        }
     }
-
+    builder_.Bind(&notTreeString);
+    builder_.Branch(builder_.IsSlicedString(str), &needFlat, &exit);
+    builder_.Bind(&needFlat);
+    {
+        result = LowerCallRuntime(glue, gate, RTSTUB_ID(SlowFlattenString), { str }, true);
+        builder_.Jump(&exit);
+    }
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }

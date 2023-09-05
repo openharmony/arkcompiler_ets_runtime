@@ -329,6 +329,7 @@ bool JSSerializer::WriteTaggedObject(const JSHandle<JSTaggedValue> &value)
         case JSType::LINE_STRING:
         case JSType::CONSTANT_STRING:
         case JSType::TREE_STRING:
+        case JSType::SLICED_STRING:
             return WriteEcmaString(value);
         case JSType::JS_OBJECT:
             return WritePlainObject(value);
@@ -597,12 +598,12 @@ bool JSSerializer::WriteJSArray(const JSHandle<JSTaggedValue> &value)
 bool JSSerializer::WriteEcmaString(const JSHandle<JSTaggedValue> &value)
 {
     JSHandle<EcmaString> strHandle = JSHandle<EcmaString>::Cast(value);
-    auto string = JSHandle<EcmaString>(thread_, EcmaStringAccessor::Flatten(thread_->GetEcmaVM(), strHandle));
+    auto string = EcmaStringAccessor::FlattenAllString(thread_->GetEcmaVM(), strHandle);
     if (!WriteType(SerializationUID::ECMASTRING)) {
         return false;
     }
 
-    size_t length = EcmaStringAccessor(string).GetLength();
+    size_t length = string.GetLength();
     if (!WriteInt(static_cast<int32_t>(length))) {
         return false;
     }
@@ -611,19 +612,19 @@ bool JSSerializer::WriteEcmaString(const JSHandle<JSTaggedValue> &value)
         return true;
     }
 
-    bool isUtf8 = EcmaStringAccessor(string).IsUtf8();
+    bool isUtf8 = string.IsUtf8();
     // write utf encode flag
     if (!WriteBoolean(isUtf8)) {
         return false;
     }
     if (isUtf8) {
-        const uint8_t *data = EcmaStringAccessor(string).GetDataUtf8();
+        const uint8_t *data = string.GetDataUtf8();
         const uint8_t strEnd = '\0';
         if (!WriteRawData(data, length) || !WriteRawData(&strEnd, sizeof(uint8_t))) {
             return false;
         }
     } else {
-        const uint16_t *data = EcmaStringAccessor(string).GetDataUtf16();
+        const uint16_t *data = string.GetDataUtf16();
         if (!WriteRawData(data, length * sizeof(uint16_t))) {
             return false;
         }

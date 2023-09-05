@@ -95,6 +95,8 @@ void GlobalEnvConstants::InitRootsClass(JSThread *thread, JSHClass *hClass)
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_TWO_FIELD_CLASS_INDEX,
                 factory->NewEcmaReadOnlyHClass(hClass, FreeObject::SIZE, JSType::FREE_OBJECT_WITH_TWO_FIELD));
     SetConstant(ConstantIndex::LINE_STRING_CLASS_INDEX, factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::LINE_STRING));
+    SetConstant(ConstantIndex::SLICED_STRING_CLASS_INDEX,
+        factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::SLICED_STRING));
     SetConstant(ConstantIndex::CONSTANT_STRING_CLASS_INDEX,
         factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::CONSTANT_STRING));
     SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX, factory->NewEcmaReadOnlyHClass(hClass, 0, JSType::TREE_STRING));

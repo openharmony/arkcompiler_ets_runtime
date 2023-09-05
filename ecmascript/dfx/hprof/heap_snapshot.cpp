@@ -260,6 +260,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::LINE_STRING:
         case JSType::CONSTANT_STRING:
         case JSType::TREE_STRING:
+        case JSType::SLICED_STRING:
             return GetString("BaseString");
         case JSType::JS_OBJECT: {
             CString objName = CString("JSOBJECT(Ctor=");  // Ctor-name

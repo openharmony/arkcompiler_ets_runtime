@@ -139,6 +139,13 @@ inline EcmaString *EcmaString::CreateLineStringWithSpaceType(const EcmaVM *vm, s
     return string;
 }
 
+inline SlicedString *EcmaString::CreateSlicedString(const EcmaVM *vm, MemSpaceType type)
+{
+    auto slicedString = SlicedString::Cast(vm->GetFactory()->AllocSlicedStringObject(type));
+    slicedString->SetRawHashcode(0);
+    return slicedString;
+}
+
 inline EcmaString *EcmaString::CreateConstantString(const EcmaVM *vm, const uint8_t *utf8Data,
     size_t length, bool compressed, MemSpaceType type, uint32_t idOffset)
 {
@@ -168,36 +175,38 @@ inline EcmaString *EcmaString::CreateTreeString(const EcmaVM *vm,
 EcmaString *EcmaString::FastSubUtf8String(const EcmaVM *vm, const JSHandle<EcmaString> &src, uint32_t start,
                                           uint32_t length)
 {
-    ASSERT(src->IsLineOrConstantString());
-    auto string = CreateLineString(vm, length, true);
+    JSHandle<EcmaString> string(vm->GetJSThread(), CreateLineString(vm, length, true));
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    FlatStringInfo srcFlat = FlattenAllString(vm, src);
     Span<uint8_t> dst(string->GetDataUtf8Writable(), length);
-    Span<const uint8_t> source(src->GetDataUtf8() + start, length);
+    Span<const uint8_t> source(srcFlat.GetDataUtf8() + start, length);
     EcmaString::MemCopyChars(dst, length, source, length);
 
-    ASSERT_PRINT(CanBeCompressed(string), "canBeCompresse does not match the real value!");
-    return string;
+    ASSERT_PRINT(CanBeCompressed(*string), "canBeCompresse does not match the real value!");
+    return *string;
 }
 
 /* static */
 EcmaString *EcmaString::FastSubUtf16String(const EcmaVM *vm, const JSHandle<EcmaString> &src, uint32_t start,
                                            uint32_t length)
 {
-    ASSERT(src->IsLineOrConstantString());
-    bool canBeCompressed = CanBeCompressed(src->GetDataUtf16() + start, length);
-    auto string = CreateLineString(vm, length, canBeCompressed);
+    FlatStringInfo srcFlat = FlattenAllString(vm, src);
+    bool canBeCompressed = CanBeCompressed(srcFlat.GetDataUtf16() + start, length);
+    JSHandle<EcmaString> string(vm->GetJSThread(), CreateLineString(vm, length, canBeCompressed));
+    // maybe happen GC,so get srcFlat again
+    srcFlat = FlattenAllString(vm, src);
     if (canBeCompressed) {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        CopyChars(string->GetDataUtf8Writable(), src->GetDataUtf16() + start, length);
+        CopyChars(string->GetDataUtf8Writable(), srcFlat.GetDataUtf16() + start, length);
     } else {
         uint32_t len = length * (sizeof(uint16_t) / sizeof(uint8_t));
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         Span<uint16_t> dst(string->GetDataUtf16Writable(), length);
-        Span<const uint16_t> source(src->GetDataUtf16() + start, length);
+        Span<const uint16_t> source(srcFlat.GetDataUtf16() + start, length);
         EcmaString::MemCopyChars(dst, len, source, len);
     }
-    ASSERT_PRINT(canBeCompressed == CanBeCompressed(string), "canBeCompresse does not match the real value!");
-    return string;
+    ASSERT_PRINT(canBeCompressed == CanBeCompressed(*string), "canBeCompresse does not match the real value!");
+    return *string;
 }
 
 inline uint16_t *EcmaString::GetData() const
@@ -209,10 +218,10 @@ inline uint16_t *EcmaString::GetData() const
 inline const uint8_t *EcmaString::GetDataUtf8() const
 {
     ASSERT_PRINT(IsUtf8(), "EcmaString: Read data as utf8 for utf16 string");
-    if (IsConstantString()) {
-        return ConstantString::Cast(this)->GetConstantData();
+    if (IsLineString()) {
+        return reinterpret_cast<uint8_t *>(GetData());
     }
-    return reinterpret_cast<uint8_t *>(GetData());
+    return ConstantString::Cast(this)->GetConstantData();
 }
 
 inline const uint16_t *EcmaString::GetDataUtf16() const
@@ -238,11 +247,12 @@ inline uint16_t *EcmaString::GetDataUtf16Writable()
 
 inline size_t EcmaString::GetUtf8Length(bool modify) const
 {
-    ASSERT(IsLineOrConstantString());
     if (!IsUtf16()) {
         return GetLength() + 1;  // add place for zero in the end
     }
-    return base::utf_helper::Utf16ToUtf8Size(GetData(), GetLength(), modify);
+    CVector<uint16_t> tmpBuf;
+    const uint16_t *data = GetUtf16DataFlat(this, tmpBuf);
+    return base::utf_helper::Utf16ToUtf8Size(data, GetLength(), modify);
 }
 
 template<bool verify>
@@ -254,12 +264,18 @@ inline uint16_t EcmaString::At(int32_t index) const
             return 0;
         }
     }
-    if (IsLineString()) {
-        return LineEcmaString::Cast(this)->Get<verify>(index);
-    } else if (IsConstantString()) {
-        return ConstantString::Cast(this)->Get<verify>(index);
-    } else {
-        return TreeEcmaString::Cast(this)->Get<verify>(index);
+    switch (GetStringType()) {
+        case JSType::LINE_STRING:
+            return LineEcmaString::Cast(this)->Get<verify>(index);
+        case JSType::CONSTANT_STRING:
+            return ConstantString::Cast(this)->Get<verify>(index);
+        case JSType::SLICED_STRING:
+            return SlicedString::Cast(this)->Get<verify>(index);
+        case JSType::TREE_STRING:
+            return TreeEcmaString::Cast(this)->Get<verify>(index);
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
     }
 }
 
@@ -337,11 +353,35 @@ void EcmaString::WriteToFlat(EcmaString *src, Char *buf, uint32_t maxLength)
                 }
                 continue;
             }
+            case JSType::SLICED_STRING: {
+                EcmaString *parent = EcmaString::Cast(SlicedString::Cast(src)->GetParent());
+                if (src->IsUtf8()) {
+                    CopyChars(buf, parent->GetDataUtf8() + SlicedString::Cast(src)->GetStartIndex(), length);
+                } else {
+                    CopyChars(buf, parent->GetDataUtf16() + SlicedString::Cast(src)->GetStartIndex(), length);
+                }
+                return;
+            }
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
     }
+}
+
+inline const uint8_t *FlatStringInfo::GetDataUtf8() const
+{
+    return string_->GetDataUtf8() + startIndex_;
+}
+
+inline const uint16_t *FlatStringInfo::GetDataUtf16() const
+{
+    return string_->GetDataUtf16() + startIndex_;
+}
+
+inline uint8_t *FlatStringInfo::GetDataUtf8Writable() const
+{
+    return string_->GetDataUtf8Writable() + startIndex_;
 }
 
 inline const uint8_t *EcmaStringAccessor::GetDataUtf8()

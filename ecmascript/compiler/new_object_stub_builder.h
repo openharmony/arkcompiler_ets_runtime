@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_NEW_OBJECT_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_NEW_OBJECT_STUB_BUILDER_H
 
+#include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/stub_builder.h"
 
@@ -51,6 +52,8 @@ public:
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
     void NewArgumentsObj(Variable *result, Label *exit, GateRef argumentsList, GateRef numArgs);
     void AllocLineStringObject(Variable *result, Label *exit, GateRef length, bool compressed);
+    void AllocSlicedStringObject(Variable *result, Label *exit, GateRef from, GateRef length,
+        FlatStringStubBuilder *flatString);
     void HeapAlloc(Variable *result, Label *exit, RegionSpaceFlag spaceType);
     void NewJSArrayLiteral(Variable *result, Label *exit, RegionSpaceFlag spaceType, GateRef obj, GateRef hclass,
                            bool isEmptyArray);
