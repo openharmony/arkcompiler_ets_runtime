@@ -18,6 +18,7 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
+#include "ecmascript/log.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
@@ -683,5 +684,14 @@ void EcmaVM::ResumeWorkerVm(uint32_t tid)
             DFXJSNApi::ResumeVM(iter->second);
         }
     }
+}
+
+bool EcmaVM::RequestAot(const std::string &bundleName, const std::string &moduleName, RequestAotMode triggerMode) const
+{
+    if (requestAotCallback_ == nullptr) {
+        LOG_ECMA(ERROR) << "Trigger aot failed. callback is null.";
+        return false;
+    }
+    return (requestAotCallback_(bundleName, moduleName, static_cast<int32_t>(triggerMode)) == 0);
 }
 }  // namespace panda::ecmascript

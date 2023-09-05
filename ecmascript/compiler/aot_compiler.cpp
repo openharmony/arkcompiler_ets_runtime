@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/compiler/ohos_pkg_args.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/compiler_log.h"
@@ -31,6 +32,7 @@
 #include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript::kungfu {
+namespace {
 std::string GetHelper()
 {
     std::string str;
@@ -47,14 +49,25 @@ void AOTInitialize(EcmaVM *vm)
     vm->GetJSThread()->GetCurrentEcmaContext()->GetTSManager()->Initialize();
 }
 
-JSPandaFile *CreateAndVerifyJSPandaFile(const JSRuntimeOptions &runtimeOptions, const std::string &fileName, EcmaVM *vm)
+JSPandaFile *CreateAndVerifyJSPandaFile(const JSRuntimeOptions &runtimeOptions, const OhosPkgArgs &pkgArgs,
+                                        const std::string &fileName, EcmaVM *vm)
 {
     JSPandaFileManager *jsPandaFileManager = JSPandaFileManager::GetInstance();
     std::shared_ptr<JSPandaFile> jsPandaFile = nullptr;
     if (runtimeOptions.IsTargetCompilerMode()) {
-        std::string hapPath = runtimeOptions.GetHapPath();
-        uint32_t offset = runtimeOptions.GetHapAbcOffset();
-        uint32_t size = runtimeOptions.GetHapAbcSize();
+        std::string hapPath;
+        uint32_t offset {};
+        uint32_t size {};
+        if (pkgArgs.Valid()) {
+            hapPath = pkgArgs.GetPath();
+            offset = pkgArgs.GetOffset();
+            size = pkgArgs.GetSize();
+        } else {
+            // for legacy params
+            hapPath = runtimeOptions.GetHapPath();
+            offset = runtimeOptions.GetHapAbcOffset();
+            size = runtimeOptions.GetHapAbcSize();
+        }
         if (size == 0) {
             LOG_ECMA(ERROR) << "buffer is empty in target compiler mode!";
             return nullptr;
@@ -91,6 +104,42 @@ JSPandaFile *CreateAndVerifyJSPandaFile(const JSRuntimeOptions &runtimeOptions, 
     return jsPandaFile.get();
 }
 
+bool HandleOhosPkgArgs(EcmaVM *vm, JSRuntimeOptions &runtimeOptions, OhosPkgArgs &pkgArgs, arg_list_t &pandaFileNames)
+{
+    ASSERT(runtimeOptions.IsTargetCompilerMode());
+    if (!runtimeOptions.GetCompilerPkgJsonInfo().empty()) {
+        if (pkgArgs.ParseFromJson(vm, runtimeOptions.GetCompilerPkgJsonInfo())) {
+            LOG_COMPILER(INFO) << "Parse main pkg info success.";
+            pkgArgs.Dump();
+            pandaFileNames.emplace_back(pkgArgs.GetFullName());
+        } else {
+            return false;
+        }
+    }
+    // for external pkg, dump it first.
+    if (!runtimeOptions.GetCompilerExternalPkgJsonInfo().empty()) {
+        std::list<OhosPkgArgs> externalList;
+        OhosPkgArgs::ParseListFromJson(vm, runtimeOptions.GetCompilerExternalPkgJsonInfo(), externalList);
+        for (const auto &externalPkg : externalList) {
+            externalPkg.Dump();
+        }
+    }
+    return true;
+}
+
+void HandleTargetModeInfo(EcmaVM *vm, bool &isEnableOptOnHeapCheck, size_t &optLevel)
+{
+    JSRuntimeOptions &vmOpt = vm->GetJSOptions();
+    ASSERT(vmOpt.IsTargetCompilerMode());
+    // target need fast compiler mode
+    vmOpt.SetFastAOTCompileMode(true);
+    vmOpt.SetOptLevel(3);  // 3: default opt level
+    optLevel = 3;
+    vmOpt.SetEnableOptOnHeapCheck(false);
+    isEnableOptOnHeapCheck = false;
+}
+} // namespace
+
 int Main(const int argc, const char **argv)
 {
     auto startTime =
@@ -102,22 +151,13 @@ int Main(const int argc, const char **argv)
         LOG_ECMA(DEBUG) << argv[i];
     }
 
-    int newArgc = argc;
     if (argc < 2) { // 2: at least have two arguments
         LOG_COMPILER(ERROR) << GetHelper();
         return -1;
     }
 
-    std::string files = argv[argc - 1];
-    if (!base::StringHelper::EndsWith(files, ".abc")) {
-        LOG_COMPILER(ERROR) << "The last argument must be abc file" << std::endl;
-        LOG_COMPILER(ERROR) << GetHelper();
-        return 1;
-    }
-
-    newArgc--;
     JSRuntimeOptions runtimeOptions;
-    bool retOpt = runtimeOptions.ParseCommand(newArgc, argv);
+    bool retOpt = runtimeOptions.ParseCommand(argc, argv);
     if (!retOpt) {
         LOG_COMPILER(ERROR) << GetHelper();
         return 1;
@@ -141,7 +181,8 @@ int Main(const int argc, const char **argv)
     {
         LocalScope scope(vm);
         std::string delimiter = GetFileDelimiter();
-        arg_list_t pandaFileNames = base::StringHelper::SplitString(files, delimiter);
+        arg_list_t pandaFileNames {};
+        OhosPkgArgs pkgArgs;
 
         std::string triple = runtimeOptions.GetTargetTriple();
         if (runtimeOptions.GetAOTOutputFile().empty()) {
@@ -167,17 +208,24 @@ int Main(const int argc, const char **argv)
         bool isEnableOptTrackField = runtimeOptions.IsEnableOptTrackField();
         bool isEnableOptLoopPeeling = runtimeOptions.IsEnableOptLoopPeeling();
         bool isEnableOptOnHeapCheck = runtimeOptions.IsEnableOptOnHeapCheck();
-
         if (runtimeOptions.IsTargetCompilerMode()) {
-            JSRuntimeOptions &vmOpt = vm->GetJSOptions();
-            // target need fast compiler mode
-            vmOpt.SetFastAOTCompileMode(true);
-            vmOpt.SetOptLevel(3); // 3: default opt level
-            optLevel = 3;
-            vmOpt.SetEnableOptOnHeapCheck(false);
-            isEnableOptOnHeapCheck = false;
+            if (!HandleOhosPkgArgs(vm, runtimeOptions, pkgArgs, pandaFileNames)) {
+                LOG_COMPILER(ERROR) << GetHelper();
+                LOG_COMPILER(ERROR) << "Parse pkg info failed, exit.";
+                return 1;
+            }
+            HandleTargetModeInfo(vm, isEnableOptOnHeapCheck, optLevel);
         }
-
+        if (runtimeOptions.GetCompilerPkgJsonInfo().empty() || !pkgArgs.Valid()) {
+            // if no pkgArgs, last param must be abc file
+            std::string files = argv[argc - 1];
+            if (!base::StringHelper::EndsWith(files, ".abc")) {
+                LOG_COMPILER(ERROR) << "The last argument must be abc file" << std::endl;
+                LOG_COMPILER(ERROR) << GetHelper();
+                return 1;
+            }
+            pandaFileNames = base::StringHelper::SplitString(files, delimiter);
+        }
         PassOptions passOptions(isEnableArrayBoundsCheckElimination, isEnableTypeLowering, isEnableEarlyElimination,
                                 isEnableLaterElimination, isEnableValueNumbering, isEnableTypeInfer,
                                 isEnableOptInlining, isEnableOptPGOType, isEnableOptTrackField, isEnableOptLoopPeeling,
@@ -200,7 +248,7 @@ int Main(const int argc, const char **argv)
         for (const auto &fileName : pandaFileNames) {
             auto extendedFilePath = panda::os::file::File::GetExtendedFilePath(fileName);
             LOG_COMPILER(INFO) << "AOT compile: " << extendedFilePath;
-            JSPandaFile *jsPandaFile = CreateAndVerifyJSPandaFile(runtimeOptions, extendedFilePath, vm);
+            JSPandaFile *jsPandaFile = CreateAndVerifyJSPandaFile(runtimeOptions, pkgArgs, extendedFilePath, vm);
             if (passManager.Compile(jsPandaFile, extendedFilePath, generator) == false) {
                 ret = false;
                 continue;

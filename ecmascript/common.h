@@ -50,6 +50,10 @@ enum class GCReason : uint8_t {
     OTHER,
 };
 
+enum class RequestAotMode : uint8_t {
+    RE_COMPILE_ON_IDLE = 0
+};
+
 #define SCOPE_LIST(V)                    \
     V(TotalGC)                           \
     V(Initialize)                        \

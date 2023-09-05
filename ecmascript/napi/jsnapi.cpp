@@ -849,6 +849,13 @@ void JSNApi::SetHostResolveBufferTracker(EcmaVM *vm,
     vm->SetResolveBufferCallback(cb);
 }
 
+void JSNApi::SetRequestAotCallback(EcmaVM *vm, const std::function<int32_t(const std::string &bundleName,
+                    const std::string &moduleName,
+                    int32_t triggerMode)> &cb)
+{
+    vm->SetRequestAotCallback(cb);
+}
+
 void JSNApi::SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb)
 {
     vm->SetUnloadNativeModuleCallback(cb);

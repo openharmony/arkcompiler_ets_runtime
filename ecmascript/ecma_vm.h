@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_ECMA_VM_H
 #define ECMASCRIPT_ECMA_VM_H
 
+#include <cstdint>
 #include <mutex>
 
 #include "ecmascript/base/config.h"
@@ -23,6 +24,7 @@
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/gc_stats.h"
@@ -88,6 +90,8 @@ using NativePtrGetter = void* (*)(void* info);
 
 using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)>;
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
+using RequestAotCallback =
+    std::function<int32_t(const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)>;
 class EcmaVM {
 public:
     static EcmaVM *Create(const JSRuntimeOptions &options, EcmaParamConfiguration &config);
@@ -256,6 +260,13 @@ public:
     ResolveBufferCallback GetResolveBufferCallback() const
     {
         return resolveBufferCallback_;
+    }
+
+    bool RequestAot(const std::string &bundleName, const std::string &moduleName, RequestAotMode triggerMode) const;
+
+    void SetRequestAotCallback(const RequestAotCallback &cb)
+    {
+        requestAotCallback_ = cb;
     }
 
     void SetUnloadNativeModuleCallback(const UnloadNativeModuleCallback &cb)
@@ -478,6 +489,9 @@ private:
 
     // delete the native module and dlclose so from NativeModuleManager
     UnloadNativeModuleCallback unloadNativeModuleCallback_ {nullptr};
+
+    // trigger local aot
+    RequestAotCallback requestAotCallback_ {nullptr};
 
     // Concurrent taskpool callback and data
     ConcurrentCallback concurrentCallback_ {nullptr};

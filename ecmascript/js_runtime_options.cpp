@@ -139,12 +139,14 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      Format:--compile-skip-methods=record1:m1,m2,record2:m3\n"
     "--target-compiler-mode                The compilation mode at the device side, including partial, full and none."
     "                                      Default: ''\n"
-    "--hap-path                            The path of the app hap. Default: ''\n"
-    "--hap-abc-offset                      The offset of the abc file in app hap. Default: '0'\n"
-    "--hap-abc-size                        The size of the abc file in app hap. Default: '0'\n"
+    "--hap-path(Deprecated)                The path of the app hap. Default: ''\n"
+    "--hap-abc-offset(Deprecated)          The offset of the abc file in app hap. Default: '0'\n"
+    "--hap-abc-size(Deprecated)            The size of the abc file in app hap. Default: '0'\n"
     "--compiler-fast-compile               Disable some time-consuming pass. Default: 'true'\n"
     "--compiler-no-check                   Enable remove checks for aot compiler. Default: 'false'\n"
     "--compiler-opt-loop-peeling:          Enable loop peeling for aot compiler: Default: 'false'\n"
+    "--compiler-pkg-info                   Specify the package json info for ark aot compiler\n"
+    "--compiler-external-pkg-info          Specify the external package json info for ark aot compiler\n"
     "--compiler-opt-array-onheap-check:    Enable TypedArray on heap check for aot compiler: Default: 'false'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
@@ -226,6 +228,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-fast-compile", required_argument, nullptr, OPTION_FAST_AOT_COMPILE_MODE},
         {"compiler-opt-loop-peeling", required_argument, nullptr, OPTION_COMPILER_OPT_LOOP_PEELING},
         {"compiler-opt-array-onheap-check", required_argument, nullptr, OPTION_COMPILER_OPT_ON_HEAP_CHECK},
+        {"compiler-pkg-info", required_argument, nullptr, OPTION_COMPILER_PKG_INFO},
+        {"compiler-external-pkg-info", required_argument, nullptr, OPTION_COMPILER_EXTERNAL_PKG_INFO},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -748,6 +752,12 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 } else {
                     return false;
                 }
+                break;
+            case OPTION_COMPILER_PKG_INFO:
+                SetCompilerPkgJsonInfo(optarg);
+                break;
+            case OPTION_COMPILER_EXTERNAL_PKG_INFO:
+                SetCompilerExternalPkgJsonInfo(optarg);
                 break;
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";
