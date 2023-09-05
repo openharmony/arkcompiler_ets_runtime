@@ -34,3 +34,6 @@ test successful !!!
 RangeError: The sum of srcLength and targetOffset is greater than targetLength.
 RangeError: The sum of srcLength and targetOffset is greater than targetLength.
 RangeError: The newByteLength is out of range.
+true
+true
+true
