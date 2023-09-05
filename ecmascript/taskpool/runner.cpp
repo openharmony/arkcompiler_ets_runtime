@@ -17,6 +17,9 @@
 
 #include "libpandabase/os/mutex.h"
 #include "libpandabase/os/thread.h"
+#ifdef ENABLE_QOS
+#include "qos.h"
+#endif
 
 namespace panda::ecmascript {
 Runner::Runner(uint32_t threadNum) : totalThreadNum_(threadNum)
@@ -62,6 +65,27 @@ void Runner::TerminateThread()
     threadPool_.clear();
 }
 
+void Runner::SetQosPriority([[maybe_unused]] bool isForeground)
+{
+#ifdef ENABLE_QOS
+    if (isForeground) {
+        for (uint32_t threadId : gcThreadId_) {
+            OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::qos_user_initiated, threadId);
+        }
+    } else {
+        for (uint32_t threadId : gcThreadId_) {
+            OHOS::QOS::ResetQosForOtherThread(threadId);
+        }
+    }
+#endif
+}
+
+void Runner::RecordThreadId()
+{
+    os::memory::LockHolder holder(mtx_);
+    gcThreadId_.emplace_back(os::thread::GetCurrentThreadId());
+}
+
 void Runner::SetRunTask(uint32_t threadId, Task *task)
 {
     os::memory::LockHolder holder(mtx_);
@@ -72,6 +96,7 @@ void Runner::Run(uint32_t threadId)
 {
     os::thread::native_handle_type thread = os::thread::GetNativeHandle();
     os::thread::SetThreadName(thread, "GC_WorkerThread");
+    RecordThreadId();
     while (std::unique_ptr<Task> task = taskQueue_.PopTask()) {
         SetRunTask(threadId, task.get());
         task->Run(threadId);

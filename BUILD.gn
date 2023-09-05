@@ -958,6 +958,13 @@ ohos_source_set("libark_jsruntime_set") {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
   }
 
+  if (is_ohos && is_standard_system && product_name != "ohos-sdk") {
+    if (!is_cross_platform_build) {
+      defines += [ "ENABLE_QOS" ]
+      external_deps += [ "frame_aware_sched:qos_manager" ]
+    }
+  }
+
   if (enable_target_compilation) {
     external_deps += [ "c_utils:utils" ]
   }
@@ -1039,6 +1046,13 @@ ohos_source_set("libark_jsruntime_test_set") {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+  }
+
+  if (is_ohos && is_standard_system && product_name != "ohos-sdk") {
+    if (!is_cross_platform_build) {
+      defines += [ "ENABLE_QOS" ]
+      external_deps += [ "frame_aware_sched:qos_manager" ]
+    }
   }
 
   if (enable_coverage) {
