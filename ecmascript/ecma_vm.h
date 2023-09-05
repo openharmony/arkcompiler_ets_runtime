@@ -84,7 +84,7 @@ class FunctionCallTimer;
 class EcmaStringTable;
 
 using NativePtrGetter = void* (*)(void* info);
-
+using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
 using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)>;
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 class EcmaVM {
@@ -240,6 +240,16 @@ public:
     NativePtrGetter GetNativePtrGetter() const
     {
         return nativePtrGetter_;
+    }
+
+    void SetSourceMapTranslateCallback(SourceMapTranslateCallback cb)
+    {
+        sourceMapTranslateCallback_ = cb;
+    }
+
+    SourceMapTranslateCallback GetSourceMapTranslateCallback() const
+    {
+        return sourceMapTranslateCallback_;
     }
 
     size_t GetNativePointerListSize()
@@ -470,6 +480,7 @@ private:
     CList<CString> deregisterModuleList_;
     // Registered Callbacks
     NativePtrGetter nativePtrGetter_ {nullptr};
+    SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
     void *loop_ {nullptr};
 
     // resolve path to get abc's buffer

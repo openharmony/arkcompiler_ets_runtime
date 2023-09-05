@@ -175,9 +175,16 @@ void SamplesRecord::StringifyNodes()
 {
     sampleData_ += "\"nodes\":[";
     size_t nodeCount = static_cast<size_t>(profileInfo_->nodeCount);
+    bool translateCallback = false;
+    if (sourceMapTranslateCallback_ != nullptr) {
+        translateCallback = true;
+    }
     for (size_t i = 0; i < nodeCount; i++) {
         struct CpuProfileNode node = profileInfo_->nodes[i];
         struct FrameInfo codeEntry = node.codeEntry;
+        if (translateCallback) {
+            TranslateUrlPositionBySourceMap(codeEntry);
+        }
         std::string url = codeEntry.url;
         replace(url.begin(), url.end(), '\\', '/');
         sampleData_ += "{\"id\":"
@@ -770,6 +777,24 @@ uint64_t SamplesRecord::GetCallTimeStamp()
 void SamplesRecord::SetCallTimeStamp(uint64_t timeStamp)
 {
     callTimeStamp_ = timeStamp;
+}
+
+void SamplesRecord::TranslateUrlPositionBySourceMap(struct FrameInfo &codeEntry)
+{
+    if (codeEntry.url.empty()) {
+        return;
+    }
+    if (!sourceMapTranslateCallback_(codeEntry.url, codeEntry.lineNumber, codeEntry.columnNumber)) {
+        size_t find = codeEntry.url.rfind("_.js");
+        if (find == std::string::npos) {
+            size_t start = codeEntry.url.find("entry/");
+            size_t end = codeEntry.url.rfind(".ets");
+            if (start != std::string::npos && end != std::string::npos) {
+                std::string key = codeEntry.url.substr(start + SUB_LEN, end - start - SUB_LEN);
+                codeEntry.url = JS_PATH + key + ".js";
+            }
+        }
+    }
 }
 
 // SamplesQueue

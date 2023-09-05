@@ -36,6 +36,8 @@ const int PROGRAM_NODE_ID = 2; // 2: the (program) node id
 const int QUEUE_CAPACITY = 51; // the capacity of the circular queue is QUEUE_CAPACITY - 1
 const size_t NAPI_CALL_SETP = 2; // 2: step size of the variable napiCallIdx in while loop
 const size_t PRE_IDX_RANGE = 5; // 5: length of variable preIdx looping backward
+const size_t SUB_LEN = 6; // 6: Truncate the path length
+const std::string JS_PATH = "entry/build/default/cache/default/default@CompileArkTS/esmodule/debug/";
 
 struct FrameInfo {
     int scriptId = 0;
@@ -173,6 +175,11 @@ public:
         enableVMTag_ = flag;
     }
 
+    void SetSourceMapTranslateCallback(SourceMapTranslateCallback cb)
+    {
+        sourceMapTranslateCallback_ = cb;
+    }
+
     void SetTimeDeltaThreshold(uint32_t timeDeltaThreshold)
     {
         timeDeltaThreshold_ = timeDeltaThreshold;
@@ -187,6 +194,7 @@ private:
     void FrameInfoTempToMap(FrameInfoTemp *frameInfoTemps, int frameInfoTempLength);
     void NapiFrameInfoTempToMap();
     void StatisticStateTime(int timeDelta, RunningState state);
+    void TranslateUrlPositionBySourceMap(struct FrameInfo &codeEntry);
 
     int previousId_ = 0;
     RunningState previousState_ = RunningState::OTHER;
@@ -216,6 +224,7 @@ private:
     bool enableVMTag_ {false};
     uint64_t callTimeStamp_ = 0;
     uint32_t timeDeltaThreshold_ = 0;
+    SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_DFX_CPU_PROFILER_SAMPLES_RECORD_H
