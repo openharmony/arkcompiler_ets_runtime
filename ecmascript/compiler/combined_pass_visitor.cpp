@@ -152,6 +152,9 @@ void CombinedPassVisitor::VisitTopGate(Edge& current)
     }
     auto numIns = acc_.GetNumIns(gate);
     auto start = current.GetIndex();
+    if (start >= numIns) {
+        start = 0;
+    }
     for (size_t i = start; i < numIns; i++) {
         GateRef input = acc_.GetIn(gate, i);
         if (input == gate) {

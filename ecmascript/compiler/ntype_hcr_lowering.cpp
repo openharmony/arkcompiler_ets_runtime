@@ -19,13 +19,28 @@
 
 namespace panda::ecmascript::kungfu {
 
-GateRef NTypeHCRLowering::VisitGate(GateRef gate)
+void NTypeHCRLowering::RunNTypeHCRLowering()
 {
-    auto op = acc_.GetOpCode(gate);
-    if (op == OpCode::JS_BYTECODE) {
-        Lower(gate);
+    std::vector<GateRef> gateList;
+    circuit_->GetAllGates(gateList);
+    for (const auto &gate : gateList) {
+        auto op = acc_.GetOpCode(gate);
+        if (op == OpCode::JS_BYTECODE) {
+            Lower(gate);
+        }
     }
-    return Circuit::NullGate();
+
+    if (IsLogEnabled()) {
+        LOG_COMPILER(INFO) << "";
+        LOG_COMPILER(INFO) << "\033[34m"
+                           << "===================="
+                           << " After NTypeHCRlowering "
+                           << "[" << GetMethodName() << "]"
+                           << "===================="
+                           << "\033[0m";
+        circuit_->PrintAllGatesWithBytecode();
+        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+    }
 }
 
 void NTypeHCRLowering::Lower(GateRef gate)

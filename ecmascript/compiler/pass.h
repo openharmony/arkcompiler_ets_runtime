@@ -310,13 +310,9 @@ public:
         }
         TimeScope timescope("NTypeHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        Chunk chunk(data->GetNativeAreaAllocator());
-        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        NTypeHCRLowering lowering(data->GetCircuit(), &visitor, data->GetPassContext(),
-            data->GetTSManager(), data->GetMethodLiteral(), data->GetRecordName(), &chunk);
-        visitor.AddPass(&lowering);
-        visitor.VisitGraph();
-        visitor.PrintLog("NTypeHCRlowering");
+        NTypeHCRLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
+            data->GetMethodLiteral(), data->GetRecordName(), enableLog, data->GetMethodName());
+        lowering.RunNTypeHCRLowering();
         return true;
     }
 };
