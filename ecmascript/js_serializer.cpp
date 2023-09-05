@@ -1099,9 +1099,10 @@ JSDeserializer::~JSDeserializer()
 JSHandle<JSTaggedValue> JSDeserializer::Deserialize()
 {
     size_t maxSerializerSize = thread_->GetEcmaVM()->GetEcmaParamConfiguration().GetMaxJSSerializerSize();
-    uint8_t dataSize = end_ - begin_;
+    size_t dataSize = end_ - begin_;
     if (dataSize > maxSerializerSize) {
-        LOG_ECMA(ERROR) << "The Serialization data size exceed limit Size";
+        LOG_ECMA(ERROR) << "The Serialization data size has exceed limit Size, current size is: " << dataSize <<
+            " max size is: " << maxSerializerSize;
         return JSHandle<JSTaggedValue>();
     }
     JSHandle<JSTaggedValue> res = DeserializeJSTaggedValue();
@@ -1989,6 +1990,7 @@ bool JSDeserializer::ReadBoolean(bool *value)
 bool Serializer::WriteValue(
     JSThread *thread, const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &transfer)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Serializer::WriteValue");
     if (data_ != nullptr) {
         return false;
     }
@@ -2042,6 +2044,7 @@ bool Serializer::PrepareTransfer(JSThread *thread, const JSHandle<JSTaggedValue>
 
 JSHandle<JSTaggedValue> Deserializer::ReadValue()
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Deserializer::ReadValue");
     return valueDeserializer_.Deserialize();
 }
 }  // namespace panda::ecmascript
