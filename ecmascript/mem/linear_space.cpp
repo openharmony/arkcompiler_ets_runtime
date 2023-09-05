@@ -214,6 +214,9 @@ void SemiSpace::SetWaterLine()
             }
         });
         survivalObjectSize_ += last->GetAllocatedBytes(waterLine_);
+    } else {
+        LOG_GC(INFO) << "SetWaterLine: No region survival in current gc, current region available size: "
+                     << allocator_.Available();
     }
 }
 
