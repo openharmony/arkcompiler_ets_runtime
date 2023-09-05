@@ -561,9 +561,6 @@ void GCStats::InitializeRecordList()
     for (float &duration : scopeDuration_) {
         duration = 0.0f;
     }
-    for (int idx = 0; idx <= GetRecordDataIndex(RecordData::END_RECORD_OVERWRITE); idx++) {
-        recordData_[idx] = 0;
-    }
     concurrentMark_ = false;
 }
 
