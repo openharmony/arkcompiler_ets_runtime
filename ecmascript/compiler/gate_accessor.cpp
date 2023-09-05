@@ -132,7 +132,8 @@ size_t GateAccessor::GetIndex(GateRef gate) const
 
 uint32_t GateAccessor::GetArraySize(GateRef gate) const
 {
-    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     auto array = gatePtr->GetOneParameterMetaData()->GetValue();
     return ArrayMetaDataAccessor(array).GetArrayLength();
@@ -140,7 +141,8 @@ uint32_t GateAccessor::GetArraySize(GateRef gate) const
 
 void GateAccessor::SetArraySize(GateRef gate, uint32_t size)
 {
-    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY);
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     ArrayMetaDataAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     accessor.SetArrayLength(size);

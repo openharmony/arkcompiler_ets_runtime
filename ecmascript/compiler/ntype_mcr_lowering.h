@@ -43,7 +43,7 @@ private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
     void Lower(GateRef gate);
     void LowerCreateArray(GateRef gate, GateRef glue);
-    void LowerCreateArrayWithBuffer(GateRef gate);
+    void LowerCreateArrayWithBuffer(GateRef gate, GateRef glue);
     void LowerCreateEmptyArray(GateRef gate);
     void LowerCreateArrayWithOwn(GateRef gate, GateRef glue);
     void LowerStLexVar(GateRef gate);
@@ -52,6 +52,7 @@ private:
     GateRef LoadFromConstPool(GateRef jsFunc, size_t index);
     GateRef NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length);
     GateRef NewTaggedArray(size_t length);
+    GateRef CreateElementsWithLength(GateRef gate, GateRef glue, size_t arrayLength);
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
 
