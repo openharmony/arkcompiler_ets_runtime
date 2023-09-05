@@ -26,6 +26,7 @@ FrameStateBuilder::FrameStateBuilder(BytecodeCircuitBuilder *builder,
       gateAcc_(circuit),
       bcEndStateInfos_(circuit->chunk()),
       bbBeginStateInfos_(circuit->chunk()),
+      loopExitStateInfos_(circuit->chunk()),
       postOrderList_(circuit->chunk())
 {
 }
@@ -35,6 +36,7 @@ FrameStateBuilder::~FrameStateBuilder()
     liveOutResult_ = nullptr;
     bcEndStateInfos_.clear();
     bbBeginStateInfos_.clear();
+    loopExitStateInfos_.clear();
     builder_ = nullptr;
 }
 
@@ -64,7 +66,7 @@ GateRef FrameStateBuilder::BuildFrameStateGate(size_t pcOffset, GateRef frameVal
         {frameArgs, frameValues, preFrameState});
 }
 
-void FrameStateBuilder::BindStateSplit(GateRef state, GateRef depend, GateRef frameState)
+GateRef FrameStateBuilder::BindStateSplit(GateRef state, GateRef depend, GateRef frameState)
 {
     GateRef stateSplit = circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
     auto uses = gateAcc_.Uses(depend);
@@ -78,6 +80,7 @@ void FrameStateBuilder::BindStateSplit(GateRef state, GateRef depend, GateRef fr
     if (builder_->IsLogEnabled()) {
         gateAcc_.ShortPrint(frameState);
     }
+    return stateSplit;
 }
 
 void FrameStateBuilder::BindStateSplit(GateRef gate, GateRef frameState)
@@ -157,7 +160,7 @@ bool FrameStateBuilder::MergeIntoPredBC(uint32_t predPc, size_t diff)
         auto value = frameInfo->ValuesAt(i);
         // if value not null, merge pred
         if (value == Circuit::NullGate() && predValue != Circuit::NullGate()) {
-            predValue = TryGetLoopExitValue(predValue, diff);
+            predValue = TryGetLoopExitValue(predValue, diff, i);
             frameInfo->SetValuesAt(i, predValue);
             changed = true;
         }
@@ -171,6 +174,53 @@ GateRef FrameStateBuilder::GetPreBBInput(BytecodeRegion *bb, BytecodeRegion *pre
         return GetPhiComponent(bb, predBb, gate);
     }
     return gate;
+}
+
+GateRef FrameStateBuilder::GetPredStateGateBetweenBB(BytecodeRegion *bb, BytecodeRegion *predBb)
+{
+    GateRef gate = bb->stateCurrent;
+    if (bb->numOfLoopBacks != 0) {
+        ASSERT(bb->loopbackBlocks.size() != 0);
+        ASSERT(gateAcc_.GetStateCount(gate) > 1);
+        auto forwardState = gateAcc_.GetState(gate, 0); // 0: fowward
+        auto loopBackState = gateAcc_.GetState(gate, 1); // 1: back
+        size_t backIndex = 0;
+        size_t forwardIndex = 0;
+        for (size_t i = 0; i < bb->numOfStatePreds; ++i) {
+            auto predId = std::get<0>(bb->expandedPreds.at(i));
+            if (bb->loopbackBlocks.count(predId)) {
+                if (predId == predBb->id) {
+                    if (bb->numOfLoopBacks == 1) {
+                        return loopBackState;
+                    }
+                    return gateAcc_.GetState(loopBackState, backIndex);
+                }
+                backIndex++;
+            } else {
+                if (predId == predBb->id) {
+                    auto mergeCount = bb->numOfStatePreds - bb->numOfLoopBacks;
+                    if (mergeCount == 1) {
+                        return forwardState;
+                    }
+                    return gateAcc_.GetState(forwardState, forwardIndex);
+                }
+                forwardIndex++;
+            }
+        }
+        UNREACHABLE();
+        return Circuit::NullGate();
+    }
+
+    ASSERT(gateAcc_.GetStateCount(gate) == bb->numOfStatePreds);
+    // The phi input nodes need to be traversed in reverse order, because there is a bb with multiple def points
+    for (size_t i = bb->numOfStatePreds - 1; i >= 0; --i) {
+        auto predId = std::get<0>(bb->expandedPreds.at(i));
+        if (predId == predBb->id) {
+            return gateAcc_.GetState(gate, i);
+        }
+    }
+    UNREACHABLE();
+    return Circuit::NullGate();
 }
 
 GateRef FrameStateBuilder::GetPhiComponent(BytecodeRegion *bb, BytecodeRegion *predBb, GateRef phi)
@@ -237,7 +287,7 @@ bool FrameStateBuilder::MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *pred
             auto target = GetPreBBInput(bb, predBb, phi);
             if (target != Circuit::NullGate()) {
                 auto diff = LoopExitCount(predBb, bb);
-                target = TryGetLoopExitValue(target, diff);
+                target = TryGetLoopExitValue(target, diff, accumulatorIndex_);
                 predLiveout->SetValuesAt(accumulatorIndex_, target);
             }
         }
@@ -252,7 +302,7 @@ bool FrameStateBuilder::MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *pred
                 continue;
             }
             auto diff = LoopExitCount(predBb, bb);
-            target = TryGetLoopExitValue(target, diff);
+            target = TryGetLoopExitValue(target, diff, reg);
             predLiveout->SetValuesAt(reg, target);
         }
     }
@@ -331,6 +381,7 @@ void FrameStateBuilder::BuildFrameState()
     bcEndStateInfos_.resize(builder_->GetLastBcIndex() + 1, nullptr); // 1: +1 pcOffsets size
     auto size = builder_->GetBasicBlockCount();
     bbBeginStateInfos_.resize(size, nullptr);
+    loopExitStateInfos_.resize(circuit_->GetMaxGateId() + 1, nullptr);
     liveOutResult_ = CreateEmptyStateInfo();
     BuildPostOrderList(size);
     ComputeLiveState();
@@ -448,11 +499,60 @@ void FrameStateBuilder::BuildStateSplitBefore(BytecodeRegion& bb, size_t index)
     }
 }
 
+void FrameStateBuilder::FindLoopExit(GateRef gate) {
+    // if find the bytecode gate, return.
+    if (builder_->IsBcIndexByGate(gate)) {
+        return;
+    }
+    
+    // if find the loopExit, do process.
+    if (gateAcc_.GetOpCode(gate) == OpCode::LOOP_EXIT) {
+        GateRef findBefore = gateAcc_.GetState(gate);
+        while (!builder_->IsBcIndexByGate(findBefore)) {
+            findBefore = gateAcc_.GetState(findBefore);
+        }
+
+        // Build stateSplit After
+        size_t index = builder_->GetBcIndexByGate(findBefore);
+        auto pcOffset = builder_->GetPcOffset(index);
+        auto stateInfo = GetOrOCreateLoopExitStateInfo(gate);
+        ASSERT(stateInfo != nullptr);
+        GateRef frameValues = BuildFrameValues(stateInfo);
+        GateRef frameStateAfter = BuildFrameStateGate(
+            pcOffset, frameValues, FrameStateOutput::Invalid());
+
+        GateRef stateIn = gate; // stateIn - LoopExit
+        GateRef dependIn = Circuit::NullGate(); // dependIn - LoopExitDepend
+        auto uses = gateAcc_.Uses(gate);
+        for (auto useIt = uses.begin(); useIt != uses.end();) {
+            if (gateAcc_.GetOpCode(*useIt) == OpCode::LOOP_EXIT_DEPEND) {
+                dependIn = *useIt;
+            }
+            useIt++;
+        }
+        ASSERT(dependIn != Circuit::NullGate());
+
+        // Bind stateSplit after the loopExit and loopExitDepend.
+        BindStateSplit(stateIn, dependIn, frameStateAfter);
+    }
+
+    // continue to find the loopExit.
+    ASSERT(gateAcc_. GetStateCount(gate) == 1);
+    FindLoopExit(gateAcc_.GetState(gate));
+}
+
 bool FrameStateBuilder::ShouldInsertFrameStateBefore(BytecodeRegion& bb, size_t index)
 {
     auto gate = builder_->GetGateByBcIndex(index);
     if (index == bb.start) {
         if (bb.numOfStatePreds > 1) { // 1: > 1 is merge
+            // backward to find loop exits, insert stateSplit before loopExit.
+            for (auto &predBb: bb.preds) {
+                if (LoopExitCount(predBb, &bb) > 0) {
+                    auto target = GetPredStateGateBetweenBB(&bb, predBb);
+                    FindLoopExit(target);
+                }
+            }
             return true;
         } else if (bb.numOfStatePreds == 1) {   // 1: == 1 maybe loopexit
             auto predBb = (bb.preds.size() > 0) ? bb.preds.at(0) : bb.trys.at(0);
@@ -524,6 +624,7 @@ void FrameStateBuilder::BindBBStateSplit()
             BuildStateSplitBefore(bb, bb.start);
         }
         ASSERT(!bb.isDead);
+
         builder_->EnumerateBlock(bb, [&](const BytecodeInfo &bytecodeInfo) -> bool {
             auto &iterator = bb.GetBytecodeIterator();
             auto index = iterator.Index();
@@ -581,13 +682,17 @@ size_t FrameStateBuilder::LoopExitCount(BytecodeRegion* bb, BytecodeRegion* bbNe
     return builder_->LoopExitCount(bb->id, bbNext->id);
 }
 
-GateRef FrameStateBuilder::TryGetLoopExitValue(GateRef value, size_t diff)
+GateRef FrameStateBuilder::TryGetLoopExitValue(GateRef value, size_t diff, size_t reg)
 {
     if ((gateAcc_.GetOpCode(value) != OpCode::LOOP_EXIT_VALUE) || (diff == 0)) {
         return value;
     }
+    
     for (size_t i = 0; i < diff; ++i) {
         ASSERT(gateAcc_.GetOpCode(value) == OpCode::LOOP_EXIT_VALUE);
+        GateRef loopExit = gateAcc_.GetState(value);
+        FrameStateInfo* loopExitFrameInfo = GetOrOCreateLoopExitStateInfo(loopExit);
+        loopExitFrameInfo->SetValuesAt(reg, value);
         value = gateAcc_.GetValueIn(value);
     }
     return value;
