@@ -11,25 +11,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("ark_deopt_test") {
-  testonly = true
-  test_list = [
-    "arithmetic",
-    "async_deopt",
-    "comparison",
-    "createarraywithbuffer",
-    "dec",
-    "div",
-    "inc",
-    "live_out",
-    "mod",
-    "newobjrange",
-    "polymorphic_array",
-    "restore_vregs",
-  ]
-
-  deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}AotAction" ]
-  }
-}
+1.385640646055102
+0.5773502691896257,-0.5773502691896257,0.721687836487032

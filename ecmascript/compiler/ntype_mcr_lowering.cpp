@@ -28,7 +28,7 @@ GateRef NTypeMCRLowering::VisitGate(GateRef gate)
             LowerCreateArray(gate, glue);
             break;
         case OpCode::CREATE_ARRAY_WITH_BUFFER:
-            LowerCreateArrayWithBuffer(gate);
+            LowerCreateArrayWithBuffer(gate, glue);
             break;
         default:
             break;
@@ -59,18 +59,13 @@ void NTypeMCRLowering::LowerCreateArrayWithOwn(GateRef gate, GateRef glue)
 {
     uint32_t elementsLength = acc_.GetArraySize(gate);
     GateRef length = builder_.IntPtr(elementsLength);
-    GateRef elements = Circuit::NullGate();
-    if (elementsLength < MAX_TAGGED_ARRAY_LENGTH) {
-        elements = NewTaggedArray(elementsLength);
-    } else {
-        elements = LowerCallRuntime(glue, gate, RTSTUB_ID(NewTaggedArray), { builder_.Int32ToTaggedInt(length) }, true);
-    }
+    GateRef elements = CreateElementsWithLength(gate, glue, elementsLength);
 
     auto array = NewJSArrayLiteral(gate, elements, length);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
-void NTypeMCRLowering::LowerCreateArrayWithBuffer(GateRef gate)
+void NTypeMCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     // 2: number of value inputs
@@ -82,7 +77,7 @@ void NTypeMCRLowering::LowerCreateArrayWithBuffer(GateRef gate)
     ArgumentAccessor argAcc(circuit_);
     GateRef frameState = GetFrameState(gate);
     GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
-    GateRef elements = LoadFromConstPool(jsFunc, elementIndex);
+    GateRef literialElements = LoadFromConstPool(jsFunc, elementIndex);
     auto thread = tsManager_->GetEcmaVM()->GetJSThread();
     JSHandle<ConstantPool> constpoolHandle(tsManager_->GetConstantPool());
     JSTaggedValue arr = ConstantPool::GetLiteralFromCache<ConstPoolType::ARRAY_LITERAL>(
@@ -90,7 +85,20 @@ void NTypeMCRLowering::LowerCreateArrayWithBuffer(GateRef gate)
     JSHandle<JSArray> arrayHandle(thread, arr);
     TaggedArray *arrayLiteral = TaggedArray::Cast(arrayHandle->GetElements());
     uint32_t literialLength = arrayLiteral->GetLength();
-    GateRef length = builder_.IntPtr(literialLength);
+    uint32_t arrayLength = acc_.GetArraySize(gate);
+    GateRef elements = Circuit::NullGate();
+    GateRef length = Circuit::NullGate();
+    if (arrayLength > literialLength) {
+        elements = CreateElementsWithLength(gate, glue, arrayLength);
+        for (uint32_t i = 0; i < literialLength; i++) {
+            GateRef value = builder_.LoadFromTaggedArray(literialElements, i);
+            builder_.StoreToTaggedArray(elements, i, value);
+        }
+        length = builder_.IntPtr(arrayLength);
+    } else {
+        elements = literialElements;
+        length = builder_.IntPtr(literialLength);
+    }
 
     auto array = NewJSArrayLiteral(gate, elements, length);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
@@ -100,6 +108,18 @@ GateRef NTypeMCRLowering::LoadFromConstPool(GateRef jsFunc, size_t index)
 {
     GateRef constPool = builder_.GetConstPool(jsFunc);
     return builder_.LoadFromTaggedArray(constPool, index);
+}
+
+GateRef NTypeMCRLowering::CreateElementsWithLength(GateRef gate, GateRef glue, size_t arrayLength)
+{
+    GateRef elements = Circuit::NullGate();
+    GateRef length = builder_.IntPtr(arrayLength);
+    if (arrayLength < MAX_TAGGED_ARRAY_LENGTH) {
+        elements = NewTaggedArray(arrayLength);
+    } else {
+        elements = LowerCallRuntime(glue, gate, RTSTUB_ID(NewTaggedArray), { builder_.Int32ToTaggedInt(length) }, true);
+    }
+    return elements;
 }
 
 GateRef NTypeMCRLowering::NewJSArrayLiteral(GateRef gate, GateRef elements, GateRef length)

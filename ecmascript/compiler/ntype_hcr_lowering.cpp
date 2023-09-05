@@ -188,13 +188,11 @@ void NTypeHCRLowering::LowerNTypedStownByIndex(GateRef gate)
 
     AddProfiling(gate);
     uint32_t indexValue = static_cast<uint32_t>(acc_.GetConstantValue(index));
-    if (acc_.GetOpCode(receiver) == OpCode::CREATE_ARRAY) {
-        uint32_t arraySize = acc_.GetArraySize(receiver);
-        if (indexValue > arraySize) {
-            acc_.TrySetElementsKind(receiver, ElementsKind::HOLE);
-        }
-        acc_.SetArraySize(receiver, std::max(arraySize, indexValue + 1));
+    uint32_t arraySize = acc_.GetArraySize(receiver);
+    if (indexValue > arraySize) {
+        acc_.TrySetElementsKind(receiver, ElementsKind::HOLE);
     }
+    acc_.SetArraySize(receiver, std::max(arraySize, indexValue + 1));
     index = builder_.Int32(indexValue);
     builder_.StoreElement<TypedStoreOp::ARRAY_STORE_ELEMENT>(receiver, index, value);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());

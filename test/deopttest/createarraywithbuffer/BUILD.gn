@@ -11,25 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("ark_deopt_test") {
-  testonly = true
-  test_list = [
-    "arithmetic",
-    "async_deopt",
-    "comparison",
-    "createarraywithbuffer",
-    "dec",
-    "div",
-    "inc",
-    "live_out",
-    "mod",
-    "newobjrange",
-    "polymorphic_array",
-    "restore_vregs",
-  ]
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
+host_aot_test_action("createarraywithbuffer") {
   deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}AotAction" ]
-  }
 }
