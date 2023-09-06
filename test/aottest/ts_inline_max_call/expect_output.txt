@@ -21,4 +21,6 @@ foo3
 foo4
 [trace] aot inline function name: foo5@ts_inline_max_call caller function name: func_main_0@ts_inline_max_call
 foo5
+[trace] aot inline function name: foo6@ts_inline_max_call caller function name: func_main_0@ts_inline_max_call
 foo6
+foo7

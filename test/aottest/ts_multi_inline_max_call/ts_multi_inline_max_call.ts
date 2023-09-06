@@ -22,6 +22,7 @@ function foo() {
     foo4();
     foo5();
     foo6();
+    foo7();
 }
 
 function foo1() {
@@ -45,6 +46,10 @@ function foo5() {
 }
 
 function foo6() {
+    bar();
+}
+
+function foo7() {
     bar();
 }
 

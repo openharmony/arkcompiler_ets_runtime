@@ -39,6 +39,10 @@ function foo6() {
     print("foo6");
 }
 
+function foo7() {
+    print("foo7");
+}
+
 // max inline call allowed is 5
 foo1()
 foo2()
@@ -46,3 +50,4 @@ foo3()
 foo4()
 foo5()
 foo6()
+foo7()
