@@ -117,8 +117,7 @@ JSTaggedValue BuiltinsSet::Add(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
-    JSHandle<JSSet> set(JSTaggedValue::ToObject(thread, self));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSSet> set(self);
     JSSet::Add(thread, set, value);
     return set.GetTaggedValue();
 }
@@ -136,8 +135,7 @@ JSTaggedValue BuiltinsSet::Clear(EcmaRuntimeCallInfo *argv)
     if (!self->IsJSSet()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSSet", JSTaggedValue::Exception());
     }
-    JSHandle<JSSet> set(thread, JSSet::Cast(*JSTaggedValue::ToObject(thread, self)));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSSet> set(self);
     JSSet::Clear(thread, set);
     return JSTaggedValue::Undefined();
 }
@@ -155,8 +153,7 @@ JSTaggedValue BuiltinsSet::Delete(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSSet", JSTaggedValue::Exception());
     }
 
-    JSHandle<JSSet> set(thread, JSSet::Cast(*JSTaggedValue::ToObject(thread, self)));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSSet> set(self);
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     bool flag = JSSet::Delete(thread, set, value);
     return GetTaggedBoolean(flag);
@@ -174,8 +171,7 @@ JSTaggedValue BuiltinsSet::Has(EcmaRuntimeCallInfo *argv)
     if (!self->IsJSSet()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSSet", JSTaggedValue::Exception());
     }
-    JSSet *jsSet = JSSet::Cast(*JSTaggedValue::ToObject(thread, self));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSSet* jsSet = JSSet::Cast(self.GetTaggedValue().GetTaggedObject());
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     bool flag = jsSet->Has(value.GetTaggedValue());
     return GetTaggedBoolean(flag);
@@ -252,8 +248,7 @@ JSTaggedValue BuiltinsSet::GetSize(EcmaRuntimeCallInfo *argv)
     if (!self->IsJSSet()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSSet", JSTaggedValue::Exception());
     }
-    JSSet *jsSet = JSSet::Cast(*JSTaggedValue::ToObject(thread, self));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSSet* jsSet = JSSet::Cast(self.GetTaggedValue().GetTaggedObject());
     uint32_t count = jsSet->GetSize();
     return JSTaggedValue(count);
 }

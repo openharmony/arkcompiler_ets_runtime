@@ -429,13 +429,12 @@ JSTaggedValue JSStableArray::HandleEveryOfStable(JSThread *thread, JSHandle<JSOb
 
 JSTaggedValue JSStableArray::HandleforEachOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                    JSHandle<JSTaggedValue> callbackFnHandle,
-                                                   JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k)
+                                                   JSHandle<JSTaggedValue> thisArgHandle, uint32_t len, uint32_t &k)
 {
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSMutableHandle<TaggedArray> array(thread, thisObjHandle->GetElements());
-    uint64_t len = static_cast<uint64_t>(base::ArrayHelper::GetArrayLength(thread, thisObjVal));
     const int32_t argsLength = 3; // 3: ?kValue, k, O?
     JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
     if (array->GetLength() <= k) {

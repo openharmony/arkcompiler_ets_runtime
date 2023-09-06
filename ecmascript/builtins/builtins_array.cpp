@@ -1104,7 +1104,7 @@ JSTaggedValue BuiltinsArray::ForEach(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     uint32_t k = 0;
     if (thisObjVal->IsStableJSArray(thread)) {
-        JSStableArray::HandleforEachOfStable(thread, thisObjHandle, callbackFnHandle, thisArgHandle, k);
+        JSStableArray::HandleforEachOfStable(thread, thisObjHandle, callbackFnHandle, thisArgHandle, len, k);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     const uint32_t argsLength = 3; // 3: «kValue, k, O»

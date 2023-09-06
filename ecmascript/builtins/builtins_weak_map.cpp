@@ -106,8 +106,7 @@ JSTaggedValue BuiltinsWeakMap::Has(EcmaRuntimeCallInfo *argv)
     if (!self->IsJSWeakMap()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSWeakMap.", JSTaggedValue::Exception());
     }
-    JSWeakMap *jsWeakMap = JSWeakMap::Cast(*JSTaggedValue::ToObject(thread, self));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSWeakMap *jsWeakMap = JSWeakMap::Cast(self.GetTaggedValue().GetTaggedObject());
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
     // 5.If CanBeHeldWeakly(key) is false, return false.
     if (!JSTaggedValue::CanBeHeldWeakly(thread, key)) {
@@ -128,8 +127,7 @@ JSTaggedValue BuiltinsWeakMap::Get(EcmaRuntimeCallInfo *argv)
     if (!self->IsJSWeakMap()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSWeakMap.", JSTaggedValue::Exception());
     }
-    JSWeakMap *jsWeakMap = JSWeakMap::Cast(*JSTaggedValue::ToObject(thread, self));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSWeakMap *jsWeakMap = JSWeakMap::Cast(self.GetTaggedValue().GetTaggedObject());
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
     // 4.If CanBeHeldWeakly(key) is false, return undefined.
     if (!JSTaggedValue::CanBeHeldWeakly(thread, key)) {
