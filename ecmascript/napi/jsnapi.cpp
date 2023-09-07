@@ -2952,6 +2952,16 @@ Local<BooleanRef> JSValueRef::ToBoolean(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<BooleanRef>(booleanObj);
 }
 
+Local<BigIntRef> JSValueRef::ToBigInt(const EcmaVM *vm)
+{
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
+    LOG_IF_SPECIAL(obj, ERROR);
+    JSHandle<JSTaggedValue> bigIntObj(thread, JSTaggedValue(obj->ToBigInt(thread, obj)));
+    return JSNApiHelper::ToLocal<BigIntRef>(bigIntObj);
+}
+
 Local<NumberRef> JSValueRef::ToNumber(const EcmaVM *vm)
 {
     CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
