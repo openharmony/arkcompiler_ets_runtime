@@ -407,8 +407,7 @@ private:
     bool LoadAOTFiles(const std::string &aotFileName);
     NO_MOVE_SEMANTIC(EcmaContext);
     NO_COPY_SEMANTIC(EcmaContext);
-    uint64_t stackLimit_ {0};
-    uint64_t stackStart_ {0};
+
     JSThread *thread_ {nullptr};
     EcmaVM *vm_ {nullptr};
 
@@ -470,6 +469,8 @@ private:
     JSTaggedType *leaveFrame_ {nullptr};
     JSTaggedType *lastFp_ {nullptr};
     JSTaggedType *frameBase_ {nullptr};
+    uint64_t stackStart_ {0};
+    uint64_t stackLimit_ {0};
     PropertiesCache *propertiesCache_ {nullptr};
     GlobalEnvConstants globalConst_;
     // Join Stack

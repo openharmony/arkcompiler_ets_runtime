@@ -138,8 +138,7 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler, JSCallM
         // Reserve enough sp space to prevent stack parameters from being covered by cpu profiler.
         [[maybe_unused]] TempRegister1Scope scope(assembler);
         Register tempRegister = __ TempRegister1();
-        __ Ldr(tempRegister, MemoryOperand(glueRegister, JSThread::GlueData::GetCurrentContextOffset(false)));
-        __ Ldr(tempRegister, MemoryOperand(tempRegister, 0));
+        __ Ldr(tempRegister, MemoryOperand(glueRegister, JSThread::GlueData::GetStackLimitOffset(false)));
         __ Mov(Register(SP), tempRegister);
     }
 
@@ -484,8 +483,7 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
 
     __ Mov(currentSlotRegister, spRegister);
     // Reserve enough sp space to prevent stack parameters from being covered by cpu profiler.
-    __ Ldr(temp, MemoryOperand(glue, JSThread::GlueData::GetCurrentContextOffset(false)));
-    __ Ldr(temp, MemoryOperand(temp, 0));
+    __ Ldr(temp, MemoryOperand(glue, JSThread::GlueData::GetStackLimitOffset(false)));
     __ Mov(Register(SP), temp);
 
     __ Mov(opArgc, argc);
@@ -999,8 +997,7 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
     __ Mov(fpRegister, spRegister);
     __ Mov(currentSlotRegister, spRegister);
     // Reserve enough sp space to prevent stack parameters from being covered by cpu profiler.
-    __ Ldr(temp, MemoryOperand(glue, JSThread::GlueData::GetCurrentContextOffset(false)));
-    __ Ldr(temp, MemoryOperand(temp, 0));
+    __ Ldr(temp, MemoryOperand(glue, JSThread::GlueData::GetStackLimitOffset(false)));
     __ Mov(Register(SP), temp);
     // push context regs
     __ Ldr(nRegsRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_NREGS_OFFSET));

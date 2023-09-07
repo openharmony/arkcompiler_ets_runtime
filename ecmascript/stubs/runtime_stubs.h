@@ -205,7 +205,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LoadICByName)                       \
     V(StoreICByName)                      \
     V(UpdateHotnessCounter)               \
-    V(CheckSafePointAndStackOverflow)     \
+    V(CheckSafePoint)                     \
     V(UpdateHotnessCounterWithProf)       \
     V(GetModuleNamespaceByIndex)          \
     V(GetModuleNamespaceByIndexOnJSFunc)  \
@@ -690,7 +690,6 @@ private:
     static inline JSTaggedValue RuntimeNotifyConcurrentResult(JSThread *thread, JSTaggedValue result,
         JSTaggedValue hint);
     static inline JSTaggedValue RuntimeNotifyDebuggerStatement(JSThread *thread);
-    static inline JSTaggedValue RuntimeThrowStackOverflowException(JSThread *thread);
     static inline bool CheckElementsNumber(JSHandle<TaggedArray> elements, uint32_t len);
     static inline JSHandle<JSTaggedValue> GetOrCreateNumberString(JSThread *thread,
         JSHandle<JSTaggedValue> presentValue, std::map<uint64_t, JSHandle<JSTaggedValue>> &cachedString);
