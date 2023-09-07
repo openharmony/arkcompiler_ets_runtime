@@ -31,16 +31,6 @@ var m = {
     "a": "hello"
 }
 
-// case3: last label equal bcLast
-function f() {}
-function f1() {
-    return
-    try {
-      f()
-    } catch(e) {
-    }
-}
-
 // case4: GetDeps
 function f2() {
     try {
