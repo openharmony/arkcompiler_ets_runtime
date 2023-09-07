@@ -17,7 +17,7 @@
 #include "ecmascript/compiler/ts_hcr_lowering.h"
 #include "ecmascript/compiler/type_mcr_lowering.h"
 #include "ecmascript/mem/native_area_allocator.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
+#include "ecmascript/pgo_profiler/type/pgo_profiler_type.h"
 #include "ecmascript/tests/test_helper.h"
 
 namespace panda::test {

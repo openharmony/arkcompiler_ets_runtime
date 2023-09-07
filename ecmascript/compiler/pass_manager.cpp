@@ -24,6 +24,7 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 namespace panda::ecmascript::kungfu {
+using PGOProfilerManager = pgo::PGOProfilerManager;
 bool PassManager::ShouldCollect() const
 {
     return passOptions_->EnableTypeInfer() &&

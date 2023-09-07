@@ -446,7 +446,7 @@ void RuntimeStubs::Comment(uintptr_t argStr)
 void RuntimeStubs::ProfileCall(uintptr_t argGlue, uintptr_t func, uintptr_t target, int32_t pcOffset, uint32_t incCount)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(func, target, pcOffset, SampleMode::CALL_MODE, incCount);
+    thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(func, target, pcOffset, pgo::SampleMode::CALL_MODE, incCount);
 }
 
 void RuntimeStubs::ProfileOpType(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type)
@@ -1026,7 +1026,7 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounterWithProf)
     auto profileTypeInfo = method->GetProfileTypeInfo();
     if (profileTypeInfo.IsUndefined()) {
         thread->GetEcmaVM()->GetPGOProfiler()->ProfileCall(
-            JSTaggedValue::VALUE_UNDEFINED, thisFunc.GetTaggedType(), -1, SampleMode::HOTNESS_MODE);
+            JSTaggedValue::VALUE_UNDEFINED, thisFunc.GetTaggedType(), -1, pgo::SampleMode::HOTNESS_MODE);
         uint32_t slotSize = method->GetSlotSize();
         auto res = RuntimeNotifyInlineCache(thread, method, slotSize);
         return res.GetRawData();

@@ -25,6 +25,7 @@
 #include "ecmascript/ts_types/global_type_info.h"
 
 namespace panda::ecmascript {
+using ProfileType = pgo::ProfileType;
 enum class PropertyType : uint8_t {
     NORMAL = 0,
     STATIC,
@@ -877,12 +878,12 @@ public:
         return GlobalTSTypeRef::Default();
     }
 
-    inline void InsertPtToGtMap(ClassType pgoType, const kungfu::GateType &gateType)
+    inline void InsertPtToGtMap(ProfileType pgoType, const kungfu::GateType &gateType)
     {
         ptToGtMap_.emplace(pgoType, gateType);
     }
 
-    inline const kungfu::GateType GetGateTypeByPt(ClassType pgoType)
+    inline const kungfu::GateType GetGateTypeByPt(ProfileType pgoType)
     {
         if (pgoType.IsBuiltinsType()) {
             return GetBuiltinsGateTypeByPt(pgoType);
@@ -894,12 +895,12 @@ public:
         return kungfu::GateType::AnyType();
     }
 
-    inline void AddToSkipTrackFieldSet(ClassType type)
+    inline void AddToSkipTrackFieldSet(ProfileType type)
     {
         skipTrackFieldSet_.insert(type);
     }
 
-    inline bool IsInSkipTrackFieldSet(ClassType type)
+    inline bool IsInSkipTrackFieldSet(ProfileType type)
     {
         return skipTrackFieldSet_.find(type) != skipTrackFieldSet_.end();
     }
@@ -1025,7 +1026,7 @@ private:
 
     JSHandle<ConstantPool> GetSnapshotConstantPool(uint32_t cpListIndex);
 
-    const kungfu::GateType GetBuiltinsGateTypeByPt(ClassType pgoType);
+    const kungfu::GateType GetBuiltinsGateTypeByPt(ProfileType pgoType);
 
     BuiltinTypeId GetBuiltinTypeIdByJSType(JSType jsType);
 
@@ -1033,8 +1034,8 @@ private:
     JSThread *thread_ {nullptr};
     ObjectFactory *factory_ {nullptr};
     JSTaggedValue globalModuleTable_ {JSTaggedValue::Hole()};
-    CMap<ClassType, const kungfu::GateType> ptToGtMap_ {};
-    std::set<ClassType> skipTrackFieldSet_ {};
+    CMap<ProfileType, const kungfu::GateType> ptToGtMap_ {};
+    std::set<ProfileType> skipTrackFieldSet_ {};
     std::map<GlobalTSTypeRef, IHClassData> gtIhcMap_ {};
     std::map<GlobalTSTypeRef, IHClassData> gtConstructorhcMap_ {};
     std::unordered_map<TypeLocation, GlobalTSTypeRef, HashTypeLocation> literalGTMap_ {};

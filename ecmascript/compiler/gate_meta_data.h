@@ -23,12 +23,14 @@
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/chunk_containers.h"
 
-#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
 #include "ecmascript/elements.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::kungfu {
 using GateRef = int32_t;
+using PGOSampleType = pgo::PGOSampleType;
+using PGORWOpType = pgo::PGORWOpType;
 enum MachineType : uint8_t { // Bit width
     NOVALUE = 0,
     ANYVALUE,

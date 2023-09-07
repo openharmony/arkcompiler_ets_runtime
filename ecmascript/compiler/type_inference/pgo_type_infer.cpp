@@ -117,7 +117,7 @@ void PGOTypeInfer::AddProfiler(GateRef gate, GateType tsType, PGORWOpType pgoTyp
         value.gate = gate;
         value.tsType = tsType;
         for (uint32_t i = 0; i < pgoType.GetCount(); i++) {
-            value.pgoTypes.emplace_back(tsManager_->GetGateTypeByPt(pgoType.GetObjectInfo(i).GetClassType()));
+            value.pgoTypes.emplace_back(tsManager_->GetGateTypeByPt(pgoType.GetObjectInfo(i).GetProfileType()));
         }
         for (GateType type : inferTypes) {
             value.inferTypes.emplace_back(type);

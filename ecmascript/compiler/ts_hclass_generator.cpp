@@ -19,6 +19,8 @@
 
 namespace panda::ecmascript::kungfu {
 using ClassInfoExtractor = panda::ecmascript::ClassInfoExtractor;
+using PGOHClassLayoutDesc = pgo::PGOHClassLayoutDesc;
+using PGOHandler = pgo::PGOHandler;
 void TSHClassGenerator::GenerateTSHClasses() const
 {
     const JSThread *thread = tsManager_->GetThread();
@@ -49,11 +51,11 @@ void TSHClassGenerator::UpdateTSHClassFromPGO(const kungfu::GateType &type, cons
         return;
     }
 
-    tsManager_->InsertPtToGtMap(desc.GetClassType(), type);
+    tsManager_->InsertPtToGtMap(desc.GetProfileType(), type);
     if (!enableOptTrackField) {
         return;
     }
-    if (tsManager_->IsInSkipTrackFieldSet(desc.GetClassType())) {
+    if (tsManager_->IsInSkipTrackFieldSet(desc.GetProfileType())) {
         return;
     }
 

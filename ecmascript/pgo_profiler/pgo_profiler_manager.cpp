@@ -19,7 +19,7 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/platform/file.h"
-namespace panda::ecmascript {
+namespace panda::ecmascript::pgo {
 namespace {
     constexpr int32_t PGO_SAVING_SIGNAL = 50;
 } // namespace
@@ -121,4 +121,4 @@ void PGOProfilerManager::SavingSignalHandler(int signo)
     }
     PGOProfilerManager::GetInstance()->AsynSave();
 }
-} // namespace panda::ecmascript
+} // namespace panda::ecmascript::pgo

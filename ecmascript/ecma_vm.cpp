@@ -90,6 +90,7 @@
 
 namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
+using PGOProfilerManager = pgo::PGOProfilerManager;
 AOTFileManager *JsStackInfo::loader = nullptr;
 /* static */
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &config)

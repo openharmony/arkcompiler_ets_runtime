@@ -23,7 +23,6 @@
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
 #include "ecmascript/property_attributes.h"
 
 #include "libpandabase/utils/bit_field.h"
@@ -63,6 +62,13 @@
 namespace panda::ecmascript {
 class ProtoChangeDetails;
 class PropertyLookupResult;
+namespace pgo {
+    class PGOHClassLayoutDesc;
+    enum class PGOObjKind;
+} // namespace pgo
+using PGOHClassLayoutDesc = pgo::PGOHClassLayoutDesc;
+using PGOObjKind = pgo::PGOObjKind;
+
 struct Reference;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

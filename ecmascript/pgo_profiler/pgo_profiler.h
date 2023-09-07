@@ -19,10 +19,19 @@
 #include <chrono>
 #include <memory>
 
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_info.h"
+#include "ecmascript/common.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/mem/c_containers.h"
+#include "ecmascript/mem/visitor.h"
 
-namespace panda::ecmascript {
+namespace panda::ecmascript::pgo {
+class PGORecordDetailInfos;
+
+enum class SampleMode : uint8_t {
+    HOTNESS_MODE,
+    CALL_MODE,
+};
+
 class PGOProfiler {
 public:
     NO_COPY_SEMANTIC(PGOProfiler);
@@ -48,30 +57,11 @@ private:
     static constexpr uint32_t MERGED_EVERY_COUNT = 20;
     static constexpr auto MERGED_MIN_INTERVAL = std::chrono::milliseconds(15);
 
-    PGOProfiler([[maybe_unused]] EcmaVM *vm, bool isEnable) : isEnable_(isEnable)
-    {
-        if (isEnable_) {
-            recordInfos_ = std::make_unique<PGORecordDetailInfos>(0);
-        }
-    };
+    PGOProfiler([[maybe_unused]] EcmaVM *vm, bool isEnable);
 
-    virtual ~PGOProfiler()
-    {
-        Reset(false);
-    }
+    virtual ~PGOProfiler();
 
-    void Reset(bool isEnable)
-    {
-        isEnable_ = isEnable;
-        methodCount_ = 0;
-        if (recordInfos_) {
-            recordInfos_->Clear();
-        } else {
-            if (isEnable_) {
-                recordInfos_ = std::make_unique<PGORecordDetailInfos>(0);
-            }
-        }
-    }
+    void Reset(bool isEnable);
 
     bool isEnable_ {false};
     uint32_t methodCount_ {0};
@@ -80,5 +70,5 @@ private:
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
     friend class PGOProfilerManager;
 };
-} // namespace panda::ecmascript
+} // namespace panda::ecmascript::pgo
 #endif // ECMASCRIPT_PGO_PROFILER_H

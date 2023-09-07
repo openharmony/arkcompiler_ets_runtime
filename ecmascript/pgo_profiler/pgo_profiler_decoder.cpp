@@ -22,7 +22,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/platform/file.h"
 
-namespace panda::ecmascript {
+namespace panda::ecmascript::pgo {
 bool PGOProfilerDecoder::Load()
 {
     if (isLoaded_) {
@@ -184,12 +184,12 @@ bool PGOProfilerDecoder::Match(const CString &recordName, PGOMethodId methodId)
     return recordSimpleInfos_->Match(recordName, methodId);
 }
 
-bool PGOProfilerDecoder::GetHClassLayoutDesc(PGOSampleType classType, PGOHClassLayoutDesc **desc) const
+bool PGOProfilerDecoder::GetHClassLayoutDesc(PGOSampleType profileType, PGOHClassLayoutDesc **desc) const
 {
     if (!isLoaded_ || !isVerifySuccess_) {
         return false;
     }
-    return recordSimpleInfos_->GetHClassLayoutDesc(classType, desc);
+    return recordSimpleInfos_->GetHClassLayoutDesc(profileType, desc);
 }
 
 void PGOProfilerDecoder::GetMismatchResult(uint32_t &totalMethodCount, uint32_t &mismatchMethodCount,
@@ -230,4 +230,4 @@ void PGOProfilerDecoder::Merge(const PGOProfilerDecoder &decoder)
     pandaFileInfos_.Merge(decoder.GetPandaFileInfos());
     recordSimpleInfos_->Merge(decoder.GetRecordSimpleInfos());
 }
-} // namespace panda::ecmascript
+} // namespace panda::ecmascript::pgo

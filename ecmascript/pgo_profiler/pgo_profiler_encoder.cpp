@@ -24,9 +24,8 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 
 #include "ecmascript/platform/file.h"
-#include "zlib.h"
 
-namespace panda::ecmascript {
+namespace panda::ecmascript::pgo {
 static const std::string PROFILE_FILE_NAME = "/modules.ap";
 void PGOProfilerEncoder::Destroy()
 {
@@ -257,4 +256,4 @@ bool PGOProfilerEncoder::LoadAPTextFile(const std::string &inPath)
 
     return true;
 }
-} // namespace panda::ecmascript
+} // namespace panda::ecmascript::pgo

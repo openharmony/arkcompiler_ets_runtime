@@ -19,7 +19,7 @@
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/gate_meta_data.h"
 #include "ecmascript/elements.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_type.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 
 namespace panda::ecmascript::kungfu {
 

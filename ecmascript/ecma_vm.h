@@ -28,6 +28,7 @@
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/taskpool/taskpool.h"
 
 namespace panda {
@@ -56,7 +57,7 @@ class EcmaStringTable;
 class SnapshotEnv;
 class SnapshotSerialize;
 class SnapshotProcessor;
-class PGOProfiler;
+using PGOProfiler = pgo::PGOProfiler;
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 class HeapProfilerInterface;
 class HeapProfiler;

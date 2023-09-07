@@ -21,7 +21,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/file.h"
 
-namespace panda::ecmascript {
+namespace panda::ecmascript::pgo {
 static const std::string VERSION = "0.0.0.1";
 static const int MIN_PARAM_COUNT = 3;
 using ApGenMode = PGOProfilerEncoder::ApGenMode;
@@ -179,9 +179,9 @@ int Main(const int argc, const char **argv)
     }
     return 0;
 }
-}  // namespace panda::ecmascript
+} // namespace panda::ecmascript::pgo
 
 int main(int argc, const char **argv)
 {
-    return panda::ecmascript::Main(argc, argv);
+    return panda::ecmascript::pgo::Main(argc, argv);
 }

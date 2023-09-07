@@ -26,6 +26,7 @@
 #include "jsnapi.h"
 
 namespace panda::ecmascript {
+using PGOProfilerManager = pgo::PGOProfilerManager;
 static const size_t MALLOC_SIZE_LIMIT = 2147483648; // Max internal memory used by the VM declared in options
 
 JSPandaFileManager *JSPandaFileManager::GetInstance()
