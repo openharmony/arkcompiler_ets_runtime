@@ -1034,14 +1034,11 @@ DEF_RUNTIME_STUBS(UpdateHotnessCounterWithProf)
     return profileTypeInfo.GetRawData();
 }
 
-DEF_RUNTIME_STUBS(CheckSafePointAndStackOverflow)
+DEF_RUNTIME_STUBS(CheckSafePoint)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-    if (thread->HasCheckSafePoint()) {
-        thread->CheckSafepoint();
-        return JSTaggedValue::Undefined().GetRawData();
-    }
-    return RuntimeThrowStackOverflowException(thread).GetRawData();
+    thread->CheckSafepoint();
+    return JSTaggedValue::Undefined().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(LoadICByName)
@@ -1860,7 +1857,16 @@ DEF_RUNTIME_STUBS(ThrowNonConstructorException)
 DEF_RUNTIME_STUBS(ThrowStackOverflowException)
 {
     RUNTIME_STUBS_HEADER(ThrowStackOverflowException);
-    return RuntimeThrowStackOverflowException(thread).GetRawData();
+    EcmaVM *ecmaVm = thread->GetEcmaVM();
+    // Multi-thread could cause stack-overflow-check failed too,
+    // so check thread here to distinguish it with the actual stack overflow.
+    ecmaVm->CheckThread();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, "Stack overflow!", false);
+    if (LIKELY(!thread->HasPendingException())) {
+        thread->SetException(error.GetTaggedValue());
+    }
+    return JSTaggedValue::Exception().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(ThrowDerivedMustReturnException)
