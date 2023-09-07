@@ -48,7 +48,7 @@ Run the  **hello-world.js**  file.
 1.  Use the ARK frontend to create the  **hello-world.abc**  file.
 
     ```
-    node --expose-gc /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_frontend/build/src/index.js hello-world.js
+    /your_code_path/out/rk3568/clang_x64/arkcompiler/ets_frontend/es2abc hello-world.js
     ```
 
 2.  Run the  **hello-world.abc**  file.
