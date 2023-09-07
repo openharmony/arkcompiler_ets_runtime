@@ -1302,7 +1302,11 @@ JSHandle<TaggedArray> JSObject::GetAllPropertyKeys(JSThread *thread, const JSHan
         uint32_t minRequireLength = curObjectKeysLength + retArrayEffectivelength;
         if (retArrayLength < minRequireLength) {
             // expand retArray
-            retArray.Update(factory->NewAndCopyTaggedArray(retArray, minRequireLength, retArrayLength));
+            if (retArrayLength != 0) {
+                retArray.Update(factory->NewAndCopyTaggedArray(retArray, minRequireLength, retArrayLength));
+            } else {
+                retArray.Update(factory->NewTaggedArray(minRequireLength));
+            }
             retArrayLength = minRequireLength;
         }
 
@@ -1317,6 +1321,9 @@ JSHandle<TaggedArray> JSObject::GetAllPropertyKeys(JSThread *thread, const JSHan
         currentObjValue.Update(currentObj);
     } while (currentObjValue->IsHeapObject());
 
+    if (retArrayEffectivelength == 0 && (filter & NATIVE_KEY_OWN_ONLY)) {
+        return retArray;
+    }
     JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
     if (filter & NATIVE_KEY_NUMBERS_TO_STRINGS) {
         for (uint32_t i = 0; i < retArrayEffectivelength; i++) {
