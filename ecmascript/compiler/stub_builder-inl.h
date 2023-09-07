@@ -2501,10 +2501,10 @@ inline GateRef StubBuilder::LoadHCIndexFromConstPool(GateRef jsFunc, GateRef tra
     Label afterUpdate(env);
     Branch(Int32LessThan(*i, indexInfoLength), &loopHead, &afterLoop);
     LoopBegin(&loopHead);
-    bcOffset = GetInt32OfTInt(GetValueFromTaggedArray(constantIndexInfo, Int32(*i)));
+    bcOffset = GetInt32OfTInt(GetValueFromTaggedArray(constantIndexInfo, *i));
     Branch(Int32Equal(*bcOffset, traceId), &matchSuccess, &afterUpdate);
     Bind(&matchSuccess);
-    constantIndex = GetInt32OfTInt(GetValueFromTaggedArray(constantIndexInfo, Int32(*i + 1)));
+    constantIndex = GetInt32OfTInt(GetValueFromTaggedArray(constantIndexInfo, Int32Add(*i, Int32(1))));
     Jump(&afterLoop);
     Bind(&afterUpdate);
     i = Int32Add(*i, Int32(2)); // 2 : skip traceId and constantIndex
