@@ -262,7 +262,6 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
         pcOffsets.emplace_back(curPc);
         bcIndex++;
     }
-    pcOffsets.emplace_back(bcInsLast.GetAddress());
     bytecodeInfo_.SetMethodOffsetToFastCallInfo(methodOffset, canFastCall, noGC);
     method->SetIsFastCall(canFastCall);
     method->SetNoGCBit(noGC);
