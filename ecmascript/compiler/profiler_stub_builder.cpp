@@ -302,7 +302,9 @@ void ProfilerStubBuilder::ProfileObjLayoutOrIndex(GateRef glue, GateRef receiver
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-
+    Label isHeap(env);
+    Branch(TaggedIsHeapObject(receiver), &isHeap, &exit);
+    Bind(&isHeap);
     GateRef index64 = TryToElementsIndex(glue, key);
     Label validIndex(env);
     Label profileIndex(env);
