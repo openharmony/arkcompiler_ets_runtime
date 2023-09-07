@@ -3993,13 +3993,39 @@ GateRef StubBuilder::FastStringEqual(GateRef glue, GateRef left, GateRef right)
     Label lengthCompare(env);
     Label hashcodeCompare(env);
     Label contentsCompare(env);
+    Label lenEqualOneCheck(env);
+    Label lenIsOne(env);
 
     Branch(Int32Equal(ZExtInt1ToInt32(IsUtf16String(left)), ZExtInt1ToInt32(IsUtf16String(right))),
         &lengthCompare, &exit);
 
     Bind(&lengthCompare);
-    Branch(Int32Equal(GetLengthFromString(left), GetLengthFromString(right)), &hashcodeCompare,
-        &exit);
+    Branch(Int32Equal(GetLengthFromString(left), GetLengthFromString(right)), &lenEqualOneCheck, &exit);
+
+    Bind(&lenEqualOneCheck);
+    Branch(Int32Equal(GetLengthFromString(left), Int32(1)), &lenIsOne, &hashcodeCompare);
+    Bind(&lenIsOne);
+    {
+        Label leftFlattenFastPath(env);
+        FlatStringStubBuilder leftFlat(this);
+        leftFlat.FlattenString(glue, left, &leftFlattenFastPath);
+        Bind(&leftFlattenFastPath);
+        {
+            Label rightFlattenFastPath(env);
+            FlatStringStubBuilder rightFlat(this);
+            rightFlat.FlattenString(glue, right, &rightFlattenFastPath);
+            Bind(&rightFlattenFastPath);
+            {
+                BuiltinsStringStubBuilder stringBuilder(this);
+                StringInfoGateRef leftStrInfoGate(&leftFlat);
+                StringInfoGateRef rightStrInfoGate(&rightFlat);
+                GateRef leftStrToInt = stringBuilder.StringAt(leftStrInfoGate, Int32(0));
+                GateRef rightStrToInt = stringBuilder.StringAt(rightStrInfoGate, Int32(0));
+                result = Equal(leftStrToInt, rightStrToInt);
+                Jump(&exit);
+            }
+        }
+    }
 
     Bind(&hashcodeCompare);
     Label leftNotNeg(env);
