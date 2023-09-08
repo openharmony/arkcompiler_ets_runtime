@@ -576,7 +576,7 @@
 *  SetPropertyByName(); SetTypeArrayPropertyByName(); CallSetterHelper(); ShouldCallSetter(); IsWritable(); UpdateValueInDict();
 *  AddPropertyByName(); SetHasConstructorCondition(); SetHasConstructorToHClass(); SetPropertyInlinedProps(); SetOffsetFieldInPropAttr();
 *  SetIsInlinePropsFieldInPropAttr(); JSHClassAddProperty(); IsDictionaryMode(); SetPropertiesArray(); SetDictionaryOrderFieldInPropAttr();
-*  ComputePropertyCapacityInJSObj();
+*  ComputeNonInlinedFastPropsCapacity;
 */
                       /**************HandleStobjbynameImm8Id16V8****************/
 {

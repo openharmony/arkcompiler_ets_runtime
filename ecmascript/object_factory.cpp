@@ -3108,7 +3108,7 @@ JSHandle<JSHClass> ObjectFactory::CreateObjectClass(const JSHandle<TaggedArray> 
         layoutInfoHandle->AddKey(thread_, fieldOrder, key.GetTaggedValue(), attributes);
         fieldOrder++;
     }
-    ASSERT(fieldOrder <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES);
+    ASSERT(fieldOrder <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY);
     JSHandle<JSHClass> objClass = NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, fieldOrder);
     objClass->SetPrototype(thread_, proto.GetTaggedValue());
     {

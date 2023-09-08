@@ -862,7 +862,7 @@ HWTEST_F_L0(JSObjectTest, FastToSlow)
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
 
     ecmaVM->SetEnableForceGC(false);
-    for (uint32_t i = 0; i < PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES; i++) {
+    for (uint32_t i = 0; i < PropertyAttributes::MAX_FAST_PROPS_CAPACITY; i++) {
         number.Update(JSTaggedValue(i));
         number.Update(JSTaggedValue::ToString(thread, number).GetTaggedValue());
         EcmaString *newString = *factory->ConcatFromString(key, JSTaggedValue::ToString(thread, number));
@@ -871,9 +871,9 @@ HWTEST_F_L0(JSObjectTest, FastToSlow)
     }
     ecmaVM->SetEnableForceGC(true);
 
-    EXPECT_TRUE(TaggedArray::Cast(obj1->GetProperties().GetTaggedObject())->IsDictionaryMode());
+    EXPECT_FALSE(TaggedArray::Cast(obj1->GetProperties().GetTaggedObject())->IsDictionaryMode());
 
-    number.Update(JSTaggedValue(PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES));
+    number.Update(JSTaggedValue(PropertyAttributes::MAX_FAST_PROPS_CAPACITY));
     number.Update(JSTaggedValue::ToString(thread, number).GetTaggedValue());
     EcmaString *newString = *factory->ConcatFromString(key, JSTaggedValue::ToString(thread, number));
     newkey.Update(JSTaggedValue(newString));
@@ -881,9 +881,9 @@ HWTEST_F_L0(JSObjectTest, FastToSlow)
 
     EXPECT_TRUE(TaggedArray::Cast(obj1->GetProperties().GetTaggedObject())->IsDictionaryMode());
     NameDictionary *dict = NameDictionary::Cast(obj1->GetProperties().GetTaggedObject());
-    EXPECT_EQ(dict->EntriesCount(), static_cast<int>(PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES + 1));
+    EXPECT_EQ(dict->EntriesCount(), static_cast<int>(PropertyAttributes::MAX_FAST_PROPS_CAPACITY + 1));
     EXPECT_EQ(dict->NextEnumerationIndex(thread),
-              static_cast<int>(PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES + 1));
+              static_cast<int>(PropertyAttributes::MAX_FAST_PROPS_CAPACITY + 1));
 }
 
 HWTEST_F_L0(JSObjectTest, DeleteMiddle)

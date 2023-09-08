@@ -322,8 +322,6 @@ public:
     static_assert(BitFieldLastBit::START_BIT + BitFieldLastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
     static constexpr int DEFAULT_CAPACITY_OF_IN_OBJECTS = 4;
-    static constexpr int MAX_CAPACITY_OF_OUT_OBJECTS =
-        PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES - DEFAULT_CAPACITY_OF_IN_OBJECTS;
     static constexpr int OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED = 5;
     static constexpr int OFFSET_MAX_OBJECT_SIZE_IN_WORDS =
         PropertyAttributes::OFFSET_BITFIELD_NUM + OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED;
@@ -1560,7 +1558,7 @@ public:
 
     inline void IncNumberOfProps()
     {
-        ASSERT(NumberOfProps() < PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES);
+        ASSERT(NumberOfProps() < PropertyAttributes::MAX_FAST_PROPS_CAPACITY);
         SetNumberOfProps(NumberOfProps() + 1);
     }
 
@@ -1838,7 +1836,7 @@ private:
     uint32_t data_ {0};
 };
 static_assert(PropertyLookupResult::OffsetBits::MaxValue() >
-              (PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES * JSTaggedValue::TaggedTypeSize()));
+              (PropertyAttributes::MAX_FAST_PROPS_CAPACITY * JSTaggedValue::TaggedTypeSize()));
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_JS_HCLASS_H

@@ -510,12 +510,12 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
 
     if (!array->IsDictionaryMode()) {
         attr.SetIsInlinedProps(false);
-
         uint32_t nonInlinedProps = static_cast<uint32_t>(objHandle->GetJSHClass()->GetNextNonInlinedPropsIndex());
         ASSERT(length >= nonInlinedProps);
         // if array is full, grow array or change to dictionary mode
-        if (length >= nonInlinedProps) {
-            if (UNLIKELY(length >= JSHClass::MAX_CAPACITY_OF_OUT_OBJECTS)) {
+        if (length == nonInlinedProps) {
+            uint32_t maxNonInlinedFastPropsCapacity = objHandle->GetNonInlinedFastPropsCapacity();
+            if (UNLIKELY(length >= maxNonInlinedFastPropsCapacity)) {
                 // change to dictionary and add one.
                 JSHandle<NameDictionary> dict(JSObject::TransitionToDictionary(thread, objHandle));
                 JSHandle<NameDictionary> newDict =
@@ -525,7 +525,7 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
                 return attr;
             }
             // Grow properties array size
-            uint32_t capacity = JSObject::ComputePropertyCapacity(length);
+            uint32_t capacity = JSObject::ComputeNonInlinedFastPropsCapacity(length, maxNonInlinedFastPropsCapacity);
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             array.Update(factory->CopyArray(array, length, capacity).GetTaggedValue());
             objHandle->SetProperties(thread, array.GetTaggedValue());

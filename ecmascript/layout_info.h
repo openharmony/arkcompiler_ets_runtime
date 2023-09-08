@@ -29,7 +29,7 @@ struct Properties {
 class LayoutInfo : private TaggedArray {
 public:
     static constexpr int MIN_PROPERTIES_LENGTH = JSObject::MIN_PROPERTIES_LENGTH;
-    static constexpr int MAX_PROPERTIES_LENGTH = PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES;
+    static constexpr int MAX_PROPERTIES_LENGTH = PropertyAttributes::MAX_FAST_PROPS_CAPACITY;
     static constexpr uint32_t ELEMENTS_INDEX_LOG2 = 1;
     static constexpr uint32_t ATTR_INDEX_OFFSET = 1;
 

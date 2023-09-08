@@ -2140,7 +2140,7 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
         }
         propsLen++;
     }
-    if (propsLen <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES) {
+    if (propsLen <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY) {
         JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(properties, propsLen);
         ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
         SetAllPropertys(thread, obj, properties, propsLen, ihcVal);

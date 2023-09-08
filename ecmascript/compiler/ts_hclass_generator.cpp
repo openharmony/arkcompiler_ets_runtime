@@ -183,7 +183,7 @@ JSHandle<JSHClass> TSHClassGenerator::CreateIHClass(const JSThread *thread,
     JSHandle<TSObjLayoutInfo> tsLayout(thread, instanceType->GetObjLayoutInfo());
     uint32_t numOfProps = tsLayout->GetNumOfProperties();
     JSHandle<JSHClass> hclass;
-    if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
+    if (LIKELY(numOfProps <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
         JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(numOfProps);
         for (uint32_t index = 0; index < numOfProps; ++index) {
@@ -220,7 +220,7 @@ JSHandle<JSHClass> TSHClassGenerator::CreatePHClass(const JSThread *thread,
     JSHandle<TSObjLayoutInfo> tsLayout(thread, prototypeType->GetObjLayoutInfo());
     uint32_t numOfProps = tsLayout->GetNumOfProperties();
     JSHandle<JSHClass> hclass;
-    if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
+    if (LIKELY(numOfProps <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
         TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         JSHandle<JSTaggedValue> ctor = globalConst->GetHandledConstructorString();
@@ -295,7 +295,7 @@ JSHandle<JSHClass> TSHClassGenerator::CreateCHClass(const JSThread *thread,
     uint32_t functionFirstIndex = numOfProps;
     uint32_t numNonStaticFunc = 0;
     bool hasFunction = false;
-    if (LIKELY(numOfProps <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
+    if (LIKELY(numOfProps <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
         TSManager *tsManager = thread->GetCurrentEcmaContext()->GetTSManager();
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(numOfProps);

@@ -30,7 +30,7 @@ namespace panda::ecmascript {
 class TSObjLayoutInfo : private TaggedArray {
 public:
     static constexpr int MIN_PROPERTIES_LENGTH = JSObject::MIN_PROPERTIES_LENGTH;
-    static constexpr int MAX_PROPERTIES_LENGTH = PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES;
+    static constexpr int MAX_PROPERTIES_LENGTH = PropertyAttributes::MAX_FAST_PROPS_CAPACITY;
     static constexpr int ELEMENTS_COUNT_INDEX = 0;
     static constexpr int ELEMENTS_START_INDEX = 1;
     static constexpr int ENTRY_SIZE = 3;

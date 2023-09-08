@@ -85,7 +85,7 @@ public:
     static constexpr uint32_t OFFSET_BITFIELD_NUM = 10;
     static constexpr uint32_t REPRESENTATION_NUM = 2;
     static constexpr uint32_t TRACK_TYPE_NUM = 3;
-    static constexpr uint32_t MAX_CAPACITY_OF_PROPERTIES = (1U << OFFSET_BITFIELD_NUM) - 1;
+    static constexpr uint32_t MAX_FAST_PROPS_CAPACITY = (1U << OFFSET_BITFIELD_NUM) - 1;
     static constexpr unsigned BITS_PER_BYTE = 8;
 
     using PropertyMetaDataField = BitField<int, 0, 4>;  // 4: property metaData field occupies 4 bits
