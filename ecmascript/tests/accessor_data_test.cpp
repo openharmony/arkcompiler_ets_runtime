@@ -15,7 +15,7 @@
 
 #include "ecmascript/global_env.h"
 #include "ecmascript/accessor_data.h"
-#include "ecmascript/object_factory.h"
+#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/object_operator.h"
 #include "ecmascript/tests/test_helper.h"
 

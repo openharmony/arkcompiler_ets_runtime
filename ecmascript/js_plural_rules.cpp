@@ -19,6 +19,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/js_number_format.h"
 
 namespace panda::ecmascript {

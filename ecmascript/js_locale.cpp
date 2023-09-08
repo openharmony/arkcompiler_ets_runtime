@@ -20,7 +20,7 @@
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/object_factory.h"
+#include "ecmascript/object_factory-inl.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push

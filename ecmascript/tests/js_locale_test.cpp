@@ -18,6 +18,7 @@
 #include "ecmascript/js_number_format.h"
 #include "ecmascript/js_plural_rules.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;

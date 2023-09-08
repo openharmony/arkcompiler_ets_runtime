@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_api/js_api_vector.h"
 
+#include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_api/js_api_vector_iterator.h"

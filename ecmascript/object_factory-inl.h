@@ -18,6 +18,7 @@
 
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/mem/heap-inl.h"

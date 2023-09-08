@@ -16,6 +16,7 @@
 #include "ecmascript/ts_types/ts_manager.h"
 
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"

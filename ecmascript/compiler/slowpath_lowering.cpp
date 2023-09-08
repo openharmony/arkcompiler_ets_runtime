@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/slowpath_lowering.h"
 #include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/dfx/vm_thread_control.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/message_string.h"

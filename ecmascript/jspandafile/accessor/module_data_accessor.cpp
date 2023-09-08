@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/jspandafile/accessor/module_data_accessor.h"
+#include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript {

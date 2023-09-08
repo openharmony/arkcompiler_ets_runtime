@@ -25,6 +25,7 @@
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
+#include "ecmascript/dfx/vm_thread_control.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
@@ -47,7 +48,6 @@ template<typename T>
 using JSHandle = ecmascript::JSHandle<T>;
 using ecmascript::FileStream;
 using ecmascript::FileDescriptorStream;
-using ecmascript::Stream;
 using ecmascript::CMap;
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,

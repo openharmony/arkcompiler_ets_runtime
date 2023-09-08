@@ -18,6 +18,7 @@
 
 #include "ecmascript/interpreter/fast_runtime_stub.h"
 
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"

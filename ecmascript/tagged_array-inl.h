@@ -16,8 +16,10 @@
 #ifndef ECMASCRIPT_TAGGED_ARRAY_INL_H
 #define ECMASCRIPT_TAGGED_ARRAY_INL_H
 
+#include "ecmascript/mem/barriers-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/mem/region-inl.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array.h"
 

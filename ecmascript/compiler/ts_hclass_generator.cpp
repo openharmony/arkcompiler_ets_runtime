@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/ts_hclass_generator.h"
+#include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/subtyping_operator.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 

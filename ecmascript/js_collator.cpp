@@ -19,6 +19,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/barriers-inl.h"
+#include "ecmascript/object_factory-inl.h"
 
 #include "unicode/udata.h"
 

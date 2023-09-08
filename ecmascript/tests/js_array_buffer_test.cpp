@@ -15,6 +15,7 @@
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_arraybuffer.h"
+#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;

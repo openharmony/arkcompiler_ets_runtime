@@ -23,7 +23,7 @@
 #include "ecmascript/js_intl.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/object_factory.h"
+#include "ecmascript/object_factory-inl.h"
 
 namespace panda::ecmascript {
 struct CommonDateFormatPart {

@@ -18,6 +18,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_list_format.h"
 #include "ecmascript/js_iterator.h"
+#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;

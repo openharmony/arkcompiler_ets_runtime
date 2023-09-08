@@ -20,6 +20,7 @@
 
 #include "ecmascript/free_object.h"
 #include "ecmascript/mem/full_gc.h"
+#include "ecmascript/mem/heap-inl.h"
 
 namespace panda::ecmascript {
 static constexpr size_t MIN_BUFFER_SIZE = 31_KB;

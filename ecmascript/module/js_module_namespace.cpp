@@ -17,6 +17,7 @@
 
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_record.h"
 #include "ecmascript/module/js_module_source_text.h"

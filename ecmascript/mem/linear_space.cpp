@@ -20,6 +20,7 @@
 #include "ecmascript/mem/allocator-inl.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/heap.h"
+#include "ecmascript/mem/mem_controller.h"
 
 namespace panda::ecmascript {
 LinearSpace::LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
