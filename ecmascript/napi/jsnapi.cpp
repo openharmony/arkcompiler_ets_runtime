@@ -150,7 +150,8 @@ using ecmascript::TaggedArray;
 using ecmascript::JSTypedArray;
 using ecmascript::base::BuiltinsBase;
 using ecmascript::builtins::BuiltinsObject;
-using ecmascript::base::JsonParser;
+using ecmascript::base::Utf8JsonParser;
+using ecmascript::base::Utf16JsonParser;
 using ecmascript::base::JsonStringifier;
 using ecmascript::base::StringHelper;
 using ecmascript::base::TypedArrayHelper;
@@ -2316,11 +2317,11 @@ Local<JSValueRef> JSON::Parse(const EcmaVM *vm, Local<StringRef> string)
     auto ecmaStr = EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(*string).GetTaggedObject());
     JSHandle<JSTaggedValue> result;
     if (EcmaStringAccessor(ecmaStr).IsUtf8()) {
-        JsonParser<uint8_t> parser(thread);
-        result = parser.ParseUtf8(EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(*string).GetTaggedObject()));
+        Utf8JsonParser parser(thread);
+        result = parser.Parse(EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(*string).GetTaggedObject()));
     } else {
-        JsonParser<uint16_t> parser(thread);
-        result = parser.ParseUtf16(EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(*string).GetTaggedObject()));
+        Utf16JsonParser parser(thread);
+        result = parser.Parse(EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(*string).GetTaggedObject()));
     }
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<JSValueRef>(result);

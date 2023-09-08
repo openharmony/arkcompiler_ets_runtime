@@ -43,11 +43,11 @@ public:
     {
         LocalScope scope(vm);
         ObjectFactory *factory = vm->GetFactory();
-        ecmascript::base::JsonParser<uint8_t> parser(vm->GetJSThread());
+        ecmascript::base::Utf8JsonParser parser(vm->GetJSThread());
 
         JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(jsonInfo.c_str()));
         JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(vm->GetAssociatedJSThread(), handleMsg));  // JSON Object
-        JSHandle<JSTaggedValue> result = parser.ParseUtf8(*handleStr);
+        JSHandle<JSTaggedValue> result = parser.Parse(*handleStr);
         JSTaggedValue resultValue(static_cast<JSTaggedType>(result->GetRawData()));
         if (!resultValue.IsArray(vm->GetJSThread())) {
             LOG_COMPILER(ERROR) << "Pkg list info parse failed. result is not an array. jsonData: " << jsonInfo.c_str();
@@ -76,11 +76,11 @@ public:
     {
         LocalScope scope(vm);
         ObjectFactory *factory = vm->GetFactory();
-        ecmascript::base::JsonParser<uint8_t> parser(vm->GetJSThread());
+        ecmascript::base::Utf8JsonParser parser(vm->GetJSThread());
 
         JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(jsonInfo.c_str()));
         JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(vm->GetAssociatedJSThread(), handleMsg));  // JSON Object
-        JSHandle<JSTaggedValue> result = parser.ParseUtf8(*handleStr);
+        JSHandle<JSTaggedValue> result = parser.Parse(*handleStr);
         JSTaggedValue resultValue(static_cast<JSTaggedType>(result->GetRawData()));
         if (!resultValue.IsECMAObject()) {
             LOG_COMPILER(ERROR) << "Pkg info parse failed. result is not an object. jsonData: " << jsonInfo.c_str();
