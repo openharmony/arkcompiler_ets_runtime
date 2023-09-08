@@ -84,6 +84,10 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
             VisitIndexCheck(gate);
             break;
         }
+        case OpCode::RANGE_CHECK_PREDICATE: {
+            VisitRangeCheckPredicate(gate);
+            break;
+        }
         case OpCode::LOAD_ARRAY_LENGTH:
         case OpCode::LOAD_TYPED_ARRAY_LENGTH: {
             VisitLoadArrayLength(gate);
@@ -521,6 +525,12 @@ void NumberSpeculativeLowering::VisitPhi(GateRef gate)
         default:
             break;
     }
+}
+
+void NumberSpeculativeLowering::VisitRangeCheckPredicate(GateRef gate)
+{
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.SetMachineType(gate, MachineType::I32);
 }
 
 void NumberSpeculativeLowering::VisitIndexCheck(GateRef gate)

@@ -156,6 +156,12 @@ TypedUnaryAccessor GateAccessor::GetTypedUnAccessor(GateRef gate) const
     return TypedUnaryAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
+TypedBinaryAccessor GateAccessor::GetTypedBinaryAccessor(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return TypedBinaryAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+}
+
 TypedJumpAccessor GateAccessor::GetTypedJumpAccessor(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::TYPED_CONDITION_JUMP);
@@ -1197,6 +1203,96 @@ void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, Gate
         }
     }
     DeleteGate(gate);
+}
+
+// When Insert newGate, all the stateIn from state and dependIn from depend can be replaced to newGate
+void GateAccessor::ReplaceInAfterInsert(GateRef state, GateRef depend, GateRef newGate)
+{
+    auto uses = Uses(state);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        if (IsStateIn(useIt) && (*useIt != newGate)) {
+            ASSERT(newGate != Circuit::NullGate());
+            // Exception, for example, IF_TRUE / IF_FALSE -> DEPEND_RELAY,
+            // or LOOP_BEGIN / MERGE -> DEPEND_SELECTOR cannot be replaced
+            if (!IsState(*useIt)) {
+                useIt++;
+                continue;
+            }
+            useIt = ReplaceIn(useIt, newGate);
+        } else {
+            useIt++;
+        }
+    }
+
+    uses = Uses(depend);
+    for (auto useIt = uses.begin(); useIt != uses.end();) {
+        if (IsDependIn(useIt) && (*useIt != newGate)) {
+            ASSERT(newGate != Circuit::NullGate());
+            if (!IsState(*useIt)) {
+                useIt++;
+                continue;
+            }
+            useIt = ReplaceIn(useIt, newGate);
+        } else {
+            useIt++;
+        }
+    }
+}
+
+// When loopExit, find stateSplit after DEPEND_SELECTOR
+void GateAccessor::GetFrameStateDependIn(GateRef gate, GateRef &dependIn)
+{
+    auto uses = Uses(gate);
+    size_t stateSplitCount = 0;
+    GateRef stateSplit = Circuit::NullGate();
+    for (auto it = uses.begin(); it != uses.end();) {
+        if (GetOpCode(*it) == OpCode::STATE_SPLIT) {
+            ASSERT(stateSplitCount < 1); // only one state Split;
+            stateSplitCount++;
+            stateSplit = *it;
+            break;
+        } else {
+            ++it;
+        }
+    }
+
+    ASSERT(stateSplitCount <= 1);
+    if (stateSplitCount == 1 && stateSplit != Circuit::NullGate()) {
+        dependIn = stateSplit;
+    }
+}
+
+// When ifOp or loopExit, insertAfter
+// stateIn: IF_TRUE / IF_FALSE / MERGE
+// dependIn: DEPEND_RELAY / DEPEND_SELECTOR, if stateSplit follow closely, after the stateSplit.
+
+void GateAccessor::GetStateInAndDependIn(GateRef insertAfter, GateRef &stateIn, GateRef &dependIn)
+{
+    if (GetOpCode(insertAfter) == OpCode::IF_TRUE || GetOpCode(insertAfter) == OpCode::IF_FALSE) {
+        auto uses = Uses(insertAfter);
+        for (auto it = uses.begin(); it != uses.end();) {
+            if (GetOpCode(*it) == OpCode::DEPEND_RELAY) {
+                stateIn = insertAfter;
+                dependIn = (*it);
+                break;
+            } else {
+                ++it;
+            }
+        }
+    } else if (GetOpCode(insertAfter) == OpCode::MERGE) {
+        auto uses = Uses(insertAfter);
+        for (auto it = uses.begin(); it != uses.end();) {
+            if (GetOpCode(*it) == OpCode::DEPEND_SELECTOR) {
+                stateIn = insertAfter;
+                dependIn = (*it);
+                GetFrameStateDependIn(*it, dependIn);
+                break;
+            } else {
+                ++it;
+            }
+        }
+    }
+    ASSERT(GetDependCount(dependIn) > 0);
 }
 
 GateRef GateAccessor::GetFrameState(GateRef gate) const

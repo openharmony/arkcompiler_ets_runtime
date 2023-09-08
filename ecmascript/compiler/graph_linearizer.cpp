@@ -340,6 +340,7 @@ public:
         ComputeLoopInfo();
         ComputeLoopExit();
         ComputeLoopHeader();
+        ComputeLoopDepth();
         if (linearizer_->IsLogEnabled()) {
             for (size_t i = 0; i < numLoops_; i++) {
                 auto& loopInfo = loops_[i];
@@ -518,6 +519,25 @@ public:
                     }
                 }
             }
+        }
+    }
+
+    void ComputeLoopDepth()
+    {
+        auto size = linearizer_->regionList_.size();
+        for (size_t cur = 0; cur < size; cur++) {
+            GateRegion* region = linearizer_->regionList_[cur];
+            int loopDepth = 0;
+            int innerLoopIndex = -1;
+            for (int i = numLoops_ - 1; i >= 0; i--) {
+                auto& loopInfo = loops_[i];
+                if (loopInfo.loopBodys->TestBit(cur)) {
+                    loopDepth++;
+                    innerLoopIndex = i;
+                }
+            }
+            region->SetLoopDepth(loopDepth);
+            region->SetInnerLoopIndex(innerLoopIndex);
         }
     }
 
@@ -808,12 +828,12 @@ void GraphLinearizer::LinearizeGraph()
     builder.Run();
     ImmediateDominatorsGenerator generator(this, chunk_, regionList_.size());
     generator.Run();
+    if (!IsSchedueLIR() && loopNumber_ > 0) {
+        scheduleUpperBound_ = true;
+        LoopInfoBuilder loopInfoBuilder(this, chunk_);
+        loopInfoBuilder.Run();
+    }
     if (!onlyBB_) {
-        if (!IsSchedueLIR() && loopNumber_ > 0) {
-            scheduleUpperBound_ = true;
-            LoopInfoBuilder loopInfoBuilder(this, chunk_);
-            loopInfoBuilder.Run();
-        }
         GateScheduler scheduler(this);
         scheduler.Prepare();
         scheduler.ScheduleUpperBound();

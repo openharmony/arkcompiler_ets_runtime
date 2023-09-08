@@ -195,6 +195,26 @@ public:
         return depth_;
     }
 
+    void SetLoopDepth(size_t loopDepth)
+    {
+        loopDepth_ = loopDepth;
+    }
+
+    size_t GetLoopDepth()
+    {
+        return loopDepth_;
+    }
+
+    void SetInnerLoopIndex(size_t innerLoopIndex)
+    {
+        innerLoopIndex_ = innerLoopIndex;
+    }
+
+    int GetInnerLoopIndex()
+    {
+        return innerLoopIndex_;
+    }
+
 private:
     enum StateKind {
         BRANCH,
@@ -205,6 +225,8 @@ private:
     };
     static constexpr int32_t INVALID_DEPTH = -1;
     size_t id_ {0};
+    size_t loopDepth_ {0}; // the loop nesting level of this block
+    int innerLoopIndex_ {-1}; // number of the innermost loop of this block
     int32_t depth_ {INVALID_DEPTH};
     GateRegion* iDominator_ {nullptr};
     GateRegion* loopHead_ {nullptr};

@@ -318,6 +318,12 @@ public:
     GateRef CheckTaggedNumberAndConvertToFloat64(GateRef gate);
     GateRef CheckTaggedNumberAndConvertToBool(GateRef gate);
     GateRef CheckTaggedBooleanAndConvertToBool(GateRef gate);
+    GateRef InsertStableArrayCheck(GateRef array);
+    GateRef InsertLoadArrayLength(GateRef array, bool isTypedArray);
+    GateRef InsertTypedArrayCheck(GateType type, GateRef array);
+    GateRef InsertTypedBinaryop(GateRef left, GateRef right, GateType leftType, GateType rightType,
+                                GateType gateType, PGOSampleType sampleType, TypedBinOp op);
+    GateRef InsertRangeCheckPredicate(GateRef left, TypedBinOp cond, GateRef right);
     GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, BranchKind branchKind, GateType typeVal,
                                const std::vector<GateRef>& inList);
     GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);

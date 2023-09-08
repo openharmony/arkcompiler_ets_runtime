@@ -87,6 +87,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitTypedUnaryOp(gate);
         case OpCode::TYPED_CONDITION_JUMP:
             return VisitTypedConditionJump(gate);
+        case OpCode::RANGE_CHECK_PREDICATE:
+            return VisitRangeCheckPredicate(gate);
         case OpCode::INDEX_CHECK:
             return VisitIndexCheck(gate);
         case OpCode::LOAD_ARRAY_LENGTH:
@@ -893,6 +895,28 @@ GateRef NumberSpeculativeRetype::ConvertToTagged(GateRef gate)
             UNREACHABLE();
             return Circuit::NullGate();
     }
+}
+
+GateRef NumberSpeculativeRetype::VisitRangeCheckPredicate(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::IntType());
+    }
+
+    if (IsConvert()) {
+        Environment env(gate, circuit_, &builder_);
+        GateRef value0 = acc_.GetValueIn(gate, 0);
+        GateRef value1 = acc_.GetValueIn(gate, 1);
+        GateType value0Type = acc_.GetGateType(value0);
+        GateType value1Type = acc_.GetGateType(value1);
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value0, value0Type), 0);
+        acc_.ReplaceValueIn(gate, CheckAndConvertToInt32(value1, value1Type), 1);
+
+        acc_.ReplaceStateIn(gate, builder_.GetState());
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
+
+    return Circuit::NullGate();
 }
 
 GateRef NumberSpeculativeRetype::VisitIndexCheck(GateRef gate)

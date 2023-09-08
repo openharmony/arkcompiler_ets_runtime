@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #ifndef ECMASCRIPT_COMPILER_ARRAY_BOUNDS_CHECK_ELIMINATION_H
 #define ECMASCRIPT_COMPILER_ARRAY_BOUNDS_CHECK_ELIMINATION_H
 
@@ -26,8 +27,8 @@ namespace panda::ecmascript::kungfu {
 class ArrayBoundsCheckElimination {
 public:
     ArrayBoundsCheckElimination(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
-        : acc_(circuit), bounds_(chunk), circuit_(circuit), chunk_(chunk), enableLog_(enableLog),
-        graphLinearizer_(circuit, enableLog, name, chunk, true), methodName_(name) {}
+        : acc_(circuit), bounds_(chunk), circuit_(circuit), builder_(circuit), chunk_(chunk), enableLog_(enableLog),
+        graphLinearizer_(circuit, enableLog, name, chunk, true), methodName_(name), indexCheckInfo_(chunk) {}
 
     ~ArrayBoundsCheckElimination() = default;
     void Run();
@@ -64,12 +65,26 @@ private:
         {
             return lowerGate_ != Circuit::NullGate() || lower_ > INT_MIN;
         }
+        void RemoveUpper()
+        {
+            upperGate_ = Circuit::NullGate();
+            upper_ = INT_MAX;
+        }
+        void RemoveLower()
+        {
+            lowerGate_ = Circuit::NullGate();
+            lower_ = INT_MIN;
+        }
         bool IsSmaller(Bound *b)
         {
             if (b->LowerGate() != upperGate_) {
                 return false;
             }
             return upper_ < b->Lower();
+        }
+        Bound* Copy()
+        {
+            return new Bound(lower_, lowerGate_, upper_, upperGate_);
         }
         
     private:
@@ -93,33 +108,62 @@ private:
 
     typedef ChunkVector<Bound*> BoundStack;
     typedef ChunkVector<BoundStack*> BoundMap;
-    typedef ChunkVector<GateRef> IndexCheckList;
-    typedef ChunkVector<GateRef> GateLists;
     typedef ChunkVector<int> IntegerStack;
-
+    typedef ChunkVector<GateRef> GateLists;
+    
+    void AddAccessIndexedInfo(GateLists &indices, GateRef gate, int idx, GateRef indexCheck);
     void AddIfCondition(IntegerStack &pushed, GateRef x, GateRef y, TypedBinOp op);
     Bound *AndOp(Bound *bound, Bound *b);
-    bool Contain(ChunkVector<GateRef>& gateLists, GateRef gate);
-    void CalcBounds(GateRegion *block);
+    Bound *OrOp(Bound *bound, Bound *b);
+    bool Contain(GateLists& gateLists, GateRef gate);
+    void CalcBounds(GateRegion *block, GateRegion *loopHeader);
+    bool CheckLoop(GateRef array, GateRef lowerGate, int lower, GateRef upperGate, int upper);
+    void InBlockMotion(GateLists &indexChecked, GateLists &arrays);
+    bool InLoop(GateRef loopHeader, GateRef gate);
+    bool IsArrayLength(GateRef gate);
+    bool LoopInvariant(GateRegion *loopHeader, GateRef gate);
     void UpdateBound(IntegerStack &pushed, GateRef gate, Bound *bound);
     void UpdateBound(IntegerStack &pushed, GateRef x, TypedBinOp op, GateRef y, int constValue);
-    void ProcessIndexCheck(GateRef gate);
+    void ProcessIndexCheck(GateRegion *loopHeader, GateRef gate);
     void RemoveIndexCheck(GateRef gate);
+    void CopyStateInAndDependIn(GateRef &stateIn, GateRef &dependIn, GateRef insertAfter);
+    void LoopInvariantMotionForIndexCheck(GateRef array, GateRef length, GateRef lowerGate, int lower,
+                                            GateRef upperGate, int upper, bool isTypedArray);
+    void GetInstrAndConstValueFromOp(GateRef gate, GateRef &instrValue, int& constValue);
     Bound *GetBound(GateRef gate);
     Bound *DoConstant(GateRef gate);
     Bound *DoArithmeticOp(GateRef gate);
+    Bound *DoPhi(GateRef gate);
     void SetBound(GateRef gate, Bound *bound);
     void ProcessIf(IntegerStack &pushed, GateRegion *parent, OpCode cond);
-    bool InArrayBound(Bound *bound, GateRef Length, GateRef Array);
+    bool InArrayBound(Bound *bound, GateRef length, GateRef array);
     Bound *VisitGate(GateRef gate);
+
+    void ReplaceIn(GateRef stateIn, GateRef dependIn, GateRef newGate);
+    
+    GateRef Predicate(GateRef left, TypedBinOp cond, GateRef right);
+    GateRef PredicateCmpWithConst(GateRef left, TypedBinOp cond, int right);
+    GateRef PredicateAdd(GateRef left, int leftConst, TypedBinOp cond, GateRef right);
+    GateRef PredicateAddCmpWithConst(GateRef left, int leftConst, TypedBinOp cond, int right);
 
     GateAccessor acc_;
     BoundMap bounds_;
     Circuit *circuit_ {nullptr};
+    CircuitBuilder builder_;
     Chunk *chunk_ {nullptr};
     bool enableLog_ {false};
     GraphLinearizer graphLinearizer_;
     std::string methodName_;
+    
+    class IndexCheckInfo {
+    public:
+        IndexCheckInfo(Chunk* chunk): list_(chunk) {}
+        GateLists list_;
+        int min_;
+        int max_;
+    };
+    typedef ChunkVector<IndexCheckInfo*> IndexCheckInfoList;
+    IndexCheckInfoList indexCheckInfo_;
 };
 }
 #endif

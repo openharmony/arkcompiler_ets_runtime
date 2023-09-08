@@ -399,6 +399,7 @@ public:
     GlobalTSTypeRef GetFuncGT(GateRef gate) const;
     GateType GetParamGateType(GateRef gate) const;
     TypedUnaryAccessor GetTypedUnAccessor(GateRef gate) const;
+    TypedBinaryAccessor GetTypedBinaryAccessor(GateRef gate) const;
     TypedJumpAccessor GetTypedJumpAccessor(GateRef gate) const;
     ArrayMetaDataAccessor GetArrayMetaDataAccessor(GateRef gate) const;
     ObjectTypeAccessor GetObjectTypeAccessor(GateRef gate) const;
@@ -442,6 +443,9 @@ public:
     size_t GetInValueCount(GateRef gate) const;
     size_t GetInValueStarts(GateRef gate) const;
     void UpdateAllUses(GateRef gate, GateRef replaceValueIn);
+    void ReplaceInAfterInsert(GateRef state, GateRef depend, GateRef newGate);
+    void GetFrameStateDependIn(GateRef gate, GateRef &dependIn);
+    void GetStateInAndDependIn(GateRef insertAfter, GateRef &stateIn, GateRef &dependIn);
     void ReplaceIn(GateRef gate, size_t index, GateRef in);
     void ReplaceStateIn(GateRef gate, GateRef in, size_t index = 0);
     void ReplaceDependIn(GateRef gate, GateRef in, size_t index = 0);

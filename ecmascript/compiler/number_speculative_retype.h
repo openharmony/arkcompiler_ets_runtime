@@ -78,6 +78,7 @@ private:
     GateRef VisitNumberShiftAndLogical(GateRef gate);
     GateRef VisitNumberMod(GateRef gate);
     GateRef VisitBooleanJump(GateRef gate);
+    GateRef VisitRangeCheckPredicate(GateRef gate);
     GateRef VisitIndexCheck(GateRef gate);
     GateRef VisitLoadArrayLength(GateRef gate);
     GateRef VisitLoadStringLength(GateRef gate);

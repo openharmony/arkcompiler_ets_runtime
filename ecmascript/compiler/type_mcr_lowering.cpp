@@ -57,6 +57,9 @@ GateRef TypeMCRLowering::VisitGate(GateRef gate)
         case OpCode::OBJECT_TYPE_COMPARE:
             LowerObjectTypeCompare(gate);
             break;
+        case OpCode::RANGE_CHECK_PREDICATE:
+            LowerRangeCheckPredicate(gate);
+            break;
         case OpCode::INDEX_CHECK:
             LowerIndexCheck(gate);
             break;
@@ -490,6 +493,38 @@ GateRef TypeMCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
     GateRef receiverHClass = builder_.LoadConstOffset(
         VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
     return builder_.Equal(aotHCGate, receiverHClass);
+}
+
+void TypeMCRLowering::LowerRangeCheckPredicate(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    auto deoptType = DeoptType::NOTARRAY;
+    GateRef frameState = GetFrameState(gate);
+    GateRef x = acc_.GetValueIn(gate, 0);
+    GateRef y = acc_.GetValueIn(gate, 1);
+    TypedBinaryAccessor accessor = acc_.GetTypedBinaryAccessor(gate);
+    TypedBinOp cond = accessor.GetTypedBinOp();
+    GateRef check = Circuit::NullGate();
+    // check the condition
+    switch (cond) {
+        case TypedBinOp::TYPED_GREATER:
+            check = builder_.Int32GreaterThan(x, y);
+            break;
+        case TypedBinOp::TYPED_GREATEREQ:
+            check = builder_.Int32GreaterThanOrEqual(x, y);
+            break;
+        case TypedBinOp::TYPED_LESS:
+            check = builder_.Int32LessThan(x, y);
+            break;
+        case TypedBinOp::TYPED_LESSEQ:
+            check = builder_.Int32LessThanOrEqual(x, y);
+            break;
+        default:
+            UNREACHABLE();
+            break;
+    }
+    builder_.DeoptCheck(check, frameState, deoptType);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void TypeMCRLowering::LowerIndexCheck(GateRef gate)
