@@ -317,6 +317,14 @@ public:
         return jsGatesToByteCode_.at(gate);
     }
 
+    bool IsBcIndexByGate(GateRef gate) const
+    {
+        if (jsGatesToByteCode_.find(gate) == jsGatesToByteCode_.end()) {
+            return false;
+        }
+        return true;
+    }
+
     bool NeedCheckSafePointAndStackOver() const
     {
         return !isInline_ && !method_->IsNoGC();

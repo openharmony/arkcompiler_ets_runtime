@@ -101,7 +101,7 @@ private:
     {
         UpdateVirtualRegister(accumulatorIndex_, gate);
     }
-    void BindStateSplit(GateRef state, GateRef depend, GateRef frameState);
+    GateRef BindStateSplit(GateRef state, GateRef depend, GateRef frameState);
     void BindStateSplit(GateRef gate, GateRef frameState);
     void BindBBStateSplit();
     void UpdateVirtualRegister(size_t id, size_t index, GateRef gate);
@@ -113,17 +113,30 @@ private:
     bool ComputeLiveOut(size_t bbId);
     void ComputeLiveState();
     void ComputeLiveOutBC(uint32_t index, const BytecodeInfo &bytecodeInfo, size_t bbId);
+    void FindLoopExit(GateRef gate);
     bool IsAsyncResolveOrSusp(const BytecodeInfo &bytecodeInfo);
     bool MergeIntoPredBC(uint32_t predPc, size_t diff);
     bool MergeIntoPredBB(BytecodeRegion *bb, BytecodeRegion *predBb);
     size_t LoopExitCount(BytecodeRegion *bb, BytecodeRegion *bbNext);
-    GateRef TryGetLoopExitValue(GateRef value, size_t diff);
+    GateRef TryGetLoopExitValue(GateRef value, size_t diff, size_t reg);
     FrameStateInfo *GetOrOCreateBCEndStateInfo(uint32_t bcIndex)
     {
         auto currentInfo = bcEndStateInfos_[bcIndex];
         if (currentInfo == nullptr) {
             currentInfo = CreateEmptyStateInfo();
             bcEndStateInfos_[bcIndex] = currentInfo;
+        }
+        return currentInfo;
+    }
+    FrameStateInfo *GetOrOCreateLoopExitStateInfo(GateRef gate)
+    {
+        ASSERT(gateAcc_.GetOpCode(gate) == OpCode::LOOP_EXIT);
+        size_t idx = gateAcc_.GetId(gate);
+        ASSERT(idx < circuit_ -> GetMaxGateId());
+        auto currentInfo = loopExitStateInfos_[idx];
+        if (currentInfo == nullptr) {
+            currentInfo = CreateEmptyStateInfo();
+            loopExitStateInfos_[idx] = currentInfo;
         }
         return currentInfo;
     }
@@ -163,6 +176,7 @@ private:
     bool ShouldInsertFrameStateBefore(BytecodeRegion& bb, size_t index);
     void BuildCallFrameState(size_t index, BytecodeRegion& bb);
     size_t GetNearestNextIndex(size_t index, BytecodeRegion& bb) const;
+    GateRef GetPredStateGateBetweenBB(BytecodeRegion *bb, BytecodeRegion *predBb);
 
     BytecodeCircuitBuilder *builder_{nullptr};
     FrameStateInfo *liveOutResult_{nullptr};
@@ -172,6 +186,7 @@ private:
     GateAccessor gateAcc_;
     ChunkVector<FrameStateInfo *> bcEndStateInfos_;
     ChunkVector<FrameStateInfo *> bbBeginStateInfos_;
+    ChunkVector<FrameStateInfo *> loopExitStateInfos_;
     ChunkVector<size_t> postOrderList_;
 };
 }  // panda::ecmascript::kungfu
