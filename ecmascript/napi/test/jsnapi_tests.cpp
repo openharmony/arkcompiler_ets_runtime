@@ -29,6 +29,7 @@
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/js_generator_object.h"
+#include "gtest/gtest.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -1516,5 +1517,23 @@ HWTEST_F_L0(JSNApiTests, FunctionCallScope)
         ASSERT_FALSE(vm_->IsTopLevelCallDepth());
     }
     ASSERT_TRUE(vm_->IsTopLevelCallDepth());
+}
+
+HWTEST_F_L0(JSNApiTests, AotTrigger)
+{
+    std::string bundle;
+    std::string module;
+    int32_t trigger = -1;
+    JSNApi::SetRequestAotCallback(
+        vm_, [&](const std::string &bundleName, const std::string &moduleName, int32_t triggerMode) -> bool {
+            bundle = bundleName;
+            module = moduleName;
+            trigger = triggerMode;
+            return 100;
+        });
+    ASSERT_FALSE(vm_->RequestAot("com.test.test", "requestAot", RequestAotMode::RE_COMPILE_ON_IDLE));
+    ASSERT_EQ(bundle, "com.test.test");
+    ASSERT_EQ(module, "requestAot");
+    ASSERT_EQ(trigger, 0);
 }
 }  // namespace panda::test

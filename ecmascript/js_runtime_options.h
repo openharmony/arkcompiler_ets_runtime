@@ -138,6 +138,8 @@ enum CommandValues {
     OPTION_FAST_AOT_COMPILE_MODE,
     OPTION_COMPILER_OPT_LOOP_PEELING,
     OPTION_COMPILER_OPT_ON_HEAP_CHECK,
+    OPTION_COMPILER_PKG_INFO,
+    OPTION_COMPILER_EXTERNAL_PKG_INFO,
     OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION,
 };
 
@@ -189,6 +191,26 @@ public:
     void SetStubFile(std::string value)
     {
         stubFile_ = std::move(value);
+    }
+
+    void SetCompilerPkgJsonInfo(std::string pkgJsonInfo)
+    {
+        compilerPkgInfo_ = std::move(pkgJsonInfo);
+    }
+
+    const std::string &GetCompilerPkgJsonInfo() const
+    {
+        return compilerPkgInfo_;
+    }
+
+    void SetCompilerExternalPkgJsonInfo(std::string pkgJsonInfo)
+    {
+        compilerExternalPkgInfo_ = std::move(pkgJsonInfo);
+    }
+
+    const std::string &GetCompilerExternalPkgJsonInfo() const
+    {
+        return compilerExternalPkgInfo_;
     }
 
     bool WasStubFileSet() const
@@ -1211,6 +1233,8 @@ private:
 
     bool enableArkTools_ {true};
     std::string stubFile_ {"stub.an"};
+    std::string compilerPkgInfo_ {};
+    std::string compilerExternalPkgInfo_ {};
     bool enableForceGc_ {true};
     bool forceFullGc_ {true};
     int arkProperties_ = GetDefaultProperties();

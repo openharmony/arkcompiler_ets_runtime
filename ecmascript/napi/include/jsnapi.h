@@ -1409,6 +1409,9 @@ public:
     static void SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
     static bool IsProfiling(EcmaVM *vm);
     static void SetProfilerState(const EcmaVM *vm, bool value);
+    static void SetRequestAotCallback(EcmaVM *vm, const std::function<int32_t(const std::string &bundleName,
+                    const std::string &moduleName,
+                    int32_t triggerMode)> &cb);
 
 private:
     static int vmCount_;

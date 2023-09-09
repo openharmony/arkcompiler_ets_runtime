@@ -63,6 +63,7 @@ using fd_t = int;
 #define FILE_FAILED 0
 
 std::string GetFileDelimiter();
+std::string GetPathSeparator();
 bool RealPath(const std::string &path, std::string &realPath, bool readOnly = true);
 void DPrintf(fd_t fd, const std::string &buffer);
 void Close(fd_t fd);

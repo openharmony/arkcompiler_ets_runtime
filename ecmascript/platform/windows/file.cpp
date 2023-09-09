@@ -45,6 +45,11 @@ std::string GetFileDelimiter()
     return ";";
 }
 
+std::string GetPathSeparator()
+{
+    return "\\";
+}
+
 bool RealPath(const std::string &path, std::string &realPath, [[maybe_unused]] bool readOnly)
 {
     realPath = "";
