@@ -13,46 +13,28 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/combined_pass_visitor.h"
+#include <queue>
+#include <stack>
+#include "ecmascript/compiler/graph_visitor.h"
 
 namespace panda::ecmascript::kungfu {
 
-int32_t CombinedPassVisitor::GetGateOrder(GateRef gate) const
-{
-    return orderList_[acc_.GetId(gate)];
-}
-
-void CombinedPassVisitor::SetGateOrder(GateRef gate, int32_t orderId)
-{
-    orderList_[acc_.GetId(gate)] = orderId;
-}
-
-void CombinedPassVisitor::Resize(int32_t size, int32_t num)
-{
-    orderList_.resize(size, num);
-}
-
-void CombinedPassVisitor::AddPass(PassVisitor* pass)
-{
-    passList_.emplace_back(pass);
-}
-
-void CombinedPassVisitor::ReplaceGate(GateRef gate, GateRef replacement)
+void GraphVisitor::ReplaceGate(GateRef gate, GateRef replacement)
 {
     GateRef depend = Circuit::NullGate();
     if (acc_.GetDependCount(gate) > 0) {
-        ASSERT(acc_.GetDependCount(gate) == 1 || acc_.GetOpCode(replacement) == OpCode::DEAD); // 1: one dep
+        ASSERT(acc_.GetDependCount(gate) == 1); // 1: one dep
         depend = acc_.GetDep(gate);
     }
     GateRef state = Circuit::NullGate();
     if (acc_.GetStateCount(gate) > 0) {
-        ASSERT(acc_.GetStateCount(gate) == 1 || acc_.GetOpCode(replacement) == OpCode::DEAD);  // 1: one state
+        ASSERT(acc_.GetStateCount(gate) == 1);  // 1: one state
         state = acc_.GetState(gate);
     }
     return ReplaceGate(gate, StateDepend {state, depend}, replacement);
 }
 
-void CombinedPassVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement)
+void GraphVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement)
 {
     ASSERT(gate != replacement);
     auto state = stateDepend.State();
@@ -62,9 +44,7 @@ void CombinedPassVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, Gat
         if (acc_.GetMark(*it) == MarkCode::FINISHED) {
             PushChangedGate(*it);
         }
-        if (acc_.GetOpCode(replacement) == OpCode::DEAD) {
-            it = acc_.ReplaceIn(it, replacement);
-        } else if (acc_.IsStateIn(it)) {
+        if (acc_.IsStateIn(it)) {
             ASSERT(state != Circuit::NullGate());
             it = acc_.ReplaceIn(it, state);
         } else if (acc_.IsDependIn(it)) {
@@ -77,14 +57,11 @@ void CombinedPassVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, Gat
     acc_.DeleteGate(gate);
 }
 
-void CombinedPassVisitor::VisitGraph()
+void GraphVisitor::VisitGraph()
 {
-    for (auto pass : passList_) {
-        pass->Initialize();
-    }
     circuit_->AdvanceTime();
     orderCount_ = 0;
-    Resize(circuit_->GetMaxGateId() + 1, -1);
+    orderList_.resize(circuit_->GetMaxGateId() + 1, -1);
     GateRef returnList = acc_.GetReturnRoot();
     auto uses = acc_.Uses(returnList);
     for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
@@ -102,47 +79,30 @@ void CombinedPassVisitor::VisitGraph()
                 PushGate(gate, 0);
             }
         } else {
-            for (auto pass : passList_) {
-                pass->Finalize();
-            }
             break;
         }
     }
 }
 
-void CombinedPassVisitor::ReVisitGate(GateRef gate)
+void GraphVisitor::ReVisitGate(GateRef gate)
 {
     if (acc_.GetMark(gate) == MarkCode::FINISHED) {
         PushChangedGate(gate);
     }
 }
 
-
-GateRef CombinedPassVisitor::VisitGate(GateRef gate)
+int32_t GraphVisitor::GetGateOrder(GateRef gate) const
 {
-    auto skip = passList_.end();
-    for (auto i = passList_.begin(); i != passList_.end();) {
-        if (i == skip) {
-            i++;
-            continue;
-        }
-        GateRef replacement = (*i)->VisitGate(gate);
-        if (replacement == gate) {
-            skip = i;
-            i = passList_.begin();
-            continue;
-        } else if (replacement != Circuit::NullGate()) {
-            return replacement;
-        }
-        i++;
-    }
-    if (skip == passList_.end()) {
-        return Circuit::NullGate();
-    }
-    return gate;
+    return orderList_[acc_.GetId(gate)];
 }
+
+void GraphVisitor::SetGateOrder(GateRef gate, int32_t orderId)
+{
+    orderList_[acc_.GetId(gate)] = orderId;
+}
+
 // Reverse post-order
-void CombinedPassVisitor::VisitTopGate(Edge& current)
+void GraphVisitor::VisitTopGate(Edge& current)
 {
     GateRef gate = current.GetGate();
     // gate is delete or dead
@@ -151,24 +111,7 @@ void CombinedPassVisitor::VisitTopGate(Edge& current)
         return;
     }
     auto numIns = acc_.GetNumIns(gate);
-    auto start = current.GetIndex();
-    if (start >= numIns) {
-        start = 0;
-    }
-    for (size_t i = start; i < numIns; i++) {
-        GateRef input = acc_.GetIn(gate, i);
-        if (input == gate) {
-            continue;
-        }
-        // find not visited gate, push stack
-        if (acc_.GetMark(input) < MarkCode::VISITED) {
-            PushGate(input, 0);
-            // next index
-            current.SetIndex(i + 1);
-            return;
-        }
-    }
-    for (size_t i = 0; i < start; i++) {
+    for (size_t i = current.GetIndex(); i < numIns; i++) {
         GateRef input = acc_.GetIn(gate, i);
         if (input == gate) {
             continue;
@@ -203,7 +146,7 @@ void CombinedPassVisitor::VisitTopGate(Edge& current)
     }
 }
 
-void CombinedPassVisitor::PrintStack()
+void GraphVisitor::PrintStack()
 {
     std::string log;
     for (size_t i = 0; i < workList_.size(); i++) {
@@ -214,19 +157,4 @@ void CombinedPassVisitor::PrintStack()
     LOG_COMPILER(INFO) << std::dec << log;
 }
 
-void CombinedPassVisitor::PrintLog(const std::string& phaseName)
-{
-    if (enableLog_) {
-        LOG_COMPILER(INFO) << "";
-        LOG_COMPILER(INFO) << "\033[34m"
-                        << "===================="
-                        << " After " << phaseName << " "
-                        << "[" << methodName_ << "]"
-                        << "===================="
-                        << "\033[0m";
-        circuit_->PrintAllGatesWithBytecode();
-        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
-    }
-}
-
-} // namespace panda::ecmascript::kungfu
+}  // namespace panda::ecmascript::kungfu

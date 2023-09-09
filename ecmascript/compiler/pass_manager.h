@@ -157,7 +157,6 @@ public:
     V(NoCheck, false)            \
     V(OptTrackField, false)      \
     V(OptLoopPeeling, false)     \
-    V(DeadCodeElimination, false) \
     V(OptOnHeapCheck, false)
 
 #define DECL_OPTION(NAME, DEFAULT)    \

@@ -72,10 +72,6 @@ GateRef NumberSpeculativeRetype::SetOutputType(GateRef gate, TypeInfo type)
     SetOutputTypeInfo(gate, type);
     return old == type ? Circuit::NullGate() : gate;
 }
-void NumberSpeculativeRetype::setState(NumberSpeculativeRetype::State state)
-{
-    state_ = state;
-}
 
 GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
 {
@@ -1133,10 +1129,15 @@ GateRef NumberSpeculativeRetype::VisitNumberMod(GateRef gate)
     return Circuit::NullGate();
 }
 
-GateRef NumberSpeculativeRetypeManager::VisitGate(GateRef gate)
+void NumberSpeculativeRetype::Run()
 {
-    retype_->setState(state_);
-    return retype_->VisitGate(gate);
+    // visit gate in RPO, propagate use infos and
+    // reset the machine type of number operator gate and related phi,
+    // if some tagged phi is used as native value, change it to native phi.
+    state_ = State::Retype;
+    VisitGraph();
+    state_ = State::Convert;
+    VisitGraph();
 }
 
 }  // namespace panda::ecmascript::kungfu

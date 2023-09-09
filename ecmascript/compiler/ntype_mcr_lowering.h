@@ -20,25 +20,27 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/pass_manager.h"
 namespace panda::ecmascript::kungfu {
-class NTypeMCRLowering : public PassVisitor {
+class NTypeMCRLowering {
 public:
-    NTypeMCRLowering(Circuit *circuit, RPOVisitor *visitor, PassContext *ctx, const CString &recordName, Chunk* chunk)
-        : PassVisitor(circuit, chunk, visitor),
-          circuit_(circuit),
+    NTypeMCRLowering(Circuit *circuit, PassContext *ctx, const CString &recordName,
+                     bool enableLog, const std::string& name)
+        : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
           dependEntry_(circuit->GetDependRoot()),
           tsManager_(ctx->GetTSManager()),
           recordName_(recordName),
+          enableLog_(enableLog),
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
+          methodName_(name),
           glue_(acc_.GetGlueFromArgList()) {}
 
     ~NTypeMCRLowering() = default;
-    GateRef VisitGate(GateRef gate) override;
+
+    void RunNTypeMCRLowering();
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
     void Lower(GateRef gate);
@@ -61,6 +63,16 @@ private:
         return acc_.GetFrameState(gate);
     }
 
+    bool IsLogEnabled() const
+    {
+        return enableLog_;
+    }
+
+    const std::string& GetMethodName() const
+    {
+        return methodName_;
+    }
+
     Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     CircuitBuilder builder_;
@@ -68,8 +80,10 @@ private:
     TSManager *tsManager_ {nullptr};
     const CString &recordName_;
     panda_file::File::EntityId methodId_ {0};
+    bool enableLog_ {false};
     bool profiling_ {false};
     bool traceBc_ {false};
+    std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu

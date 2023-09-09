@@ -298,6 +298,12 @@ RangeInfo RangeAnalysis::GetRangeOfCompare(GateRef gate, GateRef value, bool fla
     }
 }
 
+void RangeAnalysis::Run()
+{
+    // visit gate in RPO, propagate range info
+    VisitGraph();
+}
+
 void RangeAnalysis::PrintRangeInfo() const
 {
     std::vector<GateRef> gateList;

@@ -18,6 +18,7 @@
 
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/graph_visitor.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/base/depend_chain_helper.h"
 #include "ecmascript/mem/chunk_containers.h"
@@ -25,15 +26,16 @@
 
 namespace panda::ecmascript::kungfu {
 class DependChains;
-class RangeGuard : public PassVisitor {
+class RangeGuard : public GraphVisitor {
 public:
-    RangeGuard(Circuit* circuit, RPOVisitor* visitor, Chunk* chunk)
-        : PassVisitor(circuit, chunk, visitor), circuit_(circuit),
+    RangeGuard(Circuit *circuit, Chunk* chunk)
+        : GraphVisitor(circuit, chunk), circuit_(circuit),
         builder_(circuit), dependChains_(chunk) {}
 
     ~RangeGuard() = default;
 
-    void Initialize() override;
+    void Run();
+
     GateRef VisitGate(GateRef gate) override;
     bool CheckInputSource(GateRef lhs, GateRef rhs);
     uint32_t CheckIndexCheckLengthInput(GateRef lhs, GateRef rhs);

@@ -15,12 +15,12 @@
 #include "ecmascript/compiler/range_guard.h"
 
 namespace panda::ecmascript::kungfu {
-
-void RangeGuard::Initialize()
+void RangeGuard::Run()
 {
     dependChains_.resize(circuit_->GetMaxGateId() + 1, nullptr); // 1: +1 for size
     GateRef entry = acc_.GetDependRoot();
     VisitDependEntry(entry);
+    VisitGraph();
 }
 
 GateRef RangeGuard::VisitGate(GateRef gate)
