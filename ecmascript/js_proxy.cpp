@@ -138,7 +138,7 @@ bool JSProxy::SetPrototype(JSThread *thread, const JSHandle<JSProxy> &proxy, con
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue(), proto.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
-
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     // 9. Let booleanTrapResult be ToBoolean(Call(trap, handler, «target, V»)).
     // If booleanTrapResult is false, return false
     bool booleanTrapResult = trapResult.ToBoolean();
@@ -199,7 +199,7 @@ bool JSProxy::IsExtensible(JSThread *thread, const JSHandle<JSProxy> &proxy)
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
-
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     bool booleanTrapResult = trapResult.ToBoolean();
     // 9. ReturnIfAbrupt(booleanTrapResult).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -249,7 +249,7 @@ bool JSProxy::PreventExtensions(JSThread *thread, const JSHandle<JSProxy> &proxy
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
-
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     bool booleanTrapResult = trapResult.ToBoolean();
     // 9. ReturnIfAbrupt(booleanTrapResult).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -402,7 +402,7 @@ bool JSProxy::DefineOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue(), descObj.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
-
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     bool booleanTrapResult = trapResult.ToBoolean();
     // 11. ReturnIfAbrupt(booleanTrapResult).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -490,7 +490,7 @@ bool JSProxy::HasProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
-
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     bool booleanTrapResult = trapResult.ToBoolean();
     // 10. ReturnIfAbrupt(booleanTrapResult).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -623,7 +623,7 @@ bool JSProxy::SetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
     info->SetCallArg(
         targetHandle.GetTaggedValue(), key.GetTaggedValue(), value.GetTaggedValue(), receiver.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
-
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     bool booleanTrapResult = trapResult.ToBoolean();
     // 11. ReturnIfAbrupt(booleanTrapResult).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -682,7 +682,7 @@ bool JSProxy::DeleteProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, c
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
-
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     bool booleanTrapResult = trapResult.ToBoolean();
     // 11. ReturnIfAbrupt(booleanTrapResult).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
