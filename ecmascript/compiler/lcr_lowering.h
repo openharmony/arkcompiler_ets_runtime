@@ -18,23 +18,30 @@
 
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/gate_accessor.h"
 
-
 namespace panda::ecmascript::kungfu {
-class LCRLowering : public PassVisitor {
+class LCRLowering {
 public:
-    LCRLowering(Circuit *circuit, RPOVisitor *visitor, CompilationConfig *cmpCfg, Chunk *chunk)
-        : PassVisitor(circuit, chunk, visitor), circuit_(circuit), acc_(circuit),
-          builder_(circuit, cmpCfg), glue_(acc_.GetGlueFromArgList())
+    LCRLowering(Circuit *circuit, CompilationConfig *cmpCfg,
+                        bool enableLog, const std::string& name)
+        : circuit_(circuit), acc_(circuit), builder_(circuit, cmpCfg),
+          enableLog_(enableLog), methodName_(name), glue_(acc_.GetGlueFromArgList())
     {
     }
     ~LCRLowering() = default;
 
-    GateRef VisitGate(GateRef gate) override;
+    bool IsLogEnabled() const
+    {
+        return enableLog_;
+    }
+    void Run();
     StateDepend LowerConvert(StateDepend stateDepend, GateRef gate);
 private:
+    const std::string& GetMethodName() const
+    {
+        return methodName_;
+    }
 
     void DeleteStateSplit(GateRef gate);
     void LowerArrayGuardianCheck(GateRef gate);
@@ -88,6 +95,8 @@ private:
     Circuit *circuit_;
     GateAccessor acc_;
     CircuitBuilder builder_;
+    bool enableLog_ {false};
+    std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
 };
 }  // panda::ecmascript::kungfu

@@ -18,7 +18,6 @@
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 
 namespace panda::ecmascript::kungfu {
-
 void NTypeHCRLowering::RunNTypeHCRLowering()
 {
     std::vector<GateRef> gateList;

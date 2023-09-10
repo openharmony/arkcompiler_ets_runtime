@@ -17,21 +17,34 @@
 #define ECMASCRIPT_COMPILER_VALUE_NUMBERING_H
 
 #include "ecmascript/compiler/circuit_builder.h"
-#include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/graph_visitor.h"
 #include "ecmascript/mem/chunk_containers.h"
 
 namespace panda::ecmascript::kungfu {
-class ValueNumbering : public PassVisitor {
+class ValueNumbering : public GraphVisitor {
 public:
-    ValueNumbering(Circuit *circuit, RPOVisitor *visitor, Chunk* chunk)
-        : PassVisitor(circuit, chunk, visitor), entries_(chunk) {}
+    ValueNumbering(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
+        : GraphVisitor(circuit, chunk), enableLog_(enableLog),
+        methodName_(name), entries_(chunk) {}
 
     ~ValueNumbering() = default;
+
+    void Run();
 
     GateRef VisitGate(GateRef gate) override;
     bool CheckReplacement(GateRef lhs, GateRef rhs);
 private:
+    bool IsLogEnabled() const
+    {
+        return enableLog_;
+    }
+
+    const std::string& GetMethodName() const
+    {
+        return methodName_;
+    }
+
     size_t HashCode(GateRef gate);
     GateRef GetEntry(size_t hash)
     {
@@ -46,6 +59,8 @@ private:
     static const uint32_t CACHE_LENGTH_BIT = 8;
     static const uint32_t CACHE_LENGTH = (1U << CACHE_LENGTH_BIT);
 
+    bool enableLog_ {false};
+    std::string methodName_;
     ChunkVector<GateRef> entries_;
 };
 }  // panda::ecmascript::kungfu

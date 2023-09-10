@@ -17,12 +17,25 @@
 
 namespace panda::ecmascript::kungfu {
 
-void EarlyElimination::Initialize()
+void EarlyElimination::Run()
 {
     dependChains_.resize(circuit_->GetMaxGateId() + 1, nullptr); // 1: +1 for size
     renames_.resize(circuit_->GetMaxGateId() + 1, Circuit::NullGate()); // 1: +1 for size
     GateRef entry = acc_.GetDependRoot();
     VisitDependEntry(entry);
+    VisitGraph();
+
+    if (IsLogEnabled()) {
+        LOG_COMPILER(INFO) << "";
+        LOG_COMPILER(INFO) << "\033[34m"
+                           << "===================="
+                           << " After early elimination "
+                           << "[" << GetMethodName() << "]"
+                           << "===================="
+                           << "\033[0m";
+        circuit_->PrintAllGatesWithBytecode();
+        LOG_COMPILER(INFO) << "\033[34m" << "========================= End ==========================" << "\033[0m";
+    }
 }
 
 DependInfoNode* EarlyElimination::GetLoopDependInfo(GateRef depend)
@@ -276,7 +289,7 @@ bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
 
 bool EarlyElimination::CompareOrder(GateRef lhs, GateRef rhs)
 {
-    return visitor_->GetGateOrder(lhs) < visitor_->GetGateOrder(rhs);
+    return GetGateOrder(lhs) < GetGateOrder(rhs);
 }
 
 bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)

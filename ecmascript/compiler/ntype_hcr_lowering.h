@@ -64,14 +64,14 @@ private:
         return profiling_;
     }
 
-    const std::string& GetMethodName() const
-    {
-        return methodName_;
-    }
-
     bool IsTraceBC() const
     {
         return traceBc_;
+    }
+
+    const std::string& GetMethodName() const
+    {
+        return methodName_;
     }
 
     void AddProfiling(GateRef gate);
