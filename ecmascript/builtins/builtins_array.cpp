@@ -1034,6 +1034,7 @@ JSTaggedValue BuiltinsArray::FindIndex(EcmaRuntimeCallInfo *argv)
     JSTaggedValue callResult = GetTaggedBoolean(true);
     if (thisObjVal->IsStableJSArray(thread)) {
         callResult = JSStableArray::HandleFindIndexOfStable(thread, thisObjHandle, callbackFnHandle, thisArgHandle, k);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (callResult.ToBoolean()) {
             return GetTaggedDouble(k);
         }
