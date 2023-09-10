@@ -19,6 +19,7 @@
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/platform/os.h"
 #if defined(ENABLE_EXCEPTION_BACKTRACE)

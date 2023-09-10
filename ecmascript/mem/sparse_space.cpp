@@ -16,9 +16,10 @@
 #include "ecmascript/mem/sparse_space.h"
 
 #include "ecmascript/js_hclass-inl.h"
+#include "ecmascript/mem/allocator-inl.h"
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/mem/free_object_set.h"
-#include "ecmascript/mem/heap.h"
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/runtime_call_id.h"
 

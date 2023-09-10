@@ -18,12 +18,13 @@
 
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/ecma_runtime_call_info.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/object_factory.h"
+#include "ecmascript/object_factory-inl.h"
 #include "gtest/gtest.h"
 
 namespace panda::test {

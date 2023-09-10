@@ -18,6 +18,7 @@
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/frames.h"
+#include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript {

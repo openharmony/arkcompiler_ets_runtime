@@ -16,8 +16,9 @@
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/runtime_stat.h"
-#include "ecmascript/mem/heap.h"
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/concurrent_marker.h"
+#include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/tests/test_helper.h"
 

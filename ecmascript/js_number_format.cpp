@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/js_number_format.h"
+#include "ecmascript/object_factory-inl.h"
 
 namespace panda::ecmascript {
 constexpr uint32_t DEFAULT_FRACTION_DIGITS = 2;

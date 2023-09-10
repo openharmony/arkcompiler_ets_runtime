@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/js_relative_time_format.h"
+#include "ecmascript/object_factory-inl.h"
 
 #include "unicode/decimfmt.h"
 #include "unicode/numfmt.h"

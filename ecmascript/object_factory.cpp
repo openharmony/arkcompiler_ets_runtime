@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include "ecmascript/object_factory-inl.h"
+
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/builtins/builtins.h"

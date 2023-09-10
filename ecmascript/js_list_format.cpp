@@ -25,6 +25,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_locale.h"
 #include "ecmascript/js_iterator.h"
+#include "ecmascript/object_factory-inl.h"
 
 #include "unicode/fieldpos.h"
 #include "unicode/fpositer.h"

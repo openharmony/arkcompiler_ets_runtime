@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/tagged_dictionary.h"
-#include "ecmascript/ecma_string.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/filter_helper.h"
 #include "ecmascript/tagged_hash_table.h"
 

@@ -18,6 +18,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/layout_info.h"
+#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tests/test_helper.h"
 

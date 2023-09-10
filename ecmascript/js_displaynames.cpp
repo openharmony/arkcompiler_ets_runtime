@@ -20,6 +20,7 @@
 #include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants.h"
+#include "ecmascript/object_factory-inl.h"
 
 #include "unicode/errorcode.h"
 #include "unicode/locdspnm.h"

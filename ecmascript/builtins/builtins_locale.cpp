@@ -19,7 +19,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_locale.h"
-#include "ecmascript/object_factory.h"
+#include "ecmascript/object_factory-inl.h"
 
 namespace panda::ecmascript::builtins {
 // 10.1.3 Intl.Locale( tag [, options] )

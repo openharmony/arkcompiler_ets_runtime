@@ -17,7 +17,7 @@
 
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/object_factory.h"
+#include "ecmascript/object_factory-inl.h"
 
 namespace panda::ecmascript {
 using ContainerError = containers::ContainerError;

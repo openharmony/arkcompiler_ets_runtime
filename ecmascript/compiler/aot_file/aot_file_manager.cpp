@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/aot_file/elf_reader.h"
 #include "ecmascript/compiler/bc_call_signature.h"
+#include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"

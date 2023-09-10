@@ -26,6 +26,7 @@
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_arraybuffer.h"
@@ -34,6 +35,7 @@
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/shared_mm/shared_mm.h"
 
 #include "securec.h"

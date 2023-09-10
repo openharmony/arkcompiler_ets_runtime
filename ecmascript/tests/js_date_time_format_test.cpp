@@ -18,6 +18,7 @@
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_locale.h"
+#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda;

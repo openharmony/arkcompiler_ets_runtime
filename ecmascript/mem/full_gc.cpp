@@ -18,6 +18,8 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/concurrent_marker.h"
+#include "ecmascript/mem/concurrent_sweeper.h"
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
