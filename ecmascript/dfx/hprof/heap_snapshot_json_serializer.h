@@ -90,25 +90,22 @@ private:
 class HeapSnapshotJSONSerializer {
 public:
     explicit HeapSnapshotJSONSerializer() = default;
-    ~HeapSnapshotJSONSerializer();
+    ~HeapSnapshotJSONSerializer() = default;
     NO_MOVE_SEMANTIC(HeapSnapshotJSONSerializer);
     NO_COPY_SEMANTIC(HeapSnapshotJSONSerializer);
-    bool Serialize(HeapSnapshot *snapshot, Stream *stream);
+    static bool Serialize(HeapSnapshot *snapshot, Stream *stream);
 
 private:
-    void SerializeSnapshotHeader();
-    void SerializeNodes();
-    void SerializeEdges();
-    void SerializeTraceFunctionInfo();
-    void SerializeTraceTree();
-    void SerializeTraceNode(TraceNode *node);
-    void SerializeSamples();
-    void SerializeLocations();
-    void SerializeStringTable();
-    void SerializerSnapshotClosure();
-
-    HeapSnapshot *snapshot_ {nullptr};
-    StreamWriter *writer_ {nullptr};
+    static void SerializeSnapshotHeader(HeapSnapshot *snapshot, StreamWriter *writer);
+    static void SerializeNodes(HeapSnapshot *snapshot, StreamWriter *writer);
+    static void SerializeEdges(HeapSnapshot *snapshot, StreamWriter *writer);
+    static void SerializeTraceFunctionInfo(HeapSnapshot *snapshot, StreamWriter *writer);
+    static void SerializeTraceTree(HeapSnapshot *snapshot, StreamWriter *writer);
+    static void SerializeTraceNode(TraceNode *node, StreamWriter *writer);
+    static void SerializeSamples(HeapSnapshot *snapshot, StreamWriter *writer);
+    static void SerializeLocations(StreamWriter *writer);
+    static void SerializeStringTable(HeapSnapshot *snapshot, StreamWriter *writer);
+    static void SerializerSnapshotClosure(StreamWriter *writer);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_SNAPSHOT_SERIALIZER_H

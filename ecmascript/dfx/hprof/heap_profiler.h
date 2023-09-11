@@ -119,7 +119,6 @@ private:
     const size_t MAX_NUM_HPROF = 5;  // ~10MB
     const EcmaVM *vm_;
     CVector<HeapSnapshot *> hprofs_;
-    HeapSnapshotJSONSerializer *jsonSerializer_ {nullptr};
     bool isProfiling_ {false};
     EntryIdMap* entryIdMap_;
     std::unique_ptr<HeapTracker> heapTracker_;

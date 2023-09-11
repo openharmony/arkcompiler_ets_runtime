@@ -81,6 +81,7 @@ void EntryIdMap::RemoveDeadEntryId(HeapSnapshot *snapshot)
             newIdMap.emplace(addr, it->second);
         }
     }
+    idMap_.clear();
     idMap_ = newIdMap;
 }
 
@@ -88,19 +89,12 @@ HeapProfiler::HeapProfiler(const EcmaVM *vm) : vm_(vm), chunk_(vm->GetNativeArea
 {
     isProfiling_ = false;
     entryIdMap_ = GetChunk()->New<EntryIdMap>();
-    jsonSerializer_ = GetChunk()->New<HeapSnapshotJSONSerializer>();
-    if (UNLIKELY(jsonSerializer_ == nullptr)) {
-        LOG_FULL(FATAL) << "alloc snapshot json serializer failed";
-        UNREACHABLE();
-    }
 }
 
 HeapProfiler::~HeapProfiler()
 {
     ClearSnapshot();
     GetChunk()->Delete(entryIdMap_);
-    GetChunk()->Delete(jsonSerializer_);
-    jsonSerializer_ = nullptr;
 }
 
 void HeapProfiler::AllocationEvent(TaggedObject *address, size_t size)
@@ -153,11 +147,11 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
     }
     if (!stream->Good()) {
         FileStream newStream(GenDumpFileName(dumpFormat));
-        auto serializerResult = jsonSerializer_->Serialize(snapshot, &newStream);
+        auto serializerResult = HeapSnapshotJSONSerializer::Serialize(snapshot, &newStream);
         GetChunk()->Delete(snapshot);
         return serializerResult;
     }
-    auto serializerResult = jsonSerializer_->Serialize(snapshot, stream);
+    auto serializerResult = HeapSnapshotJSONSerializer::Serialize(snapshot, stream);
     GetChunk()->Delete(snapshot);
     return serializerResult;
 }
@@ -224,7 +218,7 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
     if (progress != nullptr) {
         progress->ReportProgress(heapCount, heapCount);
     }
-    return jsonSerializer_->Serialize(snapshot, stream);
+    return HeapSnapshotJSONSerializer::Serialize(snapshot, stream);
 }
 
 std::string HeapProfiler::GenDumpFileName(DumpFormat dumpFormat)
