@@ -1878,6 +1878,11 @@ JSTaggedValue RegExpExecResultCache::FindCachedResult(JSThread *thread, const JS
     ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
         static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(UINT32_MAX));
     uint32_t index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
+    // update cached value if input value is changed
+    JSTaggedValue cachedStr = Get(index + INPUT_STRING_INDEX);
+    if (!cachedStr.IsUndefined() && cachedStr != inputValue) {
+        Set(thread, index + INPUT_STRING_INDEX, inputValue);
+    }
     JSTaggedValue result;
     switch (type) {
         case REPLACE_TYPE:
