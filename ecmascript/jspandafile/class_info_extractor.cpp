@@ -185,7 +185,7 @@ JSHandle<JSHClass> ClassInfoExtractor::CreatePrototypeHClass(JSThread *thread, c
         return JSHandle<JSHClass>(globalConst->GetHandledClassPrototypeClass());
     }
     JSHandle<JSHClass> hclass;
-    if (LIKELY(length <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
+    if (LIKELY(length <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
         JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(length, MemSpaceType::OLD_SPACE, GrowMode::KEEP);
         for (uint32_t index = 0; index < length; ++index) {
@@ -241,7 +241,7 @@ JSHandle<JSHClass> ClassInfoExtractor::CreateConstructorHClass(JSThread *thread,
         }
     }
     JSHandle<JSHClass> hclass;
-    if (LIKELY(length <= PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES)) {
+    if (LIKELY(length <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
         JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(length, MemSpaceType::OLD_SPACE, GrowMode::KEEP);
         for (uint32_t index = 0; index < length; ++index) {
@@ -516,7 +516,7 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t length = keys->GetLength();
-    ASSERT(length > PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES);
+    ASSERT(length > PropertyAttributes::MAX_FAST_PROPS_CAPACITY);
     ASSERT(keys->GetLength() == properties->GetLength());
 
     JSMutableHandle<NameDictionary> dict(

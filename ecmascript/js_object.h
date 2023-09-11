@@ -527,6 +527,7 @@ public:
     void FillElementsWithHoles(const JSThread *thread, uint32_t start, uint32_t end);
 
     JSHClass *GetJSHClass() const;
+    uint32_t GetNonInlinedFastPropsCapacity() const;
     bool IsJSGlobalObject() const;
     bool IsConstructor() const;
     bool IsECMAObject() const;
@@ -666,7 +667,7 @@ private:
 
     static uint32_t ComputeElementCapacity(uint32_t oldCapacity, bool isNew = false);
     static uint32_t ComputeElementCapacityHighGrowth(uint32_t oldCapacity);
-    static uint32_t ComputePropertyCapacity(uint32_t oldCapacity);
+    static uint32_t ComputeNonInlinedFastPropsCapacity(uint32_t oldCapacity, uint32_t maxNonInlinedFastPropsCapacity);
 
     static JSTaggedValue ShouldGetValueFromBox(ObjectOperator *op);
     static std::pair<JSHandle<TaggedArray>, JSHandle<TaggedArray>> GetOwnEnumerableNamesInFastMode(

@@ -58,6 +58,15 @@ inline JSHClass *JSObject::GetJSHClass() const
     return GetClass();
 }
 
+inline uint32_t JSObject::GetNonInlinedFastPropsCapacity() const
+{
+    uint32_t inlineProps = GetJSHClass()->GetInlinedProperties();
+    if (inlineProps < JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS) {
+        return PropertyAttributes::MAX_FAST_PROPS_CAPACITY - JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
+    }
+    return PropertyAttributes::MAX_FAST_PROPS_CAPACITY - inlineProps;
+}
+
 inline bool JSObject::IsJSGlobalObject() const
 {
     return GetJSHClass()->IsJSGlobalObject();
@@ -357,11 +366,11 @@ inline uint32_t JSObject::ComputeElementCapacityHighGrowth(uint32_t oldCapacity)
     return newCapacity > MIN_ELEMENTS_LENGTH ? newCapacity : MIN_ELEMENTS_LENGTH;
 }
 
-inline uint32_t JSObject::ComputePropertyCapacity(uint32_t oldCapacity)
+inline uint32_t JSObject::ComputeNonInlinedFastPropsCapacity(uint32_t oldCapacity,
+                                                             uint32_t maxNonInlinedFastPropsCapacity)
 {
     uint32_t newCapacity = static_cast<uint32_t>(oldCapacity + PROPERTIES_GROW_SIZE);
-    return newCapacity > JSHClass::MAX_CAPACITY_OF_OUT_OBJECTS ? JSHClass::MAX_CAPACITY_OF_OUT_OBJECTS
-                                                               : newCapacity;
+    return newCapacity > maxNonInlinedFastPropsCapacity ? maxNonInlinedFastPropsCapacity : newCapacity;
 }
 
 // static

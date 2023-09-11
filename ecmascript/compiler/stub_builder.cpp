@@ -536,7 +536,7 @@ void StubBuilder::JSObjectSetProperty(
     return;
 }
 
-GateRef StubBuilder::ComputePropertyCapacityInJSObj(GateRef oldLength)
+GateRef StubBuilder::ComputeNonInlinedFastPropsCapacity(GateRef oldLength, GateRef maxNonInlinedFastPropsCapacity)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -546,11 +546,10 @@ GateRef StubBuilder::ComputePropertyCapacityInJSObj(GateRef oldLength)
     GateRef newL = Int32Add(oldLength, Int32(JSObject::PROPERTIES_GROW_SIZE));
     Label reachMax(env);
     Label notReachMax(env);
-    Branch(Int32GreaterThan(newL, Int32(JSHClass::MAX_CAPACITY_OF_OUT_OBJECTS)),
-        &reachMax, &notReachMax);
+    Branch(Int32GreaterThan(newL, maxNonInlinedFastPropsCapacity), &reachMax, &notReachMax);
     {
         Bind(&reachMax);
-        result = Int32(JSHClass::MAX_CAPACITY_OF_OUT_OBJECTS);
+        result = maxNonInlinedFastPropsCapacity;
         Jump(&exit);
         Bind(&notReachMax);
         result = newL;
@@ -860,20 +859,22 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
             Label isArrayFull(env);
             Label arrayNotFull(env);
             Label afterArrLenCon(env);
-            Branch(Int32GreaterThanOrEqual(*length, outProps), &isArrayFull, &arrayNotFull);
+            Branch(Int32Equal(*length, outProps), &isArrayFull, &arrayNotFull);
             {
                 Bind(&isArrayFull);
                 {
                     Label ChangeToDict(env);
                     Label notChangeToDict(env);
                     Label afterDictChangeCon(env);
-                    Branch(Int32GreaterThanOrEqual(*length, Int32(JSHClass::MAX_CAPACITY_OF_OUT_OBJECTS)),
+                    GateRef maxNonInlinedFastPropsCapacity =
+                        Int32Sub(Int32(PropertyAttributes::MAX_FAST_PROPS_CAPACITY), inlinedProperties);
+                    Branch(Int32GreaterThanOrEqual(*length, maxNonInlinedFastPropsCapacity),
                         &ChangeToDict, &notChangeToDict);
                     {
                         Bind(&ChangeToDict);
                         {
                             attr = SetDictionaryOrderFieldInPropAttr(*attr,
-                                Int32(PropertyAttributes::MAX_CAPACITY_OF_PROPERTIES));
+                                Int32(PropertyAttributes::MAX_FAST_PROPS_CAPACITY));
                             GateRef res = CallRuntime(glue, RTSTUB_ID(NameDictPutIfAbsent),
                                 { receiver, *array, key, value, IntToTaggedInt(*attr), TaggedTrue() });
                             SetPropertiesArray(VariableType::JS_POINTER(), glue, receiver, res);
@@ -884,7 +885,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         Jump(&afterDictChangeCon);
                     }
                     Bind(&afterDictChangeCon);
-                    GateRef capacity = ComputePropertyCapacityInJSObj(*length);
+                    GateRef capacity = ComputeNonInlinedFastPropsCapacity(*length, maxNonInlinedFastPropsCapacity);
                     array = CallRuntime(glue, RTSTUB_ID(CopyArray),
                         { *array, IntToTaggedInt(*length), IntToTaggedInt(capacity) });
                     SetPropertiesArray(VariableType::JS_POINTER(), glue, receiver, *array);

@@ -301,8 +301,10 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
                 properties = factory->NewTaggedArray(capacity);
             } else {
                 auto arrayHandle = JSHandle<TaggedArray>(thread, array);
-                properties = factory->CopyArray(arrayHandle, capacity,
-                                                JSObject::ComputePropertyCapacity(capacity));
+                uint32_t maxNonInlinedFastPropsCapacity = objHandle->GetNonInlinedFastPropsCapacity();
+                uint32_t newLen = JSObject::ComputeNonInlinedFastPropsCapacity(capacity,
+                                                                               maxNonInlinedFastPropsCapacity);
+                properties = factory->CopyArray(arrayHandle, capacity, newLen);
             }
             properties->Set(thread, index, valueHandle);
             objHandle->SetProperties(thread, properties);
