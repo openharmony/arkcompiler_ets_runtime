@@ -22,6 +22,8 @@
 print("builtins string start");
 print(String.fromCharCode(65));
 print(String.fromCharCode(65, 66, 66, 65));
+print(String.fromCharCode(0x2014));
+print(String.fromCharCode(0x12014));
 class NewString extends String {
 }
 print(new NewString('') instanceof NewString);

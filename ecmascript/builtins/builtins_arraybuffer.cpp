@@ -493,38 +493,38 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForFloat(uint8_t *block, ui
     // NOLINTNEXTLINE(readability-braces-around-statements)
     if constexpr (std::is_same_v<T, float>) {
         unionValue.uValue = *reinterpret_cast<uint32_t *>(block + byteIndex);
-        if (std::isnan(unionValue.value)) {
-            if (!JSTaggedValue::IsImpureNaN(unionValue.value)) {
-                return GetTaggedDouble(unionValue.value);
-            } else {
-                return GetTaggedDouble(base::NAN_VALUE);
-            }
-        }
-        if (!littleEndian) {
-            uint32_t res = LittleEndianToBigEndian(unionValue.uValue);
-            return GetTaggedDouble(base::bit_cast<T>(res));
-        }
+        uint32_t res = LittleEndianToBigEndian(unionValue.uValue);
+        return CommonConvert<T, uint32_t>(unionValue.value, res, littleEndian);
     } else if constexpr (std::is_same_v<T, double>) {  // NOLINTNEXTLINE(readability-braces-around-statements)
         unionValue.uValue = *reinterpret_cast<uint64_t *>(block + byteIndex);
-        if (std::isnan(unionValue.value) && !JSTaggedValue::IsImpureNaN(unionValue.value)) {
-            return GetTaggedDouble(unionValue.value);
-        }
-        if (!littleEndian) {
-            uint64_t res = LittleEndianToBigEndian64Bit(unionValue.uValue);
-            T d = base::bit_cast<T>(res);
-            if (JSTaggedValue::IsImpureNaN(d)) {
-                return GetTaggedDouble(base::bit_cast<T>(base::pureNaN));
-            }
-            return GetTaggedDouble(d);
-        } else {
-            if (JSTaggedValue::IsImpureNaN(unionValue.value)) {
-                return GetTaggedDouble(base::NAN_VALUE);
-            }
-        }
+        uint64_t res = LittleEndianToBigEndian64Bit(unionValue.uValue);
+        return CommonConvert<T, uint64_t>(unionValue.value, res, littleEndian);
     }
 
     return GetTaggedDouble(unionValue.value);
 }
+
+template<typename T1, typename T2>
+JSTaggedValue BuiltinsArrayBuffer::CommonConvert(T1 &value, T2 &res, bool littleEndian)
+{
+    if (std::isnan(value) && !JSTaggedValue::IsImpureNaN(value)) {
+        return GetTaggedDouble(value);
+    }
+    if (!littleEndian) {
+        T1 d = base::bit_cast<T1>(res);
+        if (JSTaggedValue::IsImpureNaN(d)) {
+            return GetTaggedDouble(base::NAN_VALUE);
+        }
+        return GetTaggedDouble(d);
+    } else {
+        if (JSTaggedValue::IsImpureNaN(value)) {
+            return GetTaggedDouble(base::NAN_VALUE);
+        }
+    }
+    return GetTaggedDouble(value);
+}
+
+
 template<typename T, BuiltinsArrayBuffer::NumberSize size>
 JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForBigInt(JSThread *thread, uint8_t *block,
                                                                uint32_t byteIndex, bool littleEndian)
