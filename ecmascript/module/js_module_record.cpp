@@ -15,6 +15,7 @@
 
 #include "ecmascript/module/js_module_record.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/object_factory-inl.h"
 
 namespace panda::ecmascript {
 int32_t ModuleRecord::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &module)
