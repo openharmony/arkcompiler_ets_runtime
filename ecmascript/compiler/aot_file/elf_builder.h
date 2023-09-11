@@ -65,10 +65,12 @@ private:
     void Initialize();
     void SetLastSection();
     void RemoveNotNeedSection();
+    void FixSymtab(llvm::ELF::Elf64_Shdr* shdr);
 
     static constexpr uint32_t ASMSTUB_MODULE_NUM = 3;
     static constexpr uint32_t ShStrTableModuleDesIndex = 0;
     static constexpr uint32_t FullSecIndex = 0;
+
     std::vector<ModuleSectionDes> des_ {};
     std::unique_ptr<char []> shStrTabPtr_ {nullptr};
     std::map<ElfSecName, llvm::ELF::Elf64_Shdr> sectionToShdr_;

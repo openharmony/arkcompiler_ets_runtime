@@ -51,9 +51,9 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SET_VALUE_WITH_BARRIER(thread, addr, offset, value)                          \
     if ((value).IsHeapObject()) {                                                    \
-        Barriers::SetObject<true>(thread, addr, offset, (value).GetRawData());    \
+        Barriers::SetObject<true>(thread, addr, offset, (value).GetRawData());       \
     } else {                                                                         \
-        Barriers::SetPrimitive<JSTaggedType>(addr, offset, (value).GetRawData()); \
+        Barriers::SetPrimitive<JSTaggedType>(addr, offset, (value).GetRawData());    \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -67,31 +67,31 @@
     {                                                                                                         \
         /* Note: We can't statically decide the element type is a primitive or heap object, especially for */ \
         /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */ \
-        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(this, offset));                              \
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(this, offset));                                 \
     }                                                                                                         \
     template<typename T>                                                                                      \
     void Set##name(const JSThread *thread, JSHandle<T> value, BarrierMode mode = WRITE_BARRIER)               \
     {                                                                                                         \
         if (mode == WRITE_BARRIER) {                                                                          \
             if (value.GetTaggedValue().IsHeapObject()) {                                                      \
-                Barriers::SetObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());      \
+                Barriers::SetObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());         \
             } else {                                                                                          \
-                Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());   \
+                Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());      \
             }                                                                                                 \
         } else {                                                                                              \
-            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());       \
+            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());          \
         }                                                                                                     \
     }                                                                                                         \
     void Set##name(const JSThread *thread, JSTaggedValue value, BarrierMode mode = WRITE_BARRIER)             \
     {                                                                                                         \
         if (mode == WRITE_BARRIER) {                                                                          \
             if (value.IsHeapObject()) {                                                                       \
-                Barriers::SetObject<true>(thread, this, offset, value.GetRawData());                       \
+                Barriers::SetObject<true>(thread, this, offset, value.GetRawData());                          \
             } else {                                                                                          \
-                Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                    \
+                Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                       \
             }                                                                                                 \
         } else {                                                                                              \
-            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                        \
+            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                           \
         }                                                                                                     \
     }
 
@@ -105,11 +105,11 @@
     static constexpr size_t endOffset = (offset) + sizeof(sizeType);        \
     inline void Set##name(type value)                                       \
     {                                                                       \
-        Barriers::SetPrimitive<type>(this, offset, value);               \
+        Barriers::SetPrimitive<type>(this, offset, value);                  \
     }                                                                       \
     inline type Get##name() const                                           \
     {                                                                       \
-        return Barriers::GetValue<type>(this, offset);                   \
+        return Barriers::GetValue<type>(this, offset);                      \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -173,11 +173,11 @@
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define RETURN_IF_ABRUPT_COMPLETION(thread)  \
-    do {                                     \
+#define RETURN_IF_ABRUPT_COMPLETION(thread)    \
+    do {                                       \
         if ((thread)->HasPendingException()) { \
-            return;                          \
-        }                                    \
+            return;                            \
+        }                                      \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -553,8 +553,8 @@
         LOG_FULL(FATAL) << __func__ << ":" << __LINE__ << " begin: " << (begin) << " end: " << (end); \
     }
 
-#define CHECK_JS_THREAD(vm)                                                         \
-    if (!(vm)->GetJSThread()->IsCrossThreadExecutionEnable()) {                     \
+#define CHECK_JS_THREAD(vm)                                                           \
+    if (!(vm)->GetJSThread()->IsCrossThreadExecutionEnable()) {                       \
         ASSERT((vm)->GetJSThread()->GetThreadId() == JSThread::GetCurrentThreadId()); \
     }
 
