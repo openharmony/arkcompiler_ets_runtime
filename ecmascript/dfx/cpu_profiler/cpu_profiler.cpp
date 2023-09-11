@@ -269,7 +269,7 @@ void CpuProfiler::GetStack(FrameIterator &it)
     generator_->ResetFrameLength();
     for (; !it.Done(); it.Advance<>()) {
         auto method = it.CheckAndGetMethod();
-        if (method == nullptr) {
+        if (method == nullptr || !JSTaggedValue(method).IsMethod()) {
             continue;
         }
         bool isNative = method->IsNativeWithCallField();
@@ -334,7 +334,7 @@ bool CpuProfiler::GetStackCallNapi(JSThread *thread, bool beforeCallNapi)
     }
     for (; !it.Done(); it.Advance<GCVisitedFlag::IGNORED>()) {
         auto method = it.CheckAndGetMethod();
-        if (method == nullptr) {
+        if (method == nullptr || !JSTaggedValue(method).IsMethod()) {
             continue;
         }
 
