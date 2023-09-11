@@ -19,8 +19,8 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-let tmp = '不林肯访华:习近平会晤美国国务卿促“让中美关系稳下来好起来”美国国务卿安东尼于6月1日于北京与习近平会面。大杂烩中国都五年来首位访华\
-的美国国务卿王刚说,你吵的菜安倍晋三吃了赞不绝口,但是王毅不喜欢吃,他接到一个快递单号为#nsExpress3SF#123456789的包裹';
+let tmp = '今天吃什么:告诉了会晤今天吃什么促“让今天吃什么下来好起来”今天吃今天吃什么于6月1日于北京今天吃什么面。大杂烩中国都五年来首位访华\
+的今天吃什么王刚说,你吵的菜今天吃什么了赞不绝口,但是今天吃什么吃,他接到一个快递单号为#nsExpress3SF#123456789的包裹';
 let flag = tmp;
 let str1 = tmp.substring(0, 111) + ',,,,,,,,,,,,,,,,,,,,,,,' + tmp.substring(111 + 23);
 let str2 = tmp.substring(0, 111) + 'nsExpress3SF#123456789的' + tmp.substring(111 + 23,111 + 24) + '需';
@@ -52,3 +52,19 @@ print(str1.charAt());
 print(str2.charCodeAt());
 print(str1.substr(2, 4));
 print(string2.toLowerCase(2, 4));
+
+
+let tmp1 = '今天吃什么:哈哈哈会晤美国phonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatform国务卿促“让今天吃什么下来好起来”今天吃今天吃什么于6月1日于北京今天吃什么面。大杂烩中国都五年来首位访华\
+的今天吃什么王刚说,你吵的菜今天吃什么了赞不绝口,但是今天吃什么吃,他接到一个快递单号为#nsExpress3SF#123456789的包裹';
+let flag1 = tmp1;
+let str = tmp1.substring(13, 143);
+let str4 = tmp1.substring(13, 26);
+let str5 = "phonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatform";
+let str6 = "phonePlatform";
+var obj = {phonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatformphonePlatform: "wode",
+phonePlatform: "wode1"};
+
+print(obj[str]);
+print(obj[str4]);
+print((str === str5).toString());
+print((str4 == str6).toString());

@@ -386,7 +386,9 @@ int32_t EcmaString::LastIndexOf(const EcmaVM *vm,
     }
 
     FlatStringInfo lhs = FlattenAllString(vm, receiver);
+    JSHandle<EcmaString> string(vm->GetJSThread(), lhs.GetString());
     FlatStringInfo rhs = FlattenAllString(vm, search);
+    lhs.SetString(*string);
     if (rhs.IsUtf8() && lhs.IsUtf8()) {
         Span<const uint8_t> lhsSp(lhs.GetDataUtf8(), lhsCount);
         Span<const uint8_t> rhsSp(rhs.GetDataUtf8(), rhsCount);
@@ -469,68 +471,78 @@ bool EcmaString::EqualToSplicedString(const EcmaString *str1, const EcmaString *
         return false;
     }
     if (IsUtf16()) {
-        if (str1->IsUtf8() && str2->IsUtf8()) {
-            return false;
-        }
         CVector<uint16_t> buf;
         const uint16_t *data = EcmaString::GetUtf16DataFlat(this, buf);
         if (EcmaString::StringsAreEqualUtf16(str1, data, str1->GetLength())) {
             return EcmaString::StringsAreEqualUtf16(str2, data + str1->GetLength(), str2->GetLength());
         }
     } else {
-        if (str1->IsUtf16() || str2->IsUtf16()) {
-            return false;
-        }
         CVector<uint8_t> buf;
         const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
-        CVector<uint8_t> bufStr1;
-        const uint8_t *dataStr1 = EcmaString::GetUtf8DataFlat(str1, bufStr1);
-        Span<const uint8_t> concatData(data, str1->GetLength());
-        Span<const uint8_t> data1(dataStr1, str1->GetLength());
-        if (EcmaString::StringsAreEquals(concatData, data1)) {
-            concatData = Span<const uint8_t>(data + str1->GetLength(), str2->GetLength());
-            CVector<uint8_t> bufStr2;
-            const uint8_t *dataStr2 = EcmaString::GetUtf8DataFlat(str2, bufStr2);
-            Span<const uint8_t> data2(dataStr2, str2->GetLength());
-            return EcmaString::StringsAreEquals(concatData, data2);
+        if (EcmaString::StringsAreEqualUtf8(str1, data, str1->GetLength(), this->IsUtf8())) {
+            return EcmaString::StringsAreEqualUtf8(str2, data + str1->GetLength(), str2->GetLength(), this->IsUtf8());
         }
     }
     return false;
 }
 
 /* static */
-bool EcmaString::StringsAreEqualSameUtfEncoding(EcmaString *str1, EcmaString *str2)
+bool EcmaString::StringsAreEqualDiffUtfEncoding(EcmaString *left, EcmaString *right)
 {
-    if (str1->IsUtf16()) {
-        CVector<uint16_t> buf1;
-        CVector<uint16_t> buf2;
-        const uint16_t *data1 = EcmaString::GetUtf16DataFlat(str1, buf1);
-        const uint16_t *data2 = EcmaString::GetUtf16DataFlat(str2, buf2);
-        Span<const uint16_t> sp1(data1, str1->GetLength());
-        Span<const uint16_t> sp2(data2, str2->GetLength());
-        return EcmaString::StringsAreEquals(sp1, sp2);
-    } else {  // NOLINT(readability-else-after-return)
-        CVector<uint8_t> buf1;
-        CVector<uint8_t> buf2;
-        const uint8_t *data1 = EcmaString::GetUtf8DataFlat(str1, buf1);
-        const uint8_t *data2 = EcmaString::GetUtf8DataFlat(str2, buf2);
-        Span<const uint8_t> sp1(data1, str1->GetLength());
-        Span<const uint8_t> sp2(data2, str2->GetLength());
-        return EcmaString::StringsAreEquals(sp1, sp2);
+    CVector<uint16_t> bufLeftUft16;
+    CVector<uint16_t> bufRightUft16;
+    CVector<uint8_t> bufLeftUft8;
+    CVector<uint8_t> bufRightUft8;
+    int32_t lhsCount = static_cast<int32_t>(left->GetLength());
+    int32_t rhsCount = static_cast<int32_t>(right->GetLength());
+    if (!left->IsUtf16() && !right->IsUtf16()) {
+        const uint8_t *data1 = EcmaString::GetUtf8DataFlat(left, bufLeftUft8);
+        const uint8_t *data2 = EcmaString::GetUtf8DataFlat(right, bufRightUft8);
+        Span<const uint8_t> lhsSp(data1, lhsCount);
+        Span<const uint8_t> rhsSp(data2, rhsCount);
+        return EcmaString::StringsAreEquals(lhsSp, rhsSp); 
+    } else if (!left->IsUtf16()) {
+        const uint8_t *data1 = EcmaString::GetUtf8DataFlat(left, bufLeftUft8);
+        const uint16_t *data2 = EcmaString::GetUtf16DataFlat(right, bufRightUft16);
+        Span<const uint8_t> lhsSp(data1, lhsCount);
+        Span<const uint16_t> rhsSp(data2, rhsCount);
+        return EcmaString::StringsAreEquals(lhsSp, rhsSp); 
+    } else if (!right->IsUtf16()) {
+        const uint16_t *data1 = EcmaString::GetUtf16DataFlat(left, bufLeftUft16);
+        const uint8_t *data2 = EcmaString::GetUtf8DataFlat(right, bufRightUft8);
+        Span<const uint16_t> lhsSp(data1, lhsCount);
+        Span<const uint8_t> rhsSp(data2, rhsCount);
+        return EcmaString::StringsAreEquals(lhsSp, rhsSp); 
+    } else {
+        const uint16_t *data1 = EcmaString::GetUtf16DataFlat(left, bufLeftUft16);
+        const uint16_t *data2 = EcmaString::GetUtf16DataFlat(right, bufRightUft16);
+        Span<const uint16_t> lhsSp(data1, lhsCount);
+        Span<const uint16_t> rhsSp(data2, rhsCount);
+        return EcmaString::StringsAreEquals(lhsSp, rhsSp); 
     }
 }
 
 /* static */
-bool EcmaString::StringsAreEqualSameUtfEncoding(const FlatStringInfo &str1, const FlatStringInfo &str2)
+bool EcmaString::StringsAreEqualDiffUtfEncoding(const FlatStringInfo &left, const FlatStringInfo &right)
 {
-    if (str1.IsUtf16()) {
-        Span<const uint16_t> sp1(str1.GetDataUtf16(), str1.GetLength());
-        Span<const uint16_t> sp2(str2.GetDataUtf16(), str2.GetLength());
-        return EcmaString::StringsAreEquals(sp1, sp2);
-    } else {  // NOLINT(readability-else-after-return)
-        Span<const uint8_t> sp1(str1.GetDataUtf8(), str1.GetLength());
-        Span<const uint8_t> sp2(str2.GetDataUtf8(), str2.GetLength());
-        return EcmaString::StringsAreEquals(sp1, sp2);
+    int32_t lhsCount = static_cast<int32_t>(left.GetLength());
+    int32_t rhsCount = static_cast<int32_t>(right.GetLength());
+    if (!left.IsUtf16() && !right.IsUtf16()) {
+        Span<const uint8_t> lhsSp(left.GetDataUtf8(), lhsCount);
+        Span<const uint8_t> rhsSp(right.GetDataUtf8(), rhsCount);
+        return EcmaString::StringsAreEquals(lhsSp, rhsSp); 
+    } else if (!left.IsUtf16()) {
+        Span<const uint8_t> lhsSp(left.GetDataUtf8(), lhsCount);
+        Span<const uint16_t> rhsSp(right.GetDataUtf16(), rhsCount);
+        return EcmaString::StringsAreEquals(lhsSp, rhsSp); 
+    } else if (!right.IsUtf16()) {
+        Span<const uint16_t> lhsSp(left.GetDataUtf16(), rhsCount);
+        Span<const uint8_t> rhsSp(right.GetDataUtf8(), lhsCount);
+        return EcmaString::StringsAreEquals(lhsSp, rhsSp); 
+    } else {
+        Span<const uint16_t> lhsSp(left.GetDataUtf16(), lhsCount);
+        Span<const uint16_t> rhsSp(right.GetDataUtf16(), rhsCount);
+        return EcmaString::StringsAreEquals(lhsSp, rhsSp); 
     }
 }
 
@@ -538,9 +550,6 @@ bool EcmaString::StringsAreEqual(const EcmaVM *vm, const JSHandle<EcmaString> &s
 {
     if (str1 == str2) {
         return true;
-    }
-    if (str1->IsUtf16() != str2->IsUtf16()) {
-        return false;
     }
     uint32_t str1Len = str1->GetLength();
     if (str1Len != str2->GetLength()) {
@@ -561,7 +570,7 @@ bool EcmaString::StringsAreEqual(const EcmaVM *vm, const JSHandle<EcmaString> &s
     JSHandle<EcmaString> string(vm->GetJSThread(), str1Flat.GetString());
     FlatStringInfo str2Flat = FlattenAllString(vm, str2);
     str1Flat.SetString(*string);
-    return StringsAreEqualSameUtfEncoding(str1Flat, str2Flat);
+    return StringsAreEqualDiffUtfEncoding(str1Flat, str2Flat);
 }
 
 /* static */
@@ -569,9 +578,6 @@ bool EcmaString::StringsAreEqual(EcmaString *str1, EcmaString *str2)
 {
     if (str1 == str2) {
         return true;
-    }
-    if (str1->IsUtf16() != str2->IsUtf16()) {
-        return false;
     }
     uint32_t str1Len = str1->GetLength();
     if (str1Len != str2->GetLength()) {
@@ -588,20 +594,20 @@ bool EcmaString::StringsAreEqual(EcmaString *str1, EcmaString *str2)
             return false;
         }
     }
-    return StringsAreEqualSameUtfEncoding(str1, str2);
+    return StringsAreEqualDiffUtfEncoding(str1, str2);
 }
 
 /* static */
 bool EcmaString::StringsAreEqualUtf8(const EcmaString *str1, const uint8_t *utf8Data, uint32_t utf8Len,
                                      bool canBeCompress)
 {
-    if (canBeCompress != str1->IsUtf8()) {
+    if (!str1->IsSlicedString() && canBeCompress != str1->IsUtf8()) {
         return false;
     }
     if (canBeCompress && str1->GetLength() != utf8Len) {
         return false;
     }
-    if (canBeCompress) {
+    if (str1->IsUtf8()) {
         CVector<uint8_t> buf;
         Span<const uint8_t> data1(EcmaString::GetUtf8DataFlat(str1, buf), utf8Len);
         Span<const uint8_t> data2(utf8Data, utf8Len);

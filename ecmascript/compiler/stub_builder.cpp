@@ -3990,18 +3990,11 @@ GateRef StubBuilder::FastStringEqual(GateRef glue, GateRef left, GateRef right)
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::BOOL(), False());
     Label exit(env);
-    Label lengthCompare(env);
     Label hashcodeCompare(env);
     Label contentsCompare(env);
     Label lenEqualOneCheck(env);
     Label lenIsOne(env);
-
-    Branch(Int32Equal(ZExtInt1ToInt32(IsUtf16String(left)), ZExtInt1ToInt32(IsUtf16String(right))),
-        &lengthCompare, &exit);
-
-    Bind(&lengthCompare);
     Branch(Int32Equal(GetLengthFromString(left), GetLengthFromString(right)), &lenEqualOneCheck, &exit);
-
     Bind(&lenEqualOneCheck);
     Branch(Int32Equal(GetLengthFromString(left), Int32(1)), &lenIsOne, &hashcodeCompare);
     Bind(&lenIsOne);

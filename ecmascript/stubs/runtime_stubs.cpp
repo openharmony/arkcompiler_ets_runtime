@@ -2075,7 +2075,7 @@ DEF_RUNTIME_STUBS(StringEqual)
     EcmaVM *vm = thread->GetEcmaVM();
     left = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(vm, left));
     right = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(vm, right));
-    if (EcmaStringAccessor::StringsAreEqualSameUtfEncoding(*left, *right)) {
+    if (EcmaStringAccessor::StringsAreEqualDiffUtfEncoding(*left, *right)) {
         return JSTaggedValue::VALUE_TRUE;
     }
     return JSTaggedValue::VALUE_FALSE;
@@ -2298,7 +2298,7 @@ void RuntimeStubs::StoreBarrier([[maybe_unused]] uintptr_t argGlue,
 
 bool RuntimeStubs::StringsAreEquals(EcmaString *str1, EcmaString *str2)
 {
-    return EcmaStringAccessor::StringsAreEqualSameUtfEncoding(str1, str2);
+    return EcmaStringAccessor::StringsAreEqualDiffUtfEncoding(str1, str2);
 }
 
 bool RuntimeStubs::BigIntEquals(JSTaggedType left, JSTaggedType right)

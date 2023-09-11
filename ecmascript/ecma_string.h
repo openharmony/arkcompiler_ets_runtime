@@ -207,14 +207,16 @@ private:
 
     // Check that two spans are equal. Should have the same length.
     /* static */
-    template<typename T>
-    static bool StringsAreEquals(Span<const T> &str1, Span<const T> &str2)
+    template<typename T, typename T1>
+    static bool StringsAreEquals(Span<const T> &str1, Span<const T1> &str2)
     {
         ASSERT(str1.Size() <= str2.Size());
         size_t size = str1.Size();
-        if (size < SMALL_STRING_SIZE) {
+        if (size < SMALL_STRING_SIZE || !std::is_same_v<T, T1>) {
             for (size_t i = 0; i < size; i++) {
-                if (str1[i] != str2[i]) {
+                auto left = static_cast<int32_t>(str1[i]);
+                auto right = static_cast<int32_t>(str2[i]);
+                if (left != right) {
                     return false;
                 }
             }
@@ -233,8 +235,8 @@ private:
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
     static bool StringsAreEqual(EcmaString *str1, EcmaString *str2);
     // Two strings have the same type of utf encoding format.
-    static bool StringsAreEqualSameUtfEncoding(EcmaString *str1, EcmaString *str2);
-    static bool StringsAreEqualSameUtfEncoding(const FlatStringInfo &str1, const FlatStringInfo &str2);
+    static bool StringsAreEqualDiffUtfEncoding(EcmaString *str1, EcmaString *str2);
+    static bool StringsAreEqualDiffUtfEncoding(const FlatStringInfo &str1, const FlatStringInfo &str2);
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
     // not change str1 data structure.
     // if str1 is not flat, this func has low efficiency.
@@ -1101,9 +1103,9 @@ public:
 
     // not change str1 and str2 data structure.
     // if str1 or str2 is not flat, this func has low efficiency.
-    static bool StringsAreEqualSameUtfEncoding(EcmaString *str1, EcmaString *str2)
+    static bool StringsAreEqualDiffUtfEncoding(EcmaString *str1, EcmaString *str2)
     {
-        return EcmaString::StringsAreEqualSameUtfEncoding(str1, str2);
+        return EcmaString::StringsAreEqualDiffUtfEncoding(str1, str2);
     }
 
     // not change str1 data structure.
