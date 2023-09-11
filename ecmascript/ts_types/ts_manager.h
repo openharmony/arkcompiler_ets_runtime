@@ -711,13 +711,15 @@ public:
 
         void Iterate(const RootVisitor &v)
         {
-            for (auto iter : idElmMap_) {
+            // Use reference!
+            // Otherwise slotaddress will change!
+            for (auto &iter : idElmMap_) {
                 iter.second.Iterate(v);
             }
-            for (auto iter : idElmKindMap_) {
+            for (auto &iter : idElmKindMap_) {
                 iter.second.Iterate(v);
             }
-            for (auto iter : offConstIndexMap_) {
+            for (auto &iter : offConstIndexMap_) {
                 iter.second.Iterate(v);
             }
         }
@@ -779,6 +781,11 @@ public:
         void Iterate(const RootVisitor &v)
         {
             v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&snapshotCPList_)));
+            for (auto &iter : snapshotVals_) {
+                for (size_t i = 0; i < iter.second.size(); i++) {
+                    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&iter.second[i])));
+                }
+            }
         }
 
         void SetSnapshotCPList(JSTaggedValue snapshotCPList)

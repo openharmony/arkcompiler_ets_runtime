@@ -541,7 +541,7 @@ void TSManager::Iterate(const RootVisitor &v)
     v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&curCP_)));
     snapshotData_.Iterate(v);
     jsArrayData_.Iterate(v);
-    for (auto iter : gtIhcMap_) {
+    for (auto &iter : gtIhcMap_) {
         iter.second.Iterate(v);
     }
     for (auto &exportTable : resolvedExportTable_) {
