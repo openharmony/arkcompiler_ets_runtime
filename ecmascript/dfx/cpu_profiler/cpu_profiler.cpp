@@ -35,6 +35,7 @@ CpuProfiler::CpuProfiler(const EcmaVM *vm, const int interval) : vm_(vm), interv
     enableVMTag_ = const_cast<EcmaVM *>(vm)->GetJSOptions().EnableCpuProfilerVMTag();
     generator_ = new SamplesRecord();
     generator_->SetEnableVMTag(enableVMTag_);
+    generator_->SetSourceMapTranslateCallback(vm->GetSourceMapTranslateCallback());
     generator_->NodeInit();
     if (generator_->SemInit(0, 0, 0) != 0) {
         LOG_ECMA(ERROR) << "sem_[0] init failed";

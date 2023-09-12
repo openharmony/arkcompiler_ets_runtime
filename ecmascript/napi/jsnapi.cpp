@@ -3683,4 +3683,9 @@ void JSNApi::SetProfilerState(const EcmaVM *vm, bool value)
 {
     const_cast<EcmaVM*>(vm)->SetProfilerState(value);
 }
+
+void JSNApi::SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback callback)
+{
+    vm->SetSourceMapTranslateCallback(callback);
+}
 }  // namespace panda
