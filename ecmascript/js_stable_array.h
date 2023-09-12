@@ -42,7 +42,7 @@ public:
                                              JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
     static JSTaggedValue HandleforEachOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                JSHandle<JSTaggedValue> callbackFnHandle,
-                                               JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
+                                               JSHandle<JSTaggedValue> thisArgHandle, uint32_t len, uint32_t &k);
     static JSTaggedValue IndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
                                  JSHandle<JSTaggedValue> searchElement, uint32_t from, uint32_t len);
     static JSTaggedValue LastIndexOf(JSThread *thread, JSHandle<JSTaggedValue> receiver,
@@ -62,7 +62,7 @@ public:
                               int64_t insertCount, int64_t index, JSHandle<JSTaggedValue> value);
     static JSTaggedValue ToSpliced(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv,
                                    int64_t argc, int64_t actualStart, int64_t actualSkipCount, int64_t insertCount);
-    static JSTaggedValue ToReversed(JSThread *thread, JSHandle<JSArray> receiver,   int64_t insertCount);
+    static JSTaggedValue ToReversed(JSThread *thread, JSHandle<JSArray> receiver, int64_t insertCount);
     static JSTaggedValue Reduce(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                 JSHandle<JSTaggedValue> callbackFnHandle,
                                 JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len);

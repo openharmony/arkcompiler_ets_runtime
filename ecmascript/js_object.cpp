@@ -399,8 +399,9 @@ JSHandle<TaggedArray> JSObject::GetAllEnumKeys(const JSThread *thread, const JSH
         JSHClass *jsHclass = obj->GetJSHClass();
         JSTaggedValue enumCache = jsHclass->GetEnumCache();
         if (!enumCache.IsNull()) {
-            auto keyArray = JSHandle<TaggedArray>(thread, enumCache);
-            *keys = keyArray->GetLength();
+            JSHandle<TaggedArray> cacheArray = JSHandle<TaggedArray>(thread, enumCache);
+            *keys = cacheArray->GetLength();
+            JSHandle<TaggedArray> keyArray = factory->CopyArray(cacheArray, *keys, *keys);
             return keyArray;
         }
         JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(numOfKeys);
@@ -410,6 +411,8 @@ JSHandle<TaggedArray> JSObject::GetAllEnumKeys(const JSThread *thread, const JSH
                 ->GetAllEnumKeys(thread, end, offset, *keyArray, keys, obj);
             if (*keys == keyArray->GetLength()) {
                 jsHclass->SetEnumCache(thread, keyArray.GetTaggedValue());
+                JSHandle<TaggedArray> newkeyArray = factory->CopyArray(keyArray, *keys, *keys);
+                return newkeyArray;
             }
         }
         return keyArray;
@@ -1571,9 +1574,11 @@ JSHandle<TaggedArray> JSObject::EnumerableOwnNames(JSThread *thread, const JSHan
         if (copyLengthOfKeys != 0 && copyLengthOfElements != 0) {
             keys = TaggedArray::AppendSkipHole(thread, elementArray, keyArray, copyLengthOfKeys + copyLengthOfElements);
         } else if (copyLengthOfKeys != 0) {
-            keys = factory->CopyArray(keyArray, copyLengthOfKeys, copyLengthOfKeys);
+            keyArray->SetLength(copyLengthOfKeys); // keyArray will skip nonEnumerable properties, need re-set length.
+            return keyArray;
         } else if (copyLengthOfElements != 0) {
-            keys = factory->CopyArray(elementArray, copyLengthOfElements, copyLengthOfElements);
+            elementArray->SetLength(copyLengthOfElements); // elementArray will skip hole value, need re-set length.
+            return elementArray;
         } else {
             keys = factory->EmptyArray();
         }

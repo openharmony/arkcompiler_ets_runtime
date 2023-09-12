@@ -875,8 +875,7 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
 {
     if (!constructor->HasFunctionPrototype() ||
         (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {
-        JSHandle<JSHClass> jshclass = JSFunction::GetInstanceJSHClass(thread_, constructor,
-                                                                      JSHandle<JSTaggedValue>(constructor));
+        JSHandle<JSHClass> jshclass(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, constructor));
         return NewJSObjectWithInit(jshclass);
     }
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();

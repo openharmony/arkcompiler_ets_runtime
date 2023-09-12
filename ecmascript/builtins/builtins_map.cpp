@@ -133,8 +133,7 @@ JSTaggedValue BuiltinsMap::Has(EcmaRuntimeCallInfo *argv)
     if (!self->IsJSMap()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSMap", JSTaggedValue::Exception());
     }
-    JSMap *jsMap = JSMap::Cast(*JSTaggedValue::ToObject(thread, self));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSMap *jsMap = JSMap::Cast(self.GetTaggedValue().GetTaggedObject());
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
     bool flag = jsMap->Has(key.GetTaggedValue());
     return GetTaggedBoolean(flag);
@@ -151,8 +150,7 @@ JSTaggedValue BuiltinsMap::Get(EcmaRuntimeCallInfo *argv)
     if (!self->IsJSMap()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSMap", JSTaggedValue::Exception());
     }
-    JSMap *jsMap = JSMap::Cast(*JSTaggedValue::ToObject(thread, self));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSMap *jsMap = JSMap::Cast(self.GetTaggedValue().GetTaggedObject());
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
     JSTaggedValue value = jsMap->Get(key.GetTaggedValue());
     return value;
@@ -229,8 +227,7 @@ JSTaggedValue BuiltinsMap::GetSize(EcmaRuntimeCallInfo *argv)
     if (!self->IsJSMap()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSMap", JSTaggedValue::Exception());
     }
-    JSMap *jsMap = JSMap::Cast(*JSTaggedValue::ToObject(thread, self));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSMap *jsMap = JSMap::Cast(self.GetTaggedValue().GetTaggedObject());
     uint32_t count = jsMap->GetSize();
     return JSTaggedValue(count);
 }

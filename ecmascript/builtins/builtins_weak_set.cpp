@@ -125,8 +125,7 @@ JSTaggedValue BuiltinsWeakSet::Add(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "invalid value used in weak set", JSTaggedValue::Exception());
     }
 
-    JSHandle<JSWeakSet> weakSet(thread, JSWeakSet::Cast(*JSTaggedValue::ToObject(thread, self)));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSWeakSet> weakSet(self);
     JSWeakSet::Add(thread, weakSet, value);
     return weakSet.GetTaggedValue();
 }
@@ -144,8 +143,7 @@ JSTaggedValue BuiltinsWeakSet::Delete(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSWeakSet", JSTaggedValue::Exception());
     }
 
-    JSHandle<JSWeakSet> weakSet(thread, JSWeakSet::Cast(*JSTaggedValue::ToObject(thread, self)));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSWeakSet> weakSet(self);
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     // 4.If CanBeHeldWeakly(value) is false, return false.
     if (!JSTaggedValue::CanBeHeldWeakly(thread, value)) {
@@ -166,8 +164,7 @@ JSTaggedValue BuiltinsWeakSet::Has(EcmaRuntimeCallInfo *argv)
     if (!self->IsJSWeakSet()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not JSWeakSet", JSTaggedValue::Exception());
     }
-    JSWeakSet *jsWeakSet = JSWeakSet::Cast(*JSTaggedValue::ToObject(thread, self));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSWeakSet *jsWeakSet = JSWeakSet::Cast(self.GetTaggedValue().GetTaggedObject());
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     // 4.If CanBeHeldWeakly(value) is false, return false.
     if (!JSTaggedValue::CanBeHeldWeakly(thread, value)) {
