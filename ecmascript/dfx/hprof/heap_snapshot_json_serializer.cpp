@@ -20,257 +20,250 @@
 
 namespace panda::ecmascript {
 
-HeapSnapshotJSONSerializer::~HeapSnapshotJSONSerializer()
-{
-    if (writer_) {
-        delete writer_;
-        writer_ = nullptr;
-    }
-}
-
 bool HeapSnapshotJSONSerializer::Serialize(HeapSnapshot *snapshot, Stream *stream)
 {
     // Serialize Node/Edge/String-Table
     LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::Serialize begin";
-    snapshot_ = snapshot;
-    ASSERT(snapshot_->GetNodes() != nullptr && snapshot_->GetEdges() != nullptr &&
-           snapshot_->GetEcmaStringTable() != nullptr);
-    writer_ = new StreamWriter(stream);
+    ASSERT(snapshot->GetNodes() != nullptr && snapshot->GetEdges() != nullptr &&
+           snapshot->GetEcmaStringTable() != nullptr);
+    auto writer = new StreamWriter(stream);
 
-    SerializeSnapshotHeader();     // 1.
-    SerializeNodes();              // 2.
-    SerializeEdges();              // 3.
-    SerializeTraceFunctionInfo();  // 4.
-    SerializeTraceTree();          // 5.
-    SerializeSamples();            // 6.
-    SerializeLocations();          // 7.
-    SerializeStringTable();        // 8.
-    SerializerSnapshotClosure();   // 9.
-    writer_->End();
+    SerializeSnapshotHeader(snapshot, writer);     // 1.
+    SerializeNodes(snapshot, writer);              // 2.
+    SerializeEdges(snapshot, writer);              // 3.
+    SerializeTraceFunctionInfo(snapshot, writer);  // 4.
+    SerializeTraceTree(snapshot, writer);          // 5.
+    SerializeSamples(snapshot, writer);            // 6.
+    SerializeLocations(writer);          // 7.
+    SerializeStringTable(snapshot, writer);        // 8.
+    SerializerSnapshotClosure(writer);   // 9.
+    writer->End();
+
+    delete writer;
 
     LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::Serialize exit";
     return true;
 }
 
-void HeapSnapshotJSONSerializer::SerializeSnapshotHeader()
+void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(HeapSnapshot *snapshot, StreamWriter *writer)
 {
-    writer_->Write("{\"snapshot\":\n");  // 1.
-    writer_->Write("{\"meta\":\n");      // 2.
+    writer->Write("{\"snapshot\":\n");  // 1.
+    writer->Write("{\"meta\":\n");      // 2.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer_->Write("{\"node_fields\":[\"type\",\"name\",\"id\",\"self_size\",\"edge_count\",\"trace_node_id\",");
-    writer_->Write("\"detachedness\"],\n");  // 3.
+    writer->Write("{\"node_fields\":[\"type\",\"name\",\"id\",\"self_size\",\"edge_count\",\"trace_node_id\",");
+    writer->Write("\"detachedness\"],\n");  // 3.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer_->Write("\"node_types\":[[\"hidden\",\"array\",\"string\",\"object\",\"code\",\"closure\",\"regexp\",");
+    writer->Write("\"node_types\":[[\"hidden\",\"array\",\"string\",\"object\",\"code\",\"closure\",\"regexp\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer_->Write("\"number\",\"native\",\"synthetic\",\"concatenated string\",\"slicedstring\",\"symbol\",");
+    writer->Write("\"number\",\"native\",\"synthetic\",\"concatenated string\",\"slicedstring\",\"symbol\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer_->Write("\"bigint\"],\"string\",\"number\",\"number\",\"number\",\"number\",\"number\"],\n");  // 4.
+    writer->Write("\"bigint\"],\"string\",\"number\",\"number\",\"number\",\"number\",\"number\"],\n");  // 4.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer_->Write("\"edge_fields\":[\"type\",\"name_or_index\",\"to_node\"],\n");  // 5.
+    writer->Write("\"edge_fields\":[\"type\",\"name_or_index\",\"to_node\"],\n");  // 5.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer_->Write("\"edge_types\":[[\"context\",\"element\",\"property\",\"internal\",\"hidden\",\"shortcut\",");
+    writer->Write("\"edge_types\":[[\"context\",\"element\",\"property\",\"internal\",\"hidden\",\"shortcut\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer_->Write("\"weak\"],\"string_or_number\",\"node\"],\n");  // 6.
+    writer->Write("\"weak\"],\"string_or_number\",\"node\"],\n");  // 6.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer_->Write("\"trace_function_info_fields\":[\"function_id\",\"name\",\"script_name\",\"script_id\",");
+    writer->Write("\"trace_function_info_fields\":[\"function_id\",\"name\",\"script_name\",\"script_id\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer_->Write("\"line\",\"column\"],\n");  // 7.
+    writer->Write("\"line\",\"column\"],\n");  // 7.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer_->Write("\"trace_node_fields\":[\"id\",\"function_info_index\",\"count\",\"size\",\"children\"],\n");
+    writer->Write("\"trace_node_fields\":[\"id\",\"function_info_index\",\"count\",\"size\",\"children\"],\n");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer_->Write("\"sample_fields\":[\"timestamp_us\",\"last_assigned_id\"],\n");  // 9.
+    writer->Write("\"sample_fields\":[\"timestamp_us\",\"last_assigned_id\"],\n");  // 9.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     // 10.
-    writer_->Write("\"location_fields\":[\"object_index\",\"script_id\",\"line\",\"column\"]},\n\"node_count\":");
-    writer_->Write(snapshot_->GetNodeCount());                         // 11.
-    writer_->Write(",\n\"edge_count\":");
-    writer_->Write(snapshot_->GetEdgeCount());                         // 12.
-    writer_->Write(",\n\"trace_function_count\":");
-    writer_->Write(snapshot_->GetTrackAllocationsStack().size());   // 13.
-    writer_->Write("\n},\n");  // 14.
+    writer->Write("\"location_fields\":[\"object_index\",\"script_id\",\"line\",\"column\"]},\n\"node_count\":");
+    writer->Write(snapshot->GetNodeCount());                         // 11.
+    writer->Write(",\n\"edge_count\":");
+    writer->Write(snapshot->GetEdgeCount());                         // 12.
+    writer->Write(",\n\"trace_function_count\":");
+    writer->Write(snapshot->GetTrackAllocationsStack().size());   // 13.
+    writer->Write("\n},\n");  // 14.
 }
 
-void HeapSnapshotJSONSerializer::SerializeNodes()
+void HeapSnapshotJSONSerializer::SerializeNodes(HeapSnapshot *snapshot, StreamWriter *writer)
 {
-    const CList<Node *> *nodes = snapshot_->GetNodes();
-    const StringHashMap *stringTable = snapshot_->GetEcmaStringTable();
+    const CList<Node *> *nodes = snapshot->GetNodes();
+    const StringHashMap *stringTable = snapshot->GetEcmaStringTable();
     ASSERT(nodes != nullptr);
-    writer_->Write("\"nodes\":[");  // Section Header
+    writer->Write("\"nodes\":[");  // Section Header
     size_t i = 0;
     for (auto *node : *nodes) {
         if (i > 0) {
-            writer_->Write(",");  // add comma except first line
+            writer->Write(",");  // add comma except first line
         }
-        writer_->Write(static_cast<int>(NodeTypeConverter::Convert(node->GetType())));  // 1.
-        writer_->Write(",");
-        writer_->Write(stringTable->GetStringId(node->GetName()));                      // 2.
-        writer_->Write(",");
-        writer_->Write(node->GetId());                                                  // 3.
-        writer_->Write(",");
-        writer_->Write(node->GetSelfSize());                                            // 4.
-        writer_->Write(",");
-        writer_->Write(node->GetEdgeCount());                                           // 5.
-        writer_->Write(",");
-        writer_->Write(node->GetStackTraceId());                                        // 6.
-        writer_->Write(",");
+        writer->Write(static_cast<int>(NodeTypeConverter::Convert(node->GetType())));  // 1.
+        writer->Write(",");
+        writer->Write(stringTable->GetStringId(node->GetName()));                      // 2.
+        writer->Write(",");
+        writer->Write(node->GetId());                                                  // 3.
+        writer->Write(",");
+        writer->Write(node->GetSelfSize());                                            // 4.
+        writer->Write(",");
+        writer->Write(node->GetEdgeCount());                                           // 5.
+        writer->Write(",");
+        writer->Write(node->GetStackTraceId());                                        // 6.
+        writer->Write(",");
         if (i == nodes->size() - 1) {  // add comma at last the line
-            writer_->Write("0],\n"); // 7. detachedness default
+            writer->Write("0],\n"); // 7. detachedness default
         } else {
-            writer_->Write("0\n");  // 7.
+            writer->Write("0\n");  // 7.
         }
         i++;
     }
 }
 
-void HeapSnapshotJSONSerializer::SerializeEdges()
+void HeapSnapshotJSONSerializer::SerializeEdges(HeapSnapshot *snapshot, StreamWriter *writer)
 {
-    const CList<Edge *> *edges = snapshot_->GetEdges();
-    const StringHashMap *stringTable = snapshot_->GetEcmaStringTable();
+    const CList<Edge *> *edges = snapshot->GetEdges();
+    const StringHashMap *stringTable = snapshot->GetEcmaStringTable();
     ASSERT(edges != nullptr);
-    writer_->Write("\"edges\":[");
+    writer->Write("\"edges\":[");
     size_t i = 0;
     for (auto *edge : *edges) {
         StringId nameOrIndex = edge->GetType() == EdgeType::ELEMENT ?
             edge->GetIndex() : stringTable->GetStringId(edge->GetName());
         if (i > 0) {  // add comma except the first line
-            writer_->Write(",");
+            writer->Write(",");
         }
-        writer_->Write(static_cast<int>(edge->GetType()));          // 1.
-        writer_->Write(",");
-        writer_->Write(nameOrIndex);  // 2. Use StringId
-        writer_->Write(",");
+        writer->Write(static_cast<int>(edge->GetType()));          // 1.
+        writer->Write(",");
+        writer->Write(nameOrIndex);  // 2. Use StringId
+        writer->Write(",");
 
         if (i == edges->size() - 1) {  // add comma at last the line
-            writer_->Write(edge->GetTo()->GetIndex() * Node::NODE_FIELD_COUNT);  // 3.
-            writer_->Write("],\n");
+            writer->Write(edge->GetTo()->GetIndex() * Node::NODE_FIELD_COUNT);  // 3.
+            writer->Write("],\n");
         } else {
-            writer_->Write(edge->GetTo()->GetIndex() * Node::NODE_FIELD_COUNT);    // 3.
-            writer_->Write("\n");
+            writer->Write(edge->GetTo()->GetIndex() * Node::NODE_FIELD_COUNT);    // 3.
+            writer->Write("\n");
         }
         i++;
     }
 }
 
-void HeapSnapshotJSONSerializer::SerializeTraceFunctionInfo()
+void HeapSnapshotJSONSerializer::SerializeTraceFunctionInfo(HeapSnapshot *snapshot, StreamWriter *writer)
 {
-    const CVector<FunctionInfo> trackAllocationsStack = snapshot_->GetTrackAllocationsStack();
-    const StringHashMap *stringTable = snapshot_->GetEcmaStringTable();
+    const CVector<FunctionInfo> trackAllocationsStack = snapshot->GetTrackAllocationsStack();
+    const StringHashMap *stringTable = snapshot->GetEcmaStringTable();
 
-    writer_->Write("\"trace_function_infos\":[");  // Empty
+    writer->Write("\"trace_function_infos\":[");  // Empty
     size_t i = 0;
 
     for (const auto &info : trackAllocationsStack) {
         if (i > 0) {  // add comma except the first line
-            writer_->Write(",");
+            writer->Write(",");
         }
-        writer_->Write(info.functionId);
-        writer_->Write(",");
+        writer->Write(info.functionId);
+        writer->Write(",");
         CString functionName(info.functionName.c_str());
-        writer_->Write(stringTable->GetStringId(&functionName));
-        writer_->Write(",");
+        writer->Write(stringTable->GetStringId(&functionName));
+        writer->Write(",");
         CString scriptName(info.scriptName.c_str());
-        writer_->Write(stringTable->GetStringId(&scriptName));
-        writer_->Write(",");
-        writer_->Write(info.scriptId);
-        writer_->Write(",");
-        writer_->Write(info.lineNumber);
-        writer_->Write(",");
-        writer_->Write(info.columnNumber);
-        writer_->Write("\n");
+        writer->Write(stringTable->GetStringId(&scriptName));
+        writer->Write(",");
+        writer->Write(info.scriptId);
+        writer->Write(",");
+        writer->Write(info.lineNumber);
+        writer->Write(",");
+        writer->Write(info.columnNumber);
+        writer->Write("\n");
         i++;
     }
-    writer_->Write("],\n");
+    writer->Write("],\n");
 }
 
-void HeapSnapshotJSONSerializer::SerializeTraceTree()
+void HeapSnapshotJSONSerializer::SerializeTraceTree(HeapSnapshot *snapshot, StreamWriter *writer)
 {
-    writer_->Write("\"trace_tree\":[");
-    TraceTree* tree = snapshot_->GetTraceTree();
-    if ((tree != nullptr) && (snapshot_->trackAllocations())) {
-        SerializeTraceNode(tree->GetRoot());
+    writer->Write("\"trace_tree\":[");
+    TraceTree* tree = snapshot->GetTraceTree();
+    if ((tree != nullptr) && (snapshot->trackAllocations())) {
+        SerializeTraceNode(tree->GetRoot(), writer);
     }
-    writer_->Write("],\n");
+    writer->Write("],\n");
 }
 
-void HeapSnapshotJSONSerializer::SerializeTraceNode(TraceNode* node)
+void HeapSnapshotJSONSerializer::SerializeTraceNode(TraceNode* node, StreamWriter *writer)
 {
     if (node == nullptr) {
         return;
     }
 
-    writer_->Write(node->GetId());
-    writer_->Write(",");
-    writer_->Write(node->GetNodeIndex());
-    writer_->Write(",");
-    writer_->Write(node->GetTotalCount());
-    writer_->Write(",");
-    writer_->Write(node->GetTotalSize());
-    writer_->Write(",[");
+    writer->Write(node->GetId());
+    writer->Write(",");
+    writer->Write(node->GetNodeIndex());
+    writer->Write(",");
+    writer->Write(node->GetTotalCount());
+    writer->Write(",");
+    writer->Write(node->GetTotalSize());
+    writer->Write(",[");
 
     int i = 0;
     for (TraceNode* child : node->GetChildren()) {
         if (i > 0) {
-            writer_->Write(",");
+            writer->Write(",");
         }
-        SerializeTraceNode(child);
+        SerializeTraceNode(child, writer);
         i++;
     }
-    writer_->Write("]");
+    writer->Write("]");
 }
 
-void HeapSnapshotJSONSerializer::SerializeSamples()
+void HeapSnapshotJSONSerializer::SerializeSamples(HeapSnapshot *snapshot, StreamWriter *writer)
 {
-    writer_->Write("\"samples\":[");
-    const CVector<TimeStamp> &timeStamps = snapshot_->GetTimeStamps();
+    writer->Write("\"samples\":[");
+    const CVector<TimeStamp> &timeStamps = snapshot->GetTimeStamps();
     if (!timeStamps.empty()) {
         auto firstTimeStamp = timeStamps[0];
         bool isFirst = true;
         for (auto timeStamp : timeStamps) {
             if (!isFirst) {
-                writer_->Write("\n, ");
+                writer->Write("\n, ");
             } else {
                 isFirst = false;
             }
-            writer_->Write(timeStamp.GetTimeStamp() - firstTimeStamp.GetTimeStamp());
-            writer_->Write(", ");
-            writer_->Write(timeStamp.GetLastSequenceId());
+            writer->Write(timeStamp.GetTimeStamp() - firstTimeStamp.GetTimeStamp());
+            writer->Write(", ");
+            writer->Write(timeStamp.GetLastSequenceId());
         }
     }
-    writer_->Write("],\n");
+    writer->Write("],\n");
 }
 
-void HeapSnapshotJSONSerializer::SerializeLocations()
+void HeapSnapshotJSONSerializer::SerializeLocations(StreamWriter *writer)
 {
-    writer_->Write("\"locations\":[],\n");
+    writer->Write("\"locations\":[],\n");
 }
 
-void HeapSnapshotJSONSerializer::SerializeStringTable()
+void HeapSnapshotJSONSerializer::SerializeStringTable(HeapSnapshot *snapshot, StreamWriter *writer)
 {
-    const StringHashMap *stringTable = snapshot_->GetEcmaStringTable();
+    const StringHashMap *stringTable = snapshot->GetEcmaStringTable();
     ASSERT(stringTable != nullptr);
-    writer_->Write("\"strings\":[\"<dummy>\",\n");
-    writer_->Write("\"\",\n");
-    writer_->Write("\"GC roots\",\n");
+    writer->Write("\"strings\":[\"<dummy>\",\n");
+    writer->Write("\"\",\n");
+    writer->Write("\"GC roots\",\n");
     // StringId Range from 3
     size_t capcity = stringTable->GetCapcity();
     size_t i = 0;
     for (auto key : stringTable->GetOrderedKeyStorage()) {
         if (i == capcity - 1) {
-            writer_->Write("\"");
-            writer_->Write(*(stringTable->GetStringByKey(key)));  // No Comma for the last line
-            writer_->Write("\"\n");
+            writer->Write("\"");
+            writer->Write(*(stringTable->GetStringByKey(key)));  // No Comma for the last line
+            writer->Write("\"\n");
         } else {
-            writer_->Write("\"");
-            writer_->Write(*(stringTable->GetStringByKey(key)));
-            writer_->Write("\",\n");
+            writer->Write("\"");
+            writer->Write(*(stringTable->GetStringByKey(key)));
+            writer->Write("\",\n");
         }
         i++;
     }
-    writer_->Write("]\n");
+    writer->Write("]\n");
 }
 
-void HeapSnapshotJSONSerializer::SerializerSnapshotClosure()
+void HeapSnapshotJSONSerializer::SerializerSnapshotClosure(StreamWriter *writer)
 {
-    writer_->Write("}\n");
+    writer->Write("}\n");
 }
 }  // namespace panda::ecmascript
