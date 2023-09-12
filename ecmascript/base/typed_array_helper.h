@@ -35,7 +35,7 @@ public:
                                                  const DataViewType arrayType);
     static JSHandle<JSObject> AllocateTypedArray(JSThread *thread,
                                                  const JSHandle<JSTaggedValue> &constructorName,
-                                                 const JSHandle<JSTaggedValue> &newTarget, int32_t length,
+                                                 const JSHandle<JSTaggedValue> &newTarget, uint32_t length,
                                                  const DataViewType arrayType);
     static JSHandle<JSObject> TypedArraySpeciesCreate(JSThread *thread, const JSHandle<JSTypedArray> &obj,
                                                       uint32_t argc, JSTaggedType argv[]);
