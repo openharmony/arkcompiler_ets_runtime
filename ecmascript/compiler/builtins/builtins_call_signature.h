@@ -60,6 +60,7 @@ namespace panda::ecmascript::kungfu {
     V(ArrayLastIndexOf)                             \
     V(ArraySlice)                                   \
     V(ArrayReverse)                                 \
+    V(ArrayPush)                                    \
     V(SetClear)                                     \
     V(SetValues)                                    \
     V(SetEntries)                                   \

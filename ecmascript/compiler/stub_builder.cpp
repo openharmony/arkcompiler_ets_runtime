@@ -1923,6 +1923,12 @@ GateRef StubBuilder::GetArrayLength(GateRef object)
     return result;
 }
 
+void StubBuilder::SetArrayLength(GateRef glue, GateRef object, GateRef len)
+{
+    GateRef lengthOffset = IntPtr(panda::ecmascript::JSArray::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, object, lengthOffset, len);
+}
+
 GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef argHolder,
                                         GateRef value, GateRef argHandler, ProfileOperation callback)
 {

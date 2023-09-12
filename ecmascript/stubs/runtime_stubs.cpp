@@ -323,6 +323,16 @@ DEF_RUNTIME_STUBS(CheckAndCopyArray)
     return receiverHandle->GetElements().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(JSObjectGrowElementsCapacity)
+{
+    RUNTIME_STUBS_HEADER(JSObjectGrowElementsCapacity);
+    JSHandle<JSObject> elements = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue length = GetArg(argv, argc, 1);                    // 1: means the zeroth parameter
+    uint32_t newLength = static_cast<uint32_t>(length.GetInt());
+    JSHandle<TaggedArray> newElements = JSObject::GrowElementsCapacity(thread, elements, newLength, true);
+    return newElements.GetTaggedValue().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(NewEcmaHClass)
 {
     RUNTIME_STUBS_HEADER(NewEcmaHClass);

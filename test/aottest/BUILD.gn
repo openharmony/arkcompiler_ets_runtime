@@ -41,6 +41,7 @@ group("ark_aot_ts_test") {
   test_list = [
     "add",
     "and",
+    "array",
     "ashr",
     "asyncgenerator",
     "asyncgeneratormultiloop",

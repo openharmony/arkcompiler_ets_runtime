@@ -484,6 +484,7 @@ public:
     GateRef ICStoreElement(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef handlerInfo);
     GateRef GetArrayLength(GateRef object);
     GateRef DoubleToInt(GateRef glue, GateRef x, size_t bits = base::INT32_BITS);
+    void SetArrayLength(GateRef glue, GateRef object, GateRef len);
     GateRef StoreField(GateRef glue, GateRef receiver, GateRef value, GateRef handler, ProfileOperation callback);
     GateRef StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
                              ProfileOperation callback, bool withPrototype = false);
