@@ -672,9 +672,10 @@ void ConstructorCheckStubBuilder::GenerateCircuit()
 void CreateEmptyArrayStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
+    GateRef slotId = Int32Argument(4); // 4 : 5th para
     NewObjectStubBuilder newBuilder(this);
     Return(newBuilder.CreateEmptyArray(glue, Undefined(), Undefined(),
-        Undefined(), Undefined(), ProfileOperation()));
+        Undefined(), slotId, ProfileOperation()));
 }
 
 void CreateArrayWithBufferStubBuilder::GenerateCircuit()
@@ -682,9 +683,10 @@ void CreateArrayWithBufferStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef index = Int32Argument(1);
     GateRef jsFunc = TaggedArgument(2); // 2 : 3rd para
+    GateRef slotId = Int32Argument(5); // 5 : 6th para
     NewObjectStubBuilder newBuilder(this);
     Return(newBuilder.CreateArrayWithBuffer(glue, index, jsFunc, Undefined(),
-        Undefined(), Undefined(), ProfileOperation()));
+        Undefined(), slotId, ProfileOperation()));
 }
 
 void NewJSObjectStubBuilder::GenerateCircuit()
