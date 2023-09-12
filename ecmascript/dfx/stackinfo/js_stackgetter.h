@@ -18,7 +18,7 @@
 
 #include <csignal>
 
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/interpreter/frame_handler.h"
 

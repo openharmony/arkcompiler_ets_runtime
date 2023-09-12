@@ -18,8 +18,8 @@
 
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
-#include "ecmascript/compiler/gate_meta_data.h"
 #include "ecmascript/compiler/graph_visitor.h"
+#include "ecmascript/compiler/mcr_gate_meta_data.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/mem/chunk_containers.h"
 

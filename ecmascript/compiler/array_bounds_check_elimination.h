@@ -17,7 +17,7 @@
 #define ECMASCRIPT_COMPILER_ARRAY_BOUNDS_CHECK_ELIMINATION_H
 
 #include "ecmascript/compiler/circuit_builder.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/mcr_gate_meta_data.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/graph_linearizer.h"
 #include "ecmascript/compiler/pass_manager.h"

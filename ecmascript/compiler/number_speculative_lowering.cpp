@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 #include "ecmascript/compiler/type_mcr_lowering.h"

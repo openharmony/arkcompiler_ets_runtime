@@ -19,7 +19,7 @@
 #include <functional>
 #include <initializer_list>
 
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 
 namespace panda::ecmascript::kungfu {
 enum class OperationType : uint8_t {

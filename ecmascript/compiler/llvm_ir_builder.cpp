@@ -24,7 +24,7 @@
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/debug_info.h"
 #include "ecmascript/compiler/gate.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/frames.h"

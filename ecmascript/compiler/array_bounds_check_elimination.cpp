@@ -507,8 +507,7 @@ bool ArrayBoundsCheckElimination::InArrayBound(Bound *bound, GateRef length, Gat
             return true;
         }
     }
-
-    // TODO: Solve Multidimensional array. To fix a[i][j] case, maybe LOAD_ELEMENT are not the same one.
+    
     return false;
 }
 
@@ -710,10 +709,10 @@ void ArrayBoundsCheckElimination::ProcessIf(IntegerStack &pushed, GateRegion *pa
             case TypedBinOp::TYPED_EQ:
             case TypedBinOp::TYPED_NOTEQ:
                 if (cond == OpCode::IF_TRUE) {
-                    op = GateMetaData::GetRevCompareOp(op);
+                    op = TypedBinaryMetaData::GetRevCompareOp(op);
                 }
                 AddIfCondition(pushed, x, y, op);
-                AddIfCondition(pushed, y, x, GateMetaData::GetSwapCompareOp(op));
+                AddIfCondition(pushed, y, x, TypedBinaryMetaData::GetSwapCompareOp(op));
                 break;
             default:
                 break;
