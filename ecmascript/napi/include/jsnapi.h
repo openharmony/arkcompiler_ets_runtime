@@ -29,6 +29,10 @@
 
 #include "libpandabase/macros.h"
 
+#ifdef ERROR
+#undef ERROR
+#endif
+
 namespace panda {
 class JSNApiHelper;
 class EscapeLocalScope;
@@ -361,6 +365,11 @@ public:
     ECMA_DISALLOW_COPY(EscapeLocalScope);
     ECMA_DISALLOW_MOVE(EscapeLocalScope);
 
+    bool EscapeCalled() const
+    {
+        return alreadyEscape_;
+    }
+
     template<typename T>
     inline Local<T> Escape(Local<T> current)
     {
@@ -567,7 +576,7 @@ public:
 
 class PUBLIC_API SymbolRef : public PrimitiveRef {
 public:
-    static Local<SymbolRef> New(const EcmaVM *vm, Local<StringRef> description);
+    static Local<SymbolRef> New(const EcmaVM *vm, Local<StringRef> description = Local<StringRef>());
     Local<StringRef> GetDescription(const EcmaVM *vm);
 };
 
