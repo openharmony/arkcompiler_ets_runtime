@@ -195,35 +195,29 @@ JSTaggedValue BuiltinsSymbol::KeyFor(EcmaRuntimeCallInfo *argv)
 // 19.4.3.4 Symbol.prototype [ @@toPrimitive ] ( hint )
 JSTaggedValue BuiltinsSymbol::ToPrimitive(EcmaRuntimeCallInfo *argv)
 {
-    // The allowed values for hint are "default", "number", and "string".
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), Symbol, ToPrimitive);
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    // 1.Let s be the this value.
+    // Let s be the this value.
     JSHandle<JSTaggedValue> sym = GetThis(argv);
-    // 2.If Type(s) is Symbol, return s.
+    // 1.If value is a Symbol, return value.
     if (sym->IsSymbol()) {
         return sym.GetTaggedValue();
     }
-    // 3.If Type(s) is not Object, throw a TypeError exception.
-    if (!sym->IsHeapObject()) {
-        // return TypeError
-        THROW_TYPE_ERROR_AND_RETURN(thread, "ToPrimitive: s is not Object", JSTaggedValue::Exception());
-    }
-    ASSERT(sym->IsHeapObject());
-    // 4.If s does not have a [[SymbolData]] internal slot, throw a TypeError exception.
-    // 5.Return the value of s's [[SymbolData]] internal slot.
-    if (!sym->IsJSPrimitiveRef()) {
-        // If s does not have a [[SymbolData]] internal slot, throw a TypeError exception.
-        THROW_TYPE_ERROR_AND_RETURN(thread, "ToPrimitive: no [[SymbolData]]", JSTaggedValue::Exception());
-    }
-    // Let sym be the value of s's [[SymbolData]] internal slot.
-    JSTaggedValue primitive = JSPrimitiveRef::Cast(sym->GetTaggedObject())->GetValue();
-    ASSERT(primitive.IsSymbol());
-    return primitive;
-}
 
+    // 2.If value is an Object and value has a [[SymbolData]] internal slot, then
+    if (sym->IsJSPrimitiveRef()) {
+        // Let sym be the value of s's [[SymbolData]] internal slot.
+        JSTaggedValue primitive = JSPrimitiveRef::Cast(sym->GetTaggedObject())->GetValue();
+        if (primitive.IsSymbol()) {
+            return primitive;
+        }
+    }
+
+    // 3.If s does not have a [[SymbolData]] internal slot, throw a TypeError exception.
+    THROW_TYPE_ERROR_AND_RETURN(thread, "ToPrimitive: s is not Object", JSTaggedValue::Exception());
+}
 JSTaggedValue BuiltinsSymbol::DescriptionGetter(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);

@@ -121,8 +121,9 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeApply(EcmaRuntimeCallInfo *argv
     JSHandle<JSTaggedValue> arrayObj = GetCallArg(argv, 1);
     std::pair<TaggedArray*, size_t> argumentsList = BuildArgumentsListFast(thread, arrayObj);
     if (!argumentsList.first) {
-        JSHandle<TaggedArray> argList = JSHandle<TaggedArray>::Cast(
-            JSObject::CreateListFromArrayLike(thread, arrayObj));
+        JSHandle<JSTaggedValue> num = JSObject::CreateListFromArrayLike(thread, arrayObj);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<TaggedArray> argList = JSHandle<TaggedArray>::Cast(num);
         // 4. ReturnIfAbrupt(argList).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         const uint32_t argsLength = argList->GetLength();
