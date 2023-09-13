@@ -59,6 +59,7 @@ struct CompilationOptions {
     bool isEnableOptOnHeapCheck_;
     bool isEnableOptLoopInvariantCodeMotion_;
     bool isEnableCollectLiteralInfo_;
+    bool isEnableOptConstantFolding_;
 };
 
 class CompilationPreprocessor {

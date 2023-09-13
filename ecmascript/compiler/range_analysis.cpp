@@ -121,6 +121,9 @@ GateRef RangeAnalysis::VisitTypedUnaryOp(GateRef gate)
         case TypedUnOp::TYPED_NEG:
             range = RangeInfo(0, 0) - range;
             break;
+        case TypedUnOp::TYPED_NOT:
+            range = ~ range;
+            break;
         default:
             break;
     }

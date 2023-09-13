@@ -78,6 +78,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--enable-ic:                          Switch of inline cache. Default: 'true'\n"
     "--enable-runtime-stat:                Enable statistics of runtime state. Default: 'false'\n"
     "--compiler-opt-array-bounds-check-elimination: Enable Index Check elimination. Default: 'false'\n"
+    "--compiler-opt-constant-folding:      Enable constant folding. Default: 'true'\n"
     "--compiler-opt-type-lowering:         Enable all type optimization pass for aot compiler. Default: 'true'\n"
     "--compiler-opt-early-elimination:     Enable EarlyElimination for aot compiler. Default: 'true'\n"
     "--compiler-opt-later-elimination:     Enable LaterElimination for aot compiler. Default: 'true'\n"
@@ -182,6 +183,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"enable-force-gc", required_argument, nullptr, OPTION_ENABLE_FORCE_GC},
         {"enable-ic", required_argument, nullptr, OPTION_ENABLE_IC},
         {"enable-runtime-stat", required_argument, nullptr, OPTION_ENABLE_RUNTIME_STAT},
+        {"compiler-opt-constant-folding", required_argument, nullptr, OPTION_COMPILER_OPT_CONSTANT_FOLDING},
         {"compiler-opt-array-bounds-check-elimination", required_argument, nullptr,
             OPTION_COMPILER_OPT_ARRAY_BOUNDS_CHECK_ELIMINATION},
         {"compiler-opt-type-lowering", required_argument, nullptr, OPTION_COMPILER_OPT_TYPE_LOWERING},
@@ -768,6 +770,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 SetFastAOTCompileMode(argBool);
+                break;
+            case OPTION_COMPILER_OPT_CONSTANT_FOLDING:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableOptConstantFolding(argBool);
+                } else {
+                    return false;
+                }
                 break;
             case OPTION_COMPILER_OPT_LOOP_PEELING:
                 ret = ParseBoolParam(&argBool);
