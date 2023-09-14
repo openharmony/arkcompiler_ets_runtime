@@ -464,22 +464,21 @@ GateRef TypeMCRLowering::BuildCompareSubTyping(GateRef gate, GateRef frameState,
     GateRef aotHCGate = LoadFromConstPool(jsFunc, hclassIndex);
 
     if (LIKELY(static_cast<uint32_t>(level) < SubtypingOperator::DEFAULT_SUPERS_CAPACITY)) {
-        return builder_.Equal(aotHCGate, GetValueFromSupers(supers, level));
+        return builder_.Equal(aotHCGate, GetValueFromSupers(supers, level), "checkHClass");
     }
 
     DEFVAlUE(check, (&builder_), VariableType::BOOL(), builder_.False());
     GateRef levelGate = builder_.Int32(level);
     GateRef length = GetLengthFromSupers(supers);
 
-    builder_.Branch(builder_.Int32LessThan(levelGate, length), levelValid, exit,
-        BranchWeight::DEOPT_WEIGHT, BranchWeight::ONE_WEIGHT);
+    GateRef cmp = builder_.Int32LessThan(levelGate, length, "checkSubtyping");
+    builder_.Branch(cmp, levelValid, exit, BranchWeight::DEOPT_WEIGHT, BranchWeight::ONE_WEIGHT);
     builder_.Bind(levelValid);
     {
-        check = builder_.Equal(aotHCGate, GetValueFromSupers(supers, level));
+        check = builder_.Equal(aotHCGate, GetValueFromSupers(supers, level), "checkSubtyping");
         builder_.Jump(exit);
     }
     builder_.Bind(exit);
-
     return *check;
 }
 
@@ -498,7 +497,7 @@ GateRef TypeMCRLowering::BuildCompareHClass(GateRef gate, GateRef frameState)
     GateRef aotHCGate = LoadFromConstPool(jsFunc, hclassIndex);
     GateRef receiverHClass = builder_.LoadConstOffset(
         VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
-    return builder_.Equal(aotHCGate, receiverHClass);
+    return builder_.Equal(aotHCGate, receiverHClass, "checkHClass");
 }
 
 void TypeMCRLowering::LowerRangeCheckPredicate(GateRef gate)

@@ -41,7 +41,7 @@ GateRef CircuitBuilder::Hole()
     return HoleConstant();
 }
 
-GateRef CircuitBuilder::Equal(GateRef x, GateRef y)
+GateRef CircuitBuilder::Equal(GateRef x, GateRef y, const char* comment)
 {
     auto xType = acc_.GetMachineType(x);
     switch (xType) {
@@ -52,17 +52,17 @@ GateRef CircuitBuilder::Equal(GateRef x, GateRef y)
         case I16:
         case I32:
         case I64:
-            return BinaryCmp(circuit_->Icmp(static_cast<uint64_t>(ICmpCondition::EQ)), x, y);
+            return BinaryCmp(circuit_->Icmp(static_cast<uint64_t>(ICmpCondition::EQ)), x, y, comment);
         case F32:
         case F64:
-            return BinaryCmp(circuit_->Fcmp(static_cast<uint64_t>(FCmpCondition::OEQ)), x, y);
+            return BinaryCmp(circuit_->Fcmp(static_cast<uint64_t>(FCmpCondition::OEQ)), x, y, comment);
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
 
-GateRef CircuitBuilder::NotEqual(GateRef x, GateRef y)
+GateRef CircuitBuilder::NotEqual(GateRef x, GateRef y, const char* comment)
 {
     auto xType = acc_.GetMachineType(x);
     switch (xType) {
@@ -73,10 +73,10 @@ GateRef CircuitBuilder::NotEqual(GateRef x, GateRef y)
         case I16:
         case I32:
         case I64:
-            return BinaryCmp(circuit_->Icmp(static_cast<uint64_t>(ICmpCondition::NE)), x, y);
+            return BinaryCmp(circuit_->Icmp(static_cast<uint64_t>(ICmpCondition::NE)), x, y, comment);
         case F32:
         case F64:
-            return BinaryCmp(circuit_->Fcmp(static_cast<uint64_t>(FCmpCondition::ONE)), x, y);
+            return BinaryCmp(circuit_->Fcmp(static_cast<uint64_t>(FCmpCondition::ONE)), x, y, comment);
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -379,7 +379,8 @@ inline GateRef CircuitBuilder::IsJSHClass(GateRef obj)
 GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x)
 {
     x = ChangeTaggedPointerToInt64(x);
-    return Equal(Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK)), Int64(0));
+    auto t = Int64And(x, Int64(JSTaggedValue::TAG_HEAPOBJECT_MASK), GateType::Empty(), "checkHeapObject");
+    return Equal(t, Int64(0), "checkHeapObject");
 }
 
 GateRef CircuitBuilder::TaggedIsAsyncGeneratorObject(GateRef x)

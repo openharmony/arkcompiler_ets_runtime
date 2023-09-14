@@ -537,6 +537,14 @@ private:
     void SaveDeoptVregInfoWithI64(std::vector<LLVMValueRef> &values, int32_t index, size_t curDepth, size_t shift,
                            GateRef gate);
     int LookupPredBB(GateRef start, int bbID);
+    LLVMValueRef GetLValue(const GateRef g)
+    {
+        return gate2LValue_[g];
+    }
+    void Bind(const GateRef g, const LLVMValueRef lv)
+    {
+        gate2LValue_[g] = lv;
+    }
 
     const CompilationConfig *compCfg_ {nullptr};
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};

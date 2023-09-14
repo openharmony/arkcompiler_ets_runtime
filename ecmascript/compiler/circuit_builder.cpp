@@ -64,10 +64,11 @@ GateRef CircuitBuilder::UndefineConstant()
     return circuit_->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_UNDEFINED, type);
 }
 
-GateRef CircuitBuilder::Branch(GateRef state, GateRef condition, uint32_t trueWeight, uint32_t falseWeight)
+GateRef CircuitBuilder::Branch(GateRef state, GateRef condition, uint32_t trueWeight, uint32_t falseWeight,
+                               const char* comment)
 {
     auto value = BranchAccessor::ToValue(trueWeight, falseWeight);
-    return circuit_->NewGate(circuit_->IfBranch(value), { state, condition });
+    return circuit_->NewGate(circuit_->IfBranch(value), { state, condition }, comment);
 }
 
 GateRef CircuitBuilder::SwitchBranch(GateRef state, GateRef index, int caseCounts)
@@ -173,7 +174,9 @@ GateRef CircuitBuilder::HeapObjectCheck(GateRef gate, GateRef frameState)
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret = GetCircuit()->NewGate(circuit_->HeapObjectCheck(),
-        MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, gate, frameState},
+                                        GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -842,18 +845,18 @@ MachineType CircuitBuilder::GetMachineTypeFromVariableType(VariableType type)
 }
 
 GateRef CircuitBuilder::BinaryArithmetic(const GateMetaData* meta, MachineType machineType,
-                                         GateRef left, GateRef right, GateType gateType)
+                                         GateRef left, GateRef right, GateType gateType, const char* comment)
 {
     auto circuit = GetCircuit();
     if (gateType == GateType::Empty()) {
         gateType = acc_.GetGateType(left);
     }
-    return circuit->NewGate(meta, machineType, { left, right }, gateType);
+    return circuit->NewGate(meta, machineType, { left, right }, gateType, comment);
 }
 
-GateRef CircuitBuilder::BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right)
+GateRef CircuitBuilder::BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right, const char* comment)
 {
-    return GetCircuit()->NewGate(meta, MachineType::I1, { left, right }, GateType::NJSValue());
+    return GetCircuit()->NewGate(meta, MachineType::I1, { left, right }, GateType::NJSValue(), comment);
 }
 
 GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args,
@@ -1913,7 +1916,7 @@ void CircuitBuilder::Jump(Label *label)
 }
 
 void CircuitBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel,
-    uint32_t trueWeight, uint32_t falseWeight)
+                            uint32_t trueWeight, uint32_t falseWeight)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
