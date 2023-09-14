@@ -5064,7 +5064,7 @@ GateRef StubBuilder::JSAPIContainerGet(GateRef glue, GateRef receiver, GateRef i
     return ret;
 }
 
-GateRef StubBuilder::DoubleToInt(GateRef glue, GateRef x)
+GateRef StubBuilder::DoubleToInt(GateRef glue, GateRef x, size_t typeBits)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -5084,13 +5084,13 @@ GateRef StubBuilder::DoubleToInt(GateRef glue, GateRef x)
         GateRef exp = Int64And(xInt64, Int64(base::DOUBLE_EXPONENT_MASK));
         exp = TruncInt64ToInt32(Int64LSR(exp, Int64(base::DOUBLE_SIGNIFICAND_SIZE)));
         exp = Int32Sub(exp, Int32(base::DOUBLE_EXPONENT_BIAS));
-        GateRef bits = Int32(base::INT32_BITS - 1);
+        GateRef bits = Int32(typeBits - 1);
         // exp < 32 - 1
         Branch(Int32LessThan(exp, bits), &exit, &overflow);
     }
     Bind(&overflow);
     {
-        result = CallNGCRuntime(glue, RTSTUB_ID(DoubleToInt), { x });
+        result = CallNGCRuntime(glue, RTSTUB_ID(DoubleToInt), { x, IntPtr(typeBits) });
         Jump(&exit);
     }
     Bind(&exit);

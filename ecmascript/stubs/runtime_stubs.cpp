@@ -2235,9 +2235,9 @@ JSTaggedType RuntimeStubs::FloatFloor(double x)
     return JSTaggedValue(result).GetRawData();
 }
 
-int32_t RuntimeStubs::DoubleToInt(double x)
+int32_t RuntimeStubs::DoubleToInt(double x, size_t bits)
 {
-    return base::NumberHelper::DoubleToInt(x, base::INT32_BITS);
+    return base::NumberHelper::DoubleToInt(x, bits);
 }
 
 JSTaggedType RuntimeStubs::DoubleToLength(double x)

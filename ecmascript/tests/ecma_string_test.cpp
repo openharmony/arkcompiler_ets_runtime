@@ -1244,14 +1244,14 @@ HWTEST_F_L0(EcmaStringTest, StringsAreEqual_006)
 
 /*
  * @tc.name: StringsAreEqualUtf8_001
- * @tc.desc: Check whether the bool returned through calling StringsAreEqualUtf8 function with an EcmaString made by
+ * @tc.desc: Check whether the bool returned through calling StringIsEqualUint8Data function with an EcmaString made by
  * CreateFromUtf8() and an Array(uint8_t) is within expectations.
  * @tc.type: FUNC
  * @tc.require:
  */
 HWTEST_F_L0(EcmaStringTest, StringsAreEqualUtf8_001)
 {
-    // StringsAreEqualUtf8(). EcmaString made by CreateFromUtf8(), Array:U8.
+    // StringIsEqualUint8Data(). EcmaString made by CreateFromUtf8(), Array:U8.
     uint8_t arrayU8No1[4] = {45, 92, 78};
     uint8_t arrayU8No2[5] = {45, 92, 78, 24};
     uint8_t arrayU8No3[3] = {45, 92};
@@ -1264,22 +1264,22 @@ HWTEST_F_L0(EcmaStringTest, StringsAreEqualUtf8_001)
         EcmaString::CreateFromUtf8(ecmaVMPtr, &arrayU8No2[0], lengthEcmaStrU8No2, true));
     JSHandle<EcmaString> handleEcmaStrU8No3(thread,
         EcmaString::CreateFromUtf8(ecmaVMPtr, &arrayU8No3[0], lengthEcmaStrU8No3, true));
-    EXPECT_TRUE(EcmaString::StringsAreEqualUtf8(*handleEcmaStrU8No1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
-    EXPECT_FALSE(EcmaString::StringsAreEqualUtf8(*handleEcmaStrU8No1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
-    EXPECT_FALSE(EcmaString::StringsAreEqualUtf8(*handleEcmaStrU8No2, &arrayU8No1[0], lengthEcmaStrU8No1, true));
-    EXPECT_FALSE(EcmaString::StringsAreEqualUtf8(*handleEcmaStrU8No3, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+    EXPECT_TRUE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU8No1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+    EXPECT_FALSE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU8No1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
+    EXPECT_FALSE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU8No2, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+    EXPECT_FALSE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU8No3, &arrayU8No1[0], lengthEcmaStrU8No1, true));
 }
 
 /*
  * @tc.name: StringsAreEqualUtf8_002
- * @tc.desc: Check whether the bool returned through calling StringsAreEqualUtf8 function with an EcmaString made by
+ * @tc.desc: Check whether the bool returned through calling StringIsEqualUint8Data function with an EcmaString made by
  * CreateFromUtf16( , , , true) and an Array(uint8_t) is within expectations.
  * @tc.type: FUNC
  * @tc.require:
  */
 HWTEST_F_L0(EcmaStringTest, StringsAreEqualUtf8_002)
 {
-    // StringsAreEqualUtf8(). EcmaString made by CreateFromUtf16( , , , true), Array:U8.
+    // StringIsEqualUint8Data(). EcmaString made by CreateFromUtf16( , , , true), Array:U8.
     uint8_t arrayU8No1[4] = {45, 92, 78};
     uint16_t arrayU16CompNo1[] = {45, 92, 78};
     uint16_t arrayU16CompNo2[] = {45, 92, 78, 24};
@@ -1294,22 +1294,22 @@ HWTEST_F_L0(EcmaStringTest, StringsAreEqualUtf8_002)
         EcmaString::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo3(thread,
         EcmaString::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
-    EXPECT_TRUE(EcmaString::StringsAreEqualUtf8(*handleEcmaStrU16CompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
-    EXPECT_FALSE(EcmaString::StringsAreEqualUtf8(*handleEcmaStrU16CompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
-    EXPECT_FALSE(EcmaString::StringsAreEqualUtf8(*handleEcmaStrU16CompNo2, &arrayU8No1[0], lengthEcmaStrU8No1, true));
-    EXPECT_FALSE(EcmaString::StringsAreEqualUtf8(*handleEcmaStrU16CompNo3, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+    EXPECT_TRUE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16CompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+    EXPECT_FALSE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16CompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
+    EXPECT_FALSE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16CompNo2, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+    EXPECT_FALSE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16CompNo3, &arrayU8No1[0], lengthEcmaStrU8No1, true));
 }
 
 /*
  * @tc.name: StringsAreEqualUtf8_003
- * @tc.desc: Check whether the bool returned through calling StringsAreEqualUtf8 function with an EcmaString made by
+ * @tc.desc: Check whether the bool returned through calling StringIsEqualUint8Data function with an EcmaString made by
  * CreateFromUtf16( , , , false) and an Array(uint8_t) is within expectations.
  * @tc.type: FUNC
  * @tc.require:
  */
 HWTEST_F_L0(EcmaStringTest, StringsAreEqualUtf8_003)
 {
-    // StringsAreEqualUtf8(). EcmaString made by CreateFromUtf16( , , , false), Array:U8.
+    // StringIsEqualUint8Data(). EcmaString made by CreateFromUtf16( , , , false), Array:U8.
     uint8_t arrayU8No1[4] = {45, 92, 78};
     uint16_t arrayU16NotCompNo1[] = {45, 92, 78};
     uint16_t arrayU16NotCompNo2[] = {45, 92, 78, 24};
@@ -1329,15 +1329,15 @@ HWTEST_F_L0(EcmaStringTest, StringsAreEqualUtf8_003)
     JSHandle<EcmaString> handleEcmaStrU16NotCompNo4(thread,
         EcmaString::CreateFromUtf16(ecmaVMPtr, &arrayU16NotCompNo4[0], lengthEcmaStrU16NotCompNo4, false));
     EXPECT_FALSE(
-        EcmaString::StringsAreEqualUtf8(*handleEcmaStrU16NotCompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
+        EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16NotCompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
     EXPECT_TRUE(
-        EcmaString::StringsAreEqualUtf8(*handleEcmaStrU16NotCompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+        EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16NotCompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
     EXPECT_FALSE(
-        EcmaString::StringsAreEqualUtf8(*handleEcmaStrU16NotCompNo2, &arrayU8No1[0], lengthEcmaStrU8No1, false));
+        EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16NotCompNo2, &arrayU8No1[0], lengthEcmaStrU8No1, false));
     EXPECT_FALSE(
-        EcmaString::StringsAreEqualUtf8(*handleEcmaStrU16NotCompNo3, &arrayU8No1[0], lengthEcmaStrU8No1, false));
+        EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16NotCompNo3, &arrayU8No1[0], lengthEcmaStrU8No1, false));
     EXPECT_FALSE(
-        EcmaString::StringsAreEqualUtf8(*handleEcmaStrU16NotCompNo4, &arrayU8No1[0], lengthEcmaStrU8No1, false));
+        EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16NotCompNo4, &arrayU8No1[0], lengthEcmaStrU8No1, false));
 }
 
 /*

@@ -212,11 +212,19 @@ private:
     {
         ASSERT(str1.Size() <= str2.Size());
         size_t size = str1.Size();
-        if (size < SMALL_STRING_SIZE || !std::is_same_v<T, T1>) {
+        if (!std::is_same_v<T, T1>) {
             for (size_t i = 0; i < size; i++) {
-                auto left = static_cast<int32_t>(str1[i]);
-                auto right = static_cast<int32_t>(str2[i]);
+                auto left = static_cast<uint16_t>(str1[i]);
+                auto right = static_cast<uint16_t>(str2[i]);
                 if (left != right) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (size < SMALL_STRING_SIZE) {
+            for (size_t i = 0; i < size; i++) {
+                if (str1[i] != str2[i]) {
                     return false;
                 }
             }
@@ -240,8 +248,8 @@ private:
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
     // not change str1 data structure.
     // if str1 is not flat, this func has low efficiency.
-    static bool StringsAreEqualUtf8(const EcmaString *str1, const uint8_t *utf8Data, uint32_t utf8Len,
-                                    bool canBeCompress);
+    static bool StringIsEqualUint8Data(const EcmaString *str1, const uint8_t *dataAddr, uint32_t dataLen,
+                                       bool canBeCompress);
     // Compares strings by bytes, It doesn't check canonical unicode equivalence.
     // not change str1 data structure.
     // if str1 is not flat, this func has low efficiency.
@@ -1110,10 +1118,10 @@ public:
 
     // not change str1 data structure.
     // if str1 is not flat, this func has low efficiency.
-    static bool StringsAreEqualUtf8(const EcmaString *str1, const uint8_t *utf8Data, uint32_t utf8Len,
-                                    bool canBeCompress)
+    static bool StringIsEqualUint8Data(const EcmaString *str1, const uint8_t *dataAddr, uint32_t dataLen,
+                                       bool canBeCompress)
     {
-        return EcmaString::StringsAreEqualUtf8(str1, utf8Data, utf8Len, canBeCompress);
+        return EcmaString::StringIsEqualUint8Data(str1, dataAddr, dataLen, canBeCompress);
     }
 
     // not change str1 data structure.
