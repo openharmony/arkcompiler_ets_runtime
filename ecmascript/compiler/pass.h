@@ -598,10 +598,12 @@ public:
         auto module = data->GetAotModule();
         TimeScope timescope("LLVMIRGenPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->OutputASM();
+        PassOptions *passOptions = data->GetPassOptions();
+        bool enableOptInlining = passOptions->EnableOptInlining() && passOptions->EnableTypeLowering();
         CreateCodeGen(module, enableLog);
         CodeGenerator codegen(llvmImpl_, data->GetMethodName());
         codegen.Run(data->GetCircuit(), data->GetConstScheduleResult(), data->GetCompilerConfig(),
-                    data->GetMethodLiteral(), data->GetJSPandaFile());
+                    data->GetMethodLiteral(), data->GetJSPandaFile(), enableOptInlining);
         return true;
     }
 private:

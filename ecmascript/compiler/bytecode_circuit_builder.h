@@ -280,6 +280,7 @@ public:
           loopExitToVregGate_(circuit->chunk()),
           loopExitToAccGate_(circuit->chunk()),
           preFrameState_(circuit_->GetRoot()),
+          preFrameArgs_(circuit_->GetRoot()),
           isInline_(isInline)
     {
     }
@@ -532,6 +533,16 @@ public:
         preFrameState_ = gate;
     }
 
+    GateRef GetPreFrameArgs() const
+    {
+        return preFrameArgs_;
+    }
+
+    void SetPreFrameArgs(GateRef gate)
+    {
+        preFrameArgs_ = gate;
+    }
+
     const ChunkVector<size_t>& GetDfsList() const
     {
         return dfsList_;
@@ -635,6 +646,7 @@ private:
     ChunkMap<std::pair<GateRef, uint16_t>, GateRef> loopExitToVregGate_;
     ChunkMap<GateRef, GateRef> loopExitToAccGate_;
     GateRef preFrameState_ {Circuit::NullGate()};
+    GateRef preFrameArgs_ {Circuit::NullGate()};
     bool isInline_ {false};
 };
 }  // namespace panda::ecmascript::kungfu

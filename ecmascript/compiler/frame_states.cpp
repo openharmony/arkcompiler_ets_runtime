@@ -57,6 +57,11 @@ GateRef FrameStateBuilder::BuildFrameValues(FrameStateInfo *stateInfo)
     return circuit_->NewGate(circuit_->FrameValues(frameStateInputs), inList);
 }
 
+GateRef FrameStateBuilder::BuildEmptyFrameValues()
+{
+    return circuit_->NewGate(circuit_->FrameValues(0), {});
+}
+
 GateRef FrameStateBuilder::BuildFrameStateGate(size_t pcOffset, GateRef frameValues, FrameStateOutput output)
 {
     GateRef frameArgs = builder_->GetFrameArgs();

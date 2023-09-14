@@ -156,8 +156,14 @@ GateRef ArgumentAccessor::GetFrameArgsIn(GateRef gate, FrameArgIdx idx)
     ASSERT(gateAcc.GetOpCode(gate) == OpCode::JS_BYTECODE || gateAcc.GetOpCode(gate) == OpCode::FRAME_STATE);
     GateRef frameArgs = Circuit::NullGate();
     if (gateAcc.GetOpCode(gate) == OpCode::JS_BYTECODE) {
-        frameArgs = gateAcc.GetFrameState(gate);
-        ASSERT(gateAcc.GetOpCode(frameArgs) == OpCode::FRAME_ARGS);
+        GateRef frameState = gateAcc.GetFrameState(gate);
+        OpCode op = gateAcc.GetOpCode(frameState);
+        if (op == OpCode::FRAME_STATE) {
+            frameArgs = gateAcc.GetValueIn(frameState, 0); // 0: frame args
+        } else {
+            ASSERT(op == OpCode::FRAME_ARGS);
+            frameArgs = frameState;
+        }
     } else {
         frameArgs = gateAcc.GetValueIn(gate, 0); // 0: frame args
     }

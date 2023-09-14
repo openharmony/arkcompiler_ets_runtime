@@ -35,6 +35,32 @@ void TSInlineLowering::RunTSInlineLowering()
         workList.pop();
         TryInline(info, workList);
     }
+    CollectInlineInfo();
+}
+
+void TSInlineLowering::CollectInlineInfo()
+{
+    std::vector<GateRef> gateList;
+    circuit_->GetAllGates(gateList);
+    for (const auto &gate : gateList) {
+        auto op = acc_.GetOpCode(gate);
+        if (op == OpCode::FRAME_ARGS) {
+            GetInlinedMethodId(gate);
+        }
+    }
+}
+
+void TSInlineLowering::GetInlinedMethodId(GateRef gate)
+{
+    ASSERT(acc_.GetOpCode(gate) == OpCode::FRAME_ARGS);
+    GateRef func = acc_.GetValueIn(gate, static_cast<size_t>(FrameArgIdx::FUNC));
+    uint32_t methodOffset = 0;
+    auto funcType = acc_.GetGateType(func);
+    if (tsManager_->IsFunctionTypeKind(funcType)) {
+        GlobalTSTypeRef gt = funcType.GetGTRef();
+        methodOffset = tsManager_->GetFuncMethodOffset(gt);
+    }
+    acc_.UpdateMethodOffset(gate, methodOffset);
 }
 
 void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<CallGateInfo> &workList)
@@ -533,6 +559,8 @@ void TSInlineLowering::BuildFrameStateChain(CallGateInfo &info, BytecodeCircuitB
     GateRef preFrameState = GetFrameState(info);
     ASSERT(acc_.GetOpCode(preFrameState) == OpCode::FRAME_STATE);
     builder.SetPreFrameState(preFrameState);
+    GateRef frameArgs = acc_.GetFrameArgs(preFrameState);
+    builder.SetPreFrameArgs(frameArgs);
 }
 
 bool TSInlineLowering::FilterCallInTryCatch(GateRef gate)

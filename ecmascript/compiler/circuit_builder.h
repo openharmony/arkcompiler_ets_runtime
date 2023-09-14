@@ -324,6 +324,7 @@ public:
     GateRef InsertTypedBinaryop(GateRef left, GateRef right, GateType leftType, GateType rightType,
                                 GateType gateType, PGOSampleType sampleType, TypedBinOp op);
     GateRef InsertRangeCheckPredicate(GateRef left, TypedBinOp cond, GateRef right);
+    void AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate);
     GateRef TypedConditionJump(MachineType type, TypedJumpOp jumpOp, BranchKind branchKind, GateType typeVal,
                                const std::vector<GateRef>& inList);
     GateRef TypedNewAllocateThis(GateRef ctor, GateRef hclassIndex, GateRef frameState);

@@ -366,7 +366,8 @@ class LLVMIRBuilder {
 public:
     LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
                   LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
-                  CallSignature::CallConv callConv, bool enableLog, bool isFastCallAot, const std::string &funcName);
+                  CallSignature::CallConv callConv, bool enableLog, bool isFastCallAot, const std::string &funcName,
+                  bool enableOptInlining = false);
     ~LLVMIRBuilder();
     void Build();
 
@@ -418,6 +419,8 @@ private:
                              const std::string &realName = "") const;
     LLVMValueRef GetCallee(const std::vector<GateRef> &inList, const CallSignature *signature,
                            const std::string &realName = "");
+    void CollectExraCallSiteInfo(std::vector<LLVMValueRef> &values, LLVMValueRef pcOffset,
+                                 GateRef frameState);
     LLVMValueRef GetFunctionFromGlobalValue(LLVMValueRef glue, const CallSignature *signature,
                                             LLVMValueRef reloc) const;
     bool IsInterpreted() const;
@@ -513,7 +516,7 @@ private:
     LLVMValueRef GetBuiltinsStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBaseOffset(GateRef gate, LLVMValueRef glue);
     CallExceptionKind GetCallExceptionKind(size_t index, OpCode op) const;
-    void ComputeArgCountAndPCOffset(size_t &actualNumArgs, LLVMValueRef &pcOffset,
+    void ComputeArgCountAndExtraInfo(size_t &actualNumArgs, LLVMValueRef &pcOffset, GateRef &frameArgs,
                                     const std::vector<GateRef> &inList, CallExceptionKind kind);
     void SaveLexicalEnvOnOptJSFuncFrame(LLVMValueRef value);
     void SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value);
@@ -560,6 +563,7 @@ private:
     bool enableLog_ {false};
     bool isFastCallAot_ {false};
     LLVMMetadataRef dFuncMD_ {nullptr};
+    bool enableOptInlining_ {false};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_LLVM_IR_BUILDER_H
