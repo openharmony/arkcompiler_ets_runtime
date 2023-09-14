@@ -193,7 +193,12 @@ GateRef FrameStateBuilder::GetPredStateGateBetweenBB(BytecodeRegion *bb, Bytecod
                     if (bb->numOfLoopBacks == 1) {
                         return loopBackState;
                     }
-                    return gateAcc_.GetState(loopBackState, backIndex);
+                    if (backIndex == 0) {
+                        return gateAcc_.GetState(loopBackState);
+                    } else {
+                        auto loopBackMerge = gateAcc_.GetState(loopBackState);
+                        return gateAcc_.GetState(loopBackMerge, backIndex);
+                    }
                 }
                 backIndex++;
             } else {
@@ -537,7 +542,7 @@ void FrameStateBuilder::FindLoopExit(GateRef gate) {
     }
 
     // continue to find the loopExit.
-    ASSERT(gateAcc_. GetStateCount(gate) == 1);
+    
     FindLoopExit(gateAcc_.GetState(gate));
 }
 
