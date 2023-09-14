@@ -2024,6 +2024,11 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     JSHandle<JSTaggedValue> globalKey(globalConstants->GetHandledGlobalString());
     SetGetter(regPrototype, globalKey, globalGetter);
 
+    JSHandle<JSTaggedValue> hasIndicesGetter =
+        CreateGetter(env, RegExp::GetHasIndices, "hasIndices", FunctionLength::ZERO);
+    JSHandle<JSTaggedValue> hasIndicesKey(factory_->NewFromASCII("hasIndices"));
+    SetGetter(regPrototype, hasIndicesKey, hasIndicesGetter);
+
     JSHandle<JSTaggedValue> ignoreCaseGetter =
         CreateGetter(env, RegExp::GetIgnoreCase, "ignoreCase", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> ignoreCaseKey(factory_->NewFromASCII("ignoreCase"));

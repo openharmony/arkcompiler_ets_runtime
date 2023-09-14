@@ -407,6 +407,8 @@ class ObjectFactory;
     V(JSTaggedValue, GregoryString, GREGORY_INDEX, gregory)                                                           \
     V(JSTaggedValue, EthioaaString, ETHIOAA_INDEX, ethioaa)                                                           \
     V(JSTaggedValue, StickyString, STICKY_INDEX, sticky)                                                              \
+    V(JSTaggedValue, HasIndicesString, HAS_INDICES_INDEX, hasIndices)                                                 \
+    V(JSTaggedValue, IndicesString, INDICES_INDEX, indices)                                                           \
     V(JSTaggedValue, UString, U_INDEX, u)                                                                             \
     V(JSTaggedValue, IndexString, INDEX_INDEX, index)                                                                 \
     V(JSTaggedValue, InputString, INPUT_INDEX, input)                                                                 \

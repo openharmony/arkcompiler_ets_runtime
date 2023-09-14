@@ -335,6 +335,7 @@ static uintptr_t g_nativeTable[] = {
     reinterpret_cast<uintptr_t>(RegExp::GetFlags),
     reinterpret_cast<uintptr_t>(RegExp::GetSource),
     reinterpret_cast<uintptr_t>(RegExp::GetGlobal),
+    reinterpret_cast<uintptr_t>(RegExp::GetHasIndices),
     reinterpret_cast<uintptr_t>(RegExp::GetIgnoreCase),
     reinterpret_cast<uintptr_t>(RegExp::GetMultiline),
     reinterpret_cast<uintptr_t>(RegExp::GetDotAll),

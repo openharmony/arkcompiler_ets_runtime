@@ -647,6 +647,7 @@ namespace panda::ecmascript {
     V(RegExp, Split)                          \
     V(RegExp, Create)                         \
     V(RegExp, GetGlobal)                      \
+    V(RegExp, GetHasIndices)                  \
     V(RegExp, GetIgnoreCase)                  \
     V(RegExp, GetMultiline)                   \
     V(RegExp, GetDotAll)                      \

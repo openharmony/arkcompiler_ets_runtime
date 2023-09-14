@@ -86,6 +86,8 @@ public:
     // 21.2.5.2.3 AdvanceStringIndex ( S, index, unicode )
     static uint32_t AdvanceStringIndex(const JSHandle<JSTaggedValue> &inputStr, uint32_t index,
                                        bool unicode);
+    // 22.2.6.6 get RegExp.prototype.hasIndices
+    static JSTaggedValue GetHasIndices(EcmaRuntimeCallInfo *argv);
 
 private:
     static constexpr uint32_t MIN_REPLACE_STRING_LENGTH = 1000;
@@ -116,6 +118,10 @@ private:
                                            const JSHandle<JSTaggedValue> &flags);
     static JSTaggedValue RegExpReplaceFast(JSThread *thread, JSHandle<JSTaggedValue> &regexp,
                                            JSHandle<EcmaString> inputString, uint32_t inputLength);
+    // 22.2.7.8 MakeMatchIndicesIndexPairArray ( S, indices, groupNames, hasGroups )
+    static JSHandle<JSTaggedValue> MakeMatchIndicesIndexPairArray(JSThread* thread,
+        const std::vector<std::pair<JSTaggedValue, JSTaggedValue>>& indices,
+        const std::vector<JSHandle<JSTaggedValue>>& groupNames, bool hasGroups);
 };
 
 class RegExpExecResultCache : public TaggedArray {
