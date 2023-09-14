@@ -78,7 +78,11 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             LOG_ECMA(ERROR) << "resolveBufferCallback get buffer failed";
             return nullptr;
         }
+#if defined(PANDA_TARGET_ANDROID) || defined(PANDA_TARGET_IOS)
+        pf = panda_file::OpenPandaFileFromMemory(data, dataSize);
+#else
         pf = panda_file::OpenPandaFileFromSecureMemory(data, dataSize);
+#endif
     } else {
         pf = panda_file::OpenPandaFileOrZip(filename, panda_file::File::READ_WRITE);
     }
