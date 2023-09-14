@@ -31,7 +31,7 @@ public:
     ~GraphEditor() = default;
 
     static void RemoveDeadState(Circuit* circuit, GateRef gate);
-    static void EliminateRedundantPhi(Circuit* circuit);
+    static void EliminateRedundantPhi(Circuit* circuit, bool enableLog, const std::string& methodName);
 private:
     void ReplaceGate(GateRef gate);
     void RemoveGate();

@@ -44,7 +44,6 @@ bool TSHCRLowering::RunTSHCRLowering()
             success = false;
         }
     }
-    acc_.EliminateRedundantPhi();
 
     if (IsTypeLogEnabled()) {
         pgoTypeLog_.PrintPGOTypeLog();

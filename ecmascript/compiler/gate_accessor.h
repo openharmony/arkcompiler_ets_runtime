@@ -461,6 +461,7 @@ public:
     bool IsSelector(GateRef g) const;
     bool IsSimpleState(GateRef g) const;
     bool IsValueSelector(GateRef g) const;
+    bool IsFrameValues(GateRef g) const;
     bool IsControlCase(GateRef gate) const;
     bool IsLoopExit(GateRef gate) const;
     bool IsLoopExitRelated(GateRef gate) const;
@@ -484,8 +485,10 @@ public:
     void SetMark(GateRef gate, MarkCode mark);
     bool IsFinished(GateRef gate) const;
     bool IsVisited(GateRef gate) const;
+    bool IsPrevisit(GateRef gate) const;
     bool IsNotMarked(GateRef gate) const;
     void SetFinished(GateRef gate);
+    void SetPrevisit(GateRef gate);
     void SetVisited(GateRef gate);
     bool IsStateIn(const UseIterator &useIt) const;
     bool IsDependIn(const UseIterator &useIt) const;

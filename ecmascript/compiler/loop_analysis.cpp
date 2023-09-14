@@ -196,6 +196,5 @@ void LoopAnalysis::LoopExitElimination()
                 break;
         }
     }
-    acc_.EliminateRedundantPhi();
 }
 }  // namespace panda::ecmascript::kungfu

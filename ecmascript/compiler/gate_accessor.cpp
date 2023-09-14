@@ -48,6 +48,11 @@ bool GateAccessor::IsVisited(GateRef gate) const
     return GetMark(gate) == MarkCode::VISITED;
 }
 
+bool GateAccessor::IsPrevisit(GateRef gate) const
+{
+    return GetMark(gate) == MarkCode::PREVISIT;
+}
+
 bool GateAccessor::IsNotMarked(GateRef gate) const
 {
     return GetMark(gate) == MarkCode::NO_MARK;
@@ -61,6 +66,11 @@ void GateAccessor::SetFinished(GateRef gate)
 void GateAccessor::SetVisited(GateRef gate)
 {
     SetMark(gate, MarkCode::VISITED);
+}
+
+void GateAccessor::SetPrevisit(GateRef gate)
+{
+    SetMark(gate, MarkCode::PREVISIT);
 }
 
 OpCode GateAccessor::GetOpCode(GateRef gate) const
@@ -661,6 +671,12 @@ bool GateAccessor::IsSelector(GateRef g) const
     return (op == OpCode::VALUE_SELECTOR) || (op == OpCode::DEPEND_SELECTOR);
 }
 
+bool GateAccessor::IsFrameValues(GateRef g) const
+{
+    auto op = GetOpCode(g);
+    return op == OpCode::FRAME_VALUES;
+}
+
 bool GateAccessor::IsIn(GateRef g, GateRef in) const
 {
     size_t n = GetNumIns(g);
@@ -965,11 +981,6 @@ void GateAccessor::ReplaceHirAndDeleteIfException(GateRef hirGate,
     if (ifException != Circuit::NullGate()) {
         GraphEditor::RemoveDeadState(circuit_, ifException);
     }
-}
-
-void GateAccessor::EliminateRedundantPhi()
-{
-    GraphEditor::EliminateRedundantPhi(circuit_);
 }
 
 UseIterator GateAccessor::DeleteGate(const UseIterator &useIt)
