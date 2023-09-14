@@ -34,3 +34,43 @@ new Map([
   ['bar', {}],
   ['baz', undefined],
 ]).forEach(logMapElements1);
+
+let myMap = new Map();
+for (let i = 0; i < 1000; i++) {
+    myMap.set(i, i);
+    myMap.set("key" + i, i);
+    myMap.set(Symbol("foo"), i)
+}
+
+const hugeString = BigInt("9007199254740991");
+for (let i = 0; i < 100; i++) {
+    myMap.set(hugeString + BigInt(i), hugeString);
+}
+
+var intSum = 0;
+var symbolSum = 0;
+var bigIntSum = BigInt("");
+var stringSum = 0;
+myMap.forEach((value, key, map) => {
+    if (typeof key == "bigint") {
+        bigIntSum += value;
+        return;
+    }
+    if (typeof key == "number") {
+        intSum += value;
+        return;
+    }
+    if (typeof key == "symbol") {
+        symbolSum += value;
+        return;
+    }
+    if (typeof key == "string") {
+        stringSum += value;
+        return;
+   }
+});
+
+print(intSum);
+print(bigIntSum);
+print(symbolSum);
+print(stringSum)

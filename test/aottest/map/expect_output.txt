@@ -20,3 +20,7 @@ m[bar] = [object Object]
 1
 m[baz] = undefined
 0
+499500
+900719925474099100
+499500
+499500

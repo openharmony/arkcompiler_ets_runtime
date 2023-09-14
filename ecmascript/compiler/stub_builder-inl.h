@@ -583,6 +583,11 @@ inline GateRef StubBuilder::TaggedIsStringOrSymbol(GateRef obj)
     return env_->GetBuilder()->TaggedIsStringOrSymbol(obj);
 }
 
+inline GateRef StubBuilder::TaggedIsSymbol(GateRef obj)
+{
+    return env_->GetBuilder()->TaggedIsSymbol(obj);
+}
+
 inline GateRef StubBuilder::BothAreString(GateRef x, GateRef y)
 {
     auto allHeapObject = BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y));
@@ -1258,9 +1263,22 @@ inline GateRef StubBuilder::IsJSAPIArrayList(GateRef obj)
 
 inline GateRef StubBuilder::IsJSObjectType(GateRef obj, JSType jsType)
 {
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label heapObj(env);
+    Label exit(env);
     GateRef isHeapObject = TaggedIsHeapObject(obj);
+    Branch(isHeapObject, &heapObj, &exit);
+    Bind(&heapObj);
     GateRef objectType = GetObjectType(LoadHClass(obj));
-    return env_->GetBuilder()->LogicAnd(isHeapObject, Int32Equal(objectType, Int32(static_cast<int32_t>(jsType))));
+    result = env_->GetBuilder()->LogicAnd(isHeapObject, Int32Equal(objectType, Int32(static_cast<int32_t>(jsType))));
+    Jump(&exit);
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 inline GateRef StubBuilder::GetTarget(GateRef proxyObj)
@@ -2516,6 +2534,11 @@ inline GateRef StubBuilder::LoadHCIndexFromConstPool(GateRef jsFunc, GateRef tra
 
     env->SubCfgExit();
     return ret;
+}
+
+inline GateRef StubBuilder::RemoveTaggedWeakTag(GateRef weak)
+{
+    return Int64ToTaggedPtr(IntPtrAnd(ChangeTaggedPointerToInt64(weak), IntPtr(~JSTaggedValue::TAG_WEAK)));
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

@@ -412,6 +412,7 @@ private:
     V(ResumeRspAndRollback)                 \
     V(StringsAreEquals)                     \
     V(BigIntEquals)                         \
+    V(BigIntSameValueZero)                  \
     V(DebugPrint)                           \
     V(DebugPrintCustom)                     \
     V(DebugPrintInstruction)                \

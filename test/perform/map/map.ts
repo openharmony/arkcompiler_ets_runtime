@@ -17,10 +17,11 @@ declare interface ArkTools {
 }
 
 function testSet() {
+    let key = "key";
     let myMap = new Map();
     let start = ArkTools.timeInUs();
-    for (let i = 0; i < 100_000; i++) {
-        myMap.set(i, i);
+    for (let i = 0; i < 1_000_000; i++) {
+        myMap.set(key, i);
     }
     let end = ArkTools.timeInUs();
     let time = (end - start) / 1000
@@ -43,12 +44,11 @@ function testClear() {
 
 function testDelete() {
     let myMap = new Map();
-    for (let i = 0; i < 100_000; i++) {
-        myMap.set(i, i);
-    }
+    let key = "key";
+    myMap.set(key, key);
     let start = ArkTools.timeInUs();
     for (let i = 0; i < 1_000_000; i++) {
-        myMap.delete(i);
+        myMap.delete(key);
     }
     let end = ArkTools.timeInUs();
     let time = (end - start) / 1000

@@ -56,6 +56,7 @@
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_node.h"
 #include "ecmascript/ts_types/ts_manager.h"
+#include "ecmascript/linked_hash_table.h"
 #include "libpandafile/bytecode_instruction-inl.h"
 #include "macros.h"
 #ifdef ARK_SUPPORT_INTL
@@ -2308,6 +2309,11 @@ bool RuntimeStubs::BigIntEquals(JSTaggedType left, JSTaggedType right)
     return BigInt::Equal(JSTaggedValue(left), JSTaggedValue(right));
 }
 
+bool RuntimeStubs::BigIntSameValueZero(JSTaggedType left, JSTaggedType right)
+{
+    return BigInt::SameValueZero(JSTaggedValue(left), JSTaggedValue(right));
+}
+
 double RuntimeStubs::TimeClip(double time)
 {
     return JSDate::TimeClip(time);
@@ -2613,6 +2619,27 @@ DEF_RUNTIME_STUBS(FastStringify)
     base::FastJsonStringifier fastJsonStringifier(thread);
     JSHandle<JSTaggedValue> result = fastJsonStringifier.Stringify(value);
     return result.GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetLinkedHash)
+{
+    RUNTIME_STUBS_HEADER(GetLinkedHash);
+    JSTaggedValue key = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return JSTaggedValue(LinkedHash::Hash(key)).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LinkedHashMapComputeCapacity)
+{
+    RUNTIME_STUBS_HEADER(LinkedHashMapComputeCapacity);
+    JSTaggedValue value = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return JSTaggedValue(LinkedHashMap::ComputeCapacity(value.GetInt())).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LinkedHashSetComputeCapacity)
+{
+    RUNTIME_STUBS_HEADER(LinkedHashSetComputeCapacity);
+    JSTaggedValue value = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    return JSTaggedValue(LinkedHashSet::ComputeCapacity(value.GetInt())).GetRawData();
 }
 
 void RuntimeStubs::Initialize(JSThread *thread)

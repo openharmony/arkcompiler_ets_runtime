@@ -524,6 +524,7 @@ public:
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
     GateRef TaggedIsString(GateRef obj);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
+    GateRef TaggedIsSymbol(GateRef obj);
     inline GateRef GetGlobalConstantString(ConstantIndex index);
     inline GateRef LoadObjectFromWeakRef(GateRef x);
     GateRef ComputeTaggedArraySize(GateRef length);
