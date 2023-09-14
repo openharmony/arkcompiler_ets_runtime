@@ -25,3 +25,13 @@ false
 true
 false
 SC52BAHL01031234567890123456USD
+true
+true
+true
+false
+true
+true
+true
+false
+true
+true

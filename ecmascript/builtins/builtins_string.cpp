@@ -591,7 +591,8 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource());
         JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags());
         JSTaggedValue cacheResult = cacheTable->FindCachedResult(thread, pattern, flags, thisTag,
-                                                                 RegExpExecResultCache::MATCH_TYPE, regexp);
+                                                                 RegExpExecResultCache::MATCH_TYPE, regexp,
+                                                                 JSTaggedValue(0));
         if (!cacheResult.IsUndefined()) {
             return cacheResult;
         }
