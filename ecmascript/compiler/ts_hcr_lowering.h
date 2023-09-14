@@ -84,22 +84,12 @@ private:
     void Lower(GateRef gate);
     template<TypedBinOp Op>
     void LowerTypedBinOp(GateRef gate);
-    void LowerTypedMod(GateRef gate);
-    void LowerTypedDiv(GateRef gate);
+    template<TypedUnOp Op>
+    void LowerTypedUnOp(GateRef gate);
     void LowerTypedStrictEq(GateRef gate);
-    void LowerTypedShl(GateRef gate);
-    void LowerTypedShr(GateRef gate);
-    void LowerTypedAshr(GateRef gate);
-    void LowerTypedAnd(GateRef gate);
-    void LowerTypedOr(GateRef gate);
-    void LowerTypedXor(GateRef gate);
-    void LowerTypedInc(GateRef gate);
-    void LowerTypedDec(GateRef gate);
     void LowerTypeToNumeric(GateRef gate);
     void LowerPrimitiveTypeToNumber(GateRef gate);
     void LowerConditionJump(GateRef gate, bool flag);
-    void LowerTypedNeg(GateRef gate);
-    void LowerTypedNot(GateRef gate);
 
     void LowerTypedLdObjByName(GateRef gate);
     void LowerTypedStObjByName(GateRef gate, bool isThis);
@@ -157,13 +147,17 @@ private:
     // TypeTrusted means the type of gate is already PrimitiveTypeCheck-passed,
     // or the gate is constant and no need to check.
     bool IsTrustedType(GateRef gate) const;
+    bool IsTrustedStringType(GateRef gate) const;
     bool HasNumberType(GateRef gate, GateRef value) const;
     bool HasNumberType(GateRef gate, GateRef left, GateRef right) const;
+    bool HasStringType(GateRef gate, GateRef left, GateRef right) const;
 
     void AddBytecodeCount(EcmaOpcode op);
     void DeleteBytecodeCount(EcmaOpcode op);
     void AddHitBytecodeCount();
 
+    template<TypedBinOp Op>
+    void SpeculateStrings(GateRef gate);
     template<TypedBinOp Op>
     void SpeculateNumbers(GateRef gate);
     template<TypedUnOp Op>

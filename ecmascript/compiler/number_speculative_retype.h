@@ -63,6 +63,7 @@ private:
     GateRef VisitConstant(GateRef gate);
     GateRef VisitTypedBinaryOp(GateRef gate);
     GateRef VisitNumberBinaryOp(GateRef gate);
+    GateRef VisitStringBinaryOp(GateRef gate);
     GateRef VisitUndefinedStrictEq(GateRef gate);
     GateRef VisitTypedUnaryOp(GateRef gate);
 
@@ -94,6 +95,8 @@ private:
     GateRef VisitIsTrueOrFalse(GateRef gate);
     GateRef VisitWithConstantValue(GateRef gate, size_t ignoreIndex);
     GateRef VisitIntermediateValue(GateRef gate);
+
+    GateRef VisitStringCompare(GateRef gate);
 
     void ConvertForBinaryOp(GateRef gate);
     void ConvertForCompareOp(GateRef gate);

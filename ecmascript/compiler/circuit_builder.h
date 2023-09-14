@@ -253,7 +253,7 @@ public:
     GateRef StableArrayCheck(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     GateRef COWArrayCheck(GateRef gate);
     GateRef EcmaStringCheck(GateRef gate);
-    GateRef FlattenStringCheck(GateRef gate);
+    GateRef FlattenTreeStringCheck(GateRef gate);
     GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState, ArrayMetaDataAccessor accessor);
     GateRef ArrayGuardianCheck(GateRef frameState);
     GateRef TypedArrayCheck(GateType type, GateRef gate);
@@ -306,6 +306,7 @@ public:
     GateRef ConvertUInt32ToBool(GateRef gate);
     GateRef ConvertUInt32ToTaggedNumber(GateRef gate);
     GateRef ConvertUInt32ToFloat64(GateRef gate);
+    GateRef ConvertCharToEcmaString(GateRef gate);
     GateRef CheckAndConvert(
         GateRef gate, ValueType src, ValueType dst, ConvertSupport support = ConvertSupport::ENABLE);
     GateRef ConvertHoleAsUndefined(GateRef receiver);
@@ -565,6 +566,7 @@ public:
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset);
     GateRef StoreConstOffset(VariableType type, GateRef receiver, size_t offset, GateRef value);
     GateRef LoadObjectFromConstPool(GateRef jsFunc, GateRef index);
+    GateRef StringEqual(GateRef x, GateRef y);
     // Object Operations
     inline GateRef LoadHClass(GateRef object);
     inline GateRef IsJSFunction(GateRef obj);

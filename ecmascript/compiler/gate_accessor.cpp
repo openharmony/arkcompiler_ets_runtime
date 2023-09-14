@@ -262,6 +262,17 @@ bool GateAccessor::HasNumberType(GateRef gate) const
     return false;
 }
 
+bool GateAccessor::HasStringType(GateRef gate) const
+{
+    // PGO has not collected string type yet, so skip the check for whether the sampleType is string.
+    GateType leftType = GetLeftType(gate);
+    GateType rightType = GetRightType(gate);
+    if (leftType.IsStringType() && rightType.IsStringType()) {
+        return true;
+    }
+    return false;
+}
+
 GlobalTSTypeRef GateAccessor::GetFuncGT(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::JSINLINETARGET_TYPE_CHECK);
@@ -1478,6 +1489,32 @@ bool GateAccessor::IsHeapObjectFromElementsKind(GateRef gate)
     }
 
     return false;
+}
+
+bool GateAccessor::IsConstString(GateRef gate)
+{
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        EcmaOpcode ecmaOpcode = GetByteCodeOpcode(gate);
+        return ecmaOpcode == EcmaOpcode::LDA_STR_ID16;
+    }
+    return false;
+}
+
+bool GateAccessor::IsSingleCharGate(GateRef gate)
+{
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::LOAD_ELEMENT) {
+        return GetTypedLoadOp(gate) == TypedLoadOp::STRING_LOAD_ELEMENT;
+    }
+    return false;
+}
+
+uint32_t GateAccessor::GetStringIdFromLdaStrGate(GateRef gate)
+{
+    ASSERT(GetByteCodeOpcode(gate) == EcmaOpcode::LDA_STR_ID16);
+    GateRef stringId = GetValueIn(gate, 0);
+    return GetConstantValue(stringId);
 }
 
 bool GateAccessor::IsLoopBackUse(const UseIterator &useIt) const

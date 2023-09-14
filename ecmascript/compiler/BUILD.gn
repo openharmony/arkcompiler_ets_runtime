@@ -134,6 +134,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "ts_class_analysis.cpp",
     "ts_hclass_generator.cpp",
     "ts_hcr_lowering.cpp",
+    "ts_hcr_opt_pass.cpp",
     "ts_inline_lowering.cpp",
     "type.cpp",
     "type_inference/global_type_infer.cpp",

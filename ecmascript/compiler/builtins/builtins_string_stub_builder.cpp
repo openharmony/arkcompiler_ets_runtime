@@ -52,6 +52,167 @@ GateRef BuiltinsStringStubBuilder::StringAt(const StringInfoGateRef &stringInfoG
     return ret;
 }
 
+GateRef BuiltinsStringStubBuilder::GetSingleCharCodeByIndex(GateRef str, GateRef index)
+{
+    // Note: This method cannot handle treestring.
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+
+    Label isConstantString(env);
+    Label lineStringCheck(env);
+    Label isLineString(env);
+    Label slicedStringCheck(env);
+    Label isSlicedString(env);
+    Label exit(env);
+
+    Branch(IsConstantString(str), &isConstantString, &lineStringCheck);
+    Bind(&isConstantString);
+    {
+        result = GetSingleCharCodeFromConstantString(str, index);
+        Jump(&exit);
+    }
+    Bind(&lineStringCheck);
+    Branch(IsLineString(str), &isLineString, &slicedStringCheck);
+    Bind(&isLineString);
+    {
+        result = GetSingleCharCodeFromLineString(str, index);
+        Jump(&exit);
+    }
+    Bind(&slicedStringCheck);
+    Branch(IsSlicedString(str), &isSlicedString, &exit);
+    Bind(&isSlicedString);
+    {
+        result = GetSingleCharCodeFromSlicedString(str, index);
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromConstantString(GateRef str, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    GateRef offset = PtrAdd(str, IntPtr(ConstantString::CONSTANT_DATA_OFFSET));
+    GateRef dataAddr = Load(VariableType::JS_ANY(), offset, IntPtr(0));
+    GateRef result = ZExtInt8ToInt32(Load(VariableType::INT8(), PtrAdd(dataAddr,
+        PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint8_t))))));
+    env->SubCfgExit();
+    return result;
+}
+
+GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromLineString(GateRef str, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    GateRef dataAddr = PtrAdd(str, IntPtr(LineEcmaString::DATA_OFFSET));
+    Label isUtf16(env);
+    Label isUtf8(env);
+    Label exit(env);
+    Branch(IsUtf16String(str), &isUtf16, &isUtf8);
+    Bind(&isUtf16);
+    {
+        result = ZExtInt16ToInt32(Load(VariableType::INT16(), PtrAdd(dataAddr,
+            PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint16_t))))));
+        Jump(&exit);
+    }
+    Bind(&isUtf8);
+    {
+        result = ZExtInt8ToInt32(Load(VariableType::INT8(), PtrAdd(dataAddr,
+            PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint8_t))))));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromSlicedString(GateRef str, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    Label isLineString(env);
+    Label notLineString(env);
+    Label exit(env);
+
+    GateRef parent = Load(VariableType::JS_POINTER(), str, IntPtr(SlicedString::PARENT_OFFSET));
+    GateRef startIndex = Load(VariableType::INT32(), str, IntPtr(SlicedString::STARTINDEX_OFFSET));
+    Branch(IsLineString(parent), &isLineString, &notLineString);
+    Bind(&isLineString);
+    {
+        result = GetSingleCharCodeFromLineString(parent, Int32Add(startIndex, index));
+        Jump(&exit);
+    }
+    Bind(&notLineString);
+    {
+        result = GetSingleCharCodeFromConstantString(parent, Int32Add(startIndex, index));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsStringStubBuilder::CreateStringBySingleCharCode(GateRef glue, GateRef charCode)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_POINTER(), Hole());
+
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+
+    Label exit(env);
+    Label utf8(env);
+    Label utf16(env);
+    Label afterNew(env);
+    GateRef canStoreAsUtf8 = IsASCIICharacter(charCode);
+    Branch(canStoreAsUtf8, &utf8, &utf16);
+    Bind(&utf8);
+    {
+        newBuilder.AllocLineStringObject(&result, &afterNew, Int32(1), true);
+    }
+    Bind(&utf16);
+    {
+        newBuilder.AllocLineStringObject(&result, &afterNew, Int32(1), false);
+    }
+    Bind(&afterNew);
+    {
+        Label isUtf8Copy(env);
+        Label isUtf16Copy(env);
+        GateRef dst = PtrAdd(*result, IntPtr(LineEcmaString::DATA_OFFSET));
+        Branch(canStoreAsUtf8, &isUtf8Copy, &isUtf16Copy);
+        Bind(&isUtf8Copy);
+        {
+            Store(VariableType::INT8(), glue, dst, IntPtr(0), TruncInt32ToInt8(charCode));
+            Jump(&exit);
+        }
+        Bind(&isUtf16Copy);
+        {
+            Store(VariableType::INT16(), glue, dst, IntPtr(0), TruncInt32ToInt16(charCode));
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef BuiltinsStringStubBuilder::CreateFromEcmaString(GateRef glue, GateRef index,
     const StringInfoGateRef &stringInfoGate)
 {

@@ -496,6 +496,8 @@ public:
     GateRef ChangeFloat64ToInt32(GateRef x);
     GateRef Int64ToTaggedPtr(GateRef x);
     GateRef TruncInt16ToInt8(GateRef x);
+    GateRef TruncInt32ToInt16(GateRef x);
+    GateRef TruncInt32ToInt8(GateRef x);
     GateRef CastInt32ToFloat32(GateRef x);
     GateRef CastInt64ToFloat64(GateRef x);
     GateRef SExtInt32ToInt64(GateRef x);

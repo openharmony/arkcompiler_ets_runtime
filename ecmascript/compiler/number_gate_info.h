@@ -28,6 +28,7 @@ enum class TypeInfo {
     UINT32,
     FLOAT64,
     TAGGED,
+    CHAR,
 };
 
 class UseInfo {

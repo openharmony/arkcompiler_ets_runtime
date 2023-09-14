@@ -37,6 +37,7 @@
 #include "ecmascript/compiler/ts_class_analysis.h"
 #include "ecmascript/compiler/ts_inline_lowering.h"
 #include "ecmascript/compiler/ts_hcr_lowering.h"
+#include "ecmascript/compiler/ts_hcr_opt_pass.h"
 #include "ecmascript/compiler/type_inference/global_type_infer.h"
 #include "ecmascript/compiler/type_inference/initialization_analysis.h"
 #include "ecmascript/compiler/type_inference/pgo_type_infer.h"
@@ -295,6 +296,10 @@ public:
         if (!success) {
             data->MarkAsTypeAbort();
         }
+        Chunk chunk(data->GetNativeAreaAllocator());
+        TSHCROptPass optimization(data->GetCircuit(), &chunk, data->GetPassContext(), enableLog,
+                                  data->GetMethodName());
+        optimization.Run();
         return true;
     }
 };
