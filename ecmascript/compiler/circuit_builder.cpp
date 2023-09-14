@@ -103,6 +103,23 @@ GateRef CircuitBuilder::LoopEnd(GateRef state)
     return circuit_->NewGate(circuit_->LoopBack(), { state });
 }
 
+GateRef CircuitBuilder::LoopExit(GateRef state)
+{
+    return circuit_->NewGate(circuit_->LoopExit(), { state });
+}
+
+GateRef CircuitBuilder::LoopExitDepend(GateRef state, GateRef depend)
+{
+    return circuit_->NewGate(circuit_->LoopExitDepend(), { state, depend });
+}
+
+GateRef CircuitBuilder::LoopExitValue(GateRef state, GateRef value)
+{
+    auto machineType = acc_.GetMachineType(value);
+    auto gateType = acc_.GetGateType(value);
+    return circuit_->NewGate(circuit_->LoopExitValue(), machineType, { state, value }, gateType);
+}
+
 GateRef CircuitBuilder::IfTrue(GateRef ifBranch)
 {
     return circuit_->NewGate(circuit_->IfTrue(), { ifBranch });
@@ -1972,6 +1989,25 @@ void CircuitBuilder::LoopEnd(Label *loopHead)
     loopHead->MergeAllControl();
     loopHead->MergeAllDepend();
     env_->SetCurrentLabel(nullptr);
+}
+
+// add loop exit info at begin of label (only support not merge label)
+void CircuitBuilder::LoopExit(const std::vector<Variable *> &vars, size_t diff)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto loopExit = currentLabel->GetControl();
+    auto loopExitDepend = currentLabel->GetDepend();
+    std::vector<GateRef> loopExitValues;
+    for (size_t i = 0; i < diff; ++i) {
+        loopExit = LoopExit(loopExit);
+        loopExitDepend = LoopExitDepend(loopExit, loopExitDepend);
+        for (const auto &var : vars) {
+            auto loopExitValue = LoopExitValue(loopExit, var->ReadVariable());
+            var->WriteVariable(loopExitValue);
+        }
+    }
+    currentLabel->SetControl(loopExit);
+    currentLabel->SetDepend(loopExitDepend);
 }
 
 Label::Label(Environment *env)

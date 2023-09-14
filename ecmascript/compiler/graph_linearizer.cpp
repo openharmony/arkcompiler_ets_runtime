@@ -828,7 +828,7 @@ void GraphLinearizer::LinearizeGraph()
     builder.Run();
     ImmediateDominatorsGenerator generator(this, chunk_, regionList_.size());
     generator.Run();
-    if (!IsSchedueLIR() && loopNumber_ > 0) {
+    if (IsEnableLoopInvariantCodeMotion() && loopNumber_ > 0) {
         scheduleUpperBound_ = true;
         LoopInfoBuilder loopInfoBuilder(this, chunk_);
         loopInfoBuilder.Run();

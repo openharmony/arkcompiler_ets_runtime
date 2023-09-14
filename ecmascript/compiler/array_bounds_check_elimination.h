@@ -28,7 +28,7 @@ class ArrayBoundsCheckElimination {
 public:
     ArrayBoundsCheckElimination(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk)
         : acc_(circuit), bounds_(chunk), circuit_(circuit), builder_(circuit), chunk_(chunk), enableLog_(enableLog),
-        graphLinearizer_(circuit, enableLog, name, chunk, true), methodName_(name), indexCheckInfo_(chunk) {}
+        graphLinearizer_(circuit, enableLog, name, chunk, true, true), methodName_(name), indexCheckInfo_(chunk) {}
 
     ~ArrayBoundsCheckElimination() = default;
     void Run();

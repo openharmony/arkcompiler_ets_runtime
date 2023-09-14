@@ -30,7 +30,7 @@ public:
     StateSplitLinearizer(Circuit *circuit, RPOVisitor *visitor, CompilationConfig *cmpCfg,
                          bool enableLog, const std::string& name, Chunk* chunk)
         : enableLog_(enableLog), methodName_(name), circuit_(circuit),
-        graphLinearizer_(circuit, enableLog, name, chunk),
+        graphLinearizer_(circuit, enableLog, name, chunk, false, true),
         lcrLowering_(circuit, visitor, cmpCfg, chunk) {}
 
     void Run();

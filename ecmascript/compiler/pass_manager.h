@@ -129,7 +129,7 @@ public:
     PassOptions(bool enableArrayBoundsCheckElimination, bool enableTypeLowering, bool enableEarlyElimination,
                 bool enableLaterElimination, bool enableValueNumbering, bool enableTypeInfer,
                 bool enableOptInlining, bool enableOptPGOType, bool enableOptTrackField, bool enableOptLoopPeeling,
-                bool enableOptOnHeapCheck)
+                bool enableOptOnHeapCheck, bool enableOptLoopInvariantCodeMotion)
         : enableArrayBoundsCheckElimination_(enableArrayBoundsCheckElimination),
           enableTypeLowering_(enableTypeLowering),
           enableEarlyElimination_(enableEarlyElimination),
@@ -140,24 +140,26 @@ public:
           enableOptPGOType_(enableOptPGOType),
           enableOptTrackField_(enableOptTrackField),
           enableOptLoopPeeling_(enableOptLoopPeeling),
-          enableOptOnHeapCheck_(enableOptOnHeapCheck)
+          enableOptOnHeapCheck_(enableOptOnHeapCheck),
+          enableOptLoopInvariantCodeMotion_(enableOptLoopInvariantCodeMotion)
         {
         }
 
 #define OPTION_LIST(V)           \
-    V(ArrayBoundsCheckElimination, true) \
-    V(TypeLowering, true)        \
-    V(EarlyElimination, true)    \
-    V(LaterElimination, true)    \
-    V(ValueNumbering, false)     \
-    V(TypeInfer, false)          \
-    V(OptInlining, false)        \
-    V(OptNoGCCall, false)        \
-    V(OptPGOType, false)         \
-    V(NoCheck, false)            \
-    V(OptTrackField, false)      \
-    V(OptLoopPeeling, false)     \
-    V(OptOnHeapCheck, false)
+    V(ArrayBoundsCheckElimination, true)    \
+    V(TypeLowering, true)                   \
+    V(EarlyElimination, true)               \
+    V(LaterElimination, true)               \
+    V(ValueNumbering, false)                \
+    V(TypeInfer, false)                     \
+    V(OptInlining, false)                   \
+    V(OptNoGCCall, false)                   \
+    V(OptPGOType, false)                    \
+    V(NoCheck, false)                       \
+    V(OptTrackField, false)                 \
+    V(OptLoopPeeling, false)                \
+    V(OptOnHeapCheck, false)                \
+    V(OptLoopInvariantCodeMotion, false)    \
 
 #define DECL_OPTION(NAME, DEFAULT)    \
 public:                               \

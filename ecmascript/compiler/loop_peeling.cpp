@@ -76,10 +76,9 @@ void LoopPeeling::Peel()
             } else if (acc_.GetOpCode(*it) == OpCode::LOOP_EXIT_VALUE) {
                 GateRef value = *it;
                 GateRef copyValue = GetCopy(acc_.GetValueIn(value));
-                ASSERT(acc_.GetMachineType(value) == MachineType::I64);
-                ASSERT(acc_.GetMachineType(copyValue) == MachineType::I64);
-                GateRef selector = circuit_->NewGate(circuit_->ValueSelector(numIns), MachineType::I64,
-                                                     {merge, value, copyValue}, GateType::AnyType());
+                ASSERT(acc_.GetMachineType(value) == acc_.GetMachineType(copyValue));
+                GateRef selector = circuit_->NewGate(circuit_->ValueSelector(numIns), acc_.GetMachineType(value),
+                                                     {merge, value, copyValue}, acc_.GetGateType(value));
                 acc_.UpdateAllUses(value, selector);
                 acc_.ReplaceIn(selector, 1, value);    // 0: index of exit depend
                 ++it;
@@ -90,17 +89,18 @@ void LoopPeeling::Peel()
             }
         }
     }
-
-    auto asyncList = bcBuilder_->GetAsyncRelatedGates();
-    ChunkVector<GateRef> list(chunk_);
-    for (auto gate : asyncList) {
-        auto copyAsync = TryGetCopy(gate);
-        if (copyAsync == Circuit::NullGate()) {
-            list.emplace_back(copyAsync);
+    if (bcBuilder_) {
+        auto asyncList = bcBuilder_->GetAsyncRelatedGates();
+        ChunkVector<GateRef> list(chunk_);
+        for (auto gate : asyncList) {
+            auto copyAsync = TryGetCopy(gate);
+            if (copyAsync == Circuit::NullGate()) {
+                list.emplace_back(copyAsync);
+            }
         }
-    }
-    for (auto gate : asyncList) {
-        bcBuilder_->UpdateAsyncRelatedGate(gate);
+        for (auto gate : asyncList) {
+            bcBuilder_->UpdateAsyncRelatedGate(gate);
+        }
     }
 
     Print();

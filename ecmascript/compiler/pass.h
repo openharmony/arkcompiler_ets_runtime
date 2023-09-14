@@ -620,7 +620,8 @@ public:
         TimeScope timescope("GraphLinearizerPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        GraphLinearizer(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run(data->GetCfg());
+        bool licm = data->GetPassOptions()->EnableOptLoopInvariantCodeMotion();
+        GraphLinearizer(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, false, licm).Run(data->GetCfg());
         return true;
     }
 };
