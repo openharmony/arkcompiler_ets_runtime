@@ -14,8 +14,8 @@
 QuickFix Execute start
 QuickFix start load patch
 QuickFix load patch success
-patch old global var :100
-patch new global var :undefined
+patch old global var :200
+patch new global var :300
 QuickFix start check exception
 QuickFix have no exception
 QuickFix start unload patch

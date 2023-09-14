@@ -14,7 +14,7 @@
 QuickFix Execute start
 QuickFix start load patch
 QuickFix load patch success
-print patch:100 - 200
+print patch:200 - 200
 QuickFix start check exception
 QuickFix have no exception
 QuickFix start unload patch
@@ -22,7 +22,7 @@ QuickFix unload patch success
 print base:100 - 100
 QuickFix start load patch
 QuickFix load patch success
-print patch1:100 - 300
+print patch1:300 - 300
 QuickFix start check exception
 QuickFix have no exception
 QuickFix start unload patch
@@ -30,7 +30,7 @@ QuickFix unload patch success
 print base:100 - 100
 QuickFix start load patch
 QuickFix load patch success
-print patch2: 100 - 400
+print patch2: 400 - 400
 QuickFix start check exception
 QuickFix have no exception
 QuickFix start unload patch

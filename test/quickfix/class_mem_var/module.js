@@ -13,14 +13,4 @@
  * limitations under the License.
  */
 
-class B {
-    constructor() {
-        this.str = "base"
-    }
-    PrintStr() {
-        print("print base str :" + this.str);
-    }
-}
-
-globalThis.B = B;
-globalThis.BB = new B();
+export var nop = undefined

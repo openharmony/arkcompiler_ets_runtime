@@ -111,6 +111,18 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
         JSTaggedValue resolvedModule = binding->GetModule();
         ASSERT(resolvedModule.IsSourceTextModule());
         SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
+        
+        // Support for only modifying var value of HotReload.
+        // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
+        EcmaContext *context = thread->GetCurrentEcmaContext();
+        int32_t InterceptGetModuleValue = 1; // 1: for Interceptint get module var
+        if (context->GetStageOfHotReload() == InterceptGetModuleValue) {
+            const JSHandle<JSTaggedValue> resolvedModuleOfHotReload =
+                context->FindPatchModule(ConvertToString(module->GetEcmaModuleRecordName()));
+            if (!resolvedModuleOfHotReload->IsHole()) {
+                resolvedModule = resolvedModuleOfHotReload.GetTaggedValue();
+            }
+        }
 
         ModuleTypes moduleType = module->GetTypes();
         if (SourceTextModule::IsNativeModule(moduleType)) {
@@ -375,15 +387,26 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModuleInMergedABC(JSThread *thread
 JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const CString &moduleFileName,
     const CString &recordName, bool excuteFromJob)
 {
-    JSThread *thread = vm_->GetJSThread();
-    ObjectFactory *factory = vm_->GetFactory();
-
-    JSHandle<EcmaString> recordNameHandle = factory->NewFromUtf8(recordName);
+    JSHandle<EcmaString> recordNameHandle = vm_->GetFactory()->NewFromUtf8(recordName);
     NameDictionary *dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
     int entry = dict->FindEntry(recordNameHandle.GetTaggedValue());
     if (entry != -1) {
-        return JSHandle<JSTaggedValue>(thread, dict->GetValue(entry));
+        return JSHandle<JSTaggedValue>(vm_->GetJSThread(), dict->GetValue(entry));
     }
+    return CommonResolveImportedModuleWithMerge(moduleFileName, recordName, excuteFromJob);
+}
+
+JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMergeForHotReload(const CString &moduleFileName,
+    const CString &recordName, bool excuteFromJob)
+{
+    return CommonResolveImportedModuleWithMerge(moduleFileName, recordName, excuteFromJob);
+}
+
+JSHandle<JSTaggedValue> ModuleManager::CommonResolveImportedModuleWithMerge(const CString &moduleFileName,
+    const CString &recordName, bool excuteFromJob)
+{
+    JSThread *thread = vm_->GetJSThread();
+
     std::shared_ptr<JSPandaFile> jsPandaFile = SkipDefaultBundleFile(moduleFileName) ? nullptr :
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
     if (jsPandaFile == nullptr) {
@@ -400,6 +423,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const 
         jsPandaFile.get(), recordName, excuteFromJob);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     JSHandle<NameDictionary> handleDict(thread, resolvedModules_);
+    JSHandle<EcmaString> recordNameHandle= vm_->GetFactory()->NewFromUtf8(recordName);
     resolvedModules_ = NameDictionary::Put(thread, handleDict, JSHandle<JSTaggedValue>(recordNameHandle),
         moduleRecord, PropertyAttributes::Default()).GetTaggedValue();
 
