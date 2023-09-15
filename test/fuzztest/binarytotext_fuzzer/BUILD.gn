@@ -28,6 +28,8 @@ ohos_fuzztest("BinaryToTextFuzzTest") {
   configs = [ "$js_root:ecma_test_config" ]
 
   deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
     "$js_root:libark_jsruntime_static",
     sdk_libc_secshared_dep,
   ]
