@@ -129,15 +129,12 @@ void LayoutInfo::GetAllKeysByFilter(const JSThread *thread, uint32_t numberOfPro
     }
 }
 
-void LayoutInfo::GetAllKeys(int end, std::vector<JSTaggedValue> &keyVector, const JSHandle<JSObject> object)
+void LayoutInfo::GetAllKeysForSerialization(int end, std::vector<JSTaggedValue> &keyVector)
 {
     ASSERT(end <= NumberOfElements());
     for (int i = 0; i < end; i++) {
         JSTaggedValue key = GetKey(i);
         if (key.IsString() || key.IsSymbol()) {
-            if (IsUninitializedProperty(object, i)) {
-                continue;
-            }
             keyVector.emplace_back(key);
         }
     }

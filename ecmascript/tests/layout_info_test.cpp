@@ -154,7 +154,7 @@ HWTEST_F_L0(LayoutInfoTest, GetAllKeys)
         layoutInfoHandle->AddKey(thread, i, elementsKey.GetTaggedValue(), defaultAttr);
     }
     layoutInfoHandle->GetAllKeys(thread, infoLength, 0, *keyArray, objectHandle); // 0: offset
-    layoutInfoHandle->GetAllKeys(infoLength, keyVector, objectHandle);
+    layoutInfoHandle->GetAllKeysForSerialization(infoLength, keyVector);
     EXPECT_EQ(keyArray->GetLength(), keyVector.size());
 
     for (int i = 0;i < infoLength; i++) {

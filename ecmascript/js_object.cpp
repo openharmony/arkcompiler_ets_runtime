@@ -367,7 +367,7 @@ void JSObject::GetAllKeysByFilter(const JSThread *thread, const JSHandle<JSObjec
 }
 
 // For Serialization use. Does not support JSGlobalObject
-void JSObject::GetAllKeys(const JSHandle<JSObject> &obj, std::vector<JSTaggedValue> &keyVector)
+void JSObject::GetAllKeysForSerialization(const JSHandle<JSObject> &obj, std::vector<JSTaggedValue> &keyVector)
 {
     DISALLOW_GARBAGE_COLLECTION;
     ASSERT_PRINT(!obj->IsJSGlobalObject(), "Do not support get key of JSGlobal Object");
@@ -375,7 +375,8 @@ void JSObject::GetAllKeys(const JSHandle<JSObject> &obj, std::vector<JSTaggedVal
     if (!array->IsDictionaryMode()) {
         int end = static_cast<int>(obj->GetJSHClass()->NumberOfProps());
         if (end > 0) {
-            LayoutInfo::Cast(obj->GetJSHClass()->GetLayout().GetTaggedObject())->GetAllKeys(end, keyVector, obj);
+            LayoutInfo::Cast(obj->GetJSHClass()->GetLayout().GetTaggedObject())->GetAllKeysForSerialization(end,
+                keyVector);
         }
     } else {
         NameDictionary *dict = NameDictionary::Cast(obj->GetProperties().GetTaggedObject());
