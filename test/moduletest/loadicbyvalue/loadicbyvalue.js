@@ -44,3 +44,15 @@ for (let i = 0; i < 20; i ++) {
 const v3 = new Uint8Array(128);
 v3[arr];
 print("test successful !!!");
+
+var obj1 = {
+    0: 0,
+    2147483647: 1,
+    2147483648: 2,
+    4294967295: 3,
+    4294967296: 4,
+}
+
+for (let item in obj1) {
+    print(item + " " + obj1[item]);
+}

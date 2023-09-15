@@ -1311,7 +1311,7 @@ GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    DEFVARIABLE(result, VariableType::INT32(), Int32(-1));
+    DEFVARIABLE(result, VariableType::INT64(), Int64(-1));
     Label greatThanZero(env);
     Label inRange(env);
     Label flattenFastPath(env);
@@ -1342,7 +1342,7 @@ GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
                 Branch(Int32Equal(len, Int32(1)), &lengthIsOne, &exit);
                 Bind(&lengthIsOne);
                 {
-                    result = Int32(0);
+                    result = Int64(0);
                     Jump(&exit);
                 }
             }
@@ -1350,7 +1350,7 @@ GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
             {
                 Label isDigit(env);
                 DEFVARIABLE(i, VariableType::INT32(), Int32(1));
-                DEFVARIABLE(n, VariableType::INT32(), Int32Sub(*c, Int32('0')));
+                DEFVARIABLE(n, VariableType::INT64(), Int64Sub(ZExtInt32ToInt64(*c), Int64('0')));
                 Branch(IsDigit(*c), &isDigit, &exit);
                 Label loopHead(env);
                 Label loopEnd(env);
@@ -1366,7 +1366,7 @@ GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
                     Bind(&isDigit2);
                     {
                         // 10 means the base of digit is 10.
-                        n = Int32Add(Int32Mul(*n, Int32(10)), Int32Sub(*c, Int32('0')));
+                        n = Int64Add(Int64Mul(*n, Int64(10)), Int64Sub(ZExtInt32ToInt64(*c), Int64('0')));
                         i = Int32Add(*i, Int32(1));
                         Branch(Int32UnsignedLessThan(*i, len), &loopEnd, &afterLoop);
                     }
@@ -1378,7 +1378,7 @@ GateRef StubBuilder::StringToElementIndex(GateRef glue, GateRef string)
                 Bind(&afterLoop);
                 {
                     Label lessThanMaxIndex(env);
-                    Branch(Int32UnsignedLessThan(*n, Int32(JSObject::MAX_ELEMENT_INDEX)),
+                    Branch(Int64LessThan(*n, Int64(JSObject::MAX_ELEMENT_INDEX)),
                            &lessThanMaxIndex, &exit);
                     Bind(&lessThanMaxIndex);
                     {
@@ -1418,7 +1418,7 @@ GateRef StubBuilder::TryToElementsIndex(GateRef glue, GateRef key)
         Branch(TaggedIsString(key), &isString, &notString);
         Bind(&isString);
         {
-            resultKey = ZExtInt32ToInt64(StringToElementIndex(glue, key));
+            resultKey = StringToElementIndex(glue, key);
             Jump(&exit);
         }
         Bind(&notString);
