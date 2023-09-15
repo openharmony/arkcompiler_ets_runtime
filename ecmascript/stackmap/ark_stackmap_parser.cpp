@@ -91,6 +91,35 @@ void ArkStackMapParser::GetConstInfo(uintptr_t callSiteAddr, LLVMStackMapType::C
     info.emplace_back(v);
 }
 
+void ArkStackMapParser::GetMethodOffsetInfo(uintptr_t callSiteAddr, std::map<uint32_t, uint32_t>& info,
+    uint8_t *stackmapAddr) const
+{
+    std::vector<ARKDeopt> deopts;
+    GetArkDeopt(callSiteAddr, stackmapAddr, deopts);
+    if (deopts.empty()) {
+        return;
+    }
+
+    ARKDeopt target;
+    size_t shift = Deoptimizier::ComputeShift(MAX_METHOD_OFFSET_NUM);
+    LLVMStackMapType::VRegId startId = static_cast<LLVMStackMapType::VRegId>(SpecVregIndex::FIRST_METHOD_OFFSET_INDEX);
+    for (int i = MAX_METHOD_OFFSET_NUM - 1; i >= 0; i--) {
+        LLVMStackMapType::VRegId id = startId - i;
+        target.id = Deoptimizier::EncodeDeoptVregIndex(id, i, shift);
+        auto it = std::lower_bound(deopts.begin(), deopts.end(), target,
+            [](const ARKDeopt& a, const ARKDeopt& b) {
+                return a.id < b.id;
+            });
+        if (it == deopts.end() || (it->id > target.id)) {
+            continue;
+        }
+        ASSERT(it->kind == LocationTy::Kind::CONSTANT);
+        ASSERT(std::holds_alternative<LLVMStackMapType::IntType>(it->value));
+        auto v = std::get<LLVMStackMapType::IntType>(it->value);
+        info[static_cast<int32_t>(SpecVregIndex::FIRST_METHOD_OFFSET_INDEX) - id] = v;
+    }
+}
+
 uintptr_t ArkStackMapParser::GetStackSlotAddress(const LLVMStackMapType::DwarfRegAndOffsetType info,
     uintptr_t callSiteSp, uintptr_t callsiteFp) const
 {

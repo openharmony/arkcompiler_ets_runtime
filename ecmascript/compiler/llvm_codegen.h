@@ -210,7 +210,8 @@ public:
     void GenerateCodeForStub(Circuit *circuit, const ControlFlowGraph &graph, size_t index,
                              const CompilationConfig *cfg) override;
     void GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
-        const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile, const std::string &methodName) override;
+        const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile, const std::string &methodName,
+        bool enableOptInlining) override;
 
     bool IsLogEnabled() const
     {

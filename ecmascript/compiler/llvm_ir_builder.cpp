@@ -59,10 +59,10 @@ namespace panda::ecmascript::kungfu {
 LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
                              LLVMModule *module, LLVMValueRef function, const CompilationConfig *cfg,
                              CallSignature::CallConv callConv, bool enableLog, bool isFastCallAot,
-                             const std::string &funcName)
+                             const std::string &funcName, bool enableOptInlining)
     : compCfg_(cfg), scheduledGates_(schedule), circuit_(circuit), acc_(circuit), module_(module->GetModule()),
       function_(function), llvmModule_(module), callConv_(callConv), enableLog_(enableLog),
-      isFastCallAot_(isFastCallAot)
+      isFastCallAot_(isFastCallAot), enableOptInlining_(enableOptInlining)
 {
     ASSERT(compCfg_->Is64Bit());
     context_ = module->GetContext();
@@ -568,7 +568,8 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
 
     size_t actualNumArgs = 0;
     LLVMValueRef pcOffset = LLVMConstInt(GetInt32T(), 0, 0);
-    ComputeArgCountAndPCOffset(actualNumArgs, pcOffset, inList, kind);
+    GateRef frameArgs = Circuit::NullGate();
+    ComputeArgCountAndExtraInfo(actualNumArgs, pcOffset, frameArgs, inList, kind);
 
     std::vector<LLVMValueRef> params;
     params.push_back(glue); // glue
@@ -588,9 +589,7 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
     LLVMValueRef runtimeCall = nullptr;
     if (kind == CallExceptionKind::HAS_PC_OFFSET) {
         std::vector<LLVMValueRef> values;
-        auto pcIndex = LLVMConstInt(GetInt64T(), static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX), 1);
-        values.push_back(pcIndex);
-        values.push_back(pcOffset);
+        CollectExraCallSiteInfo(values, pcOffset, frameArgs);
         runtimeCall = LLVMBuildCall3(builder_, funcType, callee, params.data(), actualNumArgs,
                                      "", values.data(), values.size());
     } else {
@@ -753,13 +752,14 @@ LLVMValueRef LLVMIRBuilder::GetBuiltinsStubOffset(LLVMValueRef glue)
     return LLVMConstInt(glueType, JSThread::GlueData::GetBuiltinsStubEntriesOffset(compCfg_->Is32Bit()), 0);
 }
 
-void LLVMIRBuilder::ComputeArgCountAndPCOffset(size_t &actualNumArgs, LLVMValueRef &pcOffset,
-                                               const std::vector<GateRef> &inList, CallExceptionKind kind)
+void LLVMIRBuilder::ComputeArgCountAndExtraInfo(size_t &actualNumArgs, LLVMValueRef &pcOffset, GateRef &frameArgs,
+                                                const std::vector<GateRef> &inList, CallExceptionKind kind)
 {
     if (kind == CallExceptionKind::HAS_PC_OFFSET) {
-        actualNumArgs = inList.size() - 1;
-        pcOffset = gate2LValue_[inList[actualNumArgs]];
-        ASSERT(acc_.GetOpCode(inList[actualNumArgs]) == OpCode::CONSTANT);
+        actualNumArgs = inList.size() - 2;  // 2: pcOffset and frameArgs
+        pcOffset = gate2LValue_[inList[actualNumArgs + 1]];
+        frameArgs = inList[actualNumArgs];
+        ASSERT(acc_.GetOpCode(inList[actualNumArgs + 1]) == OpCode::CONSTANT);
     } else {
         actualNumArgs = inList.size();
     }
@@ -804,6 +804,47 @@ void LLVMIRBuilder::VisitReadSp(GateRef gate)
 {
     LLVMValueRef spValue = GetCurrentSP();
     gate2LValue_[gate] = spValue;
+}
+
+void LLVMIRBuilder::CollectExraCallSiteInfo(std::vector<LLVMValueRef> &values, LLVMValueRef pcOffset,
+                                            GateRef frameArgs)
+{
+    // pc offset
+    auto pcIndex = LLVMConstInt(GetInt64T(), static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX), 1);
+    values.push_back(pcIndex);
+    values.push_back(pcOffset);
+
+    if (!enableOptInlining_) {
+        return;
+    }
+
+    if (frameArgs == Circuit::NullGate()) {
+        return;
+    }
+    if (acc_.GetOpCode(frameArgs) != OpCode::FRAME_ARGS) {
+        return;
+    }
+    uint32_t maxDepth = acc_.GetFrameDepth(frameArgs, OpCode::FRAME_ARGS);
+    if (maxDepth == 0) {
+        return;
+    }
+
+    maxDepth = std::min(maxDepth, MAX_METHOD_OFFSET_NUM);
+    size_t shift = Deoptimizier::ComputeShift(MAX_METHOD_OFFSET_NUM);
+    ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));
+    for (int32_t curDepth = static_cast<int32_t>(maxDepth - 1); curDepth >= 0; curDepth--) {
+        ASSERT(acc_.GetOpCode(frameArgs) == OpCode::FRAME_ARGS);
+        // method id
+        uint32_t methodOffset = acc_.TryGetMethodOffset(frameArgs);
+        frameArgs = acc_.GetFrameState(frameArgs);
+        if (methodOffset == FrameStateOutput::INVALID_INDEX) {
+            methodOffset = 0;
+        }
+        int32_t specCallTargetIndex = static_cast<int32_t>(SpecVregIndex::FIRST_METHOD_OFFSET_INDEX) - curDepth;
+        int32_t encodeIndex = Deoptimizier::EncodeDeoptVregIndex(specCallTargetIndex, curDepth, shift);
+        values.emplace_back(LLVMConstInt(GetInt32T(), encodeIndex, false));
+        values.emplace_back(LLVMConstInt(GetInt32T(), methodOffset, false));
+    }
 }
 
 void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, OpCode op)
@@ -877,7 +918,8 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     int extraParameterCnt = 0;
     size_t actualNumArgs = 0;
     LLVMValueRef pcOffset = LLVMConstInt(GetInt32T(), 0, 0);
-    ComputeArgCountAndPCOffset(actualNumArgs, pcOffset, inList, kind);
+    GateRef frameArgs = Circuit::NullGate();
+    ComputeArgCountAndExtraInfo(actualNumArgs, pcOffset, frameArgs, inList, kind);
 
     // then push the actual parameter for js function call
     for (size_t paraIdx = firstArg + 1; paraIdx < actualNumArgs; ++paraIdx) {
@@ -903,9 +945,7 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     callee = LLVMBuildPointerCast(builder_, callee, LLVMPointerType(funcType, 0), "");
     if (kind == CallExceptionKind::HAS_PC_OFFSET) {
         std::vector<LLVMValueRef> values;
-        auto pcIndex = LLVMConstInt(GetInt64T(), static_cast<int>(SpecVregIndex::PC_OFFSET_INDEX), 1);
-        values.push_back(pcIndex);
-        values.push_back(pcOffset);
+        CollectExraCallSiteInfo(values, pcOffset, frameArgs);
         call = LLVMBuildCall3(builder_, funcType, callee, params.data(), actualNumArgs - firstArg + extraParameterCnt,
                               "", values.data(), values.size());
     } else {
@@ -2342,15 +2382,10 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
     LLVMTypeRef funcType = GetExperimentalDeoptTy();
 
     std::vector<LLVMValueRef> values;
-    size_t maxDepth = 0;
-    GateRef frameState = acc_.GetFrameState(deoptFrameState);
-    while ((acc_.GetOpCode(frameState) == OpCode::FRAME_STATE)) {
-        maxDepth++;
-        frameState = acc_.GetFrameState(frameState);
-    }
+    size_t maxDepth = acc_.GetFrameDepth(deoptFrameState, OpCode::FRAME_STATE);
     params.push_back(ConvertInt32ToTaggedInt(LLVMConstInt(GetInt32T(), static_cast<uint32_t>(maxDepth), false)));
     size_t shift = Deoptimizier::ComputeShift(maxDepth);
-    frameState = deoptFrameState;
+    GateRef frameState = deoptFrameState;
     ArgumentAccessor argAcc(const_cast<Circuit *>(circuit_));
     for (int32_t curDepth = static_cast<int32_t>(maxDepth); curDepth >= 0; curDepth--) {
         ASSERT(acc_.GetOpCode(frameState) == OpCode::FRAME_STATE);

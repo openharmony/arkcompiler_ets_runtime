@@ -169,6 +169,8 @@ private:
         return kind == CallKind::CALL_SETTER;
     }
 
+    void CollectInlineInfo();
+    void GetInlinedMethodId(GateRef gate);
     void CandidateInlineCall(GateRef gate, ChunkQueue<CallGateInfo> &workList);
     void TryInline(CallGateInfo &info, ChunkQueue<CallGateInfo> &workList);
     bool FilterInlinedMethod(MethodLiteral* method, std::vector<const uint8_t*> pcOffsets);

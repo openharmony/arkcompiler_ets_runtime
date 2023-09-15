@@ -56,7 +56,7 @@ HWTEST_F_L0(LoweringRelateGateTests, TypeCheckFramework)
     auto arg0 = builder.Arguments(0);
     auto pcGate = circuit.GetConstantGate(MachineType::I64, 0, GateType::NJSValue());
     auto frameArgs = circuit.NewGate(
-        circuit.FrameArgs(), {builder.Arguments(3), builder.Arguments(4), builder.Arguments(5), builder.Arguments(2)});
+        circuit.FrameArgs(0), {builder.Arguments(3), builder.Arguments(4), builder.Arguments(5), builder.Arguments(2)});
     auto frameState = circuit.NewGate(circuit.FrameState(1), {pcGate, frameArgs});
     auto stateSplit = circuit.NewGate(circuit.StateSplit(), {state, depend, frameState});
     builder.SetDepend(stateSplit);

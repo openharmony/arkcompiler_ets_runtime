@@ -1625,6 +1625,7 @@ public:
     int ComputeDelta() const;
     template <GCVisitedFlag GCVisit = GCVisitedFlag::IGNORED>
     void Advance();
+    std::map<uint32_t, uint32_t> GetInlinedMethodInfo();
     uint32_t GetBytecodeOffset() const;
     uintptr_t GetPrevFrameCallSiteSp() const;
     uintptr_t GetPrevFrame() const;
@@ -1642,6 +1643,7 @@ public:
     }
     bool IteratorStackMap(const RootVisitor &visitor, const RootBaseAndDerivedVisitor &derivedVisitor) const;
     void CollectPcOffsetInfo(ConstInfo &info) const;
+    void CollectMethodOffsetInfo(std::map<uint32_t, uint32_t> &info) const;
     void CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const;
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
     int GetCallSiteDelta(uintptr_t retAddr) const;

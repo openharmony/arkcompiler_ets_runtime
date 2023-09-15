@@ -94,7 +94,7 @@ void TypeRecorder::CollectLiteralGT(TSManager *tsManager, TypeLocation &loc, Glo
         return;
     }
 
-    if (bytecodes_->GetOpcode(pcOffsets_[bcIdx]) == EcmaOpcode::STA_V8) {
+    while (bytecodes_->GetOpcode(pcOffsets_[bcIdx]) == EcmaOpcode::STA_V8) {
         // bcIndex of literal marked in es2abc maybe in the next bc whose opcode should be sta.
         bcIdx--;
         loc.SetBcIdx(bcIdx);

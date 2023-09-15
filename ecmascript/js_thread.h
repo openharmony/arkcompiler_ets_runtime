@@ -527,6 +527,16 @@ public:
         return vmThreadControl_;
     }
 
+    void SetEnableStackSourceFile(bool value)
+    {
+        enableStackSourceFile_ = value;
+    }
+
+    bool GetEnableStackSourceFile() const
+    {
+        return enableStackSourceFile_;
+    }
+
     static constexpr size_t GetGlueDataOffset()
     {
         return MEMBER_OFFSET(JSThread, glueData_);
@@ -993,6 +1003,7 @@ private:
     bool runtimeState_ {false};
     bool isAsmInterpreter_ {false};
     VmThreadControl *vmThreadControl_ {nullptr};
+    bool enableStackSourceFile_ {true};
 
     // CpuProfiler
     bool isProfiling_ {false};

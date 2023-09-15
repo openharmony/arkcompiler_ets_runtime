@@ -29,9 +29,10 @@ struct JsFrameInfo {
 };
 class JsStackInfo {
 public:
+    static std::string BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets);
     static std::string BuildJsStackTrace(JSThread *thread, bool needNative);
     static std::vector<JsFrameInfo> BuildJsStackInfo(JSThread *thread);
-    static std::string BuildMethodTrace(Method *method, uint32_t pcOffset);
+    static std::string BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile = true);
     static AOTFileManager *loader;
 };
 void CrashCallback(char *buf, size_t len, void *ucontext);

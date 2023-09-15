@@ -316,7 +316,6 @@ std::string MachineTypeToStr(MachineType machineType);
     V(GetSuperConstructor, GET_SUPER_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)                 \
     V(CheckSafePointAndStackOver, CHECK_SAFEPOINT_AND_STACKOVER, GateFlags::NO_WRITE, 1, 1, 0)  \
     V(Dead, DEAD, GateFlags::NONE_FLAG, 0, 0, 0)                                                \
-    V(FrameArgs, FRAME_ARGS, GateFlags::NONE_FLAG, 0, 0, 4)                                     \
     V(GetEnv, GET_ENV, GateFlags::NONE_FLAG, 0, 0, 1)                                           \
     V(ConvertHoleAsUndefined, CONVERT_HOLE_AS_UNDEFINED, GateFlags::NO_WRITE, 1, 1, 1)          \
     V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                             \
@@ -340,17 +339,17 @@ std::string MachineTypeToStr(MachineType machineType);
     V(BuiltinsCall, BUILTINS_CALL, GateFlags::NONE_FLAG, 0, 1, value)                    \
     V(SaveRegister, SAVE_REGISTER, GateFlags::NONE_FLAG, 0, 1, value)
 
-#define GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                  \
-    V(TypedCallBuiltin, TYPED_CALL_BUILTIN, GateFlags::NO_WRITE, 1, 1, value)  \
-    V(Construct, CONSTRUCT, GateFlags::NONE_FLAG, 1, 1, value)
+#define GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                   \
+    V(TypedCallBuiltin, TYPED_CALL_BUILTIN, GateFlags::CHECKABLE, 1, 1, value)  \
+    V(Construct, CONSTRUCT, GateFlags::HAS_FRAME_STATE, 1, 1, value)
 
 #define GATE_META_DATA_LIST_FOR_CALL(V)                                        \
-    V(TypedCall, TYPEDCALL, GateFlags::NONE_FLAG, 1, 1, value)                 \
-    V(TypedFastCall, TYPEDFASTCALL, GateFlags::NONE_FLAG, 1, 1, value)
+    V(TypedCall, TYPEDCALL, GateFlags::HAS_FRAME_STATE, 1, 1, value)           \
+    V(TypedFastCall, TYPEDFASTCALL, GateFlags::HAS_FRAME_STATE, 1, 1, value)
 
 #define GATE_META_DATA_LIST_WITH_PC_OFFSET_FIXED_VALUE(V)                      \
-    V(CallGetter, CALL_GETTER, GateFlags::NONE_FLAG, 1, 1, 2)                  \
-    V(CallSetter, CALL_SETTER, GateFlags::NONE_FLAG, 1, 1, 3)
+    V(CallGetter, CALL_GETTER, GateFlags::HAS_FRAME_STATE, 1, 1, 2)            \
+    V(CallSetter, CALL_SETTER, GateFlags::HAS_FRAME_STATE, 1, 1, 3)
 
 #define GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
     V(Merge, MERGE, GateFlags::CONTROL, value, 0, 0)                           \
@@ -389,6 +388,7 @@ std::string MachineTypeToStr(MachineType machineType);
     V(GetGlobalEnvObj, GET_GLOBAL_ENV_OBJ, GateFlags::NO_WRITE, 0, 1, 1)                \
     V(GetGlobalEnvObjHClass, GET_GLOBAL_ENV_OBJ_HCLASS, GateFlags::NO_WRITE, 0, 1, 1)   \
     V(GetGlobalConstantValue, GET_GLOBAL_CONSTANT_VALUE, GateFlags::NO_WRITE, 0, 1, 0)  \
+    V(FrameArgs, FRAME_ARGS, GateFlags::HAS_FRAME_STATE, 0, 0, 4)                       \
     V(FrameState, FRAME_STATE, GateFlags::HAS_FRAME_STATE, 0, 0, 2)                     \
     V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 0)                         \
     V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 2)   \

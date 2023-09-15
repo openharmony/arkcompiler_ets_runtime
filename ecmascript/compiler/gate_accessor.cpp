@@ -434,6 +434,48 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
     return 0;
 }
 
+uint32_t GateAccessor::TryGetMethodOffset(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    switch (op) {
+        case OpCode::FRAME_ARGS: {
+            UInt32PairAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
+            return accessor.GetFirstValue();
+        }
+        default:
+            break;
+    }
+    return 0;
+}
+
+GateRef GateAccessor::GetFrameArgs(GateRef gate) const
+{
+    if (!HasFrameState(gate)) {
+        return Circuit::NullGate();
+    }
+    if (GetOpCode(gate) == OpCode::FRAME_STATE) {
+        return GetValueIn(gate, 0); // 0: frame args
+    }
+    GateRef frameState = GetFrameState(gate);
+    OpCode op = GetOpCode(frameState);
+    if (op == OpCode::FRAME_ARGS) {
+        return frameState;
+    }
+    if (op == OpCode::FRAME_STATE) {
+        return GetValueIn(frameState, 0); // 0: frame args
+    }
+    return Circuit::NullGate();
+}
+
+void GateAccessor::UpdateMethodOffset(GateRef gate, uint32_t methodOffset)
+{
+    ASSERT(GetOpCode(gate) == OpCode::FRAME_ARGS);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    UInt32PairAccessor accessor(methodOffset, 0);
+    const_cast<OneParameterMetaData *>(gatePtr->GetOneParameterMetaData())->SetValue(accessor.ToValue());
+}
+
 PGOSampleType GateAccessor::TryGetPGOType(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -1304,6 +1346,20 @@ void GateAccessor::GetStateInAndDependIn(GateRef insertAfter, GateRef &stateIn, 
         }
     }
     ASSERT(GetDependCount(dependIn) > 0);
+}
+
+size_t GateAccessor::GetFrameDepth(GateRef gate, OpCode op)
+{
+    if (GetOpCode(gate) != op) {
+        return 0;
+    }
+    size_t depth = 0;
+    GateRef prev = GetFrameState(gate);
+    while ((GetOpCode(prev) == op)) {
+        depth++;
+        prev = GetFrameState(prev);
+    }
+    return depth;
 }
 
 GateRef GateAccessor::GetFrameState(GateRef gate) const

@@ -3731,6 +3731,8 @@ JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) 
     SetFunction(env, tools, "isNotHoleProperty", builtins::BuiltinsArkTools::IsNotHoleProperty,
                 FunctionLength::TWO);
     SetFunction(env, tools, "forceFullGC", builtins::BuiltinsArkTools::ForceFullGC, FunctionLength::ZERO);
+    SetFunction(env, tools, "hiddenStackSourceFile", builtins::BuiltinsArkTools::HiddenStackSourceFile,
+                FunctionLength::ZERO);
     SetFunction(env, tools, "removeAOTFlag", builtins::BuiltinsArkTools::RemoveAOTFlag, FunctionLength::ONE);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     SetFunction(env, tools, "startCpuProf", builtins::BuiltinsArkTools::StartCpuProfiler, FunctionLength::ZERO);

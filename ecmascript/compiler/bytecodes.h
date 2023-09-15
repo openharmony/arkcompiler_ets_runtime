@@ -685,6 +685,11 @@ public:
         return HasFuncIn() || HasNewTargetIn() || ThisObjectIn() || HasArgcIn();
     }
 
+    bool HasFrameState() const
+    {
+        return HasFrameArgs() || !NoThrow();
+    }
+
     bool IsCall() const
     {
         return metaData_.IsCall();
