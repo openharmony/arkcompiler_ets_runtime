@@ -270,6 +270,12 @@ StateDepend LCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
             ASSERT((dstType == ValueType::FLOAT64));
             result = ConvertTaggedDoubleToFloat64(value);
             break;
+        case ValueType::CHAR: {
+            ASSERT((dstType == ValueType::ECMA_STRING));
+            GateRef glue = acc_.GetGlueFromArgList();
+            result = builder_.CallStub(glue, gate, CommonStubCSigns::CreateStringBySingleCharCode, { glue, value });
+            break;
+        }
         default:
             LOG_COMPILER(FATAL) << "this branch is unreachable";
             break;

@@ -60,8 +60,8 @@ void TypeMCRLowering::LowerType(GateRef gate)
         case OpCode::ECMA_STRING_CHECK:
             LowerEcmaStringCheck(gate);
             break;
-        case OpCode::FLATTEN_STRING_CHECK:
-            LowerFlattenStringCheck(gate, glue);
+        case OpCode::FLATTEN_TREE_STRING_CHECK:
+            LowerFlattenTreeStringCheck(gate, glue);
             break;
         case OpCode::LOAD_STRING_LENGTH:
             LowerStringLength(gate);
@@ -138,6 +138,9 @@ void TypeMCRLowering::LowerType(GateRef gate)
             break;
         case OpCode::INLINE_ACCESSOR_CHECK:
             LowerInlineAccessorCheck(gate);
+            break;
+        case OpCode::STRING_EQUAL:
+            LowerStringEqual(gate, glue);
             break;
         default:
             break;
@@ -336,44 +339,47 @@ void TypeMCRLowering::LowerEcmaStringCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypeMCRLowering::LowerFlattenStringCheck(GateRef gate, GateRef glue)
+void TypeMCRLowering::LowerFlattenTreeStringCheck(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef str = acc_.GetValueIn(gate, 0);
     DEFVAlUE(result, (&builder_), VariableType::JS_POINTER(), str);
     Label isTreeString(&builder_);
-    Label notTreeString(&builder_);
-    Label needFlat(&builder_);
     Label exit(&builder_);
 
-    builder_.Branch(builder_.IsTreeString(str), &isTreeString, &notTreeString);
+    builder_.Branch(builder_.IsTreeString(str), &isTreeString, &exit);
     builder_.Bind(&isTreeString);
     {
         Label isFlat(&builder_);
+        Label needFlat(&builder_);
         builder_.Branch(builder_.TreeStringIsFlat(str), &isFlat, &needFlat);
         builder_.Bind(&isFlat);
         {
             result = builder_.GetFirstFromTreeString(str);
             builder_.Jump(&exit);
         }
+        builder_.Bind(&needFlat);
+        {
+            result = LowerCallRuntime(glue, gate, RTSTUB_ID(SlowFlattenString), { str }, true);
+            builder_.Jump(&exit);
+        }
     }
-    builder_.Bind(&notTreeString);
-    builder_.Branch(builder_.IsSlicedString(str), &needFlat, &exit);
-    builder_.Bind(&needFlat);
-    {
-        result = LowerCallRuntime(glue, gate, RTSTUB_ID(SlowFlattenString), { str }, true);
-        builder_.Jump(&exit);
-    }
+    
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+GateRef TypeMCRLowering::GetLengthFromString(GateRef gate)
+{
+    return builder_.Int32LSR(
+        builder_.LoadConstOffset(VariableType::INT32(), gate, EcmaString::MIX_LENGTH_OFFSET), builder_.Int32(2));
 }
 
 void TypeMCRLowering::LowerStringLength(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
-    GateRef length = builder_.Int32LSR(
-        builder_.LoadConstOffset(VariableType::INT32(), receiver, EcmaString::MIX_LENGTH_OFFSET), builder_.Int32(2));
+    GateRef length = GetLengthFromString(receiver);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), length);
 }
@@ -961,7 +967,8 @@ void TypeMCRLowering::LowerStringLoadElement(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
 
-    GateRef result = builder_.CallStub(glue, gate, CommonStubCSigns::GetCharFromEcmaString, { glue, receiver, index });
+    GateRef result = builder_.CallStub(glue, gate, CommonStubCSigns::GetSingleCharCodeByIndex,
+                                       { glue, receiver, index });
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
@@ -1556,5 +1563,26 @@ void TypeMCRLowering::LowerInlineAccessorCheck(GateRef gate)
     GateRef compare = builder_.BoolAnd(hclassCompare, *check);
     builder_.DeoptCheck(compare, frameState, DeoptType::INCONSISTENTHCLASS);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypeMCRLowering::LowerStringEqual(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    GateRef leftLength = GetLengthFromString(left);
+    GateRef rightLength = GetLengthFromString(right);
+
+    DEFVAlUE(result, (&builder_), VariableType::BOOL(), builder_.False());
+    Label lenEqual(&builder_);
+    Label exit(&builder_);
+    builder_.Branch(builder_.Equal(leftLength, rightLength), &lenEqual, &exit);
+    builder_.Bind(&lenEqual);
+    {
+        result = builder_.CallStub(glue, gate, CommonStubCSigns::FastStringEqual, { glue, left, right });
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 }  // namespace panda::ecmascript::kungfu

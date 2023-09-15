@@ -283,6 +283,8 @@ enum class ValueType : uint8_t {
     TAGGED_INT,
     TAGGED_DOUBLE,
     TAGGED_NUMBER,
+    CHAR,
+    ECMA_STRING,
 };
 
 enum class ConvertSupport : uint8_t {

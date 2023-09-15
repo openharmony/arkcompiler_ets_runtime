@@ -148,6 +148,8 @@ GateRef NumberSpeculativeRetype::VisitTypedBinaryOp(GateRef gate)
 {
     if (acc_.HasNumberType(gate)) {
         return VisitNumberBinaryOp(gate);
+    } else if (acc_.HasStringType(gate)) {
+        return VisitStringBinaryOp(gate);
     } else {
         [[maybe_unused]] GateRef left = acc_.GetValueIn(gate, 0);
         [[maybe_unused]] GateRef right = acc_.GetValueIn(gate, 1);
@@ -205,6 +207,26 @@ GateRef NumberSpeculativeRetype::VisitIntermediateValue(GateRef gate)
         TypeInfo oldType = GetOutputTypeInfo(gate);
         SetOutputTypeInfo(gate, valueInfo);
         return oldType == valueInfo ? Circuit::NullGate() : gate;
+    }
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitStringBinaryOp(GateRef gate)
+{
+    TypedBinOp op = acc_.GetTypedBinaryOp(gate);
+    switch (op) {
+        case TypedBinOp::TYPED_EQ:
+            return VisitStringCompare(gate);
+        default:
+            LOG_COMPILER(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+}
+
+GateRef NumberSpeculativeRetype::VisitStringCompare(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::BooleanType());
     }
     return Circuit::NullGate();
 }
@@ -772,6 +794,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
         case TypeInfo::INT1:
             result = builder_.ConvertBoolToInt32(gate, support);
             break;
+        case TypeInfo::CHAR:
         case TypeInfo::INT32:
             return gate;
         case TypeInfo::UINT32: {
@@ -882,6 +905,8 @@ GateRef NumberSpeculativeRetype::ConvertToTagged(GateRef gate)
             return builder_.ConvertUInt32ToTaggedNumber(gate);
         case TypeInfo::FLOAT64:
             return builder_.ConvertFloat64ToTaggedDouble(gate);
+        case TypeInfo::CHAR:
+            return builder_.ConvertCharToEcmaString(gate);
         case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
             return gate;
@@ -972,6 +997,8 @@ GateRef NumberSpeculativeRetype::VisitLoadElement(GateRef gate)
             case TypedLoadOp::FLOAT32ARRAY_LOAD_ELEMENT:
             case TypedLoadOp::FLOAT64ARRAY_LOAD_ELEMENT:
                 return SetOutputType(gate, GateType::DoubleType());
+            case TypedLoadOp::STRING_LOAD_ELEMENT:
+                return SetOutputType(gate, TypeInfo::CHAR);
             default:
                 return SetOutputType(gate, GateType::AnyType());
         }

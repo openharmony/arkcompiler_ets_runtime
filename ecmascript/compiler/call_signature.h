@@ -463,7 +463,9 @@ private:
     V(CallReturnWithArgv)                   \
     V(StartCallTimer)                       \
     V(EndCallTimer)                         \
-    V(GetCharFromEcmaString)
+    V(GetSingleCharCodeByIndex)             \
+    V(CreateStringBySingleCharCode)         \
+    V(FastStringEqual)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

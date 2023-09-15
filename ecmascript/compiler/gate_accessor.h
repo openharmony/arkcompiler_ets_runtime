@@ -396,6 +396,7 @@ public:
     TypedCallTargetCheckOp GetTypedCallTargetCheckOp(GateRef gate) const;
     PGOSampleType GetTypedBinaryType(GateRef gate) const;
     bool HasNumberType(GateRef gate) const;
+    bool HasStringType(GateRef gate) const;
     GlobalTSTypeRef GetFuncGT(GateRef gate) const;
     GateType GetParamGateType(GateRef gate) const;
     TypedUnaryAccessor GetTypedUnAccessor(GateRef gate) const;
@@ -525,6 +526,9 @@ public:
     bool HasIfExceptionUse(GateRef gate) const;
     bool IsIn(GateRef g, GateRef in) const;
     bool IsHeapObjectFromElementsKind(GateRef gate);
+    bool IsConstString(GateRef gate);
+    bool IsSingleCharGate(GateRef gate);
+    uint32_t GetStringIdFromLdaStrGate(GateRef gate);
 
     GateRef GetCircuitRoot() const
     {

@@ -37,6 +37,7 @@ private:
     void VisitGate(GateRef gate);
     void VisitTypedBinaryOp(GateRef gate);
     void VisitNumberBinaryOp(GateRef gate);
+    void VisitStringBinaryOp(GateRef gate);
     void VisitTypedUnaryOp(GateRef gate);
     void VisitNumberNot(GateRef gate);
     void VisitTypedConditionJump(GateRef gate);
@@ -69,6 +70,9 @@ private:
     void VisitIsTrueOrFalse(GateRef gate, bool flag);
 
     template<TypedBinOp Op>
+    void VisitStringCompare(GateRef gate);
+
+    template<TypedBinOp Op>
     GateRef CalculateInts(GateRef left, GateRef right);
     template<TypedBinOp Op>
     GateRef CalculateDoubles(GateRef left, GateRef right);
@@ -84,6 +88,8 @@ private:
     GateRef MonocularInt(GateRef gate);
     template<TypedUnOp Op>
     GateRef MonocularDouble(GateRef gate);
+
+    GateRef VisitStringEqual(GateRef left, GateRef right);
 
     TypeInfo GetOutputType(GateRef gate) const
     {

@@ -893,19 +893,31 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
     Return(*result);
 }
 
-void GetCharFromEcmaStringStubBuilder::GenerateCircuit()
+void GetSingleCharCodeByIndexStubBuilder::GenerateCircuit()
 {
-    auto env = GetEnvironment();
-    GateRef glue = PtrArgument(0);
     GateRef str = TaggedArgument(1);
     GateRef index = Int32Argument(2);
-    Label flattenFastPath(env);
-    FlatStringStubBuilder thisFlat(this);
-    thisFlat.FlattenString(glue, str, &flattenFastPath);
-    Bind(&flattenFastPath);
     BuiltinsStringStubBuilder builder(this);
-    StringInfoGateRef stringInfoGate(&thisFlat);
-    GateRef result = builder.CreateFromEcmaString(glue, index, stringInfoGate);
+    GateRef result = builder.GetSingleCharCodeByIndex(str, index);
+    Return(result);
+}
+
+void CreateStringBySingleCharCodeStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef charCode = Int32Argument(1);
+    BuiltinsStringStubBuilder builder(this);
+    GateRef result = builder.CreateStringBySingleCharCode(glue, charCode);
+    Return(result);
+}
+
+void FastStringEqualStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef str1 = TaggedArgument(1);
+    GateRef str2 = Int32Argument(2);
+
+    GateRef result = FastStringEqual(glue, str1, str2);
     Return(result);
 }
 

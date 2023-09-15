@@ -219,13 +219,13 @@ GateRef CircuitBuilder::EcmaStringCheck(GateRef gate)
     return ret;
 }
 
-GateRef CircuitBuilder::FlattenStringCheck(GateRef gate)
+GateRef CircuitBuilder::FlattenTreeStringCheck(GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->FlattenStringCheck(),
+    GateRef ret = GetCircuit()->NewGate(circuit_->FlattenTreeStringCheck(),
         MachineType::I1, {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
@@ -276,6 +276,18 @@ GateRef CircuitBuilder::LoadTypedArrayLength(GateType type, GateRef gate)
     auto currentDepend = currentLabel->GetDepend();
     GateRef ret = GetCircuit()->NewGate(circuit_->LoadTypedArrayLength(static_cast<size_t>(type.Value())),
         MachineType::I64, {currentControl, currentDepend, gate}, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::StringEqual(GateRef x, GateRef y)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->StringEqual(), MachineType::I1,
+                                     { currentControl, currentDepend, x, y }, GateType::BooleanType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -399,6 +411,11 @@ GateRef CircuitBuilder::ConvertBoolToInt32(GateRef gate, ConvertSupport support)
 GateRef CircuitBuilder::ConvertBoolToFloat64(GateRef gate, ConvertSupport support)
 {
     return CheckAndConvert(gate, ValueType::BOOL, ValueType::FLOAT64, support);
+}
+
+GateRef CircuitBuilder::ConvertCharToEcmaString(GateRef gate)
+{
+    return Convert(gate, ValueType::CHAR, ValueType::ECMA_STRING);
 }
 
 GateRef CircuitBuilder::ConvertInt32ToFloat64(GateRef gate)

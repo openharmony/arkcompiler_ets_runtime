@@ -145,7 +145,7 @@ private:
     void LowerStableArrayCheck(GateRef gate);
     void LowerTypedArrayCheck(GateRef gate);
     void LowerEcmaStringCheck(GateRef gate);
-    void LowerFlattenStringCheck(GateRef gate, GateRef glue);
+    void LowerFlattenTreeStringCheck(GateRef gate, GateRef glue);
     void LowerLoadTypedArrayLength(GateRef gate);
     void LowerStringLength(GateRef gate);
     void LowerLoadProperty(GateRef gate);
@@ -194,6 +194,7 @@ private:
     void LowerLoadGetter(GateRef gate);
     void LowerLoadSetter(GateRef gate);
     void LowerInlineAccessorCheck(GateRef gate);
+    void LowerStringEqual(GateRef gate, GateRef glue);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);
@@ -229,6 +230,7 @@ private:
     GateRef LoadFromTaggedArray(GateRef array, size_t index);
     GateRef LoadFromConstPool(GateRef jsFunc, size_t index);
     GateRef LoadFromVTable(GateRef receiver, size_t index);
+    GateRef GetLengthFromString(GateRef gate);
 
     Circuit *circuit_;
     GateAccessor acc_;

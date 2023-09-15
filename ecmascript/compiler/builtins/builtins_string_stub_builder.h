@@ -41,6 +41,8 @@ public:
                           GateRef pos, GateRef max, GateRef rhsCount);
     GateRef StringIndexOf(const StringInfoGateRef &lStringInfoGate,
         const StringInfoGateRef &rStringInfoGate, GateRef pos);
+    GateRef GetSingleCharCodeByIndex(GateRef str, GateRef index);
+    GateRef CreateStringBySingleCharCode(GateRef glue, GateRef charCode);
     GateRef CreateFromEcmaString(GateRef glue, GateRef index, const StringInfoGateRef &stringInfoGate);
     void StoreParent(GateRef glue, GateRef object, GateRef parent);
     void StoreStartIndex(GateRef glue, GateRef object, GateRef startIndex);
@@ -49,6 +51,9 @@ private:
     GateRef GetUtf16Data(GateRef stringData, GateRef index);
     GateRef IsASCIICharacter(GateRef data);
     GateRef GetUtf8Data(GateRef stringData, GateRef index);
+    GateRef GetSingleCharCodeFromConstantString(GateRef str, GateRef index);
+    GateRef GetSingleCharCodeFromLineString(GateRef str, GateRef index);
+    GateRef GetSingleCharCodeFromSlicedString(GateRef str, GateRef index);
 };
 
 class FlatStringStubBuilder : public StubBuilder {
@@ -86,7 +91,7 @@ public:
     {
         return length_;
     }
-    
+
 private:
     Variable flatString_ { GetEnvironment(), VariableType::JS_POINTER(), NextVariableId(), Undefined() };
     Variable startIndex_ { GetEnvironment(), VariableType::INT32(), NextVariableId(), Int32(0) };

@@ -2045,8 +2045,8 @@ DEF_CALL_SIGNATURE(EndCallTimer)
 {
     CallSignature index("EndCallTimer", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
     *callSign = index;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY()
     };
@@ -2055,17 +2055,48 @@ DEF_CALL_SIGNATURE(EndCallTimer)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(GetCharFromEcmaString)
+DEF_CALL_SIGNATURE(GetSingleCharCodeByIndex)
 {
     // 3 : 3 input parameters
-    CallSignature signature("GetCharFromEcmaString", 0, 3,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    CallSignature signature("GetSingleCharCodeByIndex", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
     *callSign = signature;
     // 3 : 3 input parameters
     std::array<VariableType, 3> params = {
         VariableType::NATIVE_POINTER(),  // glue
         VariableType::JS_ANY(),          // ecmaString
         VariableType::INT32(),           // index
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(CreateStringBySingleCharCode)
+{
+    // 2 : 2 input parameters
+    CallSignature signature("CreateStringByCharCode", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::INT32(),           // charcode
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(FastStringEqual)
+{
+    // 3 : 3 input parameters
+    CallSignature signature("FastStringEqual", 0, 3,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL());
+    *callSign = signature;
+    // 3 : 3 input parameters
+    std::array<VariableType, 3> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::JS_ANY(),          // ecmaString1
+        VariableType::JS_ANY(),          // ecmaString2
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);

@@ -122,6 +122,32 @@ bool TSHCRLowering::IsTrustedType(GateRef gate) const
     return false;
 }
 
+bool TSHCRLowering::IsTrustedStringType(GateRef gate) const
+{
+    auto op = acc_.GetOpCode(gate);
+    if (op == OpCode::LOAD_ELEMENT) {
+        return acc_.GetTypedLoadOp(gate) == TypedLoadOp::STRING_LOAD_ELEMENT;
+    }
+    if (op == OpCode::JS_BYTECODE) {
+        EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
+        switch (ecmaOpcode) {
+            case EcmaOpcode::LDA_STR_ID16:
+                return true;
+            case EcmaOpcode::LDOBJBYVALUE_IMM8_V8:
+            case EcmaOpcode::LDOBJBYVALUE_IMM16_V8: {
+                GateRef receiver = acc_.GetValueIn(gate, 1);
+                GateRef propKey = acc_.GetValueIn(gate, 2);
+                GateType receiverType = acc_.GetGateType(receiver);
+                GateType propKeyType = acc_.GetGateType(propKey);
+                return propKeyType.IsNumberType() && receiverType.IsStringType();
+            }
+            default:
+                break;
+        }
+    }
+    return false;
+}
+
 void TSHCRLowering::Lower(GateRef gate)
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
@@ -139,10 +165,10 @@ void TSHCRLowering::Lower(GateRef gate)
             LowerTypedBinOp<TypedBinOp::TYPED_MUL>(gate);
             break;
         case EcmaOpcode::DIV2_IMM8_V8:
-            LowerTypedDiv(gate);
+            LowerTypedBinOp<TypedBinOp::TYPED_DIV>(gate);
             break;
         case EcmaOpcode::MOD2_IMM8_V8:
-            LowerTypedMod(gate);
+            LowerTypedBinOp<TypedBinOp::TYPED_MOD>(gate);
             break;
         case EcmaOpcode::LESS_IMM8_V8:
             LowerTypedBinOp<TypedBinOp::TYPED_LESS>(gate);
@@ -166,37 +192,37 @@ void TSHCRLowering::Lower(GateRef gate)
             LowerTypedBinOp<TypedBinOp::TYPED_NOTEQ>(gate);
             break;
         case EcmaOpcode::SHL2_IMM8_V8:
-            LowerTypedShl(gate);
+            LowerTypedBinOp<TypedBinOp::TYPED_SHL>(gate);
             break;
         case EcmaOpcode::SHR2_IMM8_V8:
-            LowerTypedShr(gate);
+            LowerTypedBinOp<TypedBinOp::TYPED_SHR>(gate);
             break;
         case EcmaOpcode::ASHR2_IMM8_V8:
-            LowerTypedAshr(gate);
+            LowerTypedBinOp<TypedBinOp::TYPED_ASHR>(gate);
             break;
         case EcmaOpcode::AND2_IMM8_V8:
-            LowerTypedAnd(gate);
+            LowerTypedBinOp<TypedBinOp::TYPED_AND>(gate);
             break;
         case EcmaOpcode::OR2_IMM8_V8:
-            LowerTypedOr(gate);
+            LowerTypedBinOp<TypedBinOp::TYPED_OR>(gate);
             break;
         case EcmaOpcode::XOR2_IMM8_V8:
-            LowerTypedXor(gate);
+            LowerTypedBinOp<TypedBinOp::TYPED_XOR>(gate);
             break;
         case EcmaOpcode::TONUMERIC_IMM8:
             LowerTypeToNumeric(gate);
             break;
         case EcmaOpcode::NEG_IMM8:
-            LowerTypedNeg(gate);
+            LowerTypedUnOp<TypedUnOp::TYPED_NEG>(gate);
             break;
         case EcmaOpcode::NOT_IMM8:
-            LowerTypedNot(gate);
+            LowerTypedUnOp<TypedUnOp::TYPED_NOT>(gate);
             break;
         case EcmaOpcode::INC_IMM8:
-            LowerTypedInc(gate);
+            LowerTypedUnOp<TypedUnOp::TYPED_INC>(gate);
             break;
         case EcmaOpcode::DEC_IMM8:
-            LowerTypedDec(gate);
+            LowerTypedUnOp<TypedUnOp::TYPED_DEC>(gate);
             break;
         case EcmaOpcode::ISTRUE:
             LowerTypedIsTrueOrFalse(gate, true);
@@ -303,24 +329,17 @@ void TSHCRLowering::LowerTypedBinOp(GateRef gate)
     GateRef right = acc_.GetValueIn(gate, 1);
     if (HasNumberType(gate, left, right)) {
         SpeculateNumbers<Op>(gate);
+    } else if (HasStringType(gate, left, right)) {
+        SpeculateStrings<Op>(gate);
     }
 }
 
-void TSHCRLowering::LowerTypedMod(GateRef gate)
+template<TypedUnOp Op>
+void TSHCRLowering::LowerTypedUnOp(GateRef gate)
 {
-    GateRef left = acc_.GetValueIn(gate, 0);
-    GateRef right = acc_.GetValueIn(gate, 1);
-    if (HasNumberType(gate, left, right)) {
-        SpeculateNumbers<TypedBinOp::TYPED_MOD>(gate);
-    }
-}
-
-void TSHCRLowering::LowerTypedDiv(GateRef gate)
-{
-    GateRef left = acc_.GetValueIn(gate, 0);
-    GateRef right = acc_.GetValueIn(gate, 1);
-    if (HasNumberType(gate, left, right)) {
-        SpeculateNumbers<TypedBinOp::TYPED_DIV>(gate);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    if (HasNumberType(gate, value)) {
+        SpeculateNumber<Op>(gate);
     }
 }
 
@@ -336,76 +355,6 @@ void TSHCRLowering::LowerTypedStrictEq(GateRef gate)
         GateRef result = builder_.TypedBinaryOp<TypedBinOp::TYPED_STRICTEQ>(
             left, right, leftType, rightType, gateType, sampleType);
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
-    }
-}
-
-void TSHCRLowering::LowerTypedShl(GateRef gate)
-{
-    GateRef left = acc_.GetValueIn(gate, 0);
-    GateRef right = acc_.GetValueIn(gate, 1);
-    if (HasNumberType(gate, left, right)) {
-        SpeculateNumbers<TypedBinOp::TYPED_SHL>(gate);
-    }
-}
-
-void TSHCRLowering::LowerTypedShr(GateRef gate)
-{
-    GateRef left = acc_.GetValueIn(gate, 0);
-    GateRef right = acc_.GetValueIn(gate, 1);
-    if (HasNumberType(gate, left, right)) {
-        SpeculateNumbers<TypedBinOp::TYPED_SHR>(gate);
-    }
-}
-
-void TSHCRLowering::LowerTypedAshr(GateRef gate)
-{
-    GateRef left = acc_.GetValueIn(gate, 0);
-    GateRef right = acc_.GetValueIn(gate, 1);
-    if (HasNumberType(gate, left, right)) {
-        SpeculateNumbers<TypedBinOp::TYPED_ASHR>(gate);
-    }
-}
-
-void TSHCRLowering::LowerTypedAnd(GateRef gate)
-{
-    GateRef left = acc_.GetValueIn(gate, 0);
-    GateRef right = acc_.GetValueIn(gate, 1);
-    if (HasNumberType(gate, left, right)) {
-        SpeculateNumbers<TypedBinOp::TYPED_AND>(gate);
-    }
-}
-
-void TSHCRLowering::LowerTypedOr(GateRef gate)
-{
-    GateRef left = acc_.GetValueIn(gate, 0);
-    GateRef right = acc_.GetValueIn(gate, 1);
-    if (HasNumberType(gate, left, right)) {
-        SpeculateNumbers<TypedBinOp::TYPED_OR>(gate);
-    }
-}
-
-void TSHCRLowering::LowerTypedXor(GateRef gate)
-{
-    GateRef left = acc_.GetValueIn(gate, 0);
-    GateRef right = acc_.GetValueIn(gate, 1);
-    if (HasNumberType(gate, left, right)) {
-        SpeculateNumbers<TypedBinOp::TYPED_XOR>(gate);
-    }
-}
-
-void TSHCRLowering::LowerTypedInc(GateRef gate)
-{
-    GateRef value = acc_.GetValueIn(gate, 0);
-    if (HasNumberType(gate, value)) {
-        SpeculateNumber<TypedUnOp::TYPED_INC>(gate);
-    }
-}
-
-void TSHCRLowering::LowerTypedDec(GateRef gate)
-{
-    GateRef value = acc_.GetValueIn(gate, 0);
-    if (HasNumberType(gate, value)) {
-        SpeculateNumber<TypedUnOp::TYPED_DEC>(gate);
     }
 }
 
@@ -431,6 +380,42 @@ bool TSHCRLowering::HasNumberType(GateRef gate, GateRef left, GateRef right) con
         return true;
     }
     return false;
+}
+
+bool TSHCRLowering::HasStringType([[maybe_unused]] GateRef gate, GateRef left, GateRef right) const
+{
+    GateType leftType = acc_.GetGateType(left);
+    GateType rightType = acc_.GetGateType(right);
+
+    // PGO has not collected string type yet, so skip the check for whether the sampleType is string.
+    if (leftType.IsStringType() && rightType.IsStringType()) {
+        return true;
+    }
+    return false;
+}
+
+template<TypedBinOp Op>
+void TSHCRLowering::SpeculateStrings(GateRef gate)
+{
+    if (Op == TypedBinOp::TYPED_EQ) {
+        AddProfiling(gate);
+        GateRef left = acc_.GetValueIn(gate, 0);
+        GateRef right = acc_.GetValueIn(gate, 1);
+        if (!IsTrustedStringType(left)) {
+            builder_.EcmaStringCheck(left);
+        }
+        if (!IsTrustedStringType(right)) {
+            builder_.EcmaStringCheck(right);
+        }
+        GateType leftType = acc_.GetGateType(left);
+        GateType rightType = acc_.GetGateType(right);
+        GateType gateType = acc_.GetGateType(gate);
+        PGOSampleType sampleType = acc_.TryGetPGOType(gate);
+        pgoTypeLog_.CollectGateTypeLogInfo(gate, true);
+
+        GateRef result = builder_.TypedBinaryOp<Op>(left, right, leftType, rightType, gateType, sampleType);
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    }
 }
 
 template<TypedBinOp Op>
@@ -526,22 +511,6 @@ void TSHCRLowering::SpeculateConditionJump(GateRef gate, bool flag)
         jump = builder_.TypedConditionJump<TypedJumpOp::TYPED_JEQZ>(value, valueType, branchKind);
     }
     acc_.ReplaceGate(gate, jump, jump, Circuit::NullGate());
-}
-
-void TSHCRLowering::LowerTypedNeg(GateRef gate)
-{
-    GateRef value = acc_.GetValueIn(gate, 0);
-    if (HasNumberType(gate, value)) {
-        SpeculateNumber<TypedUnOp::TYPED_NEG>(gate);
-    }
-}
-
-void TSHCRLowering::LowerTypedNot(GateRef gate)
-{
-    GateRef value = acc_.GetValueIn(gate, 0);
-    if (HasNumberType(gate, value)) {
-        SpeculateNumber<TypedUnOp::TYPED_NOT>(gate);
-    }
 }
 
 void TSHCRLowering::DeleteConstDataIfNoUser(GateRef gate)
@@ -935,7 +904,7 @@ GateRef TSHCRLowering::LoadStringByIndex(GateRef receiver, GateRef propKey)
         builder_.EcmaStringCheck(receiver);
         GateRef length = builder_.LoadStringLength(receiver);
         propKey = builder_.IndexCheck(receiverType, length, propKey);
-        receiver = builder_.FlattenStringCheck(receiver);
+        receiver = builder_.FlattenTreeStringCheck(receiver);
     }
     return builder_.LoadElement<TypedLoadOp::STRING_LOAD_ELEMENT>(receiver, propKey);
 }

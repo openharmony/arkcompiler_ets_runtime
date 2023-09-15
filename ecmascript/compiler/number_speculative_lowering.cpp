@@ -111,6 +111,8 @@ void NumberSpeculativeLowering::VisitTypedBinaryOp(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     if (acc_.HasNumberType(gate)) {
         VisitNumberBinaryOp(gate);
+    } else if (acc_.HasStringType(gate)) {
+        VisitStringBinaryOp(gate);
     } else {
         [[maybe_unused]] GateRef left = acc_.GetValueIn(gate, 0);
         [[maybe_unused]] GateRef right = acc_.GetValueIn(gate, 1);
@@ -851,5 +853,40 @@ GateRef NumberSpeculativeLowering::GetConstInt32(int32_t v)
     auto val = builder_.Int32(v);
     UpdateRange(val, RangeInfo(v, v));
     return val;
+}
+
+void NumberSpeculativeLowering::VisitStringBinaryOp(GateRef gate)
+{
+    TypedBinOp Op = acc_.GetTypedBinaryOp(gate);
+    switch (Op) {
+        case TypedBinOp::TYPED_EQ: {
+            VisitStringCompare<TypedBinOp::TYPED_EQ>(gate);
+            break;
+        }
+        default:
+            LOG_COMPILER(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+}
+
+template<TypedBinOp Op>
+void NumberSpeculativeLowering::VisitStringCompare(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+
+    GateRef result;
+    switch (Op) {
+        case TypedBinOp::TYPED_EQ:
+            result = builder_.StringEqual(left, right);
+            break;
+        default:
+            LOG_COMPILER(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+
+    acc_.SetMachineType(gate, MachineType::I1);
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 }  // namespace panda::ecmascript

@@ -928,6 +928,16 @@ inline GateRef StubBuilder::TruncInt16ToInt8(GateRef val)
     return env_->GetBuilder()->TruncInt16ToInt8(val);
 }
 
+inline GateRef StubBuilder::TruncInt32ToInt16(GateRef val)
+{
+    return env_->GetBuilder()->TruncInt32ToInt16(val);
+}
+
+inline GateRef StubBuilder::TruncInt32ToInt8(GateRef val)
+{
+    return env_->GetBuilder()->TruncInt32ToInt8(val);
+}
+
 inline GateRef StubBuilder::ChangeInt64ToIntPtr(GateRef val)
 {
     if (env_->IsArch32Bit()) {
