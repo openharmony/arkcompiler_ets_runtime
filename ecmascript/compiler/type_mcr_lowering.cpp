@@ -15,7 +15,7 @@
 
 #include "ecmascript/compiler/type_mcr_lowering.h"
 #include "ecmascript/compiler/builtins_lowering.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/js_arraybuffer.h"

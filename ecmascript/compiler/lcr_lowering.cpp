@@ -14,7 +14,7 @@
  */
 #include "ecmascript/compiler/lcr_lowering.h"
 #include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_function.h"

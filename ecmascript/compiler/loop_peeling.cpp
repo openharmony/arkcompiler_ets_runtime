@@ -15,7 +15,7 @@
 
 #include "ecmascript/compiler/loop_peeling.h"
 #include "ecmascript/compiler/circuit.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/number_gate_info.h"
 #include "ecmascript/compiler/type.h"
 

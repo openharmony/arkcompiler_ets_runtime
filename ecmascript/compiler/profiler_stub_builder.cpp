@@ -15,7 +15,7 @@
 
 #include "ecmascript/compiler/profiler_stub_builder.h"
 
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/ic/profile_type_info.h"

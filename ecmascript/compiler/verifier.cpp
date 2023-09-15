@@ -21,7 +21,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/scheduler.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/ecma_macros.h"

@@ -23,7 +23,10 @@
 #include <vector>
 
 #include "ecmascript/compiler/gate.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
+#include "ecmascript/compiler/lcr_gate_meta_data.h"
+#include "ecmascript/compiler/mcr_gate_meta_data.h"
+#include "ecmascript/compiler/hcr_gate_meta_data.h"
 #include "ecmascript/compiler/gate_meta_data_builder.h"
 #include "ecmascript/frames.h"
 

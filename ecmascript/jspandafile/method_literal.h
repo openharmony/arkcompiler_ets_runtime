@@ -17,7 +17,7 @@
 #define ECMASCRIPT_JSPANDAFILE_METHOD_LITERAL_H
 
 #include "ecmascript/base/aligned_struct.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/js_function_kind.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_string.h"

@@ -17,7 +17,7 @@
 #define ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate.h"
-#include "ecmascript/compiler/gate_meta_data.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 
 namespace panda::ecmascript::kungfu {
