@@ -246,3 +246,9 @@ let arr12 = new Uint8Array(256).fill(255);
 print(arr12[0] == 255);
 print(arr12[123] == 255);
 print(arr12[255] == 255);
+
+try {
+    new Uint8Array(2 ** 32 - 1);
+} catch (error) {
+    print(error.name);
+}
