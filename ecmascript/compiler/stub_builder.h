@@ -327,6 +327,9 @@ public:
     GateRef IsAccessor(GateRef attr);
     GateRef IsInlinedProperty(GateRef attr);
     GateRef IsField(GateRef attr);
+    GateRef IsElement(GateRef attr);
+    GateRef IsStringElement(GateRef attr);
+    GateRef IsStringLength(GateRef attr);
     GateRef IsNonExist(GateRef attr);
     GateRef IsJSAPIVector(GateRef attr);
     GateRef IsJSAPIStack(GateRef obj);
@@ -469,6 +472,7 @@ public:
     GateRef LoadFromField(GateRef receiver, GateRef handlerInfo);
     GateRef LoadGlobal(GateRef cell);
     GateRef LoadElement(GateRef glue, GateRef receiver, GateRef key, ProfileOperation callback);
+    GateRef LoadStringElement(GateRef glue, GateRef receiver, GateRef key);
     GateRef TryToElementsIndex(GateRef glue, GateRef key);
     GateRef CheckPolyHClass(GateRef cachedValue, GateRef hClass);
     GateRef LoadICWithHandler(
