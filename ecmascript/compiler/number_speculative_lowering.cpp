@@ -844,8 +844,12 @@ void NumberSpeculativeLowering::UpdateRange(GateRef gate, const RangeInfo& range
 
 RangeInfo NumberSpeculativeLowering::GetRange(GateRef gate) const
 {
-    ASSERT(!rangeInfos_[acc_.GetId(gate)].IsNone());
-    return rangeInfos_[acc_.GetId(gate)];
+    auto id = acc_.GetId(gate);
+    if (id >= rangeInfos_.size()) {
+        rangeInfos_.resize(id + 1, RangeInfo::ANY());
+    }
+    ASSERT(!rangeInfos_[id].IsNone());
+    return rangeInfos_[id];
 }
 
 GateRef NumberSpeculativeLowering::GetConstInt32(int32_t v)

@@ -16,14 +16,15 @@
 #ifndef ECMASCRIPT_COMPILER_TS_HCR_OPT_PASS_H
 #define ECMASCRIPT_COMPILER_TS_HCR_OPT_PASS_H
 
-#include "ecmascript/compiler/graph_visitor.h"
+#include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/pass_manager.h"
 
 namespace panda::ecmascript::kungfu {
-class TSHCROptPass : public GraphVisitor {
+class TSHCROptPass : public PassVisitor {
 public:
-    TSHCROptPass(Circuit* circuit, Chunk* chunk, PassContext *ctx, bool enableLog, const std::string &name)
-        : GraphVisitor(circuit, chunk),
+    TSHCROptPass(Circuit* circuit, RPOVisitor *visitor, Chunk* chunk,
+                 PassContext *ctx, bool enableLog, const std::string &name)
+        : PassVisitor(circuit, chunk, visitor),
           builder_(circuit, ctx->GetCompilerConfig()),
           tsManager_(ctx->GetTSManager()),
           thread_(ctx->GetEcmaVM()->GetJSThread()),
@@ -32,7 +33,6 @@ public:
 
     ~TSHCROptPass() = default;
 
-    void Run();
     GateRef VisitGate(GateRef gate) override;
 
 private:
