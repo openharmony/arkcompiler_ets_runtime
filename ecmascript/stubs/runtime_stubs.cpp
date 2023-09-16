@@ -762,7 +762,7 @@ DEF_RUNTIME_STUBS(LoadICByValue)
     JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
     LoadICRuntime icRuntime(thread, JSHandle<ProfileTypeInfo>::Cast(profileTypeInfo), slotId.GetInt(), ICKind::LoadIC);
-    return icRuntime.LoadMiss(receiver, propKey).GetRawData();
+    return icRuntime.LoadValueMiss(receiver, propKey).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(StoreICByValue)

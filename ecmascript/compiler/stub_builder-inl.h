@@ -1397,6 +1397,33 @@ inline GateRef StubBuilder::IsField(GateRef attr)
         Int32(HandlerBase::HandlerKind::FIELD));
 }
 
+inline GateRef StubBuilder::IsElement(GateRef attr)
+{
+    return Int32Equal(
+        Int32And(
+            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
+        Int32(HandlerBase::HandlerKind::ELEMENT));
+}
+
+inline GateRef StubBuilder::IsStringElement(GateRef attr)
+{
+    return Int32Equal(
+        Int32And(
+            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
+        Int32(HandlerBase::HandlerKind::STRING));
+}
+
+inline GateRef StubBuilder::IsStringLength(GateRef attr)
+{
+    return Int32Equal(
+        Int32And(
+            Int32LSR(attr, Int32(HandlerBase::KindBit::START_BIT)),
+            Int32((1LLU << HandlerBase::KindBit::SIZE) - 1)),
+        Int32(HandlerBase::HandlerKind::STRING_LENGTH));
+}
+
 inline GateRef StubBuilder::IsNonExist(GateRef attr)
 {
     return Int32Equal(

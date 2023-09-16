@@ -1600,6 +1600,10 @@ GateRef StubBuilder::LoadICWithHandler(
     Label handlerInfoNotField(env);
     Label handlerInfoIsNonExist(env);
     Label handlerInfoNotNonExist(env);
+    Label handlerInfoIsString(env);
+    Label handlerInfoNotString(env);
+    Label handlerInfoIsStringLength(env);
+    Label handlerInfoNotStringLength(env);
     Label handlerIsPrototypeHandler(env);
     Label handlerNotPrototypeHandler(env);
     Label cellHasChanged(env);
@@ -1624,13 +1628,43 @@ GateRef StubBuilder::LoadICWithHandler(
             }
             Bind(&handlerInfoNotField);
             {
-                Branch(IsNonExist(handlerInfo), &handlerInfoIsNonExist, &handlerInfoNotNonExist);
-                Bind(&handlerInfoIsNonExist);
-                Jump(&exit);
-                Bind(&handlerInfoNotNonExist);
-                GateRef accessor = LoadFromField(*holder, handlerInfo);
-                result = CallGetterHelper(glue, receiver, *holder, accessor, callback);
-                Jump(&exit);
+                Branch(IsStringElement(handlerInfo), &handlerInfoIsString, &handlerInfoNotString);
+                Bind(&handlerInfoIsString);
+                {
+                    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+                    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+                    auto stringProto = GetGlobalEnvValue(VariableType::JS_ANY(),
+                        glueGlobalEnv, GlobalEnv::STRING_PROTOTYPE_INDEX);
+                    result = LoadFromField(stringProto, handlerInfo);
+                    Jump(&exit);
+                }
+                Bind(&handlerInfoNotString);
+                {
+                    Branch(IsNonExist(handlerInfo), &handlerInfoIsNonExist, &handlerInfoNotNonExist);
+                    Bind(&handlerInfoIsNonExist);
+                    Jump(&exit);
+                    Bind(&handlerInfoNotNonExist);
+                    {
+                        Branch(IsStringLength(handlerInfo), &handlerInfoIsStringLength, &handlerInfoNotStringLength);
+                        Bind(&handlerInfoNotStringLength);
+                        {
+                            GateRef accessor = LoadFromField(*holder, handlerInfo);
+                            result = CallGetterHelper(glue, receiver, *holder, accessor, callback);
+                            Jump(&exit);
+                        }
+                        Bind(&handlerInfoIsStringLength);
+                        {
+                            GateRef glueGlobalEnvOffset = IntPtr(
+                                JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+                            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+                            auto stringProto = GetGlobalEnvValue(VariableType::JS_ANY(),
+                                glueGlobalEnv, GlobalEnv::STRING_PROTOTYPE_INDEX);
+                            GateRef lengthAccessor = LoadFromField(stringProto, handlerInfo);
+                            result = CallGetterHelper(glue, receiver, stringProto, lengthAccessor, callback);
+                            Jump(&exit);
+                        }
+                    }
+                }
             }
         }
         Bind(&handlerNotInt);
@@ -1695,6 +1729,54 @@ GateRef StubBuilder::LoadElement(GateRef glue, GateRef receiver, GateRef key, Pr
         Bind(&lengthNotLessIndex);
         result = GetValueFromTaggedArray(elements, index);
         callback.ProfileObjLayoutByLoad(receiver);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::LoadStringElement(GateRef glue, GateRef receiver, GateRef key)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label indexLessZero(env);
+    Label indexNotLessZero(env);
+    Label lengthLessIndex(env);
+    Label lengthNotLessIndex(env);
+    Label greaterThanInt32Max(env);
+    Label notGreaterThanInt32Max(env);
+    Label flattenFastPath(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    GateRef index64 = TryToElementsIndex(glue, key);
+    Branch(Int64GreaterThanOrEqual(index64, Int64(INT32_MAX)), &greaterThanInt32Max, &notGreaterThanInt32Max);
+    Bind(&greaterThanInt32Max);
+    {
+        Jump(&exit);
+    }
+    Bind(&notGreaterThanInt32Max);
+    GateRef index = TruncInt64ToInt32(index64);
+    Branch(Int32LessThan(index, Int32(0)), &indexLessZero, &indexNotLessZero);
+    Bind(&indexLessZero);
+    {
+        Jump(&exit);
+    }
+    Bind(&indexNotLessZero);
+    {
+        FlatStringStubBuilder thisFlat(this);
+        thisFlat.FlattenString(glue, receiver, &flattenFastPath);
+        Bind(&flattenFastPath);
+        Branch(Int32LessThanOrEqual(GetLengthFromString(receiver), index), &lengthLessIndex, &lengthNotLessIndex);
+        Bind(&lengthLessIndex);
+        Jump(&exit);
+        Bind(&lengthNotLessIndex);
+        BuiltinsStringStubBuilder stringBuilder(this);
+        StringInfoGateRef stringInfoGate(&thisFlat);
+        result = stringBuilder.CreateFromEcmaString(glue, index, stringInfoGate);
         Jump(&exit);
     }
     Bind(&exit);
