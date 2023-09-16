@@ -48,11 +48,11 @@ JSTaggedValue BuiltinsJson::Parse(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> result;
     if (EcmaStringAccessor(parseString).IsUtf8()) {
-        panda::ecmascript::base::JsonParser<uint8_t> parser(thread);
-        result = parser.ParseUtf8(*parseString);
+        panda::ecmascript::base::Utf8JsonParser parser(thread);
+        result = parser.Parse(*parseString);
     } else {
-        panda::ecmascript::base::JsonParser<uint16_t> parser(thread);
-        result = parser.ParseUtf16(*parseString);
+        panda::ecmascript::base::Utf16JsonParser parser(thread);
+        result = parser.Parse(*parseString);
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
