@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
+#include "ecmascript/compiler/dead_code_elimination.h"
 #include "ecmascript/compiler/early_elimination.h"
 #include "ecmascript/compiler/array_bounds_check_elimination.h"
 #include "ecmascript/compiler/graph_editor.h"
@@ -300,10 +301,12 @@ public:
         }
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
         TSHCROptPass optimization(data->GetCircuit(), &visitor, &chunk, data->GetPassContext(), enableLog,
                                   data->GetMethodName());
         
         visitor.AddPass(&optimization);
+        visitor.AddPass(&deadCodeElimination);
         visitor.VisitGraph();
         visitor.PrintLog("TSHCROptPass");
         return true;
@@ -323,6 +326,11 @@ public:
         NTypeHCRLowering lowering(data->GetCircuit(), data->GetPassContext(), data->GetTSManager(),
             data->GetMethodLiteral(), data->GetRecordName(), enableLog, data->GetMethodName());
         lowering.RunNTypeHCRLowering();
+        Chunk chunk(data->GetNativeAreaAllocator());
+        CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
+        visitor.AddPass(&deadCodeElimination);
+        visitor.VisitGraph();
         return true;
     }
 };

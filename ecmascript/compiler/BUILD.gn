@@ -88,6 +88,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     "common_stubs.cpp",
     "compilation_driver.cpp",
     "compiler_log.cpp",
+    "dead_code_elimination.cpp",
     "debug_info.cpp",
     "early_elimination.cpp",
     "file_generators.cpp",

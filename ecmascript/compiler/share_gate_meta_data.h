@@ -184,8 +184,10 @@ public:
     bool IsVirtualState() const;
     bool IsCFGMerge() const;
     bool IsControlCase() const;
+    bool IsIfOrSwitchRelated() const;
     bool IsLoopHead() const;
     bool IsNop() const;
+    bool IsDead() const;
     bool IsConstant() const;
     bool IsDependSelector() const;
     bool IsTypedOperator() const;
