@@ -272,6 +272,8 @@ public:
     template<TypedCallTargetCheckOp Op>
     inline GateRef JSNoGCCallThisTargetTypeCheck(GateType type, GateRef func, GateRef methodId, GateRef gate);
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
+    GateRef TypeOfCheck(GateRef gate, GateType type);
+    GateRef TypedTypeOf(GateType type);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef>& inList);
     inline GateRef TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);

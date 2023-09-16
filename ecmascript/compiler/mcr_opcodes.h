@@ -86,7 +86,9 @@ namespace panda::ecmascript::kungfu {
     V(CheckAndConvert, CHECK_AND_CONVERT, GateFlags::CHECKABLE, 1, 1, 1)                   \
     V(Convert, CONVERT, GateFlags::NONE_FLAG, 0, 0, 1)                                     \
     V(JSInlineTargetTypeCheck, JSINLINETARGET_TYPE_CHECK, GateFlags::CHECKABLE, 1, 1, 2)   \
-    V(InlineAccessorCheck, INLINE_ACCESSOR_CHECK, GateFlags::CHECKABLE, 1, 1, 2)
+    V(InlineAccessorCheck, INLINE_ACCESSOR_CHECK, GateFlags::CHECKABLE, 1, 1, 2)           \
+    V(TypeOfCheck, TYPE_OF_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                           \
+    V(TypeOf, TYPE_OF, GateFlags::NO_WRITE, 1, 1, 0)
 
 #define MCR_GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     MCR_GATE_META_DATA_LIST_WITH_VALUE(V)                     \

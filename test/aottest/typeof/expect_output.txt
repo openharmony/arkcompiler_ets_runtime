@@ -18,3 +18,8 @@ boolean
 undefined
 object
 object
+object
+function
+object
+bigint
+function

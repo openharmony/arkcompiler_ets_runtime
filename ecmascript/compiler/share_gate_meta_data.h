@@ -58,7 +58,8 @@ using PGORWOpType = pgo::PGORWOpType;
     V(LexVarIsHole, LEXVARISHOLE)             \
     V(ModZero, MODZERO)                       \
     V(Int32Overflow, INT32OVERFLOW)           \
-    V(NotString, NOTSTRING)
+    V(NotString, NOTSTRING)                   \
+    V(InconsistentType,INCONSISTENTTYPE)
 
 enum class DeoptType : uint8_t {
     NOTCHECK = 0,

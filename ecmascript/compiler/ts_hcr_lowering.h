@@ -137,6 +137,7 @@ private:
                                      GateType funcType, bool isNoGC);
     void LowerFastCall(GateRef gate, GateRef func, const std::vector<GateRef> &argsFastCall, bool isNoGC);
     void LowerCall(GateRef gate, GateRef func, const std::vector<GateRef> &args, bool isNoGC);
+    void LowerTypedTypeOf(GateRef gate);
     GateRef LoadStringByIndex(GateRef receiver, GateRef propKey);
     GateRef LoadJSArrayByIndex(GateRef receiver, GateRef propKey, ElementsKind kind);
     GateRef LoadTypedArrayByIndex(GateRef receiver, GateRef propKey);

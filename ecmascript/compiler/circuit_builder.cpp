@@ -319,6 +319,31 @@ GateRef CircuitBuilder::IndexCheck(GateType type, GateRef gate, GateRef index)
     return ret;
 }
 
+GateRef CircuitBuilder::TypeOfCheck(GateRef gate, GateType type)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypeOfCheck(static_cast<size_t>(type.Value())),
+        MachineType::I64, {currentControl, currentDepend, gate, frameState}, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::TypedTypeOf(GateType type)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->TypeOf(static_cast<size_t>(type.Value())),
+        MachineType::I64, {currentControl, currentDepend}, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::IsJsCOWArray(GateRef obj)
 {
     // Elements of JSArray are shared and properties are not yet.

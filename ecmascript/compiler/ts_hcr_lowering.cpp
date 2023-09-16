@@ -315,6 +315,10 @@ void TSHCRLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
             LowerTypedCallthisrange(gate);
             break;
+        case EcmaOpcode::TYPEOF_IMM8:
+        case EcmaOpcode::TYPEOF_IMM16:
+            LowerTypedTypeOf(gate);
+            break;
         default:
             DeleteBytecodeCount(ecmaOpcode);
             allNonTypedOpCount_++;
@@ -1592,5 +1596,27 @@ void TSHCRLowering::AddHitBytecodeCount()
     } else {
         bytecodeHitTimeMap_[currentOp_] = 1;
     }
+}
+
+
+void TSHCRLowering::LowerTypedTypeOf(GateRef gate)
+{
+    // 1: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateType valueType = acc_.GetGateType(gate);
+    if (!valueType.IsDigitablePrimitiveType() && !valueType.IsStringType() && !valueType.IsSymbolType()) {
+        if (!tsManager_->IsFunctionTypeKind(valueType) && !tsManager_->IsObjectTypeKind(valueType) &&
+            !tsManager_->IsClassTypeKind(valueType) && !tsManager_->IsClassInstanceTypeKind(valueType) &&
+            !tsManager_->IsArrayTypeKind(valueType)) {
+            return;
+        }
+    }
+    AddProfiling(gate);
+    if (!Uncheck()) {
+        builder_.TypeOfCheck(value, valueType);
+    }
+    GateRef result = builder_.TypedTypeOf(valueType);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 }  // namespace panda::ecmascript

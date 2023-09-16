@@ -297,7 +297,9 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
            GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::INDEX_CHECK ||
            GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP ||
-           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER ||
+           GetOpCode(gate) == OpCode::TYPE_OF_CHECK ||
+           GetOpCode(gate) == OpCode::TYPE_OF);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();

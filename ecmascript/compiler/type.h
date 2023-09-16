@@ -212,6 +212,14 @@ public:
         return IsNumberType() || IsNullType() || IsUndefinedType() || IsBooleanType() || IsBigIntType();
     }
 
+    bool IsSymbolType() const
+    {
+        GlobalTSTypeRef r = GetGTRef();
+        uint32_t m = r.GetModuleId();
+        uint32_t l = r.GetLocalId();
+        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::SYMBOL));
+    }
+
     bool IsGCRelated() const
     {
         return (type_ & (~GateType::GC_MASK)) == 0;
