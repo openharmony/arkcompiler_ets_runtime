@@ -479,8 +479,8 @@ bool EcmaString::EqualToSplicedString(const EcmaString *str1, const EcmaString *
     } else {
         CVector<uint8_t> buf;
         const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
-        if (EcmaString::StringsAreEqualUtf8(str1, data, str1->GetLength(), this->IsUtf8())) {
-            return EcmaString::StringsAreEqualUtf8(str2, data + str1->GetLength(), str2->GetLength(), this->IsUtf8());
+        if (EcmaString::StringIsEqualUint8Data(str1, data, str1->GetLength(), this->IsUtf8())) {
+            return EcmaString::StringIsEqualUint8Data(str2, data + str1->GetLength(), str2->GetLength(), this->IsUtf8());
         }
     }
     return false;
@@ -598,25 +598,25 @@ bool EcmaString::StringsAreEqual(EcmaString *str1, EcmaString *str2)
 }
 
 /* static */
-bool EcmaString::StringsAreEqualUtf8(const EcmaString *str1, const uint8_t *utf8Data, uint32_t utf8Len,
-                                     bool canBeCompress)
+bool EcmaString::StringIsEqualUint8Data(const EcmaString *str1, const uint8_t *dataAddr, uint32_t dataLen,
+                                        bool canBeCompressToUtf8)
 {
-    if (!str1->IsSlicedString() && canBeCompress != str1->IsUtf8()) {
+    if (!str1->IsSlicedString() && canBeCompressToUtf8 != str1->IsUtf8()) {
         return false;
     }
-    if (canBeCompress && str1->GetLength() != utf8Len) {
+    if (canBeCompressToUtf8 && str1->GetLength() != dataLen) {
         return false;
     }
     if (str1->IsUtf8()) {
         CVector<uint8_t> buf;
-        Span<const uint8_t> data1(EcmaString::GetUtf8DataFlat(str1, buf), utf8Len);
-        Span<const uint8_t> data2(utf8Data, utf8Len);
+        Span<const uint8_t> data1(EcmaString::GetUtf8DataFlat(str1, buf), dataLen);
+        Span<const uint8_t> data2(dataAddr, dataLen);
         return EcmaString::StringsAreEquals(data1, data2);
     }
     CVector<uint16_t> buf;
     uint32_t length = str1->GetLength();
     const uint16_t *data = EcmaString::GetUtf16DataFlat(str1, buf);
-    return IsUtf8EqualsUtf16(utf8Data, utf8Len, data, length);
+    return IsUtf8EqualsUtf16(dataAddr, dataLen, data, length);
 }
 
 /* static */

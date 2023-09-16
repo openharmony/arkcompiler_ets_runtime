@@ -383,7 +383,7 @@ public:
     static JSTaggedType CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
-    static int32_t DoubleToInt(double x);
+    static int32_t DoubleToInt(double x, size_t bits);
     static JSTaggedType DoubleToLength(double x);
     static double FloatMod(double x, double y);
     static JSTaggedType FloatSqrt(double x);

@@ -180,7 +180,7 @@ GateRef CircuitBuilder::DoubleToInt(GateRef x, Label *exit)
     Bind(&overflow);
     {
         result = CallNGCRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(DoubleToInt),
-                                Circuit::NullGate(), { x }, Circuit::NullGate());
+                                Circuit::NullGate(), { x, IntPtr(base::INT32_BITS) }, Circuit::NullGate());
         Jump(exit);
     }
     Bind(exit);

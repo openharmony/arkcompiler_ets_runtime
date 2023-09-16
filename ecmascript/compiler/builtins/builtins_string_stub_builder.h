@@ -21,14 +21,20 @@ namespace panda::ecmascript::kungfu {
 class FlatStringStubBuilder;
 struct StringInfoGateRef;
 
-class BuiltinsStringStubBuilder : public StubBuilder {
+class BuiltinsStringStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit BuiltinsStringStubBuilder(StubBuilder *parent)
-        : StubBuilder(parent) {}
+        : BuiltinsStubBuilder(parent) {}
     ~BuiltinsStringStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsStringStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsStringStubBuilder);
     void GenerateCircuit() override {}
+
+    void FromCharCode(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+    void CharAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+    void CharCodeAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+    void IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
+    void Substring(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
 
     GateRef StringAt(const StringInfoGateRef &stringInfoGate, GateRef index);
     GateRef FastSubString(GateRef glue, GateRef thisValue, GateRef from, GateRef len,

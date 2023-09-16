@@ -68,3 +68,14 @@ print(obj[str]);
 print(obj[str4]);
 print((str === str5).toString());
 print((str4 == str6).toString());
+
+var s0 = String.fromCharCode();
+var s1 = String.fromCharCode(65);
+var s2 = String.fromCharCode(65, 66.678);
+var s3 = String.fromCharCode(0x12014);
+var s4 = String.fromCharCode(true);
+print(s0);
+print(s1);
+print(s2);
+print(s3);
+print(s4);

@@ -77,7 +77,7 @@ public:
 #undef DEF_MESSAGE_ID
         MAX_MESSAGE_COUNT,
         ASM_INTERPRETER_START = Message_INT32_VALUE + 1,
-        BUILTINS_STUB_START = Message_CharCodeAt,
+        BUILTINS_STUB_START = Message_StringCharCodeAt,
         BUILTINS_STUB_LAST = Message_ArrayConstructor,
     };
     static const std::string& GetMessageString(int id);

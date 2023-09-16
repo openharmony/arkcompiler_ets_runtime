@@ -1759,12 +1759,13 @@ DEF_CALL_SIGNATURE(FindElementWithCache)
 
 DEF_CALL_SIGNATURE(DoubleToInt)
 {
-    // 1 : 1 input parameters
-    CallSignature index("DoubleToInt", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    // 2 : 2 input parameters
+    CallSignature index("DoubleToInt", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
     *callSign = index;
-    // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
         VariableType::FLOAT64(),
+        VariableType::NATIVE_POINTER(),
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);

@@ -47,7 +47,7 @@ EcmaString *EcmaStringTable::GetString(const uint8_t *utf8Data, uint32_t utf8Len
     auto range = table_.equal_range(hashCode);
     for (auto item = range.first; item != range.second; ++item) {
         auto foundString = item->second;
-        if (EcmaStringAccessor::StringsAreEqualUtf8(foundString, utf8Data, utf8Len, canBeCompress)) {
+        if (EcmaStringAccessor::StringIsEqualUint8Data(foundString, utf8Data, utf8Len, canBeCompress)) {
             return foundString;
         }
     }
