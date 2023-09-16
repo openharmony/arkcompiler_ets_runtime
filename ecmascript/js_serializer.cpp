@@ -895,7 +895,7 @@ bool JSSerializer::WritePlainObject(const JSHandle<JSTaggedValue> &objValue)
     JSHandle<JSObject> obj = JSHandle<JSObject>::Cast(objValue);
     std::vector<JSTaggedValue> keyVector;
     uint32_t propertiesLength = obj->GetNumberOfKeys();
-    JSObject::GetAllKeys(obj, keyVector);
+    JSObject::GetAllKeysForSerialization(obj, keyVector);
     if (keyVector.size() != propertiesLength) {
         return false;
     }

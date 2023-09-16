@@ -574,7 +574,7 @@ public:
                                                          JSTaggedValue ihc = JSTaggedValue::Undefined());
     static void GetAllKeys(const JSThread *thread, const JSHandle<JSObject> &obj, int offset,
                            const JSHandle<TaggedArray> &keyArray);
-    static void GetAllKeys(const JSHandle<JSObject> &obj, std::vector<JSTaggedValue> &keyVector);
+    static void GetAllKeysForSerialization(const JSHandle<JSObject> &obj, std::vector<JSTaggedValue> &keyVector);
 
     static void GetAllKeysByFilter(const JSThread *thread, const JSHandle<JSObject> &obj,
                                    uint32_t &keyArrayEffectivelength,
