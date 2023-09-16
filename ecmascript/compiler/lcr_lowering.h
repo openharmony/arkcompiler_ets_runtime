@@ -71,6 +71,8 @@ private:
     void LowerInt32DivWithCheck(GateRef gate);
     void LowerLexVarIsHoleCheck(GateRef gate);
     void LowerStoreMemory(GateRef gate);
+    void LowerCheckNullAndConvert(GateRef gate, GateRef frameState);
+    void LowerUndefinedAndConvert(GateRef gate, GateRef frameState);
 
     GateRef ConvertBoolToTaggedBoolean(GateRef gate);
     GateRef ConvertInt32ToFloat64(GateRef gate);

@@ -83,7 +83,7 @@ private:
 
     void Lower(GateRef gate);
     template<TypedBinOp Op>
-    void LowerTypedBinOp(GateRef gate);
+    void LowerTypedBinOp(GateRef gate, bool convertNumberType = true);
     template<TypedUnOp Op>
     void LowerTypedUnOp(GateRef gate);
     void LowerTypedStrictEq(GateRef gate);
@@ -150,7 +150,7 @@ private:
     bool IsTrustedType(GateRef gate) const;
     bool IsTrustedStringType(GateRef gate) const;
     bool HasNumberType(GateRef gate, GateRef value) const;
-    bool HasNumberType(GateRef gate, GateRef left, GateRef right) const;
+    bool HasNumberType(GateRef gate, GateRef left, GateRef right, bool convertNumberType = true) const;
     bool HasStringType(GateRef gate, GateRef left, GateRef right) const;
 
     void AddBytecodeCount(EcmaOpcode op);

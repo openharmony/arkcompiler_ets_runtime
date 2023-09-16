@@ -395,6 +395,7 @@ public:
     TypedBinOp GetTypedBinaryOp(GateRef gate) const;
     TypedCallTargetCheckOp GetTypedCallTargetCheckOp(GateRef gate) const;
     PGOSampleType GetTypedBinaryType(GateRef gate) const;
+    bool HasPrimitiveNumberType(GateRef gate) const;
     bool HasNumberType(GateRef gate) const;
     bool HasStringType(GateRef gate) const;
     GlobalTSTypeRef GetFuncGT(GateRef gate) const;

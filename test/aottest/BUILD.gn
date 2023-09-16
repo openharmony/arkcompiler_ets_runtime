@@ -50,6 +50,7 @@ group("ark_aot_ts_test") {
     "await",
     "await_loop",
     "bind",
+    "binaryop_special_value",
     "builtinmath",
     "call_same_bytecode_func",
     "callithisrange",
@@ -230,6 +231,7 @@ group("ark_aot_ts_test") {
     "typedarray",
     "typedarray_load_store",
     "typeof",
+    "unaryop_special_value",
     "xor",
   ]
 

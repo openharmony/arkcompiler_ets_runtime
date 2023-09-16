@@ -321,6 +321,14 @@ public:
     GateRef CheckTaggedNumberAndConvertToFloat64(GateRef gate);
     GateRef CheckTaggedNumberAndConvertToBool(GateRef gate);
     GateRef CheckTaggedBooleanAndConvertToBool(GateRef gate);
+    GateRef CheckNullAndConvertToInt32(GateRef gate);
+    GateRef CheckTaggedBooleanAndConvertToInt32(GateRef gate);
+    GateRef CheckNullAndConvertToFloat64(GateRef gate);
+    GateRef CheckTaggedBooleanAndConvertToFloat64(GateRef gate);
+    GateRef CheckUndefinedAndConvertToFloat64(GateRef gate);
+    GateRef CheckUndefinedAndConvertToBool(GateRef gate);
+    GateRef CheckNullAndConvertToBool(GateRef gate);
+    GateRef CheckUndefinedAndConvertToInt32(GateRef gate);
     GateRef InsertStableArrayCheck(GateRef array);
     GateRef InsertLoadArrayLength(GateRef array, bool isTypedArray);
     GateRef InsertTypedArrayCheck(GateType type, GateRef array);
@@ -352,6 +360,7 @@ public:
     GateRef NullPtrConstant();
     GateRef NullConstant();
     GateRef ExceptionConstant();
+    GateRef NanValue();
     GateRef RelocatableData(uint64_t val);
     GateRef Alloca(size_t size);
     GateRef Branch(GateRef state, GateRef condition,

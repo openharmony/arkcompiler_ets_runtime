@@ -109,10 +109,24 @@ void NumberSpeculativeLowering::VisitGate(GateRef gate)
 void NumberSpeculativeLowering::VisitTypedBinaryOp(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    if (acc_.HasNumberType(gate)) {
-        VisitNumberBinaryOp(gate);
-    } else if (acc_.HasStringType(gate)) {
+    if (acc_.HasStringType(gate)) {
         VisitStringBinaryOp(gate);
+        return;
+    }
+
+    if (acc_.GetTypedBinaryOp(gate) != TypedBinOp::TYPED_STRICTEQ) {
+        if (acc_.HasPrimitiveNumberType(gate)) {
+            VisitNumberBinaryOp(gate);
+        }
+    } else {
+        VisitStrictEqual(gate);
+    }
+}
+
+void NumberSpeculativeLowering::VisitStrictEqual(GateRef gate)
+{
+    if (acc_.HasNumberType(gate)) {
+         VisitNumberBinaryOp(gate);
     } else {
         [[maybe_unused]] GateRef left = acc_.GetValueIn(gate, 0);
         [[maybe_unused]] GateRef right = acc_.GetValueIn(gate, 1);
@@ -390,7 +404,7 @@ void NumberSpeculativeLowering::VisitNumberMonocular(GateRef gate)
 {
     TypedUnaryAccessor accessor(acc_.TryGetValue(gate));
     GateType type = accessor.GetTypeValue();
-    ASSERT(type.IsNumberType());
+    ASSERT(type.IsPrimitiveNumberType());
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef result = Circuit::NullGate();
     if (type.IsIntType()) {
@@ -410,7 +424,7 @@ void NumberSpeculativeLowering::VisitNumberMonocular(GateRef gate)
 
 void NumberSpeculativeLowering::VisitNumberNot(GateRef gate)
 {
-    ASSERT(TypedUnaryAccessor(acc_.TryGetValue(gate)).GetTypeValue().IsNumberType());
+    ASSERT(TypedUnaryAccessor(acc_.TryGetValue(gate)).GetTypeValue().IsPrimitiveNumberType());
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef result = builder_.Int32Not(value);
     UpdateRange(result, GetRange(gate));

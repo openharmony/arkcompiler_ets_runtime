@@ -283,6 +283,23 @@ bool GateAccessor::HasStringType(GateRef gate) const
     return false;
 }
 
+// Include number, undefined, null and boolean type.
+bool GateAccessor::HasPrimitiveNumberType(GateRef gate) const
+{
+    auto sampleType = GetTypedBinaryType(gate);
+    if (sampleType.IsNumber()) {
+        return true;
+    }
+    if (sampleType.IsNone()) {
+        GateType leftType = GetLeftType(gate);
+        GateType rightType = GetRightType(gate);
+        if (leftType.IsPrimitiveNumberType() && rightType.IsPrimitiveNumberType()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 GlobalTSTypeRef GateAccessor::GetFuncGT(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::JSINLINETARGET_TYPE_CHECK);

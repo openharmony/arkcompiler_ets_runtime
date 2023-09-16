@@ -543,6 +543,46 @@ GateRef CircuitBuilder::CheckTaggedNumberAndConvertToFloat64(GateRef gate)
     return CheckAndConvert(gate, ValueType::TAGGED_NUMBER, ValueType::FLOAT64);
 }
 
+GateRef CircuitBuilder::CheckNullAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_NULL, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::CheckTaggedBooleanAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_BOOLEAN, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::CheckNullAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_NULL, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::CheckTaggedBooleanAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_BOOLEAN, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::CheckUndefinedAndConvertToFloat64(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::UNDEFINED, ValueType::FLOAT64);
+}
+
+GateRef CircuitBuilder::CheckUndefinedAndConvertToBool(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::UNDEFINED, ValueType::BOOL);
+}
+
+GateRef CircuitBuilder::CheckNullAndConvertToBool(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::TAGGED_NULL, ValueType::BOOL);
+}
+
+GateRef CircuitBuilder::CheckUndefinedAndConvertToInt32(GateRef gate)
+{
+    return CheckAndConvert(gate, ValueType::UNDEFINED, ValueType::INT32);
+}
+
 GateRef CircuitBuilder::TryPrimitiveTypeCheck(GateType type, GateRef gate)
 {
     if (acc_.GetOpCode(gate) == OpCode::CONSTANT) {
@@ -853,6 +893,11 @@ GateRef CircuitBuilder::ExceptionConstant()
 {
     auto type = GateType::TaggedValue();
     return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_EXCEPTION, type);
+}
+
+GateRef CircuitBuilder::NanValue()
+{
+    return Double(std::numeric_limits<double>::quiet_NaN());
 }
 
 MachineType CircuitBuilder::GetMachineTypeFromVariableType(VariableType type)

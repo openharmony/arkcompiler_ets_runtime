@@ -68,6 +68,7 @@ private:
     void VisitNumberMod(GateRef gate);
     void VisitBooleanJump(GateRef gate);
     void VisitIsTrueOrFalse(GateRef gate, bool flag);
+    void VisitStrictEqual(GateRef gate);
 
     template<TypedBinOp Op>
     void VisitStringCompare(GateRef gate);
