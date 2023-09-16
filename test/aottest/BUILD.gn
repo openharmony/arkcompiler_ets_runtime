@@ -42,6 +42,7 @@ group("ark_aot_ts_test") {
     "add",
     "and",
     "array",
+    "array_bounds_check_elimination",
     "ashr",
     "asyncgenerator",
     "asyncgeneratormultiloop",

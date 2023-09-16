@@ -22,6 +22,7 @@ namespace panda::ecmascript::kungfu {
     V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)
 
 #define HCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                         \
+    V(Call, CALL, GateFlags::NONE_FLAG, 0, 1, value)                                     \
     V(NoGcRuntimeCall, NOGC_RUNTIME_CALL, GateFlags::NO_WRITE, 0, 1, value)              \
     V(BytecodeCall, BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)                    \
     V(DebuggerBytecodeCall, DEBUGGER_BYTECODE_CALL, GateFlags::NONE_FLAG, 0, 1, value)   \
@@ -42,6 +43,10 @@ namespace panda::ecmascript::kungfu {
     V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 0)                         \
     V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 2)   \
     V(RestoreRegister, RESTORE_REGISTER, GateFlags::NONE_FLAG, 0, 0, 1)
+
+#define HCR_GATE_META_DATA_LIST_WITH_BOOL_VALUE_IN(V)                              \
+    V(CallOptimized, CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)            \
+    V(FastCallOptimized, FAST_CALL_OPTIMIZED, GateFlags::NONE_FLAG, 0, 1, value)
 
 #define HCR_GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
     HCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)

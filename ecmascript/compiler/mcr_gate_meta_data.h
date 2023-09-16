@@ -210,7 +210,6 @@ private:
     TypedCallTargetCheckOp checkOp_;
 };
 
-
 class TypedBinaryMetaData : public OneParameterMetaData {
 public:
     TypedBinaryMetaData(uint64_t value, TypedBinOp binOp, PGOSampleType type)
