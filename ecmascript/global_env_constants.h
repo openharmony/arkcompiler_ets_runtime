@@ -464,7 +464,20 @@ class ObjectFactory;
     V(JSTaggedValue, DollarStringSix, DOLLAR_STRING_SIX_INDEX, dollarStrSix)                                          \
     V(JSTaggedValue, DollarStringSeven, DOLLAR_STRING_SEVEN_INDEX, dollarStrSeven)                                    \
     V(JSTaggedValue, DollarStringEight, DOLLAR_STRING_EIGHT_INDEX, dollarStrEight)                                    \
-    V(JSTaggedValue, DollarStringNine, DOLLAR_STRING_NINE_INDEX, dollarStrNine)
+    V(JSTaggedValue, DollarStringNine, DOLLAR_STRING_NINE_INDEX, dollarStrNine)                                       \
+    /* for object to string */                                                                                        \
+    V(JSTaggedValue, UndefinedToString, UNDEFINED_TO_STRING_INDEX, undefinedToString)                                 \
+    V(JSTaggedValue, NullToString, NULL_TO_STRING_INDEX, nullToString)                                                \
+    V(JSTaggedValue, ObjectToString, OBJECT_TO_STRING_INDEX, objectToString)                                          \
+    V(JSTaggedValue, ArrayToString, ARRAY_TO_STRING_INDEX, arrayToString)                                             \
+    V(JSTaggedValue, StringToString, STRING_TO_STRING_INDEX, stringToString)                                          \
+    V(JSTaggedValue, BooleanToString, BOOLEAN_TO_STRING_INDEX, booleanToString)                                       \
+    V(JSTaggedValue, NumberToString, NUMBER_TO_STRING_INDEX, numberToString)                                          \
+    V(JSTaggedValue, ArgumentsToString, ARGUMENTS_TO_STRING_INDEX, argumentsToString)                                 \
+    V(JSTaggedValue, FunctionToString, FUNCTION_TO_STRING_INDEX, functionToString)                                    \
+    V(JSTaggedValue, DateToString, DATE_TO_STRING_INDEX, dateToString)                                                \
+    V(JSTaggedValue, ErrorToString, ERROR_TO_STRING_INDEX, errorToString)                                             \
+    V(JSTaggedValue, RegExpToString, REGEXP_TO_STRING_INDEX, regExpToString)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_ACCESSOR(V)                                                           \

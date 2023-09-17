@@ -575,7 +575,7 @@ namespace panda::ecmascript {
     V(Object, HasOwn)                         \
     V(Object, IsPrototypeOf)                  \
     V(Object, ToLocaleString)                 \
-    V(Object, GetBuiltinTag)                  \
+    V(Object, GetBuiltinObjectToString)       \
     V(Object, ToString)                       \
     V(Object, ValueOf)                        \
     V(Object, ProtoGetter)                    \

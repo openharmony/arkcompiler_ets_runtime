@@ -588,7 +588,7 @@ void Builtins::InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetFunction(env, objFuncPrototype, "toLocaleString", Object::ToLocaleString, FunctionLength::ZERO);
     // 19.1.3.6 Object.prototype.toString()
     SetFunction(env, objFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(), Object::ToString,
-                FunctionLength::ZERO);
+                FunctionLength::ZERO, BUILTINS_STUB_ID(ObjectToString));
     // 19.1.3.7 Object.prototype.valueOf()
     SetFunction(env, objFuncPrototype, thread_->GlobalConstants()->GetHandledValueOfString(), Object::ValueOf,
                 FunctionLength::ZERO);
