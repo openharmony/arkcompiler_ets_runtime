@@ -17,6 +17,7 @@
 
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
@@ -144,7 +145,13 @@ JSHandle<Program> PandaFileTranslator::GenerateProgramInternal(EcmaVM *vm,
         JSHandle<Method> method = factory->NewMethod(mainMethodLiteral);
         JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithProto());
         JSHandle<JSFunction> mainFunc = factory->NewJSFunctionByHClass(method, hclass);
-
+        // Main function is created profileTypeInfo by default.
+        if (thread->IsPGOProfilerEnable()) {
+            auto res = SlowRuntimeStub::NotifyInlineCache(thread, method.GetObject<Method>());
+            if (!res.IsUndefined()) {
+                thread->GetEcmaVM()->GetPGOProfiler()->PGOPreDump(mainFunc.GetTaggedType());
+            }
+        }
         program->SetMainFunction(thread, mainFunc.GetTaggedValue());
         method->SetConstantPool(thread, constpool);
     }

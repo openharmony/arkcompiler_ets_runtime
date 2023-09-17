@@ -167,10 +167,14 @@ public:
         UNREACHABLE();
     }
 
-    static inline JSHandle<JSTaggedValue> LoadElement(const JSThread *thread)
+    static inline JSHandle<JSTaggedValue> LoadElement(const JSThread *thread, const ObjectOperator &op)
     {
         uint32_t handler = 0;
         KindBit::Set<uint32_t>(HandlerKind::ELEMENT, &handler);
+
+        if (op.GetReceiver()->IsJSArray()) {
+            IsJSArrayBit::Set<uint32_t>(true, &handler);
+        }
         return JSHandle<JSTaggedValue>(thread, JSTaggedValue(handler));
     }
 

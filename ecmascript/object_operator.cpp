@@ -481,10 +481,12 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
                 JSArray::CheckAndCopyArray(thread_, JSHandle<JSArray>(receiver));
                 TaggedArray::Cast(JSHandle<JSArray>(receiver)->GetElements())->Set(thread_,
                     GetIndex(), value.GetTaggedValue());
-                return true;
+            } else {
+                elements->Set(thread_, GetIndex(), value.GetTaggedValue());
             }
-            elements->Set(thread_, GetIndex(), value.GetTaggedValue());
-            JSHClass::TransitToElementsKind(thread_, receiver, value);
+            if (JSHClass::TransitToElementsKind(thread_, receiver, value)) {
+                SetIsTransition(true);
+            }
             return true;
         }
 

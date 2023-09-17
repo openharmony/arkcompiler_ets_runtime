@@ -98,12 +98,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(DebugPrint)                              \
     V(DebugPrintCustom)                        \
     V(DebugPrintInstruction)                   \
-    V(ProfileCall)                             \
-    V(ProfileDefineClass)                      \
-    V(ProfileCreateObject)                     \
-    V(ProfileOpType)                           \
-    V(ProfileObjLayout)                        \
-    V(ProfileObjIndex)                         \
     V(Comment)                                 \
     V(FatalPrint)                              \
     V(FatalPrintCustom)                        \
@@ -207,6 +201,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(StoreICByName)                      \
     V(UpdateHotnessCounter)               \
     V(CheckSafePoint)                     \
+    V(PGODump)                            \
+    V(PGOPreDump)                         \
     V(UpdateHotnessCounterWithProf)       \
     V(GetModuleNamespaceByIndex)          \
     V(GetModuleNamespaceByIndexOnJSFunc)  \
@@ -367,13 +363,6 @@ public:
     static void DebugPrintCustom(uintptr_t fmt, ...);
     static void DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc);
     static void Comment(uintptr_t argStr);
-    static void ProfileCall(uintptr_t argGlue, uintptr_t func, uintptr_t target, int32_t pcOffset, uint32_t incCount);
-    static void ProfileDefineClass(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t ctor);
-    static void ProfileCreateObject(
-        uintptr_t argGlue, JSTaggedType func, int32_t offset, JSTaggedType newObj, int32_t traceId);
-    static void ProfileOpType(uintptr_t argGlue, uintptr_t func, int32_t offset, int32_t type);
-    static void ProfileObjLayout(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object, int32_t store);
-    static void ProfileObjIndex(uintptr_t argGlue, uintptr_t func, int32_t offset, uintptr_t object);
     static void FatalPrint(int fmtMessageId, ...);
     static void FatalPrintCustom(uintptr_t fmt, ...);
     static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,

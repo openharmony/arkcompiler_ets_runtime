@@ -187,7 +187,7 @@ public:
     INTERPRETER_BC_STUB_LIST(DECLARE_HANDLE_STUB_CLASS)
     ASM_INTERPRETER_BC_HELPER_STUB_LIST(DECLARE_HANDLE_STUB_CLASS)
 
-#define DECLARE_HANDLE_PROFILE_STUB_CLASS(name, base)                              \
+#define DECLARE_HANDLE_PROFILE_STUB_CLASS(name, base, ...)                         \
     class name##StubBuilder : public base##StubBuilder {                           \
     public:                                                                        \
         explicit name##StubBuilder(CallSignature *callSignature, Environment *env) \

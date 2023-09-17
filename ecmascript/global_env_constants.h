@@ -43,6 +43,7 @@ class ObjectFactory;
     V(JSTaggedValue, ArrayClass, ARRAY_CLASS_INDEX, ecma_roots_class)                                                 \
     V(JSTaggedValue, ByteArrayClass, BYTE_ARRAY_CLASS_INDEX, ecma_roots_class)                                        \
     V(JSTaggedValue, ConstantPoolClass, CONSTANT_POOL_CLASS_INDEX, ecma_roots_class)                                  \
+    V(JSTaggedValue, ProfileTypeInfoClass, PROFILE_TYPE_INFO_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, DictionaryClass, DICTIONARY_CLASS_INDEX, ecma_roots_class)                                       \
     V(JSTaggedValue, COWArrayClass, COW_ARRAY_CLASS_INDEX, ecma_roots_class)                                          \
     V(JSTaggedValue, BigIntClass, BIGINT_CLASS_INDEX, ecma_roots_class)                                               \
@@ -65,6 +66,7 @@ class ObjectFactory;
     V(JSTaggedValue, PendingJobClass, PENDING_JOB_CLASS_INDEX, ecma_roots_class)                                      \
     V(JSTaggedValue, ProtoChangeMarkerClass, PROTO_CHANGE_MARKER_CLASS_INDEX, ecma_roots_class)                       \
     V(JSTaggedValue, ProtoChangeDetailsClass, PROTO_CHANGE_DETAILS_CLASS_INDEX, ecma_roots_class)                     \
+    V(JSTaggedValue, TrackInfoClass, TRACK_INFO_CLASS_INDEX, ecma_roots_class)                                        \
     V(JSTaggedValue, PrototypeHandlerClass, PROTOTYPE_HANDLER_CLASS_INDEX, ecma_roots_class)                          \
     V(JSTaggedValue, TransitionHandlerClass, TRANSITION_HANDLER_CLASS_INDEX, ecma_roots_class)                        \
     V(JSTaggedValue, TransWithProtoHandlerClass, TRANS_WITH_PROTO_HANDLER_CLASS_INDEX, ecma_roots_class)              \
@@ -129,13 +131,11 @@ class ObjectFactory;
     V(JSTaggedValue, ClassLiteralClass, CLASS_LITERAL_HCLASS_INDEX, ecma_roots_class)                                 \
     V(JSTaggedValue, ElementNoneClass, ELEMENT_NONE_HCLASS_INDEX, ecma_roots_class)                                   \
     V(JSTaggedValue, ElementIntClass, ELEMENT_INT_HCLASS_INDEX, ecma_roots_class)                                     \
-    V(JSTaggedValue, ElementDoubleClass, ELEMENT_DOUBLE_HCLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, ElementNumberClass, ELEMENT_NUMBER_HCLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, ElementStringClass, ELEMENT_STRING_HCLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, ElementObjectClass, ELEMENT_OBJECT_HCLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, ElementTaggedClass, ELEMENT_TAGGED_HCLASS_INDEX, ecma_roots_class)                               \
     V(JSTaggedValue, ElementHoleIntClass, ELEMENT_HOLE_INT_HCLASS_INDEX, ecma_roots_class)                            \
-    V(JSTaggedValue, ElementHoleDoubleClass, ELEMENT_HOLE_DOUBLE_HCLASS_INDEX, ecma_roots_class)                      \
     V(JSTaggedValue, ElementHoleNumberClass, ELEMENT_HOLE_NUMBER_HCLASS_INDEX, ecma_roots_class)                      \
     V(JSTaggedValue, ElementHoleStringClass, ELEMENT_HOLE_STRING_HCLASS_INDEX, ecma_roots_class)                      \
     V(JSTaggedValue, ElementHoleObjectClass, ELEMENT_HOLE_OBJECT_HCLASS_INDEX, ecma_roots_class)                      \

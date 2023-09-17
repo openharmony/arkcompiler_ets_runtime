@@ -247,6 +247,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetArrayString(TaggedArray::Cast(entry), "LexicalEnv[");
         case JSType::CONSTANT_POOL:
             return GetArrayString(TaggedArray::Cast(entry), "ConstantPool[");
+        case JSType::PROFILE_TYPE_INFO:
+            return GetArrayString(TaggedArray::Cast(entry), "ProfileTypeInfo[");
         case JSType::TAGGED_DICTIONARY:
             return GetArrayString(TaggedArray::Cast(entry), "TaggedDict[");
         case JSType::AOT_LITERAL_INFO:

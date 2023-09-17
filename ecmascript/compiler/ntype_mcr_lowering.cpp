@@ -158,6 +158,7 @@ GateRef NTypeMCRLowering::NewJSArrayLiteral(GateRef gate, GateRef elements, Gate
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::ELEMENTS_OFFSET, elements);
     builder_.StoreConstOffset(VariableType::INT32(), array, JSArray::LENGTH_OFFSET, length);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, lengthAccessorOffset, accessor);
+    builder_.StoreConstOffset(VariableType::INT64(), array, JSArray::TRACK_INFO_OFFSET, builder_.Undefined());
     builder_.FinishAllocate();
     return array;
 }

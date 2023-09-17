@@ -317,7 +317,7 @@ void SetPropertyByIndexStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
     GateRef value = TaggedArgument(3); /* 3 : 4th parameter is value */
-    Return(SetPropertyByIndex(glue, receiver, index, value, false, ProfileOperation()));
+    Return(SetPropertyByIndex(glue, receiver, index, value, false));
 }
 
 void SetPropertyByIndexWithOwnStubBuilder::GenerateCircuit()
@@ -326,7 +326,7 @@ void SetPropertyByIndexWithOwnStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef index = Int32Argument(2); /* 2 : 3rd parameter is index */
     GateRef value = TaggedArgument(3); /* 3 : 4th parameter is value */
-    Return(SetPropertyByIndex(glue, receiver, index, value, true, ProfileOperation()));
+    Return(SetPropertyByIndex(glue, receiver, index, value, true));
 }
 
 void GetPropertyByNameStubBuilder::GenerateCircuit()
@@ -547,7 +547,7 @@ void TryLoadICByValueStubBuilder::GenerateCircuit()
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
-        Return(LoadElement(glue, receiver, key, ProfileOperation()));
+        Return(LoadElement(glue, receiver, key));
         Bind(&hclassNotEqualFirstValue);
         {
             Branch(Int64Equal(firstValue, key), &firstValueEqualKey, &receiverNotHeapObject);
@@ -625,7 +625,7 @@ void TryStoreICByValueStubBuilder::GenerateCircuit()
                &hclassEqualFirstValue,
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
-        Return(ICStoreElement(glue, receiver, key, value, secondValue, ProfileOperation()));
+        Return(ICStoreElement(glue, receiver, key, value, secondValue));
         Bind(&hclassNotEqualFirstValue);
         {
             Branch(Int64Equal(firstValue, key), &firstValueEqualKey, &receiverNotHeapObject);
@@ -672,10 +672,8 @@ void ConstructorCheckStubBuilder::GenerateCircuit()
 void CreateEmptyArrayStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
-    GateRef slotId = Int32Argument(4); // 4 : 5th para
     NewObjectStubBuilder newBuilder(this);
-    Return(newBuilder.CreateEmptyArray(glue, Undefined(), Undefined(),
-        Undefined(), slotId, ProfileOperation()));
+    Return(newBuilder.CreateEmptyArray(glue));
 }
 
 void CreateArrayWithBufferStubBuilder::GenerateCircuit()

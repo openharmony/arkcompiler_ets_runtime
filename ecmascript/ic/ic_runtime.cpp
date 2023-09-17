@@ -46,7 +46,7 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
         if (!op.IsFound() && hclass->IsDictionaryElement()) {
             return;
         }
-        handlerValue = LoadHandler::LoadElement(thread_);
+        handlerValue = LoadHandler::LoadElement(thread_, op);
     } else {
         if (!op.IsFound()) {
             JSTaggedValue proto = hclass->GetPrototype();
@@ -105,7 +105,6 @@ void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedVa
         JSHandle<JSHClass> hclass(thread_, JSHandle<JSObject>::Cast(receiver)->GetClass());
         handlerValue = StoreTSHandler::StoreAOT(thread_, op, hclass);
     } else if (op.IsTransition()) {
-        ASSERT(!op.IsElement());
         if (op.IsOnPrototype()) {
             JSHandle<JSHClass> hclass(thread_, JSHandle<JSObject>::Cast(receiver)->GetClass());
             handlerValue = TransWithProtoHandler::StoreTransition(thread_, op, hclass);
@@ -267,6 +266,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
             return JSTaggedValue::Undefined();
         }
     }
+    UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
 
     ObjectOperator op(GetThread(), receiver, key);
     if (!op.IsFound()) {
@@ -291,7 +291,6 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
     }
     if (success) {
-        UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
         UpdateStoreHandler(op, key, receiver);
         return JSTaggedValue::Undefined();
     }
