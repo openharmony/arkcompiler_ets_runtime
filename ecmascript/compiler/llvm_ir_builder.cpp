@@ -1364,7 +1364,7 @@ void LLVMIRBuilder::VisitBranch(GateRef gate, GateRef cmp, int btrue, int bfalse
         LLVMMetadataRef mds[] = {branch_weights, weight1, weight2};
         LLVMMetadataRef metadata = LLVMMDNodeInContext2(context_, mds, 3);
         LLVMValueRef metadata_value = LLVMMetadataAsValue(context_, metadata);
-        LLVMSetMetadata(result, LLVMGetMDKindID("prof", 4), metadata_value);
+        LLVMSetMetadata(result, LLVMGetMDKindID("prof", 4), metadata_value); // 4: length of "prof"
     }
     gate2LValue_[gate] = result;
 }

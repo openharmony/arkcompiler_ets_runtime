@@ -509,12 +509,13 @@ void FrameStateBuilder::BuildStateSplitBefore(BytecodeRegion& bb, size_t index)
     }
 }
 
-void FrameStateBuilder::FindLoopExit(GateRef gate) {
+void FrameStateBuilder::FindLoopExit(GateRef gate)
+{
     // if find the bytecode gate, return.
     if (builder_->IsBcIndexByGate(gate)) {
         return;
     }
-    
+
     // if find the loopExit, do process.
     if (gateAcc_.GetOpCode(gate) == OpCode::LOOP_EXIT) {
         GateRef findBefore = gateAcc_.GetState(gate);
@@ -547,7 +548,7 @@ void FrameStateBuilder::FindLoopExit(GateRef gate) {
     }
 
     // continue to find the loopExit.
-    
+
     FindLoopExit(gateAcc_.GetState(gate));
 }
 
@@ -697,7 +698,7 @@ GateRef FrameStateBuilder::TryGetLoopExitValue(GateRef value, size_t diff, size_
     if ((gateAcc_.GetOpCode(value) != OpCode::LOOP_EXIT_VALUE) || (diff == 0)) {
         return value;
     }
-    
+
     for (size_t i = 0; i < diff; ++i) {
         ASSERT(gateAcc_.GetOpCode(value) == OpCode::LOOP_EXIT_VALUE);
         GateRef loopExit = gateAcc_.GetState(value);

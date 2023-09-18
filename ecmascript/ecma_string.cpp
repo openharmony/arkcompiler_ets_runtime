@@ -501,19 +501,19 @@ bool EcmaString::StringsAreEqualDiffUtfEncoding(EcmaString *left, EcmaString *ri
         const uint8_t *data2 = EcmaString::GetUtf8DataFlat(right, bufRightUft8);
         Span<const uint8_t> lhsSp(data1, lhsCount);
         Span<const uint8_t> rhsSp(data2, rhsCount);
-        return EcmaString::StringsAreEquals(lhsSp, rhsSp); 
+        return EcmaString::StringsAreEquals(lhsSp, rhsSp);
     } else if (!left->IsUtf16()) {
         const uint8_t *data1 = EcmaString::GetUtf8DataFlat(left, bufLeftUft8);
         const uint16_t *data2 = EcmaString::GetUtf16DataFlat(right, bufRightUft16);
         Span<const uint8_t> lhsSp(data1, lhsCount);
         Span<const uint16_t> rhsSp(data2, rhsCount);
-        return EcmaString::StringsAreEquals(lhsSp, rhsSp); 
+        return EcmaString::StringsAreEquals(lhsSp, rhsSp);
     } else if (!right->IsUtf16()) {
         const uint16_t *data1 = EcmaString::GetUtf16DataFlat(left, bufLeftUft16);
         const uint8_t *data2 = EcmaString::GetUtf8DataFlat(right, bufRightUft8);
         Span<const uint16_t> lhsSp(data1, lhsCount);
         Span<const uint8_t> rhsSp(data2, rhsCount);
-        return EcmaString::StringsAreEquals(lhsSp, rhsSp); 
+        return EcmaString::StringsAreEquals(lhsSp, rhsSp);
     } else {
         const uint16_t *data1 = EcmaString::GetUtf16DataFlat(left, bufLeftUft16);
         const uint16_t *data2 = EcmaString::GetUtf16DataFlat(right, bufRightUft16);
@@ -535,11 +535,11 @@ bool EcmaString::StringsAreEqualDiffUtfEncoding(const FlatStringInfo &left, cons
     } else if (!left.IsUtf16()) {
         Span<const uint8_t> lhsSp(left.GetDataUtf8(), lhsCount);
         Span<const uint16_t> rhsSp(right.GetDataUtf16(), rhsCount);
-        return EcmaString::StringsAreEquals(lhsSp, rhsSp); 
+        return EcmaString::StringsAreEquals(lhsSp, rhsSp);
     } else if (!right.IsUtf16()) {
         Span<const uint16_t> lhsSp(left.GetDataUtf16(), rhsCount);
         Span<const uint8_t> rhsSp(right.GetDataUtf8(), lhsCount);
-        return EcmaString::StringsAreEquals(lhsSp, rhsSp); 
+        return EcmaString::StringsAreEquals(lhsSp, rhsSp);
     } else {
         Span<const uint16_t> lhsSp(left.GetDataUtf16(), lhsCount);
         Span<const uint16_t> rhsSp(right.GetDataUtf16(), rhsCount);
