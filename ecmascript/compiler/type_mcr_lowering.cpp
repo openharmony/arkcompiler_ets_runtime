@@ -347,15 +347,16 @@ void TypeMCRLowering::LowerFlattenTreeStringCheck(GateRef gate, GateRef glue)
             builder_.Jump(&exit);
         }
     }
-    
+
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 GateRef TypeMCRLowering::GetLengthFromString(GateRef gate)
 {
+    GateRef shiftCount = builder_.Int32(2); // 2: shift count
     return builder_.Int32LSR(
-        builder_.LoadConstOffset(VariableType::INT32(), gate, EcmaString::MIX_LENGTH_OFFSET), builder_.Int32(2));
+        builder_.LoadConstOffset(VariableType::INT32(), gate, EcmaString::MIX_LENGTH_OFFSET), shiftCount);
 }
 
 void TypeMCRLowering::LowerStringLength(GateRef gate)

@@ -53,7 +53,6 @@ GateRef TSHCROptPass::VisitStringEqual(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-
     if (acc_.IsConstString(left) && acc_.IsConstString(right)) {
         return ConvertStringEqualToConst(left, right);
     }
@@ -71,7 +70,7 @@ GateRef TSHCROptPass::ConvertStringEqualToConst(GateRef left, GateRef right)
     uint32_t rightId = acc_.GetStringIdFromLdaStrGate(right);
     JSHandle<EcmaString> leftStr(thread_, tsManager_->GetStringFromConstantPool(leftId));
     JSHandle<EcmaString> rightStr(thread_, tsManager_->GetStringFromConstantPool(rightId));
-    bool isEqual = EcmaStringAccessor::StringsAreEqual(thread_->GetEcmaVM(),leftStr, rightStr);
+    bool isEqual = EcmaStringAccessor::StringsAreEqual(thread_->GetEcmaVM(), leftStr, rightStr);
     if (isEqual) {
         return builder_.Boolean(true);
     }
