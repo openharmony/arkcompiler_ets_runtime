@@ -913,18 +913,57 @@ bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
 
 Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key)
 {
-    ecmascript::ModuleManager *moduleManager = vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->GetModuleManager();
-    JSTaggedValue result = moduleManager->GetExportObject(file.c_str(), key.c_str());
-    JSHandle<JSTaggedValue> exportObj(vm->GetJSThread(), result);
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    ecmascript::CString entry = file.c_str();
+    JSThread *thread = vm->GetJSThread();
+    ecmascript::CString name = vm->GetAssetPath();
+    if (!vm->IsBundlePack()) {
+        ModulePathHelper::ParseOhmUrl(vm, entry, name, entry);
+        std::shared_ptr<JSPandaFile> jsPandaFile =
+            JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, name, entry.c_str(), false);
+        if (jsPandaFile == nullptr) {
+            JSHandle<JSTaggedValue> exportObj(thread, JSTaggedValue::Null());
+            return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
+        }
+        if (!jsPandaFile->IsRecordWithBundleName()) {
+            PathHelper::AdaptOldIsaRecord(entry);
+        }
+    }
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(entry);
+    if (ecmaModule->GetIsNewBcVersion()) {
+        int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key);
+        JSTaggedValue result = ecmaModule->GetModuleValue(thread, index, false);
+        JSHandle<JSTaggedValue> exportObj(thread, result);
+        return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
+    }
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
+
+    JSTaggedValue result = ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
+    JSHandle<JSTaggedValue> exportObj(thread, result);
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
 Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file,
                                                    const std::string &key)
 {
-    ecmascript::ModuleManager *moduleManager = vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->GetModuleManager();
-    JSTaggedValue result = moduleManager->GetExportObjectFromBuffer(file.c_str(), key.c_str());
-    JSHandle<JSTaggedValue> exportObj(vm->GetJSThread(), result);
+    CHECK_HAS_PENDING_EXCEPTION_RETURN_UNDEFINED(vm);
+    JSThread *thread = vm->GetJSThread();
+    ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->HostGetImportedModule(file.c_str());
+
+    if (ecmaModule->GetIsNewBcVersion()) {
+        int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key);
+        JSTaggedValue result = ecmaModule->GetModuleValue(thread, index, false);
+        JSHandle<JSTaggedValue> exportObj(thread, result);
+        return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
+    }
+
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
+    JSTaggedValue result = ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
+    JSHandle<JSTaggedValue> exportObj(thread, result);
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
@@ -1810,7 +1849,7 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
     ecmascript::CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
-    if (jsPandaFile->IsMergedPF()) {
+    if (!jsPandaFile->IsBundlePack()) {
         JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());
         JSTaggedValue recordName = function->GetRecordName();
         ASSERT(!recordName.IsHole());
@@ -3592,7 +3631,7 @@ bool JSNApi::InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> function, v
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<ecmascript::JSTaggedValue> moduleRecord;
     // check compileMode
-    if (!jsPandaFile->IsMergedPF()) {
+    if (jsPandaFile->IsBundlePack()) {
         LOG_ECMA(DEBUG) << "CompileMode is jsbundle";
         moduleRecord = moduleManager->HostResolveImportedModule(moduleName);
     } else {

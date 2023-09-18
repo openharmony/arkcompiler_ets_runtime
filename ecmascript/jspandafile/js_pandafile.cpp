@@ -25,15 +25,15 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     : pf_(pf), desc_(descriptor)
 {
     ASSERT(pf_ != nullptr);
-    CheckIsMergedPF();
-    if (!IsMergedPF()) {
+    CheckIsBundlePack();
+    if (isBundlePack_) {
         InitializeUnMergedPF();
     } else {
         InitializeMergedPF();
     }
     checksum_ = pf->GetHeader()->checksum;
     isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
-    if (!loadedFirstPandaFile && IsMergedPF()) {
+    if (!loadedFirstPandaFile && !isBundlePack_) {
         // Tag the first merged abc to use constant string. The lifetime of this first panda file is the same
         // as the vm. And make sure the first pandafile is the same at the compile time and runtime.
         isFirstPandafile_ = true;
@@ -41,7 +41,7 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor)
     }
 }
 
-void JSPandaFile::CheckIsMergedPF()
+void JSPandaFile::CheckIsBundlePack()
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();
     for (const uint32_t index : classIndexes) {
@@ -55,10 +55,10 @@ void JSPandaFile::CheckIsMergedPF()
             panda_file::File::StringData sd = GetStringData(fieldNameId);
             const char *fieldName = utf::Mutf8AsCString(sd.data);
             if (std::strcmp(IS_COMMON_JS, fieldName) == 0 || std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
-                isMergedPF_ = true;
+                isBundlePack_ = false;
             }
         });
-        if (isMergedPF_) {
+        if (!isBundlePack_) {
             return;
         }
     }
@@ -108,7 +108,7 @@ uint32_t JSPandaFile::GetOrInsertConstantPool(ConstPoolType type, uint32_t offse
                                               const CUnorderedMap<uint32_t, uint64_t> *constpoolMap)
 {
     CUnorderedMap<uint32_t, uint64_t> *map = nullptr;
-    if (constpoolMap != nullptr && IsMergedPF()) {
+    if (constpoolMap != nullptr && !IsBundlePack()) {
         map = const_cast<CUnorderedMap<uint32_t, uint64_t> *>(constpoolMap);
     } else {
         map = &constpoolMap_;
@@ -213,7 +213,7 @@ MethodLiteral *JSPandaFile::FindMethodLiteral(uint32_t offset) const
 
 bool JSPandaFile::IsFirstMergedAbc() const
 {
-    if (isFirstPandafile_ && IsMergedPF()) {
+    if (isFirstPandafile_ && !IsBundlePack()) {
         return true;
     }
     return false;
@@ -221,7 +221,7 @@ bool JSPandaFile::IsFirstMergedAbc() const
 
 bool JSPandaFile::CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo &recordInfo) const
 {
-    if (!IsMergedPF()) {
+    if (IsBundlePack()) {
         recordInfo = jsRecordInfo_.begin()->second;
         return true;
     }

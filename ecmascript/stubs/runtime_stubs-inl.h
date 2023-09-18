@@ -37,6 +37,7 @@
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/scope_info_extractor.h"
+#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/stackmap/llvm_stackmap_parser.h"
@@ -820,7 +821,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    CString entry = SourceTextModule::GetRecordName(module.GetTaggedValue());
+    CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
 
     // For class constructor.
     auto methodObj = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), methodId);
@@ -1384,7 +1385,7 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
 
     JSMutableHandle<JSTaggedValue> dirPath(thread, thread->GlobalConstants()->GetUndefined());
     JSMutableHandle<JSTaggedValue> recordName(thread, thread->GlobalConstants()->GetUndefined());
-    if (!jsPandaFile->IsMergedPF()) {
+    if (jsPandaFile->IsBundlePack()) {
         dirPath.Update(factory->NewFromUtf8(currentfilename).GetTaggedValue());
     } else {
         JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());
