@@ -109,7 +109,9 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options, EcmaParamConfiguration &
     auto jsThread = JSThread::Create(vm);
     vm->thread_ = jsThread;
     vm->Initialize();
-    JsStackInfo::loader = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+    if (JsStackInfo::loader == nullptr) {
+        JsStackInfo::loader = vm->GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager();
+    }
 #if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
     if (SetThreadInfoCallback != nullptr) {
         SetThreadInfoCallback(CrashCallback);
@@ -262,6 +264,10 @@ EcmaVM::~EcmaVM()
         }
         chunk_.Delete(gcStats_);
         gcStats_ = nullptr;
+    }
+
+    if (JsStackInfo::loader == GetJSThread()->GetCurrentEcmaContext()->GetAOTFileManager()) {
+        JsStackInfo::loader = nullptr;
     }
 
     if (heap_ != nullptr) {
