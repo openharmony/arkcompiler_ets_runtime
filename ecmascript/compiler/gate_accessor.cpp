@@ -1591,7 +1591,7 @@ bool GateAccessor::IsLoopBackUse(const UseIterator &useIt) const
     }
     if ((IsValueSelector(*useIt) && IsValueIn(useIt)) ||
         (IsDependSelector(*useIt) && IsDependIn(useIt))) {
-        return (useIt.GetIndex() == 2) && IsLoopHead(GetState(*useIt));
+        return (useIt.GetIndex() == 2) && IsLoopHead(GetState(*useIt)); // 2 means the Index
     }
     return false;
 }

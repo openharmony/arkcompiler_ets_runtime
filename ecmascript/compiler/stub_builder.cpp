@@ -6167,7 +6167,7 @@ GateRef StubBuilder::GetNormalStringData(const StringInfoGateRef &stringInfoGate
     {
         GateRef address = PtrAdd(stringInfoGate.GetString(), IntPtr(ConstantString::CONSTANT_DATA_OFFSET));
         result = PtrAdd(Load(VariableType::JS_ANY(), address, IntPtr(0)),
-                        ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
+            ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
         Jump(&exit);
     }
     Bind(&isLineString);
@@ -6310,7 +6310,8 @@ GateRef StubBuilder::HasStableElements(GateRef glue, GateRef obj)
         Branch(IsStableElements(jsHclass), &targetIsStableElements, &exit);
         Bind(&targetIsStableElements);
         {
-            GateRef guardiansOffset = IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
+            GateRef guardiansOffset =
+                IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
             result = Load(VariableType::BOOL(), glue, guardiansOffset);
             Jump(&exit);
         }
@@ -6338,7 +6339,8 @@ GateRef StubBuilder::IsStableJSArguments(GateRef glue, GateRef obj)
         Branch(IsStableArguments(jsHclass), &targetIsStableArguments, &exit);
         Bind(&targetIsStableArguments);
         {
-            GateRef guardiansOffset = IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
+            GateRef guardiansOffset =
+                IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
             result = Load(VariableType::BOOL(), glue, guardiansOffset);
             Jump(&exit);
         }
@@ -6366,7 +6368,8 @@ GateRef StubBuilder::IsStableJSArray(GateRef glue, GateRef obj)
         Branch(IsStableArray(jsHclass), &targetIsStableArray, &exit);
         Bind(&targetIsStableArray);
         {
-            GateRef guardiansOffset = IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
+            GateRef guardiansOffset =
+                IntPtr(JSThread::GlueData::GetStableArrayElementsGuardiansOffset(env->Is32Bit()));
             GateRef guardians = Load(VariableType::BOOL(), glue, guardiansOffset);
             result.WriteVariable(guardians);
             Jump(&exit);
