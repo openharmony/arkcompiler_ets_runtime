@@ -140,4 +140,56 @@ GateRef BuiltinsObjectStubBuilder::CreateListFromArrayLike(GateRef glue, GateRef
     env->SubCfgExit();
     return ret;
 }
+
+void BuiltinsObjectStubBuilder::ToString(Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label ecmaObj(env);
+    // undefined
+    Label undefined(env);
+    Label checknull(env);
+    Branch(TaggedIsUndefined(thisValue_), &undefined, &checknull);
+    Bind(&undefined);
+    {
+        *result = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::UNDEFINED_TO_STRING_INDEX);
+        Jump(exit);
+    }
+    // null
+    Bind(&checknull);
+    Label null(env);
+    Label checkObject(env);
+    Branch(TaggedIsUndefined(thisValue_), &null, &checkObject);
+    Bind(&null);
+    {
+        *result = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::NULL_TO_STRING_INDEX);
+        Jump(exit);
+    }
+
+    Bind(&checkObject);
+    Branch(IsEcmaObject(thisValue_), &ecmaObj, slowPath);
+    Bind(&ecmaObj);
+    {
+        GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+        GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
+        GateRef toStringTagSymbol = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                                      GlobalEnv::TOSTRINGTAG_SYMBOL_INDEX);
+        GateRef tag = FastGetPropertyByName(glue_, thisValue_, toStringTagSymbol, ProfileOperation());
+
+        Label defaultToString(env);
+        Branch(TaggedIsString(tag), slowPath, &defaultToString);
+        Bind(&defaultToString);
+        {
+            // default object
+            Label objectTag(env);
+            Branch(IsJSObjectType(thisValue_, JSType::JS_OBJECT), &objectTag, slowPath);
+            Bind(&objectTag);
+            {
+                // [object object]
+                *result = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+                                                 ConstantIndex::OBJECT_TO_STRING_INDEX);
+                Jump(exit);
+            }
+        }
+    }
+}
 }  // namespace panda::ecmascript::kungfu

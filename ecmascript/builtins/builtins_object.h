@@ -100,7 +100,7 @@ private:
     static JSTaggedValue ObjectDefineProperties(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                 const JSHandle<JSTaggedValue> &prop);
     static JSTaggedValue GetOwnPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const KeyType &type);
-    static JSTaggedValue GetBuiltinTag(JSThread *thread, const JSHandle<JSObject> &object);
+    static JSTaggedValue GetBuiltinObjectToString(JSThread *thread, const JSHandle<JSObject> &object);
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_OBJECT_H
