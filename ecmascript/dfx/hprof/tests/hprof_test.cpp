@@ -121,6 +121,11 @@ public:
 
     size_t GenerateSnapShot(const std::string &filePath)
     {
+        // first generate this file of filePath if not exist,
+        // so the function `realpath` of FileStream can not failed on arm/arm64.
+        fstream outputString(filePath, std::ios::out);
+        outputString.close();
+        outputString.clear();
         FileStream stream(filePath.c_str());
         HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
         heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream);
