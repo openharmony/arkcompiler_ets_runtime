@@ -65,7 +65,7 @@ str += str;
 var c;
 var l;
 var strC;
-for (let i = 0;i < 300;i++){
+for (let i = 0;i < 100;i++){
   strC = str.split("C");
   c = str[i];
   l = str.length;

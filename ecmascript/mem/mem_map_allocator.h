@@ -40,6 +40,10 @@ public:
         for (auto &it : memMapVector_) {
             PageUnmap(it);
         }
+        for (auto &it : regularMapCommitted_) {
+            PageUnmap(it);
+        }
+        regularMapCommitted_.clear();
         memMapVector_.clear();
         memMapCache_.clear();
     }
@@ -58,6 +62,38 @@ public:
         }
         return MemMap();
     }
+
+    MemMap GetRegularMemFromCommitted([[maybe_unused]] size_t size)
+    {
+        ASSERT(size == REGULAR_MMAP_SIZE);
+        os::memory::LockHolder lock(lock_);
+        if (!regularMapCommitted_.empty()) {
+            MemMap mem = regularMapCommitted_.back();
+            regularMapCommitted_.pop_back();
+            return mem;
+        }
+        return MemMap();
+    }
+
+    bool IsRegularCommittedFull(size_t cachedSize) {
+        os::memory::LockHolder lock(lock_);
+        size_t size = regularMapCommitted_.size();
+        return size > (cachedSize / REGULAR_MMAP_SIZE) ? true : false;
+    }
+
+    int ShouldFreeMore(size_t cachedSize) {
+        os::memory::LockHolder lock(lock_);
+        int result = regularMapCommitted_.size();
+        return result - cachedSize / REGULAR_MMAP_SIZE;
+    }
+
+    void AddMemToCommittedCache(void *mem, size_t size)
+    {
+        ASSERT(size == REGULAR_MMAP_SIZE);
+        os::memory::LockHolder lock(lock_);
+        regularMapCommitted_.emplace_back(mem, size);
+    }
+
 
     void AddMemToCache(void *mem, size_t size)
     {
@@ -89,6 +125,7 @@ private:
     static constexpr size_t REGULAR_MMAP_SIZE = 256_KB;
     os::memory::Mutex lock_;
     std::deque<MemMap> memMapCache_;
+    std::vector<MemMap> regularMapCommitted_;
     std::vector<MemMap> memMapVector_;
 };
 
@@ -250,13 +287,13 @@ public:
 
     MemMap Allocate(size_t size, size_t alignment, bool regular, bool isMachineCode);
 
-    void Free(void *mem, size_t size, bool isRegular);
+    void CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize);
 
 private:
     static constexpr size_t REGULAR_REGION_MMAP_SIZE = 4_MB;
 
     void AdapterSuitablePoolCapacity();
-
+    void Free(void *mem, size_t size, bool isRegular);
     MemMapPool memMapPool_;
     MemMapFreeList memMapFreeList_;
     std::atomic_size_t memMapTotalSize_ {0};

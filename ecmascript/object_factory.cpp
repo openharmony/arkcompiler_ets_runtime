@@ -1748,7 +1748,7 @@ JSHandle<JSGeneratorObject> ObjectFactory::NewJSGeneratorObject(JSHandle<JSTagge
         proto = realmHandle->GetGeneratorPrototype();
     }
     JSHandle<JSHClass> hclass = NewEcmaHClass(JSGeneratorObject::SIZE, JSType::JS_GENERATOR_OBJECT, proto);
-    JSHandle<JSGeneratorObject> generatorObject = JSHandle<JSGeneratorObject>::Cast(NewJSObject(hclass));
+    JSHandle<JSGeneratorObject> generatorObject = JSHandle<JSGeneratorObject>::Cast(NewJSObjectWithInit(hclass));
     generatorObject->SetGeneratorContext(thread_, JSTaggedValue::Undefined());
     generatorObject->SetResumeResult(thread_, JSTaggedValue::Undefined());
     return generatorObject;
@@ -3346,6 +3346,7 @@ JSHandle<TSFunctionType> ObjectFactory::NewTSFunctionType(uint32_t length)
     functionType->SetReturnGT(GlobalTSTypeRef::Default());
     functionType->SetThisGT(GlobalTSTypeRef::Default());
     functionType->ClearBitField();
+    functionType->SetMethodOffset(0);
 
     JSHandle<TaggedArray> parameterTypes = NewTaggedArray(length, JSTaggedValue::Undefined());
     functionType->SetParameterTypes(thread_, parameterTypes);

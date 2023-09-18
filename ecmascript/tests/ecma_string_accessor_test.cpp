@@ -116,9 +116,6 @@ HWTEST_F_L0(EcmaStringAccessorTest, CreateLineString)
     size_t sizeAllocComp = 5;
     JSHandle<EcmaString> handleEcmaStrAllocComp(thread,
         EcmaStringAccessor::CreateLineString(ecmaVMPtr, sizeAllocComp, true));
-    for (uint32_t i = 0; i < sizeAllocComp; i++) {
-        EXPECT_EQ(EcmaStringAccessor(handleEcmaStrAllocComp).Get(i), 0U);
-    }
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrAllocComp).GetLength(), sizeAllocComp);
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrAllocComp).IsUtf8());
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrAllocComp).IsUtf16());
@@ -127,9 +124,6 @@ HWTEST_F_L0(EcmaStringAccessorTest, CreateLineString)
     size_t sizeAllocNotComp = 5;
     JSHandle<EcmaString> handleEcmaStrAllocNotComp(thread,
         EcmaStringAccessor::CreateLineString(ecmaVMPtr, sizeAllocNotComp, false));
-    for (uint32_t i = 0; i < sizeAllocNotComp; i++) {
-        EXPECT_EQ(EcmaStringAccessor(handleEcmaStrAllocNotComp).Get(i), 0U);
-    }
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrAllocNotComp).GetLength(), sizeAllocNotComp);
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrAllocNotComp).IsUtf8());
     EXPECT_TRUE(EcmaStringAccessor(handleEcmaStrAllocNotComp).IsUtf16());
@@ -832,25 +826,6 @@ HWTEST_F_L0(EcmaStringAccessorTest, GetHashcode_004)
     // GetHashcode(). EcmaString made by CreateEmptyString().
     JSHandle<EcmaString> handleEcmaStrEmpty(thread, EcmaStringAccessor::CreateEmptyString(ecmaVMPtr));
     EXPECT_EQ(EcmaStringAccessor(handleEcmaStrEmpty).GetHashcode(), 0U);
-}
-
-/*
- * @tc.name: GetHashcode_005
- * @tc.desc: Check whether the value returned through an EcmaString made by CreateLineString(, true/false, ) calling
- * GetHashcode function is within expectations.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F_L0(EcmaStringAccessorTest, GetHashcode_005)
-{
-    // GetHashcode(). EcmaString made by CreateLineString().
-    size_t sizeAlloc = 5;
-    JSHandle<EcmaString> handleEcmaStrAllocComp(thread,
-        EcmaStringAccessor::CreateLineString(ecmaVMPtr, sizeAlloc, true));
-    JSHandle<EcmaString> handleEcmaStrAllocNotComp(thread,
-        EcmaStringAccessor::CreateLineString(ecmaVMPtr, sizeAlloc, false));
-    EXPECT_EQ(EcmaStringAccessor(handleEcmaStrAllocComp).GetHashcode(), 0U);
-    EXPECT_EQ(EcmaStringAccessor(handleEcmaStrAllocNotComp).GetHashcode(), 0U);
 }
 
 /*

@@ -514,12 +514,13 @@ void OldSpace::RevertCSet()
 
 void OldSpace::ReclaimCSet()
 {
-    EnumerateCollectRegionSet([this](Region *region) {
+    size_t cachedSize = heap_->GetNewSpace()->GetInitialCapacity();
+    EnumerateCollectRegionSet([this, &cachedSize](Region *region) {
         region->DeleteCrossRegionRSet();
         region->DeleteOldToNewRSet();
         region->DeleteSweepingRSet();
         region->DestroyFreeObjectSets();
-        heapRegionAllocator_->FreeRegion(region);
+        heapRegionAllocator_->FreeRegion(region, cachedSize);
     });
     collectRegionSet_.clear();
 }
