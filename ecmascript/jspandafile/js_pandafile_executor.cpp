@@ -72,7 +72,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
     // If it is an old record, delete the bundleName and moduleName
-    if (jsPandaFile->IsMergedPF() && !excuteFromJob && !vm->GetBundleName().empty()) {
+    if (!jsPandaFile->IsBundlePack() && !excuteFromJob && !vm->GetBundleName().empty()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
             PathHelper::AdaptOldIsaRecord(entry);
@@ -90,7 +90,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         [[maybe_unused]] EcmaHandleScope scope(thread);
         ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
         JSHandle<JSTaggedValue> moduleRecord(thread->GlobalConstants()->GetHandledUndefined());
-        if (!jsPandaFile->IsMergedPF()) {
+        if (jsPandaFile->IsBundlePack()) {
             moduleRecord = moduleManager->HostResolveImportedModule(name, excuteFromJob);
         } else {
             moduleRecord = moduleManager->HostResolveImportedModuleWithMerge(name, entry, excuteFromJob);
@@ -135,8 +135,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
     if (jsPandaFile->IsModule(recordInfo)) {
-        bool isMergedPF = jsPandaFile->IsMergedPF();
-        return CommonExecuteBuffer(thread, isMergedPF, normalName, entry, buffer, size);
+        bool isBundle = jsPandaFile->IsBundlePack();
+        return CommonExecuteBuffer(thread, isBundle, normalName, entry, buffer, size);
     }
     return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entry);
 }
@@ -169,11 +169,11 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     }
     LoadAOTFilesForFile(vm, jsPandaFile.get());
 
-    bool isMergedPF = jsPandaFile->IsMergedPF();
+    bool isBundle = jsPandaFile->IsBundlePack();
 
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
-    if (isMergedPF) {
+    if (!isBundle) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
             PathHelper::AdaptOldIsaRecord(entry);
@@ -189,18 +189,18 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     if (!jsPandaFile->IsModule(recordInfo)) {
         LOG_ECMA(FATAL) << "Input file is not esmodule";
     }
-    return CommonExecuteBuffer(thread, isMergedPF, name, entry, buffer, size);
+    return CommonExecuteBuffer(thread, isBundle, name, entry, buffer, size);
 }
 
 // The security interface needs to be modified accordingly.
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread *thread,
-    bool isMergedPF, const CString &filename, const CString &entry, const void *buffer, size_t size)
+    bool isBundle, const CString &filename, const CString &entry, const void *buffer, size_t size)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     moduleManager->SetExecuteMode(true);
     JSMutableHandle<JSTaggedValue> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
-    if (!isMergedPF) {
+    if (isBundle) {
         moduleRecord.Update(moduleManager->HostResolveImportedModule(buffer, size, filename));
     } else {
         moduleRecord.Update(moduleManager->HostResolveImportedModuleWithMerge(filename, entry));
@@ -283,7 +283,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     moduleManager->SetExecuteMode(true);
     JSMutableHandle<JSTaggedValue> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
-    if (!jsPandaFile->IsMergedPF()) {
+    if (jsPandaFile->IsBundlePack()) {
         moduleRecord.Update(moduleManager->HostResolveImportedModule(jsPandaFile, filename));
     } else {
         moduleRecord.Update(moduleManager->HostResolveImportedModuleWithMerge(filename, entry));
@@ -330,7 +330,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
 
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
-    if (jsPandaFile->IsMergedPF()) {
+    if (!jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
             PathHelper::AdaptOldIsaRecord(entry);
