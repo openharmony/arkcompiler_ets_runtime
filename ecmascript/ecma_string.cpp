@@ -735,22 +735,62 @@ bool EcmaString::ToElementIndex(uint32_t *index)
         *index = 0;
         return len == 1;
     }
-    if (c > '0' && c <= '9') {
-        n = c - '0';
-        for (uint32_t i = 1; i < len; i++) {
-            c = data[i];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            if (c < '0' || c > '9') {
-                return false;
-            }
-            // NOLINTNEXTLINE(readability-magic-numbers)
-            n = n * 10 + (c - '0');  // 10: decimal factor
-        }
-        if (n < JSObject::MAX_ELEMENT_INDEX) {
-            *index = n;
-            return true;
-        }
+    uint32_t loopStart = 0;
+    if (ToUInt64FromLoopStart(&n, loopStart, data) && n < JSObject::MAX_ELEMENT_INDEX) {
+        *index = n;
+        return true;
     }
     return false;
+}
+
+bool EcmaString::ToInt(int32_t *index)
+{
+    uint32_t len = GetLength();
+    if (UNLIKELY(len == 0 || len > MAX_ELEMENT_INDEX_LEN)) {  // NOLINTNEXTLINEreadability-magic-numbers)
+        return false;
+    }
+    if (UNLIKELY(IsUtf16())) {
+        return false;
+    }
+    bool negative = false;
+    CVector<uint8_t> buf;
+    const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
+    uint32_t c = data[0];
+    uint32_t loopStart = 0;
+    uint64_t n = 0;
+    if (c == '0') {
+        *index = 0;
+        return len == 1;
+    }
+    if(c == '-' && len > 1){
+        negative = true;
+        loopStart = 1;
+    }
+
+    if (ToUInt64FromLoopStart(&n, loopStart, data) && n < JSObject::MAX_ELEMENT_INDEX) {
+        *index = negative ? -n : n;
+        return true;
+    }
+    return false;
+}
+
+bool EcmaString::ToUInt64FromLoopStart(uint64_t *index, uint32_t loopStart, const uint8_t *data)
+{
+    uint64_t n = 0;
+    uint32_t len = GetLength();
+    if (UNLIKELY(loopStart >= len)) {
+        return false;
+    }
+    for (uint32_t i = loopStart; i < len; i++) {
+        uint32_t c = data[i];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        if (c < '0' || c > '9') {
+            return false;
+        }
+        // NOLINTNEXTLINE(readability-magic-numbers)
+        n = n * 10 + (c - '0');  // 10: decimal factor
+    }
+    *index = n;
+    return true;
 }
 
 bool EcmaString::ToTypedArrayIndex(uint32_t *index)
