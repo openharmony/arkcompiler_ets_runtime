@@ -96,7 +96,8 @@ void BuiltinsStringStubBuilder::FromCharCode(GateRef glue, [[maybe_unused]] Gate
     }
 }
 
-void BuiltinsStringStubBuilder::CharAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath)
+void BuiltinsStringStubBuilder::CharAt(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable* res, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
@@ -163,7 +164,8 @@ void BuiltinsStringStubBuilder::CharAt(GateRef glue, GateRef thisValue, GateRef 
     }
 }
 
-void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath)
+void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable* res, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
@@ -223,7 +225,8 @@ void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, Gate
     }
 }
 
-void BuiltinsStringStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath)
+void BuiltinsStringStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable* res, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(pos, VariableType::INT32(), Int32(0));
@@ -321,7 +324,8 @@ void BuiltinsStringStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef
     }
 }
 
-void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateRef numArgs, Variable* res, Label *exit, Label *slowPath)
+void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateRef numArgs,
+    Variable* res, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(start, VariableType::INT32(), Int32(0));

@@ -1294,10 +1294,14 @@ HWTEST_F_L0(EcmaStringTest, StringsAreEqualUtf8_002)
         EcmaString::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo2[0], lengthEcmaStrU16CompNo2, true));
     JSHandle<EcmaString> handleEcmaStrU16CompNo3(thread,
         EcmaString::CreateFromUtf16(ecmaVMPtr, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
-    EXPECT_TRUE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16CompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
-    EXPECT_FALSE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16CompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
-    EXPECT_FALSE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16CompNo2, &arrayU8No1[0], lengthEcmaStrU8No1, true));
-    EXPECT_FALSE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16CompNo3, &arrayU8No1[0], lengthEcmaStrU8No1, true));
+    EXPECT_TRUE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16CompNo1,
+                                                   &arrayU8No1[0], lengthEcmaStrU8No1, true));
+    EXPECT_FALSE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16CompNo1,
+                                                    &arrayU8No1[0], lengthEcmaStrU8No1, false));
+    EXPECT_FALSE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16CompNo2,
+                                                    &arrayU8No1[0], lengthEcmaStrU8No1, true));
+    EXPECT_FALSE(EcmaString::StringIsEqualUint8Data(*handleEcmaStrU16CompNo3,
+                                                    &arrayU8No1[0], lengthEcmaStrU8No1, true));
 }
 
 /*

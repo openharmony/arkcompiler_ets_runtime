@@ -6166,7 +6166,8 @@ GateRef StubBuilder::GetNormalStringData(const StringInfoGateRef &stringInfoGate
     Bind(&isConstantString);
     {
         GateRef address = PtrAdd(stringInfoGate.GetString(), IntPtr(ConstantString::CONSTANT_DATA_OFFSET));
-        result = PtrAdd(Load(VariableType::JS_ANY(), address, IntPtr(0)), ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
+        result = PtrAdd(Load(VariableType::JS_ANY(), address, IntPtr(0)),
+                        ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
         Jump(&exit);
     }
     Bind(&isLineString);
