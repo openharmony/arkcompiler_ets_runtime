@@ -79,3 +79,13 @@ print(s1);
 print(s2);
 print(s3);
 print(s4);
+
+let name1 = 'testfiles就发(2).png';
+let filename1 = name1.substring(0, 14);
+let kk1 = filename1.toLowerCase();
+print(kk1);
+
+let name2 = 'testfileswodetwwwpng';
+let filename2 = name2.substring(0, 14);
+let kk2 = filename2.toLowerCase();
+print(kk2);

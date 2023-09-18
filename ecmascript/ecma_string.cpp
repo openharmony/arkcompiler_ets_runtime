@@ -1026,7 +1026,7 @@ FlatStringInfo EcmaString::FlattenAllString(const EcmaVM *vm, const JSHandle<Ecm
         s = EcmaString::Cast(SlicedString::Cast(*string)->GetParent());
         startIndex = SlicedString::Cast(*string)->GetStartIndex();
     }
-    return FlatStringInfo(s, startIndex, s->GetLength());
+    return FlatStringInfo(s, startIndex, string->GetLength());
 }
 
 EcmaString *EcmaString::FlattenNoGC(const EcmaVM *vm, EcmaString *string)
