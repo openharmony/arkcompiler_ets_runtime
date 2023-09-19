@@ -529,7 +529,7 @@ public:
             GateRegion* region = linearizer_->regionList_[cur];
             int loopDepth = 0;
             int innerLoopIndex = -1;
-            for (int i = numLoops_ - 1; i >= 0; i--) {
+            for (int i = static_cast<int>(numLoops_) - 1; i >= 0; i--) {
                 auto& loopInfo = loops_[i];
                 if (loopInfo.loopBodys->TestBit(cur)) {
                     loopDepth++;

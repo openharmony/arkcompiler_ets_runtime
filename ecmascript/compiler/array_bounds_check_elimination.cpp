@@ -176,7 +176,7 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::OrOp(Bound *bou
 
 ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoConstant(GateRef gate)
 {
-    int constValue = acc_.GetConstantValue(gate);
+    int constValue = static_cast<int>(acc_.GetConstantValue(gate));
     return new Bound(constValue, Circuit::NullGate(), constValue, Circuit::NullGate());
 }
 
@@ -189,9 +189,9 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoArithmeticOp(
         if (op == TypedBinOp::TYPED_AND && (acc_.IsConstant(x) || acc_.IsConstant(y))) {
             int constValue = 0;
             if (acc_.IsConstant(x)) {
-                constValue = acc_.GetConstantValue(x);
+                constValue = static_cast<int>(acc_.GetConstantValue(x));
             } else {
-                constValue = acc_.GetConstantValue(y);
+                constValue = static_cast<int>(acc_.GetConstantValue(y));
             }
             if (constValue >= 0) {
                 return new Bound(0, Circuit::NullGate(), constValue, Circuit::NullGate());
@@ -202,7 +202,7 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoArithmeticOp(
                 return new Bound(0, Circuit::NullGate(), -1, y);
             } else if (xBound->HasLower() && xBound->Lower() >= 0 && acc_.IsConstant(y)
                         && acc_.GetConstantValue(y) != 0) {
-                int constValue = acc_.GetConstantValue(y);
+                int constValue = static_cast<int>(acc_.GetConstantValue(y));
                 if (constValue != INT_MIN) {
                     return new Bound(0, Circuit::NullGate(), abs(constValue) - 1, Circuit::NullGate());
                 } else {
@@ -219,7 +219,7 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoArithmeticOp(
             }
 
             // Add, Constant now in x
-            int constValue = acc_.GetConstantValue(x);
+            int constValue = static_cast<int>(acc_.GetConstantValue(x));
             if (op == TypedBinOp::TYPED_SUB) {
                 constValue = -constValue;
             }
@@ -351,7 +351,7 @@ void ArrayBoundsCheckElimination::GetInstrAndConstValueFromOp(GateRef gate, Gate
     constValue = 0;
     instrValue = gate;
     if (acc_.IsConstant(gate)) {
-        constValue = acc_.GetConstantValue(gate);
+        constValue = static_cast<int>(acc_.GetConstantValue(gate));
         instrValue = Circuit::NullGate();
     } else {
         while (acc_.GetOpCode(gate) == OpCode::TYPED_BINARY_OP) {
@@ -363,10 +363,10 @@ void ArrayBoundsCheckElimination::GetInstrAndConstValueFromOp(GateRef gate, Gate
                 || (op == TypedBinOp::TYPED_SUB && acc_.IsConstant(y))) {
                 int value = 0;
                 if (acc_.IsConstant(x)) {
-                    value = acc_.GetConstantValue(x);
+                    value = static_cast<int>(acc_.GetConstantValue(x));
                     other = y;
                 } else {
-                    value = acc_.GetConstantValue(y);
+                    value = static_cast<int>(acc_.GetConstantValue(y));
                     other = x;
                 }
 
@@ -379,7 +379,7 @@ void ArrayBoundsCheckElimination::GetInstrAndConstValueFromOp(GateRef gate, Gate
                 }
 
                 if (acc_.IsConstant(other)) {
-                    base += value + acc_.GetConstantValue(other);
+                    base += value + static_cast<int>(acc_.GetConstantValue(other));
                     constValue = base;
                     instrValue = Circuit::NullGate();
                     break ;
@@ -769,7 +769,7 @@ void ArrayBoundsCheckElimination::InBlockMotion(GateLists &indexChecked, GateLis
                 continue;
             }
             if (acc_.IsConstant(index)) {
-                int constValue = acc_.GetConstantValue(index);
+                int constValue = static_cast<int>(acc_.GetConstantValue(index));
                 if (constValue >= 0 && constValue <= maxConstant) {
                     RemoveIndexCheck(indexCheck);
                 } else if (constValue >= 0 && constValue > maxConstant) {

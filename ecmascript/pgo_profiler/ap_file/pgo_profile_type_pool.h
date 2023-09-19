@@ -132,7 +132,7 @@ public:
             auto profileType = record.second.GetProfileType().GetRaw();
             stream.write(reinterpret_cast<const char *>(&(profileType)), sizeof(ProfileType));
         }
-        secInfo.size_ = static_cast<uint32_t>(stream.tellp()) - secInfoPos;
+        secInfo.size_ = static_cast<uint32_t>(stream.tellp()) - static_cast<uint32_t>(secInfoPos);
         auto tail = stream.tellp();
         stream.seekp(secInfoPos, std::ofstream::beg);
         stream.write(reinterpret_cast<const char *>(&(secInfo)), sizeof(SectionInfo));

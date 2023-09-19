@@ -122,7 +122,7 @@ public:
             abcOffset_ = strtol(value, &str, 0);
         } else if (strcmp(key, KEY_ABC_SIZE) == 0) {
             char *str = nullptr;
-            abcSize_ = strtol(value, &str, 0);
+            abcSize_ = static_cast<uint32_t>(strtol(value, &str, 0));
         } else {
             LOG_COMPILER(ERROR) << "Unknown keyword when parse pkg info. key: " << key << ", value: " << value;
         }

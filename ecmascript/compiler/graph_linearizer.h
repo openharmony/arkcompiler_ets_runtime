@@ -164,7 +164,7 @@ public:
         succs_.clear();
         dominatedRegions_.clear();
     }
-    
+
     void SetLoopNumber(size_t loopNumber)
     {
         loopNumber_ = static_cast<int32_t>(loopNumber);
@@ -207,7 +207,7 @@ public:
 
     void SetInnerLoopIndex(size_t innerLoopIndex)
     {
-        innerLoopIndex_ = innerLoopIndex;
+        innerLoopIndex_ = static_cast<int>(innerLoopIndex);
     }
 
     int GetInnerLoopIndex()
