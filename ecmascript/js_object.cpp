@@ -1336,7 +1336,9 @@ JSHandle<TaggedArray> JSObject::GetAllPropertyKeys(JSThread *thread, const JSHan
             elementIndex++;
         }
     }
-    retArray->Trim(thread, retArrayEffectivelength);
+    if (retArray->GetLength() > retArrayEffectivelength) {
+        retArray->Trim(thread, retArrayEffectivelength);
+    }
     return retArray;
 }
 
