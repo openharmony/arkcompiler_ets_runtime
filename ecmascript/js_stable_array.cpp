@@ -922,9 +922,9 @@ JSTaggedValue JSStableArray::ToSpliced(JSHandle<JSArray> receiver, EcmaRuntimeCa
         destElements = *JSObject::GrowElementsCapacity(thread, newArrayHandle, insertCount);
     }
 
-    uint32_t i = 0, r = actualStart + actualSkipCount;
+    int64_t i = 0, r = actualStart + actualSkipCount;
 
-    for (uint32_t idx = 0; idx < actualStart; idx++, i++) {
+    for (int64_t idx = 0; idx < actualStart; idx++, i++) {
         auto kValue = srcElementsHandle->Get(idx);
         if (kValue.IsHole()) {
             destElements->Set(thread, i, JSTaggedValue::Undefined());
@@ -932,7 +932,7 @@ JSTaggedValue JSStableArray::ToSpliced(JSHandle<JSArray> receiver, EcmaRuntimeCa
             destElements->Set(thread, i, kValue);
         }
     }
-    
+
     for (uint32_t pos = 2; pos < argc; ++pos) { // 2:2 means there two arguments before the insert items.
         auto element = base::BuiltinsBase::GetCallArg(argv, pos);
         destElements->Set(thread, i, element.GetTaggedValue());

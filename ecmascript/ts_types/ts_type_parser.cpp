@@ -889,8 +889,8 @@ bool TSTypeParser::VerifyObjIhcPGOType(JSHandle<JSObject> obj, const PGOHClassLa
 {
     auto hclass = obj->GetClass();
     LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
-    int numOfProps = hclass->NumberOfProps();
-    for (int i = 0; i < numOfProps; i++) {
+    uint32_t numOfProps = hclass->NumberOfProps();
+    for (uint32_t i = 0; i < numOfProps; i++) {
         auto key = layoutInfo->GetKey(i);
         if (!key.IsString()) {
             continue;
