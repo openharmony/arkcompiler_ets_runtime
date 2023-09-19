@@ -184,7 +184,7 @@ public:
     void ShortPrint(std::string bytecode = "", bool inListPreview = false, size_t highlightIdx = -1) const;
     size_t PrintInGate(size_t numIns, size_t idx, size_t size, bool inListPreview, size_t highlightIdx,
                        std::string &log, bool isEnd = false) const;
-    void PrintByteCode(std::string bytecode) const;
+    void PrintGateWithAdditionOp(std::string additionOp) const;
     void CheckNullInput() const;
     void CheckStateInput() const;
     void CheckValueInput(bool isArch64) const;
