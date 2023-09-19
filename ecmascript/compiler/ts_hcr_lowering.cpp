@@ -386,7 +386,6 @@ bool TSHCRLowering::HasStringType([[maybe_unused]] GateRef gate, GateRef left, G
 {
     GateType leftType = acc_.GetGateType(left);
     GateType rightType = acc_.GetGateType(right);
-
     // PGO has not collected string type yet, so skip the check for whether the sampleType is string.
     if (leftType.IsStringType() && rightType.IsStringType()) {
         return true;
