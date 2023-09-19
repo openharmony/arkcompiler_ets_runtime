@@ -206,10 +206,10 @@ public:
     virtual void Initialize() {};
     void Destroy();
 
-    void ReclaimRegions();
+    void ReclaimRegions(size_t cachedSize = 0);
 
 protected:
-    void ClearAndFreeRegion(Region *region);
+    void ClearAndFreeRegion(Region *region, size_t cachedSize = 0);
 
     HeapRegionAllocator *heapRegionAllocator_ {nullptr};
     EcmaList<Region> regionList_ {};

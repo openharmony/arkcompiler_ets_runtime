@@ -542,6 +542,7 @@ public:
             ThrowOutOfMemoryError(nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
         }
     }
+
 private:
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
@@ -557,7 +558,7 @@ private:
     void WaitClearTaskFinished();
     void InvokeWeakNodeNativeFinalizeCallback();
     inline void ReclaimRegions(TriggerGCType gcType);
-
+    inline size_t CalculateCommittedCacheSize();
     class ParallelGCTask : public Task {
     public:
         ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase)

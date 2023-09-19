@@ -58,7 +58,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     return new (ToVoidPtr(mem)) Region(thread, mem, begin, end, flags);
 }
 
-void HeapRegionAllocator::FreeRegion(Region *region)
+void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize)
 {
     auto size = region->GetCapacity();
     bool isRegular = !(region->InHugeObjectSpace());
@@ -73,6 +73,6 @@ void HeapRegionAllocator::FreeRegion(Region *region)
         UNREACHABLE();
     }
 #endif
-    MemMapAllocator::GetInstance()->Free(ToVoidPtr(allocateBase), size, isRegular);
+    MemMapAllocator::GetInstance()->CacheOrFree(ToVoidPtr(allocateBase), size, isRegular, cachedSize);
 }
 }  // namespace panda::ecmascript
