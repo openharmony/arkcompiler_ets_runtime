@@ -113,3 +113,5 @@ enable_local_code_sign = false
 if (have_local_code_sign && enable_target_compilation) {
   enable_local_code_sign = true
 }
+
+fuzz_test_output_path = "ets_runtime/ets_runtime"
