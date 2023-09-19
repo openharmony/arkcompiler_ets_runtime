@@ -1587,7 +1587,7 @@ void TypeMCRLowering::LowerTypeOfCheck(GateRef gate)
     } else if (type.IsBooleanType()) {
         check = builder_.TaggedIsBoolean(value);
     } else if (type.IsNullType()) {
-       check = builder_.TaggedIsNull(value);
+        check = builder_.TaggedIsNull(value);
     } else if (type.IsUndefinedType()) {
         check = builder_.TaggedIsUndefined(value);
     } else if (type.IsStringType()) {
@@ -1599,7 +1599,7 @@ void TypeMCRLowering::LowerTypeOfCheck(GateRef gate)
     } else if (tsManager_->IsFunctionTypeKind(type) || tsManager_->IsClassTypeKind(type)) {
         check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsCallable(value));
     } else if (tsManager_->IsObjectTypeKind(type) || tsManager_->IsClassInstanceTypeKind(type)) {
-       check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsJsType(value, JSType::JS_OBJECT));
+        check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsJsType(value, JSType::JS_OBJECT));
     } else if (tsManager_->IsArrayTypeKind(type)) {
         check = builder_.BoolAnd(builder_.TaggedIsHeapObject(value), builder_.IsJsType(value, JSType::JS_ARRAY));
     } else {
@@ -1622,7 +1622,7 @@ void TypeMCRLowering::LowerTypeOf(GateRef gate, GateRef glue)
     } else if (type.IsBooleanType()) {
         index = ConstantIndex::BOOLEAN_STRING_INDEX;
     } else if (type.IsNullType()) {
-       index = ConstantIndex::OBJECT_STRING_INDEX;
+        index = ConstantIndex::OBJECT_STRING_INDEX;
     } else if (type.IsUndefinedType()) {
         index = ConstantIndex::UNDEFINED_STRING_INDEX;
     } else if (type.IsStringType()) {
