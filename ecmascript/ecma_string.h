@@ -58,6 +58,7 @@ public:
     static constexpr uint32_t STRING_COMPRESSED_BIT = 0x1;
     static constexpr uint32_t STRING_INTERN_BIT = 0x2;
     static constexpr size_t MAX_STRING_LENGTH = 0x40000000U; // 30 bits for string length, 2 bits for special meaning
+    static constexpr uint32_t STRING_LENGTH_SHIFT_COUNT = 2U;
 
     static constexpr size_t MIX_LENGTH_OFFSET = TaggedObjectSize();
     // In last bit of mix_length we store if this string is compressed or not.
@@ -139,14 +140,14 @@ private:
 
     uint32_t GetLength() const
     {
-        return GetMixLength() >> 2U;
+        return GetMixLength() >> STRING_LENGTH_SHIFT_COUNT;
     }
 
     void SetLength(uint32_t length, bool compressed = false)
     {
         ASSERT(length < MAX_STRING_LENGTH);
         // Use 0u for compressed/utf8 expression
-        SetMixLength((length << 2U) | (compressed ? STRING_COMPRESSED : STRING_UNCOMPRESSED));
+        SetMixLength((length << STRING_LENGTH_SHIFT_COUNT) | (compressed ? STRING_COMPRESSED : STRING_UNCOMPRESSED));
     }
 
     inline size_t GetUtf8Length(bool modify = true) const;

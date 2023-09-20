@@ -593,10 +593,10 @@ public:
     GateRef FastStringEqual(GateRef glue, GateRef left, GateRef right);
     GateRef FastMod(GateRef gule, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastTypeOf(GateRef left, GateRef right);
-    GateRef FastMul(GateRef left, GateRef right, ProfileOperation callback);
+    GateRef FastMul(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastDiv(GateRef left, GateRef right, ProfileOperation callback);
-    GateRef FastAdd(GateRef left, GateRef right, ProfileOperation callback);
-    GateRef FastSub(GateRef left, GateRef right, ProfileOperation callback);
+    GateRef FastAdd(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
+    GateRef FastSub(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastToBoolean(GateRef value);
 
     // Add SpecialContainer
@@ -666,9 +666,10 @@ private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     GateRef ChangeTaggedPointerToInt64(GateRef x);
     template<OpCode Op>
-    GateRef FastAddSubAndMul(GateRef left, GateRef right, ProfileOperation callback);
+    GateRef FastAddSubAndMul(GateRef glue, GateRef left, GateRef right, ProfileOperation callback);
     GateRef FastIntDiv(GateRef left, GateRef right, Label *bailout, ProfileOperation callback);
-    GateRef FastBinaryOp(GateRef left, GateRef right,
+    template<OpCode Op>
+    GateRef FastBinaryOp(GateRef glue, GateRef left, GateRef right,
                          const BinaryOperation& intOp, const BinaryOperation& floatOp, ProfileOperation callback);
     void InitializeArguments();
     CallSignature *callSignature_ {nullptr};

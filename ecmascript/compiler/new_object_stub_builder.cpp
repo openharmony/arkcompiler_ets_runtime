@@ -477,6 +477,26 @@ void NewObjectStubBuilder::AllocSlicedStringObject(Variable *result, Label *exit
     Jump(exit);
 }
 
+void NewObjectStubBuilder::AllocTreeStringObject(Variable *result, Label *exit, GateRef first, GateRef second,
+    GateRef length, bool compressed)
+{
+    auto env = GetEnvironment();
+
+    size_ = AlignUp(IntPtr(TreeEcmaString::SIZE), IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
+    Label afterAllocate(env);
+    AllocateInYoung(result, &afterAllocate);
+
+    Bind(&afterAllocate);
+    GateRef stringClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+                                                 ConstantIndex::TREE_STRING_CLASS_INDEX);
+    StoreHClass(glue_, result->ReadVariable(), stringClass);
+    SetLength(glue_, result->ReadVariable(), length, compressed);
+    SetRawHashcode(glue_, result->ReadVariable(), Int32(0));
+    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeEcmaString::FIRST_OFFSET), first);
+    Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeEcmaString::SECOND_OFFSET), second);
+    Jump(exit);
+}
+
 GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
 {
     auto env = GetEnvironment();

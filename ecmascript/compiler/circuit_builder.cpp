@@ -1571,7 +1571,7 @@ GateRef CircuitBuilder::GetHomeObjectFromFunction(GateRef function)
 GateRef CircuitBuilder::GetLengthFromString(GateRef value)
 {
     GateRef len = Load(VariableType::INT32(), value, IntPtr(EcmaString::MIX_LENGTH_OFFSET));
-    return Int32LSR(len, Int32(2));  // 2 : 2 means len must be right shift 2 bits
+    return Int32LSR(len, Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT));
 }
 
 GateRef CircuitBuilder::GetConstPoolFromFunction(GateRef jsFunc)

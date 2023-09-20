@@ -1422,7 +1422,12 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
     int32_t index = 0;
     int32_t pos = EcmaStringAccessor::IndexOf(ecmaVm, thisString, seperatorString);
     while (pos != -1) {
-        EcmaString *elementString = EcmaStringAccessor::FastSubString(ecmaVm, thisString, index, pos - index);
+        EcmaString *elementString;
+        if (static_cast<uint32_t>(pos - index) >= SlicedString::MIN_SLICED_ECMASTRING_LENGTH) {
+            elementString = EcmaStringAccessor::GetSlicedString(ecmaVm, thisString, index, pos - index);
+        } else {
+            elementString = EcmaStringAccessor::FastSubString(ecmaVm, thisString, index, pos - index);
+        }
         JSHandle<JSTaggedValue> elementTag(thread, elementString);
         JSObject::CreateDataProperty(thread, resultArray, arrayLength, elementTag);
         ASSERT_PRINT(!thread->HasPendingException(), "CreateDataProperty can't throw exception");
@@ -1433,7 +1438,12 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
         index = pos + seperatorLength;
         pos = EcmaStringAccessor::IndexOf(ecmaVm, thisString, seperatorString, index);
     }
-    EcmaString *elementString = EcmaStringAccessor::FastSubString(ecmaVm, thisString, index, thisLength - index);
+    EcmaString *elementString;
+    if (static_cast<uint32_t>(thisLength - index) >= SlicedString::MIN_SLICED_ECMASTRING_LENGTH) {
+        elementString = EcmaStringAccessor::GetSlicedString(ecmaVm, thisString, index, thisLength - index);
+    } else {
+        elementString = EcmaStringAccessor::FastSubString(ecmaVm, thisString, index, thisLength - index);
+    }
     JSHandle<JSTaggedValue> elementTag(thread, elementString);
     JSObject::CreateDataProperty(thread, resultArray, arrayLength, elementTag);
     ASSERT_PRINT(!thread->HasPendingException(), "CreateDataProperty can't throw exception");

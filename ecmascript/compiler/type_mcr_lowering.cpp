@@ -354,7 +354,7 @@ void TypeMCRLowering::LowerFlattenTreeStringCheck(GateRef gate, GateRef glue)
 
 GateRef TypeMCRLowering::GetLengthFromString(GateRef gate)
 {
-    GateRef shiftCount = builder_.Int32(2); // 2: shift count
+    GateRef shiftCount = builder_.Int32(EcmaString::STRING_LENGTH_SHIFT_COUNT);
     return builder_.Int32LSR(
         builder_.LoadConstOffset(VariableType::INT32(), gate, EcmaString::MIX_LENGTH_OFFSET), shiftCount);
 }

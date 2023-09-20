@@ -4704,7 +4704,8 @@ GateRef StubBuilder::FastDiv(GateRef left, GateRef right, ProfileOperation callb
     return ret;
 }
 
-GateRef StubBuilder::FastBinaryOp(GateRef left, GateRef right,
+template<OpCode Op>
+GateRef StubBuilder::FastBinaryOp(GateRef glue, GateRef left, GateRef right,
                                   const BinaryOperation& intOp,
                                   const BinaryOperation& floatOp,
                                   ProfileOperation callback)
@@ -4724,8 +4725,12 @@ GateRef StubBuilder::FastBinaryOp(GateRef left, GateRef right,
     Label leftIsIntRightIsDouble(env);
     Label rightIsInt(env);
     Label rightIsDouble(env);
-
-    Branch(TaggedIsNumber(left), &leftIsNumber, &exit);
+    Label checkString(env);
+    if (Op == OpCode::ADD) {
+        Branch(TaggedIsNumber(left), &leftIsNumber, &checkString);
+    } else {
+        Branch(TaggedIsNumber(left), &leftIsNumber, &exit);
+    }
     Bind(&leftIsNumber);
     {
         Branch(TaggedIsNumber(right), &rightIsNumber, &exit);
@@ -4765,6 +4770,24 @@ GateRef StubBuilder::FastBinaryOp(GateRef left, GateRef right,
             }
         }
     }
+    if (Op == OpCode::ADD) {
+        Bind(&checkString);
+        {
+            Label stringAdd(env);
+            Label hasPendingException(env);
+            GateRef bothString = BoolAnd(TaggedIsString(left), TaggedIsString(right));
+            Branch(bothString, &stringAdd, &exit);
+            Bind(&stringAdd);
+            {
+                BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
+                result = builtinsStringStubBuilder.StringConcat(glue, left, right);
+                Branch(HasPendingException(glue), &hasPendingException, &exit);
+                Bind(&hasPendingException);
+                result = Exception();
+                Jump(&exit);
+            }
+        }
+    }
     Bind(&doIntOp);
     {
         result = intOp(env, left, right);
@@ -4782,7 +4805,7 @@ GateRef StubBuilder::FastBinaryOp(GateRef left, GateRef right,
 }
 
 template<OpCode Op>
-GateRef StubBuilder::FastAddSubAndMul(GateRef left, GateRef right, ProfileOperation callback)
+GateRef StubBuilder::FastAddSubAndMul(GateRef glue, GateRef left, GateRef right, ProfileOperation callback)
 {
     auto intOperation = [=](Environment *env, GateRef left, GateRef right) {
         Label entry(env);
@@ -4838,7 +4861,7 @@ GateRef StubBuilder::FastAddSubAndMul(GateRef left, GateRef right, ProfileOperat
         auto res = BinaryOp<Op, MachineType::F64>(left, right);
         return DoubleToTaggedDoublePtr(res);
     };
-    return FastBinaryOp(left, right, intOperation, floatOperation, callback);
+    return FastBinaryOp<Op>(glue, left, right, intOperation, floatOperation, callback);
 }
 
 GateRef StubBuilder::FastIntDiv(GateRef left, GateRef right, Label *bailout, ProfileOperation callback)
@@ -4876,19 +4899,19 @@ GateRef StubBuilder::FastIntDiv(GateRef left, GateRef right, Label *bailout, Pro
     return ret;
 }
 
-GateRef StubBuilder::FastAdd(GateRef left, GateRef right, ProfileOperation callback)
+GateRef StubBuilder::FastAdd(GateRef glue, GateRef left, GateRef right, ProfileOperation callback)
 {
-    return FastAddSubAndMul<OpCode::ADD>(left, right, callback);
+    return FastAddSubAndMul<OpCode::ADD>(glue, left, right, callback);
 }
 
-GateRef StubBuilder::FastSub(GateRef left, GateRef right, ProfileOperation callback)
+GateRef StubBuilder::FastSub(GateRef glue, GateRef left, GateRef right, ProfileOperation callback)
 {
-    return FastAddSubAndMul<OpCode::SUB>(left, right, callback);
+    return FastAddSubAndMul<OpCode::SUB>(glue, left, right, callback);
 }
 
-GateRef StubBuilder::FastMul(GateRef left, GateRef right, ProfileOperation callback)
+GateRef StubBuilder::FastMul(GateRef glue, GateRef left, GateRef right, ProfileOperation callback)
 {
-    return FastAddSubAndMul<OpCode::MUL>(left, right, callback);
+    return FastAddSubAndMul<OpCode::MUL>(glue, left, right, callback);
 }
 
 GateRef StubBuilder::FastMod(GateRef glue, GateRef left, GateRef right, ProfileOperation callback)
@@ -6161,18 +6184,19 @@ GateRef StubBuilder::GetNormalStringData(const StringInfoGateRef &stringInfoGate
     Label isLineString(env);
     Label isUtf8(env);
     Label isUtf16(env);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(result, VariableType::NATIVE_POINTER(), Undefined());
     Branch(IsConstantString(stringInfoGate.GetString()), &isConstantString, &isLineString);
     Bind(&isConstantString);
     {
         GateRef address = PtrAdd(stringInfoGate.GetString(), IntPtr(ConstantString::CONSTANT_DATA_OFFSET));
-        result = PtrAdd(Load(VariableType::JS_ANY(), address, IntPtr(0)),
+        result = PtrAdd(Load(VariableType::NATIVE_POINTER(), address, IntPtr(0)),
             ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
         Jump(&exit);
     }
     Bind(&isLineString);
     {
-        GateRef data = PtrAdd(stringInfoGate.GetString(), IntPtr(LineEcmaString::DATA_OFFSET));
+        GateRef data = ChangeTaggedPointerToInt64(
+            PtrAdd(stringInfoGate.GetString(), IntPtr(LineEcmaString::DATA_OFFSET)));
         Branch(IsUtf8String(stringInfoGate.GetString()), &isUtf8, &isUtf16);
         Bind(&isUtf8);
         {
