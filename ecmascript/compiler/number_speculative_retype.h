@@ -95,6 +95,7 @@ private:
     GateRef VisitIsTrueOrFalse(GateRef gate);
     GateRef VisitWithConstantValue(GateRef gate, size_t ignoreIndex);
     GateRef VisitIntermediateValue(GateRef gate);
+    GateRef VisitStrictEqual(GateRef gate);
 
     GateRef VisitStringCompare(GateRef gate);
 

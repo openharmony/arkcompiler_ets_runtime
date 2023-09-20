@@ -283,6 +283,23 @@ bool GateAccessor::HasStringType(GateRef gate) const
     return false;
 }
 
+// Include number, undefined, null and boolean type.
+bool GateAccessor::HasPrimitiveNumberType(GateRef gate) const
+{
+    auto sampleType = GetTypedBinaryType(gate);
+    if (sampleType.IsNumber()) {
+        return true;
+    }
+    if (sampleType.IsNone()) {
+        GateType leftType = GetLeftType(gate);
+        GateType rightType = GetRightType(gate);
+        if (leftType.IsPrimitiveNumberType() && rightType.IsPrimitiveNumberType()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 GlobalTSTypeRef GateAccessor::GetFuncGT(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::JSINLINETARGET_TYPE_CHECK);
@@ -297,7 +314,9 @@ GateType GateAccessor::GetParamGateType(GateRef gate) const
            GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK ||
            GetOpCode(gate) == OpCode::INDEX_CHECK ||
            GetOpCode(gate) == OpCode::TYPED_CALLTARGETCHECK_OP ||
-           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER ||
+           GetOpCode(gate) == OpCode::TYPE_OF_CHECK ||
+           GetOpCode(gate) == OpCode::TYPE_OF);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     GateTypeAccessor accessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetGateType();

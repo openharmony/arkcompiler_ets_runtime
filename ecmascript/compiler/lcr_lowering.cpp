@@ -359,6 +359,12 @@ void LCRLowering::LowerCheckAndConvert(GateRef gate)
         case ValueType::BOOL:
             LowerCheckSupportAndConvert(gate, frameState);
             break;
+        case ValueType::TAGGED_NULL:
+            LowerCheckNullAndConvert(gate, frameState);
+            break;
+        case ValueType::UNDEFINED:
+            LowerUndefinedAndConvert(gate, frameState);
+            break;
         default:
             UNREACHABLE();
     }
@@ -447,8 +453,52 @@ void LCRLowering::LowerCheckTaggedBoolAndConvert(GateRef gate, GateRef frameStat
     GateRef typeCheck = builder_.TaggedIsBoolean(value);
     builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTBOOL);
     GateRef result = Circuit::NullGate();
-    ASSERT(acc_.GetDstType(gate) == ValueType::BOOL);
-    result = ConvertTaggedBooleanToBool(value);
+    GateRef boolValue = ConvertTaggedBooleanToBool(value);
+    if (acc_.GetDstType(gate) == ValueType::BOOL) {
+        result = boolValue;
+    } else if (acc_.GetDstType(gate) == ValueType::INT32) {
+        result = builder_.ZExtInt1ToInt32(boolValue);
+    } else if (acc_.GetDstType(gate) == ValueType::FLOAT64) {
+        result = builder_.BooleanToFloat64(boolValue);
+    } else {
+        UNREACHABLE();
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void LCRLowering::LowerCheckNullAndConvert(GateRef gate, GateRef frameState)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.TaggedIsNull(value);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTNULL);
+    GateRef result = Circuit::NullGate();
+    if (acc_.GetDstType(gate) == ValueType::INT32) {
+        result = builder_.Int32(0);
+    } else if (acc_.GetDstType(gate) == ValueType::FLOAT64) {
+        result = builder_.Double(0);
+    } else if (acc_.GetDstType(gate) == ValueType::BOOL) {
+        result = builder_.False();
+    } else {
+        UNREACHABLE();
+    }
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void LCRLowering::LowerUndefinedAndConvert(GateRef gate, GateRef frameState)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef typeCheck = builder_.TaggedIsUndefined(value);
+    builder_.DeoptCheck(typeCheck, frameState, DeoptType::NOTNULL);
+    GateRef result = Circuit::NullGate();
+    if (acc_.GetDstType(gate) == ValueType::FLOAT64) {
+        result = builder_.NanValue();
+    } else if (acc_.GetDstType(gate) == ValueType::BOOL) {
+        result = builder_.False();
+    } else if (acc_.GetDstType(gate) == ValueType::INT32) {
+        result = builder_.Int32(0);
+    } else {
+        UNREACHABLE();
+    }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 

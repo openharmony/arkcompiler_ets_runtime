@@ -83,7 +83,7 @@ private:
 
     void Lower(GateRef gate);
     template<TypedBinOp Op>
-    void LowerTypedBinOp(GateRef gate);
+    void LowerTypedBinOp(GateRef gate, bool convertNumberType = true);
     template<TypedUnOp Op>
     void LowerTypedUnOp(GateRef gate);
     void LowerTypedStrictEq(GateRef gate);
@@ -137,6 +137,7 @@ private:
                                      GateType funcType, bool isNoGC);
     void LowerFastCall(GateRef gate, GateRef func, const std::vector<GateRef> &argsFastCall, bool isNoGC);
     void LowerCall(GateRef gate, GateRef func, const std::vector<GateRef> &args, bool isNoGC);
+    void LowerTypedTypeOf(GateRef gate);
     GateRef LoadStringByIndex(GateRef receiver, GateRef propKey);
     GateRef LoadJSArrayByIndex(GateRef receiver, GateRef propKey, ElementsKind kind);
     GateRef LoadTypedArrayByIndex(GateRef receiver, GateRef propKey);
@@ -149,7 +150,7 @@ private:
     bool IsTrustedType(GateRef gate) const;
     bool IsTrustedStringType(GateRef gate) const;
     bool HasNumberType(GateRef gate, GateRef value) const;
-    bool HasNumberType(GateRef gate, GateRef left, GateRef right) const;
+    bool HasNumberType(GateRef gate, GateRef left, GateRef right, bool convertNumberType = true) const;
     bool HasStringType(GateRef gate, GateRef left, GateRef right) const;
 
     void AddBytecodeCount(EcmaOpcode op);

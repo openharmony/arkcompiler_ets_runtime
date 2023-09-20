@@ -212,6 +212,26 @@ public:
         return IsNumberType() || IsNullType() || IsUndefinedType() || IsBooleanType() || IsBigIntType();
     }
 
+    bool IsSymbolType() const
+    {
+        GlobalTSTypeRef r = GetGTRef();
+        uint32_t m = r.GetModuleId();
+        uint32_t l = r.GetLocalId();
+        return (m == 0) && (l == static_cast<uint32_t>(TSPrimitiveType::SYMBOL));
+    }
+
+    // In addition to normal number types, null, undefined, boolean types will be converted to numeric types when doing
+    // some numerical computation.
+    bool IsPrimitiveNumberType() const
+    {
+        return IsNumberType() || IsNullType() || IsUndefinedType() || IsBooleanType();
+    }
+
+    bool IsPrimitiveIntType() const
+    {
+        return IsIntType() || IsNullType() || IsBooleanType();
+    }
+
     bool IsGCRelated() const
     {
         return (type_ & (~GateType::GC_MASK)) == 0;
@@ -285,6 +305,8 @@ enum class ValueType : uint8_t {
     TAGGED_NUMBER,
     CHAR,
     ECMA_STRING,
+    UNDEFINED,
+    TAGGED_NULL,
 };
 
 enum class ConvertSupport : uint8_t {

@@ -272,6 +272,8 @@ public:
     template<TypedCallTargetCheckOp Op>
     inline GateRef JSNoGCCallThisTargetTypeCheck(GateType type, GateRef func, GateRef methodId, GateRef gate);
     GateRef DeoptCheck(GateRef condition, GateRef frameState, DeoptType type);
+    GateRef TypeOfCheck(GateRef gate, GateType type);
+    GateRef TypedTypeOf(GateType type);
     GateRef TypedCallOperator(GateRef hirGate, MachineType type, const std::vector<GateRef>& inList);
     inline GateRef TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args, BuiltinsStubCSigns::ID id);
     GateRef TypeConvert(MachineType type, GateType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
@@ -320,6 +322,14 @@ public:
     GateRef CheckTaggedNumberAndConvertToFloat64(GateRef gate);
     GateRef CheckTaggedNumberAndConvertToBool(GateRef gate);
     GateRef CheckTaggedBooleanAndConvertToBool(GateRef gate);
+    GateRef CheckNullAndConvertToInt32(GateRef gate);
+    GateRef CheckTaggedBooleanAndConvertToInt32(GateRef gate);
+    GateRef CheckNullAndConvertToFloat64(GateRef gate);
+    GateRef CheckTaggedBooleanAndConvertToFloat64(GateRef gate);
+    GateRef CheckUndefinedAndConvertToFloat64(GateRef gate);
+    GateRef CheckUndefinedAndConvertToBool(GateRef gate);
+    GateRef CheckNullAndConvertToBool(GateRef gate);
+    GateRef CheckUndefinedAndConvertToInt32(GateRef gate);
     GateRef InsertStableArrayCheck(GateRef array);
     GateRef InsertLoadArrayLength(GateRef array, bool isTypedArray);
     GateRef InsertTypedArrayCheck(GateType type, GateRef array);
@@ -351,6 +361,7 @@ public:
     GateRef NullPtrConstant();
     GateRef NullConstant();
     GateRef ExceptionConstant();
+    GateRef NanValue();
     GateRef RelocatableData(uint64_t val);
     GateRef Alloca(size_t size);
     GateRef Branch(GateRef state, GateRef condition, uint32_t leftWeight = 1, uint32_t rightWeight = 1,
