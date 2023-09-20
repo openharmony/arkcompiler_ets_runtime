@@ -262,7 +262,8 @@ DECLARE_BUILTINS(Array##Method)                                                 
     V(IndexOf,      JS_ANY)                 \
     V(LastIndexOf,  JS_ANY)                 \
     V(Slice,        JS_POINTER)             \
-    V(Reverse,      JS_POINTER)
+    V(Reverse,      JS_POINTER)             \
+    V(Push,         JS_ANY)
 
 BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_WITH_ARRAY_STUB_BUILDER)
 

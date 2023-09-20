@@ -2131,7 +2131,8 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
                 BUILTINS_STUB_ID(ArrayLastIndexOf));
     SetFunction(env, arrFuncPrototype, "map", BuiltinsArray::Map, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "pop", BuiltinsArray::Pop, FunctionLength::ZERO);
-    SetFunction(env, arrFuncPrototype, "push", BuiltinsArray::Push, FunctionLength::ONE);
+    SetFunction(env, arrFuncPrototype, "push", BuiltinsArray::Push, FunctionLength::ONE,
+                BUILTINS_STUB_ID(ArrayPush));
     SetFunction(env, arrFuncPrototype, "reduce", BuiltinsArray::Reduce, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "reduceRight", BuiltinsArray::ReduceRight, FunctionLength::ONE);
     SetFunction(env, arrFuncPrototype, "reverse", BuiltinsArray::Reverse, FunctionLength::ZERO,
