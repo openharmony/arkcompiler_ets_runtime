@@ -638,10 +638,12 @@ void LCRLowering::LowerHeapAllocate(GateRef gate)
 
 void LCRLowering::HeapAllocateInYoung(GateRef gate)
 {
-    Label success(&builder_);
-    Label callRuntime(&builder_);
     Label exit(&builder_);
     GateRef size = acc_.GetValueIn(gate, 0);
+    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+#ifndef ARK_ASAN_ON
+    Label success(&builder_);
+    Label callRuntime(&builder_);
     size_t topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(false);
     size_t endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(false);
     GateRef topAddress = builder_.Load(VariableType::NATIVE_POINTER(), glue_, builder_.IntPtr(topOffset));
@@ -649,7 +651,6 @@ void LCRLowering::HeapAllocateInYoung(GateRef gate)
     GateRef top = builder_.Load(VariableType::JS_POINTER(), topAddress, builder_.IntPtr(0));
     GateRef end = builder_.Load(VariableType::JS_POINTER(), endAddress, builder_.IntPtr(0));
 
-    DEFVAlUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
     GateRef newTop = builder_.PtrAdd(top, size);
     builder_.Branch(builder_.IntPtrGreaterThan(newTop, end), &callRuntime, &success);
     builder_.Bind(&success);
@@ -659,6 +660,7 @@ void LCRLowering::HeapAllocateInYoung(GateRef gate)
         builder_.Jump(&exit);
     }
     builder_.Bind(&callRuntime);
+#endif
     {
         result = builder_.CallRuntime(glue_, RTSTUB_ID(AllocateInYoung), Gate::InvalidGateRef,
                                       {builder_.ToTaggedInt(size)}, gate);

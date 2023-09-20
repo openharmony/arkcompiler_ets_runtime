@@ -31,6 +31,16 @@ var m = {
     "a": "hello"
 }
 
+// case3: last label equal bcLast
+function f() {}
+function f1() {
+    return
+    try {
+      f()
+    } catch(e) {
+    }
+}
+
 // case4: GetDeps
 function f2() {
     try {
@@ -39,5 +49,10 @@ function f2() {
     }
     while(1) {}
 }
+
+// case5: asan check
+function f59() : number[] {}
+class C60 extends f59 {}
+const v75 : number = new C60()
 
 print("compiler success");
