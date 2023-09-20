@@ -40,11 +40,13 @@ public:
     {
         TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
         chunk_ = thread->GetEcmaVM()->GetChunk();
+        regExpCachedChunk_ = new RegExpCachedChunk(thread);
     }
 
     void TearDown() override
     {
         TestHelper::DestroyEcmaVMWithScope(instance, scope);
+        delete regExpCachedChunk_;
     }
 
     bool IsValidAlphaEscapeInAtom(char s) const
@@ -102,6 +104,7 @@ protected:
     EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
     Chunk *chunk_ {nullptr};
+    RegExpCachedChunk *regExpCachedChunk_ {nullptr};
 };
 
 HWTEST_F_L0(RegExpTest, ParseError1)
@@ -644,7 +647,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec1)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("abc");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -666,7 +669,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec2)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("cabd");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -697,7 +700,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec3)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("aabaac");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -721,7 +724,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec4)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("aabaac");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -743,7 +746,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec5)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("b");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -765,7 +768,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec6)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("zaacbbbcac");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -796,7 +799,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec7)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("ab\nabc");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -818,7 +821,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec8)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("ab\nabc");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -840,7 +843,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec9)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("erv");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -862,7 +865,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec10)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("bad good");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -884,7 +887,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec11)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("\na");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -906,7 +909,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec12)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("\n");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -928,7 +931,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec13)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("\naabc");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -950,7 +953,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec14)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("\nbbabc");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -972,7 +975,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec15)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("aabc");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -994,7 +997,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec16)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("ABC");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1016,7 +1019,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec17)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("a\n");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1037,7 +1040,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec18)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("ababc");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1054,7 +1057,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec19)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("ababc");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1076,7 +1079,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec20)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("baaabac");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1100,7 +1103,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec21)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("caab");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1122,7 +1125,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec22)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("aaaa:aa");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1144,7 +1147,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec23)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("caab");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1165,7 +1168,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec24)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("caab");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1182,7 +1185,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec25)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("cabab");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1206,7 +1209,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec26)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("A");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1228,7 +1231,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec27)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("Z");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1250,7 +1253,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec28)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("\n");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1272,7 +1275,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec29)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1295,7 +1298,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec30)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());
@@ -1317,7 +1320,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec31)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("aabb");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1339,7 +1342,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec32)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("aabb");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1363,7 +1366,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec33)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("qyqya");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1383,7 +1386,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec34)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("qyqy ");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1403,7 +1406,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec35)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("xx2021-01-09");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1429,7 +1432,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec36)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("The Quick Brown Fox Jumps Over The Lazy Dog");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1453,7 +1456,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec37)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("abABc");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1475,7 +1478,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec38)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("www.netscape.com");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1499,7 +1502,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec39)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("baaaac");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1521,7 +1524,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec40)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("ab");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1541,7 +1544,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec41)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("baaabaac");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1566,7 +1569,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec42)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("\n\n\\abc324234");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1586,7 +1589,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec43)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("line1\nline2");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1606,7 +1609,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec44)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("abc\bdef");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1626,7 +1629,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec45)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("easy\bto\u0008ride");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1646,7 +1649,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec46)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("Course_Creator = Test");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1670,7 +1673,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec47)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("pilOt\nsoviet robot\topenoffice");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1690,7 +1693,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec49)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("ab55");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1718,7 +1721,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec50)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("2020-12-31");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1743,7 +1746,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec51)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     std::u16string input(u"\u0000");
     bool ret = executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length() + 1,
                                 parser.GetOriginBuffer(), true);
@@ -1761,7 +1764,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec52)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("aabcdaabcd");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(), parser.GetOriginBuffer());
@@ -1783,7 +1786,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec53)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     std::u16string input(u"\u0001");
     bool ret = executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(),
                                 parser.GetOriginBuffer(), true);
@@ -1802,7 +1805,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec54)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("pilot\nsoviet robot\topenoffice");
     bool ret = executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(),
                                 parser.GetOriginBuffer(), false);
@@ -1818,7 +1821,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec55)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("c\u0065");
     bool ret = executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(),
                                 parser.GetOriginBuffer(), false);
@@ -1838,7 +1841,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec56)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     std::u16string input(u"a啊");
     bool ret = executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.length(),
                                 parser.GetOriginBuffer(), true);
@@ -1857,7 +1860,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec57)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     char16_t data[] = {0xd834, 0xdf06};
     bool ret = executor.Execute(reinterpret_cast<const uint8_t *>(data), 0, 2, parser.GetOriginBuffer(), true);
     ASSERT_FALSE(ret);
@@ -1872,7 +1875,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec58)
     parser.Parse();
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     char16_t data[] = {0xd834, 0xdf06};
     bool ret = executor.Execute(reinterpret_cast<const uint8_t *>(data), 0, 2, parser.GetOriginBuffer(), true);
     ASSERT_TRUE(ret);
@@ -1893,7 +1896,7 @@ HWTEST_F_L0(RegExpTest, ParseAndExec59)
     bool parseResult = parser.IsError();
     ASSERT_FALSE(parseResult);
 
-    RegExpExecutor executor(chunk_);
+    RegExpExecutor executor(regExpCachedChunk_);
     CString input("\u000B");
     bool ret =
         executor.Execute(reinterpret_cast<const uint8_t *>(input.c_str()), 0, input.size(), parser.GetOriginBuffer());

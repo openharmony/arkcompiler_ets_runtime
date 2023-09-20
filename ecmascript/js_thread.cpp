@@ -112,10 +112,12 @@ JSThread::~JSThread()
         delete item;
     }
     contexts_.clear();
+    GetNativeAreaAllocator()->FreeArea(regExpCache_);
 
     glueData_.frameBase_ = nullptr;
     nativeAreaAllocator_ = nullptr;
     heapRegionAllocator_ = nullptr;
+    regExpCache_ = nullptr;
     if (vmThreadControl_ != nullptr) {
         delete vmThreadControl_;
         vmThreadControl_ = nullptr;
@@ -671,5 +673,13 @@ bool JSThread::IsAllContextsInitialized() const
         }
     }
     return true;
+}
+
+Area *JSThread::GetOrCreateRegExpCache()
+{
+    if (regExpCache_ == nullptr) {
+        regExpCache_ = nativeAreaAllocator_->AllocateArea(MAX_REGEXP_CACHE_SIZE);
+    }
+    return regExpCache_;
 }
 }  // namespace panda::ecmascript

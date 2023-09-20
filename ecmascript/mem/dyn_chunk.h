@@ -19,12 +19,13 @@
 #include <cstring>
 
 #include "ecmascript/common.h"
+#include "ecmascript/mem/regexp_cached_chunk.h"
 #include "ecmascript/mem/chunk.h"
 
 namespace panda::ecmascript {
 class PUBLIC_API DynChunk {
 public:
-    static constexpr size_t ALLOCATE_MIN_SIZE = 64;
+    static constexpr size_t ALLOCATE_MIN_SIZE = 256;
     static constexpr int FAILURE = -1;
     static constexpr int SUCCESS = 0;
     explicit DynChunk(Chunk *chunk) : chunk_(chunk)
@@ -139,15 +140,16 @@ private:
     friend class RegExpOpCode;
     friend class RegExpExecutor;
 
-    DynChunk(uint8_t *buf, Chunk *chunk) : buf_(buf), chunk_(chunk)
+    DynChunk(uint8_t *buf, RegExpCachedChunk *regExpCachedChunk) : buf_(buf), regExpCachedChunk_(regExpCachedChunk)
     {
-        ASSERT(chunk_ != nullptr);
+        ASSERT(regExpCachedChunk_ != nullptr);
     };
 
     uint8_t *buf_ {nullptr};
     size_t size_ {0};
     size_t allocatedSize_ {0};
     bool error_ {false};
+    RegExpCachedChunk *regExpCachedChunk_ {nullptr};
     Chunk *chunk_ {nullptr};
 };
 }  // namespace panda::ecmascript

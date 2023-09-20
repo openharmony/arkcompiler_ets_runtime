@@ -1343,7 +1343,7 @@ RegExpExecutor::MatchResult BuiltinsRegExp::Matcher(JSThread *thread, const JSHa
     void *dynBuf = JSNativePointer::Cast(bufferData.GetTaggedObject())->GetExternalPointer();
     auto bytecodeBuffer = reinterpret_cast<uint8_t *>(dynBuf);
     // execute
-    Chunk chunk(thread->GetNativeAreaAllocator());
+    RegExpCachedChunk chunk(thread);
     RegExpExecutor executor(&chunk);
     if (lastIndex < 0) {
         lastIndex = 0;
