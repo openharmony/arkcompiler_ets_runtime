@@ -1652,13 +1652,7 @@ GateRef StubBuilder::LoadICWithHandler(
                         }
                         Bind(&handlerInfoIsStringLength);
                         {
-                            GateRef glueGlobalEnvOffset = IntPtr(
-                                JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-                            auto stringProto = GetGlobalEnvValue(VariableType::JS_ANY(),
-                                glueGlobalEnv, GlobalEnv::STRING_PROTOTYPE_INDEX);
-                            GateRef lengthAccessor = LoadFromField(stringProto, handlerInfo);
-                            result = CallGetterHelper(glue, receiver, stringProto, lengthAccessor, callback);
+                            result = IntToTaggedPtr(GetLengthFromString(receiver));
                             Jump(&exit);
                         }
                     }

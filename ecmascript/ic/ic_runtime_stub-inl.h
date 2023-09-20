@@ -422,10 +422,7 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::LoadICWithHandler(JSThread *thread, JSTa
             return JSTaggedValue::Undefined();
         }
         if (HandlerBase::IsStringLength(handlerInfo)) {
-            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-            holder = env->GetStringFunction().GetObject<JSFunction>()->GetFunctionPrototype();
-            auto accessor = LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfo);
-            return FastRuntimeStub::CallGetter(thread, receiver, holder, accessor);
+            return JSTaggedNumber((EcmaStringAccessor(EcmaString::Cast(holder)).GetLength()));
         }
         ASSERT(HandlerBase::IsAccessor(handlerInfo) || HandlerBase::IsInternalAccessor(handlerInfo));
         auto accessor = LoadFromField(JSObject::Cast(holder.GetTaggedObject()), handlerInfo);
