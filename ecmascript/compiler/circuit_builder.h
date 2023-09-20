@@ -372,6 +372,9 @@ public:
     GateRef Goto(GateRef state);
     GateRef LoopBegin(GateRef state);
     GateRef LoopEnd(GateRef state);
+    GateRef LoopExit(GateRef state);
+    GateRef LoopExitDepend(GateRef state, GateRef depend);
+    GateRef LoopExitValue(GateRef state, GateRef value);
     GateRef IfTrue(GateRef ifBranch);
     GateRef IfFalse(GateRef ifBranch);
     GateRef SwitchCase(GateRef switchBranch, int64_t value);
@@ -691,6 +694,7 @@ public:
     void Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
+    void LoopExit(const std::vector<Variable*> &vars, size_t diff = 1);
     inline Label *GetCurrentLabel() const;
     inline GateRef GetState() const;
     inline GateRef GetDepend() const;

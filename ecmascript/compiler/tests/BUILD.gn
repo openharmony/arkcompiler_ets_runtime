@@ -37,9 +37,45 @@ host_unittest_action("AssemblerTest") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("TypedArrayLoweringTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "typed_array_lowering_test.cpp",
+  ]
+
+  deps = [
+    "$ark_root/libpandafile:libarkfile_static",
+    "$js_root:libark_jsruntime_test_set",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+    sdk_libc_secshared_dep,
+  ]
+}
+
+host_unittest_action("LoopOptimizationTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "loop_optimization_test.cpp",
+  ]
+
+  deps = [
+    "$ark_root/libpandafile:libarkfile_static",
+    "$js_root:libark_jsruntime_test_set",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+    sdk_libc_secshared_dep,
+  ]
+}
+
 group("host_unittest") {
   testonly = true
 
   # deps file
-  deps = [ ":AssemblerTestAction" ]
+  deps = [
+    ":AssemblerTestAction",
+    ":LoopOptimizationTestAction",
+    ":TypedArrayLoweringTestAction",
+  ]
 }

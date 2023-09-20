@@ -266,6 +266,7 @@ private:
     void CheckInputOpcode(size_t idx, OpCode expected) const;
     void CheckInputMachineType(size_t idx, MachineType expected, bool isArch64) const;
     void CheckNotInputMachineType(size_t idx, MachineType notExpected) const;
+    void CheckState(size_t idx) const;
     void CheckGeneralState(size_t idx) const;
     void CheckFailed(std::string errorString, size_t highlightIdx) const;
     void SetMetaData(const GateMetaData* meta)

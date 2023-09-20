@@ -462,11 +462,10 @@ bool Verifier::RunFlowCyclesFind(const Circuit* circuit)
             LOG_COMPILER(ERROR) << "====================== Cycle Found ======================";
             std::string log = "";
             while (st.top().gate != succ) {
-                log += std::to_string(acc.GetId(st.top().gate)) + " > ";
+                log += std::to_string(acc.GetId(st.top().gate)) + " < ";
                 st.pop();
             }
             log += std::to_string(acc.GetId(st.top().gate));
-            std::reverse(log.begin(), log.end());
             LOG_COMPILER(ERROR) << log;
             return true;
         }

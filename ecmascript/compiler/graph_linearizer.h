@@ -250,12 +250,18 @@ class GraphLinearizer {
 public:
     using ControlFlowGraph = std::vector<std::vector<GateRef>>;
 
-    GraphLinearizer(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk, bool onlyBB = false)
+    GraphLinearizer(Circuit *circuit, bool enableLog, const std::string& name, Chunk* chunk,
+        bool onlyBB = false, bool loopInvariantCodeMotion = false)
         : enableLog_(enableLog), methodName_(name), chunk_(chunk), circuit_(circuit),
-        acc_(circuit), gateIdToGateInfo_(chunk),
-        regionList_(chunk), regionRootList_(chunk), onlyBB_(onlyBB) {}
+        acc_(circuit), gateIdToGateInfo_(chunk), regionList_(chunk), regionRootList_(chunk),
+        onlyBB_(onlyBB), loopInvariantCodeMotion_(loopInvariantCodeMotion) {}
 
     void Run(ControlFlowGraph &result);
+
+    GateRef GetStateOfSchedulableGate(GateRef gate) const
+    {
+        return GateToRegion(gate)->GetState();
+    }
 private:
     enum class ScheduleModel { LIR, JS_OPCODE };
     enum class ScheduleState { NONE, FIXED, SELECTOR, SCHEDELABLE };
@@ -295,6 +301,11 @@ private:
     const std::string& GetMethodName() const
     {
         return methodName_;
+    }
+
+    bool IsEnableLoopInvariantCodeMotion() const
+    {
+        return loopInvariantCodeMotion_;
     }
 
     void LinearizeGraph();
@@ -426,6 +437,7 @@ private:
     ChunkVector<GateRef> regionRootList_;
 
     bool onlyBB_ {false}; // dont schedule
+    bool loopInvariantCodeMotion_ {false};
 
     friend class ArrayBoundsCheckElimination;
     friend class CFGBuilder;
