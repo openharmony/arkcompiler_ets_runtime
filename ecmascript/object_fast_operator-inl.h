@@ -286,6 +286,9 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
         auto *hclass = holder.GetTaggedObject()->GetClass();
         JSType jsType = hclass->GetObjectType();
         if (IsSpecialIndexedObj(jsType)) {
+            if (jsType == JSType::JS_TYPED_ARRAY) {
+                return JSTaggedValue::Hole();
+            }
             if (IsFastTypeArray(jsType)) {
                 CHECK_IS_ON_PROTOTYPE_CHAIN(receiver, holder);
                 return JSTypedArray::FastSetPropertyByIndex(thread, receiver, index, value, jsType);
