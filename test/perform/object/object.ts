@@ -30,3 +30,17 @@ function testToString() {
 }
 
 testToString();
+
+function testHasOwnProperty() {
+    const example = {};
+    example.prop = "exists";
+    let start = ArkTools.timeInUs();
+    for (let i = 0; i < 1_000_000; i++) {
+        example.hasOwnProperty("prop");
+    }
+    let end = ArkTools.timeInUs();
+    let time = (end - start) / 1000
+    print("Object HasOwnProperty:\t"+String(time)+"\tms");
+}
+
+testHasOwnProperty();

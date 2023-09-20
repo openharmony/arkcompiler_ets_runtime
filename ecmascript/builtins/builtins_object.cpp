@@ -686,14 +686,22 @@ JSTaggedValue BuiltinsObject::HasOwnProperty(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Object, HasOwnProperty);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. Let P be ToPropertyKey(V).
+    JSHandle<JSTaggedValue> thisValue = GetThis(argv);
     JSHandle<JSTaggedValue> prop = GetCallArg(argv, 0);
+
+    JSTaggedValue result = ObjectFastOperator::HasOwnProperty(thread, thisValue.GetTaggedValue(),
+        prop.GetTaggedValue());
+    if (!result.IsHole()) {
+        return GetTaggedBoolean(true);
+    }
+
     JSHandle<JSTaggedValue> property = JSTaggedValue::ToPropertyKey(thread, prop);
 
     // 2. ReturnIfAbrupt(P).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 3. Let O be ToObject(this value).
-    JSHandle<JSObject> object = JSTaggedValue::ToObject(thread, GetThis(argv));
+    JSHandle<JSObject> object = JSTaggedValue::ToObject(thread, thisValue);
 
     // 4. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
