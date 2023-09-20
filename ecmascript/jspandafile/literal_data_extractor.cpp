@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/patch/quick_fix_manager.h"
@@ -222,10 +223,6 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     ASSERT(methodLiteral != nullptr);
     methodLiteral->SetFunctionKind(kind);
     bool canFastCall = false;
-    JSHandle<Method> method = factory->NewMethod(
-        jsPandaFile, methodLiteral, constpool, entryIndex, isLoadedAOT, &canFastCall);
-    JSHandle<JSFunction> jsFunc = factory->NewJSFunction(method, kind, isLoadedAOT, canFastCall);
-    jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
 
     CString moduleName = jsPandaFile->GetJSPandaFileDesc();
     CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
@@ -238,11 +235,16 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     if (!hasRecord) {
         LOG_ECMA(FATAL) << "cannot find record '" + entry + "', please check the request path.";
     }
+    JSHandle<SourceTextModule> module(thread, JSTaggedValue::Undefined());
     if (jsPandaFile->IsModule(recordInfo)) {
-        JSHandle<SourceTextModule> module = thread->GetCurrentEcmaContext()->GetModuleManager()->HostGetImportedModule(
-            moduleName);
-        jsFunc->SetModule(thread, module.GetTaggedValue());
+        module = thread->GetCurrentEcmaContext()->GetModuleManager()->HostGetImportedModule(moduleName);
     }
+
+    JSHandle<Method> method = factory->NewMethod(jsPandaFile, methodLiteral, constpool,
+        JSHandle<JSTaggedValue>(thread, module.GetTaggedValue()), entryIndex, isLoadedAOT, &canFastCall);
+    JSHandle<JSFunction> jsFunc = factory->NewJSFunction(method, kind, isLoadedAOT, canFastCall);
+    jsFunc->SetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, JSTaggedValue(length));
+
     return jsFunc;
 }
 

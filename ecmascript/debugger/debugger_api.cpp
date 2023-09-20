@@ -381,8 +381,7 @@ JSTaggedValue DebuggerApi::GetCurrentModule(const EcmaVM *ecmaVm)
         if (method->IsNativeWithCallField()) {
             continue;
         }
-        JSTaggedValue func = frameHandler.GetFunction();
-        JSTaggedValue module = JSFunction::Cast(func.GetTaggedObject())->GetModule();
+        JSTaggedValue module = method->GetModule();
         if (module.IsUndefined()) {
             continue;
         }

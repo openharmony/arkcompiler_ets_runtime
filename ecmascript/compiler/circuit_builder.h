@@ -638,7 +638,6 @@ public:
     GateRef TaggedIsBigInt(GateRef obj);
     void SetLexicalEnvToFunction(GateRef glue, GateRef function, GateRef value);
     GateRef GetFunctionLexicalEnv(GateRef function);
-    void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
         GateRef value, GateRef attrOffset, VariableType type);
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);

@@ -46,8 +46,8 @@ ModuleManager::ModuleManager(EcmaVM *vm) : vm_(vm)
 JSTaggedValue ModuleManager::GetCurrentModule()
 {
     FrameHandler frameHandler(vm_->GetJSThread());
-    JSTaggedValue currentFunc = frameHandler.GetFunction();
-    return JSFunction::Cast(currentFunc.GetTaggedObject())->GetModule();
+    Method *currentMethod = frameHandler.GetMethod();
+    return currentMethod->GetModule();
 }
 
 JSTaggedValue ModuleManager::GetModuleValueInner(int32_t index)

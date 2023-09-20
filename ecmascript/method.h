@@ -413,9 +413,11 @@ public:
     const char *PUBLIC_API GetMethodName() const;
     const char *PUBLIC_API GetMethodName(const JSPandaFile *file) const;
     std::string PUBLIC_API ParseFunctionName() const;
-    const CString GetRecordName() const;
+    const CString GetRecordNameStr() const;
 
     uint32_t FindCatchBlock(uint32_t pc) const;
+
+    const JSTaggedValue GetRecordName() const;
 
     /* callfield */
     static constexpr size_t VREGS_ARGS_NUM_BITS = 28; // 28: maximum 268,435,455
@@ -444,7 +446,8 @@ public:
 
     static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();
     ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, PROFILE_TYPE_INFO_OFFSET)
-    ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, CALL_FIELD_OFFSET)
+    ACCESSORS(ProfileTypeInfo, PROFILE_TYPE_INFO_OFFSET, ECMA_MODULE_OFFSET)
+    ACCESSORS(Module, ECMA_MODULE_OFFSET, CALL_FIELD_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(CallField, uint64_t, CALL_FIELD_OFFSET, NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET)
     // Native method decides this filed is NativePointer or BytecodeArray pointer.
     ACCESSORS_NATIVE_FIELD(

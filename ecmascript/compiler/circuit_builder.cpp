@@ -1628,8 +1628,9 @@ GateRef CircuitBuilder::GetMethodFromFunction(GateRef function)
 
 GateRef CircuitBuilder::GetModuleFromFunction(GateRef function)
 {
-    GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
-    return Load(VariableType::JS_POINTER(), function, offset);
+    GateRef method = GetMethodFromFunction(function);
+    GateRef offset = IntPtr(Method::ECMA_MODULE_OFFSET);
+    return Load(VariableType::JS_POINTER(), method, offset);
 }
 
 GateRef CircuitBuilder::GetHomeObjectFromFunction(GateRef function)
@@ -1683,7 +1684,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
                 { constPool, Int32ToTaggedInt(index), module }, hirGate);
         } else {
             result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index) }, hirGate);
+                { constPool, Int32ToTaggedInt(index), module }, hirGate);
         }
         Jump(&exit);
     }
@@ -1695,7 +1696,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             Bind(&isInt);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                    { constPool, Int32ToTaggedInt(index) }, hirGate);
+                    { constPool, Int32ToTaggedInt(index), module }, hirGate);
                 Jump(&exit);
             }
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
@@ -1872,12 +1873,6 @@ void CircuitBuilder::SetLexicalEnvToFunction(GateRef glue, GateRef function, Gat
 GateRef CircuitBuilder::GetFunctionLexicalEnv(GateRef function)
 {
     return Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::LEXICAL_ENV_OFFSET));
-}
-
-void CircuitBuilder::SetModuleToFunction(GateRef glue, GateRef function, GateRef value)
-{
-    GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
-    Store(VariableType::JS_POINTER(), glue, function, offset, value);
 }
 
 void CircuitBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,

@@ -1569,9 +1569,6 @@ void JSFunction::Dump(std::ostream &os) const
     os << " - FunctionExtraInfo: ";
     GetFunctionExtraInfo().Dump(os);
     os << "\n";
-    os << " - Module: ";
-    GetModule().Dump(os);
-    os << "\n";
     os << " - Method: ";
     GetMethod().Dump(os);
     os << "\n";
@@ -3676,6 +3673,9 @@ void Method::Dump(std::ostream &os) const
     os << " - ProfileTypeInfo: ";
     GetProfileTypeInfo().Dump(os);
     os << "\n";
+    os << " - Module: ";
+    GetModule().Dump(os);
+    os << "\n";
     os << " - FunctionKind: " << static_cast<int>(GetFunctionKind());
     os << "\n";
     os << " - CodeEntryOrLiteral: " << std::hex << GetCodeEntryOrLiteral() << "\n";
@@ -4467,6 +4467,7 @@ void Method::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("ConstantPool"), GetConstantPool());
     vec.emplace_back(CString("ProfileTypeInfo"), GetProfileTypeInfo());
+    vec.emplace_back(CString("Module"), GetModule());
 }
 
 void Program::DumpForSnapshot(std::vector<Reference> &vec) const

@@ -810,8 +810,9 @@ DEF_RUNTIME_STUBS(GetMethodFromCache)
     RUNTIME_STUBS_HEADER(GetMethodFromCache);
     JSHandle<JSTaggedValue> constpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue index = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
     return ConstantPool::GetMethodFromCache(
-        thread, constpool.GetTaggedValue(), index.GetInt()).GetRawData();
+        thread, constpool.GetTaggedValue(), module.GetTaggedValue(), index.GetInt()).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetStringFromCache)
@@ -2435,8 +2436,8 @@ DEF_RUNTIME_STUBS(AotInlineTrace)
     JSFunction *inlineJSFunc = JSFunction::Cast(inlineFunc);
     Method *callerMethod = Method::Cast(JSFunction::Cast(callerJSFunc)->GetMethod());
     Method *inlineMethod = Method::Cast(JSFunction::Cast(inlineJSFunc)->GetMethod());
-    auto callerRecordName = callerMethod->GetRecordName();
-    auto inlineRecordNanme = inlineMethod->GetRecordName();
+    auto callerRecordName = callerMethod->GetRecordNameStr();
+    auto inlineRecordNanme = inlineMethod->GetRecordNameStr();
     const std::string callerFuncName(callerMethod->GetMethodName());
     const std::string inlineFuncNanme(inlineMethod->GetMethodName());
     std::string callerFullName = callerFuncName + "@" + std::string(callerRecordName);
