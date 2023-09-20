@@ -364,6 +364,10 @@ void DFXJSNApi::StartCpuProfilerForFile([[maybe_unused]] const EcmaVM *vm,
                                         [[maybe_unused]] int interval)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (interval < 0) {
+        LOG_ECMA(ERROR) << "Sampling interval is illegal";
+        return;
+    }
     if (vm == nullptr) {
         return;
     }
@@ -400,6 +404,10 @@ void DFXJSNApi::StopCpuProfilerForFile([[maybe_unused]] const EcmaVM *vm)
 void DFXJSNApi::StartCpuProfilerForInfo([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int interval)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (interval < 0) {
+        LOG_ECMA(ERROR) << "Sampling interval is illegal";
+        return;
+    }
     if (vm == nullptr) {
         return;
     }
@@ -441,6 +449,10 @@ std::unique_ptr<ProfileInfo> DFXJSNApi::StopCpuProfilerForInfo([[maybe_unused]] 
 void DFXJSNApi::SetCpuSamplingInterval([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int interval)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    if (interval < 0) {
+        LOG_ECMA(ERROR) << "Sampling interval is illegal";
+        return;
+    }
     LOG_ECMA(INFO) << "SetCpuProfilerSamplingInterval, Sampling interval is: " << interval;
     if (vm == nullptr) {
         return;

@@ -232,7 +232,10 @@ EcmaVM::~EcmaVM()
 {
     initialized_ = false;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
-    DFXJSNApi::StopCpuProfilerForFile(this);
+    if (thread_->isProfiling_) {
+        DFXJSNApi::StopCpuProfilerForFile(this);
+        DFXJSNApi::StopCpuProfilerForInfo(this);
+    }
 #endif
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     DeleteHeapProfile();
@@ -627,11 +630,11 @@ void EcmaVM::DumpCallTimeInfo()
     }
 }
 
-void EcmaVM::WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm)
+void EcmaVM::WorkersetInfo(EcmaVM *workerVm)
 {
     os::memory::LockHolder lock(mutex_);
     auto thread = workerVm->GetJSThread();
-    if (thread != nullptr && hostVm != nullptr) {
+    if (thread != nullptr) {
         auto tid = thread->GetThreadId();
         if (tid != 0) {
             workerList_.emplace(tid, workerVm);
@@ -652,11 +655,11 @@ EcmaVM *EcmaVM::GetWorkerVm(uint32_t tid)
     return workerVm;
 }
 
-bool EcmaVM::DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm)
+bool EcmaVM::DeleteWorker(EcmaVM *workerVm)
 {
     os::memory::LockHolder lock(mutex_);
     auto thread = workerVm->GetJSThread();
-    if (hostVm != nullptr && thread != nullptr) {
+    if (thread != nullptr) {
         auto tid = thread->GetThreadId();
         if (tid == 0) {
             return false;

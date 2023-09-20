@@ -18,8 +18,7 @@
 
 #include <csignal>
 #include <cstdint>
-
-#include "ecmascript/taskpool/task.h"
+#include <pthread.h>
 
 #include "libpandabase/macros.h"
 
@@ -27,21 +26,25 @@ namespace panda::ecmascript {
 class SamplesRecord;
 class JSThread;
 class EcmaVM;
-class SamplingProcessor : public Task {
+class SamplingProcessor {
 public:
     static uint64_t GetMicrosecondsTimeStamp();
 
-    SamplingProcessor(int32_t id, SamplesRecord *generator, int interval);
     virtual ~SamplingProcessor();
 
-    bool Run(uint32_t threadIndex) override;
+    static void *Run(void *arg);
 
     NO_COPY_SEMANTIC(SamplingProcessor);
     NO_MOVE_SEMANTIC(SamplingProcessor);
-private:
-    SamplesRecord *generator_ = nullptr;
-    uint32_t interval_ = 0;
-    pthread_t pid_ = 0;
+};
+
+struct RunParams {
+    SamplesRecord *generatorParam;
+    uint32_t intervalParam;
+    pthread_t pidParam;
+
+    RunParams(SamplesRecord *generatorParam, uint32_t intervalParam, pthread_t pidParam)
+        :generatorParam(generatorParam), intervalParam(intervalParam), pidParam(pidParam) {};
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_DFX_CPU_PROFILER_SAMPLING_PROCESSOR_H

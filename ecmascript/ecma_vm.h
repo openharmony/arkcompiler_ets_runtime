@@ -297,11 +297,11 @@ public:
 
     void TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint);
 
-    void WorkersetInfo(EcmaVM *hostVm, EcmaVM *workerVm);
+    void WorkersetInfo(EcmaVM *workerVm);
 
     EcmaVM *GetWorkerVm(uint32_t tid);
 
-    bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+    bool DeleteWorker(EcmaVM *workerVm);
 
     bool SuspendWorkerVm(uint32_t tid);
 

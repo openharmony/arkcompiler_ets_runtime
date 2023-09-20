@@ -84,8 +84,11 @@ void CpuProfiler::StartCpuProfilerForInfo()
 
     generator_->SetTimeDeltaThreshold(interval_ * THRESHOLD_GROWTH_FACTORY + THRESHOLD_FIXED_INCREMENT);
     generator_->SetIsStart(true);
-    Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<SamplingProcessor>(vm_->GetJSThread()->GetThreadId(), generator_, interval_));
+    RunParams *params = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
+    if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params) != 0) {
+        LOG_ECMA(ERROR) << "pthread_create fail!";
+        return;
+    }
 }
 
 void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
@@ -144,8 +147,11 @@ void CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
 
     generator_->SetTimeDeltaThreshold(interval_ * THRESHOLD_GROWTH_FACTORY + THRESHOLD_FIXED_INCREMENT);
     generator_->SetIsStart(true);
-    Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<SamplingProcessor>(vm_->GetJSThread()->GetThreadId(), generator_, interval_));
+    RunParams *params = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
+    if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params) != 0) {
+        LOG_ECMA(ERROR) << "pthread_create fail!";
+        return;
+    }
 }
 
 std::unique_ptr<struct ProfileInfo> CpuProfiler::StopCpuProfilerForInfo()
