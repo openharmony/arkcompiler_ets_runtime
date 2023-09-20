@@ -490,7 +490,6 @@ private:
     Node *GeneratePrivateStringNode(size_t size);
     Node *GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges();
-    void FillPrimitiveEdge(size_t count, CList<Node *>::iterator iter);
     void RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo);
     void BridgeAllReferences();
     CString *GenerateEdgeName(TaggedObject *from, TaggedObject *to);
