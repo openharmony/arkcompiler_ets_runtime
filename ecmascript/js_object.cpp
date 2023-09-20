@@ -2269,9 +2269,7 @@ int32_t ECMAObject::GetHash() const
             return 0;
         }
     }
-    JSThread *thread = this->GetJSThread();
-    JSHandle<JSTaggedValue> valueHandle(thread, value);
-    return JSTaggedValue::ToInt32(thread, valueHandle);
+    return value.GetInt();
 }
 
 bool ECMAObject::HasHash() const
