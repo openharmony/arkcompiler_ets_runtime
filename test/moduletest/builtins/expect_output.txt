@@ -39,6 +39,7 @@ builtins number start
 parseInt result = 16947500000
 0.7999999999999999
 -Infinity
+TypeError: Cannot convert a BigInt value to a number
 builtins number end
 builtins regexp start
 20210608_5V0J5lVh4xVNYx0AUE.jpg,.jpg

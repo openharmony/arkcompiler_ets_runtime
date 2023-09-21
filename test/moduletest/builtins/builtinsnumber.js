@@ -24,4 +24,13 @@ print("builtins number start");
 print("parseInt result = " + result);
 print(1 / 0.75 * 0.6);
 print(1 / (-1 * 0));
+
+// math.atanh
+try {
+    const bigIntTest = -2147483647n;
+    const test = Math.atanh(bigIntTest);
+} catch(e) {
+    print(e);
+};
+
 print("builtins number end");
