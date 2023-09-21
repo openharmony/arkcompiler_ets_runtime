@@ -19,7 +19,7 @@ import("//build/ohos.gni")
 
 ##################################fuzztest#####################################
 ohos_fuzztest("JSONParseFuzzTest") {
-  module_out_path = "arkcompiler/ets_runtime"
+  module_out_path = fuzz_test_output_path
 
   fuzz_config_file = "//arkcompiler/ets_runtime/test/fuzztest/jsonparse_fuzzer"
 
