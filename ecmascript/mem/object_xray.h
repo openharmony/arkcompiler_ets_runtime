@@ -392,6 +392,8 @@ public:
                 break;
             case JSType::PROTO_CHANGE_MARKER:
                 break;
+            case JSType::MARKER_CELL:
+                break;
             case JSType::TRACK_INFO:
                 TrackInfo::Cast(object)->VisitRangeSlot(visitor);
                 break;

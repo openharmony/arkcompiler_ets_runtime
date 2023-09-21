@@ -65,6 +65,8 @@ private:
                                      kungfu::BuiltinsStubCSigns::ID builtinId =
                                      kungfu::BuiltinsStubCSigns::INVALID) const;
 
+    void InitializePropertyDetector(const JSHandle<GlobalEnv> &env) const;
+
     void SetLazyAccessor(const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &key,
         const JSHandle<AccessorData> &accessor) const;
 
@@ -268,6 +270,16 @@ private:
     void SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
                      EcmaEntrypoint func, int length, kungfu::BuiltinsStubCSigns::ID builtinId =
                      kungfu::BuiltinsStubCSigns::INVALID) const;
+
+    JSHandle<JSFunction> SetAndReturnFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
+                                              const char *key, EcmaEntrypoint func, int length,
+                                              kungfu::BuiltinsStubCSigns::ID builtinId =
+                                              kungfu::BuiltinsStubCSigns::INVALID) const ;
+
+    JSHandle<JSFunction> SetAndReturnFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
+                                              const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, int length,
+                                              kungfu::BuiltinsStubCSigns::ID builtinId =
+                                              kungfu::BuiltinsStubCSigns::INVALID) const;
 
     void SetFuncToObjAndGlobal(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &globalObject,
                                const JSHandle<JSObject> &obj, const char *key, EcmaEntrypoint func, int length);

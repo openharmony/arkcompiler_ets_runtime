@@ -61,6 +61,8 @@ public:
     // ArkTools.isPrototype(object)
     static JSTaggedValue IsPrototype(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo *info);
+
     static JSTaggedValue TimeInUs(EcmaRuntimeCallInfo *info);
 };
 }  // namespace panda::ecmascript::builtins

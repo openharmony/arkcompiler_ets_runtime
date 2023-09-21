@@ -3308,11 +3308,12 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
                 result = Hole();
                 Jump(&exit);
             }
+            Label isString(env);
+            Label notString(env);
             Bind(&notNumber1);
             {
-                Label isString(env);
                 Label notIntenalString(env);
-                Branch(TaggedIsString(*varKey), &isString, &setByName);
+                Branch(TaggedIsString(*varKey), &isString, &notString);
                 Bind(&isString);
                 {
                     Branch(IsInternalString(*varKey), &setByName, &notIntenalString);
@@ -3323,6 +3324,8 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
                     }
                 }
             }
+            Bind(&notString);
+            CheckDetectorName(glue, *varKey, &setByName, &exit);
             Bind(&setByName);
             {
                 result = SetPropertyByName(glue, receiver, *varKey, value, useOwn, callback);

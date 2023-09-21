@@ -550,6 +550,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
                 return GetString("StoreTSHandler");
             case JSType::PROTO_CHANGE_MARKER:
                 return GetString("ProtoChangeMarker");
+            case JSType::MARKER_CELL:
+                return GetString("MarkerCell");
             case JSType::PROTOTYPE_INFO:
                 return GetString("ProtoChangeDetails");
             case JSType::TEMPLATE_MAP:

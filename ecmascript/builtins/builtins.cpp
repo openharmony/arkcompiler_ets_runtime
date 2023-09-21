@@ -92,6 +92,7 @@
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
+#include "ecmascript/symbol_table.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
 #ifdef ARK_SUPPORT_INTL
@@ -357,6 +358,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeCjsRequire(env);
     InitializeDefaultExportOfScript(env);
     InitializeFunctionHclassForOptimized(env);
+    InitializePropertyDetector(env);
     JSHandle<JSHClass> generatorFuncClass =
         factory_->CreateFunctionClass(FunctionKind::GENERATOR_FUNCTION, JSFunction::SIZE, JSType::JS_GENERATOR_FUNCTION,
                                       env->GetGeneratorFunctionPrototype());
@@ -395,6 +397,15 @@ void Builtins::InitializeFunctionHclassForOptimized(const JSHandle<GlobalEnv> &e
     JSFUNCTION_JCLASS_LIST(INITIALIZE_FUNCTION_HCLASS_FOR_OPTIMIZED)
 #undef INITIALIZE_FUNCTION_HCLASS_FOR_OPTIMIZED
 #undef JSFUNCTION_JCLASS_LIST
+}
+
+void Builtins::InitializePropertyDetector(const JSHandle<GlobalEnv> &env) const
+{
+#define INITIALIZE_PROPERTY_DETECTOR(type, name, index)              \
+    JSHandle<MarkerCell> name##detector = factory_->NewMarkerCell(); \
+    env->Set##name(thread_, name##detector);
+    GLOBAL_ENV_DETECTOR_FIELDS(INITIALIZE_PROPERTY_DETECTOR)
+#undef INITIALIZE_PROPERTY_DETECTOR
 }
 
 void Builtins::SetLazyAccessor(const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &key,
@@ -642,14 +653,10 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetNoneAttributeProperty(symbolFunction, "match", matchSymbol);
     JSHandle<JSTaggedValue> matchAllSymbol(factory_->NewPublicSymbolWithChar("Symbol.matchAll"));
     SetNoneAttributeProperty(symbolFunction, "matchAll", matchAllSymbol);
-    JSHandle<JSTaggedValue> replaceSymbol(factory_->NewPublicSymbolWithChar("Symbol.replace"));
-    SetNoneAttributeProperty(symbolFunction, "replace", replaceSymbol);
     JSHandle<JSTaggedValue> searchSymbol(factory_->NewPublicSymbolWithChar("Symbol.search"));
     SetNoneAttributeProperty(symbolFunction, "search", searchSymbol);
     JSHandle<JSTaggedValue> speciesSymbol(factory_->NewPublicSymbolWithChar("Symbol.species"));
     SetNoneAttributeProperty(symbolFunction, "species", speciesSymbol);
-    JSHandle<JSTaggedValue> splitSymbol(factory_->NewPublicSymbolWithChar("Symbol.split"));
-    SetNoneAttributeProperty(symbolFunction, "split", splitSymbol);
     JSHandle<JSTaggedValue> toPrimitiveSymbol(factory_->NewPublicSymbolWithChar("Symbol.toPrimitive"));
     SetNoneAttributeProperty(symbolFunction, "toPrimitive", toPrimitiveSymbol);
     JSHandle<JSTaggedValue> unscopablesSymbol(factory_->NewPublicSymbolWithChar("Symbol.unscopables"));
@@ -658,6 +665,32 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     SetNoneAttributeProperty(symbolFunction, "attach", attachSymbol);
     JSHandle<JSTaggedValue> detachSymbol(factory_->NewPublicSymbolWithChar("Symbol.detach"));
     SetNoneAttributeProperty(symbolFunction, "detach", detachSymbol);
+
+    // Symbol attributes with detectors
+    // Create symbol string before create symbol to allocate symbol continuously
+    // Attention: Symbol serialization & deserialization are not supported now and
+    // the order of symbols and symbol-strings must be maintained too when
+    // Symbol serialization & deserialization are ready.
+#define INIT_SYMBOL_STRING(name, description, key)                                         \
+    {                                                                                      \
+        [[maybe_unused]] JSHandle<EcmaString> string = factory_->NewFromUtf8(description); \
+    }
+DETECTOR_SYMBOL_LIST(INIT_SYMBOL_STRING)
+#undef INIT_SYMBOL_STRING
+
+#define INIT_PUBLIC_SYMBOL(name, description, key)                                \
+    JSHandle<JSSymbol> key##Symbol = factory_->NewEmptySymbol();                  \
+    JSHandle<EcmaString> key##String = factory_->NewFromUtf8(description);        \
+    key##Symbol->SetDescription(thread_, key##String.GetTaggedValue());           \
+    key##Symbol->SetHashField(SymbolTable::Hash(key##String.GetTaggedValue()));   \
+    env->Set##name(thread_, key##Symbol);
+DETECTOR_SYMBOL_LIST(INIT_PUBLIC_SYMBOL)
+#undef INIT_PUBLIC_SYMBOL
+
+#define REGISTER_SYMBOL(name, description, key) \
+    SetNoneAttributeProperty(symbolFunction, #key, JSHandle<JSTaggedValue>(key##Symbol));
+DETECTOR_SYMBOL_LIST(REGISTER_SYMBOL)
+#undef REGISTER_SYMBOL
 
     // symbol.prototype.description
     PropertyDescriptor descriptionDesc(thread_);
@@ -682,10 +715,8 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
     env->SetAsyncIteratorSymbol(thread_, asyncIteratorSymbol);
     env->SetMatchSymbol(thread_, matchSymbol);
     env->SetMatchAllSymbol(thread_, matchAllSymbol);
-    env->SetReplaceSymbol(thread_, replaceSymbol);
     env->SetSearchSymbol(thread_, searchSymbol);
     env->SetSpeciesSymbol(thread_, speciesSymbol);
-    env->SetSplitSymbol(thread_, splitSymbol);
     env->SetToPrimitiveSymbol(thread_, toPrimitiveSymbol);
     env->SetUnscopablesSymbol(thread_, unscopablesSymbol);
     env->SetAttachSymbol(thread_, attachSymbol);
@@ -2008,7 +2039,7 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
 
     const GlobalEnvConstants *globalConstants = thread_->GlobalConstants();
     // RegExp.prototype method
-    SetFunction(env, regPrototype, "exec", RegExp::Exec, FunctionLength::ONE);
+    JSHandle<JSFunction> execFunc = SetAndReturnFunction(env, regPrototype, "exec", RegExp::Exec, FunctionLength::ONE);
     SetFunction(env, regPrototype, "test", RegExp::Test, FunctionLength::ONE);
     SetFunction(env, regPrototype, globalConstants->GetHandledToStringString(), RegExp::ToString,
                 FunctionLength::ZERO);
@@ -2073,6 +2104,8 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
                         FunctionLength::TWO);
 
     env->SetRegExpFunction(thread_, regexpFunction);
+    env->SetRegExpPrototype(thread_, regPrototype);
+    env->SetRegExpExecFunction(thread_, execFunc);
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     globalConst->SetConstant(ConstantIndex::JS_REGEXP_CLASS_INDEX, regexpFuncInstanceHClass.GetTaggedValue());
 }
@@ -3009,6 +3042,24 @@ void Builtins::SetFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObje
     JSObject::DefineOwnProperty(thread_, obj, key, descriptor);
 }
 
+JSHandle<JSFunction> Builtins::SetAndReturnFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
+                                                    const char *key, EcmaEntrypoint func, int length,
+                                                    kungfu::BuiltinsStubCSigns::ID builtinId) const
+{
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8(key));
+    return SetAndReturnFunction(env, obj, keyString, func, length, builtinId);
+}
+
+JSHandle<JSFunction> Builtins::SetAndReturnFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
+                                                    const JSHandle<JSTaggedValue> &key, EcmaEntrypoint func, int length,
+                                                    kungfu::BuiltinsStubCSigns::ID builtinId) const
+{
+    JSHandle<JSFunction> function(NewFunction(env, key, func, length, builtinId));
+    PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>(function), true, false, true);
+    JSObject::DefineOwnProperty(thread_, obj, key, descriptor);
+    return function;
+}
+
 void Builtins::SetFrozenFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, const char *key,
                                  EcmaEntrypoint func, int length) const
 {
@@ -3741,6 +3792,8 @@ JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) 
     SetFunction(env, tools, "stopCpuProf", builtins::BuiltinsArkTools::StopCpuProfiler, FunctionLength::ZERO);
 #endif
     SetFunction(env, tools, "isPrototype", builtins::BuiltinsArkTools::IsPrototype, FunctionLength::ONE);
+    SetFunction(env, tools, "isRegExpReplaceDetectorValid", builtins::BuiltinsArkTools::IsRegExpReplaceDetectorValid,
+                FunctionLength::ZERO);
     SetFunction(env, tools, "timeInUs",  builtins::BuiltinsArkTools::TimeInUs, FunctionLength::ZERO);
     return tools;
 }

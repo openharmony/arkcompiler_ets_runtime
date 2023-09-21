@@ -103,6 +103,7 @@
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/marker_cell.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/machine_code.h"
@@ -892,6 +893,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), ProtoChangeMarker::SIZE, 1U);
                 JSHandle<ProtoChangeMarker> protoMaker = factory->NewProtoChangeMarker();
                 DUMP_FOR_HANDLE(protoMaker);
+                break;
+            }
+            case JSType::MARKER_CELL: {
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), MarkerCell::SIZE, 1U);
+                JSHandle<MarkerCell> markerCell = factory->NewMarkerCell();
+                DUMP_FOR_HANDLE(markerCell);
                 break;
             }
             case JSType::TRACK_INFO: {

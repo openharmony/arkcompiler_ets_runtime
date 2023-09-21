@@ -665,11 +665,6 @@ const GlobalEnvConstants *JSThread::GetFirstGlobalConst() const
 
 bool JSThread::IsAllContextsInitialized() const
 {
-    for (auto item : contexts_) {
-        if (!item->IsInitialized()) {
-            return false;
-        }
-    }
-    return true;
+    return contexts_.back()->IsInitialized();
 }
 }  // namespace panda::ecmascript

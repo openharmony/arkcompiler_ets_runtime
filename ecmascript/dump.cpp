@@ -98,6 +98,7 @@
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/marker_cell.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/machine_code.h"
@@ -350,6 +351,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "JSGeneratorContext";
         case JSType::PROTO_CHANGE_MARKER:
             return "ProtoChangeMarker";
+        case JSType::MARKER_CELL:
+            return "MarkerCell";
         case JSType::PROTOTYPE_INFO:
             return "PrototypeInfo";
         case JSType::PROGRAM:
@@ -972,6 +975,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::PROTO_CHANGE_MARKER:
             ProtoChangeMarker::Cast(obj)->Dump(os);
+            break;
+        case JSType::MARKER_CELL:
+            MarkerCell::Cast(obj)->Dump(os);
             break;
         case JSType::PROGRAM:
             Program::Cast(obj)->Dump(os);
@@ -3166,6 +3172,11 @@ void ProtoChangeMarker::Dump(std::ostream &os) const
     os << " - HasChanged: " << GetHasChanged() << "\n";
 }
 
+void MarkerCell::Dump(std::ostream &os) const
+{
+    os << " - IsDetectorInvalid: " << GetIsDetectorInvalid() << "\n";
+}
+
 void ProtoChangeDetails::Dump(std::ostream &os) const
 {
     os << " - ChangeListener: ";
@@ -4150,6 +4161,9 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
                 return;
             case JSType::PROTO_CHANGE_MARKER:
                 ProtoChangeMarker::Cast(obj)->DumpForSnapshot(vec);
+                return;
+            case JSType::MARKER_CELL:
+                MarkerCell::Cast(obj)->DumpForSnapshot(vec);
                 return;
             case JSType::PROTOTYPE_INFO:
                 ProtoChangeDetails::Cast(obj)->DumpForSnapshot(vec);
@@ -5331,6 +5345,11 @@ void GeneratorContext::DumpForSnapshot(std::vector<Reference> &vec) const
 void ProtoChangeMarker::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Promise"), JSTaggedValue(GetHasChanged()));
+}
+
+void MarkerCell::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("IsDetectorInvalid"), JSTaggedValue(GetIsDetectorInvalid()));
 }
 
 void ProtoChangeDetails::DumpForSnapshot(std::vector<Reference> &vec) const

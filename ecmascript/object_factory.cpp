@@ -104,6 +104,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/marker_cell.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/mem/space.h"
@@ -1891,6 +1892,18 @@ JSHandle<LexicalEnv> ObjectFactory::NewLexicalEnv(int numSlots)
     return array;
 }
 
+JSHandle<JSSymbol> ObjectFactory::NewEmptySymbol()
+{
+    NewObjectHook();
+    TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
+    JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
+    obj->SetDescription(thread_, JSTaggedValue::Undefined());
+    obj->SetFlags(0);
+    obj->SetHashField(0);
+    return obj;
+}
+
 JSHandle<JSSymbol> ObjectFactory::NewJSSymbol()
 {
     NewObjectHook();
@@ -2626,6 +2639,16 @@ JSHandle<ProtoChangeMarker> ObjectFactory::NewProtoChangeMarker()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetProtoChangeMarkerClass().GetTaggedObject()));
     JSHandle<ProtoChangeMarker> marker(thread_, header);
+    marker->ClearBitField();
+    return marker;
+}
+
+JSHandle<MarkerCell> ObjectFactory::NewMarkerCell()
+{
+    NewObjectHook();
+    TaggedObject *header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetMarkerCellClass().GetTaggedObject()));
+    JSHandle<MarkerCell> marker(thread_, header);
     marker->ClearBitField();
     return marker;
 }

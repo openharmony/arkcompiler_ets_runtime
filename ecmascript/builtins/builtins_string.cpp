@@ -40,6 +40,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/property_detector-inl.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_array.h"
 #ifdef ARK_SUPPORT_INTL
@@ -828,6 +829,13 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
                                                                  replaceTag.GetTaggedValue());
         if (!cacheResult.IsUndefined()) {
             return cacheResult;
+        }
+    }
+
+    if (searchTag->IsJSRegExp() && PropertyDetector::IsRegExpReplaceDetectorValid(env)) {
+        JSTaggedValue proto = JSObject::GetPrototype(JSHandle<JSObject>(searchTag));
+        if (proto == env->GetTaggedRegExpPrototype()) {
+            return BuiltinsRegExp::ReplaceInternal(thread, searchTag, thisTag, replaceTag);
         }
     }
 
