@@ -253,6 +253,7 @@ class ObjectFactory;
     V(SyntaxErrorString,              SYNTAX_ERROR_STRING_INDEX,             "SyntaxError")                 \
     V(EvalErrorString,                EVAL_ERROR_STRING_INDEX,               "EvalError")                   \
     V(OOMErrorString,                 OOM_ERROR_STRING_INDEX,                "OutOfMemoryError")            \
+    V(TerminationErrorString,         TERMINATION_ERROR_STRING_INDEX,        "TerminationError")            \
     V(ErrorFuncString,                ERROR_FUNC_STRING_INDEX,               "errorfunc")                   \
     V(StackString,                    STACK_STRING_INDEX,                    "stack")                       \
     V(StackEmptyString,               STACK_EMPTY_STRING_INDEX,              "stackisempty")                \

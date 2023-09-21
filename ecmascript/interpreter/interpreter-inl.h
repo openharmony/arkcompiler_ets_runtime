@@ -544,6 +544,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #define UPDATE_HOTNESS_COUNTER(offset)                       \
     do {                                                     \
         if (UpdateHotnessCounter(thread, sp, acc, offset)) { \
+            HANDLE_EXCEPTION_IF_ABRUPT_COMPLETION(thread);   \
             RESTORE_ACC();                                   \
         }                                                    \
     } while (false)
@@ -4843,7 +4844,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t length = READ_INST_8_3();
         LOG_INST() << "intrinsics::definefunc length: " << length;
         auto constpool = GetConstantPool(sp);
-        
+
         auto module = GetEcmaModule(sp);
         Method *method = Method::Cast(GET_METHOD_FROM_CACHE(methodId).GetTaggedObject());
         ASSERT(method != nullptr);

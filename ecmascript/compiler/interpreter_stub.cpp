@@ -133,12 +133,20 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
                    Int8Equal(interruptsFlag, Int8(VmThreadControl::VM_NEED_SUSPENSION))),                      \
             &callRuntime, &initialized);                                                                       \
         Bind(&callRuntime);                                                                                    \
+        if (!(callback).IsEmpty()) {                                                                           \
+            varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { func });         \
+        } else {                                                                                               \
+            varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { func });                 \
+        }                                                                                                      \
+        Label handleException(env);                                                                            \
+        Label noException(env);                                                                                \
+        Branch(HasPendingException(glue), &handleException, &noException);                                     \
+        Bind(&handleException);                                                                                \
         {                                                                                                      \
-            if (!(callback).IsEmpty()) {                                                                       \
-                varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { func });     \
-            } else {                                                                                           \
-                varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounter), { func });             \
-            }                                                                                                  \
+            DISPATCH_LAST();                                                                                   \
+        }                                                                                                      \
+        Bind(&noException);                                                                                    \
+        {                                                                                                      \
             Jump(&dispatch);                                                                                   \
         }                                                                                                      \
         Bind(&initialized);                                                                                    \

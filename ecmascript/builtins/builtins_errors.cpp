@@ -207,4 +207,17 @@ JSTaggedValue BuiltinsOOMError::ToString(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(argv->GetThread(), Error, OOMErrorToString);
     return ErrorHelper::ErrorCommonToString(argv, ErrorType::OOM_ERROR);
 }
+
+// TerminationError
+JSTaggedValue BuiltinsTerminationError::TerminationErrorConstructor(EcmaRuntimeCallInfo *argv)
+{
+    BUILTINS_API_TRACE(argv->GetThread(), Error, TerminationErrorConstructor);
+    return ErrorHelper::ErrorCommonConstructor(argv, ErrorType::TERMINATION_ERROR);
+}
+
+JSTaggedValue BuiltinsTerminationError::ToString(EcmaRuntimeCallInfo *argv)
+{
+    BUILTINS_API_TRACE(argv->GetThread(), Error, TerminationErrorToString);
+    return ErrorHelper::ErrorCommonToString(argv, ErrorType::TERMINATION_ERROR);
+}
 }  // namespace panda::ecmascript::builtins

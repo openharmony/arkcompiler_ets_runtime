@@ -102,6 +102,11 @@ public:
 
     bool Initialize();
 
+    bool IsExecutingPendingJob() const
+    {
+        return isProcessingPendingJob_.load();
+    }
+
     bool HasPendingJob();
 
     bool ExecutePromisePendingJob();
@@ -475,8 +480,8 @@ private:
     EcmaVM *vm_ {nullptr};
 
     bool isUncaughtExceptionRegistered_ {false};
-    bool isProcessingPendingJob_ {false};
     bool initialized_ {false};
+    std::atomic<bool> isProcessingPendingJob_ {false};
     ObjectFactory *factory_ {nullptr};
 
     // VM execution states.

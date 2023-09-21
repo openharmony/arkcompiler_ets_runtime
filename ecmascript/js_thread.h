@@ -70,6 +70,8 @@ public:
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
     using VMNeedSuspensionBit = BitField<bool, CHECK_SAFEPOINT_BITFIELD_NUM, BOOL_BITFIELD_NUM>;
     using VMHasSuspendedBit = VMNeedSuspensionBit::NextFlag;
+    using VMNeedTerminationBit = VMHasSuspendedBit::NextFlag;
+    using VMHasTerminatedBit = VMNeedTerminationBit::NextFlag;
     using PGOStatusBits = BitField<PGOProfilerStatus, PGO_PROFILER_BITFIELD_START, BOOL_BITFIELD_NUM>;
     using BCStubStatusBits = PGOStatusBits::NextField<BCStubStatus, BOOL_BITFIELD_NUM>;
     using ThreadId = uint32_t;
@@ -445,35 +447,67 @@ public:
 
     void SetCheckSafePointStatus()
     {
+        LockHolder lock(interruptMutex_);
         ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & 0xFF) <= 1);
         CheckSafePointBit::Set(true, &glueData_.interruptVector_);
     }
 
     void ResetCheckSafePointStatus()
     {
+        LockHolder lock(interruptMutex_);
         ASSERT(static_cast<uint8_t>(glueData_.interruptVector_ & 0xFF) <= 1);
         CheckSafePointBit::Set(false, &glueData_.interruptVector_);
     }
 
     void SetVMNeedSuspension(bool flag)
     {
+        LockHolder lock(interruptMutex_);
         VMNeedSuspensionBit::Set(flag, &glueData_.interruptVector_);
     }
 
     bool VMNeedSuspension()
     {
+        LockHolder lock(interruptMutex_);
         return VMNeedSuspensionBit::Decode(glueData_.interruptVector_);
     }
 
     void SetVMSuspended(bool flag)
     {
+        LockHolder lock(interruptMutex_);
         VMHasSuspendedBit::Set(flag, &glueData_.interruptVector_);
     }
 
     bool IsVMSuspended()
     {
+        LockHolder lock(interruptMutex_);
         return VMHasSuspendedBit::Decode(glueData_.interruptVector_);
     }
+
+    bool HasTerminationRequest() const
+    {
+        LockHolder lock(interruptMutex_);
+        return VMNeedTerminationBit::Decode(glueData_.interruptVector_);
+    }
+
+    void SetTerminationRequest(bool flag)
+    {
+        LockHolder lock(interruptMutex_);
+        VMNeedTerminationBit::Set(flag, &glueData_.interruptVector_);
+    }
+
+    void SetVMTerminated(bool flag)
+    {
+        LockHolder lock(interruptMutex_);
+        VMHasTerminatedBit::Set(flag, &glueData_.interruptVector_);
+    }
+
+    bool HasTerminated() const
+    {
+        LockHolder lock(interruptMutex_);
+        return VMHasTerminatedBit::Decode(glueData_.interruptVector_);
+    }
+
+    void TerminateExecution();
 
     static uintptr_t GetCurrentStackPosition()
     {
@@ -953,6 +987,8 @@ private:
     CMap<ElementsKind, ConstantIndex> arrayHClassIndexMap_;
 
     CVector<EcmaContext *> contexts_;
+    EcmaContext *currentContext_ {nullptr};
+    mutable Mutex interruptMutex_;
     friend class GlobalHandleCollection;
     friend class EcmaVM;
     friend class EcmaContext;

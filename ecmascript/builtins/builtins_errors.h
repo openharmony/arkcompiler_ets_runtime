@@ -92,5 +92,12 @@ public:
 
     static JSTaggedValue ToString(EcmaRuntimeCallInfo *argv);
 };
+
+class BuiltinsTerminationError : public base::BuiltinsBase {
+public:
+    static JSTaggedValue TerminationErrorConstructor(EcmaRuntimeCallInfo *argv);
+
+    static JSTaggedValue ToString(EcmaRuntimeCallInfo *argv);
+};
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_ERRORS_H

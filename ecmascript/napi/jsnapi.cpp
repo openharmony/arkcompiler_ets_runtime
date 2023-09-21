@@ -700,6 +700,11 @@ bool JSNApi::HasPendingException(const EcmaVM *vm)
     return vm->GetJSThread()->HasPendingException();
 }
 
+bool JSNApi::IsExecutingPendingJob(const EcmaVM *vm)
+{
+    return vm->GetJSThread()->GetCurrentEcmaContext()->IsExecutingPendingJob();
+}
+
 bool JSNApi::HasPendingJob(const EcmaVM *vm)
 {
     return vm->GetJSThread()->GetCurrentEcmaContext()->HasPendingJob();

@@ -1004,6 +1004,7 @@ public:
     static Local<JSValueRef> AggregateError(const EcmaVM *vm, Local<StringRef> message);
     static Local<JSValueRef> EvalError(const EcmaVM *vm, Local<StringRef> message);
     static Local<JSValueRef> OOMError(const EcmaVM *vm, Local<StringRef> message);
+    static Local<JSValueRef> TerminationError(const EcmaVM *vm, Local<StringRef> message);
 };
 
 using LOG_PRINT = int (*)(int id, int level, const char *tag, const char *fmt, const char *message);
@@ -1384,6 +1385,7 @@ public:
     static void PrintExceptionInfo(const EcmaVM *vm);
     static Local<ObjectRef> GetAndClearUncaughtException(const EcmaVM *vm);
     static Local<ObjectRef> GetUncaughtException(const EcmaVM *vm);
+    static bool IsExecutingPendingJob(const EcmaVM *vm);
     static bool HasPendingException(const EcmaVM *vm);
     static bool HasPendingJob(const EcmaVM *vm);
     static void EnableUserUncaughtErrorHandler(EcmaVM *vm);

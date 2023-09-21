@@ -144,6 +144,7 @@ using URIError = builtins::BuiltinsURIError;
 using SyntaxError = builtins::BuiltinsSyntaxError;
 using EvalError = builtins::BuiltinsEvalError;
 using OOMError = builtins::BuiltinsOOMError;
+using TerminationError = builtins::BuiltinsTerminationError;
 using ErrorType = base::ErrorType;
 using RandomGenerator = base::RandomGenerator;
 using Global = builtins::BuiltinsGlobal;
@@ -1007,6 +1008,7 @@ void Builtins::InitializeAllTypeError(const JSHandle<GlobalEnv> &env, const JSHa
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_SYNTAX_ERROR);
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_EVAL_ERROR);
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_OOM_ERROR);
+    InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_TERMINATION_ERROR);
 }
 
 void Builtins::InitializeAllTypeErrorWithRealm(const JSHandle<GlobalEnv> &realm) const
@@ -1024,6 +1026,7 @@ void Builtins::InitializeAllTypeErrorWithRealm(const JSHandle<GlobalEnv> &realm)
     SetErrorWithRealm(realm, JSType::JS_SYNTAX_ERROR);
     SetErrorWithRealm(realm, JSType::JS_EVAL_ERROR);
     SetErrorWithRealm(realm, JSType::JS_OOM_ERROR);
+    SetErrorWithRealm(realm, JSType::JS_TERMINATION_ERROR);
 }
 
 void Builtins::SetErrorWithRealm(const JSHandle<GlobalEnv> &realm, const JSType &errorTag) const
@@ -1073,6 +1076,11 @@ void Builtins::SetErrorWithRealm(const JSHandle<GlobalEnv> &realm, const JSType 
             nativeErrorFunction = env->GetOOMErrorFunction();
             nameString = JSHandle<JSTaggedValue>(thread_->GlobalConstants()->GetHandledOOMErrorString());
             realm->SetOOMErrorFunction(thread_, nativeErrorFunction);
+            break;
+        case JSType::JS_TERMINATION_ERROR:
+            nativeErrorFunction = env->GetTerminationErrorFunction();
+            nameString = JSHandle<JSTaggedValue>(thread_->GlobalConstants()->GetHandledTerminationErrorString());
+            realm->SetTerminationErrorFunction(thread_, nativeErrorFunction);
             break;
         default:
             break;
@@ -1132,6 +1140,10 @@ void Builtins::InitializeError(const JSHandle<GlobalEnv> &env, const JSHandle<JS
             GeneralUpdateError(&errorParameter, OOMError::OOMErrorConstructor, OOMError::ToString,
                                "OutOfMemoryError", JSType::JS_OOM_ERROR);
             break;
+        case JSType::JS_TERMINATION_ERROR:
+            GeneralUpdateError(&errorParameter, TerminationError::TerminationErrorConstructor,
+                               TerminationError::ToString, "TerminationError", JSType::JS_TERMINATION_ERROR);
+            break;
         default:
             break;
     }
@@ -1179,8 +1191,10 @@ void Builtins::InitializeError(const JSHandle<GlobalEnv> &env, const JSHandle<JS
         env->SetSyntaxErrorFunction(thread_, nativeErrorFunction);
     } else if (errorTag == JSType::JS_EVAL_ERROR) {
         env->SetEvalErrorFunction(thread_, nativeErrorFunction);
-    } else {
+    } else if (errorTag == JSType::JS_OOM_ERROR) {
         env->SetOOMErrorFunction(thread_, nativeErrorFunction);
+    } else {
+        env->SetTerminationErrorFunction(thread_, nativeErrorFunction);
     }
 }  // namespace panda::ecmascript
 
