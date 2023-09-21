@@ -411,7 +411,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
                 }
             }
             SetMarkType(MarkType::MARK_FULL);
-            if (fullConcurrentMarkRequested) {
+            if (fullConcurrentMarkRequested && idleTask_ == IdleTaskType::NO_TASK) {
                 LOG_ECMA(INFO) << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
                 oldSpace_->SetOvershootSize(GetEcmaVM()->GetEcmaParamConfiguration().GetOldSpaceOvershootSize());
                 TriggerConcurrentMarking();
