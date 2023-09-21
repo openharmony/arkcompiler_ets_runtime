@@ -129,6 +129,7 @@ void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
                 requiredModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
                 return;
             }
+            increaseModule.emplace(moduleName);
             LoadingTypes type = requiredModule->GetLoadingTypes();
             if (type == LoadingTypes::DYNAMITC_MODULE) {
                 IncreaseRegisterCounts(thread, requiredModule, increaseModule);
