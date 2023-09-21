@@ -59,7 +59,7 @@ using PGORWOpType = pgo::PGORWOpType;
     V(ModZero, MODZERO)                       \
     V(Int32Overflow, INT32OVERFLOW)           \
     V(NotString, NOTSTRING)                   \
-    V(InconsistentType,INCONSISTENTTYPE)      \
+    V(InconsistentType, INCONSISTENTTYPE)     \
     V(NotNull, NOTNULL)
 
 enum class DeoptType : uint8_t {

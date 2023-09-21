@@ -126,7 +126,7 @@ void NumberSpeculativeLowering::VisitTypedBinaryOp(GateRef gate)
 void NumberSpeculativeLowering::VisitStrictEqual(GateRef gate)
 {
     if (acc_.HasNumberType(gate)) {
-         VisitNumberBinaryOp(gate);
+        VisitNumberBinaryOp(gate);
     } else {
         [[maybe_unused]] GateRef left = acc_.GetValueIn(gate, 0);
         [[maybe_unused]] GateRef right = acc_.GetValueIn(gate, 1);

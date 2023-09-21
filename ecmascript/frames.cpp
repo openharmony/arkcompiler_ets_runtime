@@ -402,6 +402,7 @@ std::map<uint32_t, uint32_t> FrameIterator::GetInlinedMethodInfo()
         case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
         case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
             CollectMethodOffsetInfo(inlineMethodInfos);
+            break;
         }
         default: {
             break;
