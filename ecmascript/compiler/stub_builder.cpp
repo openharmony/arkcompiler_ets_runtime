@@ -5085,9 +5085,8 @@ GateRef StubBuilder::GetStringFromConstPool(GateRef glue, GateRef constpool, Gat
     return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index, ConstPoolType::STRING);
 }
 
-GateRef StubBuilder::GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index)
+GateRef StubBuilder::GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef module, GateRef index)
 {
-    GateRef module = Circuit::NullGate();
     GateRef hirGate = Circuit::NullGate();
     return env_->GetBuilder()->GetObjectFromConstPool(glue, hirGate, constpool, module, index, ConstPoolType::METHOD);
 }

@@ -754,8 +754,8 @@ JSTaggedValue RuntimeStubs::RuntimeResolveClass(JSThread *thread, const JSHandle
     ASSERT(ctor.GetTaggedValue().IsClassConstructor());
 
     FrameHandler frameHandler(thread);
-    JSTaggedValue currentFunc = frameHandler.GetFunction();
-    JSHandle<JSTaggedValue> ecmaModule(thread, JSFunction::Cast(currentFunc.GetTaggedObject())->GetModule());
+    Method *currentMethod = frameHandler.GetMethod();
+    JSHandle<JSTaggedValue> ecmaModule(thread, currentMethod->GetModule());
 
     RuntimeSetClassInheritanceRelationship(thread, JSHandle<JSTaggedValue>(ctor), base);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -768,7 +768,7 @@ JSTaggedValue RuntimeStubs::RuntimeResolveClass(JSThread *thread, const JSHandle
         if (LIKELY(value.IsJSFunction())) {
             JSFunction *func = JSFunction::Cast(value.GetTaggedObject());
             func->SetLexicalEnv(thread, lexenv.GetTaggedValue());
-            func->SetModule(thread, ecmaModule);
+            Method::Cast(func->GetMethod())->SetModule(thread, ecmaModule);
         }
     }
 
@@ -824,7 +824,8 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     CString entry = ModuleManager::GetRecordName(module.GetTaggedValue());
 
     // For class constructor.
-    auto methodObj = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), methodId);
+    auto methodObj = ConstantPool::GetMethodFromCache(
+        thread, constpool.GetTaggedValue(), module.GetTaggedValue(), methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
     JSHandle<JSFunction> cls;
@@ -1388,8 +1389,7 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
     if (jsPandaFile->IsBundlePack()) {
         dirPath.Update(factory->NewFromUtf8(currentfilename).GetTaggedValue());
     } else {
-        JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());
-        recordName.Update(function->GetRecordName());
+        recordName.Update(method->GetRecordName());
         dirPath.Update(factory->NewFromUtf8(currentfilename).GetTaggedValue());
     }
 

@@ -37,7 +37,6 @@ void JSFunction::InitializeJSFunction(JSThread *thread, const JSHandle<JSFunctio
     func->SetProtoOrHClass(thread, JSTaggedValue::Hole(), SKIP_BARRIER);
     func->SetHomeObject(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetLexicalEnv(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
-    func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
 
     auto globalConst = thread->GlobalConstants();
@@ -804,23 +803,5 @@ JSTaggedValue JSFunction::GetNativeFunctionExtraInfo() const
         return value;
     }
     return JSTaggedValue::Undefined();
-}
-
-JSTaggedValue JSFunction::GetRecordName() const
-{
-    JSTaggedValue module = GetModule();
-    if (module.IsSourceTextModule()) {
-        JSTaggedValue recordName = SourceTextModule::Cast(module.GetTaggedObject())->GetEcmaModuleRecordName();
-        if (!recordName.IsString()) {
-            LOG_INTERPRETER(DEBUG) << "module record name is undefined";
-            return JSTaggedValue::Hole();
-        }
-        return recordName;
-    }
-    if (module.IsString()) {
-        return module;
-    }
-    LOG_INTERPRETER(DEBUG) << "record name is undefined";
-    return JSTaggedValue::Hole();
 }
 }  // namespace panda::ecmascript
