@@ -474,6 +474,11 @@ action("gen_stub_file") {
         rebase_path(root_out_dir_with_host_toolchain) +
         "/${icu_subsystem_name}/${icu_part_name}:" +
         rebase_path(root_out_dir_with_host_toolchain) + "/thirdparty/zlib:" +
+        rebase_path(root_out_dir_with_host_toolchain) +
+        "/resourceschedule/frame_aware_sched:" +
+        rebase_path(root_out_dir_with_host_toolchain) + "/hiviewdfx/hilog:" +
+        rebase_path(root_out_dir_with_host_toolchain) +
+        "/thirdparty/bounds_checking_function:" +
         rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
   ]
 

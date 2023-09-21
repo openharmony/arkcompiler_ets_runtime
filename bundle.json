@@ -23,6 +23,7 @@
         "deps": {
             "components": [
               "faultloggerd",
+              "frame_aware_sched",
               "hitrace",
               "hilog",
               "runtime_core",
