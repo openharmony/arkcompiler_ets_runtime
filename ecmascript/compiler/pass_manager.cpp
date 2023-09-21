@@ -134,7 +134,9 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<LCRLoweringPass>();
+        pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<SlowPathLoweringPass>();
+        pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<VerifierPass>();
         pipeline.RunPass<GraphLinearizerPass>();
         pipeline.RunPass<LLVMIRGenPass>();

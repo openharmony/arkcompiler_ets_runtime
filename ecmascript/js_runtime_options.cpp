@@ -69,6 +69,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-trace-bc:                  Enable tracing bytecode for aot runtime. Default: 'false'\n"
     "--compiler-trace-deopt:               Enable tracing deopt for aot runtime. Default: 'false'\n"
     "--compiler-trace-inline:              Enable tracing inline function for aot runtime. Default: 'false'\n"
+    "--compiler-trace-value-numbering:     Enable tracing value numbering for aot runtime. Default: 'false'\n"
     "--compiler-max-inline-bytecodes       Set max bytecodes count which aot function can be inlined. Default: '25'\n"
     "--compiler-deopt-threshold:           Set max count which aot function can occur deoptimization. Default: '10'\n"
     "--compiler-stress-deopt:              Enable stress deopt for aot compiler. Default: 'false'\n"
@@ -172,6 +173,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-trace-bc", required_argument, nullptr, OPTION_COMPILER_TRACE_BC},
         {"compiler-trace-deopt", required_argument, nullptr, OPTION_COMPILER_TRACE_DEOPT},
         {"compiler-trace-inline", required_argument, nullptr, OPTION_COMPILER_TRACE_INLINE},
+        {"compiler-trace-value-numbering", required_argument, nullptr, OPTION_COMPILER_TRACE_VALUE_NUMBERING},
         {"compiler-max-inline-bytecodes", required_argument, nullptr, OPTION_COMPILER_MAX_INLINE_BYTECODES},
         {"compiler-deopt-threshold", required_argument, nullptr, OPTION_COMPILER_DEOPT_THRESHOLD},
         {"compiler-stress-deopt", required_argument, nullptr, OPTION_COMPILER_STRESS_DEOPT},
@@ -185,6 +187,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-opt-early-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_EARLY_ELIMINATION},
         {"compiler-opt-later-elimination", required_argument, nullptr, OPTION_COMPILER_OPT_LATER_ELIMINATION},
         {"compiler-opt-value-numbering", required_argument, nullptr, OPTION_COMPILER_OPT_VALUE_NUMBERING},
+        {"compiler-opt-new-value-numbering", required_argument, nullptr, OPTION_COMPILER_OPT_NEW_VALUE_NUMBERING},
         {"compiler-opt-inlining", required_argument, nullptr, OPTION_COMPILER_OPT_INLINING},
         {"compiler-opt-pgotype", required_argument, nullptr, OPTION_COMPILER_OPT_PGOTYPE},
         {"compiler-opt-track-field", required_argument, nullptr, OPTION_COMPILER_OPT_TRACK_FIELD},
@@ -367,6 +370,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetTraceInline(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_TRACE_VALUE_NUMBERING:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetTraceValueNumbering(argBool);
                 } else {
                     return false;
                 }
@@ -664,6 +675,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableValueNumbering(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_OPT_NEW_VALUE_NUMBERING:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableNewValueNumbering(argBool);
                 } else {
                     return false;
                 }

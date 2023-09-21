@@ -521,6 +521,7 @@ public:
     bool IsProlog(GateRef g) const;
     bool IsCFGMerge(GateRef g) const;
     bool MetaDataEqu(GateRef g1, GateRef g2) const;
+    bool MetaDataValueEqu(GateRef g1, GateRef g2) const;
     bool IsNop(GateRef g) const;
     bool IsRoot(GateRef g) const;
     bool HasOuts(GateRef gate) const;

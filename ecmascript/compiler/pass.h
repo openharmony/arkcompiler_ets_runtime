@@ -47,6 +47,7 @@
 #include "ecmascript/compiler/type_mcr_lowering.h"
 #include "ecmascript/compiler/value_numbering.h"
 #include "ecmascript/compiler/verifier.h"
+#include "ecmascript/js_runtime_options.h"
 
 namespace panda::ecmascript::kungfu {
 class PassContext;
@@ -580,11 +581,14 @@ public:
         if (!passOptions->EnableTypeLowering() || !passOptions->EnableValueNumbering()) {
             return false;
         }
+        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetEcmaVM()->GetJSOptions();
         TimeScope timescope("ValueNumberingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        ValueNumbering valueNumbering(data->GetCircuit(), &visitor, &chunk);
+        ValueNumbering valueNumbering(data->GetCircuit(), &visitor, &chunk,
+                                      runtimeOption.IsEnableNewValueNumbering(),
+                                      runtimeOption.GetTraceValueNumbering());
         visitor.AddPass(&valueNumbering);
         visitor.VisitGraph();
         visitor.PrintLog("value numbering");

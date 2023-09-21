@@ -107,6 +107,15 @@ public:
         : opcode_(opcode), flags_(flags),
         statesIn_(statesIn), dependsIn_(dependsIn), valuesIn_(valuesIn) {}
 
+    virtual bool equal(const GateMetaData &other) const
+    {
+        if (opcode_ == other.opcode_ && kind_ == other.kind_ && flags_ == other.flags_ &&
+            statesIn_ == other.statesIn_ && dependsIn_ == other.dependsIn_ && valuesIn_ == other.valuesIn_) {
+            return true;
+        }
+        return false;
+    }
+
     size_t GetStateCount() const
     {
         return statesIn_;
@@ -282,6 +291,18 @@ public:
         SetKind(GateMetaData::Kind::IMMUTABLE_BOOL);
     }
 
+    bool equal(const GateMetaData &other) const override
+    {
+        if (!GateMetaData::equal(other)) {
+            return false;
+        }
+        auto cast_other = static_cast<const BoolMetaData *>(&other);
+        if (value_ == cast_other->value_) {
+            return true;
+        }
+        return false;
+    }
+
     static const BoolMetaData* Cast(const GateMetaData* meta)
     {
         meta->AssertKind(GateMetaData::Kind::IMMUTABLE_BOOL);
@@ -304,6 +325,18 @@ public:
         : GateMetaData(opcode, flags, statesIn, dependsIn, valuesIn), value_(value)
     {
         SetKind(GateMetaData::Kind::IMMUTABLE_ONE_PARAMETER);
+    }
+
+    bool equal(const GateMetaData &other) const override
+    {
+        if (!GateMetaData::equal(other)) {
+            return false;
+        }
+        auto cast_other = static_cast<const OneParameterMetaData *>(&other);
+        if (value_ == cast_other->value_) {
+            return true;
+        }
+        return false;
     }
 
     static const OneParameterMetaData* Cast(const GateMetaData* meta)
@@ -340,6 +373,22 @@ public:
             LOG_COMPILER(FATAL) << "StringMetaData strcpy_s failed";
         }
         SetKind(GateMetaData::Kind::MUTABLE_STRING);
+    }
+    bool equal(const GateMetaData &other) const override
+    {
+        if (!GateMetaData::equal(other)) {
+            return false;
+        }
+        auto cast_other = static_cast<const StringMetaData *>(&other);
+        if (stringData_.size() != cast_other->GetString().size()) {
+            return false;
+        }
+
+        if (strncmp(stringData_.data(), cast_other->GetString().data(), stringData_.size()) != 0) {
+            return false;
+        }
+
+        return true;
     }
 
     const ChunkVector<char> &GetString() const
