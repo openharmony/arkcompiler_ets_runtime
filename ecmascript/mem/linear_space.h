@@ -68,6 +68,7 @@ public:
     void SetOverShootSize(size_t size);
     bool AdjustCapacity(size_t allocatedSizeSinceGC);
     void SetWaterLine();
+    void SetWaterLineWithoutGC();
 
     uintptr_t GetWaterLine() const
     {

@@ -931,6 +931,10 @@ ohos_source_set("libark_jsruntime_set") {
       "/system/lib64/${arkcompiler_relative_lib_path}/lib_ark_builtins.d.abc"
   defines += [ "TARGET_BUILTINS_DTS_PATH=\"${target_builtins_dts_path}\"" ]
 
+  if (current_cpu == "arm64") {
+    defines += [ "ENABLE_POSTFORK_FORCEEXPAND" ]
+  }
+
   sources = ecma_source
   sources += ecma_profiler_source
   sources += ecma_debugger_source

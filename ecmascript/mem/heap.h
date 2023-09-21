@@ -224,6 +224,17 @@ public:
         return memController_;
     }
 
+    bool InSensitiveStatus() const
+    {
+        return onHighSensitiveEvent_ || onStartupEvent_;
+    }
+
+    void NotifyPostFork()
+    {
+        os::memory::LockHolder holder(finishColdStartMutex_);
+        onStartupEvent_ = true;
+    }
+
     /*
      * For object allocations.
      */
@@ -404,6 +415,19 @@ public:
     }
 
     void ClearIdleTask();
+
+    bool IsEmptyIdleTask() const
+    {
+        return idleTask_ == IdleTaskType::NO_TASK;
+    }
+
+    void NotifyFinishColdStart(bool isMainThread = true);
+
+    void NotifyFinishColdStartSoon();
+
+    void NotifyHighSensitive(bool isStart);
+
+    bool NeedStopCollection();
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     void StartHeapTracking()
@@ -588,6 +612,19 @@ private:
         TriggerGCType gcType_;
     };
 
+    class FinishColdStartTask : public Task {
+    public:
+        FinishColdStartTask(int32_t id, Heap *heap)
+            : Task(id), heap_(heap) {}
+        ~FinishColdStartTask() override = default;
+        bool Run(uint32_t threadIndex) override;
+
+        NO_COPY_SEMANTIC(FinishColdStartTask);
+        NO_MOVE_SEMANTIC(FinishColdStartTask);
+    private:
+        Heap *heap_;
+    };
+
     EcmaVM *ecmaVm_ {nullptr};
     JSThread *thread_ {nullptr};
 
@@ -684,6 +721,7 @@ private:
     uint32_t maxMarkTaskCount_ {0};
     // parallel evacuator task number.
     uint32_t maxEvacuateTaskCount_ {0};
+    os::memory::Mutex finishColdStartMutex_;
     os::memory::Mutex waitTaskFinishedMutex_;
     os::memory::ConditionVariable waitTaskFinishedCV_;
 
@@ -701,6 +739,8 @@ private:
     bool inBackground_ {false};
 
     IdleNotifyStatusCallback notifyIdleStatusCallback {nullptr};
+    bool onHighSensitiveEvent_ {false};
+    bool onStartupEvent_ {false};
 
     IdleTaskType idleTask_ {IdleTaskType::NO_TASK};
     float idlePredictDuration_ {0.0f};

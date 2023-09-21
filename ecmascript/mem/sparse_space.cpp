@@ -552,7 +552,7 @@ void LocalSpace::Stop()
     }
 }
 
-uintptr_t  NonMovableSpace::CheckAndAllocate(size_t size)
+uintptr_t NonMovableSpace::CheckAndAllocate(size_t size)
 {
     if (maximumCapacity_ == committedSize_ && GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE &&
         !heap_->GetOldGCRequested())
