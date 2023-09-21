@@ -69,6 +69,7 @@ public:
     static JSTaggedValue Slice(JSThread *thread, JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &count);
 
 private:
+    static void SetSepValue(JSHandle<EcmaString> sepStringHandle, int &sep, uint32_t &sepLength);
     enum class IndexOfType {
         IndexOf,
         LastIndexOf

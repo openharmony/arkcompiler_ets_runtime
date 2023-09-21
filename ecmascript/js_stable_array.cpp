@@ -216,6 +216,20 @@ JSTaggedValue JSStableArray::Shift(JSHandle<JSArray> receiver, EcmaRuntimeCallIn
     return result.IsHole() ? JSTaggedValue::Undefined() : result;
 }
 
+void JSStableArray::SetSepValue(JSHandle<EcmaString> sepStringHandle, int &sep, uint32_t &sepLength)
+{
+    if (EcmaStringAccessor(sepStringHandle).IsUtf8() && EcmaStringAccessor(sepStringHandle).GetLength() == 1) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        sep = EcmaStringAccessor(sepStringHandle).Get(0);
+    } else if (EcmaStringAccessor(sepStringHandle).GetLength() == 0) {
+        sep = JSStableArray::SeparatorFlag::MINUS_TWO;
+        sepLength = 0;
+    } else {
+        sep = JSStableArray::SeparatorFlag::MINUS_ONE;
+        sepLength = EcmaStringAccessor(sepStringHandle).GetLength();
+    }
+}
+
 JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();
@@ -233,16 +247,7 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInf
             sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
             RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
         }
-        if (EcmaStringAccessor(sepStringHandle).IsUtf8() && EcmaStringAccessor(sepStringHandle).GetLength() == 1) {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            sep = EcmaStringAccessor(sepStringHandle).Get(0);
-        } else if (EcmaStringAccessor(sepStringHandle).GetLength() == 0) {
-            sep = JSStableArray::SeparatorFlag::MINUS_TWO;
-            sepLength = 0;
-        } else {
-            sep = JSStableArray::SeparatorFlag::MINUS_ONE;
-            sepLength = EcmaStringAccessor(sepStringHandle).GetLength();
-        }
+        SetSepValue(sepStringHandle, sep, sepLength);
     }
     if (length == 0) {
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
