@@ -432,7 +432,7 @@ GateRef OperationsStubBuilder::Greater(GateRef glue, GateRef left, GateRef right
                 Bind(&rightIsInt1);
                 {
                     GateRef type = Int32(PGOSampleType::IntType());
-                    callback.ProfileOpType(type);
+                    COMBINE_TYPE_CALL_BACK(curType, type);
                     doubleRight = ChangeInt32ToFloat64(TaggedGetInt(right));
                     Jump(&exit2);
                 }
