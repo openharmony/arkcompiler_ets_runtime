@@ -3689,4 +3689,26 @@ void JSNApi::SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallbac
 {
     vm->SetSourceMapTranslateCallback(callback);
 }
+
+TryCatch::~TryCatch()
+{
+    if (!rethrow_) {
+        ecmaVm_->GetJSThread()->ClearException();
+    }
+}
+
+bool TryCatch::HasCaught() const
+{
+    return ecmaVm_->GetJSThread()->HasPendingException();
+}
+
+void TryCatch::Rethrow()
+{
+    rethrow_ = true;
+}
+
+Local<ObjectRef> TryCatch::GetAndClearException()
+{
+    return JSNApiHelper::ToLocal<ObjectRef>(ecmaVm_->GetAndClearEcmaUncaughtException());
+}
 }  // namespace panda
