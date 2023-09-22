@@ -24,6 +24,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/taskpool/task.h"
@@ -48,7 +49,6 @@ public:
     NO_MOVE_SEMANTIC(PGOProfiler);
 
     static ProfileType GetRecordProfileType(ApEntityId abcId, ApEntityId recordId);
-    void ProfileCall(JSTaggedType callTarget, SampleMode mode = SampleMode::CALL_MODE, int32_t incCount = 1);
     void ProfileCreateObject(JSTaggedType object, ApEntityId abcId, int32_t traceId);
     void ProfileDefineClass(JSTaggedType ctor);
 
@@ -60,8 +60,8 @@ public:
     void PGOPreDump(JSTaggedType func);
     void PGODump(JSTaggedType func);
 
-    void PausePGODump();
-    void ResumePGODump();
+    void WaitPGODumpPause();
+    void WaitPGODumpResume();
     void WaitPGODumpFinish();
 
     void HandlePGOPreDump();
@@ -76,7 +76,7 @@ public:
 
 private:
     static constexpr uint32_t MERGED_EVERY_COUNT = 50;
-    static constexpr auto MERGED_MIN_INTERVAL = std::chrono::milliseconds(1000);
+    static constexpr uint32_t MS_PRE_SECOND = 1000;
     enum class BCType : uint8_t {
         STORE,
         LOAD,
@@ -88,7 +88,8 @@ private:
         START,
     };
 
-    void ProfileByteCode(ApEntityId abcId, const CString &recordName, JSTaggedValue value);
+    void ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue value);
+    bool PausePGODump();
 
     void DumpICByName(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
                       ProfileTypeInfo *profileTypeInfo, BCType type);
@@ -138,6 +139,78 @@ private:
         PGOProfiler *profiler_;
     };
 
+    class WorkList;
+    class WorkNode {
+    public:
+        WorkNode(JSTaggedType value) : value_(value) {}
+        void SetPrev(WorkNode *prev)
+        {
+            prev_ = prev;
+        }
+
+        void SetNext(WorkNode *next)
+        {
+            next_ = next;
+        }
+
+        void SetValue(JSTaggedType value)
+        {
+            value_ = value;
+        }
+
+        void SetWorkList(WorkList *workList)
+        {
+            workList_ = workList;
+        }
+
+        WorkNode *GetPrev() const
+        {
+            return prev_;
+        }
+
+        WorkNode *GetNext() const
+        {
+            return next_;
+        }
+
+        JSTaggedType GetValue() const
+        {
+            return value_;
+        }
+
+        uintptr_t GetValueAddr() const
+        {
+            return reinterpret_cast<uintptr_t>(&value_);
+        }
+
+        WorkList *GetWorkList() const
+        {
+            return workList_;
+        }
+
+    private:
+        WorkList *workList_ { nullptr };
+        WorkNode *prev_ { nullptr };
+        WorkNode *next_ { nullptr };
+        JSTaggedType value_ { JSTaggedValue::Undefined().GetRawData() };
+    };
+
+    class WorkList {
+    public:
+        using Callback = std::function<void(WorkNode *node)>;
+        bool IsEmpty() const
+        {
+            return first_ == nullptr;
+        }
+        void PushBack(WorkNode *node);
+        WorkNode *PopFront();
+        void Remove(WorkNode *node);
+        void Iterate(Callback callback) const;
+    private:
+        WorkNode *first_ { nullptr };
+        WorkNode *last_ { nullptr };
+    };
+
     PGOProfiler(EcmaVM *vm, bool isEnable);
 
     virtual ~PGOProfiler();
@@ -156,8 +229,8 @@ private:
     std::chrono::system_clock::time_point saveTimestamp_;
     Mutex mutex_;
     ConditionVariable condition_;
-    CList<JSTaggedType> dumpWorkList_;
-    CSet<JSTaggedType> preDumpWorkList_;
+    WorkList dumpWorkList_;
+    WorkList preDumpWorkList_;
     CMap<JSTaggedType, ProfileType> tracedProfiles_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
     friend class PGOProfilerManager;

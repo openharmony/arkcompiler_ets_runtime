@@ -413,6 +413,12 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
 
 void Deoptimizier::Dump(Method* method, kungfu::DeoptType type, size_t depth)
 {
+    if (thread_->IsPGOProfilerEnable()) {
+        auto profileTypeInfo = method->GetProfileTypeInfo();
+        if (profileTypeInfo.IsUndefined()) {
+            SlowRuntimeStub::NotifyInlineCache(thread_, method);
+        }
+    }
     if (traceDeopt_) {
         std::string checkType = DisplayItems(type);
         LOG_COMPILER(INFO) << "Check Type: " << checkType;

@@ -402,6 +402,7 @@ JSHandle<TSFunctionType> TSTypeParser::ParseFunctionType(const JSPandaFile *jsPa
 
     uint32_t bitField = typeLiteralExtractor->GetIntValue(FunctionLiteralInfo::BITFIELD_INDEX);
     functionType->SetBitField(bitField);
+    functionType->SetIsHotness(true);
 
     StoreMethodOffset(functionType, typeLiteralExtractor);
     return functionType;

@@ -13,23 +13,16 @@
  * limitations under the License.
  */
 
-let a = [1, 2, 3];
-let b = [1, , 3];
-let c = [1, 2, 'test', 1];
-let d = [1, 2, 3, 4.23];
+declare function print(arg:any):string;
 
-function foo(p) {
-  p[1] = 1.1;
+function foo() {
+    return "a"
 }
 
-function foo1(p) {
-  p[2] = 'test';
+function callFoo(f: (n: number) => number, a: number): number {
+    return f(a);
 }
 
-for (let i = 0; i < 1000; i++) {
-  foo(a);
-  foo(b);
-  foo(c);
-  foo1(d);
-}
-c[6] = 1;
+let ret = callFoo(<any>foo, 1);
+
+print(ret)

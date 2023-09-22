@@ -124,6 +124,7 @@ enum CommandValues {
     OPTION_HELP,
     OPTION_COMPILER_PGO_PROFILER_PATH,
     OPTION_COMPILER_PGO_HOTNESS_THRESHOLD,
+    OPTION_COMPILER_PGO_SAVE_MIN_INTERVAL,
     OPTION_ENABLE_PGO_PROFILER,
     OPTION_OPTIONS,
     OPTION_PRINT_EXECUTE_TIME,
@@ -905,6 +906,16 @@ public:
         pgoHotnessThreshold_ = threshold;
     }
 
+    uint32_t GetPGOSaveMinInterval() const
+    {
+        return pgoSaveMinInterval_;
+    }
+
+    void SetPGOSaveMinInterval(uint32_t value)
+    {
+        pgoSaveMinInterval_ = value;
+    }
+
     std::string GetPGOProfilerPath() const
     {
         return pgoProfilerPath_;
@@ -1304,6 +1315,7 @@ private:
     bool reportModuleResolvingFailure_ {true};
     uint32_t pgoHotnessThreshold_ {1};
     std::string pgoProfilerPath_ {""};
+    uint32_t pgoSaveMinInterval_ {30};
     bool traceDeopt_ {false};
     uint8_t deoptThreshold_ {10};
     bool stressDeopt_ {false};

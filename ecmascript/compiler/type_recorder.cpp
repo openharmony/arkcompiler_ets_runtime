@@ -178,6 +178,10 @@ void TypeRecorder::CreateTypesForPGO(const JSPandaFile *jsPandaFile, const Metho
             if (funcGT.IsDefault()) {
                 return;
             }
+            // Target method was not compiled by AOT.
+            if (!decoder_->Match(recordName, pgo::PGOMethodId(callTargetMethodOffset))) {
+                tsManager->SetHotnessFunc(funcGT, false);
+            }
             GateType callTargetType = GateType(funcGT);
             bcOffsetCallTargetGtMap_.emplace(bcIdx, callTargetType);
             return;

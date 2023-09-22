@@ -275,6 +275,10 @@ public:
 
     bool PUBLIC_API IsStaticFunc(GlobalTSTypeRef gt) const;
 
+    bool PUBLIC_API IsHotnessFunc(GlobalTSTypeRef gt) const;
+
+    void PUBLIC_API SetHotnessFunc(GlobalTSTypeRef gt, bool isHotness) const;
+
     bool PUBLIC_API GetSuperGateType(kungfu::GateType &gateType) const;
 
     GlobalTSTypeRef PUBLIC_API GetSuperPropType(GlobalTSTypeRef gt,
