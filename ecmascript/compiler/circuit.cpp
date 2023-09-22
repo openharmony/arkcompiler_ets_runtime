@@ -465,7 +465,7 @@ void Circuit::ClearConstantCache(MachineType machineType, uint64_t value, GateTy
     }
 }
 
-GateRef Circuit::GetConstantStringGate(MachineType machineType, const std::string &str,
+GateRef Circuit::GetConstantStringGate(MachineType machineType, std::string_view str,
                                        GateType type)
 {
     auto gate = NewGate(metaBuilder_.ConstString(str), machineType, type);

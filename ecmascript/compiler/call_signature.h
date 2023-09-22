@@ -413,6 +413,10 @@ private:
     V(StringsAreEquals)                     \
     V(BigIntEquals)                         \
     V(BigIntSameValueZero)                  \
+    V(Dump)                                 \
+    V(DebugDump)                            \
+    V(DumpWithHint)                         \
+    V(DebugDumpWithHint)                    \
     V(DebugPrint)                           \
     V(DebugPrintCustom)                     \
     V(DebugPrintInstruction)                \

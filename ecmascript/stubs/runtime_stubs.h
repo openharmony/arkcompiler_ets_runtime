@@ -95,6 +95,10 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
 
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
+    V(Dump)                                    \
+    V(DebugDump)                               \
+    V(DumpWithHint)                            \
+    V(DebugDumpWithHint)                       \
     V(DebugPrint)                              \
     V(DebugPrintCustom)                        \
     V(DebugPrintInstruction)                   \
@@ -131,7 +135,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CallInternalSetter)                 \
     V(CallGetPrototype)                   \
     V(ThrowTypeError)                     \
-    V(Dump)                               \
     V(GetHash32)                          \
     V(ComputeHashcode)                    \
     V(GetTaggedArrayPtrTest)              \
@@ -360,6 +363,10 @@ public:
         return reinterpret_cast<T*>(*(reinterpret_cast<JSTaggedType *>(argv) + (index)));
     }
 
+    static void Dump(JSTaggedType value);
+    static void DebugDump(JSTaggedType value);
+    static void DumpWithHint(uintptr_t hintStrAddress, JSTaggedType value);
+    static void DebugDumpWithHint(uintptr_t hintStrAddress, JSTaggedType value);
     static void DebugPrint(int fmtMessageId, ...);
     static void DebugPrintCustom(uintptr_t fmt, ...);
     static void DebugPrintInstruction([[maybe_unused]] uintptr_t argGlue, const uint8_t *pc);
@@ -395,6 +402,7 @@ public:
 
     static JSTaggedValue CallBoundFunction(EcmaRuntimeCallInfo *info);
 private:
+    static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
     static void PrintHeapReginInfo(uintptr_t argGlue);
 
     static inline JSTaggedValue RuntimeInc(JSThread *thread, const JSHandle<JSTaggedValue> &value);

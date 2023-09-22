@@ -876,7 +876,7 @@ GateRef CircuitBuilder::IntPtr(int64_t val)
     return GetCircuit()->GetConstantGate(MachineType::ARCH, val, GateType::NJSValue());
 }
 
-GateRef CircuitBuilder::StringPtr(const std::string &str)
+GateRef CircuitBuilder::StringPtr(std::string_view str)
 {
     return GetCircuit()->GetConstantStringGate(MachineType::ARCH, str, GateType::NJSValue());
 }

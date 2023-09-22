@@ -1405,6 +1405,64 @@ DEF_CALL_SIGNATURE(CallOptimized)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(Dump)
+{
+    constexpr size_t N_INPUT_PARAMETERS = 1;
+    CallSignature dump("Dump", 0, N_INPUT_PARAMETERS,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = dump;
+    std::array<VariableType, N_INPUT_PARAMETERS> params = {
+        VariableType::JS_POINTER() // Tagged value of the object to be dumped
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(DebugDump)
+{
+    constexpr size_t N_INPUT_PARAMETERS = 1;
+    CallSignature debugDump("DebugDump", 0, N_INPUT_PARAMETERS,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = debugDump;
+    std::array<VariableType, N_INPUT_PARAMETERS> params = {
+        VariableType::JS_POINTER() // Tagged value of the object to be dumped
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(DumpWithHint)
+{
+    constexpr size_t N_INPUT_PARAMETERS = 2;
+    CallSignature dumpWithHint("DumpWithHint", 0, N_INPUT_PARAMETERS,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = dumpWithHint;
+    std::array<VariableType, N_INPUT_PARAMETERS> params = {
+        VariableType::NATIVE_POINTER(), // String created via CircuitBuilder::StringPtr()
+        VariableType::JS_POINTER()      // Tagged value of the object to be dumped
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(DebugDumpWithHint)
+{
+    constexpr size_t N_INPUT_PARAMETERS = 2;
+    CallSignature debugDumpWithHint("DebugDumpWithHint", 0, N_INPUT_PARAMETERS,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = debugDumpWithHint;
+    std::array<VariableType, N_INPUT_PARAMETERS> params = {
+        VariableType::NATIVE_POINTER(), // String created via CircuitBuilder::StringPtr()
+        VariableType::JS_POINTER()      // Tagged value of the object to be dumped
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(DebugPrint)
 {
     // 1 : 1 input parameters
@@ -1429,7 +1487,7 @@ DEF_CALL_SIGNATURE(DebugPrintCustom)
     *callSign = debugPrintCustom;
     // 1 : 1 input parameters
     std::array<VariableType, 1> params = {
-        VariableType::NATIVE_POINTER()
+        VariableType::NATIVE_POINTER() // Format string created via CircuitBuilder::StringPtr()
     };
     callSign->SetVariadicArgs(true);
     callSign->SetParameters(params.data());
@@ -1493,7 +1551,7 @@ DEF_CALL_SIGNATURE(FatalPrintCustom)
     *callSign = fatalPrintCustom;
     // 1 : 1 input parameters
     std::array<VariableType, 1> params = {
-        VariableType::NATIVE_POINTER()
+        VariableType::NATIVE_POINTER() // Format string created via CircuitBuilder::StringPtr()
     };
     callSign->SetVariadicArgs(true);
     callSign->SetParameters(params.data());

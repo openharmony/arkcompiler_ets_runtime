@@ -167,7 +167,7 @@ public:
         return meta;
     }
 
-    const GateMetaData* ConstString(const std::string &str)
+    const GateMetaData* ConstString(std::string_view str)
     {
         return new (chunk_) StringMetaData(chunk_, str);
     }

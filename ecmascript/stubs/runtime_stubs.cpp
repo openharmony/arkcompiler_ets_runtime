@@ -140,15 +140,6 @@ DEF_RUNTIME_STUBS(CallInternalSetter)
     return JSTaggedValue::Undefined().GetRawData();
 }
 
-DEF_RUNTIME_STUBS(Dump)
-{
-    RUNTIME_STUBS_HEADER(Dump);
-    JSTaggedValue value = GetArg(argv, argc, 0);
-    value.D();
-    std::cout << "======================================================" << std::endl;
-    return JSTaggedValue::Undefined().GetRawData();
-}
-
 DEF_RUNTIME_STUBS(GetHash32)
 {
     JSTaggedValue argKey = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
@@ -429,6 +420,50 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+void RuntimeStubs::Dump(JSTaggedType rawValue)
+{
+    DumpWithHint(reinterpret_cast<uintptr_t>(nullptr), rawValue);
+}
+
+void RuntimeStubs::DebugDump(JSTaggedType rawValue)
+{
+    DebugDumpWithHint(reinterpret_cast<uintptr_t>(nullptr), rawValue);
+}
+
+void RuntimeStubs::DumpWithHint(uintptr_t hintStrAddress, JSTaggedType rawValue)
+{
+    const char *origHintStr = reinterpret_cast<const char*>(hintStrAddress); // May be nullptr
+    const char *hintStr = (origHintStr == nullptr) ? "" : origHintStr;
+    DumpToStreamWithHint(std::cout, hintStr, JSTaggedValue(rawValue));
+    std::cout << std::endl; // New line
+}
+
+void RuntimeStubs::DebugDumpWithHint(uintptr_t hintStrAddress, JSTaggedType rawValue)
+{
+    const char *origHintStr = reinterpret_cast<const char*>(hintStrAddress); // May be nullptr
+    const char *hintStr = (origHintStr == nullptr) ? "" : origHintStr;
+    // The immediate lambda expression call is not evaluated when the logger is unabled.
+    LOG_ECMA(DEBUG) << [](const char *hintStr, JSTaggedType rawValue) {
+        std::ostringstream out;
+        DumpToStreamWithHint(out, hintStr, JSTaggedValue(rawValue));
+        return out.str();
+    }(hintStr, rawValue);
+}
+
+void RuntimeStubs::DumpToStreamWithHint(std::ostream &out, std::string_view hint, JSTaggedValue value)
+{
+    constexpr std::string_view dumpDelimiterLine = "================";
+    // Begin line
+    out << dumpDelimiterLine << " Begin dump: " << hint << ' ' << dumpDelimiterLine << std::endl;
+    // Dumps raw data
+    out << "(Raw value = 0x" << std::setw(16) << std::hex << std::setfill('0') << value.GetRawData() << ") ";
+    out << std::setfill(' '); // Recovers fill character
+    // Dumps tagged value
+    value.Dump(out);
+    // End line
+    out << dumpDelimiterLine << "   End dump: " << hint << ' ' << dumpDelimiterLine;
+}
+
 void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
 {
     std::string format = MessageString::GetMessageString(fmtMessageId);
@@ -436,9 +471,9 @@ void RuntimeStubs::DebugPrint(int fmtMessageId, ...)
     va_start(args, fmtMessageId);
     std::string result = base::StringHelper::Vformat(format.c_str(), args);
     if (MessageString::IsBuiltinsStubMessageString(fmtMessageId)) {
-        LOG_BUILTINS(ERROR) << result;
+        LOG_BUILTINS(DEBUG) << result;
     } else {
-        LOG_ECMA(ERROR) << result;
+        LOG_ECMA(DEBUG) << result;
     }
     va_end(args);
 }
@@ -448,7 +483,7 @@ void RuntimeStubs::DebugPrintCustom(uintptr_t fmt, ...)
     va_list args;
     va_start(args, fmt);
     std::string result = base::StringHelper::Vformat(reinterpret_cast<const char*>(fmt), args);
-    LOG_ECMA(ERROR) << result;
+    LOG_ECMA(DEBUG) << result;
     va_end(args);
 }
 
@@ -1981,8 +2016,8 @@ DEF_RUNTIME_STUBS(DebugAOTPrint)
     int ecmaOpcode = GetArg(argv, argc, 0).GetInt();
     int path = GetArg(argv, argc, 1).GetInt();
     std::string result = kungfu::GetEcmaOpcodeStr(static_cast<EcmaOpcode>(ecmaOpcode));
-    std::string pathStr = path == 0 ? "slowpath " : "typedpath ";
-    LOG_ECMA(INFO) << "aot " << pathStr << result;
+    std::string pathStr = path == 0 ? "slow path  " : "TYPED path ";
+    LOG_ECMA(INFO) << "AOT " << pathStr << result;
     return JSTaggedValue::Undefined().GetRawData();
 }
 
