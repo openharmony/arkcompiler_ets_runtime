@@ -206,6 +206,7 @@ protected:
     {
         end_--;
         std::string res;
+        res.reserve(end_ - current_);
         while (current_ <= end_) {
             if (*current_ == '\\') {
                 bool isLegalChar = ParseBackslash(res);
@@ -213,27 +214,21 @@ protected:
                     THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected string in JSON", JSTaggedValue::Exception());
                 }
                 Advance();
-            } else if (UNLIKELY(*current_ > ASCII_END)) {
-                if (UNLIKELY(*current_ >= utf_helper::DECODE_LEAD_LOW && *current_ <= utf_helper::DECODE_LEAD_HIGH &&
-                             *(current_ + 1) >= utf_helper::DECODE_TRAIL_LOW &&
-                             *(current_ + 1) <= utf_helper::DECODE_TRAIL_HIGH)) {
-                    std::u16string str(current_, current_ + 2);  // 2 means twice as many bytes as normal u16string
-                    res += StringHelper::U16stringToString(str);
-                    AdvanceMultiStep(2);  // 2 means twice as many bytes as normal u16string
-                } else {
-                    std::u16string str(current_, current_ + 1);
-                    res += StringHelper::U16stringToString(str);
-                    Advance();
-                }
             } else {
-                res += *current_;
-                Advance();
+                Text nextCurrent = current_;
+                while (nextCurrent <= end_ && *nextCurrent != '\\') {
+                    ++nextCurrent;
+                }
+                ParticalParseString(res, current_, nextCurrent);
+                current_ = nextCurrent;
             }
         }
         ASSERT(res.size() <= static_cast<size_t>(UINT32_MAX));
         return factory_->NewFromUtf8Literal(reinterpret_cast<const uint8_t *>(res.c_str()), res.size())
             .GetTaggedValue();
     }
+
+    virtual void ParticalParseString(std::string& str, Text current, Text nextCurrent) = 0;
 
     virtual JSTaggedValue ParseString(bool inObjorArr = false) = 0;
 
@@ -673,6 +668,11 @@ public:
     }
 
 private:
+    void ParticalParseString(std::string& str, Text current, Text nextCurrent) override
+    {
+        str += std::string_view(reinterpret_cast<const char *>(current), nextCurrent - current);
+    }
+
     JSTaggedValue ParseString(bool inObjorArr = false) override
     {
         bool isFastString = true;
@@ -760,6 +760,11 @@ public:
     }
 
 private:
+    void ParticalParseString(std::string& str, Text current, Text nextCurrent) override
+    {
+        str += StringHelper::U16stringToString(std::u16string(current, nextCurrent));
+    }
+
     JSTaggedValue ParseString(bool inObjorArr = false) override
     {
         bool isFastString = true;
